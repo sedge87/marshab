@@ -22,6 +22,7 @@ func use(player: CharacterBody3D) -> void:
 		player.global_position = Vector3(global_position.x, global_position.y + .28, global_position.z - .70)
 	player.velocity = Vector3.ZERO
 	player.safe_position = player.global_position
+	MHAudio.sfx("ladder")
 
 func _bar(local_position: Vector3, size: Vector3, material: Material) -> void:
 	var mesh_instance := MeshInstance3D.new()

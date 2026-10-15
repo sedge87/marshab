@@ -17,6 +17,7 @@ var _locked_message_until := 0
 var _shutter_width := 2.64
 var _shutter_height := 2.46
 var _pending_open := false
+var _heard_target := 0.0
 
 func setup(door_name := "AIRLOCK", create_inner_frame := false, shutter_width := 2.64, shutter_height := 2.46) -> void:
 	add_to_group("airlock_door")
@@ -35,6 +36,18 @@ func set_partner(partner: AirlockDoor) -> void:
 
 func add_partner(partner: AirlockDoor) -> void:
 	if partner!=null and not _partners.has(partner): _partners.append(partner)
+
+# Prompt text for the explore HUD ("Open Outer door" · "Sealed").
+func prompt_verb() -> String:
+	return ("Close " if _target_amount>.5 else "Open ")+_door_name.capitalize()+" door"
+
+func state_text() -> String:
+	if Time.get_ticks_msec()<_locked_message_until: return "Interlocked"
+	if _pending_open: return "Sealing other door"
+	if absf(_target_amount-_amount)>.025: return "Cycling"
+	return "Open" if _amount>.82 else "Sealed"
+
+func door_label() -> String: return _door_name
 
 func is_closed() -> bool:
 	return _amount<.04 and _target_amount<.04
@@ -59,7 +72,7 @@ func _material(colour: Color,metallic := .25,roughness := .42) -> StandardMateri
 
 func _fixed_frame() -> void:
 	var frame_material:=_material(Color(.32,.38,.39),.52,.32)
-	var accent_material:=_material(Color(.90,.24,.03),.30,.28)
+	var accent_material:=MHGame.accent_material()
 	var frame_width:=_shutter_width+.34
 	var frame_height:=minf(_shutter_height+.34,2.88)
 	var header:=StaticBody3D.new()
@@ -92,7 +105,7 @@ func _make_shutter() -> StaticBody3D:
 	# The former decorative reveal was a genuine visible gap around the seal.
 	mesh.size=Vector3(_shutter_width,_shutter_height,.20)
 	visual.mesh=mesh
-	visual.material_override=_material(Color(.80,.23,.035),.30,.31)
+	visual.material_override=_material(MHStyle.SEAL_DARK.lerp(MHGame.accent(),.18),.35,.38)
 	shutter.add_child(visual)
 	# A dark centre seam makes this read as a proper sealed bulkhead instead of
 	# a flat red rectangle.
@@ -101,7 +114,7 @@ func _make_shutter() -> StaticBody3D:
 	seam_mesh.size=Vector3(.06,_shutter_height-.24,.025)
 	seam.mesh=seam_mesh
 	seam.position=Vector3(0,0,-.10)
-	seam.material_override=_material(Color(.10,.12,.13),.45,.28)
+	seam.material_override=MHGame.accent_material()
 	shutter.add_child(seam)
 	var collision:=CollisionShape3D.new()
 	var shape:=BoxShape3D.new()
@@ -117,9 +130,9 @@ func _build_status_display() -> void:
 	indicator_mesh.size=Vector3(.30,.10,.04)
 	_indicator.mesh=indicator_mesh
 	_indicator.position=Vector3(0,2.48,-.18)
-	_indicator_material=_material(Color(.85,.12,.03),.2,.25)
+	_indicator_material=_material(MHStyle.DANGER,.2,.25)
 	_indicator_material.emission_enabled=true
-	_indicator_material.emission=Color(.70,.04,.01)
+	_indicator_material.emission=MHStyle.DANGER*.7
 	_indicator.material_override=_indicator_material
 	add_child(_indicator)
 	_warning_light=OmniLight3D.new()
@@ -130,8 +143,10 @@ func _build_status_display() -> void:
 	add_child(_warning_light)
 	_status=Label3D.new()
 	# Prompts should be readable at the door without filling the player's view.
-	_status.font_size=24
-	_status.outline_size=4
+	_status.font=MHStyle.font(700,true,1)
+	_status.font_size=22
+	_status.outline_size=6
+	_status.outline_modulate=Color(MHStyle.INK_950,.85)
 	_status.billboard=BaseMaterial3D.BILLBOARD_ENABLED
 	_status.position=Vector3(0,2.75,-.24)
 	add_child(_status)
@@ -155,6 +170,11 @@ func _physics_process(delta: float) -> void:
 	if _pending_open and _partners_closed():
 		_pending_open=false
 		_target_amount=1.0
+	# One place hears every open/close, whether the player, an interlock or a
+	# neighbouring door moved this bulkhead.
+	if _target_amount!=_heard_target:
+		_heard_target=_target_amount
+		MHAudio.sfx_at("door_open" if _target_amount>.5 else "door_close",self)
 	_amount=move_toward(_amount,_target_amount,delta*2.7)
 	# The shutter folds into the overhead cassette rather than travelling beyond
 	# the doorway. Scale keeps the visual and blocker contained in the frame.
@@ -173,6 +193,7 @@ func toggle() -> void:
 		# only then open.  The player does not need to turn around and close the
 		# door they just used to enter the airlock or vehicle bay.
 		_pending_open=true
+		MHAudio.sfx_at("door_interlock",self,-6.0)
 		for partner in _partners: partner._request_close()
 		_update_status()
 		return
@@ -183,41 +204,41 @@ func _flash_locked() -> void:
 	_locked_message_until=Time.get_ticks_msec()+1400
 	if _status!=null:
 		_status.text="INTERLOCKED\nCLOSE OTHER DOOR"
-		_status.modulate=Color(1.0,.22,.05)
+		_status.modulate=MHStyle.DANGER
 	if _warning_light!=null: _warning_light.light_energy=2.2
 
 func _update_status() -> void:
 	if _status==null: return
 	if Time.get_ticks_msec()<_locked_message_until:
 		_status.text="INTERLOCKED\nCLOSE OTHER DOOR"
-		_status.modulate=Color(1.0,.22,.05)
-		_indicator_material.albedo_color=Color(1.0,.08,.01)
-		_indicator_material.emission=Color(.90,.02,.0)
+		_status.modulate=MHStyle.DANGER
+		_indicator_material.albedo_color=MHStyle.DANGER
+		_indicator_material.emission=MHStyle.DANGER*.9
 		_warning_light.light_energy=1.7+sin(Time.get_ticks_msec()*.018)*.5
 		return
 	if _pending_open:
 		_status.text="SEALING OTHER DOOR\nPLEASE WAIT"
-		_status.modulate=Color(1.0,.55,.12)
-		_indicator_material.albedo_color=Color(1.0,.38,.04)
-		_indicator_material.emission=Color(1.0,.18,.01)
+		_status.modulate=MHStyle.WARN
+		_indicator_material.albedo_color=MHStyle.WARN
+		_indicator_material.emission=MHStyle.WARN*.8
 		_warning_light.light_energy=1.1+sin(Time.get_ticks_msec()*.012)*.45
 		return
 	var cycling:=absf(_target_amount-_amount)>.025
 	if cycling:
 		_status.text="CYCLING "+_door_name+" DOOR"
-		_status.modulate=Color(1.0,.55,.12)
-		_indicator_material.albedo_color=Color(1.0,.38,.04)
-		_indicator_material.emission=Color(1.0,.18,.01)
+		_status.modulate=MHStyle.WARN
+		_indicator_material.albedo_color=MHStyle.WARN
+		_indicator_material.emission=MHStyle.WARN*.8
 		_warning_light.light_energy=1.0+sin(Time.get_ticks_msec()*.012)*.45
 	elif _amount>.82:
 		_status.text="E — CLOSE "+_door_name+" DOOR"
-		_status.modulate=Color(.45,1.0,.62)
-		_indicator_material.albedo_color=Color(.18,.90,.34)
-		_indicator_material.emission=Color(.05,.70,.14)
+		_status.modulate=MHStyle.VALID
+		_indicator_material.albedo_color=MHStyle.VALID
+		_indicator_material.emission=MHStyle.VALID*.8
 		_warning_light.light_energy=.18
 	else:
 		_status.text="E — OPEN "+_door_name+" DOOR"
-		_status.modulate=Color(1.0,.78,.35)
-		_indicator_material.albedo_color=Color(.85,.12,.03)
-		_indicator_material.emission=Color(.70,.04,.01)
+		_status.modulate=MHStyle.INK_100
+		_indicator_material.albedo_color=MHStyle.DANGER
+		_indicator_material.emission=MHStyle.DANGER*.7
 		_warning_light.light_energy=.40

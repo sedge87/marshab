@@ -10,6 +10,10 @@ const JUMP_VELOCITY := 5.3
 @onready var head: Node3D = $Head
 var safe_position := Vector3.ZERO
 var _jump_was_pressed := false
+var _stride := 0.0
+var _was_grounded := true
+var _fall_speed := 0.0
+var _step_index := 0
 
 func _ready() -> void:
 	add_to_group("player")
@@ -40,6 +44,7 @@ func _physics_process(delta: float) -> void:
 	var jump_pressed := Input.is_action_pressed("jump") or Input.is_key_pressed(KEY_SPACE)
 	if grounded and jump_pressed and not _jump_was_pressed:
 		velocity.y = JUMP_VELOCITY
+		MHAudio.sfx("jump")
 	elif not grounded:
 		velocity.y -= GRAVITY * delta
 	else:
@@ -59,6 +64,32 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if is_on_floor() and global_position.y > -10.0:
 		safe_position = global_position
+	_footsteps(speed, delta)
+
+# Suit footsteps: regolith crunch outside, deck plate inside the habitat.
+func _footsteps(speed: float, delta: float) -> void:
+	var grounded := is_on_floor()
+	if grounded and not _was_grounded and _fall_speed > 3.5:
+		MHAudio.sfx("land", -2.0 if _on_deck() else 0.0)
+		_stride = 0.0
+	_fall_speed = maxf(0.0, -velocity.y) if not grounded else 0.0
+	_was_grounded = grounded
+	if not grounded or bool(get_meta("build_mode_active", false)): return
+	var moved := Vector2(velocity.x, velocity.z).length() * delta
+	if moved < .001:
+		_stride = 0.0
+		return
+	_stride += moved
+	if _stride >= (2.6 if speed > WALK_SPEED else 2.0):
+		_stride = 0.0
+		_step_index = (_step_index + 1 + randi() % 3) % 4
+		MHAudio.sfx(("step_metal_%d" if _on_deck() else "step_dirt_%d") % _step_index, -8.0, .06)
+
+func _on_deck() -> bool:
+	for i in get_slide_collision_count():
+		var collider := get_slide_collision(i).get_collider() as Node
+		if collider != null and str(collider.get_path()).contains("StudentHabitat"): return true
+	return false
 
 func _axis_pressed(action: StringName, fallback_key: Key) -> float:
 	return 1.0 if Input.is_action_pressed(action) or Input.is_key_pressed(fallback_key) else 0.0

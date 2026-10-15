@@ -10,3 +10,6 @@ _reference_mars_simulator/
 *.blend1
 __pycache__/
 
+
+# Video render scratch files
+brag-output/

@@ -1,0 +1,41 @@
+{
+  "_comment": "Build sites shown on the Site select screen. Values are simplified game-balance estimates, not NASA specifications. palette picks the lighting preset in MHGame.PALETTES.",
+  "sites": [
+    {
+      "id": "plains",
+      "name": "Open Plains",
+      "blurb": "Best solar exposure. Flat, open ground.",
+      "palette": "day",
+      "icon": "sun",
+      "badges": [["+ Solar", "valid"], ["Easy", "neutral"]],
+      "conditions": [["Solar exposure", 9, "High", "info"], ["Build space", 8, "Wide", "valid"], ["Water access", 3, "Low", "warn"], ["Dust shelter", 3, "Low", "warn"]]
+    },
+    {
+      "id": "ridge",
+      "name": "Canyon Ridge",
+      "blurb": "Tighter terrain — plan corridors carefully.",
+      "palette": "day",
+      "icon": "mountain-snow",
+      "badges": [["Tight space", "warn"]],
+      "conditions": [["Solar exposure", 7, "Good", "info"], ["Build space", 4, "Tight", "warn"], ["Water access", 4, "Fair", "warn"], ["Dust shelter", 7, "Good", "valid"]]
+    },
+    {
+      "id": "crater",
+      "name": "Crater Basin",
+      "blurb": "Sheltered, with a slight solar penalty.",
+      "palette": "golden",
+      "icon": "orbit",
+      "badges": [["Sheltered", "info"], ["− Solar", "warn"]],
+      "conditions": [["Solar exposure", 6, "Fair", "warn"], ["Build space", 7, "Good", "valid"], ["Water access", 4, "Fair", "warn"], ["Dust shelter", 9, "High", "valid"]]
+    },
+    {
+      "id": "ice",
+      "name": "Ice Fields",
+      "blurb": "Water access with extraction gear; extra heating.",
+      "palette": "cold",
+      "icon": "droplets",
+      "badges": [["+ Water", "info"], ["+ Heating", "warn"]],
+      "conditions": [["Solar exposure", 7, "Good", "info"], ["Build space", 8, "Wide", "valid"], ["Water access", 9, "High", "valid"], ["Dust shelter", 4, "Fair", "warn"]]
+    }
+  ]
+}

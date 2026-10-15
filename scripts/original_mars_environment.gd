@@ -9,9 +9,13 @@ const DECOR_DATA_PATH := "res://data/original_mars_decor_placements.json"
 const MODEL_DIRECTORY := "res://assets/original_mars/models/"
 
 var _terrain_body: StaticBody3D
+var world_environment: WorldEnvironment
+var sun: DirectionalLight3D
+var palette_name := "day"
 
-func build() -> void:
+func build(palette := "") -> void:
 	name = "OriginalMarsEnvironment"
+	palette_name = palette if not palette.is_empty() else MHGame.palette_name()
 	_build_sky_and_lighting()
 	_build_terrain()
 	_build_far_horizon()
@@ -23,34 +27,22 @@ func _ready() -> void:
 	_build_decor()
 
 func _build_sky_and_lighting() -> void:
-	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color(0.72, 0.60, 0.50)
-	sky_material.sky_horizon_color = Color(0.90, 0.76, 0.62)
-	sky_material.ground_bottom_color = Color(0.35, 0.18, 0.10)
-	sky_material.ground_horizon_color = Color(0.75, 0.50, 0.34)
-	sky_material.sun_angle_max = 8.0
-	var sky := Sky.new()
-	sky.sky_material = sky_material
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_SKY
-	environment.sky = sky
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	environment.ambient_light_energy = 0.35
-	environment.fog_enabled = true
-	environment.fog_light_color = Color(0.86, 0.68, 0.52)
-	environment.fog_density = 0.0025
-	environment.fog_sky_affect = 0.15
-	var world_environment := WorldEnvironment.new()
-	world_environment.environment = environment
+	# Butterscotch sky, warm key light and ochre fog from the design reference
+	# scene. The palette (day / golden / dusk / cold) follows the chosen site.
+	world_environment = WorldEnvironment.new()
 	add_child(world_environment)
-	var sun := DirectionalLight3D.new()
+	sun = DirectionalLight3D.new()
 	sun.name = "OriginalSun"
-	sun.transform = Transform3D(Basis(Vector3(0.866, -0.354, 0.354), Vector3(0.0, 0.707, 0.707), Vector3(-0.5, -0.612, 0.612)), Vector3(0.0, 30.0, 0.0))
-	sun.light_color = Color(1.0, 0.92, 0.82)
-	sun.light_energy = 0.85
-	sun.shadow_enabled = false
-	sun.directional_shadow_max_distance = 80.0
+	sun.position = Vector3(0.0, 30.0, 0.0)
 	add_child(sun)
+	apply_palette(palette_name)
+
+func apply_palette(palette: String) -> void:
+	palette_name = palette if MHGame.PALETTES.has(palette) else "day"
+	var values: Dictionary = MHGame.PALETTES[palette_name]
+	world_environment.environment = MHGame.build_environment(values)
+	MHGame.configure_sun(sun, values)
+	MHGame.set_window_glow(float(values.window))
 
 func _build_terrain() -> void:
 	_terrain_body = StaticBody3D.new()
