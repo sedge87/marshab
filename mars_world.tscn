@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://bdvbl5yjvupnd"]
+
+[ext_resource type="Script" uid="uid://c0disc2s47roa" path="res://scripts/mars_world.gd" id="1_world"]
+
+[node name="MarsWorld" type="Node3D" unique_id=112137069]
+script = ExtResource("1_world")

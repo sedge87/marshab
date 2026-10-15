@@ -1,0 +1,12 @@
+.godot/
+.import/
+*.import
+*.tmp
+*.log
+*.zip
+exports/
+backups/
+_reference_mars_simulator/
+*.blend1
+__pycache__/
+
