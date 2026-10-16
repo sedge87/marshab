@@ -11,10 +11,13 @@ Interior props are defined in `data/equipment_catalog.json`, separate from their
 
 ## Available game hooks
 
-`BuildController.place_equipment(id, cell, visual)` validates the selected room and records the item. It also enforces one item per cell and the remaining cargo budget using `cargo_cost`. The catalogue effects then contribute to berths, food, research, happiness, water demand, and electrical draw. `remove_equipment_at(cell)` removes the recorded item; the future first-person placement controller owns the visual instance and should remove it too.
+`BuildController.place_equipment(id, cell, visual)` validates the selected room and records the item. It also enforces one item per cell and the remaining cargo budget using `cargo_cost`. The catalogue effects then contribute to berths, food, research, happiness, water demand, and electrical draw. `remove_equipment_at(cell)` removes the recorded item. `equipment_invalid_reason(id, cell)` returns the hologram text for a rejected placement.
 
 For a lit prop, put its `Light3D` and any emissive `MeshInstance3D` in the `grid_powered_light` group, using the same metadata conventions as existing lights (`grid_light_energy`, `grid_emission_on`, `grid_emission_off`). Do not put catalogue prop roots in `grid_power_consumer`: their electrical draw already comes from the catalogue.
 
+## Build-mode inventory
+
+The catalogue's **Interior** tab lists every entry, grouped by the `groups` section of the JSON. Selecting one places it with the left mouse on a room cell; `R` sets its facing (`floor_wall` and `wall` items back onto the cell edge opposite their front). Until an `asset_scene` exists, `BuildController` draws a greybox from `footprint` (1.5 m half-cells), `height`, `placement` and `mount_height`, and gives powered items a status lamp on the grid bus. Extra entry fields: `status` (`catalogue`, `future`, `cosmetic`), `batch`, `description`, `role`, `icon` and `walkthrough` (no collision). Future and cosmetic entries carry no effects yet.
 ## First-person placement flow
 
 1. Load the selected entry's `asset_scene`.

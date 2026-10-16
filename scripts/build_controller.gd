@@ -48,7 +48,9 @@ const ZONE_INFO := {
 	"reactor":{"cat":"power","icon":"atom","rule":"One cell · 1,200 kg","desc":"A compact fission reactor. 42 m power field; high output and high cargo cost."},
 	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell · 450 kg","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."}
 }
-const CATEGORIES := [["rooms","Rooms","bed-double"],["structure","Structure","box"],["power","Resources","sun"]]
+const CATEGORIES := [["rooms","Rooms","bed-double"],["structure","Structure","box"],["power","Resources","sun"],["equipment","Interior","armchair"]]
+const HALF_CELL := 1.5
+const ROOM_HEIGHT := 2.9
 const GRID_SHADER := """
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, fog_disabled, shadows_disabled;
@@ -86,6 +88,13 @@ var zones: Array = []
 # First-person furnishing controllers own their visual instances. This lightweight
 # record is the simulation state used by the resource and wellbeing systems.
 var placed_equipment: Array = []
+# Selected interior item; empty while a zone is selected.
+var equipment_id := ""
+# Greybox stand-ins for placed equipment, keyed by cell, until final art lands.
+var furnishing: Node3D
+var _equipment_visuals := {}
+# Undo order across zones and equipment: {"type":"zone","zone":…} / {"type":"equipment","id":…,"cell":…}.
+var _history: Array = []
 var dragging := false
 var drag_start := Vector2i.ZERO
 var hover := Vector2i.ZERO
@@ -110,6 +119,8 @@ var catalogue: PanelContainer
 var catalogue_rail: PanelContainer
 var catalogue_grid: GridContainer
 var catalogue_detail: VBoxContainer
+var equipment_list: VBoxContainer
+var catalogue_count: Label
 var category := "rooms"
 var category_buttons := {}
 var tool_buttons := {}
@@ -131,6 +142,7 @@ func _site_build_limit() -> float:
 func _ready() -> void:
 	root=Node3D.new(); root.name="StudentHabitat"; world.add_child(root)
 	preview=Node3D.new(); preview.name="ZonePreview"; world.add_child(preview)
+	furnishing=Node3D.new(); furnishing.name="HabitatEquipment"; world.add_child(furnishing)
 	if display_only: return
 	_camera(); _grid(); _ui()
 
@@ -138,7 +150,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if display_only: return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode==KEY_B: _toggle()
-		elif build_mode and event.keycode==KEY_R and (kind=="airlock" or kind=="vehicle_bay" or kind=="solar"): _rotate_airlock()
+		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="solar"): _rotate_airlock(); _refresh_catalogue()
 		elif build_mode and event.keycode==KEY_ESCAPE: dragging=false; _draw_preview([],false)
 		elif build_mode and event.keycode==KEY_DELETE: _remove_at(hover)
 		elif build_mode and event.keycode==KEY_X: _set_tool("place" if tool=="remove" else "remove")
@@ -153,6 +165,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if tool=="remove":
 			if event.pressed: _remove_at(hover)
 			return
+		if not equipment_id.is_empty():
+			if event.pressed and not _pointer_over_ui(): _place_selected_equipment(hover)
+			return
 		if event.pressed: dragging=true; drag_start=hover
 		elif dragging:
 			dragging=false
@@ -160,7 +175,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			var reason := _invalid_reason(cells)
 			if reason.is_empty():
 				if zones.is_empty(): habitat_base_y=_proposed_base_y(cells)
-				zones.append({"kind":kind,"cells":cells,"door_direction":airlock_direction,"cost":_zone_cost(cells)})
+				var zone := {"kind":kind,"cells":cells,"door_direction":airlock_direction,"cost":_zone_cost(cells)}
+				zones.append(zone); _history.append({"type":"zone","zone":zone})
 				_rebuild()
 				MHAudio.sfx("place")
 				var left := CARGO_BUDGET-_used_cargo()
@@ -171,7 +187,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	if not build_mode: return
-	hover=_cell_at_mouse()
+	# Removing and furnishing pick against the deck the player sees, not the ground.
+	hover=_cell_at_mouse(habitat_base_y if tool=="remove" or not equipment_id.is_empty() else 0.0)
 	if grid!=null:
 		(grid.material_override as ShaderMaterial).set_shader_parameter("centre",pivot.position)
 		((grid.get_child(0) as MeshInstance3D).material_override as ShaderMaterial).set_shader_parameter("centre",pivot.position)
@@ -189,6 +206,11 @@ func _process(delta: float) -> void:
 	if tool=="remove" or _pointer_over_ui():
 		_draw_preview([],false); _update_hologram_ui([],"")
 		return
+	if not equipment_id.is_empty():
+		var equipment_reason:=equipment_invalid_reason(equipment_id,hover)
+		_draw_equipment_preview(hover,equipment_reason.is_empty())
+		_update_hologram_ui([] if hover.x==999 else [hover],equipment_reason)
+		return
 	var cells:=_cells(drag_start if dragging else hover,hover)
 	var reason:=_invalid_reason(cells)
 	_draw_preview(cells,reason.is_empty())
@@ -204,7 +226,7 @@ func _toggle() -> void:
 	world.get_node("Player/Head/Camera3D").current=!build_mode
 	var explore_hud:=world.get_node_or_null("ExploreHUD") as CanvasLayer
 	if explore_hud!=null: explore_hud.visible=not build_mode
-	if not build_mode: _set_tool("place"); _update_hologram_ui([],"")
+	if not build_mode: _set_tool("place"); _update_hologram_ui([],""); _preview_key=""; _draw_preview([],false)
 	_set_build_view(build_mode)
 	var player:=world.get_node("Player"); player.set_meta("build_mode_active",build_mode)
 	Input.mouse_mode=Input.MOUSE_MODE_VISIBLE if build_mode else Input.MOUSE_MODE_CAPTURED
@@ -212,11 +234,13 @@ func _toggle() -> void:
 		dragging=false; _draw_preview([],false)
 		player.global_position=Vector3(12,3,18); player.safe_position=player.global_position; player.velocity=Vector3.ZERO
 
-func _cell_at_mouse() -> Vector2i:
+# Equipment sits on the raised deck, so it projects onto the floor height
+# rather than the ground plane the zone painter uses.
+func _cell_at_mouse(plane_y := 0.0) -> Vector2i:
 	var origin:=camera.project_ray_origin(get_viewport().get_mouse_position())
 	var direction:=camera.project_ray_normal(get_viewport().get_mouse_position())
 	if absf(direction.y)<.001: return Vector2i(999,999)
-	var point:=origin+direction*((0.0-origin.y)/direction.y)
+	var point:=origin+direction*((plane_y-origin.y)/direction.y)
 	return Vector2i(roundi(point.x/CELL),roundi(point.z/CELL))
 
 func _cells(a: Vector2i,b: Vector2i) -> Array:
@@ -254,37 +278,175 @@ func _is_habitat_zone(zone: Dictionary) -> bool:
 	# exterior wall simply because their build cell touches one.
 	return zone_kind != "solar" and zone_kind != "reactor" and zone_kind != "ice_extractor"
 
-## Public API for the future first-person furnishing controller.  `visual` is
-## optional so the systems can also be tested without loading final art assets.
-func place_equipment(id: String, cell: Vector2i, visual: Node3D = null) -> bool:
-	var entry := EquipmentCatalog.get_entry(id)
-	var zone := _zone_at(cell)
-	if entry.is_empty() or zone.is_empty():
+## Public placement API (Build-mode inventory, tests and any future first-person
+## furnishing).  `visual` is optional so the systems can be tested without art;
+## a caller that passes one keeps ownership of it.
+func place_equipment(id: String, cell: Vector2i, visual: Node3D = null, facing := Vector2i(0, -1)) -> bool:
+	if not equipment_invalid_reason(id, cell).is_empty():
 		return false
-	var valid_zones: Array = entry.get("valid_zones", [])
-	if not valid_zones.has(str(zone.kind)):
-		return false
-	if _used_cargo() + int(entry.get("cargo_cost", 0)) > CARGO_BUDGET:
-		return false
-	for item in placed_equipment:
-		if item.get("cell", Vector2i(9999, 9999)) == cell:
-			return false
-	placed_equipment.append({"id": id, "cell": cell})
+	placed_equipment.append({"id": id, "cell": cell, "facing": facing})
 	if visual != null:
 		visual.set_meta("equipment_id", id)
+	_update_budget()
 	_update_systems()
 	_apply_grid_power()
+	habitat_changed.emit()
 	return true
+
+## Empty when `id` can be placed in `cell`; otherwise a short hologram reason.
+func equipment_invalid_reason(id: String, cell: Vector2i) -> String:
+	var entry := EquipmentCatalog.get_entry(id)
+	if entry.is_empty(): return "Unknown equipment"
+	var zone := _zone_at(cell)
+	if not _is_habitat_zone(zone): return "Point at a room"
+	var valid_zones: Array = entry.get("valid_zones", [])
+	if not valid_zones.has(str(zone.kind)): return "Fits in %s" % _zone_list_text(valid_zones)
+	if not equipment_at(cell).is_empty(): return "This cell is already furnished"
+	if _used_cargo() + int(entry.get("cargo_cost", 0)) > CARGO_BUDGET: return "Not enough cargo left"
+	return ""
+
+func equipment_at(cell: Vector2i) -> Dictionary:
+	for item in placed_equipment:
+		if item.get("cell", Vector2i(9999, 9999)) == cell:
+			return item
+	return {}
 
 func remove_equipment_at(cell: Vector2i) -> Dictionary:
 	for index in range(placed_equipment.size() - 1, -1, -1):
 		var item: Dictionary = placed_equipment[index]
 		if item.get("cell", Vector2i(9999, 9999)) == cell:
 			placed_equipment.remove_at(index)
+			if _equipment_visuals.has(cell):
+				(_equipment_visuals[cell] as Node).queue_free()
+				_equipment_visuals.erase(cell)
+			_update_budget()
 			_update_systems()
 			_apply_grid_power()
+			habitat_changed.emit()
 			return item
 	return {}
+
+func _zone_list_text(zone_kinds: Array) -> String:
+	var names: Array = []
+	for zone_kind in zone_kinds: names.append(str(ZONE_TYPES.get(zone_kind, {}).get("label", zone_kind)))
+	if names.size() <= 1: return "".join(names)
+	return ", ".join(names.slice(0, names.size() - 1)) + " or " + str(names[-1])
+
+func _place_selected_equipment(cell: Vector2i) -> void:
+	var reason := equipment_invalid_reason(equipment_id, cell)
+	if not reason.is_empty():
+		_flash_notice("invalid", "Can't place here", reason + ".")
+		return
+	var visual := _equipment_visual(equipment_id, cell, airlock_direction)
+	if not place_equipment(equipment_id, cell, visual, airlock_direction):
+		visual.queue_free()
+		return
+	furnishing.add_child(visual)
+	_equipment_visuals[cell] = visual
+	_apply_grid_power() # The new status lamp joins the grid bus only once it is in the tree.
+	_history.append({"type": "equipment", "id": equipment_id, "cell": cell})
+	_preview_key = ""
+	MHAudio.sfx("place")
+	var left := CARGO_BUDGET - _used_cargo()
+	if left < CARGO_BUDGET * .1: _flash_notice("warn", "Cargo is getting tight", "%s left." % MHStyle.kg(left))
+
+# Equipment whose room was removed goes with it, so its cargo is refunded too.
+func _prune_equipment() -> int:
+	var refund := 0
+	for index in range(placed_equipment.size() - 1, -1, -1):
+		var item: Dictionary = placed_equipment[index]
+		var cell: Vector2i = item.get("cell", Vector2i(9999, 9999))
+		var zone := _zone_at(cell)
+		var valid_zones: Array = EquipmentCatalog.get_entry(str(item.get("id", ""))).get("valid_zones", [])
+		if zone.is_empty() or not valid_zones.has(str(zone.kind)):
+			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
+			placed_equipment.remove_at(index)
+			if _equipment_visuals.has(cell):
+				(_equipment_visuals[cell] as Node).queue_free()
+				_equipment_visuals.erase(cell)
+	return refund
+
+# Footprint in metres from the catalogue's 1.5 m half-cell footprint.
+func _equipment_size(entry: Dictionary) -> Vector3:
+	var footprint: Array = entry.get("footprint", [1, 1])
+	var placement := str(entry.get("placement", "floor"))
+	var width := float(footprint[0]) * HALF_CELL - .2
+	var depth := float(footprint[1]) * HALF_CELL - .2
+	if placement == "wall": depth = minf(depth, .22)
+	return Vector3(width, maxf(.04, float(entry.get("height", 1.0))), depth)
+
+# Local transform inside a cell: floor items centre, wall items back onto the
+# far side of the cell from their facing, ceiling items hang from the roof.
+func _equipment_offset(entry: Dictionary, size: Vector3) -> Vector3:
+	var placement := str(entry.get("placement", "floor"))
+	var y := 0.0
+	match placement:
+		"wall": y = float(entry.get("mount_height", 1.0))
+		"ceiling": y = ROOM_HEIGHT - .15 - size.y
+	var back := 0.0
+	if placement == "wall" or placement == "floor_wall": back = CELL * .5 - size.z * .5 - .12
+	return Vector3(0, y, back)
+
+func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
+	# Greybox stand-in matching the catalogue footprint, height and placement.
+	# When final art arrives, `asset_scene` replaces this without rule changes.
+	var entry := EquipmentCatalog.get_entry(id)
+	var size := _equipment_size(entry)
+	var offset := _equipment_offset(entry, size)
+	var holder := Node3D.new()
+	holder.name = "Equipment_%s" % id
+	holder.position = Vector3(cell.x * CELL, habitat_base_y, cell.y * CELL)
+	holder.rotation.y = _direction_yaw(facing)
+	holder.set_meta("equipment_id", id)
+	var tint: Color = (ZONE_TYPES.get(str((entry.get("valid_zones", ["storage"]) as Array)[0]), ZONE_TYPES.storage).colour as Color)
+	var body := StaticBody3D.new()
+	body.position = offset + Vector3(0, size.y * .5, 0)
+	body.collision_layer = 1
+	holder.add_child(body)
+	var visual := MeshInstance3D.new(); var mesh := BoxMesh.new(); mesh.size = size; visual.mesh = mesh
+	var material := StandardMaterial3D.new(); material.albedo_color = MHStyle.STRUCTURAL_WHITE.lerp(tint, .38).darkened(.12); material.roughness = .62
+	visual.material_override = material
+	body.add_child(visual)
+	if not bool(entry.get("walkthrough", false)) and size.y > .15:
+		var collision := CollisionShape3D.new(); var shape := BoxShape3D.new(); shape.size = size; collision.shape = shape; body.add_child(collision)
+	# Dark seal band and an orange service marker on the front face (−Z).
+	if size.y > .3:
+		var band := MeshInstance3D.new(); var band_mesh := BoxMesh.new(); band_mesh.size = Vector3(size.x + .02, minf(.08, size.y * .2), size.z + .02); band.mesh = band_mesh
+		var seal := StandardMaterial3D.new(); seal.albedo_color = MHStyle.SEAL_DARK; seal.roughness = .5; band.material_override = seal
+		band.position = Vector3(0, -size.y * .5 + band_mesh.size.y * .5, 0); body.add_child(band)
+	var marker := MeshInstance3D.new(); var marker_mesh := BoxMesh.new(); marker_mesh.size = Vector3(minf(.3, size.x * .4), minf(.06, size.y * .5), .02); marker.mesh = marker_mesh
+	var orange := StandardMaterial3D.new(); orange.albedo_color = MHStyle.SAFETY_ORANGE; marker.material_override = orange
+	marker.position = Vector3(-size.x * .5 + marker_mesh.size.x * .5 + .08, size.y * .5 - marker_mesh.size.y - .04, -size.z * .5 - .011); body.add_child(marker)
+	# Powered items get a status lamp on the grid bus, so they visibly go dark
+	# when generation can't cover demand.
+	if int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0:
+		var lamp := MeshInstance3D.new(); var lamp_mesh := BoxMesh.new(); lamp_mesh.size = Vector3(.14, minf(.06, size.y * .5), .02); lamp.mesh = lamp_mesh
+		var glow := StandardMaterial3D.new(); glow.emission_enabled = true; glow.emission = MHStyle.HOLO_VALID; glow.albedo_color = Color("#F3E4C6"); lamp.material_override = glow
+		lamp.add_to_group("grid_powered_light"); lamp.set_meta("grid_emission_on", MHStyle.HOLO_VALID); lamp.set_meta("grid_emission_off", Color("#293034"))
+		lamp.position = Vector3(size.x * .5 - .14, size.y * .5 - lamp_mesh.size.y - .04, -size.z * .5 - .011); body.add_child(lamp)
+	return holder
+
+func _draw_equipment_preview(cell: Vector2i, valid: bool) -> void:
+	var key := "equip|%s|%s|%s|%s" % [equipment_id, cell, valid, airlock_direction]
+	if key == _preview_key: return
+	_preview_key = key
+	for child in preview.get_children(): child.queue_free()
+	if cell.x == 999: return
+	_ensure_preview_materials()
+	var entry := EquipmentCatalog.get_entry(equipment_id)
+	var size := _equipment_size(entry)
+	var holder := Node3D.new()
+	holder.position = Vector3(cell.x * CELL, habitat_base_y, cell.y * CELL)
+	holder.rotation.y = _direction_yaw(airlock_direction)
+	preview.add_child(holder)
+	var tile := MeshInstance3D.new(); var tile_mesh := BoxMesh.new(); tile_mesh.size = Vector3(CELL - .06, .04, CELL - .06); tile.mesh = tile_mesh
+	tile.material_override = _preview_valid_material if valid else _preview_invalid_material; tile.position.y = .05; tile.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; holder.add_child(tile)
+	var centre := _equipment_offset(entry, size) + Vector3(0, size.y * .5, 0)
+	var ghost := MeshInstance3D.new(); var box := BoxMesh.new(); box.size = size; ghost.mesh = box
+	ghost.material_override = _preview_valid_material if valid else _preview_invalid_material; ghost.position = centre; ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; holder.add_child(ghost)
+	holder.add_child(_box_edges(centre, size, _line_valid_material if valid else _line_invalid_material))
+	# Facing arrow on the floor shows where the front panel will point.
+	_airlock_arrow(cell, str(entry.get("label", equipment_id)).to_upper())
 
 func _equipment_effects() -> Dictionary:
 	var totals := {"berths": 0, "food": 0, "life": 0, "research": 0, "happiness": 0, "storage": 0, "power_draw": 0, "water_draw": 0}
@@ -964,21 +1126,46 @@ func _add_support(point: Vector3,ground: float) -> void:
 	_add_box(Vector3(point.x,ground+.08,point.z),Vector3(.62,.16,.62),MHStyle.SEAL_DARK.darkened(.3),true,"habitat_support")
 
 func _remove_at(cell: Vector2i) -> void:
+	# Furniture comes out before the room around it.
+	var item:=remove_equipment_at(cell)
+	if not item.is_empty():
+		var entry:=EquipmentCatalog.get_entry(str(item.id))
+		_flash_notice("valid","Removed","%s · +%s cargo returned." % [entry.get("label",item.id),MHStyle.kg(int(entry.get("cargo_cost",0)))])
+		return
 	for index in range(zones.size()-1,-1,-1):
 		if cell in zones[index].cells:
 			var refund:=int(zones[index].cost)
 			zones.remove_at(index)
 			if zones.is_empty(): habitat_base_y=.35
+			refund+=_prune_equipment()
 			_rebuild()
 			_flash_notice("valid","Removed","+%s cargo returned." % MHStyle.kg(refund))
 			return
 
 func _undo() -> void:
-	if zones.is_empty(): return
-	var zone:Dictionary=zones.pop_back()
+	# Walk back through placements, skipping any already removed by hand.
+	while not _history.is_empty():
+		var step:Dictionary=_history.pop_back()
+		if step.type=="equipment":
+			var item:=equipment_at(step.cell)
+			if item.is_empty() or str(item.id)!=str(step.id): continue
+			remove_equipment_at(step.cell)
+			var entry:=EquipmentCatalog.get_entry(str(step.id))
+			_flash_notice("info","Undone","%s removed · +%s cargo returned." % [entry.get("label",step.id),MHStyle.kg(int(entry.get("cargo_cost",0)))])
+			return
+		var index:=zones.find(step.zone)
+		if index<0: continue
+		_undo_zone(index)
+		return
+	if not zones.is_empty(): _undo_zone(zones.size()-1)
+
+func _undo_zone(index: int) -> void:
+	var zone:Dictionary=zones[index]
+	zones.remove_at(index)
 	if zones.is_empty(): habitat_base_y=.35
+	var refund:=int(zone.cost)+_prune_equipment()
 	_rebuild()
-	_flash_notice("info","Undone","%s removed · +%s cargo returned." % [ZONE_TYPES[zone.kind].label,MHStyle.kg(int(zone.cost))])
+	_flash_notice("info","Undone","%s removed · +%s cargo returned." % [ZONE_TYPES[zone.kind].label,MHStyle.kg(refund)])
 
 func _zone_cost(cells: Array) -> int: return int(ZONE_TYPES[kind].cost)*cells.size()
 func _used_cargo() -> int:
@@ -1085,6 +1272,7 @@ func _solar_efficiency(direction: Vector2i) -> float:
 	return .15
 
 func _update_systems() -> void:
+	_update_summary()
 	_refresh_catalogue()
 
 # ---------- readiness (Mission Control, explore HUD) ----------
@@ -1155,17 +1343,18 @@ func suggestion() -> String:
 			"shelter":
 				if item.status=="unmet": return "Add an Airlock beside a room. Its inner end must touch the room and its outer end must face Mars. You have %s left." % left
 				return "Some rooms aren't connected to an airlock. Join them with a Corridor. You have %s left." % left
-			"beds": return "Build enough Living Quarters, then furnish them with crew bunks. You have %s left." % left
-			"food": return "Build Hydroponics, then add grow equipment to produce food. You have %s left." % left
+			"beds": return "Build enough Living Quarters, then add Crew Bunks from the Interior tab. You have %s left." % left
+			"food": return "Build Hydroponics, then add Grow Trays from the Interior tab to produce food. You have %s left." % left
 			"water": return "Choose Ice Extractor in Resources, then place it over a blue subsurface-ice survey area. You have %s left." % left
-			"life": return "Build Life Support, then add air and water recycler equipment. You have %s left." % left
-			"research": return "Build a Science Lab, then add research equipment to learn from Mars. You have %s left." % left
+			"life": return "Build Life Support, then add an Air Recycler from the Interior tab. You have %s left." % left
+			"research": return "Build a Science Lab, then add a Science Workbench from the Interior tab. You have %s left." % left
 			"power": return "Add Solar Arrays within 30 m of the habitat. Aim them north (R) for full output. You have %s left." % left
 	return "Every system is ready for a crew of %d. Spend spare cargo on science or storage — %s left." % [CREW_TARGET,left]
 
 func cargo_by_category() -> Dictionary:
-	var out:={"rooms":0,"structure":0,"power":0}
+	var out:={"rooms":0,"structure":0,"power":0,"equipment":0}
 	for zone in zones: out[str(ZONE_INFO[zone.kind].cat)]+=int(zone.cost)
+	for item in placed_equipment: out.equipment+=int(EquipmentCatalog.get_entry(str(item.get("id",""))).get("cargo_cost",0))
 	return out
 
 func used_cargo() -> int: return _used_cargo()
@@ -1287,10 +1476,10 @@ func _build_catalogue() -> void:
 	head.add_theme_constant_override("margin_top",22); head.add_theme_constant_override("margin_bottom",12); column.add_child(head)
 	var head_row:=MHStyle.hbox(8); head.add_child(head_row)
 	head_row.add_child(MHStyle.title("Catalogue",26)); head_row.add_child(MHStyle.spacer())
-	var count:=MHStyle.eyebrow("%d zones" % ZONE_TYPES.size()); count.size_flags_vertical=Control.SIZE_SHRINK_CENTER; head_row.add_child(count)
+	catalogue_count=MHStyle.eyebrow("%d zones" % ZONE_TYPES.size()); catalogue_count.size_flags_vertical=Control.SIZE_SHRINK_CENTER; head_row.add_child(catalogue_count)
 	var tabs:=MHStyle.hbox(0); var tabs_margin:=MarginContainer.new(); tabs_margin.add_theme_constant_override("margin_left",16); tabs_margin.add_theme_constant_override("margin_right",16); tabs_margin.add_child(tabs); column.add_child(tabs_margin)
 	for entry in CATEGORIES:
-		var tab:=Button.new(); tab.text=str(entry[1]).to_upper(); tab.icon=MHIcons.texture(entry[2],18); tab.custom_minimum_size.y=44; tab.size_flags_horizontal=Control.SIZE_EXPAND_FILL; tab.focus_mode=Control.FOCUS_NONE
+		var tab:=Button.new(); tab.text=str(entry[1]).to_upper(); tab.set_meta("label",tab.text); tab.tooltip_text=str(entry[1]); tab.icon=MHIcons.texture(entry[2],18); tab.custom_minimum_size.y=44; tab.size_flags_horizontal=Control.SIZE_EXPAND_FILL; tab.focus_mode=Control.FOCUS_NONE
 		tab.add_theme_font_override("font",MHStyle.font(700,false,1)); tab.add_theme_font_size_override("font_size",14); tab.add_theme_constant_override("icon_max_width",18); tab.add_theme_constant_override("h_separation",8); tab.alignment=HORIZONTAL_ALIGNMENT_LEFT
 		tab.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 		tab.pressed.connect(func() -> void: category=str(entry[0]); _refresh_catalogue())
@@ -1299,7 +1488,10 @@ func _build_catalogue() -> void:
 	var grid_margin:=MarginContainer.new(); grid_margin.size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	for side in ["left","right","top","bottom"]: grid_margin.add_theme_constant_override("margin_"+side,16)
 	scroll.add_child(grid_margin)
-	catalogue_grid=GridContainer.new(); catalogue_grid.columns=2; catalogue_grid.add_theme_constant_override("h_separation",12); catalogue_grid.add_theme_constant_override("v_separation",12); grid_margin.add_child(catalogue_grid)
+	var lists:=MHStyle.vbox(0); grid_margin.add_child(lists)
+	catalogue_grid=GridContainer.new(); catalogue_grid.columns=2; catalogue_grid.add_theme_constant_override("h_separation",12); catalogue_grid.add_theme_constant_override("v_separation",12); lists.add_child(catalogue_grid)
+	# Interior inventory: one titled section per zone family.
+	equipment_list=MHStyle.vbox(12); equipment_list.visible=false; lists.add_child(equipment_list)
 	var detail_panel:=PanelContainer.new(); var detail_style:=MHStyle.box(MHStyle.INK_950,Color(0,0,0,0),0,0,Vector4(24,20,24,22)); detail_style.border_width_top=1; detail_style.border_color=MHStyle.BORDER_SUBTLE; detail_style.corner_radius_bottom_left=MHStyle.RADIUS_MD; detail_style.corner_radius_bottom_right=MHStyle.RADIUS_MD
 	detail_panel.add_theme_stylebox_override("panel",detail_style); column.add_child(detail_panel)
 	catalogue_detail=MHStyle.vbox(10); detail_panel.add_child(catalogue_detail)
@@ -1319,7 +1511,11 @@ func _set_catalogue_open(open: bool) -> void:
 	if open: _refresh_catalogue()
 
 func _select_kind(id: String) -> void:
-	kind=id; dragging=false; category=str(ZONE_INFO[id].cat); _set_tool("place"); _preview_key=""
+	kind=id; equipment_id=""; dragging=false; category=str(ZONE_INFO[id].cat); _set_tool("place"); _preview_key=""
+	_refresh_catalogue()
+
+func _select_equipment(id: String) -> void:
+	equipment_id=id; dragging=false; category="equipment"; _set_tool("place"); _preview_key=""
 	_refresh_catalogue()
 
 func _refresh_catalogue() -> void:
@@ -1329,12 +1525,26 @@ func _refresh_catalogue() -> void:
 		var style:=MHStyle.box(Color(0,0,0,0),Color(0,0,0,0),0,0,Vector4(12,0,8,0)); style.border_width_bottom=2 if active else 1; style.border_color=MHStyle.accent if active else MHStyle.BORDER_SUBTLE
 		for state in ["normal","hover","pressed","hover_pressed","focus"]: tab.add_theme_stylebox_override(state,style)
 		for state in ["font_color","font_hover_color","font_pressed_color","font_focus_color","icon_normal_color","icon_hover_color","icon_pressed_color","icon_focus_color"]: tab.add_theme_color_override(state,MHStyle.TEXT_PRIMARY if active else MHStyle.TEXT_SECONDARY)
+		# Four tabs only fit when the inactive ones collapse to their icon.
+		tab.text=str(tab.get_meta("label")) if active else ""
+		tab.size_flags_horizontal=Control.SIZE_EXPAND_FILL if active else Control.SIZE_FILL
+		tab.custom_minimum_size.x=0.0 if active else 52.0
 	for child in catalogue_grid.get_children(): child.queue_free()
-	var remaining:=CARGO_BUDGET-_used_cargo()
-	for id in ZONE_TYPES:
-		if str(ZONE_INFO[id].cat)!=category: continue
-		catalogue_grid.add_child(_part_card(id,id==kind,remaining<int(ZONE_TYPES[id].cost)))
+	for child in equipment_list.get_children(): child.queue_free()
 	for child in catalogue_detail.get_children(): child.queue_free()
+	var remaining:=CARGO_BUDGET-_used_cargo()
+	catalogue_grid.visible=category!="equipment"; equipment_list.visible=category=="equipment"
+	if category=="equipment":
+		catalogue_count.text="%d items" % EquipmentCatalog.entries().size()
+		_refresh_equipment_list(remaining)
+	else:
+		catalogue_count.text="%d zones" % ZONE_TYPES.size()
+		for id in ZONE_TYPES:
+			if str(ZONE_INFO[id].cat)!=category: continue
+			catalogue_grid.add_child(_part_card(id,id==kind and equipment_id.is_empty(),remaining<int(ZONE_TYPES[id].cost)))
+	if not equipment_id.is_empty():
+		_refresh_equipment_detail()
+		return
 	var info:Dictionary=ZONE_INFO[kind]
 	var head:=MHStyle.hbox(8); catalogue_detail.add_child(head)
 	head.add_child(MHStyle.title(str(ZONE_TYPES[kind].label),20)); head.add_child(MHStyle.spacer())
@@ -1343,6 +1553,63 @@ func _refresh_catalogue() -> void:
 	var badges:=MHStyle.hbox(8); catalogue_detail.add_child(badges)
 	badges.add_child(MHStyle.badge(str(info.rule),"info"))
 	if kind in ["airlock","vehicle_bay","solar"]: badges.add_child(MHStyle.badge("Facing: %s" % _facing_name(),"neutral"))
+
+func _refresh_equipment_list(remaining: int) -> void:
+	for group in EquipmentCatalog.groups():
+		var ids:=EquipmentCatalog.ids_in_group(str(group.id))
+		if ids.is_empty(): continue
+		var head:=MHStyle.hbox(8); equipment_list.add_child(head)
+		head.add_child(MHStyle.icon(str(group.get("icon","box")),16,MHStyle.TEXT_SECONDARY))
+		var title:=MHStyle.eyebrow(str(group.label),MHStyle.TEXT_SECONDARY); head.add_child(title)
+		head.add_child(MHStyle.spacer())
+		# A section reads as "ready" once a room that accepts its items exists.
+		var has_room:=false
+		for id in ids:
+			for zone_kind in EquipmentCatalog.get_entry(id).get("valid_zones",[]):
+				if counts_of(str(zone_kind))>0: has_room=true
+		head.add_child(MHStyle.mono("%d" % ids.size() if has_room else "No room yet",12,MHStyle.TEXT_MUTED))
+		var grid:=GridContainer.new(); grid.columns=2; grid.add_theme_constant_override("h_separation",12); grid.add_theme_constant_override("v_separation",12); equipment_list.add_child(grid)
+		for id in ids:
+			grid.add_child(_equipment_card(id,id==equipment_id,remaining<int(EquipmentCatalog.get_entry(id).get("cargo_cost",0))))
+
+func _equipment_card(id: String,selected: bool,unaffordable: bool) -> Button:
+	var entry:=EquipmentCatalog.get_entry(id)
+	var card:=Button.new(); card.custom_minimum_size=Vector2(196,128); card.focus_mode=Control.FOCUS_NONE; card.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	var normal:=MHStyle.selected_box(0) if selected else MHStyle.control_box(0)
+	for state in ["normal","pressed","hover_pressed","focus"]: card.add_theme_stylebox_override(state,normal)
+	card.add_theme_stylebox_override("hover",normal if selected else MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER,MHStyle.BORDER_STRONG))
+	card.pressed.connect(_select_equipment.bind(id))
+	var colour:Color=ZONE_TYPES.get(str((entry.get("valid_zones",["storage"]) as Array)[0]),ZONE_TYPES.storage).colour
+	var column:=MHStyle.vbox(0); column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); column.mouse_filter=Control.MOUSE_FILTER_IGNORE; card.add_child(column)
+	var thumb:=PanelContainer.new(); var thumb_style:=MHStyle.box(MHStyle.BLUEPRINT.lerp(colour,.22),Color(0,0,0,0),MHStyle.RADIUS_MD,0); thumb_style.corner_radius_bottom_left=0; thumb_style.corner_radius_bottom_right=0
+	thumb.add_theme_stylebox_override("panel",thumb_style); thumb.custom_minimum_size.y=52; thumb.mouse_filter=Control.MOUSE_FILTER_IGNORE; column.add_child(thumb)
+	thumb.add_child(MHStyle.icon(str(entry.get("icon","box")),26,colour.lightened(.45)))
+	var text:=MarginContainer.new(); text.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	for side in ["left","right"]: text.add_theme_constant_override("margin_"+side,12)
+	text.add_theme_constant_override("margin_top",8); column.add_child(text)
+	var lines:=MHStyle.vbox(4); text.add_child(lines)
+	var name_label:=MHStyle.label(str(entry.get("label",id)),15,MHStyle.TEXT_PRIMARY,600); name_label.clip_text=true; lines.add_child(name_label)
+	var row:=MHStyle.hbox(6); lines.add_child(row)
+	var mass_colour:=MHStyle.DANGER if unaffordable else (MHStyle.accent if selected else MHStyle.TEXT_SECONDARY)
+	row.add_child(MHStyle.mono(MHStyle.kg(int(entry.get("cargo_cost",0))),12,mass_colour,600)); row.add_child(MHStyle.spacer())
+	var status:Array=EquipmentCatalog.STATUS_BADGES.get(str(entry.get("status","future")),EquipmentCatalog.STATUS_BADGES.future)
+	row.add_child(MHStyle.mono(str(status[0]),11,MHStyle.tone_colour(str(status[1]))))
+	return card
+
+func _refresh_equipment_detail() -> void:
+	var entry:=EquipmentCatalog.get_entry(equipment_id)
+	var head:=MHStyle.hbox(8); catalogue_detail.add_child(head)
+	var title:=MHStyle.title(str(entry.get("label",equipment_id)),20); title.clip_text=true; title.size_flags_horizontal=Control.SIZE_EXPAND_FILL; head.add_child(title)
+	var cost:=MHStyle.mono(MHStyle.kg(int(entry.get("cargo_cost",0))),14,MHStyle.accent,600); cost.size_flags_vertical=Control.SIZE_SHRINK_CENTER; head.add_child(cost)
+	var desc:=MHStyle.body(str(entry.get("description","")),15); desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; catalogue_detail.add_child(desc)
+	var effects:=EquipmentCatalog.effects_text(equipment_id)
+	catalogue_detail.add_child(MHStyle.mono(effects if not effects.is_empty() else str(entry.get("role","No resource effect")),13,MHStyle.VALID if not effects.is_empty() else MHStyle.TEXT_MUTED))
+	var fits:=MHStyle.mono("Fits: %s" % _zone_list_text(entry.get("valid_zones",[])),12,MHStyle.TEXT_SECONDARY); fits.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; catalogue_detail.add_child(fits)
+	var badges:=MHStyle.hbox(8); catalogue_detail.add_child(badges)
+	var status:Array=EquipmentCatalog.STATUS_BADGES.get(str(entry.get("status","future")),EquipmentCatalog.STATUS_BADGES.future)
+	if bool(entry.get("batch",false)): badges.add_child(MHStyle.badge("Batch 1","accent"))
+	badges.add_child(MHStyle.badge(str(status[0]),str(status[1])))
+	badges.add_child(MHStyle.badge("Facing: %s" % _facing_name(),"neutral"))
 
 func _facing_name() -> String:
 	return {Vector2i(0,-1):"North",Vector2i(1,0):"East",Vector2i(0,1):"South",Vector2i(-1,0):"West"}.get(airlock_direction,"North")
@@ -1397,11 +1664,22 @@ func _set_tool(next_tool: String) -> void:
 func _update_hologram_ui(cells: Array,reason: String) -> void:
 	if hologram_pill==null: return
 	var message:=""; var state:=""
+	var placing_name:String=str(ZONE_TYPES[kind].label) if equipment_id.is_empty() else str(EquipmentCatalog.get_entry(equipment_id).get("label",equipment_id))
 	if tool=="remove":
-		state="remove"; message="Click a zone to remove it · full refund"
+		state="remove"; message="Click equipment or a zone to remove it · full refund"
 		placing_label.text="Remove tool"; placing_delta.text=""
 	elif _pointer_over_ui():
-		placing_label.text="Placing %s" % ZONE_TYPES[kind].label; placing_delta.text=""
+		placing_label.text="Placing %s" % placing_name; placing_delta.text=""
+	elif not equipment_id.is_empty():
+		var item_cost:=int(EquipmentCatalog.get_entry(equipment_id).get("cargo_cost",0))
+		var left:=CARGO_BUDGET-_used_cargo()-item_cost
+		placing_label.text="Placing %s" % placing_name
+		placing_delta.text="−%s → %s" % [MHStyle.kg(item_cost),MHStyle.kg(left)] if not cells.is_empty() else ""
+		placing_delta.add_theme_color_override("font_color",MHStyle.DANGER if left<0 else (MHStyle.WARN if left<CARGO_BUDGET*.1 else MHStyle.accent))
+		if not reason.is_empty(): state="invalid"; message=reason
+		elif not cells.is_empty():
+			var effects:=EquipmentCatalog.effects_text(equipment_id)
+			state="valid"; message="%s · %s" % [ZONE_TYPES[_zone_at(cells[0]).kind].label,effects if not effects.is_empty() else "no resource effect"]
 	else:
 		var cost:=_zone_cost(cells)
 		var after:=CARGO_BUDGET-_used_cargo()-cost

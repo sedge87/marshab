@@ -6,8 +6,8 @@ extends Control
 
 signal closed
 
-const CATEGORY_LABELS := {"rooms": ["Rooms", "bed-double"], "structure": ["Structure", "box"], "power": ["Power", "sun"]}
-const CATEGORY_COLOURS := {"rooms": MHStyle.CELL_LINE, "structure": MHStyle.STRUCTURAL_WHITE, "power": MHStyle.BEACON_YELLOW}
+const CATEGORY_LABELS := {"rooms": ["Rooms", "bed-double"], "structure": ["Structure", "box"], "power": ["Power", "sun"], "equipment": ["Interior", "armchair"]}
+const CATEGORY_COLOURS := {"rooms": MHStyle.CELL_LINE, "structure": MHStyle.STRUCTURAL_WHITE, "power": MHStyle.BEACON_YELLOW, "equipment": MHStyle.HOLO_VALID}
 
 var builder: BuildController
 
@@ -80,7 +80,7 @@ func _cargo_column() -> Control:
 	col.add_child(MHStyle.mono("of %s delivered" % MHStyle.kg(BuildController.CARGO_BUDGET), 16, MHStyle.TEXT_MUTED))
 	var breakdown := builder.cargo_by_category()
 	col.add_child(_stacked_bar(breakdown, used))
-	for id in ["rooms", "structure", "power"]:
+	for id in ["rooms", "structure", "power", "equipment"]:
 		var row := MHStyle.hbox(12)
 		var swatch := ColorRect.new()
 		swatch.color = CATEGORY_COLOURS[id]
@@ -96,7 +96,7 @@ func _cargo_column() -> Control:
 	col.add_child(grow)
 	var systems := builder._systems()
 	var stats := MHStyle.hbox(12)
-	for stat in [["Research", str(systems.research)], ["Zones", str(builder.zones.size())]]:
+	for stat in [["Research", str(systems.research)], ["Zones", str(builder.zones.size())], ["Fitted", str(builder.placed_equipment.size())]]:
 		var tile := PanelContainer.new()
 		tile.theme_type_variation = "RaisedPanel"
 		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -106,7 +106,7 @@ func _cargo_column() -> Control:
 		tile.add_child(v)
 		stats.add_child(tile)
 	col.add_child(stats)
-	col.add_child(MHStyle.body("Removing a zone refunds its full mass.", 15, MHStyle.TEXT_MUTED))
+	col.add_child(MHStyle.body("Removing a zone or its equipment refunds the full mass.", 15, MHStyle.TEXT_MUTED))
 	return panel
 
 func _stacked_bar(breakdown: Dictionary, used: int) -> Control:
@@ -115,7 +115,7 @@ func _stacked_bar(breakdown: Dictionary, used: int) -> Control:
 	bar.draw.connect(func() -> void:
 		bar.draw_rect(Rect2(Vector2.ZERO, bar.size), MHStyle.INK_800)
 		var x := 0.0
-		for id in ["rooms", "structure", "power"]:
+		for id in ["rooms", "structure", "power", "equipment"]:
 			var w: float = bar.size.x * float(breakdown[id]) / BuildController.CARGO_BUDGET
 			if w > 0.0:
 				bar.draw_rect(Rect2(x, 0, w, bar.size.y), CATEGORY_COLOURS[id])
