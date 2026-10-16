@@ -385,6 +385,14 @@ def rotate():
     return mix(servo * 0.5, at(metal_ring((1800, 2900), 0.15, 0.03, 0.4), 0.16))
 
 
+def rover_chirp():
+    """A small friendly scanner acknowledgement: warm, mechanical, never vocal."""
+    first = sweep(760, 980, 0.12) * decay(0.12, 0.075, 0.006)
+    second = sweep(1040, 1380, 0.16) * decay(0.16, 0.10, 0.006)
+    servo_tail = lowpass(noise(0.19), 950) * decay(0.19, 0.035, 0.004) * 0.13
+    return reverb(mix(first * 0.62, at(second * 0.52, 0.14), at(servo_tail, 0.11)), 0.55, 0.12, 3600)
+
+
 def mode_build():
     t = seconds(0.75)
     sw = bandpass(noise(0.75), 1800, 1200) * (t / 0.75) ** 2 * 0.3
@@ -483,6 +491,7 @@ def main():
     effects = {
         "ui_hover": ui_hover, "ui_click": ui_click, "ui_confirm": ui_confirm, "ui_back": ui_back,
         "place": place, "remove": remove, "undo": undo, "invalid": invalid, "warn": warn, "rotate": rotate,
+        "rover_chirp": rover_chirp,
         "mode_build": mode_build, "mode_explore": mode_explore,
         "door_open": lambda: door(True), "door_close": lambda: door(False), "door_interlock": door_interlock,
         "jump": jump, "land": land, "ladder": ladder, "landing": landing,

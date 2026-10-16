@@ -28,7 +28,7 @@ const BELL_NOTES := [-12, -9, -7, -5, -2, 0, 3, 5, 7]
 # Per-effect level trims (dB) so the generated files sit together in the mix.
 const SFX_TRIM := {
 	"ui_hover": -16.0, "ui_click": -9.0, "ui_back": -9.0, "ui_confirm": -6.0, "invalid": -14.0,
-	"warn": -8.0, "undo": -6.0, "rotate": -9.0, "place": -2.0, "remove": -4.0, "jump": -10.0,
+	"warn": -8.0, "undo": -6.0, "rotate": -9.0, "rover_chirp": -10.0, "place": -2.0, "remove": -4.0, "jump": -10.0,
 	"land": -6.0, "ladder": -4.0, "landing": -2.0, "mode_build": -6.0, "mode_explore": -6.0
 }
 # Mood -> [drone dB, pad dB, seconds between pads, seconds between bells].

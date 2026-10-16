@@ -41,7 +41,7 @@ const ZONE_INFO := {
 	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Makes space for grow equipment. Furnish it to produce food."},
 	"life_support":{"cat":"rooms","icon":"wind","rule":"Drag an area","desc":"Makes space for air and water recyclers. Furnish it to support crew."},
 	"glass_room":{"cat":"rooms","icon":"flower-2","rule":"Drag an area","desc":"A glazed room with a view of Mars. Uses extra power."},
-	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs","desc":"Joins rooms together. Walkable and open at both ends."},
+	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates","desc":"Joins rooms together. A one-cell corridor opens along its selected axis."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates","desc":"The way in and out. The outer end faces Mars; the inner end must touch a room."},
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
 	"solar":{"cat":"power","icon":"sun","rule":"One cell · R aims","desc":"A 30 m power field. Facing north gives full output."},
@@ -150,7 +150,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if display_only: return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode==KEY_B: _toggle()
-		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="solar"): _rotate_airlock(); _refresh_catalogue()
+		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="solar" or kind=="corridor"): _rotate_airlock(); _refresh_catalogue()
 		elif build_mode and event.keycode==KEY_ESCAPE: dragging=false; _draw_preview([],false)
 		elif build_mode and event.keycode==KEY_DELETE: _remove_at(hover)
 		elif build_mode and event.keycode==KEY_X: _set_tool("place" if tool=="remove" else "remove")
@@ -573,6 +573,7 @@ func _draw_preview(cells: Array,valid: bool) -> void:
 	preview.add_child(_box_edges(volume_centre,volume_size,edge))
 	if kind=="airlock": _airlock_arrow(_airlock_end(cells,airlock_direction,true),"OUTSIDE")
 	if kind=="vehicle_bay": _airlock_arrow(_face_preview_cell(cells,airlock_direction),"HANGAR")
+	if kind=="corridor" and cells.size()==1: _airlock_arrow(cells[0],"OPEN ENDS")
 	if kind=="solar": _airlock_arrow(cells[0],"SOLAR %d%%" % roundi(_solar_efficiency(airlock_direction)*100.0))
 	if kind=="ice_extractor":
 		var ice_here := _ice_richness_at(cells[0])
@@ -722,7 +723,7 @@ func _zone_surfaces(zone: Dictionary) -> void:
 			for corner in [Vector2i(min_x,min_z),Vector2i(max_x+1,min_z),Vector2i(max_x+1,max_z+1),Vector2i(min_x,max_z+1)]:
 				_add_showcase(SHOWCASE_CORNER,Vector3(corner.x*CELL-CELL*.5,habitat_base_y,corner.y*CELL-CELL*.5))
 		if zone_kind=="corridor" and not corridor_has_airlock:
-			var yaw:=_corridor_yaw(cells)
+			var yaw:=_corridor_yaw(zone)
 			for cell in cells: _add_showcase(SHOWCASE_CORRIDOR,Vector3(cell.x*CELL,habitat_base_y,cell.y*CELL),yaw)
 	else:
 		for cell in cells:
@@ -982,14 +983,24 @@ func _add_door(centre: Vector3,side: Vector2i,door_name := "AIRLOCK",show_surrou
 	door.setup(door_name,not show_surround)
 	return door
 
-func _corridor_yaw(cells: Array) -> float:
-	if cells.size()>1 and cells[0].x!=cells[cells.size()-1].x: return PI*.5
-	return 0.0
+func _corridor_yaw(zone: Dictionary) -> float:
+	# The imported corridor kit opens at its local front/back (north/south when
+	# yaw is zero). A one-cell run has no drag axis, so it deliberately uses the
+	# selected R-facing stored on the zone; longer runs still infer their axis.
+	return PI*.5 if _corridor_axis(zone).x != 0 else 0.0
+
+func _corridor_axis(zone: Dictionary) -> Vector2i:
+	var cells: Array = zone.cells
+	if cells.size()>1:
+		return Vector2i(1,0) if cells[0].x != cells[cells.size()-1].x else Vector2i(0,1)
+	var direction: Vector2i = zone.get("door_direction", Vector2i(0,-1))
+	return Vector2i(1,0) if direction.x != 0 else Vector2i(0,1)
 
 func _is_corridor_side(zone: Dictionary,side: Vector2i) -> bool:
-	var cells:Array=zone.cells
-	var runs_x: bool=cells.size()>1 and cells[0].x!=cells[cells.size()-1].x
-	return side.y!=0 if runs_x else side.x!=0
+	# The sides perpendicular to the corridor axis are solid; its two ends are
+	# deliberately open, allowing a one-cell corridor to join facing rooms.
+	var axis := _corridor_axis(zone)
+	return side.x * axis.x + side.y * axis.y == 0
 
 func _corridor_touches_airlock(cells: Array) -> bool:
 	for cell in cells:
@@ -1552,7 +1563,7 @@ func _refresh_catalogue() -> void:
 	catalogue_detail.add_child(MHStyle.body(str(info.desc),16))
 	var badges:=MHStyle.hbox(8); catalogue_detail.add_child(badges)
 	badges.add_child(MHStyle.badge(str(info.rule),"info"))
-	if kind in ["airlock","vehicle_bay","solar"]: badges.add_child(MHStyle.badge("Facing: %s" % _facing_name(),"neutral"))
+	if kind in ["airlock","vehicle_bay","solar","corridor"]: badges.add_child(MHStyle.badge("Facing: %s" % _facing_name(),"neutral"))
 
 func _refresh_equipment_list(remaining: int) -> void:
 	for group in EquipmentCatalog.groups():

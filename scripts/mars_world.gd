@@ -4,6 +4,10 @@ const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const ORIGINAL_ENVIRONMENT_SCRIPT := preload("res://scripts/original_mars_environment.gd")
 const BUILD_CONTROLLER_SCRIPT := preload("res://scripts/build_controller.gd")
+const SCOUT_ROVER_SCENE_PATH := "res://scenes/mars_scout_rover.tscn"
+# Optional companion feature. Set false to remove it without touching player,
+# habitat or simulation code.
+const SPAWN_SCOUT_ROVER := true
 
 var environment
 var builder: BuildController
@@ -13,11 +17,13 @@ var overlay_layer: CanvasLayer
 var pause_menu: MHPauseMenu
 var mission_control: MHMissionControl
 var dust: CPUParticles3D
+var scout_rover: Node3D
 
 func _ready() -> void:
 	MHGame.set_accent(MHGame.accent_index)
 	_build_landscape()
 	_spawn_player()
+	_spawn_scout_rover()
 	builder = BUILD_CONTROLLER_SCRIPT.new()
 	add_child(builder)
 	builder.mission_control_requested.connect(_open_mission_control)
@@ -81,6 +87,19 @@ func _spawn_player() -> void:
 	mote.material = mote_material
 	dust.mesh = mote
 	player.get_node("Head").add_child(dust)
+
+func _spawn_scout_rover() -> void:
+
+	if not SPAWN_SCOUT_ROVER:
+		return
+	var rover_scene := load(SCOUT_ROVER_SCENE_PATH) as PackedScene
+	if rover_scene == null:
+		push_warning("Scout rover scene is unavailable; continuing without companion.")
+		return
+	scout_rover = rover_scene.instantiate() as Node3D
+	add_child(scout_rover)
+	scout_rover.global_position = player.global_position + player.global_transform.basis.z * 2.4
+	scout_rover.call("setup", player)
 
 func _build_hud() -> void:
 	explore_hud = MHExploreHUD.new()
