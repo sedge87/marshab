@@ -29,8 +29,8 @@ func _init() -> void:
 	assert(not builder._valid(bay), "A vehicle bay hangar face cannot point into an existing room.")
 	builder.kind = "solar"
 	builder.airlock_direction = Vector2i(0,-1)
-	assert(builder._valid([Vector2i(8,12)]), "Solar arrays can connect within the 12m cable range.")
-	assert(not builder._valid([Vector2i(8,14)]), "Solar arrays outside the cable range are rejected.")
+	assert(builder._valid([Vector2i(8,19)]), "Solar arrays can connect inside their 30m power field.")
+	assert(not builder._valid([Vector2i(8,20)]), "Solar arrays outside their 30m power field are rejected.")
 	builder.zones.append({"kind":"solar","cells":[Vector2i(8,12)],"cost":50,"door_direction":Vector2i(0,-1)})
 	var systems := builder._systems()
 	assert(int(systems.generation)==BuildController.SOLAR_OUTPUT, "A sun-facing solar array should produce full power.")

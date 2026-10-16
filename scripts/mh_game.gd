@@ -43,6 +43,8 @@ static var site_id := "plains"
 
 static var _sites: Array = []
 static var _accent_material: StandardMaterial3D
+static var _window_glow := .9
+static var _habitat_lights_online := true
 
 static func sites() -> Array:
 	if _sites.is_empty() and FileAccess.file_exists(SITES_PATH):
@@ -119,9 +121,15 @@ static func _kit_role(material_name: String) -> String:
 	if lowered.contains("solar frame"): return "steel"
 	return ""
 
-# Lit windows glow brighter at golden hour and dusk.
+# Lit windows glow brighter at golden hour and dusk. BuildController can then
+# switch all normal habitat fixtures off without touching emergency beacons.
 static func set_window_glow(energy: float) -> void:
-	kit_material("glass").emission_energy_multiplier = energy
+	_window_glow = energy
+	kit_material("glass").emission_energy_multiplier = _window_glow if _habitat_lights_online else 0.0
+
+static func set_habitat_lights_online(online: bool) -> void:
+	_habitat_lights_online = online
+	kit_material("glass").emission_energy_multiplier = _window_glow if online else 0.0
 
 # ---------- lighting ----------
 static func sun_basis(palette: Dictionary) -> Basis:

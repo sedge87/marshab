@@ -22,6 +22,10 @@ var _readiness_slot: VBoxContainer
 var _readiness_key := ""
 var _readiness_age := 0.0
 var _collapsed := false
+var _telemetry_temp: Label
+var _telemetry_radiation: Label
+var _telemetry_context: Label
+var _telemetry_key := ""
 
 func setup(target_player: Node3D, target_builder: BuildController) -> void:
 	player = target_player
@@ -53,6 +57,8 @@ func _ready() -> void:
 	_chip_slot.position = Vector2(104, 104)
 	_chip_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_chip_slot)
+	# Compact site readout: useful context without competing with the build HUD.
+	_root.add_child(_site_telemetry())
 	# Readiness, top-right.
 	_readiness_slot = MHStyle.vbox(0)
 	_readiness_slot.anchor_left = 1
@@ -91,17 +97,66 @@ func _ready() -> void:
 	prompt_band.add_child(_prompt)
 	_refresh_readiness()
 
+func _site_telemetry() -> PanelContainer:
+	var site: Dictionary = MHGame.site()
+	var telemetry: Dictionary = site.get("telemetry", {})
+	var panel := MHStyle.hud_panel(12, false, true)
+	panel.position = Vector2(104, 174)
+	panel.custom_minimum_size = Vector2(258, 0)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var column := MHStyle.vbox(5)
+	column.add_child(MHStyle.eyebrow("Site telemetry", MHStyle.accent, 10))
+	var location := str(site.get("based_on", site.get("name", "Mars")))
+	column.add_child(MHStyle.mono(location, 13, MHStyle.TEXT_PRIMARY, 600))
+	_telemetry_context = MHStyle.eyebrow("Outside · EVA exposure", MHStyle.TEXT_MUTED, 9)
+	column.add_child(_telemetry_context)
+	var first_row := MHStyle.hbox(14)
+	_telemetry_temp = _telemetry_metric("TEMP", str(telemetry.get("temperature", "—")), MHStyle.INFO)
+	first_row.add_child(_telemetry_temp.get_parent())
+	first_row.add_child(_telemetry_metric("ELEVATION", str(telemetry.get("elevation", "—")), MHStyle.TEXT_SECONDARY).get_parent())
+	column.add_child(first_row)
+	var second_row := MHStyle.hbox(14)
+	_telemetry_radiation = _telemetry_metric("RADIATION", str(telemetry.get("radiation", "—")), MHStyle.WARN)
+	second_row.add_child(_telemetry_radiation.get_parent())
+	second_row.add_child(_telemetry_metric("SUNLIGHT", str(telemetry.get("sunlight", "—")), MHStyle.VALID).get_parent())
+	column.add_child(second_row)
+	column.add_child(MHStyle.body("Shift estimates · suit required outside", 10, MHStyle.TEXT_MUTED))
+	panel.add_child(column)
+	return panel
+
+func _telemetry_metric(caption: String, value: String, colour: Color) -> Label:
+	var metric := MHStyle.vbox(0)
+	metric.custom_minimum_size = Vector2(104, 0)
+	metric.add_child(MHStyle.eyebrow(caption, MHStyle.TEXT_MUTED, 9))
+	var value_label := MHStyle.mono(value, 14, colour, 600)
+	metric.add_child(value_label)
+	return value_label
+
 func _process(delta: float) -> void:
 	if player == null or not visible: return
 	_compass.heading = wrapf(rad_to_deg(-player.rotation.y), 0.0, 360.0)
 	_compass.markers = _markers()
 	_compass.queue_redraw()
 	_update_chip()
+	_update_telemetry()
 	_update_prompt()
 	_readiness_age += delta
 	if not _collapsed and _readiness_age > COLLAPSE_AFTER:
 		_collapsed = true
 		_render_readiness()
+
+func _update_telemetry() -> void:
+	if _telemetry_temp == null or builder == null:
+		return
+	var climate := builder.climate_at(player.global_position)
+	var key := str([climate.temperature, climate.radiation, climate.context])
+	if key == _telemetry_key:
+		return
+	_telemetry_key = key
+	_telemetry_temp.text = "%d °C" % roundi(float(climate.temperature))
+	_telemetry_radiation.text = str(climate.radiation)
+	_telemetry_radiation.add_theme_color_override("font_color", MHStyle.WARN if str(climate.radiation) == "High" else MHStyle.VALID)
+	_telemetry_context.text = str(climate.context)
 
 func _markers() -> Array:
 	var out: Array = []

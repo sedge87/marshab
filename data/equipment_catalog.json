@@ -1,0 +1,75 @@
+{
+  "_comment": "Asset-agnostic interior equipment contract. Replace asset_scene paths when final models are delivered; game effects and room rules stay stable.",
+  "equipment": [
+    {
+      "id": "crew_bunk",
+      "label": "Crew Bunk",
+      "asset_scene": "res://assets/equipment/crew_bunk.glb",
+      "cargo_cost": 100,
+      "valid_zones": ["living"],
+      "footprint": [1, 2],
+      "placement": "floor_wall",
+      "effects": {"berths": 1, "happiness": 2, "power_draw": 1}
+    },
+    {
+      "id": "locker",
+      "label": "Personal Locker",
+      "asset_scene": "res://assets/equipment/personal_locker.glb",
+      "cargo_cost": 40,
+      "valid_zones": ["living", "corridor"],
+      "footprint": [1, 1],
+      "placement": "floor_wall",
+      "effects": {"storage": 2, "happiness": 1}
+    },
+    {
+      "id": "science_workbench",
+      "label": "Science Workbench",
+      "asset_scene": "res://assets/equipment/science_workbench.glb",
+      "cargo_cost": 180,
+      "valid_zones": ["science"],
+      "footprint": [2, 1],
+      "placement": "floor_wall",
+      "effects": {"research": 3, "power_draw": 3}
+    },
+    {
+      "id": "grow_tray",
+      "label": "Grow Tray",
+      "asset_scene": "res://assets/equipment/grow_tray.glb",
+      "cargo_cost": 120,
+      "valid_zones": ["hydroponics", "glass_room"],
+      "footprint": [2, 1],
+      "placement": "floor",
+      "effects": {"food": 3, "happiness": 1, "water_draw": 1, "power_draw": 2}
+    },
+    {
+      "id": "common_table",
+      "label": "Common Table",
+      "asset_scene": "res://assets/equipment/common_table.glb",
+      "cargo_cost": 70,
+      "valid_zones": ["living", "science", "glass_room"],
+      "footprint": [2, 2],
+      "placement": "floor",
+      "effects": {"happiness": 4, "power_draw": 1}
+    },
+    {
+      "id": "air_recycler",
+      "label": "Air Recycler",
+      "asset_scene": "res://assets/equipment/air_recycler.glb",
+      "cargo_cost": 160,
+      "valid_zones": ["life_support"],
+      "footprint": [2, 1],
+      "placement": "floor_wall",
+      "effects": {"life": 4, "power_draw": 3}
+    },
+    {
+      "id": "task_light",
+      "label": "Task Light",
+      "asset_scene": "res://assets/equipment/task_light.glb",
+      "cargo_cost": 25,
+      "valid_zones": ["living", "science", "hydroponics", "corridor"],
+      "footprint": [1, 1],
+      "placement": "wall",
+      "effects": {"happiness": 1, "power_draw": 1}
+    }
+  ]
+}

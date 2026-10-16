@@ -1,41 +1,62 @@
 {
-  "_comment": "Build sites shown on the Site select screen. Values are simplified game-balance estimates, not NASA specifications. palette picks the lighting preset in MHGame.PALETTES.",
+  "_comment": "Build sites shown on the Site select screen. Each familiar game name is inspired by the named real Martian location in the supplied Ares Transit tool. Values and terrain are simplified for learning, not NASA specifications or a scale map. palette picks the lighting preset in MHGame.PALETTES.",
   "sites": [
     {
       "id": "plains",
       "name": "Open Plains",
+      "based_on": "Elysium Planitia",
+      "coordinates": "3.0° N, 154.7° E",
+      "terrain_profile": "elysium",
       "blurb": "Best solar exposure. Flat, open ground.",
       "palette": "day",
       "icon": "sun",
+      "telemetry": {"temperature": "−25 °C", "outside_temp_c": -25, "elevation": "−1.5 km", "radiation": "High", "sunlight": "92%"},
+      "ice_deposits": [{"x": -30, "z": -18, "radius": 15, "richness": 0.34}, {"x": 24, "z": 16, "radius": 13, "richness": 0.42}],
       "badges": [["+ Solar", "valid"], ["Easy", "neutral"]],
       "conditions": [["Solar exposure", 9, "High", "info"], ["Build space", 8, "Wide", "valid"], ["Water access", 3, "Low", "warn"], ["Dust shelter", 3, "Low", "warn"]]
     },
     {
       "id": "ridge",
       "name": "Canyon Ridge",
+      "based_on": "Valles Marineris floor",
+      "coordinates": "10.5° S, 68.0° W",
+      "terrain_profile": "valles",
       "blurb": "Tighter terrain — plan corridors carefully.",
       "palette": "day",
       "icon": "mountain-snow",
+      "telemetry": {"temperature": "−35 °C", "outside_temp_c": -35, "elevation": "−4.8 km", "radiation": "High", "sunlight": "62%"},
+      "ice_deposits": [{"x": -27, "z": 20, "radius": 16, "richness": 0.48}, {"x": 19, "z": -23, "radius": 12, "richness": 0.31}],
       "badges": [["Tight space", "warn"]],
       "conditions": [["Solar exposure", 7, "Good", "info"], ["Build space", 4, "Tight", "warn"], ["Water access", 4, "Fair", "warn"], ["Dust shelter", 7, "Good", "valid"]]
     },
     {
       "id": "crater",
       "name": "Crater Basin",
+      "based_on": "Gale Crater lowlands",
+      "coordinates": "5.4° S, 137.8° E",
+      "terrain_profile": "gale",
       "blurb": "Sheltered, with a slight solar penalty.",
       "palette": "golden",
       "icon": "orbit",
+      "telemetry": {"temperature": "−10 °C", "outside_temp_c": -10, "elevation": "−1.8 km", "radiation": "High", "sunlight": "94%"},
+      "ice_deposits": [{"x": -22, "z": -14, "radius": 15, "richness": 0.52}, {"x": 28, "z": 24, "radius": 16, "richness": 0.36}],
       "badges": [["Sheltered", "info"], ["− Solar", "warn"]],
       "conditions": [["Solar exposure", 6, "Fair", "warn"], ["Build space", 7, "Good", "valid"], ["Water access", 4, "Fair", "warn"], ["Dust shelter", 9, "High", "valid"]]
     },
     {
       "id": "ice",
       "name": "Ice Fields",
-      "blurb": "Water access with extraction gear; extra heating.",
+      "based_on": "Utopia Basin South",
+      "coordinates": "44.0° N, 112.0° E",
+      "terrain_profile": "utopia",
+      "build_limit": 72,
+      "blurb": "A forgiving lowland landing site with shallow subsurface ice.",
       "palette": "cold",
       "icon": "droplets",
-      "badges": [["+ Water", "info"], ["+ Heating", "warn"]],
-      "conditions": [["Solar exposure", 7, "Good", "info"], ["Build space", 8, "Wide", "valid"], ["Water access", 9, "High", "valid"], ["Dust shelter", 4, "Fair", "warn"]]
+      "telemetry": {"temperature": "−45 °C", "outside_temp_c": -45, "elevation": "−4.5 km", "radiation": "High", "sunlight": "68%"},
+      "ice_deposits": [{"x": -32, "z": -10, "radius": 23, "richness": 0.92}, {"x": 18, "z": 21, "radius": 24, "richness": 0.82}, {"x": 43, "z": -29, "radius": 18, "richness": 0.66}],
+      "badges": [["Easy landing", "valid"], ["+ Water", "info"]],
+      "conditions": [["Solar exposure", 7, "Good", "info"], ["Build space", 9, "Wide", "valid"], ["Water access", 9, "High", "valid"], ["Dust shelter", 6, "Good", "valid"]]
     }
   ]
 }

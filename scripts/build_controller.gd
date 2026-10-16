@@ -12,9 +12,12 @@ const SHOWCASE_CORNER := preload("res://assets/showcase_modules/mh_corner_post.g
 const SHOWCASE_AIRLOCK := preload("res://assets/showcase_modules/mh_airlock_surround.glb")
 const SHOWCASE_CORRIDOR := preload("res://assets/showcase_modules/mh_corridor_bay.glb")
 const SHOWCASE_SOLAR := preload("res://assets/showcase_modules/mh_solar_array.glb")
-const SOLAR_CONNECTION_RANGE := 12.0
+const SOLAR_POWER_RADIUS := 30.0
+const REACTOR_POWER_RADIUS := 42.0
 const SOLAR_OUTPUT := 24
+const REACTOR_OUTPUT := 360
 const CREW_TARGET := 6
+const RESEARCH_TARGET := 6
 const ZONE_TYPES := {
 	"living":{"label":"Living Quarters","colour":Color(.22,.48,.78),"cost":CELL_COST},
 	"science":{"label":"Science Lab","colour":Color(.55,.26,.74),"cost":CELL_COST},
@@ -25,23 +28,27 @@ const ZONE_TYPES := {
 	"airlock":{"label":"Airlock","colour":Color(.95,.43,.08),"cost":CELL_COST},
 	"vehicle_bay":{"label":"Vehicle Bay","colour":Color(.88,.62,.12),"cost":CELL_COST},
 	"solar":{"label":"Solar Array","colour":Color(.18,.64,.94),"cost":CELL_COST},
+	"reactor":{"label":"Compact Reactor","colour":Color(.88,.30,.16),"cost":1200},
+	"ice_extractor":{"label":"Ice Extractor","colour":Color(.20,.82,.92),"cost":450},
 	"glass_room":{"label":"Glass Greenhouse","colour":Color(.22,.78,.82),"cost":CELL_COST}
 }
 
 # Catalogue metadata for the build HUD. Gameplay values stay in ZONE_TYPES.
 const ZONE_INFO := {
-	"living":{"cat":"rooms","icon":"bed-double","rule":"Drag an area","desc":"Bunks, lockers and privacy. Every three cells house two crew."},
-	"science":{"cat":"rooms","icon":"flask-conical","rule":"Drag an area","desc":"Benches and instruments. Adds research capability."},
+	"living":{"cat":"rooms","icon":"bed-double","rule":"Drag an area","desc":"Makes space for bunks, lockers and personal areas. Furnish it to house crew."},
+	"science":{"cat":"rooms","icon":"flask-conical","rule":"Drag an area","desc":"Makes space for benches and instruments. Furnish it to conduct research."},
 	"storage":{"cat":"rooms","icon":"package","rule":"Drag an area","desc":"Racks for spares, tools and supplies."},
-	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Grow beds. Each cell grows food for five crew."},
-	"life_support":{"cat":"rooms","icon":"wind","rule":"Drag an area","desc":"Air and water recycling. Each cell supports four crew."},
+	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Makes space for grow equipment. Furnish it to produce food."},
+	"life_support":{"cat":"rooms","icon":"wind","rule":"Drag an area","desc":"Makes space for air and water recyclers. Furnish it to support crew."},
 	"glass_room":{"cat":"rooms","icon":"flower-2","rule":"Drag an area","desc":"A glazed room with a view of Mars. Uses extra power."},
 	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs","desc":"Joins rooms together. Walkable and open at both ends."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates","desc":"The way in and out. The outer end faces Mars; the inner end must touch a room."},
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
-	"solar":{"cat":"power","icon":"sun","rule":"One cell · R aims","desc":"Place within 12 m of the habitat. Facing north gives full output."}
+	"solar":{"cat":"power","icon":"sun","rule":"One cell · R aims","desc":"A 30 m power field. Facing north gives full output."},
+	"reactor":{"cat":"power","icon":"atom","rule":"One cell · 1,200 kg","desc":"A compact fission reactor. 42 m power field; high output and high cargo cost."},
+	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell · 450 kg","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."}
 }
-const CATEGORIES := [["rooms","Rooms","bed-double"],["structure","Structure","box"],["power","Power","sun"]]
+const CATEGORIES := [["rooms","Rooms","bed-double"],["structure","Structure","box"],["power","Resources","sun"]]
 const GRID_SHADER := """
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, fog_disabled, shadows_disabled;
@@ -76,6 +83,9 @@ signal mission_control_requested
 var kind := "living"
 var airlock_direction := Vector2i(0,-1)
 var zones: Array = []
+# First-person furnishing controllers own their visual instances. This lightweight
+# record is the simulation state used by the resource and wellbeing systems.
+var placed_equipment: Array = []
 var dragging := false
 var drag_start := Vector2i.ZERO
 var hover := Vector2i.ZERO
@@ -112,6 +122,11 @@ var _line_valid_material: StandardMaterial3D
 var _line_invalid_material: StandardMaterial3D
 var _preview_key := ""
 @onready var world := get_parent()
+
+func _site_build_limit() -> float:
+	# Most regions retain the standard 120 m-wide construction area. Individual
+	# maps can offer a different surveyed landing field without changing cell size.
+	return float(MHGame.site().get("build_limit", LIMIT))
 
 func _ready() -> void:
 	root=Node3D.new(); root.name="StudentHabitat"; world.add_child(root)
@@ -169,7 +184,8 @@ func _process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_E): pivot.rotate_y(-1.4*delta)
 	if move.length()>0:
 		pivot.position+=pivot.basis*move.normalized()*16.0*delta
-		pivot.position.x=clampf(pivot.position.x,-LIMIT,LIMIT); pivot.position.z=clampf(pivot.position.z,-LIMIT,LIMIT)
+		var site_limit := _site_build_limit()
+		pivot.position.x=clampf(pivot.position.x,-site_limit,site_limit); pivot.position.z=clampf(pivot.position.z,-site_limit,site_limit)
 	if tool=="remove" or _pointer_over_ui():
 		_draw_preview([],false); _update_hologram_ui([],"")
 		return
@@ -215,7 +231,7 @@ func _cells(a: Vector2i,b: Vector2i) -> Array:
 		for x in range(mini(a.x,b.x),maxi(a.x,b.x)+1):
 			for z in range(mini(a.y,b.y),maxi(a.y,b.y)+1): out.append(Vector2i(x,z))
 		return out
-	if kind=="solar": return [b]
+	if kind=="solar" or kind=="reactor" or kind=="ice_extractor": return [b]
 	if kind=="corridor" and a.x!=b.x and a.y!=b.y: return out
 	for x in range(mini(a.x,b.x),maxi(a.x,b.x)+1):
 		for z in range(mini(a.y,b.y),maxi(a.y,b.y)+1): out.append(Vector2i(x,z))
@@ -225,6 +241,61 @@ func _occupied(cell: Vector2i) -> bool:
 	for zone in zones:
 		if cell in zone.cells: return true
 	return false
+
+func _zone_at(cell: Vector2i) -> Dictionary:
+	for zone in zones:
+		if cell in zone.cells: return zone
+	return {}
+
+func _is_habitat_zone(zone: Dictionary) -> bool:
+	if zone.is_empty(): return false
+	var zone_kind := str(zone.kind)
+	# Power sources sit outside the pressure hull.  They must not erase an
+	# exterior wall simply because their build cell touches one.
+	return zone_kind != "solar" and zone_kind != "reactor" and zone_kind != "ice_extractor"
+
+## Public API for the future first-person furnishing controller.  `visual` is
+## optional so the systems can also be tested without loading final art assets.
+func place_equipment(id: String, cell: Vector2i, visual: Node3D = null) -> bool:
+	var entry := EquipmentCatalog.get_entry(id)
+	var zone := _zone_at(cell)
+	if entry.is_empty() or zone.is_empty():
+		return false
+	var valid_zones: Array = entry.get("valid_zones", [])
+	if not valid_zones.has(str(zone.kind)):
+		return false
+	if _used_cargo() + int(entry.get("cargo_cost", 0)) > CARGO_BUDGET:
+		return false
+	for item in placed_equipment:
+		if item.get("cell", Vector2i(9999, 9999)) == cell:
+			return false
+	placed_equipment.append({"id": id, "cell": cell})
+	if visual != null:
+		visual.set_meta("equipment_id", id)
+	_update_systems()
+	_apply_grid_power()
+	return true
+
+func remove_equipment_at(cell: Vector2i) -> Dictionary:
+	for index in range(placed_equipment.size() - 1, -1, -1):
+		var item: Dictionary = placed_equipment[index]
+		if item.get("cell", Vector2i(9999, 9999)) == cell:
+			placed_equipment.remove_at(index)
+			_update_systems()
+			_apply_grid_power()
+			return item
+	return {}
+
+func _equipment_effects() -> Dictionary:
+	var totals := {"berths": 0, "food": 0, "life": 0, "research": 0, "happiness": 0, "storage": 0, "power_draw": 0, "water_draw": 0}
+	for item in placed_equipment:
+		var effects := EquipmentCatalog.effects(str(item.get("id", "")))
+		for effect in totals:
+			totals[effect] += int(effects.get(effect, 0))
+	return totals
+
+func _is_habitat_cell(cell: Vector2i) -> bool:
+	return _is_habitat_zone(_zone_at(cell))
 
 func _valid(cells: Array) -> bool:
 	return _invalid_reason(cells).is_empty()
@@ -237,12 +308,14 @@ func _invalid_reason(cells: Array) -> String:
 		if kind=="corridor": return "Corridors run in straight lines"
 		return "Point at the ground"
 	for cell in cells:
-		if abs(cell.x)>LIMIT/CELL or abs(cell.y)>LIMIT/CELL: return "Outside the build area"
+		var site_limit := _site_build_limit()
+		if abs(cell.x)>site_limit/CELL or abs(cell.y)>site_limit/CELL: return "Outside the surveyed build area"
 	for cell in cells:
 		if _occupied(cell): return "Overlaps existing habitat"
 	if kind=="airlock" and not _valid_airlock(cells): return "Inner end must touch a room; outer end faces Mars"
 	if kind=="vehicle_bay" and not _valid_vehicle_bay(cells): return "2–4 cells each way, door facing outside, beside a room"
-	if kind=="solar" and not _valid_solar(cells): return "Must be within 12 m of the habitat"
+	if (kind=="solar" or kind=="reactor") and not _valid_power_source(cells): return "Power field must reach the habitat"
+	if kind=="ice_extractor" and _ice_richness_at(cells[0])<.12: return "No recoverable subsurface ice here"
 	if _used_cargo()+_zone_cost(cells)>CARGO_BUDGET: return "Not enough cargo left"
 	# Build on a local, reasonably flat patch. A short foundation can bridge a
 	# shallow dip, but we reject hills and deep drops instead of making towers.
@@ -258,7 +331,7 @@ func _valid_airlock(cells: Array) -> bool:
 	var outside_cell:=_airlock_end(cells,airlock_direction,true)
 	var inner_cell:=_airlock_end(cells,airlock_direction,false)
 	# The outer end must face Mars; the far end must join an existing habitat.
-	return not _occupied(outside_cell+airlock_direction) and _occupied(inner_cell-airlock_direction)
+	return not _occupied(outside_cell+airlock_direction) and _is_habitat_cell(inner_cell-airlock_direction)
 
 func _valid_vehicle_bay(cells: Array) -> bool:
 	var min_x: int=cells[0].x; var max_x: int=cells[0].x; var min_z: int=cells[0].y; var max_z: int=cells[0].y
@@ -271,18 +344,45 @@ func _valid_vehicle_bay(cells: Array) -> bool:
 	for cell in cells:
 		if _occupied(cell+airlock_direction): return false # Keep the hangar face outside.
 		for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
-			if side!=airlock_direction and _occupied(cell+side): connected=true
+			if side!=airlock_direction and _is_habitat_cell(cell+side): connected=true
 	return connected
 
-func _valid_solar(cells: Array) -> bool:
+func _power_radius(source_kind: String) -> float:
+	return REACTOR_POWER_RADIUS if source_kind == "reactor" else SOLAR_POWER_RADIUS
+
+func _valid_power_source(cells: Array) -> bool:
 	if cells.size()!=1 or zones.is_empty(): return false
-	var cell:Vector2i=cells[0]
-	# Power hardware stays outside the shell, but can cable to any nearby habitat cell.
+	return _power_source_connected({"kind": kind, "cells": cells})
+
+func _power_source_connected(source: Dictionary) -> bool:
+	var cells: Array = source.get("cells", [])
+	if cells.is_empty(): return false
+	var cell: Vector2i = cells[0]
+	var radius := _power_radius(str(source.get("kind", "solar")))
+	# A StarCraft-style field reaches the shell directly—no visible cable and no
+	# requirement to place hardware immediately beside a wall.
 	for zone in zones:
-		if str(zone.kind)=="solar": continue
+		if str(zone.kind)=="solar" or str(zone.kind)=="reactor" or str(zone.kind)=="ice_extractor": continue
 		for habitat_cell in zone.cells:
-			if Vector2(cell.x-habitat_cell.x,cell.y-habitat_cell.y).length()*CELL<=SOLAR_CONNECTION_RANGE: return true
+			if Vector2(cell.x-habitat_cell.x,cell.y-habitat_cell.y).length()*CELL<=radius: return true
 	return false
+
+func _ice_richness_at(cell: Vector2i) -> float:
+	return _ice_richness_at_point(Vector2(cell.x * CELL, cell.y * CELL))
+
+func _ice_richness_at_point(point: Vector2) -> float:
+	var strongest := 0.0
+	for deposit in MHGame.site().get("ice_deposits", []):
+		var centre := Vector2(float(deposit.get("x", 0.0)), float(deposit.get("z", 0.0)))
+		var radius := maxf(1.0, float(deposit.get("radius", 1.0)))
+		var falloff := clampf(1.0 - point.distance_to(centre) / radius, 0.0, 1.0)
+		strongest = maxf(strongest, float(deposit.get("richness", 0.0)) * falloff)
+	return strongest
+
+func _ice_yield(cell: Vector2i) -> int:
+	# A readable learning-scale output: deposits are not literal kilograms or
+	# percentages of ice, but a local prospecting estimate.
+	return roundi(_ice_richness_at(cell) * 12.0)
 
 func _draw_preview(cells: Array,valid: bool) -> void:
 	# The ghost only changes when the footprint, validity or facing changes.
@@ -292,6 +392,7 @@ func _draw_preview(cells: Array,valid: bool) -> void:
 	for child in preview.get_children(): child.queue_free()
 	if cells.is_empty(): return
 	_ensure_preview_materials()
+	if kind=="ice_extractor": _add_ice_heatmap()
 	var fill:=_preview_valid_material if valid else _preview_invalid_material
 	var edge:=_line_valid_material if valid else _line_invalid_material
 	var base_y:=habitat_base_y if not zones.is_empty() else .35
@@ -300,15 +401,72 @@ func _draw_preview(cells: Array,valid: bool) -> void:
 		var tile:=MeshInstance3D.new(); var mesh:=BoxMesh.new(); mesh.size=Vector3(CELL-.06,.04,CELL-.06); tile.mesh=mesh; tile.material_override=fill; tile.position=Vector3(cell.x*CELL,base_y+.05,cell.y*CELL); tile.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(tile)
 	# Hologram volume: translucent shell with bright edges (unlit #3EE58A / #FF4D4D).
 	var bounds:=_cell_bounds(cells)
-	var height:=2.9 if kind!="solar" else 1.6
+	var height:=2.9 if kind!="solar" and kind!="reactor" and kind!="ice_extractor" else (2.25 if kind=="reactor" else 1.6)
 	var volume_size:=Vector3(bounds.size.x*CELL,height,bounds.size.y*CELL)
 	var volume_centre:=Vector3((bounds.position.x+bounds.size.x*.5-.5)*CELL,base_y+height*.5,(bounds.position.y+bounds.size.y*.5-.5)*CELL)
 	if kind=="solar": volume_size=Vector3(2.4,height,1.6)
+	if kind=="reactor": volume_size=Vector3(2.1,height,2.1)
+	if kind=="ice_extractor": volume_size=Vector3(1.7,height,1.7)
 	var ghost:=MeshInstance3D.new(); var box:=BoxMesh.new(); box.size=volume_size; ghost.mesh=box; ghost.material_override=fill; ghost.position=volume_centre; ghost.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(ghost)
 	preview.add_child(_box_edges(volume_centre,volume_size,edge))
 	if kind=="airlock": _airlock_arrow(_airlock_end(cells,airlock_direction,true),"OUTSIDE")
 	if kind=="vehicle_bay": _airlock_arrow(_face_preview_cell(cells,airlock_direction),"HANGAR")
 	if kind=="solar": _airlock_arrow(cells[0],"SOLAR %d%%" % roundi(_solar_efficiency(airlock_direction)*100.0))
+	if kind=="ice_extractor":
+		var ice_here := _ice_richness_at(cells[0])
+		if ice_here < .12:
+			_airlock_arrow(cells[0], "NO RECOVERABLE ICE · DRILL UNAVAILABLE")
+		else:
+			_airlock_arrow(cells[0],"ICE %d%%  ·  WATER %d" % [roundi(ice_here*100.0), _ice_yield(cells[0])])
+	if kind=="solar" or kind=="reactor": _add_power_field_visual(cells[0],_power_radius(kind),valid,preview)
+
+func _add_ice_heatmap() -> void:
+	# A whole-map survey, not a collection of "drill here" circles. Vertex
+	# colours make buried ice read as a continuous, imperfect survey field:
+	# dark navy is strong evidence, pale cyan is weak/uncertain evidence.
+	var limit := _site_build_limit()
+	var step := 3.0
+	var divisions := int(limit * 2.0 / step)
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for z_index in range(divisions):
+		for x_index in range(divisions):
+			var x0 := -limit + x_index * step
+			var x1 := x0 + step
+			var z0 := -limit + z_index * step
+			var z1 := z0 + step
+			_add_ice_heatmap_quad(surface, Vector2(x0,z0), Vector2(x1,z0), Vector2(x1,z1))
+			_add_ice_heatmap_quad(surface, Vector2(x0,z0), Vector2(x1,z1), Vector2(x0,z1))
+	var field := MeshInstance3D.new()
+	field.name = "SubsurfaceIceSurvey"
+	field.mesh = surface.commit()
+	var material := StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.no_depth_test = false
+	field.material_override = material
+	field.position.y = habitat_base_y + .07
+	field.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	preview.add_child(field)
+
+func _add_ice_heatmap_quad(surface: SurfaceTool, a: Vector2, b: Vector2, c: Vector2) -> void:
+	for point in [a,b,c]:
+		var richness := _ice_richness_at_point(point)
+		# A faint non-resource survey background stops the field looking like a
+		# handful of perfect circles, without changing extractor yields.
+		var uncertainty := (sin(point.x * .071 + point.y * .043) + 1.0) * .018
+		var display := clampf(richness + uncertainty, 0.0, 1.0)
+		# Four deliberately distinct survey bands: neutral grey = no usable ice,
+		# pale cyan = trace, blue = recoverable and deep navy = rich ice.
+		var colour: Color
+		if display < .04: colour = Color(.08, .11, .15, .20)
+		elif display < .12: colour = Color(.36, .86, 1.0, .38)
+		elif display < .38: colour = Color(.08, .42, .82, .62)
+		else: colour = Color(.015, .04, .24, .88)
+		surface.set_color(colour)
+		surface.add_vertex(Vector3(point.x, 0.0, point.y))
 
 func _ensure_preview_materials() -> void:
 	if _preview_valid_material!=null: return
@@ -366,18 +524,20 @@ func _rebuild() -> void:
 		if str(zone.kind)=="airlock": _build_airlock_zone(zone)
 		elif str(zone.kind)=="vehicle_bay": _build_vehicle_bay(zone)
 		elif str(zone.kind)=="solar": _build_solar(zone)
+		elif str(zone.kind)=="reactor": _build_reactor(zone)
+		elif str(zone.kind)=="ice_extractor": _build_ice_extractor(zone)
 		else:
 			for cell in zone.cells: _cell_walls(cell,zone)
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
 	for zone in zones: _add_zone_label(zone)
-	_set_build_view(build_mode); _update_budget(); _update_summary(); _update_systems()
+	_set_build_view(build_mode); _update_budget(); _update_summary(); _update_systems(); _apply_grid_power()
 	habitat_changed.emit()
 
 func _zone_surfaces(zone: Dictionary) -> void:
 	var cells:Array=zone.cells
 	var zone_kind:=str(zone.kind)
-	if zone_kind=="solar": return
+	if zone_kind=="solar" or zone_kind=="reactor" or zone_kind=="ice_extractor": return
 	var colour:Color=ZONE_TYPES[zone_kind].colour
 	var min_x: int=cells[0].x; var max_x: int=cells[0].x; var min_z: int=cells[0].y; var max_z: int=cells[0].y
 	for cell in cells:
@@ -385,7 +545,11 @@ func _zone_surfaces(zone: Dictionary) -> void:
 	var size_x:=float(max_x-min_x+1)*CELL
 	var size_z:=float(max_z-min_z+1)*CELL
 	var centre:=Vector3((float(min_x+max_x)*.5)*CELL,0,(float(min_z+max_z)*.5)*CELL)
-	var show_generated_surface:=zone_kind!="corridor"
+	# The showcase corridor kit has sealed end caps. It is useful for an ordinary
+	# passage, but it would physically occupy an airlock's inner doorway. A
+	# corridor meeting an airlock therefore uses the generated shell instead.
+	var corridor_has_airlock := zone_kind=="corridor" and _corridor_touches_airlock(cells)
+	var show_generated_surface := zone_kind!="corridor" or corridor_has_airlock
 	# A drag rectangle is one continuous interior slab and one continuous roof.
 	# For a future irregular paint shape, individual cells remain a safe fallback.
 	if cells.size()==(max_x-min_x+1)*(max_z-min_z+1):
@@ -395,7 +559,7 @@ func _zone_surfaces(zone: Dictionary) -> void:
 		if zone_kind!="glass_room" and zone_kind!="corridor" and zone_kind!="airlock":
 			for corner in [Vector2i(min_x,min_z),Vector2i(max_x+1,min_z),Vector2i(max_x+1,max_z+1),Vector2i(min_x,max_z+1)]:
 				_add_showcase(SHOWCASE_CORNER,Vector3(corner.x*CELL-CELL*.5,habitat_base_y,corner.y*CELL-CELL*.5))
-		if zone_kind=="corridor":
+		if zone_kind=="corridor" and not corridor_has_airlock:
 			var yaw:=_corridor_yaw(cells)
 			for cell in cells: _add_showcase(SHOWCASE_CORRIDOR,Vector3(cell.x*CELL,habitat_base_y,cell.y*CELL),yaw)
 	else:
@@ -404,16 +568,72 @@ func _zone_surfaces(zone: Dictionary) -> void:
 			_add_box(local_centre+Vector3(0,habitat_base_y-.1,0),Vector3(CELL,.2,CELL),colour.darkened(.48),true,"habitat_floor")
 			if zone_kind=="glass_room": _add_glass_box(local_centre+Vector3(0,habitat_base_y+2.9,0),Vector3(CELL,.15,CELL),Color(.36,.86,.92,.35),true,"habitat_roof")
 			else: _add_box(local_centre+Vector3(0,habitat_base_y+2.9,0),Vector3(CELL,.15,CELL),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof")
+	_add_zone_lighting(zone)
+
+func _add_zone_lighting(zone: Dictionary) -> void:
+	# Fixed ceiling strips are ordinary grid-powered consumers. Equipment placed
+	# later can use the same group/meta contract and will switch with this bus.
+	var zone_kind := str(zone.kind)
+	if zone_kind == "solar":
+		return
+	var cells: Array = zone.cells
+	for index in range(0, cells.size(), 2):
+		var cell: Vector2i = cells[index]
+		_add_powered_fixture(Vector3(cell.x * CELL, habitat_base_y + 2.62, cell.y * CELL), zone_kind)
+
+func _add_powered_fixture(position: Vector3, zone_kind: String) -> void:
+	var fixture := Node3D.new()
+	fixture.name = "CeilingLight"
+	fixture.position = position
+	root.add_child(fixture)
+	var visual := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(.88, .07, .22)
+	visual.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color("#F3E4C6")
+	material.emission_enabled = true
+	material.emission = Color("#FFE7B2")
+	material.emission_energy_multiplier = 1.3
+	visual.material_override = material
+	visual.add_to_group("grid_powered_light")
+	visual.set_meta("grid_emission_on", Color("#FFE7B2"))
+	visual.set_meta("grid_emission_off", Color("#293034"))
+	fixture.add_child(visual)
+	var light := OmniLight3D.new()
+	light.position = Vector3(0, -.16, 0)
+	light.light_color = Color("#FFE7B2")
+	light.light_energy = 1.1 if zone_kind != "hydroponics" else 1.35
+	light.omni_range = 4.5
+	light.shadow_enabled = false
+	light.add_to_group("grid_powered_light")
+	light.set_meta("grid_light_energy", light.light_energy)
+	fixture.add_child(light)
 
 func _cell_walls(cell: Vector2i,zone: Dictionary) -> void:
 	var zone_kind:=str(zone.kind); var colour:Color=ZONE_TYPES[zone_kind].colour; var centre:=Vector3(cell.x*CELL,0,cell.y*CELL)
 	_add_plan_tile(centre,colour,zone_kind)
 	for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
-		var adjacent: Vector2i=cell+side
-		if _occupied(adjacent):
-			# Shared grid edges are real openings: neither wall nor collision is created.
-			continue
-		_add_exterior_wall(centre,side,zone_kind,zone)
+		if _should_build_wall(cell,side): _add_exterior_wall(centre,side,zone_kind,zone)
+
+func _should_build_wall(cell: Vector2i,side: Vector2i) -> bool:
+	# The airlock owns its inner threshold. This must win regardless of whether
+	# the attached room, corridor or the airlock itself was placed first.
+	if _is_airlock_inner_doorway(cell,side): return false
+	# Only pressurised habitat cells form an open internal connection. External
+	# equipment is adjacent to the shell, never part of its floor plan.
+	return not _is_habitat_cell(cell+side)
+
+func _is_airlock_inner_doorway(cell: Vector2i,side: Vector2i) -> bool:
+	for zone in zones:
+		if str(zone.kind)!="airlock": continue
+		var outside:=_airlock_side(zone)
+		var inner_cell:=_airlock_end(zone.cells,outside,false)
+		# Check both directions so it remains correct even if construction order
+		# or rendering order changes in the future.
+		if cell==inner_cell-outside and side==outside: return true
+		if cell==inner_cell and side==-outside: return true
+	return false
 
 func _build_airlock_zone(zone: Dictionary) -> void:
 	var outside:=_airlock_side(zone)
@@ -477,31 +697,76 @@ func _build_solar(zone: Dictionary) -> void:
 	# through the mast without giving the solar panel an oversized collider. A
 	# larger pad also makes its ground contact clear on uneven Mars terrain.
 	_add_box(position+Vector3(0,.08,0),Vector3(1.75,.16,1.45),MHStyle.SEAL_DARK,true,"solar_base",true)
-	_add_solar_cable(position,_nearest_habitat_point(cell))
 	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["solar"].colour,"solar")
+	_add_power_field_visual(cell,SOLAR_POWER_RADIUS,_power_source_connected(zone),root)
 
-func _nearest_habitat_point(solar_cell: Vector2i) -> Vector3:
-	var solar_point:=Vector3(solar_cell.x*CELL,habitat_base_y,solar_cell.y*CELL)
-	var closest:=solar_point
-	var closest_distance:=INF
-	for zone in zones:
-		if str(zone.kind)=="solar": continue
-		for cell in zone.cells:
-			var candidate:=Vector3(cell.x*CELL,habitat_base_y,cell.y*CELL)
-			var distance:=candidate.distance_squared_to(solar_point)
-			if distance<closest_distance:
-				closest_distance=distance
-				closest=candidate
-	return closest
+func _build_reactor(zone: Dictionary) -> void:
+	var cell: Vector2i = zone.cells[0]
+	var position := Vector3(cell.x * CELL, _terrain_height(Vector3(cell.x * CELL, 0, cell.y * CELL)), cell.y * CELL)
+	# Purpose-built low-poly reactor: broad plinth, shielded vessel and a small
+	# status cap. It is deliberately compact beside the larger solar arrays.
+	_add_box(position + Vector3(0,.12,0),Vector3(2.25,.24,2.25),MHStyle.SEAL_DARK,true,"reactor_base",true)
+	var vessel := MeshInstance3D.new()
+	var vessel_mesh := CylinderMesh.new()
+	vessel_mesh.top_radius = .62; vessel_mesh.bottom_radius = .78; vessel_mesh.height = 1.42
+	vessel.mesh = vessel_mesh
+	var vessel_material := StandardMaterial3D.new()
+	vessel_material.albedo_color = Color("#59666A"); vessel_material.metallic = .72; vessel_material.roughness = .28
+	vessel.material_override = vessel_material
+	vessel.position = position + Vector3(0,.93,0)
+	root.add_child(vessel)
+	var core := OmniLight3D.new()
+	core.position = position + Vector3(0,1.42,0)
+	core.light_color = MHStyle.SAFETY_ORANGE
+	core.light_energy = .8
+	core.omni_range = 3.0
+	core.add_to_group("grid_powered_light")
+	core.set_meta("grid_light_energy", .8)
+	root.add_child(core)
+	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["reactor"].colour,"reactor")
+	_add_power_field_visual(cell,REACTOR_POWER_RADIUS,_power_source_connected(zone),root)
 
-func _add_solar_cable(from: Vector3,to: Vector3) -> void:
-	var start:=from+Vector3(0,.10,0)
-	var end:=to+Vector3(0,.12,0)
-	var direction:=end-start
-	if direction.length()<.1: return
-	var cable:=MeshInstance3D.new(); var cylinder:=CylinderMesh.new(); cylinder.top_radius=.035; cylinder.bottom_radius=.035; cylinder.height=direction.length(); cable.mesh=cylinder
-	var material:=StandardMaterial3D.new(); material.albedo_color=MHStyle.SOLAR_CELL; material.emission_enabled=true; material.emission=MHStyle.CELL_LINE*.18; material.roughness=.35; cable.material_override=material
-	cable.position=(start+end)*.5; cable.basis=Basis(Quaternion(Vector3.UP,direction.normalized())); root.add_child(cable)
+func _build_ice_extractor(zone: Dictionary) -> void:
+	var cell: Vector2i = zone.cells[0]
+	var position := Vector3(cell.x * CELL, _terrain_height(Vector3(cell.x * CELL, 0, cell.y * CELL)), cell.y * CELL)
+	_add_box(position + Vector3(0,.10,0), Vector3(1.7,.20,1.7), MHStyle.SEAL_DARK, true, "ice_extractor", true)
+	var mast := MeshInstance3D.new(); var mast_mesh := CylinderMesh.new()
+	mast_mesh.top_radius=.13; mast_mesh.bottom_radius=.20; mast_mesh.height=1.35; mast.mesh=mast_mesh
+	var steel := StandardMaterial3D.new(); steel.albedo_color=MHStyle.FRAME_STEEL; steel.metallic=.72; steel.roughness=.3; mast.material_override=steel
+	mast.position=position+Vector3(0,.78,0); root.add_child(mast)
+	var head := MeshInstance3D.new(); var head_mesh := CylinderMesh.new()
+	head_mesh.top_radius=.30; head_mesh.bottom_radius=.18; head_mesh.height=.28; head.mesh=head_mesh
+	var ice_material := StandardMaterial3D.new(); ice_material.albedo_color=Color(.22,.85,.96); ice_material.emission_enabled=true; ice_material.emission=Color(.05,.35,.46); head.material_override=ice_material
+	head.position=position+Vector3(0,1.58,0); root.add_child(head)
+	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["ice_extractor"].colour,"ice_extractor")
+
+func _add_power_field_visual(cell: Vector2i, radius: float, connected: bool, parent: Node3D) -> void:
+	# Visible only in build mode: a light, readable field boundary rather than a
+	# physical cable. Existing source fields and the placement preview share it.
+	var field := Node3D.new()
+	field.name = "PowerField"
+	field.position = Vector3(cell.x * CELL, _terrain_height(Vector3(cell.x * CELL, 0, cell.y * CELL)) + .11, cell.y * CELL)
+	field.add_to_group("power_field_visual")
+	field.visible = build_mode
+	var tone := MHStyle.HOLO_VALID if connected else MHStyle.HOLO_INVALID
+	var ring_mesh := ImmediateMesh.new()
+	var ring_material := _holo_material(tone,.72)
+	ring_mesh.surface_begin(Mesh.PRIMITIVE_LINES,ring_material)
+	var segments := 72
+	for index in range(segments):
+		var a0 := TAU * float(index) / segments
+		var a1 := TAU * float(index + 1) / segments
+		ring_mesh.surface_add_vertex(Vector3(cos(a0) * radius,0,sin(a0) * radius))
+		ring_mesh.surface_add_vertex(Vector3(cos(a1) * radius,0,sin(a1) * radius))
+	ring_mesh.surface_end()
+	var ring := MeshInstance3D.new()
+	ring.mesh = ring_mesh
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	field.add_child(ring)
+	var label := _label3d("POWER FIELD · %dm" % roundi(radius),20,tone,600)
+	label.position = Vector3(0,.15,-radius)
+	field.add_child(label)
+	parent.add_child(field)
 
 func _airlock_end(cells: Array,direction: Vector2i,outside: bool) -> Vector2i:
 	var chosen:Vector2i=cells[0]
@@ -528,15 +793,20 @@ func _add_exterior_wall(centre: Vector3,side: Vector2i,zone_kind: String,zone: D
 	if zone_kind=="glass_room":
 		_add_glass_box(wall_position,wall_size,Color(.35,.86,.92,.30),true,"habitat_wall")
 		return
-	var corridor_side:=zone_kind=="corridor" and _is_corridor_side(zone,side)
+	var corridor_side:=zone_kind=="corridor" and _is_corridor_side(zone,side) and not _corridor_touches_airlock(zone.cells)
 	# The collision box is centred at half wall height, while the Blender wall
 	# kit is exported with its base at y=0.  Giving both the same position was
 	# lifting the visible panel by 1.45 m above its collision and the roof.
 	if not corridor_side:
 		_add_showcase(SHOWCASE_WALL,Vector3(wall_position.x,habitat_base_y,wall_position.z),_wall_yaw(side))
-	# Collision only: the Blender wall bay is the visible surface (a visible box
-	# here sat on top of it and hid its panels, seals and windows).
-	_add_box(wall_position,wall_size,MHStyle.STRUCTURAL_WHITE,true,"habitat_wall",false)
+	# A slightly-overlapping backing closes the tiny seams between independently
+	# placed wall bays. It sits behind the kit surface, so panels and windows stay
+	# visible while there is never a line of exposed Mars through the hull.
+	var backing_size:=wall_size
+	if side.x!=0: backing_size.z+=.14
+	else: backing_size.x+=.14
+	var backing_position:=wall_position-Vector3(side.x*.035,0,side.y*.035)
+	_add_box(backing_position,backing_size,MHStyle.STRUCTURAL_WHITE,true,"habitat_wall",true)
 
 func _airlock_side(zone: Dictionary) -> Vector2i:
 	return zone.get("door_direction",Vector2i(0,-1))
@@ -558,6 +828,12 @@ func _is_corridor_side(zone: Dictionary,side: Vector2i) -> bool:
 	var cells:Array=zone.cells
 	var runs_x: bool=cells.size()>1 and cells[0].x!=cells[cells.size()-1].x
 	return side.y!=0 if runs_x else side.x!=0
+
+func _corridor_touches_airlock(cells: Array) -> bool:
+	for cell in cells:
+		for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
+			if _is_airlock_inner_doorway(cell,side): return true
+	return false
 
 func _wall_yaw(side: Vector2i) -> float:
 	# The Blender wall has an exterior face. Opposite boundaries need an actual
@@ -612,6 +888,7 @@ func _set_build_view(show_plan: bool) -> void:
 		_set_visual_children(door,not show_plan)
 	for plan in get_tree().get_nodes_in_group("habitat_plan"): plan.visible=show_plan
 	for label in get_tree().get_nodes_in_group("zone_label"): label.visible=show_plan
+	for field in get_tree().get_nodes_in_group("power_field_visual"): field.visible=show_plan
 
 func _set_visual_children(node: Node,visible: bool) -> void:
 	if node is VisualInstance3D:
@@ -638,12 +915,19 @@ func _cell_highest_terrain(cell: Vector2i) -> float:
 
 func _terrain_height(point: Vector3) -> float:
 	var query:=PhysicsRayQueryParameters3D.create(point+Vector3.UP*80.0,point+Vector3.DOWN*80.0,1)
-	# A rebuild can leave old habitat colliders in physics for one frame. Exclude
-	# them so supports always reach original Mars terrain.
-	for collider in root.find_children("*","CollisionObject3D",true,false):
-		if collider is CollisionObject3D: query.exclude.append(collider.get_rid())
-	var hit:Dictionary=world.get_world_3d().direct_space_state.intersect_ray(query)
-	return float(hit.position.y) if not hit.is_empty() else -.25
+	# Never use generic "the first thing below this point" here. During a rebuild,
+	# equipment may still be registered in physics for a frame; that used to make
+	# each subsequent solar array treat the one before it as ground and climb
+	# higher. Keep stepping through hits until we reach the named Mars terrain.
+	for attempt in range(64):
+		var hit:Dictionary=world.get_world_3d().direct_space_state.intersect_ray(query)
+		if hit.is_empty(): break
+		var collider:=hit.get("collider") as CollisionObject3D
+		if collider!=null and collider.is_in_group("mars_terrain"):
+			return float(hit.position.y)
+		if collider==null: break
+		query.exclude.append(collider.get_rid())
+	return -.25
 
 func _build_foundation_supports() -> void:
 	# Purposeful pylons only at exposed outer corners, rather than a post under
@@ -700,6 +984,8 @@ func _zone_cost(cells: Array) -> int: return int(ZONE_TYPES[kind].cost)*cells.si
 func _used_cargo() -> int:
 	var total:=0
 	for zone in zones: total+=int(zone.cost)
+	for item in placed_equipment:
+		total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
 	return total
 
 func _airlock_connected_cells() -> Dictionary:
@@ -711,7 +997,7 @@ func _airlock_connected_cells() -> Dictionary:
 		var cell:Vector2i=pending.pop_front()
 		for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
 			var next_cell: Vector2i=cell+side
-			if _occupied(next_cell) and not reachable.has(next_cell): reachable[next_cell]=true; pending.append(next_cell)
+			if _is_habitat_cell(next_cell) and not reachable.has(next_cell): reachable[next_cell]=true; pending.append(next_cell)
 	return reachable
 
 func _update_budget() -> void:
@@ -732,19 +1018,62 @@ func _systems() -> Dictionary:
 	for id in ZONE_TYPES: counts[id]=0
 	for zone in zones:
 		counts[str(zone.kind)]+=zone.cells.size()
-	# Each grid cell is only 3m × 3m.  Accommodation includes bunks, lockers,
-	# circulation and privacy, so roughly three cells support two crew members.
-	# A 3×3 Living Quarters therefore supports six crew; a 2×2 supports three.
+	var equipment := _equipment_effects()
+	# Zones are empty shells: they establish the maximum a player *can* support.
+	# Furnishings are what actually provide berths, food and research output.
+	# Every three 3×3 m Living cells make room for two crew members.
 	var crew_capacity:int=ceili(float(counts.living)*2.0/3.0)
-	var crew:int=mini(CREW_TARGET,crew_capacity)
-	var food:int=counts.hydroponics*5
-	var life_support:int=counts.life_support*4
-	var research:int=counts.science*4
+	# The mission starts with six crew, but building room for more people is a
+	# commitment: food, water and oxygen requirements grow with that capacity.
+	var crew_requirement:int=maxi(CREW_TARGET,crew_capacity)
+	var berths:int=mini(crew_capacity,int(equipment.berths))
+	var crew:int=mini(crew_requirement,berths)
+	var food_capacity:int=counts.hydroponics*5
+	var food:int=mini(food_capacity,int(equipment.food))
+	var life_capacity:int=counts.life_support*4
+	var life_support:int=mini(life_capacity,int(equipment.life))
+	var research_capacity:int=counts.science*4
+	var research:int=mini(research_capacity,int(equipment.research))
 	var generation:=0.0
 	for zone in zones:
-		if str(zone.kind)=="solar": generation+=SOLAR_OUTPUT*_solar_efficiency(_airlock_side(zone))
-	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.glass_room*2+counts.hydroponics*5+counts.life_support*3+counts.science*5+counts.vehicle_bay*4
-	return {"crew":crew,"crew_capacity":crew_capacity,"food":food,"life":life_support,"research":research,"generation":roundi(generation),"draw":draw}
+		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(_airlock_side(zone))
+		elif str(zone.kind)=="reactor" and _power_source_connected(zone): generation+=REACTOR_OUTPUT
+	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.glass_room*2+counts.hydroponics*5+counts.life_support*3+counts.science*5+counts.vehicle_bay*4+counts.ice_extractor*8+int(equipment.power_draw)
+	# Dynamic non-catalogue devices can opt into the grid by joining this group
+	# and setting power_draw metadata. Catalogue equipment is already counted
+	# above, so it must not also join this group.
+	for consumer in get_tree().get_nodes_in_group("grid_power_consumer"):
+		draw += maxi(0, int(consumer.get_meta("power_draw", 0)))
+	# Extracting and melting buried ice takes power. An underpowered base may
+	# still show the deposit survey, but its drills do not supply water until the
+	# available generation can cover the complete load.
+	var water := 0
+	if generation > 0.0 and generation >= draw:
+		for zone in zones:
+			if str(zone.kind)=="ice_extractor": water += _ice_yield(zone.cells[0])
+	return {"crew":crew,"crew_requirement":crew_requirement,"crew_capacity":crew_capacity,"berths":berths,"food":food,"food_capacity":food_capacity,"life":life_support,"life_capacity":life_capacity,"water":water,"research":research,"research_capacity":research_capacity,"happiness":int(equipment.happiness),"water_draw":int(equipment.water_draw),"generation":roundi(generation),"draw":draw}
+
+func grid_power_online() -> bool:
+	var systems := _systems()
+	return int(systems.generation) > 0 and int(systems.generation) >= int(systems.draw)
+
+func refresh_power_grid() -> void:
+	# Public hook for future placeable equipment after it joins the power groups.
+	_apply_grid_power()
+
+func _apply_grid_power() -> void:
+	var online := grid_power_online()
+	MHGame.set_habitat_lights_online(online)
+	for device in get_tree().get_nodes_in_group("grid_powered_light"):
+		if device is Light3D:
+			(device as Light3D).light_energy = float(device.get_meta("grid_light_energy", 0.0)) if online else 0.0
+		elif device is MeshInstance3D:
+			var material := (device as MeshInstance3D).material_override as StandardMaterial3D
+			if material == null:
+				continue
+			material.emission_enabled = online
+			material.albedo_color = Color("#F3E4C6") if online else Color("#293034")
+			material.emission = device.get_meta("grid_emission_on", Color.WHITE) if online else device.get_meta("grid_emission_off", Color("#293034"))
 
 func _solar_efficiency(direction: Vector2i) -> float:
 	# The level's sun is treated as a fixed teaching-friendly direction.  Facing
@@ -765,7 +1094,7 @@ func readiness() -> Array:
 	var habitat_cells:=0; var airlock_cells:=0; var reachable:=0
 	var route:=_airlock_connected_cells()
 	for zone in zones:
-		if str(zone.kind)=="solar": continue
+		if str(zone.kind)=="solar" or str(zone.kind)=="reactor" or str(zone.kind)=="ice_extractor": continue
 		habitat_cells+=zone.cells.size()
 		if str(zone.kind)=="airlock": airlock_cells+=zone.cells.size()
 		for cell in zone.cells:
@@ -776,9 +1105,13 @@ func readiness() -> Array:
 		shelter_detail="Connected" if reachable==habitat_cells else "%d / %d cells" % [reachable,habitat_cells]
 	elif airlock_cells>0: shelter_status="partial"; shelter_detail="No rooms yet"
 	var items:Array=[{"id":"shelter","label":"Shelter + airlock","detail":shelter_detail,"status":shelter_status,"icon":"door-closed"}]
-	items.append(_target_item("beds","Crew quarters",int(systems.crew_capacity),"bed-double","%d / %d berths"))
-	items.append(_target_item("food","Food",int(systems.food),"wheat","%d / %d crew"))
-	items.append(_target_item("life","Air + water",int(systems.life),"wind","%d / %d crew"))
+	var crew_requirement := int(systems.crew_requirement)
+	items.append(_fitted_target_item("beds","Crew berths",int(systems.berths),int(systems.crew_capacity),crew_requirement,"bed-double"))
+	items.append(_fitted_target_item("food","Food production",int(systems.food),int(systems.food_capacity),crew_requirement,"wheat"))
+	var water_need := crew_requirement + ceili(float(counts_of("hydroponics")) * 1.5) + int(systems.water_draw)
+	items.append(_demand_item("water","Water from ice",int(systems.water),water_need,"droplets","%d / %d supply"))
+	items.append(_fitted_target_item("life","Air + water",int(systems.life),int(systems.life_capacity),crew_requirement,"wind"))
+	items.append(_fitted_target_item("research","Research capability",int(systems.research),int(systems.research_capacity),RESEARCH_TARGET,"flask-conical"))
 	var generation:=int(systems.generation); var draw:=int(systems.draw)
 	var power_status:="unmet"
 	if generation>0 and generation>=draw: power_status="met"
@@ -789,6 +1122,24 @@ func readiness() -> Array:
 func _target_item(id: String,item_label: String,value: int,icon_name: String,detail_format: String) -> Dictionary:
 	var status:="met" if value>=CREW_TARGET else ("partial" if value>0 else "unmet")
 	return {"id":id,"label":item_label,"detail":detail_format % [value,CREW_TARGET],"status":status,"icon":icon_name}
+
+func _fitted_item(id: String, item_label: String, output: int, room_capacity: int, icon_name: String) -> Dictionary:
+	return _fitted_target_item(id,item_label,output,room_capacity,CREW_TARGET,icon_name)
+
+func _fitted_target_item(id: String, item_label: String, output: int, room_capacity: int, target: int, icon_name: String) -> Dictionary:
+	var status := "met" if output >= target else ("partial" if output > 0 else "unmet")
+	return {"id":id,"label":item_label,"detail":"%d / %d equipped · room for %d" % [output, target, room_capacity],"status":status,"icon":icon_name}
+
+func _demand_item(id: String,item_label: String,value: int,demand: int,icon_name: String,detail_format: String) -> Dictionary:
+	if demand<=0: return {"id":id,"label":item_label,"detail":"Not needed yet","status":"met","icon":icon_name}
+	var status := "met" if value>=demand else ("partial" if value>0 else "unmet")
+	return {"id":id,"label":item_label,"detail":detail_format % [value,demand],"status":status,"icon":icon_name}
+
+func counts_of(zone_kind: String) -> int:
+	var total := 0
+	for zone in zones:
+		if str(zone.kind)==zone_kind: total += zone.cells.size()
+	return total
 
 func readiness_met() -> int:
 	var met:=0
@@ -804,10 +1155,12 @@ func suggestion() -> String:
 			"shelter":
 				if item.status=="unmet": return "Add an Airlock beside a room. Its inner end must touch the room and its outer end must face Mars. You have %s left." % left
 				return "Some rooms aren't connected to an airlock. Join them with a Corridor. You have %s left." % left
-			"beds": return "Add Living Quarters — every three cells house two crew. You have %s left." % left
-			"food": return "Add Hydroponics — each cell grows food for five crew. You have %s left." % left
-			"life": return "Add Life Support — each cell supports four crew. You have %s left." % left
-			"power": return "Add Solar Arrays within 12 m of the habitat. Aim them north (R) for full output. You have %s left." % left
+			"beds": return "Build enough Living Quarters, then furnish them with crew bunks. You have %s left." % left
+			"food": return "Build Hydroponics, then add grow equipment to produce food. You have %s left." % left
+			"water": return "Choose Ice Extractor in Resources, then place it over a blue subsurface-ice survey area. You have %s left." % left
+			"life": return "Build Life Support, then add air and water recycler equipment. You have %s left." % left
+			"research": return "Build a Science Lab, then add research equipment to learn from Mars. You have %s left." % left
+			"power": return "Add Solar Arrays within 30 m of the habitat. Aim them north (R) for full output. You have %s left." % left
 	return "Every system is ready for a crew of %d. Spend spare cargo on science or storage — %s left." % [CREW_TARGET,left]
 
 func cargo_by_category() -> Dictionary:
@@ -822,8 +1175,45 @@ func is_inside(point: Vector3) -> bool:
 	if point.y<habitat_base_y-.6 or point.y>habitat_base_y+4.0: return false
 	var cell:=Vector2i(roundi(point.x/CELL),roundi(point.z/CELL))
 	for zone in zones:
-		if str(zone.kind)!="solar" and cell in zone.cells: return true
+		if str(zone.kind)!="solar" and str(zone.kind)!="reactor" and str(zone.kind)!="ice_extractor" and cell in zone.cells: return true
 	return false
+
+# Environmental readout for the explorer HUD. The outdoor baseline comes from
+# the selected site; sealed rooms only become truly habitable once generated
+# power can run Life Support. Future first-person equipment can add a local
+# heat value here without changing the HUD or site data contracts.
+func climate_at(point: Vector3) -> Dictionary:
+	var telemetry: Dictionary = MHGame.site().get("telemetry", {})
+	var outside_temp := float(telemetry.get("outside_temp_c", -30.0))
+	var cell := Vector2i(roundi(point.x / CELL), roundi(point.z / CELL))
+	var zone_kind := ""
+	for zone in zones:
+		if str(zone.kind) != "solar" and str(zone.kind) != "reactor" and str(zone.kind) != "ice_extractor" and cell in zone.cells:
+			zone_kind = str(zone.kind)
+			break
+	if zone_kind.is_empty() or point.y < habitat_base_y - .6 or point.y > habitat_base_y + 4.0:
+		return {"temperature": outside_temp, "radiation": str(telemetry.get("radiation", "High")), "context": "Outside · EVA exposure", "state": "outside"}
+	var systems := _systems()
+	var powered := grid_power_online()
+	var climate_controlled := powered and int(systems.life) > 0
+	var temperature := outside_temp + 8.0 # A sealed but unheated shell slows heat loss.
+	var context := str(ZONE_TYPES.get(zone_kind, {}).get("label", "Habitat"))
+	var radiation := "Sheltered"
+	var state := "unheated"
+	if climate_controlled:
+		var targets := {"living": 20.0, "hydroponics": 24.0, "science": 21.0, "storage": 12.0, "corridor": 16.0, "airlock": 8.0, "vehicle_bay": 6.0, "glass_room": 22.0}
+		temperature = float(targets.get(zone_kind, 18.0))
+		state = "climate"
+		context += " · climate control"
+	elif powered:
+		temperature = minf(outside_temp + 12.0, 4.0)
+		state = "powered_shell"
+		context += " · powered, no heater"
+	else:
+		context += " · unheated shell"
+	if zone_kind == "glass_room":
+		radiation = "Moderate"
+	return {"temperature": temperature, "radiation": radiation, "context": context, "state": state}
 
 # ---------- camera + grid ----------
 func _camera() -> void:
@@ -841,11 +1231,12 @@ func _grid() -> void:
 	# blue, added on top of the terrain and fading out around the camera target.
 	var immediate:=ImmediateMesh.new()
 	immediate.surface_begin(Mesh.PRIMITIVE_LINES)
-	for n in range(-LIMIT,LIMIT):
+	var grid_limit := roundi(_site_build_limit())
+	for n in range(-grid_limit,grid_limit):
 		var at:=float(n)+.5
 		var major:=posmod(n-1,int(CELL))==0
 		var colour:=Color(MHStyle.CELL_LINE,.55) if major else Color(MHStyle.CELL_LINE,.16)
-		for points in [[Vector3(at,.09,-LIMIT),Vector3(at,.09,LIMIT)],[Vector3(-LIMIT,.09,at),Vector3(LIMIT,.09,at)]]:
+		for points in [[Vector3(at,.09,-grid_limit),Vector3(at,.09,grid_limit)],[Vector3(-grid_limit,.09,at),Vector3(grid_limit,.09,at)]]:
 			immediate.surface_set_color(colour); immediate.surface_add_vertex(points[0])
 			immediate.surface_set_color(colour); immediate.surface_add_vertex(points[1])
 	immediate.surface_end()
@@ -853,7 +1244,7 @@ func _grid() -> void:
 	var material:=ShaderMaterial.new(); material.shader=shader
 	grid=MeshInstance3D.new(); grid.mesh=immediate; grid.material_override=material; grid.visible=false; grid.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; world.add_child(grid)
 	# Dark blueprint wash under the lines so the cyan grid reads against bright terrain.
-	var wash:=MeshInstance3D.new(); var plane:=PlaneMesh.new(); plane.size=Vector2(LIMIT*2.0,LIMIT*2.0); wash.mesh=plane; wash.position.y=-.02; wash.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var wash:=MeshInstance3D.new(); var plane:=PlaneMesh.new(); plane.size=Vector2(grid_limit*2.0,grid_limit*2.0); wash.mesh=plane; wash.position.y=-.02; wash.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var wash_shader:=Shader.new(); wash_shader.code=GRID_WASH_SHADER; var wash_material:=ShaderMaterial.new(); wash_material.shader=wash_shader; wash.material_override=wash_material; wash.name="BlueprintWash"; grid.add_child(wash)
 
 # ---------- build HUD (shots 1e / 1f) ----------
@@ -942,7 +1333,7 @@ func _refresh_catalogue() -> void:
 	var remaining:=CARGO_BUDGET-_used_cargo()
 	for id in ZONE_TYPES:
 		if str(ZONE_INFO[id].cat)!=category: continue
-		catalogue_grid.add_child(_part_card(id,id==kind,remaining<CELL_COST))
+		catalogue_grid.add_child(_part_card(id,id==kind,remaining<int(ZONE_TYPES[id].cost)))
 	for child in catalogue_detail.get_children(): child.queue_free()
 	var info:Dictionary=ZONE_INFO[kind]
 	var head:=MHStyle.hbox(8); catalogue_detail.add_child(head)

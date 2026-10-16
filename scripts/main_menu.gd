@@ -476,7 +476,13 @@ func _choose_site(id: String, move_camera := true) -> void:
 		col.add_child(MHWidgets.Meter.new().setup(str(condition[0]), float(condition[1]), 10.0, "", str(condition[3])))
 		var meter: MHWidgets.Meter = col.get_child(col.get_child_count() - 1)
 		meter.value_label = str(condition[2])
-	col.add_child(MHStyle.body("Simplified game-balance estimates — not NASA specifications. In this build the site sets the lighting; resource effects come later.", 13, MHStyle.TEXT_MUTED))
+	var location := str(site.get("based_on", ""))
+	var coordinates := str(site.get("coordinates", ""))
+	if not location.is_empty():
+		var attribution := "Based on %s, Mars" % location
+		if not coordinates.is_empty(): attribution += " · " + coordinates
+		col.add_child(MHStyle.body(attribution + ".", 13, MHStyle.TEXT_MUTED))
+	col.add_child(MHStyle.body("Terrain and balance are simplified for this learning simulation, rather than a scale NASA map.", 13, MHStyle.TEXT_MUTED))
 	panel.add_child(col)
 	_site_conditions.add_child(panel)
 
