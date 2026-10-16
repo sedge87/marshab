@@ -388,8 +388,9 @@ func _equipment_offset(entry: Dictionary, size: Vector3) -> Vector3:
 	return Vector3(0, y, back)
 
 func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
-	# Greybox stand-in matching the catalogue footprint, height and placement.
-	# When final art arrives, `asset_scene` replaces this without rule changes.
+	# The catalogue remains authoritative for placement, collision and game effects.
+	# Verified GLB art is presentation-only; the original sized proxy is retained as
+	# an explicit fallback when an external asset is unavailable or fails to instantiate.
 	var entry := EquipmentCatalog.get_entry(id)
 	var size := _equipment_size(entry)
 	var offset := _equipment_offset(entry, size)
@@ -403,12 +404,32 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 	body.position = offset + Vector3(0, size.y * .5, 0)
 	body.collision_layer = 1
 	holder.add_child(body)
+	var model_loaded := false
+	var asset_path := str(entry.get("asset_scene", ""))
+	if not asset_path.is_empty() and ResourceLoader.exists(asset_path):
+		var resource := load(asset_path)
+		if resource is PackedScene:
+			var model := (resource as PackedScene).instantiate() as Node3D
+			if model != null:
+				model.name = "Model"
+				model.position = offset
+				holder.add_child(model)
+				model_loaded = true
+	if not bool(entry.get("walkthrough", false)) and size.y > .15:
+		var collision := CollisionShape3D.new(); var shape := BoxShape3D.new(); shape.size = size; collision.shape = shape; body.add_child(collision)
+	if not model_loaded:
+		_add_equipment_placeholder(body, size, tint)
+	# Generated model indicator meshes remain linked to the existing grid bus.
+	# If a model has no named status mesh, preserve the legacy visible lamp.
+	if int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0 and (not model_loaded or not _bind_equipment_power_visuals(holder)):
+		_add_equipment_power_lamp(body, size)
+	return holder
+
+func _add_equipment_placeholder(body: StaticBody3D, size: Vector3, tint: Color) -> void:
 	var visual := MeshInstance3D.new(); var mesh := BoxMesh.new(); mesh.size = size; visual.mesh = mesh
 	var material := StandardMaterial3D.new(); material.albedo_color = MHStyle.STRUCTURAL_WHITE.lerp(tint, .38).darkened(.12); material.roughness = .62
 	visual.material_override = material
 	body.add_child(visual)
-	if not bool(entry.get("walkthrough", false)) and size.y > .15:
-		var collision := CollisionShape3D.new(); var shape := BoxShape3D.new(); shape.size = size; collision.shape = shape; body.add_child(collision)
 	# Dark seal band and an orange service marker on the front face (−Z).
 	if size.y > .3:
 		var band := MeshInstance3D.new(); var band_mesh := BoxMesh.new(); band_mesh.size = Vector3(size.x + .02, minf(.08, size.y * .2), size.z + .02); band.mesh = band_mesh
@@ -417,14 +438,30 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 	var marker := MeshInstance3D.new(); var marker_mesh := BoxMesh.new(); marker_mesh.size = Vector3(minf(.3, size.x * .4), minf(.06, size.y * .5), .02); marker.mesh = marker_mesh
 	var orange := StandardMaterial3D.new(); orange.albedo_color = MHStyle.SAFETY_ORANGE; marker.material_override = orange
 	marker.position = Vector3(-size.x * .5 + marker_mesh.size.x * .5 + .08, size.y * .5 - marker_mesh.size.y - .04, -size.z * .5 - .011); body.add_child(marker)
-	# Powered items get a status lamp on the grid bus, so they visibly go dark
-	# when generation can't cover demand.
-	if int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0:
-		var lamp := MeshInstance3D.new(); var lamp_mesh := BoxMesh.new(); lamp_mesh.size = Vector3(.14, minf(.06, size.y * .5), .02); lamp.mesh = lamp_mesh
-		var glow := StandardMaterial3D.new(); glow.emission_enabled = true; glow.emission = MHStyle.HOLO_VALID; glow.albedo_color = Color("#F3E4C6"); lamp.material_override = glow
-		lamp.add_to_group("grid_powered_light"); lamp.set_meta("grid_emission_on", MHStyle.HOLO_VALID); lamp.set_meta("grid_emission_off", Color("#293034"))
-		lamp.position = Vector3(size.x * .5 - .14, size.y * .5 - lamp_mesh.size.y - .04, -size.z * .5 - .011); body.add_child(lamp)
-	return holder
+
+func _add_equipment_power_lamp(body: StaticBody3D, size: Vector3) -> void:
+	var lamp := MeshInstance3D.new(); var lamp_mesh := BoxMesh.new(); lamp_mesh.size = Vector3(.14, minf(.06, size.y * .5), .02); lamp.mesh = lamp_mesh
+	var glow := StandardMaterial3D.new(); glow.emission_enabled = true; glow.emission = MHStyle.HOLO_VALID; glow.albedo_color = Color("#F3E4C6"); lamp.material_override = glow
+	lamp.add_to_group("grid_powered_light"); lamp.set_meta("grid_emission_on", MHStyle.HOLO_VALID); lamp.set_meta("grid_emission_off", Color("#293034"))
+	lamp.position = Vector3(size.x * .5 - .14, size.y * .5 - lamp_mesh.size.y - .04, -size.z * .5 - .011); body.add_child(lamp)
+
+func _bind_equipment_power_visuals(holder: Node) -> bool:
+	var bound := false
+	for node in holder.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		if mesh == null or not (mesh.name.begins_with("Light_") or mesh.name.begins_with("Screen_") or mesh.name.begins_with("Status_")):
+			continue
+		var source := mesh.get_active_material(0) as StandardMaterial3D
+		var material := source.duplicate() as StandardMaterial3D if source != null else StandardMaterial3D.new()
+		material.emission_enabled = true
+		if material.emission == Color.BLACK:
+			material.emission = MHStyle.HOLO_VALID
+		mesh.material_override = material
+		mesh.add_to_group("grid_powered_light")
+		mesh.set_meta("grid_emission_on", material.emission)
+		mesh.set_meta("grid_emission_off", Color("#293034"))
+		bound = true
+	return bound
 
 func _draw_equipment_preview(cell: Vector2i, valid: bool) -> void:
 	var key := "equip|%s|%s|%s|%s" % [equipment_id, cell, valid, airlock_direction]
