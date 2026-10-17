@@ -194,7 +194,17 @@ func _build_hud() -> void:
 	_hud.layer = 25
 	add_child(_hud)
 	var panel := PanelContainer.new()
-	panel.position = Vector2(32, 140)
+	# Keep this contextual placement readout clear of the explore HUD's site
+	# telemetry and colony chip in the upper-left. It sits above the bottom
+	# controls at lower-right, close enough to read while aiming at a surface.
+	panel.anchor_left = 1.0
+	panel.anchor_right = 1.0
+	panel.anchor_top = 1.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = -392
+	panel.offset_right = -32
+	panel.offset_top = -282
+	panel.offset_bottom = -92
 	panel.custom_minimum_size = Vector2(360, 0)
 	panel.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, MHStyle.BORDER_SUBTLE, MHStyle.RADIUS_MD, 1, Vector4(16, 16, 16, 16)))
 	_hud.add_child(panel)
