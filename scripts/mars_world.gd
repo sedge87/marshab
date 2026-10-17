@@ -5,6 +5,7 @@ const MENU_SCENE := "res://scenes/main_menu.tscn"
 const ORIGINAL_ENVIRONMENT_SCRIPT := preload("res://scripts/original_mars_environment.gd")
 const BUILD_CONTROLLER_SCRIPT := preload("res://scripts/build_controller.gd")
 const INTERIOR_BUILD_CONTROLLER_SCRIPT := preload("res://scripts/interior_build_controller.gd")
+const DAY_NIGHT_SCRIPT := preload("res://scripts/site_day_night.gd")
 const SCOUT_ROVER_SCENE_PATH := "res://scenes/mars_scout_rover.tscn"
 # Optional companion feature. Set false to remove it without touching player,
 # habitat or simulation code.
@@ -20,6 +21,7 @@ var mission_control: MHMissionControl
 var dust: CPUParticles3D
 var scout_rover: Node3D
 var interior_builder: MHInteriorBuildController
+var day_night: MHSiteDayNight
 
 func _ready() -> void:
 	MHGame.set_accent(MHGame.accent_index)
@@ -33,6 +35,10 @@ func _ready() -> void:
 	interior_builder = INTERIOR_BUILD_CONTROLLER_SCRIPT.new()
 	add_child(interior_builder)
 	interior_builder.setup(player, builder)
+	day_night = DAY_NIGHT_SCRIPT.new()
+	add_child(day_night)
+	day_night.setup(environment, builder)
+	_restore_pending_habitat()
 	_build_hud()
 	_apply_settings()
 	_play_intro()
@@ -149,6 +155,8 @@ func _show_pause() -> void:
 	pause_menu.resumed.connect(_resume)
 	pause_menu.mission_control.connect(_open_mission_control)
 	pause_menu.settings.connect(_open_settings)
+	pause_menu.save_requested.connect(_save_habitat)
+	pause_menu.load_requested.connect(_load_habitat)
 	pause_menu.exit_to_menu.connect(_return_menu)
 	overlay_layer.add_child(pause_menu)
 
@@ -177,6 +185,45 @@ func _return_menu() -> void:
 	MHAudio.build_layer(false)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().change_scene_to_file(MENU_SCENE)
+
+# ---------- three-slot habitat saves ----------
+func _save_habitat(slot: int) -> void:
+	if builder == null or player == null:
+		return
+	var state := {
+		"site_id": MHGame.site_id,
+		"site_name": MHGame.site_name(),
+		"colony_name": MHGame.colony_name,
+		"mission_statement": MHGame.mission_statement,
+		"emblem": MHGame.emblem,
+		"accent_index": MHGame.accent_index,
+		"builder": builder.export_habitat_state(),
+		"player_position": player.global_position,
+		"player_rotation_y": player.rotation.y,
+		"day_night": day_night.export_state() if day_night != null else {}
+	}
+	if MHGame.save_habitat(slot, state) == OK:
+		builder._flash_notice("valid", "Habitat saved", "Saved to slot %d." % slot)
+	else:
+		builder._flash_notice("invalid", "Save failed", "The habitat could not be written to slot %d." % slot)
+
+func _load_habitat(slot: int) -> void:
+	if not MHGame.prepare_habitat_load(slot):
+		return
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+func _restore_pending_habitat() -> void:
+	if MHGame.pending_save_state.is_empty():
+		return
+	var state := MHGame.pending_save_state
+	MHGame.pending_save_state = {}
+	builder.restore_habitat_state(state.get("builder", {}) as Dictionary)
+	player.global_position = state.get("player_position", player.global_position) as Vector3
+	player.rotation.y = float(state.get("player_rotation_y", player.rotation.y))
+	player.safe_position = player.global_position
+	if day_night != null:
+		day_night.restore_state(state.get("day_night", {}) as Dictionary)
 
 # Letterbox bars from the landing screen animate away into first person (360 ms).
 func _play_intro() -> void:

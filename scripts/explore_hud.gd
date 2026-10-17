@@ -24,6 +24,7 @@ var _readiness_age := 0.0
 var _collapsed := false
 var _telemetry_temp: Label
 var _telemetry_radiation: Label
+var _telemetry_sunlight: Label
 var _telemetry_context: Label
 var _telemetry_key := ""
 
@@ -118,7 +119,8 @@ func _site_telemetry() -> PanelContainer:
 	var second_row := MHStyle.hbox(14)
 	_telemetry_radiation = _telemetry_metric("RADIATION", str(telemetry.get("radiation", "—")), MHStyle.WARN)
 	second_row.add_child(_telemetry_radiation.get_parent())
-	second_row.add_child(_telemetry_metric("SUNLIGHT", str(telemetry.get("sunlight", "—")), MHStyle.VALID).get_parent())
+	_telemetry_sunlight = _telemetry_metric("SUNLIGHT", str(telemetry.get("sunlight", "—")), MHStyle.VALID)
+	second_row.add_child(_telemetry_sunlight.get_parent())
 	column.add_child(second_row)
 	column.add_child(MHStyle.body("Shift estimates · suit required outside", 10, MHStyle.TEXT_MUTED))
 	panel.add_child(column)
@@ -149,14 +151,17 @@ func _update_telemetry() -> void:
 	if _telemetry_temp == null or builder == null:
 		return
 	var climate := builder.climate_at(player.global_position)
-	var key := str([climate.temperature, climate.radiation, climate.context])
+	var key := str([climate.temperature, climate.radiation, climate.context, MHGame.sol_hour, MHGame.sunlight_fraction])
 	if key == _telemetry_key:
 		return
 	_telemetry_key = key
 	_telemetry_temp.text = "%d °C" % roundi(float(climate.temperature))
 	_telemetry_radiation.text = str(climate.radiation)
 	_telemetry_radiation.add_theme_color_override("font_color", MHStyle.WARN if str(climate.radiation) == "High" else MHStyle.VALID)
-	_telemetry_context.text = str(climate.context)
+	_telemetry_context.text = "%s · %s" % [str(climate.context), MHGame.formatted_sol_time()]
+	if _telemetry_sunlight != null:
+		_telemetry_sunlight.text = "%d%%" % roundi(MHGame.sunlight_fraction * 100.0)
+		_telemetry_sunlight.add_theme_color_override("font_color", MHStyle.VALID if MHGame.sunlight_fraction > .1 else MHStyle.TEXT_MUTED)
 
 func _markers() -> Array:
 	var out: Array = []

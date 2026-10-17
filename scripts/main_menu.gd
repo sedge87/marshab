@@ -290,6 +290,15 @@ func _title_screen() -> void:
 	quick.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	quick.pressed.connect(show_screen.bind("loading"))
 	menu.add_child(quick)
+	for slot in range(1, MHGame.SAVE_SLOT_COUNT + 1):
+		var summary := MHGame.save_slot_summary(slot)
+		if not bool(summary.get("exists", false)):
+			continue
+		var load := MHStyle.button("Load %d · %s" % [slot, str(summary.get("colony_name", "Habitat"))], "ghost", "save")
+		load.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		load.tooltip_text = "Saved %s at %s" % [str(summary.get("site_name", "Mars")), str(summary.get("saved_at", ""))]
+		load.pressed.connect(_load_slot.bind(slot))
+		menu.add_child(load)
 	var row := MHStyle.hbox(12)
 	var settings := MHStyle.button("Settings", "ghost", "settings")
 	settings.pressed.connect(_open_settings)
@@ -308,6 +317,10 @@ func _title_screen() -> void:
 		h.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		bar.add_child(h)
 	hero.grab_focus.call_deferred()
+
+func _load_slot(slot: int) -> void:
+	if MHGame.prepare_habitat_load(slot):
+		show_screen("loading")
 
 func _hero_button(title_text: String, meta: String, icon_name: String) -> Button:
 	var b := Button.new()

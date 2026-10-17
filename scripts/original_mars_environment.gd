@@ -12,6 +12,7 @@ var _terrain_body: StaticBody3D
 var world_environment: WorldEnvironment
 var sun: DirectionalLight3D
 var palette_name := "day"
+var _palette_values: Dictionary = {}
 
 func build(palette := "") -> void:
 	name = "OriginalMarsEnvironment"
@@ -137,9 +138,20 @@ func _build_sky_and_lighting() -> void:
 func apply_palette(palette: String) -> void:
 	palette_name = palette if MHGame.PALETTES.has(palette) else "day"
 	var values: Dictionary = MHGame.PALETTES[palette_name]
+	_palette_values = values
 	world_environment.environment = MHGame.build_environment(values)
 	MHGame.configure_sun(sun, values)
 	MHGame.set_window_glow(float(values.window))
+
+func apply_daylight(sunlight: float) -> void:
+	# Keep the art-direction palette, but let the simulated sun visibly set. A
+	# small ambient floor preserves safe readability on low-end school devices.
+	if _palette_values.is_empty() or sun == null or world_environment == null:
+		return
+	var level := clampf(sunlight, 0.0, 1.0)
+	sun.light_energy = float(_palette_values.get("sun_energy", 0.8)) * lerpf(0.025, 1.0, level)
+	world_environment.environment.ambient_light_energy = float(_palette_values.get("ambient_energy", 0.35)) * lerpf(0.16, 1.0, level)
+	MHGame.set_window_glow(float(_palette_values.get("window", .9)) * lerpf(0.25, 1.0, level))
 
 func _build_terrain() -> void:
 	_terrain_body = StaticBody3D.new()

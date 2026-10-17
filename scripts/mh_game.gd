@@ -7,6 +7,8 @@ extends RefCounted
 
 const SITES_PATH := "res://data/sites.json"
 const SETTINGS_PATH := "user://settings.cfg"
+const SAVE_DIRECTORY := "user://habitats"
+const SAVE_SLOT_COUNT := 3
 const EMBLEMS := ["rocket", "orbit", "satellite", "mountain-snow", "sun", "atom"]
 
 # Lighting presets from the reference scene (mars-scene.js PAL). sun is the
@@ -41,6 +43,14 @@ static var emblem := "rocket"
 static var accent_index := 0
 static var site_id := "plains"
 
+# The currently simulated site conditions.  The day/night controller owns these
+# values at runtime; keeping them here means HUD, climate and power simulation
+# all read the exact same clock rather than approximating it independently.
+static var sol_hour := 8.0
+static var sunlight_fraction := 1.0
+static var outside_temperature_c := -25.0
+static var pending_save_state: Dictionary = {}
+
 static var _sites: Array = []
 static var _accent_material: StandardMaterial3D
 static var _window_glow := .9
@@ -59,6 +69,66 @@ static func site() -> Dictionary:
 
 static func site_name() -> String: return str(site().get("name", "Open Plains"))
 static func palette_name() -> String: return str(site().get("palette", "day"))
+
+static func set_site_conditions(hour: float, sunlight: float, temperature: float) -> void:
+	sol_hour = wrapf(hour, 0.0, 24.0)
+	sunlight_fraction = clampf(sunlight, 0.0, 1.0)
+	outside_temperature_c = temperature
+
+static func formatted_sol_time() -> String:
+	var whole_hour := int(floor(sol_hour))
+	var minutes := int(round((sol_hour - float(whole_hour)) * 60.0))
+	if minutes >= 60:
+		whole_hour = (whole_hour + 1) % 24
+		minutes = 0
+	return "%02d:%02d" % [whole_hour, minutes]
+
+# ---------- habitat saves ----------
+static func _save_path(slot: int) -> String:
+	return "%s/slot_%d.save" % [SAVE_DIRECTORY, clampi(slot, 1, SAVE_SLOT_COUNT)]
+
+static func save_habitat(slot: int, state: Dictionary) -> Error:
+	var absolute_directory := ProjectSettings.globalize_path(SAVE_DIRECTORY)
+	var directory_error := DirAccess.make_dir_recursive_absolute(absolute_directory)
+	if directory_error != OK:
+		return directory_error
+	var file := FileAccess.open(_save_path(slot), FileAccess.WRITE)
+	if file == null:
+		return FileAccess.get_open_error()
+	file.store_var({"version": 1, "saved_at": Time.get_datetime_string_from_system(true), "state": state})
+	return OK
+
+static func load_habitat(slot: int) -> Dictionary:
+	var path := _save_path(slot)
+	if not FileAccess.file_exists(path):
+		return {}
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {}
+	var payload = file.get_var()
+	if not payload is Dictionary:
+		return {}
+	return payload as Dictionary
+
+static func save_slot_summary(slot: int) -> Dictionary:
+	var payload := load_habitat(slot)
+	if payload.is_empty():
+		return {"slot": slot, "exists": false}
+	var state: Dictionary = payload.get("state", {})
+	return {"slot": slot, "exists": true, "saved_at": str(payload.get("saved_at", "")), "colony_name": str(state.get("colony_name", "Habitat")), "site_name": str(state.get("site_name", "Mars"))}
+
+static func prepare_habitat_load(slot: int) -> bool:
+	var payload := load_habitat(slot)
+	var state: Dictionary = payload.get("state", {})
+	if state.is_empty():
+		return false
+	pending_save_state = state
+	site_id = str(state.get("site_id", site_id))
+	colony_name = str(state.get("colony_name", colony_name))
+	mission_statement = str(state.get("mission_statement", mission_statement))
+	emblem = str(state.get("emblem", emblem))
+	set_accent(int(state.get("accent_index", accent_index)))
+	return true
 
 static func accent() -> Color: return MHStyle.COLONY_ACCENTS[accent_index].colour
 

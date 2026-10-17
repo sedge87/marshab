@@ -8,6 +8,8 @@ signal resumed
 signal mission_control
 signal settings
 signal exit_to_menu
+signal save_requested(slot: int)
+signal load_requested(slot: int)
 
 var _controls_sheet: Control
 var _controls_button: Button
@@ -37,6 +39,19 @@ func _ready() -> void:
 	_controls_button = _row(list, "Controls", "selected", "keyboard")
 	_controls_button.pressed.connect(_toggle_controls)
 	_row(list, "Settings", "secondary", "settings").pressed.connect(func() -> void: settings.emit())
+	list.add_child(MHStyle.eyebrow("Habitat saves", MHStyle.accent, 13))
+	var slots := MHStyle.hbox(6)
+	for slot in range(1, MHGame.SAVE_SLOT_COUNT + 1):
+		var save := MHStyle.button("Save %d" % slot, "ghost", "save")
+		save.tooltip_text = "Save this habitat to slot %d" % slot
+		save.pressed.connect(save_requested.emit.bind(slot))
+		slots.add_child(save)
+		if MHGame.save_slot_summary(slot).get("exists", false):
+			var load := MHStyle.button("Load %d" % slot, "ghost", "rotate-ccw")
+			load.tooltip_text = "Load the habitat in slot %d" % slot
+			load.pressed.connect(load_requested.emit.bind(slot))
+			slots.add_child(load)
+	list.add_child(slots)
 	_row(list, "Exit to main menu", "ghost", "log-out").pressed.connect(func() -> void: exit_to_menu.emit())
 	var footer := MHStyle.mono("Offline build · %s" % MHGame.site_name(), 13, MHStyle.TEXT_MUTED)
 	footer.custom_minimum_size.y = 40

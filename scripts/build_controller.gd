@@ -1406,7 +1406,7 @@ func _systems() -> Dictionary:
 	var research:int=mini(research_capacity,int(equipment.research))
 	var generation:=0.0
 	for zone in zones:
-		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(_airlock_side(zone))
+		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(_airlock_side(zone))*MHGame.sunlight_fraction
 		elif str(zone.kind)=="reactor" and _power_source_connected(zone): generation+=REACTOR_OUTPUT
 	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.glass_room*2+counts.hydroponics*5+counts.life_support*3+counts.science*5+counts.vehicle_bay*4+counts.ice_extractor*8+int(equipment.power_draw)
 	# Dynamic non-catalogue devices can opt into the grid by joining this group
@@ -1453,6 +1453,50 @@ func _solar_efficiency(direction: Vector2i) -> float:
 	if alignment>0: return 1.0
 	if alignment==0: return .55
 	return .15
+
+# ---------- save / restore ----------
+# Only simulation records are serialised.  Meshes, colliders and HUD are rebuilt
+# from those records so saves remain valid when presentation assets are updated.
+func export_habitat_state() -> Dictionary:
+	return {
+		"zones": zones.duplicate(true),
+		"placed_equipment": placed_equipment.duplicate(true),
+		"placed_interior": placed_interior.duplicate(true),
+		"habitat_base_y": habitat_base_y,
+		"kind": kind,
+		"airlock_direction": airlock_direction
+	}
+
+func restore_habitat_state(state: Dictionary) -> void:
+	for child in root.get_children(): child.free()
+	for child in furnishing.get_children(): child.free()
+	zones = (state.get("zones", []) as Array).duplicate(true)
+	# Older saves or hand-authored test records may not carry display fields.
+	# Recreate only those derivable fields; never change a valid saved layout.
+	for index in range(zones.size()):
+		var saved_zone: Dictionary = zones[index] as Dictionary
+		if not saved_zone.has("door_direction"):
+			saved_zone["door_direction"] = Vector2i(0, -1)
+		if not saved_zone.has("cost"):
+			saved_zone["cost"] = _zone_cost(saved_zone.get("cells", []) as Array)
+		zones[index] = saved_zone
+	placed_equipment = (state.get("placed_equipment", []) as Array).duplicate(true)
+	placed_interior.clear()
+	habitat_base_y = float(state.get("habitat_base_y", habitat_base_y))
+	kind = str(state.get("kind", kind))
+	airlock_direction = state.get("airlock_direction", airlock_direction) as Vector2i
+	for raw_item in state.get("placed_interior", []) as Array:
+		var item: Dictionary = raw_item as Dictionary
+		var item_id := str(item.get("id", ""))
+		var position: Vector3 = item.get("position", Vector3.ZERO) as Vector3
+		var visual := free_interior_visual(item_id, position, float(item.get("rotation_y", 0.0)))
+		visual.name = "Interior_%s" % str(item.get("placement_id", item_id))
+		visual.set_meta("equipment_id", item_id)
+		visual.set_meta("interior_placement_id", str(item.get("placement_id", "")))
+		furnishing.add_child(visual)
+		placed_interior.append(item.duplicate(true))
+	_history.clear()
+	_rebuild()
 
 func _update_systems() -> void:
 	_update_summary()
@@ -1557,7 +1601,7 @@ func is_inside(point: Vector3) -> bool:
 # heat value here without changing the HUD or site data contracts.
 func climate_at(point: Vector3) -> Dictionary:
 	var telemetry: Dictionary = MHGame.site().get("telemetry", {})
-	var outside_temp := float(telemetry.get("outside_temp_c", -30.0))
+	var outside_temp := MHGame.outside_temperature_c if MHGame.outside_temperature_c != 0.0 else float(telemetry.get("outside_temp_c", -30.0))
 	var cell := Vector2i(roundi(point.x / CELL), roundi(point.z / CELL))
 	var zone_kind := ""
 	for zone in zones:
