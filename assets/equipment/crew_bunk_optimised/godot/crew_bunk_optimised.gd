@@ -21,8 +21,12 @@ var _lit_lamp_material: StandardMaterial3D
 var _drawer_open := [false, false, false]
 var _drawer_nodes: Dictionary = {}
 var _drawer_original_positions: Dictionary = {}
+var _light_enabled := true
+var _privacy_closed := false
 
 func _ready() -> void:
+	add_to_group("habitat_interactable")
+	set_meta("interaction_hint", "E curtain · F light · G drawer")
 	_emissive_mesh = find_child("ReadingLight_Emissive__light", true, false) as MeshInstance3D
 	_dark_lamp_material = StandardMaterial3D.new()
 	_dark_lamp_material.albedo_color = Color(0.44, 0.46, 0.43)
@@ -54,6 +58,7 @@ func _ready() -> void:
 	set_privacy_closed(curtain_initially_closed)
 
 func set_reading_light_enabled(enabled: bool) -> void:
+	_light_enabled = enabled
 	if reading_light != null:
 		reading_light.visible = enabled
 		reading_light.light_energy = light_energy
@@ -62,6 +67,7 @@ func set_reading_light_enabled(enabled: bool) -> void:
 	reading_light_changed.emit(enabled)
 
 func set_privacy_closed(closed: bool) -> void:
+	_privacy_closed = closed
 	if closed_curtain != null:
 		closed_curtain.visible = closed
 	privacy_curtain_changed.emit(closed)
@@ -85,3 +91,17 @@ func set_drawer_open(index: int, opened: bool) -> void:
 func toggle_drawer(index: int) -> void:
 	if index >= 1 and index <= 3:
 		set_drawer_open(index, not _drawer_open[index-1])
+
+## Player-facing interaction hooks. The simulation still owns the bunk's
+## berth/happiness/power effects; these only change its presentation state.
+func interact(_actor: Node = null) -> bool:
+	set_privacy_closed(not _privacy_closed)
+	return true
+
+func interact_secondary(_actor: Node = null) -> bool:
+	set_reading_light_enabled(not _light_enabled)
+	return true
+
+func interact_tertiary(_actor: Node = null) -> bool:
+	toggle_drawer(1)
+	return true

@@ -114,6 +114,7 @@ var preview: Node3D
 var pivot: Node3D
 var camera: Camera3D
 var grid: MeshInstance3D
+var player_marker: Node3D
 var zoom := 54.0
 var habitat_base_y := 0.35
 var ui: Control
@@ -151,7 +152,7 @@ func _ready() -> void:
 	preview=Node3D.new(); preview.name="ZonePreview"; world.add_child(preview)
 	furnishing=Node3D.new(); furnishing.name="HabitatEquipment"; world.add_child(furnishing)
 	if display_only: return
-	_camera(); _grid(); _ui()
+	_camera(); _grid(); _ui(); _create_player_marker()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if display_only: return
@@ -202,6 +203,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	if not build_mode: return
+	_update_player_marker()
 	# Removing and furnishing pick against the deck the player sees, not the ground.
 	hover=_cell_at_mouse(habitat_base_y if tool=="remove" or not equipment_id.is_empty() else 0.0)
 	if grid!=null:
@@ -243,11 +245,46 @@ func _toggle() -> void:
 	if explore_hud!=null: explore_hud.visible=not build_mode
 	if not build_mode: _set_tool("place"); _update_hologram_ui([],""); _preview_key=""; _draw_preview([],false)
 	_set_build_view(build_mode)
+	_update_player_marker()
 	var player:=world.get_node("Player"); player.set_meta("build_mode_active",build_mode)
 	Input.mouse_mode=Input.MOUSE_MODE_VISIBLE if build_mode else Input.MOUSE_MODE_CAPTURED
 	if not build_mode:
 		dragging=false; _draw_preview([],false)
-		player.global_position=Vector3(12,3,18); player.safe_position=player.global_position; player.velocity=Vector3.ZERO
+		# Leave the player exactly where they were when the plan view was opened.
+		# Build mode is a camera/tool mode, not a teleport or respawn.
+		player.velocity=Vector3.ZERO
+
+func _create_player_marker() -> void:
+	player_marker = Node3D.new()
+	player_marker.name = "BuildModePlayerMarker"
+	player_marker.visible = false
+	world.add_child(player_marker)
+	var mesh_instance := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = .22
+	mesh.bottom_radius = .34
+	mesh.height = .08
+	mesh_instance.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color("#FF8A3D")
+	material.emission_enabled = true
+	material.emission = Color("#FF5C22")
+	material.emission_energy_multiplier = 1.8
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh_instance.material_override = material
+	mesh_instance.position.y = .14
+	player_marker.add_child(mesh_instance)
+	var label := _label3d("PLAYER", 28, Color("#FFE2B4"), 800)
+	label.position = Vector3(0, .55, 0)
+	player_marker.add_child(label)
+
+func _update_player_marker() -> void:
+	if player_marker == null:
+		return
+	var player := world.get_node_or_null("Player") as Node3D
+	player_marker.visible = build_mode and player != null
+	if player != null:
+		player_marker.global_position = player.global_position
 
 # Equipment sits on the raised deck, so it projects onto the floor height
 # rather than the ground plane the zone painter uses.

@@ -31,7 +31,7 @@ const PRESETS := {
 
 # One list of controls feeds the pause sheet and Settings → Controls.
 const CONTROLS := [
-	["Move", [[["W", "A", "S", "D"], "Walk"], [["Mouse"], "Look around"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["E"], "Interact · cycle airlock"], [["Esc"], "Pause · free the mouse"]]],
+	["Move", [[["W", "A", "S", "D"], "Walk"], [["Mouse"], "Look around"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["E"], "Interact · doors / bunk curtain"], [["F"], "Bunk light"], [["G"], "Bunk drawer"], [["Esc"], "Pause · free the mouse"]]],
 	["Build", [[["B"], "Build ⇄ Explore"], [["LMB"], "Click or drag to place"], [["R"], "Rotate outside face"], [["RMB"], "Cancel placement"], [["X"], "Remove tool · full refund"], [["Ctrl", "Z"], "Undo last placement"]]],
 	["Camera & menus", [[["W", "A", "S", "D"], "Pan (build)"], [["Q", "E"], "Orbit (build)"], [["Wheel"], "Zoom (build)"], [["Tab"], "Catalogue"], [["M"], "Mission Control"]]]
 ]

@@ -24,8 +24,12 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
-		if not _use_nearby_habitat_ladder():
+		if not _use_looked_at_interactable("interact") and not _use_nearby_habitat_ladder():
 			_toggle_nearby_airlock_door()
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
+		_use_looked_at_interactable("interact_secondary")
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G:
+		_use_looked_at_interactable("interact_tertiary")
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
 		head.rotate_x(-event.relative.y * MOUSE_SENSITIVITY)
@@ -116,5 +120,22 @@ func _use_nearby_habitat_ladder() -> bool:
 	if nearest != null:
 		nearest.use(self)
 		return true
+	return false
+
+func _use_looked_at_interactable(method_name: String) -> bool:
+	if bool(get_meta("build_mode_active", false)) or bool(get_meta("interior_build_active", false)):
+		return false
+	var camera := get_node_or_null("Head/Camera3D") as Camera3D
+	if camera == null or not camera.is_inside_tree():
+		return false
+	var query := PhysicsRayQueryParameters3D.create(camera.global_position, camera.global_position + -camera.global_transform.basis.z * 3.0)
+	query.exclude = [get_rid()]
+	query.collision_mask = 1
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var node := hit.get("collider") as Node if not hit.is_empty() else null
+	while node != null:
+		if node.has_method(method_name):
+			return bool(node.call(method_name, self))
+		node = node.get_parent()
 	return false
 
