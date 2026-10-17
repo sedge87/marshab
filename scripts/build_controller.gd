@@ -1147,12 +1147,8 @@ func _add_exterior_wall(centre: Vector3,side: Vector2i,zone_kind: String,zone: D
 	_add_exterior_safety_light(centre, side)
 
 func _add_exterior_safety_light(centre: Vector3, side: Vector2i) -> void:
-	# One small no-shadow flood every other wall bay provides useful navigation
-	# light without filling a larger student habitat with expensive shadow lights.
-	var cell_x := roundi(centre.x / CELL)
-	var cell_z := roundi(centre.z / CELL)
-	if posmod(cell_x + cell_z + (1 if side.x != 0 else 0), 2) != 0:
-		return
+	# A modest no-shadow flood on every exposed wall bay gives an even perimeter
+	# wash. The earlier alternating pattern made light look direction-dependent.
 	var fixture := Node3D.new()
 	fixture.name = "ExteriorSafetyLight"
 	fixture.position = centre + Vector3(side.x * (CELL * .5 + .06), habitat_base_y + 2.36, side.y * (CELL * .5 + .06))
@@ -1165,7 +1161,7 @@ func _add_exterior_safety_light(centre: Vector3, side: Vector2i) -> void:
 	lens_material.albedo_color = Color("#F6E6B9")
 	lens_material.emission_enabled = true
 	lens_material.emission = Color("#FFE7AC")
-	lens_material.emission_energy_multiplier = 3.2
+	lens_material.emission_energy_multiplier = 2.0
 	lens.material_override = lens_material
 	lens.add_to_group("grid_powered_light")
 	lens.set_meta("grid_emission_on", Color("#FFE7AC"))
@@ -1173,8 +1169,8 @@ func _add_exterior_safety_light(centre: Vector3, side: Vector2i) -> void:
 	fixture.add_child(lens)
 	var flood := OmniLight3D.new()
 	flood.light_color = Color("#FFE2A1")
-	flood.light_energy = 3.6
-	flood.omni_range = 7.0
+	flood.light_energy = 2.2
+	flood.omni_range = 5.4
 	flood.shadow_enabled = false
 	flood.add_to_group("grid_powered_light")
 	flood.set_meta("grid_light_energy", flood.light_energy)
