@@ -44,6 +44,12 @@ func _physics_process(delta: float) -> void:
 		global_position = safe_position
 		velocity = Vector3.ZERO
 		return
+	# Exterior construction uses the same movement keys to pan its bird's-eye
+	# camera. Freeze the character in place so panning never changes the real
+	# player cell represented by the build-mode marker.
+	if bool(get_meta("build_mode_active", false)):
+		velocity = Vector3.ZERO
+		return
 	var grounded := is_on_floor()
 	var jump_pressed := Input.is_action_pressed("jump") or Input.is_key_pressed(KEY_SPACE)
 	if grounded and jump_pressed and not _jump_was_pressed:
