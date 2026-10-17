@@ -9,7 +9,7 @@ const DECOR_DATA_PATH := "res://data/original_mars_decor_placements.json"
 const MODEL_DIRECTORY := "res://assets/original_mars/models/"
 const CELESTIAL_SHADER := """
 shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_never, fog_disabled, billboard_enabled;
+render_mode unshaded, cull_disabled, depth_draw_never, fog_disabled;
 uniform vec4 body_colour : source_color = vec4(1.0);
 uniform vec4 crater_colour : source_color = vec4(0.2, 0.2, 0.2, 1.0);
 uniform float glow = 0.0;
@@ -212,7 +212,9 @@ func apply_daylight(sunlight: float) -> void:
 		_sky_material.ground_bottom_color = (Color("#070609") as Color).lerp(_palette_values.get("ground", Color("#996142")) as Color, level)
 		world_environment.environment.fog_light_color = (Color("#100D16") as Color).lerp(_palette_values.get("fog", Color("#D5A07A")) as Color, level)
 		world_environment.environment.fog_density = lerpf(.0008, float(_palette_values.get("fog_density", .0024)), level)
-	MHGame.set_window_glow(float(_palette_values.get("window", .9)) * lerpf(0.25, 1.0, level))
+	# When the base grid is online its window strips are deliberately brighter at
+	# night, providing a clear warm navigational cue without lifting the sky.
+	MHGame.set_window_glow(float(_palette_values.get("window", .9)) * lerpf(1.75, .9, level))
 	_update_celestial_bodies(level)
 
 func _update_celestial_bodies(sunlight: float) -> void:
@@ -241,6 +243,9 @@ func _place_celestial(body: MeshInstance3D, altitude: float, azimuth: float, rad
 		return
 	var horizontal := cos(altitude)
 	body.position = Vector3(sin(azimuth) * horizontal, sin(altitude), -cos(azimuth) * horizontal) * radius
+	var active_camera := get_viewport().get_camera_3d()
+	if active_camera != null:
+		body.look_at(active_camera.global_position, Vector3.UP, true)
 
 func _build_terrain() -> void:
 	_terrain_body = StaticBody3D.new()

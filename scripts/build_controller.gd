@@ -931,7 +931,7 @@ func _add_powered_fixture(position: Vector3, zone_kind: String) -> void:
 	material.albedo_color = Color("#F3E4C6")
 	material.emission_enabled = true
 	material.emission = Color("#FFE7B2")
-	material.emission_energy_multiplier = 1.3
+	material.emission_energy_multiplier = 2.6
 	visual.material_override = material
 	visual.add_to_group("grid_powered_light")
 	visual.set_meta("grid_emission_on", Color("#FFE7B2"))
@@ -940,8 +940,8 @@ func _add_powered_fixture(position: Vector3, zone_kind: String) -> void:
 	var light := OmniLight3D.new()
 	light.position = Vector3(0, -.16, 0)
 	light.light_color = Color("#FFE7B2")
-	light.light_energy = 1.1 if zone_kind != "hydroponics" else 1.35
-	light.omni_range = 4.5
+	light.light_energy = 3.0 if zone_kind != "hydroponics" else 3.8
+	light.omni_range = 6.0
 	light.shadow_enabled = false
 	light.add_to_group("grid_powered_light")
 	light.set_meta("grid_light_energy", light.light_energy)
@@ -1144,6 +1144,41 @@ func _add_exterior_wall(centre: Vector3,side: Vector2i,zone_kind: String,zone: D
 	else: backing_size.x+=.14
 	var backing_position:=wall_position-Vector3(side.x*.035,0,side.y*.035)
 	_add_box(backing_position,backing_size,MHStyle.STRUCTURAL_WHITE,true,"habitat_wall",true)
+	_add_exterior_safety_light(centre, side)
+
+func _add_exterior_safety_light(centre: Vector3, side: Vector2i) -> void:
+	# One small no-shadow flood every other wall bay provides useful navigation
+	# light without filling a larger student habitat with expensive shadow lights.
+	var cell_x := roundi(centre.x / CELL)
+	var cell_z := roundi(centre.z / CELL)
+	if posmod(cell_x + cell_z + (1 if side.x != 0 else 0), 2) != 0:
+		return
+	var fixture := Node3D.new()
+	fixture.name = "ExteriorSafetyLight"
+	fixture.position = centre + Vector3(side.x * (CELL * .5 + .06), habitat_base_y + 2.36, side.y * (CELL * .5 + .06))
+	root.add_child(fixture)
+	var lens := MeshInstance3D.new()
+	var lens_mesh := BoxMesh.new()
+	lens_mesh.size = Vector3(.50, .16, .07) if side.x == 0 else Vector3(.07, .16, .50)
+	lens.mesh = lens_mesh
+	var lens_material := StandardMaterial3D.new()
+	lens_material.albedo_color = Color("#F6E6B9")
+	lens_material.emission_enabled = true
+	lens_material.emission = Color("#FFE7AC")
+	lens_material.emission_energy_multiplier = 3.2
+	lens.material_override = lens_material
+	lens.add_to_group("grid_powered_light")
+	lens.set_meta("grid_emission_on", Color("#FFE7AC"))
+	lens.set_meta("grid_emission_off", Color("#293034"))
+	fixture.add_child(lens)
+	var flood := OmniLight3D.new()
+	flood.light_color = Color("#FFE2A1")
+	flood.light_energy = 3.6
+	flood.omni_range = 7.0
+	flood.shadow_enabled = false
+	flood.add_to_group("grid_powered_light")
+	flood.set_meta("grid_light_energy", flood.light_energy)
+	fixture.add_child(flood)
 
 func _airlock_side(zone: Dictionary) -> Vector2i:
 	return zone.get("door_direction",Vector2i(0,-1))
