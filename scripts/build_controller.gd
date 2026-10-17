@@ -284,7 +284,7 @@ func _create_player_marker() -> void:
 	arrow.position = Vector3(0, .16, -.28)
 	arrow.material_override = material
 	player_marker.add_child(arrow)
-	var label := _label3d("PLAYER", 28, Color("#FFE2B4"), 800)
+	var label := _label3d("PLAYER CELL", 28, Color("#FFE2B4"), 800)
 	label.position = Vector3(0, .55, 0)
 	player_marker.add_child(label)
 
@@ -294,8 +294,11 @@ func _update_player_marker() -> void:
 	var player := world.get_node_or_null("Player") as Node3D
 	player_marker.visible = build_mode and player != null
 	if player != null:
-		player_marker.global_position = Vector3(player.global_position.x, player.global_position.y - 1.0, player.global_position.z)
-		player_marker.rotation.y = player.rotation.y
+		var cell := Vector2i(roundi(player.global_position.x / CELL), roundi(player.global_position.z / CELL))
+		# The planner communicates occupancy at construction-cell resolution. Keep
+		# the marker on the blueprint plane instead of following the player's body
+		# height over uneven terrain or a raised deck.
+		player_marker.global_position = Vector3(cell.x * CELL, habitat_base_y + .13, cell.y * CELL)
 
 # Equipment sits on the raised deck, so it projects onto the floor height
 # rather than the ground plane the zone painter uses.
