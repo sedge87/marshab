@@ -215,11 +215,12 @@ static func build_environment(palette: Dictionary) -> Environment:
 	sky_material.ground_horizon_color = (palette.sky_horizon as Color).darkened(.12)
 	sky_material.ground_bottom_color = palette.ground
 	sky_material.ground_curve = 0.04
-	# The stock procedural sky disc became a dark, blurry spot when the animated
-	# directional light crossed the horizon. Mars is still lit by that directional
-	# sun; the sky uses a haze gradient instead of a literal cloud-like disc.
-	sky_material.sun_angle_max = 0.0
-	sky_material.sun_curve = 1.0
+	# This is the renderer's built-in sky sun, tied to the DirectionalLight3D;
+	# it is not a camera-facing world sprite. At about 0.4° it stays close to
+	# Mars's apparent solar size, while the thin atmospheric haze remains the
+	# dominant visual cue around dawn and dusk.
+	sky_material.sun_angle_max = 0.42
+	sky_material.sun_curve = 0.08
 	var sky := Sky.new()
 	sky.sky_material = sky_material
 	var environment := Environment.new()
@@ -245,6 +246,7 @@ static func configure_sun(sun: DirectionalLight3D, palette: Dictionary) -> void:
 	sun.basis = sun_basis(palette)
 	sun.light_color = palette.sun_colour
 	sun.light_energy = palette.sun_energy
+	sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_AND_SKY
 	sun.shadow_enabled = bool(setting("shadows"))
 	sun.shadow_bias = 0.04
 	sun.shadow_normal_bias = 1.2
