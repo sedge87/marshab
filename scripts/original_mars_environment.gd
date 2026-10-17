@@ -7,6 +7,7 @@ const TERRAIN_SCENE := preload("res://assets/original_mars/models/terrain.glb")
 const FAR_TERRAIN_SCENE := preload("res://assets/original_mars/models/terrain_far.glb")
 const DECOR_DATA_PATH := "res://data/original_mars_decor_placements.json"
 const MODEL_DIRECTORY := "res://assets/original_mars/models/"
+const SKY3D_SCRIPT := preload("res://addons/sky_3d/src/Sky3D.gd")
 const CELESTIAL_SHADER := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, fog_disabled;
@@ -33,7 +34,7 @@ var sun: DirectionalLight3D
 var palette_name := "day"
 var _palette_values: Dictionary = {}
 var _sky_material: ProceduralSkyMaterial
-var _sun_disc: MeshInstance3D
+var _sky3d
 var _phobos: MeshInstance3D
 var _deimos: MeshInstance3D
 var _show_celestials := true
@@ -150,22 +151,47 @@ func _build_utopia_landscape() -> void:
 		_add_landform("UtopiaPermafrost", points, colour)
 
 func _build_sky_and_lighting() -> void:
-	# Butterscotch sky, warm key light and ochre fog from the design reference
-	# scene. The palette (day / golden / dusk / cold) follows the chosen site.
+	if _show_celestials:
+		# Sky3D supplies the atmosphere and solar disc in the playable world. It
+		# replaces the former camera-facing "sun" quad, whose moon-like craters
+		# made the Sun read as a floating pale ball. Menus retain the lightweight
+		# procedural environment below, so this cannot leak into title screens.
+		_sky3d = SKY3D_SCRIPT.new()
+		_sky3d.name = "MarsSky3D"
+		_sky3d.game_time_enabled = false
+		_sky3d.clouds_enabled = false
+		_sky3d.fog_enabled = false
+		_sky3d.update_interval = 0.1
+		add_child(_sky3d)
+		world_environment = _sky3d
+		_build_celestial_bodies()
+		# This environment is assembled before its parent enters the scene tree.
+		# Sky3D creates its child dome/lights on enter-tree, so configure it on the
+		# next idle step rather than touching null child references here.
+		call_deferred("_finish_sky3d_setup")
+		return
+	# Menus do not use the simulated Martian sky. Keep their deliberately simple
+	# palette lighting isolated from the playable world's Sky3D instance.
 	world_environment = WorldEnvironment.new()
 	add_child(world_environment)
 	sun = DirectionalLight3D.new()
 	sun.name = "OriginalSun"
 	sun.position = Vector3(0.0, 30.0, 0.0)
 	add_child(sun)
-	if _show_celestials:
-		_build_celestial_bodies()
+	apply_palette(palette_name)
+
+func _finish_sky3d_setup() -> void:
+	if _sky3d == null:
+		return
+	sun = _sky3d.sun
+	if sun == null or _sky3d.sky == null:
+		push_warning("Sky3D did not initialise its sun or dome; keeping the existing environment unmodified.")
+		return
 	apply_palette(palette_name)
 
 func _build_celestial_bodies() -> void:
 	# Small visible teaching aids, not scale models. Their movement follows the
 	# real relationship: Phobos is fast and moves west→east; Deimos is slower.
-	_sun_disc = _celestial_disc("VisibleSun", 28.0, Color("#FFE3AF"), 4.0)
 	_phobos = _celestial_disc("Phobos", 10.0, Color("#B8AA98"), .16)
 	_deimos = _celestial_disc("Deimos", 5.5, Color("#9B9086"), .11)
 
@@ -190,10 +216,48 @@ func apply_palette(palette: String) -> void:
 	palette_name = palette if MHGame.PALETTES.has(palette) else "day"
 	var values: Dictionary = MHGame.PALETTES[palette_name]
 	_palette_values = values
+	if _sky3d != null:
+		_configure_mars_sky3d(values)
+		MHGame.configure_sun(sun, values)
+		apply_daylight(MHGame.sunlight_fraction)
+		return
 	world_environment.environment = MHGame.build_environment(values)
 	_sky_material = world_environment.environment.sky.sky_material as ProceduralSkyMaterial
 	MHGame.configure_sun(sun, values)
 	MHGame.set_window_glow(float(values.window))
+
+func _configure_mars_sky3d(values: Dictionary) -> void:
+	# Mars has a dusty, thin atmosphere—not terrestrial clouds or a second,
+	# Earth-textured moon. Phobos and Deimos remain our dedicated moving bodies.
+	_sky3d.sky_enabled = true
+	_sky3d.clouds_enabled = false
+	_sky3d.fog_enabled = false
+	_sky3d.lights_enabled = true
+	_sky3d.camera_exposure = 0.82
+	_sky3d.tonemap_exposure = 0.92
+	_sky3d.skydome_energy = 0.72
+	_sky3d.sky_contribution = 0.58
+	_sky3d.night_ambient_boost = false
+	var dome = _sky3d.sky
+	dome.ground_color = values.get("ground", Color("#996142")) as Color
+	dome.sun_disk_size = 0.012
+	dome.sun_disk_color = Color("#FFE1A4")
+	dome.sun_disk_intensity = 8.0
+	dome.moon_size = 0.0
+	dome.moon_light_energy = 0.0
+	dome.atm_day_tint = (values.get("sky_top", Color("#A06C49")) as Color).lerp(Color("#D89A70"), .22)
+	dome.atm_horizon_light_tint = values.get("sky_horizon", Color("#E6B98F")) as Color
+	dome.atm_night_tint = Color("#080B16")
+	dome.atm_thickness = 0.22
+	dome.atm_mie = 0.025
+	dome.atm_turbidity = 0.00025
+	dome.atm_sun_intensity = 7.5
+	dome.atm_sun_mie_intensity = 0.35
+	dome.atm_enable_moon_scatter_mode = false
+	# Sky3D's simple solar path provides a clean, smooth horizon-to-zenith arc.
+	_sky3d.tod.celestials_calculations = 0
+	_sky3d.tod.compute_moon_coords = false
+
 
 func apply_daylight(sunlight: float) -> void:
 	# Keep the art-direction palette, but let the simulated sun visibly set. A
@@ -201,6 +265,16 @@ func apply_daylight(sunlight: float) -> void:
 	if _palette_values.is_empty() or sun == null or world_environment == null:
 		return
 	var level := clampf(sunlight, 0.0, 1.0)
+	if _sky3d != null:
+		_sky3d.current_time = MHGame.sol_hour
+		# Let Sky3D position and render the sun, while our existing simulation
+		# remains the source of truth for sunlight, power, temperature and saves.
+		sun.light_energy = float(_palette_values.get("sun_energy", 0.8)) * lerpf(0.012, 1.0, level)
+		world_environment.environment.ambient_light_energy = float(_palette_values.get("ambient_energy", 0.35)) * lerpf(0.01, 0.82, level)
+		world_environment.environment.ambient_light_sky_contribution = lerpf(0.04, 0.58, level)
+		MHGame.set_window_glow(float(_palette_values.get("window", .9)) * lerpf(1.75, .9, level))
+		_update_celestial_bodies(level)
+		return
 	sun.light_energy = float(_palette_values.get("sun_energy", 0.8)) * lerpf(0.025, 1.0, level)
 	world_environment.environment.ambient_light_energy = float(_palette_values.get("ambient_energy", 0.35)) * lerpf(0.018, 1.0, level)
 	if _sky_material != null:
@@ -218,17 +292,11 @@ func apply_daylight(sunlight: float) -> void:
 	_update_celestial_bodies(level)
 
 func _update_celestial_bodies(sunlight: float) -> void:
-	if not _show_celestials or _sun_disc == null:
+	if not _show_celestials or _phobos == null:
 		return
-	# The cycle uses local solar time. Sun travels east → west across the sky;
-	# bodies are kept at a fixed large radius so they do not parallax as players walk.
+	# The Sky3D solar disc handles the Sun. These two small bodies stay as
+	# Mars-specific teaching aids and use their different orbital periods.
 	var hour := MHGame.sol_hour
-	var day_progress := clampf((hour - 5.0) / 14.0, 0.0, 1.0)
-	# Horizon at 05:00 and 19:00, highest around local noon.
-	var sun_altitude := sin(day_progress * PI) * PI * .46
-	var sun_azimuth := -PI * .5 + day_progress * PI
-	_place_celestial(_sun_disc, sun_altitude, sun_azimuth, 760.0)
-	_sun_disc.visible = sunlight > .015
 	# Actual orbital periods: Phobos 7 h 39 m, Deimos ~30 h 18 m. Phobos moves
 	# west-to-east as seen from Mars; Deimos follows the slower opposite drift.
 	var phobos_angle := -PI * .45 + TAU * hour / 7.653
