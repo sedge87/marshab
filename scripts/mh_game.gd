@@ -216,11 +216,11 @@ static func build_environment(palette: Dictionary) -> Environment:
 	sky_material.ground_bottom_color = palette.ground
 	sky_material.ground_curve = 0.04
 	# This is the renderer's built-in sky sun, tied to the DirectionalLight3D;
-	# it is not a camera-facing world sprite. At about 0.4° it stays close to
-	# Mars's apparent solar size, while the thin atmospheric haze remains the
-	# dominant visual cue around dawn and dusk.
-	sky_material.sun_angle_max = 0.42
-	sky_material.sun_curve = 0.08
+	# it is not a camera-facing world sprite. At 1.2° it is deliberately a little
+	# larger than Mars's apparent solar size so it stays legible through dust haze
+	# on school displays, while remaining a restrained atmospheric disc.
+	sky_material.sun_angle_max = 1.2
+	sky_material.sun_curve = 0.035
 	var sky := Sky.new()
 	sky.sky_material = sky_material
 	var environment := Environment.new()

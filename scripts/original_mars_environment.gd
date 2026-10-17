@@ -220,10 +220,10 @@ func apply_daylight(sunlight: float) -> void:
 	_update_celestial_bodies(level)
 
 func _apply_martian_sun_direction(sunlight: float) -> void:
-	# The directional light is the actual solar source: it moves east-to-west
-	# through the local sky, changes the direction of every shadow, and drops
-	# below the horizon at night. A reduced 55° noon altitude is a clear,
-	# Mars-like teaching approximation rather than an arbitrary UI marker.
+	# The directional light is the actual solar source: it rises in the east,
+	# crosses the southern sky at noon, sets in the west, changes the direction
+	# of every shadow, and drops below the horizon at night. A reduced 55° noon
+	# altitude is a clear Mars-like teaching approximation rather than a marker.
 	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
 	var sunrise := float(cycle.get("sunrise_hour", 5.0))
 	var sunset := float(cycle.get("sunset_hour", 19.0))
@@ -231,8 +231,9 @@ func _apply_martian_sun_direction(sunlight: float) -> void:
 	var altitude := sin(daylight_progress * PI) * deg_to_rad(55.0)
 	if sunlight <= .015:
 		altitude = -deg_to_rad(18.0)
-	var azimuth := -PI * .5 + daylight_progress * PI
-	var toward_sun := Vector3(sin(azimuth) * cos(altitude), sin(altitude), -cos(azimuth) * cos(altitude))
+	var horizontal := cos(altitude)
+	# World -Z is the compass north. This produces E → S → W across the sky.
+	var toward_sun := Vector3(cos(daylight_progress * PI) * horizontal, sin(altitude), sin(daylight_progress * PI) * horizontal)
 	sun.basis = MHGame.sun_basis({"sun": toward_sun})
 	var noon_colour: Color = _palette_values.get("sun_colour", Color.WHITE)
 	sun.light_color = Color("#FFAC7B").lerp(noon_colour, clampf(sunlight * 1.3, 0.0, 1.0))
