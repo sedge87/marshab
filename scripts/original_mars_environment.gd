@@ -7,6 +7,25 @@ const TERRAIN_SCENE := preload("res://assets/original_mars/models/terrain.glb")
 const FAR_TERRAIN_SCENE := preload("res://assets/original_mars/models/terrain_far.glb")
 const DECOR_DATA_PATH := "res://data/original_mars_decor_placements.json"
 const MODEL_DIRECTORY := "res://assets/original_mars/models/"
+const CELESTIAL_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never, fog_disabled, billboard_enabled;
+uniform vec4 body_colour : source_color = vec4(1.0);
+uniform vec4 crater_colour : source_color = vec4(0.2, 0.2, 0.2, 1.0);
+uniform float glow = 0.0;
+void fragment() {
+	vec2 p = UV - vec2(0.5);
+	float edge = length(p);
+	if (edge > 0.5) { discard; }
+	float craters = smoothstep(0.085, 0.045, length(p - vec2(-0.16, 0.10)));
+	craters += smoothstep(0.052, 0.023, length(p - vec2(0.13, -0.12)));
+	craters += smoothstep(0.040, 0.017, length(p - vec2(0.05, 0.18)));
+	vec3 colour = mix(body_colour.rgb * (0.92 - edge * 0.5), crater_colour.rgb, craters * (1.0 - glow));
+	ALBEDO = colour;
+	EMISSION = body_colour.rgb * glow;
+	ALPHA = smoothstep(0.5, 0.46, edge);
+}
+"""
 
 var _terrain_body: StaticBody3D
 var world_environment: WorldEnvironment
@@ -17,9 +36,11 @@ var _sky_material: ProceduralSkyMaterial
 var _sun_disc: MeshInstance3D
 var _phobos: MeshInstance3D
 var _deimos: MeshInstance3D
+var _show_celestials := true
 
 func build(palette := "") -> void:
 	name = "OriginalMarsEnvironment"
+	_show_celestials = palette.is_empty()
 	palette_name = palette if not palette.is_empty() else MHGame.palette_name()
 	_build_sky_and_lighting()
 	_build_terrain()
@@ -137,7 +158,8 @@ func _build_sky_and_lighting() -> void:
 	sun.name = "OriginalSun"
 	sun.position = Vector3(0.0, 30.0, 0.0)
 	add_child(sun)
-	_build_celestial_bodies()
+	if _show_celestials:
+		_build_celestial_bodies()
 	apply_palette(palette_name)
 
 func _build_celestial_bodies() -> void:
@@ -154,14 +176,12 @@ func _celestial_disc(body_name: String, diameter: float, colour: Color, emission
 	mesh.size = Vector2(diameter, diameter)
 	body.mesh = mesh
 	body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.albedo_color = colour
-	material.emission_enabled = emission > 0.0
-	material.emission = colour
-	material.emission_energy_multiplier = emission
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = CELESTIAL_SHADER
+	material.set_shader_parameter("body_colour", colour)
+	material.set_shader_parameter("crater_colour", colour.darkened(.58))
+	material.set_shader_parameter("glow", emission)
 	body.material_override = material
 	add_child(body)
 	return body
@@ -196,6 +216,8 @@ func apply_daylight(sunlight: float) -> void:
 	_update_celestial_bodies(level)
 
 func _update_celestial_bodies(sunlight: float) -> void:
+	if not _show_celestials or _sun_disc == null:
+		return
 	# The cycle uses local solar time. Sun travels east → west across the sky;
 	# bodies are kept at a fixed large radius so they do not parallax as players walk.
 	var hour := MHGame.sol_hour
@@ -205,9 +227,6 @@ func _update_celestial_bodies(sunlight: float) -> void:
 	var sun_azimuth := -PI * .5 + day_progress * PI
 	_place_celestial(_sun_disc, sun_altitude, sun_azimuth, 760.0)
 	_sun_disc.visible = sunlight > .015
-	var sun_material := _sun_disc.material_override as StandardMaterial3D
-	if sun_material != null:
-		sun_material.albedo_color.a = clampf(sunlight * 1.3, 0.0, 1.0)
 	# Actual orbital periods: Phobos 7 h 39 m, Deimos ~30 h 18 m. Phobos moves
 	# west-to-east as seen from Mars; Deimos follows the slower opposite drift.
 	var phobos_angle := -PI * .45 + TAU * hour / 7.653
