@@ -1,0 +1,3 @@
+This is the earlier ChatGPT-generated crew_sleep_berth.glb prototype.
+It is NOT a backup of the greybox that currently exists inside your Godot project.
+Before replacing any scene/catalogue entry, back up the actual original files in that Godot project.

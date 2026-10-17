@@ -16,13 +16,13 @@
     {
       "id": "crew_bunk",
       "label": "Crew Bunk",
-      "group": "living", "status": "catalogue", "batch": true, "icon": "bed-double", "height": 1.6,
+      "group": "living", "status": "catalogue", "batch": true, "icon": "bed-double", "height": 1.84,
       "description": "Personal berth with reading lamp, privacy curtain and shelf.",
       "role": "One berth; lamp off on grid failure",
-      "asset_scene": "res://assets/equipment/crew_bunk.glb",
+      "asset_scene": "res://assets/equipment/crew_bunk_optimised/godot/crew_bunk_optimised.tscn",
       "cargo_cost": 100,
       "valid_zones": ["living"],
-      "footprint": [1, 2],
+      "footprint": [2, 1],
       "placement": "floor_wall",
       "effects": {"berths": 1, "happiness": 2, "power_draw": 1}
     },

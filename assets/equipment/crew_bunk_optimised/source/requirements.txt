@@ -1,0 +1,6 @@
+trimesh>=4.0
+numpy>=1.25
+Pillow>=10
+# Only required to regenerate model-preview pictures:
+matplotlib>=3.7
+numba>=0.58

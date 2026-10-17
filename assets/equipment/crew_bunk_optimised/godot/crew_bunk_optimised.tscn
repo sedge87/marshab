@@ -1,0 +1,54 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://assets/equipment/crew_bunk_optimised/godot/crew_bunk_optimised.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/equipment/crew_bunk_optimised/model/crew_bunk_optimised.glb" id="2_model"]
+[ext_resource type="PackedScene" path="res://assets/equipment/crew_bunk_optimised/model/crew_bunk_privacy_closed.glb" id="3_curtain"]
+
+[sub_resource type="BoxShape3D" id="BoxShape_bottom"]
+size = Vector3(2.13, 0.59, 1.08)
+
+[sub_resource type="BoxShape3D" id="BoxShape_side"]
+size = Vector3(0.10, 1.20, 1.09)
+
+[sub_resource type="BoxShape3D" id="BoxShape_back"]
+size = Vector3(2.10, 1.14, 0.08)
+
+[sub_resource type="BoxShape3D" id="BoxShape_roof"]
+size = Vector3(2.15, 0.11, 1.08)
+
+[node name="CrewBunkOptimised" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="BerthModel" parent="." instance=ExtResource("2_model")]
+
+[node name="ClosedCurtain" parent="." instance=ExtResource("3_curtain")]
+visible = false
+
+[node name="ReadingLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.74, 1.34, 0.27)
+light_color = Color(1, 0.83, 0.61, 1)
+light_energy = 0.6
+omni_range = 1.45
+shadow_enabled = false
+
+[node name="Collision" type="StaticBody3D" parent="."]
+
+[node name="BaseCollider" type="CollisionShape3D" parent="Collision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.345, 0)
+shape = SubResource("BoxShape_bottom")
+
+[node name="LeftSideCollider" type="CollisionShape3D" parent="Collision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.065, 1.17, 0)
+shape = SubResource("BoxShape_side")
+
+[node name="RightSideCollider" type="CollisionShape3D" parent="Collision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.065, 1.17, 0)
+shape = SubResource("BoxShape_side")
+
+[node name="BackCollider" type="CollisionShape3D" parent="Collision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.20, 0.515)
+shape = SubResource("BoxShape_back")
+
+[node name="RoofCollider" type="CollisionShape3D" parent="Collision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.78, 0)
+shape = SubResource("BoxShape_roof")

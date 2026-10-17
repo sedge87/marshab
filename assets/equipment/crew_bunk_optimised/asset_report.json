@@ -1,0 +1,46 @@
+{
+  "asset_id": "crew_bunk",
+  "name": "Crew Bunk / Built-in Sleeping Berth",
+  "units": "metres",
+  "axes": "+Y up, -Z front",
+  "origin": "floor centre of nominal equipment footprint",
+  "nominal_width_m": 2.24,
+  "nominal_depth_m": 1.12,
+  "nominal_height_m": 1.84,
+  "mesh_nodes": 24,
+  "triangles": 2076,
+  "vertices": 1265,
+  "materials": [
+    "composite",
+    "metal",
+    "trim",
+    "mattress",
+    "duvet",
+    "light",
+    "screen",
+    "decal",
+    "safety"
+  ],
+  "bounds_xyz_min": [
+    -1.11,
+    0.05,
+    -0.561
+  ],
+  "bounds_xyz_max": [
+    1.11,
+    1.821,
+    0.555
+  ],
+  "gameplay": "No resource systems changed or invented. Wire against existing crew_bunk catalogue entry.",
+  "interactions_available": [
+    "reading_light_on_off",
+    "privacy_curtain_open_close",
+    "storage_drawers_visual_hooks",
+    "control_display_override"
+  ],
+  "notes": [
+    "Side/rear housing is built in; no hull mesh is cut.",
+    "GLB embeds PBR textures; external PNGs support editing.",
+    "Keep existing Godot placement and simulation behaviour until reviewed."
+  ]
+}

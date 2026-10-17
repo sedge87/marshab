@@ -95,3 +95,16 @@ Additional verification since repairing the local Godot log directory:
 2. Review the five assets in a normal Godot render session before expanding the batch.
 3. Continue according to `CODEX_INTERIOR_HANDOFF/03_ASSET_SPECS/equipment_inventory_from_project.csv`, respecting each existing `asset_scene` filename (especially aliases such as `personal_locker.glb`).
 4. Keep walls, windows and doors as art-kit objects until a separately tested interior structural-placement design is approved.
+
+
+## Crew bunk optimisation pack integration (18 October 2026)
+
+The supplied `crew_bunk_optimised_godot_pack.zip` is now integrated as the live `crew_bunk` catalogue asset. It is stored separately under `assets/equipment/crew_bunk_optimised/`; the original `assets/equipment/crew_bunk.glb` was not overwritten.
+
+- Snapshot before import: `backups/crew_bunk_before_import_20261017_101500/`.
+- Catalogue path now points to `assets/equipment/crew_bunk_optimised/godot/crew_bunk_optimised.tscn`.
+- Footprint is `[2, 1]`, matching the supplied model's wide-by-shallow dimensions; gameplay effects remain one berth, +2 happiness, and 1 power draw.
+- The wrapper's reading light and emissive lamp join the existing `grid_powered_light` state path; curtain, drawers, and packaged primitive colliders are preserved.
+- BuildController now skips its generic collision when an imported scene supplies `CollisionShape3D` nodes, avoiding duplicate bunk collision.
+
+The wrapper script and project editor scan parse without script errors. Headless runtime/test execution is still limited by this machine's unavailable Godot `user://logs/godot.log` directory; run the game locally to place the bunk, confirm its model/collision alignment, toggle power, and exercise the curtain/drawer controls before proceeding to the next asset.

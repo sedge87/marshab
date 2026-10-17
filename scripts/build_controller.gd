@@ -393,6 +393,7 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 	body.collision_layer = 1
 	holder.add_child(body)
 	var model_loaded := false
+	var model_has_collision := false
 	var asset_path := str(entry.get("asset_scene", ""))
 	if not asset_path.is_empty() and ResourceLoader.exists(asset_path):
 		var resource := load(asset_path)
@@ -402,7 +403,8 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 				model.name = "Model"
 				holder.add_child(model)
 				model_loaded = true
-	if not bool(entry.get("walkthrough", false)) and size.y > .15:
+				model_has_collision = not model.find_children("*", "CollisionShape3D", true, false).is_empty()
+	if not bool(entry.get("walkthrough", false)) and size.y > .15 and not model_has_collision:
 		var collision := CollisionShape3D.new()
 		var shape := BoxShape3D.new(); shape.size = size
 		collision.shape = shape
@@ -534,6 +536,7 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 	body.collision_layer = 1
 	holder.add_child(body)
 	var model_loaded := false
+	var model_has_collision := false
 	var asset_path := str(entry.get("asset_scene", ""))
 	if not asset_path.is_empty() and ResourceLoader.exists(asset_path):
 		var resource := load(asset_path)
@@ -544,7 +547,8 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 				model.position = offset
 				holder.add_child(model)
 				model_loaded = true
-	if not bool(entry.get("walkthrough", false)) and size.y > .15:
+				model_has_collision = not model.find_children("*", "CollisionShape3D", true, false).is_empty()
+	if not bool(entry.get("walkthrough", false)) and size.y > .15 and not model_has_collision:
 		var collision := CollisionShape3D.new(); var shape := BoxShape3D.new(); shape.size = size; collision.shape = shape; body.add_child(collision)
 	if not model_loaded:
 		_add_equipment_placeholder(body, size, tint)
