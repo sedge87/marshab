@@ -13,6 +13,10 @@ var world_environment: WorldEnvironment
 var sun: DirectionalLight3D
 var palette_name := "day"
 var _palette_values: Dictionary = {}
+var _sky_material: ProceduralSkyMaterial
+var _sun_disc: MeshInstance3D
+var _phobos: MeshInstance3D
+var _deimos: MeshInstance3D
 
 func build(palette := "") -> void:
 	name = "OriginalMarsEnvironment"
@@ -133,13 +137,41 @@ func _build_sky_and_lighting() -> void:
 	sun.name = "OriginalSun"
 	sun.position = Vector3(0.0, 30.0, 0.0)
 	add_child(sun)
+	_build_celestial_bodies()
 	apply_palette(palette_name)
+
+func _build_celestial_bodies() -> void:
+	# Small visible teaching aids, not scale models. Their movement follows the
+	# real relationship: Phobos is fast and moves west→east; Deimos is slower.
+	_sun_disc = _celestial_disc("VisibleSun", 28.0, Color("#FFE3AF"), 4.0)
+	_phobos = _celestial_disc("Phobos", 10.0, Color("#B8AA98"), .16)
+	_deimos = _celestial_disc("Deimos", 5.5, Color("#9B9086"), .11)
+
+func _celestial_disc(body_name: String, diameter: float, colour: Color, emission: float) -> MeshInstance3D:
+	var body := MeshInstance3D.new()
+	body.name = body_name
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(diameter, diameter)
+	body.mesh = mesh
+	body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = colour
+	material.emission_enabled = emission > 0.0
+	material.emission = colour
+	material.emission_energy_multiplier = emission
+	body.material_override = material
+	add_child(body)
+	return body
 
 func apply_palette(palette: String) -> void:
 	palette_name = palette if MHGame.PALETTES.has(palette) else "day"
 	var values: Dictionary = MHGame.PALETTES[palette_name]
 	_palette_values = values
 	world_environment.environment = MHGame.build_environment(values)
+	_sky_material = world_environment.environment.sky.sky_material as ProceduralSkyMaterial
 	MHGame.configure_sun(sun, values)
 	MHGame.set_window_glow(float(values.window))
 
@@ -150,8 +182,46 @@ func apply_daylight(sunlight: float) -> void:
 		return
 	var level := clampf(sunlight, 0.0, 1.0)
 	sun.light_energy = float(_palette_values.get("sun_energy", 0.8)) * lerpf(0.025, 1.0, level)
-	world_environment.environment.ambient_light_energy = float(_palette_values.get("ambient_energy", 0.35)) * lerpf(0.16, 1.0, level)
+	world_environment.environment.ambient_light_energy = float(_palette_values.get("ambient_energy", 0.35)) * lerpf(0.018, 1.0, level)
+	if _sky_material != null:
+		# Mars has a thin atmosphere, but midnight is still a true, dark sky—not
+		# the washed-out daytime procedural sky from the initial implementation.
+		_sky_material.sky_top_color = (Color("#080B16") as Color).lerp(_palette_values.get("sky_top", Color("#A06C49")) as Color, level)
+		_sky_material.sky_horizon_color = (Color("#17121A") as Color).lerp(_palette_values.get("sky_horizon", Color("#E6B98F")) as Color, level)
+		_sky_material.ground_horizon_color = (Color("#0D0A0C") as Color).lerp((_palette_values.get("sky_horizon", Color("#E6B98F")) as Color).darkened(.12), level)
+		_sky_material.ground_bottom_color = (Color("#070609") as Color).lerp(_palette_values.get("ground", Color("#996142")) as Color, level)
+		world_environment.environment.fog_light_color = (Color("#100D16") as Color).lerp(_palette_values.get("fog", Color("#D5A07A")) as Color, level)
+		world_environment.environment.fog_density = lerpf(.0008, float(_palette_values.get("fog_density", .0024)), level)
 	MHGame.set_window_glow(float(_palette_values.get("window", .9)) * lerpf(0.25, 1.0, level))
+	_update_celestial_bodies(level)
+
+func _update_celestial_bodies(sunlight: float) -> void:
+	# The cycle uses local solar time. Sun travels east → west across the sky;
+	# bodies are kept at a fixed large radius so they do not parallax as players walk.
+	var hour := MHGame.sol_hour
+	var day_progress := clampf((hour - 5.0) / 14.0, 0.0, 1.0)
+	# Horizon at 05:00 and 19:00, highest around local noon.
+	var sun_altitude := sin(day_progress * PI) * PI * .46
+	var sun_azimuth := -PI * .5 + day_progress * PI
+	_place_celestial(_sun_disc, sun_altitude, sun_azimuth, 760.0)
+	_sun_disc.visible = sunlight > .015
+	var sun_material := _sun_disc.material_override as StandardMaterial3D
+	if sun_material != null:
+		sun_material.albedo_color.a = clampf(sunlight * 1.3, 0.0, 1.0)
+	# Actual orbital periods: Phobos 7 h 39 m, Deimos ~30 h 18 m. Phobos moves
+	# west-to-east as seen from Mars; Deimos follows the slower opposite drift.
+	var phobos_angle := -PI * .45 + TAU * hour / 7.653
+	var deimos_angle := PI * .22 - TAU * hour / 30.30
+	_place_celestial(_phobos, sin(phobos_angle) * PI * .48, phobos_angle * .35, 680.0)
+	_place_celestial(_deimos, sin(deimos_angle) * PI * .40, deimos_angle * .22 + .65, 720.0)
+	_phobos.visible = sunlight < .18 and _phobos.position.y > 4.0
+	_deimos.visible = sunlight < .18 and _deimos.position.y > 4.0
+
+func _place_celestial(body: MeshInstance3D, altitude: float, azimuth: float, radius: float) -> void:
+	if body == null:
+		return
+	var horizontal := cos(altitude)
+	body.position = Vector3(sin(azimuth) * horizontal, sin(altitude), -cos(azimuth) * horizontal) * radius
 
 func _build_terrain() -> void:
 	_terrain_body = StaticBody3D.new()
