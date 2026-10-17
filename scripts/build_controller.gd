@@ -115,6 +115,7 @@ var pivot: Node3D
 var camera: Camera3D
 var grid: MeshInstance3D
 var player_marker: Node3D
+var player_marker_label: Label3D
 var zoom := 54.0
 var habitat_base_y := 0.35
 var ui: Control
@@ -220,6 +221,7 @@ func _process(delta: float) -> void:
 		pivot.position+=pivot.basis*move.normalized()*16.0*delta
 		var site_limit := _site_build_limit()
 		pivot.position.x=clampf(pivot.position.x,-site_limit,site_limit); pivot.position.z=clampf(pivot.position.z,-site_limit,site_limit)
+	_update_player_marker()
 	if tool=="remove" or _pointer_over_ui():
 		_draw_preview([],false); _update_hologram_ui([],"")
 		return
@@ -284,9 +286,9 @@ func _create_player_marker() -> void:
 	arrow.position = Vector3(0, .16, -.28)
 	arrow.material_override = material
 	player_marker.add_child(arrow)
-	var label := _label3d("PLAYER CELL", 28, Color("#FFE2B4"), 800)
-	label.position = Vector3(0, .55, 0)
-	player_marker.add_child(label)
+	player_marker_label = _label3d("PLAYER CELL", 28, Color("#FFE2B4"), 800)
+	player_marker_label.position = Vector3(0, .55, 0)
+	player_marker.add_child(player_marker_label)
 
 func _update_player_marker() -> void:
 	if player_marker == null:
@@ -299,6 +301,7 @@ func _update_player_marker() -> void:
 		# the marker on the blueprint plane instead of following the player's body
 		# height over uneven terrain or a raised deck.
 		player_marker.global_position = Vector3(cell.x * CELL, habitat_base_y + .13, cell.y * CELL)
+		player_marker_label.text = "PLAYER CELL\n(%d, %d)" % [cell.x, cell.y]
 
 # Equipment sits on the raised deck, so it projects onto the floor height
 # rather than the ground plane the zone painter uses.
