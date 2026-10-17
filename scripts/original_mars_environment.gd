@@ -27,6 +27,22 @@ void fragment() {
 	ALPHA = smoothstep(0.5, 0.46, edge);
 }
 """
+const SOLAR_CORONA_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never, fog_disabled, blend_mix;
+uniform vec4 core_colour : source_color = vec4(1.0, 0.93, 0.73, 1.0);
+uniform vec4 corona_colour : source_color = vec4(1.0, 0.50, 0.20, 1.0);
+void fragment() {
+	vec2 p = UV - vec2(0.5);
+	float radius = length(p) * 2.0;
+	float core = 1.0 - smoothstep(0.20, 0.31, radius);
+	float corona = 1.0 - smoothstep(0.28, 1.0, radius);
+	vec3 colour = mix(corona_colour.rgb, core_colour.rgb, core);
+	ALBEDO = colour;
+	EMISSION = core_colour.rgb * core * 3.5 + corona_colour.rgb * corona * 0.55;
+	ALPHA = max(core * 0.98, corona * 0.52);
+}
+"""
 
 var _terrain_body: StaticBody3D
 var world_environment: WorldEnvironment
@@ -34,6 +50,7 @@ var sun: DirectionalLight3D
 var palette_name := "day"
 var _palette_values: Dictionary = {}
 var _sky_material: ProceduralSkyMaterial
+var _sun_corona: MeshInstance3D
 var _phobos: MeshInstance3D
 var _deimos: MeshInstance3D
 var _show_celestials := true
@@ -165,10 +182,28 @@ func _build_sky_and_lighting() -> void:
 	apply_palette(palette_name)
 
 func _build_celestial_bodies() -> void:
-	# Phobos and Deimos are small teaching aids with visibly different orbital
-	# periods. The Sun is represented by the directional light, never a sprite.
+	# The corona is only a visual counterpart for the directional sun: its
+	# position is calculated from the same vector that controls all lighting.
+	_sun_corona = _solar_corona()
+	# Phobos and Deimos are small teaching aids with visibly different periods.
 	_phobos = _celestial_disc("Phobos", 10.0, Color("#B8AA98"), .16)
 	_deimos = _celestial_disc("Deimos", 5.5, Color("#9B9086"), .11)
+
+func _solar_corona() -> MeshInstance3D:
+	var corona := MeshInstance3D.new()
+	corona.name = "DirectionalSunCorona"
+	var mesh := QuadMesh.new()
+	# 16m at 760m reads as a restrained ~1.2° solar disc: intentionally legible
+	# through dust haze, but never large enough to resemble a nearby moon.
+	mesh.size = Vector2(16.0, 16.0)
+	corona.mesh = mesh
+	corona.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = SOLAR_CORONA_SHADER
+	corona.material_override = material
+	add_child(corona)
+	return corona
 
 func _celestial_disc(body_name: String, diameter: float, colour: Color, emission: float, crater_strength := 1.0) -> MeshInstance3D:
 	var body := MeshInstance3D.new()
@@ -224,6 +259,12 @@ func _apply_martian_sun_direction(sunlight: float) -> void:
 	# crosses the southern sky at noon, sets in the west, changes the direction
 	# of every shadow, and drops below the horizon at night. A reduced 55° noon
 	# altitude is a clear Mars-like teaching approximation rather than a marker.
+	var toward_sun := _martian_sun_vector(sunlight)
+	sun.basis = MHGame.sun_basis({"sun": toward_sun})
+	var noon_colour: Color = _palette_values.get("sun_colour", Color.WHITE)
+	sun.light_color = Color("#FFAC7B").lerp(noon_colour, clampf(sunlight * 1.3, 0.0, 1.0))
+
+func _martian_sun_vector(sunlight: float) -> Vector3:
 	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
 	var sunrise := float(cycle.get("sunrise_hour", 5.0))
 	var sunset := float(cycle.get("sunset_hour", 19.0))
@@ -233,17 +274,20 @@ func _apply_martian_sun_direction(sunlight: float) -> void:
 		altitude = -deg_to_rad(18.0)
 	var horizontal := cos(altitude)
 	# World -Z is the compass north. This produces E → S → W across the sky.
-	var toward_sun := Vector3(cos(daylight_progress * PI) * horizontal, sin(altitude), sin(daylight_progress * PI) * horizontal)
-	sun.basis = MHGame.sun_basis({"sun": toward_sun})
-	var noon_colour: Color = _palette_values.get("sun_colour", Color.WHITE)
-	sun.light_color = Color("#FFAC7B").lerp(noon_colour, clampf(sunlight * 1.3, 0.0, 1.0))
+	return Vector3(cos(daylight_progress * PI) * horizontal, sin(altitude), sin(daylight_progress * PI) * horizontal)
 
 func _update_celestial_bodies(sunlight: float) -> void:
-	if not _show_celestials or _phobos == null:
+	if not _show_celestials or _sun_corona == null or _phobos == null:
 		return
-	# The solar direction is owned by the DirectionalLight3D above. These are the
-	# two actual Martian moons, shown only in low-light conditions.
+	# The corona uses the identical vector as the DirectionalLight3D, while the
+	# two actual Martian moons appear only in low-light conditions.
 	var hour := MHGame.sol_hour
+	var toward_sun := _martian_sun_vector(sunlight)
+	_sun_corona.position = toward_sun * 760.0
+	var active_camera := get_viewport().get_camera_3d()
+	if active_camera != null:
+		_sun_corona.look_at(active_camera.global_position, Vector3.UP, true)
+	_sun_corona.visible = sunlight > .015
 	# Actual orbital periods: Phobos 7 h 39 m, Deimos ~30 h 18 m. Phobos moves
 	# west-to-east as seen from Mars; Deimos follows the slower opposite drift.
 	var phobos_angle := -PI * .45 + TAU * hour / 7.653

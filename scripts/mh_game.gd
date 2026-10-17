@@ -215,12 +215,11 @@ static func build_environment(palette: Dictionary) -> Environment:
 	sky_material.ground_horizon_color = (palette.sky_horizon as Color).darkened(.12)
 	sky_material.ground_bottom_color = palette.ground
 	sky_material.ground_curve = 0.04
-	# This is the renderer's built-in sky sun, tied to the DirectionalLight3D;
-	# it is not a camera-facing world sprite. At 1.2° it is deliberately a little
-	# larger than Mars's apparent solar size so it stays legible through dust haze
-	# on school displays, while remaining a restrained atmospheric disc.
-	sky_material.sun_angle_max = 1.2
-	sky_material.sun_curve = 0.035
+	# The Compatibility renderer does not reliably draw ProceduralSky's built-in
+	# sun disc in this project. OriginalMarsEnvironment supplies a renderer-safe
+	# corona tied to this same directional light instead.
+	sky_material.sun_angle_max = 0.0
+	sky_material.sun_curve = 1.0
 	var sky := Sky.new()
 	sky.sky_material = sky_material
 	var environment := Environment.new()
