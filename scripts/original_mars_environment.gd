@@ -34,7 +34,6 @@ var sun: DirectionalLight3D
 var palette_name := "day"
 var _palette_values: Dictionary = {}
 var _sky_material: ProceduralSkyMaterial
-var _sun_disc: MeshInstance3D
 var _phobos: MeshInstance3D
 var _deimos: MeshInstance3D
 var _show_celestials := true
@@ -166,9 +165,8 @@ func _build_sky_and_lighting() -> void:
 	apply_palette(palette_name)
 
 func _build_celestial_bodies() -> void:
-	# The Sun is a clean solar disc—not a cratered moon texture. Phobos and
-	# Deimos are smaller teaching aids with visibly different orbital periods.
-	_sun_disc = _celestial_disc("VisibleSun", 6.0, Color("#FFE0A0"), 3.4, 0.0)
+	# Phobos and Deimos are small teaching aids with visibly different orbital
+	# periods. The Sun is represented by the directional light, never a sprite.
 	_phobos = _celestial_disc("Phobos", 10.0, Color("#B8AA98"), .16)
 	_deimos = _celestial_disc("Deimos", 5.5, Color("#9B9086"), .11)
 
@@ -204,6 +202,7 @@ func apply_daylight(sunlight: float) -> void:
 	if _palette_values.is_empty() or sun == null or world_environment == null:
 		return
 	var level := clampf(sunlight, 0.0, 1.0)
+	_apply_martian_sun_direction(level)
 	sun.light_energy = float(_palette_values.get("sun_energy", 0.8)) * lerpf(0.025, 1.0, level)
 	world_environment.environment.ambient_light_energy = float(_palette_values.get("ambient_energy", 0.35)) * lerpf(0.018, 1.0, level)
 	if _sky_material != null:
@@ -220,17 +219,30 @@ func apply_daylight(sunlight: float) -> void:
 	MHGame.set_window_glow(float(_palette_values.get("window", .9)) * lerpf(1.75, .9, level))
 	_update_celestial_bodies(level)
 
+func _apply_martian_sun_direction(sunlight: float) -> void:
+	# The directional light is the actual solar source: it moves east-to-west
+	# through the local sky, changes the direction of every shadow, and drops
+	# below the horizon at night. A reduced 55° noon altitude is a clear,
+	# Mars-like teaching approximation rather than an arbitrary UI marker.
+	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+	var sunrise := float(cycle.get("sunrise_hour", 5.0))
+	var sunset := float(cycle.get("sunset_hour", 19.0))
+	var daylight_progress := clampf((MHGame.sol_hour - sunrise) / maxf(.1, sunset - sunrise), 0.0, 1.0)
+	var altitude := sin(daylight_progress * PI) * deg_to_rad(55.0)
+	if sunlight <= .015:
+		altitude = -deg_to_rad(18.0)
+	var azimuth := -PI * .5 + daylight_progress * PI
+	var toward_sun := Vector3(sin(azimuth) * cos(altitude), sin(altitude), -cos(azimuth) * cos(altitude))
+	sun.basis = MHGame.sun_basis({"sun": toward_sun})
+	var noon_colour: Color = _palette_values.get("sun_colour", Color.WHITE)
+	sun.light_color = Color("#FFAC7B").lerp(noon_colour, clampf(sunlight * 1.3, 0.0, 1.0))
+
 func _update_celestial_bodies(sunlight: float) -> void:
-	if not _show_celestials or _sun_disc == null:
+	if not _show_celestials or _phobos == null:
 		return
-	# The solar disc follows local solar time; the separate lighting simulation
-	# remains authoritative for resource production and climate.
+	# The solar direction is owned by the DirectionalLight3D above. These are the
+	# two actual Martian moons, shown only in low-light conditions.
 	var hour := MHGame.sol_hour
-	var day_progress := clampf((hour - 5.0) / 14.0, 0.0, 1.0)
-	var sun_altitude := sin(day_progress * PI) * PI * .34
-	var sun_azimuth := -PI * .5 + day_progress * PI
-	_place_celestial(_sun_disc, sun_altitude, sun_azimuth, 760.0)
-	_sun_disc.visible = sunlight > .015
 	# Actual orbital periods: Phobos 7 h 39 m, Deimos ~30 h 18 m. Phobos moves
 	# west-to-east as seen from Mars; Deimos follows the slower opposite drift.
 	var phobos_angle := -PI * .45 + TAU * hour / 7.653
