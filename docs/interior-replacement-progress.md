@@ -60,6 +60,7 @@ Modified:
 - `scripts/build_controller.gd` — catalogue-model loading, original safe fallback, existing collision, existing power-light binding.
 - `tests/interior_asset_loading_test.gd` — validates five model paths, model loading, retained collision, power indicators and a missing-asset fallback.
 - `tests/interior_asset_gallery.gd` — Godot preview capture harness for the five equipment items and three structural kit samples.
+- `scripts/interior_build_controller.gd` and `docs/interior-construction-mode.md` — separate first-person, free-position interior construction. Exterior grid construction remains unchanged.
 
 Commands attempted:
 
@@ -69,11 +70,24 @@ Commands attempted:
 | Blender visual inspection | Passed for `grow_tray`; it has a 2.65 × 1.72 × 2.76 m detailed rack, trays, irrigation, plants and service panel. |
 | Godot headless editor/import check | Exit code 0. |
 | `equipment_inventory_test.gd` | Exit code 0, but console output was truncated after Godot reported it could not write `user://logs/godot.log`; retain as a rerun requirement on a normal local launch. |
-| `interior_asset_loading_test.gd` | Exit code 0 under the same logging limitation; rerun locally to capture its pass line. |
+| `interior_asset_loading_test.gd` | Passed after the local Godot log directory was repaired: five GLBs, collision, grid indicators and safe fallback. |
 | `construction_repair_test.gd` | Not verified in this environment after the logging issue interrupted the batch runner. |
 | Runtime PNG gallery | Not produced: the headless Godot session terminated after the same `user://logs/godot.log` limitation before it wrote preview files. |
 
 Manual verification still required: in-game placement in each valid zone, collision/player navigation, removal, save/load when a persistence implementation is present, power-off appearance in a normal render session, interaction (`E`), frame-rate profiling, and runtime screenshots. No unverified item is treated as passed.
+
+## Interior construction mode update
+
+Interior equipment is no longer architecturally tied to the exterior plan grid. When the player is standing inside a completed room, `B` opens a reticle-based first-person construction controller. It places the first vertical-slice equipment at exact world positions, validates the selected room/surface/cargo cost, rotates in 15-degree increments, supports targeting removal, and keeps its own `placed_interior` records. Both old and new records feed cargo and resource effects. The player-facing control and data contract are documented in `docs/interior-construction-mode.md`.
+
+Additional verification since repairing the local Godot log directory:
+
+| Check | Result |
+| --- | --- |
+| `tests/interior_free_placement_test.gd` | Passed. |
+| `tests/equipment_inventory_test.gd` | Passed: 46 items, placement, refund and undo regression coverage. |
+| `tests/interior_asset_loading_test.gd` | Passed: five GLBs, collision, grid indicators and fallback. |
+| Mars World headless startup | Passed with no runtime errors recorded. |
 
 ## Next assets and open issues
 

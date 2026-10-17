@@ -48,7 +48,9 @@ const ZONE_INFO := {
 	"reactor":{"cat":"power","icon":"atom","rule":"One cell · 1,200 kg","desc":"A compact fission reactor. 42 m power field; high output and high cargo cost."},
 	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell · 450 kg","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."}
 }
-const CATEGORIES := [["rooms","Rooms","bed-double"],["structure","Structure","box"],["power","Resources","sun"],["equipment","Interior","armchair"]]
+# Exterior construction deliberately excludes furnishing. Interior equipment is
+# selected only through the first-person construction controller.
+const CATEGORIES := [["rooms","Rooms","bed-double"],["structure","Structure","box"],["power","Resources","sun"]]
 const HALF_CELL := 1.5
 const ROOM_HEIGHT := 2.9
 const GRID_SHADER := """
@@ -81,6 +83,7 @@ void fragment() {
 
 signal habitat_changed
 signal mission_control_requested
+signal interior_build_requested
 
 var kind := "living"
 var airlock_direction := Vector2i(0,-1)
@@ -88,6 +91,10 @@ var zones: Array = []
 # First-person furnishing controllers own their visual instances. This lightweight
 # record is the simulation state used by the resource and wellbeing systems.
 var placed_equipment: Array = []
+# Free-positioned first-person furnishings are intentionally separate from the
+# legacy top-down, cell-keyed equipment records.  They share the catalogue's
+# effects and cargo cost, but do not participate in exterior grid snapping.
+var placed_interior: Array = []
 # Selected interior item; empty while a zone is selected.
 var equipment_id := ""
 # Greybox stand-ins for placed equipment, keyed by cell, until final art lands.
@@ -149,7 +156,15 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if display_only: return
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode==KEY_B: _toggle()
+		if event.keycode==KEY_B:
+			var active_player := world.get_node_or_null("Player") as Node
+			if active_player != null and bool(active_player.get_meta("interior_build_active", false)):
+				return
+			var player := world.get_node_or_null("Player") as Node3D
+			if not build_mode and player != null and is_inside(player.global_position):
+				interior_build_requested.emit()
+			else:
+				_toggle()
 		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="solar" or kind=="corridor"): _rotate_airlock(); _refresh_catalogue()
 		elif build_mode and event.keycode==KEY_ESCAPE: dragging=false; _draw_preview([],false)
 		elif build_mode and event.keycode==KEY_DELETE: _remove_at(hover)
@@ -293,6 +308,112 @@ func place_equipment(id: String, cell: Vector2i, visual: Node3D = null, facing :
 	habitat_changed.emit()
 	return true
 
+## First-person interior construction records exact metres rather than cells.
+## Only the interior controller calls this API; the exterior planner remains
+## grid based.  `zone_cell` keeps room restrictions and safe pruning explicit.
+func place_free_interior_equipment(id: String, position: Vector3, rotation_y: float, zone_cell: Vector2i, visual: Node3D) -> bool:
+	var entry := EquipmentCatalog.get_entry(id)
+	if entry.is_empty() or _used_cargo() + int(entry.get("cargo_cost", 0)) > CARGO_BUDGET:
+		return false
+	var placement_id := "interior_%d" % Time.get_ticks_usec()
+	placed_interior.append({"placement_id": placement_id, "id": id, "position": position, "rotation_y": rotation_y, "zone_cell": zone_cell})
+	visual.name = "Interior_%s" % placement_id
+	visual.set_meta("equipment_id", id)
+	visual.set_meta("interior_placement_id", placement_id)
+	furnishing.add_child(visual)
+	_update_budget()
+	_update_systems()
+	_apply_grid_power()
+	habitat_changed.emit()
+	return true
+
+func remove_free_interior_equipment(placement_id: String) -> Dictionary:
+	for index in range(placed_interior.size() - 1, -1, -1):
+		var item: Dictionary = placed_interior[index]
+		if str(item.get("placement_id", "")) != placement_id:
+			continue
+		placed_interior.remove_at(index)
+		for child in furnishing.get_children():
+			if str(child.get_meta("interior_placement_id", "")) == placement_id:
+				child.queue_free()
+				break
+		_update_budget()
+		_update_systems()
+		_apply_grid_power()
+		habitat_changed.emit()
+		return item
+	return {}
+
+func free_interior_invalid_reason(id: String, world_position: Vector3, surface_normal: Vector3, rotation_y := 0.0) -> String:
+	var entry := EquipmentCatalog.get_entry(id)
+	if entry.is_empty(): return "Unknown interior item"
+	var sample := world_position + Vector3.UP * .35
+	if not is_inside(sample): return "Must be placed inside a completed habitat room"
+	var zone := _zone_at(Vector2i(roundi(world_position.x / CELL), roundi(world_position.z / CELL)))
+	var valid_zones: Array = entry.get("valid_zones", [])
+	if not valid_zones.has(str(zone.get("kind", ""))): return "Fits in %s" % _zone_list_text(valid_zones)
+	var placement := str(entry.get("placement", "floor"))
+	if placement == "floor" and surface_normal.dot(Vector3.UP) < .82: return "Place this on the floor"
+	if placement == "wall" and absf(surface_normal.dot(Vector3.UP)) > .28: return "Mount this on an interior wall"
+	if placement == "ceiling" and surface_normal.dot(Vector3.UP) > -.82: return "Mount this on the ceiling"
+	if _used_cargo() + int(entry.get("cargo_cost", 0)) > CARGO_BUDGET: return "Not enough cargo left"
+	# A free-positioned item must fit wholly inside valid room cells. Checking the
+	# four footprint corners prevents a player from burying it in the shell wall
+	# or bleeding it across into an incompatible room.
+	if placement == "floor" or placement == "floor_wall":
+		var size := _equipment_size(entry)
+		var footprint := Vector2(size.x * .5, size.z * .5)
+		var facing := Vector2(cos(rotation_y), sin(rotation_y))
+		var side := Vector2(-facing.y, facing.x)
+		for sign_x in [-1.0, 1.0]:
+			for sign_z in [-1.0, 1.0]:
+				var corner: Vector2 = Vector2(world_position.x, world_position.z) + facing * footprint.x * sign_x + side * footprint.y * sign_z
+				var corner_cell := Vector2i(roundi(corner.x / CELL), roundi(corner.y / CELL))
+				var corner_zone := _zone_at(corner_cell)
+				if corner_zone.is_empty() or not valid_zones.has(str(corner_zone.get("kind", ""))):
+					return "Doesn't fit inside this room"
+		var candidate_radius := maxf(size.x, size.z) * .5
+		for item in placed_interior:
+			var other_entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
+			var other_size := _equipment_size(other_entry)
+			var other_position: Vector3 = item.get("position", Vector3.ZERO)
+			if Vector2(world_position.x - other_position.x, world_position.z - other_position.z).length() < candidate_radius + maxf(other_size.x, other_size.z) * .38:
+				return "Too close to existing equipment"
+	return ""
+
+func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> Node3D:
+	var entry := EquipmentCatalog.get_entry(id)
+	var size := _equipment_size(entry)
+	var holder := Node3D.new()
+	holder.position = position
+	holder.rotation.y = rotation_y
+	var body := StaticBody3D.new()
+	body.name = "InteriorCollision"
+	body.position = Vector3(0, size.y * .5, 0)
+	body.collision_layer = 1
+	holder.add_child(body)
+	var model_loaded := false
+	var asset_path := str(entry.get("asset_scene", ""))
+	if not asset_path.is_empty() and ResourceLoader.exists(asset_path):
+		var resource := load(asset_path)
+		if resource is PackedScene:
+			var model := (resource as PackedScene).instantiate() as Node3D
+			if model != null:
+				model.name = "Model"
+				holder.add_child(model)
+				model_loaded = true
+	if not bool(entry.get("walkthrough", false)) and size.y > .15:
+		var collision := CollisionShape3D.new()
+		var shape := BoxShape3D.new(); shape.size = size
+		collision.shape = shape
+		body.add_child(collision)
+	if not model_loaded:
+		var tint: Color = (ZONE_TYPES.get(str((entry.get("valid_zones", ["storage"]) as Array)[0]), ZONE_TYPES.storage).colour as Color)
+		_add_equipment_placeholder(body, size, tint)
+	if int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0 and (not model_loaded or not _bind_equipment_power_visuals(holder)):
+		_add_equipment_power_lamp(body, size)
+	return holder
+
 ## Empty when `id` can be placed in `cell`; otherwise a short hologram reason.
 func equipment_invalid_reason(id: String, cell: Vector2i) -> String:
 	var entry := EquipmentCatalog.get_entry(id)
@@ -364,6 +485,14 @@ func _prune_equipment() -> int:
 			if _equipment_visuals.has(cell):
 				(_equipment_visuals[cell] as Node).queue_free()
 				_equipment_visuals.erase(cell)
+	for index in range(placed_interior.size() - 1, -1, -1):
+		var item: Dictionary = placed_interior[index]
+		var cell: Vector2i = item.get("zone_cell", Vector2i(9999, 9999))
+		var zone := _zone_at(cell)
+		var valid_zones: Array = EquipmentCatalog.get_entry(str(item.get("id", ""))).get("valid_zones", [])
+		if zone.is_empty() or not valid_zones.has(str(zone.kind)):
+			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
+			remove_free_interior_equipment(str(item.get("placement_id", "")))
 	return refund
 
 # Footprint in metres from the catalogue's 1.5 m half-cell footprint.
@@ -488,6 +617,10 @@ func _draw_equipment_preview(cell: Vector2i, valid: bool) -> void:
 func _equipment_effects() -> Dictionary:
 	var totals := {"berths": 0, "food": 0, "life": 0, "research": 0, "happiness": 0, "storage": 0, "power_draw": 0, "water_draw": 0}
 	for item in placed_equipment:
+		var effects := EquipmentCatalog.effects(str(item.get("id", "")))
+		for effect in totals:
+			totals[effect] += int(effects.get(effect, 0))
+	for item in placed_interior:
 		var effects := EquipmentCatalog.effects(str(item.get("id", "")))
 		for effect in totals:
 			totals[effect] += int(effects.get(effect, 0))
@@ -1221,6 +1354,8 @@ func _used_cargo() -> int:
 	for zone in zones: total+=int(zone.cost)
 	for item in placed_equipment:
 		total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
+	for item in placed_interior:
+		total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
 	return total
 
 func _airlock_connected_cells() -> Dictionary:
@@ -1403,6 +1538,7 @@ func cargo_by_category() -> Dictionary:
 	var out:={"rooms":0,"structure":0,"power":0,"equipment":0}
 	for zone in zones: out[str(ZONE_INFO[zone.kind].cat)]+=int(zone.cost)
 	for item in placed_equipment: out.equipment+=int(EquipmentCatalog.get_entry(str(item.get("id",""))).get("cargo_cost",0))
+	for item in placed_interior: out.equipment+=int(EquipmentCatalog.get_entry(str(item.get("id",""))).get("cargo_cost",0))
 	return out
 
 func used_cargo() -> int: return _used_cargo()

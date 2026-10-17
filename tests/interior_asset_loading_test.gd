@@ -10,7 +10,8 @@ func _initialize() -> void:
 	builder.display_only = true
 	var world := Node3D.new()
 	root.add_child(world)
-	world.add_child(builder)
+	world.call_deferred("add_child", builder)
+	await process_frame
 	await process_frame
 	for index in MODELLED_IDS.size():
 		var id: String = MODELLED_IDS[index]
@@ -20,7 +21,7 @@ func _initialize() -> void:
 		var visual := builder._equipment_visual(id, Vector2i(index, 0), Vector2i(0, -1))
 		world.add_child(visual)
 		assert(visual.get_node_or_null("Model") != null, "%s must use GLB art, not its fallback proxy." % id)
-		assert(visual.get_node_or_null("StaticBody3D/CollisionShape3D") != null, "%s must retain catalogue collision." % id)
+		assert(not visual.find_children("*", "CollisionShape3D", true, false).is_empty(), "%s must retain catalogue collision." % id)
 		if int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0:
 			assert(not visual.get_tree().get_nodes_in_group("grid_powered_light").is_empty(), "%s must retain a grid-powered indicator." % id)
 		visual.queue_free()
@@ -28,6 +29,6 @@ func _initialize() -> void:
 	var fallback := builder._equipment_visual("harvest_cart", Vector2i(9, 0), Vector2i(0, -1))
 	world.add_child(fallback)
 	assert(fallback.get_node_or_null("Model") == null, "Unavailable art must use fallback, not a broken model node.")
-	assert(fallback.get_node_or_null("StaticBody3D/MeshInstance3D") != null, "Fallback must retain its presentation proxy.")
+	assert(not fallback.find_children("*", "MeshInstance3D", true, false).is_empty(), "Fallback must retain its presentation proxy.")
 	print("Interior art loading test passed: %d GLBs, collision, grid indicators and fallback." % MODELLED_IDS.size())
 	quit(0)
