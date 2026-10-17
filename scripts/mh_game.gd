@@ -215,8 +215,11 @@ static func build_environment(palette: Dictionary) -> Environment:
 	sky_material.ground_horizon_color = (palette.sky_horizon as Color).darkened(.12)
 	sky_material.ground_bottom_color = palette.ground
 	sky_material.ground_curve = 0.04
-	sky_material.sun_angle_max = 22.0
-	sky_material.sun_curve = 0.12
+	# The stock procedural sky disc became a dark, blurry spot when the animated
+	# directional light crossed the horizon. Mars is still lit by that directional
+	# sun; the sky uses a haze gradient instead of a literal cloud-like disc.
+	sky_material.sun_angle_max = 0.0
+	sky_material.sun_curve = 1.0
 	var sky := Sky.new()
 	sky.sky_material = sky_material
 	var environment := Environment.new()

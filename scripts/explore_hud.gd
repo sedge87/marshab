@@ -25,6 +25,7 @@ var _collapsed := false
 var _telemetry_temp: Label
 var _telemetry_radiation: Label
 var _telemetry_sunlight: Label
+var _sol_clock: Label
 var _telemetry_context: Label
 var _telemetry_key := ""
 
@@ -53,6 +54,7 @@ func _ready() -> void:
 	_root.add_child(compass_band)
 	_compass = MHWidgets.Compass.new()
 	compass_band.add_child(_compass)
+	_root.add_child(_build_sol_clock())
 	# Colony chip, top-left inside the visor.
 	_chip_slot = Control.new()
 	_chip_slot.position = Vector2(104, 104)
@@ -126,6 +128,23 @@ func _site_telemetry() -> PanelContainer:
 	panel.add_child(column)
 	return panel
 
+func _build_sol_clock() -> PanelContainer:
+	var panel := MHStyle.hud_panel(7, false, true)
+	panel.anchor_left = .5
+	panel.anchor_right = .5
+	panel.offset_left = -78
+	panel.offset_right = 78
+	panel.offset_top = 108
+	panel.offset_bottom = 142
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := MHStyle.hbox(7)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_child(MHStyle.eyebrow("SOL", MHStyle.TEXT_MUTED, 10))
+	_sol_clock = MHStyle.mono("08:00 · DAY", 13, MHStyle.INFO, 700)
+	row.add_child(_sol_clock)
+	panel.add_child(row)
+	return panel
+
 func _telemetry_metric(caption: String, value: String, colour: Color) -> Label:
 	var metric := MHStyle.vbox(0)
 	metric.custom_minimum_size = Vector2(104, 0)
@@ -141,6 +160,7 @@ func _process(delta: float) -> void:
 	_compass.queue_redraw()
 	_update_chip()
 	_update_telemetry()
+	_update_sol_clock()
 	_update_prompt()
 	_readiness_age += delta
 	if not _collapsed and _readiness_age > COLLAPSE_AFTER:
@@ -162,6 +182,13 @@ func _update_telemetry() -> void:
 	if _telemetry_sunlight != null:
 		_telemetry_sunlight.text = "%d%%" % roundi(MHGame.sunlight_fraction * 100.0)
 		_telemetry_sunlight.add_theme_color_override("font_color", MHStyle.VALID if MHGame.sunlight_fraction > .1 else MHStyle.TEXT_MUTED)
+
+func _update_sol_clock() -> void:
+	if _sol_clock == null:
+		return
+	var daytime := MHGame.sunlight_fraction > .08
+	_sol_clock.text = "%s · %s" % [MHGame.formatted_sol_time(), "DAY" if daytime else "NIGHT"]
+	_sol_clock.add_theme_color_override("font_color", MHStyle.INFO if daytime else MHStyle.TEXT_MUTED)
 
 func _markers() -> Array:
 	var out: Array = []

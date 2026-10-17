@@ -878,11 +878,9 @@ func _zone_surfaces(zone: Dictionary) -> void:
 	var size_x:=float(max_x-min_x+1)*CELL
 	var size_z:=float(max_z-min_z+1)*CELL
 	var centre:=Vector3((float(min_x+max_x)*.5)*CELL,0,(float(min_z+max_z)*.5)*CELL)
-	# The showcase corridor kit has sealed end caps. It is useful for an ordinary
-	# passage, but it would physically occupy an airlock's inner doorway. A
-	# corridor meeting an airlock therefore uses the generated shell instead.
-	var corridor_has_airlock := zone_kind=="corridor" and _corridor_touches_airlock(cells)
-	var show_generated_surface := zone_kind!="corridor" or corridor_has_airlock
+	# Corridors use the same complete structural floor and roof as rooms.  Their
+	# former presentation-only kit left the deck underside and outside walls bare.
+	var show_generated_surface := true
 	# A drag rectangle is one continuous interior slab and one continuous roof.
 	# For a future irregular paint shape, individual cells remain a safe fallback.
 	if cells.size()==(max_x-min_x+1)*(max_z-min_z+1):
@@ -892,9 +890,8 @@ func _zone_surfaces(zone: Dictionary) -> void:
 		if zone_kind!="glass_room" and zone_kind!="corridor" and zone_kind!="airlock":
 			for corner in [Vector2i(min_x,min_z),Vector2i(max_x+1,min_z),Vector2i(max_x+1,max_z+1),Vector2i(min_x,max_z+1)]:
 				_add_showcase(SHOWCASE_CORNER,Vector3(corner.x*CELL-CELL*.5,habitat_base_y,corner.y*CELL-CELL*.5))
-		if zone_kind=="corridor" and not corridor_has_airlock:
-			var yaw:=_corridor_yaw(zone)
-			for cell in cells: _add_showcase(SHOWCASE_CORRIDOR,Vector3(cell.x*CELL,habitat_base_y,cell.y*CELL),yaw)
+		if zone_kind=="corridor":
+			_add_corridor_understructure(cells)
 	else:
 		for cell in cells:
 			var local_centre:=Vector3(cell.x*CELL,0,cell.y*CELL)
@@ -902,6 +899,13 @@ func _zone_surfaces(zone: Dictionary) -> void:
 			if zone_kind=="glass_room": _add_glass_box(local_centre+Vector3(0,habitat_base_y+2.9,0),Vector3(CELL,.15,CELL),Color(.36,.86,.92,.35),true,"habitat_roof")
 			else: _add_box(local_centre+Vector3(0,habitat_base_y+2.9,0),Vector3(CELL,.15,CELL),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof")
 	_add_zone_lighting(zone)
+
+func _add_corridor_understructure(cells: Array) -> void:
+	# A continuous dark service pan beneath the corridor makes the raised deck
+	# read as a supported pressurised passage even on the flat landing pad.
+	for cell in cells:
+		var centre := Vector3(cell.x * CELL, habitat_base_y - .22, cell.y * CELL)
+		_add_box(centre, Vector3(CELL - .14, .24, CELL - .14), MHStyle.SEAL_DARK, true, "corridor_understructure")
 
 func _add_zone_lighting(zone: Dictionary) -> void:
 	# Fixed ceiling strips are ordinary grid-powered consumers. Equipment placed
@@ -1126,12 +1130,12 @@ func _add_exterior_wall(centre: Vector3,side: Vector2i,zone_kind: String,zone: D
 	if zone_kind=="glass_room":
 		_add_glass_box(wall_position,wall_size,Color(.35,.86,.92,.30),true,"habitat_wall")
 		return
-	var corridor_side:=zone_kind=="corridor" and _is_corridor_side(zone,side) and not _corridor_touches_airlock(zone.cells)
 	# The collision box is centred at half wall height, while the Blender wall
 	# kit is exported with its base at y=0.  Giving both the same position was
 	# lifting the visible panel by 1.45 m above its collision and the roof.
-	if not corridor_side:
-		_add_showcase(SHOWCASE_WALL,Vector3(wall_position.x,habitat_base_y,wall_position.z),_wall_yaw(side))
+	# Corridors need the same exterior panel bays as rooms.  Skipping them was
+	# leaving their long outer faces as untextured backing boxes.
+	_add_showcase(SHOWCASE_WALL,Vector3(wall_position.x,habitat_base_y,wall_position.z),_wall_yaw(side))
 	# A slightly-overlapping backing closes the tiny seams between independently
 	# placed wall bays. It sits behind the kit surface, so panels and windows stay
 	# visible while there is never a line of exposed Mars through the hull.
