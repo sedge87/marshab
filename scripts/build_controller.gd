@@ -274,6 +274,16 @@ func _create_player_marker() -> void:
 	mesh_instance.material_override = material
 	mesh_instance.position.y = .14
 	player_marker.add_child(mesh_instance)
+	var arrow := MeshInstance3D.new()
+	var arrow_mesh := CylinderMesh.new()
+	arrow_mesh.top_radius = 0.0
+	arrow_mesh.bottom_radius = .16
+	arrow_mesh.height = .34
+	arrow.mesh = arrow_mesh
+	arrow.rotation.x = PI * .5
+	arrow.position = Vector3(0, .16, -.28)
+	arrow.material_override = material
+	player_marker.add_child(arrow)
 	var label := _label3d("PLAYER", 28, Color("#FFE2B4"), 800)
 	label.position = Vector3(0, .55, 0)
 	player_marker.add_child(label)
@@ -284,7 +294,8 @@ func _update_player_marker() -> void:
 	var player := world.get_node_or_null("Player") as Node3D
 	player_marker.visible = build_mode and player != null
 	if player != null:
-		player_marker.global_position = player.global_position
+		player_marker.global_position = Vector3(player.global_position.x, player.global_position.y - 1.0, player.global_position.z)
+		player_marker.rotation.y = player.rotation.y
 
 # Equipment sits on the raised deck, so it projects onto the floor height
 # rather than the ground plane the zone painter uses.
@@ -685,6 +696,12 @@ func _invalid_reason(cells: Array) -> String:
 		if abs(cell.x)>site_limit/CELL or abs(cell.y)>site_limit/CELL: return "Outside the surveyed build area"
 	for cell in cells:
 		if _occupied(cell): return "Overlaps existing habitat"
+	var player := world.get_node_or_null("Player") as Node3D
+	if player != null:
+		var player_cell := Vector2i(roundi(player.global_position.x / CELL), roundi(player.global_position.z / CELL))
+		for cell in cells:
+			if cell == player_cell:
+				return "Move clear of the player before building"
 	if kind=="airlock" and not _valid_airlock(cells): return "Inner end must touch a room; outer end faces Mars"
 	if kind=="vehicle_bay" and not _valid_vehicle_bay(cells): return "2–4 cells each way, door facing outside, beside a room"
 	if (kind=="solar" or kind=="reactor") and not _valid_power_source(cells): return "Power field must reach the habitat"
@@ -1379,7 +1396,7 @@ func _add_support(point: Vector3,ground: float) -> void:
 	var visual:=MeshInstance3D.new(); visual.mesh=pylon
 	var material:=StandardMaterial3D.new(); material.albedo_color=MHStyle.FRAME_STEEL; material.metallic=.65; material.roughness=.38; visual.material_override=material; support.add_child(visual)
 	var collision:=CollisionShape3D.new(); var shape:=CylinderShape3D.new(); shape.radius=.30; shape.height=height; collision.shape=shape; support.add_child(collision)
-	_add_box(Vector3(point.x,habitat_base_y-.08,point.z),Vector3(.78,.16,.78),MHStyle.SEAL_DARK,true,"habitat_support")
+	_add_box(Vector3(point.x,habitat_base_y-.17,point.z),Vector3(.78,.12,.78),MHStyle.SEAL_DARK,true,"habitat_support")
 	_add_box(Vector3(point.x,ground+.08,point.z),Vector3(.62,.16,.62),MHStyle.SEAL_DARK.darkened(.3),true,"habitat_support")
 
 func _remove_at(cell: Vector2i) -> void:

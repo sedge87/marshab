@@ -21,6 +21,7 @@ var _status: Label
 var _selection: Label
 var _selector: PanelContainer
 var _selector_open := false
+var _preview_material_valid := true
 
 func setup(target_player: CharacterBody3D, target_builder: BuildController) -> void:
 	player = target_player
@@ -57,6 +58,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not active:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_B and event.shift_pressed:
+			exit()
+			builder._toggle()
+			get_viewport().set_input_as_handled()
+			return
 		if event.keycode == KEY_B or event.keycode == KEY_ESCAPE:
 			exit()
 			get_viewport().set_input_as_handled()
@@ -128,9 +134,13 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		add_child(preview)
 		_disable_preview_collision(preview)
 		_set_preview_material(preview, _valid_reason.is_empty())
+		_preview_material_valid = _valid_reason.is_empty()
 	else:
 		preview.position = point + normal * .012
 		preview.rotation.y = _placement_yaw(normal)
+		if _preview_material_valid != _valid_reason.is_empty():
+			_set_preview_material(preview, _valid_reason.is_empty())
+			_preview_material_valid = _valid_reason.is_empty()
 	preview.visible = true
 	_update_hud()
 
@@ -140,13 +150,15 @@ func _placement_yaw(normal: Vector3) -> float:
 	var entry := EquipmentCatalog.get_entry(selected_id)
 	if str(entry.get("placement", "floor")) == "wall":
 		return atan2(-normal.x, -normal.z) + rotation_offset
-	return player.rotation.y + rotation_offset
+	return player.rotation.y + float(entry.get("model_rotation_y", 0.0)) + rotation_offset
 
 func _disable_preview_collision(node: Node) -> void:
 	for body in node.find_children("*", "StaticBody3D", true, false):
 		(body as StaticBody3D).collision_layer = 0
 	for shape in node.find_children("*", "CollisionShape3D", true, false):
 		(shape as CollisionShape3D).disabled = true
+	for light in node.find_children("*", "Light3D", true, false):
+		(light as Light3D).visible = false
 
 func _set_preview_material(node: Node, valid: bool) -> void:
 	var tint := Color("#57F6B3") if valid else Color("#FF5A61")
@@ -158,7 +170,7 @@ func _set_preview_material(node: Node, valid: bool) -> void:
 		material.albedo_color = Color(tint, .38)
 		material.emission_enabled = true
 		material.emission = tint
-		material.emission_energy_multiplier = .35
+		material.emission_energy_multiplier = .04
 		mesh.material_override = material
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 

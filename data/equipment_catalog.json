@@ -20,6 +20,7 @@
       "description": "Personal berth with reading lamp, privacy curtain and shelf.",
       "role": "One berth; lamp off on grid failure",
       "asset_scene": "res://assets/equipment/crew_bunk_optimised/godot/crew_bunk_optimised.tscn",
+      "model_rotation_y": 3.14159265,
       "cargo_cost": 100,
       "valid_zones": ["living"],
       "footprint": [2, 1],
