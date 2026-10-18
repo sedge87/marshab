@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_interactable.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/equipment/living_quarters_phase1/models/common_table.glb" id="2_model"]
+
+[node name="CommonTable" type="Node3D"]
+script = ExtResource("1_script")
+display_name = "Common Table"
+primary_action = "Read mission notes"
+educational_note = "COMMON TABLE\nA shared place for meals, planning and checking the habitat's daily work."
+
+[node name="Model" parent="." instance=ExtResource("2_model")]

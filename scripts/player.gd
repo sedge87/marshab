@@ -129,7 +129,7 @@ func _use_nearby_habitat_ladder() -> bool:
 	return false
 
 func _use_looked_at_interactable(method_name: String) -> bool:
-	if bool(get_meta("build_mode_active", false)) or bool(get_meta("interior_build_active", false)):
+	if bool(get_meta("build_mode_active", false)) or bool(get_meta("interior_build_active", false)) or bool(get_meta("surface_build_active", false)):
 		return false
 	var camera := get_node_or_null("Head/Camera3D") as Camera3D
 	if camera == null or not camera.is_inside_tree():
@@ -140,6 +140,10 @@ func _use_looked_at_interactable(method_name: String) -> bool:
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var node := hit.get("collider") as Node if not hit.is_empty() else null
 	while node != null:
+		if node.has_meta("interaction_target"):
+			var target := node.get_meta("interaction_target") as Node
+			if target != null and target.has_method(method_name):
+				return bool(target.call(method_name, self))
 		if node.has_method(method_name):
 			return bool(node.call(method_name, self))
 		node = node.get_parent()

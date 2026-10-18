@@ -98,6 +98,14 @@ func interact(_actor: Node = null) -> bool:
 	set_privacy_closed(not _privacy_closed)
 	return true
 
+func interaction_prompt() -> Dictionary:
+	return {
+		"primary": "Curtain",
+		"secondary": "Reading light",
+		"tertiary": "Drawer",
+		"label": "Crew Bunk",
+	}
+
 func interact_secondary(_actor: Node = null) -> bool:
 	set_reading_light_enabled(not _light_enabled)
 	return true

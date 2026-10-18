@@ -50,7 +50,19 @@ const ZONE_INFO := {
 }
 # Exterior construction deliberately excludes furnishing. Interior equipment is
 # selected only through the first-person construction controller.
-const CATEGORIES := [["rooms","Rooms","bed-double"],["structure","Structure","box"],["power","Resources","sun"]]
+const CATEGORIES := [["rooms","Rooms","bed-double"],["structure","Structure","box"],["power","Resources","sun"],["surface","Surface gear","package"]]
+const SURFACE_EQUIPMENT := {
+	"cargo_crate_small": {"label":"Small Cargo Crate", "icon":"package", "asset":"res://assets/surface_equipment_phase12/cargo_crate_small.glb", "radius":.65},
+	"cargo_crate_large": {"label":"Large Cargo Crate", "icon":"package", "asset":"res://assets/surface_equipment_phase12/cargo_crate_large.glb", "radius":1.1},
+	"equipment_pallet": {"label":"Equipment Pallet", "icon":"package", "asset":"res://assets/surface_equipment_phase12/equipment_pallet.glb", "radius":1.15},
+	"comms_antenna": {"label":"Comms Antenna", "icon":"satellite", "asset":"res://assets/surface_equipment_phase12/comms_antenna.glb", "radius":.8},
+	"exterior_workbench": {"label":"Field Workbench", "icon":"wrench", "asset":"res://assets/surface_equipment_phase12/exterior_workbench.glb", "radius":1.0},
+	"high_light_post": {"label":"High Light Post", "icon":"lightbulb", "asset":"res://assets/surface_equipment_phase12/high_light_post.glb", "radius":.45},
+	"path_beacon": {"label":"Path Beacon", "icon":"map-pin", "asset":"res://assets/surface_equipment_phase12/path_beacon.glb", "radius":.35},
+	"portable_work_light": {"label":"Portable Work Light", "icon":"lightbulb", "asset":"res://assets/surface_equipment_phase12/portable_work_light.glb", "radius":.45},
+	"safety_barrier": {"label":"Safety Barrier", "icon":"shield", "asset":"res://assets/surface_equipment_phase12/safety_barrier.glb", "radius":1.0},
+	"solar_floodlight": {"label":"Solar Floodlight", "icon":"sun", "asset":"res://assets/surface_equipment_phase12/solar_floodlight.glb", "radius":.55},
+}
 const HALF_CELL := 1.5
 const ROOM_HEIGHT := 2.9
 const GRID_SHADER := """
@@ -84,6 +96,7 @@ void fragment() {
 signal habitat_changed
 signal mission_control_requested
 signal interior_build_requested
+signal surface_build_requested(id: String)
 
 var kind := "living"
 var airlock_direction := Vector2i(0,-1)
@@ -95,10 +108,14 @@ var placed_equipment: Array = []
 # legacy top-down, cell-keyed equipment records.  They share the catalogue's
 # effects and cargo cost, but do not participate in exterior grid snapping.
 var placed_interior: Array = []
+# Free ground props are deliberately separate from grid zones and interior
+# furnishings. They carry no resource effects until a gameplay design is added.
+var placed_surface: Array = []
 # Selected interior item; empty while a zone is selected.
 var equipment_id := ""
 # Greybox stand-ins for placed equipment, keyed by cell, until final art lands.
 var furnishing: Node3D
+var surface_furnishing: Node3D
 var _equipment_visuals := {}
 # Undo order across zones and equipment: {"type":"zone","zone":…} / {"type":"equipment","id":…,"cell":…}.
 var _history: Array = []
@@ -152,6 +169,7 @@ func _ready() -> void:
 	root=Node3D.new(); root.name="StudentHabitat"; world.add_child(root)
 	preview=Node3D.new(); preview.name="ZonePreview"; world.add_child(preview)
 	furnishing=Node3D.new(); furnishing.name="HabitatEquipment"; world.add_child(furnishing)
+	surface_furnishing=Node3D.new(); surface_furnishing.name="SurfaceEquipment"; world.add_child(surface_furnishing)
 	if display_only: return
 	_camera(); _grid(); _ui(); _create_player_marker()
 
@@ -163,6 +181,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if active_player != null and bool(active_player.get_meta("interior_build_active", false)):
 				return
 			var player := world.get_node_or_null("Player") as Node3D
+			if active_player != null and bool(active_player.get_meta("surface_build_active", false)):
+				return
 			if not build_mode and player != null and is_inside(player.global_position):
 				interior_build_requested.emit()
 			else:
@@ -456,6 +476,8 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 			if model != null:
 				model.name = "Model"
 				holder.add_child(model)
+				if model.has_method("interaction_prompt"):
+					body.set_meta("interaction_target", model)
 				model_loaded = true
 				model_has_collision = not model.find_children("*", "CollisionShape3D", true, false).is_empty()
 	if not bool(entry.get("walkthrough", false)) and size.y > .15 and not model_has_collision:
@@ -600,6 +622,8 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 				model.name = "Model"
 				model.position = offset
 				holder.add_child(model)
+				if model.has_method("interaction_prompt"):
+					body.set_meta("interaction_target", model)
 				model_loaded = true
 				model_has_collision = not model.find_children("*", "CollisionShape3D", true, false).is_empty()
 	if not bool(entry.get("walkthrough", false)) and size.y > .15 and not model_has_collision:
@@ -1556,11 +1580,77 @@ func _solar_efficiency(direction: Vector2i) -> float:
 # ---------- save / restore ----------
 # Only simulation records are serialised.  Meshes, colliders and HUD are rebuilt
 # from those records so saves remain valid when presentation assets are updated.
+func surface_entry(id: String) -> Dictionary:
+	return SURFACE_EQUIPMENT.get(id, {}) as Dictionary
+
+func surface_invalid_reason(id: String, position: Vector3) -> String:
+	var entry := surface_entry(id)
+	if entry.is_empty(): return "Unknown surface equipment"
+	if is_inside(position): return "Keep surface equipment outside the habitat"
+	var radius := float(entry.get("radius", .6))
+	for item in placed_surface:
+		var other: Dictionary = item as Dictionary
+		var other_entry := surface_entry(str(other.get("id", "")))
+		if position.distance_to(other.get("position", Vector3.ZERO) as Vector3) < radius + float(other_entry.get("radius", .6)) + .25:
+			return "Too close to surface equipment"
+	return ""
+
+func surface_visual(id: String, position: Vector3, rotation_y: float) -> Node3D:
+	var entry := surface_entry(id)
+	var holder := Node3D.new()
+	holder.name = "Surface_%s" % id
+	holder.position = position
+	holder.rotation.y = rotation_y
+	var path := str(entry.get("asset", ""))
+	if not path.is_empty() and ResourceLoader.exists(path):
+		var scene := load(path)
+		if scene is PackedScene:
+			var model := (scene as PackedScene).instantiate() as Node3D
+			if model != null:
+				model.name = "Model"
+				holder.add_child(model)
+	var collision_body := StaticBody3D.new()
+	collision_body.name = "SurfaceCollision"
+	collision_body.collision_layer = 1
+	var collision := CollisionShape3D.new()
+	var shape := CylinderShape3D.new()
+	shape.radius = float(entry.get("radius", .6))
+	shape.height = 1.0
+	collision.shape = shape
+	collision_body.add_child(collision)
+	holder.add_child(collision_body)
+	return holder
+
+func place_surface_equipment(id: String, position: Vector3, rotation_y: float, visual: Node3D) -> bool:
+	if not surface_invalid_reason(id, position).is_empty() or visual == null:
+		return false
+	var placement_id := "surface_%d" % Time.get_ticks_usec()
+	placed_surface.append({"placement_id": placement_id, "id": id, "position": position, "rotation_y": rotation_y})
+	visual.name = "Surface_%s" % placement_id
+	visual.set_meta("surface_placement_id", placement_id)
+	visual.set_meta("surface_equipment_id", id)
+	surface_furnishing.add_child(visual)
+	habitat_changed.emit()
+	return true
+
+func remove_surface_equipment(placement_id: String) -> bool:
+	for index in range(placed_surface.size() - 1, -1, -1):
+		if str((placed_surface[index] as Dictionary).get("placement_id", "")) != placement_id:
+			continue
+		placed_surface.remove_at(index)
+		for child in surface_furnishing.get_children():
+			if str(child.get_meta("surface_placement_id", "")) == placement_id:
+				child.queue_free()
+		habitat_changed.emit()
+		return true
+	return false
+
 func export_habitat_state() -> Dictionary:
 	return {
 		"zones": zones.duplicate(true),
 		"placed_equipment": placed_equipment.duplicate(true),
 		"placed_interior": placed_interior.duplicate(true),
+		"placed_surface": placed_surface.duplicate(true),
 		"habitat_base_y": habitat_base_y,
 		"kind": kind,
 		"airlock_direction": airlock_direction
@@ -1569,6 +1659,7 @@ func export_habitat_state() -> Dictionary:
 func restore_habitat_state(state: Dictionary) -> void:
 	for child in root.get_children(): child.free()
 	for child in furnishing.get_children(): child.free()
+	for child in surface_furnishing.get_children(): child.free()
 	zones = (state.get("zones", []) as Array).duplicate(true)
 	# Older saves or hand-authored test records may not carry display fields.
 	# Recreate only those derivable fields; never change a valid saved layout.
@@ -1581,6 +1672,7 @@ func restore_habitat_state(state: Dictionary) -> void:
 		zones[index] = saved_zone
 	placed_equipment = (state.get("placed_equipment", []) as Array).duplicate(true)
 	placed_interior.clear()
+	placed_surface.clear()
 	habitat_base_y = float(state.get("habitat_base_y", habitat_base_y))
 	kind = str(state.get("kind", kind))
 	airlock_direction = state.get("airlock_direction", airlock_direction) as Vector2i
@@ -1594,6 +1686,17 @@ func restore_habitat_state(state: Dictionary) -> void:
 		visual.set_meta("interior_placement_id", str(item.get("placement_id", "")))
 		furnishing.add_child(visual)
 		placed_interior.append(item.duplicate(true))
+	for raw_item in state.get("placed_surface", []) as Array:
+		var surface_item: Dictionary = raw_item as Dictionary
+		var surface_id := str(surface_item.get("id", ""))
+		var surface_visual_instance := surface_visual(surface_id, surface_item.get("position", Vector3.ZERO) as Vector3, float(surface_item.get("rotation_y", 0.0)))
+		if surface_entry(surface_id).is_empty():
+			surface_visual_instance.queue_free()
+			continue
+		surface_visual_instance.name = "Surface_%s" % str(surface_item.get("placement_id", surface_id))
+		surface_visual_instance.set_meta("surface_placement_id", str(surface_item.get("placement_id", "")))
+		surface_furnishing.add_child(surface_visual_instance)
+		placed_surface.append(surface_item.duplicate(true))
 	_history.clear()
 	_rebuild()
 
@@ -1845,6 +1948,15 @@ func _select_equipment(id: String) -> void:
 	equipment_id=id; dragging=false; category="equipment"; _set_tool("place"); _preview_key=""
 	_refresh_catalogue()
 
+func _select_surface_equipment(id: String) -> void:
+	if not SURFACE_EQUIPMENT.has(id):
+		return
+	# Ground props are selected in the familiar exterior catalogue, then placed
+	# in first person on actual terrain rather than snapped to construction cells.
+	surface_build_requested.emit(id)
+	if build_mode:
+		_toggle()
+
 func _refresh_catalogue() -> void:
 	if catalogue_grid==null: return
 	for id in category_buttons:
@@ -1864,6 +1976,14 @@ func _refresh_catalogue() -> void:
 	if category=="equipment":
 		catalogue_count.text="%d items" % EquipmentCatalog.entries().size()
 		_refresh_equipment_list(remaining)
+	elif category=="surface":
+		catalogue_count.text="%d props" % SURFACE_EQUIPMENT.size()
+		for id in SURFACE_EQUIPMENT:
+			catalogue_grid.add_child(_surface_equipment_card(id))
+		var surface_head:=MHStyle.hbox(8); catalogue_detail.add_child(surface_head)
+		surface_head.add_child(MHStyle.title("Surface equipment",20)); surface_head.add_child(MHStyle.spacer())
+		catalogue_detail.add_child(MHStyle.body("Select a non-structural prop, then place it freely from first person on outdoor ground. These props do not replace the grid-based reactor or ice extractor and have no simulation effect yet.",14))
+		return
 	else:
 		catalogue_count.text="%d zones" % ZONE_TYPES.size()
 		for id in ZONE_TYPES:
@@ -1961,6 +2081,28 @@ func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
 	var mass_colour:=MHStyle.DANGER if unaffordable else (MHStyle.accent if selected else MHStyle.TEXT_SECONDARY)
 	lines.add_child(MHStyle.mono("%s / cell" % MHStyle.kg(int(ZONE_TYPES[id].cost)),12,mass_colour,600))
 	var rule:=MHStyle.mono(str(ZONE_INFO[id].rule),12,MHStyle.TEXT_MUTED); rule.clip_text=true; lines.add_child(rule)
+	return card
+
+func _surface_equipment_card(id: String) -> Button:
+	var entry: Dictionary = SURFACE_EQUIPMENT[id]
+	var card := Button.new()
+	card.custom_minimum_size = Vector2(196, 142)
+	card.focus_mode = Control.FOCUS_NONE
+	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	card.tooltip_text = "%s\nFree placement on outdoor ground" % str(entry.label)
+	card.add_theme_stylebox_override("normal", MHStyle.control_box(0))
+	card.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, MHStyle.RADIUS_MD, 1, Vector4(12, 12, 12, 12)))
+	var column := MHStyle.vbox(5)
+	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon_row := MHStyle.hbox(8)
+	icon_row.add_child(MHStyle.icon(str(entry.icon), 22, MHStyle.accent))
+	icon_row.add_child(MHStyle.eyebrow("SURFACE", MHStyle.accent, 10))
+	column.add_child(icon_row)
+	column.add_child(MHStyle.label(str(entry.label), 16, MHStyle.TEXT_PRIMARY, 600))
+	column.add_child(MHStyle.mono("FIRST-PERSON · FREE GROUND", 10, MHStyle.TEXT_MUTED))
+	card.add_child(column)
+	card.pressed.connect(_select_surface_equipment.bind(id))
 	return card
 
 func _build_tool_bar() -> void:

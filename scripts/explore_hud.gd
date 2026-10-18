@@ -14,6 +14,7 @@ var _root: Control
 var _compass: MHWidgets.Compass
 var _crosshair: MHWidgets.Crosshair
 var _prompt: PanelContainer
+var _prompt_keys: Label
 var _prompt_verb: Label
 var _prompt_state: Label
 var _chip_slot: Control
@@ -90,7 +91,8 @@ func _ready() -> void:
 	_prompt.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, MHStyle.BORDER_SUBTLE, MHStyle.RADIUS_MD, 1, Vector4(8, 8, 18, 8)))
 	_prompt.modulate.a = 0.0
 	var prompt_row := MHStyle.hbox(12)
-	prompt_row.add_child(MHStyle.keycap("E"))
+	_prompt_keys = MHStyle.mono("", 14, MHStyle.accent, 700)
+	prompt_row.add_child(_prompt_keys)
 	_prompt_verb = MHStyle.label("", 18, MHStyle.TEXT_PRIMARY, 600)
 	prompt_row.add_child(_prompt_verb)
 	_prompt_state = MHStyle.mono("", 14, MHStyle.TEXT_MUTED)
@@ -213,22 +215,46 @@ func _update_chip() -> void:
 	_chip_slot.add_child(MHStyle.colony_chip(context))
 
 func _update_prompt() -> void:
-	var nearest: Node3D
-	var nearest_distance := INTERACT_RANGE
-	for candidate in get_tree().get_nodes_in_group("airlock_door"):
-		var door := candidate as Node3D
-		if door == null: continue
-		var d := player.global_position.distance_to(door.global_position)
-		if d < nearest_distance:
-			nearest = door
-			nearest_distance = d
-	var show := nearest != null and nearest.has_method("prompt_verb")
+	var target := _looked_at_interactable()
+	var show := target != null
 	_crosshair.interact = show
 	if show:
-		_prompt_verb.text = str(nearest.call("prompt_verb"))
-		_prompt_state.text = "· " + str(nearest.call("state_text"))
+		if target.has_method("interaction_prompt"):
+			var prompt: Dictionary = target.call("interaction_prompt")
+			var actions: Array[String] = []
+			for action in [["E", "primary"], ["F", "secondary"], ["G", "tertiary"]]:
+				var action_name := str(prompt.get(str(action[1]), ""))
+				if not action_name.is_empty(): actions.append("%s %s" % [str(action[0]), action_name])
+			_prompt_keys.text = "  ".join(actions)
+			_prompt_verb.text = str(prompt.get("label", "Equipment"))
+			_prompt_state.text = ""
+		elif target.has_method("prompt_verb"):
+			_prompt_keys.text = "E"
+			_prompt_verb.text = str(target.call("prompt_verb"))
+			_prompt_state.text = "· " + str(target.call("state_text"))
 	# 120 ms fade
 	_prompt.modulate.a = move_toward(_prompt.modulate.a, 1.0 if show else 0.0, get_process_delta_time() / 0.12)
+
+func _looked_at_interactable() -> Node:
+	if player == null or bool(player.get_meta("build_mode_active", false)) or bool(player.get_meta("interior_build_active", false)) or bool(player.get_meta("surface_build_active", false)):
+		return null
+	var camera := player.get_node_or_null("Head/Camera3D") as Camera3D
+	if camera == null or not camera.is_inside_tree():
+		return null
+	var query := PhysicsRayQueryParameters3D.create(camera.global_position, camera.global_position + -camera.global_transform.basis.z * INTERACT_RANGE)
+	query.exclude = [player.get_rid()]
+	query.collision_mask = 1
+	var hit := player.get_world_3d().direct_space_state.intersect_ray(query)
+	var node := hit.get("collider") as Node if not hit.is_empty() else null
+	while node != null:
+		if node.has_meta("interaction_target"):
+			var target := node.get_meta("interaction_target") as Node
+			if target != null and (target.has_method("interaction_prompt") or target.has_method("prompt_verb")):
+				return target
+		if node.has_method("interaction_prompt") or node.has_method("prompt_verb"):
+			return node
+		node = node.get_parent()
+	return null
 
 func _refresh_readiness() -> void:
 	var items := builder.readiness()

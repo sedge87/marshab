@@ -108,3 +108,14 @@ The supplied `crew_bunk_optimised_godot_pack.zip` is now integrated as the live 
 - BuildController now skips its generic collision when an imported scene supplies `CollisionShape3D` nodes, avoiding duplicate bunk collision.
 
 The wrapper script and project editor scan parse without script errors. Headless runtime/test execution is still limited by this machine's unavailable Godot `user://logs/godot.log` directory; run the game locally to place the bunk, confirm its model/collision alignment, toggle power, and exercise the curtain/drawer controls before proceeding to the next asset.
+
+## Living Quarters and surface-placement slice (18 October 2026)
+
+- Snapshot before this import: `backups/living_ui_surface_before_import_20261018_093000/` (166 files; 12,050,114 bytes).
+- Imported, without overwriting earlier art: the delivered Living Quarters GLBs are retained under `assets/equipment/living_quarters_phase1/models/`; their live wrappers are `locker.tscn`, `common_table.tscn`, `task_light.tscn`, `privacy_divider.tscn`, and `exercise_station.tscn` in the parent phase folder.
+- The existing `locker`, `common_table`, `task_light`, `privacy_divider`, and `exercise_station` IDs, permitted-zone lists, cargo costs and simulator effects were preserved. Catalogue paths now reference their wrappers; only visual-fit dimensions were corrected for the delivered art.
+- `scripts/equipment_interactable.gd` gives each delivered Living item a reticle prompt and a short inspect readout. The task light also has a local on/off action tied to the existing grid-light group. The bunk now exposes the same contextual action contract for curtain, light and drawer.
+- `scripts/explore_hud.gd` and `scripts/player.gd` use one forward raycast/interaction target contract. Asset-specific actions now appear by the reticle; the permanent controls page only advertises the general context action.
+- `assets/surface_equipment_phase12/` contains the supplied exterior art. The exterior catalogue has a separate **Surface gear** tab and switches into first-person free-ground placement. It saves `placed_surface` independently, rejects indoor/overlapping placement, and intentionally keeps reactor, ice-extractor, airlock and hull logic on their existing grid/simulation paths. The supplied surface reactor and ice drill are deliberately not registered as props pending an explicit gameplay replacement design.
+
+Verification still required locally: place every Living asset in each permitted room, inspect/toggle task light, confirm bunk actions, place/remove/load each Surface gear item, check ground slope and collision around habitat edges, and capture runtime screenshots. Headless Godot on this machine still cannot open `user://logs/godot.log`, so these runtime behaviours are not marked verified.

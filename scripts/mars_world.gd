@@ -5,6 +5,7 @@ const MENU_SCENE := "res://scenes/main_menu.tscn"
 const ORIGINAL_ENVIRONMENT_SCRIPT := preload("res://scripts/original_mars_environment.gd")
 const BUILD_CONTROLLER_SCRIPT := preload("res://scripts/build_controller.gd")
 const INTERIOR_BUILD_CONTROLLER_SCRIPT := preload("res://scripts/interior_build_controller.gd")
+const SURFACE_BUILD_CONTROLLER_SCRIPT := preload("res://scripts/surface_build_controller.gd")
 const DAY_NIGHT_SCRIPT := preload("res://scripts/site_day_night.gd")
 const SCOUT_ROVER_SCENE_PATH := "res://scenes/mars_scout_rover.tscn"
 # Optional companion feature. Set false to remove it without touching player,
@@ -21,6 +22,7 @@ var mission_control: MHMissionControl
 var dust: CPUParticles3D
 var scout_rover: Node3D
 var interior_builder: MHInteriorBuildController
+var surface_builder: MHSurfaceBuildController
 var day_night: MHSiteDayNight
 
 func _ready() -> void:
@@ -32,9 +34,13 @@ func _ready() -> void:
 	add_child(builder)
 	builder.mission_control_requested.connect(_open_mission_control)
 	builder.interior_build_requested.connect(_open_interior_build)
+	builder.surface_build_requested.connect(_open_surface_build)
 	interior_builder = INTERIOR_BUILD_CONTROLLER_SCRIPT.new()
 	add_child(interior_builder)
 	interior_builder.setup(player, builder)
+	surface_builder = SURFACE_BUILD_CONTROLLER_SCRIPT.new()
+	add_child(surface_builder)
+	surface_builder.setup(player, builder)
 	day_night = DAY_NIGHT_SCRIPT.new()
 	add_child(day_night)
 	day_night.setup(environment, builder)
@@ -58,6 +64,11 @@ func _open_interior_build() -> void:
 	if pause_menu != null or mission_control != null or interior_builder == null:
 		return
 	interior_builder.enter()
+
+func _open_surface_build(id: String) -> void:
+	if pause_menu != null or mission_control != null or surface_builder == null:
+		return
+	surface_builder.enter(id)
 
 # Wind outside, life-support hum once the player is inside a habitat zone.
 var _space_check := 0.0

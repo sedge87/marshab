@@ -6,7 +6,9 @@ extends Node
 ## and yaw rather than a single exterior-grid cell.
 
 const BUILD_RANGE := 4.8
-const QUICK_ITEMS := ["crew_bunk", "grow_tray", "air_recycler", "science_workbench", "cargo_rack"]
+# The selector starts with the validated Living Quarters batch, then keeps the
+# existing vertical-slice equipment available for its own valid rooms.
+const QUICK_ITEMS := ["crew_bunk", "locker", "common_table", "task_light", "privacy_divider", "exercise_station", "grow_tray", "air_recycler", "science_workbench", "cargo_rack"]
 
 var builder: BuildController
 var player: CharacterBody3D
@@ -236,7 +238,7 @@ func _build_hud() -> void:
 	_selector.anchor_bottom = 1.0
 	_selector.offset_left = -352
 	_selector.offset_right = 352
-	_selector.offset_top = -332
+	_selector.offset_top = -468
 	_selector.offset_bottom = -72
 	_selector.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, MHStyle.BORDER_SUBTLE, MHStyle.RADIUS_MD, 1, Vector4(18, 18, 18, 18)))
 	_hud.add_child(_selector)

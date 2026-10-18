@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_interactable.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/equipment/living_quarters_phase1/models/exercise_station.glb" id="2_model"]
+
+[node name="ExerciseStation" type="Node3D"]
+script = ExtResource("1_script")
+display_name = "Exercise Station"
+primary_action = "Inspect training station"
+educational_note = "EXERCISE STATION\nResistance exercise helps astronauts protect muscles and bones in reduced gravity."
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
