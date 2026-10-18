@@ -491,15 +491,25 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 	var model_loaded := false
 	var model_has_collision := false
 	var asset_path := str(entry.get("asset_scene", ""))
-	if not asset_path.is_empty() and ResourceLoader.exists(asset_path):
+	if not asset_path.is_empty() and (ResourceLoader.exists(asset_path) or FileAccess.file_exists(asset_path)):
 		var resource := load(asset_path)
 		if resource is PackedScene:
 			var model := (resource as PackedScene).instantiate() as Node3D
 			if model != null:
 				model.name = "Model"
-				holder.add_child(model)
-				if model.has_method("interaction_prompt"):
-					body.set_meta("interaction_target", model)
+				var interaction_note := str(entry.get("interaction_note", ""))
+				if not interaction_note.is_empty():
+					var interactable := MHEquipmentInteractable.new()
+					interactable.display_name = str(entry.get("label", id))
+					interactable.primary_action = str(entry.get("primary_action", "Read"))
+					interactable.educational_note = interaction_note
+					holder.add_child(interactable)
+					interactable.add_child(model)
+					body.set_meta("interaction_target", interactable)
+				else:
+					holder.add_child(model)
+					if model.has_method("interaction_prompt"):
+						body.set_meta("interaction_target", model)
 				model_loaded = true
 				model_has_collision = not model.find_children("*", "CollisionShape3D", true, false).is_empty()
 	if not bool(entry.get("walkthrough", false)) and size.y > .15 and not model_has_collision:
@@ -520,7 +530,10 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 func interior_asset_available(id: String) -> bool:
 	var entry := EquipmentCatalog.get_entry(id)
 	var asset_path := str(entry.get("asset_scene", ""))
-	return not asset_path.is_empty() and ResourceLoader.exists(asset_path)
+	# ResourceLoader only recognises imported scenes in some headless startup
+	# orders. The source file check keeps delivered GLBs selectable while their
+	# import is being indexed; load() still guards instantiation below.
+	return not asset_path.is_empty() and (ResourceLoader.exists(asset_path) or FileAccess.file_exists(asset_path))
 
 ## Empty when `id` can be placed in `cell`; otherwise a short hologram reason.
 func equipment_invalid_reason(id: String, cell: Vector2i) -> String:
@@ -657,16 +670,30 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 	var model_loaded := false
 	var model_has_collision := false
 	var asset_path := str(entry.get("asset_scene", ""))
-	if not asset_path.is_empty() and ResourceLoader.exists(asset_path):
+	if not asset_path.is_empty() and (ResourceLoader.exists(asset_path) or FileAccess.file_exists(asset_path)):
 		var resource := load(asset_path)
 		if resource is PackedScene:
 			var model := (resource as PackedScene).instantiate() as Node3D
 			if model != null:
 				model.name = "Model"
-				model.position = offset
-				holder.add_child(model)
-				if model.has_method("interaction_prompt"):
-					body.set_meta("interaction_target", model)
+				var interaction_note := str(entry.get("interaction_note", ""))
+				if not interaction_note.is_empty():
+					# GLB-only deliveries still get a compact, reticle-based readout.
+					# Keeping the adapter as the model's parent also applies its
+					# compatibility material pass to the delivered mesh hierarchy.
+					var interactable := MHEquipmentInteractable.new()
+					interactable.display_name = str(entry.get("label", id))
+					interactable.primary_action = str(entry.get("primary_action", "Read"))
+					interactable.educational_note = interaction_note
+					interactable.position = offset
+					holder.add_child(interactable)
+					interactable.add_child(model)
+					body.set_meta("interaction_target", interactable)
+				else:
+					model.position = offset
+					holder.add_child(model)
+					if model.has_method("interaction_prompt"):
+						body.set_meta("interaction_target", model)
 				model_loaded = true
 				model_has_collision = not model.find_children("*", "CollisionShape3D", true, false).is_empty()
 	if not bool(entry.get("walkthrough", false)) and size.y > .15 and not model_has_collision:

@@ -25,7 +25,7 @@ func _initialize() -> void:
 	builder.display_only = true
 	assert(builder.interior_asset_available("grow_tray"), "Delivered hydroponics art should be available in the first-person palette.")
 	assert(builder.interior_asset_available("science_workbench"), "Delivered science workbench art should be available in the first-person palette.")
-	assert(not builder.interior_asset_available("sample_analysis_station"), "Missing future science art must stay out of the first-person palette.")
+	assert(builder.interior_asset_available("sample_analysis_station"), "Delivered science station art should be available in the first-person palette.")
 	var world := Node3D.new()
 	root.add_child(world)
 	await process_frame

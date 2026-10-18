@@ -3,7 +3,7 @@ extends SceneTree
 # Runtime loading contract for the grounded first batch.  It deliberately
 # exercises BuildController rather than directly instantiating GLBs, so a
 # catalogue path, placement offset or fallback regression is caught here.
-const MODELLED_IDS := ["crew_bunk", "locker", "common_table", "task_light", "privacy_divider", "exercise_station", "grow_tray", "seedling_station", "nutrient_mixer", "harvest_cart", "hydroponics_sensor_panel", "air_recycler", "science_workbench", "cargo_rack"]
+const MODELLED_IDS := ["crew_bunk", "locker", "common_table", "task_light", "privacy_divider", "exercise_station", "grow_tray", "seedling_station", "nutrient_mixer", "harvest_cart", "hydroponics_sensor_panel", "air_recycler", "science_workbench", "sample_analysis_station", "microscope_station", "planetary_data_console", "sample_storage_cabinet", "cargo_rack"]
 
 func _initialize() -> void:
 	var builder := BuildController.new()
