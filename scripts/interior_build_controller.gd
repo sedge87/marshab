@@ -436,7 +436,7 @@ func _refresh_contextual_selector(force := false) -> void:
 	for raw_id in QUICK_ITEMS:
 		var id := str(raw_id)
 		var entry := EquipmentCatalog.get_entry(id)
-		if not entry.is_empty() and not zone_kind.is_empty() and (entry.get("valid_zones", []) as Array).has(zone_kind):
+		if not entry.is_empty() and builder.interior_asset_available(id) and not zone_kind.is_empty() and (entry.get("valid_zones", []) as Array).has(zone_kind):
 			_selector_items.append(id)
 	if _selector_items.is_empty():
 		_selector_group = ""
@@ -465,7 +465,7 @@ func _refresh_contextual_selector(force := false) -> void:
 	_render_selector_cards()
 	if _selector_context != null:
 		var zone_label := str(BuildController.ZONE_TYPES.get(zone_kind, {}).get("label", "completed habitat"))
-		_selector_context.text = "%s kit · compatible equipment only · free placement" % zone_label
+		_selector_context.text = "%s kit · %d delivered assets · free placement" % [zone_label, _selector_items.size()]
 
 func _render_selector_tabs(groups: Array[String]) -> void:
 	for child in _selector_tabs.get_children():

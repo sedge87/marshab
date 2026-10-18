@@ -514,6 +514,14 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 		_add_equipment_power_lamp(body, size)
 	return holder
 
+## The first-person palette is an art-facing build surface. Do not advertise a
+## catalogue plan whose final scene has not arrived yet; greybox fallback stays
+## available for automated systems and future development only.
+func interior_asset_available(id: String) -> bool:
+	var entry := EquipmentCatalog.get_entry(id)
+	var asset_path := str(entry.get("asset_scene", ""))
+	return not asset_path.is_empty() and ResourceLoader.exists(asset_path)
+
 ## Empty when `id` can be placed in `cell`; otherwise a short hologram reason.
 func equipment_invalid_reason(id: String, cell: Vector2i) -> String:
 	var entry := EquipmentCatalog.get_entry(id)
