@@ -10,6 +10,7 @@ primary_action = "Inspect work light"
 secondary_action = "Toggle light"
 educational_note = "TASK LIGHT\nFocused light helps crew read, repair and work without lighting the whole room."
 light_node_path = NodePath("EquipmentLight")
+emissive_node_path = NodePath("Model/world/Lamp_Diffuser__glow")
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
 
@@ -17,7 +18,7 @@ light_node_path = NodePath("EquipmentLight")
 position = Vector3(0, -0.05, -0.7)
 rotation_degrees = Vector3(-18, 0, 0)
 light_color = Color(1, 0.9, 0.76, 1)
-light_energy = 1.0
-spot_range = 2.6
-spot_angle = 38.0
+light_energy = 0.55
+spot_range = 1.8
+spot_angle = 25.0
 shadow_enabled = false

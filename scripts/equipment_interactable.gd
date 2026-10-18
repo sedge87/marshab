@@ -9,11 +9,13 @@ extends Node3D
 @export var secondary_action := ""
 @export_multiline var educational_note := ""
 @export var light_node_path: NodePath
+@export var emissive_node_path: NodePath
 
-var _inspected := false
 var _light_enabled := true
-var _readout: Label3D
 var _equipment_light: Light3D
+var _emissive_mesh: MeshInstance3D
+var _lit_emissive_material: StandardMaterial3D
+var _dark_emissive_material: StandardMaterial3D
 
 func _ready() -> void:
 	add_to_group("habitat_interactable")
@@ -23,7 +25,18 @@ func _ready() -> void:
 		if _equipment_light != null:
 			_equipment_light.add_to_group("grid_powered_light")
 			_equipment_light.set_meta("grid_light_energy", _equipment_light.light_energy)
-	_build_readout()
+	if not emissive_node_path.is_empty():
+		_emissive_mesh = get_node_or_null(emissive_node_path) as MeshInstance3D
+		if _emissive_mesh != null:
+			var source := _emissive_mesh.get_active_material(0) as StandardMaterial3D
+			_lit_emissive_material = source.duplicate() as StandardMaterial3D if source != null else StandardMaterial3D.new()
+			_lit_emissive_material.emission_enabled = true
+			if _lit_emissive_material.emission == Color.BLACK:
+				_lit_emissive_material.emission = Color("#FFE0A0")
+			_dark_emissive_material = _lit_emissive_material.duplicate() as StandardMaterial3D
+			_dark_emissive_material.emission_enabled = false
+			_dark_emissive_material.albedo_color = Color("#39403C")
+	_set_light_enabled(true)
 
 func _make_model_materials_two_sided() -> void:
 	# Thin sheet-metal panels in delivered GLBs must remain visible from either
@@ -48,32 +61,19 @@ func interaction_prompt() -> Dictionary:
 	}
 
 func interact(_actor: Node = null) -> bool:
-	_inspected = not _inspected
-	if _readout != null:
-		_readout.visible = _inspected
+	if not educational_note.is_empty():
+		get_tree().call_group("explore_hud", "show_equipment_note", display_name, educational_note)
 	return true
 
 func interact_secondary(_actor: Node = null) -> bool:
 	if secondary_action.is_empty():
 		return false
-	_light_enabled = not _light_enabled
-	if _equipment_light != null:
-		_equipment_light.visible = _light_enabled
+	_set_light_enabled(not _light_enabled)
 	return true
 
-func _build_readout() -> void:
-	if educational_note.is_empty():
-		return
-	_readout = Label3D.new()
-	_readout.name = "InspectReadout"
-	_readout.text = educational_note
-	_readout.font = MHStyle.font(600, false, 1)
-	_readout.font_size = 32
-	_readout.outline_size = 8
-	_readout.outline_modulate = Color(MHStyle.INK_950, .9)
-	_readout.modulate = MHStyle.TEXT_PRIMARY
-	_readout.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_readout.pixel_size = .008
-	_readout.position = Vector3(0, 1.15, -.06)
-	_readout.visible = false
-	add_child(_readout)
+func _set_light_enabled(enabled: bool) -> void:
+	_light_enabled = enabled
+	if _equipment_light != null:
+		_equipment_light.visible = enabled
+	if _emissive_mesh != null:
+		_emissive_mesh.material_override = _lit_emissive_material if enabled else _dark_emissive_material

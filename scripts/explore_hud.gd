@@ -17,6 +17,10 @@ var _prompt: PanelContainer
 var _prompt_keys: Label
 var _prompt_verb: Label
 var _prompt_state: Label
+var _note_panel: PanelContainer
+var _note_title: Label
+var _note_body: Label
+var _note_time_left := 0.0
 var _chip_slot: Control
 var _chip_context := ""
 var _readiness_slot: VBoxContainer
@@ -37,6 +41,7 @@ func setup(target_player: Node3D, target_builder: BuildController) -> void:
 
 func _ready() -> void:
 	name = "ExploreHUD"
+	add_to_group("explore_hud")
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -100,7 +105,38 @@ func _ready() -> void:
 	prompt_row.add_child(_prompt_state)
 	_prompt.add_child(prompt_row)
 	prompt_band.add_child(_prompt)
+	_build_equipment_note()
 	_refresh_readiness()
+
+func _build_equipment_note() -> void:
+	var note_band := CenterContainer.new()
+	note_band.anchor_top = .5
+	note_band.anchor_bottom = .5
+	note_band.anchor_right = 1
+	note_band.offset_top = 110
+	note_band.offset_bottom = 192
+	note_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(note_band)
+	_note_panel = PanelContainer.new()
+	_note_panel.custom_minimum_size = Vector2(500, 0)
+	_note_panel.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, MHStyle.BORDER_SUBTLE, MHStyle.RADIUS_MD, 1, Vector4(12, 10, 16, 10)))
+	_note_panel.modulate.a = 0.0
+	var column := MHStyle.vbox(3)
+	_note_title = MHStyle.eyebrow("", MHStyle.accent, 10)
+	_note_body = MHStyle.body("", 14, MHStyle.TEXT_PRIMARY)
+	_note_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_note_title)
+	column.add_child(_note_body)
+	_note_panel.add_child(column)
+	note_band.add_child(_note_panel)
+
+func show_equipment_note(title: String, note: String) -> void:
+	if _note_panel == null or note.is_empty():
+		return
+	_note_title.text = title.to_upper()
+	_note_body.text = note.replace(title.to_upper() + "\n", "")
+	_note_time_left = 4.5
+	_note_panel.modulate.a = 1.0
 
 func _site_telemetry() -> PanelContainer:
 	var site: Dictionary = MHGame.site()
@@ -164,6 +200,9 @@ func _process(delta: float) -> void:
 	_update_telemetry()
 	_update_sol_clock()
 	_update_prompt()
+	if _note_time_left > 0.0:
+		_note_time_left = maxf(0.0, _note_time_left - delta)
+		_note_panel.modulate.a = clampf(_note_time_left / .35, 0.0, 1.0)
 	_readiness_age += delta
 	if not _collapsed and _readiness_age > COLLAPSE_AFTER:
 		_collapsed = true
