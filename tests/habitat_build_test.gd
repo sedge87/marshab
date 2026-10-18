@@ -35,6 +35,11 @@ func _ready() -> void:
 	assert(builder._should_build_wall(Vector2i(3, 2), Vector2i(1, 0)), "An exposed zone edge must remain sealed by a hull wall.")
 	assert(builder.place_interior_door(Vector2i(3, 1), Vector2i(0, 1)), "A shared wall should accept an explicit interior door.")
 	assert(not builder._should_build_wall(Vector2i(3, 1), Vector2i(0, 1)), "An installed interior door must own the shared opening.")
+	# Both physical faces of a thick shared wall must resolve to the same
+	# canonical doorway; otherwise the hologram only works from one room.
+	var from_first := builder.interior_door_from_world_point(Vector3(9.0, 1.7, 4.42), Vector3(0, 0, -1))
+	var from_second := builder.interior_door_from_world_point(Vector3(9.0, 1.7, 4.58), Vector3(0, 0, 1))
+	assert(from_first == from_second and from_first.get("cell") == Vector2i(3, 1), "Both faces of a shared wall must identify the same doorway.")
 	builder._rebuild()
 	await get_tree().physics_frame
 

@@ -1158,13 +1158,18 @@ func place_interior_door(cell: Vector2i, side: Vector2i) -> bool:
 	return true
 
 func interior_door_from_world_point(point: Vector3, normal: Vector3) -> Dictionary:
-	# Shared grid edges sit half a cell from their centres. Convert the hit back
-	# to the lower/left canonical cell so either side of a wall gives one result.
+	# A rendered wall has thickness, so its two faces return slightly different
+	# hit positions. Use the hit face normal to identify the room-side cell first,
+	# then canonicalise it; this makes aiming from either room target one opening.
 	if absf(normal.x) >= absf(normal.z):
-		var x := floori(point.x / CELL + .5) - 1
-		return {"cell": Vector2i(x, roundi(point.z / CELL)), "side": Vector2i(1, 0)}
-	var z := floori(point.z / CELL + .5) - 1
-	return {"cell": Vector2i(roundi(point.x / CELL), z), "side": Vector2i(0, 1)}
+		var hit_cell := Vector2i(roundi(point.x / CELL), roundi(point.z / CELL))
+		if normal.x > 0.0:
+			return {"cell": hit_cell + Vector2i(-1, 0), "side": Vector2i(1, 0)}
+		return {"cell": hit_cell, "side": Vector2i(1, 0)}
+	var hit_cell := Vector2i(roundi(point.x / CELL), roundi(point.z / CELL))
+	if normal.z > 0.0:
+		return {"cell": hit_cell + Vector2i(0, -1), "side": Vector2i(0, 1)}
+	return {"cell": hit_cell, "side": Vector2i(0, 1)}
 
 func _prune_interior_doors() -> void:
 	for index in range(interior_doors.size() - 1, -1, -1):
