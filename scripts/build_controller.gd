@@ -7,7 +7,6 @@ const LIMIT := 60
 const CARGO_BUDGET := 8000
 const CELL_COST := 50
 const AIRLOCK_DOOR := preload("res://scripts/airlock_door.gd")
-const ROOM_ASSIGNMENT_LABEL := preload("res://scripts/room_assignment_label.gd")
 const SHOWCASE_WALL := preload("res://assets/showcase_modules/mh_wall_bay.glb")
 const SHOWCASE_CORNER := preload("res://assets/showcase_modules/mh_corner_post.glb")
 const SHOWCASE_AIRLOCK := preload("res://assets/showcase_modules/mh_airlock_surround.glb")
@@ -19,7 +18,6 @@ const SOLAR_OUTPUT := 24
 const REACTOR_OUTPUT := 360
 const CREW_TARGET := 6
 const RESEARCH_TARGET := 6
-const REASSIGNABLE_ROOM_TYPES := ["living", "science", "storage", "hydroponics", "life_support", "glass_room"]
 const ZONE_TYPES := {
 	"living":{"label":"Living Quarters","colour":Color(.22,.48,.78),"cost":CELL_COST},
 	"science":{"label":"Science Lab","colour":Color(.55,.26,.74),"cost":CELL_COST},
@@ -123,9 +121,6 @@ var _equipment_visuals := {}
 var _history: Array = []
 var dragging := false
 var drag_start := Vector2i.ZERO
-var pending_room_cells: Array = []
-var selecting_room_doorway := false
-var assignment_zone_index := -1
 var hover := Vector2i.ZERO
 var build_mode := false
 var tool := "place"
@@ -194,8 +189,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				_toggle()
 		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="solar" or kind=="corridor"): _rotate_airlock(); _refresh_catalogue()
-		elif build_mode and event.keycode==KEY_ESCAPE:
-			dragging=false; pending_room_cells=[]; selecting_room_doorway=false; _draw_preview([],false)
+		elif build_mode and event.keycode==KEY_ESCAPE: dragging=false; _draw_preview([],false)
 		elif build_mode and event.keycode==KEY_DELETE: _remove_at(hover)
 		elif build_mode and event.keycode==KEY_X: _set_tool("place" if tool=="remove" else "remove")
 		elif build_mode and event.keycode==KEY_Z and event.ctrl_pressed: _undo()
@@ -204,7 +198,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.button_index==MOUSE_BUTTON_WHEEL_UP: zoom=maxf(20.0,zoom-4.0); _zoom()
 	elif event.button_index==MOUSE_BUTTON_WHEEL_DOWN: zoom=minf(90.0,zoom+4.0); _zoom()
 	elif event.button_index==MOUSE_BUTTON_RIGHT and event.pressed:
-		dragging=false; pending_room_cells=[]; selecting_room_doorway=false; _set_tool("place"); _draw_preview([],false)
+		dragging=false; _set_tool("place"); _draw_preview([],false)
 	elif event.button_index==MOUSE_BUTTON_LEFT:
 		if tool=="remove":
 			if event.pressed: _remove_at(hover)
@@ -212,32 +206,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not equipment_id.is_empty():
 			if event.pressed and not _pointer_over_ui(): _place_selected_equipment(hover)
 			return
-		if selecting_room_doorway:
-			if event.pressed and not _pointer_over_ui():
-				var doorway := _room_doorway_from_mouse(pending_room_cells)
-				var doorway_reason := _room_doorway_invalid_reason(pending_room_cells, doorway)
-				if doorway_reason.is_empty():
-					_place_habitat_room(pending_room_cells, doorway)
-				else:
-					_flash_notice("invalid", "Choose a valid doorway", doorway_reason + ".")
-			return
 		if event.pressed: dragging=true; drag_start=hover
 		elif dragging:
 			dragging=false
 			var cells := _cells(drag_start,hover)
 			var reason := _invalid_reason(cells)
 			if reason.is_empty():
-				if kind in REASSIGNABLE_ROOM_TYPES:
-					pending_room_cells=cells.duplicate(); selecting_room_doorway=true
-					_flash_notice("info", "Choose the doorway", "Click an outside edge. Your first room port is where its airlock will attach.")
-				else:
-					if zones.is_empty(): habitat_base_y=_proposed_base_y(cells)
-					var zone := {"kind":kind,"cells":cells,"door_direction":airlock_direction,"cost":_zone_cost(cells)}
-					zones.append(zone); _history.append({"type":"zone","zone":zone})
-					_rebuild()
-					MHAudio.sfx("place")
-					var left := CARGO_BUDGET-_used_cargo()
-					if left<CARGO_BUDGET*.1: _flash_notice("warn","Cargo is getting tight","%s left — about %d more cells." % [MHStyle.kg(left),left/CELL_COST])
+				if zones.is_empty(): habitat_base_y=_proposed_base_y(cells)
+				var zone := {"kind":kind,"cells":cells,"door_direction":airlock_direction,"cost":_zone_cost(cells)}
+				zones.append(zone); _history.append({"type":"zone","zone":zone})
+				_rebuild()
+				MHAudio.sfx("place")
+				var left := CARGO_BUDGET-_used_cargo()
+				if left<CARGO_BUDGET*.1: _flash_notice("warn","Cargo is getting tight","%s left — about %d more cells." % [MHStyle.kg(left),left/CELL_COST])
 			elif not _pointer_over_ui():
 				_flash_notice("invalid","Can't place here",reason+".")
 			_draw_preview([],false)
@@ -269,13 +250,6 @@ func _process(delta: float) -> void:
 		var equipment_reason:=equipment_invalid_reason(equipment_id,hover)
 		_draw_equipment_preview(hover,equipment_reason.is_empty())
 		_update_hologram_ui([] if hover.x==999 else [hover],equipment_reason)
-		return
-	if selecting_room_doorway:
-		var doorway := _room_doorway_from_mouse(pending_room_cells)
-		var doorway_reason := _room_doorway_invalid_reason(pending_room_cells, doorway)
-		_draw_preview(pending_room_cells, doorway_reason.is_empty())
-		if not doorway.is_empty(): _room_door_arrow(doorway.cell, doorway.side, doorway_reason.is_empty())
-		_update_hologram_ui(pending_room_cells, doorway_reason if not doorway_reason.is_empty() else "Choose doorway")
 		return
 	var cells:=_cells(drag_start if dragging else hover,hover)
 	var reason:=_invalid_reason(cells)
@@ -473,17 +447,12 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 				var corner_zone := _zone_at(corner_cell)
 				if corner_zone.is_empty() or not valid_zones.has(str(corner_zone.get("kind", ""))):
 					return "Doesn't fit inside this room"
-		# Furniture uses its real collision body for the final physical boundary.
-		# This conservative centre check only prevents accidental stacking, instead
-		# of reserving a huge invisible circle around every object.  It lets grow
-		# racks and work surfaces sit next to one another as they would in a lab.
-		var candidate_radius := maxf(.12, minf(size.x, size.z) * .30)
+		var candidate_radius := maxf(size.x, size.z) * .5
 		for item in placed_interior:
 			var other_entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
 			var other_size := _equipment_size(other_entry)
 			var other_position: Vector3 = item.get("position", Vector3.ZERO)
-			var other_radius := maxf(.12, minf(other_size.x, other_size.z) * .30)
-			if Vector2(world_position.x - other_position.x, world_position.z - other_position.z).length() < candidate_radius + other_radius:
+			if Vector2(world_position.x - other_position.x, world_position.z - other_position.z).length() < candidate_radius + maxf(other_size.x, other_size.z) * .38:
 				return "Too close to existing equipment"
 	return ""
 
@@ -787,63 +756,12 @@ func _invalid_reason(cells: Array) -> String:
 			if terrain<habitat_base_y-1.55: return "Ground drops away too far"
 	return ""
 
-func _room_doorway_from_mouse(cells: Array) -> Dictionary:
-	if cells.is_empty() or not hover in cells:
-		return {}
-	var point := _point_at_mouse(habitat_base_y)
-	var centre := Vector3(hover.x * CELL, habitat_base_y, hover.y * CELL)
-	var offset := point - centre
-	var side := Vector2i(1, 0) if absf(offset.x) > absf(offset.z) and offset.x >= 0.0 else Vector2i(-1, 0)
-	if absf(offset.z) >= absf(offset.x):
-		side = Vector2i(0, 1) if offset.z >= 0.0 else Vector2i(0, -1)
-	return {"cell": hover, "side": side}
-
-func _room_doorway_invalid_reason(cells: Array, doorway: Dictionary) -> String:
-	if doorway.is_empty(): return "Click an outside edge of the new room"
-	var cell: Vector2i = doorway.cell
-	var side: Vector2i = doorway.side
-	if cell + side in cells: return "The doorway must be on the room boundary"
-	if zones.is_empty(): return ""
-	if not _is_habitat_cell(cell + side): return "Later rooms must connect to an existing room or airlock"
-	if _room_port_taken(cell, side): return "That connection already has a doorway"
-	return ""
-
-func _room_port_taken(cell: Vector2i, side: Vector2i) -> bool:
-	for zone in zones:
-		if not bool(zone.get("room_shell", false)): continue
-		var port_cell: Vector2i = zone.get("door_cell", Vector2i(999, 999))
-		var port_side: Vector2i = zone.get("door_side", Vector2i.ZERO)
-		if (port_cell == cell and port_side == side) or (port_cell == cell + side and port_side == -side):
-			return true
-	return false
-
-func _place_habitat_room(cells: Array, doorway: Dictionary) -> void:
-	if zones.is_empty(): habitat_base_y = _proposed_base_y(cells)
-	var zone := {"kind":kind, "room_shell":true, "cells":cells.duplicate(), "door_cell":doorway.cell, "door_side":doorway.side, "door_direction":doorway.side, "cost":_zone_cost(cells)}
-	zones.append(zone); _history.append({"type":"zone","zone":zone})
-	pending_room_cells=[]; selecting_room_doorway=false
-	_rebuild(); MHAudio.sfx("place")
-	_flash_notice("valid", "%s built" % ZONE_TYPES[kind].label, "Use the sign at its doorway to reassign it later.")
-
-func _point_at_mouse(plane_y: float) -> Vector3:
-	var origin := camera.project_ray_origin(get_viewport().get_mouse_position())
-	var direction := camera.project_ray_normal(get_viewport().get_mouse_position())
-	if absf(direction.y) < .001: return origin
-	return origin + direction * ((plane_y - origin.y) / direction.y)
-
 func _valid_airlock(cells: Array) -> bool:
 	if cells.size()<1 or cells.size()>3: return false
 	var outside_cell:=_airlock_end(cells,airlock_direction,true)
 	var inner_cell:=_airlock_end(cells,airlock_direction,false)
 	# The outer end must face Mars; the far end must join an existing habitat.
-	if _occupied(outside_cell+airlock_direction) or not _is_habitat_cell(inner_cell-airlock_direction): return false
-	# Generic rooms deliberately expose one chosen port.  Legacy rooms remain
-	# compatible with existing saves, but a new airlock cannot punch through an
-	# arbitrary wall of a new sealed shell.
-	var attached := _zone_at(inner_cell-airlock_direction)
-	if bool(attached.get("room_shell", false)):
-		return attached.get("door_cell", Vector2i(999,999)) == inner_cell-airlock_direction and attached.get("door_side", Vector2i.ZERO) == airlock_direction
-	return true
+	return not _occupied(outside_cell+airlock_direction) and _is_habitat_cell(inner_cell-airlock_direction)
 
 func _valid_vehicle_bay(cells: Array) -> bool:
 	var min_x: int=cells[0].x; var max_x: int=cells[0].x; var min_z: int=cells[0].y; var max_z: int=cells[0].y
@@ -1026,15 +944,6 @@ func _airlock_arrow(cell: Vector2i,label_text := "OUTSIDE") -> void:
 	arrow.mesh=mesh; arrow.position=Vector3(cell.x*CELL,0,cell.y*CELL); arrow.rotation.y=_direction_yaw(airlock_direction); preview.add_child(arrow)
 	var label:=_label3d(label_text,44,MHStyle.accent); label.position=arrow.position+Vector3(airlock_direction.x*1.4,y+.9,airlock_direction.y*1.4); preview.add_child(label)
 
-func _room_door_arrow(cell: Vector2i, side: Vector2i, valid: bool) -> void:
-	var arrow := MeshInstance3D.new(); var mesh := ImmediateMesh.new(); var material := StandardMaterial3D.new()
-	material.albedo_color = MHStyle.VALID if valid else MHStyle.DANGER
-	material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED; material.cull_mode=BaseMaterial3D.CULL_DISABLED
-	var y := (habitat_base_y if not zones.is_empty() else .35)+.14
-	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES,material); mesh.surface_add_vertex(Vector3(0,y,-1.15)); mesh.surface_add_vertex(Vector3(-.56,y,-.34)); mesh.surface_add_vertex(Vector3(.56,y,-.34)); mesh.surface_end()
-	arrow.mesh=mesh; arrow.position=Vector3(cell.x*CELL,0,cell.y*CELL); arrow.rotation.y=_direction_yaw(side); preview.add_child(arrow)
-	var label:=_label3d("DOORWAY",38,material.albedo_color); label.position=arrow.position+Vector3(side.x*1.35,y+.75,side.y*1.35); preview.add_child(label)
-
 func _label3d(text: String,size: int,colour: Color,weight := 800) -> Label3D:
 	var label:=Label3D.new(); label.text=text; label.font=MHStyle.font(weight,false,2); label.font_size=size; label.outline_size=10; label.outline_modulate=Color(MHStyle.INK_950,.85); label.modulate=colour; label.billboard=BaseMaterial3D.BILLBOARD_ENABLED; label.no_depth_test=true; label.render_priority=2; label.pixel_size=.013
 	return label
@@ -1053,13 +962,9 @@ func _rebuild() -> void:
 		elif str(zone.kind)=="ice_extractor": _build_ice_extractor(zone)
 		else:
 			for cell in zone.cells: _cell_walls(cell,zone)
-	for zone in zones:
-		_add_room_access_door(zone)
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
-	for index in range(zones.size()):
-		_add_zone_label(zones[index])
-		_add_room_assignment_label(zones[index], index)
+	for zone in zones: _add_zone_label(zone)
 	_set_build_view(build_mode); _update_budget(); _update_summary(); _update_systems(); _apply_grid_power()
 	habitat_changed.emit()
 
@@ -1166,33 +1071,9 @@ func _should_build_wall(cell: Vector2i,side: Vector2i) -> bool:
 	# The airlock owns its inner threshold. This must win regardless of whether
 	# the attached room, corridor or the airlock itself was placed first.
 	if _is_airlock_inner_doorway(cell,side): return false
-	var neighbor := cell + side
-	var here_index := _zone_index_at(cell)
-	var neighbor_index := _zone_index_at(neighbor)
-	if neighbor_index < 0: return true
-	if neighbor_index == here_index: return false
-	if _is_room_doorway(cell, side): return false
-	# Existing saves retain their old open-plan joins. All new generic rooms are
-	# sealed from their neighbours unless their selected doorway joins them.
-	if not bool(zones[here_index].get("room_shell", false)) and not bool(zones[neighbor_index].get("room_shell", false)):
-		return false
-	# Render a shared boundary once only; otherwise two identical wall meshes
-	# would z-fight and flicker.
-	return cell.x < neighbor.x or (cell.x == neighbor.x and cell.y < neighbor.y)
-
-func _zone_index_at(cell: Vector2i) -> int:
-	for index in range(zones.size()):
-		if cell in zones[index].cells: return index
-	return -1
-
-func _is_room_doorway(cell: Vector2i, side: Vector2i) -> bool:
-	for zone in zones:
-		if not bool(zone.get("room_shell", false)): continue
-		var port_cell: Vector2i = zone.get("door_cell", Vector2i(999,999))
-		var port_side: Vector2i = zone.get("door_side", Vector2i.ZERO)
-		if (cell == port_cell and side == port_side) or (cell == port_cell + port_side and side == -port_side):
-			return _is_habitat_cell(cell + side)
-	return false
+	# Only pressurised habitat cells form an open internal connection. External
+	# equipment is adjacent to the shell, never part of its floor plan.
+	return not _is_habitat_cell(cell+side)
 
 func _is_airlock_inner_doorway(cell: Vector2i,side: Vector2i) -> bool:
 	for zone in zones:
@@ -1204,14 +1085,6 @@ func _is_airlock_inner_doorway(cell: Vector2i,side: Vector2i) -> bool:
 		if cell==inner_cell-outside and side==outside: return true
 		if cell==inner_cell and side==-outside: return true
 	return false
-
-func _add_room_access_door(zone: Dictionary) -> void:
-	if not bool(zone.get("room_shell", false)): return
-	var cell: Vector2i = zone.get("door_cell", Vector2i(999,999))
-	var side: Vector2i = zone.get("door_side", Vector2i.ZERO)
-	var other := _zone_at(cell + side)
-	if other.is_empty() or str(other.get("kind", "")) == "airlock": return
-	if _is_habitat_zone(other): _add_door(Vector3(cell.x*CELL,0,cell.y*CELL),side,"ROOM",false)
 
 func _build_airlock_zone(zone: Dictionary) -> void:
 	var outside:=_airlock_side(zone)
@@ -1493,16 +1366,6 @@ func _add_zone_label(zone: Dictionary) -> void:
 	centre/=cells.size()
 	var label:=_label3d(str(ZONE_TYPES[zone.kind].label).to_upper(),40,MHStyle.INK_100); label.position=centre+Vector3(0,habitat_base_y+.4,0); label.offset=Vector2(0,22); label.visible=build_mode; label.add_to_group("zone_label"); root.add_child(label)
 	var detail:=_label3d("%d CELLS · %s" % [cells.size(),MHStyle.kg(int(zone.cost))],28,(ZONE_TYPES[zone.kind].colour as Color).lightened(.35),600); detail.font=MHStyle.font(600,true,1); detail.position=centre+Vector3(0,habitat_base_y+.4,0); detail.offset=Vector2(0,-24); detail.visible=build_mode; detail.add_to_group("zone_label"); root.add_child(detail)
-
-func _add_room_assignment_label(zone: Dictionary, index: int) -> void:
-	if not bool(zone.get("room_shell", false)): return
-	var cell: Vector2i = zone.get("door_cell", Vector2i.ZERO)
-	var side: Vector2i = zone.get("door_side", Vector2i(0,-1))
-	var label := ROOM_ASSIGNMENT_LABEL.new() as RoomAssignmentLabel
-	label.position = Vector3((cell.x + side.x*.53)*CELL, habitat_base_y+1.45, (cell.y + side.y*.53)*CELL)
-	label.rotation.y = _direction_yaw(side)
-	root.add_child(label)
-	label.setup(self,index,str(ZONE_TYPES[str(zone.kind)].label))
 
 func _set_build_view(show_plan: bool) -> void:
 	for roof in get_tree().get_nodes_in_group("habitat_roof"):
@@ -2104,47 +1967,8 @@ func _set_catalogue_open(open: bool) -> void:
 	if open: _refresh_catalogue()
 
 func _select_kind(id: String) -> void:
-	assignment_zone_index=-1; kind=id; equipment_id=""; dragging=false; pending_room_cells=[]; selecting_room_doorway=false; category=str(ZONE_INFO[id].cat); _set_tool("place"); _preview_key=""
+	kind=id; equipment_id=""; dragging=false; category=str(ZONE_INFO[id].cat); _set_tool("place"); _preview_key=""
 	_refresh_catalogue()
-
-func open_room_assignment(index: int) -> void:
-	if index < 0 or index >= zones.size() or not bool(zones[index].get("room_shell", false)): return
-	if not build_mode: _toggle()
-	assignment_zone_index=index; category="rooms"; equipment_id=""; kind=str(zones[index].kind); _set_tool("place")
-	_set_catalogue_open(true)
-
-func _assign_room_kind(id: String) -> void:
-	if assignment_zone_index < 0 or assignment_zone_index >= zones.size(): return
-	var zone: Dictionary = zones[assignment_zone_index]
-	if not bool(zone.get("room_shell", false)) or not id in ZONE_TYPES: return
-	var returned := _clear_room_contents(zone)
-	zone.kind=id
-	zones[assignment_zone_index]=zone
-	assignment_zone_index=-1
-	_rebuild()
-	_set_catalogue_open(false)
-	var refund_text := "" if returned == 0 else " +%s cargo returned." % MHStyle.kg(returned)
-	_flash_notice("valid", "%s assigned" % ZONE_TYPES[id].label, "The room has been reconfigured." + refund_text)
-
-func _clear_room_contents(zone: Dictionary) -> int:
-	var returned := 0
-	for index in range(placed_equipment.size()-1,-1,-1):
-		var item: Dictionary = placed_equipment[index]
-		if item.get("cell", Vector2i(999,999)) in zone.cells:
-			returned += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
-			placed_equipment.remove_at(index)
-	for index in range(placed_interior.size()-1,-1,-1):
-		var item: Dictionary = placed_interior[index]
-		var item_cell: Vector2i = item.get("zone_cell", Vector2i(999,999))
-		if item_cell in zone.cells:
-			returned += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
-			var placement_id := str(item.get("placement_id", ""))
-			for child in furnishing.get_children():
-				if str(child.get_meta("interior_placement_id", "")) == placement_id:
-					child.queue_free()
-					break
-			placed_interior.remove_at(index)
-	return returned
 
 func _select_equipment(id: String) -> void:
 	equipment_id=id; dragging=false; category="equipment"; _set_tool("place"); _preview_key=""
@@ -2174,17 +1998,8 @@ func _refresh_catalogue() -> void:
 	for child in equipment_list.get_children(): child.queue_free()
 	for child in catalogue_detail.get_children(): child.queue_free()
 	var remaining:=CARGO_BUDGET-_used_cargo()
-	var assigning := assignment_zone_index >= 0
 	catalogue_grid.visible=category!="equipment"; equipment_list.visible=category=="equipment"
-	if assigning:
-		catalogue_count.text="ASSIGN ROOM"
-		for id in REASSIGNABLE_ROOM_TYPES:
-			catalogue_grid.add_child(_part_card(id, id==str(zones[assignment_zone_index].kind), false))
-		var title := MHStyle.title("Choose this room's purpose",20); catalogue_detail.add_child(title)
-		catalogue_detail.add_child(MHStyle.body("The room remains sealed. Changing its purpose clears every placed item inside and returns its cargo, so the new zone starts clean.",15))
-		catalogue_detail.add_child(MHStyle.badge("Doorway stays where you placed it","info"))
-		return
-	elif category=="equipment":
+	if category=="equipment":
 		catalogue_count.text="%d items" % EquipmentCatalog.entries().size()
 		_refresh_equipment_list(remaining)
 	elif category=="surface":
@@ -2196,7 +2011,7 @@ func _refresh_catalogue() -> void:
 		catalogue_detail.add_child(MHStyle.body("Select a non-structural prop, then place it freely from first person on outdoor ground. These props do not replace the grid-based reactor or ice extractor and have no simulation effect yet.",14))
 		return
 	else:
-		catalogue_count.text="%d room types" % REASSIGNABLE_ROOM_TYPES.size() if category=="rooms" else "%d options" % ZONE_TYPES.size()
+		catalogue_count.text="%d zones" % ZONE_TYPES.size()
 		for id in ZONE_TYPES:
 			if str(ZONE_INFO[id].cat)!=category: continue
 			catalogue_grid.add_child(_part_card(id,id==kind and equipment_id.is_empty(),remaining<int(ZONE_TYPES[id].cost)))
@@ -2277,7 +2092,7 @@ func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
 	var normal:=MHStyle.selected_box(0) if selected else MHStyle.control_box(0)
 	for state in ["normal","pressed","hover_pressed","focus"]: card.add_theme_stylebox_override(state,normal)
 	card.add_theme_stylebox_override("hover",normal if selected else MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER,MHStyle.BORDER_STRONG))
-	card.pressed.connect(_assign_room_kind.bind(id) if assignment_zone_index>=0 else _select_kind.bind(id))
+	card.pressed.connect(_select_kind.bind(id))
 	var colour:Color=ZONE_TYPES[id].colour
 	var column:=MHStyle.vbox(0); column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); column.mouse_filter=Control.MOUSE_FILTER_IGNORE; card.add_child(column)
 	# Thumbnail: the zone's plan colour on blueprint ink, with its catalogue icon.
