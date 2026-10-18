@@ -450,18 +450,32 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 				var corner_zone := _zone_at(corner_cell)
 				if corner_zone.is_empty() or not valid_zones.has(str(corner_zone.get("kind", ""))):
 					return "Doesn't fit inside this room"
-		# Keep a modest clearance for use and collision, but do not turn the
-		# bounding box of every furnishing into a huge invisible exclusion zone.
-		# This lets, for example, hydroponic racks sit in a sensible row.
-		var candidate_radius := maxf(.12, minf(size.x, size.z) * .30)
 		for item in placed_interior:
 			var other_entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
 			var other_size := _equipment_size(other_entry)
 			var other_position: Vector3 = item.get("position", Vector3.ZERO)
-			var other_radius := maxf(.12, minf(other_size.x, other_size.z) * .30)
-			if Vector2(world_position.x - other_position.x, world_position.z - other_position.z).length() < candidate_radius + other_radius:
+			var other_rotation := float(item.get("rotation_y", 0.0))
+			# Test the actual rotated floor footprints rather than a circular
+			# approximation. It permits neat adjacent rows but catches the visual
+			# intersections that the previous forgiving radius allowed.
+			if _interior_footprints_overlap(world_position, size, rotation_y, other_position, other_size, other_rotation):
 				return "Too close to existing equipment"
 	return ""
+
+func _interior_footprints_overlap(first_position: Vector3, first_size: Vector3, first_rotation: float, second_position: Vector3, second_size: Vector3, second_rotation: float) -> bool:
+	var first_forward := Vector2(cos(first_rotation), sin(first_rotation))
+	var first_side := Vector2(-first_forward.y, first_forward.x)
+	var second_forward := Vector2(cos(second_rotation), sin(second_rotation))
+	var second_side := Vector2(-second_forward.y, second_forward.x)
+	var offset := Vector2(second_position.x - first_position.x, second_position.z - first_position.z)
+	# A small practical breathing gap avoids z-fighting and makes removal sane,
+	# without wasting the several metres imposed by the old distance test.
+	for axis in [first_forward, first_side, second_forward, second_side]:
+		var first_radius := absf(axis.dot(first_forward)) * first_size.x * .5 + absf(axis.dot(first_side)) * first_size.z * .5
+		var second_radius := absf(axis.dot(second_forward)) * second_size.x * .5 + absf(axis.dot(second_side)) * second_size.z * .5
+		if absf(offset.dot(axis)) >= first_radius + second_radius + .08:
+			return false
+	return true
 
 func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> Node3D:
 	var entry := EquipmentCatalog.get_entry(id)

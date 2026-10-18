@@ -19,6 +19,7 @@ func _initialize() -> void:
 	assert(builder.free_interior_invalid_reason("grow_tray", Vector3(1.25, builder.habitat_base_y, 0.0), Vector3.UP).begins_with("Doesn't fit"), "A large item near the wall must be rejected.")
 	var visual := builder.free_interior_visual("grow_tray", point, 0.0)
 	assert(builder.place_free_interior_equipment("grow_tray", point, 0.0, Vector2i.ZERO, visual), "Free interior placement should succeed.")
+	assert(builder.free_interior_invalid_reason("grow_tray", point, Vector3.UP) == "Too close to existing equipment", "Free placement must reject an overlapping furnishing footprint.")
 	assert(builder.placed_equipment.is_empty(), "Free placement must not use exterior cell records.")
 	assert(builder.placed_interior.size() == 1, "Free placement needs its own record.")
 	assert(int(builder._systems().food) == 3, "Free grow tray must contribute the catalogue food effect.")

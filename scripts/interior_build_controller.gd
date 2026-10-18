@@ -168,7 +168,7 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		_valid_reason = builder.interior_door_invalid_reason(_door_target.get("cell", Vector2i.ZERO), _door_target.get("side", Vector2i.ZERO))
 		if force_rebuild or preview == null:
 			if preview != null: preview.queue_free()
-			preview = _interior_door_preview(_door_target)
+			preview = _interior_door_preview(_door_target, normal)
 			preview.name = "InteriorDoorPreview"
 			add_child(preview)
 			_set_preview_material(preview, _valid_reason.is_empty())
@@ -228,16 +228,31 @@ func _set_preview_material(node: Node, valid: bool) -> void:
 		mesh.material_override = material
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-func _interior_door_preview(target: Dictionary) -> Node3D:
+func _interior_door_preview(target: Dictionary, hit_normal: Vector3) -> Node3D:
 	var cell: Vector2i = target.get("cell", Vector2i.ZERO)
 	var side: Vector2i = target.get("side", Vector2i.ZERO)
 	var holder := Node3D.new()
-	holder.position = Vector3(cell.x * BuildController.CELL + side.x * BuildController.CELL * .5, builder.habitat_base_y + 1.45, cell.y * BuildController.CELL + side.y * BuildController.CELL * .5)
-	var panel := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(1.15, 2.45, .10) if side.x != 0 else Vector3(.10, 2.45, 1.15)
-	panel.mesh = mesh
-	holder.add_child(panel)
+	# A thin frame rides just proud of the face being aimed at. A solid door
+	# preview was visually indistinguishable from clipping through the wall.
+	holder.position = Vector3(cell.x * BuildController.CELL + side.x * BuildController.CELL * .5, builder.habitat_base_y + 1.45, cell.y * BuildController.CELL + side.y * BuildController.CELL * .5) + hit_normal * .045
+	var opening_width := 1.22
+	var opening_height := 2.42
+	for offset in [-opening_width * .5, opening_width * .5]:
+		var jamb := MeshInstance3D.new()
+		var jamb_mesh := BoxMesh.new()
+		jamb_mesh.size = Vector3(.055, opening_height, .10) if side.x != 0 else Vector3(.10, opening_height, .055)
+		jamb.mesh = jamb_mesh
+		if side.x != 0:
+			jamb.position.z = offset
+		else:
+			jamb.position.x = offset
+		holder.add_child(jamb)
+	var header := MeshInstance3D.new()
+	var header_mesh := BoxMesh.new()
+	header_mesh.size = Vector3(.055, .075, opening_width + .11) if side.x != 0 else Vector3(opening_width + .11, .075, .055)
+	header.mesh = header_mesh
+	header.position.y = opening_height * .5
+	holder.add_child(header)
 	return holder
 
 func _place_preview() -> void:
