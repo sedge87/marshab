@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_interactable.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/equipment/hydroponics_phase2/models/harvest_cart.glb" id="2_model"]
+
+[sub_resource type="BoxShape3D" id="BoxShape_harvest_cart"]
+size = Vector3(1.07, 1.10, 0.70)
+
+[node name="HarvestCart" type="Node3D"]
+script = ExtResource("1_script")
+display_name = "Harvest Cart"
+primary_action = "Inspect harvest cart"
+educational_note = "HARVEST CART\nVentilated produce totes and locking castors keep a harvest clean and mobile."
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+
+[node name="StaticCollision" type="StaticBody3D" parent="."]
+collision_layer = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticCollision"]
+position = Vector3(0.023, 0.562, 0.04)
+shape = SubResource("BoxShape_harvest_cart")

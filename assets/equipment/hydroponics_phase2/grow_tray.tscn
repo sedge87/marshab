@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_interactable.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/equipment/hydroponics_phase2/models/grow_tray.glb" id="2_model"]
+
+[sub_resource type="BoxShape3D" id="BoxShape_grow_tray"]
+size = Vector3(1.321, 2.018, 0.724)
+
+[node name="GrowTray" type="Node3D"]
+script = ExtResource("1_script")
+display_name = "Grow Tray"
+primary_action = "Inspect grow tray"
+educational_note = "GROW TRAY\nA three-tier hydroponic rack recirculates water and nutrients through its crop channels."
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+
+[node name="StaticCollision" type="StaticBody3D" parent="."]
+collision_layer = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticCollision"]
+position = Vector3(0, 1.0335, -0.0095)
+shape = SubResource("BoxShape_grow_tray")

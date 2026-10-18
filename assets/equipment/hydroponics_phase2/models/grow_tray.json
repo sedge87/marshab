@@ -1,0 +1,57 @@
+{
+  "id": "grow_tray",
+  "description": "Three-tier controlled-environment crop rack with hydroponic channels, warm-white LEDs, recirculating reservoir, valves and maintenance display",
+  "category": "hydroponics",
+  "placement": "floor",
+  "bounds_m": [
+    [
+      -0.683,
+      0.002,
+      -0.394
+    ],
+    [
+      0.683,
+      2.065,
+      0.375
+    ]
+  ],
+  "dimensions_m": [
+    1.366,
+    2.063,
+    0.769
+  ],
+  "triangles": 9096,
+  "mesh_nodes": 31,
+  "materials": [
+    "alloy",
+    "amber",
+    "carbon",
+    "clear",
+    "fluid",
+    "glow",
+    "graphite",
+    "label_GR-01",
+    "leaf1",
+    "leaf2",
+    "leaf3",
+    "mint",
+    "rack_ui",
+    "rubber",
+    "screen",
+    "substrate",
+    "tank",
+    "trim"
+  ],
+  "interactive_mesh_prefixes": [
+    "Crop_Canopy",
+    "LED_Diffusers",
+    "Reservoir",
+    "Water_Pump",
+    "Valve_Controls",
+    "Control_Display"
+  ],
+  "asset_catalog_id": "grow_tray",
+  "origin": "floor centre",
+  "coordinate_system": "Godot +Y up, local -Z forward; 1 unit = 1 metre",
+  "review_status": "mesh validated, not yet tested inside actual game"
+}

@@ -1,0 +1,57 @@
+{
+  "id": "nutrient_mixer",
+  "description": "Precision nutrient-dosing station with twin concentrate tanks, recirculation manifold, analog gauges, manual shutoff valves and dosing telemetry",
+  "category": "hydroponics",
+  "placement": "floor",
+  "bounds_m": [
+    [
+      -0.575,
+      0.008,
+      -0.417
+    ],
+    [
+      0.575,
+      1.885,
+      0.35
+    ]
+  ],
+  "dimensions_m": [
+    1.15,
+    1.877,
+    0.767
+  ],
+  "triangles": 3372,
+  "mesh_nodes": 35,
+  "materials": [
+    "alloy",
+    "amber",
+    "carbon",
+    "clear",
+    "cream",
+    "fluid",
+    "graphite",
+    "label_GM-01",
+    "lime",
+    "mint",
+    "mixer_ui",
+    "red",
+    "rubber",
+    "screen",
+    "shell",
+    "tank",
+    "trim"
+  ],
+  "interactive_mesh_prefixes": [
+    "Tank_A",
+    "Tank_B",
+    "Pump_Assembly",
+    "Dosing_Valves",
+    "Flow_Gauges",
+    "Mixer_Display",
+    "Hose_Connections"
+  ],
+  "asset_catalog_id": "nutrient_mixer",
+  "origin": "floor centre",
+  "coordinate_system": "Godot +Y up, local -Z forward; 1 unit = 1 metre",
+  "review_status": "mesh validated, not yet tested inside actual game"
+}

@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_interactable.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/equipment/hydroponics_phase2/models/seedling_station.glb" id="2_model"]
+
+[sub_resource type="BoxShape3D" id="BoxShape_seedling_station"]
+size = Vector3(1.24, 1.40, 0.69)
+
+[node name="SeedlingStation" type="Node3D"]
+script = ExtResource("1_script")
+display_name = "Seedling Station"
+primary_action = "Inspect seedling station"
+educational_note = "SEEDLING STATION\nA humidity-controlled bench starts young plants before they move into the production trays."
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+
+[node name="StaticCollision" type="StaticBody3D" parent="."]
+collision_layer = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticCollision"]
+position = Vector3(0, 0.765, -0.0165)
+shape = SubResource("BoxShape_seedling_station")

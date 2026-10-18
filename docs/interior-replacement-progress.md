@@ -119,3 +119,13 @@ The wrapper script and project editor scan parse without script errors. Headless
 - `assets/surface_equipment_phase12/` contains the supplied exterior art. The exterior catalogue has a separate **Surface gear** tab and switches into first-person free-ground placement. It saves `placed_surface` independently, rejects indoor/overlapping placement, and intentionally keeps reactor, ice-extractor, airlock and hull logic on their existing grid/simulation paths. The supplied surface reactor and ice drill are deliberately not registered as props pending an explicit gameplay replacement design.
 
 Verification still required locally: place every Living asset in each permitted room, inspect/toggle task light, confirm bunk actions, place/remove/load each Surface gear item, check ground slope and collision around habitat edges, and capture runtime screenshots. Headless Godot on this machine still cannot open `user://logs/godot.log`, so these runtime behaviours are not marked verified.
+
+## Hydroponics Phase 2 integration (18 October 2026)
+
+- Snapshot before importing this batch: `backups/hydroponics_phase2_before_import_20261018_204500/` (281 files; 17,789,446 bytes). The source archive and the earlier hydroponics placeholder art were not overwritten.
+- The delivered Phase 2 GLBs live in `assets/equipment/hydroponics_phase2/models/`, with one Godot wrapper per catalogue item: Grow Tray, Seedling Station, Nutrient Mixer, Harvest Cart and Hydroponics Sensor Panel.
+- Catalogue IDs, valid zones, footprints, cargo costs and existing simulator effects remain authoritative and unchanged. The Grow Tray retains its existing food, water and power effects; the other supplied models remain their existing future/cosmetic entries.
+- Floor models have close-fitting primitive collision; the sensor panel has a thin wall-mount collision volume. All five use the existing reticle interaction contract for a small, temporary HUD readout instead of world-space text.
+- The first-person construction palette now includes every compatible Phase 2 item when the player is standing in a Hydroponics or Glass Room, and a scene click with the palette open places the selected item rather than requiring the palette to be dismissed first.
+
+Manual verification remains necessary: confirm each delivered model faces forward at placement, test the wall panel on all four walls, check collision/navigation and removal refunds, then capture in-game screenshots before expanding to a room type that needs new mechanics.

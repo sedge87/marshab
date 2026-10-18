@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_interactable.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/equipment/hydroponics_phase2/models/nutrient_mixer.glb" id="2_model"]
+
+[sub_resource type="BoxShape3D" id="BoxShape_nutrient_mixer"]
+size = Vector3(1.11, 1.84, 0.74)
+
+[node name="NutrientMixer" type="Node3D"]
+script = ExtResource("1_script")
+display_name = "Nutrient Mixer"
+primary_action = "Inspect nutrient mixer"
+educational_note = "NUTRIENT MIXER\nTwin concentrate tanks dose mineral solution into the hydroponic recirculation loop."
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+
+[node name="StaticCollision" type="StaticBody3D" parent="."]
+collision_layer = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticCollision"]
+position = Vector3(0, 0.9465, -0.0335)
+shape = SubResource("BoxShape_nutrient_mixer")

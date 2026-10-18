@@ -1,0 +1,293 @@
+{
+  "project": "Mars Habitat \u2014 Hydroponics \u2014 Phase 2 (equipment only)",
+  "version": "1.0.0-review",
+  "room": "hydroponics",
+  "asset_count": 5,
+  "assets": [
+    {
+      "id": "grow_tray",
+      "description": "Three-tier controlled-environment crop rack with hydroponic channels, warm-white LEDs, recirculating reservoir, valves and maintenance display",
+      "category": "hydroponics",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.683,
+          0.002,
+          -0.394
+        ],
+        [
+          0.683,
+          2.065,
+          0.375
+        ]
+      ],
+      "dimensions_m": [
+        1.366,
+        2.063,
+        0.769
+      ],
+      "triangles": 9096,
+      "mesh_nodes": 31,
+      "materials": [
+        "alloy",
+        "amber",
+        "carbon",
+        "clear",
+        "fluid",
+        "glow",
+        "graphite",
+        "label_GR-01",
+        "leaf1",
+        "leaf2",
+        "leaf3",
+        "mint",
+        "rack_ui",
+        "rubber",
+        "screen",
+        "substrate",
+        "tank",
+        "trim"
+      ],
+      "interactive_mesh_prefixes": [
+        "Crop_Canopy",
+        "LED_Diffusers",
+        "Reservoir",
+        "Water_Pump",
+        "Valve_Controls",
+        "Control_Display"
+      ],
+      "asset_catalog_id": "grow_tray",
+      "origin": "floor centre",
+      "coordinate_system": "Godot +Y up, local -Z forward; 1 unit = 1 metre",
+      "review_status": "mesh validated, not yet tested inside actual game"
+    },
+    {
+      "id": "seedling_station",
+      "description": "Benchtop propagation station with removable plug trays, young plants, semi-transparent humidity cover, vents, LED strip and compact service reservoir",
+      "category": "hydroponics",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.64,
+          0.065,
+          -0.373
+        ],
+        [
+          0.64,
+          1.505,
+          0.34
+        ]
+      ],
+      "dimensions_m": [
+        1.28,
+        1.44,
+        0.713
+      ],
+      "triangles": 3144,
+      "mesh_nodes": 35,
+      "materials": [
+        "alloy",
+        "amber",
+        "carbon",
+        "clear",
+        "cream",
+        "fluid",
+        "glow",
+        "graphite",
+        "label_GS-01",
+        "leaf1",
+        "leaf2",
+        "leaf3",
+        "lime",
+        "seedling_ui",
+        "shell",
+        "substrate",
+        "tank",
+        "trim"
+      ],
+      "interactive_mesh_prefixes": [
+        "Humidity_Dome",
+        "Seed_Tray_A",
+        "Seed_Tray_B",
+        "Seed_Tray_C",
+        "LED_Diffusers",
+        "Seedling_Display",
+        "Lid_Latch"
+      ],
+      "asset_catalog_id": "seedling_station",
+      "origin": "floor centre",
+      "coordinate_system": "Godot +Y up, local -Z forward; 1 unit = 1 metre",
+      "review_status": "mesh validated, not yet tested inside actual game"
+    },
+    {
+      "id": "nutrient_mixer",
+      "description": "Precision nutrient-dosing station with twin concentrate tanks, recirculation manifold, analog gauges, manual shutoff valves and dosing telemetry",
+      "category": "hydroponics",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.575,
+          0.008,
+          -0.417
+        ],
+        [
+          0.575,
+          1.885,
+          0.35
+        ]
+      ],
+      "dimensions_m": [
+        1.15,
+        1.877,
+        0.767
+      ],
+      "triangles": 3372,
+      "mesh_nodes": 35,
+      "materials": [
+        "alloy",
+        "amber",
+        "carbon",
+        "clear",
+        "cream",
+        "fluid",
+        "graphite",
+        "label_GM-01",
+        "lime",
+        "mint",
+        "mixer_ui",
+        "red",
+        "rubber",
+        "screen",
+        "shell",
+        "tank",
+        "trim"
+      ],
+      "interactive_mesh_prefixes": [
+        "Tank_A",
+        "Tank_B",
+        "Pump_Assembly",
+        "Dosing_Valves",
+        "Flow_Gauges",
+        "Mixer_Display",
+        "Hose_Connections"
+      ],
+      "asset_catalog_id": "nutrient_mixer",
+      "origin": "floor centre",
+      "coordinate_system": "Godot +Y up, local -Z forward; 1 unit = 1 metre",
+      "review_status": "mesh validated, not yet tested inside actual game"
+    },
+    {
+      "id": "harvest_cart",
+      "description": "Lightweight wheeled harvest trolley with two removable ventilated produce totes, lockable castors and sanitation equipment",
+      "category": "hydroponics",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.53,
+          0.012,
+          -0.325
+        ],
+        [
+          0.576,
+          1.145,
+          0.405
+        ]
+      ],
+      "dimensions_m": [
+        1.106,
+        1.133,
+        0.73
+      ],
+      "triangles": 3030,
+      "mesh_nodes": 23,
+      "materials": [
+        "alloy",
+        "amber",
+        "carbon",
+        "cream",
+        "graphite",
+        "label_HC-01",
+        "leaf1",
+        "leaf2",
+        "leaf3",
+        "rubber",
+        "tank",
+        "trim"
+      ],
+      "interactive_mesh_prefixes": [
+        "Harvest_Bin_Top",
+        "Harvest_Bin_Lower",
+        "Caster_Wheels",
+        "Cart_Handle",
+        "Produce"
+      ],
+      "asset_catalog_id": "harvest_cart",
+      "origin": "floor centre",
+      "coordinate_system": "Godot +Y up, local -Z forward; 1 unit = 1 metre",
+      "review_status": "mesh validated, not yet tested inside actual game"
+    },
+    {
+      "id": "hydroponics_sensor_panel",
+      "description": "Wall-mounted hydroponic telemetry unit with legible enviro display, protected selector buttons, alarms and probe connectors",
+      "category": "hydroponics",
+      "placement": "wall_mount_z0_faces_negative_z",
+      "bounds_m": [
+        [
+          -0.442,
+          -0.426,
+          -0.185
+        ],
+        [
+          0.442,
+          0.365,
+          -0.002
+        ]
+      ],
+      "dimensions_m": [
+        0.884,
+        0.791,
+        0.183
+      ],
+      "triangles": 1352,
+      "mesh_nodes": 17,
+      "materials": [
+        "alloy",
+        "amber",
+        "carbon",
+        "graphite",
+        "label_ENV-01",
+        "mint",
+        "screen",
+        "sensor_ui",
+        "trim"
+      ],
+      "interactive_mesh_prefixes": [
+        "Screen_UI",
+        "Alarm_Lights",
+        "Selector_Buttons",
+        "Sensor_Connectors"
+      ],
+      "asset_catalog_id": "hydroponics_sensor_panel",
+      "origin": "wall-plate centre",
+      "coordinate_system": "Godot +Y up, local -Z forward; 1 unit = 1 metre",
+      "review_status": "mesh validated, not yet tested inside actual game"
+    }
+  ],
+  "in_scope": [
+    "grow_tray",
+    "seedling_station",
+    "nutrient_mixer",
+    "harvest_cart",
+    "hydroponics_sensor_panel"
+  ],
+  "out_of_scope": [
+    "interior structural parts",
+    "windows",
+    "doors",
+    "grid snapping",
+    "greenhouse assets",
+    "gameplay systems replacement"
+  ],
+  "source_of_truth": "data/equipment_catalog.json in original Godot project; do not invent power, water or food values",
+  "validation": "GLB re-export/reload validation only; in-engine placement, collision, visual appearance and simulation hooks not yet verified"
+}

@@ -1,0 +1,58 @@
+{
+  "id": "seedling_station",
+  "description": "Benchtop propagation station with removable plug trays, young plants, semi-transparent humidity cover, vents, LED strip and compact service reservoir",
+  "category": "hydroponics",
+  "placement": "floor",
+  "bounds_m": [
+    [
+      -0.64,
+      0.065,
+      -0.373
+    ],
+    [
+      0.64,
+      1.505,
+      0.34
+    ]
+  ],
+  "dimensions_m": [
+    1.28,
+    1.44,
+    0.713
+  ],
+  "triangles": 3144,
+  "mesh_nodes": 35,
+  "materials": [
+    "alloy",
+    "amber",
+    "carbon",
+    "clear",
+    "cream",
+    "fluid",
+    "glow",
+    "graphite",
+    "label_GS-01",
+    "leaf1",
+    "leaf2",
+    "leaf3",
+    "lime",
+    "seedling_ui",
+    "shell",
+    "substrate",
+    "tank",
+    "trim"
+  ],
+  "interactive_mesh_prefixes": [
+    "Humidity_Dome",
+    "Seed_Tray_A",
+    "Seed_Tray_B",
+    "Seed_Tray_C",
+    "LED_Diffusers",
+    "Seedling_Display",
+    "Lid_Latch"
+  ],
+  "asset_catalog_id": "seedling_station",
+  "origin": "floor centre",
+  "coordinate_system": "Godot +Y up, local -Z forward; 1 unit = 1 metre",
+  "review_status": "mesh validated, not yet tested inside actual game"
+}

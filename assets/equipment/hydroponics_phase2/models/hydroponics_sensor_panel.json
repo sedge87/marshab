@@ -1,0 +1,46 @@
+{
+  "id": "hydroponics_sensor_panel",
+  "description": "Wall-mounted hydroponic telemetry unit with legible enviro display, protected selector buttons, alarms and probe connectors",
+  "category": "hydroponics",
+  "placement": "wall_mount_z0_faces_negative_z",
+  "bounds_m": [
+    [
+      -0.442,
+      -0.426,
+      -0.185
+    ],
+    [
+      0.442,
+      0.365,
+      -0.002
+    ]
+  ],
+  "dimensions_m": [
+    0.884,
+    0.791,
+    0.183
+  ],
+  "triangles": 1352,
+  "mesh_nodes": 17,
+  "materials": [
+    "alloy",
+    "amber",
+    "carbon",
+    "graphite",
+    "label_ENV-01",
+    "mint",
+    "screen",
+    "sensor_ui",
+    "trim"
+  ],
+  "interactive_mesh_prefixes": [
+    "Screen_UI",
+    "Alarm_Lights",
+    "Selector_Buttons",
+    "Sensor_Connectors"
+  ],
+  "asset_catalog_id": "hydroponics_sensor_panel",
+  "origin": "wall-plate centre",
+  "coordinate_system": "Godot +Y up, local -Z forward; 1 unit = 1 metre",
+  "review_status": "mesh validated, not yet tested inside actual game"
+}
