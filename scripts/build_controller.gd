@@ -116,8 +116,6 @@ var placed_interior: Array = []
 # furnishings. They carry no resource effects until a gameplay design is added.
 var placed_surface: Array = []
 var interior_doors: Array = []
-var guided_airlock_cells: Array = []
-var guided_connection_edges: Array = []
 # Selected interior item; empty while a zone is selected.
 var equipment_id := ""
 # Greybox stand-ins for placed equipment, keyed by cell, until final art lands.
@@ -199,8 +197,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				_toggle()
 		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="solar" or kind=="corridor"): _rotate_airlock(); _refresh_catalogue()
-		elif build_mode and event.keycode==KEY_ESCAPE:
-			dragging=false; guided_airlock_cells=[]; guided_connection_edges=[]; _draw_preview([],false)
+		elif build_mode and event.keycode==KEY_ESCAPE: dragging=false; _draw_preview([],false)
 		elif build_mode and event.keycode==KEY_DELETE: _remove_at(hover)
 		elif build_mode and event.keycode==KEY_X: _set_tool("place" if tool=="remove" else "remove")
 		elif build_mode and event.keycode==KEY_Z and event.ctrl_pressed: _undo()
@@ -209,14 +206,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.button_index==MOUSE_BUTTON_WHEEL_UP: zoom=maxf(20.0,zoom-4.0); _zoom()
 	elif event.button_index==MOUSE_BUTTON_WHEEL_DOWN: zoom=minf(90.0,zoom+4.0); _zoom()
 	elif event.button_index==MOUSE_BUTTON_RIGHT and event.pressed:
-		dragging=false; guided_airlock_cells=[]; guided_connection_edges=[]; _set_tool("place"); _draw_preview([],false)
+		dragging=false; _set_tool("place"); _draw_preview([],false)
 	elif event.button_index==MOUSE_BUTTON_LEFT:
-		if not guided_airlock_cells.is_empty():
-			if event.pressed and not _pointer_over_ui(): _place_guided_airlock()
-			return
-		if not guided_connection_edges.is_empty():
-			if event.pressed and not _pointer_over_ui(): _place_guided_connection()
-			return
 		if tool=="remove":
 			if event.pressed: _remove_at(hover)
 			return
@@ -237,7 +228,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				zones.append(zone); _history.append({"type":"zone","zone":zone})
 				_rebuild()
 				MHAudio.sfx("place")
-				_begin_connection_guidance(zone, zones.size()==1)
 				var left := CARGO_BUDGET-_used_cargo()
 				if left<CARGO_BUDGET*.1: _flash_notice("warn","Cargo is getting tight","%s left — about %d more cells." % [MHStyle.kg(left),left/CELL_COST])
 			elif not _pointer_over_ui():
@@ -248,7 +238,7 @@ func _process(delta: float) -> void:
 	if not build_mode: return
 	_update_player_marker()
 	# Removing and furnishing pick against the deck the player sees, not the ground.
-	hover=_cell_at_mouse(habitat_base_y if tool=="remove" or not equipment_id.is_empty() or kind=="room_door" or not guided_airlock_cells.is_empty() or not guided_connection_edges.is_empty() else 0.0)
+	hover=_cell_at_mouse(habitat_base_y if tool=="remove" or not equipment_id.is_empty() else 0.0)
 	if grid!=null:
 		(grid.material_override as ShaderMaterial).set_shader_parameter("centre",pivot.position)
 		((grid.get_child(0) as MeshInstance3D).material_override as ShaderMaterial).set_shader_parameter("centre",pivot.position)
@@ -271,14 +261,6 @@ func _process(delta: float) -> void:
 		var equipment_reason:=equipment_invalid_reason(equipment_id,hover)
 		_draw_equipment_preview(hover,equipment_reason.is_empty())
 		_update_hologram_ui([] if hover.x==999 else [hover],equipment_reason)
-		return
-	if not guided_airlock_cells.is_empty():
-		_draw_airlock_guidance()
-		_update_hologram_ui(guided_airlock_cells,"Click an exterior edge to add the airlock · Esc skips")
-		return
-	if not guided_connection_edges.is_empty():
-		_draw_connection_guidance()
-		_update_hologram_ui([],"Click a highlighted wall to connect rooms · Esc keeps them sealed")
 		return
 	if kind=="room_door":
 		var doorway := _room_door_from_mouse()
@@ -891,68 +873,6 @@ func _draw_room_door_preview(doorway: Dictionary, valid: bool) -> void:
 	marker.position=Vector3(cell.x*CELL+side.x*CELL*.5,habitat_base_y+1.3,cell.y*CELL+side.y*CELL*.5)
 	preview.add_child(marker)
 	var label := _label3d("INTERIOR DOOR",30,colour); label.position=marker.position+Vector3(0,1.45,0); preview.add_child(label)
-
-func _begin_connection_guidance(zone: Dictionary, first_room: bool) -> void:
-	guided_airlock_cells=[]; guided_connection_edges=[]
-	if not str(zone.get("kind", "")) in REASSIGNABLE_ROOM_TYPES: return
-	for cell in zone.cells:
-		for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
-			var other := _zone_at(cell + side)
-			if first_room and other.is_empty(): guided_airlock_cells.append({"cell":cell,"side":side})
-			elif not first_room and not other.is_empty() and _is_habitat_zone(other) and str(other.kind)!="airlock" and not _room_door_exists(cell,side):
-				guided_connection_edges.append({"cell":cell,"side":side})
-	if not guided_airlock_cells.is_empty():
-		_flash_notice("info", "Add your airlock", "Click a highlighted exterior edge. Esc leaves the room sealed for now.")
-	elif not guided_connection_edges.is_empty():
-		_flash_notice("info", "Connect rooms?", "Click a highlighted shared wall to install a door, or press Esc to keep rooms sealed.")
-
-func _edge_under_cursor(edges: Array) -> Dictionary:
-	var edge := _room_door_from_mouse()
-	if edge.is_empty(): return {}
-	for candidate in edges:
-		if candidate.cell == edge.cell and candidate.side == edge.side: return candidate
-	return {}
-
-func _place_guided_airlock() -> void:
-	var edge := _edge_under_cursor(guided_airlock_cells)
-	if edge.is_empty():
-		_flash_notice("invalid", "Choose an exterior edge", "Click one of the highlighted edges of the first room.")
-		return
-	var cell: Vector2i = edge.cell + edge.side
-	var previous_direction := airlock_direction
-	airlock_direction = edge.side
-	if not _valid_airlock([cell]):
-		airlock_direction = previous_direction
-		_flash_notice("invalid", "Can't place airlock", "That edge is no longer clear.")
-		return
-	var zone := {"kind":"airlock","cells":[cell],"door_direction":airlock_direction,"cost":_zone_cost([cell])}
-	zones.append(zone); _history.append({"type":"zone","zone":zone})
-	guided_airlock_cells=[]; _rebuild(); MHAudio.sfx("place")
-
-func _place_guided_connection() -> void:
-	var edge := _edge_under_cursor(guided_connection_edges)
-	if edge.is_empty():
-		_flash_notice("invalid", "Choose a highlighted wall", "Only shared walls between the new room and an existing room can connect now.")
-		return
-	interior_doors.append(edge); _history.append({"type":"room_door","door":edge})
-	guided_connection_edges=[]; _rebuild(); MHAudio.sfx("place")
-
-func _draw_guidance_marker(edge: Dictionary, colour: Color, label_text: String) -> void:
-	var cell: Vector2i = edge.cell; var side: Vector2i = edge.side
-	var marker := MeshInstance3D.new(); var mesh := BoxMesh.new()
-	mesh.size = Vector3(1.05, .12, .16) if side.x != 0 else Vector3(.16, .12, 1.05)
-	marker.mesh=mesh; marker.position=Vector3(cell.x*CELL+side.x*CELL*.5,habitat_base_y+.16,cell.y*CELL+side.y*CELL*.5)
-	var material := StandardMaterial3D.new(); material.albedo_color=colour; material.emission_enabled=true; material.emission=colour; material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
-	marker.material_override=material; preview.add_child(marker)
-	var label := _label3d(label_text,24,colour); label.position=marker.position+Vector3(0,.33,0); preview.add_child(label)
-
-func _draw_airlock_guidance() -> void:
-	for child in preview.get_children(): child.queue_free()
-	for edge in guided_airlock_cells: _draw_guidance_marker(edge,MHStyle.accent,"AIRLOCK")
-
-func _draw_connection_guidance() -> void:
-	for child in preview.get_children(): child.queue_free()
-	for edge in guided_connection_edges: _draw_guidance_marker(edge,MHStyle.VALID,"CONNECT")
 
 func _valid_airlock(cells: Array) -> bool:
 	if cells.size()<1 or cells.size()>3: return false
