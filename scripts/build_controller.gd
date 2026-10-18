@@ -991,7 +991,9 @@ func _rebuild() -> void:
 	for door_data in interior_doors:
 		var door_cell: Vector2i = door_data.get("cell", Vector2i.ZERO)
 		var door_side: Vector2i = door_data.get("side", Vector2i.ZERO)
-		_add_door(Vector3(door_cell.x * CELL, 0, door_cell.y * CELL), door_side, "INTERIOR", false)
+		# The framed hatch fills the complete 3 m shared wall bay. The unframed
+		# shutter is deliberately narrower and left visible slits at either edge.
+		_add_door(Vector3(door_cell.x * CELL, 0, door_cell.y * CELL), door_side, "INTERIOR", true)
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
 	for zone in zones: _add_zone_label(zone)
