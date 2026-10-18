@@ -14,6 +14,7 @@ var _right_hinge: Node3D
 func _ready() -> void:
 	add_to_group("habitat_interactable")
 	_make_model_materials_two_sided()
+	_hide_mirrored_tags()
 	_build_door_hinges()
 
 func interaction_prompt() -> Dictionary:
@@ -44,6 +45,15 @@ func _build_door_hinges() -> void:
 	_left_hinge = _create_hinge(model, "Door_L01", true)
 	_right_hinge = _create_hinge(model, "Door_L02", false)
 
+func _hide_mirrored_tags() -> void:
+	# The delivered texture labels are mirrored by the model's exported front
+	# axis. Keep the readable UI prompt and the physical locker, but omit these
+	# two presentation-only tags until corrected source textures are supplied.
+	for tag_name in ["Door_L01__tag_L01", "Door_L02__tag_L02"]:
+		var tag := find_child(tag_name, true, false) as VisualInstance3D
+		if tag != null:
+			tag.visible = false
+
 func _create_hinge(model: Node3D, prefix: String, left: bool) -> Node3D:
 	var pieces: Array[MeshInstance3D] = []
 	for mesh_node in model.find_children("*", "MeshInstance3D", true, false):
@@ -72,8 +82,10 @@ func _create_hinge(model: Node3D, prefix: String, left: bool) -> Node3D:
 func _animate_doors() -> void:
 	if _left_hinge == null or _right_hinge == null:
 		return
-	var left_target := deg_to_rad(-102.0 if _doors_open else 0.0)
-	var right_target := deg_to_rad(102.0 if _doors_open else 0.0)
+	# Swing away from the locker face, keeping the open doors out of the storage
+	# cavity and readable as outward-opening hinged panels.
+	var left_target := deg_to_rad(102.0 if _doors_open else 0.0)
+	var right_target := deg_to_rad(-102.0 if _doors_open else 0.0)
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(_left_hinge, "rotation:y", left_target, .32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(_right_hinge, "rotation:y", right_target, .32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
