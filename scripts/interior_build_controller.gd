@@ -183,7 +183,8 @@ func _place_preview() -> void:
 	var point: Vector3 = preview.global_position
 	var cell := Vector2i(roundi(point.x / BuildController.CELL), roundi(point.z / BuildController.CELL))
 	var final_visual := builder.free_interior_visual(selected_id, point, preview.rotation.y)
-	if builder.place_free_interior_equipment(selected_id, point, preview.rotation.y, cell, final_visual):
+	var normal: Vector3 = _hit.get("normal", Vector3.UP) as Vector3
+	if builder.place_free_interior_equipment(selected_id, point, preview.rotation.y, cell, final_visual, normal.normalized()):
 		MHAudio.sfx("place")
 		_refresh_preview(true)
 	else:

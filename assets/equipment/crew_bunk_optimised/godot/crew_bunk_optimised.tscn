@@ -20,9 +20,11 @@ size = Vector3(2.15, 0.11, 1.08)
 script = ExtResource("1_script")
 
 [node name="BerthModel" parent="." instance=ExtResource("2_model")]
+rotation_degrees = Vector3(0, 180, 0)
 
 [node name="ClosedCurtain" parent="." instance=ExtResource("3_curtain")]
 visible = false
+rotation_degrees = Vector3(0, 180, 0)
 
 [node name="ReadingLight" type="OmniLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.74, 1.34, 0.27)

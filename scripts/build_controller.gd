@@ -385,12 +385,12 @@ func place_equipment(id: String, cell: Vector2i, visual: Node3D = null, facing :
 ## First-person interior construction records exact metres rather than cells.
 ## Only the interior controller calls this API; the exterior planner remains
 ## grid based.  `zone_cell` keeps room restrictions and safe pruning explicit.
-func place_free_interior_equipment(id: String, position: Vector3, rotation_y: float, zone_cell: Vector2i, visual: Node3D) -> bool:
+func place_free_interior_equipment(id: String, position: Vector3, rotation_y: float, zone_cell: Vector2i, visual: Node3D, anchor_normal := Vector3.UP) -> bool:
 	var entry := EquipmentCatalog.get_entry(id)
 	if entry.is_empty() or _used_cargo() + int(entry.get("cargo_cost", 0)) > CARGO_BUDGET:
 		return false
 	var placement_id := "interior_%d" % Time.get_ticks_usec()
-	placed_interior.append({"placement_id": placement_id, "id": id, "position": position, "rotation_y": rotation_y, "zone_cell": zone_cell})
+	placed_interior.append({"placement_id": placement_id, "id": id, "position": position, "rotation_y": rotation_y, "zone_cell": zone_cell, "anchor_normal": anchor_normal})
 	visual.name = "Interior_%s" % placement_id
 	visual.set_meta("equipment_id", id)
 	visual.set_meta("interior_placement_id", placement_id)
@@ -567,8 +567,17 @@ func _prune_equipment() -> int:
 		var item: Dictionary = placed_interior[index]
 		var cell: Vector2i = item.get("zone_cell", Vector2i(9999, 9999))
 		var zone := _zone_at(cell)
-		var valid_zones: Array = EquipmentCatalog.get_entry(str(item.get("id", ""))).get("valid_zones", [])
-		if zone.is_empty() or not valid_zones.has(str(zone.kind)):
+		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
+		var valid_zones: Array = entry.get("valid_zones", [])
+		var wall_lost := false
+		if str(entry.get("placement", "floor")) == "wall" and item.has("anchor_normal"):
+			# A wall mount remains valid only while one side is pressurised habitat
+			# and the far side is outside. Adding a room across that wall removes the
+			# attachment surface, so remove and refund the mounted asset.
+			var anchor: Vector3 = item.get("anchor_normal", Vector3.ZERO) as Vector3
+			var point: Vector3 = item.get("position", Vector3.ZERO) as Vector3
+			wall_lost = not is_inside(point + anchor * .18) or is_inside(point - anchor * .18)
+		if zone.is_empty() or not valid_zones.has(str(zone.kind)) or wall_lost:
 			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
 			remove_free_interior_equipment(str(item.get("placement_id", "")))
 	return refund
@@ -939,6 +948,9 @@ func _label3d(text: String,size: int,colour: Color,weight := 800) -> Label3D:
 	return label
 
 func _rebuild() -> void:
+	var attachment_refund := _prune_equipment()
+	if attachment_refund > 0:
+		_flash_notice("info", "Mounted equipment removed", "+%s cargo returned — its wall changed." % MHStyle.kg(attachment_refund))
 	for child in root.get_children(): child.queue_free()
 	for zone in zones:
 		_zone_surfaces(zone)
