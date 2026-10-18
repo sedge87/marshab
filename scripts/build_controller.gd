@@ -1016,29 +1016,42 @@ func _add_zone_lighting(zone: Dictionary) -> void:
 	var cells: Array = zone.cells
 	for index in range(0, cells.size(), 2):
 		var cell: Vector2i = cells[index]
-		_add_powered_fixture(Vector3(cell.x * CELL, habitat_base_y + 2.62, cell.y * CELL), zone_kind)
+		# The fixture housing is recessed into the roof slab rather than hovering
+		# below it as a free-floating light strip.
+		_add_powered_fixture(Vector3(cell.x * CELL, habitat_base_y + 2.81, cell.y * CELL), zone_kind)
 
 func _add_powered_fixture(position: Vector3, zone_kind: String) -> void:
 	var fixture := Node3D.new()
 	fixture.name = "CeilingLight"
 	fixture.position = position
 	root.add_child(fixture)
-	var visual := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(.88, .07, .22)
-	visual.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color("#F3E4C6")
-	material.emission_enabled = true
-	material.emission = Color("#FFE7B2")
-	material.emission_energy_multiplier = 2.6
-	visual.material_override = material
-	visual.add_to_group("grid_powered_light")
-	visual.set_meta("grid_emission_on", Color("#FFE7B2"))
-	visual.set_meta("grid_emission_off", Color("#293034"))
-	fixture.add_child(visual)
+	var housing := MeshInstance3D.new()
+	var housing_mesh := BoxMesh.new()
+	housing_mesh.size = Vector3(1.08, .14, .38)
+	housing.mesh = housing_mesh
+	var housing_material := StandardMaterial3D.new()
+	housing_material.albedo_color = MHStyle.SEAL_DARK.lightened(.08)
+	housing_material.metallic = .45
+	housing_material.roughness = .42
+	housing.material_override = housing_material
+	fixture.add_child(housing)
+	var diffuser := MeshInstance3D.new()
+	var diffuser_mesh := BoxMesh.new()
+	diffuser_mesh.size = Vector3(.84, .035, .18)
+	diffuser.mesh = diffuser_mesh
+	diffuser.position.y = -.08
+	var diffuser_material := StandardMaterial3D.new()
+	diffuser_material.albedo_color = Color("#F3E4C6")
+	diffuser_material.emission_enabled = true
+	diffuser_material.emission = Color("#FFE7B2")
+	diffuser_material.emission_energy_multiplier = 1.7
+	diffuser.material_override = diffuser_material
+	diffuser.add_to_group("grid_powered_light")
+	diffuser.set_meta("grid_emission_on", Color("#FFE7B2"))
+	diffuser.set_meta("grid_emission_off", Color("#293034"))
+	fixture.add_child(diffuser)
 	var light := OmniLight3D.new()
-	light.position = Vector3(0, -.16, 0)
+	light.position = Vector3(0, -.20, 0)
 	light.light_color = Color("#FFE7B2")
 	light.light_energy = 3.0 if zone_kind != "hydroponics" else 3.8
 	light.omni_range = 6.0

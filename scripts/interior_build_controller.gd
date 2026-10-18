@@ -31,6 +31,7 @@ var _selector_context: Label
 var _selector_zone_kind := ""
 var _selector_group := ""
 var _selector_items: Array[String] = []
+var _remove_mode := false
 
 func setup(target_player: CharacterBody3D, target_builder: BuildController) -> void:
 	player = target_player
@@ -90,7 +91,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if event.keycode == KEY_X or event.keycode == KEY_DELETE:
-			_remove_target()
+			if _remove_mode and event.keycode == KEY_X:
+				_remove_mode = false
+				_set_selector_open(true)
+				_refresh_preview(true)
+			else:
+				_set_remove_mode(true)
 			get_viewport().set_input_as_handled()
 			return
 		var number := int(event.keycode) - int(KEY_1)
@@ -104,7 +110,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
-			_place_preview()
+			if _remove_mode:
+				_remove_target()
+			else:
+				_place_preview()
 			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			rotation_offset = wrapf(rotation_offset + (PI / 24.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -PI / 24.0), -PI, PI)
@@ -132,6 +141,12 @@ func _raycast() -> Dictionary:
 func _refresh_preview(force_rebuild: bool) -> void:
 	_hit = _raycast()
 	_refresh_contextual_selector()
+	if _remove_mode:
+		_valid_reason = "Removal tool · aim at an interior item"
+		if preview != null:
+			preview.visible = false
+		_update_hud()
+		return
 	if _hit.is_empty():
 		_valid_reason = "Look at a completed interior surface"
 		if preview != null: preview.visible = false
@@ -244,7 +259,7 @@ func _build_hud() -> void:
 	_status = MHStyle.body("", 13, MHStyle.TEXT_SECONDARY)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_status)
-	column.add_child(MHStyle.mono("1–5 Select · LMB Place · R / wheel Rotate · X Remove · B Exit", 11, MHStyle.TEXT_MUTED))
+	column.add_child(MHStyle.mono("LMB Remove · X return to palette · B Exit", 11, MHStyle.TEXT_MUTED))
 	_selector = PanelContainer.new()
 	_selector.anchor_left = .5
 	_selector.anchor_right = .5
@@ -261,6 +276,11 @@ func _build_hud() -> void:
 	var selector_head := MHStyle.hbox(8)
 	selector_head.add_child(MHStyle.title("Construction", 20))
 	selector_head.add_child(MHStyle.spacer())
+	var remove_button := MHStyle.button("Remove placed equipment", "danger", "trash-2", 34)
+	remove_button.focus_mode = Control.FOCUS_NONE
+	remove_button.tooltip_text = "Aim at placed interior equipment, then left-click to remove it and refund cargo."
+	remove_button.pressed.connect(_set_remove_mode.bind(true))
+	selector_head.add_child(remove_button)
 	selector_head.add_child(MHStyle.mono("TAB CLOSE", 11, MHStyle.TEXT_MUTED))
 	select_column.add_child(selector_head)
 	_selector_context = MHStyle.body("", 13, MHStyle.TEXT_SECONDARY)
@@ -268,7 +288,7 @@ func _build_hud() -> void:
 	_selector_tabs = MHStyle.hbox(6)
 	select_column.add_child(_selector_tabs)
 	_selector_cards = GridContainer.new()
-	_selector_cards.columns = 6
+	_selector_cards.columns = 4
 	_selector_cards.add_theme_constant_override("h_separation", 8)
 	_selector_cards.add_theme_constant_override("v_separation", 8)
 	select_column.add_child(_selector_cards)
@@ -279,7 +299,16 @@ func _build_hud() -> void:
 func _select_item(id: String) -> void:
 	selected_id = id
 	rotation_offset = 0.0
+	_remove_mode = false
 	_set_selector_open(false)
+	_refresh_preview(true)
+
+func _set_remove_mode(enabled: bool) -> void:
+	_remove_mode = enabled
+	if enabled:
+		_set_selector_open(false)
+		if preview != null:
+			preview.visible = false
 	_refresh_preview(true)
 
 func _set_selector_open(open: bool) -> void:
@@ -391,7 +420,7 @@ func _render_selector_cards() -> void:
 			continue
 		index += 1
 		var card := Button.new()
-		card.custom_minimum_size = Vector2(136, 88)
+		card.custom_minimum_size = Vector2(206, 96)
 		card.focus_mode = Control.FOCUS_NONE
 		card.tooltip_text = "%s\n%s" % [str(entry.get("label", id)), EquipmentCatalog.effects_text(id)]
 		card.add_theme_stylebox_override("normal", MHStyle.control_box(1 if id == selected_id else 0))
@@ -430,9 +459,9 @@ func _update_hud() -> void:
 	if _selection == null or _status == null:
 		return
 	var entry := EquipmentCatalog.get_entry(selected_id)
-	_selection.text = str(entry.get("label", selected_id))
-	var effect := EquipmentCatalog.effects_text(selected_id)
-	var state := "READY" if _valid_reason.is_empty() else _valid_reason
+	_selection.text = "Remove equipment" if _remove_mode else str(entry.get("label", selected_id))
+	var effect := "Full cargo refund" if _remove_mode else EquipmentCatalog.effects_text(selected_id)
+	var state := "AIM AT AN INTERIOR ITEM" if _remove_mode else ("READY" if _valid_reason.is_empty() else _valid_reason)
 	var context := str(BuildController.ZONE_TYPES.get(_selector_zone_kind, {}).get("label", "completed habitat"))
-	_status.text = "%s%s\n%s · TAB palette" % [state, " · " + effect if not effect.is_empty() else "", context]
-	_status.add_theme_color_override("font_color", MHStyle.VALID if _valid_reason.is_empty() else MHStyle.DANGER)
+	_status.text = "%s%s\n%s · %s" % [state, " · " + effect if not effect.is_empty() else "", context, "X palette" if _remove_mode else "TAB palette"]
+	_status.add_theme_color_override("font_color", MHStyle.WARN if _remove_mode else (MHStyle.VALID if _valid_reason.is_empty() else MHStyle.DANGER))
