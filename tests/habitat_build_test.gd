@@ -43,6 +43,20 @@ func _ready() -> void:
 	builder._rebuild()
 	await get_tree().physics_frame
 
+	# Vehicle bays use specialised rendering, but an explicit door must still
+	# replace their bay wall with the interlocked personnel hatch.
+	builder.zones = [
+		_zone("living", [Vector2i(0, 0)]),
+		_zone("vehicle_bay", [Vector2i(1, 0), Vector2i(1, 1)], Vector2i(1, 0))
+	]
+	builder.interior_doors.clear()
+	assert(builder.place_interior_door(Vector2i(0, 0), Vector2i(1, 0)), "A vehicle bay boundary should accept an explicit personnel door.")
+	var bay_hatch := false
+	for child in builder.root.get_children():
+		if child is AirlockDoor and (child as AirlockDoor).door_label() == "BAY":
+			bay_hatch = true
+	assert(bay_hatch, "A vehicle bay interior door must create the bay personnel hatch, not leave a wall behind.")
+
 	# Pylon-style sources use their radius, not a cable or nearest wall point.
 	builder.kind = "solar"
 	assert(builder._valid_power_source([Vector2i(13, 2)]), "Solar field should reach a habitat 30 m away.")

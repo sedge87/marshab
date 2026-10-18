@@ -176,6 +176,7 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		elif _preview_material_valid != _valid_reason.is_empty():
 			_set_preview_material(preview, _valid_reason.is_empty())
 			_preview_material_valid = _valid_reason.is_empty()
+		_position_interior_door_preview(preview, _door_target, normal)
 		preview.visible = true
 		_update_hud()
 		return
@@ -224,19 +225,35 @@ func _set_preview_material(node: Node, valid: bool) -> void:
 		material.albedo_color = Color(tint, .38)
 		material.emission_enabled = true
 		material.emission = tint
-		material.emission_energy_multiplier = .04
+		material.emission_energy_multiplier = 1.25
+		material.no_depth_test = true
 		mesh.material_override = material
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 func _interior_door_preview(target: Dictionary, hit_normal: Vector3) -> Node3D:
-	var cell: Vector2i = target.get("cell", Vector2i.ZERO)
 	var side: Vector2i = target.get("side", Vector2i.ZERO)
 	var holder := Node3D.new()
 	# A thin frame rides just proud of the face being aimed at. A solid door
 	# preview was visually indistinguishable from clipping through the wall.
-	holder.position = Vector3(cell.x * BuildController.CELL + side.x * BuildController.CELL * .5, builder.habitat_base_y + 1.45, cell.y * BuildController.CELL + side.y * BuildController.CELL * .5) + hit_normal * .045
+	_position_interior_door_preview(holder, target, hit_normal)
 	var opening_width := 1.22
 	var opening_height := 2.42
+	var surface := MeshInstance3D.new()
+	var surface_mesh := QuadMesh.new()
+	surface_mesh.size = Vector2(opening_width, opening_height)
+	surface.mesh = surface_mesh
+	surface.rotation.y = PI * .5 if side.x != 0 else 0.0
+	var surface_material := StandardMaterial3D.new()
+	surface_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	surface_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	surface_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	surface_material.albedo_color = Color("#57F6B3", .18)
+	surface_material.emission_enabled = true
+	surface_material.emission = Color("#57F6B3")
+	surface_material.emission_energy_multiplier = 1.25
+	surface_material.no_depth_test = true
+	surface.material_override = surface_material
+	holder.add_child(surface)
 	for offset in [-opening_width * .5, opening_width * .5]:
 		var jamb := MeshInstance3D.new()
 		var jamb_mesh := BoxMesh.new()
@@ -254,6 +271,11 @@ func _interior_door_preview(target: Dictionary, hit_normal: Vector3) -> Node3D:
 	header.position.y = opening_height * .5
 	holder.add_child(header)
 	return holder
+
+func _position_interior_door_preview(holder: Node3D, target: Dictionary, hit_normal: Vector3) -> void:
+	var cell: Vector2i = target.get("cell", Vector2i.ZERO)
+	var side: Vector2i = target.get("side", Vector2i.ZERO)
+	holder.position = Vector3(cell.x * BuildController.CELL + side.x * BuildController.CELL * .5, builder.habitat_base_y + 1.45, cell.y * BuildController.CELL + side.y * BuildController.CELL * .5) + hit_normal * .065
 
 func _place_preview() -> void:
 	if preview == null or not _valid_reason.is_empty() or _hit.is_empty():

@@ -991,6 +991,12 @@ func _rebuild() -> void:
 	for door_data in interior_doors:
 		var door_cell: Vector2i = door_data.get("cell", Vector2i.ZERO)
 		var door_side: Vector2i = door_data.get("side", Vector2i.ZERO)
+		var first_zone := _zone_at(door_cell)
+		var second_zone := _zone_at(door_cell + door_side)
+		# Vehicle bays build their own interlocked personnel hatch below, rather
+		# than adding a second generic door into the same wall opening.
+		if str(first_zone.get("kind", "")) == "vehicle_bay" or str(second_zone.get("kind", "")) == "vehicle_bay":
+			continue
 		# The framed hatch fills the complete 3 m shared wall bay. The unframed
 		# shutter is deliberately narrower and left visible slits at either edge.
 		_add_door(Vector3(door_cell.x * CELL, 0, door_cell.y * CELL), door_side, "INTERIOR", true)
@@ -1221,8 +1227,14 @@ func _build_vehicle_bay(zone: Dictionary) -> void:
 				connection_edges.append({"cell":cell,"side":side})
 	# One deliberately placed personnel bulkhead is clearer and safer than a
 	# door on every cell of a shared edge.  Other edges remain solid wall.
+	var explicit_edges: Array = []
+	for edge in connection_edges:
+		if _has_interior_door(edge.cell, edge.side):
+			explicit_edges.append(edge)
 	var access_edge: Dictionary={}
-	if not connection_edges.is_empty(): access_edge=connection_edges[connection_edges.size()/2]
+	# Preserve the original convenient bay hatch for existing saves, but once
+	# players choose an explicit interior door they own exactly which edge opens.
+	if explicit_edges.is_empty() and not connection_edges.is_empty(): access_edge=connection_edges[connection_edges.size()/2]
 	var habitat_door: AirlockDoor
 	for cell in zone.cells:
 		var centre:=Vector3(cell.x*CELL,0,cell.y*CELL)
@@ -1230,6 +1242,9 @@ func _build_vehicle_bay(zone: Dictionary) -> void:
 		for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
 			if side==outside: continue # The sealed, opening hangar door owns this face.
 			if cell+side in cells: continue
+			if _has_interior_door(cell, side):
+				habitat_door=_add_door(centre,side,"BAY",true)
+				continue
 			if not access_edge.is_empty() and cell==access_edge.cell and side==access_edge.side:
 				# A bay never opens directly into the habitat: this sealed personnel
 				# bulkhead is the only route between them.
