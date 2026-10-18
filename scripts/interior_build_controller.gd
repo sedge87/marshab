@@ -24,6 +24,12 @@ var _selection: Label
 var _selector: PanelContainer
 var _selector_open := false
 var _preview_material_valid := true
+var _selector_tabs: HBoxContainer
+var _selector_cards: GridContainer
+var _selector_context: Label
+var _selector_zone_kind := ""
+var _selector_group := ""
+var _selector_items: Array[String] = []
 
 func setup(target_player: CharacterBody3D, target_builder: BuildController) -> void:
 	player = target_player
@@ -83,8 +89,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		var number := int(event.keycode) - int(KEY_1)
-		if number >= 0 and number < QUICK_ITEMS.size():
-			selected_id = str(QUICK_ITEMS[number])
+		if number >= 0 and number < _selector_items.size():
+			selected_id = _selector_items[number]
 			rotation_offset = 0.0
 			_refresh_preview(true)
 			get_viewport().set_input_as_handled()
@@ -120,6 +126,7 @@ func _raycast() -> Dictionary:
 
 func _refresh_preview(force_rebuild: bool) -> void:
 	_hit = _raycast()
+	_refresh_contextual_selector()
 	if _hit.is_empty():
 		_valid_reason = "Look at a completed interior surface"
 		if preview != null: preview.visible = false
@@ -237,49 +244,30 @@ func _build_hud() -> void:
 	_selector.anchor_right = .5
 	_selector.anchor_top = 1.0
 	_selector.anchor_bottom = 1.0
-	_selector.offset_left = -352
-	_selector.offset_right = 352
-	_selector.offset_top = -468
+	_selector.offset_left = -458
+	_selector.offset_right = 458
+	_selector.offset_top = -444
 	_selector.offset_bottom = -72
 	_selector.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, MHStyle.BORDER_SUBTLE, MHStyle.RADIUS_MD, 1, Vector4(18, 18, 18, 18)))
 	_hud.add_child(_selector)
 	var select_column := MHStyle.vbox(10)
 	_selector.add_child(select_column)
 	var selector_head := MHStyle.hbox(8)
-	selector_head.add_child(MHStyle.title("Interior kit", 20))
+	selector_head.add_child(MHStyle.title("Construction", 20))
 	selector_head.add_child(MHStyle.spacer())
 	selector_head.add_child(MHStyle.mono("TAB CLOSE", 11, MHStyle.TEXT_MUTED))
 	select_column.add_child(selector_head)
-	select_column.add_child(MHStyle.body("Choose an installed item. Placement remains free-positioned in first person.", 13, MHStyle.TEXT_SECONDARY))
-	var cards := GridContainer.new()
-	cards.columns = 5
-	cards.add_theme_constant_override("h_separation", 8)
-	select_column.add_child(cards)
-	for index in QUICK_ITEMS.size():
-		var id := str(QUICK_ITEMS[index])
-		var entry := EquipmentCatalog.get_entry(id)
-		var card := Button.new()
-		card.custom_minimum_size = Vector2(124, 106)
-		card.focus_mode = Control.FOCUS_NONE
-		card.tooltip_text = "%s\n%s" % [str(entry.get("label", id)), EquipmentCatalog.effects_text(id)]
-		card.add_theme_stylebox_override("normal", MHStyle.control_box(0))
-		card.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, MHStyle.RADIUS_SM, 1, Vector4(8, 8, 8, 8)))
-		var card_column := MHStyle.vbox(4)
-		card_column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		card_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var key := MHStyle.mono("%d" % (index + 1), 11, MHStyle.accent, 700)
-		card_column.add_child(key)
-		var name := MHStyle.label(str(entry.get("label", id)), 13, MHStyle.TEXT_PRIMARY, 600)
-		name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		card_column.add_child(name)
-		var effect := EquipmentCatalog.effects_text(id)
-		var effect_label := MHStyle.mono(effect if not effect.is_empty() else str(entry.get("role", "")), 10, MHStyle.TEXT_MUTED)
-		effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		card_column.add_child(effect_label)
-		card.add_child(card_column)
-		card.pressed.connect(_select_item.bind(id))
-		cards.add_child(card)
+	_selector_context = MHStyle.body("", 13, MHStyle.TEXT_SECONDARY)
+	select_column.add_child(_selector_context)
+	_selector_tabs = MHStyle.hbox(6)
+	select_column.add_child(_selector_tabs)
+	_selector_cards = GridContainer.new()
+	_selector_cards.columns = 6
+	_selector_cards.add_theme_constant_override("h_separation", 8)
+	_selector_cards.add_theme_constant_override("v_separation", 8)
+	select_column.add_child(_selector_cards)
 	_set_selector_open(false)
+	_refresh_contextual_selector(true)
 	_update_hud()
 
 func _select_item(id: String) -> void:
@@ -295,6 +283,128 @@ func _set_selector_open(open: bool) -> void:
 	if active:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if open else Input.MOUSE_MODE_CAPTURED
 
+func _context_zone() -> Dictionary:
+	if builder == null:
+		return {}
+	var point := player.global_position
+	if not _hit.is_empty():
+		point = _hit.get("position", point) as Vector3
+	return builder._zone_at(Vector2i(roundi(point.x / BuildController.CELL), roundi(point.z / BuildController.CELL)))
+
+func _refresh_contextual_selector(force := false) -> void:
+	if _selector == null:
+		return
+	var zone := _context_zone()
+	var zone_kind := str(zone.get("kind", ""))
+	if not force and zone_kind == _selector_zone_kind:
+		return
+	_selector_zone_kind = zone_kind
+	_selector_items.clear()
+	for raw_id in QUICK_ITEMS:
+		var id := str(raw_id)
+		var entry := EquipmentCatalog.get_entry(id)
+		if not entry.is_empty() and not zone_kind.is_empty() and (entry.get("valid_zones", []) as Array).has(zone_kind):
+			_selector_items.append(id)
+	if _selector_items.is_empty():
+		_selector_group = ""
+		for child in _selector_tabs.get_children():
+			child.queue_free()
+		for child in _selector_cards.get_children():
+			child.queue_free()
+		if _selector_context != null:
+			_selector_context.text = "Aim at a completed room to see equipment that belongs there."
+		return
+	var groups: Array[String] = []
+	for group in EquipmentCatalog.groups():
+		var group_id := str((group as Dictionary).get("id", ""))
+		for id in _selector_items:
+			if str(EquipmentCatalog.get_entry(id).get("group", "")) == group_id:
+				groups.append(group_id)
+				break
+	if not groups.has(_selector_group):
+		_selector_group = str(EquipmentCatalog.get_entry(selected_id).get("group", groups[0]))
+		if not groups.has(_selector_group):
+			_selector_group = groups[0]
+	if not _selector_items.has(selected_id):
+		selected_id = _selector_items[0]
+		rotation_offset = 0.0
+	_render_selector_tabs(groups)
+	_render_selector_cards()
+	if _selector_context != null:
+		var zone_label := str(BuildController.ZONE_TYPES.get(zone_kind, {}).get("label", "completed habitat"))
+		_selector_context.text = "%s kit · compatible equipment only · free placement" % zone_label
+
+func _render_selector_tabs(groups: Array[String]) -> void:
+	for child in _selector_tabs.get_children():
+		child.queue_free()
+	for group in EquipmentCatalog.groups():
+		var details := group as Dictionary
+		var group_id := str(details.get("id", ""))
+		if not groups.has(group_id):
+			continue
+		var tab := Button.new()
+		tab.text = str(details.get("label", group_id)).to_upper()
+		tab.icon = MHIcons.texture(str(details.get("icon", "package")), 16)
+		tab.focus_mode = Control.FOCUS_NONE
+		tab.tooltip_text = "Show %s equipment" % str(details.get("label", group_id))
+		tab.add_theme_stylebox_override("normal", MHStyle.control_box(0 if group_id != _selector_group else 1))
+		tab.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, MHStyle.RADIUS_SM, 1, Vector4(8, 8, 8, 8)))
+		tab.pressed.connect(_select_selector_group.bind(group_id))
+		_selector_tabs.add_child(tab)
+
+func _select_selector_group(group_id: String) -> void:
+	_selector_group = group_id
+	for id in _selector_items:
+		if str(EquipmentCatalog.get_entry(id).get("group", "")) == group_id:
+			selected_id = id
+			rotation_offset = 0.0
+			break
+	_render_selector_tabs(_available_groups())
+	_render_selector_cards()
+	_refresh_preview(true)
+
+func _available_groups() -> Array[String]:
+	var groups: Array[String] = []
+	for group in EquipmentCatalog.groups():
+		var group_id := str((group as Dictionary).get("id", ""))
+		for id in _selector_items:
+			if str(EquipmentCatalog.get_entry(id).get("group", "")) == group_id:
+				groups.append(group_id)
+				break
+	return groups
+
+func _render_selector_cards() -> void:
+	for child in _selector_cards.get_children():
+		child.queue_free()
+	var index := 0
+	for id in _selector_items:
+		var entry := EquipmentCatalog.get_entry(id)
+		if str(entry.get("group", "")) != _selector_group:
+			continue
+		index += 1
+		var card := Button.new()
+		card.custom_minimum_size = Vector2(136, 104)
+		card.focus_mode = Control.FOCUS_NONE
+		card.icon = MHIcons.texture(str(entry.get("icon", "package")), 30)
+		card.expand_icon = true
+		card.tooltip_text = "%s\n%s" % [str(entry.get("label", id)), EquipmentCatalog.effects_text(id)]
+		card.add_theme_stylebox_override("normal", MHStyle.control_box(1 if id == selected_id else 0))
+		card.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, MHStyle.RADIUS_SM, 1, Vector4(8, 8, 8, 8)))
+		var card_column := MHStyle.vbox(2)
+		card_column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		card_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card_column.add_child(MHStyle.mono("%d" % index, 10, MHStyle.accent, 700))
+		var name := MHStyle.label(str(entry.get("label", id)), 12, MHStyle.TEXT_PRIMARY, 600)
+		name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card_column.add_child(name)
+		var effect := EquipmentCatalog.effects_text(id)
+		var effect_label := MHStyle.mono(effect if not effect.is_empty() else str(entry.get("role", "")), 9, MHStyle.TEXT_MUTED)
+		effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card_column.add_child(effect_label)
+		card.add_child(card_column)
+		card.pressed.connect(_select_item.bind(id))
+		_selector_cards.add_child(card)
+
 func _update_hud() -> void:
 	if _selection == null or _status == null:
 		return
@@ -302,5 +412,6 @@ func _update_hud() -> void:
 	_selection.text = str(entry.get("label", selected_id))
 	var effect := EquipmentCatalog.effects_text(selected_id)
 	var state := "READY" if _valid_reason.is_empty() else _valid_reason
-	_status.text = "%s%s\nTAB · choose interior item" % [state, " · " + effect if not effect.is_empty() else ""]
+	var context := str(BuildController.ZONE_TYPES.get(_selector_zone_kind, {}).get("label", "completed habitat"))
+	_status.text = "%s%s\n%s · TAB construction palette" % [state, " · " + effect if not effect.is_empty() else "", context]
 	_status.add_theme_color_override("font_color", MHStyle.VALID if _valid_reason.is_empty() else MHStyle.DANGER)
