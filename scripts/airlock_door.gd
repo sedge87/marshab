@@ -57,6 +57,32 @@ func _partners_closed() -> bool:
 		if not partner.is_closed(): return false
 	return true
 
+func _leads_to_environment() -> bool:
+	# These are the only hatches that open the pressure hull to Mars. All other
+	# AirlockDoor instances are inner/bay/interior bulkheads.
+	return _door_name == "OUTER" or _door_name == "HANGAR"
+
+func _habitat_inner_doors_closed() -> bool:
+	if not _leads_to_environment():
+		return _partners_closed()
+	for node in get_tree().get_nodes_in_group("airlock_door"):
+		var door := node as AirlockDoor
+		if door != null and door != self and not door._leads_to_environment() and not door.is_closed():
+			return false
+	return true
+
+func _seal_habitat_inner_doors() -> void:
+	if not _leads_to_environment():
+		for partner in _partners:
+			partner._request_close()
+		return
+	# Opening to Mars is a base-wide pressure event: close every inner hatch,
+	# not merely the airlock/hangar's immediate partner.
+	for node in get_tree().get_nodes_in_group("airlock_door"):
+		var door := node as AirlockDoor
+		if door != null and door != self and not door._leads_to_environment():
+			door._request_close()
+
 func _request_close() -> void:
 	# A neighbouring door has requested a safe transfer. Cancel any request to
 	# open this door and seal it before the next door cycles.
@@ -167,7 +193,7 @@ func _add_box_visual(parent: StaticBody3D,size: Vector3,material: Material,solid
 		parent.add_child(collision)
 
 func _physics_process(delta: float) -> void:
-	if _pending_open and _partners_closed():
+	if _pending_open and _habitat_inner_doors_closed():
 		_pending_open=false
 		_target_amount=1.0
 	# One place hears every open/close, whether the player, an interlock or a
@@ -188,13 +214,13 @@ func toggle() -> void:
 		_pending_open=false
 		_target_amount=0.0
 		return
-	if not _partners_closed():
+	if not _habitat_inner_doors_closed():
 		# Queue this door, command the open neighbouring door(s) to seal, and
 		# only then open.  The player does not need to turn around and close the
 		# door they just used to enter the airlock or vehicle bay.
 		_pending_open=true
 		MHAudio.sfx_at("door_interlock",self,-6.0)
-		for partner in _partners: partner._request_close()
+		_seal_habitat_inner_doors()
 		_update_status()
 		return
 	_pending_open=false

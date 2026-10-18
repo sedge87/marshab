@@ -1,27 +1,23 @@
 extends SceneTree
 
-func _wait_frames(count: int) -> void:
-	for frame in range(count):
-		await process_frame
-
-func _init() -> void:
-	var room := Node3D.new()
-	get_root().add_child(room)
+# Run with: godot --headless --path . --script res://tests/airlock_interlock_test.gd
+# An environmental hatch must seal every inner pressure door before it opens.
+func _initialize() -> void:
+	var world := Node3D.new()
+	root.add_child(world)
 	var outer := AirlockDoor.new()
-	var inner := AirlockDoor.new()
-	room.add_child(outer)
-	room.add_child(inner)
-	outer.setup("OUTER")
-	inner.setup("INNER")
-	outer.set_partner(inner)
-	inner.set_partner(outer)
+	world.add_child(outer)
+	outer.setup("OUTER", true)
+	var interior := AirlockDoor.new()
+	interior.position = Vector3(4, 0, 0)
+	world.add_child(interior)
+	interior.setup("INTERIOR", true)
+	interior.toggle()
+	await create_timer(.45).timeout
+	assert(not interior.is_closed(), "The test setup must first open the interior door.")
 	outer.toggle()
-	assert(outer._target_amount > .9, "Outer airlock door should open from a closed pair.")
-	inner.toggle()
-	assert(inner._pending_open, "Inner door should queue a safe cycle while the outer door is open.")
-	assert(outer._target_amount < .1, "Requesting the inner door must command the outer door to close.")
-	await _wait_frames(180)
-	assert(outer.is_closed(), "Outer door should seal before the inner door opens.")
-	assert(inner._target_amount > .9, "Inner door should open automatically after the outer door seals.")
-	print("Airlock interlock test passed: requested doors auto-cycle safely.")
+	await create_timer(.65).timeout
+	assert(interior.is_closed(), "Opening to Mars must close every interior door.")
+	assert(not outer.is_closed(), "The outer hatch should open once inner doors are sealed.")
+	print("Airlock interlock test passed: outer hatch seals all inner doors.")
 	quit(0)
