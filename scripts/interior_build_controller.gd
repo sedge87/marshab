@@ -294,10 +294,10 @@ func _set_selector_open(open: bool) -> void:
 func _context_zone() -> Dictionary:
 	if builder == null:
 		return {}
-	var point := player.global_position
-	if not _hit.is_empty():
-		point = _hit.get("position", point) as Vector3
-	return builder._zone_at(Vector2i(roundi(point.x / BuildController.CELL), roundi(point.z / BuildController.CELL)))
+	# The construction palette describes the room the player is currently in.
+	# The reticle is intentionally reserved for the precise surface being built
+	# on; aiming at a doorway or adjacent wall must not reshuffle the inventory.
+	return builder._zone_at(Vector2i(roundi(player.global_position.x / BuildController.CELL), roundi(player.global_position.z / BuildController.CELL)))
 
 func _refresh_contextual_selector(force := false) -> void:
 	if _selector == null:
