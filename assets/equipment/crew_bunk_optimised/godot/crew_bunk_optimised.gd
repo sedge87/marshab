@@ -26,6 +26,7 @@ var _privacy_closed := false
 
 func _ready() -> void:
 	add_to_group("habitat_interactable")
+	_make_model_materials_two_sided()
 	set_meta("interaction_hint", "E curtain · F light · G drawer")
 	_emissive_mesh = find_child("ReadingLight_Emissive__light", true, false) as MeshInstance3D
 	_dark_lamp_material = StandardMaterial3D.new()
@@ -56,6 +57,19 @@ func _ready() -> void:
 		_drawer_nodes[i] = pieces
 	set_reading_light_enabled(light_initially_enabled)
 	set_privacy_closed(curtain_initially_closed)
+
+func _make_model_materials_two_sided() -> void:
+	for mesh_node in find_children("*", "MeshInstance3D", true, false):
+		var mesh := mesh_node as MeshInstance3D
+		if mesh == null or mesh.mesh == null:
+			continue
+		for surface in mesh.mesh.get_surface_count():
+			var source := mesh.get_active_material(surface) as StandardMaterial3D
+			if source == null:
+				continue
+			var material := source.duplicate() as StandardMaterial3D
+			material.cull_mode = BaseMaterial3D.CULL_DISABLED
+			mesh.set_surface_override_material(surface, material)
 
 func set_reading_light_enabled(enabled: bool) -> void:
 	_light_enabled = enabled

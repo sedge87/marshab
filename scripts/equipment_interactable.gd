@@ -17,12 +17,28 @@ var _equipment_light: Light3D
 
 func _ready() -> void:
 	add_to_group("habitat_interactable")
+	_make_model_materials_two_sided()
 	if not light_node_path.is_empty():
 		_equipment_light = get_node_or_null(light_node_path) as Light3D
 		if _equipment_light != null:
 			_equipment_light.add_to_group("grid_powered_light")
 			_equipment_light.set_meta("grid_light_energy", _equipment_light.light_energy)
 	_build_readout()
+
+func _make_model_materials_two_sided() -> void:
+	# Thin sheet-metal panels in delivered GLBs must remain visible from either
+	# side in Godot's Compatibility renderer.
+	for mesh_node in find_children("*", "MeshInstance3D", true, false):
+		var mesh := mesh_node as MeshInstance3D
+		if mesh == null or mesh.mesh == null:
+			continue
+		for surface in mesh.mesh.get_surface_count():
+			var source := mesh.get_active_material(surface) as StandardMaterial3D
+			if source == null:
+				continue
+			var material := source.duplicate() as StandardMaterial3D
+			material.cull_mode = BaseMaterial3D.CULL_DISABLED
+			mesh.set_surface_override_material(surface, material)
 
 func interaction_prompt() -> Dictionary:
 	return {
