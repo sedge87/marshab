@@ -106,10 +106,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			_refresh_preview(true)
 			get_viewport().set_input_as_handled()
 			return
-	if _selector_open:
-		return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
+			# The palette is a non-modal picker. A click on the scene beside it
+			# commits the selected hologram immediately, then restores look input.
+			if _selector_open:
+				if not _pointer_over_selector():
+					_set_selector_open(false)
+					_place_preview()
+					get_viewport().set_input_as_handled()
+				return
 			if _remove_mode:
 				_remove_target()
 			else:
@@ -281,7 +287,7 @@ func _build_hud() -> void:
 	remove_button.tooltip_text = "Aim at placed interior equipment, then left-click to remove it and refund cargo."
 	remove_button.pressed.connect(_set_remove_mode.bind(true))
 	selector_head.add_child(remove_button)
-	selector_head.add_child(MHStyle.mono("TAB CLOSE", 11, MHStyle.TEXT_MUTED))
+	selector_head.add_child(MHStyle.mono("CLICK SCENE · PLACE", 11, MHStyle.TEXT_MUTED))
 	select_column.add_child(selector_head)
 	_selector_context = MHStyle.body("", 13, MHStyle.TEXT_SECONDARY)
 	select_column.add_child(_selector_context)
@@ -319,6 +325,9 @@ func _set_selector_open(open: bool) -> void:
 		_placement_panel.visible = not open
 	if active:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if open else Input.MOUSE_MODE_CAPTURED
+
+func _pointer_over_selector() -> bool:
+	return _selector != null and _selector.visible and _selector.get_global_rect().has_point(get_viewport().get_mouse_position())
 
 func _context_zone() -> Dictionary:
 	if builder == null:
