@@ -45,7 +45,7 @@ func _ready() -> void:
 	var visor := MHWidgets.Visor.new()
 	visor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(visor)
-	_root.add_child(MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["E"], "Interact", "accent"], [["B"], "Build"], [["M"], "Mission Control"], [["Esc"], "Pause"]]))
+	_root.add_child(MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["E"], "Interact", "accent"], [["F"], "Light"], [["B"], "Build"], [["M"], "Mission Control"], [["Esc"], "Pause"]]))
 	# Compass, centred top inside the visor.
 	var compass_band := CenterContainer.new()
 	compass_band.anchor_right = 1

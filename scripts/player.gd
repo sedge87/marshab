@@ -8,12 +8,14 @@ const GRAVITY := 14.0
 const JUMP_VELOCITY := 5.3
 
 @onready var head: Node3D = $Head
+@onready var flashlight: SpotLight3D = $Head/Camera3D/Flashlight
 var safe_position := Vector3.ZERO
 var _jump_was_pressed := false
 var _stride := 0.0
 var _was_grounded := true
 var _fall_speed := 0.0
 var _step_index := 0
+var _flashlight_enabled := false
 
 func _ready() -> void:
 	add_to_group("player")
@@ -21,13 +23,17 @@ func _ready() -> void:
 	# Lets the controller follow small terrain undulations without hopping or snagging.
 	floor_snap_length = 0.5
 	floor_max_angle = deg_to_rad(52.0)
+	set_flashlight_enabled(false)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		if not _use_looked_at_interactable("interact") and not _use_nearby_habitat_ladder():
 			_toggle_nearby_airlock_door()
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
-		_use_looked_at_interactable("interact_secondary")
+		# Focused equipment retains its contextual secondary action (such as a
+		# bunk reading light); otherwise F always operates the suit flashlight.
+		if not _use_looked_at_interactable("interact_secondary"):
+			set_flashlight_enabled(not _flashlight_enabled)
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G:
 		_use_looked_at_interactable("interact_tertiary")
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -103,6 +109,15 @@ func _on_deck() -> bool:
 
 func _axis_pressed(action: StringName, fallback_key: Key) -> float:
 	return 1.0 if Input.is_action_pressed(action) or Input.is_key_pressed(fallback_key) else 0.0
+
+func set_flashlight_enabled(enabled: bool) -> void:
+	_flashlight_enabled = enabled
+	if flashlight != null:
+		flashlight.visible = enabled
+	set_meta("flashlight_enabled", enabled)
+
+func flashlight_enabled() -> bool:
+	return _flashlight_enabled
 
 func _toggle_nearby_airlock_door() -> void:
 	var nearest: Node3D
