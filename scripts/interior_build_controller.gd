@@ -19,6 +19,7 @@ var preview: Node3D
 var _hit := {}
 var _valid_reason := "Look at an interior floor, wall or ceiling"
 var _hud: CanvasLayer
+var _placement_panel: PanelContainer
 var _status: Label
 var _selection: Label
 var _selector: PanelContainer
@@ -42,7 +43,11 @@ func enter() -> void:
 	rotation_offset = 0.0
 	player.set_meta("interior_build_active", true)
 	_build_hud()
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	# Choosing the part is the first step of interior construction, rather than
+	# a hidden secondary menu. Selecting a tile returns to the aimed placement
+	# view with the mouse captured.
+	_set_selector_open(true)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	MHAudio.sfx("mode_build", -2.0, 0.0)
 	MHAudio.build_layer(true)
 	_refresh_preview(true)
@@ -216,6 +221,7 @@ func _build_hud() -> void:
 	_hud.layer = 25
 	add_child(_hud)
 	var panel := PanelContainer.new()
+	_placement_panel = panel
 	# Keep this contextual placement readout clear of the explore HUD's site
 	# telemetry and colony chip in the upper-left. It sits above the bottom
 	# controls at lower-right, close enough to read while aiming at a surface.
@@ -266,7 +272,7 @@ func _build_hud() -> void:
 	_selector_cards.add_theme_constant_override("h_separation", 8)
 	_selector_cards.add_theme_constant_override("v_separation", 8)
 	select_column.add_child(_selector_cards)
-	_set_selector_open(false)
+	_set_selector_open(true)
 	_refresh_contextual_selector(true)
 	_update_hud()
 
@@ -280,6 +286,8 @@ func _set_selector_open(open: bool) -> void:
 	_selector_open = open
 	if _selector != null:
 		_selector.visible = open
+	if _placement_panel != null:
+		_placement_panel.visible = not open
 	if active:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if open else Input.MOUSE_MODE_CAPTURED
 
@@ -383,16 +391,28 @@ func _render_selector_cards() -> void:
 			continue
 		index += 1
 		var card := Button.new()
-		card.custom_minimum_size = Vector2(136, 104)
+		card.custom_minimum_size = Vector2(136, 88)
 		card.focus_mode = Control.FOCUS_NONE
-		card.icon = MHIcons.texture(str(entry.get("icon", "package")), 30)
-		card.expand_icon = true
 		card.tooltip_text = "%s\n%s" % [str(entry.get("label", id)), EquipmentCatalog.effects_text(id)]
 		card.add_theme_stylebox_override("normal", MHStyle.control_box(1 if id == selected_id else 0))
 		card.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, MHStyle.RADIUS_SM, 1, Vector4(8, 8, 8, 8)))
+		var content := MHStyle.hbox(8)
+		content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var zone_data := BuildController.ZONE_TYPES.get(_selector_zone_kind, {}) as Dictionary
+		var zone_colour := zone_data.get("colour", MHStyle.accent) as Color
+		var icon_tile := PanelContainer.new()
+		icon_tile.custom_minimum_size = Vector2(44, 44)
+		icon_tile.add_theme_stylebox_override("panel", MHStyle.box(zone_colour.darkened(.55), zone_colour.lightened(.15), MHStyle.RADIUS_SM, 1, Vector4(6, 6, 6, 6)))
+		var icon := TextureRect.new()
+		icon.texture = MHIcons.texture(str(entry.get("icon", "package")), 28)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.modulate = zone_colour.lightened(.48)
+		icon_tile.add_child(icon)
+		content.add_child(icon_tile)
 		var card_column := MHStyle.vbox(2)
-		card_column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		card_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		card_column.add_child(MHStyle.mono("%d" % index, 10, MHStyle.accent, 700))
 		var name := MHStyle.label(str(entry.get("label", id)), 12, MHStyle.TEXT_PRIMARY, 600)
 		name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -401,7 +421,8 @@ func _render_selector_cards() -> void:
 		var effect_label := MHStyle.mono(effect if not effect.is_empty() else str(entry.get("role", "")), 9, MHStyle.TEXT_MUTED)
 		effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		card_column.add_child(effect_label)
-		card.add_child(card_column)
+		content.add_child(card_column)
+		card.add_child(content)
 		card.pressed.connect(_select_item.bind(id))
 		_selector_cards.add_child(card)
 
@@ -413,5 +434,5 @@ func _update_hud() -> void:
 	var effect := EquipmentCatalog.effects_text(selected_id)
 	var state := "READY" if _valid_reason.is_empty() else _valid_reason
 	var context := str(BuildController.ZONE_TYPES.get(_selector_zone_kind, {}).get("label", "completed habitat"))
-	_status.text = "%s%s\n%s · TAB construction palette" % [state, " · " + effect if not effect.is_empty() else "", context]
+	_status.text = "%s%s\n%s · TAB palette" % [state, " · " + effect if not effect.is_empty() else "", context]
 	_status.add_theme_color_override("font_color", MHStyle.VALID if _valid_reason.is_empty() else MHStyle.DANGER)
