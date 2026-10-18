@@ -166,6 +166,7 @@ func _site_build_limit() -> float:
 	return float(MHGame.site().get("build_limit", LIMIT))
 
 func _ready() -> void:
+	add_to_group("habitat_builder")
 	root=Node3D.new(); root.name="StudentHabitat"; world.add_child(root)
 	preview=Node3D.new(); preview.name="ZonePreview"; world.add_child(preview)
 	furnishing=Node3D.new(); furnishing.name="HabitatEquipment"; world.add_child(furnishing)

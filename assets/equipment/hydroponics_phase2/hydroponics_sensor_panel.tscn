@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://scripts/equipment_interactable.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/hydroponics_sensor_panel.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://assets/equipment/hydroponics_phase2/models/hydroponics_sensor_panel.glb" id="2_model"]
 
 [sub_resource type="BoxShape3D" id="BoxShape_sensor_panel"]
@@ -13,6 +13,19 @@ primary_action = "Inspect sensor panel"
 educational_note = "HYDROPONICS SENSOR PANEL\nMonitors temperature, humidity, water flow and grow-light conditions for this room."
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
+
+[node name="TemperatureDisplay" type="Label3D" parent="."]
+position = Vector3(-0.19, 0.095, -0.19)
+rotation_degrees = Vector3(0, 180, 0)
+pixel_size = 0.003
+modulate = Color(0.55, 1, 0.88, 1)
+outline_size = 3
+outline_modulate = Color(0.02, 0.11, 0.1, 0.9)
+text = "--.- °C"
+font_size = 42
+horizontal_alignment = 1
+width = 170.0
+no_depth_test = true
 
 [node name="StaticCollision" type="StaticBody3D" parent="."]
 collision_layer = 1
