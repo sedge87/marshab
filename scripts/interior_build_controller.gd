@@ -32,6 +32,8 @@ var _selector_zone_kind := ""
 var _selector_group := ""
 var _selector_items: Array[String] = []
 var _remove_mode := false
+var _selected_structure := ""
+var _door_target := {}
 
 func setup(target_player: CharacterBody3D, target_builder: BuildController) -> void:
 	player = target_player
@@ -102,6 +104,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var number := int(event.keycode) - int(KEY_1)
 		if number >= 0 and number < _selector_items.size():
 			selected_id = _selector_items[number]
+			_selected_structure = ""
 			rotation_offset = 0.0
 			_refresh_preview(true)
 			get_viewport().set_input_as_handled()
@@ -160,6 +163,22 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		return
 	var point: Vector3 = _hit.position
 	var normal: Vector3 = _hit.normal.normalized()
+	if _selected_structure == "interior_door":
+		_door_target = builder.interior_door_from_world_point(point, normal)
+		_valid_reason = builder.interior_door_invalid_reason(_door_target.get("cell", Vector2i.ZERO), _door_target.get("side", Vector2i.ZERO))
+		if force_rebuild or preview == null:
+			if preview != null: preview.queue_free()
+			preview = _interior_door_preview(_door_target)
+			preview.name = "InteriorDoorPreview"
+			add_child(preview)
+			_set_preview_material(preview, _valid_reason.is_empty())
+			_preview_material_valid = _valid_reason.is_empty()
+		elif _preview_material_valid != _valid_reason.is_empty():
+			_set_preview_material(preview, _valid_reason.is_empty())
+			_preview_material_valid = _valid_reason.is_empty()
+		preview.visible = true
+		_update_hud()
+		return
 	_valid_reason = builder.free_interior_invalid_reason(selected_id, point, normal, _placement_yaw(normal))
 	if force_rebuild or preview == null:
 		if preview != null: preview.queue_free()
@@ -209,9 +228,28 @@ func _set_preview_material(node: Node, valid: bool) -> void:
 		mesh.material_override = material
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
+func _interior_door_preview(target: Dictionary) -> Node3D:
+	var cell: Vector2i = target.get("cell", Vector2i.ZERO)
+	var side: Vector2i = target.get("side", Vector2i.ZERO)
+	var holder := Node3D.new()
+	holder.position = Vector3(cell.x * BuildController.CELL + side.x * BuildController.CELL * .5, builder.habitat_base_y + 1.45, cell.y * BuildController.CELL + side.y * BuildController.CELL * .5)
+	var panel := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(1.15, 2.45, .10) if side.x != 0 else Vector3(.10, 2.45, 1.15)
+	panel.mesh = mesh
+	holder.add_child(panel)
+	return holder
+
 func _place_preview() -> void:
 	if preview == null or not _valid_reason.is_empty() or _hit.is_empty():
 		if not _valid_reason.is_empty(): MHAudio.sfx("invalid")
+		return
+	if _selected_structure == "interior_door":
+		if builder.place_interior_door(_door_target.get("cell", Vector2i.ZERO), _door_target.get("side", Vector2i.ZERO)):
+			MHAudio.sfx("place")
+			_refresh_preview(true)
+		else:
+			MHAudio.sfx("invalid")
 		return
 	var point: Vector3 = preview.global_position
 	var cell := Vector2i(roundi(point.x / BuildController.CELL), roundi(point.z / BuildController.CELL))
@@ -265,7 +303,7 @@ func _build_hud() -> void:
 	_status = MHStyle.body("", 13, MHStyle.TEXT_SECONDARY)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_status)
-	column.add_child(MHStyle.mono("LMB Remove · X return to palette · B Exit", 11, MHStyle.TEXT_MUTED))
+	column.add_child(MHStyle.mono("LMB place · X remove · TAB palette · B exit", 11, MHStyle.TEXT_MUTED))
 	_selector = PanelContainer.new()
 	_selector.anchor_left = .5
 	_selector.anchor_right = .5
@@ -281,6 +319,11 @@ func _build_hud() -> void:
 	_selector.add_child(select_column)
 	var selector_head := MHStyle.hbox(8)
 	selector_head.add_child(MHStyle.title("Construction", 20))
+	var door_button := MHStyle.button("Interior door", "neutral", "door-closed", 34)
+	door_button.focus_mode = Control.FOCUS_NONE
+	door_button.tooltip_text = "Place a sealed-room doorway on a shared interior wall."
+	door_button.pressed.connect(_select_structure.bind("interior_door"))
+	selector_head.add_child(door_button)
 	selector_head.add_child(MHStyle.spacer())
 	var remove_button := MHStyle.button("Remove placed equipment", "danger", "trash-2", 34)
 	remove_button.focus_mode = Control.FOCUS_NONE
@@ -304,7 +347,14 @@ func _build_hud() -> void:
 
 func _select_item(id: String) -> void:
 	selected_id = id
+	_selected_structure = ""
 	rotation_offset = 0.0
+	_remove_mode = false
+	_set_selector_open(false)
+	_refresh_preview(true)
+
+func _select_structure(structure_id: String) -> void:
+	_selected_structure = structure_id
 	_remove_mode = false
 	_set_selector_open(false)
 	_refresh_preview(true)
@@ -468,8 +518,8 @@ func _update_hud() -> void:
 	if _selection == null or _status == null:
 		return
 	var entry := EquipmentCatalog.get_entry(selected_id)
-	_selection.text = "Remove equipment" if _remove_mode else str(entry.get("label", selected_id))
-	var effect := "Full cargo refund" if _remove_mode else EquipmentCatalog.effects_text(selected_id)
+	_selection.text = "Remove equipment" if _remove_mode else ("Interior door" if _selected_structure == "interior_door" else str(entry.get("label", selected_id)))
+	var effect := "Full cargo refund" if _remove_mode else ("Seals rooms until explicitly connected" if _selected_structure == "interior_door" else EquipmentCatalog.effects_text(selected_id))
 	var state := "AIM AT AN INTERIOR ITEM" if _remove_mode else ("READY" if _valid_reason.is_empty() else _valid_reason)
 	var context := str(BuildController.ZONE_TYPES.get(_selector_zone_kind, {}).get("label", "completed habitat"))
 	_status.text = "%s%s\n%s · %s" % [state, " · " + effect if not effect.is_empty() else "", context, "X palette" if _remove_mode else "TAB palette"]

@@ -41,7 +41,7 @@ const ZONE_INFO := {
 	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Makes space for grow equipment. Furnish it to produce food."},
 	"life_support":{"cat":"rooms","icon":"wind","rule":"Drag an area","desc":"Makes space for air and water recyclers. Furnish it to support crew."},
 	"glass_room":{"cat":"rooms","icon":"flower-2","rule":"Drag an area","desc":"A glazed room with a view of Mars. Uses extra power."},
-	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates","desc":"Joins rooms together. A one-cell corridor opens along its selected axis."},
+	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates","desc":"Creates a sealed passage. Add interior doors where it meets rooms."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates","desc":"The way in and out. The outer end faces Mars; the inner end must touch a room."},
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
 	"solar":{"cat":"power","icon":"sun","rule":"One cell · R aims","desc":"A 30 m power field. Facing north gives full output."},
@@ -108,6 +108,9 @@ var placed_equipment: Array = []
 # legacy top-down, cell-keyed equipment records.  They share the catalogue's
 # effects and cargo cost, but do not participate in exterior grid snapping.
 var placed_interior: Array = []
+# Deliberate openings between two completed, adjacent rooms.  Unlike the old
+# automatic join behaviour, these are player-built interior structures.
+var interior_doors: Array = []
 # Free ground props are deliberately separate from grid zones and interior
 # furnishings. They carry no resource effects until a gameplay design is added.
 var placed_surface: Array = []
@@ -447,12 +450,16 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 				var corner_zone := _zone_at(corner_cell)
 				if corner_zone.is_empty() or not valid_zones.has(str(corner_zone.get("kind", ""))):
 					return "Doesn't fit inside this room"
-		var candidate_radius := maxf(size.x, size.z) * .5
+		# Keep a modest clearance for use and collision, but do not turn the
+		# bounding box of every furnishing into a huge invisible exclusion zone.
+		# This lets, for example, hydroponic racks sit in a sensible row.
+		var candidate_radius := maxf(.12, minf(size.x, size.z) * .30)
 		for item in placed_interior:
 			var other_entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
 			var other_size := _equipment_size(other_entry)
 			var other_position: Vector3 = item.get("position", Vector3.ZERO)
-			if Vector2(world_position.x - other_position.x, world_position.z - other_position.z).length() < candidate_radius + maxf(other_size.x, other_size.z) * .38:
+			var other_radius := maxf(.12, minf(other_size.x, other_size.z) * .30)
+			if Vector2(world_position.x - other_position.x, world_position.z - other_position.z).length() < candidate_radius + other_radius:
 				return "Too close to existing equipment"
 	return ""
 
@@ -572,12 +579,16 @@ func _prune_equipment() -> int:
 		var valid_zones: Array = entry.get("valid_zones", [])
 		var wall_lost := false
 		if str(entry.get("placement", "floor")) == "wall" and item.has("anchor_normal"):
-			# A wall mount remains valid only while one side is pressurised habitat
-			# and the far side is outside. Adding a room across that wall removes the
-			# attachment surface, so remove and refund the mounted asset.
+			# A wall mount remains valid while a physical wall occupies its boundary.
+			# A neighbouring sealed room still supplies that wall; an explicit
+			# interior door replaces it and correctly releases the mounted item.
 			var anchor: Vector3 = item.get("anchor_normal", Vector3.ZERO) as Vector3
-			var point: Vector3 = item.get("position", Vector3.ZERO) as Vector3
-			wall_lost = not is_inside(point + anchor * .18) or is_inside(point - anchor * .18)
+			var outward := Vector2i(-roundi(anchor.x), -roundi(anchor.z))
+			if abs(outward.x) + abs(outward.y) != 1:
+				wall_lost = true
+			else:
+				var other_cell := cell + outward
+				wall_lost = not (_should_build_wall(cell, outward) or _should_build_wall(other_cell, -outward))
 		if zone.is_empty() or not valid_zones.has(str(zone.kind)) or wall_lost:
 			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
 			remove_free_interior_equipment(str(item.get("placement_id", "")))
@@ -950,6 +961,7 @@ func _label3d(text: String,size: int,colour: Color,weight := 800) -> Label3D:
 
 func _rebuild() -> void:
 	var attachment_refund := _prune_equipment()
+	_prune_interior_doors()
 	if attachment_refund > 0:
 		_flash_notice("info", "Mounted equipment removed", "+%s cargo returned — its wall changed." % MHStyle.kg(attachment_refund))
 	for child in root.get_children(): child.queue_free()
@@ -962,6 +974,10 @@ func _rebuild() -> void:
 		elif str(zone.kind)=="ice_extractor": _build_ice_extractor(zone)
 		else:
 			for cell in zone.cells: _cell_walls(cell,zone)
+	for door_data in interior_doors:
+		var door_cell: Vector2i = door_data.get("cell", Vector2i.ZERO)
+		var door_side: Vector2i = door_data.get("side", Vector2i.ZERO)
+		_add_door(Vector3(door_cell.x * CELL, 0, door_cell.y * CELL), door_side, "INTERIOR", false)
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
 	for zone in zones: _add_zone_label(zone)
@@ -1071,9 +1087,78 @@ func _should_build_wall(cell: Vector2i,side: Vector2i) -> bool:
 	# The airlock owns its inner threshold. This must win regardless of whether
 	# the attached room, corridor or the airlock itself was placed first.
 	if _is_airlock_inner_doorway(cell,side): return false
-	# Only pressurised habitat cells form an open internal connection. External
-	# equipment is adjacent to the shell, never part of its floor plan.
-	return not _is_habitat_cell(cell+side)
+	var neighbour := cell + side
+	if not _is_habitat_cell(neighbour):
+		return true
+	var current_zone := _zone_at(cell)
+	var neighbour_zone := _zone_at(neighbour)
+	# Cells painted as part of one room remain a single open interior volume.
+	if current_zone == neighbour_zone:
+		return false
+	# A player-installed door owns this boundary.
+	if _has_interior_door(cell, side):
+		return false
+	# Different room volumes are sealed. Render the shared wall exactly once so
+	# two coplanar wall kits cannot fight each other visually.
+	return _is_canonical_shared_edge(cell, side)
+
+func _is_canonical_shared_edge(cell: Vector2i, side: Vector2i) -> bool:
+	var neighbour := cell + side
+	return cell.x < neighbour.x or (cell.x == neighbour.x and cell.y < neighbour.y)
+
+func _canonical_interior_door(cell: Vector2i, side: Vector2i) -> Dictionary:
+	if side.x < 0 or side.y < 0:
+		return {"cell": cell + side, "side": -side}
+	return {"cell": cell, "side": side}
+
+func _has_interior_door(cell: Vector2i, side: Vector2i) -> bool:
+	var canonical := _canonical_interior_door(cell, side)
+	for data in interior_doors:
+		if data.get("cell", Vector2i.ZERO) == canonical.cell and data.get("side", Vector2i.ZERO) == canonical.side:
+			return true
+	return false
+
+func interior_door_invalid_reason(cell: Vector2i, side: Vector2i) -> String:
+	if abs(side.x) + abs(side.y) != 1:
+		return "Aim at a shared room wall"
+	var neighbour := cell + side
+	var first := _zone_at(cell)
+	var second := _zone_at(neighbour)
+	if first.is_empty() or second.is_empty() or not _is_habitat_zone(first) or not _is_habitat_zone(second):
+		return "Doorways join two completed rooms"
+	if first == second:
+		return "This is already part of one room"
+	if str(first.kind) == "airlock" or str(second.kind) == "airlock":
+		return "Use an airlock hatch here"
+	if _has_interior_door(cell, side):
+		return "Interior door already installed"
+	return ""
+
+func place_interior_door(cell: Vector2i, side: Vector2i) -> bool:
+	if not interior_door_invalid_reason(cell, side).is_empty():
+		return false
+	interior_doors.append(_canonical_interior_door(cell, side))
+	_rebuild()
+	return true
+
+func interior_door_from_world_point(point: Vector3, normal: Vector3) -> Dictionary:
+	# Shared grid edges sit half a cell from their centres. Convert the hit back
+	# to the lower/left canonical cell so either side of a wall gives one result.
+	if absf(normal.x) >= absf(normal.z):
+		var x := floori(point.x / CELL + .5) - 1
+		return {"cell": Vector2i(x, roundi(point.z / CELL)), "side": Vector2i(1, 0)}
+	var z := floori(point.z / CELL + .5) - 1
+	return {"cell": Vector2i(roundi(point.x / CELL), z), "side": Vector2i(0, 1)}
+
+func _prune_interior_doors() -> void:
+	for index in range(interior_doors.size() - 1, -1, -1):
+		var data := interior_doors[index] as Dictionary
+		var cell: Vector2i = data.get("cell", Vector2i.ZERO)
+		var side: Vector2i = data.get("side", Vector2i.ZERO)
+		var first := _zone_at(cell)
+		var second := _zone_at(cell + side)
+		if first.is_empty() or second.is_empty() or not _is_habitat_zone(first) or not _is_habitat_zone(second) or first == second or str(first.kind) == "airlock" or str(second.kind) == "airlock":
+			interior_doors.remove_at(index)
 
 func _is_airlock_inner_doorway(cell: Vector2i,side: Vector2i) -> bool:
 	for zone in zones:
@@ -1676,6 +1761,7 @@ func export_habitat_state() -> Dictionary:
 		"zones": zones.duplicate(true),
 		"placed_equipment": placed_equipment.duplicate(true),
 		"placed_interior": placed_interior.duplicate(true),
+		"interior_doors": interior_doors.duplicate(true),
 		"placed_surface": placed_surface.duplicate(true),
 		"habitat_base_y": habitat_base_y,
 		"kind": kind,
@@ -1698,6 +1784,7 @@ func restore_habitat_state(state: Dictionary) -> void:
 		zones[index] = saved_zone
 	placed_equipment = (state.get("placed_equipment", []) as Array).duplicate(true)
 	placed_interior.clear()
+	interior_doors = (state.get("interior_doors", []) as Array).duplicate(true)
 	placed_surface.clear()
 	habitat_base_y = float(state.get("habitat_base_y", habitat_base_y))
 	kind = str(state.get("kind", kind))

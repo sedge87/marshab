@@ -26,21 +26,17 @@ func _ready() -> void:
 			_fail("A habitat wall was generated across the airlock inner threshold.")
 			return
 
-	# Separate placements that join edge-to-edge form one internal space. Their
-	# shared edge is open; the far perimeter remains a hull wall with overlap.
+	# Separate room placements remain sealed at their shared edge. A deliberate
+	# interior-door placement removes that single shared wall instead.
 	builder.zones.append(_zone("science", [Vector2i(3, 0), Vector2i(3, 1)]))
 	builder._rebuild()
 	builder.zones.append(_zone("science", [Vector2i(3, 2)]))
-	assert(not builder._should_build_wall(Vector2i(3, 1), Vector2i(0, 1)), "Joined zones must not place an internal dividing wall.")
+	assert(builder._should_build_wall(Vector2i(3, 1), Vector2i(0, 1)), "Adjacent room volumes must remain sealed until a door is placed.")
 	assert(builder._should_build_wall(Vector2i(3, 2), Vector2i(1, 0)), "An exposed zone edge must remain sealed by a hull wall.")
+	assert(builder.place_interior_door(Vector2i(3, 1), Vector2i(0, 1)), "A shared wall should accept an explicit interior door.")
+	assert(not builder._should_build_wall(Vector2i(3, 1), Vector2i(0, 1)), "An installed interior door must own the shared opening.")
 	builder._rebuild()
 	await get_tree().physics_frame
-	var seam_point := Vector3(4.5, builder.habitat_base_y + 1.45, 3.0)
-	var sealed := false
-	for wall in get_tree().get_nodes_in_group("habitat_wall"):
-		if wall is Node3D and (wall as Node3D).global_position.distance_to(seam_point) < .08:
-			sealed = true
-	assert(sealed, "The external seam of separately placed zones must have a hull wall.")
 
 	# Pylon-style sources use their radius, not a cable or nearest wall point.
 	builder.kind = "solar"
@@ -50,7 +46,7 @@ func _ready() -> void:
 	assert(builder._valid_power_source([Vector2i(17, 2)]), "Reactor field should reach a habitat 42 m away.")
 	assert(not builder._valid_power_source([Vector2i(18, 2)]), "Reactor field must stop beyond 42 m.")
 
-	print("Habitat build integration test passed: airlocks, joined zones, sealed hull and power fields.")
+	print("Habitat build integration test passed: airlocks, sealed rooms, interior doors and power fields.")
 	get_tree().quit(0)
 
 func _zone(kind: String, cells: Array, direction := Vector2i(0, -1)) -> Dictionary:
