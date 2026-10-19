@@ -246,10 +246,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		if tool=="footprint":
 			if event.pressed and not _pointer_over_ui(): _edit_room_footprint(hover, event.ctrl_pressed)
 			return
-		# Room corners are direct handles: no hidden structural mode or rotation
-		# key is required. A click cycles square → angled → rounded → square.
-		if event.pressed and equipment_id.is_empty() and shape_style.is_empty() and not _pointer_over_ui() and _cycle_room_corner_at_mouse():
-			return
 		if not shape_style.is_empty():
 			if event.pressed and not _pointer_over_ui(): _request_room_shape(hover)
 			return
@@ -1255,19 +1251,13 @@ func _rebuild() -> void:
 	for child in root.get_children(): child.queue_free()
 	for zone in zones:
 		_zone_surfaces(zone)
-		if _zone_has_room_shape(zone) and _zone_is_rectangle(zone):
-			_build_custom_shaped_room_shell(zone)
-		elif str(zone.kind)=="airlock": _build_airlock_zone(zone)
+		if str(zone.kind)=="airlock": _build_airlock_zone(zone)
 		elif str(zone.kind)=="vehicle_bay": _build_vehicle_bay(zone)
 		elif str(zone.kind)=="solar": _build_solar(zone)
 		elif str(zone.kind)=="reactor": _build_reactor(zone)
 		elif str(zone.kind)=="ice_extractor": _build_ice_extractor(zone)
 		else:
 			for cell in zone.cells: _cell_walls(cell,zone)
-	for modifier in room_shape_modifiers:
-		var modifier_cell: Vector2i = modifier.get("cell", Vector2i.ZERO)
-		var modifier_corner: Vector2i = modifier.get("corner", Vector2i.ZERO)
-		_add_room_shape_plan_outline(modifier_cell, modifier_corner, str(modifier.get("style", "")))
 	for door_data in interior_doors:
 		var door_cell: Vector2i = door_data.get("cell", Vector2i.ZERO)
 		var door_side: Vector2i = door_data.get("side", Vector2i.ZERO)
@@ -1283,7 +1273,6 @@ func _rebuild() -> void:
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
 	for zone in zones: _add_zone_label(zone)
-	_add_room_shape_handles()
 	_set_build_view(build_mode); _update_budget(); _update_summary(); _update_systems(); _apply_grid_power()
 	habitat_changed.emit()
 
@@ -1402,16 +1391,10 @@ func _zone_has_upper_storey(zone: Dictionary) -> bool:
 	return false
 
 func _prune_room_shape_modifiers() -> void:
-	for index in range(room_shape_modifiers.size() - 1, -1, -1):
-		var modifier: Dictionary = room_shape_modifiers[index]
-		var cell: Vector2i = modifier.get("cell", Vector2i.ZERO)
-		var corner: Vector2i = modifier.get("corner", Vector2i.ZERO)
-		var zone := _zone_at(cell)
-		var valid := ROOM_SHAPE_SCENES.has(str(modifier.get("style", ""))) and not zone.is_empty() and _is_habitat_zone(zone) and _zone_is_rectangle(zone) and str(zone.kind) not in ["airlock", "vehicle_bay", "corridor"]
-		for side in [Vector2i(corner.x, 0), Vector2i(0, corner.y)]:
-			if not _zone_at(cell + side).is_empty(): valid = false
-		if not valid:
-			room_shape_modifiers.remove_at(index)
+	# The experimental perimeter generator replaced the detailed modular kit and
+	# bypassed neighbouring-zone and airlock boundary rules. Clear its saved
+	# modifiers so every habitat immediately rebuilds from the proven wall kit.
+	room_shape_modifiers.clear()
 
 func _add_corridor_understructure(cells: Array) -> void:
 	# A continuous dark service pan beneath the corridor makes the raised deck
