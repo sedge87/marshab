@@ -29,6 +29,7 @@ func _initialize() -> void:
 	assert(builder.interior_asset_available("water_reclaimer"), "Delivered life-support art should be available in the first-person palette.")
 	assert(builder.interior_asset_available("spares_cabinet"), "Delivered storage art should be available in the first-person palette.")
 	assert(BuildController.ZONE_TYPES.has("engineering"), "Power & Engineering needs a dedicated room type.")
+	assert(not BuildController.ZONE_TYPES.has("glass_room"), "Glass Greenhouse should not be available as a habitat zone.")
 	assert(builder.interior_asset_available("battery_bank"), "Delivered engineering art should be available in the first-person palette.")
 	var world := Node3D.new()
 	root.add_child(world)

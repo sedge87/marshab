@@ -48,7 +48,7 @@
       "role": "Wellbeing; small power draw",
       "asset_scene": "res://assets/equipment/living_quarters_phase1/common_table.tscn",
       "cargo_cost": 70,
-      "valid_zones": ["living", "science", "glass_room"],
+      "valid_zones": ["living", "science"],
       "footprint": [2, 1],
       "placement": "floor",
       "effects": {"happiness": 4, "power_draw": 1}
@@ -175,7 +175,7 @@
       "role": "Food; uses power and water",
       "asset_scene": "res://assets/equipment/hydroponics_phase2/grow_tray.tscn",
       "cargo_cost": 120,
-      "valid_zones": ["hydroponics", "glass_room"],
+      "valid_zones": ["hydroponics"],
       "footprint": [2, 1],
       "placement": "floor",
       "effects": {"food": 3, "happiness": 1, "water_draw": 1, "power_draw": 2}
@@ -188,7 +188,7 @@
       "role": "Future crop-cycle support",
       "asset_scene": "res://assets/equipment/hydroponics_phase2/seedling_station.tscn",
       "cargo_cost": 80,
-      "valid_zones": ["hydroponics", "glass_room"],
+      "valid_zones": ["hydroponics"],
       "footprint": [2, 1],
       "placement": "floor",
       "effects": {}
@@ -214,7 +214,7 @@
       "role": "Decorative / future food transfer",
       "asset_scene": "res://assets/equipment/hydroponics_phase2/harvest_cart.tscn",
       "cargo_cost": 30,
-      "valid_zones": ["hydroponics", "glass_room", "storage"],
+      "valid_zones": ["hydroponics", "storage"],
       "footprint": [1, 1],
       "placement": "floor",
       "effects": {}
@@ -227,7 +227,7 @@
       "role": "Feedback-only monitor",
       "asset_scene": "res://assets/equipment/hydroponics_phase2/hydroponics_sensor_panel.tscn",
       "cargo_cost": 35,
-      "valid_zones": ["hydroponics", "glass_room"],
+      "valid_zones": ["hydroponics"],
       "footprint": [1, 1],
       "placement": "wall",
       "effects": {}
@@ -240,7 +240,7 @@
       "role": "Food or wellbeing variant",
       "asset_scene": "res://assets/equipment/greenhouse_planter.glb",
       "cargo_cost": 110,
-      "valid_zones": ["glass_room"],
+      "valid_zones": ["hydroponics"],
       "footprint": [2, 2],
       "placement": "floor",
       "effects": {}
@@ -253,7 +253,7 @@
       "role": "Future temperature/radiation control",
       "asset_scene": "res://assets/equipment/greenhouse_shade_screen.glb",
       "cargo_cost": 60,
-      "valid_zones": ["glass_room"],
+      "valid_zones": ["hydroponics"],
       "footprint": [2, 1],
       "placement": "floor_wall",
       "effects": {}
@@ -266,7 +266,7 @@
       "role": "Wellbeing / personalisation",
       "asset_scene": "res://assets/equipment/greenhouse_observation_seat.glb",
       "cargo_cost": 45,
-      "valid_zones": ["glass_room"],
+      "valid_zones": ["hydroponics"],
       "footprint": [2, 1],
       "placement": "floor",
       "effects": {}
@@ -279,7 +279,7 @@
       "role": "Future crop reliability",
       "asset_scene": "res://assets/equipment/pollination_tool_station.glb",
       "cargo_cost": 50,
-      "valid_zones": ["glass_room", "hydroponics"],
+      "valid_zones": ["hydroponics"],
       "footprint": [1, 1],
       "placement": "floor",
       "effects": {}

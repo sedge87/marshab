@@ -30,8 +30,7 @@ const ZONE_TYPES := {
 	"vehicle_bay":{"label":"Vehicle Bay","colour":Color(.88,.62,.12),"cost":CELL_COST},
 	"solar":{"label":"Solar Array","colour":Color(.18,.64,.94),"cost":CELL_COST},
 	"reactor":{"label":"Compact Reactor","colour":Color(.88,.30,.16),"cost":1200},
-	"ice_extractor":{"label":"Ice Extractor","colour":Color(.20,.82,.92),"cost":450},
-	"glass_room":{"label":"Glass Greenhouse","colour":Color(.22,.78,.82),"cost":CELL_COST}
+	"ice_extractor":{"label":"Ice Extractor","colour":Color(.20,.82,.92),"cost":450}
 }
 
 # Catalogue metadata for the build HUD. Gameplay values stay in ZONE_TYPES.
@@ -42,7 +41,6 @@ const ZONE_INFO := {
 	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Makes space for grow equipment. Furnish it to produce food."},
 	"life_support":{"cat":"rooms","icon":"wind","rule":"Drag an area","desc":"Makes space for air and water recyclers. Furnish it to support crew."},
 	"engineering":{"cat":"rooms","icon":"zap","rule":"Drag an area","desc":"A dedicated engineering room for electrical distribution, batteries and thermal hardware."},
-	"glass_room":{"cat":"rooms","icon":"flower-2","rule":"Drag an area","desc":"A glazed room with a view of Mars. Uses extra power."},
 	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates","desc":"Creates a sealed passage. Add interior doors where it meets rooms."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates","desc":"The way in and out. The outer end faces Mars; the inner end must touch a room."},
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
@@ -1061,9 +1059,8 @@ func _zone_surfaces(zone: Dictionary) -> void:
 	# For a future irregular paint shape, individual cells remain a safe fallback.
 	if cells.size()==(max_x-min_x+1)*(max_z-min_z+1):
 		_add_box(centre+Vector3(0,habitat_base_y-.1,0),Vector3(size_x,.2,size_z),colour.darkened(.48),true,"habitat_floor",show_generated_surface)
-		if zone_kind=="glass_room": _add_glass_box(centre+Vector3(0,habitat_base_y+2.9,0),Vector3(size_x,.15,size_z),Color(.36,.86,.92,.35),true,"habitat_roof")
-		else: _add_box(centre+Vector3(0,habitat_base_y+2.9,0),Vector3(size_x,.15,size_z),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof",show_generated_surface)
-		if zone_kind!="glass_room" and zone_kind!="corridor" and zone_kind!="airlock":
+		_add_box(centre+Vector3(0,habitat_base_y+2.9,0),Vector3(size_x,.15,size_z),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof",show_generated_surface)
+		if zone_kind!="corridor" and zone_kind!="airlock":
 			for corner in [Vector2i(min_x,min_z),Vector2i(max_x+1,min_z),Vector2i(max_x+1,max_z+1),Vector2i(min_x,max_z+1)]:
 				_add_showcase(SHOWCASE_CORNER,Vector3(corner.x*CELL-CELL*.5,habitat_base_y,corner.y*CELL-CELL*.5))
 		if zone_kind=="corridor":
@@ -1072,8 +1069,7 @@ func _zone_surfaces(zone: Dictionary) -> void:
 		for cell in cells:
 			var local_centre:=Vector3(cell.x*CELL,0,cell.y*CELL)
 			_add_box(local_centre+Vector3(0,habitat_base_y-.1,0),Vector3(CELL,.2,CELL),colour.darkened(.48),true,"habitat_floor")
-			if zone_kind=="glass_room": _add_glass_box(local_centre+Vector3(0,habitat_base_y+2.9,0),Vector3(CELL,.15,CELL),Color(.36,.86,.92,.35),true,"habitat_roof")
-			else: _add_box(local_centre+Vector3(0,habitat_base_y+2.9,0),Vector3(CELL,.15,CELL),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof")
+			_add_box(local_centre+Vector3(0,habitat_base_y+2.9,0),Vector3(CELL,.15,CELL),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof")
 	_add_zone_lighting(zone)
 
 func _add_corridor_understructure(cells: Array) -> void:
@@ -1399,9 +1395,6 @@ func _zone_face(zone: Dictionary,direction: Vector2i) -> Dictionary:
 func _add_exterior_wall(centre: Vector3,side: Vector2i,zone_kind: String,zone: Dictionary) -> void:
 	var wall_position:=centre+Vector3(side.x*CELL*.5,habitat_base_y+1.45,side.y*CELL*.5)
 	var wall_size:=Vector3(.16,2.9,CELL) if side.x!=0 else Vector3(CELL,2.9,.16)
-	if zone_kind=="glass_room":
-		_add_glass_box(wall_position,wall_size,Color(.35,.86,.92,.30),true,"habitat_wall")
-		return
 	# The collision box is centred at half wall height, while the Blender wall
 	# kit is exported with its base at y=0.  Giving both the same position was
 	# lifting the visible panel by 1.45 m above its collision and the roof.
@@ -1715,7 +1708,7 @@ func _systems() -> Dictionary:
 	for zone in zones:
 		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(_airlock_side(zone))*MHGame.sunlight_fraction
 		elif str(zone.kind)=="reactor" and _power_source_connected(zone): generation+=REACTOR_OUTPUT
-	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.glass_room*2+counts.hydroponics*5+counts.life_support*3+counts.engineering*4+counts.science*5+counts.vehicle_bay*4+counts.ice_extractor*8+int(equipment.power_draw)
+	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.hydroponics*5+counts.life_support*3+counts.engineering*4+counts.science*5+counts.vehicle_bay*4+counts.ice_extractor*8+int(equipment.power_draw)
 	# Dynamic non-catalogue devices can opt into the grid by joining this group
 	# and setting power_draw metadata. Catalogue equipment is already counted
 	# above, so it must not also join this group.
@@ -1850,6 +1843,11 @@ func restore_habitat_state(state: Dictionary) -> void:
 	# Recreate only those derivable fields; never change a valid saved layout.
 	for index in range(zones.size()):
 		var saved_zone: Dictionary = zones[index] as Dictionary
+		# Glass Greenhouse has been retired: Mars-facing transparent walls are not
+		# credible pressure-habitat construction. Preserve a player's layout by
+		# turning older saves into sealed Hydroponics instead of dropping cells.
+		if str(saved_zone.get("kind", "")) == "glass_room":
+			saved_zone["kind"] = "hydroponics"
 		if not saved_zone.has("door_direction"):
 			saved_zone["door_direction"] = Vector2i(0, -1)
 		if not saved_zone.has("cost"):
@@ -2006,7 +2004,7 @@ func climate_at(point: Vector3) -> Dictionary:
 	var radiation := "Sheltered"
 	var state := "unheated"
 	if climate_controlled:
-		var targets := {"living": 20.0, "hydroponics": 24.0, "science": 21.0, "storage": 12.0, "engineering": 18.0, "corridor": 16.0, "airlock": 8.0, "vehicle_bay": 6.0, "glass_room": 22.0}
+		var targets := {"living": 20.0, "hydroponics": 24.0, "science": 21.0, "storage": 12.0, "engineering": 18.0, "corridor": 16.0, "airlock": 8.0, "vehicle_bay": 6.0}
 		temperature = float(targets.get(zone_kind, 18.0))
 		state = "climate"
 		context += " · climate control"
@@ -2016,8 +2014,6 @@ func climate_at(point: Vector3) -> Dictionary:
 		context += " · powered, no heater"
 	else:
 		context += " · unheated shell"
-	if zone_kind == "glass_room":
-		radiation = "Moderate"
 	return {"temperature": temperature, "radiation": radiation, "context": context, "state": state}
 
 # ---------- camera + grid ----------

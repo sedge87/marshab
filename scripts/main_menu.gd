@@ -122,7 +122,7 @@ func _populate_colony() -> void:
 		{"kind": "airlock", "cells": [Vector2i(0, 1)], "door_direction": Vector2i(0, 1), "cost": 50},
 		{"kind": "corridor", "cells": [Vector2i(2, -1), Vector2i(3, -1)], "door_direction": Vector2i(0, -1), "cost": 100},
 		{"kind": "science", "cells": [Vector2i(4, -2), Vector2i(5, -2), Vector2i(4, -1), Vector2i(5, -1)], "door_direction": Vector2i(0, -1), "cost": 200},
-		{"kind": "glass_room", "cells": [Vector2i(0, -3), Vector2i(1, -3), Vector2i(0, -2), Vector2i(1, -2)], "door_direction": Vector2i(0, -1), "cost": 200},
+		{"kind": "hydroponics", "cells": [Vector2i(0, -3), Vector2i(1, -3), Vector2i(0, -2), Vector2i(1, -2)], "door_direction": Vector2i(0, -1), "cost": 200},
 		{"kind": "solar", "cells": [Vector2i(3, 1)], "door_direction": Vector2i(0, -1), "cost": 50},
 		{"kind": "solar", "cells": [Vector2i(5, 1)], "door_direction": Vector2i(0, -1), "cost": 50},
 		{"kind": "solar", "cells": [Vector2i(7, -1)], "door_direction": Vector2i(0, -1), "cost": 50}
