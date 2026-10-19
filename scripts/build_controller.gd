@@ -239,6 +239,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if tool=="remove":
 			if event.pressed: _remove_at(hover)
 			return
+		if not shape_style.is_empty():
+			if event.pressed and not _pointer_over_ui(): _request_room_shape(hover)
+			return
 		if not equipment_id.is_empty():
 			if event.pressed and not _pointer_over_ui(): _place_selected_equipment(hover)
 			return
@@ -283,7 +286,8 @@ func _process(delta: float) -> void:
 		_draw_preview([],false); _update_hologram_ui([],"")
 		return
 	if not shape_style.is_empty():
-		if event.pressed and not _pointer_over_ui(): _request_room_shape(hover)
+		_draw_preview([], false)
+		_update_hologram_ui([] if hover.x == 999 else [hover], "Click the selected exterior room corner")
 		return
 	if not equipment_id.is_empty():
 		var equipment_reason:=equipment_invalid_reason(equipment_id,hover)
