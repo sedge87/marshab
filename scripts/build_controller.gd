@@ -1246,6 +1246,7 @@ func _label3d(text: String,size: int,colour: Color,weight := 800) -> Label3D:
 	return label
 
 func _rebuild() -> void:
+	_merge_touching_same_type_rooms()
 	var attachment_refund := _prune_equipment()
 	_prune_interior_doors()
 	_prune_room_shape_modifiers()
@@ -1281,6 +1282,38 @@ func _rebuild() -> void:
 	_add_room_shape_handles()
 	_set_build_view(build_mode); _update_budget(); _update_summary(); _update_systems(); _apply_grid_power()
 	habitat_changed.emit()
+
+func _merge_touching_same_type_rooms() -> void:
+	# Ordinary rooms of the same purpose are one continuous volume. This makes a
+	# 3×3 Living Quarters followed by a touching 2×3 Living Quarters behave as
+	# one 5×3 room rather than leaving an arbitrary internal wall and two labels.
+	var merged_any := true
+	while merged_any:
+		merged_any = false
+		for first_index in range(zones.size()):
+			if merged_any: break
+			var first: Dictionary = zones[first_index]
+			if not _footprint_zone_is_editable(first): continue
+			for second_index in range(first_index + 1, zones.size()):
+				var second: Dictionary = zones[second_index]
+				if str(first.kind) != str(second.kind) or not _footprint_zone_is_editable(second): continue
+				if not _zones_touch(first, second): continue
+				var combined: Array = (first.get("cells", []) as Array).duplicate()
+				for cell in second.get("cells", []):
+					if cell not in combined: combined.append(cell)
+				first["cells"] = combined
+				first["cost"] = int(ZONE_TYPES[str(first.kind)].cost) * combined.size()
+				zones[first_index] = first
+				zones.remove_at(second_index)
+				merged_any = true
+				break
+
+func _zones_touch(first: Dictionary, second: Dictionary) -> bool:
+	for cell in first.get("cells", []):
+		for side in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
+			if cell + side in second.get("cells", []):
+				return true
+	return false
 
 func _zone_surfaces(zone: Dictionary) -> void:
 	var cells:Array=zone.cells
@@ -1457,7 +1490,7 @@ func _should_build_wall(cell: Vector2i,side: Vector2i) -> bool:
 	var current_zone := _zone_at(cell)
 	var neighbour_zone := _zone_at(neighbour)
 	# Cells painted as part of one room remain a single open interior volume.
-	if current_zone == neighbour_zone:
+	if current_zone == neighbour_zone or (str(current_zone.get("kind", "")) == str(neighbour_zone.get("kind", "")) and _footprint_zone_is_editable(current_zone) and _footprint_zone_is_editable(neighbour_zone)):
 		return false
 	# A player-installed door owns this boundary.
 	if _has_interior_door(cell, side):
@@ -1526,6 +1559,7 @@ func _add_shaped_zone_slab(zone: Dictionary, centre_y: float, thickness: float, 
 		# A closed edge prevents the roof and floor from showing a square overhang.
 		surface.add_vertex(Vector3(current.x, bottom_y, current.y)); surface.add_vertex(Vector3(following.x, bottom_y, following.y)); surface.add_vertex(Vector3(following.x, top_y, following.y))
 		surface.add_vertex(Vector3(current.x, bottom_y, current.y)); surface.add_vertex(Vector3(following.x, top_y, following.y)); surface.add_vertex(Vector3(current.x, top_y, current.y))
+	surface.generate_normals()
 	var mesh := surface.commit()
 	var body := StaticBody3D.new()
 	body.name = "%sShapedShell" % group.capitalize()
@@ -1845,6 +1879,7 @@ func _add_rounded_room_shape_panel(parent: Node3D, corner: Vector2i, shell_mater
 		var second_top := second_bottom + Vector3.UP * 2.74
 		surface.add_vertex(first_bottom); surface.add_vertex(second_bottom); surface.add_vertex(second_top)
 		surface.add_vertex(first_bottom); surface.add_vertex(second_top); surface.add_vertex(first_top)
+	surface.generate_normals()
 	var wall := MeshInstance3D.new()
 	wall.mesh = surface.commit()
 	wall.material_override = shell_material
