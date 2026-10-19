@@ -12,6 +12,14 @@ const SHOWCASE_CORNER := preload("res://assets/showcase_modules/mh_corner_post.g
 const SHOWCASE_AIRLOCK := preload("res://assets/showcase_modules/mh_airlock_surround.glb")
 const SHOWCASE_CORRIDOR := preload("res://assets/showcase_modules/mh_corridor_bay.glb")
 const SHOWCASE_SOLAR := preload("res://assets/showcase_modules/mh_solar_array.glb")
+const ROOF_ACCESSORY_SCENES := {
+	"living": preload("res://assets/structural_kit/roof_living_comms_mast.glb"),
+	"science": preload("res://assets/structural_kit/roof_science_dish.glb"),
+	"hydroponics": preload("res://assets/structural_kit/roof_hydroponics_vent_bank.glb"),
+	"life_support": preload("res://assets/structural_kit/roof_life_support_exhaust.glb"),
+	"engineering": preload("res://assets/structural_kit/roof_engineering_radiator.glb"),
+	"communications": preload("res://assets/structural_kit/roof_communications_array.glb")
+}
 const SOLAR_POWER_RADIUS := 30.0
 const REACTOR_POWER_RADIUS := 42.0
 const SOLAR_OUTPUT := 24
@@ -1100,6 +1108,50 @@ func _zone_surfaces(zone: Dictionary) -> void:
 			_add_box(local_centre+Vector3(0,habitat_base_y-.1,0),Vector3(CELL,.2,CELL),colour.darkened(.48),true,"habitat_floor")
 			_add_box(local_centre+Vector3(0,habitat_base_y+2.9,0),Vector3(CELL,.15,CELL),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof")
 	_add_zone_lighting(zone)
+	_add_zone_roof_accessory(zone)
+
+# Roof fittings give each room family a readable silhouette without becoming a
+# second construction system. They are separate children of the generated
+# shell and carry explicit metadata: when upper-storey construction arrives it
+# can simply omit or remove these nodes rather than editing model geometry.
+func _add_zone_roof_accessory(zone: Dictionary) -> void:
+	var zone_kind := str(zone.get("kind", ""))
+	if not ROOF_ACCESSORY_SCENES.has(zone_kind) or _zone_has_upper_storey(zone):
+		return
+	var cells: Array = zone.get("cells", [])
+	if cells.is_empty():
+		return
+	# Tiny single-cell spaces retain a clean roof; larger rooms receive one
+	# centred, low-profile fitting rather than a noisy repeated field of props.
+	if cells.size() < 2:
+		return
+	var centre := Vector3.ZERO
+	for cell in cells:
+		centre += Vector3(cell.x * CELL, 0, cell.y * CELL)
+	centre /= float(cells.size())
+	var accessory := Node3D.new()
+	accessory.name = "RemovableRoofAccessory_%s" % zone_kind
+	accessory.position = centre + Vector3(0, habitat_base_y + 2.98, 0)
+	accessory.set_meta("mh_roof_accessory", true)
+	accessory.set_meta("remove_before_upper_storey", true)
+	accessory.set_meta("zone_kind", zone_kind)
+	root.add_child(accessory)
+	var model: Node3D = (ROOF_ACCESSORY_SCENES[zone_kind] as PackedScene).instantiate()
+	model.name = "%sRoofFitting" % zone_kind.capitalize()
+	accessory.add_child(model)
+
+func _zone_has_upper_storey(zone: Dictionary) -> bool:
+	# Storeys are not buildable yet, but persisting this rule now makes roof
+	# accessories forward-compatible. Any future zone one storey above an
+	# overlapping footprint owns the roof and suppresses the removable fitting.
+	var storey := int(zone.get("storey", 0))
+	for other in zones:
+		if other == zone or int(other.get("storey", 0)) <= storey:
+			continue
+		for cell in zone.get("cells", []):
+			if cell in other.get("cells", []):
+				return true
+	return false
 
 func _add_corridor_understructure(cells: Array) -> void:
 	# A continuous dark service pan beneath the corridor makes the raised deck
