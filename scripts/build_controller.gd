@@ -872,6 +872,7 @@ func _edit_room_footprint(cell: Vector2i, remove_cell: bool) -> void:
 			return
 		if hit_index != footprint_zone_index:
 			footprint_zone_index = hit_index
+			_refresh_footprint_selection_overlay()
 			_flash_notice("info", "Room footprint selected", "Click adjacent empty cells to grow it. Ctrl-click a selected edge cell to remove it.")
 			return
 		if remove_cell:
@@ -893,6 +894,7 @@ func _edit_room_footprint(cell: Vector2i, remove_cell: bool) -> void:
 	zone["cost"] = int(ZONE_TYPES[str(zone.kind)].cost) * cells.size()
 	zones[footprint_zone_index] = zone
 	_rebuild()
+	_refresh_footprint_selection_overlay()
 	MHAudio.sfx("place")
 	_flash_notice("valid", "Room extended", "%s is now %d cells." % [str(ZONE_TYPES[str(zone.kind)].label), cells.size()])
 
@@ -950,6 +952,7 @@ func _remove_footprint_cell(cell: Vector2i) -> void:
 	zone["cost"] = int(ZONE_TYPES[str(zone.kind)].cost) * next_cells.size()
 	zones[footprint_zone_index] = zone
 	_rebuild()
+	_refresh_footprint_selection_overlay()
 	_flash_notice("valid", "Cell removed", "%s is now %d cells." % [str(ZONE_TYPES[str(zone.kind)].label), next_cells.size()])
 
 func _footprint_cell_is_edge(cell: Vector2i, cells: Array) -> bool:
@@ -988,6 +991,32 @@ func _draw_footprint_preview() -> void:
 		return
 	var valid := _footprint_add_reason(hover).is_empty()
 	_draw_preview([hover], valid)
+
+func _refresh_footprint_selection_overlay() -> void:
+	for node in get_tree().get_nodes_in_group("footprint_selection_overlay"):
+		node.queue_free()
+	if not build_mode or tool != "footprint" or footprint_zone_index < 0 or footprint_zone_index >= zones.size():
+		return
+	var zone: Dictionary = zones[footprint_zone_index]
+	var overlay := Node3D.new()
+	overlay.name = "SelectedRoomFootprint"
+	overlay.add_to_group("footprint_selection_overlay")
+	overlay.add_to_group("habitat_plan")
+	root.add_child(overlay)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = (ZONE_TYPES[str(zone.kind)].colour as Color).lightened(.45)
+	material.emission_enabled = true
+	material.emission = material.albedo_color
+	material.emission_energy_multiplier = 1.5
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	for cell in zone.get("cells", []):
+		var visual := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(CELL - .08, .035, CELL - .08)
+		visual.mesh = mesh
+		visual.material_override = material
+		visual.position = Vector3(cell.x * CELL, habitat_base_y + .18, cell.y * CELL)
+		overlay.add_child(visual)
 
 # Empty when the cells can be placed; otherwise a short reason for the
 # hologram status ("Can't place here · Overlaps a room").
@@ -3062,11 +3091,14 @@ func _set_tool(next_tool: String) -> void:
 	if tool=="footprint":
 		equipment_id=""
 		shape_style=""
+	else:
+		footprint_zone_index=-1
 	for id in tool_buttons:
 		var active:bool=id==tool
 		var b:Button=tool_buttons[id]
 		b.theme_type_variation="SelectedButton" if active else "GhostButton"
 		if id=="remove" and active: b.theme_type_variation="DangerButton"
+	if is_inside_tree(): _refresh_footprint_selection_overlay()
 
 func _update_hologram_ui(cells: Array,reason: String) -> void:
 	if hologram_pill==null: return
