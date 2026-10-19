@@ -1523,21 +1523,15 @@ func _add_zone_label(zone: Dictionary) -> void:
 	var detail:=_label3d("%d CELLS · %s" % [cells.size(),MHStyle.kg(int(zone.cost))],28,(ZONE_TYPES[zone.kind].colour as Color).lightened(.35),600); detail.font=MHStyle.font(600,true,1); detail.position=centre+Vector3(0,habitat_base_y+.4,0); detail.offset=Vector2(0,-24); detail.visible=build_mode; detail.add_to_group("zone_label"); root.add_child(detail)
 
 func _set_build_view(show_plan: bool) -> void:
-	for roof in get_tree().get_nodes_in_group("habitat_roof"):
-		_set_visual_children(roof,not show_plan)
-	for floor in get_tree().get_nodes_in_group("habitat_floor"):
-		_set_visual_children(floor,not show_plan)
-	for wall in get_tree().get_nodes_in_group("habitat_wall"):
-		_set_visual_children(wall,not show_plan)
-	for asset in get_tree().get_nodes_in_group("habitat_showcase_visual"):
-		_set_visual_children(asset,not show_plan)
-	for door in get_tree().get_nodes_in_group("airlock_door"):
-		_set_visual_children(door,not show_plan)
+	# Exterior build is deliberately schematic. Hide every rendered habitat,
+	# interior-equipment and surface-prop visual first; only plan layers below
+	# are allowed back in. This avoids slowly accumulating exceptions such as
+	# wall lamps, supports, doors or imported model parts leaking into the map.
+	for visual_root in [root, furnishing, surface_furnishing]:
+		_set_visual_children(visual_root, not show_plan)
 	for plan in get_tree().get_nodes_in_group("habitat_plan"): plan.visible=show_plan
 	for label in get_tree().get_nodes_in_group("zone_label"): label.visible=show_plan
 	for field in get_tree().get_nodes_in_group("power_field_visual"): field.visible=show_plan
-	for fixture in get_tree().get_nodes_in_group("build_hidden_light_fixture"):
-		(fixture as VisualInstance3D).visible = not show_plan
 
 func _set_visual_children(node: Node,visible: bool) -> void:
 	if node is VisualInstance3D:
