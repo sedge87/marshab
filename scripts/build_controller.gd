@@ -20,14 +20,6 @@ const ROOF_ACCESSORY_SCENES := {
 	"engineering": preload("res://assets/structural_kit/roof_engineering_radiator.glb"),
 	"communications": preload("res://assets/structural_kit/roof_communications_array.glb")
 }
-const ROOM_SHAPE_SCENES := {
-	"chamfer": preload("res://assets/structural_kit/structure_chamfer_corner.glb"),
-	"rounded": preload("res://assets/structural_kit/structure_rounded_corner.glb")
-}
-const ROOM_SHAPE_INFO := {
-	"chamfer": {"label":"Angled corner", "icon":"triangle", "desc":"Replaces two exterior wall bays with a sealed 45° corner."},
-	"rounded": {"label":"Rounded corner", "icon":"circle", "desc":"Replaces two exterior wall bays with a sealed curved corner."}
-}
 const SOLAR_POWER_RADIUS := 30.0
 const REACTOR_POWER_RADIUS := 42.0
 const SOLAR_OUTPUT := 24
@@ -137,17 +129,11 @@ var placed_interior: Array = []
 # Deliberate openings between two completed, adjacent rooms.  Unlike the old
 # automatic join behaviour, these are player-built interior structures.
 var interior_doors: Array = []
-# Per-room shell edits. A modifier belongs to one exterior corner cell and
-# always remains reversible: it never changes the zone's floorplan cells.
-var room_shape_modifiers: Array = []
 # Free ground props are deliberately separate from grid zones and interior
 # furnishings. They carry no resource effects until a gameplay design is added.
 var placed_surface: Array = []
 # Selected interior item; empty while a zone is selected.
 var equipment_id := ""
-var shape_style := ""
-var shape_corner := Vector2i(1, 1)
-var pending_shape_request := {}
 # Greybox stand-ins for placed equipment, keyed by cell, until final art lands.
 var furnishing: Node3D
 var surface_furnishing: Node3D
@@ -227,7 +213,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				interior_build_requested.emit()
 			else:
 				_toggle()
-		elif build_mode and event.keycode==KEY_R and not shape_style.is_empty(): _rotate_shape_corner(); _refresh_catalogue()
 		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="solar" or kind=="corridor"): _rotate_airlock(); _refresh_catalogue()
 		elif build_mode and event.keycode==KEY_ESCAPE: dragging=false; _draw_preview([],false)
 		elif build_mode and event.keycode==KEY_DELETE: _remove_at(hover)
@@ -245,9 +230,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if tool=="footprint":
 			if event.pressed and not _pointer_over_ui(): _edit_room_footprint(hover, event.ctrl_pressed)
-			return
-		if not shape_style.is_empty():
-			if event.pressed and not _pointer_over_ui(): _request_room_shape(hover)
 			return
 		if not equipment_id.is_empty():
 			if event.pressed and not _pointer_over_ui(): _place_selected_equipment(hover)
@@ -295,10 +277,6 @@ func _process(delta: float) -> void:
 	if tool=="footprint":
 		_draw_footprint_preview()
 		_update_hologram_ui([] if hover.x == 999 else [hover], _footprint_hover_reason(hover))
-		return
-	if not shape_style.is_empty():
-		_draw_preview([], false)
-		_update_hologram_ui([] if hover.x == 999 else [hover], "Click the selected exterior room corner")
 		return
 	if not equipment_id.is_empty():
 		var equipment_reason:=equipment_invalid_reason(equipment_id,hover)
@@ -506,9 +484,15 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 		for sign_x in [-1.0, 1.0]:
 			for sign_z in [-1.0, 1.0]:
 				var corner: Vector2 = Vector2(world_position.x, world_position.z) + facing * footprint.x * sign_x + side * footprint.y * sign_z
-				var corner_cell := Vector2i(roundi(corner.x / CELL), roundi(corner.y / CELL))
-				var corner_zone := _zone_at(corner_cell)
-				if corner_zone.is_empty() or not valid_zones.has(str(corner_zone.get("kind", ""))):
+				var corner_in_valid_room := false
+				for candidate in zones:
+					var candidate_kind := str(candidate.get("kind", ""))
+					if candidate_kind in ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor"]:
+						continue
+					if valid_zones.has(candidate_kind) and Geometry2D.is_point_in_polygon(corner, zone_outline(candidate)):
+						corner_in_valid_room = true
+						break
+				if not corner_in_valid_room:
 					return "Doesn't fit inside this room"
 		for item in placed_interior:
 			var other_entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
@@ -1245,7 +1229,6 @@ func _rebuild() -> void:
 	_merge_touching_same_type_rooms()
 	var attachment_refund := _prune_equipment()
 	_prune_interior_doors()
-	_prune_room_shape_modifiers()
 	if attachment_refund > 0:
 		_flash_notice("info", "Mounted equipment removed", "+%s cargo returned — its wall changed." % MHStyle.kg(attachment_refund))
 	for child in root.get_children(): child.queue_free()
@@ -1325,18 +1308,11 @@ func _zone_surfaces(zone: Dictionary) -> void:
 	# A drag rectangle is one continuous interior slab and one continuous roof.
 	# For a future irregular paint shape, individual cells remain a safe fallback.
 	if _zone_is_rectangle(zone):
-		if _zone_has_room_shape(zone):
-			_add_shaped_zone_slab(zone, habitat_base_y - .1, .2, colour.darkened(.48), "habitat_floor", show_generated_surface)
-			_add_shaped_zone_slab(zone, habitat_base_y + 2.9, .15, MHStyle.STRUCTURAL_WHITE.darkened(.08), "habitat_roof", show_generated_surface)
-		else:
-			_add_box(centre+Vector3(0,habitat_base_y-.1,0),Vector3(size_x,.2,size_z),colour.darkened(.48),true,"habitat_floor",show_generated_surface)
-			_add_box(centre+Vector3(0,habitat_base_y+2.9,0),Vector3(size_x,.15,size_z),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof",show_generated_surface)
+		_add_box(centre+Vector3(0,habitat_base_y-.1,0),Vector3(size_x,.2,size_z),colour.darkened(.48),true,"habitat_floor",show_generated_surface)
+		_add_box(centre+Vector3(0,habitat_base_y+2.9,0),Vector3(size_x,.15,size_z),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof",show_generated_surface)
 		if zone_kind!="corridor" and zone_kind!="airlock":
-			# Corner post models assume a square roof perimeter. A reshaped shell
-			# owns its own perimeter, so no square posts are left sticking through it.
-			if not _zone_has_room_shape(zone):
-				for corner in [Vector2i(min_x,min_z),Vector2i(max_x+1,min_z),Vector2i(max_x+1,max_z+1),Vector2i(min_x,max_z+1)]:
-					_add_showcase(SHOWCASE_CORNER,Vector3(corner.x*CELL-CELL*.5,habitat_base_y,corner.y*CELL-CELL*.5))
+			for corner in [Vector2i(min_x,min_z),Vector2i(max_x+1,min_z),Vector2i(max_x+1,max_z+1),Vector2i(min_x,max_z+1)]:
+				_add_showcase(SHOWCASE_CORNER,Vector3(corner.x*CELL-CELL*.5,habitat_base_y,corner.y*CELL-CELL*.5))
 		if zone_kind=="corridor":
 			_add_corridor_understructure(cells)
 	else:
@@ -1389,11 +1365,6 @@ func _zone_has_upper_storey(zone: Dictionary) -> bool:
 			if cell in other.get("cells", []):
 				return true
 	return false
-
-func _prune_room_shape_modifiers() -> void:
-	# Disable the experimental shaped-shell renderer. Existing saved modifiers
-	# are cleared so every habitat returns to the reliable detailed modular kit.
-	room_shape_modifiers.clear()
 
 func _add_corridor_understructure(cells: Array) -> void:
 	# A continuous dark service pan beneath the corridor makes the raised deck
@@ -1464,9 +1435,6 @@ func _cell_walls(cell: Vector2i,zone: Dictionary) -> void:
 		if _should_build_wall(cell,side): _add_exterior_wall(centre,side,zone_kind,zone)
 
 func _should_build_wall(cell: Vector2i,side: Vector2i) -> bool:
-	# A shell modifier owns its two outside wall bays. Its replacement module is
-	# added during rebuild with a matching sealed collision chord.
-	if _shape_opens_edge(cell, side): return false
 	# The airlock owns its inner threshold. This must win regardless of whether
 	# the attached room, corridor or the airlock itself was placed first.
 	if _is_airlock_inner_doorway(cell,side): return false
@@ -1501,28 +1469,6 @@ func _has_interior_door(cell: Vector2i, side: Vector2i) -> bool:
 			return true
 	return false
 
-func _shape_opens_edge(cell: Vector2i, side: Vector2i) -> bool:
-	for modifier in room_shape_modifiers:
-		if modifier.get("cell", Vector2i.ZERO) != cell:
-			continue
-		var corner: Vector2i = modifier.get("corner", Vector2i.ZERO)
-		if side == Vector2i(corner.x, 0) or side == Vector2i(0, corner.y):
-			return true
-	return false
-
-func _room_shape_at(cell: Vector2i, corner: Vector2i) -> Dictionary:
-	for modifier in room_shape_modifiers:
-		var shape: Dictionary = modifier
-		if shape.get("cell", Vector2i.ZERO) == cell and shape.get("corner", Vector2i.ZERO) == corner:
-			return shape
-	return {}
-
-func _zone_has_room_shape(zone: Dictionary) -> bool:
-	for modifier in room_shape_modifiers:
-		if modifier.get("cell", Vector2i.ZERO) in zone.get("cells", []):
-			return true
-	return false
-
 func _zone_is_rectangle(zone: Dictionary) -> bool:
 	var cells: Array = zone.get("cells", [])
 	if cells.is_empty(): return false
@@ -1534,493 +1480,6 @@ func _zone_is_rectangle(zone: Dictionary) -> bool:
 		min_x = mini(min_x, cell.x); max_x = maxi(max_x, cell.x)
 		min_z = mini(min_z, cell.y); max_z = maxi(max_z, cell.y)
 	return cells.size() == (max_x - min_x + 1) * (max_z - min_z + 1)
-
-func _build_custom_shaped_room_shell(zone: Dictionary) -> void:
-	# A room with a curved or chamfered perimeter cannot use square imported wall
-	# bays: their posts and roof rails necessarily protrude through the new edge.
-	# Generate the entire perimeter here so every wall, trim and collision edge is
-	# derived from exactly the same polygon as the roof and foundation.
-	var polygon := _zone_shell_polygon(zone)
-	if polygon.size() < 3: return
-	# One continuous wall surface avoids treating every arc subdivision as a
-	# separate modular bay (which produced visible comb-like seams and trims).
-	var surface := SurfaceTool.new()
-	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for index in range(polygon.size()):
-		var next_index := (index + 1) % polygon.size()
-		var start: Vector2 = polygon[index]
-		var finish: Vector2 = polygon[next_index]
-		var lower_start := Vector3(start.x, habitat_base_y + .05, start.y)
-		var lower_finish := Vector3(finish.x, habitat_base_y + .05, finish.y)
-		var upper_start := lower_start + Vector3.UP * 2.74
-		var upper_finish := lower_finish + Vector3.UP * 2.74
-		surface.add_vertex(lower_start); surface.add_vertex(lower_finish); surface.add_vertex(upper_finish)
-		surface.add_vertex(lower_start); surface.add_vertex(upper_finish); surface.add_vertex(upper_start)
-		_add_custom_shell_collision(start, finish)
-	surface.generate_normals()
-	var wall := MeshInstance3D.new()
-	wall.name = "ContinuousCustomRoomShell"
-	wall.mesh = surface.commit()
-	wall.material_override = _room_shape_material(MHStyle.STRUCTURAL_WHITE.darkened(.08))
-	root.add_child(wall)
-	# Trim is not made from independent BoxMeshes: their square ends protrude
-	# at a chamfer or arc.  These are flush overlay surfaces built from the exact
-	# same polygon, so the habitat finish remains continuous at every corner.
-	_add_custom_shell_band(polygon, habitat_base_y + .05, habitat_base_y + .18, MHStyle.SEAL_DARK.darkened(.18), "CustomRoomFoundationTrim")
-	_add_custom_shell_band(polygon, habitat_base_y + .29, habitat_base_y + .40, MHStyle.accent, "CustomRoomServiceTrim")
-	_add_custom_shell_band(polygon, habitat_base_y + 2.67, habitat_base_y + 2.80, MHStyle.SEAL_DARK, "CustomRoomRoofTrim")
-
-func _add_custom_shell_band(polygon: Array[Vector2], lower_y: float, upper_y: float, colour: Color, node_name: String) -> void:
-	var surface := SurfaceTool.new()
-	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for index in range(polygon.size()):
-		var next_index := (index + 1) % polygon.size()
-		var start: Vector2 = polygon[index]
-		var finish: Vector2 = polygon[next_index]
-		var span := finish - start
-		if span.length() < .01:
-			continue
-		# The shell polygon is clockwise in plan. Offset each band a hair toward
-		# Mars to prevent z-fighting without adding any physical overhang.
-		var outward := Vector2(span.y, -span.x).normalized() * .006
-		var lower_start := Vector3(start.x + outward.x, lower_y, start.y + outward.y)
-		var lower_finish := Vector3(finish.x + outward.x, lower_y, finish.y + outward.y)
-		var upper_start := Vector3(start.x + outward.x, upper_y, start.y + outward.y)
-		var upper_finish := Vector3(finish.x + outward.x, upper_y, finish.y + outward.y)
-		surface.add_vertex(lower_start); surface.add_vertex(lower_finish); surface.add_vertex(upper_finish)
-		surface.add_vertex(lower_start); surface.add_vertex(upper_finish); surface.add_vertex(upper_start)
-	surface.generate_normals()
-	var band := MeshInstance3D.new()
-	band.name = node_name
-	band.mesh = surface.commit()
-	band.material_override = _room_shape_material(colour)
-	root.add_child(band)
-
-func _add_custom_shell_collision(start: Vector2, finish: Vector2) -> void:
-	var span := finish - start
-	var length := span.length()
-	if length < .01: return
-	var midpoint := (start + finish) * .5
-	var body := StaticBody3D.new()
-	body.position = Vector3(midpoint.x, habitat_base_y + 1.42, midpoint.y)
-	body.rotation.y = atan2(span.y, span.x)
-	body.collision_layer = 1
-	body.collision_mask = 1
-	root.add_child(body)
-	var collision := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = Vector3(length + .03, 2.74, .18)
-	collision.shape = shape
-	body.add_child(collision)
-
-func _add_custom_shell_wall(start: Vector2, finish: Vector2) -> void:
-	var span := finish - start
-	var length := span.length()
-	if length < .01: return
-	var midpoint := (start + finish) * .5
-	var yaw := atan2(span.y, span.x)
-	var body := StaticBody3D.new()
-	body.name = "CustomRoomShellWall"
-	body.position = Vector3(midpoint.x, habitat_base_y + 1.42, midpoint.y)
-	body.rotation.y = yaw
-	body.collision_layer = 1
-	body.collision_mask = 1
-	root.add_child(body)
-	var shell_material := _room_shape_material(MHStyle.STRUCTURAL_WHITE.darkened(.08))
-	var seal_material := _room_shape_material(MHStyle.SEAL_DARK)
-	var trim_material := _room_shape_material(MHStyle.accent)
-	_add_room_shape_box(body, Vector3.ZERO, Vector3(length + .025, 2.74, .16), 0.0, shell_material)
-	_add_room_shape_box(body, Vector3(0, -1.34, 0), Vector3(length + .05, .10, .21), 0.0, seal_material)
-	_add_room_shape_box(body, Vector3(0, 1.33, 0), Vector3(length + .05, .11, .21), 0.0, seal_material)
-	_add_room_shape_box(body, Vector3(0, -1.12, 0), Vector3(maxf(.05, length - .18), .12, .22), 0.0, trim_material)
-	var collision := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = Vector3(length + .03, 2.74, .18)
-	collision.shape = shape
-	body.add_child(collision)
-
-func _add_shaped_zone_slab(zone: Dictionary, centre_y: float, thickness: float, colour: Color, group: String, show_visual: bool) -> void:
-	var polygon := _zone_shell_polygon(zone)
-	if polygon.size() < 3:
-		return
-	var surface := SurfaceTool.new()
-	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var top_y := centre_y + thickness * .5
-	var bottom_y := centre_y - thickness * .5
-	var centre := Vector2.ZERO
-	for point in polygon:
-		centre += point
-	centre /= float(polygon.size())
-	for index in range(polygon.size()):
-		var next_index := (index + 1) % polygon.size()
-		var current: Vector2 = polygon[index]
-		var following: Vector2 = polygon[next_index]
-		# Horizontal caps.
-		surface.add_vertex(Vector3(centre.x, top_y, centre.y)); surface.add_vertex(Vector3(current.x, top_y, current.y)); surface.add_vertex(Vector3(following.x, top_y, following.y))
-		surface.add_vertex(Vector3(centre.x, bottom_y, centre.y)); surface.add_vertex(Vector3(following.x, bottom_y, following.y)); surface.add_vertex(Vector3(current.x, bottom_y, current.y))
-		# A closed edge prevents the roof and floor from showing a square overhang.
-		surface.add_vertex(Vector3(current.x, bottom_y, current.y)); surface.add_vertex(Vector3(following.x, bottom_y, following.y)); surface.add_vertex(Vector3(following.x, top_y, following.y))
-		surface.add_vertex(Vector3(current.x, bottom_y, current.y)); surface.add_vertex(Vector3(following.x, top_y, following.y)); surface.add_vertex(Vector3(current.x, top_y, current.y))
-	surface.generate_normals()
-	var mesh := surface.commit()
-	var body := StaticBody3D.new()
-	body.name = "%sShapedShell" % group.capitalize()
-	body.collision_layer = 1
-	body.collision_mask = 1
-	body.add_to_group(group)
-	root.add_child(body)
-	if show_visual:
-		var visual := MeshInstance3D.new()
-		visual.mesh = mesh
-		var material := StandardMaterial3D.new()
-		material.albedo_color = colour
-		material.roughness = .70
-		material.cull_mode = BaseMaterial3D.CULL_DISABLED
-		visual.material_override = material
-		body.add_child(visual)
-	var collision := CollisionShape3D.new()
-	var collision_shape := ConcavePolygonShape3D.new()
-	collision_shape.data = mesh.get_faces()
-	collision.shape = collision_shape
-	body.add_child(collision)
-
-func _zone_shell_polygon(zone: Dictionary) -> Array[Vector2]:
-	var cells: Array = zone.get("cells", [])
-	var min_x: int = cells[0].x
-	var max_x: int = cells[0].x
-	var min_z: int = cells[0].y
-	var max_z: int = cells[0].y
-	for cell in cells:
-		min_x = mini(min_x, cell.x); max_x = maxi(max_x, cell.x)
-		min_z = mini(min_z, cell.y); max_z = maxi(max_z, cell.y)
-	var left := (float(min_x) - .5) * CELL
-	var right := (float(max_x) + .5) * CELL
-	var top := (float(min_z) - .5) * CELL
-	var bottom := (float(max_z) + .5) * CELL
-	var polygon: Array[Vector2] = []
-	_append_zone_shell_corner(polygon, Vector2i(min_x, min_z), Vector2i(-1, -1), Vector2(left, top))
-	_append_zone_shell_corner(polygon, Vector2i(max_x, min_z), Vector2i(1, -1), Vector2(right, top))
-	_append_zone_shell_corner(polygon, Vector2i(max_x, max_z), Vector2i(1, 1), Vector2(right, bottom))
-	_append_zone_shell_corner(polygon, Vector2i(min_x, max_z), Vector2i(-1, 1), Vector2(left, bottom))
-	return polygon
-
-func _append_zone_shell_corner(polygon: Array[Vector2], cell: Vector2i, corner: Vector2i, square_corner: Vector2) -> void:
-	var modifier := _room_shape_at(cell, corner)
-	if modifier.is_empty():
-		polygon.append(square_corner)
-		return
-	var style := str(modifier.get("style", ""))
-	if style == "chamfer":
-		if corner == Vector2i(-1, -1): polygon.append(Vector2(square_corner.x, square_corner.y + HALF_CELL)); polygon.append(Vector2(square_corner.x + HALF_CELL, square_corner.y))
-		elif corner == Vector2i(1, -1): polygon.append(Vector2(square_corner.x - HALF_CELL, square_corner.y)); polygon.append(Vector2(square_corner.x, square_corner.y + HALF_CELL))
-		elif corner == Vector2i(1, 1): polygon.append(Vector2(square_corner.x, square_corner.y - HALF_CELL)); polygon.append(Vector2(square_corner.x - HALF_CELL, square_corner.y))
-		else: polygon.append(Vector2(square_corner.x + HALF_CELL, square_corner.y)); polygon.append(Vector2(square_corner.x, square_corner.y - HALF_CELL))
-		return
-	var start_angle := _room_shape_arc_start(corner)
-	# The plan follows the same continuous arc as the room wall, not a square
-	# roof with a decorative curve placed under it.
-	for index in range(33):
-		var angle := start_angle + PI * .5 * float(index) / 32.0
-		polygon.append(Vector2(cell.x * CELL + cos(angle) * HALF_CELL, cell.y * CELL + sin(angle) * HALF_CELL))
-
-func _shape_modifier_invalid_reason(cell: Vector2i, corner: Vector2i, style: String, allow_replace := false) -> String:
-	if not ROOM_SHAPE_SCENES.has(style): return "Unknown shell style"
-	if abs(corner.x) != 1 or abs(corner.y) != 1: return "Choose an exterior corner"
-	var zone := _zone_at(cell)
-	if zone.is_empty() or not _is_habitat_zone(zone): return "Click a completed room corner"
-	if str(zone.kind) in ["airlock", "vehicle_bay", "corridor"]: return "This shell style fits ordinary rooms, not this structure"
-	if not _zone_is_rectangle(zone): return "Use the footprint tool for concave or stepped rooms"
-	# The two selected faces must be genuinely exposed. We never cut an opening
-	# into a neighbouring sealed room or into a player-installed interior door.
-	for side in [Vector2i(corner.x, 0), Vector2i(0, corner.y)]:
-		if not _zone_at(cell + side).is_empty(): return "That corner meets another room"
-		if not allow_replace and not _should_build_wall(cell, side): return "That wall edge is not available"
-	for modifier in room_shape_modifiers:
-		if not allow_replace and modifier.get("cell", Vector2i.ZERO) == cell and modifier.get("corner", Vector2i.ZERO) == corner:
-			return "That corner already has a shell style"
-	return ""
-
-func _request_room_shape(cell: Vector2i) -> void:
-	_request_room_shape_change(cell, shape_corner, shape_style, false)
-
-func _request_room_shape_change(cell: Vector2i, corner: Vector2i, style: String, replace: bool) -> void:
-	var reason := _shape_modifier_invalid_reason(cell, corner, style, replace)
-	if not reason.is_empty():
-		_flash_notice("invalid", "Can't reshape here", reason + ".")
-		return
-	var zone := _zone_at(cell)
-	var impact := _room_shape_impact(zone)
-	if int(impact.count) == 0:
-		_apply_room_shape(cell, corner, style, replace)
-		return
-	pending_shape_request = {"cell":cell, "corner":corner, "style":style, "replace":replace, "impact":impact}
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "Refund room contents?"
-	dialog.dialog_text = "Changing this room's corner will remove %d item%s and refund %s of cargo. Continue?" % [int(impact.count), "" if int(impact.count) == 1 else "s", MHStyle.kg(int(impact.refund))]
-	dialog.ok_button_text = "Refund and reshape"
-	dialog.confirmed.connect(_confirm_room_shape)
-	dialog.canceled.connect(func() -> void: pending_shape_request = {})
-	ui.add_child(dialog)
-	dialog.popup_centered(Vector2i(520, 220))
-
-func _room_shape_impact(zone: Dictionary) -> Dictionary:
-	var count := 0
-	var refund := 0
-	for item in placed_equipment:
-		if item.get("cell", Vector2i.ZERO) in zone.cells:
-			count += 1
-			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
-	for item in placed_interior:
-		if item.get("zone_cell", Vector2i.ZERO) in zone.cells:
-			count += 1
-			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
-	return {"count":count, "refund":refund}
-
-func _confirm_room_shape() -> void:
-	if pending_shape_request.is_empty(): return
-	if bool(pending_shape_request.get("remove", false)):
-		_remove_room_shape(pending_shape_request.cell, pending_shape_request.corner)
-	else:
-		_apply_room_shape(pending_shape_request.cell, pending_shape_request.corner, str(pending_shape_request.style), bool(pending_shape_request.get("replace", false)))
-	pending_shape_request = {}
-
-func _apply_room_shape(cell: Vector2i, corner: Vector2i, style: String, replace := false) -> void:
-	var reason := _shape_modifier_invalid_reason(cell, corner, style, replace)
-	if not reason.is_empty():
-		_flash_notice("invalid", "Can't reshape here", reason + ".")
-		return
-	var zone := _zone_at(cell)
-	var refund := _refund_room_contents(zone)
-	if replace:
-		for index in range(room_shape_modifiers.size() - 1, -1, -1):
-			var old_modifier: Dictionary = room_shape_modifiers[index]
-			if old_modifier.get("cell", Vector2i.ZERO) == cell and old_modifier.get("corner", Vector2i.ZERO) == corner:
-				room_shape_modifiers.remove_at(index)
-	room_shape_modifiers.append({"cell":cell, "corner":corner, "style":style})
-	_rebuild()
-	_flash_notice("valid", "%s added" % str(ROOM_SHAPE_INFO[style].label), ("+%s cargo refunded" % MHStyle.kg(refund)) if refund > 0 else "Room shell reshaped")
-
-func _refund_room_contents(zone: Dictionary) -> int:
-	var refund := 0
-	for index in range(placed_equipment.size() - 1, -1, -1):
-		var item: Dictionary = placed_equipment[index]
-		if item.get("cell", Vector2i.ZERO) in zone.cells:
-			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
-			placed_equipment.remove_at(index)
-	for index in range(placed_interior.size() - 1, -1, -1):
-		var item: Dictionary = placed_interior[index]
-		if item.get("zone_cell", Vector2i.ZERO) in zone.cells:
-			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
-			var placement_id := str(item.get("placement_id", ""))
-			for child in furnishing.get_children():
-				if str(child.get_meta("interior_placement_id", "")) == placement_id:
-					child.queue_free()
-			placed_interior.remove_at(index)
-	return refund
-
-func _room_corner_at_mouse() -> Dictionary:
-	var point := _world_point_at_mouse(habitat_base_y + .12)
-	if point == Vector3.INF: return {}
-	var closest := {}
-	var closest_distance := .72
-	for zone in zones:
-		if not _is_habitat_zone(zone) or str(zone.kind) in ["airlock", "vehicle_bay", "corridor"]:
-			continue
-		for cell in zone.cells:
-			for corner in [Vector2i(1,1), Vector2i(-1,1), Vector2i(-1,-1), Vector2i(1,-1)]:
-				# A corner handle exists only when both faces are exposed to Mars.
-				if not _zone_at(cell + Vector2i(corner.x, 0)).is_empty() or not _zone_at(cell + Vector2i(0, corner.y)).is_empty():
-					continue
-				var world_corner := Vector3(cell.x * CELL + corner.x * HALF_CELL, habitat_base_y + .12, cell.y * CELL + corner.y * HALF_CELL)
-				var distance := Vector2(point.x - world_corner.x, point.z - world_corner.z).length()
-				if distance < closest_distance:
-					closest_distance = distance
-					closest = {"cell":cell, "corner":corner}
-	return closest
-
-func _cycle_room_corner_at_mouse() -> bool:
-	var target := _room_corner_at_mouse()
-	if target.is_empty(): return false
-	var current_index := -1
-	for index in range(room_shape_modifiers.size()):
-		var modifier: Dictionary = room_shape_modifiers[index]
-		if modifier.get("cell", Vector2i.ZERO) == target.cell and modifier.get("corner", Vector2i.ZERO) == target.corner:
-			current_index = index
-			break
-	var current_style := "" if current_index < 0 else str((room_shape_modifiers[current_index] as Dictionary).get("style", ""))
-	var cycle: Dictionary = {"":"chamfer", "chamfer":"rounded", "rounded":""}
-	var next_style: String = str(cycle.get(current_style, ""))
-	if next_style.is_empty():
-		_request_room_shape_removal(target.cell, target.corner)
-	else:
-		_request_room_shape_change(target.cell, target.corner, next_style, current_index >= 0)
-	return true
-
-func _request_room_shape_removal(cell: Vector2i, corner: Vector2i) -> void:
-	var zone := _zone_at(cell)
-	var impact := _room_shape_impact(zone)
-	if int(impact.count) == 0:
-		_remove_room_shape(cell, corner)
-		return
-	pending_shape_request = {"cell":cell, "corner":corner, "style":"", "remove":true, "impact":impact}
-	var dialog := ConfirmationDialog.new()
-	dialog.title = "Refund room contents?"
-	dialog.dialog_text = "Returning this corner to square will remove %d item%s and refund %s of cargo. Continue?" % [int(impact.count), "" if int(impact.count) == 1 else "s", MHStyle.kg(int(impact.refund))]
-	dialog.ok_button_text = "Refund and reshape"
-	dialog.confirmed.connect(_confirm_room_shape)
-	dialog.canceled.connect(func() -> void: pending_shape_request = {})
-	ui.add_child(dialog)
-	dialog.popup_centered(Vector2i(520, 220))
-
-func _remove_room_shape(cell: Vector2i, corner: Vector2i) -> void:
-	var zone := _zone_at(cell)
-	var refund := _refund_room_contents(zone)
-	for index in range(room_shape_modifiers.size() - 1, -1, -1):
-		var modifier: Dictionary = room_shape_modifiers[index]
-		if modifier.get("cell", Vector2i.ZERO) == cell and modifier.get("corner", Vector2i.ZERO) == corner:
-			room_shape_modifiers.remove_at(index)
-	_rebuild()
-	_flash_notice("valid", "Square corner restored", ("+%s cargo refunded" % MHStyle.kg(refund)) if refund > 0 else "Room shell restored")
-
-func _add_room_shape_visual(modifier: Dictionary) -> void:
-	var style := str(modifier.get("style", ""))
-	if not ROOM_SHAPE_SCENES.has(style): return
-	var cell: Vector2i = modifier.get("cell", Vector2i.ZERO)
-	var corner: Vector2i = modifier.get("corner", Vector2i.ONE)
-	var holder := Node3D.new()
-	holder.name = "%sGeneratedRoomCorner" % style.capitalize()
-	holder.position = Vector3(cell.x * CELL, habitat_base_y, cell.y * CELL)
-	root.add_child(holder)
-	# These panels are generated from the same cell measurements as the shell.
-	# Imported prototype chunks created a second, mismatched corner frame and
-	# left the original posts visible; this keeps the cut wall, collision and map
-	# footprint aligned with one source of truth.
-	var endpoint_a := Vector3(corner.x * HALF_CELL, 0, 0)
-	var endpoint_b := Vector3(0, 0, corner.y * HALF_CELL)
-	var chord := endpoint_b - endpoint_a
-	var chord_length := Vector2(chord.x, chord.z).length()
-	var chord_yaw := atan2(chord.z, chord.x)
-	var shell_material := _room_shape_material(MHStyle.STRUCTURAL_WHITE.darkened(.08))
-	var seal_material := _room_shape_material(MHStyle.SEAL_DARK)
-	var trim_material := _room_shape_material(MHStyle.accent)
-	# Replacing a square corner removes two complete wall bays. Restore the
-	# straight half-bays that remain either side of the new curve/chamfer before
-	# adding the centre section, otherwise the shell is left open to Mars.
-	_add_room_shape_return_wall(holder, endpoint_a, Vector3(corner.x * HALF_CELL, 0, -corner.y * HALF_CELL), shell_material, seal_material, trim_material)
-	_add_room_shape_return_wall(holder, Vector3(-corner.x * HALF_CELL, 0, corner.y * HALF_CELL), endpoint_b, shell_material, seal_material, trim_material)
-	if style == "chamfer":
-		var midpoint := (endpoint_a + endpoint_b) * .5
-		_add_room_shape_box(holder, midpoint + Vector3(0, 1.42, 0), Vector3(chord_length, 2.74, .14), chord_yaw, shell_material)
-		_add_room_shape_box(holder, midpoint + Vector3(0, .08, 0), Vector3(chord_length + .08, .09, .19), chord_yaw, seal_material)
-		_add_room_shape_box(holder, midpoint + Vector3(0, 2.74, 0), Vector3(chord_length + .08, .10, .19), chord_yaw, seal_material)
-		_add_room_shape_box(holder, midpoint + Vector3(0, .30, 0), Vector3(chord_length - .18, .12, .20), chord_yaw, trim_material)
-	else:
-		_add_rounded_room_shape_panel(holder, corner, shell_material)
-	# The collision chord deliberately sits slightly inside the visual curve. It
-	# seals pressure reliably while leaving the curved wall clean and gap-free.
-	var body := StaticBody3D.new()
-	body.position = (endpoint_a + endpoint_b) * .5 + Vector3(0, 1.42, 0)
-	body.rotation.y = chord_yaw
-	holder.add_child(body)
-	var collision := CollisionShape3D.new()
-	var collision_shape := BoxShape3D.new()
-	collision_shape.size = Vector3(chord_length, 2.74, .16)
-	collision.shape = collision_shape
-	body.add_child(collision)
-	_add_room_shape_plan_outline(cell, corner, style)
-
-func _room_shape_material(colour: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = colour
-	material.metallic = .12
-	material.roughness = .62
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	return material
-
-func _add_room_shape_box(parent: Node3D, local_position: Vector3, size: Vector3, yaw: float, material: Material) -> void:
-	var visual := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	visual.mesh = mesh
-	visual.material_override = material
-	visual.position = local_position
-	visual.rotation.y = yaw
-	parent.add_child(visual)
-
-func _add_room_shape_return_wall(parent: Node3D, start: Vector3, finish: Vector3, shell_material: Material, seal_material: Material, trim_material: Material) -> void:
-	var span := finish - start
-	var length := Vector2(span.x, span.z).length()
-	var midpoint := (start + finish) * .5
-	var yaw := atan2(span.z, span.x)
-	_add_room_shape_box(parent, midpoint + Vector3(0, 1.42, 0), Vector3(length, 2.74, .14), yaw, shell_material)
-	_add_room_shape_box(parent, midpoint + Vector3(0, .08, 0), Vector3(length + .05, .09, .19), yaw, seal_material)
-	_add_room_shape_box(parent, midpoint + Vector3(0, 2.74, 0), Vector3(length + .05, .10, .19), yaw, seal_material)
-	_add_room_shape_box(parent, midpoint + Vector3(0, .30, 0), Vector3(maxf(.05, length - .14), .12, .20), yaw, trim_material)
-	var body := StaticBody3D.new()
-	body.position = midpoint + Vector3(0, 1.42, 0)
-	body.rotation.y = yaw
-	parent.add_child(body)
-	var collision := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = Vector3(length, 2.74, .16)
-	collision.shape = shape
-	body.add_child(collision)
-
-func _add_rounded_room_shape_panel(parent: Node3D, corner: Vector2i, shell_material: Material) -> void:
-	var start_angle := _room_shape_arc_start(corner)
-	var end_angle := start_angle + PI * .5
-	var radius := HALF_CELL
-	var segments := 12
-	var surface := SurfaceTool.new()
-	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for index in range(segments):
-		var first_angle := lerpf(start_angle, end_angle, float(index) / float(segments))
-		var second_angle := lerpf(start_angle, end_angle, float(index + 1) / float(segments))
-		var first_bottom := Vector3(cos(first_angle) * radius, .05, sin(first_angle) * radius)
-		var second_bottom := Vector3(cos(second_angle) * radius, .05, sin(second_angle) * radius)
-		var first_top := first_bottom + Vector3.UP * 2.74
-		var second_top := second_bottom + Vector3.UP * 2.74
-		surface.add_vertex(first_bottom); surface.add_vertex(second_bottom); surface.add_vertex(second_top)
-		surface.add_vertex(first_bottom); surface.add_vertex(second_top); surface.add_vertex(first_top)
-	surface.generate_normals()
-	var wall := MeshInstance3D.new()
-	wall.mesh = surface.commit()
-	wall.material_override = shell_material
-	parent.add_child(wall)
-
-func _add_room_shape_plan_outline(cell: Vector2i, corner: Vector2i, style: String) -> void:
-	var colour: Color = MHStyle.VALID if style == "chamfer" else Color("#A879E8")
-	var material := StandardMaterial3D.new()
-	material.albedo_color = colour
-	material.emission_enabled = true
-	material.emission = colour
-	material.emission_energy_multiplier = 1.6
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	var parent := Node3D.new()
-	parent.name = "%sCornerPlanOutline" % style.capitalize()
-	parent.position = Vector3(cell.x * CELL, habitat_base_y + .12, cell.y * CELL)
-	parent.add_to_group("habitat_plan")
-	parent.visible = build_mode
-	root.add_child(parent)
-	if style == "chamfer":
-		var diagonal := Vector3(-corner.x, 0, corner.y)
-		var yaw := atan2(diagonal.z, diagonal.x)
-		_add_room_shape_box(parent, Vector3(corner.x * HALF_CELL * .5, .02, corner.y * HALF_CELL * .5), Vector3(CELL * .72, .04, .13), yaw, material)
-		return
-	var start_angle := _room_shape_arc_start(corner)
-	var segments := 12
-	for index in range(segments):
-		var first_angle := lerpf(start_angle, start_angle + PI * .5, float(index) / float(segments))
-		var second_angle := lerpf(start_angle, start_angle + PI * .5, float(index + 1) / float(segments))
-		var mid_angle := (first_angle + second_angle) * .5
-		var position := Vector3(cos(mid_angle) * HALF_CELL, .02, sin(mid_angle) * HALF_CELL)
-		_add_room_shape_box(parent, position, Vector3(HALF_CELL * PI * .5 / float(segments) + .05, .04, .13), mid_angle + PI * .5, material)
-
-func _room_shape_arc_start(corner: Vector2i) -> float:
-	if corner == Vector2i(1, 1): return 0.0
-	if corner == Vector2i(-1, 1): return PI * .5
-	if corner == Vector2i(-1, -1): return PI
-	return PI * 1.5
 
 func interior_door_invalid_reason(cell: Vector2i, side: Vector2i) -> String:
 	if abs(side.x) + abs(side.y) != 1:
@@ -2371,29 +1830,6 @@ func _add_zone_label(zone: Dictionary) -> void:
 	var label:=_label3d(str(ZONE_TYPES[zone.kind].label).to_upper(),40,MHStyle.INK_100); label.position=centre+Vector3(0,habitat_base_y+.4,0); label.offset=Vector2(0,22); label.visible=build_mode; label.add_to_group("zone_label"); root.add_child(label)
 	var detail:=_label3d("%d CELLS · %s" % [cells.size(),MHStyle.kg(int(zone.cost))],28,(ZONE_TYPES[zone.kind].colour as Color).lightened(.35),600); detail.font=MHStyle.font(600,true,1); detail.position=centre+Vector3(0,habitat_base_y+.4,0); detail.offset=Vector2(0,-24); detail.visible=build_mode; detail.add_to_group("zone_label"); root.add_child(detail)
 
-func _add_room_shape_handles() -> void:
-	# These are plan-only affordances. They make the edit discoverable without
-	# cluttering first-person exploration or forcing a separate mode.
-	for zone in zones:
-		if not _is_habitat_zone(zone) or str(zone.kind) in ["airlock", "vehicle_bay", "corridor"]:
-			continue
-		for cell in zone.cells:
-			for corner in [Vector2i(1,1), Vector2i(-1,1), Vector2i(-1,-1), Vector2i(1,-1)]:
-				if not _zone_at(cell + Vector2i(corner.x, 0)).is_empty() or not _zone_at(cell + Vector2i(0, corner.y)).is_empty():
-					continue
-				var style := ""
-				for modifier in room_shape_modifiers:
-					if modifier.get("cell", Vector2i.ZERO) == cell and modifier.get("corner", Vector2i.ZERO) == corner:
-						style = str(modifier.get("style", ""))
-				var marker := MeshInstance3D.new()
-				marker.name = "RoomCornerHandle_%s" % (style if not style.is_empty() else "square")
-				var marker_mesh := CylinderMesh.new(); marker_mesh.top_radius=.34; marker_mesh.bottom_radius=.34; marker_mesh.height=.06; marker_mesh.radial_segments=24; marker.mesh=marker_mesh
-				marker.position=Vector3(cell.x*CELL+corner.x*HALF_CELL, habitat_base_y+.15, cell.y*CELL+corner.y*HALF_CELL)
-				var material:=StandardMaterial3D.new(); material.albedo_color=MHStyle.accent if style.is_empty() else (MHStyle.VALID if style=="chamfer" else Color("#A879E8")); material.emission_enabled=true; material.emission=material.albedo_color; material.emission_energy_multiplier=1.5; marker.material_override=material
-				marker.add_to_group("room_shape_handle"); marker.visible=build_mode; root.add_child(marker)
-				var glyph := _label3d("+" if style.is_empty() else ("╱" if style=="chamfer" else "◜"), 36, Color.WHITE)
-				glyph.position=marker.position+Vector3(0,.05,0); glyph.billboard=BaseMaterial3D.BILLBOARD_ENABLED; glyph.visible=build_mode; glyph.add_to_group("room_shape_handle"); root.add_child(glyph)
-
 func _set_build_view(show_plan: bool) -> void:
 	# Exterior build is deliberately schematic. Hide every rendered habitat,
 	# interior-equipment and surface-prop visual first; only plan layers below
@@ -2405,7 +1841,6 @@ func _set_build_view(show_plan: bool) -> void:
 		plan.visible=show_plan
 		_set_visual_children(plan,show_plan)
 	for label in get_tree().get_nodes_in_group("zone_label"): label.visible=show_plan
-	for handle in get_tree().get_nodes_in_group("room_shape_handle"): handle.visible=show_plan
 	for field in get_tree().get_nodes_in_group("power_field_visual"): field.visible=show_plan
 
 func _set_visual_children(node: Node,visible: bool) -> void:
@@ -2703,7 +2138,6 @@ func export_habitat_state() -> Dictionary:
 		"placed_equipment": placed_equipment.duplicate(true),
 		"placed_interior": placed_interior.duplicate(true),
 		"interior_doors": interior_doors.duplicate(true),
-		"room_shape_modifiers": room_shape_modifiers.duplicate(true),
 		"placed_surface": placed_surface.duplicate(true),
 		"habitat_base_y": habitat_base_y,
 		"kind": kind,
@@ -2732,7 +2166,8 @@ func restore_habitat_state(state: Dictionary) -> void:
 	placed_equipment = (state.get("placed_equipment", []) as Array).duplicate(true)
 	placed_interior.clear()
 	interior_doors = (state.get("interior_doors", []) as Array).duplicate(true)
-	room_shape_modifiers = (state.get("room_shape_modifiers", []) as Array).duplicate(true)
+	# Older saves may contain the retired room_shape_modifiers key. It is
+	# deliberately ignored so those saves load as ordinary modular rooms.
 	placed_surface.clear()
 	habitat_base_y = float(state.get("habitat_base_y", habitat_base_y))
 	kind = str(state.get("kind", kind))
@@ -2850,13 +2285,91 @@ func cargo_by_category() -> Dictionary:
 
 func used_cargo() -> int: return _used_cargo()
 
+func zone_outline(zone: Dictionary) -> PackedVector2Array:
+	# Future room tools may store an explicit outline. Use it exactly as saved;
+	# ordinary rooms without one build their outline from their occupied cells.
+	var saved_outline: Variant = zone.get("outline", null)
+	if saved_outline != null:
+		var supplied := PackedVector2Array()
+		for raw_point in saved_outline:
+			if raw_point is Vector2:
+				supplied.append(raw_point as Vector2)
+		return supplied
+	var zone_kind := str(zone.get("kind", ""))
+	if zone_kind in ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor"]:
+		return PackedVector2Array()
+	var edges: Dictionary = {}
+	for raw_cell in zone.get("cells", []):
+		var cell := raw_cell as Vector2i
+		var top_left := Vector2i(cell.x * 2 - 1, cell.y * 2 - 1)
+		var top_right := Vector2i(cell.x * 2 + 1, cell.y * 2 - 1)
+		var bottom_right := Vector2i(cell.x * 2 + 1, cell.y * 2 + 1)
+		var bottom_left := Vector2i(cell.x * 2 - 1, cell.y * 2 + 1)
+		for edge in [[top_left, top_right], [top_right, bottom_right], [bottom_right, bottom_left], [bottom_left, top_left]]:
+			var start: Vector2i = edge[0]
+			var finish: Vector2i = edge[1]
+			var forward_key := "%d,%d>%d,%d" % [start.x, start.y, finish.x, finish.y]
+			var reverse_key := "%d,%d>%d,%d" % [finish.x, finish.y, start.x, start.y]
+			if edges.has(reverse_key):
+				edges.erase(reverse_key)
+			else:
+				edges[forward_key] = {"start": start, "finish": finish}
+	if edges.is_empty():
+		return PackedVector2Array()
+	var first_start := Vector2i(2147483647, 2147483647)
+	for raw_edge in edges.values():
+		var start: Vector2i = (raw_edge as Dictionary).get("start", Vector2i.ZERO)
+		if start.y < first_start.y or (start.y == first_start.y and start.x < first_start.x):
+			first_start = start
+	var outline := PackedVector2Array()
+	var current := first_start
+	var remaining := edges.size() + 1
+	while remaining > 0:
+		outline.append(Vector2(current.x * HALF_CELL, current.y * HALF_CELL))
+		var next_edge: Dictionary = {}
+		for raw_edge in edges.values():
+			var edge: Dictionary = raw_edge as Dictionary
+			if edge.get("start", Vector2i.ZERO) == current:
+				next_edge = edge
+				break
+		if next_edge.is_empty():
+			break
+		current = next_edge.get("finish", current) as Vector2i
+		if current == first_start:
+			break
+		remaining -= 1
+	return outline
+
 # True when a world point is on the deck of a habitat zone (drives the interior hum).
 func is_inside(point: Vector3) -> bool:
 	if point.y<habitat_base_y-.6 or point.y>habitat_base_y+4.0: return false
 	var cell:=Vector2i(roundi(point.x/CELL),roundi(point.z/CELL))
 	for zone in zones:
-		if str(zone.kind)!="solar" and str(zone.kind)!="reactor" and str(zone.kind)!="ice_extractor" and cell in zone.cells: return true
+		var zone_kind := str(zone.kind)
+		if zone_kind in ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor"]:
+			if zone_kind not in ["solar", "reactor", "ice_extractor"] and cell in zone.cells:
+				return true
+		elif Geometry2D.is_point_in_polygon(Vector2(point.x, point.z), zone_outline(zone)):
+			return true
 	return false
+
+func run_zone_outline_self_test() -> bool:
+	var saved_zones: Array = zones
+	var y := habitat_base_y + 1.0
+	var rectangle := {"kind": "living", "cells": [Vector2i(0,0), Vector2i(1,0), Vector2i(2,0), Vector2i(0,1), Vector2i(1,1), Vector2i(2,1), Vector2i(0,2), Vector2i(1,2), Vector2i(2,2)]}
+	zones = [rectangle]
+	var rectangle_inside := is_inside(Vector3(3.0, y, 3.0))
+	var rectangle_outside := not is_inside(Vector3(8.0, y, 3.0))
+	print("zone_outline self-test · 3x3 inside: ", "PASS" if rectangle_inside else "FAIL")
+	print("zone_outline self-test · 3x3 outside: ", "PASS" if rectangle_outside else "FAIL")
+	var l_shape := {"kind": "living", "cells": [Vector2i(0,0), Vector2i(1,0), Vector2i(0,1)]}
+	zones = [l_shape]
+	var l_inside := is_inside(Vector3(0.0, y, 0.0))
+	var l_outside := not is_inside(Vector3(3.0, y, 3.0))
+	print("zone_outline self-test · L-shape inside: ", "PASS" if l_inside else "FAIL")
+	print("zone_outline self-test · L-shape outside: ", "PASS" if l_outside else "FAIL")
+	zones = saved_zones
+	return rectangle_inside and rectangle_outside and l_inside and l_outside
 
 # Environmental readout for the explorer HUD. The outdoor baseline comes from
 # the selected site; sealed rooms only become truly habitable once generated
@@ -3000,28 +2513,12 @@ func _set_catalogue_open(open: bool) -> void:
 	if open: _refresh_catalogue()
 
 func _select_kind(id: String) -> void:
-	kind=id; equipment_id=""; shape_style=""; dragging=false; category=str(ZONE_INFO[id].cat); _set_tool("place"); _preview_key=""
+	kind=id; equipment_id=""; dragging=false; category=str(ZONE_INFO[id].cat); _set_tool("place"); _preview_key=""
 	_refresh_catalogue()
 
 func _select_equipment(id: String) -> void:
-	equipment_id=id; shape_style=""; dragging=false; category="equipment"; _set_tool("place"); _preview_key=""
+	equipment_id=id; dragging=false; category="equipment"; _set_tool("place"); _preview_key=""
 	_refresh_catalogue()
-
-func _select_room_shape(style: String) -> void:
-	if not ROOM_SHAPE_INFO.has(style):
-		return
-	shape_style = style
-	equipment_id = ""
-	category = "structure"
-	dragging = false
-	_set_tool("place")
-	_preview_key = ""
-	_refresh_catalogue()
-
-func _rotate_shape_corner() -> void:
-	var corners := [Vector2i(1,1), Vector2i(-1,1), Vector2i(-1,-1), Vector2i(1,-1)]
-	var index := corners.find(shape_corner)
-	shape_corner = corners[(index + 1) % corners.size()]
 
 func _select_surface_equipment(id: String) -> void:
 	if not SURFACE_EQUIPMENT.has(id):
@@ -3158,32 +2655,6 @@ func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
 	var rule:=MHStyle.mono(str(ZONE_INFO[id].rule),12,MHStyle.TEXT_MUTED); rule.clip_text=true; lines.add_child(rule)
 	return card
 
-func _room_shape_card(style: String, selected: bool) -> Button:
-	var info: Dictionary = ROOM_SHAPE_INFO[style]
-	var card := Button.new()
-	card.custom_minimum_size = Vector2(196, 172)
-	card.focus_mode = Control.FOCUS_NONE
-	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var normal := MHStyle.selected_box(0) if selected else MHStyle.control_box(0)
-	for state in ["normal", "pressed", "hover_pressed", "focus"]: card.add_theme_stylebox_override(state, normal)
-	card.add_theme_stylebox_override("hover", normal if selected else MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG))
-	card.pressed.connect(_select_room_shape.bind(style))
-	var column := MHStyle.vbox(0); column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); column.mouse_filter = Control.MOUSE_FILTER_IGNORE; card.add_child(column)
-	var thumb := PanelContainer.new(); var thumb_style := MHStyle.box(MHStyle.BLUEPRINT.lerp(MHStyle.accent, .22), Color(0,0,0,0), MHStyle.RADIUS_MD, 0); thumb_style.corner_radius_bottom_left=0; thumb_style.corner_radius_bottom_right=0
-	thumb.add_theme_stylebox_override("panel", thumb_style); thumb.custom_minimum_size.y=92; thumb.mouse_filter=Control.MOUSE_FILTER_IGNORE; column.add_child(thumb)
-	thumb.add_child(MHStyle.icon(str(info.icon), 40, MHStyle.accent.lightened(.35)))
-	var text := MarginContainer.new(); text.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	for side in ["left","right"]: text.add_theme_constant_override("margin_"+side,12)
-	text.add_theme_constant_override("margin_top",10); column.add_child(text)
-	var lines := MHStyle.vbox(4); text.add_child(lines)
-	var name_label := MHStyle.label(str(info.label), 16, MHStyle.TEXT_PRIMARY, 600); name_label.clip_text=true; lines.add_child(name_label)
-	lines.add_child(MHStyle.mono("SHELL CUSTOMISATION", 12, MHStyle.accent, 600))
-	var rule := MHStyle.mono("Click corner cell · R rotates", 12, MHStyle.TEXT_MUTED); rule.clip_text=true; lines.add_child(rule)
-	return card
-
-func _shape_corner_name() -> String:
-	return {Vector2i(1,1):"south-east", Vector2i(-1,1):"south-west", Vector2i(-1,-1):"north-west", Vector2i(1,-1):"north-east"}.get(shape_corner, "south-east")
-
 func _surface_equipment_card(id: String) -> Button:
 	var entry: Dictionary = SURFACE_EQUIPMENT[id]
 	var card := Button.new()
@@ -3228,7 +2699,6 @@ func _set_tool(next_tool: String) -> void:
 	tool=next_tool; dragging=false
 	if tool=="footprint":
 		equipment_id=""
-		shape_style=""
 	else:
 		footprint_zone_index=-1
 	for id in tool_buttons:
