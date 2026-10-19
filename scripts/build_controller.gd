@@ -1560,9 +1560,44 @@ func _build_custom_shaped_room_shell(zone: Dictionary) -> void:
 	# derived from exactly the same polygon as the roof and foundation.
 	var polygon := _zone_shell_polygon(zone)
 	if polygon.size() < 3: return
+	# One continuous wall surface avoids treating every arc subdivision as a
+	# separate modular bay (which produced visible comb-like seams and trims).
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for index in range(polygon.size()):
 		var next_index := (index + 1) % polygon.size()
-		_add_custom_shell_wall(polygon[index], polygon[next_index])
+		var start: Vector2 = polygon[index]
+		var finish: Vector2 = polygon[next_index]
+		var lower_start := Vector3(start.x, habitat_base_y + .05, start.y)
+		var lower_finish := Vector3(finish.x, habitat_base_y + .05, finish.y)
+		var upper_start := lower_start + Vector3.UP * 2.74
+		var upper_finish := lower_finish + Vector3.UP * 2.74
+		surface.add_vertex(lower_start); surface.add_vertex(lower_finish); surface.add_vertex(upper_finish)
+		surface.add_vertex(lower_start); surface.add_vertex(upper_finish); surface.add_vertex(upper_start)
+		_add_custom_shell_collision(start, finish)
+	surface.generate_normals()
+	var wall := MeshInstance3D.new()
+	wall.name = "ContinuousCustomRoomShell"
+	wall.mesh = surface.commit()
+	wall.material_override = _room_shape_material(MHStyle.STRUCTURAL_WHITE.darkened(.08))
+	root.add_child(wall)
+
+func _add_custom_shell_collision(start: Vector2, finish: Vector2) -> void:
+	var span := finish - start
+	var length := span.length()
+	if length < .01: return
+	var midpoint := (start + finish) * .5
+	var body := StaticBody3D.new()
+	body.position = Vector3(midpoint.x, habitat_base_y + 1.42, midpoint.y)
+	body.rotation.y = atan2(span.y, span.x)
+	body.collision_layer = 1
+	body.collision_mask = 1
+	root.add_child(body)
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(length + .03, 2.74, .18)
+	collision.shape = shape
+	body.add_child(collision)
 
 func _add_custom_shell_wall(start: Vector2, finish: Vector2) -> void:
 	var span := finish - start
@@ -1670,8 +1705,8 @@ func _append_zone_shell_corner(polygon: Array[Vector2], cell: Vector2i, corner: 
 	var start_angle := _room_shape_arc_start(corner)
 	# The plan follows the same continuous arc as the room wall, not a square
 	# roof with a decorative curve placed under it.
-	for index in range(17):
-		var angle := start_angle + PI * .5 * float(index) / 16.0
+	for index in range(33):
+		var angle := start_angle + PI * .5 * float(index) / 32.0
 		polygon.append(Vector2(cell.x * CELL + cos(angle) * HALF_CELL, cell.y * CELL + sin(angle) * HALF_CELL))
 
 func _shape_modifier_invalid_reason(cell: Vector2i, corner: Vector2i, style: String, allow_replace := false) -> String:
