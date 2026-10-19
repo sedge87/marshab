@@ -1599,35 +1599,38 @@ func _build_custom_shaped_room_shell(zone: Dictionary) -> void:
 	wall.mesh = surface.commit()
 	wall.material_override = _room_shape_material(MHStyle.STRUCTURAL_WHITE.darkened(.08))
 	root.add_child(wall)
-	_add_custom_shell_detailing(polygon)
+	# Trim is not made from independent BoxMeshes: their square ends protrude
+	# at a chamfer or arc.  These are flush overlay surfaces built from the exact
+	# same polygon, so the habitat finish remains continuous at every corner.
+	_add_custom_shell_band(polygon, habitat_base_y + .05, habitat_base_y + .18, MHStyle.SEAL_DARK.darkened(.18), "CustomRoomFoundationTrim")
+	_add_custom_shell_band(polygon, habitat_base_y + .29, habitat_base_y + .40, MHStyle.accent, "CustomRoomServiceTrim")
+	_add_custom_shell_band(polygon, habitat_base_y + 2.67, habitat_base_y + 2.80, MHStyle.SEAL_DARK, "CustomRoomRoofTrim")
 
-func _add_custom_shell_detailing(polygon: Array[Vector2]) -> void:
-	# The curved/chamfered shell is continuous for pressure integrity, but it
-	# still needs to read as part of the habitat kit rather than a blank CSG box.
-	# Continuous cap, skirt and orange service rail follow the exact same path as
-	# the wall; sparse ribs restore the structural rhythm of the imported bays.
-	var cap_material := _room_shape_material(MHStyle.SEAL_DARK)
-	var skirt_material := _room_shape_material(MHStyle.SEAL_DARK.darkened(.18))
-	var accent_material := _room_shape_material(MHStyle.accent)
-	var rib_material := _room_shape_material(MHStyle.STRUCTURAL_WHITE.lightened(.08))
-	var travelled := 0.0
+func _add_custom_shell_band(polygon: Array[Vector2], lower_y: float, upper_y: float, colour: Color, node_name: String) -> void:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for index in range(polygon.size()):
 		var next_index := (index + 1) % polygon.size()
 		var start: Vector2 = polygon[index]
 		var finish: Vector2 = polygon[next_index]
 		var span := finish - start
-		var length := span.length()
-		if length < .01:
+		if span.length() < .01:
 			continue
-		var midpoint := (start + finish) * .5
-		var yaw := atan2(span.y, span.x)
-		_add_room_shape_box(root, Vector3(midpoint.x, habitat_base_y + .10, midpoint.y), Vector3(length + .035, .13, .24), yaw, skirt_material)
-		_add_room_shape_box(root, Vector3(midpoint.x, habitat_base_y + .38, midpoint.y), Vector3(maxf(.04, length - .12), .11, .22), yaw, accent_material)
-		_add_room_shape_box(root, Vector3(midpoint.x, habitat_base_y + 2.75, midpoint.y), Vector3(length + .04, .14, .25), yaw, cap_material)
-		travelled += length
-		if travelled >= 1.35:
-			_add_room_shape_box(root, Vector3(finish.x, habitat_base_y + 1.42, finish.y), Vector3(.12, 2.62, .25), yaw, rib_material)
-			travelled = 0.0
+		# The shell polygon is clockwise in plan. Offset each band a hair toward
+		# Mars to prevent z-fighting without adding any physical overhang.
+		var outward := Vector2(span.y, -span.x).normalized() * .006
+		var lower_start := Vector3(start.x + outward.x, lower_y, start.y + outward.y)
+		var lower_finish := Vector3(finish.x + outward.x, lower_y, finish.y + outward.y)
+		var upper_start := Vector3(start.x + outward.x, upper_y, start.y + outward.y)
+		var upper_finish := Vector3(finish.x + outward.x, upper_y, finish.y + outward.y)
+		surface.add_vertex(lower_start); surface.add_vertex(lower_finish); surface.add_vertex(upper_finish)
+		surface.add_vertex(lower_start); surface.add_vertex(upper_finish); surface.add_vertex(upper_start)
+	surface.generate_normals()
+	var band := MeshInstance3D.new()
+	band.name = node_name
+	band.mesh = surface.commit()
+	band.material_override = _room_shape_material(colour)
+	root.add_child(band)
 
 func _add_custom_shell_collision(start: Vector2, finish: Vector2) -> void:
 	var span := finish - start
