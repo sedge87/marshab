@@ -24,6 +24,7 @@ const ZONE_TYPES := {
 	"storage":{"label":"Storage","colour":Color(.62,.46,.18),"cost":CELL_COST},
 	"hydroponics":{"label":"Hydroponics","colour":Color(.18,.62,.31),"cost":CELL_COST},
 	"life_support":{"label":"Life Support","colour":Color(.12,.63,.67),"cost":CELL_COST},
+	"engineering":{"label":"Power & Engineering","colour":Color(.88,.30,.16),"cost":CELL_COST},
 	"corridor":{"label":"Corridor","colour":Color(.76,.30,.08),"cost":CELL_COST},
 	"airlock":{"label":"Airlock","colour":Color(.95,.43,.08),"cost":CELL_COST},
 	"vehicle_bay":{"label":"Vehicle Bay","colour":Color(.88,.62,.12),"cost":CELL_COST},
@@ -40,6 +41,7 @@ const ZONE_INFO := {
 	"storage":{"cat":"rooms","icon":"package","rule":"Drag an area","desc":"Racks for spares, tools and supplies."},
 	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Makes space for grow equipment. Furnish it to produce food."},
 	"life_support":{"cat":"rooms","icon":"wind","rule":"Drag an area","desc":"Makes space for air and water recyclers. Furnish it to support crew."},
+	"engineering":{"cat":"rooms","icon":"zap","rule":"Drag an area","desc":"A dedicated engineering room for electrical distribution, batteries and thermal hardware."},
 	"glass_room":{"cat":"rooms","icon":"flower-2","rule":"Drag an area","desc":"A glazed room with a view of Mars. Uses extra power."},
 	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates","desc":"Creates a sealed passage. Add interior doors where it meets rooms."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates","desc":"The way in and out. The outer end faces Mars; the inner end must touch a room."},
@@ -1713,7 +1715,7 @@ func _systems() -> Dictionary:
 	for zone in zones:
 		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(_airlock_side(zone))*MHGame.sunlight_fraction
 		elif str(zone.kind)=="reactor" and _power_source_connected(zone): generation+=REACTOR_OUTPUT
-	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.glass_room*2+counts.hydroponics*5+counts.life_support*3+counts.science*5+counts.vehicle_bay*4+counts.ice_extractor*8+int(equipment.power_draw)
+	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.glass_room*2+counts.hydroponics*5+counts.life_support*3+counts.engineering*4+counts.science*5+counts.vehicle_bay*4+counts.ice_extractor*8+int(equipment.power_draw)
 	# Dynamic non-catalogue devices can opt into the grid by joining this group
 	# and setting power_draw metadata. Catalogue equipment is already counted
 	# above, so it must not also join this group.
@@ -2004,7 +2006,7 @@ func climate_at(point: Vector3) -> Dictionary:
 	var radiation := "Sheltered"
 	var state := "unheated"
 	if climate_controlled:
-		var targets := {"living": 20.0, "hydroponics": 24.0, "science": 21.0, "storage": 12.0, "corridor": 16.0, "airlock": 8.0, "vehicle_bay": 6.0, "glass_room": 22.0}
+		var targets := {"living": 20.0, "hydroponics": 24.0, "science": 21.0, "storage": 12.0, "engineering": 18.0, "corridor": 16.0, "airlock": 8.0, "vehicle_bay": 6.0, "glass_room": 22.0}
 		temperature = float(targets.get(zone_kind, 18.0))
 		state = "climate"
 		context += " · climate control"

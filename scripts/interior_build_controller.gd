@@ -8,7 +8,7 @@ extends Node
 const BUILD_RANGE := 4.8
 # The selector starts with the validated Living Quarters batch, then keeps the
 # existing vertical-slice equipment available for its own valid rooms.
-const QUICK_ITEMS := ["crew_bunk", "locker", "common_table", "task_light", "privacy_divider", "exercise_station", "grow_tray", "seedling_station", "nutrient_mixer", "harvest_cart", "hydroponics_sensor_panel", "air_recycler", "water_reclaimer", "oxygen_reserve_tank", "thermal_control_unit", "life_support_console", "science_workbench", "sample_analysis_station", "microscope_station", "planetary_data_console", "sample_storage_cabinet", "cargo_rack", "spares_cabinet", "cold_storage_unit", "tool_bench"]
+const QUICK_ITEMS := ["crew_bunk", "locker", "common_table", "task_light", "privacy_divider", "exercise_station", "grow_tray", "seedling_station", "nutrient_mixer", "harvest_cart", "hydroponics_sensor_panel", "air_recycler", "water_reclaimer", "oxygen_reserve_tank", "thermal_control_unit", "life_support_console", "science_workbench", "sample_analysis_station", "microscope_station", "planetary_data_console", "sample_storage_cabinet", "cargo_rack", "spares_cabinet", "cold_storage_unit", "tool_bench", "power_distribution_panel", "battery_bank", "inverter_cabinet", "reactor_monitor_console", "cable_tray"]
 
 var builder: BuildController
 var player: CharacterBody3D
