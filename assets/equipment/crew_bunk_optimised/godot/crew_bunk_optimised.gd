@@ -92,7 +92,9 @@ func set_privacy_closed(closed: bool) -> void:
 		return
 	if _curtain_tween != null and _curtain_tween.is_valid():
 		_curtain_tween.kill()
-	var parked_position := _curtain_home_position + Vector3(1.86, 0, 0)
+	# Retract vertically into the bunk's overhead cassette. Sliding sideways
+	# left a visible fabric panel beside the berth and read unlike a real curtain.
+	var parked_position := _curtain_home_position + Vector3(0, 1.82, 0)
 	_curtain_tween = create_tween()
 	_curtain_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	if closed:

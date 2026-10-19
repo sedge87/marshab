@@ -61,9 +61,26 @@ func interaction_prompt() -> Dictionary:
 	}
 
 func interact(_actor: Node = null) -> bool:
-	if not educational_note.is_empty():
-		get_tree().call_group("explore_hud", "show_equipment_note", display_name, educational_note)
+	var note := _live_readout()
+	if note.is_empty():
+		note = educational_note
+	if not note.is_empty():
+		get_tree().call_group("explore_hud", "show_equipment_note", display_name, note)
 	return true
+
+func _live_readout() -> String:
+	# These displays are supplied as static GLB artwork. Put changing simulation
+	# data in the player's depth-safe HUD rather than spawning labels through walls.
+	var builder := get_tree().get_first_node_in_group("habitat_builder") as BuildController
+	if builder == null:
+		return ""
+	var climate := builder.climate_at(global_position)
+	if display_name == "Common Table":
+		return "COMMON TABLE\n%s · %.1f °C\n%s" % [MHGame.formatted_sol_time(), float(climate.get("temperature", 0.0)), str(climate.get("context", "Habitat systems"))]
+	if display_name == "Planetary Data Console":
+		var telemetry: Dictionary = MHGame.site().get("telemetry", {})
+		return "PLANETARY DATA\n%s · %s\nSurface %s · sunlight %d%%\nElevation %s · radiation %s" % [str(MHGame.site().get("based_on", MHGame.site_name())), MHGame.formatted_sol_time(), str(telemetry.get("temperature", "—")), roundi(MHGame.sunlight_fraction * 100.0), str(telemetry.get("elevation", "—")), str(telemetry.get("radiation", "—"))]
+	return ""
 
 func interact_secondary(_actor: Node = null) -> bool:
 	if secondary_action.is_empty():

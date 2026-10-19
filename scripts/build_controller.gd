@@ -439,7 +439,10 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 	# four footprint corners prevents a player from burying it in the shell wall
 	# or bleeding it across into an incompatible room.
 	if placement == "floor" or placement == "floor_wall":
-		var size := _equipment_size(entry)
+		# Catalogue footprints describe a coarse grid slot.  Free placement needs a
+		# closer approximation to the delivered model, otherwise a clear gap reads
+		# as a collision to the player.
+		var size := _free_interior_size(entry)
 		var footprint := Vector2(size.x * .5, size.z * .5)
 		var facing := Vector2(cos(rotation_y), sin(rotation_y))
 		var side := Vector2(-facing.y, facing.x)
@@ -452,7 +455,7 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 					return "Doesn't fit inside this room"
 		for item in placed_interior:
 			var other_entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
-			var other_size := _equipment_size(other_entry)
+			var other_size := _free_interior_size(other_entry)
 			var other_position: Vector3 = item.get("position", Vector3.ZERO)
 			var other_rotation := float(item.get("rotation_y", 0.0))
 			# Test the actual rotated floor footprints rather than a circular
@@ -473,13 +476,13 @@ func _interior_footprints_overlap(first_position: Vector3, first_size: Vector3, 
 	for axis in [first_forward, first_side, second_forward, second_side]:
 		var first_radius := absf(axis.dot(first_forward)) * first_size.x * .5 + absf(axis.dot(first_side)) * first_size.z * .5
 		var second_radius := absf(axis.dot(second_forward)) * second_size.x * .5 + absf(axis.dot(second_side)) * second_size.z * .5
-		if absf(offset.dot(axis)) >= first_radius + second_radius + .08:
+		if absf(offset.dot(axis)) >= first_radius + second_radius + .02:
 			return false
 	return true
 
 func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> Node3D:
 	var entry := EquipmentCatalog.get_entry(id)
-	var size := _equipment_size(entry)
+	var size := _free_interior_size(entry)
 	var holder := Node3D.new()
 	holder.position = position
 	holder.rotation.y = rotation_y
@@ -497,6 +500,8 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 			var model := (resource as PackedScene).instantiate() as Node3D
 			if model != null:
 				model.name = "Model"
+				model.rotation.x = float(entry.get("model_rotation_x", 0.0))
+				model.rotation.z = float(entry.get("model_rotation_z", 0.0))
 				var interaction_note := str(entry.get("interaction_note", ""))
 				if not interaction_note.is_empty():
 					var interactable := MHEquipmentInteractable.new()
@@ -638,6 +643,15 @@ func _equipment_size(entry: Dictionary) -> Vector3:
 	if placement == "wall": depth = minf(depth, .22)
 	return Vector3(width, maxf(.04, float(entry.get("height", 1.0))), depth)
 
+func _free_interior_size(entry: Dictionary) -> Vector3:
+	var size := _equipment_size(entry)
+	# Models occupy about three quarters of their old half-cell proxy.  Keep the
+	# shell clearance check above, but allow deliberate, tidy rows of furniture.
+	if str(entry.get("placement", "floor")) in ["floor", "floor_wall"]:
+		size.x = maxf(.38, size.x * .74)
+		size.z = maxf(.30, size.z * .74)
+	return size
+
 # Local transform inside a cell: floor items centre, wall items back onto the
 # far side of the cell from their facing, ceiling items hang from the roof.
 func _equipment_offset(entry: Dictionary, size: Vector3) -> Vector3:
@@ -676,6 +690,8 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 			var model := (resource as PackedScene).instantiate() as Node3D
 			if model != null:
 				model.name = "Model"
+				model.rotation.x = float(entry.get("model_rotation_x", 0.0))
+				model.rotation.z = float(entry.get("model_rotation_z", 0.0))
 				var interaction_note := str(entry.get("interaction_note", ""))
 				if not interaction_note.is_empty():
 					# GLB-only deliveries still get a compact, reticle-based readout.
@@ -812,8 +828,11 @@ func _invalid_reason(cells: Array) -> String:
 	if is_inside_tree() and not zones.is_empty():
 		for cell in cells:
 			var terrain:=_cell_highest_terrain(cell)
-			if terrain>habitat_base_y-.18: return "Ground is too high here"
-			if terrain<habitat_base_y-1.55: return "Ground drops away too far"
+			# The habitat deck is deliberately raised above the initial survey point.
+			# Permit shallow undulations beneath its skirt; only reject a terrain
+			# ridge that would visibly break through the finished floor.
+			if terrain > habitat_base_y + .12: return "Ground is too high here"
+			if terrain < habitat_base_y - 1.85: return "Ground drops away too far"
 	return ""
 
 func _valid_airlock(cells: Array) -> bool:
@@ -1125,8 +1144,10 @@ func _add_powered_fixture(position: Vector3, zone_kind: String) -> void:
 	var light := OmniLight3D.new()
 	light.position = Vector3(0, -.20, 0)
 	light.light_color = Color("#FFE7B2")
-	light.light_energy = 3.0 if zone_kind != "hydroponics" else 3.8
-	light.omni_range = 6.0
+	# One light per two cells must light the whole enclosed room at night, not
+	# merely make the diffuser itself visible.
+	light.light_energy = 5.8 if zone_kind != "hydroponics" else 6.8
+	light.omni_range = 7.5
 	light.shadow_enabled = false
 	light.add_to_group("grid_powered_light")
 	light.set_meta("grid_light_energy", light.light_energy)

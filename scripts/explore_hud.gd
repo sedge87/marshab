@@ -243,11 +243,11 @@ func _markers() -> Array:
 	return out
 
 func _update_chip() -> void:
-	var context := "Explore · Outside · " + MHGame.site_name()
+	var context := "ZONE · OUTSIDE · " + MHGame.site_name()
 	var cell := Vector2i(roundi(player.global_position.x / BuildController.CELL), roundi(player.global_position.z / BuildController.CELL))
 	for zone in builder.zones:
 		if cell in zone.cells and str(zone.kind) != "solar":
-			context = "Explore · " + str(BuildController.ZONE_TYPES[zone.kind].label)
+			context = "ZONE · " + str(BuildController.ZONE_TYPES[zone.kind].label).to_upper()
 	if context == _chip_context: return
 	_chip_context = context
 	for child in _chip_slot.get_children(): child.queue_free()

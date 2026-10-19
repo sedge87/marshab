@@ -6,7 +6,7 @@
 [node name="CommonTable" type="Node3D"]
 script = ExtResource("1_script")
 display_name = "Common Table"
-primary_action = "Read mission notes"
+primary_action = "Read habitat status"
 educational_note = "COMMON TABLE\nA shared place for meals, planning and checking the habitat's daily work."
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
