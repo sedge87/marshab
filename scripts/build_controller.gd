@@ -1334,24 +1334,48 @@ func _add_zone_roof_accessory(zone: Dictionary) -> void:
 	var cells: Array = zone.get("cells", [])
 	if cells.is_empty():
 		return
-	# Tiny single-cell spaces retain a clean roof; larger rooms receive one
-	# centred, low-profile fitting rather than a noisy repeated field of props.
+	# Tiny single-cell spaces retain a clean roof. Larger connected rooms get a
+	# small number of evenly spaced fittings, each snapped to a real roof cell.
+	# Using the old average position could put a fitting over the missing square
+	# in an L-shaped room.
 	if cells.size() < 2:
 		return
-	var centre := Vector3.ZERO
-	for cell in cells:
-		centre += Vector3(cell.x * CELL, 0, cell.y * CELL)
-	centre /= float(cells.size())
-	var accessory := Node3D.new()
-	accessory.name = "RemovableRoofAccessory_%s" % zone_kind
-	accessory.position = centre + Vector3(0, habitat_base_y + 2.98, 0)
-	accessory.set_meta("mh_roof_accessory", true)
-	accessory.set_meta("remove_before_upper_storey", true)
-	accessory.set_meta("zone_kind", zone_kind)
-	root.add_child(accessory)
-	var model: Node3D = (ROOF_ACCESSORY_SCENES[zone_kind] as PackedScene).instantiate()
-	model.name = "%sRoofFitting" % zone_kind.capitalize()
-	accessory.add_child(model)
+	var fitting_count := clampi(ceili(float(cells.size()) / 6.0), 1, 3)
+	var used_indices: Dictionary = {}
+	for fitting_index in range(fitting_count):
+		var cell_index := clampi(roundi((float(fitting_index) + .5) * float(cells.size()) / float(fitting_count) - .5), 0, cells.size() - 1)
+		while used_indices.has(cell_index) and cell_index < cells.size() - 1:
+			cell_index += 1
+		used_indices[cell_index] = true
+		var roof_cell: Vector2i = cells[cell_index]
+		var accessory := Node3D.new()
+		accessory.name = "RemovableRoofAccessory_%s_%d" % [zone_kind, fitting_index + 1]
+		accessory.position = Vector3(roof_cell.x * CELL, habitat_base_y + 2.98, roof_cell.y * CELL)
+		accessory.set_meta("mh_roof_accessory", true)
+		accessory.set_meta("remove_before_upper_storey", true)
+		accessory.set_meta("zone_kind", zone_kind)
+		root.add_child(accessory)
+		var model: Node3D = (ROOF_ACCESSORY_SCENES[zone_kind] as PackedScene).instantiate()
+		model.name = "%sRoofFitting" % zone_kind.capitalize()
+		accessory.add_child(model)
+		_seat_roof_accessory_on_roof(model)
+
+func _seat_roof_accessory_on_roof(model: Node3D) -> void:
+	# Blender assets do not all share the same origin. Find the lowest visible
+	# point and place it on the roof, instead of assuming the origin is the base.
+	var lowest := INF
+	for raw_mesh in model.find_children("*", "MeshInstance3D", true, false):
+		var mesh_instance := raw_mesh as MeshInstance3D
+		if mesh_instance.mesh == null:
+			continue
+		var bounds := mesh_instance.mesh.get_aabb()
+		for x in [bounds.position.x, bounds.end.x]:
+			for y in [bounds.position.y, bounds.end.y]:
+				for z in [bounds.position.z, bounds.end.z]:
+					var point := model.to_local(mesh_instance.to_global(Vector3(x, y, z)))
+					lowest = minf(lowest, point.y)
+	if lowest != INF:
+		model.position.y -= lowest - .01
 
 func _zone_has_upper_storey(zone: Dictionary) -> bool:
 	# Storeys are not buildable yet, but persisting this rule now makes roof
