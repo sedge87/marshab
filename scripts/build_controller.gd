@@ -25,6 +25,11 @@ const ZONE_TYPES := {
 	"hydroponics":{"label":"Hydroponics","colour":Color(.18,.62,.31),"cost":CELL_COST},
 	"life_support":{"label":"Life Support","colour":Color(.12,.63,.67),"cost":CELL_COST},
 	"engineering":{"label":"Power & Engineering","colour":Color(.88,.30,.16),"cost":CELL_COST},
+	"galley":{"label":"Galley","colour":Color(.90,.53,.16),"cost":CELL_COST},
+	"hygiene":{"label":"Hygiene","colour":Color(.18,.56,.75),"cost":CELL_COST},
+	"medical":{"label":"Medical Bay","colour":Color(.78,.26,.34),"cost":CELL_COST},
+	"waste_management":{"label":"Waste Management","colour":Color(.38,.45,.27),"cost":CELL_COST},
+	"communications":{"label":"Communications","colour":Color(.25,.45,.80),"cost":CELL_COST},
 	"corridor":{"label":"Corridor","colour":Color(.76,.30,.08),"cost":CELL_COST},
 	"airlock":{"label":"Airlock","colour":Color(.95,.43,.08),"cost":CELL_COST},
 	"vehicle_bay":{"label":"Vehicle Bay","colour":Color(.88,.62,.12),"cost":CELL_COST},
@@ -41,6 +46,11 @@ const ZONE_INFO := {
 	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Makes space for grow equipment. Furnish it to produce food."},
 	"life_support":{"cat":"rooms","icon":"wind","rule":"Drag an area","desc":"Makes space for air and water recyclers. Furnish it to support crew."},
 	"engineering":{"cat":"rooms","icon":"zap","rule":"Drag an area","desc":"A dedicated engineering room for electrical distribution, batteries and thermal hardware."},
+	"galley":{"cat":"rooms","icon":"utensils","rule":"Drag an area","desc":"A compact food-preparation and crew-meal space."},
+	"hygiene":{"cat":"rooms","icon":"droplets","rule":"Drag an area","desc":"A private washroom for hygiene and daily routines."},
+	"medical":{"cat":"rooms","icon":"heart-pulse","rule":"Drag an area","desc":"A small clinical bay for examination and medical supplies."},
+	"waste_management":{"cat":"rooms","icon":"recycle","rule":"Drag an area","desc":"A dedicated room for sorting and processing habitat waste."},
+	"communications":{"cat":"rooms","icon":"radio","rule":"Drag an area","desc":"A quiet station for surface links, telemetry and mission communications."},
 	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates","desc":"Creates a sealed passage. Add interior doors where it meets rooms."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates","desc":"The way in and out. The outer end faces Mars; the inner end must touch a room."},
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
@@ -1729,7 +1739,7 @@ func _systems() -> Dictionary:
 	for zone in zones:
 		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(_airlock_side(zone))*MHGame.sunlight_fraction
 		elif str(zone.kind)=="reactor" and _power_source_connected(zone): generation+=REACTOR_OUTPUT
-	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.hydroponics*5+counts.life_support*3+counts.engineering*4+counts.science*5+counts.vehicle_bay*4+counts.ice_extractor*8+int(equipment.power_draw)
+	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.hydroponics*5+counts.life_support*3+counts.engineering*4+counts.science*5+counts.vehicle_bay*4+counts.galley*3+counts.hygiene*2+counts.medical*3+counts.waste_management*3+counts.communications*2+counts.ice_extractor*8+int(equipment.power_draw)
 	# Dynamic non-catalogue devices can opt into the grid by joining this group
 	# and setting power_draw metadata. Catalogue equipment is already counted
 	# above, so it must not also join this group.
@@ -2025,7 +2035,7 @@ func climate_at(point: Vector3) -> Dictionary:
 	var radiation := "Sheltered"
 	var state := "unheated"
 	if climate_controlled:
-		var targets := {"living": 20.0, "hydroponics": 24.0, "science": 21.0, "storage": 12.0, "engineering": 18.0, "corridor": 16.0, "airlock": 8.0, "vehicle_bay": 6.0}
+		var targets := {"living": 20.0, "hydroponics": 24.0, "science": 21.0, "storage": 12.0, "engineering": 18.0, "galley": 20.0, "hygiene": 21.0, "medical": 21.0, "waste_management": 16.0, "communications": 20.0, "corridor": 16.0, "airlock": 8.0, "vehicle_bay": 6.0}
 		temperature = float(targets.get(zone_kind, 18.0))
 		state = "climate"
 		context += " · climate control"

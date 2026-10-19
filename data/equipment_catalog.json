@@ -4,7 +4,11 @@
     {"id": "living", "label": "Living Quarters", "icon": "bed-double"},
     {"id": "science", "label": "Science Laboratory", "icon": "flask-conical"},
     {"id": "hydroponics", "label": "Hydroponics", "icon": "sprout"},
-    {"id": "glass_room", "label": "Glass Greenhouse", "icon": "flower-2"},
+    {"id": "galley", "label": "Galley", "icon": "utensils"},
+    {"id": "hygiene", "label": "Hygiene", "icon": "droplets"},
+    {"id": "medical", "label": "Medical Bay", "icon": "heart-pulse"},
+    {"id": "waste_management", "label": "Waste Management", "icon": "recycle"},
+    {"id": "communications", "label": "Communications", "icon": "radio"},
     {"id": "life_support", "label": "Life Support", "icon": "wind"},
     {"id": "storage", "label": "Storage", "icon": "package"},
     {"id": "vehicle_bay", "label": "Vehicle Bay", "icon": "truck"},
@@ -234,7 +238,7 @@
     {
       "id": "greenhouse_planter",
       "label": "Greenhouse Planter",
-      "group": "glass_room", "status": "future", "icon": "flower-2", "height": 0.7,
+      "group": "hydroponics", "status": "future", "icon": "flower-2", "height": 0.7,
       "description": "Larger daylight-facing planted bed.",
       "role": "Food or wellbeing variant",
       "asset_scene": "res://assets/equipment/greenhouse_planter.glb",
@@ -247,7 +251,7 @@
     {
       "id": "greenhouse_shade_screen",
       "label": "Shade Screen",
-      "group": "glass_room", "status": "future", "icon": "sun", "height": 2.2,
+      "group": "hydroponics", "status": "future", "icon": "sun", "height": 2.2,
       "description": "Retractable radiation and light louvres.",
       "role": "Future temperature/radiation control",
       "asset_scene": "res://assets/equipment/greenhouse_shade_screen.glb",
@@ -260,7 +264,7 @@
     {
       "id": "greenhouse_observation_seat",
       "label": "Observation Seat",
-      "group": "glass_room", "status": "cosmetic", "icon": "mountain-snow", "height": 0.9,
+      "group": "hydroponics", "status": "cosmetic", "icon": "mountain-snow", "height": 0.9,
       "description": "View-facing bench with side table.",
       "role": "Wellbeing / personalisation",
       "asset_scene": "res://assets/equipment/greenhouse_observation_seat.glb",
@@ -273,7 +277,7 @@
     {
       "id": "pollination_tool_station",
       "label": "Pollination Station",
-      "group": "glass_room", "status": "future", "icon": "flower-2", "height": 1.1,
+      "group": "hydroponics", "status": "future", "icon": "flower-2", "height": 1.1,
       "description": "Crop maintenance tools and magnifier lamp.",
       "role": "Future crop reliability",
       "asset_scene": "res://assets/equipment/pollination_tool_station.glb",
@@ -651,6 +655,76 @@
       "footprint": [2, 1],
       "placement": "ceiling",
       "effects": {}
+    },
+    {
+      "id": "crew_chair", "label": "Crew Chair", "group": "living", "status": "cosmetic", "icon": "armchair", "height": 1.0,
+      "description": "A compact adjustable chair for a personal desk.", "role": "Personalisation", "asset_scene": "res://assets/equipment/crew_chair.glb", "cargo_cost": 35,
+      "valid_zones": ["living", "communications"], "footprint": [1, 1], "placement": "floor", "effects": {"happiness": 1}
+    },
+    {
+      "id": "crew_personal_desk", "label": "Personal Desk", "group": "living", "status": "cosmetic", "icon": "table-properties", "height": 1.1,
+      "description": "A small desk for private work, notes and personal effects.", "role": "Personalisation", "asset_scene": "res://assets/equipment/crew_personal_desk.glb", "cargo_cost": 70,
+      "valid_zones": ["living", "communications"], "footprint": [2, 1], "placement": "floor_wall", "effects": {"happiness": 1}
+    },
+    {
+      "id": "galley_counter", "label": "Galley Counter", "group": "galley", "status": "future", "icon": "cooking-pot", "height": 1.0,
+      "description": "Primary food-preparation counter for packaged meals and ingredients.", "role": "Future meal preparation", "asset_scene": "res://assets/equipment/galley_counter.glb", "cargo_cost": 120,
+      "valid_zones": ["galley"], "footprint": [2, 1], "placement": "floor_wall", "effects": {}
+    },
+    {
+      "id": "galley_sink", "label": "Galley Sink", "group": "galley", "status": "future", "icon": "waves", "height": 1.0,
+      "description": "Wash and food-preparation sink with a compact reclaim connection.", "role": "Future water-use feedback", "asset_scene": "res://assets/equipment/galley_sink.glb", "cargo_cost": 85,
+      "valid_zones": ["galley"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"water_draw": 1}
+    },
+    {
+      "id": "food_warmer", "label": "Food Warmer", "group": "galley", "status": "future", "icon": "heater", "height": 0.7,
+      "description": "Compact reheat unit for prepared meals.", "role": "Future meal service", "asset_scene": "res://assets/equipment/food_warmer.glb", "cargo_cost": 45,
+      "valid_zones": ["galley"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"power_draw": 1}
+    },
+    {
+      "id": "pantry_cabinet", "label": "Pantry Cabinet", "group": "galley", "status": "future", "icon": "archive", "height": 1.9,
+      "description": "Dry-food storage cabinet with labelled meal bins.", "role": "Future food inventory", "asset_scene": "res://assets/equipment/pantry_cabinet.glb", "cargo_cost": 90,
+      "valid_zones": ["galley", "storage"], "footprint": [1, 1], "placement": "floor_wall", "effects": {}
+    },
+    {
+      "id": "potable_water_dispenser", "label": "Water Dispenser", "group": "galley", "status": "future", "icon": "glass-water", "height": 1.5,
+      "description": "A refill point for crew drinking water.", "role": "Future water-use feedback", "asset_scene": "res://assets/equipment/potable_water_dispenser.glb", "cargo_cost": 55,
+      "valid_zones": ["galley", "living"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"water_draw": 1}
+    },
+    {
+      "id": "hygiene_shower", "label": "Hygiene Shower", "group": "hygiene", "status": "future", "icon": "shower-head", "height": 2.1,
+      "description": "Water-efficient wash stall for crew hygiene.", "role": "Future hygiene feedback", "asset_scene": "res://assets/equipment/hygiene_shower.glb", "cargo_cost": 140,
+      "valid_zones": ["hygiene"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"water_draw": 2, "power_draw": 1}
+    },
+    {
+      "id": "hygiene_toilet", "label": "Vacuum Toilet", "group": "hygiene", "status": "future", "icon": "circle-dot", "height": 1.2,
+      "description": "Compact vacuum toilet with a sealed waste connection.", "role": "Future waste feedback", "asset_scene": "res://assets/equipment/hygiene_toilet.glb", "cargo_cost": 115,
+      "valid_zones": ["hygiene"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"power_draw": 1}
+    },
+    {
+      "id": "hygiene_washbasin", "label": "Washbasin", "group": "hygiene", "status": "future", "icon": "droplets", "height": 1.0,
+      "description": "Hand-wash station with a reclaim drain.", "role": "Future hygiene feedback", "asset_scene": "res://assets/equipment/hygiene_washbasin.glb", "cargo_cost": 55,
+      "valid_zones": ["hygiene"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"water_draw": 1}
+    },
+    {
+      "id": "medical_cabinet", "label": "Medical Cabinet", "group": "medical", "status": "future", "icon": "cross", "height": 1.8,
+      "description": "Lockable cabinet for medicines, trauma kits and diagnostic supplies.", "role": "Future medical inventory", "asset_scene": "res://assets/equipment/medical_cabinet.glb", "cargo_cost": 85,
+      "valid_zones": ["medical"], "footprint": [1, 1], "placement": "floor_wall", "effects": {}
+    },
+    {
+      "id": "medical_exam_cot", "label": "Medical Exam Cot", "group": "medical", "status": "future", "icon": "bed", "height": 0.9,
+      "description": "A compact examination and recovery cot.", "role": "Future crew care", "asset_scene": "res://assets/equipment/medical_exam_cot.glb", "cargo_cost": 135,
+      "valid_zones": ["medical"], "footprint": [2, 1], "placement": "floor", "effects": {}
+    },
+    {
+      "id": "waste_sorting_unit", "label": "Waste Sorting Unit", "group": "waste_management", "status": "future", "icon": "recycle", "height": 1.7,
+      "description": "Separates recoverable material from sealed waste streams.", "role": "Future closed-loop processing", "asset_scene": "res://assets/equipment/waste_sorting_unit.glb", "cargo_cost": 170,
+      "valid_zones": ["waste_management"], "footprint": [2, 1], "placement": "floor_wall", "effects": {"power_draw": 2}
+    },
+    {
+      "id": "communications_station", "label": "Communications Station", "group": "communications", "status": "future", "icon": "radio", "height": 1.5,
+      "description": "A dedicated console for surface telemetry and mission communications.", "role": "Future mission link", "asset_scene": "res://assets/equipment/communications_station.glb", "cargo_cost": 145,
+      "valid_zones": ["communications", "science"], "footprint": [2, 1], "placement": "floor_wall", "effects": {"power_draw": 1}
     }
   ]
 }
