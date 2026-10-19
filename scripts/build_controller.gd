@@ -157,6 +157,10 @@ var _history: Array = []
 var dragging := false
 var drag_start := Vector2i.ZERO
 var hover := Vector2i.ZERO
+# The footprint editor grows an existing ordinary room one cell at a time.
+# A zone already stores an arbitrary cell array, so this is deliberately a
+# lightweight editing layer rather than a second room representation.
+var footprint_zone_index := -1
 var build_mode := false
 var tool := "place"
 # Display-only builders (menu backdrop) skip the camera, grid and HUD.
@@ -239,6 +243,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if tool=="remove":
 			if event.pressed: _remove_at(hover)
 			return
+		if tool=="footprint":
+			if event.pressed and not _pointer_over_ui(): _edit_room_footprint(hover, event.ctrl_pressed)
+			return
 		# Room corners are direct handles: no hidden structural mode or rotation
 		# key is required. A click cycles square → angled → rounded → square.
 		if event.pressed and equipment_id.is_empty() and shape_style.is_empty() and not _pointer_over_ui() and _cycle_room_corner_at_mouse():
@@ -288,6 +295,10 @@ func _process(delta: float) -> void:
 	_update_player_marker()
 	if tool=="remove" or _pointer_over_ui():
 		_draw_preview([],false); _update_hologram_ui([],"")
+		return
+	if tool=="footprint":
+		_draw_footprint_preview()
+		_update_hologram_ui([] if hover.x == 999 else [hover], _footprint_hover_reason(hover))
 		return
 	if not shape_style.is_empty():
 		_draw_preview([], false)
@@ -849,6 +860,134 @@ func _is_habitat_cell(cell: Vector2i) -> bool:
 
 func _valid(cells: Array) -> bool:
 	return _invalid_reason(cells).is_empty()
+
+func _edit_room_footprint(cell: Vector2i, remove_cell: bool) -> void:
+	if cell.x == 999:
+		return
+	var hit_zone := _zone_at(cell)
+	if not hit_zone.is_empty():
+		var hit_index := zones.find(hit_zone)
+		if hit_index < 0 or not _footprint_zone_is_editable(hit_zone):
+			_flash_notice("invalid", "Can't edit this footprint", "Choose an ordinary sealed room, not a specialised structure.")
+			return
+		if hit_index != footprint_zone_index:
+			footprint_zone_index = hit_index
+			_flash_notice("info", "Room footprint selected", "Click adjacent empty cells to grow it. Ctrl-click a selected edge cell to remove it.")
+			return
+		if remove_cell:
+			_remove_footprint_cell(cell)
+		else:
+			_flash_notice("info", "Room footprint selected", "Click an adjacent empty cell to add it. Ctrl-click an edge cell to remove it.")
+		return
+	if footprint_zone_index < 0 or footprint_zone_index >= zones.size():
+		_flash_notice("info", "Select a room first", "Then click an adjacent empty cell to grow its footprint.")
+		return
+	var reason := _footprint_add_reason(cell)
+	if not reason.is_empty():
+		_flash_notice("invalid", "Can't extend this room", reason + ".")
+		return
+	var zone: Dictionary = zones[footprint_zone_index]
+	var cells: Array = (zone.get("cells", []) as Array).duplicate()
+	cells.append(cell)
+	zone["cells"] = cells
+	zone["cost"] = int(ZONE_TYPES[str(zone.kind)].cost) * cells.size()
+	zones[footprint_zone_index] = zone
+	_rebuild()
+	MHAudio.sfx("place")
+	_flash_notice("valid", "Room extended", "%s is now %d cells." % [str(ZONE_TYPES[str(zone.kind)].label), cells.size()])
+
+func _footprint_zone_is_editable(zone: Dictionary) -> bool:
+	return _is_habitat_zone(zone) and str(zone.kind) not in ["airlock", "vehicle_bay", "corridor"]
+
+func _footprint_add_reason(cell: Vector2i) -> String:
+	if _occupied(cell): return "That cell is already part of the habitat"
+	var zone: Dictionary = zones[footprint_zone_index]
+	var connected := false
+	for side in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
+		if cell + side in zone.get("cells", []):
+			connected = true
+	if not connected: return "New cells must touch the selected room"
+	var site_limit := _site_build_limit()
+	if abs(cell.x) > site_limit / CELL or abs(cell.y) > site_limit / CELL: return "Outside the surveyed build area"
+	if _used_cargo() + int(ZONE_TYPES[str(zone.kind)].cost) > CARGO_BUDGET: return "Not enough cargo left"
+	var player := world.get_node_or_null("Player") as Node3D
+	if player != null and cell == Vector2i(roundi(player.global_position.x / CELL), roundi(player.global_position.z / CELL)):
+		return "Move clear of the player before building"
+	if is_inside_tree() and not zones.is_empty():
+		var terrain := _cell_highest_terrain(cell)
+		if terrain > habitat_base_y + .12: return "Ground is too high here"
+		if terrain < habitat_base_y - 1.85: return "Ground drops away too far"
+	return ""
+
+func _remove_footprint_cell(cell: Vector2i) -> void:
+	if footprint_zone_index < 0 or footprint_zone_index >= zones.size():
+		return
+	var zone: Dictionary = zones[footprint_zone_index]
+	var cells: Array = zone.get("cells", [])
+	if cell not in cells:
+		_flash_notice("invalid", "Choose this room", "Ctrl-click a selected room cell to remove it.")
+		return
+	if cells.size() <= 1:
+		_flash_notice("invalid", "Keep one cell", "Remove the room with the remove tool instead.")
+		return
+	if not _footprint_cell_is_edge(cell, cells):
+		_flash_notice("invalid", "Keep the room connected", "Only an outer edge cell can be removed.")
+		return
+	for item in placed_equipment:
+		if item.get("cell", Vector2i.ZERO) == cell:
+			_flash_notice("invalid", "Clear this cell first", "Remove its equipment before reshaping the room.")
+			return
+	for item in placed_interior:
+		if item.get("zone_cell", Vector2i.ZERO) == cell:
+			_flash_notice("invalid", "Clear this cell first", "Remove its equipment before reshaping the room.")
+			return
+	var next_cells := cells.duplicate()
+	next_cells.erase(cell)
+	if not _cells_are_connected(next_cells):
+		_flash_notice("invalid", "Keep the room connected", "That cell would split the room into separate spaces.")
+		return
+	zone["cells"] = next_cells
+	zone["cost"] = int(ZONE_TYPES[str(zone.kind)].cost) * next_cells.size()
+	zones[footprint_zone_index] = zone
+	_rebuild()
+	_flash_notice("valid", "Cell removed", "%s is now %d cells." % [str(ZONE_TYPES[str(zone.kind)].label), next_cells.size()])
+
+func _footprint_cell_is_edge(cell: Vector2i, cells: Array) -> bool:
+	for side in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
+		if cell + side not in cells:
+			return true
+	return false
+
+func _cells_are_connected(cells: Array) -> bool:
+	if cells.is_empty(): return false
+	var seen: Array = [cells[0]]
+	var open: Array = [cells[0]]
+	while not open.is_empty():
+		var current: Vector2i = open.pop_back()
+		for side in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
+			var neighbour := current + side
+			if neighbour in cells and neighbour not in seen:
+				seen.append(neighbour)
+				open.append(neighbour)
+	return seen.size() == cells.size()
+
+func _footprint_hover_reason(cell: Vector2i) -> String:
+	if footprint_zone_index < 0 or footprint_zone_index >= zones.size():
+		return "Click an ordinary room to edit its footprint"
+	if not _zone_at(cell).is_empty():
+		return "Ctrl-click a selected edge cell to remove it"
+	return _footprint_add_reason(cell)
+
+func _draw_footprint_preview() -> void:
+	if footprint_zone_index < 0 or footprint_zone_index >= zones.size() or hover.x == 999:
+		_draw_preview([], false)
+		return
+	var zone: Dictionary = zones[footprint_zone_index]
+	if not _zone_at(hover).is_empty():
+		_draw_preview([], false)
+		return
+	var valid := _footprint_add_reason(hover).is_empty()
+	_draw_preview([hover], valid)
 
 # Empty when the cells can be placed; otherwise a short reason for the
 # hologram status ("Can't place here · Overlaps a room").
@@ -1598,6 +1737,11 @@ func _add_room_shape_visual(modifier: Dictionary) -> void:
 	var shell_material := _room_shape_material(MHStyle.STRUCTURAL_WHITE.darkened(.08))
 	var seal_material := _room_shape_material(MHStyle.SEAL_DARK)
 	var trim_material := _room_shape_material(MHStyle.accent)
+	# Replacing a square corner removes two complete wall bays. Restore the
+	# straight half-bays that remain either side of the new curve/chamfer before
+	# adding the centre section, otherwise the shell is left open to Mars.
+	_add_room_shape_return_wall(holder, endpoint_a, Vector3(corner.x * HALF_CELL, 0, -corner.y * HALF_CELL), shell_material, seal_material, trim_material)
+	_add_room_shape_return_wall(holder, Vector3(-corner.x * HALF_CELL, 0, corner.y * HALF_CELL), endpoint_b, shell_material, seal_material, trim_material)
 	if style == "chamfer":
 		var midpoint := (endpoint_a + endpoint_b) * .5
 		_add_room_shape_box(holder, midpoint + Vector3(0, 1.42, 0), Vector3(chord_length, 2.74, .14), chord_yaw, shell_material)
@@ -1636,6 +1780,25 @@ func _add_room_shape_box(parent: Node3D, local_position: Vector3, size: Vector3,
 	visual.position = local_position
 	visual.rotation.y = yaw
 	parent.add_child(visual)
+
+func _add_room_shape_return_wall(parent: Node3D, start: Vector3, finish: Vector3, shell_material: Material, seal_material: Material, trim_material: Material) -> void:
+	var span := finish - start
+	var length := Vector2(span.x, span.z).length()
+	var midpoint := (start + finish) * .5
+	var yaw := atan2(span.z, span.x)
+	_add_room_shape_box(parent, midpoint + Vector3(0, 1.42, 0), Vector3(length, 2.74, .14), yaw, shell_material)
+	_add_room_shape_box(parent, midpoint + Vector3(0, .08, 0), Vector3(length + .05, .09, .19), yaw, seal_material)
+	_add_room_shape_box(parent, midpoint + Vector3(0, 2.74, 0), Vector3(length + .05, .10, .19), yaw, seal_material)
+	_add_room_shape_box(parent, midpoint + Vector3(0, .30, 0), Vector3(maxf(.05, length - .14), .12, .20), yaw, trim_material)
+	var body := StaticBody3D.new()
+	body.position = midpoint + Vector3(0, 1.42, 0)
+	body.rotation.y = yaw
+	parent.add_child(body)
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(length, 2.74, .16)
+	collision.shape = shape
+	body.add_child(collision)
 
 func _add_rounded_room_shape_panel(parent: Node3D, corner: Vector2i, shell_material: Material) -> void:
 	var start_angle := _room_shape_arc_start(corner)
@@ -2880,13 +3043,14 @@ func _build_tool_bar() -> void:
 	var band:=CenterContainer.new(); band.anchor_top=1; band.anchor_bottom=1; band.anchor_right=1; band.offset_right=-472; band.offset_top=-176; band.offset_bottom=-80; band.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(band)
 	var bar:=PanelContainer.new(); bar.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.SURFACE_HUD,MHStyle.BORDER_SUBTLE,MHStyle.RADIUS_MD,1,Vector4(8,8,8,8))); band.add_child(bar)
 	var row:=MHStyle.hbox(8); bar.add_child(row)
-	for entry in [["place","box","Place","LMB"],["rotate","rotate-cw","Rotate","R"],["remove","trash-2","Remove","X"],["undo","undo-2","Undo","Ctrl Z"]]:
+	for entry in [["place","box","Place","LMB"],["footprint","git-branch","Footprint","Edit"],["rotate","rotate-cw","Rotate","R"],["remove","trash-2","Remove","X"],["undo","undo-2","Undo","Ctrl Z"]]:
 		var item:=MHStyle.vbox(6); item.alignment=BoxContainer.ALIGNMENT_CENTER; row.add_child(item)
 		var b:=Button.new(); b.icon=MHIcons.texture(entry[1],22); b.tooltip_text=str(entry[2]); b.custom_minimum_size=Vector2(52,48); b.icon_alignment=HORIZONTAL_ALIGNMENT_CENTER; b.focus_mode=Control.FOCUS_NONE; b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 		b.theme_type_variation="GhostButton"; item.add_child(b)
 		var cap:=MHStyle.keycap(str(entry[3]),true); cap.size_flags_horizontal=Control.SIZE_SHRINK_CENTER; item.add_child(cap)
 		match str(entry[0]):
 			"place": b.pressed.connect(_set_tool.bind("place"))
+			"footprint": b.pressed.connect(_set_tool.bind("footprint"))
 			"rotate": b.pressed.connect(func() -> void: _rotate_airlock(); _refresh_catalogue())
 			"remove": b.pressed.connect(func() -> void: _set_tool("place" if tool=="remove" else "remove"))
 			"undo": b.pressed.connect(_undo)
@@ -2895,6 +3059,9 @@ func _build_tool_bar() -> void:
 
 func _set_tool(next_tool: String) -> void:
 	tool=next_tool; dragging=false
+	if tool=="footprint":
+		equipment_id=""
+		shape_style=""
 	for id in tool_buttons:
 		var active:bool=id==tool
 		var b:Button=tool_buttons[id]
@@ -2908,6 +3075,16 @@ func _update_hologram_ui(cells: Array,reason: String) -> void:
 	if tool=="remove":
 		state="remove"; message="Click equipment or a zone to remove it · full refund"
 		placing_label.text="Remove tool"; placing_delta.text=""
+	elif tool=="footprint":
+		placing_label.text="Edit room footprint"
+		placing_delta.text=""
+		if footprint_zone_index < 0 or footprint_zone_index >= zones.size():
+			state="info"; message="Click an ordinary room to select it"
+		else:
+			var edit_zone: Dictionary = zones[footprint_zone_index]
+			state="valid" if reason.is_empty() else "invalid"
+			message="%s · click adjacent empty cells to add · Ctrl-click edge cells to remove" % str(ZONE_TYPES[str(edit_zone.kind)].label)
+			if not reason.is_empty(): message=reason
 	elif _pointer_over_ui():
 		placing_label.text="Placing %s" % placing_name; placing_delta.text=""
 	elif not equipment_id.is_empty():
