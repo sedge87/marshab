@@ -1428,6 +1428,10 @@ func _add_exterior_safety_light(centre: Vector3, side: Vector2i) -> void:
 	lens_material.emission = Color("#FFE7AC")
 	lens_material.emission_energy_multiplier = 2.0
 	lens.material_override = lens_material
+	# The physical fixture is useful in exploration but reads as noisy loose
+	# rectangles in the blueprint view. Keep the actual OmniLight active while
+	# hiding only this visible lens in build mode.
+	lens.add_to_group("build_hidden_light_fixture")
 	lens.add_to_group("grid_powered_light")
 	lens.set_meta("grid_emission_on", Color("#FFE7AC"))
 	lens.set_meta("grid_emission_off", Color("#293034"))
@@ -1532,6 +1536,8 @@ func _set_build_view(show_plan: bool) -> void:
 	for plan in get_tree().get_nodes_in_group("habitat_plan"): plan.visible=show_plan
 	for label in get_tree().get_nodes_in_group("zone_label"): label.visible=show_plan
 	for field in get_tree().get_nodes_in_group("power_field_visual"): field.visible=show_plan
+	for fixture in get_tree().get_nodes_in_group("build_hidden_light_fixture"):
+		(fixture as VisualInstance3D).visible = not show_plan
 
 func _set_visual_children(node: Node,visible: bool) -> void:
 	if node is VisualInstance3D:
