@@ -239,6 +239,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		if tool=="remove":
 			if event.pressed: _remove_at(hover)
 			return
+		# Room corners are direct handles: no hidden structural mode or rotation
+		# key is required. A click cycles square → angled → rounded → square.
+		if event.pressed and equipment_id.is_empty() and shape_style.is_empty() and not _pointer_over_ui() and _cycle_room_corner_at_mouse():
+			return
 		if not shape_style.is_empty():
 			if event.pressed and not _pointer_over_ui(): _request_room_shape(hover)
 			return
@@ -375,6 +379,12 @@ func _cell_at_mouse(plane_y := 0.0) -> Vector2i:
 	if absf(direction.y)<.001: return Vector2i(999,999)
 	var point:=origin+direction*((plane_y-origin.y)/direction.y)
 	return Vector2i(roundi(point.x/CELL),roundi(point.z/CELL))
+
+func _world_point_at_mouse(plane_y := 0.0) -> Vector3:
+	var origin := camera.project_ray_origin(get_viewport().get_mouse_position())
+	var direction := camera.project_ray_normal(get_viewport().get_mouse_position())
+	if absf(direction.y) < .001: return Vector3.INF
+	return origin + direction * ((plane_y - origin.y) / direction.y)
 
 func _cells(a: Vector2i,b: Vector2i) -> Array:
 	var out:Array=[]
@@ -1100,6 +1110,7 @@ func _rebuild() -> void:
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
 	for zone in zones: _add_zone_label(zone)
+	_add_room_shape_handles()
 	_set_build_view(build_mode); _update_budget(); _update_summary(); _update_systems(); _apply_grid_power()
 	habitat_changed.emit()
 
@@ -1305,7 +1316,7 @@ func _shape_opens_edge(cell: Vector2i, side: Vector2i) -> bool:
 			return true
 	return false
 
-func _shape_modifier_invalid_reason(cell: Vector2i, corner: Vector2i, style: String) -> String:
+func _shape_modifier_invalid_reason(cell: Vector2i, corner: Vector2i, style: String, allow_replace := false) -> String:
 	if not ROOM_SHAPE_SCENES.has(style): return "Unknown shell style"
 	if abs(corner.x) != 1 or abs(corner.y) != 1: return "Choose an exterior corner"
 	var zone := _zone_at(cell)
@@ -1315,23 +1326,26 @@ func _shape_modifier_invalid_reason(cell: Vector2i, corner: Vector2i, style: Str
 	# into a neighbouring sealed room or into a player-installed interior door.
 	for side in [Vector2i(corner.x, 0), Vector2i(0, corner.y)]:
 		if not _zone_at(cell + side).is_empty(): return "That corner meets another room"
-		if not _should_build_wall(cell, side): return "That wall edge is not available"
+		if not allow_replace and not _should_build_wall(cell, side): return "That wall edge is not available"
 	for modifier in room_shape_modifiers:
-		if modifier.get("cell", Vector2i.ZERO) == cell and modifier.get("corner", Vector2i.ZERO) == corner:
+		if not allow_replace and modifier.get("cell", Vector2i.ZERO) == cell and modifier.get("corner", Vector2i.ZERO) == corner:
 			return "That corner already has a shell style"
 	return ""
 
 func _request_room_shape(cell: Vector2i) -> void:
-	var reason := _shape_modifier_invalid_reason(cell, shape_corner, shape_style)
+	_request_room_shape_change(cell, shape_corner, shape_style, false)
+
+func _request_room_shape_change(cell: Vector2i, corner: Vector2i, style: String, replace: bool) -> void:
+	var reason := _shape_modifier_invalid_reason(cell, corner, style, replace)
 	if not reason.is_empty():
 		_flash_notice("invalid", "Can't reshape here", reason + ".")
 		return
 	var zone := _zone_at(cell)
 	var impact := _room_shape_impact(zone)
 	if int(impact.count) == 0:
-		_apply_room_shape(cell, shape_corner, shape_style)
+		_apply_room_shape(cell, corner, style, replace)
 		return
-	pending_shape_request = {"cell":cell, "corner":shape_corner, "style":shape_style, "impact":impact}
+	pending_shape_request = {"cell":cell, "corner":corner, "style":style, "replace":replace, "impact":impact}
 	var dialog := ConfirmationDialog.new()
 	dialog.title = "Refund room contents?"
 	dialog.dialog_text = "Changing this room's corner will remove %d item%s and refund %s of cargo. Continue?" % [int(impact.count), "" if int(impact.count) == 1 else "s", MHStyle.kg(int(impact.refund))]
@@ -1356,16 +1370,24 @@ func _room_shape_impact(zone: Dictionary) -> Dictionary:
 
 func _confirm_room_shape() -> void:
 	if pending_shape_request.is_empty(): return
-	_apply_room_shape(pending_shape_request.cell, pending_shape_request.corner, str(pending_shape_request.style))
+	if bool(pending_shape_request.get("remove", false)):
+		_remove_room_shape(pending_shape_request.cell, pending_shape_request.corner)
+	else:
+		_apply_room_shape(pending_shape_request.cell, pending_shape_request.corner, str(pending_shape_request.style), bool(pending_shape_request.get("replace", false)))
 	pending_shape_request = {}
 
-func _apply_room_shape(cell: Vector2i, corner: Vector2i, style: String) -> void:
-	var reason := _shape_modifier_invalid_reason(cell, corner, style)
+func _apply_room_shape(cell: Vector2i, corner: Vector2i, style: String, replace := false) -> void:
+	var reason := _shape_modifier_invalid_reason(cell, corner, style, replace)
 	if not reason.is_empty():
 		_flash_notice("invalid", "Can't reshape here", reason + ".")
 		return
 	var zone := _zone_at(cell)
 	var refund := _refund_room_contents(zone)
+	if replace:
+		for index in range(room_shape_modifiers.size() - 1, -1, -1):
+			var old_modifier: Dictionary = room_shape_modifiers[index]
+			if old_modifier.get("cell", Vector2i.ZERO) == cell and old_modifier.get("corner", Vector2i.ZERO) == corner:
+				room_shape_modifiers.remove_at(index)
 	room_shape_modifiers.append({"cell":cell, "corner":corner, "style":style})
 	_rebuild()
 	_flash_notice("valid", "%s added" % str(ROOM_SHAPE_INFO[style].label), ("+%s cargo refunded" % MHStyle.kg(refund)) if refund > 0 else "Room shell reshaped")
@@ -1387,6 +1409,69 @@ func _refund_room_contents(zone: Dictionary) -> int:
 					child.queue_free()
 			placed_interior.remove_at(index)
 	return refund
+
+func _room_corner_at_mouse() -> Dictionary:
+	var point := _world_point_at_mouse(habitat_base_y + .12)
+	if point == Vector3.INF: return {}
+	var closest := {}
+	var closest_distance := .72
+	for zone in zones:
+		if not _is_habitat_zone(zone) or str(zone.kind) in ["airlock", "vehicle_bay", "corridor"]:
+			continue
+		for cell in zone.cells:
+			for corner in [Vector2i(1,1), Vector2i(-1,1), Vector2i(-1,-1), Vector2i(1,-1)]:
+				# A corner handle exists only when both faces are exposed to Mars.
+				if not _zone_at(cell + Vector2i(corner.x, 0)).is_empty() or not _zone_at(cell + Vector2i(0, corner.y)).is_empty():
+					continue
+				var world_corner := Vector3(cell.x * CELL + corner.x * HALF_CELL, habitat_base_y + .12, cell.y * CELL + corner.y * HALF_CELL)
+				var distance := Vector2(point.x - world_corner.x, point.z - world_corner.z).length()
+				if distance < closest_distance:
+					closest_distance = distance
+					closest = {"cell":cell, "corner":corner}
+	return closest
+
+func _cycle_room_corner_at_mouse() -> bool:
+	var target := _room_corner_at_mouse()
+	if target.is_empty(): return false
+	var current_index := -1
+	for index in range(room_shape_modifiers.size()):
+		var modifier: Dictionary = room_shape_modifiers[index]
+		if modifier.get("cell", Vector2i.ZERO) == target.cell and modifier.get("corner", Vector2i.ZERO) == target.corner:
+			current_index = index
+			break
+	var current_style := "" if current_index < 0 else str((room_shape_modifiers[current_index] as Dictionary).get("style", ""))
+	var next_style := {"":"chamfer", "chamfer":"rounded", "rounded":""}.get(current_style, "")
+	if next_style.is_empty():
+		_request_room_shape_removal(target.cell, target.corner)
+	else:
+		_request_room_shape_change(target.cell, target.corner, next_style, current_index >= 0)
+	return true
+
+func _request_room_shape_removal(cell: Vector2i, corner: Vector2i) -> void:
+	var zone := _zone_at(cell)
+	var impact := _room_shape_impact(zone)
+	if int(impact.count) == 0:
+		_remove_room_shape(cell, corner)
+		return
+	pending_shape_request = {"cell":cell, "corner":corner, "style":"", "remove":true, "impact":impact}
+	var dialog := ConfirmationDialog.new()
+	dialog.title = "Refund room contents?"
+	dialog.dialog_text = "Returning this corner to square will remove %d item%s and refund %s of cargo. Continue?" % [int(impact.count), "" if int(impact.count) == 1 else "s", MHStyle.kg(int(impact.refund))]
+	dialog.ok_button_text = "Refund and reshape"
+	dialog.confirmed.connect(_confirm_room_shape)
+	dialog.canceled.connect(func() -> void: pending_shape_request = {})
+	ui.add_child(dialog)
+	dialog.popup_centered(Vector2i(520, 220))
+
+func _remove_room_shape(cell: Vector2i, corner: Vector2i) -> void:
+	var zone := _zone_at(cell)
+	var refund := _refund_room_contents(zone)
+	for index in range(room_shape_modifiers.size() - 1, -1, -1):
+		var modifier: Dictionary = room_shape_modifiers[index]
+		if modifier.get("cell", Vector2i.ZERO) == cell and modifier.get("corner", Vector2i.ZERO) == corner:
+			room_shape_modifiers.remove_at(index)
+	_rebuild()
+	_flash_notice("valid", "Square corner restored", ("+%s cargo refunded" % MHStyle.kg(refund)) if refund > 0 else "Room shell restored")
 
 func _add_room_shape_visual(modifier: Dictionary) -> void:
 	var style := str(modifier.get("style", ""))
@@ -1754,6 +1839,29 @@ func _add_zone_label(zone: Dictionary) -> void:
 	var label:=_label3d(str(ZONE_TYPES[zone.kind].label).to_upper(),40,MHStyle.INK_100); label.position=centre+Vector3(0,habitat_base_y+.4,0); label.offset=Vector2(0,22); label.visible=build_mode; label.add_to_group("zone_label"); root.add_child(label)
 	var detail:=_label3d("%d CELLS · %s" % [cells.size(),MHStyle.kg(int(zone.cost))],28,(ZONE_TYPES[zone.kind].colour as Color).lightened(.35),600); detail.font=MHStyle.font(600,true,1); detail.position=centre+Vector3(0,habitat_base_y+.4,0); detail.offset=Vector2(0,-24); detail.visible=build_mode; detail.add_to_group("zone_label"); root.add_child(detail)
 
+func _add_room_shape_handles() -> void:
+	# These are plan-only affordances. They make the edit discoverable without
+	# cluttering first-person exploration or forcing a separate mode.
+	for zone in zones:
+		if not _is_habitat_zone(zone) or str(zone.kind) in ["airlock", "vehicle_bay", "corridor"]:
+			continue
+		for cell in zone.cells:
+			for corner in [Vector2i(1,1), Vector2i(-1,1), Vector2i(-1,-1), Vector2i(1,-1)]:
+				if not _zone_at(cell + Vector2i(corner.x, 0)).is_empty() or not _zone_at(cell + Vector2i(0, corner.y)).is_empty():
+					continue
+				var style := ""
+				for modifier in room_shape_modifiers:
+					if modifier.get("cell", Vector2i.ZERO) == cell and modifier.get("corner", Vector2i.ZERO) == corner:
+						style = str(modifier.get("style", ""))
+				var marker := MeshInstance3D.new()
+				marker.name = "RoomCornerHandle_%s" % (style if not style.is_empty() else "square")
+				var marker_mesh := CylinderMesh.new(); marker_mesh.top_radius=.19; marker_mesh.bottom_radius=.19; marker_mesh.height=.045; marker_mesh.radial_segments=16; marker.mesh=marker_mesh
+				marker.position=Vector3(cell.x*CELL+corner.x*HALF_CELL, habitat_base_y+.14, cell.y*CELL+corner.y*HALF_CELL)
+				var material:=StandardMaterial3D.new(); material.albedo_color=MHStyle.accent if style.is_empty() else (MHStyle.VALID if style=="chamfer" else Color("#A879E8")); material.emission_enabled=true; material.emission=material.albedo_color; material.emission_energy_multiplier=1.5; marker.material_override=material
+				marker.add_to_group("room_shape_handle"); marker.visible=build_mode; root.add_child(marker)
+				var glyph := _label3d("+" if style.is_empty() else ("╱" if style=="chamfer" else "◜"), 24, Color.WHITE)
+				glyph.position=marker.position+Vector3(0,.03,0); glyph.billboard=BaseMaterial3D.BILLBOARD_ENABLED; glyph.visible=build_mode; glyph.add_to_group("room_shape_handle"); root.add_child(glyph)
+
 func _set_build_view(show_plan: bool) -> void:
 	# Exterior build is deliberately schematic. Hide every rendered habitat,
 	# interior-equipment and surface-prop visual first; only plan layers below
@@ -1763,6 +1871,7 @@ func _set_build_view(show_plan: bool) -> void:
 		_set_visual_children(visual_root, not show_plan)
 	for plan in get_tree().get_nodes_in_group("habitat_plan"): plan.visible=show_plan
 	for label in get_tree().get_nodes_in_group("zone_label"): label.visible=show_plan
+	for handle in get_tree().get_nodes_in_group("room_shape_handle"): handle.visible=show_plan
 	for field in get_tree().get_nodes_in_group("power_field_visual"): field.visible=show_plan
 
 func _set_visual_children(node: Node,visible: bool) -> void:
@@ -2421,18 +2530,8 @@ func _refresh_catalogue() -> void:
 		for id in ZONE_TYPES:
 			if str(ZONE_INFO[id].cat)!=category: continue
 			catalogue_grid.add_child(_part_card(id,id==kind and equipment_id.is_empty(),remaining<int(ZONE_TYPES[id].cost)))
-		if category == "structure":
-			for style in ROOM_SHAPE_INFO:
-				catalogue_grid.add_child(_room_shape_card(style, style == shape_style))
 	if not equipment_id.is_empty():
 		_refresh_equipment_detail()
-		return
-	if not shape_style.is_empty():
-		var shape_info: Dictionary = ROOM_SHAPE_INFO[shape_style]
-		catalogue_detail.add_child(MHStyle.title(str(shape_info.label), 20))
-		catalogue_detail.add_child(MHStyle.body(str(shape_info.desc), 16))
-		catalogue_detail.add_child(MHStyle.mono("Click a room's corner cell · R changes corner (%s)" % _shape_corner_name(), 13, MHStyle.TEXT_SECONDARY))
-		catalogue_detail.add_child(MHStyle.badge("Refunds room contents after confirmation", "warn"))
 		return
 	var info:Dictionary=ZONE_INFO[kind]
 	var head:=MHStyle.hbox(8); catalogue_detail.add_child(head)
