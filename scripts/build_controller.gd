@@ -1255,7 +1255,9 @@ func _rebuild() -> void:
 	for child in root.get_children(): child.queue_free()
 	for zone in zones:
 		_zone_surfaces(zone)
-		if str(zone.kind)=="airlock": _build_airlock_zone(zone)
+		if _zone_has_room_shape(zone) and _zone_is_rectangle(zone):
+			_build_custom_shaped_room_shell(zone)
+		elif str(zone.kind)=="airlock": _build_airlock_zone(zone)
 		elif str(zone.kind)=="vehicle_bay": _build_vehicle_bay(zone)
 		elif str(zone.kind)=="solar": _build_solar(zone)
 		elif str(zone.kind)=="reactor": _build_reactor(zone)
@@ -1263,7 +1265,9 @@ func _rebuild() -> void:
 		else:
 			for cell in zone.cells: _cell_walls(cell,zone)
 	for modifier in room_shape_modifiers:
-		_add_room_shape_visual(modifier)
+		var modifier_cell: Vector2i = modifier.get("cell", Vector2i.ZERO)
+		var modifier_corner: Vector2i = modifier.get("corner", Vector2i.ZERO)
+		_add_room_shape_plan_outline(modifier_cell, modifier_corner, str(modifier.get("style", "")))
 	for door_data in interior_doors:
 		var door_cell: Vector2i = door_data.get("cell", Vector2i.ZERO)
 		var door_side: Vector2i = door_data.get("side", Vector2i.ZERO)
@@ -1331,7 +1335,7 @@ func _zone_surfaces(zone: Dictionary) -> void:
 	var show_generated_surface := true
 	# A drag rectangle is one continuous interior slab and one continuous roof.
 	# For a future irregular paint shape, individual cells remain a safe fallback.
-	if cells.size()==(max_x-min_x+1)*(max_z-min_z+1):
+	if _zone_is_rectangle(zone):
 		if _zone_has_room_shape(zone):
 			_add_shaped_zone_slab(zone, habitat_base_y - .1, .2, colour.darkened(.48), "habitat_floor", show_generated_surface)
 			_add_shaped_zone_slab(zone, habitat_base_y + 2.9, .15, MHStyle.STRUCTURAL_WHITE.darkened(.08), "habitat_roof", show_generated_surface)
@@ -1403,7 +1407,7 @@ func _prune_room_shape_modifiers() -> void:
 		var cell: Vector2i = modifier.get("cell", Vector2i.ZERO)
 		var corner: Vector2i = modifier.get("corner", Vector2i.ZERO)
 		var zone := _zone_at(cell)
-		var valid := ROOM_SHAPE_SCENES.has(str(modifier.get("style", ""))) and not zone.is_empty() and _is_habitat_zone(zone) and str(zone.kind) not in ["airlock", "vehicle_bay", "corridor"]
+		var valid := ROOM_SHAPE_SCENES.has(str(modifier.get("style", ""))) and not zone.is_empty() and _is_habitat_zone(zone) and _zone_is_rectangle(zone) and str(zone.kind) not in ["airlock", "vehicle_bay", "corridor"]
 		for side in [Vector2i(corner.x, 0), Vector2i(0, corner.y)]:
 			if not _zone_at(cell + side).is_empty(): valid = false
 		if not valid:
@@ -1537,6 +1541,55 @@ func _zone_has_room_shape(zone: Dictionary) -> bool:
 			return true
 	return false
 
+func _zone_is_rectangle(zone: Dictionary) -> bool:
+	var cells: Array = zone.get("cells", [])
+	if cells.is_empty(): return false
+	var min_x: int = cells[0].x
+	var max_x: int = cells[0].x
+	var min_z: int = cells[0].y
+	var max_z: int = cells[0].y
+	for cell in cells:
+		min_x = mini(min_x, cell.x); max_x = maxi(max_x, cell.x)
+		min_z = mini(min_z, cell.y); max_z = maxi(max_z, cell.y)
+	return cells.size() == (max_x - min_x + 1) * (max_z - min_z + 1)
+
+func _build_custom_shaped_room_shell(zone: Dictionary) -> void:
+	# A room with a curved or chamfered perimeter cannot use square imported wall
+	# bays: their posts and roof rails necessarily protrude through the new edge.
+	# Generate the entire perimeter here so every wall, trim and collision edge is
+	# derived from exactly the same polygon as the roof and foundation.
+	var polygon := _zone_shell_polygon(zone)
+	if polygon.size() < 3: return
+	for index in range(polygon.size()):
+		var next_index := (index + 1) % polygon.size()
+		_add_custom_shell_wall(polygon[index], polygon[next_index])
+
+func _add_custom_shell_wall(start: Vector2, finish: Vector2) -> void:
+	var span := finish - start
+	var length := span.length()
+	if length < .01: return
+	var midpoint := (start + finish) * .5
+	var yaw := atan2(span.y, span.x)
+	var body := StaticBody3D.new()
+	body.name = "CustomRoomShellWall"
+	body.position = Vector3(midpoint.x, habitat_base_y + 1.42, midpoint.y)
+	body.rotation.y = yaw
+	body.collision_layer = 1
+	body.collision_mask = 1
+	root.add_child(body)
+	var shell_material := _room_shape_material(MHStyle.STRUCTURAL_WHITE.darkened(.08))
+	var seal_material := _room_shape_material(MHStyle.SEAL_DARK)
+	var trim_material := _room_shape_material(MHStyle.accent)
+	_add_room_shape_box(body, Vector3.ZERO, Vector3(length + .025, 2.74, .16), 0.0, shell_material)
+	_add_room_shape_box(body, Vector3(0, -1.34, 0), Vector3(length + .05, .10, .21), 0.0, seal_material)
+	_add_room_shape_box(body, Vector3(0, 1.33, 0), Vector3(length + .05, .11, .21), 0.0, seal_material)
+	_add_room_shape_box(body, Vector3(0, -1.12, 0), Vector3(maxf(.05, length - .18), .12, .22), 0.0, trim_material)
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(length + .03, 2.74, .18)
+	collision.shape = shape
+	body.add_child(collision)
+
 func _add_shaped_zone_slab(zone: Dictionary, centre_y: float, thickness: float, colour: Color, group: String, show_visual: bool) -> void:
 	var polygon := _zone_shell_polygon(zone)
 	if polygon.size() < 3:
@@ -1617,8 +1670,8 @@ func _append_zone_shell_corner(polygon: Array[Vector2], cell: Vector2i, corner: 
 	var start_angle := _room_shape_arc_start(corner)
 	# The plan follows the same continuous arc as the room wall, not a square
 	# roof with a decorative curve placed under it.
-	for index in range(7):
-		var angle := start_angle + PI * .5 * float(index) / 6.0
+	for index in range(17):
+		var angle := start_angle + PI * .5 * float(index) / 16.0
 		polygon.append(Vector2(cell.x * CELL + cos(angle) * HALF_CELL, cell.y * CELL + sin(angle) * HALF_CELL))
 
 func _shape_modifier_invalid_reason(cell: Vector2i, corner: Vector2i, style: String, allow_replace := false) -> String:
@@ -1627,6 +1680,7 @@ func _shape_modifier_invalid_reason(cell: Vector2i, corner: Vector2i, style: Str
 	var zone := _zone_at(cell)
 	if zone.is_empty() or not _is_habitat_zone(zone): return "Click a completed room corner"
 	if str(zone.kind) in ["airlock", "vehicle_bay", "corridor"]: return "This shell style fits ordinary rooms, not this structure"
+	if not _zone_is_rectangle(zone): return "Use the footprint tool for concave or stepped rooms"
 	# The two selected faces must be genuinely exposed. We never cut an opening
 	# into a neighbouring sealed room or into a player-installed interior door.
 	for side in [Vector2i(corner.x, 0), Vector2i(0, corner.y)]:
