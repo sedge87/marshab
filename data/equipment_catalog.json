@@ -102,7 +102,6 @@
       "primary_action": "Read workbench",
       "interaction_note": "Workbench status: sample workflow ready. Install a sample-analysis station to expand the laboratory.",
       "asset_scene": "res://assets/equipment/science_workbench.glb",
-      "model_rotation_x": -1.57079633,
       "cargo_cost": 180,
       "valid_zones": ["science"],
       "footprint": [2, 1],
