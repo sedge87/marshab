@@ -965,7 +965,7 @@ func _cells_are_connected(cells: Array) -> bool:
 	while not open.is_empty():
 		var current: Vector2i = open.pop_back()
 		for side in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
-			var neighbour := current + side
+			var neighbour: Vector2i = current + side
 			if neighbour in cells and neighbour not in seen:
 				seen.append(neighbour)
 				open.append(neighbour)
