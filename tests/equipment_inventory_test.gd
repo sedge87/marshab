@@ -27,6 +27,7 @@ func _initialize() -> void:
 	assert(builder.interior_asset_available("science_workbench"), "Delivered science workbench art should be available in the first-person palette.")
 	assert(builder.interior_asset_available("sample_analysis_station"), "Delivered science station art should be available in the first-person palette.")
 	assert(builder.interior_asset_available("water_reclaimer"), "Delivered life-support art should be available in the first-person palette.")
+	assert(builder.interior_asset_available("spares_cabinet"), "Delivered storage art should be available in the first-person palette.")
 	var world := Node3D.new()
 	root.add_child(world)
 	await process_frame
