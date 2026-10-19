@@ -1134,8 +1134,13 @@ func _zone_surfaces(zone: Dictionary) -> void:
 		_add_box(centre+Vector3(0,habitat_base_y-.1,0),Vector3(size_x,.2,size_z),colour.darkened(.48),true,"habitat_floor",show_generated_surface)
 		_add_box(centre+Vector3(0,habitat_base_y+2.9,0),Vector3(size_x,.15,size_z),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof",show_generated_surface)
 		if zone_kind!="corridor" and zone_kind!="airlock":
-			for corner in [Vector2i(min_x,min_z),Vector2i(max_x+1,min_z),Vector2i(max_x+1,max_z+1),Vector2i(min_x,max_z+1)]:
-				_add_showcase(SHOWCASE_CORNER,Vector3(corner.x*CELL-CELL*.5,habitat_base_y,corner.y*CELL-CELL*.5))
+			var shell_cells: Array[Vector2i] = [Vector2i(min_x,min_z), Vector2i(max_x,min_z), Vector2i(max_x,max_z), Vector2i(min_x,max_z)]
+			var shell_sides: Array[Vector2i] = [Vector2i(-1,-1), Vector2i(1,-1), Vector2i(1,1), Vector2i(-1,1)]
+			for corner_index in shell_cells.size():
+				var corner_cell: Vector2i = shell_cells[corner_index]
+				var corner_side: Vector2i = shell_sides[corner_index]
+				if _room_shape_at(corner_cell, corner_side).is_empty():
+					_add_showcase(SHOWCASE_CORNER, Vector3(corner_cell.x*CELL+corner_side.x*HALF_CELL, habitat_base_y, corner_cell.y*CELL+corner_side.y*HALF_CELL))
 		if zone_kind=="corridor":
 			_add_corridor_understructure(cells)
 	else:
@@ -1316,6 +1321,13 @@ func _shape_opens_edge(cell: Vector2i, side: Vector2i) -> bool:
 			return true
 	return false
 
+func _room_shape_at(cell: Vector2i, corner: Vector2i) -> Dictionary:
+	for modifier in room_shape_modifiers:
+		var shape: Dictionary = modifier
+		if shape.get("cell", Vector2i.ZERO) == cell and shape.get("corner", Vector2i.ZERO) == corner:
+			return shape
+	return {}
+
 func _shape_modifier_invalid_reason(cell: Vector2i, corner: Vector2i, style: String, allow_replace := false) -> String:
 	if not ROOM_SHAPE_SCENES.has(style): return "Unknown shell style"
 	if abs(corner.x) != 1 or abs(corner.y) != 1: return "Choose an exterior corner"
@@ -1480,16 +1492,123 @@ func _add_room_shape_visual(modifier: Dictionary) -> void:
 	var cell: Vector2i = modifier.get("cell", Vector2i.ZERO)
 	var corner: Vector2i = modifier.get("corner", Vector2i.ONE)
 	var holder := Node3D.new()
-	holder.name = "%sRoomCorner" % style.capitalize()
+	holder.name = "%sGeneratedRoomCorner" % style.capitalize()
 	holder.position = Vector3(cell.x * CELL, habitat_base_y, cell.y * CELL)
-	holder.rotation.y = {Vector2i(1,1):0.0, Vector2i(-1,1):PI*.5, Vector2i(-1,-1):PI, Vector2i(1,-1):-PI*.5}.get(corner, 0.0)
 	root.add_child(holder)
-	var model: Node3D = (ROOM_SHAPE_SCENES[style] as PackedScene).instantiate()
-	holder.add_child(model)
-	# A diagonal pressure-wall collision seals the chord of both round and angled
-	# variants. The decorative model supplies the visible curve or bevel.
-	var body := StaticBody3D.new(); body.position = Vector3(corner.x * CELL * .25, 1.42, corner.y * CELL * .25); body.rotation.y = holder.rotation.y - PI * .25; holder.add_child(body)
-	var collision := CollisionShape3D.new(); var collision_shape := BoxShape3D.new(); collision_shape.size = Vector3(CELL * .72, 2.72, .14); collision.shape = collision_shape; body.add_child(collision)
+	# These panels are generated from the same cell measurements as the shell.
+	# Imported prototype chunks created a second, mismatched corner frame and
+	# left the original posts visible; this keeps the cut wall, collision and map
+	# footprint aligned with one source of truth.
+	var endpoint_a := Vector3(corner.x * HALF_CELL, 0, 0)
+	var endpoint_b := Vector3(0, 0, corner.y * HALF_CELL)
+	var chord := endpoint_b - endpoint_a
+	var chord_length := Vector2(chord.x, chord.z).length()
+	var chord_yaw := atan2(chord.z, chord.x)
+	var shell_material := _room_shape_material(MHStyle.STRUCTURAL_WHITE.darkened(.08))
+	var seal_material := _room_shape_material(MHStyle.SEAL_DARK)
+	var trim_material := _room_shape_material(MHStyle.accent)
+	if style == "chamfer":
+		var midpoint := (endpoint_a + endpoint_b) * .5
+		_add_room_shape_box(holder, midpoint + Vector3(0, 1.42, 0), Vector3(chord_length, 2.74, .14), chord_yaw, shell_material)
+		_add_room_shape_box(holder, midpoint + Vector3(0, .08, 0), Vector3(chord_length + .08, .09, .19), chord_yaw, seal_material)
+		_add_room_shape_box(holder, midpoint + Vector3(0, 2.74, 0), Vector3(chord_length + .08, .10, .19), chord_yaw, seal_material)
+		_add_room_shape_box(holder, midpoint + Vector3(0, .30, 0), Vector3(chord_length - .18, .12, .20), chord_yaw, trim_material)
+	else:
+		_add_rounded_room_shape_panel(holder, corner, shell_material, seal_material, trim_material)
+	# The collision chord deliberately sits slightly inside the visual curve. It
+	# seals pressure reliably while leaving the curved wall clean and gap-free.
+	var body := StaticBody3D.new()
+	body.position = (endpoint_a + endpoint_b) * .5 + Vector3(0, 1.42, 0)
+	body.rotation.y = chord_yaw
+	holder.add_child(body)
+	var collision := CollisionShape3D.new()
+	var collision_shape := BoxShape3D.new()
+	collision_shape.size = Vector3(chord_length, 2.74, .16)
+	collision.shape = collision_shape
+	body.add_child(collision)
+	_add_room_shape_plan_outline(cell, corner, style)
+
+func _room_shape_material(colour: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = colour
+	material.metallic = .12
+	material.roughness = .62
+	return material
+
+func _add_room_shape_box(parent: Node3D, local_position: Vector3, size: Vector3, yaw: float, material: Material) -> void:
+	var visual := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	visual.mesh = mesh
+	visual.material_override = material
+	visual.position = local_position
+	visual.rotation.y = yaw
+	parent.add_child(visual)
+
+func _add_rounded_room_shape_panel(parent: Node3D, corner: Vector2i, shell_material: Material, seal_material: Material, trim_material: Material) -> void:
+	var start_angle := _room_shape_arc_start(corner)
+	var end_angle := start_angle + PI * .5
+	var radius := HALF_CELL
+	var segments := 12
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in range(segments):
+		var first_angle := lerpf(start_angle, end_angle, float(index) / float(segments))
+		var second_angle := lerpf(start_angle, end_angle, float(index + 1) / float(segments))
+		var first_bottom := Vector3(cos(first_angle) * radius, .05, sin(first_angle) * radius)
+		var second_bottom := Vector3(cos(second_angle) * radius, .05, sin(second_angle) * radius)
+		var first_top := first_bottom + Vector3.UP * 2.74
+		var second_top := second_bottom + Vector3.UP * 2.74
+		surface.add_vertex(first_bottom); surface.add_vertex(second_bottom); surface.add_vertex(second_top)
+		surface.add_vertex(first_bottom); surface.add_vertex(second_top); surface.add_vertex(first_top)
+	var wall := MeshInstance3D.new()
+	wall.mesh = surface.commit()
+	wall.material_override = shell_material
+	parent.add_child(wall)
+	for index in range(segments):
+		var first_angle := lerpf(start_angle, end_angle, float(index) / float(segments))
+		var second_angle := lerpf(start_angle, end_angle, float(index + 1) / float(segments))
+		var mid_angle := (first_angle + second_angle) * .5
+		var segment_length := radius * (second_angle - first_angle) + .04
+		var position := Vector3(cos(mid_angle) * radius, 0, sin(mid_angle) * radius)
+		var tangent_yaw := mid_angle + PI * .5
+		_add_room_shape_box(parent, position + Vector3(0, .08, 0), Vector3(segment_length, .09, .19), tangent_yaw, seal_material)
+		_add_room_shape_box(parent, position + Vector3(0, 2.74, 0), Vector3(segment_length, .10, .19), tangent_yaw, seal_material)
+		_add_room_shape_box(parent, position + Vector3(0, .30, 0), Vector3(maxf(.05, segment_length - .04), .12, .20), tangent_yaw, trim_material)
+
+func _add_room_shape_plan_outline(cell: Vector2i, corner: Vector2i, style: String) -> void:
+	var colour: Color = MHStyle.VALID if style == "chamfer" else Color("#A879E8")
+	var material := StandardMaterial3D.new()
+	material.albedo_color = colour
+	material.emission_enabled = true
+	material.emission = colour
+	material.emission_energy_multiplier = 1.6
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var parent := Node3D.new()
+	parent.name = "%sCornerPlanOutline" % style.capitalize()
+	parent.position = Vector3(cell.x * CELL, habitat_base_y + .12, cell.y * CELL)
+	parent.add_to_group("habitat_plan")
+	parent.visible = build_mode
+	root.add_child(parent)
+	if style == "chamfer":
+		var diagonal := Vector3(-corner.x, 0, corner.y)
+		var yaw := atan2(diagonal.z, diagonal.x)
+		_add_room_shape_box(parent, Vector3(corner.x * HALF_CELL * .5, .02, corner.y * HALF_CELL * .5), Vector3(CELL * .72, .04, .13), yaw, material)
+		return
+	var start_angle := _room_shape_arc_start(corner)
+	var segments := 12
+	for index in range(segments):
+		var first_angle := lerpf(start_angle, start_angle + PI * .5, float(index) / float(segments))
+		var second_angle := lerpf(start_angle, start_angle + PI * .5, float(index + 1) / float(segments))
+		var mid_angle := (first_angle + second_angle) * .5
+		var position := Vector3(cos(mid_angle) * HALF_CELL, .02, sin(mid_angle) * HALF_CELL)
+		_add_room_shape_box(parent, position, Vector3(HALF_CELL * PI * .5 / float(segments) + .05, .04, .13), mid_angle + PI * .5, material)
+
+func _room_shape_arc_start(corner: Vector2i) -> float:
+	if corner == Vector2i(1, 1): return 0.0
+	if corner == Vector2i(-1, 1): return PI * .5
+	if corner == Vector2i(-1, -1): return PI
+	return PI * 1.5
 
 func interior_door_invalid_reason(cell: Vector2i, side: Vector2i) -> String:
 	if abs(side.x) + abs(side.y) != 1:
@@ -1856,12 +1975,12 @@ func _add_room_shape_handles() -> void:
 						style = str(modifier.get("style", ""))
 				var marker := MeshInstance3D.new()
 				marker.name = "RoomCornerHandle_%s" % (style if not style.is_empty() else "square")
-				var marker_mesh := CylinderMesh.new(); marker_mesh.top_radius=.19; marker_mesh.bottom_radius=.19; marker_mesh.height=.045; marker_mesh.radial_segments=16; marker.mesh=marker_mesh
-				marker.position=Vector3(cell.x*CELL+corner.x*HALF_CELL, habitat_base_y+.14, cell.y*CELL+corner.y*HALF_CELL)
+				var marker_mesh := CylinderMesh.new(); marker_mesh.top_radius=.34; marker_mesh.bottom_radius=.34; marker_mesh.height=.06; marker_mesh.radial_segments=24; marker.mesh=marker_mesh
+				marker.position=Vector3(cell.x*CELL+corner.x*HALF_CELL, habitat_base_y+.15, cell.y*CELL+corner.y*HALF_CELL)
 				var material:=StandardMaterial3D.new(); material.albedo_color=MHStyle.accent if style.is_empty() else (MHStyle.VALID if style=="chamfer" else Color("#A879E8")); material.emission_enabled=true; material.emission=material.albedo_color; material.emission_energy_multiplier=1.5; marker.material_override=material
 				marker.add_to_group("room_shape_handle"); marker.visible=build_mode; root.add_child(marker)
-				var glyph := _label3d("+" if style.is_empty() else ("╱" if style=="chamfer" else "◜"), 24, Color.WHITE)
-				glyph.position=marker.position+Vector3(0,.03,0); glyph.billboard=BaseMaterial3D.BILLBOARD_ENABLED; glyph.visible=build_mode; glyph.add_to_group("room_shape_handle"); root.add_child(glyph)
+				var glyph := _label3d("+" if style.is_empty() else ("╱" if style=="chamfer" else "◜"), 36, Color.WHITE)
+				glyph.position=marker.position+Vector3(0,.05,0); glyph.billboard=BaseMaterial3D.BILLBOARD_ENABLED; glyph.visible=build_mode; glyph.add_to_group("room_shape_handle"); root.add_child(glyph)
 
 func _set_build_view(show_plan: bool) -> void:
 	# Exterior build is deliberately schematic. Hide every rendered habitat,
@@ -1870,7 +1989,9 @@ func _set_build_view(show_plan: bool) -> void:
 	# wall lamps, supports, doors or imported model parts leaking into the map.
 	for visual_root in [root, furnishing, surface_furnishing]:
 		_set_visual_children(visual_root, not show_plan)
-	for plan in get_tree().get_nodes_in_group("habitat_plan"): plan.visible=show_plan
+	for plan in get_tree().get_nodes_in_group("habitat_plan"):
+		plan.visible=show_plan
+		_set_visual_children(plan,show_plan)
 	for label in get_tree().get_nodes_in_group("zone_label"): label.visible=show_plan
 	for handle in get_tree().get_nodes_in_group("room_shape_handle"): handle.visible=show_plan
 	for field in get_tree().get_nodes_in_group("power_field_visual"): field.visible=show_plan
