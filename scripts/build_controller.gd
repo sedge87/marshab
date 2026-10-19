@@ -1131,16 +1131,18 @@ func _zone_surfaces(zone: Dictionary) -> void:
 	# A drag rectangle is one continuous interior slab and one continuous roof.
 	# For a future irregular paint shape, individual cells remain a safe fallback.
 	if cells.size()==(max_x-min_x+1)*(max_z-min_z+1):
-		_add_box(centre+Vector3(0,habitat_base_y-.1,0),Vector3(size_x,.2,size_z),colour.darkened(.48),true,"habitat_floor",show_generated_surface)
-		_add_box(centre+Vector3(0,habitat_base_y+2.9,0),Vector3(size_x,.15,size_z),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof",show_generated_surface)
+		if _zone_has_room_shape(zone):
+			_add_shaped_zone_slab(zone, habitat_base_y - .1, .2, colour.darkened(.48), "habitat_floor", show_generated_surface)
+			_add_shaped_zone_slab(zone, habitat_base_y + 2.9, .15, MHStyle.STRUCTURAL_WHITE.darkened(.08), "habitat_roof", show_generated_surface)
+		else:
+			_add_box(centre+Vector3(0,habitat_base_y-.1,0),Vector3(size_x,.2,size_z),colour.darkened(.48),true,"habitat_floor",show_generated_surface)
+			_add_box(centre+Vector3(0,habitat_base_y+2.9,0),Vector3(size_x,.15,size_z),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof",show_generated_surface)
 		if zone_kind!="corridor" and zone_kind!="airlock":
-			var shell_cells: Array[Vector2i] = [Vector2i(min_x,min_z), Vector2i(max_x,min_z), Vector2i(max_x,max_z), Vector2i(min_x,max_z)]
-			var shell_sides: Array[Vector2i] = [Vector2i(-1,-1), Vector2i(1,-1), Vector2i(1,1), Vector2i(-1,1)]
-			for corner_index in shell_cells.size():
-				var corner_cell: Vector2i = shell_cells[corner_index]
-				var corner_side: Vector2i = shell_sides[corner_index]
-				if _room_shape_at(corner_cell, corner_side).is_empty():
-					_add_showcase(SHOWCASE_CORNER, Vector3(corner_cell.x*CELL+corner_side.x*HALF_CELL, habitat_base_y, corner_cell.y*CELL+corner_side.y*HALF_CELL))
+			# Corner post models assume a square roof perimeter. A reshaped shell
+			# owns its own perimeter, so no square posts are left sticking through it.
+			if not _zone_has_room_shape(zone):
+				for corner in [Vector2i(min_x,min_z),Vector2i(max_x+1,min_z),Vector2i(max_x+1,max_z+1),Vector2i(min_x,max_z+1)]:
+					_add_showcase(SHOWCASE_CORNER,Vector3(corner.x*CELL-CELL*.5,habitat_base_y,corner.y*CELL-CELL*.5))
 		if zone_kind=="corridor":
 			_add_corridor_understructure(cells)
 	else:
@@ -1328,6 +1330,95 @@ func _room_shape_at(cell: Vector2i, corner: Vector2i) -> Dictionary:
 			return shape
 	return {}
 
+func _zone_has_room_shape(zone: Dictionary) -> bool:
+	for modifier in room_shape_modifiers:
+		if modifier.get("cell", Vector2i.ZERO) in zone.get("cells", []):
+			return true
+	return false
+
+func _add_shaped_zone_slab(zone: Dictionary, centre_y: float, thickness: float, colour: Color, group: String, show_visual: bool) -> void:
+	var polygon := _zone_shell_polygon(zone)
+	if polygon.size() < 3:
+		return
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var top_y := centre_y + thickness * .5
+	var bottom_y := centre_y - thickness * .5
+	var centre := Vector2.ZERO
+	for point in polygon:
+		centre += point
+	centre /= float(polygon.size())
+	for index in range(polygon.size()):
+		var next_index := (index + 1) % polygon.size()
+		var current: Vector2 = polygon[index]
+		var following: Vector2 = polygon[next_index]
+		# Horizontal caps.
+		surface.add_vertex(Vector3(centre.x, top_y, centre.y)); surface.add_vertex(Vector3(current.x, top_y, current.y)); surface.add_vertex(Vector3(following.x, top_y, following.y))
+		surface.add_vertex(Vector3(centre.x, bottom_y, centre.y)); surface.add_vertex(Vector3(following.x, bottom_y, following.y)); surface.add_vertex(Vector3(current.x, bottom_y, current.y))
+		# A closed edge prevents the roof and floor from showing a square overhang.
+		surface.add_vertex(Vector3(current.x, bottom_y, current.y)); surface.add_vertex(Vector3(following.x, bottom_y, following.y)); surface.add_vertex(Vector3(following.x, top_y, following.y))
+		surface.add_vertex(Vector3(current.x, bottom_y, current.y)); surface.add_vertex(Vector3(following.x, top_y, following.y)); surface.add_vertex(Vector3(current.x, top_y, current.y))
+	var mesh := surface.commit()
+	var body := StaticBody3D.new()
+	body.name = "%sShapedShell" % group.capitalize()
+	body.collision_layer = 1
+	body.collision_mask = 1
+	body.add_to_group(group)
+	root.add_child(body)
+	if show_visual:
+		var visual := MeshInstance3D.new()
+		visual.mesh = mesh
+		var material := StandardMaterial3D.new()
+		material.albedo_color = colour
+		material.roughness = .70
+		material.cull_mode = BaseMaterial3D.CULL_DISABLED
+		visual.material_override = material
+		body.add_child(visual)
+	var collision := CollisionShape3D.new()
+	var collision_shape := ConcavePolygonShape3D.new()
+	collision_shape.data = mesh.get_faces()
+	collision.shape = collision_shape
+	body.add_child(collision)
+
+func _zone_shell_polygon(zone: Dictionary) -> Array[Vector2]:
+	var cells: Array = zone.get("cells", [])
+	var min_x: int = cells[0].x
+	var max_x: int = cells[0].x
+	var min_z: int = cells[0].y
+	var max_z: int = cells[0].y
+	for cell in cells:
+		min_x = mini(min_x, cell.x); max_x = maxi(max_x, cell.x)
+		min_z = mini(min_z, cell.y); max_z = maxi(max_z, cell.y)
+	var left := (float(min_x) - .5) * CELL
+	var right := (float(max_x) + .5) * CELL
+	var top := (float(min_z) - .5) * CELL
+	var bottom := (float(max_z) + .5) * CELL
+	var polygon: Array[Vector2] = []
+	_append_zone_shell_corner(polygon, Vector2i(min_x, min_z), Vector2i(-1, -1), Vector2(left, top))
+	_append_zone_shell_corner(polygon, Vector2i(max_x, min_z), Vector2i(1, -1), Vector2(right, top))
+	_append_zone_shell_corner(polygon, Vector2i(max_x, max_z), Vector2i(1, 1), Vector2(right, bottom))
+	_append_zone_shell_corner(polygon, Vector2i(min_x, max_z), Vector2i(-1, 1), Vector2(left, bottom))
+	return polygon
+
+func _append_zone_shell_corner(polygon: Array[Vector2], cell: Vector2i, corner: Vector2i, square_corner: Vector2) -> void:
+	var modifier := _room_shape_at(cell, corner)
+	if modifier.is_empty():
+		polygon.append(square_corner)
+		return
+	var style := str(modifier.get("style", ""))
+	if style == "chamfer":
+		if corner == Vector2i(-1, -1): polygon.append(Vector2(square_corner.x, square_corner.y + HALF_CELL)); polygon.append(Vector2(square_corner.x + HALF_CELL, square_corner.y))
+		elif corner == Vector2i(1, -1): polygon.append(Vector2(square_corner.x - HALF_CELL, square_corner.y)); polygon.append(Vector2(square_corner.x, square_corner.y + HALF_CELL))
+		elif corner == Vector2i(1, 1): polygon.append(Vector2(square_corner.x, square_corner.y - HALF_CELL)); polygon.append(Vector2(square_corner.x - HALF_CELL, square_corner.y))
+		else: polygon.append(Vector2(square_corner.x + HALF_CELL, square_corner.y)); polygon.append(Vector2(square_corner.x, square_corner.y - HALF_CELL))
+		return
+	var start_angle := _room_shape_arc_start(corner)
+	# The plan follows the same continuous arc as the room wall, not a square
+	# roof with a decorative curve placed under it.
+	for index in range(7):
+		var angle := start_angle + PI * .5 * float(index) / 6.0
+		polygon.append(Vector2(cell.x * CELL + cos(angle) * HALF_CELL, cell.y * CELL + sin(angle) * HALF_CELL))
+
 func _shape_modifier_invalid_reason(cell: Vector2i, corner: Vector2i, style: String, allow_replace := false) -> String:
 	if not ROOM_SHAPE_SCENES.has(style): return "Unknown shell style"
 	if abs(corner.x) != 1 or abs(corner.y) != 1: return "Choose an exterior corner"
@@ -1514,7 +1605,7 @@ func _add_room_shape_visual(modifier: Dictionary) -> void:
 		_add_room_shape_box(holder, midpoint + Vector3(0, 2.74, 0), Vector3(chord_length + .08, .10, .19), chord_yaw, seal_material)
 		_add_room_shape_box(holder, midpoint + Vector3(0, .30, 0), Vector3(chord_length - .18, .12, .20), chord_yaw, trim_material)
 	else:
-		_add_rounded_room_shape_panel(holder, corner, shell_material, seal_material, trim_material)
+		_add_rounded_room_shape_panel(holder, corner, shell_material)
 	# The collision chord deliberately sits slightly inside the visual curve. It
 	# seals pressure reliably while leaving the curved wall clean and gap-free.
 	var body := StaticBody3D.new()
@@ -1533,6 +1624,7 @@ func _room_shape_material(colour: Color) -> StandardMaterial3D:
 	material.albedo_color = colour
 	material.metallic = .12
 	material.roughness = .62
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return material
 
 func _add_room_shape_box(parent: Node3D, local_position: Vector3, size: Vector3, yaw: float, material: Material) -> void:
@@ -1545,7 +1637,7 @@ func _add_room_shape_box(parent: Node3D, local_position: Vector3, size: Vector3,
 	visual.rotation.y = yaw
 	parent.add_child(visual)
 
-func _add_rounded_room_shape_panel(parent: Node3D, corner: Vector2i, shell_material: Material, seal_material: Material, trim_material: Material) -> void:
+func _add_rounded_room_shape_panel(parent: Node3D, corner: Vector2i, shell_material: Material) -> void:
 	var start_angle := _room_shape_arc_start(corner)
 	var end_angle := start_angle + PI * .5
 	var radius := HALF_CELL
@@ -1565,16 +1657,6 @@ func _add_rounded_room_shape_panel(parent: Node3D, corner: Vector2i, shell_mater
 	wall.mesh = surface.commit()
 	wall.material_override = shell_material
 	parent.add_child(wall)
-	for index in range(segments):
-		var first_angle := lerpf(start_angle, end_angle, float(index) / float(segments))
-		var second_angle := lerpf(start_angle, end_angle, float(index + 1) / float(segments))
-		var mid_angle := (first_angle + second_angle) * .5
-		var segment_length := radius * (second_angle - first_angle) + .04
-		var position := Vector3(cos(mid_angle) * radius, 0, sin(mid_angle) * radius)
-		var tangent_yaw := mid_angle + PI * .5
-		_add_room_shape_box(parent, position + Vector3(0, .08, 0), Vector3(segment_length, .09, .19), tangent_yaw, seal_material)
-		_add_room_shape_box(parent, position + Vector3(0, 2.74, 0), Vector3(segment_length, .10, .19), tangent_yaw, seal_material)
-		_add_room_shape_box(parent, position + Vector3(0, .30, 0), Vector3(maxf(.05, segment_length - .04), .12, .20), tangent_yaw, trim_material)
 
 func _add_room_shape_plan_outline(cell: Vector2i, corner: Vector2i, style: String) -> void:
 	var colour: Color = MHStyle.VALID if style == "chamfer" else Color("#A879E8")
