@@ -1440,7 +1440,8 @@ func _cycle_room_corner_at_mouse() -> bool:
 			current_index = index
 			break
 	var current_style := "" if current_index < 0 else str((room_shape_modifiers[current_index] as Dictionary).get("style", ""))
-	var next_style := {"":"chamfer", "chamfer":"rounded", "rounded":""}.get(current_style, "")
+	var cycle: Dictionary = {"":"chamfer", "chamfer":"rounded", "rounded":""}
+	var next_style: String = str(cycle.get(current_style, ""))
 	if next_style.is_empty():
 		_request_room_shape_removal(target.cell, target.corner)
 	else:
