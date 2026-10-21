@@ -31,42 +31,6 @@
       ]
     },
     {
-      "id": "galley_oven",
-      "file": "galley_oven.glb",
-      "placement": "floor",
-      "bounds_m": [
-        [
-          -0.315,
-          0.0,
-          -0.376
-        ],
-        [
-          0.315,
-          0.936,
-          0.315
-        ]
-      ],
-      "triangles": 4836,
-      "named_components": [
-        "control_panel",
-        "display_screen",
-        "hob_dark",
-        "hob_indicator",
-        "hob_rings_slate",
-        "knobs_satin",
-        "oven_body_white",
-        "oven_cap_warm",
-        "oven_door_slate",
-        "oven_handle_satin",
-        "oven_plinth",
-        "oven_rails",
-        "oven_seal_black",
-        "oven_vent_dark",
-        "oven_window_dark",
-        "side_label"
-      ]
-    },
-    {
       "id": "galley_rehydration_station",
       "file": "galley_rehydration_station.glb",
       "placement": "floor",
@@ -107,88 +71,6 @@
         "station_cap_white",
         "station_plinth",
         "station_rails"
-      ]
-    },
-    {
-      "id": "galley_freezer",
-      "file": "galley_freezer.glb",
-      "placement": "floor",
-      "bounds_m": [
-        [
-          -0.375,
-          0.0,
-          -0.43
-        ],
-        [
-          0.375,
-          1.86,
-          0.355
-        ]
-      ],
-      "triangles": 3456,
-      "named_components": [
-        "base_vent_dark",
-        "cabinet_body_white",
-        "cabinet_cap_warm",
-        "cabinet_plinth",
-        "cabinet_rails",
-        "door_seals_black",
-        "freezer_door_cool",
-        "freezer_door_handle_satin",
-        "freezer_door_label_white",
-        "fridge_door_frame",
-        "fridge_door_handle_satin",
-        "fridge_door_screen",
-        "fridge_door_white",
-        "hinges"
-      ]
-    },
-    {
-      "id": "waste_sorting_unit",
-      "file": "waste_sorting_unit.glb",
-      "placement": "floor",
-      "bounds_m": [
-        [
-          -0.815,
-          0.0,
-          -0.421
-        ],
-        [
-          0.815,
-          1.17,
-          0.355
-        ]
-      ],
-      "triangles": 8196,
-      "named_components": [
-        "chute_lid_metals",
-        "chute_lid_organics",
-        "chute_lid_plastics",
-        "chute_metals",
-        "chute_organics_bright",
-        "chute_plastics_cool",
-        "chute_rim_metals",
-        "chute_rim_organics",
-        "chute_rim_plastics",
-        "compactor_door_warm",
-        "compactor_handle_satin",
-        "compactor_seal_black",
-        "compactor_window_dark",
-        "control_panel",
-        "display_screen",
-        "label_mark_metals_white",
-        "label_mark_organics_white",
-        "label_mark_plastics_white",
-        "label_metals",
-        "label_organics_bright",
-        "label_plastics_cool",
-        "panel_bolts_satin",
-        "status_lamp_bright",
-        "unit_body_slate",
-        "unit_cap_warm",
-        "unit_plinth",
-        "unit_rails",
-        "unit_vent_dark"
       ]
     },
     {
@@ -288,43 +170,6 @@
         "lid_handle_satin",
         "lid_hinge_dark",
         "rim"
-      ]
-    },
-    {
-      "id": "iv_drip_stand",
-      "file": "iv_drip_stand.glb",
-      "placement": "floor",
-      "bounds_m": [
-        [
-          -0.265,
-          0.0,
-          -0.32
-        ],
-        [
-          0.322,
-          1.998,
-          0.32
-        ]
-      ],
-      "triangles": 6744,
-      "named_components": [
-        "base_dark",
-        "hooks_satin",
-        "iv_bag_l_iv",
-        "iv_bag_label_l_white",
-        "iv_bag_label_r_white",
-        "iv_bag_r_iv",
-        "iv_drip_chamber_l_iv",
-        "iv_drip_chamber_r_iv",
-        "iv_lines_iv",
-        "pole_collar_dark",
-        "pole_satin",
-        "pump_bezel",
-        "pump_clamp_dark",
-        "pump_keys_slate",
-        "pump_lamp_bright",
-        "pump_screen_screen",
-        "pump_white"
       ]
     },
     {
@@ -593,6 +438,199 @@
         "mission_patch_inner",
         "ticks",
         "writing_slate"
+      ]
+    },
+    {
+      "id": "galley_oven",
+      "file": "galley_oven.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.315,
+          0.0,
+          -0.376
+        ],
+        [
+          0.315,
+          0.936,
+          0.315
+        ]
+      ],
+      "triangles": 9416,
+      "named_components": [
+        "baking_tray_dark",
+        "body_white",
+        "bread_rolls",
+        "cap_warm",
+        "cavity_light_lamp",
+        "cavity_liner_dark",
+        "cavity_lip_black",
+        "cavity_racks_satin",
+        "cavity_runners",
+        "cavity_shell",
+        "control_panel",
+        "display_screen",
+        "fan_cover",
+        "heating_element",
+        "hob_dark",
+        "hob_indicator",
+        "hob_rings_slate",
+        "knobs_satin",
+        "oven_door_inner",
+        "oven_door_slate",
+        "oven_handle_satin",
+        "oven_vent_dark",
+        "oven_window_dark",
+        "plinth",
+        "side_label"
+      ]
+    },
+    {
+      "id": "waste_sorting_unit",
+      "file": "waste_sorting_unit.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.815,
+          0.0,
+          -0.421
+        ],
+        [
+          0.815,
+          1.17,
+          0.355
+        ]
+      ],
+      "triangles": 12124,
+      "named_components": [
+        "bale_debris_cool",
+        "bale_straps",
+        "chamber_guides",
+        "chamber_light_lamp",
+        "chamber_liner",
+        "chamber_lip_black",
+        "chamber_shell_dark",
+        "chute_lid_metals",
+        "chute_lid_organics",
+        "chute_lid_plastics",
+        "chute_metals",
+        "chute_organics_bright",
+        "chute_plastics_cool",
+        "chute_rim_metals",
+        "chute_rim_organics",
+        "chute_rim_plastics",
+        "compactor_door_inner_dark",
+        "compactor_door_warm",
+        "compactor_handle_satin",
+        "compactor_window_dark",
+        "control_panel",
+        "display_screen",
+        "label_mark_metals_white",
+        "label_mark_organics_white",
+        "label_mark_plastics_white",
+        "label_metals",
+        "label_organics_bright",
+        "label_plastics_cool",
+        "panel_bolts_satin",
+        "plinth",
+        "press_plate_satin",
+        "press_ram",
+        "status_lamp_bright",
+        "unit_body_slate",
+        "unit_cap_warm",
+        "unit_vent_dark",
+        "waste_bale_warm"
+      ]
+    },
+    {
+      "id": "galley_freezer",
+      "file": "galley_freezer.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.375,
+          0.0,
+          -0.43
+        ],
+        [
+          0.375,
+          1.86,
+          0.355
+        ]
+      ],
+      "triangles": 13088,
+      "named_components": [
+        "cap_warm",
+        "freezer_baskets",
+        "freezer_door_cool",
+        "freezer_door_handle_satin",
+        "freezer_door_label_white",
+        "freezer_door_liner_warm",
+        "freezer_frost_white",
+        "freezer_liner_white",
+        "freezer_lip_black",
+        "freezer_packs_cool",
+        "freezer_shell_white",
+        "fridge_bottles_iv",
+        "fridge_crisper_iv",
+        "fridge_door_bins_iv",
+        "fridge_door_bottles",
+        "fridge_door_frame",
+        "fridge_door_handle_satin",
+        "fridge_door_liner_warm",
+        "fridge_door_screen",
+        "fridge_door_white",
+        "fridge_food",
+        "fridge_food_cool",
+        "fridge_food_warm",
+        "fridge_greens_leaf",
+        "fridge_light_lamp",
+        "fridge_liner_white",
+        "fridge_lip_black",
+        "fridge_pouches_pouch",
+        "fridge_shelf_trims",
+        "fridge_shell_white",
+        "fridge_shelves_iv",
+        "hinges",
+        "plinth",
+        "rails"
+      ]
+    },
+    {
+      "id": "iv_drip_stand",
+      "file": "iv_drip_stand.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.265,
+          0.0,
+          -0.32
+        ],
+        [
+          0.322,
+          1.998,
+          0.32
+        ]
+      ],
+      "triangles": 6744,
+      "named_components": [
+        "base_dark",
+        "hooks_satin",
+        "iv_bag_l_iv",
+        "iv_bag_label_l_white",
+        "iv_bag_label_r_white",
+        "iv_bag_r_iv",
+        "iv_drip_chamber_l_iv",
+        "iv_drip_chamber_r_iv",
+        "iv_lines_iv",
+        "pole_collar_dark",
+        "pole_satin",
+        "pump_bezel",
+        "pump_clamp_dark",
+        "pump_keys_slate",
+        "pump_lamp_bright",
+        "pump_screen_screen",
+        "pump_white"
       ]
     }
   ]

@@ -50,7 +50,7 @@ COLORS = {
     "pouch_silver": ((0.74, 0.76, 0.78, 1), .6, .32),
     "screen_cyan": ((0.35, 0.85, 0.95, 1), .0, .3),
     "screen_green": ((0.35, 0.95, 0.55, 1), .0, .3),
-    "iv_clear": ((0.86, 0.92, 0.95, 1), .0, .2),
+    "iv_clear": ((0.86, 0.92, 0.95, 0.35), .0, .1),
     "lamp_white": ((1.0, 0.98, 0.92, 1), .0, .2),
 }
 GLOW = {"screen_cyan": 1.6, "screen_green": 1.6, "lamp_white": 2.0}
@@ -76,6 +76,9 @@ def materials():
         bsdf.inputs["Base Color"].default_value = rgba
         bsdf.inputs["Metallic"].default_value = metal
         bsdf.inputs["Roughness"].default_value = rough
+        if rgba[3] < 1.0:   # see-through (clear plastic, glass): exported as glTF alpha blend
+            bsdf.inputs["Alpha"].default_value = rgba[3]
+            if hasattr(m, "surface_render_method"): m.surface_render_method = "BLENDED"
         if GLOW.get(name, 0) > 0:
             bsdf.inputs["Emission Color"].default_value = rgba
             bsdf.inputs["Emission Strength"].default_value = GLOW[name]
@@ -227,6 +230,26 @@ def star_base(z, radius, legs=5):
     return parts
 
 
+
+def hollow(prefix, x0, x1, y0, y1, z0, z1, t, outer, liner):
+    """An open-fronted box (the opening faces +Y): outer walls plus an inner
+    liner, so a door that swings open shows a real compartment."""
+    join(f"{prefix}_shell_{outer}", [
+        box("w", x0, x1, y0, y0 + t, z0, z1, outer, 0.01),            # back
+        box("w", x0, x0 + t, y0, y1, z0, z1, outer, 0.01),            # left
+        box("w", x1 - t, x1, y0, y1, z0, z1, outer, 0.01),            # right
+        box("w", x0, x1, y0, y1, z0, z0 + t, outer, 0.01),            # floor
+        box("w", x0, x1, y0, y1, z1 - t, z1, outer, 0.01)])           # roof
+    i = 0.006
+    join(f"{prefix}_liner_{liner}", [
+        box("l", x0 + t, x1 - t, y0 + t, y0 + t + i, z0 + t, z1 - t, liner, 0),
+        box("l", x0 + t, x0 + t + i, y0 + t, y1, z0 + t, z1 - t, liner, 0),
+        box("l", x1 - t - i, x1 - t, y0 + t, y1, z0 + t, z1 - t, liner, 0),
+        box("l", x0 + t, x1 - t, y0 + t, y1, z0 + t, z0 + t + i, liner, 0),
+        box("l", x0 + t, x1 - t, y0 + t, y1, z1 - t - i, z1 - t, liner, 0)])
+    # A soft rubber lip round the opening (the door seals against it).
+    gasket(f"{prefix}_lip_black_rubber", x0 + 0.004, x1 - 0.004, z0 + 0.004, z1 - 0.004, y1 - 0.002, w=0.012)
+
 # ---------- models ----------
 
 def galley_table_set():
@@ -263,15 +286,35 @@ def galley_table_set():
 
 
 def galley_oven():
-    """A compact convection oven with an induction hob on top."""
-    cabinet("oven", -0.3, 0.3, -0.3, 0.3, 0.0, 0.92, "white_painted", "warm_shell")
+    """A compact convection oven with an induction hob on top; hollow oven
+    cavity with racks, a tray and a heating element behind the door."""
+    X0, X1, Y0, Y1 = -0.3, 0.3, -0.3, 0.3
+    box("plinth_graphite", X0 + 0.03, X1 - 0.03, Y0 + 0.03, Y1 - 0.03, 0.0, 0.08, "graphite", 0.008)
+    # Body round the cavity: sides, back, base, and the control block above.
+    join("body_white_painted", [
+        box("b", X0, X0 + 0.03, Y0, Y1, 0.07, 0.88, "white_painted", 0.012),
+        box("b", X1 - 0.03, X1, Y0, Y1, 0.07, 0.88, "white_painted", 0.012),
+        box("b", X0, X1, Y0, Y0 + 0.03, 0.07, 0.88, "white_painted", 0.012),
+        box("b", X0, X1, Y0, Y1, 0.07, 0.12, "white_painted", 0.012),
+        box("b", X0, X1, Y0, Y1, 0.62, 0.88, "white_painted", 0.012)])
+    box("cap_warm_shell", X0 - 0.015, X1 + 0.015, Y0 - 0.015, Y1 + 0.02, 0.88, 0.92, "warm_shell", 0.02)
+    hollow("cavity", X0 + 0.03, X1 - 0.03, Y0 + 0.03, Y1 - 0.005, 0.12, 0.62, 0.012, "graphite", "dark_glass")
+    join("cavity_racks_satin_steel", [rod("r", (x, -0.24, z), (x, 0.26, z), 0.004, "satin_steel", 8) for z in (0.27, 0.43) for x in [-0.22 + i * 0.055 for i in range(9)]]
+         + [rod("r", (-0.24, y, z), (0.24, y, z), 0.005, "satin_steel", 8) for z in (0.27, 0.43) for y in (-0.24, 0.26)])
+    join("cavity_runners_alloy", [box("r", x - 0.01, x + 0.01, -0.26, 0.28, z - 0.012, z - 0.004, "alloy", 0.002) for x in (-0.255, 0.255) for z in (0.27, 0.43)])
+    box("baking_tray_dark_alloy", -0.2, 0.2, -0.18, 0.18, 0.434, 0.452, "dark_alloy", 0.006)
+    join("bread_rolls_amber", [sphere("r", (x, y, 0.47), 0.045, "amber", scale=(1, 1, 0.65), segments=14) for x in (-0.12, 0.0, 0.12) for y in (-0.08, 0.08)])
+    join("heating_element_orange", [rod("e", (-0.22, y, 0.585), (0.22, y, 0.585), 0.006, "orange", 8) for y in (-0.15, 0.0, 0.15)])
+    box("fan_cover_graphite", -0.09, 0.09, -0.27, -0.26, 0.28, 0.46, "graphite", 0.01)
+    box("cavity_light_lamp_white", 0.18, 0.24, -0.1, -0.04, 0.6, 0.605, "lamp_white", 0)
     box("hob_dark_glass", -0.28, 0.28, -0.27, 0.25, 0.92, 0.93, "dark_glass", 0.006)
     join("hob_rings_slate_panel", [torus("r", (x, -0.03, 0.932), 0.085, 0.004, "slate_panel") for x in (-0.13, 0.13)])
     box("hob_indicator_amber", 0.18, 0.24, 0.17, 0.2, 0.931, 0.934, "amber", 0)
-    box("oven_door_slate_panel", -0.27, 0.27, 0.3, 0.33, 0.12, 0.62, "slate_panel", 0.012)
+    # The door (oven_door_* swings down on its bottom edge).
+    box("oven_door_slate_panel", -0.285, 0.285, 0.3, 0.33, 0.115, 0.625, "slate_panel", 0.012)
+    box("oven_door_inner_graphite", -0.24, 0.24, 0.285, 0.302, 0.16, 0.58, "graphite", 0.008)
     box("oven_window_dark_glass", -0.2, 0.2, 0.33, 0.336, 0.22, 0.52, "dark_glass", 0.006)
     handle("oven_handle_satin_steel", -0.2, 0.2, 0.575, 0.33)
-    gasket("oven_seal_black_rubber", -0.275, 0.275, 0.115, 0.625, 0.296)
     box("control_panel_graphite", -0.27, 0.27, 0.3, 0.315, 0.68, 0.86, "graphite", 0.008)
     knobs = []
     for x in (-0.17, -0.08):
@@ -279,9 +322,8 @@ def galley_oven():
         knobs.append(box("k", x - 0.003, x + 0.003, 0.34, 0.343, 0.775, 0.795, "orange", 0))
     join("knobs_satin_steel", knobs)
     box("display_screen_cyan", 0.03, 0.22, 0.316, 0.32, 0.74, 0.8, "screen_cyan", 0)
-    vent("oven_vent_dark_alloy", -0.24, 0.24, 0.07, 0.11, 0.3, slats=3)
+    vent("oven_vent_dark_alloy", -0.24, 0.24, 0.075, 0.11, 0.3, slats=3)
     box("side_label_orange", 0.301, 0.305, -0.1, 0.1, 0.8, 0.84, "orange", 0)
-
 
 def galley_rehydration_station():
     """Hot and cold water for freeze-dried pouches, with a pouch rack."""
@@ -312,39 +354,89 @@ def galley_rehydration_station():
 
 
 def galley_freezer():
-    """Fridge over freezer: food storage for months of meals."""
-    cabinet("cabinet", -0.36, 0.36, -0.34, 0.34, 0.0, 1.86, "white_painted", "warm_shell")
-    box("fridge_door_white_painted", -0.35, 0.35, 0.34, 0.385, 0.88, 1.8, "white_painted", 0.018)
-    box("freezer_door_cool_blue", -0.35, 0.35, 0.34, 0.385, 0.1, 0.85, "cool_blue", 0.018)
+    """Fridge over freezer, hollow behind both doors: shelves, food, baskets."""
+    X0, X1, Y0, Y1 = -0.36, 0.36, -0.34, 0.34
+    box("plinth_graphite", X0 + 0.03, X1 - 0.03, Y0 + 0.03, Y1 - 0.03, 0.0, 0.08, "graphite", 0.008)
+    box("cap_warm_shell", X0 - 0.015, X1 + 0.015, Y0 - 0.015, Y1 + 0.02, 1.81, 1.86, "warm_shell", 0.02)
+    hollow("freezer", X0, X1, Y0, Y1, 0.07, 0.865, 0.04, "white_painted", "white_painted")
+    hollow("fridge", X0, X1, Y0, Y1, 0.865, 1.81, 0.04, "white_painted", "white_painted")
+    join("rails_alloy", [box("r", x - 0.012, x + 0.012, Y1 - 0.004, Y1 + 0.012, 0.1, 1.78, "alloy", 0.005) for x in (X0 + 0.02, X1 - 0.02)])
+    # Fridge: glass shelves, a crisper drawer and food.
+    join("fridge_shelves_iv_clear", [box("s", -0.31, 0.31, -0.29, 0.3, z, z + 0.012, "iv_clear", 0.003) for z in (1.16, 1.44)])
+    join("fridge_shelf_trims_alloy", [box("s", -0.31, 0.31, 0.29, 0.305, z - 0.004, z + 0.016, "alloy", 0.002) for z in (1.16, 1.44)])
+    box("fridge_crisper_iv_clear", -0.3, 0.3, -0.27, 0.27, 0.91, 1.08, "iv_clear", 0.01)
+    join("fridge_greens_leaf_light", [sphere("g", (x, y, 0.97), 0.06, "leaf_light", scale=(1, 1, 0.7), segments=12) for x, y in ((-0.18, -0.1), (-0.05, 0.08), (0.12, -0.05), (0.2, 0.1))])
+    containers = {"teal": [], "orange": [], "cool_blue": [], "warm_panel": []}
+    for z, items in ((1.172, [("teal", -0.2, 0.12), ("orange", 0.0, 0.09), ("warm_panel", 0.18, 0.14)]),
+                     (1.452, [("cool_blue", -0.18, 0.1), ("teal", 0.02, 0.13), ("orange", 0.2, 0.08)])):
+        for mat, x, h in items:
+            containers[mat].append(box("c", x - 0.08, x + 0.08, -0.2, 0.05, z, z + h, mat, 0.012))
+    for mat, objs in containers.items():
+        join(f"fridge_food_{mat}", objs)
+    join("fridge_bottles_iv_clear", [cyl("b", (x, 0.15, 1.172 + 0.1), 0.035, 0.2, "iv_clear", verts=16, bevel=0.006) for x in (-0.24, -0.15)])
+    join("fridge_pouches_pouch_silver", [box("p", x - 0.05, x + 0.05, 0.08, 0.12, 1.452, 1.6, "pouch_silver", 0.008) for x in (-0.05, 0.08)])
+    box("fridge_light_lamp_white", -0.12, 0.12, -0.05, 0.05, 1.755, 1.765, "lamp_white", 0.002)
+    # Freezer: two wire baskets of frozen meal packs.
+    baskets, packs = [], []
+    for z in (0.13, 0.48):
+        baskets.append(box("b", -0.3, 0.3, -0.28, 0.28, z, z + 0.008, "alloy", 0.002))
+        baskets += [box("b", -0.3, 0.3, y - 0.004, y + 0.004, z, z + 0.24, "alloy", 0.001) for y in (-0.28, 0.28)]
+        baskets += [box("b", x - 0.004, x + 0.004, -0.28, 0.28, z, z + 0.24, "alloy", 0.001) for x in (-0.3, 0.3)]
+        baskets += [box("b", -0.3, 0.3, 0.276, 0.284, z + h, z + h + 0.006, "alloy", 0.001) for h in (0.08, 0.16)]
+        for x in (-0.18, 0.0, 0.18):
+            packs.append(box("p", x - 0.08, x + 0.08, -0.22, 0.2, z + 0.01, z + 0.12, "cool_blue", 0.01))
+    join("freezer_baskets_alloy", baskets)
+    join("freezer_packs_cool_blue", packs)
+    join("freezer_frost_white_painted", [box("f", -0.3, 0.3, -0.29, -0.288, 0.11, 0.82, "white_painted", 0)])
+    # Doors (named fridge_door_* / freezer_door_* so each swings as one).
+    box("fridge_door_white_painted", -0.355, 0.355, 0.34, 0.385, 0.875, 1.8, "white_painted", 0.018)
+    box("fridge_door_liner_warm_panel", -0.3, 0.3, 0.326, 0.342, 0.92, 1.76, "warm_panel", 0.012)
+    join("fridge_door_bins_iv_clear", [box("b", -0.27, 0.27, 0.27, 0.326, z, z + 0.07, "iv_clear", 0.006) for z in (1.0, 1.3, 1.58)])
+    join("fridge_door_bottles_orange", [cyl("b", (x, 0.298, 1.0 + 0.1), 0.022, 0.18, "orange", verts=12) for x in (-0.18, -0.12, 0.15)])
     box("fridge_door_handle_satin_steel", 0.25, 0.29, 0.385, 0.43, 1.0, 1.42, "satin_steel", 0.012)
-    box("freezer_door_handle_satin_steel", 0.25, 0.29, 0.385, 0.43, 0.46, 0.8, "satin_steel", 0.012)
     box("fridge_door_frame_graphite", -0.28, -0.04, 0.385, 0.388, 1.6, 1.74, "graphite", 0.003)
     box("fridge_door_screen_cyan", -0.26, -0.06, 0.388, 0.391, 1.62, 1.72, "screen_cyan", 0)
+    box("freezer_door_cool_blue", -0.355, 0.355, 0.34, 0.385, 0.085, 0.855, "cool_blue", 0.018)
+    box("freezer_door_liner_warm_panel", -0.3, 0.3, 0.326, 0.342, 0.13, 0.81, "warm_panel", 0.012)
+    box("freezer_door_handle_satin_steel", 0.25, 0.29, 0.385, 0.43, 0.46, 0.8, "satin_steel", 0.012)
     box("freezer_door_label_white_painted", -0.25, -0.05, 0.386, 0.389, 0.72, 0.78, "white_painted", 0)
-    gasket("door_seals_black_rubber", -0.355, 0.355, 0.855, 0.875, 0.338, w=0.01)
-    vent("base_vent_dark_alloy", -0.3, 0.3, 0.0, 0.07, 0.33, slats=3)
-    join("hinges_alloy", [box("h", -0.37, -0.35, 0.36, 0.39, z, z + 0.06, "alloy", 0.005) for z in (0.15, 0.75, 0.95, 1.7)])
-
+    join("hinges_alloy", [box("h", -0.375, -0.355, 0.36, 0.39, z, z + 0.06, "alloy", 0.005) for z in (0.15, 0.75, 0.95, 1.7)])
 
 def waste_sorting_unit():
-    """Three chutes over a compactor: sort, squash and seal waste."""
-    cabinet("unit", -0.8, 0.8, -0.34, 0.34, 0.0, 1.0, "slate_panel", "warm_shell")
+    """Three chutes over a compactor. Behind the compactor door: a lined
+    chamber with the press plate, its ram, and a strapped bale of waste."""
+    X0, X1, Y0, Y1 = -0.8, 0.8, -0.34, 0.34
+    box("plinth_graphite", X0 + 0.03, X1 - 0.03, Y0 + 0.03, Y1 - 0.03, 0.0, 0.08, "graphite", 0.008)
+    # Body round the chamber (chamber: x -0.74..0.2, z 0.1..0.78).
+    join("unit_body_slate_panel", [
+        box("b", 0.2, X1, Y0, Y1, 0.07, 0.96, "slate_panel", 0.018),
+        box("b", X0, -0.74, Y0, Y1, 0.07, 0.96, "slate_panel", 0.018),
+        box("b", -0.74, 0.2, Y0, Y1, 0.78, 0.96, "slate_panel", 0.012),
+        box("b", -0.74, 0.2, Y0, Y1, 0.07, 0.1, "slate_panel", 0.008)])
+    box("unit_cap_warm_shell", X0 - 0.015, X1 + 0.015, Y0 - 0.015, Y1 + 0.02, 0.95, 1.0, "warm_shell", 0.02)
+    hollow("chamber", -0.74, 0.2, Y0, Y1 - 0.004, 0.1, 0.78, 0.014, "dark_alloy", "graphite")
+    box("press_plate_satin_steel", -0.68, 0.14, -0.28, 0.28, 0.6, 0.63, "satin_steel", 0.008)
+    join("press_ram_alloy", [cyl("r", (x, 0.0, 0.7), 0.035, 0.14, "alloy", verts=20, bevel=0.004) for x in (-0.45, -0.1)])
+    join("chamber_guides_alloy", [box("g", x - 0.012, x + 0.012, -0.32, -0.3, 0.12, 0.76, "alloy", 0.003) for x in (-0.66, 0.12)])
+    box("waste_bale_warm_panel", -0.5, 0.0, -0.22, 0.2, 0.115, 0.42, "warm_panel", 0.03)
+    join("bale_straps_orange", [box("s", x - 0.012, x + 0.012, -0.225, 0.205, 0.11, 0.425, "orange", 0.003) for x in (-0.38, -0.12)])
+    join("bale_debris_cool_blue", [box("d", -0.46 + i * 0.09, -0.42 + i * 0.09, 0.19, 0.205, 0.15 + (i % 2) * 0.12, 0.2 + (i % 2) * 0.12, "cool_blue", 0.004) for i in range(5)])
+    box("chamber_light_lamp_white", -0.4, -0.1, -0.05, 0.05, 0.765, 0.768, "lamp_white", 0)
     for name, mat, x in (("plastics", "cool_blue", -0.5), ("metals", "orange", 0.0), ("organics", "bright_green", 0.5)):
         cyl(f"chute_{name}_{mat}", (x, -0.02, 1.07), 0.2, 0.14, mat, verts=40, bevel=0.012, radius2=0.17)
         cyl(f"chute_rim_{name}_alloy", (x, -0.02, 1.145), 0.175, 0.02, "alloy", verts=40, bevel=0.005)
         cyl(f"chute_lid_{name}_graphite", (x - 0.02, -0.02, 1.16), 0.16, 0.02, "graphite", verts=40, bevel=0.006)
         box(f"label_{name}_{mat}", x - 0.18, x + 0.18, 0.34, 0.346, 0.86, 0.94, mat, 0.004)
         box(f"label_mark_{name}_white_painted", x - 0.05, x + 0.05, 0.346, 0.349, 0.88, 0.92, "white_painted", 0)
-    box("compactor_door_warm_panel", -0.74, 0.2, 0.34, 0.375, 0.1, 0.78, "warm_panel", 0.015)
+    box("compactor_door_warm_panel", -0.745, 0.205, 0.34, 0.375, 0.095, 0.785, "warm_panel", 0.015)
+    box("compactor_door_inner_dark_alloy", -0.7, 0.16, 0.326, 0.342, 0.14, 0.74, "dark_alloy", 0.008)
     box("compactor_window_dark_glass", -0.5, -0.04, 0.375, 0.38, 0.42, 0.66, "dark_glass", 0.006)
     handle("compactor_handle_satin_steel", -0.68, -0.56, 0.35, 0.375)
-    gasket("compactor_seal_black_rubber", -0.745, 0.205, 0.095, 0.785, 0.336)
     box("control_panel_graphite", 0.28, 0.74, 0.34, 0.36, 0.48, 0.8, "graphite", 0.008)
     box("display_screen_cyan", 0.34, 0.68, 0.36, 0.364, 0.62, 0.74, "screen_cyan", 0)
     cyl("status_lamp_bright_green", (0.52, 0.365, 0.55), 0.02, 0.016, "bright_green", axis="y", verts=20)
     vent("unit_vent_dark_alloy", 0.3, 0.72, 0.1, 0.4, 0.34, slats=6)
-    bolts("panel_bolts_satin_steel", [(x, z) for x in (-0.76, 0.76) for z in (0.14, 0.92)], 0.34)
-
+    bolts("panel_bolts_satin_steel", [(x, z) for x in (-0.77, 0.77) for z in (0.14, 0.92)], 0.34)
 
 def hopper(material):
     """A funnel hopper on a frame over a wheeled bin."""
