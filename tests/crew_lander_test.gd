@@ -2,7 +2,7 @@ extends SceneTree
 
 # The crew lander: new games start inside its cabin with a minimal HUD; E opens
 # the hatch into a ramp; stepping out brings the HUD in; the lander stands on
-# buildable ground, can't be built over, and loaded or Creative games start
+# buildable ground, can't be built over, and loaded games start
 # with the hatch open.
 # Run with: godot --headless --path . --script res://tests/crew_lander_test.gd
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
@@ -87,11 +87,13 @@ func _initialize() -> void:
 	await process_frame
 	MHGame.pending_save_state = {}
 
-	# Creative skips the opening: start outside with the hatch open.
-	MHGame.game_mode = "creative"
-	world = await _world()
-	_check(not world.lander.cabin_contains(world.player.global_position) and world.lander.hatch_open(), "Creative starts outside with the hatch open")
-	world.queue_free()
+	# Every free-play mode opens in the lander, Creative and Freedom included.
+	for mode in ["creative", "freedom"]:
+		MHGame.game_mode = mode
+		world = await _world()
+		_check(world.lander.cabin_contains(world.player.global_position) and not world.lander.hatch_open(), "%s starts inside the lander with the hatch shut" % mode)
+		world.queue_free()
+		await process_frame
 	MHGame.game_mode = "survival"
 	if failures == 0:
 		print("Crew lander test passed: placement, start inside, hatch and ramp, HUD, shelter, keep-clear, landing target and ellipse, saved position and Creative.")

@@ -105,7 +105,7 @@ pick their landing target before the opening:
 | --- | --- |
 | **Survival** | Somewhere inside the landing ellipse, as in Missions |
 | **Freedom** | Exactly where they pick |
-| **Creative** | Exactly where they pick (and the opening can be skipped) |
+| **Creative** | Exactly where they pick |
 
 **Stretch goals** (optional stars, for students who finish early):
 - **Mission 1:** a landing zone within 40 m of the base: close enough to be handy, but still safe.

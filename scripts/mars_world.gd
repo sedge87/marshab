@@ -72,7 +72,7 @@ func _ready() -> void:
 	lander = CREW_LANDER_SCRIPT.new()
 	add_child(lander)
 	_land_lander()
-	_start_in_lander = MHGame.pending_save_state.is_empty() and MHGame.simulation_on() and not MHMissions.active()
+	_start_in_lander = MHGame.pending_save_state.is_empty() and not MHMissions.active()   # every new free-play game opens in the lander
 	if MHMissions.active():
 		lander.set_present(bool(MHMissions.current().get("lander", true)))
 		_add_landing_zone_marker()
