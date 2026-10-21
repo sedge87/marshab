@@ -7,7 +7,7 @@ reads. This page explains the rules; the spreadsheet holds the values.
 
 ## Decisions so far
 
-- **Realistic weights, rounded to friendly numbers.** A room cell is about 800 kg, a reactor 2.5 t and a grow tray 150 kg, against a 55 t cargo budget. Real proportions make the trade-offs honest: one reactor costs as much as about 17 grow trays. The game shows tonnes when numbers get large.
+- **Realistic weights, rounded to friendly numbers.** A room cell is about 800 kg, a reactor 2.5 t and a grow tray 150 kg, against a 120 t free-play cargo budget (raised from 55 t on 22 Oct: a base for six needs roughly 65–80 t). Real proportions make the trade-offs honest: one reactor costs as much as about 17 grow trays. The game shows tonnes when numbers get large.
 - **Real units:** kg, kW, kWh, L and °C. The physics is simplified for Year 9, and the figures come mostly from NASA ISS planning data.
 - **Each site changes the numbers:** its sun (height, plus cliffs and rims hiding it), day and night temperatures, ice richness, dust storms, and a cargo bonus for low landing sites (thicker air for parachutes).
 - **Missions count food against cargo.** Students choose how many sols of food to bring, versus how much to grow.

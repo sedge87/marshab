@@ -95,7 +95,7 @@ static func normalise_mode(mode: String) -> String:
 ## landing bonus (low sites have thicker air for parachutes).
 static func mission_cargo_budget() -> int:
 	if game_mode == "missions": return preload("res://scripts/mh_missions.gd").cargo_budget()
-	return roundi(MHResources.setting("cargo_budget_kg", 55000.0) * (1.0 + float(MHResources.site(site_id).get("cargo_bonus", 0.0))))
+	return roundi(MHResources.setting("cargo_budget_kg", 120000.0) * (1.0 + float(MHResources.site(site_id).get("cargo_bonus", 0.0))))
 
 ## The cargo limit every placement checks against.
 static func cargo_budget() -> int:

@@ -3,7 +3,7 @@
   "settings": {
     "crew": 6.0,
     "mission_sols": 100.0,
-    "cargo_budget_kg": 55000.0,
+    "cargo_budget_kg": 120000.0,
     "start_food_sols": 60.0,
     "o2_per_person": 0.84,
     "co2_per_person": 1.0,
