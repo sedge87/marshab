@@ -55,7 +55,6 @@ resource system. It has no supplies to manage and no cargo store.
 - **It's always safe.** Inside, the crew are sheltered, so it's somewhere to return to, warm up and save.
 - **It's a landmark** on the site map and compass, and a respawn point.
 - **Where it lands:** in free play, students build wherever they choose, next to it or somewhere better. In Missions it lands next to the base the robots have already built. Either way it doesn't connect to the habitat.
-- In Creative mode the opening can be skipped.
 
 **The look:** completely different from the habitat modules. It's a real spacecraft on legs, not a box. The brief is Pack L in [furniture-pack-brief.md](furniture-pack-brief.md). **Built:** a first version and this opening are already in the game (`scripts/crew_lander.gd`) for Survival and Freedom.
 
