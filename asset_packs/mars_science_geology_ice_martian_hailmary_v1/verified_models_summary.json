@@ -1,0 +1,35 @@
+[
+  {
+    "file": "microscope_station.glb",
+    "triangles": 11704,
+    "mesh_groups": 25,
+    "dimensions_m": [
+      1.3,
+      1.809,
+      0.78
+    ],
+    "size_kb": 210.9
+  },
+  {
+    "file": "sample_storage_cabinet.glb",
+    "triangles": 14648,
+    "mesh_groups": 40,
+    "dimensions_m": [
+      1.47,
+      1.938,
+      0.842
+    ],
+    "size_kb": 230.6
+  },
+  {
+    "file": "science_workbench.glb",
+    "triangles": 13984,
+    "mesh_groups": 29,
+    "dimensions_m": [
+      1.49,
+      1.668,
+      0.947
+    ],
+    "size_kb": 245.3
+  }
+]

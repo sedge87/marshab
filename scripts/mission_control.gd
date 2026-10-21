@@ -74,10 +74,14 @@ func _cargo_column() -> Control:
 	var col := MHStyle.vbox(16)
 	panel.add_child(col)
 	var used := builder.used_cargo()
-	var remaining := BuildController.CARGO_BUDGET - used
-	col.add_child(MHStyle.eyebrow("Cargo remaining"))
-	col.add_child(MHStyle.label(MHStyle.kg(remaining), 72, MHStyle.accent if remaining > BuildController.CARGO_BUDGET * .1 else MHStyle.WARN, 600, true))
-	col.add_child(MHStyle.mono("of %s delivered" % MHStyle.kg(BuildController.CARGO_BUDGET), 16, MHStyle.TEXT_MUTED))
+	var remaining := MHGame.mission_cargo_budget() - used
+	col.add_child(MHStyle.eyebrow("Cargo remaining" if not MHGame.cargo_unlimited() else "Cargo used"))
+	if MHGame.cargo_unlimited():
+		col.add_child(MHStyle.label(MHStyle.kg(used), 72, MHStyle.accent, 600, true))
+		col.add_child(MHStyle.mono("Creative · unlimited cargo" if MHGame.game_mode == "creative" else "Debug · unlimited cargo", 16, MHStyle.TEXT_MUTED))
+	else:
+		col.add_child(MHStyle.label(MHStyle.kg(remaining), 72, MHStyle.accent if remaining > MHGame.mission_cargo_budget() * .1 else MHStyle.WARN, 600, true))
+		col.add_child(MHStyle.mono("of %s delivered" % MHStyle.kg(MHGame.mission_cargo_budget()), 16, MHStyle.TEXT_MUTED))
 	var breakdown := builder.cargo_by_category()
 	col.add_child(_stacked_bar(breakdown, used))
 	for id in ["rooms", "structure", "power", "equipment"]:
@@ -116,7 +120,7 @@ func _stacked_bar(breakdown: Dictionary, used: int) -> Control:
 		bar.draw_rect(Rect2(Vector2.ZERO, bar.size), MHStyle.INK_800)
 		var x := 0.0
 		for id in ["rooms", "structure", "power", "equipment"]:
-			var w: float = bar.size.x * float(breakdown[id]) / BuildController.CARGO_BUDGET
+			var w: float = bar.size.x * float(breakdown[id]) / MHGame.mission_cargo_budget()
 			if w > 0.0:
 				bar.draw_rect(Rect2(x, 0, w, bar.size.y), CATEGORY_COLOURS[id])
 				x += w + (2.0 if w > 2.0 else 0.0))
@@ -218,7 +222,7 @@ class PlanView extends Control:
 		var font_b := MHStyle.font(700, true, 1)
 		for zone in builder.zones:
 			var kind := str(zone.kind)
-			var colour: Color = MHStyle.BEACON_YELLOW if kind == "solar" else (BuildController.ZONE_TYPES[kind].colour as Color).lightened(.2)
+			var colour: Color = MHStyle.BEACON_YELLOW if kind == "solar" else BuildController.plan_colour(kind).lightened(.2)
 			var centre := Vector2.ZERO
 			for cell in zone.cells:
 				var r := Rect2(origin + Vector2(cell.x - .5, cell.y - .5) * unit, Vector2(unit, unit))

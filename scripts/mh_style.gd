@@ -411,6 +411,43 @@ static func hint_strip(hints: Array, height := 64.0) -> Control:
 	strip.add_child(row)
 	return strip
 
+# Shared top-centre switcher for the two build views: Site plan | Interior |
+# Explore, with a one-line purpose banner underneath. active is "site" or
+# "interior". Returns {root, site, interior, explore, purpose} so the caller
+# can grey out Interior or retitle the banner later.
+static func build_mode_switcher(active: String, purpose_text: String, on_site: Callable, on_interior: Callable, on_explore: Callable) -> Dictionary:
+	var band := CenterContainer.new()
+	band.anchor_right = 1
+	band.offset_top = 32
+	band.offset_bottom = 120
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var column := vbox(6)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.add_child(column)
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", box(SURFACE_HUD, BORDER_SUBTLE, RADIUS_MD, 1, Vector4(4, 4, 12, 4)))
+	column.add_child(panel)
+	var row := hbox(4)
+	panel.add_child(row)
+	var tabs := {}
+	for spec in [["site", "Site plan", "map-pin", on_site], ["interior", "Interior", "armchair", on_interior], ["explore", "Explore", "footprints", on_explore]]:
+		var tab := button(spec[1], "primary" if spec[0] == active else "ghost", spec[2], 48)
+		tab.focus_mode = Control.FOCUS_NONE
+		if spec[0] == active:
+			tab.mouse_default_cursor_shape = Control.CURSOR_ARROW
+		else:
+			tab.pressed.connect(spec[3])
+		row.add_child(tab)
+		tabs[spec[0]] = tab
+	for key_hint in [[["B"], "Explore"], [["Shift", "B"], "Site plan" if active == "interior" else "Interior"]]:
+		var hint := control_hint(key_hint[0], key_hint[1])
+		hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(hint)
+	var purpose := mono(purpose_text, 13, TEXT_SECONDARY)
+	purpose.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(purpose)
+	return {"root": band, "site": tabs.site, "interior": tabs.interior, "explore": tabs.explore, "purpose": purpose}
+
 static func readiness_item(item: Dictionary) -> HBoxContainer:
 	# {label, detail, status: met|partial|unmet, icon}
 	var status := str(item.get("status", "unmet"))

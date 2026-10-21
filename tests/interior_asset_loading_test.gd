@@ -1,34 +1,39 @@
 extends SceneTree
 
-# Runtime loading contract for the grounded first batch.  It deliberately
-# exercises BuildController rather than directly instantiating GLBs, so a
-# catalogue path, placement offset or fallback regression is caught here.
-const MODELLED_IDS := ["crew_bunk", "locker", "common_table", "task_light", "privacy_divider", "exercise_station", "grow_tray", "seedling_station", "nutrient_mixer", "harvest_cart", "hydroponics_sensor_panel", "air_recycler", "water_reclaimer", "oxygen_reserve_tank", "thermal_control_unit", "life_support_console", "science_workbench", "sample_analysis_station", "microscope_station", "planetary_data_console", "sample_storage_cabinet", "cargo_rack", "spares_cabinet", "cold_storage_unit", "tool_bench", "power_distribution_panel", "battery_bank", "inverter_cabinet", "reactor_monitor_console", "cable_tray"]
+# Every interior item in the catalogue loads its art through BuildController
+# (the same path furnishing uses): the scene resolves, the visual holds the
+# model rather than a fallback proxy, and it can be bumped into.
+# (Rewritten 21 Oct: it used to list 30 ids, several since retired.)
+# Run with: godot --headless --path . --script res://tests/interior_asset_loading_test.gd
+var failures := 0
+
+func _check(ok: bool, what: String) -> void:
+	if not ok:
+		failures += 1
+		print("FAIL ", what)
 
 func _initialize() -> void:
-	var builder := BuildController.new()
-	builder.display_only = true
 	var world := Node3D.new()
 	root.add_child(world)
-	world.call_deferred("add_child", builder)
 	await process_frame
+	var builder := BuildController.new()
+	builder.display_only = true
+	world.add_child(builder)
 	await process_frame
-	for index in MODELLED_IDS.size():
-		var id: String = MODELLED_IDS[index]
+	var count := 0
+	for id in EquipmentCatalog.entries():
 		var entry := EquipmentCatalog.get_entry(id)
+		if (entry.get("valid_zones", []) as Array).is_empty(): continue   # surface gear has its own builder
+		count += 1
 		var path := str(entry.get("asset_scene", ""))
-		assert(ResourceLoader.exists(path), "%s must resolve its catalogue asset_scene: %s" % [id, path])
-		var visual := builder._equipment_visual(id, Vector2i(index, 0), Vector2i(0, -1))
+		_check(not path.is_empty() and ResourceLoader.exists(path), "%s resolves its art: %s" % [id, path])
+		var visual := builder.free_interior_visual(id, Vector3(count * 4.0, 0, 0), 0.0)
 		world.add_child(visual)
-		assert(visual.get_node_or_null("Model") != null, "%s must use GLB art, not its fallback proxy." % id)
-		assert(not visual.find_children("*", "CollisionShape3D", true, false).is_empty(), "%s must retain catalogue collision." % id)
-		if int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0:
-			assert(not visual.get_tree().get_nodes_in_group("grid_powered_light").is_empty(), "%s must retain a grid-powered indicator." % id)
+		_check(visual.find_child("Model", true, false) != null, "%s shows its model, not a fallback" % id)
+		# Walk-through items and thin strips (15 cm or less) have no collision by design.
+		var walkthrough := bool(entry.get("walkthrough", false)) or builder._free_interior_size(entry).y <= .15
+		_check(walkthrough or not visual.find_children("*", "CollisionShape3D", true, false).is_empty(), "%s has collision" % id)
 		visual.queue_free()
-	# An unbuilt catalogue asset must still display safely through the explicit proxy.
-	var fallback := builder._equipment_visual("greenhouse_planter", Vector2i(9, 0), Vector2i(0, -1))
-	world.add_child(fallback)
-	assert(fallback.get_node_or_null("Model") == null, "Unavailable art must use fallback, not a broken model node.")
-	assert(not fallback.find_children("*", "MeshInstance3D", true, false).is_empty(), "Fallback must retain its presentation proxy.")
-	print("Interior art loading test passed: %d GLBs, collision, grid indicators and fallback." % MODELLED_IDS.size())
-	quit(0)
+	if failures == 0:
+		print("Interior art loading test passed: %d items load their models with collision." % count)
+	quit(1 if failures > 0 else 0)

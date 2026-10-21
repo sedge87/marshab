@@ -13,6 +13,10 @@ signal load_requested(slot: int)
 
 var _controls_sheet: Control
 var _controls_button: Button
+var _slots: HBoxContainer
+var _save_status: Label
+# Slot awaiting a second click to confirm overwriting an existing save.
+var _confirm_slot := 0
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -39,19 +43,12 @@ func _ready() -> void:
 	_controls_button = _row(list, "Controls", "selected", "keyboard")
 	_controls_button.pressed.connect(_toggle_controls)
 	_row(list, "Settings", "secondary", "settings").pressed.connect(func() -> void: settings.emit())
-	list.add_child(MHStyle.eyebrow("Habitat saves", MHStyle.accent, 13))
-	var slots := MHStyle.hbox(6)
-	for slot in range(1, MHGame.SAVE_SLOT_COUNT + 1):
-		var save := MHStyle.button("Save %d" % slot, "ghost", "save")
-		save.tooltip_text = "Save this habitat to slot %d" % slot
-		save.pressed.connect(save_requested.emit.bind(slot))
-		slots.add_child(save)
-		if MHGame.save_slot_summary(slot).get("exists", false):
-			var load := MHStyle.button("Load %d" % slot, "ghost", "rotate-ccw")
-			load.tooltip_text = "Load the habitat in slot %d" % slot
-			load.pressed.connect(load_requested.emit.bind(slot))
-			slots.add_child(load)
-	list.add_child(slots)
+	list.add_child(MHStyle.eyebrow("%s saves" % MHGame.SAVE_SETS[MHGame.save_set_for_mode(MHGame.game_mode)], MHStyle.accent, 13))
+	_slots = MHStyle.hbox(6)
+	list.add_child(_slots)
+	_save_status = MHStyle.body("", 14, MHStyle.TEXT_MUTED)
+	list.add_child(_save_status)
+	_build_slots()
 	_row(list, "Exit to main menu", "ghost", "log-out").pressed.connect(func() -> void: exit_to_menu.emit())
 	var footer := MHStyle.mono("Offline build · %s" % MHGame.site_name(), 13, MHStyle.TEXT_MUTED)
 	footer.custom_minimum_size.y = 40
@@ -60,6 +57,41 @@ func _ready() -> void:
 	_controls_sheet = _build_controls()
 	add_child(_controls_sheet)
 	resume.grab_focus.call_deferred()
+
+# Rebuilt after every save so a new Load button appears straight away.
+func _build_slots() -> void:
+	for child in _slots.get_children():
+		_slots.remove_child(child)
+		child.queue_free()
+	for slot in range(1, MHGame.SAVE_SLOT_COUNT + 1):
+		var exists := bool(MHGame.save_slot_summary(slot).get("exists", false))
+		var confirming := slot == _confirm_slot
+		var save := MHStyle.button("Overwrite %d?" % slot if confirming else "Save %d" % slot, "danger" if confirming else "ghost", "save")
+		save.tooltip_text = "Click again to replace slot %d" % slot if confirming else "Save this habitat to slot %d" % slot
+		save.pressed.connect(_on_save_pressed.bind(slot, exists))
+		_slots.add_child(save)
+		if exists:
+			var load := MHStyle.button("Load %d" % slot, "ghost", "rotate-ccw")
+			load.tooltip_text = "Load the habitat in slot %d" % slot
+			load.pressed.connect(load_requested.emit.bind(slot))
+			_slots.add_child(load)
+
+func _on_save_pressed(slot: int, exists: bool) -> void:
+	# An existing save needs a second click, so a stray click can't lose work.
+	if exists and _confirm_slot != slot:
+		_confirm_slot = slot
+		show_save_status("warn", "Slot %d already has a save. Click Overwrite to replace it." % slot)
+		_build_slots()
+		return
+	_confirm_slot = 0
+	save_requested.emit(slot)
+
+## Called by the world after a save attempt; tone is "valid", "warn" or "invalid".
+func show_save_status(tone: String, text: String) -> void:
+	_save_status.text = text
+	_save_status.add_theme_color_override("font_color", {"valid": MHStyle.VALID, "warn": MHStyle.WARN, "invalid": MHStyle.DANGER}.get(tone, MHStyle.TEXT_MUTED))
+	if tone != "warn":
+		_build_slots()
 
 func _row(parent: Control, text: String, variant: String, icon_name: String) -> Button:
 	var b := MHStyle.button(text, variant, icon_name)

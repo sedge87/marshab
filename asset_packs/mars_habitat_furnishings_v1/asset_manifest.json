@@ -1,0 +1,599 @@
+{
+  "style": "Practical habitat furnishings, v2 detail pass (matches the Martian/Hail Mary packs)",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "galley_table_set",
+      "file": "galley_table_set.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.8,
+          0.0,
+          -0.935
+        ],
+        [
+          0.8,
+          0.86,
+          0.935
+        ]
+      ],
+      "triangles": 6820,
+      "named_components": [
+        "chair_backs_teal",
+        "chair_feet_black",
+        "chair_frames_satin",
+        "chair_seat_shells_warm",
+        "chair_seats_teal",
+        "table_edge",
+        "table_frame_dark",
+        "table_top_white"
+      ]
+    },
+    {
+      "id": "galley_oven",
+      "file": "galley_oven.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.315,
+          0.0,
+          -0.376
+        ],
+        [
+          0.315,
+          0.936,
+          0.315
+        ]
+      ],
+      "triangles": 4836,
+      "named_components": [
+        "control_panel",
+        "display_screen",
+        "hob_dark",
+        "hob_indicator",
+        "hob_rings_slate",
+        "knobs_satin",
+        "oven_body_white",
+        "oven_cap_warm",
+        "oven_door_slate",
+        "oven_handle_satin",
+        "oven_plinth",
+        "oven_rails",
+        "oven_seal_black",
+        "oven_vent_dark",
+        "oven_window_dark",
+        "side_label"
+      ]
+    },
+    {
+      "id": "galley_rehydration_station",
+      "file": "galley_rehydration_station.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.275,
+          0.0,
+          -0.25
+        ],
+        [
+          0.36,
+          1.34,
+          0.235
+        ]
+      ],
+      "triangles": 7524,
+      "named_components": [
+        "button_cold_cool",
+        "button_hot",
+        "control_panel_slate",
+        "display_screen",
+        "drip_grate_dark",
+        "drip_tray_satin",
+        "food_pouches_pouch",
+        "hot_pipe_satin",
+        "hot_tank_bands",
+        "hot_tank_satin",
+        "nozzle_cold_satin",
+        "nozzle_hot_satin",
+        "nozzle_tag_cold_cool",
+        "nozzle_tag_hot",
+        "pouch_labels",
+        "pouch_rack_dark",
+        "pouch_shelves",
+        "recess",
+        "recess_trim_black",
+        "station_body_warm",
+        "station_cap_white",
+        "station_plinth",
+        "station_rails"
+      ]
+    },
+    {
+      "id": "galley_freezer",
+      "file": "galley_freezer.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.375,
+          0.0,
+          -0.43
+        ],
+        [
+          0.375,
+          1.86,
+          0.355
+        ]
+      ],
+      "triangles": 3456,
+      "named_components": [
+        "base_vent_dark",
+        "cabinet_body_white",
+        "cabinet_cap_warm",
+        "cabinet_plinth",
+        "cabinet_rails",
+        "door_seals_black",
+        "freezer_door_cool",
+        "freezer_door_handle_satin",
+        "freezer_door_label_white",
+        "fridge_door_frame",
+        "fridge_door_handle_satin",
+        "fridge_door_screen",
+        "fridge_door_white",
+        "hinges"
+      ]
+    },
+    {
+      "id": "waste_sorting_unit",
+      "file": "waste_sorting_unit.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.815,
+          0.0,
+          -0.421
+        ],
+        [
+          0.815,
+          1.17,
+          0.355
+        ]
+      ],
+      "triangles": 8196,
+      "named_components": [
+        "chute_lid_metals",
+        "chute_lid_organics",
+        "chute_lid_plastics",
+        "chute_metals",
+        "chute_organics_bright",
+        "chute_plastics_cool",
+        "chute_rim_metals",
+        "chute_rim_organics",
+        "chute_rim_plastics",
+        "compactor_door_warm",
+        "compactor_handle_satin",
+        "compactor_seal_black",
+        "compactor_window_dark",
+        "control_panel",
+        "display_screen",
+        "label_mark_metals_white",
+        "label_mark_organics_white",
+        "label_mark_plastics_white",
+        "label_metals",
+        "label_organics_bright",
+        "label_plastics_cool",
+        "panel_bolts_satin",
+        "status_lamp_bright",
+        "unit_body_slate",
+        "unit_cap_warm",
+        "unit_plinth",
+        "unit_rails",
+        "unit_vent_dark"
+      ]
+    },
+    {
+      "id": "recycling_hopper_plastics",
+      "file": "recycling_hopper_plastics.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.335,
+          0.0,
+          -0.335
+        ],
+        [
+          0.335,
+          1.28,
+          0.335
+        ]
+      ],
+      "triangles": 3660,
+      "named_components": [
+        "bin_handle_satin",
+        "bin_label_cool",
+        "bin_label_mark_white",
+        "bin_rim",
+        "bin_warm",
+        "bin_wheels_black",
+        "frame_band_cool",
+        "frame_dark",
+        "funnel_cool",
+        "lid_cool",
+        "lid_handle_satin",
+        "lid_hinge_dark",
+        "rim"
+      ]
+    },
+    {
+      "id": "recycling_hopper_metals",
+      "file": "recycling_hopper_metals.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.335,
+          0.0,
+          -0.335
+        ],
+        [
+          0.335,
+          1.28,
+          0.335
+        ]
+      ],
+      "triangles": 3660,
+      "named_components": [
+        "bin_handle_satin",
+        "bin_label",
+        "bin_label_mark_white",
+        "bin_rim",
+        "bin_warm",
+        "bin_wheels_black",
+        "frame_band",
+        "frame_dark",
+        "funnel",
+        "lid",
+        "lid_handle_satin",
+        "lid_hinge_dark",
+        "rim"
+      ]
+    },
+    {
+      "id": "compost_hopper",
+      "file": "compost_hopper.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.335,
+          0.0,
+          -0.335
+        ],
+        [
+          0.335,
+          1.28,
+          0.335
+        ]
+      ],
+      "triangles": 3660,
+      "named_components": [
+        "bin_handle_satin",
+        "bin_label_bright",
+        "bin_label_mark_white",
+        "bin_rim",
+        "bin_warm",
+        "bin_wheels_black",
+        "frame_band_bright",
+        "frame_dark",
+        "funnel_bright",
+        "lid_bright",
+        "lid_handle_satin",
+        "lid_hinge_dark",
+        "rim"
+      ]
+    },
+    {
+      "id": "iv_drip_stand",
+      "file": "iv_drip_stand.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.265,
+          0.0,
+          -0.32
+        ],
+        [
+          0.322,
+          1.998,
+          0.32
+        ]
+      ],
+      "triangles": 6744,
+      "named_components": [
+        "base_dark",
+        "hooks_satin",
+        "iv_bag_l_iv",
+        "iv_bag_label_l_white",
+        "iv_bag_label_r_white",
+        "iv_bag_r_iv",
+        "iv_drip_chamber_l_iv",
+        "iv_drip_chamber_r_iv",
+        "iv_lines_iv",
+        "pole_collar_dark",
+        "pole_satin",
+        "pump_bezel",
+        "pump_clamp_dark",
+        "pump_keys_slate",
+        "pump_lamp_bright",
+        "pump_screen_screen",
+        "pump_white"
+      ]
+    },
+    {
+      "id": "crew_vitals_monitor",
+      "file": "crew_vitals_monitor.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.47,
+          -0.29,
+          -0.054
+        ],
+        [
+          0.47,
+          0.29,
+          0.06
+        ]
+      ],
+      "triangles": 1088,
+      "named_components": [
+        "bezel",
+        "bracket_dark",
+        "footer_bar_screen",
+        "power_lamp_bright",
+        "readouts_screen",
+        "screen_dark",
+        "trace",
+        "trace_screen"
+      ]
+    },
+    {
+      "id": "surgery_cart",
+      "file": "surgery_cart.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.368,
+          0.0,
+          -0.321
+        ],
+        [
+          0.368,
+          0.955,
+          0.32
+        ]
+      ],
+      "triangles": 6820,
+      "named_components": [
+        "casters_black",
+        "drawer_fronts_warm",
+        "drawer_pull_0_satin",
+        "drawer_pull_1_satin",
+        "drawer_pull_2_satin",
+        "drawer_tag_0",
+        "drawer_tag_1",
+        "drawer_tag_2",
+        "drawer_unit_white",
+        "handle_supports_satin",
+        "instrument_pack_teal",
+        "instruments_satin",
+        "posts_dark",
+        "push_handle_satin",
+        "red_cross_red",
+        "sharps_box",
+        "shelf_12_white",
+        "shelf_50_white",
+        "shelf_lip_12",
+        "shelf_lip_50",
+        "tray_lips_satin",
+        "tray_satin"
+      ]
+    },
+    {
+      "id": "medical_exam_light",
+      "file": "medical_exam_light.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.249,
+          0.0,
+          -0.71
+        ],
+        [
+          0.32,
+          1.672,
+          0.301
+        ]
+      ],
+      "triangles": 6052,
+      "named_components": [
+        "arm_satin",
+        "arm_spring_dark",
+        "base_dark",
+        "elbow_dark",
+        "joint_dark",
+        "lamp_face_lamp",
+        "lamp_handle_dark",
+        "lamp_head_white",
+        "lamp_leds_white",
+        "lamp_neck_dark",
+        "lamp_rim",
+        "pole_collar_dark",
+        "pole_satin"
+      ]
+    },
+    {
+      "id": "work_desk",
+      "file": "work_desk.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.6,
+          0.0,
+          -0.338
+        ],
+        [
+          0.6,
+          0.99,
+          0.3
+        ]
+      ],
+      "triangles": 5136,
+      "named_components": [
+        "cable_tray",
+        "desk_edge",
+        "desk_top_warm",
+        "drawer_0_slate",
+        "drawer_1_slate",
+        "drawer_2_slate",
+        "drawer_pull_0_satin",
+        "drawer_pull_1_satin",
+        "drawer_pull_2_satin",
+        "laptop_base_slate",
+        "laptop_display_screen",
+        "laptop_keys",
+        "laptop_lid_slate",
+        "legs_dark",
+        "mug",
+        "mug_handle",
+        "notepad_white",
+        "pedestal_body_white",
+        "pedestal_cap_warm",
+        "pedestal_plinth",
+        "pedestal_rails",
+        "pen"
+      ]
+    },
+    {
+      "id": "crew_chair",
+      "file": "crew_chair.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.3,
+          0.0,
+          -0.32
+        ],
+        [
+          0.322,
+          1.0,
+          0.322
+        ]
+      ],
+      "triangles": 5076,
+      "named_components": [
+        "arm_rests_dark",
+        "back_post_dark",
+        "back_shell_warm",
+        "back_teal",
+        "base_dark",
+        "column_boot",
+        "column_satin",
+        "height_lever",
+        "seat_pan_dark",
+        "seat_teal"
+      ]
+    },
+    {
+      "id": "open_shelving",
+      "file": "open_shelving.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.53,
+          0.0,
+          -0.22
+        ],
+        [
+          0.53,
+          1.8,
+          0.22
+        ]
+      ],
+      "triangles": 7032,
+      "named_components": [
+        "cross_braces",
+        "feet_black",
+        "shelf_lips",
+        "shelves",
+        "storage_tubs",
+        "storage_tubs_cool",
+        "storage_tubs_teal",
+        "storage_tubs_warm",
+        "tub_labels_white",
+        "tub_lids",
+        "upright_slots",
+        "uprights_dark"
+      ]
+    },
+    {
+      "id": "plant_pot",
+      "file": "plant_pot.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.32,
+          0.0,
+          -0.3
+        ],
+        [
+          0.32,
+          1.045,
+          0.31
+        ]
+      ],
+      "triangles": 5788,
+      "named_components": [
+        "pebbles_warm",
+        "plant_leaves_leaf",
+        "plant_stems_leaf",
+        "pot_band",
+        "pot_foot",
+        "pot_rim_white",
+        "pot_white",
+        "soil"
+      ]
+    },
+    {
+      "id": "wall_whiteboard",
+      "file": "wall_whiteboard.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.62,
+          -0.45,
+          -0.095
+        ],
+        [
+          0.62,
+          0.42,
+          -0.0
+        ]
+      ],
+      "triangles": 1300,
+      "named_components": [
+        "board_white",
+        "corner_caps",
+        "diagram_cool",
+        "diagram_inner_white",
+        "diagram_rooms",
+        "eraser",
+        "frame",
+        "marker_tray",
+        "markers_cool",
+        "mission_patch",
+        "mission_patch_inner",
+        "ticks",
+        "writing_slate"
+      ]
+    }
+  ]
+}

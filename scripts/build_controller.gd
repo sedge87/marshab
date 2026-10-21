@@ -1,11 +1,51 @@
 class_name BuildController
 extends Node
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 # One floorplan is the source of truth for plan tiles, visible shell and collision.
 const CELL := 3.0
 const LIMIT := 60
-const CARGO_BUDGET := 8000
+const MHResources := preload("res://scripts/mh_resources.gd")
+const HABITAT_SIM := preload("res://scripts/habitat_sim.gd")
+const MHMissions := preload("res://scripts/mh_missions.gd")
+const ModelThumbnails := preload("res://scripts/model_thumbnails.gd")
+const PARTITION_DOOR_SCRIPT := preload("res://scripts/partition_door.gd")
+const ICE_SURVEY_SHADER := preload("res://shaders/ice_survey.gdshader")
+const ROOM_IDENTITY := preload("res://scripts/room_identity.gd")
+## Interior partition walls: 1.5 m segments on the half-cell grid inside a
+## room (bedrooms, toilet cubicles). The room stays one zone for the simulation.
+const PARTITION_STEP := 1.5
+const PARTITION_THICKNESS := .1
+var partitions: Array = []   # [{"a": Vector2, "b": Vector2, "door": bool}]
+const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
+## Site-plan parts that have a real model (for thumbnails and the 3D preview).
+const PART_MODELS := {"reactor": "surface_reactor", "ice_extractor": "ice_drill"}
+var catalogue_preview: SubViewportContainer
+var catalogue_stage: PanelContainer
+var catalogue_details: PanelContainer
+var _sim: RefCounted
+## The crew lander (scripts/crew_lander.gd): nothing can be built on top of it.
+var lander: Node3D
+
+## The habitat's life-support simulation (scripts/habitat_sim.gd).
+func simulation() -> RefCounted:
+	if _sim == null: _sim = HABITAT_SIM.new(self)
+	return _sim
+
+## Game hours passing (the day/night clock calls this every frame).
+func advance_simulation(hours: float, start_hour: float) -> void:
+	if not MHGame.simulation_on() or hours <= 0.0: return
+	simulation().advance(hours, start_hour)
 const CELL_COST := 50
+const ANGLED_CORNER_CLEARANCE := 0.6
+# CELL / √2: the spacing between parallel 45° wall lines on the cell-corner
+# lattice. DIAGONAL_CELL (CELL·√2) is one cell crossed corner to corner, the
+# length of each stretch of a 45° wall between lattice corners.
+const DIAGONAL_STEP := 2.1213203
+# How close to a 45° wall the cursor must be before Corridor/Airlock switches
+# to an angled connector; anywhere else places ordinary grid pieces.
+const ANGLED_MOUNT_REACH := 1.6
+const DIAGONAL_CELL := 4.2426407
 const AIRLOCK_DOOR := preload("res://scripts/airlock_door.gd")
 const SHOWCASE_WALL := preload("res://assets/showcase_modules/mh_wall_bay.glb")
 const SHOWCASE_CORNER := preload("res://assets/showcase_modules/mh_corner_post.glb")
@@ -23,6 +63,15 @@ const ROOF_ACCESSORY_SCENES := {
 const SOLAR_POWER_RADIUS := 30.0
 const REACTOR_POWER_RADIUS := 42.0
 const SOLAR_OUTPUT := 24
+# Heating: each pressurised cell needs this much power per degree C that Mars
+# is colder than the habitat, so cold sites and nights cost more to keep warm.
+const HABITAT_TEMPERATURE_C := 20.0
+const HEATING_PER_CELL_DEGREE := 1.0 / 60.0
+# Hull windows: a framed glazed band swapped into one Mars-facing 3 m wall
+# bay. Glass loses heat faster than the insulated hull.
+const WINDOW_HEAT_LOSS_CELLS := 1.5 # heat loss of one window, in cells of hull
+const WINDOW_SILL := .9
+const WINDOW_HEAD := 2.3
 const REACTOR_OUTPUT := 360
 const CREW_TARGET := 6
 const RESEARCH_TARGET := 6
@@ -37,8 +86,8 @@ const ZONE_TYPES := {
 	"hygiene":{"label":"Hygiene","colour":Color(.18,.56,.75),"cost":CELL_COST},
 	"medical":{"label":"Medical Bay","colour":Color(.78,.26,.34),"cost":CELL_COST},
 	"waste_management":{"label":"Waste Management","colour":Color(.38,.45,.27),"cost":CELL_COST},
-	"communications":{"label":"Communications","colour":Color(.25,.45,.80),"cost":CELL_COST},
-	"corridor":{"label":"Corridor","colour":Color(.76,.30,.08),"cost":CELL_COST},
+	"communications":{"label":"Mission Operations","colour":Color(.25,.45,.80),"cost":CELL_COST},
+	"corridor":{"label":"Corridor","colour":Color(.76,.30,.08),"plan_colour":Color("#8FA3AD"),"cost":CELL_COST},
 	"airlock":{"label":"Airlock","colour":Color(.95,.43,.08),"cost":CELL_COST},
 	"vehicle_bay":{"label":"Vehicle Bay","colour":Color(.88,.62,.12),"cost":CELL_COST},
 	"solar":{"label":"Solar Array","colour":Color(.18,.64,.94),"cost":CELL_COST},
@@ -58,30 +107,33 @@ const ZONE_INFO := {
 	"hygiene":{"cat":"rooms","icon":"droplets","rule":"Drag an area","desc":"A private washroom for hygiene and daily routines."},
 	"medical":{"cat":"rooms","icon":"heart-pulse","rule":"Drag an area","desc":"A small clinical bay for examination and medical supplies."},
 	"waste_management":{"cat":"rooms","icon":"recycle","rule":"Drag an area","desc":"A dedicated room for sorting and processing habitat waste."},
-	"communications":{"cat":"rooms","icon":"radio","rule":"Drag an area","desc":"A quiet station for surface links, telemetry and mission communications."},
-	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates","desc":"Creates a sealed passage. Add interior doors where it meets rooms."},
-	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates","desc":"The way in and out. The outer end faces Mars; the inner end must touch a room."},
+	"communications":{"cat":"rooms","icon":"radio","rule":"Drag an area","desc":"Plan missions, map the site and keep in touch with Earth and the rovers."},
+	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates · click 45° wall","desc":"Creates a sealed passage. Click an exact 45° free-form wall for a rotated connector."},
+	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates · click 45° wall","desc":"The way in and out. Click an exact 45° free-form wall for a rotated airlock; otherwise the inner end must touch a room."},
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
-	"solar":{"cat":"power","icon":"sun","rule":"One cell · R aims","desc":"A 30 m power field. Facing north gives full output."},
-	"reactor":{"cat":"power","icon":"atom","rule":"One cell · 1,200 kg","desc":"A compact fission reactor. 42 m power field; high output and high cargo cost."},
-	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell · 450 kg","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."}
+	"solar":{"cat":"power","icon":"sun","rule":"One cell · R aims","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
+	"reactor":{"cat":"power","icon":"atom","rule":"One cell","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
+	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."}
 }
 # Exterior construction deliberately excludes furnishing. Interior equipment is
 # selected only through the first-person construction controller.
 const CATEGORIES := [["rooms","Rooms","bed-double"],["structure","Structure","box"],["power","Resources","sun"],["surface","Surface gear","package"]]
 const SURFACE_EQUIPMENT := {
-	"cargo_crate_small": {"label":"Small Cargo Crate", "icon":"package", "asset":"res://assets/surface_equipment_phase12/cargo_crate_small.glb", "radius":.65},
-	"cargo_crate_large": {"label":"Large Cargo Crate", "icon":"package", "asset":"res://assets/surface_equipment_phase12/cargo_crate_large.glb", "radius":1.1},
-	"equipment_pallet": {"label":"Equipment Pallet", "icon":"package", "asset":"res://assets/surface_equipment_phase12/equipment_pallet.glb", "radius":1.15},
-	"comms_antenna": {"label":"Comms Antenna", "icon":"satellite", "asset":"res://assets/surface_equipment_phase12/comms_antenna.glb", "radius":.8},
-	"exterior_workbench": {"label":"Field Workbench", "icon":"wrench", "asset":"res://assets/surface_equipment_phase12/exterior_workbench.glb", "radius":1.0},
-	"high_light_post": {"label":"High Light Post", "icon":"lightbulb", "asset":"res://assets/surface_equipment_phase12/high_light_post.glb", "radius":.45},
-	"path_beacon": {"label":"Path Beacon", "icon":"map-pin", "asset":"res://assets/surface_equipment_phase12/path_beacon.glb", "radius":.35},
-	"portable_work_light": {"label":"Portable Work Light", "icon":"lightbulb", "asset":"res://assets/surface_equipment_phase12/portable_work_light.glb", "radius":.45},
-	"safety_barrier": {"label":"Safety Barrier", "icon":"shield", "asset":"res://assets/surface_equipment_phase12/safety_barrier.glb", "radius":1.0},
-	"solar_floodlight": {"label":"Solar Floodlight", "icon":"sun", "asset":"res://assets/surface_equipment_phase12/solar_floodlight.glb", "radius":.55},
+	"cargo_crate_small": {"label":"Small Cargo Crate", "icon":"package", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/cargo_crate_small.tscn", "radius":0.4, "height":0.45},
+	"cargo_crate_large": {"label":"Large Cargo Crate", "icon":"package", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/cargo_crate_large.tscn", "radius":0.6, "height":0.7},
+	"equipment_pallet": {"label":"Loaded Cargo Pallet", "icon":"package", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/equipment_pallet.tscn", "radius":1.0, "height":1.1},
+	"comms_antenna": {"label":"Communications Mast", "icon":"satellite", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/comms_antenna.tscn", "radius":0.95, "height":4.5},
+	"exterior_workbench": {"label":"Outdoor Workbench", "icon":"wrench", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/exterior_workbench.tscn", "radius":0.95, "height":1.8},
+	"high_light_post": {"label":"Tall Light Post", "icon":"lightbulb", "asset":"res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/high_light_post.tscn", "radius":0.4, "height":3.7},
+	"path_beacon": {"label":"Path Beacon", "icon":"map-pin", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/path_beacon.tscn", "radius":0.22, "height":1.1},
+	"portable_work_light": {"label":"Portable Floodlight", "icon":"lightbulb", "asset":"res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/portable_work_light.tscn", "radius":0.42, "height":2.0},
+	"safety_barrier": {"label":"Safety Barrier", "icon":"shield", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/safety_barrier.tscn", "radius":0.9, "height":1.1},
+	"solar_floodlight": {"label":"Solar Floodlight", "icon":"sun", "asset":"res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/solar_floodlight.tscn", "radius":0.4, "height":2.9},
+	"hazard_bollard": {"label":"Hazard Bollard", "icon":"triangle-alert", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/hazard_bollard.tscn", "radius":0.2, "height":1.0},
 }
 const HALF_CELL := 1.5
+# Plan tiles are unshaded and tone-mapped; darken them so white zone labels stay readable.
+const PLAN_TILE_SHADE := .35
 const ROOM_HEIGHT := 2.9
 const GRID_SHADER := """
 shader_type spatial;
@@ -112,6 +164,8 @@ void fragment() {
 """
 
 signal habitat_changed
+## Generation or draw changed with the sun or temperature (not the layout).
+signal power_changed
 signal mission_control_requested
 signal interior_build_requested
 signal surface_build_requested(id: String)
@@ -143,6 +197,11 @@ var _history: Array = []
 var dragging := false
 var drag_start := Vector2i.ZERO
 var hover := Vector2i.ZERO
+var angled_corridor_mount: Dictionary = {}
+## Free-form rooms are intentionally a second, isolated placement path.  They
+## have their own outline and never participate in the old cell-wall logic.
+var room_draw_mode := "rectangle"
+var freeform_points := PackedVector2Array()
 # The footprint editor grows an existing ordinary room one cell at a time.
 # A zone already stores an arbitrary cell array, so this is deliberately a
 # lightweight editing layer rather than a second room representation.
@@ -168,7 +227,7 @@ var placing_delta: Label
 var ready_badge_slot: Control
 var catalogue: PanelContainer
 var catalogue_rail: PanelContainer
-var catalogue_grid: GridContainer
+var catalogue_grid: HBoxContainer
 var catalogue_detail: VBoxContainer
 var equipment_list: VBoxContainer
 var catalogue_count: Label
@@ -183,7 +242,21 @@ var _preview_invalid_material: StandardMaterial3D
 var _line_valid_material: StandardMaterial3D
 var _line_invalid_material: StandardMaterial3D
 var _preview_key := ""
+var _debug_backings_visible := true
+var _mode_switcher: Dictionary = {}
+## Saved windows: {"mid": Vector2, "dir": Vector2} for each glazed hull bay.
+var hull_windows: Array = []
+## Every Mars-facing wall bay built this rebuild, where a window may go:
+## {mid, dir, tangent, outward, length, zone_kind}.
+var _hull_bays: Array = []
+var _windows_built: Dictionary = {}
 @onready var world := get_parent()
+
+## Colour a zone is drawn in on the site plan. Defaults to its deck colour;
+## corridors use steel so they read apart from the rust terrain and orange airlocks.
+static func plan_colour(zone_kind: String) -> Color:
+	var info: Dictionary = ZONE_TYPES.get(zone_kind, {})
+	return info.get("plan_colour", info.get("colour", Color.WHITE)) as Color
 
 func _site_build_limit() -> float:
 	# Most regions retain the standard 120 m-wide construction area. Individual
@@ -192,6 +265,7 @@ func _site_build_limit() -> float:
 
 func _ready() -> void:
 	add_to_group("habitat_builder")
+	habitat_changed.connect(_refresh_mode_switcher)
 	root=Node3D.new(); root.name="StudentHabitat"; world.add_child(root)
 	preview=Node3D.new(); preview.name="ZonePreview"; world.add_child(preview)
 	furnishing=Node3D.new(); furnishing.name="HabitatEquipment"; world.add_child(furnishing)
@@ -206,24 +280,54 @@ func _unhandled_input(event: InputEvent) -> void:
 			var active_player := world.get_node_or_null("Player") as Node
 			if active_player != null and bool(active_player.get_meta("interior_build_active", false)):
 				return
-			var player := world.get_node_or_null("Player") as Node3D
 			if active_player != null and bool(active_player.get_meta("surface_build_active", false)):
 				return
-			if not build_mode and player != null and is_inside(player.global_position):
+			# B opens the view that fits where the player stands (Interior inside a
+			# room, Site plan outside) and closes either. Shift+B swaps between the
+			# two views; from Explore it always opens the Site plan, so a player
+			# inside the habitat can still add rooms or an airlock.
+			if build_mode:
+				if event.shift_pressed: _switch_to_interior()
+				else: _toggle()
+			elif not event.shift_pressed and player_can_furnish():
 				interior_build_requested.emit()
 			else:
 				_toggle()
+		elif event.keycode == KEY_F9:
+			_toggle_backing_debug_visibility()
+		elif build_mode and event.keycode==KEY_V and _freeform_mode_available():
+			room_draw_mode = "freeform" if room_draw_mode == "rectangle" else "rectangle"
+			_cancel_freeform()
+			_refresh_catalogue()
+		elif build_mode and _freeform_active() and event.keycode == KEY_ENTER:
+			_finish_freeform()
+		elif build_mode and _freeform_active() and event.keycode == KEY_BACKSPACE:
+			if not freeform_points.is_empty(): freeform_points.remove_at(freeform_points.size() - 1)
+		elif build_mode and catalogue!=null and catalogue.visible and event.keycode>=KEY_1 and event.keycode<=KEY_9 and not event.ctrl_pressed:
+			# 1-9 pick a card in the build bar's current tab.
+			for card in catalogue_grid.get_children():
+				if int(card.get_meta("pick_index",0))==int(event.keycode)-int(KEY_0): (card as Button).pressed.emit()
 		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="solar" or kind=="corridor"): _rotate_airlock(); _refresh_catalogue()
-		elif build_mode and event.keycode==KEY_ESCAPE: dragging=false; _draw_preview([],false)
+		elif build_mode and event.keycode==KEY_ESCAPE:
+			# Escape first cancels an in-progress placement; only an idle planner
+			# lets it through to open the pause screen.
+			if _freeform_active() and not freeform_points.is_empty():
+				_cancel_freeform(); get_viewport().set_input_as_handled()
+			elif dragging or not angled_corridor_mount.is_empty():
+				dragging=false; angled_corridor_mount={}; _draw_preview([],false); get_viewport().set_input_as_handled()
 		elif build_mode and event.keycode==KEY_DELETE: _remove_at(hover)
 		elif build_mode and event.keycode==KEY_X: _set_tool("place" if tool=="remove" else "remove")
 		elif build_mode and event.keycode==KEY_Z and event.ctrl_pressed: _undo()
 		elif build_mode and event.keycode==KEY_TAB: _set_catalogue_open(not catalogue.visible); get_viewport().set_input_as_handled()
 	if not build_mode or not event is InputEventMouseButton: return
-	if event.button_index==MOUSE_BUTTON_WHEEL_UP: zoom=maxf(20.0,zoom-4.0); _zoom()
-	elif event.button_index==MOUSE_BUTTON_WHEEL_DOWN: zoom=minf(90.0,zoom+4.0); _zoom()
+	# Wheel notches arrive as a press and a release; zoom once per notch.
+	if event.button_index==MOUSE_BUTTON_WHEEL_UP:
+		if event.pressed: zoom=maxf(20.0,zoom-4.0); _zoom()
+	elif event.button_index==MOUSE_BUTTON_WHEEL_DOWN:
+		if event.pressed: zoom=minf(90.0,zoom+4.0); _zoom()
 	elif event.button_index==MOUSE_BUTTON_RIGHT and event.pressed:
-		dragging=false; _set_tool("place"); _draw_preview([],false)
+		if _freeform_active(): _cancel_freeform()
+		else: dragging=false; angled_corridor_mount={}; _set_tool("place"); _draw_preview([],false)
 	elif event.button_index==MOUSE_BUTTON_LEFT:
 		if tool=="remove":
 			if event.pressed: _remove_at(hover)
@@ -233,6 +337,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if not equipment_id.is_empty():
 			if event.pressed and not _pointer_over_ui(): _place_selected_equipment(hover)
+			return
+		if _freeform_active():
+			if event.pressed and not _pointer_over_ui(): _add_freeform_point()
+			return
+		if event.pressed and not _pointer_over_ui() and kind in ["airlock", "corridor"]:
+			if kind == "corridor" and _begin_angled_corridor_drag(): return
+			if _try_place_angled_outline_connector(): return
+		if not event.pressed and not angled_corridor_mount.is_empty():
+			_finish_angled_corridor_drag()
 			return
 		if event.pressed: dragging=true; drag_start=hover
 		elif dragging:
@@ -244,15 +357,20 @@ func _unhandled_input(event: InputEvent) -> void:
 				var zone := {"kind":kind,"cells":cells,"door_direction":airlock_direction,"cost":_zone_cost(cells)}
 				zones.append(zone); _history.append({"type":"zone","zone":zone})
 				_rebuild()
+				_after_room_placed()
 				MHAudio.sfx("place")
-				var left := CARGO_BUDGET-_used_cargo()
-				if left<CARGO_BUDGET*.1: _flash_notice("warn","Cargo is getting tight","%s left — about %d more cells." % [MHStyle.kg(left),left/CELL_COST])
+				var left := MHGame.cargo_budget()-_used_cargo()
+				if left<MHGame.cargo_budget()*.1: _flash_notice("warn","Cargo is getting tight","%s left — about %d more cells." % [MHStyle.kg(left),left/cell_cost("living")])
 			elif not _pointer_over_ui():
 				_flash_notice("invalid","Can't place here",reason+".")
 			_draw_preview([],false)
 
+var _r_held := 0.0
+var _r_repeat := 0.0
+
 func _process(delta: float) -> void:
 	if not build_mode: return
+	_hold_rotate_plan(delta)
 	_update_player_marker()
 	# Removing and furnishing pick against the deck the player sees, not the ground.
 	hover=_cell_at_mouse(habitat_base_y if tool=="remove" or not equipment_id.is_empty() else 0.0)
@@ -283,10 +401,46 @@ func _process(delta: float) -> void:
 		_draw_equipment_preview(hover,equipment_reason.is_empty())
 		_update_hologram_ui([] if hover.x==999 else [hover],equipment_reason)
 		return
+	if _freeform_active():
+		var cursor_point := _freeform_cursor_point()
+		var freeform_reason := freeform_invalid_reason(freeform_points) if freeform_points.size() >= 3 else "Place at least 3 points"
+		_draw_freeform_preview(cursor_point, freeform_reason)
+		_update_hologram_ui([], freeform_reason)
+		return
+	if kind in ["airlock", "corridor"]:
+		var mouse_point := _world_point_at_mouse(habitat_base_y)
+		if not is_inf(mouse_point.x):
+			if kind == "corridor" and not angled_corridor_mount.is_empty():
+				var dragged_mount: Dictionary = angled_corridor_mount.duplicate(true)
+				dragged_mount["length"] = _angled_corridor_length(dragged_mount, Vector2(mouse_point.x, mouse_point.z))
+				var dragged_reason := _angled_outline_mount_invalid_reason(dragged_mount)
+				_draw_angled_outline_connector_preview(dragged_mount, dragged_reason.is_empty())
+				_update_hologram_ui([], dragged_reason, dragged_mount)
+				return
+			var angled_mount := _angled_outline_mount_at(Vector2(mouse_point.x, mouse_point.z))
+			if not angled_mount.is_empty():
+				var mount_reason := _angled_outline_mount_invalid_reason(angled_mount)
+				_draw_angled_outline_connector_preview(angled_mount, mount_reason.is_empty())
+				_update_hologram_ui([], mount_reason, angled_mount)
+				return
 	var cells:=_cells(drag_start if dragging else hover,hover)
 	var reason:=_invalid_reason(cells)
 	_draw_preview(cells,reason.is_empty())
 	_update_hologram_ui(cells,reason)
+
+## Holding R in the site plan keeps rotating, one 90° step about every third
+## of a second after a short delay (a tap is still one step).
+func _hold_rotate_plan(delta: float) -> void:
+	if not Input.is_physical_key_pressed(KEY_R) or not (not equipment_id.is_empty() or kind in ["airlock", "vehicle_bay", "solar", "corridor"]):
+		_r_held = 0.0
+		return
+	_r_held += delta
+	if _r_held < .4: return
+	_r_repeat -= delta
+	if _r_repeat <= 0.0:
+		_r_repeat = .33
+		_rotate_airlock()
+		_refresh_catalogue()
 
 func _pointer_over_ui() -> bool:
 	var hovered:=get_viewport().gui_get_hovered_control()
@@ -301,6 +455,7 @@ func _toggle() -> void:
 	if not build_mode: _set_tool("place"); _update_hologram_ui([],""); _preview_key=""; _draw_preview([],false)
 	_set_build_view(build_mode)
 	_update_player_marker()
+	_refresh_mode_switcher()
 	var player:=world.get_node("Player"); player.set_meta("build_mode_active",build_mode)
 	Input.mouse_mode=Input.MOUSE_MODE_VISIBLE if build_mode else Input.MOUSE_MODE_CAPTURED
 	if not build_mode:
@@ -308,6 +463,33 @@ func _toggle() -> void:
 		# Leave the player exactly where they were when the plan view was opened.
 		# Build mode is a camera/tool mode, not a teleport or respawn.
 		player.velocity=Vector3.ZERO
+
+## True when the player stands inside a habitat zone, where Interior build works.
+func player_can_furnish() -> bool:
+	var player := world.get_node_or_null("Player") as Node3D
+	return player != null and is_inside(player.global_position)
+
+## Name of the room the player stands in ("" outside), for build-mode banners.
+func player_room_label() -> String:
+	if not player_can_furnish(): return ""
+	var player := world.get_node("Player") as Node3D
+	var zone := _zone_at_point(Vector2(player.global_position.x, player.global_position.z))
+	return str(ZONE_TYPES.get(str(zone.get("kind", "")), {}).get("label", "Habitat"))
+
+## Site plan → Interior. Leaves the plan view and hands over to the interior
+## builder, or explains why it can't from here.
+func _switch_to_interior() -> void:
+	if not player_can_furnish():
+		_flash_notice("warn", "Interior needs a room", "Your astronaut is outside. Walk into a room, then press B to furnish it.")
+		return
+	if build_mode: _toggle()
+	interior_build_requested.emit()
+
+func _refresh_mode_switcher() -> void:
+	if _mode_switcher.is_empty(): return
+	var interior_tab := _mode_switcher.interior as Button
+	interior_tab.disabled = not player_can_furnish()
+	interior_tab.tooltip_text = "Furnish the room your astronaut is standing in" if not interior_tab.disabled else "Your astronaut is outside. Walk into a room to furnish it."
 
 func _create_player_marker() -> void:
 	player_marker = Node3D.new()
@@ -389,15 +571,408 @@ func _cells(a: Vector2i,b: Vector2i) -> Array:
 		for z in range(mini(a.y,b.y),maxi(a.y,b.y)+1): out.append(Vector2i(x,z))
 	return out
 
+func _freeform_mode_available() -> bool:
+	return equipment_id.is_empty() and category == "rooms" and _is_ordinary_room_kind(kind)
+
+func _freeform_active() -> bool:
+	return tool == "place" and room_draw_mode == "freeform" and _freeform_mode_available()
+
+func _is_ordinary_room_kind(zone_kind: String) -> bool:
+	return zone_kind not in ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor"]
+
+func _try_place_angled_outline_connector() -> bool:
+	var world_point := _world_point_at_mouse(habitat_base_y)
+	if is_inf(world_point.x): return false
+	var mount := _angled_outline_mount_at(Vector2(world_point.x, world_point.z))
+	if mount.is_empty(): return false
+	var reason := _angled_outline_mount_invalid_reason(mount)
+	if not reason.is_empty():
+		_flash_notice("invalid", "Can't place here", reason + ".")
+		return true
+	var zone := {"kind": kind, "cells": [], "angled_mount": mount, "door_direction": airlock_direction, "cost": cell_cost(kind)}
+	zones.append(zone)
+	_history.append({"type": "zone", "zone": zone})
+	_rebuild()
+	MHAudio.sfx("place")
+	return true
+
+func _begin_angled_corridor_drag() -> bool:
+	var world_point := _world_point_at_mouse(habitat_base_y)
+	if is_inf(world_point.x): return false
+	var mount := _angled_outline_mount_at(Vector2(world_point.x, world_point.z))
+	if mount.is_empty(): return false
+	angled_corridor_mount = mount
+	dragging = true
+	return true
+
+func _angled_corridor_length(mount: Dictionary, point: Vector2) -> float:
+	var position: Vector2 = mount.get("position", Vector2.ZERO)
+	var outward: Vector2 = mount.get("outward", Vector2.UP)
+	# Whole diagonal cells (4.24 m): starting from the middle of a diagonal
+	# cell, the far end then lands on the middle of another, where a one-cell
+	# 45° wall of the next room fits exactly.
+	var raw_length := (point - position).dot(outward)
+	return float(clampi(roundi(raw_length / DIAGONAL_CELL), 1, 5)) * DIAGONAL_CELL
+
+## Cargo bays an angled corridor of this length is charged as (3 m each).
+func _angled_corridor_bays(length: float) -> int:
+	return maxi(1, ceili(length / CELL - .01))
+
+func _finish_angled_corridor_drag() -> void:
+	var mount: Dictionary = angled_corridor_mount.duplicate(true)
+	angled_corridor_mount = {}
+	dragging = false
+	var world_point := _world_point_at_mouse(habitat_base_y)
+	if is_inf(world_point.x): return
+	mount["length"] = _angled_corridor_length(mount, Vector2(world_point.x, world_point.z))
+	var reason := _angled_outline_mount_invalid_reason(mount)
+	if not reason.is_empty():
+		_flash_notice("invalid", "Can't place here", reason + ".")
+		return
+	var bays := _angled_corridor_bays(float(mount.get("length", CELL)))
+	var zone := {"kind": "corridor", "cells": [], "angled_mount": mount, "door_direction": airlock_direction, "cost": cell_cost("corridor") * bays}
+	zones.append(zone)
+	_history.append({"type": "zone", "zone": zone})
+	_rebuild()
+	MHAudio.sfx("place")
+
+func _outline_outward_at(outline: PackedVector2Array, point: Vector2, tangent: Vector2) -> Vector2:
+	var normal := Vector2(-tangent.y, tangent.x)
+	var side_a := Geometry2D.is_point_in_polygon(point + normal * .15, outline)
+	var side_b := Geometry2D.is_point_in_polygon(point - normal * .15, outline)
+	if side_a == side_b:
+		return Vector2.ZERO
+	return -normal if side_a else normal
+
+func _angled_outline_mount_at(point: Vector2) -> Dictionary:
+	var best: Dictionary = {}
+	var best_distance := ANGLED_MOUNT_REACH
+	for zone_index in range(zones.size()):
+		var zone: Dictionary = zones[zone_index]
+		if not zone.has("outline"): continue
+		var outline := zone_outline(zone)
+		for edge_index in range(outline.size()):
+			var start := outline[edge_index]
+			var finish := outline[(edge_index + 1) % outline.size()]
+			var edge := finish - start
+			var length := edge.length()
+			if length < CELL - .01: continue
+			var tangent := edge / length
+			if absf(absf(tangent.x) - absf(tangent.y)) > .01: continue
+			# Only alongside this 45° wall: past either end the cursor is beside
+			# the neighbouring wall, where grid pieces belong.
+			var raw_along := (point - start).dot(tangent)
+			if raw_along < 0.0 or raw_along > length: continue
+			var along := raw_along
+			var distance := point.distance_to(start + tangent * along)
+			if distance >= best_distance: continue
+			# Centre the doorway on the middle of the diagonal cell under the cursor,
+			# so it always clears the corners and lines up with the cell lattice.
+			var cells_along := roundi(length / DIAGONAL_CELL)
+			var doorway_centre := clampf(along, CELL * .5, length - CELL * .5)
+			if cells_along >= 1 and absf(length - cells_along * DIAGONAL_CELL) < .05:
+				doorway_centre = (float(clampi(floori(along / DIAGONAL_CELL), 0, cells_along - 1)) + .5) * DIAGONAL_CELL
+			var outward := _outline_outward_at(outline, start + tangent * doorway_centre, tangent)
+			if outward == Vector2.ZERO: continue
+			best_distance = distance
+			best = {"host_zone": zone_index, "edge_index": edge_index, "edge_start": start, "edge_finish": finish, "position": start + tangent * doorway_centre, "tangent": tangent, "outward": outward, "opening_start": doorway_centre - CELL * .5, "opening_end": doorway_centre + CELL * .5}
+	return best
+
+func _angled_outline_mount_invalid_reason(mount: Dictionary) -> String:
+	var mount_length := float(mount.get("length", CELL))
+	var mount_cost := cell_cost(kind) * (_angled_corridor_bays(mount_length) if kind == "corridor" else 1)
+	if _used_cargo() + mount_cost > MHGame.cargo_budget(): return "Not enough cargo left"
+	for sample in _outline_site_samples(_angled_mount_outline(mount)):
+		var site_reason := MHSiteTerrain.unbuildable_reason(sample)
+		if not site_reason.is_empty(): return site_reason
+	var host_index := int(mount.get("host_zone", -1))
+	if host_index < 0 or host_index >= zones.size(): return "No room to attach to"
+	var host_outline := zone_outline(zones[host_index])
+	var position: Vector2 = mount.get("position", Vector2.ZERO)
+	var tangent: Vector2 = mount.get("tangent", Vector2.RIGHT)
+	var outward: Vector2 = mount.get("outward", Vector2.ZERO)
+	var edge_start: Vector2 = mount.get("edge_start", Vector2.ZERO)
+	var edge_finish: Vector2 = mount.get("edge_finish", Vector2.ZERO)
+	var edge_length := edge_start.distance_to(edge_finish)
+	if float(mount.get("opening_start", 0.0)) < ANGLED_CORNER_CLEARANCE or float(mount.get("opening_end", 0.0)) > edge_length - ANGLED_CORNER_CLEARANCE:
+		return "Too close to a corner"
+	for offset in [-1.0, 0.0, 1.0]:
+		var p: Vector2 = position + tangent * (CELL * .5 * float(offset))
+		if not Geometry2D.is_point_in_polygon(p - outward * .3, host_outline): return "Doorway must sit fully on one wall"
+		if Geometry2D.is_point_in_polygon(p + outward * .3, host_outline): return "Door would lead outside to outside"
+	var proposed_outline := _angled_mount_outline(mount)
+	if _polygons_overlap_area(proposed_outline, host_outline): return "Connector overlaps its own room"
+	var far_beyond := position + outward * (mount_length + .3)
+	if kind == "corridor":
+		# A corridor may run on into another room, but only by meeting one of
+		# its 45° walls square-on, clear of the corners.
+		if _angled_far_end_target(mount).is_empty() and not _zone_at_point(far_beyond).is_empty(): return "Corridor end must meet a 45° wall square-on, clear of its corners"
+	elif not _zone_at_point(far_beyond).is_empty(): return "Outer door would open into another room"
+	for index in range(zones.size()):
+		if index == host_index: continue
+		var zone: Dictionary = zones[index]
+		if zone.has("angled_mount"):
+			if _polygons_overlap_area(proposed_outline, _angled_mount_outline(zone.get("angled_mount", {}))): return "Overlaps an angled connector"
+			continue
+		if zone.has("outline"):
+			if _polygons_overlap_area(proposed_outline, zone_outline(zone)): return "Connector overlaps another room"
+			continue
+		for cell in zone.get("cells", []):
+			if _polygons_overlap_area(proposed_outline, _freeform_cell_polygon(cell)): return "Connector overlaps existing habitat"
+	return ""
+
+## The mount with host_zone/edge_index/opening refreshed from the free-form
+## wall its doorway actually sits on; empty when no such wall remains.
+func _resolve_angled_host(mount: Dictionary) -> Dictionary:
+	var position: Vector2 = mount.get("position", Vector2.ZERO)
+	var tangent: Vector2 = mount.get("tangent", Vector2.RIGHT)
+	var outward: Vector2 = mount.get("outward", Vector2.UP)
+	for zone_index in range(zones.size()):
+		if not zones[zone_index].has("outline"): continue
+		var outline := zone_outline(zones[zone_index])
+		if not Geometry2D.is_point_in_polygon(position - outward * .3, outline): continue
+		for edge_index in range(outline.size()):
+			var a := outline[edge_index]
+			var b := outline[(edge_index + 1) % outline.size()]
+			var length := a.distance_to(b)
+			if length < .01: continue
+			var t := (b - a) / length
+			if absf(t.cross(tangent)) > .01 or absf(t.cross(position - a)) > .05: continue
+			var along := (position - a).dot(t)
+			if along < -.01 or along > length + .01: continue
+			var resolved := mount.duplicate(true)
+			resolved.merge({"host_zone": zone_index, "edge_index": edge_index, "edge_start": a, "edge_finish": b, "opening_start": along - HALF_CELL, "opening_end": along + HALF_CELL}, true)
+			return resolved
+	return {}
+
+## The free-form 45° wall an angled corridor's far end meets square-on, as a
+## doorway {zone_index, edge_index, opening_start, opening_end}; empty if none.
+func _angled_far_end_target(mount: Dictionary) -> Dictionary:
+	var position: Vector2 = mount.get("position", Vector2.ZERO)
+	var tangent: Vector2 = mount.get("tangent", Vector2.RIGHT)
+	var outward: Vector2 = mount.get("outward", Vector2.UP)
+	var far := position + outward * float(mount.get("length", CELL))
+	for zone_index in range(zones.size()):
+		if zone_index == int(mount.get("host_zone", -1)) or not zones[zone_index].has("outline"): continue
+		var outline := zone_outline(zones[zone_index])
+		if not Geometry2D.is_point_in_polygon(far + outward * .3, outline): continue
+		for edge_index in range(outline.size()):
+			var a := outline[edge_index]
+			var b := outline[(edge_index + 1) % outline.size()]
+			var length := a.distance_to(b)
+			if length < .01: continue
+			var t := (b - a) / length
+			if absf(t.cross(tangent)) > .01 or absf(t.cross(far - a)) > .05: continue
+			var along := (far - a).dot(t)
+			if along - HALF_CELL < ANGLED_CORNER_CLEARANCE - .01 or along + HALF_CELL > length - ANGLED_CORNER_CLEARANCE + .01: continue
+			return {"zone_index": zone_index, "edge_index": edge_index, "opening_start": along - HALF_CELL, "opening_end": along + HALF_CELL}
+	return {}
+
+func _angled_mount_outline(mount: Dictionary) -> PackedVector2Array:
+	var position: Vector2 = mount.get("position", Vector2.ZERO)
+	var tangent: Vector2 = mount.get("tangent", Vector2.RIGHT).normalized()
+	var outward: Vector2 = mount.get("outward", Vector2.UP).normalized()
+	var length := float(mount.get("length", CELL))
+	return PackedVector2Array([
+		position - tangent * CELL * .5,
+		position + tangent * CELL * .5,
+		position + tangent * CELL * .5 + outward * length,
+		position - tangent * CELL * .5 + outward * length
+	])
+
+func _cancel_freeform() -> void:
+	freeform_points = PackedVector2Array()
+	dragging = false
+	_preview_key = ""
+	_draw_preview([], false)
+
+## Nearest construction-cell corner. Free-form corners live only on this 3 m
+## lattice, so every straight wall lies on a cell face (where grid corridors,
+## airlocks and rooms can meet it) and every diagonal runs corner to corner.
+static func snap_to_cell_corner(point: Vector2) -> Vector2:
+	return Vector2(roundf((point.x - HALF_CELL) / CELL) * CELL + HALF_CELL, roundf((point.y - HALF_CELL) / CELL) * CELL + HALF_CELL)
+
+func _freeform_cursor_point() -> Vector2:
+	var world_point := _world_point_at_mouse(habitat_base_y if not zones.is_empty() else 0.0)
+	if is_inf(world_point.x): return Vector2.INF
+	var raw := Vector2(world_point.x, world_point.z)
+	var point := snap_to_cell_corner(raw)
+	if freeform_points.is_empty(): return point
+	# Walls run straight or at exactly 45°: offer the horizontal, vertical and
+	# diagonal corners from the last point and take the one nearest the cursor.
+	var last := freeform_points[freeform_points.size() - 1]
+	var steps := Vector2i(roundi((point.x - last.x) / CELL), roundi((point.y - last.y) / CELL))
+	var diagonal := maxi(absi(steps.x), absi(steps.y))
+	var direction := Vector2(1.0 if steps.x >= 0 else -1.0, 1.0 if steps.y >= 0 else -1.0)
+	var candidates := PackedVector2Array([Vector2(point.x, last.y), Vector2(last.x, point.y), last + direction * diagonal * CELL])
+	var closest := candidates[0]
+	for candidate in candidates:
+		if raw.distance_squared_to(candidate) < raw.distance_squared_to(closest): closest = candidate
+	return closest
+
+func _freeform_wall_angle(cursor: Vector2) -> String:
+	if freeform_points.is_empty() or is_inf(cursor.x): return "0°"
+	var delta := cursor - freeform_points[freeform_points.size() - 1]
+	if delta.length_squared() < .0001: return "0°"
+	var degrees := roundi(rad_to_deg(atan2(delta.y, delta.x)))
+	if degrees < 0: degrees += 360
+	if degrees > 180: degrees = 360 - degrees
+	return "%d°" % degrees
+
+func _add_freeform_point() -> void:
+	var point := _freeform_cursor_point()
+	if is_inf(point.x): return
+	if freeform_points.size() >= 3 and point.distance_to(freeform_points[0]) < .01:
+		_finish_freeform()
+		return
+	if not freeform_points.is_empty() and point.distance_to(freeform_points[freeform_points.size() - 1]) < .01:
+		return
+	freeform_points.append(point)
+
+func _finish_freeform() -> void:
+	var reason := freeform_invalid_reason(freeform_points)
+	if not reason.is_empty():
+		_flash_notice("invalid", "Can't place here", reason + ".")
+		return
+	var cells := _freeform_cells(freeform_points)
+	if zones.is_empty(): habitat_base_y = _proposed_freeform_base_y(freeform_points)
+	var zone := {"kind": kind, "cells": cells, "outline": freeform_points.duplicate(), "door_direction": airlock_direction, "cost": _freeform_cost(freeform_points)}
+	zones.append(zone)
+	_history.append({"type": "zone", "zone": zone})
+	_cancel_freeform()
+	_rebuild()
+	_after_room_placed()
+	MHAudio.sfx("place")
+
+func _freeform_area(points: PackedVector2Array) -> float:
+	if points.size() < 3: return 0.0
+	var twice_area := 0.0
+	for index in range(points.size()):
+		var next := points[(index + 1) % points.size()]
+		twice_area += points[index].x * next.y - next.x * points[index].y
+	return absf(twice_area) * .5
+
+func _freeform_perimeter(points: PackedVector2Array) -> float:
+	if points.size() < 2: return 0.0
+	var length := 0.0
+	for index in range(points.size() - 1): length += points[index].distance_to(points[index + 1])
+	if points.size() >= 3: length += points[points.size() - 1].distance_to(points[0])
+	return length
+
+func _freeform_current_wall_length(cursor: Vector2) -> float:
+	if freeform_points.is_empty() or is_inf(cursor.x): return 0.0
+	return freeform_points[freeform_points.size() - 1].distance_to(cursor)
+
+func _freeform_cost(points: PackedVector2Array) -> int:
+	return ceili(_freeform_area(points) * cell_cost(kind) / (CELL * CELL))
+
+func _freeform_cells(points: PackedVector2Array) -> Array:
+	var cells: Array = []
+	if points.size() < 3: return cells
+	var bounds := Rect2(points[0], Vector2.ZERO)
+	for point in points: bounds = bounds.expand(point)
+	for x in range(floori(bounds.position.x / CELL) - 1, ceili(bounds.end.x / CELL) + 2):
+		for z in range(floori(bounds.position.y / CELL) - 1, ceili(bounds.end.y / CELL) + 2):
+			var cell := Vector2i(x, z)
+			if Geometry2D.is_point_in_polygon(Vector2(cell.x * CELL, cell.y * CELL), points): cells.append(cell)
+	return cells
+
+func _freeform_cell_polygon(cell: Vector2i) -> PackedVector2Array:
+	var half := CELL * .5
+	var centre := Vector2(cell.x * CELL, cell.y * CELL)
+	return PackedVector2Array([centre + Vector2(-half, -half), centre + Vector2(half, -half), centre + Vector2(half, half), centre + Vector2(-half, half)])
+
+func freeform_invalid_reason(points: PackedVector2Array) -> String:
+	if points.size() < 3: return "Place at least 3 points"
+	for index in range(points.size()):
+		if points[index].distance_to(points[(index + 1) % points.size()]) < 2.0: return "Each wall must be at least 2 m"
+	for first in range(points.size()):
+		var first_end := (first + 1) % points.size()
+		for second in range(first + 1, points.size()):
+			var second_end := (second + 1) % points.size()
+			if first == second or first_end == second or second_end == first: continue
+			if Geometry2D.segment_intersects_segment(points[first], points[first_end], points[second], points[second_end]) != null: return "Walls cannot cross"
+	var area := _freeform_area(points)
+	if area < 9.0: return "Room must be at least 9 m²"
+	for sample in _outline_site_samples(points):
+		var site_reason := MHSiteTerrain.unbuildable_reason(sample)
+		if not site_reason.is_empty(): return site_reason
+	var player := world.get_node_or_null("Player") as Node3D
+	if player != null and Geometry2D.is_point_in_polygon(Vector2(roundi(player.global_position.x / CELL) * CELL, roundi(player.global_position.z / CELL) * CELL), points): return "Move clear of the player before building"
+	# Rooms may share walls with anything; corners all sit on the cell lattice,
+	# so touching walls line up exactly. Only real floor overlap is rejected.
+	for zone in zones:
+		if zone.has("angled_mount"):
+			if _polygons_overlap_area(points, _angled_mount_outline(zone.get("angled_mount", {}))): return "Overlaps an angled corridor or airlock"
+		elif zone.has("outline"):
+			if _polygons_overlap_area(points, zone_outline(zone)): return "Overlaps existing habitat"
+		else:
+			for cell in zone.get("cells", []):
+				if _polygons_overlap_area(points, _freeform_cell_polygon(cell)): return "Overlaps existing habitat"
+	if _used_cargo() + _freeform_cost(points) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if is_inside_tree():
+		var base_y := habitat_base_y if not zones.is_empty() else _proposed_freeform_base_y(points)
+		var samples := points.duplicate()
+		var centre := Vector2.ZERO
+		for point in points: centre += point
+		centre /= points.size()
+		samples.append(centre)
+		for sample in samples:
+			var terrain := _terrain_height(Vector3(sample.x, 0, sample.y))
+			if terrain > base_y + .12: return "Ground is too high here"
+			if terrain < base_y - 1.85: return "Ground drops away too far"
+	return ""
+
+## Points checked against the site's build area for an outline: corners, every
+## 1.5 m along each wall, and every cell centre inside.
+func _outline_site_samples(points: PackedVector2Array) -> PackedVector2Array:
+	var samples := PackedVector2Array()
+	for index in range(points.size()):
+		var start := points[index]
+		var finish := points[(index + 1) % points.size()]
+		var steps := maxi(1, ceili(start.distance_to(finish) / HALF_CELL))
+		for step in range(steps): samples.append(start.lerp(finish, float(step) / float(steps)))
+	for cell in _freeform_cells(points): samples.append(Vector2(cell.x * CELL, cell.y * CELL))
+	return samples
+
+func _proposed_freeform_base_y(points: PackedVector2Array) -> float:
+	if not is_inside_tree(): return .35
+	var highest := -.50
+	for point in points: highest = maxf(highest, _terrain_height(Vector3(point.x, 0, point.y)))
+	var centre := Vector2.ZERO
+	for point in points: centre += point
+	if not points.is_empty(): highest = maxf(highest, _terrain_height(Vector3(centre.x / points.size(), 0, centre.y / points.size())))
+	return highest + .35
+
 func _occupied(cell: Vector2i) -> bool:
 	for zone in zones:
+		if zone.has("outline"): continue
 		if cell in zone.cells: return true
 	return false
 
 func _zone_at(cell: Vector2i) -> Dictionary:
 	for zone in zones:
+		if zone.has("outline"): continue
 		if cell in zone.cells: return zone
 	return {}
+
+func _zone_at_point(point: Vector2) -> Dictionary:
+	for zone in zones:
+		if _point_in_zone(point, zone): return zone
+	return {}
+
+func _point_in_zone(point: Vector2, zone: Dictionary) -> bool:
+	if zone.has("angled_mount"): return _point_in_angled_mount(point, zone.get("angled_mount", {}))
+	if zone.has("outline"): return Geometry2D.is_point_in_polygon(point, zone_outline(zone))
+	return Vector2i(roundi(point.x / CELL), roundi(point.y / CELL)) in zone.get("cells", [])
+
+func _point_in_angled_mount(point: Vector2, mount: Dictionary) -> bool:
+	var origin: Vector2 = mount.get("position", Vector2.ZERO)
+	var outward: Vector2 = mount.get("outward", Vector2.UP)
+	var tangent: Vector2 = mount.get("tangent", Vector2.RIGHT)
+	var length := float(mount.get("length", CELL))
+	var relative := point - (origin + outward * length * .5)
+	return absf(relative.dot(outward)) <= length * .5 and absf(relative.dot(tangent)) <= CELL * .5
 
 func _is_habitat_zone(zone: Dictionary) -> bool:
 	if zone.is_empty(): return false
@@ -426,7 +1001,7 @@ func place_equipment(id: String, cell: Vector2i, visual: Node3D = null, facing :
 ## grid based.  `zone_cell` keeps room restrictions and safe pruning explicit.
 func place_free_interior_equipment(id: String, position: Vector3, rotation_y: float, zone_cell: Vector2i, visual: Node3D, anchor_normal := Vector3.UP) -> bool:
 	var entry := EquipmentCatalog.get_entry(id)
-	if entry.is_empty() or _used_cargo() + int(entry.get("cargo_cost", 0)) > CARGO_BUDGET:
+	if entry.is_empty() or _used_cargo() + int(entry.get("cargo_cost", 0)) > MHGame.cargo_budget():
 		return false
 	var placement_id := "interior_%d" % Time.get_ticks_usec()
 	placed_interior.append({"placement_id": placement_id, "id": id, "position": position, "rotation_y": rotation_y, "zone_cell": zone_cell, "anchor_normal": anchor_normal})
@@ -460,16 +1035,17 @@ func remove_free_interior_equipment(placement_id: String) -> Dictionary:
 func free_interior_invalid_reason(id: String, world_position: Vector3, surface_normal: Vector3, rotation_y := 0.0) -> String:
 	var entry := EquipmentCatalog.get_entry(id)
 	if entry.is_empty(): return "Unknown interior item"
+	if not MHMissions.item_unlocked(id): return "Not delivered yet: this arrives in a later mission"
 	var sample := world_position + Vector3.UP * .35
 	if not is_inside(sample): return "Must be placed inside a completed habitat room"
-	var zone := _zone_at(Vector2i(roundi(world_position.x / CELL), roundi(world_position.z / CELL)))
+	var zone := _zone_at_point(Vector2(world_position.x, world_position.z))
 	var valid_zones: Array = entry.get("valid_zones", [])
 	if not valid_zones.has(str(zone.get("kind", ""))): return "Fits in %s" % _zone_list_text(valid_zones)
 	var placement := str(entry.get("placement", "floor"))
 	if placement == "floor" and surface_normal.dot(Vector3.UP) < .82: return "Place this on the floor"
 	if placement == "wall" and absf(surface_normal.dot(Vector3.UP)) > .28: return "Mount this on an interior wall"
 	if placement == "ceiling" and surface_normal.dot(Vector3.UP) > -.82: return "Mount this on the ceiling"
-	if _used_cargo() + int(entry.get("cargo_cost", 0)) > CARGO_BUDGET: return "Not enough cargo left"
+	if _used_cargo() + int(entry.get("cargo_cost", 0)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	# A free-positioned item must fit wholly inside valid room cells. Checking the
 	# four footprint corners prevents a player from burying it in the shell wall
 	# or bleeding it across into an incompatible room.
@@ -479,7 +1055,7 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 		# as a collision to the player.
 		var size := _free_interior_size(entry)
 		var footprint := Vector2(size.x * .5, size.z * .5)
-		var facing := Vector2(cos(rotation_y), sin(rotation_y))
+		var facing := Vector2(cos(rotation_y), -sin(rotation_y))   # node rotation.y: local x -> (cos, -sin) on the ground
 		var side := Vector2(-facing.y, facing.x)
 		for sign_x in [-1.0, 1.0]:
 			for sign_z in [-1.0, 1.0]:
@@ -487,9 +1063,11 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 				var corner_in_valid_room := false
 				for candidate in zones:
 					var candidate_kind := str(candidate.get("kind", ""))
-					if candidate_kind in ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor"]:
+					if candidate_kind in ["solar", "reactor", "ice_extractor"]:
 						continue
-					if valid_zones.has(candidate_kind) and Geometry2D.is_point_in_polygon(corner, zone_outline(candidate)):
+					# Bays, airlocks and corridors are cells (or angled mounts), not outlines.
+					var inside := _point_in_zone(corner, candidate) if candidate_kind in ["airlock", "corridor", "vehicle_bay"] else Geometry2D.is_point_in_polygon(corner, zone_outline(candidate))
+					if valid_zones.has(candidate_kind) and inside:
 						corner_in_valid_room = true
 						break
 				if not corner_in_valid_room:
@@ -504,12 +1082,25 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 			# intersections that the previous forgiving radius allowed.
 			if _interior_footprints_overlap(world_position, size, rotation_y, other_position, other_size, other_rotation):
 				return "Too close to existing equipment"
+		if _partition_crossing(world_position, size, rotation_y) >= 0:
+			return "Blocked by a partition wall"
 	return ""
 
+## Index of the first partition whose panel overlaps a rotated floor footprint, or -1.
+func _partition_crossing(at: Vector3, size: Vector3, rotation_y: float) -> int:
+	for index in range(partitions.size()):
+		var segment: Dictionary = partitions[index]
+		var a: Vector2 = segment.a
+		var b: Vector2 = segment.b
+		var mid := (a + b) * .5
+		if _interior_footprints_overlap(at, size, rotation_y, Vector3(mid.x, 0, mid.y), Vector3((b - a).length(), 0, PARTITION_THICKNESS), -atan2((b - a).y, (b - a).x)):
+			return index
+	return -1
+
 func _interior_footprints_overlap(first_position: Vector3, first_size: Vector3, first_rotation: float, second_position: Vector3, second_size: Vector3, second_rotation: float) -> bool:
-	var first_forward := Vector2(cos(first_rotation), sin(first_rotation))
+	var first_forward := Vector2(cos(first_rotation), -sin(first_rotation))
 	var first_side := Vector2(-first_forward.y, first_forward.x)
-	var second_forward := Vector2(cos(second_rotation), sin(second_rotation))
+	var second_forward := Vector2(cos(second_rotation), -sin(second_rotation))
 	var second_side := Vector2(-second_forward.y, second_forward.x)
 	var offset := Vector2(second_position.x - first_position.x, second_position.z - first_position.z)
 	# A small practical breathing gap avoids z-fighting and makes removal sane,
@@ -529,7 +1120,8 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 	holder.rotation.y = rotation_y
 	var body := StaticBody3D.new()
 	body.name = "InteriorCollision"
-	body.position = Vector3(0, size.y * .5, 0)
+	# Wall items hang centred on the aimed point and stand out from the wall.
+	body.position = Vector3(0, 0, -size.z * .5) if str(entry.get("placement", "floor")) == "wall" else Vector3(0, size.y * .5, 0)
 	body.collision_layer = 1
 	holder.add_child(body)
 	var model_loaded := false
@@ -543,7 +1135,12 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 				model.name = "Model"
 				model.rotation.x = float(entry.get("model_rotation_x", 0.0))
 				model.rotation.z = float(entry.get("model_rotation_z", 0.0))
-				var interaction_note := str(entry.get("interaction_note", ""))
+				# Lets one model serve a second mounting (a floor kit hung on a wall).
+				var model_offset: Array = entry.get("model_offset", [])
+				if model_offset.size() == 3: model.position = Vector3(float(model_offset[0]), float(model_offset[1]), float(model_offset[2]))
+				# Items with an interaction rig (asset packs) handle themselves; the
+				# generic inspect wrapper is only for older un-rigged models.
+				var interaction_note := str(entry.get("interaction_note", "")) if EquipmentCatalog.rig(id).is_empty() else ""
 				if not interaction_note.is_empty():
 					var interactable := MHEquipmentInteractable.new()
 					interactable.display_name = str(entry.get("label", id))
@@ -566,7 +1163,8 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 	if not model_loaded:
 		var tint: Color = (ZONE_TYPES.get(str((entry.get("valid_zones", ["storage"]) as Array)[0]), ZONE_TYPES.storage).colour as Color)
 		_add_equipment_placeholder(body, size, tint)
-	if int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0 and (not model_loaded or not _bind_equipment_power_visuals(holder)):
+	# Rigged items show power through their own lamps; the status lamp is for un-rigged models.
+	if EquipmentCatalog.rig(id).is_empty() and int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0 and (not model_loaded or not _bind_equipment_power_visuals(holder)):
 		_add_equipment_power_lamp(body, size)
 	return holder
 
@@ -590,7 +1188,7 @@ func equipment_invalid_reason(id: String, cell: Vector2i) -> String:
 	var valid_zones: Array = entry.get("valid_zones", [])
 	if not valid_zones.has(str(zone.kind)): return "Fits in %s" % _zone_list_text(valid_zones)
 	if not equipment_at(cell).is_empty(): return "This cell is already furnished"
-	if _used_cargo() + int(entry.get("cargo_cost", 0)) > CARGO_BUDGET: return "Not enough cargo left"
+	if _used_cargo() + int(entry.get("cargo_cost", 0)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	return ""
 
 func equipment_at(cell: Vector2i) -> Dictionary:
@@ -635,8 +1233,8 @@ func _place_selected_equipment(cell: Vector2i) -> void:
 	_history.append({"type": "equipment", "id": equipment_id, "cell": cell})
 	_preview_key = ""
 	MHAudio.sfx("place")
-	var left := CARGO_BUDGET - _used_cargo()
-	if left < CARGO_BUDGET * .1: _flash_notice("warn", "Cargo is getting tight", "%s left." % MHStyle.kg(left))
+	var left := MHGame.cargo_budget() - _used_cargo()
+	if left < MHGame.cargo_budget() * .1: _flash_notice("warn", "Cargo is getting tight", "%s left." % MHStyle.kg(left))
 
 # Equipment whose room was removed goes with it, so its cargo is refunded too.
 func _prune_equipment() -> int:
@@ -644,7 +1242,7 @@ func _prune_equipment() -> int:
 	for index in range(placed_equipment.size() - 1, -1, -1):
 		var item: Dictionary = placed_equipment[index]
 		var cell: Vector2i = item.get("cell", Vector2i(9999, 9999))
-		var zone := _zone_at(cell)
+		var zone := _zone_at_point(Vector2(cell.x * CELL, cell.y * CELL))
 		var valid_zones: Array = EquipmentCatalog.get_entry(str(item.get("id", ""))).get("valid_zones", [])
 		if zone.is_empty() or not valid_zones.has(str(zone.kind)):
 			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
@@ -655,7 +1253,10 @@ func _prune_equipment() -> int:
 	for index in range(placed_interior.size() - 1, -1, -1):
 		var item: Dictionary = placed_interior[index]
 		var cell: Vector2i = item.get("zone_cell", Vector2i(9999, 9999))
-		var zone := _zone_at(cell)
+		# Use the item's own position: beside a 45° wall its grid cell's centre
+		# can fall outside an angled room even though the item is inside.
+		var item_position: Vector3 = item.get("position", Vector3(cell.x * CELL, 0, cell.y * CELL))
+		var zone := _zone_at_point(Vector2(item_position.x, item_position.z))
 		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
 		var valid_zones: Array = entry.get("valid_zones", [])
 		var wall_lost := false
@@ -685,6 +1286,9 @@ func _equipment_size(entry: Dictionary) -> Vector3:
 	return Vector3(width, maxf(.04, float(entry.get("height", 1.0))), depth)
 
 func _free_interior_size(entry: Dictionary) -> Vector3:
+	# Delivered packs give the model's real size; use it as the footprint.
+	var measured: Array = entry.get("size_m", [])
+	if measured.size() == 3: return Vector3(float(measured[0]), float(measured[1]), float(measured[2]))
 	var size := _equipment_size(entry)
 	# Models occupy about three quarters of their old half-cell proxy.  Keep the
 	# shell clearance check above, but allow deliberate, tidy rows of furniture.
@@ -733,7 +1337,12 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 				model.name = "Model"
 				model.rotation.x = float(entry.get("model_rotation_x", 0.0))
 				model.rotation.z = float(entry.get("model_rotation_z", 0.0))
-				var interaction_note := str(entry.get("interaction_note", ""))
+				# Lets one model serve a second mounting (a floor kit hung on a wall).
+				var model_offset: Array = entry.get("model_offset", [])
+				if model_offset.size() == 3: model.position = Vector3(float(model_offset[0]), float(model_offset[1]), float(model_offset[2]))
+				# Items with an interaction rig (asset packs) handle themselves; the
+				# generic inspect wrapper is only for older un-rigged models.
+				var interaction_note := str(entry.get("interaction_note", "")) if EquipmentCatalog.rig(id).is_empty() else ""
 				if not interaction_note.is_empty():
 					# GLB-only deliveries still get a compact, reticle-based readout.
 					# Keeping the adapter as the model's parent also applies its
@@ -759,7 +1368,8 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 		_add_equipment_placeholder(body, size, tint)
 	# Generated model indicator meshes remain linked to the existing grid bus.
 	# If a model has no named status mesh, preserve the legacy visible lamp.
-	if int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0 and (not model_loaded or not _bind_equipment_power_visuals(holder)):
+	# Rigged items show power through their own lamps; the status lamp is for un-rigged models.
+	if EquipmentCatalog.rig(id).is_empty() and int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0 and (not model_loaded or not _bind_equipment_power_visuals(holder)):
 		_add_equipment_power_lamp(body, size)
 	return holder
 
@@ -830,10 +1440,63 @@ func _equipment_effects() -> Dictionary:
 		for effect in totals:
 			totals[effect] += int(effects.get(effect, 0))
 	for item in placed_interior:
-		var effects := EquipmentCatalog.effects(str(item.get("id", "")))
+		var item_id := str(item.get("id", ""))
+		var effects := EquipmentCatalog.effects(item_id)
+		# Switched items: a lamp draws power only while on; a machine (scope
+		# "all") produces and draws nothing while switched off.
+		var gate := EquipmentCatalog.effect_gate(item_id)
+		var switched_off := not gate.is_empty() and not bool((item.get("state", {}) as Dictionary).get(gate.key, gate.default))
 		for effect in totals:
+			if switched_off and (gate.scope == "all" or effect == "power_draw"):
+				continue
 			totals[effect] += int(effects.get(effect, 0))
+		# Heaters draw power by their Off / Low / High setting.
+		var levels := EquipmentCatalog.levels(item_id)
+		if not levels.is_empty():
+			var level := int((item.get("state", {}) as Dictionary).get(levels.key, 0))
+			if level >= 0 and level < (levels.power as Array).size(): totals.power_draw += int(levels.power[level])
 	return totals
+
+## Extra warmth (degrees C) from heaters switched on in a zone. Heaters run on
+## grid power; Life Support's climate control stays the main heating.
+func _heater_warmth(zone: Dictionary) -> float:
+	var warmth := 0.0
+	for item in placed_interior:
+		var levels := EquipmentCatalog.levels(str(item.get("id", "")))
+		if levels.is_empty() or not (zone.get("cells", []) as Array).has(item.get("zone_cell", Vector2i(999999, 0))): continue
+		var level := int((item.get("state", {}) as Dictionary).get(levels.key, 0))
+		if level > 0 and level < (levels.heat as Array).size(): warmth += float(levels.heat[level])
+	return warmth
+
+## Saved interaction state of a placed interior item (curtain, light, doors…).
+func interior_state(placement_id: String) -> Dictionary:
+	for list in [placed_interior, placed_surface, zones]:
+		for item in list:
+			if str(item.get("placement_id", "")) == placement_id: return (item.get("state", {}) as Dictionary).duplicate()
+	return {}
+
+## Record an interaction so it is saved, and update power if a light changed.
+func set_interior_state(placement_id: String, key: String, value: Variant) -> void:
+	simulation().invalidate()
+	# Outdoor props, the reactor and the ice extractor save their switches too.
+	for item in placed_surface + zones:
+		if str(item.get("placement_id", "")) != placement_id: continue
+		var outdoor_state: Dictionary = item.get("state", {})
+		outdoor_state[key] = value
+		item["state"] = outdoor_state
+		if item.has("kind"): _update_systems()
+		return
+	for item in placed_interior:
+		if str(item.get("placement_id", "")) != placement_id: continue
+		var state: Dictionary = item.get("state", {})
+		state[key] = value
+		item["state"] = state
+		var item_id := str(item.get("id", ""))
+		if key == str(EquipmentCatalog.effect_gate(item_id).get("key", "light")) or key == EquipmentCatalog.grid_isolator_key(item_id) or key == str(EquipmentCatalog.levels(item_id).get("key", "")):
+			_update_systems()
+			_apply_grid_power()
+			refresh_power_grid()
+		return
 
 func _is_habitat_cell(cell: Vector2i) -> bool:
 	return _is_habitat_zone(_zone_at(cell))
@@ -871,7 +1534,7 @@ func _edit_room_footprint(cell: Vector2i, remove_cell: bool) -> void:
 	var cells: Array = (zone.get("cells", []) as Array).duplicate()
 	cells.append(cell)
 	zone["cells"] = cells
-	zone["cost"] = int(ZONE_TYPES[str(zone.kind)].cost) * cells.size()
+	zone["cost"] = cell_cost(str(zone.kind)) * cells.size()
 	zones[footprint_zone_index] = zone
 	_rebuild()
 	_refresh_footprint_selection_overlay()
@@ -879,7 +1542,7 @@ func _edit_room_footprint(cell: Vector2i, remove_cell: bool) -> void:
 	_flash_notice("valid", "Room extended", "%s is now %d cells." % [str(ZONE_TYPES[str(zone.kind)].label), cells.size()])
 
 func _footprint_zone_is_editable(zone: Dictionary) -> bool:
-	return _is_habitat_zone(zone) and str(zone.kind) not in ["airlock", "vehicle_bay", "corridor"]
+	return not zone.has("outline") and _is_habitat_zone(zone) and str(zone.kind) not in ["airlock", "vehicle_bay", "corridor"]
 
 func _footprint_add_reason(cell: Vector2i) -> String:
 	if _occupied(cell): return "That cell is already part of the habitat"
@@ -889,9 +1552,9 @@ func _footprint_add_reason(cell: Vector2i) -> String:
 		if cell + side in zone.get("cells", []):
 			connected = true
 	if not connected: return "New cells must touch the selected room"
-	var site_limit := _site_build_limit()
-	if abs(cell.x) > site_limit / CELL or abs(cell.y) > site_limit / CELL: return "Outside the surveyed build area"
-	if _used_cargo() + int(ZONE_TYPES[str(zone.kind)].cost) > CARGO_BUDGET: return "Not enough cargo left"
+	var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
+	if not site_reason.is_empty(): return site_reason
+	if _used_cargo() + cell_cost(str(zone.kind)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	var player := world.get_node_or_null("Player") as Node3D
 	if player != null and cell == Vector2i(roundi(player.global_position.x / CELL), roundi(player.global_position.z / CELL)):
 		return "Move clear of the player before building"
@@ -929,7 +1592,7 @@ func _remove_footprint_cell(cell: Vector2i) -> void:
 		_flash_notice("invalid", "Keep the room connected", "That cell would split the room into separate spaces.")
 		return
 	zone["cells"] = next_cells
-	zone["cost"] = int(ZONE_TYPES[str(zone.kind)].cost) * next_cells.size()
+	zone["cost"] = cell_cost(str(zone.kind)) * next_cells.size()
 	zones[footprint_zone_index] = zone
 	_rebuild()
 	_refresh_footprint_selection_overlay()
@@ -1006,21 +1669,31 @@ func _invalid_reason(cells: Array) -> String:
 		if kind=="corridor": return "Corridors run in straight lines"
 		return "Point at the ground"
 	for cell in cells:
-		var site_limit := _site_build_limit()
-		if abs(cell.x)>site_limit/CELL or abs(cell.y)>site_limit/CELL: return "Outside the surveyed build area"
+		var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
+		if not site_reason.is_empty(): return site_reason
+	if not MHMissions.zone_unlocked(kind): return "Not delivered yet: this arrives in a later mission"
+	for cell in cells:
+		if lander != null and lander.keeps_clear(Vector2(cell.x * CELL, cell.y * CELL), CELL * .5): return "Too close to the lander"
+		if MHMissions.in_blast_zone(Vector2(cell.x * CELL, cell.y * CELL)): return "Inside the landing zone: engine blast would damage it"
 	for cell in cells:
 		if _occupied(cell): return "Overlaps existing habitat"
+		for zone in zones:
+			if zone.has("angled_mount") and _cell_overlaps_outline_area(cell, _angled_mount_outline(zone.get("angled_mount", {}))):
+				return "Overlaps an angled airlock or corridor"
+			if zone.has("outline") and _cell_overlaps_outline_area(cell, zone_outline(zone)):
+				return "Overlaps free-form habitat"
 	var player := world.get_node_or_null("Player") as Node3D
 	if player != null:
 		var player_cell := Vector2i(roundi(player.global_position.x / CELL), roundi(player.global_position.z / CELL))
 		for cell in cells:
 			if cell == player_cell:
 				return "Move clear of the player before building"
-	if kind=="airlock" and not _valid_airlock(cells): return "Inner end must touch a room; outer end faces Mars"
+	if kind=="airlock":
+		var airlock_reason := _airlock_invalid_reason(cells)
+		if not airlock_reason.is_empty(): return airlock_reason
 	if kind=="vehicle_bay" and not _valid_vehicle_bay(cells): return "2–4 cells each way, door facing outside, beside a room"
-	if (kind=="solar" or kind=="reactor") and not _valid_power_source(cells): return "Power field must reach the habitat"
 	if kind=="ice_extractor" and _ice_richness_at(cells[0])<.12: return "No recoverable subsurface ice here"
-	if _used_cargo()+_zone_cost(cells)>CARGO_BUDGET: return "Not enough cargo left"
+	if _used_cargo()+_zone_cost(cells)>MHGame.cargo_budget(): return "Not enough cargo left"
 	# Build on a local, reasonably flat patch. A short foundation can bridge a
 	# shallow dip, but we reject hills and deep drops instead of making towers.
 	if is_inside_tree() and not zones.is_empty():
@@ -1033,12 +1706,94 @@ func _invalid_reason(cells: Array) -> String:
 			if terrain < habitat_base_y - 1.85: return "Ground drops away too far"
 	return ""
 
+# A cell sharing only an edge with an outline is adjacent, not overlapping.
+# That distinction lets a grid airlock meet a qualifying free-form wall while
+# still rejecting a grid room or structure that occupies the outlined floor.
+func _cell_overlaps_outline_area(cell: Vector2i, outline: PackedVector2Array) -> bool:
+	return _polygons_overlap_area(_freeform_cell_polygon(cell), outline)
+
+func _polygons_overlap_area(first: PackedVector2Array, second: PackedVector2Array) -> bool:
+	for intersection in Geometry2D.intersect_polygons(first, second):
+		if absf(_outline_area(intersection)) > .001: return true
+	return false
+
+func _outline_area(points: PackedVector2Array) -> float:
+	var area := 0.0
+	for index in range(points.size()):
+		var first := points[index]
+		var second := points[(index + 1) % points.size()]
+		area += first.x * second.y - second.x * first.y
+	return area * .5
+
 func _valid_airlock(cells: Array) -> bool:
-	if cells.size()<1 or cells.size()>3: return false
+	return _airlock_invalid_reason(cells).is_empty()
+
+func _airlock_invalid_reason(cells: Array) -> String:
+	if cells.size()<1 or cells.size()>3: return "Airlocks are 1–3 cells in a straight line"
 	var outside_cell:=_airlock_end(cells,airlock_direction,true)
 	var inner_cell:=_airlock_end(cells,airlock_direction,false)
 	# The outer end must face Mars; the far end must join an existing habitat.
-	return not _occupied(outside_cell+airlock_direction) and _is_habitat_cell(inner_cell-airlock_direction)
+	if _occupied(outside_cell + airlock_direction): return "Outer end must face Mars"
+	var outer_point := Vector2((outside_cell.x + airlock_direction.x) * CELL, (outside_cell.y + airlock_direction.y) * CELL)
+	if not _zone_at_point(outer_point).is_empty(): return "Outer end must face Mars"
+	if _is_habitat_cell(inner_cell - airlock_direction): return ""
+	var attachment := _outline_attachment_for_face(inner_cell, -airlock_direction)
+	if bool(attachment.get("valid", false)): return ""
+	return str(attachment.get("reason", "Inner end must touch a room"))
+
+# Checks a 3 m grid structure face against free-form room outlines. The
+# structure remains wholly outside; only its end face is allowed to meet a
+# qualifying straight wall. Later corridor and vehicle-bay work reuses this.
+func _outline_attachment_for_face(end_cell: Vector2i, toward_room: Vector2i) -> Dictionary:
+	var face_centre := Vector2(end_cell.x * CELL + toward_room.x * HALF_CELL, end_cell.y * CELL + toward_room.y * HALF_CELL)
+	var face_normal := Vector2(toward_room.x, toward_room.y)
+	var saw_straight_edge := false
+	var saw_off_grid_edge := false
+	var saw_short_edge := false
+	for zone_index in range(zones.size()):
+		var zone: Dictionary = zones[zone_index]
+		if not zone.has("outline"): continue
+		var outline := zone_outline(zone)
+		for edge_index in range(outline.size()):
+			var start := outline[edge_index]
+			var finish := outline[(edge_index + 1) % outline.size()]
+			var edge := finish - start
+			var length := edge.length()
+			if length < .01: continue
+			var tangent := edge / length
+			var axis_aligned := absf(tangent.x) < .001 or absf(tangent.y) < .001
+			if not axis_aligned: continue
+			if absf(tangent.dot(face_normal)) > .001: continue
+			saw_straight_edge = true
+			var wall_coordinate := start.x if absf(face_normal.x) > .5 else start.y
+			if not _is_cell_face_line(wall_coordinate):
+				saw_off_grid_edge = true
+				continue
+			if absf(face_centre.x - start.x) > .10 and absf(face_centre.y - start.y) > .10:
+				continue
+			var along := (face_centre - start).dot(tangent)
+			if along - HALF_CELL < -.10 or along + HALF_CELL > length + .10:
+				saw_short_edge = true
+				continue
+			if not _cell_is_outside_outline(end_cell, outline):
+				return {"valid": false, "reason": "Structure end must stay outside the room"}
+			return {"valid": true, "zone_index": zone_index, "edge_index": edge_index, "opening_start": clampf(along - HALF_CELL, 0.0, length), "opening_end": clampf(along + HALF_CELL, 0.0, length)}
+	if saw_off_grid_edge: return {"valid": false, "reason": "Wall is half a cell off the grid - move the room 1.5 m"}
+	if saw_short_edge: return {"valid": false, "reason": "Wall is too short for a 3 m doorway"}
+	if saw_straight_edge: return {"valid": false, "reason": "Inner end must meet the straight wall"}
+	return {"valid": false, "reason": "Attach to a straight wall"}
+
+func _is_cell_face_line(value: float) -> bool:
+	var remainder := fposmod(value - HALF_CELL, CELL)
+	return remainder < .10 or remainder > CELL - .10
+
+func _cell_is_outside_outline(cell: Vector2i, outline: PackedVector2Array) -> bool:
+	var centre := Vector2(cell.x * CELL, cell.y * CELL)
+	if Geometry2D.is_point_in_polygon(centre, outline): return false
+	for x_sign in [-1.0, 1.0]:
+		for z_sign in [-1.0, 1.0]:
+			if Geometry2D.is_point_in_polygon(centre + Vector2(x_sign * (HALF_CELL - .01), z_sign * (HALF_CELL - .01)), outline): return false
+	return true
 
 func _valid_vehicle_bay(cells: Array) -> bool:
 	var min_x: int=cells[0].x; var max_x: int=cells[0].x; var min_z: int=cells[0].y; var max_z: int=cells[0].y
@@ -1049,9 +1804,9 @@ func _valid_vehicle_bay(cells: Array) -> bool:
 	if cells.size()!=width*depth or width<2 or depth<2 or width>4 or depth>4: return false
 	var connected:=false
 	for cell in cells:
-		if _occupied(cell+airlock_direction): return false # Keep the hangar face outside.
+		if not (cell+airlock_direction in cells) and not _zone_across(cell,airlock_direction).is_empty(): return false # Keep the hangar face outside.
 		for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
-			if side!=airlock_direction and _is_habitat_cell(cell+side): connected=true
+			if side!=airlock_direction and not (cell+side in cells) and _is_habitat_zone(_zone_across(cell,side)): connected=true
 	return connected
 
 func _power_radius(source_kind: String) -> float:
@@ -1061,15 +1816,28 @@ func _valid_power_source(cells: Array) -> bool:
 	if cells.size()!=1 or zones.is_empty(): return false
 	return _power_source_connected({"kind": kind, "cells": cells})
 
+## Power sources are cabled to the grid wherever they stand (real plans put
+## reactors a kilometre or more away), so any placed source is connected.
+## The old range-field check is kept below for reference but not used.
 func _power_source_connected(source: Dictionary) -> bool:
+	return not (source.get("cells", []) as Array).is_empty()
+
+func _power_source_in_field(source: Dictionary) -> bool:
 	var cells: Array = source.get("cells", [])
 	if cells.is_empty(): return false
 	var cell: Vector2i = cells[0]
 	var radius := _power_radius(str(source.get("kind", "solar")))
 	# A StarCraft-style field reaches the shell directly—no visible cable and no
 	# requirement to place hardware immediately beside a wall.
+	var source_point := Vector2(cell.x * CELL, cell.y * CELL)
 	for zone in zones:
-		if str(zone.kind)=="solar" or str(zone.kind)=="reactor" or str(zone.kind)=="ice_extractor": continue
+		if not _is_habitat_zone(zone): continue
+		# Free-form rooms and angled connectors are reached at their nearest wall.
+		var shape := _angled_mount_outline(zone.get("angled_mount", {})) if zone.has("angled_mount") else (zone_outline(zone) if zone.has("outline") else PackedVector2Array())
+		if not shape.is_empty():
+			for index in range(shape.size()):
+				if source_point.distance_to(Geometry2D.get_closest_point_to_segment(source_point, shape[index], shape[(index + 1) % shape.size()])) <= radius: return true
+			continue
 		for habitat_cell in zone.cells:
 			if Vector2(cell.x-habitat_cell.x,cell.y-habitat_cell.y).length()*CELL<=radius: return true
 	return false
@@ -1086,10 +1854,9 @@ func _ice_richness_at_point(point: Vector2) -> float:
 		strongest = maxf(strongest, float(deposit.get("richness", 0.0)) * falloff)
 	return strongest
 
+## Litres of water a sol a drill makes here: the simulation's own figure.
 func _ice_yield(cell: Vector2i) -> int:
-	# A readable learning-scale output: deposits are not literal kilograms or
-	# percentages of ice, but a local prospecting estimate.
-	return roundi(_ice_richness_at(cell) * 12.0)
+	return roundi(MHResources.setting("ice_drill_l", 120.0) * _ice_richness_at(cell))
 
 func _draw_preview(cells: Array,valid: bool) -> void:
 	# The ghost only changes when the footprint, validity or facing changes.
@@ -1119,62 +1886,189 @@ func _draw_preview(cells: Array,valid: bool) -> void:
 	if kind=="airlock": _airlock_arrow(_airlock_end(cells,airlock_direction,true),"OUTSIDE")
 	if kind=="vehicle_bay": _airlock_arrow(_face_preview_cell(cells,airlock_direction),"HANGAR")
 	if kind=="corridor" and cells.size()==1: _airlock_arrow(cells[0],"OPEN ENDS")
-	if kind=="solar": _airlock_arrow(cells[0],"SOLAR %d%%" % roundi(_solar_efficiency(airlock_direction)*100.0))
+	if kind=="solar": _airlock_arrow(cells[0],"SOLAR %d%% AT NOON" % roundi(_solar_efficiency(airlock_direction, Vector2(0, 1))*100.0))
 	if kind=="ice_extractor":
 		var ice_here := _ice_richness_at(cells[0])
-		if ice_here < .12:
-			_airlock_arrow(cells[0], "NO RECOVERABLE ICE · DRILL UNAVAILABLE")
-		else:
-			_airlock_arrow(cells[0],"ICE %d%%  ·  WATER %d" % [roundi(ice_here*100.0), _ice_yield(cells[0])])
-	if kind=="solar" or kind=="reactor": _add_power_field_visual(cells[0],_power_radius(kind),valid,preview)
+		_ice_tag(cells[0], ice_here)
 
+func _draw_angled_outline_connector_preview(mount: Dictionary, valid: bool) -> void:
+	var position: Vector2 = mount.get("position", Vector2.ZERO)
+	var outward: Vector2 = mount.get("outward", Vector2.UP)
+	var basis: Basis = _angled_mount_basis(mount)
+	var length := float(mount.get("length", CELL))
+	var key := "angled-preview|%s|%s|%s|%s" % [position, outward, length, valid]
+	if key == _preview_key: return
+	_preview_key = key
+	for child in preview.get_children(): child.queue_free()
+	_ensure_preview_materials()
+	var fill := _preview_valid_material if valid else _preview_invalid_material
+	var edge := _line_valid_material if valid else _line_invalid_material
+	var base_y := habitat_base_y if not zones.is_empty() else .35
+	# The local X axis runs along the diagonal wall and local -Z points outside.
+	# Showing the ghost from the wall centre makes its outside placement explicit.
+	var holder := Node3D.new()
+	holder.position = Vector3(position.x + outward.x * length * .5, base_y, position.y + outward.y * length * .5)
+	holder.basis = basis
+	preview.add_child(holder)
+	var tile := MeshInstance3D.new()
+	var tile_mesh := BoxMesh.new()
+	tile_mesh.size = Vector3(CELL - .06, .04, length - .06)
+	tile.mesh = tile_mesh
+	tile.material_override = fill
+	tile.position = Vector3(0, .05, 0)
+	tile.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	holder.add_child(tile)
+	var height := 2.9
+	var ghost := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(CELL, height, length)
+	ghost.mesh = box
+	ghost.material_override = fill
+	ghost.position = Vector3(0, height * .5, 0)
+	ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	holder.add_child(ghost)
+	holder.add_child(_box_edges(Vector3(0, height * .5, 0), Vector3(CELL, height, length), edge))
+	var direction := _label3d("45° WALL · OUTSIDE", 24, MHStyle.INK_100, 500)
+	direction.position = Vector3(0, height + .35, 0)
+	direction.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	direction.visible = true
+	holder.add_child(direction)
+
+func _draw_freeform_preview(cursor: Vector2, reason: String) -> void:
+	var key := "freeform|%s|%s|%s" % [freeform_points, cursor, reason]
+	if key == _preview_key: return
+	_preview_key = key
+	for child in preview.get_children(): child.queue_free()
+	_ensure_preview_materials()
+	var valid := reason.is_empty()
+	var fill := _preview_valid_material if valid else _preview_invalid_material
+	# Bold, always-on-top line with a dark border so it reads on bright ground
+	# and over the grid lines.
+	var edge := _freeform_marker_material(MHStyle.HOLO_VALID if valid else MHStyle.HOLO_INVALID)
+	var base_y := habitat_base_y if not zones.is_empty() else _proposed_freeform_base_y(freeform_points)
+	var outline_mesh := ImmediateMesh.new()
+	outline_mesh.surface_begin(Mesh.PRIMITIVE_LINES, edge)
+	for index in range(freeform_points.size() - 1):
+		outline_mesh.surface_add_vertex(Vector3(freeform_points[index].x, base_y + .08, freeform_points[index].y))
+		outline_mesh.surface_add_vertex(Vector3(freeform_points[index + 1].x, base_y + .08, freeform_points[index + 1].y))
+		_add_freeform_preview_strip(freeform_points[index], freeform_points[index + 1], base_y, edge)
+	if not freeform_points.is_empty() and not is_inf(cursor.x):
+		outline_mesh.surface_add_vertex(Vector3(freeform_points[freeform_points.size() - 1].x, base_y + .08, freeform_points[freeform_points.size() - 1].y))
+		outline_mesh.surface_add_vertex(Vector3(cursor.x, base_y + .08, cursor.y))
+		_add_freeform_preview_strip(freeform_points[freeform_points.size() - 1], cursor, base_y, edge)
+	outline_mesh.surface_end()
+	var lines := MeshInstance3D.new(); lines.mesh = outline_mesh; lines.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(lines)
+	for point in freeform_points:
+		var marker := MeshInstance3D.new(); var marker_mesh := SphereMesh.new(); marker_mesh.radius = .32; marker_mesh.height = .64; marker.mesh = marker_mesh
+		marker.material_override = edge; marker.position = Vector3(point.x, base_y + .11, point.y); marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(marker)
+	if not is_inf(cursor.x):
+		_add_freeform_snap_dot(cursor, base_y, valid)
+	for index in range(freeform_points.size() - 1):
+		var start := freeform_points[index]
+		var finish := freeform_points[index + 1]
+		if _is_door_ready_preview_edge(start, finish): _add_door_ready_preview_marker((start + finish) * .5, base_y)
+	if freeform_points.size() >= 3:
+		var fill_mesh := ImmediateMesh.new(); fill_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, fill)
+		var triangles := Geometry2D.triangulate_polygon(freeform_points)
+		for index in triangles: fill_mesh.surface_add_vertex(Vector3(freeform_points[index].x, base_y + .045, freeform_points[index].y))
+		fill_mesh.surface_end()
+		var polygon := MeshInstance3D.new(); polygon.mesh = fill_mesh; polygon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(polygon)
+	var label_point := cursor if freeform_points.is_empty() else freeform_points[freeform_points.size() - 1]
+	if not is_inf(label_point.x):
+		var label := _label3d("%s · %.1f m wall · %.1f m²" % [_freeform_wall_angle(cursor), _freeform_current_wall_length(cursor), _freeform_area(freeform_points)], 24, MHStyle.HOLO_VALID if valid else MHStyle.HOLO_INVALID, 600)
+		label.position = Vector3(label_point.x, base_y + .32, label_point.y); preview.add_child(label)
+
+func _add_freeform_snap_dot(point: Vector2, base_y: float, valid: bool) -> void:
+	# A bright ring around the snapped corner under the cursor, so you can see
+	# exactly which cell corner the next click will use.
+	var colour: Color = MHStyle.HOLO_VALID if valid else MHStyle.HOLO_INVALID
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new(); torus.inner_radius = .42; torus.outer_radius = .62; torus.rings = 32
+	ring.mesh = torus
+	ring.scale = Vector3(1, .25, 1)
+	ring.material_override = _freeform_marker_material(colour)
+	ring.position = Vector3(point.x, base_y + .1, point.y)
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	preview.add_child(ring)
+	var dot := MeshInstance3D.new()
+	var mesh := SphereMesh.new(); mesh.radius = .16; mesh.height = .32; dot.mesh = mesh
+	dot.material_override = _freeform_marker_material(colour)
+	dot.position = Vector3(point.x, base_y + .12, point.y)
+	dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	preview.add_child(dot)
+
+func _is_door_ready_preview_edge(start: Vector2, finish: Vector2) -> bool:
+	var edge := finish - start
+	if edge.length() < CELL - .01: return false
+	if absf(edge.x) < .01: return _is_cell_face_line(start.x)
+	if absf(edge.y) < .01: return _is_cell_face_line(start.y)
+	return false
+
+func _add_door_ready_preview_marker(point: Vector2, base_y: float) -> void:
+	var marker := MeshInstance3D.new()
+	var mesh := CylinderMesh.new(); mesh.top_radius = .11; mesh.bottom_radius = .11; mesh.height = .08; marker.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(MHStyle.SAFETY_ORANGE.r, MHStyle.SAFETY_ORANGE.g, MHStyle.SAFETY_ORANGE.b, .72)
+	material.emission_enabled = true; material.emission = MHStyle.SAFETY_ORANGE; material.emission_energy_multiplier = .7
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	marker.material_override = material
+	marker.position = Vector3(point.x, base_y + .1, point.y)
+	marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	preview.add_child(marker)
+
+func _add_freeform_preview_strip(start: Vector2, finish: Vector2, base_y: float, material: Material) -> void:
+	var length := start.distance_to(finish)
+	if length < .01: return
+	var tangent := (finish - start) / length
+	# A dark border strip under the coloured line keeps it legible on bright
+	# terrain; both draw on top of the grid.
+	for layer in [[.56, _freeform_marker_material(Color("#0A0F12"), .8), 0], [.32, material, 1]]:
+		var strip := MeshInstance3D.new(); var mesh := BoxMesh.new(); mesh.size = Vector3(length + float(layer[0]), .04, float(layer[0])); strip.mesh = mesh
+		strip.material_override = layer[1]
+		strip.sorting_offset = float(layer[2])
+		strip.position = Vector3((start.x + finish.x) * .5, base_y + .09, (start.y + finish.y) * .5)
+		strip.rotation.y = atan2(-tangent.y, tangent.x)
+		strip.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		preview.add_child(strip)
+
+var _freeform_materials := {}
+## Unshaded marker colour drawn over the terrain and grid (cached per colour).
+func _freeform_marker_material(colour: Color, alpha := 1.0) -> StandardMaterial3D:
+	var key := "%s|%s" % [colour.to_html(), alpha]
+	if _freeform_materials.has(key): return _freeform_materials[key]
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(colour, alpha)
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if alpha < 1.0 else BaseMaterial3D.TRANSPARENCY_DISABLED
+	material.no_depth_test = true
+	material.render_priority = 1 if alpha < 1.0 else 2
+	material.disable_fog = true
+	_freeform_materials[key] = material
+	return material
+
+## Whole-site subsurface ice survey: a smooth field with contour lines,
+## drawn by shaders/ice_survey.gdshader from the site's deposits.
 func _add_ice_heatmap() -> void:
-	# A whole-map survey, not a collection of "drill here" circles. Vertex
-	# colours make buried ice read as a continuous, imperfect survey field:
-	# dark navy is strong evidence, pale cyan is weak/uncertain evidence.
 	var limit := _site_build_limit()
-	var step := 3.0
-	var divisions := int(limit * 2.0 / step)
-	var surface := SurfaceTool.new()
-	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for z_index in range(divisions):
-		for x_index in range(divisions):
-			var x0 := -limit + x_index * step
-			var x1 := x0 + step
-			var z0 := -limit + z_index * step
-			var z1 := z0 + step
-			_add_ice_heatmap_quad(surface, Vector2(x0,z0), Vector2(x1,z0), Vector2(x1,z1))
-			_add_ice_heatmap_quad(surface, Vector2(x0,z0), Vector2(x1,z1), Vector2(x0,z1))
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(limit * 2.0, limit * 2.0)
 	var field := MeshInstance3D.new()
 	field.name = "SubsurfaceIceSurvey"
-	field.mesh = surface.commit()
-	var material := StandardMaterial3D.new()
-	material.vertex_color_use_as_albedo = true
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	material.no_depth_test = false
+	field.mesh = plane
+	var material := ShaderMaterial.new()
+	material.shader = ICE_SURVEY_SHADER
+	var packed := PackedVector4Array()
+	for deposit in MHGame.site().get("ice_deposits", []):
+		if packed.size() >= 8: break
+		packed.append(Vector4(float(deposit.get("x", 0.0)), float(deposit.get("z", 0.0)), float(deposit.get("radius", 1.0)), float(deposit.get("richness", 0.0))))
+	var count := packed.size()
+	while packed.size() < 8: packed.append(Vector4.ZERO)
+	material.set_shader_parameter("deposits", packed)
+	material.set_shader_parameter("deposit_count", count)
 	field.material_override = material
 	field.position.y = habitat_base_y + .07
 	field.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	preview.add_child(field)
-
-func _add_ice_heatmap_quad(surface: SurfaceTool, a: Vector2, b: Vector2, c: Vector2) -> void:
-	for point in [a,b,c]:
-		var richness := _ice_richness_at_point(point)
-		# A faint non-resource survey background stops the field looking like a
-		# handful of perfect circles, without changing extractor yields.
-		var uncertainty := (sin(point.x * .071 + point.y * .043) + 1.0) * .018
-		var display := clampf(richness + uncertainty, 0.0, 1.0)
-		# Four deliberately distinct survey bands: neutral grey = no usable ice,
-		# pale cyan = trace, blue = recoverable and deep navy = rich ice.
-		var colour: Color
-		if display < .04: colour = Color(.08, .11, .15, .20)
-		elif display < .12: colour = Color(.36, .86, 1.0, .38)
-		elif display < .38: colour = Color(.08, .42, .82, .62)
-		else: colour = Color(.015, .04, .24, .88)
-		surface.set_color(colour)
-		surface.add_vertex(Vector3(point.x, 0.0, point.y))
 
 func _ensure_preview_materials() -> void:
 	if _preview_valid_material!=null: return
@@ -1217,9 +2111,34 @@ func _airlock_arrow(cell: Vector2i,label_text := "OUTSIDE") -> void:
 	var arrow:=MeshInstance3D.new(); var mesh:=ImmediateMesh.new(); var material:=StandardMaterial3D.new()
 	material.albedo_color=MHStyle.accent; material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED; material.cull_mode=BaseMaterial3D.CULL_DISABLED
 	var y:=(habitat_base_y if not zones.is_empty() else .35)+.12
-	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES,material); mesh.surface_add_vertex(Vector3(0,y,-1.20)); mesh.surface_add_vertex(Vector3(-.65,y,-.35)); mesh.surface_add_vertex(Vector3(.65,y,-.35)); mesh.surface_end()
-	arrow.mesh=mesh; arrow.position=Vector3(cell.x*CELL,0,cell.y*CELL); arrow.rotation.y=_direction_yaw(airlock_direction); preview.add_child(arrow)
-	var label:=_label3d(label_text,44,MHStyle.accent); label.position=arrow.position+Vector3(airlock_direction.x*1.4,y+.9,airlock_direction.y*1.4); preview.add_child(label)
+	# Draw directly in world X/Z. The old rotated local triangle used a different
+	# sign convention from the label on east/west sides, so the two disagreed.
+	var direction := Vector2(float(airlock_direction.x), float(airlock_direction.y))
+	var sideways := Vector2(-direction.y, direction.x)
+	var centre := Vector2(cell.x * CELL, cell.y * CELL)
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES,material)
+	mesh.surface_add_vertex(Vector3(centre.x + direction.x * 1.20, y, centre.y + direction.y * 1.20))
+	mesh.surface_add_vertex(Vector3(centre.x - direction.x * .35 + sideways.x * .65, y, centre.y - direction.y * .35 + sideways.y * .65))
+	mesh.surface_add_vertex(Vector3(centre.x - direction.x * .35 - sideways.x * .65, y, centre.y - direction.y * .35 - sideways.y * .65))
+	mesh.surface_end()
+	arrow.mesh=mesh; preview.add_child(arrow)
+	var label:=_label3d(label_text,44,MHStyle.accent); label.position=Vector3(centre.x + direction.x*1.4,y+.9,centre.y + direction.y*1.4); preview.add_child(label)
+
+## Ice readout above the drill ghost: richness, and the water it would make.
+func _ice_tag(cell: Vector2i, richness: float) -> void:
+	var y := (habitat_base_y if not zones.is_empty() else .35) + 2.9
+	var at := Vector3(cell.x * CELL, y, cell.y * CELL)
+	if richness < .12:
+		var none := _label3d("NO DRILLABLE ICE", 40, MHStyle.TEXT_SECONDARY)
+		none.position = at
+		preview.add_child(none)
+		return
+	var head := _label3d("%d%% ICE" % roundi(richness * 100.0), 58, Color("#8FE6FF"))
+	head.position = at + Vector3.UP * .45
+	preview.add_child(head)
+	var water := _label3d("≈ %d L of water a sol" % _ice_yield(cell), 30, MHStyle.TEXT_PRIMARY, 600)
+	water.position = at
+	preview.add_child(water)
 
 func _label3d(text: String,size: int,colour: Color,weight := 800) -> Label3D:
 	var label:=Label3D.new(); label.text=text; label.font=MHStyle.font(weight,false,2); label.font_size=size; label.outline_size=10; label.outline_modulate=Color(MHStyle.INK_950,.85); label.modulate=colour; label.billboard=BaseMaterial3D.BILLBOARD_ENABLED; label.no_depth_test=true; label.render_priority=2; label.pixel_size=.013
@@ -1227,12 +2146,25 @@ func _label3d(text: String,size: int,colour: Color,weight := 800) -> Label3D:
 
 func _rebuild() -> void:
 	_merge_touching_same_type_rooms()
+	_prune_angled_outline_connectors()
 	var attachment_refund := _prune_equipment()
 	_prune_interior_doors()
+	_prune_partitions()
 	if attachment_refund > 0:
 		_flash_notice("info", "Mounted equipment removed", "+%s cargo returned — its wall changed." % MHStyle.kg(attachment_refund))
 	for child in root.get_children(): child.queue_free()
+	_hull_bays = []
+	_windows_built = {}
 	for zone in zones:
+		if zone.has("angled_mount"):
+			_build_angled_outline_connector(zone)
+			continue
+		if zone.has("outline"):
+			_build_freeform_zone(zone)
+			_build_outline_walls(zone)
+			_add_zone_lighting(zone)
+			_add_zone_roof_accessory(zone)
+			continue
 		_zone_surfaces(zone)
 		if str(zone.kind)=="airlock": _build_airlock_zone(zone)
 		elif str(zone.kind)=="vehicle_bay": _build_vehicle_bay(zone)
@@ -1242,6 +2174,15 @@ func _rebuild() -> void:
 		else:
 			for cell in zone.cells: _cell_walls(cell,zone)
 	for door_data in interior_doors:
+		if door_data.has("wall_a"):
+			var door_transform := interior_door_target_transform(door_data)
+			_add_angled_door(door_transform.origin, door_transform.basis, "INTERIOR", true)
+			continue
+		if door_data.has("outline_grid_cell"):
+			var outline_grid_cell: Vector2i = door_data.get("outline_grid_cell", Vector2i.ZERO)
+			var outline_grid_side: Vector2i = door_data.get("outline_grid_side", Vector2i.ZERO)
+			_add_door(Vector3(outline_grid_cell.x * CELL, 0, outline_grid_cell.y * CELL), outline_grid_side, "INTERIOR", true)
+			continue
 		var door_cell: Vector2i = door_data.get("cell", Vector2i.ZERO)
 		var door_side: Vector2i = door_data.get("side", Vector2i.ZERO)
 		var first_zone := _zone_at(door_cell)
@@ -1253,6 +2194,9 @@ func _rebuild() -> void:
 		# The framed hatch fills the complete 3 m shared wall bay. The unframed
 		# shutter is deliberately narrower and left visible slits at either edge.
 		_add_door(Vector3(door_cell.x * CELL, 0, door_cell.y * CELL), door_side, "INTERIOR", true)
+	_build_partitions()
+	ROOM_IDENTITY.build(self)   # colour bands, door signs, per-room overhead detail
+	_prune_hull_windows()
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
 	for zone in zones: _add_zone_label(zone)
@@ -1260,29 +2204,104 @@ func _rebuild() -> void:
 	habitat_changed.emit()
 
 func _merge_touching_same_type_rooms() -> void:
-	# Ordinary rooms of the same purpose are one continuous volume. This makes a
-	# 3×3 Living Quarters followed by a touching 2×3 Living Quarters behave as
-	# one 5×3 room rather than leaving an arbitrary internal wall and two labels.
+	# Rooms of the same purpose that share a wall are one continuous volume,
+	# whatever their shape: grid rooms merge cell by cell, and a pair involving
+	# a free-form room merges into one outline. A 3×3 Living Quarters drawn
+	# against an angled Living Quarters becomes one room, one label, no wall.
 	var merged_any := true
 	while merged_any:
 		merged_any = false
 		for first_index in range(zones.size()):
 			if merged_any: break
 			var first: Dictionary = zones[first_index]
-			if not _footprint_zone_is_editable(first): continue
+			if not _mergeable_room(first) and not _is_grid_corridor(first): continue
 			for second_index in range(first_index + 1, zones.size()):
 				var second: Dictionary = zones[second_index]
-				if str(first.kind) != str(second.kind) or not _footprint_zone_is_editable(second): continue
-				if not _zones_touch(first, second): continue
-				var combined: Array = (first.get("cells", []) as Array).duplicate()
-				for cell in second.get("cells", []):
-					if cell not in combined: combined.append(cell)
-				first["cells"] = combined
-				first["cost"] = int(ZONE_TYPES[str(first.kind)].cost) * combined.size()
-				zones[first_index] = first
+				if str(first.kind) != str(second.kind) or not (_mergeable_room(second) or _is_grid_corridor(second)): continue
+				var combined := _merged_room(first, second)
+				if combined.is_empty(): continue
+				# Undo of the later placement restores the earlier room as it was.
+				var restore := first.duplicate(true)
+				combined["undo_restore"] = restore
+				for step in _history:
+					if step.get("zone") == second: step["zone"] = combined
+					elif step.get("zone") == first: step["zone"] = restore
+				zones[first_index] = combined
 				zones.remove_at(second_index)
 				merged_any = true
 				break
+
+func _is_grid_corridor(zone: Dictionary) -> bool:
+	return str(zone.get("kind", "")) == "corridor" and not zone.has("angled_mount") and not zone.has("outline")
+
+func _mergeable_room(zone: Dictionary) -> bool:
+	return not zone.has("angled_mount") and _is_ordinary_room_kind(str(zone.get("kind", ""))) and _is_habitat_zone(zone)
+
+## The single room two same-kind rooms become, or {} if they do not share a
+## wall (or would enclose a courtyard, which one outline cannot describe).
+func _merged_room(first: Dictionary, second: Dictionary) -> Dictionary:
+	if _is_grid_corridor(first):
+		# Corridor pieces laid end to end in one line become one corridor; side
+		# by side or at an angle they stay separate (a T or a bend).
+		var run: Array = (first.cells as Array).duplicate()
+		for cell in second.cells:
+			if cell not in run: run.append(cell)
+		var same_x := true
+		var same_z := true
+		for cell in run:
+			same_x = same_x and cell.x == run[0].x
+			same_z = same_z and cell.y == run[0].y
+		if not (same_x or same_z): return {}
+		run.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x + a.y < b.x + b.y)
+		for index in range(1, run.size()):
+			if absi(run[index].x - run[index - 1].x) + absi(run[index].y - run[index - 1].y) != 1: return {}
+		var corridor := first.duplicate(true)
+		corridor.erase("undo_restore")
+		corridor["cells"] = run
+		corridor["cost"] = int(first.cost) + int(second.cost)
+		return corridor
+	if not first.has("outline") and not second.has("outline"):
+		if not _zones_touch(first, second): return {}
+		var cells: Array = (first.get("cells", []) as Array).duplicate()
+		for cell in second.get("cells", []):
+			if cell not in cells: cells.append(cell)
+		var grid_room := first.duplicate(true)
+		grid_room.erase("undo_restore")
+		grid_room["cells"] = cells
+		grid_room["cost"] = int(first.cost) + int(second.cost)
+		return grid_room
+	var first_outline := zone_outline(first)
+	var second_outline := zone_outline(second)
+	var shared := 0.0
+	for index in range(first_outline.size()):
+		for interval in _collinear_overlaps(first_outline[index], first_outline[(index + 1) % first_outline.size()], second_outline):
+			shared += interval.y - interval.x
+	if shared < 1.0: return {}
+	var union: Array = Geometry2D.merge_polygons(first_outline, second_outline)
+	if union.size() != 1: return {}
+	var outline := _clean_outline(union[0])
+	if outline.size() < 3: return {}
+	return {"kind": first.kind, "cells": _freeform_cells(outline), "outline": outline, "door_direction": first.get("door_direction", Vector2i(0, -1)), "cost": int(first.cost) + int(second.cost)}
+
+## Outline with coordinates rounded to the centimetre, duplicate corners and
+## straight-through corners removed, so merged walls run as single edges.
+func _clean_outline(points: PackedVector2Array) -> PackedVector2Array:
+	var rounded := PackedVector2Array()
+	for point in points:
+		var snapped := Vector2(snappedf(point.x, .01), snappedf(point.y, .01))
+		if rounded.is_empty() or rounded[rounded.size() - 1].distance_to(snapped) > .01: rounded.append(snapped)
+	if rounded.size() > 1 and rounded[0].distance_to(rounded[rounded.size() - 1]) < .01: rounded.remove_at(rounded.size() - 1)
+	var changed := true
+	while changed and rounded.size() > 3:
+		changed = false
+		for index in range(rounded.size()):
+			var before := rounded[posmod(index - 1, rounded.size())]
+			var after := rounded[(index + 1) % rounded.size()]
+			if absf((rounded[index] - before).cross(after - rounded[index])) < .001:
+				rounded.remove_at(index)
+				changed = true
+				break
+	return rounded
 
 func _zones_touch(first: Dictionary, second: Dictionary) -> bool:
 	for cell in first.get("cells", []):
@@ -1323,6 +2342,421 @@ func _zone_surfaces(zone: Dictionary) -> void:
 	_add_zone_lighting(zone)
 	_add_zone_roof_accessory(zone)
 
+func _build_freeform_zone(zone: Dictionary) -> void:
+	# The floor/roof are deliberately separate from the outline wall kit so a
+	# future editor can replace one without touching the other.
+	var outline := zone_outline(zone)
+	if outline.size() < 3: return
+	var colour: Color = ZONE_TYPES[str(zone.get("kind", "living"))].colour
+	_add_freeform_slab(outline, habitat_base_y - .1, .2, colour.darkened(.48), "habitat_floor")
+	_add_freeform_slab(outline, habitat_base_y + 2.9, .15, MHStyle.STRUCTURAL_WHITE.darkened(.08), "habitat_roof")
+	_add_freeform_plan_polygon(outline, colour, str(zone.get("kind", "room")))
+
+func _angled_mount_basis(mount: Dictionary) -> Basis:
+	var tangent: Vector2 = mount.get("tangent", Vector2.RIGHT)
+	var outward: Vector2 = mount.get("outward", Vector2.UP)
+	var tangent_3d := Vector3(tangent.x, 0, tangent.y).normalized()
+	var basis := Basis(tangent_3d, Vector3.UP, tangent_3d.cross(Vector3.UP))
+	var outward_3d := Vector3(outward.x, 0, outward.y).normalized()
+	if (-basis.z).dot(outward_3d) < 0.0:
+		tangent_3d = -tangent_3d
+		basis = Basis(tangent_3d, Vector3.UP, tangent_3d.cross(Vector3.UP))
+	return basis
+
+func _build_angled_outline_connector(zone: Dictionary) -> void:
+	var mount: Dictionary = zone.get("angled_mount", {})
+	var position: Vector2 = mount.get("position", Vector2.ZERO)
+	var outward: Vector2 = mount.get("outward", Vector2.UP)
+	var tangent: Vector2 = mount.get("tangent", Vector2.RIGHT)
+	var basis := _angled_mount_basis(mount)
+	var length := float(mount.get("length", CELL))
+	var centre_2d := position + outward * length * .5
+	var centre := Vector3(centre_2d.x, habitat_base_y, centre_2d.y)
+	var zone_kind := str(zone.get("kind", "corridor"))
+	var colour: Color = ZONE_TYPES[zone_kind].colour
+	_add_rotated_box(centre + Vector3.UP * -.1, Vector3(CELL, .2, length), basis, colour.darkened(.48), true, "habitat_floor")
+	_add_rotated_box(centre + Vector3.UP * 2.9, Vector3(CELL, .15, length), basis, MHStyle.STRUCTURAL_WHITE.darkened(.08), true, "habitat_roof")
+	# The two long sides use the same detailed wall kit as rooms; the two ends
+	# stay open so the host-wall hatch and outer/corridor end own the thresholds.
+	var travel: Vector3 = Vector3(outward.x, 0, outward.y).normalized()
+	var side_basis: Basis = Basis(travel, Vector3.UP, travel.cross(Vector3.UP))
+	for raw_sign_value in [-1.0, 1.0]:
+		var sign_value: float = float(raw_sign_value)
+		var side_position: Vector3 = centre + Vector3(tangent.x, 0, tangent.y) * (CELL * .5 * sign_value)
+		# Panel bays of about 3 m, like room walls, rather than one stretched panel.
+		var bay_count := maxi(1, roundi(length / CELL))
+		for bay_index in range(bay_count):
+			var bay_centre := side_position + travel * (length * ((float(bay_index) + .5) / float(bay_count) - .5))
+			_add_showcase_basis(SHOWCASE_WALL, Vector3(bay_centre.x, habitat_base_y, bay_centre.z), side_basis, Vector3(length / float(bay_count) / CELL, 1.0, 1.0))
+		_add_rotated_box(side_position - Vector3(tangent.x, 0, tangent.y) * (.035 * sign_value) + Vector3.UP * (ROOM_HEIGHT * .5), Vector3(length, ROOM_HEIGHT, .16), side_basis, MHStyle.STRUCTURAL_WHITE, true, "habitat_wall")
+	if zone_kind == "airlock":
+		# The host-room hatch faces back into the room; the exterior hatch faces
+		# Mars. Reusing the exterior basis for both made the inner frame appear as
+		# a detached, outward-facing panel.
+		var inner_basis: Basis = basis.rotated(Vector3.UP, PI)
+		# Give the inner frame a tiny overlap into the 3 m wall opening. This hides
+		# the hairline light seam without closing the doorway itself.
+		var inner := _add_angled_door(Vector3(position.x, habitat_base_y, position.y), inner_basis, "INNER", false, 2.84)
+		var outer_position := position + outward * length
+		var outer := _add_angled_door(Vector3(outer_position.x, habitat_base_y, outer_position.y), basis, "OUTER", true)
+		inner.set_partner(outer)
+		outer.set_partner(inner)
+	else:
+		# The imported corridor bay includes its own shell and clashes with the
+		# angled side panels. The generated shell above is clean and modular.
+		# A far end that lands on another room's wall stays open into that room.
+		if _angled_far_end_target(mount).is_empty():
+			var end_position := position + outward * length
+			_add_showcase_basis(SHOWCASE_WALL, Vector3(end_position.x, habitat_base_y, end_position.y), basis, Vector3.ONE)
+			_add_rotated_box(Vector3(end_position.x, habitat_base_y + ROOM_HEIGHT * .5, end_position.y) - Vector3(outward.x * .035, 0, outward.y * .035), Vector3(CELL, ROOM_HEIGHT, .16), basis, MHStyle.STRUCTURAL_WHITE, true, "habitat_wall")
+		# Ceiling strips along the run, like grid corridors (one per ~6 m).
+		var light_count := maxi(1, roundi(length / 6.0))
+		for light_index in range(light_count):
+			var at := position + outward * (length * (float(light_index) + .5) / float(light_count))
+			_add_powered_fixture(Vector3(at.x, habitat_base_y + 2.81, at.y), zone_kind, basis)
+	_add_outline_connector_plan(centre_2d, basis, plan_colour(zone_kind), zone_kind, length)
+
+func _add_angled_door(position: Vector3, basis: Basis, door_name: String, show_surround: bool, shutter_width := 2.64) -> AirlockDoor:
+	if show_surround: _add_showcase_basis(SHOWCASE_AIRLOCK, position, basis, Vector3.ONE)
+	var door := AIRLOCK_DOOR.new()
+	door.transform = Transform3D(basis, position)
+	root.add_child(door)
+	door.setup(door_name, not show_surround, shutter_width)
+	_add_door_plan_marker(door, door_name, shutter_width - .2)
+	return door
+
+func _add_outline_connector_plan(centre: Vector2, basis: Basis, colour: Color, zone_kind: String, length := CELL) -> void:
+	var tile := MeshInstance3D.new()
+	var mesh := BoxMesh.new(); mesh.size = Vector3(CELL - .08, .035, length - .08); tile.mesh = mesh
+	var material := StandardMaterial3D.new(); material.albedo_color = colour.darkened(PLAN_TILE_SHADE); material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; tile.material_override = material
+	tile.transform = Transform3D(basis, Vector3(centre.x, habitat_base_y + .12, centre.y))
+	tile.add_to_group("habitat_plan")
+	tile.set_meta("zone_kind", zone_kind)
+	root.add_child(tile)
+
+func _build_outline_walls(zone: Dictionary) -> void:
+	var outline := zone_outline(zone)
+	if outline.size() < 3: return
+	var zone_index := zones.find(zone)
+	# Doorways, plus stretches another structure already walls: a grid zone
+	# owns any cell face it shares, and of two free-form rooms sharing a wall
+	# the earlier one builds it. Both leave a gap in this room's own wall kit.
+	var doorways := _outline_wall_doorways(zone)
+	var gaps := doorways + _outline_wall_owned_elsewhere(zone_index, outline)
+	var passages: Array = doorways.duplicate()
+	for gap in gaps:
+		if bool(gap.get("open", false)): passages.append(gap)
+	var support_points: Dictionary = {}
+	for index in range(outline.size()):
+		var start := outline[index]
+		var finish := outline[(index + 1) % outline.size()]
+		var edge := finish - start
+		var length := edge.length()
+		if length < .01: continue
+		var tangent := edge / length
+		# Decide outward by testing which side is inside the room. Winding order
+		# is unreliable here (it put every exterior light inside the room).
+		var outward := _outline_outward_at(outline, start + edge * .5, tangent)
+		if outward == Vector2.ZERO: outward = Vector2(tangent.y, -tangent.x)
+		var along := Vector3(tangent.x, 0, tangent.y)
+		# Local X runs along the edge, local Y up, and local -Z faces Mars,
+		# whichever direction the room was drawn in.
+		var x_axis := along if (-along.cross(Vector3.UP)).dot(Vector3(outward.x, 0, outward.y)) > 0.0 else -along
+		var basis := Basis(x_axis, Vector3.UP, x_axis.cross(Vector3.UP))
+		for piece in _outline_wall_pieces(length, gaps, index):
+			var piece_start: float = float(piece.get("start", 0.0))
+			var piece_end: float = float(piece.get("end", 0.0))
+			var piece_length: float = piece_end - piece_start
+			if piece_length < .01: continue
+			var bay_count := maxi(1, ceili(piece_length / CELL - .01))
+			var bay_length := piece_length / float(bay_count)
+			for bay_index in range(bay_count):
+				var centre_2d := start + tangent * (piece_start + (float(bay_index) + .5) * bay_length)
+				var wall_centre := Vector3(centre_2d.x, habitat_base_y + ROOM_HEIGHT * .5, centre_2d.y)
+				var faces_mars := not _is_habitat_zone(_zone_at_point(centre_2d + outward * .4))
+				if faces_mars and _hull_bay_can_glaze(str(zone.kind)) and _register_hull_bay(centre_2d, tangent, outward, bay_length, str(zone.kind)):
+					_add_outline_safety_light(Vector3(centre_2d.x, 0, centre_2d.y), outward, basis)
+					continue
+				# The wall GLB is 3 m wide on its local X axis. Scaling only X
+				# preserves panel height, thickness and the imported details.
+				_add_showcase_basis(SHOWCASE_WALL, Vector3(centre_2d.x, habitat_base_y, centre_2d.y), basis, Vector3(bay_length / CELL, 1.0, 1.0))
+				# Match the grid kit exactly: the backing is 0.16 m thick and sits 0.035 m
+				# inside the detailed panel. It may overlap ordinary bay joins, but never a
+				# doorway edge: that leaves the full 3 m opening free of hidden collision.
+				var overlap_before := .0 if bay_index == 0 and piece_start > .01 else .07
+				var overlap_after := .0 if bay_index == bay_count - 1 and piece_end < length - .01 else .07
+				var backing_centre := wall_centre + along * ((overlap_after - overlap_before) * .5) - Vector3(outward.x * .035, 0, outward.y * .035)
+				_add_rotated_box(backing_centre, Vector3(bay_length + overlap_before + overlap_after, ROOM_HEIGHT, .16), basis, MHStyle.STRUCTURAL_WHITE, true, "habitat_wall")
+				# Outdoor flood lights only on bays that actually face Mars.
+				if faces_mars:
+					_add_outline_safety_light(Vector3(centre_2d.x, 0, centre_2d.y), outward, basis)
+		var vertex_key := Vector2i(roundi(start.x * 100.0), roundi(start.y * 100.0))
+		support_points[vertex_key] = start
+		var support_steps := maxi(1, ceili(length / 6.0))
+		for step in range(1, support_steps):
+			var support_point := start + tangent * (length * float(step) / float(support_steps))
+			support_points[Vector2i(roundi(support_point.x * 100.0), roundi(support_point.y * 100.0))] = support_point
+	for index in range(outline.size()):
+		# A corner post where a doorway meets the corner would stand in the
+		# opening as a walk-through visual, so leave it out there.
+		if not _passage_touches_vertex(outline, index, passages):
+			_add_showcase(SHOWCASE_CORNER, Vector3(outline[index].x, habitat_base_y, outline[index].y))
+	for point in support_points.values():
+		var support_position := Vector3(point.x, 0, point.y)
+		var ground := _terrain_height(support_position)
+		if habitat_base_y - ground > .42: _add_support(support_position, ground)
+
+func _passage_touches_vertex(outline: PackedVector2Array, vertex: int, passages: Array) -> bool:
+	var previous := posmod(vertex - 1, outline.size())
+	var previous_length := outline[previous].distance_to(outline[vertex])
+	for passage in passages:
+		var edge := int(passage.get("edge_index", -1))
+		if edge == vertex and float(passage.get("opening_start", 1.0)) < .05: return true
+		if edge == previous and float(passage.get("opening_end", 0.0)) > previous_length - .05: return true
+	return false
+
+## Stretches of a free-form room's outline that something else walls, as
+## {edge_index, opening_start, opening_end} gaps in this room's own wall kit.
+func _outline_wall_owned_elsewhere(zone_index: int, outline: PackedVector2Array) -> Array:
+	var gaps: Array = []
+	for index in range(outline.size()):
+		var start := outline[index]
+		var finish := outline[(index + 1) % outline.size()]
+		var length := start.distance_to(finish)
+		if length < .01: continue
+		var tangent := (finish - start) / length
+		# Grid zones own every 3 m cell face they share with this wall.
+		var axis_aligned := absf(tangent.x) < .001 or absf(tangent.y) < .001
+		var line := start.x if absf(tangent.x) < .001 else start.y
+		if axis_aligned and _is_cell_face_line(line) and _is_cell_face_line(start.x if absf(tangent.y) < .001 else start.y):
+			var outward := _outline_outward_at(outline, start + tangent * minf(HALF_CELL, length * .5), tangent)
+			for chunk in range(roundi(length / CELL)):
+				var middle := start + tangent * ((float(chunk) + .5) * CELL)
+				var outside := middle + outward * HALF_CELL
+				var grid_cell := Vector2i(roundi(outside.x / CELL), roundi(outside.y / CELL))
+				if _is_habitat_zone(_zone_at(grid_cell)):
+					# "open" when the grid side leaves a passage (corridor end, airlock
+					# inner hatch or interior door) rather than a wall.
+					var toward_room := Vector2i(roundi(-outward.x), roundi(-outward.y))
+					gaps.append({"edge_index": index, "opening_start": float(chunk) * CELL, "opening_end": float(chunk + 1) * CELL, "open": not _should_build_wall(grid_cell, toward_room)})
+		# Of two free-form rooms sharing a wall, the earlier one builds it.
+		for other_index in range(zone_index):
+			var other: Dictionary = zones[other_index]
+			if not other.has("outline"): continue
+			for interval in _collinear_overlaps(start, finish, zone_outline(other)):
+				gaps.append({"edge_index": index, "opening_start": interval.x, "opening_end": interval.y})
+	return gaps
+
+## Distances along start→finish that lie on a collinear edge of `outline`.
+func _collinear_overlaps(start: Vector2, finish: Vector2, outline: PackedVector2Array) -> Array:
+	var out: Array = []
+	var length := start.distance_to(finish)
+	if length < .01: return out
+	var tangent := (finish - start) / length
+	for index in range(outline.size()):
+		var a := outline[index]
+		var b := outline[(index + 1) % outline.size()]
+		if absf(tangent.cross(b - a)) > .01 * a.distance_to(b) + .001: continue
+		if absf(tangent.cross(a - start)) > .02: continue
+		var from := clampf(minf((a - start).dot(tangent), (b - start).dot(tangent)), 0.0, length)
+		var to := clampf(maxf((a - start).dot(tangent), (b - start).dot(tangent)), 0.0, length)
+		if to - from > .05: out.append(Vector2(from, to))
+	return out
+
+func _outline_airlock_doorways(outline_zone: Dictionary) -> Array:
+	var doorways: Array = []
+	var outline_zone_index := zones.find(outline_zone)
+	for structure in zones:
+		if str(structure.get("kind", "")) != "airlock": continue
+		if structure.has("angled_mount"): continue
+		var cells: Array = structure.get("cells", [])
+		if cells.is_empty(): continue
+		var outside := _airlock_side(structure)
+		var inner := _airlock_end(cells, outside, false)
+		var attachment := _outline_attachment_for_face(inner, -outside)
+		if bool(attachment.get("valid", false)) and int(attachment.get("zone_index", -1)) == outline_zone_index:
+			doorways.append(attachment)
+	return doorways
+
+func _outline_wall_doorways(outline_zone: Dictionary) -> Array:
+	var doorways := _outline_airlock_doorways(outline_zone)
+	var outline_zone_index := zones.find(outline_zone)
+	for connector in zones:
+		if not connector.has("angled_mount"): continue
+		var mount: Dictionary = connector.get("angled_mount", {})
+		if int(mount.get("host_zone", -1)) != outline_zone_index: continue
+		doorways.append({"edge_index": int(mount.get("edge_index", -1)), "opening_start": float(mount.get("opening_start", 0.0)), "opening_end": float(mount.get("opening_end", 0.0))})
+	# Angled corridors whose far end arrives on one of this room's walls.
+	for connector in zones:
+		if not connector.has("angled_mount") or str(connector.get("kind", "")) != "corridor": continue
+		var target := _angled_far_end_target(connector.get("angled_mount", {}))
+		if int(target.get("zone_index", -1)) == outline_zone_index: doorways.append(target)
+	var outline := zone_outline(outline_zone)
+	for door_data in interior_doors:
+		if door_data.has("wall_a"):
+			for edge_index in range(outline.size()):
+				for interval in _collinear_overlaps(outline[edge_index], outline[(edge_index + 1) % outline.size()], PackedVector2Array([door_data.wall_a, door_data.wall_b])):
+					doorways.append({"edge_index": edge_index, "opening_start": interval.x, "opening_end": interval.y})
+			continue
+		if not door_data.has("outline_grid_cell"): continue
+		var grid_cell: Vector2i = door_data.get("outline_grid_cell", Vector2i.ZERO)
+		var grid_side: Vector2i = door_data.get("outline_grid_side", Vector2i.ZERO)
+		var attachment := _outline_attachment_for_face(grid_cell, grid_side)
+		if bool(attachment.get("valid", false)) and int(attachment.get("zone_index", -1)) == outline_zone_index:
+			doorways.append(attachment)
+	return doorways
+
+func _prune_angled_outline_connectors() -> void:
+	for index in range(zones.size() - 1, -1, -1):
+		var zone: Dictionary = zones[index]
+		if not zone.has("angled_mount"): continue
+		# Find the host wall by position every rebuild. Stored indices go stale
+		# as soon as an earlier zone is removed.
+		var mount := _resolve_angled_host(zone.get("angled_mount", {}))
+		if mount.is_empty():
+			zones.remove_at(index)
+			continue
+		zone["angled_mount"] = mount
+		var host_index := int(mount.host_zone)
+		var edge_index := int(mount.edge_index)
+		var outline := zone_outline(zones[host_index])
+		var start: Vector2 = outline[edge_index]
+		var finish: Vector2 = outline[(edge_index + 1) % outline.size()]
+		var edge_length := start.distance_to(finish)
+		var opening_start := float(mount.get("opening_start", 0.0))
+		var opening_end := float(mount.get("opening_end", 0.0))
+		if opening_start < ANGLED_CORNER_CLEARANCE or opening_end > edge_length - ANGLED_CORNER_CLEARANCE:
+			zones.remove_at(index)
+			continue
+		var correct := _outline_outward_at(outline, mount.get("position", Vector2.ZERO), mount.get("tangent", Vector2.RIGHT))
+		if correct == Vector2.ZERO:
+			zones.remove_at(index)
+		elif correct.dot(mount.get("outward", correct)) < 0.0:
+			mount["outward"] = correct
+			zone["angled_mount"] = mount
+			zones[index] = zone
+
+func _outline_wall_pieces(edge_length: float, doorways: Array, edge_index: int) -> Array:
+	var openings: Array = []
+	for doorway in doorways:
+		if int(doorway.get("edge_index", -1)) == edge_index:
+			openings.append(doorway)
+	openings.sort_custom(func(first: Dictionary, second: Dictionary) -> bool: return float(first.get("opening_start", 0.0)) < float(second.get("opening_start", 0.0)))
+	var pieces: Array = []
+	var cursor := 0.0
+	for opening in openings:
+		var opening_start := clampf(float(opening.get("opening_start", 0.0)), 0.0, edge_length)
+		var opening_end := clampf(float(opening.get("opening_end", 0.0)), 0.0, edge_length)
+		if opening_start > cursor + .01: pieces.append({"start": cursor, "end": opening_start})
+		cursor = maxf(cursor, opening_end)
+	if cursor < edge_length - .01: pieces.append({"start": cursor, "end": edge_length})
+	return pieces
+
+func _add_rotated_box(position: Vector3, size: Vector3, basis: Basis, colour: Color, solid: bool, group := "") -> void:
+	var body := StaticBody3D.new()
+	body.transform = Transform3D(basis, position)
+	body.collision_layer = 1
+	body.collision_mask = 1
+	if not group.is_empty(): body.add_to_group(group)
+	root.add_child(body)
+	var visual := MeshInstance3D.new(); var mesh := BoxMesh.new(); mesh.size = size; visual.mesh = mesh
+	var material := StandardMaterial3D.new(); material.albedo_color = colour; material.roughness = .70; visual.material_override = material
+	body.add_child(visual)
+	if solid:
+		var collision := CollisionShape3D.new(); var shape := BoxShape3D.new(); shape.size = size; collision.shape = shape; body.add_child(collision)
+
+func _add_outline_safety_light(wall_centre: Vector3, outward: Vector2, basis: Basis) -> void:
+	var fixture := Node3D.new()
+	fixture.name = "OutlineExteriorSafetyLight"
+	# wall_centre is on the wall line itself; match the grid lamp offset from its face.
+	fixture.transform = Transform3D(basis, wall_centre + Vector3(outward.x * .06, habitat_base_y + 2.36, outward.y * .06))
+	root.add_child(fixture)
+	var lens := MeshInstance3D.new(); var lens_mesh := BoxMesh.new(); lens_mesh.size = Vector3(.50, .16, .07); lens.mesh = lens_mesh
+	var lens_material := StandardMaterial3D.new(); lens_material.albedo_color = Color("#F6E6B9"); lens_material.emission_enabled = true; lens_material.emission = Color("#FFE7AC"); lens_material.emission_energy_multiplier = 2.0; lens.material_override = lens_material
+	lens.add_to_group("build_hidden_light_fixture"); lens.add_to_group("grid_powered_light"); lens.set_meta("grid_emission_on", Color("#FFE7AC")); lens.set_meta("grid_emission_off", Color("#293034")); fixture.add_child(lens)
+	var flood := OmniLight3D.new(); flood.light_color = Color("#FFE2A1"); flood.light_energy = 2.2; flood.omni_range = 5.4; flood.shadow_enabled = false
+	flood.add_to_group("grid_powered_light"); flood.set_meta("grid_light_energy", 2.2); fixture.add_child(flood)
+
+# Verifies the same transform used by both the kit and its rotated backing.
+# Run with `godot --headless --path . --script res://tests/outline_wall_layout_test.gd`.
+func run_outline_wall_layout_self_test() -> bool:
+	var angles: PackedFloat32Array = PackedFloat32Array([0.0, 30.0, 45.0, 60.0, 90.0, 120.0, 135.0, 180.0, 225.0, 270.0, 315.0])
+	var passed := true
+	for degrees in angles:
+		var edge_angle: float = deg_to_rad(degrees)
+		var tangent_2d := Vector2(cos(edge_angle), sin(edge_angle))
+		var tangent := Vector3(tangent_2d.x, 0, tangent_2d.y)
+		var wall_basis := Basis(tangent, Vector3.UP, tangent.cross(Vector3.UP))
+		var transformed_x := (wall_basis * Vector3.RIGHT).normalized()
+		var transformed_negative_z := (wall_basis * Vector3.FORWARD).normalized()
+		# _add_rotated_box uses this exact same basis; its long dimension is local X.
+		var backing_long_axis := (wall_basis * Vector3.RIGHT).normalized()
+		var x_matches_edge := transformed_x.is_equal_approx(tangent)
+		var negative_z_perpendicular := absf(transformed_negative_z.dot(tangent)) < .0001
+		var backing_matches_edge := backing_long_axis.is_equal_approx(tangent)
+		var angle_passed := x_matches_edge and negative_z_perpendicular and backing_matches_edge
+		passed = passed and angle_passed
+		print("outline wall transform · %3d° | local X=%s edge=%s backing X=%s | %s" % [roundi(degrees), transformed_x, tangent, backing_long_axis, "PASS" if angle_passed else "FAIL"])
+	if not passed:
+		push_error("outline wall transform self-test FAILED")
+		assert(false, "Free-form wall transform must keep local X and the backing long axis along the edge")
+	print("outline wall transform self-test: PASS")
+	return true
+
+func _toggle_backing_debug_visibility() -> void:
+	_debug_backings_visible = not _debug_backings_visible
+	for backing in get_tree().get_nodes_in_group("habitat_wall"):
+		_set_visual_children(backing, _debug_backings_visible)
+	_flash_notice("info", "Wall backing debug", "Backing boxes %s · F9 toggles them." % ["visible" if _debug_backings_visible else "hidden"])
+
+func _add_showcase_basis(scene: PackedScene, position: Vector3, basis: Basis, model_scale: Vector3) -> Node3D:
+	var asset := scene.instantiate() as Node3D
+	# Scale the model along its own axes (stretch along the wall). Basis.scaled()
+	# scales along world axes instead, which skews any panel not facing N/S/E/W.
+	asset.transform = Transform3D(Basis(basis.x * model_scale.x, basis.y * model_scale.y, basis.z * model_scale.z), position)
+	asset.add_to_group("habitat_showcase_visual")
+	MHGame.apply_kit_materials(asset)
+	root.add_child(asset)
+	return asset
+
+func _add_freeform_slab(outline: PackedVector2Array, y: float, thickness: float, colour: Color, group: String) -> void:
+	var triangles := Geometry2D.triangulate_polygon(outline)
+	if triangles.is_empty(): return
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var faces := PackedVector3Array()
+	var top_y := y + thickness * .5
+	var bottom_y := y - thickness * .5
+	for index in range(0, triangles.size(), 3):
+		var a := Vector3(outline[triangles[index]].x, top_y, outline[triangles[index]].y)
+		var b := Vector3(outline[triangles[index + 1]].x, top_y, outline[triangles[index + 1]].y)
+		var c := Vector3(outline[triangles[index + 2]].x, top_y, outline[triangles[index + 2]].y)
+		var below_a := Vector3(a.x, bottom_y, a.z); var below_b := Vector3(b.x, bottom_y, b.z); var below_c := Vector3(c.x, bottom_y, c.z)
+		surface.add_vertex(a); surface.add_vertex(b); surface.add_vertex(c); surface.add_vertex(below_c); surface.add_vertex(below_b); surface.add_vertex(below_a)
+		faces.append_array([a, b, c, below_c, below_b, below_a])
+	for index in range(outline.size()):
+		var next := (index + 1) % outline.size()
+		var top_a := Vector3(outline[index].x, top_y, outline[index].y); var top_b := Vector3(outline[next].x, top_y, outline[next].y)
+		var bottom_a := Vector3(top_a.x, bottom_y, top_a.z); var bottom_b := Vector3(top_b.x, bottom_y, top_b.z)
+		surface.add_vertex(top_a); surface.add_vertex(bottom_a); surface.add_vertex(bottom_b); surface.add_vertex(top_a); surface.add_vertex(bottom_b); surface.add_vertex(top_b)
+		faces.append_array([top_a, bottom_a, bottom_b, top_a, bottom_b, top_b])
+	var mesh := surface.commit()
+	var body := StaticBody3D.new(); body.collision_layer = 1; body.collision_mask = 1; body.add_to_group(group); root.add_child(body)
+	var visual := MeshInstance3D.new(); visual.mesh = mesh
+	var material := StandardMaterial3D.new(); material.albedo_color = colour; material.roughness = .70; material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	visual.material_override = material; body.add_child(visual)
+	var collision := CollisionShape3D.new(); var shape := ConcavePolygonShape3D.new(); shape.set_faces(faces); collision.shape = shape; body.add_child(collision)
+
+func _add_freeform_plan_polygon(outline: PackedVector2Array, colour: Color, zone_kind: String) -> void:
+	var triangles := Geometry2D.triangulate_polygon(outline)
+	if triangles.is_empty(): return
+	var mesh := ImmediateMesh.new()
+	var material := StandardMaterial3D.new(); material.albedo_color = colour.darkened(PLAN_TILE_SHADE); material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, material)
+	for index in triangles: mesh.surface_add_vertex(Vector3(outline[index].x, habitat_base_y + .025, outline[index].y))
+	mesh.surface_end()
+	var visual := MeshInstance3D.new(); visual.mesh = mesh; visual.name = zone_kind + "PlanPolygon"; visual.add_to_group("habitat_plan"); visual.visible = build_mode; visual.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; root.add_child(visual)
+
 # Roof fittings give each room family a readable silhouette without becoming a
 # second construction system. They are separate children of the generated
 # shell and carry explicit metadata: when upper-storey construction arrives it
@@ -1331,7 +2765,7 @@ func _add_zone_roof_accessory(zone: Dictionary) -> void:
 	var zone_kind := str(zone.get("kind", ""))
 	if not ROOF_ACCESSORY_SCENES.has(zone_kind) or _zone_has_upper_storey(zone):
 		return
-	var cells: Array = zone.get("cells", [])
+	var cells: Array = _fitout_cells(zone)
 	if cells.is_empty():
 		return
 	# Tiny single-cell spaces retain a clean roof. Larger connected rooms get a
@@ -1403,17 +2837,47 @@ func _add_zone_lighting(zone: Dictionary) -> void:
 	var zone_kind := str(zone.kind)
 	if zone_kind == "solar":
 		return
-	var cells: Array = zone.cells
+	var cells: Array = _fitout_cells(zone)
+	# A small or narrow free-form room may have no cell well clear of its walls;
+	# light it from the middle of its floor instead.
+	if cells.is_empty() and zone.has("outline"):
+		var middle := _outline_centroid(zone_outline(zone))
+		if Geometry2D.is_point_in_polygon(middle, zone_outline(zone)):
+			_add_powered_fixture(Vector3(middle.x, habitat_base_y + 2.81, middle.y), zone_kind)
+		return
 	for index in range(0, cells.size(), 2):
 		var cell: Vector2i = cells[index]
 		# The fixture housing is recessed into the roof slab rather than hovering
 		# below it as a free-floating light strip.
 		_add_powered_fixture(Vector3(cell.x * CELL, habitat_base_y + 2.81, cell.y * CELL), zone_kind)
 
-func _add_powered_fixture(position: Vector3, zone_kind: String) -> void:
+## Cells whose centres sit well inside a zone, for ceiling lights and roof
+## fittings. A free-form diagonal can pass straight through a cell centre.
+func _fitout_cells(zone: Dictionary) -> Array:
+	var cells: Array = zone.get("cells", [])
+	if not zone.has("outline"): return cells
+	var outline := zone_outline(zone)
+	var clear_cells: Array = []
+	for cell in cells:
+		var centre := Vector2(cell.x * CELL, cell.y * CELL)
+		if not Geometry2D.is_point_in_polygon(centre, outline): continue
+		var clear := true
+		for index in range(outline.size()):
+			if centre.distance_to(Geometry2D.get_closest_point_to_segment(centre, outline[index], outline[(index + 1) % outline.size()])) < 1.0:
+				clear = false
+				break
+		if clear: clear_cells.append(cell)
+	return clear_cells
+
+func _outline_centroid(outline: PackedVector2Array) -> Vector2:
+	var middle := Vector2.ZERO
+	for point in outline: middle += point
+	return middle / maxf(1.0, float(outline.size()))
+
+func _add_powered_fixture(position: Vector3, zone_kind: String, basis := Basis.IDENTITY) -> void:
 	var fixture := Node3D.new()
 	fixture.name = "CeilingLight"
-	fixture.position = position
+	fixture.transform = Transform3D(basis, position)
 	root.add_child(fixture)
 	var housing := MeshInstance3D.new()
 	var housing_mesh := BoxMesh.new()
@@ -1445,8 +2909,11 @@ func _add_powered_fixture(position: Vector3, zone_kind: String) -> void:
 	light.light_color = Color("#FFE7B2")
 	# One light per two cells must light the whole enclosed room at night, not
 	# merely make the diffuser itself visible.
-	light.light_energy = 5.8 if zone_kind != "hydroponics" else 6.8
-	light.omni_range = 7.5
+	# Overlapping fixtures (one per two cells) plus the interior fill light;
+	# brighter values blew out the white composite walls and equipment.
+	light.light_energy = 1.5 if zone_kind != "hydroponics" else 1.9
+	light.omni_range = 6.5
+	light.omni_attenuation = 1.4   # falls off towards the walls instead of flattening them
 	light.shadow_enabled = false
 	light.add_to_group("grid_powered_light")
 	light.set_meta("grid_light_energy", light.light_energy)
@@ -1454,28 +2921,57 @@ func _add_powered_fixture(position: Vector3, zone_kind: String) -> void:
 
 func _cell_walls(cell: Vector2i,zone: Dictionary) -> void:
 	var zone_kind:=str(zone.kind); var colour:Color=ZONE_TYPES[zone_kind].colour; var centre:=Vector3(cell.x*CELL,0,cell.y*CELL)
-	_add_plan_tile(centre,colour,zone_kind)
+	_add_plan_tile(centre,plan_colour(zone_kind),zone_kind)
 	for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
-		if _should_build_wall(cell,side): _add_exterior_wall(centre,side,zone_kind,zone)
+		# Shared walls between two habitat spaces get no outdoor flood light.
+		if _should_build_wall(cell,side): _add_exterior_wall(centre,side,zone_kind,zone,not _is_habitat_zone(_zone_across(cell,side)))
+
+## The habitat on the far side of a grid cell face: the grid zone in the next
+## cell, or a free-form room whose straight wall runs along that whole face.
+## Every grid wall, corridor end and bay door decision goes through this, so
+## angled rooms connect exactly like grid rooms do.
+func _zone_across(cell: Vector2i, side: Vector2i) -> Dictionary:
+	var grid_zone := _zone_at(cell + side)
+	if not grid_zone.is_empty(): return grid_zone
+	var attachment := _outline_attachment_for_face(cell, side)
+	if bool(attachment.get("valid", false)): return zones[int(attachment.zone_index)]
+	return {}
 
 func _should_build_wall(cell: Vector2i,side: Vector2i) -> bool:
 	# The airlock owns its inner threshold. This must win regardless of whether
 	# the attached room, corridor or the airlock itself was placed first.
 	if _is_airlock_inner_doorway(cell,side): return false
-	var neighbour := cell + side
-	if not _is_habitat_cell(neighbour):
-		return true
+	# This also covers a grid room's deliberate doorway into a free-form room.
+	if _has_interior_door(cell, side): return false
+	# A corridor is a sealed tube until an end reaches another habitat space.
+	# When that happens, remove the wall on both sides of that one end only;
+	# its two long sides always remain solid.
+	if _corridor_end_connects(cell, side): return false
 	var current_zone := _zone_at(cell)
-	var neighbour_zone := _zone_at(neighbour)
+	var neighbour_zone := _zone_across(cell, side)
+	if not _is_habitat_zone(neighbour_zone):
+		return true
+	# A free-form room never builds wall bays along a face that a grid zone
+	# owns, so the grid side always draws this shared wall.
+	if neighbour_zone.has("outline"):
+		return true
 	# Cells painted as part of one room remain a single open interior volume.
 	if current_zone == neighbour_zone or (str(current_zone.get("kind", "")) == str(neighbour_zone.get("kind", "")) and _footprint_zone_is_editable(current_zone) and _footprint_zone_is_editable(neighbour_zone)):
-		return false
-	# A player-installed door owns this boundary.
-	if _has_interior_door(cell, side):
 		return false
 	# Different room volumes are sealed. Render the shared wall exactly once so
 	# two coplanar wall kits cannot fight each other visually.
 	return _is_canonical_shared_edge(cell, side)
+
+func _corridor_end_connects(cell: Vector2i, side: Vector2i) -> bool:
+	var current_zone := _zone_at(cell)
+	var neighbour_zone := _zone_across(cell, side)
+	if not current_zone.is_empty() and str(current_zone.get("kind", "")) == "corridor":
+		if not _is_corridor_side(current_zone, side) and _is_habitat_zone(neighbour_zone) and neighbour_zone != current_zone:
+			return true
+	if not neighbour_zone.is_empty() and str(neighbour_zone.get("kind", "")) == "corridor":
+		if not _is_corridor_side(neighbour_zone, -side) and not current_zone.is_empty() and current_zone != neighbour_zone:
+			return true
+	return false
 
 func _is_canonical_shared_edge(cell: Vector2i, side: Vector2i) -> bool:
 	var neighbour := cell + side
@@ -1489,6 +2985,8 @@ func _canonical_interior_door(cell: Vector2i, side: Vector2i) -> Dictionary:
 func _has_interior_door(cell: Vector2i, side: Vector2i) -> bool:
 	var canonical := _canonical_interior_door(cell, side)
 	for data in interior_doors:
+		if data.has("outline_grid_cell") and data.get("outline_grid_cell", Vector2i.ZERO) == cell and data.get("outline_grid_side", Vector2i.ZERO) == side:
+			return true
 		if data.get("cell", Vector2i.ZERO) == canonical.cell and data.get("side", Vector2i.ZERO) == canonical.side:
 			return true
 	return false
@@ -1505,11 +3003,73 @@ func _zone_is_rectangle(zone: Dictionary) -> bool:
 		min_z = mini(min_z, cell.y); max_z = maxi(max_z, cell.y)
 	return cells.size() == (max_x - min_x + 1) * (max_z - min_z + 1)
 
+## Interior door targets come in three shapes: {"cell","side"} between grid
+## zones (or a grid room and a free-form wall), and {"wall_a","wall_b"} for a
+## 3 m opening on a wall shared by two free-form rooms. The interior builder
+## only ever passes these dictionaries around.
+func interior_door_target_invalid_reason(target: Dictionary) -> String:
+	if target.has("wall_a"):
+		if target.has("invalid"): return str(target.invalid)
+		var middle: Vector2 = (target.wall_a + target.wall_b) * .5
+		for data in interior_doors:
+			if data.has("wall_a") and middle.distance_to((data.wall_a + data.wall_b) * .5) < CELL - .05: return "Interior door already installed"
+		return ""
+	if target.is_empty(): return "Aim at a shared room wall"
+	return interior_door_invalid_reason(target.get("cell", Vector2i.ZERO), target.get("side", Vector2i.ZERO))
+
+func place_interior_door_target(target: Dictionary) -> bool:
+	if not interior_door_target_invalid_reason(target).is_empty(): return false
+	if target.has("wall_a"):
+		interior_doors.append({"wall_a": target.wall_a, "wall_b": target.wall_b})
+		_rebuild()
+		return true
+	return place_interior_door(target.get("cell", Vector2i.ZERO), target.get("side", Vector2i.ZERO))
+
+## Centre of a target's opening at deck level, with local X along the wall.
+func interior_door_target_transform(target: Dictionary) -> Transform3D:
+	if target.has("wall_a"):
+		var a: Vector2 = target.wall_a
+		var b: Vector2 = target.wall_b
+		var along := Vector3(b.x - a.x, 0, b.y - a.y).normalized()
+		return Transform3D(Basis(along, Vector3.UP, along.cross(Vector3.UP)), Vector3((a.x + b.x) * .5, habitat_base_y, (a.y + b.y) * .5))
+	var cell: Vector2i = target.get("cell", Vector2i.ZERO)
+	var side: Vector2i = target.get("side", Vector2i.ZERO)
+	var x_axis := Vector3(0, 0, 1) if side.x != 0 else Vector3(1, 0, 0)
+	return Transform3D(Basis(x_axis, Vector3.UP, x_axis.cross(Vector3.UP)), Vector3(cell.x * CELL + side.x * HALF_CELL, habitat_base_y, cell.y * CELL + side.y * HALF_CELL))
+
+## A 3 m doorway centred as near `point` as fits on a wall shared by two
+## free-form rooms, as {"wall_a","wall_b"} (plus "invalid" when it cannot
+## fit); empty when no shared free-form wall is there.
+func _shared_outline_wall_at(point: Vector2) -> Dictionary:
+	for first_index in range(zones.size()):
+		if not zones[first_index].has("outline"): continue
+		var outline := zone_outline(zones[first_index])
+		for edge_index in range(outline.size()):
+			var a := outline[edge_index]
+			var b := outline[(edge_index + 1) % outline.size()]
+			if point.distance_to(Geometry2D.get_closest_point_to_segment(point, a, b)) > .35: continue
+			var length := a.distance_to(b)
+			var tangent := (b - a) / length
+			var along := (point - a).dot(tangent)
+			for second_index in range(first_index + 1, zones.size()):
+				if not zones[second_index].has("outline"): continue
+				for interval in _collinear_overlaps(a, b, zone_outline(zones[second_index])):
+					if along < interval.x - .05 or along > interval.y + .05: continue
+					if interval.y - interval.x < CELL - .01:
+						return {"wall_a": a + tangent * interval.x, "wall_b": a + tangent * interval.y, "invalid": "Shared wall is too short for a 3 m doorway"}
+					var centre := clampf(along, interval.x + HALF_CELL, interval.y - HALF_CELL)
+					return {"wall_a": a + tangent * (centre - HALF_CELL), "wall_b": a + tangent * (centre + HALF_CELL)}
+	return {}
+
 func interior_door_invalid_reason(cell: Vector2i, side: Vector2i) -> String:
 	if abs(side.x) + abs(side.y) != 1:
 		return "Aim at a shared room wall"
-	var neighbour := cell + side
 	var first := _zone_at(cell)
+	var outline_attachment := _outline_attachment_for_face(cell, side)
+	if not first.is_empty() and _is_ordinary_room_kind(str(first.kind)) and bool(outline_attachment.get("valid", false)):
+		if _has_interior_door(cell, side): return "Interior door already installed"
+		return ""
+	var neighbour := cell + side
 	var second := _zone_at(neighbour)
 	if first.is_empty() or second.is_empty() or not _is_habitat_zone(first) or not _is_habitat_zone(second):
 		return "Doorways join two completed rooms"
@@ -1524,11 +3084,472 @@ func interior_door_invalid_reason(cell: Vector2i, side: Vector2i) -> String:
 func place_interior_door(cell: Vector2i, side: Vector2i) -> bool:
 	if not interior_door_invalid_reason(cell, side).is_empty():
 		return false
-	interior_doors.append(_canonical_interior_door(cell, side))
+	_store_interior_door({"cell": cell, "side": side})
 	_rebuild()
 	return true
 
+# ---------- hull windows ----------
+
+func _hull_bay_can_glaze(zone_kind: String) -> bool:
+	# Rooms and corridors take windows; airlocks and vehicle bays stay solid.
+	return zone_kind not in ["airlock", "vehicle_bay", "solar", "reactor", "ice_extractor"]
+
+## Same direction for a wall whichever way it was walked.
+static func _canonical_wall_dir(tangent: Vector2) -> Vector2:
+	var t := tangent.normalized()
+	return t if t.x > .001 or (absf(t.x) <= .001 and t.y > 0.0) else -t
+
+func _window_index_at(mid: Vector2, dir: Vector2) -> int:
+	for index in range(hull_windows.size()):
+		var data: Dictionary = hull_windows[index]
+		if (data.mid as Vector2).distance_to(mid) < .6 and absf((data.dir as Vector2).dot(dir)) > .99: return index
+	return -1
+
+## Record a Mars-facing bay and, if it is glazed, build the window there.
+## Returns true when a window was built (the caller then skips its wall).
+func _register_hull_bay(mid: Vector2, tangent: Vector2, outward: Vector2, length: float, zone_kind: String) -> bool:
+	var dir := _canonical_wall_dir(tangent)
+	_hull_bays.append({"mid": mid, "dir": dir, "tangent": tangent.normalized(), "outward": outward.normalized(), "length": length, "zone_kind": zone_kind})
+	var index := _window_index_at(mid, dir)
+	if index < 0: return false
+	_windows_built[index] = true
+	_add_window_bay(mid, tangent.normalized(), outward.normalized(), length)
+	return true
+
+## Wall-bay transform: local X along the wall, Y up, -Z facing Mars.
+func _bay_basis(tangent: Vector2, outward: Vector2) -> Basis:
+	var along := Vector3(tangent.x, 0, tangent.y)
+	var x_axis := along if (-along.cross(Vector3.UP)).dot(Vector3(outward.x, 0, outward.y)) > 0.0 else -along
+	return Basis(x_axis, Vector3.UP, x_axis.cross(Vector3.UP))
+
+var _window_glass_material: StandardMaterial3D
+## Placeholder window bay: solid lower panel and header, two jambs and a
+## glazed band from WINDOW_SILL to WINDOW_HEAD. Every part collides, so the
+## hull stays sealed; real art can replace it bay for bay later.
+func _add_window_bay(mid: Vector2, tangent: Vector2, outward: Vector2, length: float) -> void:
+	var basis := _bay_basis(tangent, outward)
+	var inset := Vector3(outward.x, 0, outward.y) * -.035
+	var base := Vector3(mid.x, habitat_base_y, mid.y) + inset
+	var along := basis.x
+	var frame := MHStyle.STRUCTURAL_WHITE
+	var glass_height := WINDOW_HEAD - WINDOW_SILL
+	_add_rotated_box(base + Vector3.UP * WINDOW_SILL * .5, Vector3(length + .07, WINDOW_SILL, .2), basis, frame.darkened(.06), true, "habitat_wall")
+	_add_rotated_box(base + Vector3.UP * (WINDOW_HEAD + (ROOM_HEIGHT - WINDOW_HEAD) * .5), Vector3(length + .07, ROOM_HEIGHT - WINDOW_HEAD, .2), basis, frame, true, "habitat_wall")
+	for side in [-1.0, 1.0]:
+		_add_rotated_box(base + along * (side * (length * .5 - .14)) + Vector3.UP * (WINDOW_SILL + glass_height * .5), Vector3(.28, glass_height, .24), basis, MHStyle.FRAME_STEEL, true, "habitat_wall")
+	# Sill and head trims in the colony accent, so windows read from outside.
+	for height in [WINDOW_SILL, WINDOW_HEAD]:
+		var trim := MeshInstance3D.new(); var trim_mesh := BoxMesh.new(); trim_mesh.size = Vector3(length - .3, .06, .3); trim.mesh = trim_mesh
+		trim.material_override = MHGame.accent_material()
+		trim.transform = Transform3D(basis, base + Vector3.UP * height)
+		root.add_child(trim)
+	if _window_glass_material == null:
+		_window_glass_material = StandardMaterial3D.new()
+		_window_glass_material.albedo_color = Color(.62, .78, .86, .22)
+		_window_glass_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_window_glass_material.roughness = .05
+		_window_glass_material.metallic = .3
+		_window_glass_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var glass := StaticBody3D.new()
+	glass.name = "WindowGlass"
+	glass.transform = Transform3D(basis, base + Vector3.UP * (WINDOW_SILL + glass_height * .5))
+	glass.add_to_group("habitat_wall")
+	glass.add_to_group("hull_window_glass")
+	root.add_child(glass)
+	var pane := MeshInstance3D.new(); var pane_mesh := BoxMesh.new(); pane_mesh.size = Vector3(length - .5, glass_height, .04); pane.mesh = pane_mesh
+	pane.material_override = _window_glass_material
+	pane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	glass.add_child(pane)
+	var collision := CollisionShape3D.new(); var shape := BoxShape3D.new(); shape.size = Vector3(length - .5, glass_height, .06); collision.shape = shape
+	glass.add_child(collision)
+	# Site-plan marker: a pale blue bar along the wall.
+	var marker := MeshInstance3D.new(); marker.name = "WindowPlanMarker"
+	var marker_mesh := BoxMesh.new(); marker_mesh.size = Vector3(length - .5, .06, .4); marker.mesh = marker_mesh
+	var marker_material := StandardMaterial3D.new(); marker_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; marker_material.albedo_color = Color("#8FD8FF")
+	marker.material_override = marker_material
+	marker.transform = Transform3D(basis, Vector3(mid.x, habitat_base_y + .14, mid.y))
+	marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	marker.add_to_group("habitat_plan")
+	marker.visible = build_mode
+	root.add_child(marker)
+
+## Windows whose wall bay no longer faces Mars (room removed, wall now
+## shared or opened) are taken out and their cargo refunded.
+func _prune_hull_windows() -> void:
+	var refund := 0
+	for index in range(hull_windows.size() - 1, -1, -1):
+		if _windows_built.has(index): continue
+		hull_windows.remove_at(index)
+		refund += window_cargo()
+	if refund > 0:
+		_windows_built = {}
+		for bay_index in range(hull_windows.size()): _windows_built[bay_index] = true
+		_flash_notice("info", "Windows removed", "+%s cargo returned · their wall no longer faces Mars." % MHStyle.kg(refund), false)
+
+## The Mars-facing wall bay a first-person aim point is on; {} if none.
+func window_target_at(point: Vector3) -> Dictionary:
+	if point.y < habitat_base_y or point.y > habitat_base_y + ROOM_HEIGHT: return {}
+	var flat := Vector2(point.x, point.z)
+	for bay in _hull_bays:
+		var half_length: float = float(bay.length) * .5
+		var relative: Vector2 = flat - (bay.mid as Vector2)
+		if absf(relative.dot(bay.tangent)) <= half_length and absf(relative.dot(bay.outward)) < .45: return bay
+	return {}
+
+func window_invalid_reason(target: Dictionary) -> String:
+	if target.is_empty(): return "Aim at an outside wall of a room or corridor"
+	if _window_index_at(target.mid, target.dir) >= 0: return "This wall bay already has a window"
+	if _used_cargo() + window_cargo() > MHGame.cargo_budget(): return "Not enough cargo left"
+	return ""
+
+## Centre of a bay's wall at mid-height, local X along the wall.
+func window_target_transform(target: Dictionary) -> Transform3D:
+	return Transform3D(_bay_basis(target.tangent, target.outward), Vector3(target.mid.x, habitat_base_y + ROOM_HEIGHT * .5, target.mid.y))
+
+func place_window(target: Dictionary) -> bool:
+	if not window_invalid_reason(target).is_empty(): return false
+	var data := {"mid": target.mid, "dir": target.dir}
+	hull_windows.append(data)
+	_history.append({"type": "window", "window": data})
+	_rebuild()
+	return true
+
+## Index of the window an aim point is on; -1 if none.
+func window_index_near(point: Vector3) -> int:
+	var bay := window_target_at(point)
+	return -1 if bay.is_empty() else _window_index_at(bay.mid, bay.dir)
+
+func remove_window(index: int) -> void:
+	if index < 0 or index >= hull_windows.size(): return
+	hull_windows.remove_at(index)
+	_rebuild()
+
+## Undo the most recent interior structure change (Ctrl+Z in Interior mode),
+## leaving rooms alone.
+func undo_last_structure() -> bool:
+	for step_index in range(_history.size() - 1, -1, -1):
+		var step: Dictionary = _history[step_index]
+		if str(step.get("type", "")) == "partition":
+			_history.remove_at(step_index)
+			var index := partition_index(step.segment)
+			if index < 0: continue
+			if step.has("was_door"):   # a changed panel goes back
+				partitions[index].door = bool(step.was_door)
+				partitions[index].glass = bool(step.get("was_glass", false))
+			else: partitions.remove_at(index)   # a new panel is removed
+			_rebuild()
+			_flash_notice("info", "Undone", "Partition change undone.")
+			return true
+		if str(step.get("type", "")) != "window": continue
+		_history.remove_at(step_index)
+		var index := _window_index_at(step.window.mid, step.window.dir)
+		if index < 0: continue
+		hull_windows.remove_at(index)
+		_rebuild()
+		_flash_notice("info", "Undone", "Window removed · +%s cargo returned." % MHStyle.kg(window_cargo()))
+		return true
+	return false
+
+# ---------- interior partition walls ----------
+
+static func partition_cargo() -> int:
+	return int(MHResources.setting("partition_cargo_kg", 60.0))
+
+## The 1.5 m partition segment nearest a floor point: on the half-cell grid,
+## along whichever grid line is closest. {a, b} on the ground plane.
+func partition_segment_at(point: Vector3) -> Dictionary:
+	var p := Vector2(point.x, point.z)
+	var step := PARTITION_STEP
+	var gx := roundf(p.x / step) * step
+	var gz := roundf(p.y / step) * step
+	if absf(p.x - gx) < absf(p.y - gz):
+		var z0 := floorf(p.y / step) * step
+		return {"a": Vector2(gx, z0), "b": Vector2(gx, z0 + step)}
+	var x0 := floorf(p.x / step) * step
+	return {"a": Vector2(x0, gz), "b": Vector2(x0 + step, gz)}
+
+func partition_index(segment: Dictionary) -> int:
+	if segment.is_empty(): return -1
+	for index in range(partitions.size()):
+		var other: Dictionary = partitions[index]
+		var a: Vector2 = other.a
+		var b: Vector2 = other.b
+		if (a.is_equal_approx(segment.a) and b.is_equal_approx(segment.b)) or (a.is_equal_approx(segment.b) and b.is_equal_approx(segment.a)): return index
+	return -1
+
+## The room a segment sits inside, or {} if it runs along an outer wall,
+## crosses into another room or isn't in a room at all.
+func _partition_room(segment: Dictionary) -> Dictionary:
+	var a: Vector2 = segment.a
+	var b: Vector2 = segment.b
+	var mid := (a + b) * .5
+	var along := (b - a).normalized()
+	var normal := Vector2(-along.y, along.x)
+	var first := _zone_at_point(mid + normal * .4)
+	var second := _zone_at_point(mid - normal * .4)
+	if first.is_empty() or not is_same(first, second): return {}
+	# Both ends must be in the same room too (not poking through a wall).
+	for end in [a + along * .3, b - along * .3]:
+		if not is_same(_zone_at_point(end + normal * .2), first): return {}
+	return first
+
+func partition_invalid_reason(segment: Dictionary, door := false, glass := false) -> String:
+	if segment.is_empty(): return "Aim at the floor of a room"
+	var room := _partition_room(segment)
+	if room.is_empty(): return "Partitions go inside a room, not along its outer walls"
+	if not _is_habitat_zone(room) or str(room.kind) in ["corridor", "airlock", "vehicle_bay"]: return "Partitions go in rooms, not corridors, airlocks or the vehicle bay"
+	var index := partition_index(segment)
+	if index >= 0:
+		if bool(partitions[index].door) == door and bool(partitions[index].get("glass", false)) == glass: return "There's already a %s here" % ("door" if door else ("glass panel" if glass else "wall"))
+		return ""   # a panel changes type (wall, glass or door)
+	# Floor-standing equipment in the way.
+	for item in placed_interior:
+		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
+		if str(entry.get("placement", "floor")) == "wall": continue
+		if str(entry.get("placement", "floor")) == "ceiling": continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		var a: Vector2 = segment.a
+		var b: Vector2 = segment.b
+		var mid := (a + b) * .5
+		if _interior_footprints_overlap(at, _free_interior_size(entry), float(item.get("rotation_y", 0.0)), Vector3(mid.x, 0, mid.y), Vector3((b - a).length(), 0, PARTITION_THICKNESS), -atan2((b - a).y, (b - a).x)):
+			return "Blocked by the %s" % str(entry.get("label", "equipment")).to_lower()
+	if _used_cargo() + partition_cargo() > MHGame.cargo_budget(): return "Not enough cargo left"
+	return ""
+
+## Add a wall, glass or door segment (or change a panel's type). Undo with Ctrl+Z.
+func place_partition(segment: Dictionary, door := false, glass := false) -> bool:
+	if not partition_invalid_reason(segment, door, glass).is_empty(): return false
+	var index := partition_index(segment)
+	if index >= 0:
+		_history.append({"type": "partition", "segment": {"a": segment.a, "b": segment.b}, "was_door": bool(partitions[index].door), "was_glass": bool(partitions[index].get("glass", false))})
+		partitions[index].door = door
+		partitions[index].glass = glass and not door
+	else:
+		partitions.append({"a": segment.a, "b": segment.b, "door": door, "glass": glass and not door})
+		_history.append({"type": "partition", "segment": {"a": segment.a, "b": segment.b}})
+	_rebuild()
+	habitat_changed.emit()
+	return true
+
+func remove_partition(index: int) -> void:
+	if index < 0 or index >= partitions.size(): return
+	# Anything hung on this panel comes down with it.
+	var segment: Dictionary = partitions[index]
+	for item in placed_interior.duplicate():
+		if str(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("placement", "floor")) != "wall": continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		var flat := Vector2(at.x, at.z)
+		if Geometry2D.get_closest_point_to_segment(flat, segment.a, segment.b).distance_to(flat) < .2:
+			remove_free_interior_equipment(str(item.get("placement_id", "")))
+	partitions.remove_at(index)
+	_rebuild()
+	habitat_changed.emit()
+	_flash_notice("valid", "Removed", "Partition removed · +%s cargo returned." % MHStyle.kg(partition_cargo()))
+
+## The partition segment a world point is on or next to, or -1.
+func partition_index_near(point: Vector3) -> int:
+	var p := Vector2(point.x, point.z)
+	for index in range(partitions.size()):
+		var segment: Dictionary = partitions[index]
+		if Geometry2D.get_closest_point_to_segment(p, segment.a, segment.b).distance_to(p) < .2: return index
+	return -1
+
+## Standing transform for a segment's wall: centred on it, facing across it.
+func partition_transform(segment: Dictionary) -> Transform3D:
+	var a: Vector2 = segment.a
+	var b: Vector2 = segment.b
+	var mid := (a + b) * .5
+	var along := b - a
+	return Transform3D(Basis(Vector3.UP, -atan2(along.y, along.x)), Vector3(mid.x, habitat_base_y, mid.y))
+
+## Partitions whose room has gone (or changed shape) are removed.
+func _prune_partitions() -> void:
+	for index in range(partitions.size() - 1, -1, -1):
+		var room := _partition_room(partitions[index])
+		if room.is_empty() or str(room.kind) in ["corridor", "airlock", "vehicle_bay"]: partitions.remove_at(index)
+
+func _build_partitions() -> void:
+	var height := ROOM_HEIGHT - .12
+	var panel := StandardMaterial3D.new(); panel.albedo_color = Color("#E6E4DC"); panel.roughness = .82
+	var trim := StandardMaterial3D.new(); trim.albedo_color = Color("#2F3639"); trim.roughness = .6
+	var accent := StandardMaterial3D.new(); accent.albedo_color = MHStyle.accent; accent.roughness = .5
+	var frame := StandardMaterial3D.new(); frame.albedo_color = Color("#9AA3A8"); frame.metallic = .8; frame.roughness = .35
+	var glass_material := StandardMaterial3D.new()
+	glass_material.albedo_color = Color(.72, .88, .95, .22)
+	glass_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass_material.roughness = .05
+	glass_material.metallic_specular = .9
+	glass_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	for index in range(partitions.size()):
+		var segment: Dictionary = partitions[index]
+		var holder := Node3D.new()
+		holder.name = "Partition_%d" % index
+		holder.transform = partition_transform(segment)
+		root.add_child(holder)
+		var length := PARTITION_STEP + .02
+		if bool(segment.get("glass", false)) and not bool(segment.door):
+			# Glass: a brushed metal frame (posts, sill, head and a mid rail) round
+			# two panes. Still solid to walk into.
+			var frame_w := .06
+			for side in [-1.0, 1.0]:
+				_partition_box(holder, Vector3(frame_w, height, PARTITION_THICKNESS + .02), Vector3(side * (length - frame_w) * .5, height * .5, 0), frame, index, false)
+			for rail_y in [.05, 1.0, height - .03]:
+				_partition_box(holder, Vector3(length, .06 if rail_y > .1 else .1, PARTITION_THICKNESS + .02), Vector3(0, rail_y, 0), frame, index, false)
+			_partition_box(holder, Vector3(length - frame_w * 2.0, height - .1, .03), Vector3(0, height * .5, 0), glass_material, index, true)
+		elif not bool(segment.door):
+			_partition_box(holder, Vector3(length, height, PARTITION_THICKNESS), Vector3(0, height * .5, 0), panel, index, true)
+			_partition_box(holder, Vector3(length, .12, PARTITION_THICKNESS + .02), Vector3(0, .06, 0), trim, index, false)
+		else:
+			# Door: two thin posts, a header, and a leaf that swings on its hinge.
+			var post := .1
+			var opening := length - post * 2.0
+			for side in [-1.0, 1.0]:
+				_partition_box(holder, Vector3(post, height, PARTITION_THICKNESS + .02), Vector3(side * (length - post) * .5, height * .5, 0), trim, index, true)
+			_partition_box(holder, Vector3(opening, height - 2.1, PARTITION_THICKNESS), Vector3(0, 2.1 + (height - 2.1) * .5, 0), panel, index, true)
+			var door := Node3D.new()
+			door.set_script(PARTITION_DOOR_SCRIPT)
+			door.position = Vector3(-opening * .5, 0, 0)   # hinge at one post
+			holder.add_child(door)
+			var leaf := Node3D.new()
+			door.add_child(leaf)
+			door.call("setup", leaf)
+			var leaf_body := _partition_box(leaf, Vector3(opening - .02, 2.06, .05), Vector3(opening * .5, 1.04, 0), panel, index, true)
+			leaf_body.set_meta("interaction_target", door)
+			_partition_box(leaf, Vector3(.04, .3, .09), Vector3(opening - .12, 1.0, 0), accent, index, false)
+		# Site plan: a dark line (orange for doors).
+		var plan := MeshInstance3D.new()
+		var plan_mesh := BoxMesh.new(); plan_mesh.size = Vector3(PARTITION_STEP, .04, .14); plan.mesh = plan_mesh
+		var plan_material := StandardMaterial3D.new(); plan_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		plan_material.albedo_color = MHStyle.accent if bool(segment.door) else Color("#0E1417")
+		plan.material_override = plan_material
+		plan.position = Vector3(0, .12, 0)
+		plan.add_to_group("habitat_plan")
+		plan.visible = build_mode
+		holder.add_child(plan)
+
+func _partition_box(parent: Node3D, size: Vector3, at: Vector3, material: Material, index: int, solid: bool) -> Node3D:
+	var body: Node3D = StaticBody3D.new() if solid else Node3D.new()
+	body.position = at
+	body.set_meta("partition_index", index)
+	parent.add_child(body)
+	var mesh := MeshInstance3D.new()
+	var box := BoxMesh.new(); box.size = size; mesh.mesh = box
+	mesh.material_override = material
+	body.add_child(mesh)
+	if solid:
+		(body as StaticBody3D).collision_layer = 1
+		var shape := CollisionShape3D.new()
+		var box_shape := BoxShape3D.new(); box_shape.size = size; shape.shape = box_shape
+		body.add_child(shape)
+	return body
+
+## Record a valid door target in the shape the rebuild understands.
+func _store_interior_door(target: Dictionary) -> void:
+	if target.has("wall_a"):
+		interior_doors.append({"wall_a": target.wall_a, "wall_b": target.wall_b})
+		return
+	var cell: Vector2i = target.get("cell", Vector2i.ZERO)
+	var side: Vector2i = target.get("side", Vector2i.ZERO)
+	if bool(_outline_attachment_for_face(cell, side).get("valid", false)):
+		interior_doors.append({"outline_grid_cell": cell, "outline_grid_side": side})
+	else:
+		interior_doors.append(_canonical_interior_door(cell, side))
+
+## Centre of a stored interior door on the ground plane.
+func _interior_door_centre(data: Dictionary) -> Vector2:
+	if data.has("wall_a"): return (data.wall_a + data.wall_b) * .5
+	var cell: Vector2i = data.get("outline_grid_cell", data.get("cell", Vector2i.ZERO))
+	var side: Vector2i = data.get("outline_grid_side", data.get("side", Vector2i.ZERO))
+	return Vector2(cell.x * CELL + side.x * HALF_CELL, cell.y * CELL + side.y * HALF_CELL)
+
+## Index of the interior door whose opening is within reach of a world
+## point (aiming at the hatch or the wall right beside it); -1 if none.
+func interior_door_index_near(point: Vector3) -> int:
+	if point.y > habitat_base_y + ROOM_HEIGHT: return -1
+	for index in range(interior_doors.size()):
+		if _interior_door_centre(interior_doors[index]).distance_to(Vector2(point.x, point.z)) < 1.6: return index
+	return -1
+
+func remove_interior_door(index: int) -> void:
+	if index < 0 or index >= interior_doors.size(): return
+	interior_doors.remove_at(index)
+	_rebuild()
+
+## True when an interior door already joins rooms `first` and `second`.
+func _rooms_have_door(first: Dictionary, second: Dictionary) -> bool:
+	for data in interior_doors:
+		var centre := _interior_door_centre(data)
+		var touches_first := false
+		var touches_second := false
+		for offset in [Vector2(.6, 0), Vector2(-.6, 0), Vector2(0, .6), Vector2(0, -.6), Vector2(.45, .45), Vector2(-.45, -.45), Vector2(.45, -.45), Vector2(-.45, .45)]:
+			var zone := _zone_at_point(centre + offset)
+			if zone == first: touches_first = true
+			elif zone == second: touches_second = true
+		if touches_first and touches_second: return true
+	return false
+
+## After a room is placed: every room of a different purpose it now touches
+## gets one door in the middle of their longest shared wall, so a new layout
+## works without a trip to Interior mode. Returns the labels of rooms joined.
+## Runs only on placement, so a door the player removes stays removed.
+func _add_doors_for_new_room(zone: Dictionary) -> Array:
+	var joined: Array = []
+	if zones.find(zone) < 0 or not _mergeable_room(zone): return joined
+	var mine := zone_outline(zone)
+	for other in zones:
+		if other == zone or not _mergeable_room(other) or str(other.kind) == str(zone.kind): continue
+		if _rooms_have_door(zone, other): continue
+		var theirs := zone_outline(other)
+		var best_length := 0.0
+		var best_from := Vector2.ZERO
+		var best_to := Vector2.ZERO
+		for index in range(mine.size()):
+			var a := mine[index]
+			var b := mine[(index + 1) % mine.size()]
+			var tangent := (b - a).normalized()
+			for interval in _collinear_overlaps(a, b, theirs):
+				if interval.y - interval.x > best_length:
+					best_length = interval.y - interval.x
+					best_from = a + tangent * interval.x
+					best_to = a + tangent * interval.y
+		if best_length < CELL - .01: continue
+		var target := _door_target_on_wall(best_from, best_to)
+		if target.is_empty(): continue
+		_store_interior_door(target)
+		joined.append(str(ZONE_TYPES[str(other.kind)].label))
+	return joined
+
+## A valid 3 m door target on a shared wall from→to, as near its middle as
+## the wall's cells allow; {} if none fits.
+func _door_target_on_wall(from: Vector2, to: Vector2) -> Dictionary:
+	var length := from.distance_to(to)
+	var tangent := (to - from) / length
+	var normal := Vector2(-tangent.y, tangent.x)
+	var offsets: Array = [0.0]
+	for step in range(1, ceili(length / CELL) + 1):
+		offsets.append(step * CELL)
+		offsets.append(-step * CELL)
+	for offset in offsets:
+		var along := length * .5 + float(offset)
+		if along < HALF_CELL - .01 or along > length - HALF_CELL + .01: continue
+		var point := from + tangent * along
+		for face in [normal, -normal]:
+			var on_face: Vector2 = point + face * .08
+			var target := interior_door_from_world_point(Vector3(on_face.x, habitat_base_y + 1.4, on_face.y), Vector3(face.x, 0, face.y))
+			if not target.is_empty() and interior_door_target_invalid_reason(target).is_empty(): return target
+	return {}
+
+## Placement follow-up: join the newest room to different neighbours.
+func _after_room_placed() -> void:
+	if _history.is_empty(): return
+	var joined := _add_doors_for_new_room(_history.back().get("zone", {}))
+	if joined.is_empty(): return
+	_rebuild()
+	_flash_notice("info", "Door added", "Joined to %s. Remove it in Interior mode (X) if you want this wall sealed." % ", ".join(joined), false)
+
 func interior_door_from_world_point(point: Vector3, normal: Vector3) -> Dictionary:
+	var shared := _shared_outline_wall_at(Vector2(point.x, point.z))
+	if not shared.is_empty(): return shared
 	# A rendered wall has thickness, so its two faces return slightly different
 	# hit positions. Use the hit face normal to identify the room-side cell first,
 	# then canonicalise it; this makes aiming from either room target one opening.
@@ -1545,6 +3566,18 @@ func interior_door_from_world_point(point: Vector3, normal: Vector3) -> Dictiona
 func _prune_interior_doors() -> void:
 	for index in range(interior_doors.size() - 1, -1, -1):
 		var data := interior_doors[index] as Dictionary
+		if data.has("wall_a"):
+			var still_shared := _shared_outline_wall_at((data.wall_a + data.wall_b) * .5)
+			if still_shared.is_empty() or still_shared.has("invalid"): interior_doors.remove_at(index)
+			continue
+		if data.has("outline_grid_cell"):
+			var grid_cell: Vector2i = data.get("outline_grid_cell", Vector2i.ZERO)
+			var grid_side: Vector2i = data.get("outline_grid_side", Vector2i.ZERO)
+			var grid_zone := _zone_at(grid_cell)
+			var attachment := _outline_attachment_for_face(grid_cell, grid_side)
+			if grid_zone.is_empty() or not _is_ordinary_room_kind(str(grid_zone.kind)) or not bool(attachment.get("valid", false)):
+				interior_doors.remove_at(index)
+			continue
 		var cell: Vector2i = data.get("cell", Vector2i.ZERO)
 		var side: Vector2i = data.get("side", Vector2i.ZERO)
 		var first := _zone_at(cell)
@@ -1555,6 +3588,7 @@ func _prune_interior_doors() -> void:
 func _is_airlock_inner_doorway(cell: Vector2i,side: Vector2i) -> bool:
 	for zone in zones:
 		if str(zone.kind)!="airlock": continue
+		if zone.has("angled_mount"): continue
 		var outside:=_airlock_side(zone)
 		var inner_cell:=_airlock_end(zone.cells,outside,false)
 		# Check both directions so it remains correct even if construction order
@@ -1578,7 +3612,7 @@ func _build_airlock_zone(zone: Dictionary) -> void:
 		var centre:=Vector3(cell.x*CELL,0,cell.y*CELL)
 		_add_plan_tile(centre,ZONE_TYPES["airlock"].colour,"airlock")
 		for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
-			if side!=outside and side!=-outside: _add_exterior_wall(centre,side,"airlock",zone)
+			if side!=outside and side!=-outside: _add_exterior_wall(centre,side,"airlock",zone,not _is_habitat_zone(_zone_across(cell,side)))
 
 func _build_vehicle_bay(zone: Dictionary) -> void:
 	var outside:=_airlock_side(zone)
@@ -1588,19 +3622,25 @@ func _build_vehicle_bay(zone: Dictionary) -> void:
 	var connection_edges:Array=[]
 	for cell in cells:
 		for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
-			if side!=outside and not (cell+side in cells) and _occupied(cell+side):
+			if side!=outside and not (cell+side in cells) and _is_habitat_zone(_zone_across(cell,side)):
 				connection_edges.append({"cell":cell,"side":side})
 	# One deliberately placed personnel bulkhead is clearer and safer than a
 	# door on every cell of a shared edge.  Other edges remain solid wall.
 	var explicit_edges: Array = []
+	# A corridor end butting onto the bay is a deliberate route in, so it always
+	# gets its own bulkhead (the corridor has already opened its end wall).
+	var corridor_edges: Array = []
+	var room_edges: Array = []
 	for edge in connection_edges:
 		if _has_interior_door(edge.cell, edge.side):
 			explicit_edges.append(edge)
+		if _corridor_end_connects(edge.cell, edge.side): corridor_edges.append(edge)
+		else: room_edges.append(edge)
 	var access_edge: Dictionary={}
 	# Preserve the original convenient bay hatch for existing saves, but once
 	# players choose an explicit interior door they own exactly which edge opens.
-	if explicit_edges.is_empty() and not connection_edges.is_empty(): access_edge=connection_edges[connection_edges.size()/2]
-	var habitat_door: AirlockDoor
+	if explicit_edges.is_empty() and not room_edges.is_empty(): access_edge=room_edges[room_edges.size()/2]
+	var bay_doors: Array[AirlockDoor] = []
 	for cell in zone.cells:
 		var centre:=Vector3(cell.x*CELL,0,cell.y*CELL)
 		_add_plan_tile(centre,ZONE_TYPES["vehicle_bay"].colour,"vehicle_bay")
@@ -1608,23 +3648,23 @@ func _build_vehicle_bay(zone: Dictionary) -> void:
 			if side==outside: continue # The sealed, opening hangar door owns this face.
 			if cell+side in cells: continue
 			if _has_interior_door(cell, side):
-				habitat_door=_add_door(centre,side,"BAY",true)
+				bay_doors.append(_add_door(centre,side,"BAY",true))
 				continue
-			if not access_edge.is_empty() and cell==access_edge.cell and side==access_edge.side:
-				# A bay never opens directly into the habitat: this sealed personnel
-				# bulkhead is the only route between them.
-				habitat_door=_add_door(centre,side,"BAY",false)
+			# A bay never opens directly into the habitat: sealed personnel
+			# bulkheads are the only routes between them.
+			if {"cell":cell,"side":side} in corridor_edges or (not access_edge.is_empty() and cell==access_edge.cell and side==access_edge.side):
+				bay_doors.append(_add_door(centre,side,"BAY",false))
 				continue
-			_add_exterior_wall(centre,side,"vehicle_bay",zone)
+			_add_exterior_wall(centre,side,"vehicle_bay",zone,not _is_habitat_zone(_zone_across(cell,side)))
 	var face:=_zone_face(zone,outside)
 	var hangar:=AIRLOCK_DOOR.new(); hangar.position=face.position; hangar.rotation.y=_direction_yaw(outside); root.add_child(hangar)
 	# The wide exterior hatch is interlocked with every internal bay door.
 	# Internal doors may share the pressurised habitat, but all must close before
 	# the hangar can open to Mars.
-	hangar.setup("HANGAR",true,face.width,2.58)
-	if habitat_door!=null:
-		hangar.add_partner(habitat_door)
-		habitat_door.add_partner(hangar)
+	hangar.setup("HANGAR",true,face.width,2.58); _add_door_plan_marker(hangar,"HANGAR",face.width-.4)
+	for bay_door in bay_doors:
+		hangar.add_partner(bay_door)
+		bay_door.add_partner(hangar)
 
 func _build_solar(zone: Dictionary) -> void:
 	var cell:Vector2i=zone.cells[0]
@@ -1635,47 +3675,52 @@ func _build_solar(zone: Dictionary) -> void:
 	# larger pad also makes its ground contact clear on uneven Mars terrain.
 	_add_box(position+Vector3(0,.08,0),Vector3(1.75,.16,1.45),MHStyle.SEAL_DARK,true,"solar_base",true)
 	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["solar"].colour,"solar")
-	_add_power_field_visual(cell,SOLAR_POWER_RADIUS,_power_source_connected(zone),root)
 
 func _build_reactor(zone: Dictionary) -> void:
 	var cell: Vector2i = zone.cells[0]
 	var position := Vector3(cell.x * CELL, _terrain_height(Vector3(cell.x * CELL, 0, cell.y * CELL)), cell.y * CELL)
-	# Purpose-built low-poly reactor: broad plinth, shielded vessel and a small
-	# status cap. It is deliberately compact beside the larger solar arrays.
-	_add_box(position + Vector3(0,.12,0),Vector3(2.25,.24,2.25),MHStyle.SEAL_DARK,true,"reactor_base",true)
-	var vessel := MeshInstance3D.new()
-	var vessel_mesh := CylinderMesh.new()
-	vessel_mesh.top_radius = .62; vessel_mesh.bottom_radius = .78; vessel_mesh.height = 1.42
-	vessel.mesh = vessel_mesh
-	var vessel_material := StandardMaterial3D.new()
-	vessel_material.albedo_color = Color("#59666A"); vessel_material.metallic = .72; vessel_material.roughness = .28
-	vessel.material_override = vessel_material
-	vessel.position = position + Vector3(0,.93,0)
-	root.add_child(vessel)
-	var core := OmniLight3D.new()
-	core.position = position + Vector3(0,1.42,0)
-	core.light_color = MHStyle.SAFETY_ORANGE
-	core.light_energy = .8
-	core.omni_range = 3.0
-	core.add_to_group("grid_powered_light")
-	core.set_meta("grid_light_energy", .8)
-	root.add_child(core)
+	_add_site_machine(zone, "surface_reactor", position, Vector3(2.3, 2.1, 1.7))
 	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["reactor"].colour,"reactor")
-	_add_power_field_visual(cell,REACTOR_POWER_RADIUS,_power_source_connected(zone),root)
 
 func _build_ice_extractor(zone: Dictionary) -> void:
 	var cell: Vector2i = zone.cells[0]
 	var position := Vector3(cell.x * CELL, _terrain_height(Vector3(cell.x * CELL, 0, cell.y * CELL)), cell.y * CELL)
-	_add_box(position + Vector3(0,.10,0), Vector3(1.7,.20,1.7), MHStyle.SEAL_DARK, true, "ice_extractor", true)
-	var mast := MeshInstance3D.new(); var mast_mesh := CylinderMesh.new()
-	mast_mesh.top_radius=.13; mast_mesh.bottom_radius=.20; mast_mesh.height=1.35; mast.mesh=mast_mesh
-	var steel := StandardMaterial3D.new(); steel.albedo_color=MHStyle.FRAME_STEEL; steel.metallic=.72; steel.roughness=.3; mast.material_override=steel
-	mast.position=position+Vector3(0,.78,0); root.add_child(mast)
-	var head := MeshInstance3D.new(); var head_mesh := CylinderMesh.new()
-	head_mesh.top_radius=.30; head_mesh.bottom_radius=.18; head_mesh.height=.28; head.mesh=head_mesh
-	var ice_material := StandardMaterial3D.new(); ice_material.albedo_color=Color(.22,.85,.96); ice_material.emission_enabled=true; ice_material.emission=Color(.05,.35,.46); head.material_override=ice_material
-	head.position=position+Vector3(0,1.58,0); root.add_child(head)
+	_add_site_machine(zone, "ice_drill", position, Vector3(2.2, 2.6, 1.5))
 	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["ice_extractor"].colour,"ice_extractor")
+
+## A reactor or ice extractor model on its cell, with a solid box to walk
+## around and its interaction rig (switch state saved in the zone).
+func _add_site_machine(zone: Dictionary, model_id: String, position: Vector3, size: Vector3) -> void:
+	if not zone.has("placement_id"): zone["placement_id"] = "zone_%s_%d_%d" % [str(zone.kind), (zone.cells[0] as Vector2i).x, (zone.cells[0] as Vector2i).y]
+	var holder := Node3D.new()
+	holder.name = "SiteMachine_%s" % model_id
+	holder.position = position
+	# Controls on the front (-Z) face the habitat, where the crew walk out from.
+	var centre := Vector2.ZERO
+	var count := 0
+	for other in zones:
+		if not _is_habitat_zone(other): continue
+		for cell in other.get("cells", []):
+			centre += Vector2(cell.x * CELL, cell.y * CELL); count += 1
+	if count > 0:
+		var towards := centre / count - Vector2(position.x, position.z)
+		if towards.length() > .1: holder.rotation.y = atan2(-towards.x, -towards.y)
+	holder.set_meta("zone_placement_id", str(zone.placement_id))
+	root.add_child(holder)
+	var body := StaticBody3D.new()
+	body.collision_layer = 1
+	body.add_to_group(str(zone.kind))
+	holder.add_child(body)
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new(); shape.size = size
+	collision.shape = shape; collision.position.y = size.y * .5
+	body.add_child(collision)
+	var path := str(EquipmentCatalog.get_entry(model_id).get("asset_scene", ""))
+	if not path.is_empty() and ResourceLoader.exists(path):
+		var model := (load(path) as PackedScene).instantiate() as Node3D
+		model.name = "Model"
+		holder.add_child(model)
+		if model.has_method("interaction_prompt"): body.set_meta("interaction_target", model)
 
 func _add_power_field_visual(cell: Vector2i, radius: float, connected: bool, parent: Node3D) -> void:
 	# Visible only in build mode: a light, readable field boundary rather than a
@@ -1724,7 +3769,12 @@ func _zone_face(zone: Dictionary,direction: Vector2i) -> Dictionary:
 		return {"position":Vector3((max_x if direction.x>0 else min_x)*CELL+direction.x*CELL*.5,habitat_base_y,(float(min_z+max_z)*.5)*CELL),"width":float(max_z-min_z+1)*CELL-.28}
 	return {"position":Vector3((float(min_x+max_x)*.5)*CELL,habitat_base_y,(max_z if direction.y>0 else min_z)*CELL+direction.y*CELL*.5),"width":float(max_x-min_x+1)*CELL-.28}
 
-func _add_exterior_wall(centre: Vector3,side: Vector2i,zone_kind: String,zone: Dictionary) -> void:
+func _add_exterior_wall(centre: Vector3,side: Vector2i,zone_kind: String,zone: Dictionary,facing_mars := true) -> void:
+	if facing_mars and _hull_bay_can_glaze(zone_kind):
+		var mid := Vector2(centre.x + side.x * HALF_CELL, centre.z + side.y * HALF_CELL)
+		if _register_hull_bay(mid, Vector2(-side.y, side.x), Vector2(side.x, side.y), CELL, zone_kind):
+			_add_exterior_safety_light(centre, side)
+			return
 	var wall_position:=centre+Vector3(side.x*CELL*.5,habitat_base_y+1.45,side.y*CELL*.5)
 	var wall_size:=Vector3(.16,2.9,CELL) if side.x!=0 else Vector3(CELL,2.9,.16)
 	# The collision box is centred at half wall height, while the Blender wall
@@ -1741,7 +3791,7 @@ func _add_exterior_wall(centre: Vector3,side: Vector2i,zone_kind: String,zone: D
 	else: backing_size.x+=.14
 	var backing_position:=wall_position-Vector3(side.x*.035,0,side.y*.035)
 	_add_box(backing_position,backing_size,MHStyle.STRUCTURAL_WHITE,true,"habitat_wall",true)
-	_add_exterior_safety_light(centre, side)
+	if facing_mars: _add_exterior_safety_light(centre, side)
 
 func _add_exterior_safety_light(centre: Vector3, side: Vector2i) -> void:
 	# A modest no-shadow flood on every exposed wall bay gives an even perimeter
@@ -1780,6 +3830,22 @@ func _add_exterior_safety_light(centre: Vector3, side: Vector2i) -> void:
 func _airlock_side(zone: Dictionary) -> Vector2i:
 	return zone.get("door_direction",Vector2i(0,-1))
 
+## A short bar across the wall at every door, shown only on the site plan, so
+## the plan says which spaces connect.
+func _add_door_plan_marker(door: Node3D, door_name: String, width := CELL - .6) -> void:
+	var marker := MeshInstance3D.new()
+	marker.name = "DoorPlanMarker"
+	var mesh := BoxMesh.new(); mesh.size = Vector3(width, .06, .5); marker.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = MHStyle.accent if door_name in ["OUTER", "HANGAR"] else (MHStyle.BEACON_YELLOW if door_name in ["INNER", "BAY"] else Color("#F2F4F5"))
+	marker.material_override = material
+	marker.position = Vector3(0, .14, 0)
+	marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	marker.add_to_group("habitat_plan")
+	marker.visible = build_mode
+	door.add_child(marker)
+
 func _add_door(centre: Vector3,side: Vector2i,door_name := "AIRLOCK",show_surround := true) -> AirlockDoor:
 	var position:=centre+Vector3(side.x*CELL*.5,habitat_base_y,side.y*CELL*.5)
 	if show_surround: _add_showcase(SHOWCASE_AIRLOCK,position,_direction_yaw(side))
@@ -1787,6 +3853,7 @@ func _add_door(centre: Vector3,side: Vector2i,door_name := "AIRLOCK",show_surrou
 	# The exterior has the Blender surround. Give the far/inner threshold a
 	# compact frame of its own so it is visibly an actual hatch, not a panel.
 	door.setup(door_name,not show_surround)
+	_add_door_plan_marker(door, door_name)
 	return door
 
 func _corridor_yaw(zone: Dictionary) -> float:
@@ -1823,17 +3890,18 @@ func _wall_yaw(side: Vector2i) -> float:
 	if side==Vector2i(0,1): return PI
 	return -PI*.5
 
-func _add_showcase(scene: PackedScene,position: Vector3,yaw := 0.0) -> void:
+func _add_showcase(scene: PackedScene,position: Vector3,yaw := 0.0,model_scale := Vector3.ONE) -> void:
 	var asset:=scene.instantiate()
 	asset.position=position
 	asset.rotation.y=yaw
+	asset.scale=model_scale
 	asset.add_to_group("habitat_showcase_visual")
 	MHGame.apply_kit_materials(asset)
 	root.add_child(asset)
 
 func _add_plan_tile(centre: Vector3,colour: Color,zone_kind: String) -> void:
 	var tile:=MeshInstance3D.new(); var mesh:=BoxMesh.new(); mesh.size=Vector3(CELL-.28,.045,CELL-.28); tile.mesh=mesh
-	var material:=StandardMaterial3D.new(); material.albedo_color=colour.lightened(.16); material.emission_enabled=true; material.emission=colour.darkened(.25); material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+	var material:=StandardMaterial3D.new(); material.albedo_color=colour.darkened(PLAN_TILE_SHADE); material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
 	tile.material_override=material; tile.position=centre+Vector3(0,habitat_base_y+.025,0); tile.name=zone_kind+"PlanTile"; tile.add_to_group("habitat_plan"); tile.visible=build_mode; root.add_child(tile)
 
 func _add_box(position: Vector3,size: Vector3,colour: Color,solid: bool,group := "",show_visual := true) -> void:
@@ -1849,10 +3917,22 @@ func _add_glass_box(position: Vector3,size: Vector3,colour: Color,solid: bool,gr
 
 func _add_zone_label(zone: Dictionary) -> void:
 	var cells:Array=zone.cells; var centre:=Vector3.ZERO
-	for cell in cells: centre+=Vector3(cell.x*CELL,0,cell.y*CELL)
-	centre/=cells.size()
+	if zone.has("angled_mount"):
+		var mount: Dictionary = zone.get("angled_mount", {})
+		var mount_position: Vector2 = mount.get("position", Vector2.ZERO)
+		var outward: Vector2 = mount.get("outward", Vector2.UP)
+		var run := float(mount.get("length", CELL)) * .5
+		centre = Vector3(mount_position.x + outward.x * run, 0, mount_position.y + outward.y * run)
+	elif zone.has("outline"):
+		var outline := zone_outline(zone)
+		for point in outline: centre += Vector3(point.x, 0, point.y)
+		centre /= outline.size()
+	else:
+		for cell in cells: centre+=Vector3(cell.x*CELL,0,cell.y*CELL)
+		centre/=cells.size()
 	var label:=_label3d(str(ZONE_TYPES[zone.kind].label).to_upper(),40,MHStyle.INK_100); label.position=centre+Vector3(0,habitat_base_y+.4,0); label.offset=Vector2(0,22); label.visible=build_mode; label.add_to_group("zone_label"); root.add_child(label)
-	var detail:=_label3d("%d CELLS · %s" % [cells.size(),MHStyle.kg(int(zone.cost))],28,(ZONE_TYPES[zone.kind].colour as Color).lightened(.35),600); detail.font=MHStyle.font(600,true,1); detail.position=centre+Vector3(0,habitat_base_y+.4,0); detail.offset=Vector2(0,-24); detail.visible=build_mode; detail.add_to_group("zone_label"); root.add_child(detail)
+	var size_text := "%d CELLS" % cells.size() if not zone.has("angled_mount") else "ANGLED · %.1f m" % float(zone.angled_mount.get("length", CELL))
+	var detail:=_label3d("%s · %s" % [size_text,MHStyle.kg(int(zone.cost))],28,plan_colour(str(zone.kind)).lightened(.35),600); detail.font=MHStyle.font(600,true,1); detail.position=centre+Vector3(0,habitat_base_y+.4,0); detail.offset=Vector2(0,-24); detail.visible=build_mode; detail.add_to_group("zone_label"); root.add_child(detail)
 
 func _set_build_view(show_plan: bool) -> void:
 	# Exterior build is deliberately schematic. Hide every rendered habitat,
@@ -1866,6 +3946,7 @@ func _set_build_view(show_plan: bool) -> void:
 		_set_visual_children(plan,show_plan)
 	for label in get_tree().get_nodes_in_group("zone_label"): label.visible=show_plan
 	for field in get_tree().get_nodes_in_group("power_field_visual"): field.visible=show_plan
+	for overlay in get_tree().get_nodes_in_group("site_plan_overlay"): overlay.visible=show_plan
 
 func _set_visual_children(node: Node,visible: bool) -> void:
 	if node is VisualInstance3D:
@@ -1891,26 +3972,17 @@ func _cell_highest_terrain(cell: Vector2i) -> float:
 	return highest
 
 func _terrain_height(point: Vector3) -> float:
-	var query:=PhysicsRayQueryParameters3D.create(point+Vector3.UP*80.0,point+Vector3.DOWN*80.0,1)
-	# Never use generic "the first thing below this point" here. During a rebuild,
-	# equipment may still be registered in physics for a frame; that used to make
-	# each subsequent solar array treat the one before it as ground and climb
-	# higher. Keep stepping through hits until we reach the named Mars terrain.
-	for attempt in range(64):
-		var hit:Dictionary=world.get_world_3d().direct_space_state.intersect_ray(query)
-		if hit.is_empty(): break
-		var collider:=hit.get("collider") as CollisionObject3D
-		if collider!=null and collider.is_in_group("mars_terrain"):
-			return float(hit.position.y)
-		if collider==null: break
-		query.exclude.append(collider.get_rid())
-	return -.25
+	# The site ground is generated from MHSiteTerrain's height function, so
+	# read it directly: exact, and never fooled by placed equipment or by a
+	# ray slipping through a mesh vertex.
+	return MHSiteTerrain.height(point.x, point.z)
 
 func _build_foundation_supports() -> void:
 	# Purposeful pylons only at exposed outer corners, rather than a post under
 	# every cell. They appear only where the raised platform needs them.
 	var points:Dictionary={}
 	for zone in zones:
+		if zone.has("outline"): continue
 		for cell in zone.cells:
 			for x_sign in [-1,1]:
 				for z_sign in [-1,1]: points[Vector2i(cell.x*2+x_sign,cell.y*2+z_sign)]=true
@@ -1947,8 +4019,10 @@ func _remove_at(cell: Vector2i) -> void:
 		var entry:=EquipmentCatalog.get_entry(str(item.id))
 		_flash_notice("valid","Removed","%s · +%s cargo returned." % [entry.get("label",item.id),MHStyle.kg(int(entry.get("cargo_cost",0)))])
 		return
+	var mouse_point := _world_point_at_mouse(habitat_base_y)
+	var selected_zone := _zone_at_point(Vector2(mouse_point.x, mouse_point.z)) if not is_inf(mouse_point.x) else _zone_at(cell)
 	for index in range(zones.size()-1,-1,-1):
-		if cell in zones[index].cells:
+		if zones[index] == selected_zone:
 			var refund:=int(zones[index].cost)
 			zones.remove_at(index)
 			if zones.is_empty(): habitat_base_y=.35
@@ -1961,6 +4035,13 @@ func _undo() -> void:
 	# Walk back through placements, skipping any already removed by hand.
 	while not _history.is_empty():
 		var step:Dictionary=_history.pop_back()
+		if step.type=="window":
+			var window_index:=_window_index_at(step.window.mid,step.window.dir)
+			if window_index<0: continue
+			hull_windows.remove_at(window_index)
+			_rebuild()
+			_flash_notice("info","Undone","Window removed · +%s cargo returned." % MHStyle.kg(window_cargo()))
+			return
 		if step.type=="equipment":
 			var item:=equipment_at(step.cell)
 			if item.is_empty() or str(item.id)!=str(step.id): continue
@@ -1976,13 +4057,41 @@ func _undo() -> void:
 
 func _undo_zone(index: int) -> void:
 	var zone:Dictionary=zones[index]
+	if zone.has("undo_restore"):
+		# This room grew by merging; undo returns it to its earlier shape.
+		var restored: Dictionary = zone.undo_restore
+		zones[index] = restored
+		var merge_refund := int(zone.cost) - int(restored.cost)
+		_rebuild()
+		_flash_notice("info","Undone","%s returned to its earlier shape · +%s cargo returned." % [ZONE_TYPES[zone.kind].label,MHStyle.kg(merge_refund)])
+		return
 	zones.remove_at(index)
 	if zones.is_empty(): habitat_base_y=.35
 	var refund:=int(zone.cost)+_prune_equipment()
 	_rebuild()
 	_flash_notice("info","Undone","%s removed · +%s cargo returned." % [ZONE_TYPES[zone.kind].label,MHStyle.kg(refund)])
 
-func _zone_cost(cells: Array) -> int: return int(ZONE_TYPES[kind].cost)*cells.size()
+func _zone_cost(cells: Array) -> int: return cell_cost(kind)*cells.size()
+
+## Landed cargo (kg) for one 3 x 3 m cell of a room type, or one solar array,
+## reactor or ice extractor, from the balance spreadsheet.
+func cell_cost(zone_kind: String) -> int:
+	var site_item: String = {"solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill"}.get(zone_kind, "")
+	if not site_item.is_empty(): return int(MHResources.item_value(site_item, "cargo_kg", 300.0))
+	return int(MHResources.room(zone_kind).get("cargo_kg_per_cell", 800.0))
+
+static func window_cargo() -> int:
+	return int(MHResources.setting("window_cargo_kg", 150.0))
+
+## A saved zone's cargo at today's balance numbers (older saves used other costs).
+func _recompute_zone_cost(zone: Dictionary) -> void:
+	var zone_kind := str(zone.get("kind", ""))
+	if zone.has("angled_mount"):
+		zone["cost"] = cell_cost(zone_kind) * (_angled_corridor_bays(float(zone.angled_mount.get("length", CELL))) if zone_kind == "corridor" else 1)
+	elif zone.has("outline") and (zone.outline as Array).size() >= 3:
+		zone["cost"] = ceili(_freeform_area(PackedVector2Array(zone.outline)) * cell_cost(zone_kind) / (CELL * CELL))
+	else:
+		zone["cost"] = cell_cost(zone_kind) * (zone.get("cells", []) as Array).size()
 func _used_cargo() -> int:
 	var total:=0
 	for zone in zones: total+=int(zone.cost)
@@ -1990,6 +4099,8 @@ func _used_cargo() -> int:
 		total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
 	for item in placed_interior:
 		total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
+	total += hull_windows.size() * window_cargo()
+	total += partitions.size() * partition_cargo()
 	return total
 
 func _airlock_connected_cells() -> Dictionary:
@@ -2006,9 +4117,16 @@ func _airlock_connected_cells() -> Dictionary:
 
 func _update_budget() -> void:
 	if cargo_meter==null: return
-	var remaining:=CARGO_BUDGET-_used_cargo()
+	if MHGame.cargo_unlimited():
+		# Sandbox (or the debug cheat): show what is used, not a limit.
+		cargo_meter.value=cargo_meter.max_value
+		cargo_meter.value_label="Unlimited · %s used" % MHStyle.kg(_used_cargo())
+		cargo_meter.tone="info"
+		return
+	var remaining:=MHGame.cargo_budget()-_used_cargo()
+	cargo_meter.value_label=""
 	cargo_meter.value=remaining
-	cargo_meter.tone="accent" if remaining>CARGO_BUDGET*.1 else "warn"
+	cargo_meter.tone="accent" if remaining>MHGame.cargo_budget()*.1 else "warn"
 
 func _update_summary() -> void:
 	if ready_badge_slot==null: return
@@ -2021,7 +4139,7 @@ func _systems() -> Dictionary:
 	var counts:Dictionary={}
 	for id in ZONE_TYPES: counts[id]=0
 	for zone in zones:
-		counts[str(zone.kind)]+=zone.cells.size()
+		counts[str(zone.kind)] += 1 if zone.has("angled_mount") else zone.cells.size()
 	var equipment := _equipment_effects()
 	# Zones are empty shells: they establish the maximum a player *can* support.
 	# Furnishings are what actually provide berths, food and research output.
@@ -2040,9 +4158,27 @@ func _systems() -> Dictionary:
 	var research:int=mini(research_capacity,int(equipment.research))
 	var generation:=0.0
 	for zone in zones:
-		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(_airlock_side(zone))*MHGame.sunlight_fraction
-		elif str(zone.kind)=="reactor" and _power_source_connected(zone): generation+=REACTOR_OUTPUT
+		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(_airlock_side(zone))*MHGame.solar_irradiance(MHGame.sol_hour)
+		elif str(zone.kind)=="reactor" and _power_source_connected(zone) and _zone_running(zone): generation+=REACTOR_OUTPUT
 	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.hydroponics*5+counts.life_support*3+counts.engineering*4+counts.science*5+counts.vehicle_bay*4+counts.galley*3+counts.hygiene*2+counts.medical*3+counts.waste_management*3+counts.communications*2+counts.ice_extractor*8+int(equipment.power_draw)
+	for zone in zones:
+		if str(zone.kind)=="ice_extractor" and not _zone_running(zone): draw -= 8 # a stopped drill draws nothing
+	var heated_cells := 0
+	for zone in zones:
+		if not _is_habitat_zone(zone): continue
+		if zone.has("angled_mount"): heated_cells += _angled_corridor_bays(float(zone.angled_mount.get("length", CELL))) if str(zone.kind) == "corridor" else 1
+		else: heated_cells += (zone.cells as Array).size()
+	# Each window leaks heat like WINDOW_HEAT_LOSS_CELLS cells of hull.
+	var heating := roundi((float(heated_cells) + hull_windows.size() * WINDOW_HEAT_LOSS_CELLS) * maxf(0.0, HABITAT_TEMPERATURE_C - MHGame.outside_temperature_c) * HEATING_PER_CELL_DEGREE)
+	draw += heating
+	# A distribution cabinet's main isolator switched off cuts the habitat off
+	# from its generators: nothing reaches the grid until it is switched back on.
+	var isolated := false
+	for item in placed_interior:
+		var isolator := EquipmentCatalog.grid_isolator_key(str(item.get("id", "")))
+		if not isolator.is_empty() and not bool((item.get("state", {}) as Dictionary).get(isolator, true)): isolated = true
+	if isolated: generation = 0.0
+	if MHGame.debug_free_power: generation = maxf(generation, float(draw) + 1000.0)
 	# Dynamic non-catalogue devices can opt into the grid by joining this group
 	# and setting power_draw metadata. Catalogue equipment is already counted
 	# above, so it must not also join this group.
@@ -2054,16 +4190,29 @@ func _systems() -> Dictionary:
 	var water := 0
 	if generation > 0.0 and generation >= draw:
 		for zone in zones:
-			if str(zone.kind)=="ice_extractor": water += _ice_yield(zone.cells[0])
-	return {"crew":crew,"crew_requirement":crew_requirement,"crew_capacity":crew_capacity,"berths":berths,"food":food,"food_capacity":food_capacity,"life":life_support,"life_capacity":life_capacity,"water":water,"research":research,"research_capacity":research_capacity,"happiness":int(equipment.happiness),"water_draw":int(equipment.water_draw),"generation":roundi(generation),"draw":draw}
+			if str(zone.kind)=="ice_extractor" and _zone_running(zone): water += _ice_yield(zone.cells[0])
+	return {"crew":crew,"crew_requirement":crew_requirement,"crew_capacity":crew_capacity,"berths":berths,"food":food,"food_capacity":food_capacity,"life":life_support,"life_capacity":life_capacity,"water":water,"research":research,"research_capacity":research_capacity,"happiness":int(equipment.happiness),"water_draw":int(equipment.water_draw),"generation":roundi(generation),"draw":draw,"heating":heating,"isolated":isolated}
+
+## The reactor's master isolator / the ice extractor's run switch (saved in
+## the zone's state; both start on).
+func _zone_running(zone: Dictionary) -> bool:
+	var key := "isolator" if str(zone.get("kind", "")) == "reactor" else "drill"
+	return bool((zone.get("state", {}) as Dictionary).get(key, true))
 
 func grid_power_online() -> bool:
-	var systems := _systems()
-	return int(systems.generation) > 0 and int(systems.generation) >= int(systems.draw)
+	if not MHGame.simulation_on(): return true
+	return simulation().tier_powered(HABITAT_SIM.TIER_LIGHT, MHGame.sol_hour)
 
+var _last_power_key := ""
 func refresh_power_grid() -> void:
-	# Public hook for future placeable equipment after it joins the power groups.
+	# Public hook for the day/night cycle and future equipment after it joins
+	# the power groups.
 	_apply_grid_power()
+	var key := str(grid_power_online()) + str((simulation().last.get("tiers", {}) as Dictionary).values())
+	if key != _last_power_key:
+		_last_power_key = key
+		if not display_only: _update_systems(); _update_summary()
+		power_changed.emit()
 
 func _apply_grid_power() -> void:
 	var online := grid_power_online()
@@ -2079,14 +4228,11 @@ func _apply_grid_power() -> void:
 			material.albedo_color = Color("#F3E4C6") if online else Color("#293034")
 			material.emission = device.get_meta("grid_emission_on", Color.WHITE) if online else device.get_meta("grid_emission_off", Color("#293034"))
 
-func _solar_efficiency(direction: Vector2i) -> float:
-	# The level's sun is treated as a fixed teaching-friendly direction.  Facing
-	# it produces full output; a side-on panel is useful but less effective.
-	var sunlight:=Vector2i(0,-1)
-	var alignment:=direction.x*sunlight.x+direction.y*sunlight.y
-	if alignment>0: return 1.0
-	if alignment==0: return .55
-	return .15
+func _solar_efficiency(direction: Vector2i, sun_heading := Vector2.INF) -> float:
+	# Panels catch most light facing the sun. It crosses the southern sky, so a
+	# south-facing panel peaks at noon; east and west favour morning and evening.
+	var heading := MHGame.sun_heading(MHGame.sol_hour) if is_inf(sun_heading.x) else sun_heading
+	return .55 + .45 * Vector2(direction).dot(heading)
 
 # ---------- save / restore ----------
 # Only simulation records are serialised.  Meshes, colliders and HUD are rebuilt
@@ -2098,6 +4244,9 @@ func surface_invalid_reason(id: String, position: Vector3) -> String:
 	var entry := surface_entry(id)
 	if entry.is_empty(): return "Unknown surface equipment"
 	if is_inside(position): return "Keep surface equipment outside the habitat"
+	if lander != null and lander.keeps_clear(Vector2(position.x, position.z), float(entry.get("radius", .6))): return "Too close to the lander"
+	if MHMissions.active() and not MHMissions.item_unlocked(id): return "Not delivered yet: this arrives in a later mission"
+	if MHMissions.in_blast_zone(Vector2(position.x, position.z)): return "Inside the landing zone: engine blast would damage it"
 	var radius := float(entry.get("radius", .6))
 	for item in placed_surface:
 		var other: Dictionary = item as Dictionary
@@ -2123,11 +4272,14 @@ func surface_visual(id: String, position: Vector3, rotation_y: float) -> Node3D:
 	var collision_body := StaticBody3D.new()
 	collision_body.name = "SurfaceCollision"
 	collision_body.collision_layer = 1
+	var rig := holder.get_node_or_null("Model")
+	if rig != null and rig.has_method("interaction_prompt"): collision_body.set_meta("interaction_target", rig)
 	var collision := CollisionShape3D.new()
 	var shape := CylinderShape3D.new()
 	shape.radius = float(entry.get("radius", .6))
-	shape.height = 1.0
+	shape.height = float(entry.get("height", 1.2))
 	collision.shape = shape
+	collision.position.y = shape.height * .5
 	collision_body.add_child(collision)
 	holder.add_child(collision_body)
 	return holder
@@ -2162,7 +4314,10 @@ func export_habitat_state() -> Dictionary:
 		"placed_equipment": placed_equipment.duplicate(true),
 		"placed_interior": placed_interior.duplicate(true),
 		"interior_doors": interior_doors.duplicate(true),
+		"hull_windows": hull_windows.duplicate(true),
+		"partitions": partitions.duplicate(true),
 		"placed_surface": placed_surface.duplicate(true),
+		"simulation": simulation().save(),
 		"habitat_base_y": habitat_base_y,
 		"kind": kind,
 		"airlock_direction": airlock_direction
@@ -2184,12 +4339,13 @@ func restore_habitat_state(state: Dictionary) -> void:
 			saved_zone["kind"] = "hydroponics"
 		if not saved_zone.has("door_direction"):
 			saved_zone["door_direction"] = Vector2i(0, -1)
-		if not saved_zone.has("cost"):
-			saved_zone["cost"] = _zone_cost(saved_zone.get("cells", []) as Array)
+		_recompute_zone_cost(saved_zone)
 		zones[index] = saved_zone
 	placed_equipment = (state.get("placed_equipment", []) as Array).duplicate(true)
 	placed_interior.clear()
 	interior_doors = (state.get("interior_doors", []) as Array).duplicate(true)
+	hull_windows = (state.get("hull_windows", []) as Array).duplicate(true)
+	partitions = (state.get("partitions", []) as Array).duplicate(true)
 	# Older saves may contain the retired room_shape_modifiers key. It is
 	# deliberately ignored so those saves load as ordinary modular rooms.
 	placed_surface.clear()
@@ -2204,8 +4360,9 @@ func restore_habitat_state(state: Dictionary) -> void:
 		visual.name = "Interior_%s" % str(item.get("placement_id", item_id))
 		visual.set_meta("equipment_id", item_id)
 		visual.set_meta("interior_placement_id", str(item.get("placement_id", "")))
-		furnishing.add_child(visual)
+		# Record first, so an interaction rig can read its saved state on _ready.
 		placed_interior.append(item.duplicate(true))
+		furnishing.add_child(visual)
 	for raw_item in state.get("placed_surface", []) as Array:
 		var surface_item: Dictionary = raw_item as Dictionary
 		var surface_id := str(surface_item.get("id", ""))
@@ -2215,12 +4372,16 @@ func restore_habitat_state(state: Dictionary) -> void:
 			continue
 		surface_visual_instance.name = "Surface_%s" % str(surface_item.get("placement_id", surface_id))
 		surface_visual_instance.set_meta("surface_placement_id", str(surface_item.get("placement_id", "")))
-		surface_furnishing.add_child(surface_visual_instance)
+		# Record first, so its interaction rig reads the saved switches on _ready.
 		placed_surface.append(surface_item.duplicate(true))
+		surface_furnishing.add_child(surface_visual_instance)
 	_history.clear()
+	_sim = HABITAT_SIM.new(self)
+	simulation().load(state.get("simulation", {}) as Dictionary)
 	_rebuild()
 
 func _update_systems() -> void:
+	simulation().invalidate()
 	_update_summary()
 	_refresh_catalogue()
 
@@ -2242,19 +4403,37 @@ func readiness() -> Array:
 		shelter_detail="Connected" if reachable==habitat_cells else "%d / %d cells" % [reachable,habitat_cells]
 	elif airlock_cells>0: shelter_status="partial"; shelter_detail="No rooms yet"
 	var items:Array=[{"id":"shelter","label":"Shelter + airlock","detail":shelter_detail,"status":shelter_status,"icon":"door-closed"}]
-	var crew_requirement := int(systems.crew_requirement)
-	items.append(_fitted_target_item("beds","Crew berths",int(systems.berths),int(systems.crew_capacity),crew_requirement,"bed-double"))
-	items.append(_fitted_target_item("food","Food production",int(systems.food),int(systems.food_capacity),crew_requirement,"wheat"))
-	var water_need := crew_requirement + ceili(float(counts_of("hydroponics")) * 1.5) + int(systems.water_draw)
-	items.append(_demand_item("water","Water from ice",int(systems.water),water_need,"droplets","%d / %d supply"))
-	items.append(_fitted_target_item("life","Air + water",int(systems.life),int(systems.life_capacity),crew_requirement,"wind"))
+	# Life support from the simulation's numbers (docs/resource-model.md).
+	var flows: Dictionary = simulation().daily_flows()
+	var crew := int(flows.crew)
+	var sim: RefCounted = simulation()
+	items.append(_ratio_item("beds", "Crew bunks", float(flows.berths), float(crew), "bed-double", "%d / %d bunks" % [int(flows.berths), crew]))
+	var air_ok := minf(float(flows.co2_removed) / maxf(.01, float(flows.co2_made)), float(flows.o2_made) / maxf(.01, float(flows.o2_need)))
+	items.append(_ratio_item("life", "Air", air_ok, 1.0, "wind", "CO₂ %d/%d · O₂ %d/%d kg" % [roundi(flows.co2_removed), roundi(flows.co2_made), roundi(flows.o2_made), roundi(flows.o2_need)]))
+	items.append(_ratio_item("water", "Water", float(flows.water_made), float(flows.water_used), "droplets", "%d L made / %d L used a sol" % [roundi(flows.water_made), roundi(flows.water_used)]))
+	var food_sols := float(sim.food_kg) / maxf(.01, float(flows.food_eaten) - float(flows.food_grown))
+	var food_detail := "Grows %.1f of %.1f kg a sol" % [flows.food_grown, flows.food_eaten] + (" · %d sols stored" % floori(food_sols) if float(sim.food_kg) > 0.0 and float(flows.food_grown) < float(flows.food_eaten) else "")
+	items.append({"id": "food", "label": "Food", "detail": food_detail, "status": "met" if food_sols >= 30.0 or float(flows.food_grown) >= float(flows.food_eaten) else ("partial" if float(sim.food_kg) > 0.0 or float(flows.food_grown) > 0.0 else "unmet"), "icon": "wheat"})
+	var rooms: Array = sim.crewed_rooms()
+	var warm := 0
+	for room in rooms:
+		if float(sim.room_temp.get(room.key, 20.0)) >= 18.0: warm += 1
+	items.append({"id": "heat", "label": "Heating", "detail": "%d / %d rooms comfortable" % [warm, rooms.size()] if MHGame.simulation_on() else "Off in Creative", "status": "met" if warm == rooms.size() and not rooms.is_empty() else ("partial" if warm > 0 else "unmet"), "icon": "sun"})
 	items.append(_fitted_target_item("research","Research capability",int(systems.research),int(systems.research_capacity),RESEARCH_TARGET,"flask-conical"))
-	var generation:=int(systems.generation); var draw:=int(systems.draw)
-	var power_status:="unmet"
-	if generation>0 and generation>=draw: power_status="met"
-	elif generation>0: power_status="partial"
-	items.append({"id":"power","label":"Power","detail":"%d / %d units" % [generation,draw],"status":power_status,"icon":"zap"})
+	var power_status := "met"
+	var power_detail := "Unlimited in Creative"
+	if MHGame.simulation_on():
+		var last: Dictionary = sim.last if not sim.last.is_empty() else {}
+		var capacity_kwh := float(sim.inventory().capacity.kwh)
+		var tiers: Dictionary = last.get("tiers", {})
+		power_status = "met" if bool(tiers.get(4, false)) else ("partial" if bool(tiers.get(1, false)) else "unmet")
+		power_detail = "%.1f kW made · %.1f kW used" % [float(last.get("generation_kw", 0.0)), float(last.get("demand_kw", last.get("load_kw", 0.0)))] + (" · battery %d%%" % roundi(100.0 * float(sim.battery_kwh) / capacity_kwh) if capacity_kwh > 0.0 else " · no battery")
+	items.append({"id":"power","label":"Power","detail":power_detail,"status":power_status,"icon":"zap"})
 	return items
+
+func _ratio_item(id: String, item_label: String, have: float, need: float, icon_name: String, detail: String) -> Dictionary:
+	var status := "met" if have >= need - .001 and need > 0.0 else ("partial" if have > 0.0 else "unmet")
+	return {"id": id, "label": item_label, "detail": detail, "status": status, "icon": icon_name}
 
 func _target_item(id: String,item_label: String,value: int,icon_name: String,detail_format: String) -> Dictionary:
 	var status:="met" if value>=CREW_TARGET else ("partial" if value>0 else "unmet")
@@ -2275,7 +4454,7 @@ func _demand_item(id: String,item_label: String,value: int,demand: int,icon_name
 func counts_of(zone_kind: String) -> int:
 	var total := 0
 	for zone in zones:
-		if str(zone.kind)==zone_kind: total += zone.cells.size()
+		if str(zone.kind)==zone_kind: total += 1 if zone.has("angled_mount") else zone.cells.size()
 	return total
 
 func readiness_met() -> int:
@@ -2285,7 +4464,7 @@ func readiness_met() -> int:
 	return met
 
 func suggestion() -> String:
-	var left:=MHStyle.kg(CARGO_BUDGET-_used_cargo())
+	var left:=MHStyle.kg(MHGame.cargo_budget()-_used_cargo())
 	for item in readiness():
 		if item.status=="met": continue
 		match str(item.id):
@@ -2297,7 +4476,7 @@ func suggestion() -> String:
 			"water": return "Choose Ice Extractor in Resources, then place it over a blue subsurface-ice survey area. You have %s left." % left
 			"life": return "Build Life Support, then add an Air Recycler from the Interior tab. You have %s left." % left
 			"research": return "Build a Science Lab, then add a Science Workbench from the Interior tab. You have %s left." % left
-			"power": return "Add Solar Arrays within 30 m of the habitat. Aim them north (R) for full output. You have %s left." % left
+			"power": return "Add Solar Arrays on open ground. Aim them north (R) for full output. You have %s left." % left
 	return "Every system is ready for a crew of %d. Spend spare cargo on science or storage — %s left." % [CREW_TARGET,left]
 
 func cargo_by_category() -> Dictionary:
@@ -2305,6 +4484,7 @@ func cargo_by_category() -> Dictionary:
 	for zone in zones: out[str(ZONE_INFO[zone.kind].cat)]+=int(zone.cost)
 	for item in placed_equipment: out.equipment+=int(EquipmentCatalog.get_entry(str(item.get("id",""))).get("cargo_cost",0))
 	for item in placed_interior: out.equipment+=int(EquipmentCatalog.get_entry(str(item.get("id",""))).get("cargo_cost",0))
+	out.structure+=hull_windows.size()*window_cargo()+partitions.size()*partition_cargo()
 	return out
 
 func used_cargo() -> int: return _used_cargo()
@@ -2370,7 +4550,9 @@ func is_inside(point: Vector3) -> bool:
 	var cell:=Vector2i(roundi(point.x/CELL),roundi(point.z/CELL))
 	for zone in zones:
 		var zone_kind := str(zone.kind)
-		if zone_kind in ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor"]:
+		if zone.has("angled_mount"):
+			if _point_in_angled_mount(Vector2(point.x, point.z), zone.get("angled_mount", {})): return true
+		elif zone_kind in ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor"]:
 			if zone_kind not in ["solar", "reactor", "ice_extractor"] and cell in zone.cells:
 				return true
 		elif Geometry2D.is_point_in_polygon(Vector2(point.x, point.z), zone_outline(zone)):
@@ -2395,21 +4577,119 @@ func run_zone_outline_self_test() -> bool:
 	zones = saved_zones
 	return rectangle_inside and rectangle_outside and l_inside and l_outside
 
+# Logic-only coverage for the first free-form attachment step. It deliberately
+# does not touch the world or rebuild meshes, so it is safe to run headlessly.
+func run_outline_airlock_attachment_self_test() -> bool:
+	var saved_zones: Array = zones
+	var saved_direction := airlock_direction
+	var outline := PackedVector2Array([Vector2(-1.5, -1.5), Vector2(4.5, -1.5), Vector2(4.5, 7.5), Vector2(-1.5, 7.5)])
+	var airlock := {"kind": "airlock", "cells": [Vector2i(0, -1)], "door_direction": Vector2i(0, -1)}
+	zones = [{"kind": "living", "cells": [], "outline": outline}, airlock]
+	airlock_direction = Vector2i(0, -1)
+	var attachment := _outline_attachment_for_face(Vector2i(0, -1), Vector2i(0, 1))
+	var attached := bool(attachment.get("valid", false)) and _valid_airlock(airlock.cells)
+	var doorway_clear := attached
+	if attached:
+		for piece in _outline_wall_pieces(6.0, [attachment], int(attachment.get("edge_index", -1))):
+			var start: float = float(piece.get("start", 0.0))
+			var finish: float = float(piece.get("end", 0.0))
+			if start < float(attachment.get("opening_end", 0.0)) - .001 and finish > float(attachment.get("opening_start", 0.0)) + .001:
+				doorway_clear = false
+	var off_grid_outline := PackedVector2Array([Vector2(-1.5, -1.0), Vector2(4.5, -1.0), Vector2(4.5, 8.0), Vector2(-1.5, 8.0)])
+	zones = [{"kind": "living", "cells": [], "outline": off_grid_outline}]
+	var off_grid_reason := str(_outline_attachment_for_face(Vector2i(0, -1), Vector2i(0, 1)).get("reason", ""))
+	var off_grid_rejected := off_grid_reason.contains("half a cell")
+	zones = [{"kind": "living", "cells": [Vector2i(0, 0)]}]
+	var grid_airlock_unchanged := _valid_airlock([Vector2i(0, -1)])
+	print("outline airlock self-test · aligned attachment: ", "PASS" if attached else "FAIL")
+	print("outline airlock self-test · doorway has no solid wall piece: ", "PASS" if doorway_clear else "FAIL")
+	print("outline airlock self-test · off-grid wall message: ", "PASS" if off_grid_rejected else "FAIL")
+	print("outline airlock self-test · grid airlock unchanged: ", "PASS" if grid_airlock_unchanged else "FAIL")
+	zones = saved_zones
+	airlock_direction = saved_direction
+	return attached and doorway_clear and off_grid_rejected and grid_airlock_unchanged
+
+func run_outline_grid_door_self_test() -> bool:
+	var saved_zones: Array = zones
+	var saved_doors: Array = interior_doors
+	var outline := PackedVector2Array([Vector2(1.5, -1.5), Vector2(7.5, -1.5), Vector2(7.5, 1.5), Vector2(1.5, 1.5)])
+	zones = [{"kind": "living", "cells": [Vector2i(0, 0)]}, {"kind": "science", "cells": [], "outline": outline}]
+	interior_doors = []
+	var grid_cell := Vector2i(0, 0)
+	var side := Vector2i(1, 0)
+	var attachment := _outline_attachment_for_face(grid_cell, side)
+	var can_attach := bool(attachment.get("valid", false))
+	var can_install_door := interior_door_invalid_reason(grid_cell, side).is_empty()
+	interior_doors.append({"outline_grid_cell": grid_cell, "outline_grid_side": side})
+	var grid_wall_removed := not _should_build_wall(grid_cell, side)
+	var outline_opening := false
+	for doorway in _outline_wall_doorways(zones[1]):
+		if int(doorway.get("edge_index", -1)) == int(attachment.get("edge_index", -2)) and absf(float(doorway.get("opening_end", 0.0)) - float(doorway.get("opening_start", 0.0)) - CELL) < .01:
+			outline_opening = true
+	print("outline/grid door self-test · shared wall detected: ", "PASS" if can_attach else "FAIL")
+	print("outline/grid door self-test · doorway accepted: ", "PASS" if can_install_door else "FAIL")
+	print("outline/grid door self-test · grid wall removed: ", "PASS" if grid_wall_removed else "FAIL")
+	print("outline/grid door self-test · outline opening supplied: ", "PASS" if outline_opening else "FAIL")
+	zones = saved_zones
+	interior_doors = saved_doors
+	return can_attach and can_install_door and grid_wall_removed and outline_opening
+
+func run_angled_outline_connector_self_test() -> bool:
+	var saved_zones: Array = zones
+	var saved_kind := kind
+	var outline := PackedVector2Array([Vector2(0, 0), Vector2(6, 6), Vector2(9, 3), Vector2(3, -3)])
+	zones = [{"kind": "living", "cells": [], "outline": outline, "cost": 0}]
+	kind = "airlock"
+	var mount := _angled_outline_mount_at(Vector2(3, 3))
+	var mount_valid := not mount.is_empty() and _angled_outline_mount_invalid_reason(mount).is_empty()
+	var basis := _angled_mount_basis(mount)
+	var outward: Vector2 = mount.get("outward", Vector2.UP)
+	var axis_matches := (-basis.z).normalized().dot(Vector3(outward.x, 0, outward.y).normalized()) > .999
+	var connector := {"kind": "airlock", "cells": [], "angled_mount": mount, "cost": CELL_COST}
+	zones.append(connector)
+	var doorway_present := false
+	for doorway in _outline_wall_doorways(zones[0]):
+		if absf(float(doorway.get("opening_end", 0.0)) - float(doorway.get("opening_start", 0.0)) - CELL) < .01: doorway_present = true
+	var mount_position: Vector2 = mount.get("position", Vector2.ZERO)
+	var inside_mount := _point_in_angled_mount(mount_position + outward * CELL * .5, mount)
+	var outward_points_out := not Geometry2D.is_point_in_polygon(mount_position + outward * 1.0, outline) and Geometry2D.is_point_in_polygon(mount_position - outward * 1.0, outline)
+	var corner_mount: Dictionary = mount.duplicate()
+	corner_mount["opening_start"] = ANGLED_CORNER_CLEARANCE - .01
+	var corner_rejected := _angled_outline_mount_invalid_reason(corner_mount) == "Too close to a corner"
+	print("angled connector self-test · 45° edge selected: ", "PASS" if mount_valid else "FAIL")
+	print("angled connector self-test · rotated outward axis: ", "PASS" if axis_matches else "FAIL")
+	print("angled connector self-test · 3 m wall opening: ", "PASS" if doorway_present else "FAIL")
+	print("angled connector self-test · interior hit area: ", "PASS" if inside_mount else "FAIL")
+	print("angled connector self-test · outward points outside: ", "PASS" if outward_points_out else "FAIL")
+	print("angled connector self-test · corner mount rejected: ", "PASS" if corner_rejected else "FAIL")
+	zones = saved_zones
+	kind = saved_kind
+	return mount_valid and axis_matches and doorway_present and inside_mount and outward_points_out and corner_rejected
+
 # Environmental readout for the explorer HUD. The outdoor baseline comes from
 # the selected site; sealed rooms only become truly habitable once generated
 # power can run Life Support. Future first-person equipment can add a local
 # heat value here without changing the HUD or site data contracts.
 func climate_at(point: Vector3) -> Dictionary:
+	if lander != null and lander.cabin_contains(point):
+		return {"temperature": 18.0, "radiation": "Sheltered", "context": "Lander cabin", "state": "climate"}
 	var telemetry: Dictionary = MHGame.site().get("telemetry", {})
 	var outside_temp := MHGame.outside_temperature_c if MHGame.outside_temperature_c != 0.0 else float(telemetry.get("outside_temp_c", -30.0))
 	var cell := Vector2i(roundi(point.x / CELL), roundi(point.z / CELL))
 	var zone_kind := ""
+	var here: Dictionary = {}
 	for zone in zones:
 		if str(zone.kind) != "solar" and str(zone.kind) != "reactor" and str(zone.kind) != "ice_extractor" and cell in zone.cells:
 			zone_kind = str(zone.kind)
+			here = zone
 			break
 	if zone_kind.is_empty() or point.y < habitat_base_y - .6 or point.y > habitat_base_y + 4.0:
 		return {"temperature": outside_temp, "radiation": str(telemetry.get("radiation", "High")), "context": "Outside · EVA exposure", "state": "outside"}
+	if MHGame.simulation_on() and not here.is_empty():
+		var room_c: float = simulation().room_temperature(here)
+		var room_label := str(ZONE_TYPES.get(zone_kind, {}).get("label", "Habitat"))
+		var room_state := "climate" if room_c >= 18.0 else ("unheated" if room_c < 5.0 else "cool")
+		return {"temperature": room_c, "radiation": "Sheltered", "context": "%s · %d °C" % [room_label, roundi(room_c)], "state": room_state}
 	var systems := _systems()
 	var powered := grid_power_online()
 	var climate_controlled := powered and int(systems.life) > 0
@@ -2425,7 +4705,14 @@ func climate_at(point: Vector3) -> Dictionary:
 	elif powered:
 		temperature = minf(outside_temp + 12.0, 4.0)
 		state = "powered_shell"
-		context += " · powered, no heater"
+		# Heaters warm their own room, up to a comfortable 20 degrees C.
+		var warmth := _heater_warmth(here)
+		if warmth > 0.0:
+			temperature = minf(temperature + warmth, maxf(temperature, 20.0))
+			state = "heater"
+			context += " · heater running"
+		else:
+			context += " · powered, no heater"
 	else:
 		context += " · unheated shell"
 	return {"temperature": temperature, "radiation": radiation, "context": context, "state": state}
@@ -2442,15 +4729,16 @@ func _direction_yaw(direction: Vector2i) -> float:
 	return -PI*.5
 
 func _grid() -> void:
-	# Blueprint grid: 1 m minor lines and brighter 3 m cell lines in cell-line
-	# blue, added on top of the terrain and fading out around the camera target.
+	# Blueprint grid: one line per 3 m cell face in cell-line blue, added on top
+	# of the terrain and fading out around the camera target. Everything snaps
+	# to these lines and their corners, so there are no finer guide lines.
 	var immediate:=ImmediateMesh.new()
 	immediate.surface_begin(Mesh.PRIMITIVE_LINES)
 	var grid_limit := roundi(_site_build_limit())
 	for n in range(-grid_limit,grid_limit):
 		var at:=float(n)+.5
-		var major:=posmod(n-1,int(CELL))==0
-		var colour:=Color(MHStyle.CELL_LINE,.55) if major else Color(MHStyle.CELL_LINE,.16)
+		if posmod(n-1,int(CELL))!=0: continue
+		var colour:=Color(MHStyle.CELL_LINE,.55)
 		for points in [[Vector3(at,.09,-grid_limit),Vector3(at,.09,grid_limit)],[Vector3(-grid_limit,.09,at),Vector3(grid_limit,.09,at)]]:
 			immediate.surface_set_color(colour); immediate.surface_add_vertex(points[0])
 			immediate.surface_set_color(colour); immediate.surface_add_vertex(points[1])
@@ -2458,32 +4746,65 @@ func _grid() -> void:
 	var shader:=Shader.new(); shader.code=GRID_SHADER
 	var material:=ShaderMaterial.new(); material.shader=shader
 	grid=MeshInstance3D.new(); grid.mesh=immediate; grid.material_override=material; grid.visible=false; grid.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; world.add_child(grid)
+	# Sit on the deck datum from the start (not only after the first room), or
+	# the wash below the lines is hidden under a level build pad.
+	grid.position.y=habitat_base_y+.09
 	# Dark blueprint wash under the lines so the cyan grid reads against bright terrain.
-	var wash:=MeshInstance3D.new(); var plane:=PlaneMesh.new(); plane.size=Vector2(grid_limit*2.0,grid_limit*2.0); wash.mesh=plane; wash.position.y=-.02; wash.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# It sits just above the deck datum but below the zone plan tiles (top at
+	# +.0475), so it dims the ground without dimming the zones into it.
+	var wash:=MeshInstance3D.new(); var plane:=PlaneMesh.new(); plane.size=Vector2(grid_limit*2.0,grid_limit*2.0); wash.mesh=plane; wash.position.y=-.08; wash.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var wash_shader:=Shader.new(); wash_shader.code=GRID_WASH_SHADER; var wash_material:=ShaderMaterial.new(); wash_material.shader=wash_shader; wash.material_override=wash_material; wash.name="BlueprintWash"; grid.add_child(wash)
+	_add_unbuildable_overlay(grid_limit)
+
+## Dark tint draped over every plan cell that cannot carry habitat (canyon
+## walls, crater wall and mound), so the site's limits show before a click.
+func _add_unbuildable_overlay(grid_limit: int) -> void:
+	var vertices := PackedVector3Array()
+	var cells := int(float(grid_limit) / CELL)
+	for x in range(-cells, cells + 1):
+		for z in range(-cells, cells + 1):
+			if MHSiteTerrain.cell_unbuildable_reason(Vector2i(x, z), CELL).is_empty(): continue
+			var corners: Array[Vector3] = []
+			for offset in [Vector2(-HALF_CELL, -HALF_CELL), Vector2(HALF_CELL, -HALF_CELL), Vector2(HALF_CELL, HALF_CELL), Vector2(-HALF_CELL, HALF_CELL)]:
+				var at: Vector2 = Vector2(x * CELL, z * CELL) + offset
+				corners.append(Vector3(at.x, MHSiteTerrain.height(at.x, at.y) + .15, at.y))
+			vertices.append_array([corners[0], corners[1], corners[2], corners[0], corners[2], corners[3]])
+	if vertices.is_empty(): return
+	var mesh := ImmediateMesh.new()
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.albedo_color = Color("#1A0604", .55)
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, material)
+	for vertex in vertices: mesh.surface_add_vertex(vertex)
+	mesh.surface_end()
+	var overlay := MeshInstance3D.new()
+	overlay.name = "UnbuildableOverlay"
+	overlay.mesh = mesh
+	overlay.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	overlay.visible = false
+	overlay.add_to_group("site_plan_overlay")
+	world.add_child(overlay)
 
 # ---------- build HUD (shots 1e / 1f) ----------
 func _ui() -> void:
 	hud_layer=CanvasLayer.new(); hud_layer.name="BuildHUD"; hud_layer.layer=5; add_child(hud_layer)
 	ui=Control.new(); ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); ui.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.theme=MHStyle.theme(); ui.visible=false; hud_layer.add_child(ui)
-	ui.add_child(MHStyle.hint_strip([[["LMB"],"Place · drag","accent"],[["R"],"Rotate"],[["RMB"],"Cancel"],[["X"],"Remove"],[["Q","E"],"Orbit"],[["Wheel"],"Zoom"],[["Tab"],"Catalogue"],[["M"],"Mission Control"],[["B"],"Explore"]]))
+	ui.add_child(MHStyle.hint_strip([[["LMB"],"Place · drag","accent"],[["V"],"Room shape"],[["R"],"Rotate"],[["RMB"],"Cancel"],[["X"],"Remove"],[["Q","E"],"Orbit"],[["Wheel"],"Zoom"],[["Tab"],"Catalogue"],[["M"],"Mission Control"],[["B"],"Explore"]]))
 	# Top-left: colony + cargo
 	var left:=MHStyle.vbox(12); left.position=Vector2(32,32); left.size=Vector2(440,0); left.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(left)
 	left.add_child(MHStyle.colony_chip(MHGame.site_name()))
 	var cargo_panel:=MHStyle.hud_panel(20); cargo_panel.mouse_filter=Control.MOUSE_FILTER_IGNORE; left.add_child(cargo_panel)
 	var cargo_box:=MHStyle.vbox(12); cargo_panel.add_child(cargo_box)
-	cargo_meter=MHWidgets.Meter.new().setup("Cargo remaining",CARGO_BUDGET,CARGO_BUDGET,"kg","accent",true); cargo_box.add_child(cargo_meter)
+	cargo_meter=MHWidgets.Meter.new().setup("Cargo remaining",MHGame.mission_cargo_budget(),MHGame.mission_cargo_budget(),"kg","accent",true); cargo_box.add_child(cargo_meter)
 	var placing_row:=MHStyle.hbox(8); cargo_box.add_child(placing_row)
 	placing_label=MHStyle.mono("",14,MHStyle.TEXT_MUTED); placing_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL; placing_label.clip_text=true; placing_row.add_child(placing_label)
 	placing_delta=MHStyle.mono("",14,MHStyle.accent,600); placing_row.add_child(placing_delta)
 	notice_column=MHStyle.vbox(12); notice_column.position=Vector2(32,0); notice_column.mouse_filter=Control.MOUSE_FILTER_IGNORE; left.add_child(notice_column)
-	# Top-centre: Build / Explore switch over the free viewport
-	var top_band:=CenterContainer.new(); top_band.anchor_right=1; top_band.offset_right=-472; top_band.offset_top=32; top_band.offset_bottom=88; top_band.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(top_band)
-	var switch_panel:=PanelContainer.new(); switch_panel.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.SURFACE_HUD,MHStyle.BORDER_SUBTLE,MHStyle.RADIUS_MD,1,Vector4(4,4,12,4))); top_band.add_child(switch_panel)
-	var switch_row:=MHStyle.hbox(4); switch_panel.add_child(switch_row)
-	var build_tab:=MHStyle.button("Build","primary","hammer",48); build_tab.focus_mode=Control.FOCUS_NONE; build_tab.mouse_default_cursor_shape=Control.CURSOR_ARROW; switch_row.add_child(build_tab)
-	var explore_tab:=MHStyle.button("Explore","ghost","footprints",48); explore_tab.focus_mode=Control.FOCUS_NONE; explore_tab.pressed.connect(_toggle); switch_row.add_child(explore_tab)
-	var b_key:=MHStyle.keycap("B"); b_key.size_flags_vertical=Control.SIZE_SHRINK_CENTER; switch_row.add_child(b_key)
+	# Top-centre: Site plan | Interior | Explore switch over the free viewport
+	_mode_switcher=MHStyle.build_mode_switcher("site","Site plan · rooms, corridors, airlocks and power",func() -> void: pass,_switch_to_interior,_toggle)
+	(_mode_switcher.root as Control).offset_right=-472; ui.add_child(_mode_switcher.root)
 	# Top-right: readiness + Mission Control
 	var top_right:=MHStyle.hbox(12); top_right.anchor_left=1; top_right.anchor_right=1; top_right.offset_left=-620; top_right.offset_right=-32; top_right.offset_top=32; top_right.offset_bottom=84; top_right.alignment=BoxContainer.ALIGNMENT_END; top_right.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(top_right)
 	ready_badge_slot=CenterContainer.new(); ready_badge_slot.mouse_filter=Control.MOUSE_FILTER_IGNORE; top_right.add_child(ready_badge_slot)
@@ -2493,51 +4814,50 @@ func _ui() -> void:
 	hologram_pill=Control.new(); hologram_pill.mouse_filter=Control.MOUSE_FILTER_IGNORE; hologram_pill.visible=false; ui.add_child(hologram_pill)
 	_update_budget(); _update_summary(); _select_kind(kind)
 
+## Site plan build bar (same layout as furnishing): category tabs and picture
+## cards along the bottom, details with a turning 3D preview on the right.
 func _build_catalogue() -> void:
-	catalogue=PanelContainer.new(); catalogue.add_theme_stylebox_override("panel",MHStyle.hud_box(0,true))
-	catalogue.anchor_left=1; catalogue.anchor_right=1; catalogue.anchor_bottom=1; catalogue.offset_left=-472; catalogue.offset_right=-32; catalogue.offset_top=116; catalogue.offset_bottom=-96
-	catalogue.mouse_filter=Control.MOUSE_FILTER_STOP; MHStyle.add_rail(catalogue,24); ui.add_child(catalogue)
-	var column:=MHStyle.vbox(0); catalogue.add_child(column)
-	var head:=MarginContainer.new(); for side in ["left","right"]: head.add_theme_constant_override("margin_"+side,24)
-	head.add_theme_constant_override("margin_top",22); head.add_theme_constant_override("margin_bottom",12); column.add_child(head)
-	var head_row:=MHStyle.hbox(8); head.add_child(head_row)
-	head_row.add_child(MHStyle.title("Catalogue",26)); head_row.add_child(MHStyle.spacer())
-	catalogue_count=MHStyle.eyebrow("%d zones" % ZONE_TYPES.size()); catalogue_count.size_flags_vertical=Control.SIZE_SHRINK_CENTER; head_row.add_child(catalogue_count)
-	var tabs:=MHStyle.hbox(0); var tabs_margin:=MarginContainer.new(); tabs_margin.add_theme_constant_override("margin_left",16); tabs_margin.add_theme_constant_override("margin_right",16); tabs_margin.add_child(tabs); column.add_child(tabs_margin)
+	catalogue=PanelContainer.new()
+	catalogue.anchor_left=.5; catalogue.anchor_right=.5; catalogue.anchor_top=1; catalogue.anchor_bottom=1
+	catalogue.offset_left=-780; catalogue.offset_right=780; catalogue.offset_top=-330; catalogue.offset_bottom=-92
+	catalogue.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.SURFACE_HUD_STRONG,MHStyle.BORDER_SUBTLE,8,1,Vector4(18,16,18,16)))
+	catalogue.mouse_filter=Control.MOUSE_FILTER_STOP; MHStyle.add_rail(catalogue,28); ui.add_child(catalogue)
+	var column:=MHStyle.vbox(12); catalogue.add_child(column)
+	var head:=MHStyle.hbox(6); column.add_child(head)
 	for entry in CATEGORIES:
-		var tab:=Button.new(); tab.text=str(entry[1]).to_upper(); tab.set_meta("label",tab.text); tab.tooltip_text=str(entry[1]); tab.icon=MHIcons.texture(entry[2],18); tab.custom_minimum_size.y=44; tab.size_flags_horizontal=Control.SIZE_EXPAND_FILL; tab.focus_mode=Control.FOCUS_NONE
-		tab.add_theme_font_override("font",MHStyle.font(700,false,1)); tab.add_theme_font_size_override("font_size",14); tab.add_theme_constant_override("icon_max_width",18); tab.add_theme_constant_override("h_separation",8); tab.alignment=HORIZONTAL_ALIGNMENT_LEFT
-		tab.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
-		tab.pressed.connect(func() -> void: category=str(entry[0]); _refresh_catalogue())
-		tabs.add_child(tab); category_buttons[entry[0]]=tab
-	var scroll:=ScrollContainer.new(); scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL; scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; column.add_child(scroll)
-	var grid_margin:=MarginContainer.new(); grid_margin.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	for side in ["left","right","top","bottom"]: grid_margin.add_theme_constant_override("margin_"+side,16)
-	scroll.add_child(grid_margin)
-	var lists:=MHStyle.vbox(0); grid_margin.add_child(lists)
-	catalogue_grid=GridContainer.new(); catalogue_grid.columns=2; catalogue_grid.add_theme_constant_override("h_separation",12); catalogue_grid.add_theme_constant_override("v_separation",12); lists.add_child(catalogue_grid)
-	# Interior inventory: one titled section per zone family.
-	equipment_list=MHStyle.vbox(12); equipment_list.visible=false; lists.add_child(equipment_list)
-	var detail_panel:=PanelContainer.new(); var detail_style:=MHStyle.box(MHStyle.INK_950,Color(0,0,0,0),0,0,Vector4(24,20,24,22)); detail_style.border_width_top=1; detail_style.border_color=MHStyle.BORDER_SUBTLE; detail_style.corner_radius_bottom_left=MHStyle.RADIUS_MD; detail_style.corner_radius_bottom_right=MHStyle.RADIUS_MD
-	detail_panel.add_theme_stylebox_override("panel",detail_style); column.add_child(detail_panel)
-	catalogue_detail=MHStyle.vbox(10); detail_panel.add_child(catalogue_detail)
-	# Collapsed rail (Tab)
-	catalogue_rail=PanelContainer.new(); catalogue_rail.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.SURFACE_HUD_STRONG,MHStyle.BORDER_SUBTLE,MHStyle.RADIUS_MD,1,Vector4(12,12,12,12)))
-	catalogue_rail.anchor_left=1; catalogue_rail.anchor_right=1; catalogue_rail.anchor_bottom=1; catalogue_rail.offset_left=-104; catalogue_rail.offset_right=-32; catalogue_rail.offset_top=116; catalogue_rail.offset_bottom=-96; catalogue_rail.visible=false; ui.add_child(catalogue_rail)
-	var rail_col:=MHStyle.vbox(8); catalogue_rail.add_child(rail_col)
-	for entry in CATEGORIES:
-		var b:=Button.new(); b.icon=MHIcons.texture(entry[2],22); b.tooltip_text=str(entry[1]); b.custom_minimum_size=Vector2(48,48); b.theme_type_variation="GhostButton"; b.focus_mode=Control.FOCUS_NONE; b.icon_alignment=HORIZONTAL_ALIGNMENT_CENTER
-		b.pressed.connect(func() -> void: category=str(entry[0]); _set_catalogue_open(true)); rail_col.add_child(b)
-	var grow:=Control.new(); grow.size_flags_vertical=Control.SIZE_EXPAND_FILL; rail_col.add_child(grow)
-	var tab_key:=MHStyle.keycap("Tab",true); tab_key.size_flags_horizontal=Control.SIZE_SHRINK_CENTER; rail_col.add_child(tab_key)
-	var open_label:=MHStyle.eyebrow("Open",MHStyle.TEXT_MUTED,11); open_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER; rail_col.add_child(open_label)
+		var tab:=Button.new(); tab.text="  "+str(entry[1]); tab.set_meta("label",tab.text); tab.icon=MHIcons.texture(entry[2],18); tab.custom_minimum_size=Vector2(0,40); tab.focus_mode=Control.FOCUS_NONE
+		tab.add_theme_font_size_override("font_size",15); tab.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+		tab.pressed.connect(func() -> void: category=str(entry[0]); MHAudio.sfx("ui_click",-6.0); _refresh_catalogue())
+		head.add_child(tab); category_buttons[entry[0]]=tab
+	head.add_child(MHStyle.spacer())
+	catalogue_count=MHStyle.mono("",12,MHStyle.TEXT_MUTED); catalogue_count.size_flags_vertical=Control.SIZE_SHRINK_CENTER; head.add_child(catalogue_count)
+	var hint:=MHStyle.mono("   1-9  PICK    TAB  HIDE",12,MHStyle.TEXT_SECONDARY); hint.size_flags_vertical=Control.SIZE_SHRINK_CENTER; head.add_child(hint)
+	var scroll:=ScrollContainer.new(); scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; scroll.custom_minimum_size=Vector2(0,168); column.add_child(scroll)
+	catalogue_grid=HBoxContainer.new(); catalogue_grid.add_theme_constant_override("separation",10); scroll.add_child(catalogue_grid)
+	equipment_list=MHStyle.vbox(12); equipment_list.visible=false; column.add_child(equipment_list)
+	# Details: preview stage (model or blueprint tile), then text and numbers.
+	catalogue_details=PanelContainer.new()
+	catalogue_details.anchor_left=1; catalogue_details.anchor_right=1
+	catalogue_details.offset_left=-470; catalogue_details.offset_right=-48; catalogue_details.offset_top=110; catalogue_details.offset_bottom=110
+	catalogue_details.mouse_filter=Control.MOUSE_FILTER_PASS
+	catalogue_details.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.SURFACE_HUD,MHStyle.BORDER_SUBTLE,8,1,Vector4(18,18,18,18)))
+	MHStyle.add_rail(catalogue_details,28); ui.add_child(catalogue_details)
+	var details_column:=MHStyle.vbox(8); catalogue_details.add_child(details_column)
+	catalogue_stage=PanelContainer.new(); catalogue_stage.custom_minimum_size=Vector2(0,200); catalogue_stage.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	details_column.add_child(catalogue_stage)
+	catalogue_preview=MODEL_PREVIEW.new(); catalogue_stage.add_child(catalogue_preview)
+	catalogue_detail=MHStyle.vbox(8); details_column.add_child(catalogue_detail)
 
 func _set_catalogue_open(open: bool) -> void:
-	catalogue.visible=open; catalogue_rail.visible=not open
+	catalogue.visible=open
+	if catalogue_details!=null: catalogue_details.visible=open
 	if open: _refresh_catalogue()
 
 func _select_kind(id: String) -> void:
+	# Solar panels start facing the noon sun (south); R still turns them.
+	if id=="solar" and kind!="solar": airlock_direction=Vector2i(0,1)
 	kind=id; equipment_id=""; dragging=false; category=str(ZONE_INFO[id].cat); _set_tool("place"); _preview_key=""
+	if not _freeform_mode_available(): _cancel_freeform()
 	_refresh_catalogue()
 
 func _select_equipment(id: String) -> void:
@@ -2557,45 +4877,63 @@ func _refresh_catalogue() -> void:
 	if catalogue_grid==null: return
 	for id in category_buttons:
 		var tab:Button=category_buttons[id]; var active:bool=id==category
-		var style:=MHStyle.box(Color(0,0,0,0),Color(0,0,0,0),0,0,Vector4(12,0,8,0)); style.border_width_bottom=2 if active else 1; style.border_color=MHStyle.accent if active else MHStyle.BORDER_SUBTLE
-		for state in ["normal","hover","pressed","hover_pressed","focus"]: tab.add_theme_stylebox_override(state,style)
+		var style:=MHStyle.box(MHStyle.tint(MHStyle.accent,.22) if active else MHStyle.SURFACE_CONTROL,MHStyle.accent if active else MHStyle.BORDER_SUBTLE,6,1,Vector4(14,6,16,6))
+		for state in ["normal","pressed","hover_pressed","focus"]: tab.add_theme_stylebox_override(state,style)
+		tab.add_theme_stylebox_override("hover",MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER,MHStyle.BORDER_STRONG,6,1,Vector4(14,6,16,6)))
 		for state in ["font_color","font_hover_color","font_pressed_color","font_focus_color","icon_normal_color","icon_hover_color","icon_pressed_color","icon_focus_color"]: tab.add_theme_color_override(state,MHStyle.TEXT_PRIMARY if active else MHStyle.TEXT_SECONDARY)
-		# Four tabs only fit when the inactive ones collapse to their icon.
-		tab.text=str(tab.get_meta("label")) if active else ""
-		tab.size_flags_horizontal=Control.SIZE_EXPAND_FILL if active else Control.SIZE_FILL
-		tab.custom_minimum_size.x=0.0 if active else 52.0
 	for child in catalogue_grid.get_children(): child.queue_free()
 	for child in equipment_list.get_children(): child.queue_free()
 	for child in catalogue_detail.get_children(): child.queue_free()
-	var remaining:=CARGO_BUDGET-_used_cargo()
+	var remaining:=MHGame.cargo_budget()-_used_cargo()
 	catalogue_grid.visible=category!="equipment"; equipment_list.visible=category=="equipment"
 	if category=="equipment":
 		catalogue_count.text="%d items" % EquipmentCatalog.entries().size()
 		_refresh_equipment_list(remaining)
 	elif category=="surface":
-		catalogue_count.text="%d props" % SURFACE_EQUIPMENT.size()
+		catalogue_count.text="%d PROPS" % SURFACE_EQUIPMENT.size()
+		var index:=0
 		for id in SURFACE_EQUIPMENT:
-			catalogue_grid.add_child(_surface_equipment_card(id))
-		var surface_head:=MHStyle.hbox(8); catalogue_detail.add_child(surface_head)
-		surface_head.add_child(MHStyle.title("Surface equipment",20)); surface_head.add_child(MHStyle.spacer())
-		catalogue_detail.add_child(MHStyle.body("Select a non-structural prop, then place it freely from first person on outdoor ground. These props do not replace the grid-based reactor or ice extractor and have no simulation effect yet.",14))
+			index+=1
+			catalogue_grid.add_child(_surface_equipment_card(id,index))
+		_show_stage("")
+		catalogue_detail.add_child(MHStyle.eyebrow("SURFACE GEAR",MHStyle.accent,12))
+		catalogue_detail.add_child(MHStyle.title("Outdoor props",26))
+		var surface_text:=MHStyle.body("Pick a prop, then place it freely from first person on open ground. Lights and markers switch on and off; they don't change the habitat's resources yet.",15); surface_text.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+		catalogue_detail.add_child(surface_text)
 		return
 	else:
-		catalogue_count.text="%d zones" % ZONE_TYPES.size()
+		var shown:=0
+		# Missions: never leave a part selected that this payload didn't bring.
+		if not MHMissions.zone_unlocked(kind) and equipment_id.is_empty():
+			for id in ZONE_TYPES:
+				if str(ZONE_INFO[id].cat)==category and MHMissions.zone_unlocked(id): kind=id; break
 		for id in ZONE_TYPES:
 			if str(ZONE_INFO[id].cat)!=category: continue
-			catalogue_grid.add_child(_part_card(id,id==kind and equipment_id.is_empty(),remaining<int(ZONE_TYPES[id].cost)))
+			if not MHMissions.zone_unlocked(id): continue   # Missions: only this payload's parts
+			shown+=1
+			var card:=_part_card(id,id==kind and equipment_id.is_empty(),remaining<cell_cost(id))
+			card.set_meta("pick_index",shown)
+			(card.get_meta("number_label") as Label).text="%d  ·  %s" % [shown,str((card.get_meta("number_label") as Label).text)]
+			catalogue_grid.add_child(card)
+		catalogue_count.text="%d PARTS" % shown
 	if not equipment_id.is_empty():
 		_refresh_equipment_detail()
 		return
 	var info:Dictionary=ZONE_INFO[kind]
-	var head:=MHStyle.hbox(8); catalogue_detail.add_child(head)
-	head.add_child(MHStyle.title(str(ZONE_TYPES[kind].label),20)); head.add_child(MHStyle.spacer())
-	var cost:=MHStyle.mono("%s / cell" % MHStyle.kg(int(ZONE_TYPES[kind].cost)),14,MHStyle.accent,600); cost.size_flags_vertical=Control.SIZE_SHRINK_CENTER; head.add_child(cost)
-	catalogue_detail.add_child(MHStyle.body(str(info.desc),16))
-	var badges:=MHStyle.hbox(8); catalogue_detail.add_child(badges)
-	badges.add_child(MHStyle.badge(str(info.rule),"info"))
-	if kind in ["airlock","vehicle_bay","solar","corridor"]: badges.add_child(MHStyle.badge("Facing: %s" % _facing_name(),"neutral"))
+	_show_stage(kind)
+	catalogue_detail.add_child(MHStyle.eyebrow(str({"rooms":"ROOM","structure":"STRUCTURE","power":"RESOURCES"}.get(str(info.cat),"PART")),MHStyle.accent,12))
+	catalogue_detail.add_child(MHStyle.title(str(ZONE_TYPES[kind].label),26))
+	var desc:=MHStyle.body(str(info.desc),15); desc.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; catalogue_detail.add_child(desc)
+	var chips:=HFlowContainer.new(); chips.add_theme_constant_override("h_separation",6); chips.add_theme_constant_override("v_separation",6); catalogue_detail.add_child(chips)
+	for chip in _part_chips(kind): chips.add_child(_chip(str(chip[0]),chip[1]))
+	if _freeform_mode_available():
+		var mode_button := MHStyle.button("Draw mode: %s  [V]" % ("Free-form" if room_draw_mode == "freeform" else "Rectangle"), "secondary", "pentagon", 40)
+		mode_button.tooltip_text = "Rectangle: drag as usual. Free-form: click snapped points, Enter to close, Backspace to undo a point. Walls lock to straight or 45° angles."
+		mode_button.pressed.connect(func() -> void:
+			room_draw_mode = "freeform" if room_draw_mode == "rectangle" else "rectangle"
+			_cancel_freeform()
+			_refresh_catalogue())
+		catalogue_detail.add_child(mode_button)
 
 func _refresh_equipment_list(remaining: int) -> void:
 	for group in EquipmentCatalog.groups():
@@ -2658,51 +4996,92 @@ func _facing_name() -> String:
 	return {Vector2i(0,-1):"North",Vector2i(1,0):"East",Vector2i(0,1):"South",Vector2i(-1,0):"West"}.get(airlock_direction,"North")
 
 func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
-	var card:=Button.new(); card.custom_minimum_size=Vector2(196,172); card.focus_mode=Control.FOCUS_NONE; card.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
-	var normal:=MHStyle.selected_box(0) if selected else MHStyle.control_box(0)
-	for state in ["normal","pressed","hover_pressed","focus"]: card.add_theme_stylebox_override(state,normal)
-	card.add_theme_stylebox_override("hover",normal if selected else MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER,MHStyle.BORDER_STRONG))
-	card.pressed.connect(_select_kind.bind(id))
-	var colour:Color=ZONE_TYPES[id].colour
-	var column:=MHStyle.vbox(0); column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); column.mouse_filter=Control.MOUSE_FILTER_IGNORE; card.add_child(column)
-	# Thumbnail: the zone's plan colour on blueprint ink, with its catalogue icon.
-	var thumb:=PanelContainer.new(); var thumb_style:=MHStyle.box(MHStyle.BLUEPRINT.lerp(colour,.28),Color(0,0,0,0),MHStyle.RADIUS_MD,0); thumb_style.corner_radius_bottom_left=0; thumb_style.corner_radius_bottom_right=0
-	thumb.add_theme_stylebox_override("panel",thumb_style); thumb.custom_minimum_size.y=92; thumb.mouse_filter=Control.MOUSE_FILTER_IGNORE; column.add_child(thumb)
-	thumb.add_child(MHStyle.icon(str(ZONE_INFO[id].icon),40,colour.lightened(.45)))
-	var text:=MarginContainer.new(); text.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	for side in ["left","right"]: text.add_theme_constant_override("margin_"+side,12)
-	text.add_theme_constant_override("margin_top",10); column.add_child(text)
-	var lines:=MHStyle.vbox(4); text.add_child(lines)
-	var name_label:=MHStyle.label(str(ZONE_TYPES[id].label),16,MHStyle.TEXT_PRIMARY,600); name_label.clip_text=true; lines.add_child(name_label)
-	var mass_colour:=MHStyle.DANGER if unaffordable else (MHStyle.accent if selected else MHStyle.TEXT_SECONDARY)
-	lines.add_child(MHStyle.mono("%s / cell" % MHStyle.kg(int(ZONE_TYPES[id].cost)),12,mass_colour,600))
-	var rule:=MHStyle.mono(str(ZONE_INFO[id].rule),12,MHStyle.TEXT_MUTED); rule.clip_text=true; lines.add_child(rule)
+	var card:=_bar_card(selected)
+	card.pressed.connect(func() -> void: MHAudio.sfx("ui_click",-6.0); _select_kind(id))
+	var column:=card.get_meta("column") as VBoxContainer
+	column.add_child(_part_picture(id))
+	var name_label:=MHStyle.label(str(ZONE_TYPES[id].label),14,MHStyle.TEXT_PRIMARY,600); name_label.clip_text=true; name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS; column.add_child(name_label)
+	var mass:=MHStyle.mono(("%s / cell" % MHStyle.kg(cell_cost(id))) if str(ZONE_INFO[id].cat)!="power" else MHStyle.kg(cell_cost(id)),11,MHStyle.DANGER if unaffordable else MHStyle.TEXT_MUTED); column.add_child(mass)
+	card.set_meta("number_label",mass)
 	return card
 
-func _surface_equipment_card(id: String) -> Button:
+## A card in the build bar: picture on top, then name and numbers.
+func _bar_card(selected: bool) -> Button:
+	var card:=Button.new(); card.custom_minimum_size=Vector2(186,164); card.focus_mode=Control.FOCUS_NONE; card.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	card.add_theme_stylebox_override("normal",MHStyle.box(MHStyle.tint(MHStyle.accent,.16) if selected else MHStyle.SURFACE_CONTROL,MHStyle.accent if selected else MHStyle.BORDER_SUBTLE,8,2 if selected else 1,Vector4(8,8,8,8)))
+	card.add_theme_stylebox_override("hover",MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER,MHStyle.accent if selected else MHStyle.BORDER_STRONG,8,2 if selected else 1,Vector4(8,8,8,8)))
+	card.add_theme_stylebox_override("pressed",card.get_theme_stylebox("hover"))
+	var column:=MHStyle.vbox(4); column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); column.offset_left=8; column.offset_top=8; column.offset_right=-8; column.offset_bottom=-8; column.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	card.add_child(column); card.set_meta("column",column)
+	return card
+
+## A part's picture: its real model where it has one, otherwise a blueprint
+## tile in the part's plan colour with its icon.
+func _part_picture(id: String) -> Control:
+	var colour:Color=plan_colour(id)
+	if PART_MODELS.has(id):
+		var picture:=TextureRect.new(); picture.custom_minimum_size=Vector2(170,104); picture.expand_mode=TextureRect.EXPAND_IGNORE_SIZE; picture.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED; picture.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		ModelThumbnails.request(get_tree(),str(PART_MODELS[id]),func(texture: Texture2D) -> void:
+			if is_instance_valid(picture): picture.texture=texture)
+		return picture
+	var tile:=PanelContainer.new(); tile.custom_minimum_size=Vector2(170,104); tile.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	tile.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.BLUEPRINT.lerp(colour,.32),colour.lightened(.1),6,1))
+	var icon:=MHStyle.icon(str(ZONE_INFO[id].icon),46,colour.lightened(.5)); icon.size_flags_horizontal=Control.SIZE_SHRINK_CENTER; icon.size_flags_vertical=Control.SIZE_SHRINK_CENTER; tile.add_child(icon)
+	return tile
+
+## The details panel's top: a turning model, or the part's blueprint tile.
+func _show_stage(id: String) -> void:
+	if catalogue_stage==null: return
+	for child in catalogue_stage.get_children():
+		if child!=catalogue_preview: child.queue_free()
+	var model:=str(PART_MODELS.get(id,""))
+	catalogue_preview.visible=not model.is_empty()
+	catalogue_stage.add_theme_stylebox_override("panel",MHStyle.box(Color(1,1,1,.035),Color(0,0,0,0),6,0))
+	if not model.is_empty():
+		catalogue_preview.show_item(model)
+	elif not id.is_empty():
+		var tile:=_part_picture(id); tile.size_flags_horizontal=Control.SIZE_FILL; catalogue_stage.add_child(tile)
+	catalogue_stage.visible=not id.is_empty()
+
+func _chip(text: String,colour: Color) -> PanelContainer:
+	var pill:=PanelContainer.new(); pill.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	pill.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.tint(colour,.14),MHStyle.tint(colour,.45),12,1,Vector4(10,3,10,3)))
+	pill.add_child(MHStyle.mono(text,12,colour,600))
+	return pill
+
+## A part's cost and what it does, from the balance spreadsheet.
+func _part_chips(id: String) -> Array:
+	var chips:Array=[[("%s / cell" % MHStyle.kg(cell_cost(id))) if str(ZONE_INFO[id].cat)!="power" else MHStyle.kg(cell_cost(id)),MHStyle.TEXT_SECONDARY],[str(ZONE_INFO[id].rule),MHStyle.INFO]]
+	match id:
+		"solar": chips.append(["up to %s kW at noon" % str(int(MHResources.setting("solar_peak_kw",10.0))),MHStyle.VALID])
+		"reactor": chips.append(["%s kW day and night" % str(int(MHResources.setting("reactor_kw",10.0))),MHStyle.VALID])
+		"ice_extractor":
+			chips.append(["up to %s L water a sol" % str(int(MHResources.setting("ice_drill_l",120.0))),MHStyle.VALID])
+			chips.append(["-%s kW" % str(MHResources.item_value("ice_drill","power_kw",3.0)),MHStyle.WARN])
+	var target:=float(MHResources.room(id).get("target_c",0.0))
+	if target>0.0 and str(ZONE_INFO[id].cat)=="rooms": chips.append(["kept at %d °C" % int(target),MHStyle.INFO])
+	if id in ["airlock","vehicle_bay","solar","corridor"]: chips.append(["Facing %s" % _facing_name(),MHStyle.TEXT_SECONDARY])
+	return chips
+
+func _surface_equipment_card(id: String,index := 0) -> Button:
 	var entry: Dictionary = SURFACE_EQUIPMENT[id]
-	var card := Button.new()
-	card.custom_minimum_size = Vector2(196, 142)
-	card.focus_mode = Control.FOCUS_NONE
-	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	card.tooltip_text = "%s\nFree placement on outdoor ground" % str(entry.label)
-	card.add_theme_stylebox_override("normal", MHStyle.control_box(0))
-	card.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, MHStyle.RADIUS_MD, 1, Vector4(12, 12, 12, 12)))
-	var column := MHStyle.vbox(5)
-	column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var icon_row := MHStyle.hbox(8)
-	icon_row.add_child(MHStyle.icon(str(entry.icon), 22, MHStyle.accent))
-	icon_row.add_child(MHStyle.eyebrow("SURFACE", MHStyle.accent, 10))
-	column.add_child(icon_row)
-	column.add_child(MHStyle.label(str(entry.label), 16, MHStyle.TEXT_PRIMARY, 600))
-	column.add_child(MHStyle.mono("FIRST-PERSON · FREE GROUND", 10, MHStyle.TEXT_MUTED))
-	card.add_child(column)
-	card.pressed.connect(_select_surface_equipment.bind(id))
+	var card:=_bar_card(false)
+	card.tooltip_text="%s\nPlace freely on outdoor ground in first person" % str(entry.label)
+	var column:=card.get_meta("column") as VBoxContainer
+	var picture:=TextureRect.new(); picture.custom_minimum_size=Vector2(170,104); picture.expand_mode=TextureRect.EXPAND_IGNORE_SIZE; picture.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED; picture.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	picture.texture=MHIcons.texture(str(entry.icon),48); picture.modulate=Color(1,1,1,.35)
+	ModelThumbnails.request(get_tree(),id,func(texture: Texture2D) -> void:
+		if is_instance_valid(picture) and texture!=null:
+			picture.texture=texture; picture.modulate=Color.WHITE)
+	column.add_child(picture)
+	var name_label:=MHStyle.label(str(entry.label),14,MHStyle.TEXT_PRIMARY,600); name_label.clip_text=true; name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS; column.add_child(name_label)
+	column.add_child(MHStyle.mono("%d  ·  %s" % [index,MHStyle.kg(int(EquipmentCatalog.get_entry(id).get("cargo_cost",0)))],11,MHStyle.TEXT_MUTED))
+	card.set_meta("pick_index",index)
+	card.pressed.connect(func() -> void: MHAudio.sfx("ui_click",-6.0); _select_surface_equipment(id))
 	return card
 
 func _build_tool_bar() -> void:
-	var band:=CenterContainer.new(); band.anchor_top=1; band.anchor_bottom=1; band.anchor_right=1; band.offset_right=-472; band.offset_top=-176; band.offset_bottom=-80; band.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(band)
+	var band:=CenterContainer.new(); band.anchor_top=1; band.anchor_bottom=1; band.anchor_right=1; band.offset_top=-436; band.offset_bottom=-340; band.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(band)
 	var bar:=PanelContainer.new(); bar.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.SURFACE_HUD,MHStyle.BORDER_SUBTLE,MHStyle.RADIUS_MD,1,Vector4(8,8,8,8))); band.add_child(bar)
 	var row:=MHStyle.hbox(8); bar.add_child(row)
 	for entry in [["place","box","Place","LMB"],["footprint","git-branch","Footprint","Edit"],["rotate","rotate-cw","Rotate","R"],["remove","trash-2","Remove","X"],["undo","undo-2","Undo","Ctrl Z"]]:
@@ -2732,7 +5111,7 @@ func _set_tool(next_tool: String) -> void:
 		if id=="remove" and active: b.theme_type_variation="DangerButton"
 	if is_inside_tree(): _refresh_footprint_selection_overlay()
 
-func _update_hologram_ui(cells: Array,reason: String) -> void:
+func _update_hologram_ui(cells: Array,reason: String, angled_mount: Dictionary = {}) -> void:
 	if hologram_pill==null: return
 	var message:=""; var state:=""
 	var placing_name:String=str(ZONE_TYPES[kind].label) if equipment_id.is_empty() else str(EquipmentCatalog.get_entry(equipment_id).get("label",equipment_id))
@@ -2753,20 +5132,45 @@ func _update_hologram_ui(cells: Array,reason: String) -> void:
 		placing_label.text="Placing %s" % placing_name; placing_delta.text=""
 	elif not equipment_id.is_empty():
 		var item_cost:=int(EquipmentCatalog.get_entry(equipment_id).get("cargo_cost",0))
-		var left:=CARGO_BUDGET-_used_cargo()-item_cost
+		var left:=MHGame.cargo_budget()-_used_cargo()-item_cost
 		placing_label.text="Placing %s" % placing_name
 		placing_delta.text="−%s → %s" % [MHStyle.kg(item_cost),MHStyle.kg(left)] if not cells.is_empty() else ""
-		placing_delta.add_theme_color_override("font_color",MHStyle.DANGER if left<0 else (MHStyle.WARN if left<CARGO_BUDGET*.1 else MHStyle.accent))
+		placing_delta.add_theme_color_override("font_color",MHStyle.DANGER if left<0 else (MHStyle.WARN if left<MHGame.cargo_budget()*.1 else MHStyle.accent))
 		if not reason.is_empty(): state="invalid"; message=reason
 		elif not cells.is_empty():
 			var effects:=EquipmentCatalog.effects_text(equipment_id)
 			state="valid"; message="%s · %s" % [ZONE_TYPES[_zone_at(cells[0]).kind].label,effects if not effects.is_empty() else "no resource effect"]
+	elif _freeform_active():
+		var area := _freeform_area(freeform_points)
+		var freeform_cost := _freeform_cost(freeform_points)
+		var freeform_after := MHGame.cargo_budget() - _used_cargo() - freeform_cost
+		placing_label.text = "Drawing %s" % ZONE_TYPES[kind].label
+		placing_delta.text = "−%s → %s" % [MHStyle.kg(freeform_cost), MHStyle.kg(freeform_after)] if freeform_points.size() >= 3 else ""
+		placing_delta.add_theme_color_override("font_color", MHStyle.DANGER if freeform_after < 0 else (MHStyle.WARN if freeform_after < MHGame.cargo_budget() * .1 else MHStyle.accent))
+		state = "valid" if reason.is_empty() else "invalid"
+		message = "%.1f m wall · %.1f m² · click first point or Enter to close" % [_freeform_current_wall_length(_freeform_cursor_point()), area]
+		if not reason.is_empty(): message = reason
+		# Too few corners yet is a step to take, not an error.
+		if freeform_points.is_empty():
+			state = "valid"; message = "Angled room · click a cell corner to start (V: rectangle)"
+		elif freeform_points.size() < 3:
+			state = "valid"; message = "%.1f m wall · click the next corner" % _freeform_current_wall_length(_freeform_cursor_point())
+	elif not angled_mount.is_empty():
+		var angled_length := float(angled_mount.get("length", CELL))
+		var angled_cost := cell_cost(kind) * (_angled_corridor_bays(angled_length) if kind == "corridor" else 1)
+		var angled_after := MHGame.cargo_budget() - _used_cargo() - angled_cost
+		placing_label.text = "Placing %s · 45° wall" % placing_name
+		placing_delta.text = "−%s → %s" % [MHStyle.kg(angled_cost), MHStyle.kg(angled_after)]
+		placing_delta.add_theme_color_override("font_color", MHStyle.DANGER if angled_after < 0 else (MHStyle.WARN if angled_after < MHGame.cargo_budget() * .1 else MHStyle.accent))
+		state = "valid" if reason.is_empty() else "invalid"
+		message = "45° wall mount · drag outward for corridor length" if kind == "corridor" else "45° wall mount · connector will face outside · click from either side"
+		if not reason.is_empty(): message = reason
 	else:
 		var cost:=_zone_cost(cells)
-		var after:=CARGO_BUDGET-_used_cargo()-cost
+		var after:=MHGame.cargo_budget()-_used_cargo()-cost
 		placing_label.text="Placing %s" % ZONE_TYPES[kind].label
 		placing_delta.text="−%s → %s" % [MHStyle.kg(cost),MHStyle.kg(after)] if not cells.is_empty() else ""
-		placing_delta.add_theme_color_override("font_color",MHStyle.DANGER if after<0 else (MHStyle.WARN if after<CARGO_BUDGET*.1 else MHStyle.accent))
+		placing_delta.add_theme_color_override("font_color",MHStyle.DANGER if after<0 else (MHStyle.WARN if after<MHGame.cargo_budget()*.1 else MHStyle.accent))
 		if not reason.is_empty(): state="invalid"; message=reason
 		elif not cells.is_empty():
 			var bounds:=_cell_bounds(cells)
@@ -2783,11 +5187,11 @@ func _update_hologram_ui(cells: Array,reason: String) -> void:
 		var right_edge:=ui.size.x-(504.0 if catalogue.visible else 136.0)
 		hologram_pill.position=Vector2(clampf(mouse.x+22,24,maxf(24.0,right_edge-pill_width)),clampf(mouse.y-64,24,ui.size.y))
 
-func _flash_notice(tone: String,heading: String,text: String) -> void:
+func _flash_notice(tone: String,heading: String,text: String,play_sound := true) -> void:
 	if notice_column==null: return
 	# Each notice tone has its own sound; "valid" notices are removals.
 	var sound:String={"invalid":"invalid","warn":"warn","valid":"remove","info":"undo"}.get(tone,"")
-	if not sound.is_empty(): MHAudio.sfx(sound)
+	if play_sound and not sound.is_empty(): MHAudio.sfx(sound)
 	while notice_column.get_child_count()>=2: var oldest:=notice_column.get_child(0); notice_column.remove_child(oldest); oldest.queue_free()
 	var item:=MHStyle.notice(tone,heading,text); notice_column.add_child(item)
 	var fade:=item.create_tween(); fade.tween_interval(3.2); fade.tween_property(item,"modulate:a",0.0,.3); fade.tween_callback(item.queue_free)

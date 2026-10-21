@@ -1,0 +1,125 @@
+{
+  "id": "suit_rack",
+  "name": "Dual EVA Suit Service Rack",
+  "file": "suit_rack.glb",
+  "description": "Two secured suit docks with service umbilicals, boots, helmets and storage restraints",
+  "connected_systems": [
+    "power",
+    "EVA"
+  ],
+  "classroom_role": "Inspect and prepare the EVA suits",
+  "triangle_count": 7792,
+  "mesh_groups": 23,
+  "material_count": 12,
+  "dimensions_xyz_m": [
+    1.43,
+    2.01,
+    0.985
+  ],
+  "bounds_min_m": [
+    -0.715,
+    0.04,
+    -0.5
+  ],
+  "bounds_max_m": [
+    0.715,
+    2.05,
+    0.485
+  ],
+  "interaction_components": [
+    "suit_1_service",
+    "suit_2_service"
+  ],
+  "baked_text": false,
+  "static_screen_data": false,
+  "active_simulation": false,
+  "placement": "Vehicle Bay / EVA zone; placement and clearance need testing in Godot",
+  "base_footprint_m": [
+    1.5,
+    1.5
+  ]
+}
+{
+  "id": "rover_charger",
+  "name": "Rover Charging Station",
+  "file": "rover_charger.glb",
+  "description": "Charging cabinet with cable reel, detachable plug, status indicators and service compartment",
+  "connected_systems": [
+    "power",
+    "rover"
+  ],
+  "classroom_role": "Connect charging plug to prepare a rover",
+  "triangle_count": 5072,
+  "mesh_groups": 15,
+  "material_count": 11,
+  "dimensions_xyz_m": [
+    1.42,
+    1.397,
+    1.273
+  ],
+  "bounds_min_m": [
+    -0.71,
+    0.007,
+    -0.778
+  ],
+  "bounds_max_m": [
+    0.71,
+    1.405,
+    0.495
+  ],
+  "interaction_components": [
+    "charging_plug",
+    "service_hatch"
+  ],
+  "baked_text": false,
+  "static_screen_data": false,
+  "active_simulation": false,
+  "placement": "Vehicle Bay / EVA zone; placement and clearance need testing in Godot",
+  "base_footprint_m": [
+    1.5,
+    1.5
+  ]
+}
+{
+  "id": "eva_tool_station",
+  "name": "EVA Tool and Dust Service Station",
+  "file": "eva_tool_station.glb",
+  "description": "Secured tools, sample cleaning tray, enclosed supplies and task light",
+  "connected_systems": [
+    "maintenance",
+    "EVA",
+    "samples"
+  ],
+  "classroom_role": "Prepare and clean tools before surface work",
+  "triangle_count": 4928,
+  "mesh_groups": 14,
+  "material_count": 9,
+  "dimensions_xyz_m": [
+    1.43,
+    1.955,
+    0.87
+  ],
+  "bounds_min_m": [
+    -0.715,
+    0.055,
+    -0.435
+  ],
+  "bounds_max_m": [
+    0.715,
+    2.01,
+    0.435
+  ],
+  "interaction_components": [
+    "cabinet_door_left",
+    "cabinet_door_right",
+    "case_lid"
+  ],
+  "baked_text": false,
+  "static_screen_data": false,
+  "active_simulation": false,
+  "placement": "Vehicle Bay / EVA zone; placement and clearance need testing in Godot",
+  "base_footprint_m": [
+    1.5,
+    1.5
+  ]
+}

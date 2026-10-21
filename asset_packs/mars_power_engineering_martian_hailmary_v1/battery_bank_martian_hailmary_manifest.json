@@ -1,0 +1,25 @@
+{
+  "asset_id": "battery_bank",
+  "filename": "battery_bank_martian_hailmary.glb",
+  "triangles": 27816,
+  "mesh_nodes": 28,
+  "materials": 12,
+  "bounds_min_m": [
+    -0.723,
+    0.0,
+    -0.456
+  ],
+  "bounds_max_m": [
+    0.723,
+    2.079,
+    0.422
+  ],
+  "dimensions_m": [
+    1.446,
+    2.079,
+    0.878
+  ],
+  "interactive_nodes": [],
+  "baked_text": false,
+  "functional_simulation_implemented": false
+}

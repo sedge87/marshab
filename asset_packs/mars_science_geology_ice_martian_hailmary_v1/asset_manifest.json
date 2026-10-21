@@ -1,0 +1,144 @@
+{
+  "room": "Science Laboratory",
+  "theme": "Martian water ice and changing surface geology",
+  "status": "modelled / Godot integration pending",
+  "models": [
+    {
+      "id": "science_workbench",
+      "name": "Core and Ice Analysis Workbench",
+      "file": "science_workbench.glb",
+      "description": "Bench for comparing sediment layers in returned cores and examining water ice in a sealed chamber.",
+      "connected_systems": [
+        "Rover sampling",
+        "Electricity",
+        "Research missions"
+      ],
+      "classroom_role": "Open chamber, inspect layered core, adjust physical pump controls",
+      "triangle_count": 13984,
+      "mesh_groups": 29,
+      "material_count": 21,
+      "dimensions_xyz_m": [
+        1.49,
+        1.668,
+        0.947
+      ],
+      "bounds_min_m": [
+        -0.745,
+        0.007,
+        -0.507
+      ],
+      "bounds_max_m": [
+        0.745,
+        1.675,
+        0.44
+      ],
+      "interaction_components": [
+        "Core_Clamp",
+        "Heater_Set_Knob",
+        "Ice_Chamber_Hatch",
+        "Pump_Toggle",
+        "Specimen_Drawer",
+        "Worklight_Emitter"
+      ],
+      "baked_text": false,
+      "static_screen_data": false,
+      "active_simulation": false,
+      "placement": "free within permitted Science Laboratory zone; collision and walking clearance verified in Godot",
+      "base_footprint_m": [
+        1.5,
+        1.5
+      ]
+    },
+    {
+      "id": "microscope_station",
+      "name": "Geology Imaging and Microscope Station",
+      "file": "microscope_station.glb",
+      "description": "An imaging station for studying rock grains, sediment textures and the effects of erosion.",
+      "connected_systems": [
+        "Rover sampling",
+        "Research missions",
+        "Electricity"
+      ],
+      "classroom_role": "Inspect samples, focus microscope, illuminate tray",
+      "triangle_count": 11704,
+      "mesh_groups": 25,
+      "material_count": 15,
+      "dimensions_xyz_m": [
+        1.3,
+        1.809,
+        0.78
+      ],
+      "bounds_min_m": [
+        -0.65,
+        0.007,
+        -0.39
+      ],
+      "bounds_max_m": [
+        0.65,
+        1.816,
+        0.39
+      ],
+      "interaction_components": [
+        "Focus_Knob",
+        "Magnification_Lever",
+        "Mineral_Sample_Tray",
+        "Sample_Drawer",
+        "Sample_Illuminator"
+      ],
+      "baked_text": false,
+      "static_screen_data": false,
+      "active_simulation": false,
+      "placement": "free within permitted Science Laboratory zone; collision and walking clearance verified in Godot",
+      "base_footprint_m": [
+        1.5,
+        1.5
+      ]
+    },
+    {
+      "id": "sample_storage_cabinet",
+      "name": "Ice and Geological Sample Archive",
+      "file": "sample_storage_cabinet.glb",
+      "description": "Secure cold/dry sample storage for ice, drilled sediment cores and geological specimens.",
+      "connected_systems": [
+        "Sample analysis",
+        "Habitat power",
+        "Mission research"
+      ],
+      "classroom_role": "Open storage door and drawers to retrieve and compare samples",
+      "triangle_count": 14648,
+      "mesh_groups": 40,
+      "material_count": 16,
+      "dimensions_xyz_m": [
+        1.47,
+        1.938,
+        0.842
+      ],
+      "bounds_min_m": [
+        -0.735,
+        0.007,
+        -0.453
+      ],
+      "bounds_max_m": [
+        0.735,
+        1.945,
+        0.39
+      ],
+      "interaction_components": [
+        "Cold_Archive_Door",
+        "Core_Archive_Drawer_1",
+        "Core_Archive_Drawer_2",
+        "Core_Archive_Drawer_3",
+        "Core_Archive_Drawer_4",
+        "Core_Archive_Drawer_5"
+      ],
+      "baked_text": false,
+      "static_screen_data": false,
+      "active_simulation": false,
+      "placement": "free within permitted Science Laboratory zone; collision and walking clearance verified in Godot",
+      "base_footprint_m": [
+        1.5,
+        1.5
+      ]
+    }
+  ]
+}

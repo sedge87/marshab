@@ -1,0 +1,387 @@
+extends RefCounted
+
+## Missions campaign (docs/missions-design.md): mission data from
+## data/missions.json, the campaign's progress (saved with the base in the
+## Missions save set), what each mission unlocks, its cargo budget, and the
+## Test: a fast-forward run of the base on a copy of the simulation.
+const PATH := "res://data/missions.json"
+const HABITAT_SIM := preload("res://scripts/habitat_sim.gd")
+const LANDING_PICKER := preload("res://scripts/landing_picker.gd")
+const MHResources := preload("res://scripts/mh_resources.gd")
+const BLAST_MARGIN := 12.0     # metres from the landing ellipse that engine blast reaches
+const CLOSE_BASE := 40.0       # stretch goal: base this close to the landing target
+const SAMPLE_HOURS := 0.5
+
+static var _missions: Array = []
+static var progress: Dictionary = {}
+
+static func missions() -> Array:
+	if _missions.is_empty():
+		var file := FileAccess.open(PATH, FileAccess.READ)
+		var parsed = JSON.parse_string(file.get_as_text()) if file != null else null
+		_missions = (parsed as Dictionary).get("missions", []) if parsed is Dictionary else []
+	return _missions
+
+static func get_mission(id: String) -> Dictionary:
+	for mission in missions():
+		if str(mission.id) == id: return mission
+	return {}
+
+static func active() -> bool:
+	return MHGame.game_mode == "missions"
+
+## A new campaign: Mission 1 (landing zones) is chosen on the menu's Land step.
+static func reset() -> void:
+	progress = {"current": "landing_zones", "completed": [], "landing_target": Vector2.INF, "base_site": Vector2.INF, "versions": {}, "briefed": {}}
+
+static func ensure() -> void:
+	if progress.is_empty(): reset()
+
+static func current() -> Dictionary:
+	ensure()
+	return get_mission(str(progress.current))
+
+static func next_after(id: String) -> Dictionary:
+	var number := int(get_mission(id).get("number", 0))
+	for mission in missions():
+		if int(mission.number) == number + 1: return mission
+	return {}
+
+## Record a passed mission and move on to the next one (if it's ready yet).
+static func complete(id: String) -> void:
+	ensure()
+	if not (progress.completed as Array).has(id): (progress.completed as Array).append(id)
+	var next := next_after(id)
+	if not next.is_empty() and bool(next.get("available", false)): progress.current = str(next.id)
+
+static func is_complete(id: String) -> bool:
+	ensure()
+	return (progress.completed as Array).has(id)
+
+static func save_state() -> Dictionary:
+	ensure()
+	return progress.duplicate(true)
+
+static func load_state(state: Dictionary) -> void:
+	if state.is_empty(): reset()
+	else: progress = state.duplicate(true)
+
+# ---------- what this mission allows ----------
+
+## Missions so far (up to and including the current one).
+static func _so_far() -> Array:
+	var number := int(current().get("number", 1))
+	return missions().filter(func(m): return int(m.number) <= number)
+
+## Each payload adds to the base's cargo: the budget is every delivery so far.
+static func cargo_budget() -> int:
+	var total := 0
+	for mission in _so_far(): total += int(mission.get("payload_kg", 0))
+	return total
+
+static func zone_unlocked(kind: String) -> bool:
+	if not active(): return true
+	for mission in _so_far():
+		if (mission.get("unlock_zones", []) as Array).has(kind): return true
+	return false
+
+static func item_unlocked(id: String) -> bool:
+	if not active(): return true
+	var group := str(EquipmentCatalog.get_entry(id).get("group", ""))
+	for mission in _so_far():
+		if (mission.get("unlock_items", []) as Array).has(id): return true
+		if (mission.get("unlock_groups", []) as Array).has(group): return true
+	return false
+
+## How many crew this mission has aboard (0 for robot missions; free play: no cap).
+static func crew_cap() -> int:
+	if not active(): return -1
+	return int(current().get("crew", 0))
+
+# ---------- steps (the on-screen objective tracker) ----------
+
+## Steps ticked so far in this mission. Once done, a step stays done.
+static func steps_done(mission_id: String) -> Array:
+	ensure()
+	if not progress.has("steps"): progress["steps"] = {}
+	if not (progress.steps as Dictionary).has(mission_id): (progress.steps as Dictionary)[mission_id] = []
+	return (progress.steps as Dictionary)[mission_id]
+
+## Tick any steps that are now done. `flags` are things only the world knows
+## (left_lander, opened_plan). Returns the steps ticked by this call.
+static func update_steps(builder: Node, flags: Dictionary) -> Array:
+	var mission := current()
+	var done := steps_done(str(mission.id))
+	var ticked: Array = []
+	for step in mission.get("steps", []):
+		if done.has(str(step.id)): continue
+		if _step_met(step, builder, flags, str(mission.id)):
+			done.append(str(step.id))
+			ticked.append(step)
+	return ticked
+
+## The first step not yet done, or {} when all are done.
+static func current_step() -> Dictionary:
+	var mission := current()
+	var done := steps_done(str(mission.id))
+	for step in mission.get("steps", []):
+		if not done.has(str(step.id)): return step
+	return {}
+
+static func _step_met(step: Dictionary, builder: Node, flags: Dictionary, mission_id: String) -> bool:
+	match str(step.get("check", "")):
+		"left_lander", "opened_plan", "inside": return bool(flags.get(str(step.check), false))
+		"zone": return builder.zones.any(func(z): return str(z.kind) == str(step.kind))
+		"item": return builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(step.item)).size() >= int(step.get("count", 1))
+		"item_any": return builder.placed_interior.any(func(i): return (step.get("items", []) as Array).has(str(i.get("id", ""))))
+		"tested": return not versions(mission_id).is_empty()
+		"passed": return versions(mission_id).any(func(v): return bool(v.passed))
+	return false
+
+## A mission's supply delivery of food (Mission 6), added once to the base.
+static func deliver_mission_food(sim: RefCounted) -> bool:
+	var mission := current()
+	var sols := float(mission.get("food_delivery_sols", 0))
+	if sols <= 0.0: return false
+	if not progress.has("food_delivered"): progress["food_delivered"] = {}
+	if bool((progress.food_delivered as Dictionary).get(str(mission.id), false)): return false
+	(progress.food_delivered as Dictionary)[str(mission.id)] = true
+	sim.food_kg += float(mission.get("crew", 0)) * MHResources.setting("food_per_person", 1.8) * sols
+	return true
+
+## Has the arrival (the cargo lander's touchdown) been played for this mission?
+static func arrived(mission_id: String) -> bool:
+	ensure()
+	return bool((progress.get("arrived", {}) as Dictionary).get(mission_id, false))
+
+static func set_arrived(mission_id: String) -> void:
+	ensure()
+	if not progress.has("arrived"): progress["arrived"] = {}
+	(progress.arrived as Dictionary)[mission_id] = true
+
+## Cargo landers on site: [{number, position, yaw}], kept between missions.
+static func cargo_landers() -> Array:
+	ensure()
+	if not progress.has("cargo_landers"): progress["cargo_landers"] = []
+	return progress.cargo_landers
+
+static func landing_target() -> Vector2:
+	ensure()
+	return progress.get("landing_target", Vector2.INF)
+
+static func base_site() -> Vector2:
+	ensure()
+	return progress.get("base_site", Vector2.INF)
+
+## Engine blast: nothing can be built inside the landing ellipse or within
+## BLAST_MARGIN of it.
+static func in_blast_zone(point: Vector2) -> bool:
+	if not active(): return false
+	var target := landing_target()
+	if is_inf(target.x): return false
+	var d := point - target
+	var a := LANDING_PICKER.ELLIPSE_A + BLAST_MARGIN
+	var b := LANDING_PICKER.ELLIPSE_B + BLAST_MARGIN
+	return (d.x * d.x) / (a * a) + (d.y * d.y) / (b * b) <= 1.0
+
+# ---------- Mission 1: landing zones ----------
+
+## Results for a landing target and a base site (Mission 1's checks).
+static func check_landing(target: Vector2, base: Vector2) -> Dictionary:
+	var verdict := LANDING_PICKER.evaluate(target)
+	var safe := str(verdict.level) == "green"
+	var d := base - target
+	var a := LANDING_PICKER.ELLIPSE_A + BLAST_MARGIN
+	var b := LANDING_PICKER.ELLIPSE_B + BLAST_MARGIN
+	var clear := not is_inf(base.x) and (d.x * d.x) / (a * a) + (d.y * d.y) / (b * b) > 1.0 and LANDING_PICKER.footprint_safe(base)
+	var close := clear and target.distance_to(base) <= CLOSE_BASE
+	var clear_text := "Base site is clear of engine blast." if clear else ("Choose a base site: right-click the map." if is_inf(base.x) else ("The base site is too close to the landing ellipse: engine blast reaches 12 m beyond it." if LANDING_PICKER.footprint_safe(base) else "The base site is on rough ground: pick flat, open ground."))
+	return {"landing_safe": safe, "landing_clear": clear, "close": close, "landing_text": str(verdict.text), "clear_text": clear_text, "passed": safe and clear}
+
+# ---------- the Test ----------
+
+## Fast-forward the mission on a copy of the base's simulation (the real base
+## is never changed). Returns the report: samples for graphs, each
+## requirement's result with a reason, stretch goals and a design summary.
+static func run_test(builder: Node) -> Dictionary:
+	var mission := current()
+	var sim: RefCounted = HABITAT_SIM.new(builder)
+	sim.load(builder.simulation().save())
+	sim.crew_cap = int(mission.get("crew", 0))
+	sim.run_step = float(mission.get("step_hours", HABITAT_SIM.STEP_HOURS))
+	sim.prewarm_rooms()
+	sim.random_storms = false
+	sim.storm_hours_left = 0.0
+	sim.invalidate()
+	var inventory: Dictionary = sim.inventory()
+	sim.battery_kwh = float(inventory.capacity.kwh)   # tests start with full batteries
+	var sols := int(mission.get("sols", 3))
+	var start_hour := 8.0
+	var storms: Array = []
+	for event in mission.get("events", []):
+		if str(event.type) == "storm": storms.append({"start": (float(event.sol) - 1.0) * 24.0, "hours": float(event.sols) * 24.0})
+	var samples: Array = []
+	var failures := {}
+	var hours := 0.0
+	var hour := start_hour
+	var step := float(mission.get("sample_hours", SAMPLE_HOURS))
+	var food_in := 0.0
+	var crew: int = sim.crew_count()
+	var research := float(sim.daily_flows(false).get("research", 0.0))
+	while hours < sols * 24.0 - .001:
+		for storm in storms:
+			if absf(hours - float(storm.start)) < .001: sim.start_storm(float(storm.hours) / 24.0)
+		var chunk: Array = sim.run_hours(step, hour, step)
+		hours += step
+		hour = fmod(start_hour + hours, 24.0)
+		var sample: Dictionary = chunk[-1] if not chunk.is_empty() else sim.snapshot(hour)
+		sample["elapsed"] = hours
+		sample["water_in"] = float(sim.last.get("water_in", 0.0))
+		food_in += float(sim.last.get("food_in", 0.0)) * step / 24.0
+		samples.append(sample)
+		for requirement in mission.get("requirements", []):
+			if failures.has(requirement.id): continue
+			var why := _sample_failure(str(requirement.check), requirement, sample, sim)
+			if not why.is_empty(): failures[requirement.id] = {"at": hours, "why": why}
+		for goal in mission.get("stretch", []):
+			if failures.has("stretch:" + str(goal.id)): continue
+			var why := _sample_failure(str(goal.check), goal, sample, sim)
+			if not why.is_empty(): failures["stretch:" + str(goal.id)] = {"at": hours, "why": why}
+	var results: Array = []
+	for requirement in mission.get("requirements", []):
+		var result := {"id": str(requirement.id), "text": str(requirement.text), "pass": true, "detail": ""}
+		if failures.has(requirement.id):
+			result.pass = false
+			result.detail = "Failed %s. %s" % [_when(float(failures[requirement.id].at), start_hour), str(failures[requirement.id].why)]
+		match str(requirement.check):
+			"always_powered":
+				if result.pass: result.detail = "Every system had power for all %d sols." % sols
+			"life_support_powered":
+				if result.pass: result.detail = "Life support had power the whole time."
+			"min_temp":
+				if result.pass: result.detail = "The coldest room never fell below %d °C." % int(requirement.get("min", 15))
+			"breathable":
+				if result.pass: result.detail = "Oxygen and carbon dioxide stayed in the safe range."
+			"crew_safe":
+				if result.pass: result.detail = "Air, water, food and temperature stayed safe for all %d sols." % sols
+			"crew_health_min":
+				if result.pass: result.detail = "Crew health stayed above %d%%." % int(requirement.get("min", 80))
+			"crew_aboard":
+				result.pass = crew >= int(requirement.get("min", 1))
+				result.detail = "Bunks for %d of %d crew." % [crew, int(requirement.get("min", 1))] + ("" if result.pass else " Add crew bunks in Living Quarters.")
+			"food_grown":
+				var eaten: float = float(crew) * MHResources.setting("food_per_person", 1.8) * sols
+				var share := food_in / maxf(.001, eaten)
+				result.pass = share >= float(requirement.get("min", .25))
+				result.detail = "The base grew %d%% of the food (needs %d%%)." % [roundi(share * 100.0), roundi(float(requirement.get("min", .25)) * 100.0)] + ("" if result.pass else " Add grow trays, and make sure they keep power and water.")
+			"research":
+				result.pass = research >= float(requirement.get("min", 1))
+				result.detail = "Research: %s a sol." % str(snappedf(research, .1)) + ("" if result.pass else " Build a Science Lab and add a workbench.")
+			"water_per_sol":
+				var total := 0.0
+				for sample in samples: total += float(sample.water_in)
+				var average := total / maxf(1.0, samples.size())
+				result.pass = average >= float(requirement.get("min", 60))
+				var drills := (inventory.drills as Array).size()
+				result.detail = "The drills made %d L a sol on average (needs %d)." % [roundi(average), int(requirement.get("min", 60))]
+				if not result.pass:
+					result.detail += " " + ("There are no ice drills yet." if drills == 0 else "Add another drill, place drills on richer ice (paler blue), or make sure they keep their power.")
+		results.append(result)
+	var stretch: Array = []
+	for goal in mission.get("stretch", []):
+		var met := not failures.has("stretch:" + str(goal.id))
+		match str(goal.check):
+			"no_zone": met = builder.zones.filter(func(z): return str(z.kind) == str(goal.kind)).is_empty()
+			"no_item": met = not builder.placed_interior.any(func(i): return str(i.get("id", "")) == str(goal.item))
+			"payload_spare": met = builder.used_cargo() <= cargo_budget() - int(float(mission.get("payload_kg", 0)) * float(goal.get("fraction", .15)))
+			"food_grown": met = food_in / maxf(.001, float(crew) * MHResources.setting("food_per_person", 1.8) * sols) >= float(goal.get("min", .4))
+		stretch.append({"text": str(goal.text), "pass": met})
+	var passed := results.all(func(r): return bool(r.pass))
+	var report := {"mission": str(mission.id), "samples": samples, "results": results, "stretch": stretch, "passed": passed,
+		"storms": storms, "start_hour": start_hour, "sols": sols, "design": design_summary(builder)}
+	_record_version(report)
+	return report
+
+## Why a sample fails a check, or "" if it's fine (checks that run every sample).
+static func _sample_failure(check: String, spec: Dictionary, sample: Dictionary, sim: RefCounted) -> String:
+	match check:
+		"always_powered":
+			if not bool(sample.all_powered): return _first_warning(sim, "power")
+		"life_support_powered":
+			if not bool(sample.get("life_support", true)): return "Life support lost power. " + _first_warning(sim, "power")
+		"min_temp":
+			if float(sample.coldest_c) < float(spec.get("min", 15)): return "A room fell to %d °C. %s" % [roundi(float(sample.coldest_c)), _heating_reason(sim)]
+		"breathable":
+			if float(sample.o2_pct) < MHResources.setting("o2_min_pct", 19.5): return "Oxygen fell to %.1f%%. %s" % [float(sample.o2_pct), _first_warning(sim, "air")]
+			if float(sample.co2_pct) > MHResources.setting("co2_danger_pct", 1.0): return "Carbon dioxide rose to %.1f%%. %s" % [float(sample.co2_pct), _first_warning(sim, "air")]
+		"crew_safe":
+			var air := _sample_failure("breathable", spec, sample, sim)
+			if not air.is_empty(): return air
+			if float(sample.coldest_c) < MHResources.setting("cold_c", 12.0): return "A room fell to %d °C. %s" % [roundi(float(sample.coldest_c)), _first_warning(sim, "cold")]
+			if float(sample.water_l) <= 0.0: return "The water ran out. " + _first_warning(sim, "water")
+			if float(sample.food_kg) <= 0.0: return "The food ran out. " + _first_warning(sim, "food")
+		"crew_health_min":
+			if float(sample.crew_health) < float(spec.get("min", 80)): return "Crew health fell to %d%%. %s" % [roundi(float(sample.crew_health)), _first_warning(sim, "")]
+	return ""
+
+## Why rooms are getting cold, in plain words.
+static func _heating_reason(sim: RefCounted) -> String:
+	var inv: Dictionary = sim.inventory()
+	var heaters: Array = (inv.items as Array).filter(func(i): return ["wall_cabin_heater", "portable_utility_heater"].has(str(i.id)))
+	if float(inv.capacity.tcu_kw) <= 0.0 and heaters.is_empty(): return "There is no thermal control unit or heater to keep the rooms warm."
+	if not bool((sim.last.get("tiers", {}) as Dictionary).get(2, true)): return "The heating lost power."
+	return "The heating can't keep up overnight: add heating capacity, or cut heat loss with fewer windows and less outside wall."
+
+static func _first_warning(sim: RefCounted, topic: String) -> String:
+	var keys := {"power": "Not enough power", "cold": "Cold", "air": "O", "water": "Water", "food": "Food"}
+	for warning in sim.warnings():
+		if topic == "power" and str(warning.text).begins_with("Not enough power"): return str(warning.text)
+		if topic == "cold" and str(warning.text).to_lower().contains("cold"): return str(warning.text)
+		if topic == "air" and (str(warning.text).begins_with("CO₂") or str(warning.text).begins_with("Oxygen")): return str(warning.text)
+		if topic in ["water", "food"] and str(warning.text).to_lower().contains(topic): return str(warning.text)
+	var all: Array = sim.warnings()
+	return str(all[0].text) if not all.is_empty() else ""
+
+static func _when(elapsed: float, start_hour: float) -> String:
+	var total := start_hour + elapsed
+	var sol := int(floor(total / 24.0)) + 1
+	var at := fmod(total, 24.0)
+	return "on sol %d at %02d:%02d" % [sol, int(at), int(fmod(at, 1.0) * 60.0)]
+
+## What was built, for versions and comparisons.
+static func design_summary(builder: Node) -> Dictionary:
+	var counts := {"solar": 0, "reactor": 0, "ice_extractor": 0, "cells": 0, "battery_bank": 0}
+	for zone in builder.zones:
+		var kind := str(zone.kind)
+		if counts.has(kind): counts[kind] += 1
+		elif builder._is_habitat_zone(zone): counts.cells += maxi(1, (zone.get("cells", []) as Array).size())
+	for item in builder.placed_interior:
+		var id := str(item.get("id", ""))
+		counts[id] = int(counts.get(id, 0)) + 1
+	counts["cargo_kg"] = builder.used_cargo()
+	return counts
+
+const SUMMARY_NAMES := {"solar": ["solar array", "solar arrays"], "reactor": ["reactor", "reactors"], "ice_extractor": ["ice drill", "ice drills"],
+	"battery_bank": ["battery bank", "battery banks"], "cells": ["room cell", "room cells"]}
+
+## "+2 solar arrays, -1 reactor" between two versions' designs.
+static func design_changes(before: Dictionary, after: Dictionary) -> String:
+	var parts: Array = []
+	for key in SUMMARY_NAMES:
+		var change := int(after.get(key, 0)) - int(before.get(key, 0))
+		if change != 0: parts.append("%+d %s" % [change, SUMMARY_NAMES[key][0 if absi(change) == 1 else 1]])
+	return ", ".join(parts) if not parts.is_empty() else "No change to power, drills or rooms"
+
+static func versions(mission_id: String) -> Array:
+	ensure()
+	return (progress.versions as Dictionary).get(mission_id, [])
+
+static func _record_version(report: Dictionary) -> void:
+	ensure()
+	var list: Array = (progress.versions as Dictionary).get(report.mission, [])
+	var results := {}
+	for result in report.results: results[result.id] = result.pass
+	list.append({"version": list.size() + 1, "time": Time.get_datetime_string_from_system(false, true), "design": report.design, "results": results, "passed": report.passed})
+	(progress.versions as Dictionary)[report.mission] = list
+	report["version"] = list.size()
+	report["changes"] = design_changes(list[-2].design, report.design) if list.size() > 1 else "First test"

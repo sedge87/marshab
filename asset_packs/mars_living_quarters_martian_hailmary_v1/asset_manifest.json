@@ -1,0 +1,168 @@
+[
+  {
+    "id": "crew_bunk",
+    "model": "models/crew_bunk_martian_hailmary.glb",
+    "triangles": 12226,
+    "mesh_groups": 37,
+    "material_count": 13,
+    "size_m": [
+      2.28,
+      1.959,
+      1.129
+    ],
+    "min_bounds_m": [
+      -1.14,
+      0.0,
+      -0.579
+    ],
+    "max_bounds_m": [
+      1.14,
+      1.959,
+      0.55
+    ],
+    "removed_baked_content": [
+      "label"
+    ],
+    "source_geometry_preserved": true,
+    "interactions_in_live_game": false
+  },
+  {
+    "id": "locker",
+    "model": "models/locker_martian_hailmary.glb",
+    "triangles": 9478,
+    "mesh_groups": 24,
+    "material_count": 9,
+    "size_m": [
+      1.17,
+      2.058,
+      0.868
+    ],
+    "min_bounds_m": [
+      -0.585,
+      0.01,
+      -0.518
+    ],
+    "max_bounds_m": [
+      0.585,
+      2.068,
+      0.35
+    ],
+    "removed_baked_content": [
+      "label"
+    ],
+    "source_geometry_preserved": true,
+    "interactions_in_live_game": false
+  },
+  {
+    "id": "common_table",
+    "model": "models/common_table_martian_hailmary.glb",
+    "triangles": 6916,
+    "mesh_groups": 18,
+    "material_count": 12,
+    "size_m": [
+      1.868,
+      0.919,
+      1.008
+    ],
+    "min_bounds_m": [
+      -0.934,
+      0.03,
+      -0.504
+    ],
+    "max_bounds_m": [
+      0.934,
+      0.949,
+      0.504
+    ],
+    "removed_baked_content": [
+      "label",
+      "planning_screen"
+    ],
+    "source_geometry_preserved": true,
+    "interactions_in_live_game": false
+  },
+  {
+    "id": "task_light",
+    "model": "models/task_light_martian_hailmary.glb",
+    "triangles": 2502,
+    "mesh_groups": 21,
+    "material_count": 9,
+    "size_m": [
+      0.945,
+      0.417,
+      0.793
+    ],
+    "min_bounds_m": [
+      -0.8,
+      1.22,
+      -0.73
+    ],
+    "max_bounds_m": [
+      0.145,
+      1.637,
+      0.062
+    ],
+    "removed_baked_content": [
+      "task_nameplate"
+    ],
+    "source_geometry_preserved": true,
+    "interactions_in_live_game": false
+  },
+  {
+    "id": "privacy_divider",
+    "model": "models/privacy_divider_martian_hailmary.glb",
+    "triangles": 2468,
+    "mesh_groups": 33,
+    "material_count": 12,
+    "size_m": [
+      2.357,
+      1.781,
+      0.866
+    ],
+    "min_bounds_m": [
+      -1.179,
+      0.005,
+      -0.551
+    ],
+    "max_bounds_m": [
+      1.179,
+      1.786,
+      0.315
+    ],
+    "removed_baked_content": [
+      "divider_label_0",
+      "divider_label_1",
+      "divider_label_2"
+    ],
+    "source_geometry_preserved": true,
+    "interactions_in_live_game": false
+  },
+  {
+    "id": "exercise_station",
+    "model": "models/exercise_station_martian_hailmary.glb",
+    "triangles": 3664,
+    "mesh_groups": 36,
+    "material_count": 10,
+    "size_m": [
+      1.16,
+      2.062,
+      1.435
+    ],
+    "min_bounds_m": [
+      -0.58,
+      0.015,
+      -0.86
+    ],
+    "max_bounds_m": [
+      0.58,
+      2.078,
+      0.575
+    ],
+    "removed_baked_content": [
+      "exercise_display",
+      "exercise_label"
+    ],
+    "source_geometry_preserved": true,
+    "interactions_in_live_game": false
+  }
+]

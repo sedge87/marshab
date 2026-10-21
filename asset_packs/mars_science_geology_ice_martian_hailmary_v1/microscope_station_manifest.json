@@ -1,0 +1,45 @@
+{
+  "id": "microscope_station",
+  "name": "Geology Imaging and Microscope Station",
+  "file": "microscope_station.glb",
+  "description": "An imaging station for studying rock grains, sediment textures and the effects of erosion.",
+  "connected_systems": [
+    "Rover sampling",
+    "Research missions",
+    "Electricity"
+  ],
+  "classroom_role": "Inspect samples, focus microscope, illuminate tray",
+  "triangle_count": 11704,
+  "mesh_groups": 25,
+  "material_count": 15,
+  "dimensions_xyz_m": [
+    1.3,
+    1.809,
+    0.78
+  ],
+  "bounds_min_m": [
+    -0.65,
+    0.007,
+    -0.39
+  ],
+  "bounds_max_m": [
+    0.65,
+    1.816,
+    0.39
+  ],
+  "interaction_components": [
+    "Focus_Knob",
+    "Magnification_Lever",
+    "Mineral_Sample_Tray",
+    "Sample_Drawer",
+    "Sample_Illuminator"
+  ],
+  "baked_text": false,
+  "static_screen_data": false,
+  "active_simulation": false,
+  "placement": "free within permitted Science Laboratory zone; collision and walking clearance verified in Godot",
+  "base_footprint_m": [
+    1.5,
+    1.5
+  ]
+}

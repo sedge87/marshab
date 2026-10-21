@@ -1,0 +1,99 @@
+[
+  {
+    "name": "Power Distribution Cabinet",
+    "asset_id": "power_distribution_panel",
+    "file": "models/power_distribution_cabinet_martian_hailmary.glb",
+    "triangles": 31216,
+    "mesh_groups": 34,
+    "materials": [
+      "aluminium",
+      "amberlight",
+      "copper",
+      "dark",
+      "glass",
+      "greenlight",
+      "lightgrey",
+      "orange",
+      "rubber",
+      "shadow",
+      "steel",
+      "warmwhite",
+      "white"
+    ],
+    "bounds_min_m": [
+      -0.72,
+      -0.0005,
+      -0.431
+    ],
+    "bounds_max_m": [
+      0.724,
+      2.042,
+      0.4
+    ],
+    "interaction_groups": [
+      "BreakerBank_R1_C1_Handle",
+      "BreakerBank_R1_C2_Handle",
+      "BreakerBank_R1_C3_Handle",
+      "BreakerBank_R1_C4_Handle",
+      "BreakerBank_R1_C5_Handle",
+      "BreakerBank_R2_C1_Handle",
+      "BreakerBank_R2_C2_Handle",
+      "BreakerBank_R2_C3_Handle",
+      "BreakerBank_R2_C4_Handle",
+      "BreakerBank_R2_C5_Handle",
+      "BreakerBank_R3_C1_Handle",
+      "BreakerBank_R3_C2_Handle",
+      "BreakerBank_R3_C3_Handle",
+      "BreakerBank_R3_C4_Handle",
+      "BreakerBank_R3_C5_Handle",
+      "Emergency_Stop_Plunger",
+      "Inspection_Door",
+      "Main_Isolator_Rotary"
+    ],
+    "baked_text_or_static_fake_displays": false,
+    "gameplay_wired": false
+  },
+  {
+    "name": "Battery Bank",
+    "asset_id": "battery_bank",
+    "file": "models/battery_bank_martian_hailmary.glb",
+    "triangles": 27816,
+    "mesh_groups": 28,
+    "materials": [
+      "aluminium",
+      "amberlight",
+      "dark",
+      "greenlight",
+      "lightgrey",
+      "orange",
+      "rubber",
+      "shadow",
+      "steel",
+      "teal",
+      "warmwhite",
+      "white"
+    ],
+    "bounds_min_m": [
+      -0.723,
+      0.0,
+      -0.456
+    ],
+    "bounds_max_m": [
+      0.723,
+      2.079,
+      0.422
+    ],
+    "interaction_groups": [
+      "Battery_Cassette_R1_L",
+      "Battery_ChargeIndicator_R1_L",
+      "Battery_ChargeIndicator_R1_R",
+      "Battery_ChargeIndicator_R2_L",
+      "Battery_ChargeIndicator_R2_R",
+      "Battery_ChargeIndicator_R3_L",
+      "Battery_ChargeIndicator_R3_R",
+      "Battery_Main_Disconnect"
+    ],
+    "baked_text_or_static_fake_displays": false,
+    "gameplay_wired": false
+  }
+]

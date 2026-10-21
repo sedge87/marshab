@@ -1,0 +1,4 @@
+{"style": "Crew lander: low-slung capsule cabin on legs (matches the pack palette)", "units": "metres; Y up; -Z forward; ground origin under the cabin",
+ "assets": [{"id": "crew_lander", "display_name": "Crew Lander", "file": "crew_lander.glb", "placement": "floor", "bounds_m": [[-3.82, 0.071, -3.42], [3.82, 4.745, 3.42]],
+   "moving_parts": {"hatch_ramp": "hatch door hinged at its bottom edge; lowers to become the ramp", "cabin_lights": "emissive panels", "hatch_light": "emissive"},
+   "collision": "meshes ending -col get trimesh collision in Godot"}]}

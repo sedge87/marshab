@@ -24,6 +24,20 @@ The exterior catalogue now contains only Rooms, Structure and Resources. It inte
 
 `placed_equipment` remains the old exterior-grid-compatible record. First-person furnishings use `placed_interior`, whose entries contain `placement_id`, `id`, exact `position`, `rotation_y` and `zone_cell`. Both sources count toward cargo, resource effects, power draw and readiness. This keeps a future persistence implementation straightforward without pretending free placement is cell snapped.
 
+## Hull windows (phase 1)
+
+A window replaces one Mars-facing wall bay of a room or corridor (grid or angled). Saved as `hull_windows`: `{mid, dir}` per bay (bay centre and wall direction), so they survive rebuilds; a window whose bay no longer faces Mars is removed and refunded. Cost `WINDOW_CARGO` (60 kg); heating counts each window as `WINDOW_HEAT_LOSS_CELLS` (1.5) cells of hull. Placed in Interior mode (kit → Window), removed with X, undone with Ctrl+Z; shown on the site plan as a pale blue bar.
+
+The current window is placeholder geometry built in `BuildController._add_window_bay`. A replacement model should match the wall bay so it can swap in directly:
+
+| Property | Value |
+| --- | --- |
+| Size | 3.0 m wide (local X) × 2.9 m tall; scaled along X to fit shorter bays |
+| Pivot | Bottom centre, on the wall line |
+| Facing | Exterior faces local −Z (same as `mh_wall_bay.glb`) |
+| Glazed band | 0.9 m (sill) to 2.3 m (head) above the floor |
+| Collision | Solid all over (glass included); the hull stays sealed |
+
 ## Next extension
 
 Interior walls, windows and doors should be added as a separate interior-structure catalogue with surface constraints, local collision and a tested delete/undo/save path. They must remain cosmetic/internal until a separately approved pressure/room-topology design exists; they must never silently modify the external hull or airlock rules.

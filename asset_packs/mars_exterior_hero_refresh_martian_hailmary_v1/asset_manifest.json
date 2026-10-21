@@ -1,0 +1,268 @@
+{
+  "style": "Bright Mars exploration research hardware - The Martian / Project Hail Mary influence",
+  "placement": "freely on suitable near-level terrain; no structural snaps",
+  "models": [
+    {
+      "id": "exterior_ice_water_drill",
+      "triangles": 4196,
+      "mesh_groups": 43,
+      "materials": 10,
+      "dimensions_xyz_m": [
+        2.39,
+        2.638,
+        1.745
+      ],
+      "bounds_m": [
+        [
+          -1.195,
+          0.002,
+          -0.75
+        ],
+        [
+          1.195,
+          2.64,
+          0.995
+        ]
+      ],
+      "named_components": [
+        "auger_flight",
+        "base_bracket",
+        "base_skids",
+        "control_box",
+        "cross_base",
+        "deck_edge",
+        "drill_bushing",
+        "drill_mast",
+        "drill_shaft",
+        "drill_tip",
+        "equipment_deck",
+        "extraction_hose",
+        "guide_hydraulic",
+        "mast_braces",
+        "mast_crossbar",
+        "mast_slide_blocks",
+        "motor_carriage",
+        "motor_coupling",
+        "motor_safety_lip",
+        "motor_shroud",
+        "motor_vents",
+        "outrigger_pads",
+        "outriggers",
+        "physical_switches",
+        "pump_chassis",
+        "pump_motor",
+        "pump_rotor_guard",
+        "recovery_pipe",
+        "recovery_valve",
+        "skid_overlay",
+        "skid_stabilizers",
+        "state_light",
+        "switch_recess",
+        "tank_cradle",
+        "tank_fill_lid",
+        "tank_retaining_straps",
+        "water_reservoir",
+        "water_reservoir_cradle"
+      ],
+      "file": "exterior_ice_water_drill.glb"
+    },
+    {
+      "id": "exterior_surface_reactor",
+      "triangles": 2896,
+      "mesh_groups": 43,
+      "materials": 12,
+      "dimensions_xyz_m": [
+        2.47,
+        2.114,
+        1.688
+      ],
+      "bounds_m": [
+        [
+          -1.14,
+          0.006,
+          -0.848
+        ],
+        [
+          1.33,
+          2.12,
+          0.84
+        ]
+      ],
+      "named_components": [
+        "access_handle",
+        "access_hatch",
+        "access_hatch_fasteners",
+        "anti_vibration_feet",
+        "cable_sockets",
+        "coolant_loop",
+        "coolant_return",
+        "coolant_service_canister",
+        "cooling_fan_shroud",
+        "corner_belt",
+        "external_lamps",
+        "fan_blades",
+        "fan_hub",
+        "fin_edge",
+        "front_service_back",
+        "front_service_plate",
+        "ground_skids",
+        "isolation_recess",
+        "main_vertical_rails",
+        "master_handle",
+        "master_isolator",
+        "power_core_rear",
+        "power_core_shell",
+        "power_indicators",
+        "power_output_panel",
+        "radiator_fins",
+        "radiator_manifold",
+        "radiator_uprights",
+        "rear_vent_back",
+        "service_mount",
+        "service_rails",
+        "socket_collar",
+        "subframe",
+        "support_platform",
+        "top_module"
+      ],
+      "file": "exterior_surface_reactor.glb"
+    },
+    {
+      "id": "exterior_portable_floodlight",
+      "triangles": 1356,
+      "mesh_groups": 23,
+      "materials": 10,
+      "dimensions_xyz_m": [
+        0.846,
+        2.067,
+        0.516
+      ],
+      "bounds_m": [
+        [
+          -0.423,
+          -0.001,
+          -0.268
+        ],
+        [
+          0.423,
+          2.066,
+          0.248
+        ]
+      ],
+      "named_components": [
+        "base_brackets",
+        "battery_base",
+        "carry_handle",
+        "center_bracket",
+        "charge_light",
+        "ground_feet",
+        "head_cables",
+        "head_support",
+        "head_tilt_pin",
+        "housing_endcaps",
+        "led_emitter",
+        "light_gasket",
+        "light_housing",
+        "light_yoke",
+        "locking_collar",
+        "pole_braces",
+        "power_cable",
+        "power_switch",
+        "service_latch",
+        "service_lid",
+        "telescoping_pole",
+        "upper_casing"
+      ],
+      "file": "exterior_portable_floodlight.glb"
+    },
+    {
+      "id": "exterior_tall_light_post",
+      "triangles": 1168,
+      "mesh_groups": 18,
+      "materials": 10,
+      "dimensions_xyz_m": [
+        1.53,
+        3.755,
+        0.67
+      ],
+      "bounds_m": [
+        [
+          -0.765,
+          0.025,
+          -0.335
+        ],
+        [
+          0.765,
+          3.78,
+          0.335
+        ]
+      ],
+      "named_components": [
+        "anchor_bolts",
+        "base_braces",
+        "foundation_plate",
+        "ground_base",
+        "head_spreader",
+        "head_support",
+        "junction_box",
+        "junction_cover",
+        "led_emitter",
+        "light_heads",
+        "light_seal",
+        "locking_collar",
+        "main_mast",
+        "mast_yoke",
+        "rear_heat_fins",
+        "service_switch",
+        "supply_cable",
+        "upper_mast"
+      ],
+      "file": "exterior_tall_light_post.glb"
+    },
+    {
+      "id": "exterior_solar_floodlight",
+      "triangles": 1132,
+      "mesh_groups": 19,
+      "materials": 10,
+      "dimensions_xyz_m": [
+        0.981,
+        2.967,
+        0.741
+      ],
+      "bounds_m": [
+        [
+          -0.491,
+          0.002,
+          -0.299
+        ],
+        [
+          0.491,
+          2.97,
+          0.442
+        ]
+      ],
+      "named_components": [
+        "base_support",
+        "battery_base",
+        "battery_lid",
+        "charged_status",
+        "ground_skids",
+        "lamp_brace",
+        "lamp_frame",
+        "lamp_gasket",
+        "lamp_housing",
+        "led_emitter",
+        "solar_backplate",
+        "solar_cell_bed",
+        "solar_cells",
+        "solar_supports",
+        "solar_wiring",
+        "support_mast",
+        "switch",
+        "switch_pocket",
+        "upper_mast"
+      ],
+      "file": "exterior_solar_floodlight.glb"
+    }
+  ]
+}

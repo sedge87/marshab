@@ -1,0 +1,100 @@
+[
+  {
+    "id": "fire_safety_station",
+    "model": "models/fire_safety_station.glb",
+    "min_bounds_m": [
+      -0.340000003576279,
+      0.025000000372529,
+      -0.24549999833107
+    ],
+    "max_bounds_m": [
+      0.340000003576279,
+      1.43250000476837,
+      0.317499965429306
+    ]
+  },
+  {
+    "id": "emergency_supply_lockbox",
+    "model": "models/emergency_supply_locker.glb",
+    "min_bounds_m": [
+      -0.370000004768372,
+      -0.000500000023748726,
+      -0.298000007867813
+    ],
+    "max_bounds_m": [
+      0.421499967575073,
+      1.72899997234344,
+      0.224999994039536
+    ]
+  },
+  {
+    "id": "first_aid_kit",
+    "model": "models/first_aid_kit.glb",
+    "min_bounds_m": [
+      -0.242500007152557,
+      0.0115000000223517,
+      -0.181500002741814
+    ],
+    "max_bounds_m": [
+      0.242500007152557,
+      0.40599998831749,
+      0.134000018239021
+    ]
+  },
+  {
+    "id": "portable_interior_work_light",
+    "model": "models/portable_interior_work_light.glb",
+    "min_bounds_m": [
+      -0.328999996185303,
+      0.000500000023748726,
+      -0.200499996542931
+    ],
+    "max_bounds_m": [
+      0.328999996185303,
+      1.59249997138977,
+      0.174999997019768
+    ]
+  },
+  {
+    "id": "supply_crate_small",
+    "model": "models/supply_crate_small.glb",
+    "min_bounds_m": [
+      -0.263000011444092,
+      0.0,
+      -0.247500002384186
+    ],
+    "max_bounds_m": [
+      0.247500002384186,
+      0.326999992132187,
+      0.217000007629395
+    ]
+  },
+  {
+    "id": "supply_crate_medium",
+    "model": "models/supply_crate_medium.glb",
+    "min_bounds_m": [
+      -0.34799998998642,
+      0.0,
+      -0.292499989271164
+    ],
+    "max_bounds_m": [
+      0.332500040531158,
+      0.446999996900558,
+      0.261999994516373
+    ]
+  },
+  {
+    "id": "supply_crate_large",
+    "model": "models/supply_crate_large.glb",
+    "min_bounds_m": [
+      -0.442999988794327,
+      0.0,
+      -0.342500001192093
+    ],
+    "max_bounds_m": [
+      0.427499979734421,
+      0.587000012397766,
+      0.312000006437302
+    ]
+  }
+]

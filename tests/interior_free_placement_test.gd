@@ -27,13 +27,14 @@ func _initialize() -> void:
 	var placement_id := str((builder.placed_interior[0] as Dictionary).placement_id)
 	assert(not builder.remove_free_interior_equipment(placement_id).is_empty(), "Free placement should remove by persistent placement id.")
 	assert(int(builder._systems().food) == 0, "Removing free equipment must remove its effects.")
-	# Adjacent rooms retain their separating wall, so a wall-mounted item stays
-	# supported until the player deliberately replaces that wall with a doorway.
+	# Adjacent rooms of different types keep their separating wall, so a
+	# wall-mounted item stays supported until that wall becomes a doorway.
+	# (Two rooms of the same type merge into one, which removes the wall.)
 	builder.zones = [{"kind": "living", "cells": [Vector2i(0, 0)], "cost": 50, "door_direction": Vector2i(0, -1)}]
 	var wall_point := Vector3(0.0, builder.habitat_base_y + 1.5, -1.44)
 	var wall_visual := builder.free_interior_visual("task_light", wall_point, 0.0)
 	assert(builder.place_free_interior_equipment("task_light", wall_point, 0.0, Vector2i.ZERO, wall_visual, Vector3(0, 0, 1)), "Wall mount record should be accepted.")
-	builder.zones.append({"kind": "living", "cells": [Vector2i(0, -1)], "cost": 50, "door_direction": Vector2i(0, -1)})
+	builder.zones.append({"kind": "science", "cells": [Vector2i(0, -1)], "cost": 50, "door_direction": Vector2i(0, -1)})
 	builder._rebuild()
 	assert(builder.placed_interior.size() == 1, "A mounted item must remain when its sealed supporting wall remains.")
 	print("Interior free-placement test passed: separate record, effects, cargo path and sealed wall support.")

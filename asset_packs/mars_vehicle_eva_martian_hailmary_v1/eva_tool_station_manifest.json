@@ -1,0 +1,43 @@
+{
+  "id": "eva_tool_station",
+  "name": "EVA Tool and Dust Service Station",
+  "file": "eva_tool_station.glb",
+  "description": "Secured tools, sample cleaning tray, enclosed supplies and task light",
+  "connected_systems": [
+    "maintenance",
+    "EVA",
+    "samples"
+  ],
+  "classroom_role": "Prepare and clean tools before surface work",
+  "triangle_count": 4928,
+  "mesh_groups": 14,
+  "material_count": 9,
+  "dimensions_xyz_m": [
+    1.43,
+    1.955,
+    0.87
+  ],
+  "bounds_min_m": [
+    -0.715,
+    0.055,
+    -0.435
+  ],
+  "bounds_max_m": [
+    0.715,
+    2.01,
+    0.435
+  ],
+  "interaction_components": [
+    "cabinet_door_left",
+    "cabinet_door_right",
+    "case_lid"
+  ],
+  "baked_text": false,
+  "static_screen_data": false,
+  "active_simulation": false,
+  "placement": "Vehicle Bay / EVA zone; placement and clearance need testing in Godot",
+  "base_footprint_m": [
+    1.5,
+    1.5
+  ]
+}

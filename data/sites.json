@@ -1,5 +1,5 @@
 {
-  "_comment": "Build sites shown on the Site select screen. Each familiar game name is inspired by the named real Martian location in the supplied Ares Transit tool. Values and terrain are simplified for learning, not NASA specifications or a scale map. palette picks the lighting preset in MHGame.PALETTES.",
+  "_comment": "Build sites shown on the Site select screen. Each familiar game name is inspired by the named real Martian location in the supplied Ares Transit tool. Values and terrain are simplified for learning, not NASA specifications or a scale map. palette picks the lighting preset in MHGame.PALETTES. terrain picks the generated map (scripts/site_terrain.gd); sun sets the noon height and the angle hidden by surrounding terrain; site-card badges and meters are computed from these values.",
   "sites": [
     {
       "id": "plains",
@@ -7,14 +7,82 @@
       "based_on": "Elysium Planitia",
       "coordinates": "3.0° N, 154.7° E",
       "terrain_profile": "elysium",
-      "blurb": "Best solar exposure. Flat, open ground.",
+      "blurb": "Wide, level ground and the strongest sun. Water is scarce.",
       "palette": "day",
       "icon": "sun",
-      "telemetry": {"temperature": "−25 °C", "outside_temp_c": -25, "elevation": "−1.5 km", "radiation": "High", "sunlight": "92%"},
-	  "day_cycle": {"daylight_minutes": 15, "night_minutes": 5, "dawn_hour": 4, "sunrise_hour": 5, "sunset_hour": 19, "dusk_hour": 20, "day_temp_c": -25, "night_temp_c": -68},
-      "ice_deposits": [{"x": -30, "z": -18, "radius": 15, "richness": 0.34}, {"x": 24, "z": 16, "radius": 13, "richness": 0.42}],
-      "badges": [["+ Solar", "valid"], ["Easy", "neutral"]],
-      "conditions": [["Solar exposure", 9, "High", "info"], ["Build space", 8, "Wide", "valid"], ["Water access", 3, "Low", "warn"], ["Dust shelter", 3, "Low", "warn"]]
+      "telemetry": {
+        "temperature": "−25 °C",
+        "outside_temp_c": -25,
+        "elevation": "−1.5 km",
+        "radiation": "High"
+      },
+      "day_cycle": {
+        "daylight_minutes": 15,
+        "night_minutes": 5,
+        "dawn_hour": 4,
+        "sunrise_hour": 5,
+        "sunset_hour": 19,
+        "dusk_hour": 20,
+        "day_temp_c": -25,
+        "night_temp_c": -68
+      },
+      "ice_deposits": [
+        {
+          "x": 45,
+          "z": -42,
+          "radius": 13,
+          "richness": 0.32
+        }
+      ],
+      "terrain": {
+        "shape": "plains",
+        "pad_half": 60.0,
+        "ground": "#B0633E",
+        "rock_count": 55,
+        "rock_scale": 0.9,
+        "mesas": [
+          [
+            -120,
+            -70,
+            18,
+            16
+          ],
+          [
+            95,
+            -118,
+            14,
+            22
+          ],
+          [
+            132,
+            58,
+            20,
+            14
+          ],
+          [
+            -62,
+            132,
+            12,
+            18
+          ],
+          [
+            -140,
+            40,
+            16,
+            12
+          ],
+          [
+            40,
+            140,
+            15,
+            20
+          ]
+        ]
+      },
+      "sun": {
+        "noon_altitude": 62,
+        "horizon": 0
+      }
     },
     {
       "id": "ridge",
@@ -22,14 +90,53 @@
       "based_on": "Valles Marineris floor",
       "coordinates": "10.5° S, 68.0° W",
       "terrain_profile": "valles",
-      "blurb": "Tighter terrain — plan corridors carefully.",
+      "blurb": "A long canyon floor between towering cliffs. Shaded mornings, ice at the cliff foot.",
       "palette": "day",
       "icon": "mountain-snow",
-      "telemetry": {"temperature": "−35 °C", "outside_temp_c": -35, "elevation": "−4.8 km", "radiation": "High", "sunlight": "62%"},
-	  "day_cycle": {"daylight_minutes": 14, "night_minutes": 6, "dawn_hour": 4.5, "sunrise_hour": 5.5, "sunset_hour": 18.5, "dusk_hour": 19.5, "day_temp_c": -35, "night_temp_c": -74},
-      "ice_deposits": [{"x": -27, "z": 20, "radius": 16, "richness": 0.48}, {"x": 19, "z": -23, "radius": 12, "richness": 0.31}],
-      "badges": [["Tight space", "warn"]],
-      "conditions": [["Solar exposure", 7, "Good", "info"], ["Build space", 4, "Tight", "warn"], ["Water access", 4, "Fair", "warn"], ["Dust shelter", 7, "Good", "valid"]]
+      "telemetry": {
+        "temperature": "−22 °C",
+        "outside_temp_c": -22,
+        "elevation": "−4.8 km",
+        "radiation": "High"
+      },
+      "day_cycle": {
+        "daylight_minutes": 14,
+        "night_minutes": 6,
+        "dawn_hour": 4.5,
+        "sunrise_hour": 5.5,
+        "sunset_hour": 18.5,
+        "dusk_hour": 19.5,
+        "day_temp_c": -22,
+        "night_temp_c": -62
+      },
+      "ice_deposits": [
+        {
+          "x": -16,
+          "z": 28,
+          "radius": 11,
+          "richness": 0.82
+        },
+        {
+          "x": 16,
+          "z": -34,
+          "radius": 11,
+          "richness": 0.74
+        }
+      ],
+      "build_limit": 60,
+      "terrain": {
+        "shape": "canyon",
+        "pad_half_width": 22.5,
+        "pad_length_half": 60.0,
+        "wall_height": 38.0,
+        "ground": "#A85A3B",
+        "rock_count": 110,
+        "rock_scale": 1.2
+      },
+      "sun": {
+        "noon_altitude": 58,
+        "horizon": 30
+      }
     },
     {
       "id": "crater",
@@ -37,14 +144,60 @@
       "based_on": "Gale Crater lowlands",
       "coordinates": "5.4° S, 137.8° E",
       "terrain_profile": "gale",
-      "blurb": "Sheltered, with a slight solar penalty.",
+      "blurb": "A round crater floor inside a sheltering rim. Mild nights, build around the mound.",
       "palette": "golden",
       "icon": "orbit",
-      "telemetry": {"temperature": "−10 °C", "outside_temp_c": -10, "elevation": "−1.8 km", "radiation": "High", "sunlight": "94%"},
-	  "day_cycle": {"daylight_minutes": 16, "night_minutes": 4, "dawn_hour": 4, "sunrise_hour": 5, "sunset_hour": 19.5, "dusk_hour": 20.5, "day_temp_c": -10, "night_temp_c": -55},
-      "ice_deposits": [{"x": -22, "z": -14, "radius": 15, "richness": 0.52}, {"x": 28, "z": 24, "radius": 16, "richness": 0.36}],
-      "badges": [["Sheltered", "info"], ["− Solar", "warn"]],
-      "conditions": [["Solar exposure", 6, "Fair", "warn"], ["Build space", 7, "Good", "valid"], ["Water access", 4, "Fair", "warn"], ["Dust shelter", 9, "High", "valid"]]
+      "telemetry": {
+        "temperature": "−10 °C",
+        "outside_temp_c": -10,
+        "elevation": "−1.8 km",
+        "radiation": "High"
+      },
+      "day_cycle": {
+        "daylight_minutes": 16,
+        "night_minutes": 4,
+        "dawn_hour": 4,
+        "sunrise_hour": 5,
+        "sunset_hour": 19.5,
+        "dusk_hour": 20.5,
+        "day_temp_c": -10,
+        "night_temp_c": -55
+      },
+      "ice_deposits": [
+        {
+          "x": 24,
+          "z": 20,
+          "radius": 14,
+          "richness": 0.5
+        },
+        {
+          "x": -30,
+          "z": 16,
+          "radius": 11,
+          "richness": 0.42
+        }
+      ],
+      "build_limit": 48,
+      "terrain": {
+        "shape": "crater",
+        "pad_radius": 45.0,
+        "rim_radius": 76.0,
+        "rim_height": 22.0,
+        "mound_centre": [
+          -14.0,
+          -12.0
+        ],
+        "mound_radius": 11.0,
+        "mound_clear": 12.0,
+        "mound_height": 8.0,
+        "ground": "#A05A3A",
+        "rock_count": 80,
+        "rock_scale": 1.0
+      },
+      "sun": {
+        "noon_altitude": 58,
+        "horizon": 20
+      }
     },
     {
       "id": "ice",
@@ -53,14 +206,56 @@
       "coordinates": "44.0° N, 112.0° E",
       "terrain_profile": "utopia",
       "build_limit": 72,
-      "blurb": "A forgiving lowland landing site with shallow subsurface ice.",
+      "blurb": "Frozen polygon ground rich in buried ice. Long, bitter nights cost heating power.",
       "palette": "cold",
       "icon": "droplets",
-      "telemetry": {"temperature": "−45 °C", "outside_temp_c": -45, "elevation": "−4.5 km", "radiation": "High", "sunlight": "68%"},
-	  "day_cycle": {"daylight_minutes": 13, "night_minutes": 7, "dawn_hour": 5, "sunrise_hour": 6, "sunset_hour": 18, "dusk_hour": 19, "day_temp_c": -45, "night_temp_c": -82},
-      "ice_deposits": [{"x": -32, "z": -10, "radius": 23, "richness": 0.92}, {"x": 18, "z": 21, "radius": 24, "richness": 0.82}, {"x": 43, "z": -29, "radius": 18, "richness": 0.66}],
-      "badges": [["Easy landing", "valid"], ["+ Water", "info"]],
-      "conditions": [["Solar exposure", 7, "Good", "info"], ["Build space", 9, "Wide", "valid"], ["Water access", 9, "High", "valid"], ["Dust shelter", 6, "Good", "valid"]]
+      "telemetry": {
+        "temperature": "−45 °C",
+        "outside_temp_c": -45,
+        "elevation": "−4.5 km",
+        "radiation": "High"
+      },
+      "day_cycle": {
+        "daylight_minutes": 13,
+        "night_minutes": 7,
+        "dawn_hour": 5,
+        "sunrise_hour": 6,
+        "sunset_hour": 18,
+        "dusk_hour": 19,
+        "day_temp_c": -45,
+        "night_temp_c": -82
+      },
+      "ice_deposits": [
+        {
+          "x": -32,
+          "z": -10,
+          "radius": 23,
+          "richness": 0.92
+        },
+        {
+          "x": 18,
+          "z": 21,
+          "radius": 24,
+          "richness": 0.82
+        },
+        {
+          "x": 43,
+          "z": -29,
+          "radius": 18,
+          "richness": 0.66
+        }
+      ],
+      "terrain": {
+        "shape": "ice",
+        "pad_half": 70.0,
+        "ground": "#9E7C6A",
+        "rock_count": 35,
+        "rock_scale": 0.8
+      },
+      "sun": {
+        "noon_altitude": 34,
+        "horizon": 0
+      }
     }
   ]
 }

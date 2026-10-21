@@ -26,11 +26,12 @@ func _ready() -> void:
 			_fail("A habitat wall was generated across the airlock inner threshold.")
 			return
 
-	# Separate room placements remain sealed at their shared edge. A deliberate
-	# interior-door placement removes that single shared wall instead.
+	# Separate rooms of different kinds remain sealed at their shared edge (rooms
+	# of the same kind merge into one volume). A deliberate interior-door
+	# placement removes that single shared wall instead.
 	builder.zones.append(_zone("science", [Vector2i(3, 0), Vector2i(3, 1)]))
 	builder._rebuild()
-	builder.zones.append(_zone("science", [Vector2i(3, 2)]))
+	builder.zones.append(_zone("storage", [Vector2i(3, 2)]))
 	assert(builder._should_build_wall(Vector2i(3, 1), Vector2i(0, 1)), "Adjacent room volumes must remain sealed until a door is placed.")
 	assert(builder._should_build_wall(Vector2i(3, 2), Vector2i(1, 0)), "An exposed zone edge must remain sealed by a hull wall.")
 	assert(builder.place_interior_door(Vector2i(3, 1), Vector2i(0, 1)), "A shared wall should accept an explicit interior door.")
@@ -57,13 +58,15 @@ func _ready() -> void:
 			bay_hatch = true
 	assert(bay_hatch, "A vehicle bay interior door must create the bay personnel hatch, not leave a wall behind.")
 
-	# Pylon-style sources use their radius, not a cable or nearest wall point.
+	# Pylon-style sources use their radius, measured to the nearest habitat cell
+	# (here the storage room at cell (3, 2)), not a cable.
+	builder.zones = [_zone("science", [Vector2i(3, 0), Vector2i(3, 1)]), _zone("storage", [Vector2i(3, 2)])]
 	builder.kind = "solar"
 	assert(builder._valid_power_source([Vector2i(13, 2)]), "Solar field should reach a habitat 30 m away.")
-	assert(not builder._valid_power_source([Vector2i(14, 2)]), "Solar field must stop beyond 30 m.")
+	assert(builder._valid_power_source([Vector2i(14, 2)]), "Power is cabled: a solar array connects at any distance.")
 	builder.kind = "reactor"
 	assert(builder._valid_power_source([Vector2i(17, 2)]), "Reactor field should reach a habitat 42 m away.")
-	assert(not builder._valid_power_source([Vector2i(18, 2)]), "Reactor field must stop beyond 42 m.")
+	assert(builder._valid_power_source([Vector2i(30, 2)]), "Power is cabled: a reactor connects at any distance.")
 
 	print("Habitat build integration test passed: airlocks, sealed rooms, interior doors and power fields.")
 	get_tree().quit(0)

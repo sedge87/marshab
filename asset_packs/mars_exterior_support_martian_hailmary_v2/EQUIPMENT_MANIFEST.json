@@ -1,0 +1,383 @@
+{
+  "model_count": 8,
+  "triangle_total": 10572,
+  "recommended_use": "Outdoor only; free placement on valid terrain; actual gameplay integration via original catalog",
+  "assets": [
+    {
+      "id": "exterior_comms_mast",
+      "triangles": 4456,
+      "mesh_groups": 29,
+      "materials": 11,
+      "dimensions_xyz_m": [
+        1.844,
+        4.741,
+        1.802
+      ],
+      "bounds_m": [
+        [
+          -0.817,
+          0.009,
+          -1.041
+        ],
+        [
+          1.028,
+          4.75,
+          0.761
+        ]
+      ],
+      "named_components": [
+        "antenna_cable",
+        "antenna_whip",
+        "base_socket",
+        "central_foot",
+        "dish_brackets",
+        "dish_reflector",
+        "dish_rim",
+        "dish_yoke",
+        "electronic_seal",
+        "mast_clamps",
+        "mast_collars",
+        "mast_electronics",
+        "power_cable",
+        "receiver_feed",
+        "receiver_struts",
+        "side_panel_mounts",
+        "side_panel_ribs",
+        "side_survey_panels",
+        "signal_port",
+        "telescopic_inner",
+        "telescopic_main",
+        "top_beacon",
+        "tripod_braces",
+        "tripod_foot",
+        "tripod_foot_clamp",
+        "tripod_struts"
+      ],
+      "file": "exterior_comms_mast.glb",
+      "display_name": "Communications Mast",
+      "suggested_interaction": "Support rover data and mission communications; inspect alignment.",
+      "description": "Tripod-supported mast with directional dish and antenna modules. Free ground placement; avoid steep slopes.",
+      "placement": "free_outdoor_ground",
+      "status": "GLB export checked, Godot integration not yet run"
+    },
+    {
+      "id": "exterior_workbench",
+      "triangles": 1800,
+      "mesh_groups": 35,
+      "materials": 11,
+      "dimensions_xyz_m": [
+        1.8,
+        1.821,
+        0.91
+      ],
+      "bounds_m": [
+        [
+          -0.9,
+          0.011,
+          -0.45
+        ],
+        [
+          0.9,
+          1.832,
+          0.46
+        ]
+      ],
+      "named_components": [
+        "bench_frame",
+        "corner_braces",
+        "drawer_front",
+        "drawer_handle",
+        "drawer_rail",
+        "hanging_tool_grip",
+        "hanging_tool_shaft",
+        "lower_shelf",
+        "mount_bolts",
+        "power_cable",
+        "power_indicator",
+        "power_switch",
+        "rubber_foot",
+        "service_crate",
+        "service_crate_lid",
+        "service_power_box",
+        "service_power_panel",
+        "splash_plate",
+        "storage_cabinet",
+        "tool_head",
+        "tool_hooks",
+        "tool_mount_rail",
+        "vise_base",
+        "vise_handle",
+        "vise_jaw",
+        "vise_screw",
+        "weather_lip",
+        "weather_shelter",
+        "weather_support",
+        "worktop_core",
+        "worktop_surface",
+        "worktop_trim",
+        "wrench_head"
+      ],
+      "file": "exterior_workbench.glb",
+      "display_name": "Outdoor Workbench",
+      "suggested_interaction": "Inspect supplies or prepare for equipment repairs.",
+      "description": "Outdoor maintenance surface with mounted tools and drawers. Free ground placement.",
+      "placement": "free_outdoor_ground",
+      "status": "GLB export checked, Godot integration not yet run"
+    },
+    {
+      "id": "exterior_cargo_pallet",
+      "triangles": 1388,
+      "mesh_groups": 14,
+      "materials": 8,
+      "dimensions_xyz_m": [
+        1.742,
+        1.1,
+        1.34
+      ],
+      "bounds_m": [
+        [
+          -0.871,
+          0.015,
+          -0.65
+        ],
+        [
+          0.871,
+          1.115,
+          0.69
+        ]
+      ],
+      "named_components": [
+        "cargo_case_body",
+        "cargo_case_frame",
+        "cargo_case_gasket",
+        "cargo_case_latch",
+        "cargo_case_lid",
+        "deck_slats",
+        "forklift_skids",
+        "pallet_straps",
+        "ratchet_housing",
+        "ratchet_lever",
+        "rim_rails",
+        "skid_wear_strips",
+        "tie_down_anchors",
+        "tie_down_loops"
+      ],
+      "file": "exterior_cargo_pallet.glb",
+      "display_name": "Loaded Cargo Pallet",
+      "suggested_interaction": "Inspect secured cargo for resupply.",
+      "description": "Raised skid pallet and four secured containers with fitted straps. Free ground placement.",
+      "placement": "free_outdoor_ground",
+      "status": "GLB export checked, Godot integration not yet run"
+    },
+    {
+      "id": "exterior_cargo_crate_large",
+      "triangles": 480,
+      "mesh_groups": 14,
+      "materials": 8,
+      "dimensions_xyz_m": [
+        1.005,
+        0.658,
+        0.842
+      ],
+      "bounds_m": [
+        [
+          -0.502,
+          0.007,
+          -0.431
+        ],
+        [
+          0.502,
+          0.665,
+          0.411
+        ]
+      ],
+      "named_components": [
+        "blank_identification_holder",
+        "blank_identification_insert",
+        "case_inner",
+        "case_shell",
+        "case_struts",
+        "lid_gasket",
+        "lid_latches",
+        "liftable_handles",
+        "rear_hinge",
+        "stacking_feet",
+        "upper_lid",
+        "vertical_frame"
+      ],
+      "file": "exterior_cargo_crate_large.glb",
+      "display_name": "Large Cargo Crate",
+      "suggested_interaction": "Open storage or collect supplies.",
+      "description": "Large white sealed case. Can be placed independently; stack effects should be handled by placement logic.",
+      "placement": "free_outdoor_ground",
+      "status": "GLB export checked, Godot integration not yet run"
+    },
+    {
+      "id": "exterior_cargo_crate_small",
+      "triangles": 480,
+      "mesh_groups": 14,
+      "materials": 8,
+      "dimensions_xyz_m": [
+        0.654,
+        0.407,
+        0.592
+      ],
+      "bounds_m": [
+        [
+          -0.327,
+          0.007,
+          -0.306
+        ],
+        [
+          0.327,
+          0.415,
+          0.286
+        ]
+      ],
+      "named_components": [
+        "blank_identification_holder",
+        "blank_identification_insert",
+        "case_inner",
+        "case_shell",
+        "case_struts",
+        "lid_gasket",
+        "lid_latches",
+        "liftable_handles",
+        "rear_hinge",
+        "stacking_feet",
+        "upper_lid",
+        "vertical_frame"
+      ],
+      "file": "exterior_cargo_crate_small.glb",
+      "display_name": "Small Cargo Crate",
+      "suggested_interaction": "Open storage or collect supplies.",
+      "description": "Small sealed case, optimised for multiple placements.",
+      "placement": "free_outdoor_ground",
+      "status": "GLB export checked, Godot integration not yet run"
+    },
+    {
+      "id": "exterior_safety_barrier",
+      "triangles": 712,
+      "mesh_groups": 11,
+      "materials": 7,
+      "dimensions_xyz_m": [
+        1.78,
+        1.104,
+        0.46
+      ],
+      "bounds_m": [
+        [
+          -0.89,
+          0.024,
+          -0.23
+        ],
+        [
+          0.89,
+          1.128,
+          0.23
+        ]
+      ],
+      "named_components": [
+        "barrier_light_diffuser",
+        "barrier_light_socket",
+        "cross_rails",
+        "foot_collar",
+        "mount_bolts",
+        "panel_frame",
+        "panel_insert",
+        "posts",
+        "reflective_segments",
+        "support_braces",
+        "weighted_feet"
+      ],
+      "file": "exterior_safety_barrier.glb",
+      "display_name": "Safety Barrier",
+      "suggested_interaction": "Mark an EVA worksite or hazard.",
+      "description": "Freestanding reflective barricade; no automatic wall grid snapping.",
+      "placement": "free_outdoor_ground",
+      "status": "GLB export checked, Godot integration not yet run"
+    },
+    {
+      "id": "exterior_hazard_bollard",
+      "triangles": 736,
+      "mesh_groups": 8,
+      "materials": 6,
+      "dimensions_xyz_m": [
+        0.35,
+        1.028,
+        0.35
+      ],
+      "bounds_m": [
+        [
+          -0.175,
+          0.01,
+          -0.175
+        ],
+        [
+          0.175,
+          1.038,
+          0.175
+        ]
+      ],
+      "named_components": [
+        "anchored_base",
+        "base_plate",
+        "bollard_post",
+        "mount_bolts",
+        "top_guard",
+        "top_light_diffuser",
+        "top_light_socket",
+        "visibility_band"
+      ],
+      "file": "exterior_hazard_bollard.glb",
+      "display_name": "Hazard Bollard",
+      "suggested_interaction": "Mark a route or worksite boundary.",
+      "description": "Compact high-visibility freestanding marker.",
+      "placement": "free_outdoor_ground",
+      "status": "GLB export checked, Godot integration not yet run"
+    },
+    {
+      "id": "exterior_path_beacon",
+      "triangles": 520,
+      "mesh_groups": 12,
+      "materials": 8,
+      "dimensions_xyz_m": [
+        0.37,
+        1.129,
+        0.37
+      ],
+      "bounds_m": [
+        [
+          -0.185,
+          0.008,
+          -0.185
+        ],
+        [
+          0.185,
+          1.137,
+          0.185
+        ]
+      ],
+      "named_components": [
+        "beacon_cap",
+        "beacon_lamp_body",
+        "beacon_lamp_protective_cage",
+        "beacon_light_diffuser",
+        "beacon_lower_collars",
+        "beacon_mast",
+        "beacon_solar_tile",
+        "beacon_upper_collars",
+        "ground_foot",
+        "metal_base",
+        "mount_bolts",
+        "solar_cell_seams"
+      ],
+      "file": "exterior_path_beacon.glb",
+      "display_name": "Path Beacon",
+      "suggested_interaction": "Toggle its small night guidance light.",
+      "description": "Low-energy illuminated route marker; turn off distant lights to save performance.",
+      "placement": "free_outdoor_ground",
+      "status": "GLB export checked, Godot integration not yet run"
+    }
+  ]
+}

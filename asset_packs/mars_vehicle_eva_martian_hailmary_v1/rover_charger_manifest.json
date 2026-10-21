@@ -1,0 +1,41 @@
+{
+  "id": "rover_charger",
+  "name": "Rover Charging Station",
+  "file": "rover_charger.glb",
+  "description": "Charging cabinet with cable reel, detachable plug, status indicators and service compartment",
+  "connected_systems": [
+    "power",
+    "rover"
+  ],
+  "classroom_role": "Connect charging plug to prepare a rover",
+  "triangle_count": 5072,
+  "mesh_groups": 15,
+  "material_count": 11,
+  "dimensions_xyz_m": [
+    1.42,
+    1.397,
+    1.273
+  ],
+  "bounds_min_m": [
+    -0.71,
+    0.007,
+    -0.778
+  ],
+  "bounds_max_m": [
+    0.71,
+    1.405,
+    0.495
+  ],
+  "interaction_components": [
+    "charging_plug",
+    "service_hatch"
+  ],
+  "baked_text": false,
+  "static_screen_data": false,
+  "active_simulation": false,
+  "placement": "Vehicle Bay / EVA zone; placement and clearance need testing in Godot",
+  "base_footprint_m": [
+    1.5,
+    1.5
+  ]
+}

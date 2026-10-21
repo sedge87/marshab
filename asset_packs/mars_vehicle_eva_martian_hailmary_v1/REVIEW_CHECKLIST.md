@@ -1,0 +1,9 @@
+- [ ] Models import at metre scale with correct +Y orientation
+- [ ] No floating attachments; check suits in particular
+- [ ] Clearance for avatar movement and future rover approach
+- [ ] Supports and legs touch floor; simple collisions
+- [ ] Physical light/plug controls identifiable
+- [ ] No mirrored labels/static screens
+- [ ] Resource hooks retain existing gameplay effects
+- [ ] Placement and save/load tested in actual habitat
+- [ ] Performance profiled in populated room

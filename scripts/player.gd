@@ -26,15 +26,21 @@ func _ready() -> void:
 	set_flashlight_enabled(false)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
-		if not _use_looked_at_interactable("interact") and not _use_nearby_habitat_ladder():
+	# Build modes reuse E (orbit) and other keys; explore actions must not fire
+	# behind the build camera, so only mouse-look below is shared.
+	var exploring := not _any_build_mode_active()
+	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		if not _use_looked_at_interactable("interact"):
 			_toggle_nearby_airlock_door()
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
+	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
 		# Focused equipment retains its contextual secondary action (such as a
 		# bunk reading light); otherwise F always operates the suit flashlight.
 		if not _use_looked_at_interactable("interact_secondary"):
 			set_flashlight_enabled(not _flashlight_enabled)
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G:
+	# I: the looked-at item's info card (what it does in the habitat).
+	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:
+		_use_looked_at_interactable("interact_info")
+	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G:
 		_use_looked_at_interactable("interact_tertiary")
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
@@ -55,6 +61,9 @@ func _physics_process(delta: float) -> void:
 	# player cell represented by the build-mode marker.
 	if bool(get_meta("build_mode_active", false)):
 		velocity = Vector3.ZERO
+		return
+	if bool(get_meta("debug_fly", false)):
+		_debug_fly(delta)
 		return
 	var grounded := is_on_floor()
 	var jump_pressed := Input.is_action_pressed("jump") or Input.is_key_pressed(KEY_SPACE)
@@ -81,6 +90,25 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor() and global_position.y > -10.0:
 		safe_position = global_position
 	_footsteps(speed, delta)
+
+# Debug fly / noclip: move where the camera looks, Space up, Ctrl down,
+# Shift fast; collisions off so walls and terrain are no obstacle.
+func _debug_fly(_delta: float) -> void:
+	var camera_basis := (get_node("Head/Camera3D") as Camera3D).global_transform.basis
+	var input := Vector3(
+		_axis_pressed("move_right", KEY_D) - _axis_pressed("move_left", KEY_A),
+		(1.0 if Input.is_key_pressed(KEY_SPACE) else 0.0) - (1.0 if Input.is_key_pressed(KEY_CTRL) else 0.0),
+		_axis_pressed("move_back", KEY_S) - _axis_pressed("move_forward", KEY_W))
+	var direction := camera_basis.x * input.x + Vector3.UP * input.y + camera_basis.z * input.z
+	velocity = direction.normalized() * (40.0 if Input.is_key_pressed(KEY_SHIFT) else 12.0) if direction.length() > .01 else Vector3.ZERO
+	move_and_slide()
+	safe_position = global_position
+
+## Debug: switch fly/noclip on or off.
+func set_debug_fly(enabled: bool) -> void:
+	set_meta("debug_fly", enabled)
+	collision_mask = 0 if enabled else 1
+	velocity = Vector3.ZERO
 
 # Suit footsteps: regolith crunch outside, deck plate inside the habitat.
 func _footsteps(speed: float, delta: float) -> void:
@@ -130,21 +158,11 @@ func _toggle_nearby_airlock_door() -> void:
 	if nearest != null:
 		nearest.toggle()
 
-func _use_nearby_habitat_ladder() -> bool:
-	var nearest: Node3D
-	var nearest_distance := 2.2
-	for candidate in get_tree().get_nodes_in_group("habitat_ladder"):
-		var ladder := candidate as Node3D
-		if ladder != null and global_position.distance_to(ladder.global_position) < nearest_distance:
-			nearest = ladder
-			nearest_distance = global_position.distance_to(ladder.global_position)
-	if nearest != null:
-		nearest.use(self)
-		return true
-	return false
+func _any_build_mode_active() -> bool:
+	return bool(get_meta("build_mode_active", false)) or bool(get_meta("interior_build_active", false)) or bool(get_meta("surface_build_active", false))
 
 func _use_looked_at_interactable(method_name: String) -> bool:
-	if bool(get_meta("build_mode_active", false)) or bool(get_meta("interior_build_active", false)) or bool(get_meta("surface_build_active", false)):
+	if _any_build_mode_active():
 		return false
 	var camera := get_node_or_null("Head/Camera3D") as Camera3D
 	if camera == null or not camera.is_inside_tree():

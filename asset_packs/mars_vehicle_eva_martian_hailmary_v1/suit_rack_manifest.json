@@ -1,0 +1,41 @@
+{
+  "id": "suit_rack",
+  "name": "Dual EVA Suit Service Rack",
+  "file": "suit_rack.glb",
+  "description": "Two secured suit docks with service umbilicals, boots, helmets and storage restraints",
+  "connected_systems": [
+    "power",
+    "EVA"
+  ],
+  "classroom_role": "Inspect and prepare the EVA suits",
+  "triangle_count": 7792,
+  "mesh_groups": 23,
+  "material_count": 12,
+  "dimensions_xyz_m": [
+    1.43,
+    2.01,
+    0.985
+  ],
+  "bounds_min_m": [
+    -0.715,
+    0.04,
+    -0.5
+  ],
+  "bounds_max_m": [
+    0.715,
+    2.05,
+    0.485
+  ],
+  "interaction_components": [
+    "suit_1_service",
+    "suit_2_service"
+  ],
+  "baked_text": false,
+  "static_screen_data": false,
+  "active_simulation": false,
+  "placement": "Vehicle Bay / EVA zone; placement and clearance need testing in Godot",
+  "base_footprint_m": [
+    1.5,
+    1.5
+  ]
+}

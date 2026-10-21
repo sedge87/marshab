@@ -1,0 +1,11 @@
+# Exterior Part 1 — Godot acceptance checklist
+- [ ] Models face the right direction and their feet sit on terrain at 1:1 scale
+- [ ] Drill auger, tank, pump and hoses look attached from all sides
+- [ ] Reactor radiators and front service hatch do not clip / float
+- [ ] No backward text, static screens or missing materials
+- [ ] Outdoor lights are correctly aimed, cheap and toggle on/off
+- [ ] Reactor and drill preserve existing water/power gameplay after replacement
+- [ ] All five objects free-place, rotate and save/reload
+- [ ] Props do not obstruct walking/rover driving in unintended ways
+- [ ] Old functional scenes are backed up before integration
+- [ ] Classroom target hardware has acceptable frame rate with multiple instances

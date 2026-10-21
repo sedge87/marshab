@@ -1,0 +1,12 @@
+2026-10-19 22:05:34.128 (   0.445s) [    7F6CBB38C780]vtkXOpenGLRenderWindow.:1460  WARN| bad X server connection. DISPLAY=:0
+/mnt/data/Mars_Vehicle_EVA_Martian_HailMary_v1/source/render_models.py:25: DeprecationWarning: Call to deprecated method SetCells. (Use ImportLegacyFormat or SetData instead.) -- Deprecated since version 9.6.0.
+  vtk_cells=vtk.vtkCellArray(); vtk_cells.SetCells(len(mesh.faces),numpy_to_vtkIdTypeArray(f,deep=True));poly.SetPolys(vtk_cells)
+Rendered /mnt/data/Mars_Vehicle_EVA_Martian_HailMary_v1/previews/suit_rack_main.png 195036
+Rendered /mnt/data/Mars_Vehicle_EVA_Martian_HailMary_v1/previews/suit_rack_front.png 198989
+Rendered /mnt/data/Mars_Vehicle_EVA_Martian_HailMary_v1/previews/suit_rack_right.png 206993
+Rendered /mnt/data/Mars_Vehicle_EVA_Martian_HailMary_v1/previews/rover_charger_main.png 165654
+Rendered /mnt/data/Mars_Vehicle_EVA_Martian_HailMary_v1/previews/rover_charger_front.png 166457
+Rendered /mnt/data/Mars_Vehicle_EVA_Martian_HailMary_v1/previews/rover_charger_right.png 176888
+Rendered /mnt/data/Mars_Vehicle_EVA_Martian_HailMary_v1/previews/eva_tool_station_main.png 190923
+Rendered /mnt/data/Mars_Vehicle_EVA_Martian_HailMary_v1/previews/eva_tool_station_front.png 172671
+Rendered /mnt/data/Mars_Vehicle_EVA_Martian_HailMary_v1/previews/eva_tool_station_right.png 199378

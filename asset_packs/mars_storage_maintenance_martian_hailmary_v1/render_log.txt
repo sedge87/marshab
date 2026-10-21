@@ -1,0 +1,9 @@
+2026-10-19 21:44:37.544 (   0.441s) [    7FA100483780]vtkXOpenGLRenderWindow.:1460  WARN| bad X server connection. DISPLAY=:0
+/mnt/data/Mars_Storage_Maintenance_Martian_HailMary_v1/source/render_models.py:25: DeprecationWarning: Call to deprecated method SetCells. (Use ImportLegacyFormat or SetData instead.) -- Deprecated since version 9.6.0.
+  vtk_cells=vtk.vtkCellArray(); vtk_cells.SetCells(len(mesh.faces),numpy_to_vtkIdTypeArray(f,deep=True));poly.SetPolys(vtk_cells)
+Rendered /mnt/data/Mars_Storage_Maintenance_Martian_HailMary_v1/previews/tool_bench_main.png 258774
+Rendered /mnt/data/Mars_Storage_Maintenance_Martian_HailMary_v1/previews/tool_bench_front.png 230659
+Rendered /mnt/data/Mars_Storage_Maintenance_Martian_HailMary_v1/previews/tool_bench_right.png 269133
+Rendered /mnt/data/Mars_Storage_Maintenance_Martian_HailMary_v1/previews/cargo_rack_main.png 270756
+Rendered /mnt/data/Mars_Storage_Maintenance_Martian_HailMary_v1/previews/cargo_rack_front.png 235635
+Rendered /mnt/data/Mars_Storage_Maintenance_Martian_HailMary_v1/previews/cargo_rack_right.png 287316

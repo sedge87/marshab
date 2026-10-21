@@ -1,0 +1,98 @@
+{
+  "room": "Storage & Maintenance",
+  "style": "The Martian + Project Hail Mary inspired; original design",
+  "state": "modelled, actual-game integration pending",
+  "models": [
+    {
+      "id": "tool_bench",
+      "name": "Maintenance Tool Bench",
+      "file": "tool_bench.glb",
+      "description": "Rugged service bench with anchored hand tools, vice, slide-out spares tray and cupboards.",
+      "connected_systems": [
+        "Maintenance",
+        "Spare parts",
+        "Habitat equipment repairs"
+      ],
+      "classroom_role": "Open a tool cupboard, retrieve spares and use the vise to service equipment.",
+      "triangle_count": 14968,
+      "mesh_groups": 27,
+      "material_count": 11,
+      "dimensions_xyz_m": [
+        1.48,
+        2.068,
+        0.887
+      ],
+      "bounds_min_m": [
+        -0.74,
+        0.002,
+        -0.467
+      ],
+      "bounds_max_m": [
+        0.74,
+        2.07,
+        0.42
+      ],
+      "interaction_components": [
+        "Bench_Light_Switch",
+        "Spares_Tray",
+        "Tool_Cupboard_Left",
+        "Tool_Cupboard_Right",
+        "Vise_Moving_Jaw"
+      ],
+      "baked_text": false,
+      "static_screen_data": false,
+      "active_simulation": false,
+      "placement": "free within permitted Storage & Maintenance zone; actual clearance must be tested in Godot",
+      "base_footprint_m": [
+        1.5,
+        1.5
+      ]
+    },
+    {
+      "id": "cargo_rack",
+      "name": "Secured Cargo Rack",
+      "file": "cargo_rack.glb",
+      "description": "Three levels of strapped, removable cargo cases with reinforced frame and locking retainer.",
+      "connected_systems": [
+        "Storage logistics",
+        "Maintenance spares",
+        "Mission resupply"
+      ],
+      "classroom_role": "Release cargo restraint and retrieve a stored case for repairs or mission preparation.",
+      "triangle_count": 16928,
+      "mesh_groups": 40,
+      "material_count": 9,
+      "dimensions_xyz_m": [
+        1.462,
+        2.097,
+        0.956
+      ],
+      "bounds_min_m": [
+        -0.731,
+        0.001,
+        -0.508
+      ],
+      "bounds_max_m": [
+        0.731,
+        2.098,
+        0.449
+      ],
+      "interaction_components": [
+        "Cargo_Case_Lower_Left",
+        "Cargo_Case_Lower_Right",
+        "Cargo_Retainer_Bar",
+        "Supply_Case_Upper_Left",
+        "Supply_Case_Upper_Right",
+        "Supply_Container_Middle"
+      ],
+      "baked_text": false,
+      "static_screen_data": false,
+      "active_simulation": false,
+      "placement": "free within permitted Storage & Maintenance zone; actual clearance must be tested in Godot",
+      "base_footprint_m": [
+        1.5,
+        1.5
+      ]
+    }
+  ]
+}

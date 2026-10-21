@@ -4,7 +4,7 @@ func _wait_frames(count: int) -> void:
 	for frame in range(count):
 		await process_frame
 
-func _init() -> void:
+func _initialize() -> void:
 	var room := Node3D.new()
 	get_root().add_child(room)
 	var hangar := AirlockDoor.new()
@@ -19,6 +19,8 @@ func _init() -> void:
 	for bay_door in [bay_door_a,bay_door_b]:
 		hangar.add_partner(bay_door)
 		bay_door.add_partner(hangar)
+	# Doors look each other up through the scene tree, which they join a frame later.
+	await process_frame
 	bay_door_a.toggle()
 	assert(bay_door_a._target_amount > .9, "A closed hangar allows an internal bay door to open.")
 	hangar.toggle()

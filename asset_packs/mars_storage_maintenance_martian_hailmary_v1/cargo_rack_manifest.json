@@ -1,0 +1,46 @@
+{
+  "id": "cargo_rack",
+  "name": "Secured Cargo Rack",
+  "file": "cargo_rack.glb",
+  "description": "Three levels of strapped, removable cargo cases with reinforced frame and locking retainer.",
+  "connected_systems": [
+    "Storage logistics",
+    "Maintenance spares",
+    "Mission resupply"
+  ],
+  "classroom_role": "Release cargo restraint and retrieve a stored case for repairs or mission preparation.",
+  "triangle_count": 16928,
+  "mesh_groups": 40,
+  "material_count": 9,
+  "dimensions_xyz_m": [
+    1.462,
+    2.097,
+    0.956
+  ],
+  "bounds_min_m": [
+    -0.731,
+    0.001,
+    -0.508
+  ],
+  "bounds_max_m": [
+    0.731,
+    2.098,
+    0.449
+  ],
+  "interaction_components": [
+    "Cargo_Case_Lower_Left",
+    "Cargo_Case_Lower_Right",
+    "Cargo_Retainer_Bar",
+    "Supply_Case_Upper_Left",
+    "Supply_Case_Upper_Right",
+    "Supply_Container_Middle"
+  ],
+  "baked_text": false,
+  "static_screen_data": false,
+  "active_simulation": false,
+  "placement": "free within permitted Storage & Maintenance zone; actual clearance must be tested in Godot",
+  "base_footprint_m": [
+    1.5,
+    1.5
+  ]
+}

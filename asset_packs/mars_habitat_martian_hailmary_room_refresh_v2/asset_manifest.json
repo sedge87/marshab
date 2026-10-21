@@ -1,0 +1,227 @@
+[
+  {
+    "id": "grow_tray",
+    "room": "hydroponics",
+    "glb": "hydroponics/models/grow_tray_martian_hailmary.glb",
+    "original_source": "/mnt/data/Mars_Habitat_Martian_HailMary_Style_Reference/models/grow_tray_martian_hailmary_v1.glb",
+    "triangles": 24736,
+    "mesh_groups": 38,
+    "materials": 16,
+    "bounds_m": [
+      [
+        -0.7305,
+        0.007,
+        -0.426
+      ],
+      [
+        0.738,
+        2.073,
+        0.426
+      ]
+    ],
+    "restyle": "Previously approved style-reference model; copied without geometry/material changes",
+    "preserved_geometry_and_nodes": true,
+    "working_in_game": false,
+    "preview": "hydroponics/previews/grow_tray.png"
+  },
+  {
+    "id": "seedling_station",
+    "room": "hydroponics",
+    "glb": "hydroponics/models/seedling_station_martian_hailmary.glb",
+    "original_source": "/mnt/data/Mars_Hydroponics_Seedling_Station_Retro_v3/models/seedling_station_retro_v3.glb",
+    "triangles": 12700,
+    "mesh_groups": 37,
+    "materials": 18,
+    "bounds_m": [
+      [
+        -0.6725,
+        0.0025,
+        -0.488
+      ],
+      [
+        0.898,
+        1.809,
+        0.3895
+      ]
+    ],
+    "restyle": "Material-only restyle of approved detailed mesh; original geometry unchanged",
+    "preserved_geometry_and_nodes": true,
+    "working_in_game": false,
+    "preview": "hydroponics/previews/seedling_station.png"
+  },
+  {
+    "id": "nutrient_mixer",
+    "room": "hydroponics",
+    "glb": "hydroponics/models/nutrient_mixer_martian_hailmary.glb",
+    "original_source": "/mnt/data/Mars_Hydroponics_Nutrient_Mixer_Retro_v4/models/nutrient_mixer_retro_v4.glb",
+    "triangles": 26436,
+    "mesh_groups": 38,
+    "materials": 14,
+    "bounds_m": [
+      [
+        -0.7545,
+        0.0055,
+        -0.491
+      ],
+      [
+        0.765,
+        1.751,
+        0.4265
+      ]
+    ],
+    "restyle": "Material-only restyle of approved detailed mesh; original geometry unchanged",
+    "preserved_geometry_and_nodes": true,
+    "working_in_game": false,
+    "preview": "hydroponics/previews/nutrient_mixer.png"
+  },
+  {
+    "id": "harvest_cart",
+    "room": "hydroponics",
+    "glb": "hydroponics/models/harvest_cart_martian_hailmary.glb",
+    "original_source": "/mnt/data/Mars_Hydroponics_Harvest_Cart_Retro_v5/models/harvest_cart_retro_v5.glb",
+    "triangles": 19280,
+    "mesh_groups": 62,
+    "materials": 12,
+    "bounds_m": [
+      [
+        -0.708,
+        0.01,
+        -0.406
+      ],
+      [
+        0.708,
+        1.684,
+        0.497
+      ]
+    ],
+    "restyle": "Material-only restyle of approved detailed mesh; original geometry unchanged",
+    "preserved_geometry_and_nodes": true,
+    "working_in_game": false,
+    "preview": "hydroponics/previews/harvest_cart.png"
+  },
+  {
+    "id": "large_planter",
+    "room": "hydroponics",
+    "glb": "hydroponics/models/large_planter_martian_hailmary.glb",
+    "original_source": "/mnt/data/Mars_Hydroponics_Large_Planter_Retro_v6/models/large_planter_retro_v6.glb",
+    "triangles": 31040,
+    "mesh_groups": 37,
+    "materials": 20,
+    "bounds_m": [
+      [
+        -1.093,
+        0.001,
+        -0.6885
+      ],
+      [
+        1.13,
+        1.641,
+        0.541
+      ]
+    ],
+    "restyle": "Material-only restyle of approved detailed mesh; original geometry unchanged",
+    "preserved_geometry_and_nodes": true,
+    "working_in_game": false,
+    "preview": "hydroponics/previews/large_planter.png"
+  },
+  {
+    "id": "air_recycler",
+    "room": "life_support",
+    "glb": "life_support/models/air_recycler_martian_hailmary.glb",
+    "original_source": "/mnt/data/Mars_Habitat_Martian_HailMary_Style_Reference/models/air_recycler_martian_hailmary_v1.glb",
+    "triangles": 24296,
+    "mesh_groups": 48,
+    "materials": 17,
+    "bounds_m": [
+      [
+        -0.7258,
+        0.0031,
+        -0.5444
+      ],
+      [
+        0.7527,
+        1.894,
+        0.353
+      ]
+    ],
+    "restyle": "Previously approved style-reference model; copied without geometry/material changes",
+    "preserved_geometry_and_nodes": true,
+    "working_in_game": false,
+    "preview": "life_support/previews/air_recycler.png"
+  },
+  {
+    "id": "water_reclaimer",
+    "room": "life_support",
+    "glb": "life_support/models/water_reclaimer_martian_hailmary.glb",
+    "original_source": "/mnt/data/Mars_Life_Support_Water_Reclaimer_Retro_v2/models/water_reclaimer_retro_v2.glb",
+    "triangles": 7952,
+    "mesh_groups": 33,
+    "materials": 12,
+    "bounds_m": [
+      [
+        -0.69,
+        0.0,
+        -0.75
+      ],
+      [
+        0.725,
+        1.875,
+        0.557
+      ]
+    ],
+    "restyle": "Material-only restyle of approved detailed mesh; original geometry unchanged",
+    "preserved_geometry_and_nodes": true,
+    "working_in_game": false,
+    "preview": "life_support/previews/water_reclaimer.png"
+  },
+  {
+    "id": "thermal_control_unit",
+    "room": "life_support",
+    "glb": "life_support/models/thermal_control_unit_martian_hailmary.glb",
+    "original_source": "/mnt/data/Mars_Life_Support_Thermal_Control_Retro_v3/models/thermal_control_unit_retro_v3.glb",
+    "triangles": 9104,
+    "mesh_groups": 25,
+    "materials": 13,
+    "bounds_m": [
+      [
+        -0.7239,
+        0.0,
+        -0.687
+      ],
+      [
+        0.764,
+        1.9015,
+        0.526
+      ]
+    ],
+    "restyle": "Material-only restyle of approved detailed mesh; original geometry unchanged",
+    "preserved_geometry_and_nodes": true,
+    "working_in_game": false,
+    "preview": "life_support/previews/thermal_control_unit.png"
+  },
+  {
+    "id": "oxygen_reserve",
+    "room": "life_support",
+    "glb": "life_support/models/oxygen_reserve_martian_hailmary.glb",
+    "original_source": "/mnt/data/Mars_Life_Support_Oxygen_Reserve_Retro_v4/models/oxygen_reserve_retro_v4.glb",
+    "triangles": 11628,
+    "mesh_groups": 37,
+    "materials": 11,
+    "bounds_m": [
+      [
+        -0.7335,
+        0.0,
+        -0.564
+      ],
+      [
+        0.715,
+        1.8655,
+        0.44
+      ]
+    ],
+    "restyle": "Material-only restyle of approved detailed mesh; original geometry unchanged",
+    "preserved_geometry_and_nodes": true,
+    "working_in_game": false,
+    "preview": "life_support/previews/oxygen_reserve.png"
+  }
+]

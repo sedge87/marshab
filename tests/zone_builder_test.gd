@@ -1,8 +1,15 @@
 extends SceneTree
 
 # Run with: godot --headless --path . --script res://tests/zone_builder_test.gd
-func _init() -> void:
+func _initialize() -> void:
+	# The builder reads its world from its parent and the scene tree, so give it
+	# one and let a frame pass before checking (Godot 4.7 joins nodes a frame later).
+	var world := Node3D.new()
+	root.add_child(world)
 	var builder := BuildController.new()
+	builder.display_only = true
+	world.add_child(builder)
+	await process_frame
 	builder.kind = "living"
 	var room := [Vector2i(8,8), Vector2i(8,9), Vector2i(9,8), Vector2i(9,9)]
 	assert(builder._valid(room), "A clear room footprint should be valid.")
@@ -30,10 +37,17 @@ func _init() -> void:
 	builder.kind = "solar"
 	builder.airlock_direction = Vector2i(0,-1)
 	assert(builder._valid([Vector2i(8,19)]), "Solar arrays can connect inside their 30m power field.")
-	assert(not builder._valid([Vector2i(8,20)]), "Solar arrays outside their 30m power field are rejected.")
-	builder.zones.append({"kind":"solar","cells":[Vector2i(8,12)],"cost":50,"door_direction":Vector2i(0,-1)})
+	assert(builder._invalid_reason([Vector2i(8,20)]) == "Outside the surveyed build area", "Power is cabled, so only the build area limits where arrays go.")
+	# The sun crosses the southern sky: a south-facing array at noon on the open
+	# plains produces full output, and nothing at night.
+	MHGame.site_id = "plains"
+	builder.zones.append({"kind":"solar","cells":[Vector2i(8,12)],"cost":50,"door_direction":Vector2i(0,1)})
+	MHGame.sol_hour = 12.0
 	var systems := builder._systems()
-	assert(int(systems.generation)==BuildController.SOLAR_OUTPUT, "A sun-facing solar array should produce full power.")
+	assert(int(systems.generation)==BuildController.SOLAR_OUTPUT, "A sun-facing solar array should produce full power at noon.")
+	MHGame.sol_hour = 1.0
+	assert(int(builder._systems().generation)==0, "Solar arrays produce nothing at night.")
+	MHGame.sol_hour = 12.0
 	var route := builder._airlock_connected_cells()
 	assert(route.has(Vector2i(8,8)), "A room beside an airlock must be reachable.")
 	assert(not route.has(Vector2i(0,0)), "A disconnected room position must not be reachable.")

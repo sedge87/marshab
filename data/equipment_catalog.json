@@ -1,730 +1,3009 @@
 {
   "_comment": "Asset-agnostic interior equipment contract (Interior Kit board). Replace asset_scene paths when final models are delivered; game effects and room rules stay stable. footprint is in 1.5 m half-cells; height is the greybox height in metres. status: catalogue = has game effects, future = modelled now with game logic later, cosmetic = no resource effect. mount_height lifts wall/ceiling items off the floor; walkthrough items have no collision.",
   "groups": [
-    {"id": "living", "label": "Living Quarters", "icon": "bed-double"},
-    {"id": "science", "label": "Science Laboratory", "icon": "flask-conical"},
-    {"id": "hydroponics", "label": "Hydroponics", "icon": "sprout"},
-    {"id": "galley", "label": "Galley", "icon": "utensils"},
-    {"id": "hygiene", "label": "Hygiene", "icon": "droplets"},
-    {"id": "medical", "label": "Medical Bay", "icon": "heart-pulse"},
-    {"id": "waste_management", "label": "Waste Management", "icon": "recycle"},
-    {"id": "communications", "label": "Communications", "icon": "radio"},
-    {"id": "life_support", "label": "Life Support", "icon": "wind"},
-    {"id": "storage", "label": "Storage", "icon": "package"},
-    {"id": "vehicle_bay", "label": "Vehicle Bay", "icon": "truck"},
-    {"id": "corridor", "label": "Corridors", "icon": "move-vertical"},
-    {"id": "airlock", "label": "Airlocks", "icon": "door-closed"},
-    {"id": "power", "label": "Power & Engineering", "icon": "zap"}
+    {
+      "id": "living",
+      "label": "Living Quarters",
+      "icon": "bed-double"
+    },
+    {
+      "id": "science",
+      "label": "Science Laboratory",
+      "icon": "flask-conical"
+    },
+    {
+      "id": "hydroponics",
+      "label": "Hydroponics",
+      "icon": "sprout"
+    },
+    {
+      "id": "galley",
+      "label": "Galley",
+      "icon": "utensils"
+    },
+    {
+      "id": "hygiene",
+      "label": "Hygiene",
+      "icon": "droplets"
+    },
+    {
+      "id": "medical",
+      "label": "Medical Bay",
+      "icon": "heart-pulse"
+    },
+    {
+      "id": "waste_management",
+      "label": "Waste Management",
+      "icon": "recycle"
+    },
+    {
+      "id": "communications",
+      "label": "Mission Operations",
+      "icon": "radio"
+    },
+    {
+      "id": "life_support",
+      "label": "Life Support",
+      "icon": "wind"
+    },
+    {
+      "id": "storage",
+      "label": "Storage",
+      "icon": "package"
+    },
+    {
+      "id": "vehicle_bay",
+      "label": "Vehicle Bay",
+      "icon": "truck"
+    },
+    {
+      "id": "corridor",
+      "label": "Corridors",
+      "icon": "move-vertical"
+    },
+    {
+      "id": "airlock",
+      "label": "Airlocks",
+      "icon": "door-closed"
+    },
+    {
+      "id": "power",
+      "label": "Power & Engineering",
+      "icon": "zap"
+    },
+    {
+      "id": "general",
+      "label": "General Equipment",
+      "icon": "package"
+    }
   ],
   "equipment": [
     {
       "id": "crew_bunk",
       "label": "Crew Bunk",
-      "group": "living", "status": "catalogue", "batch": true, "icon": "bed-double", "height": 1.84,
+      "group": "living",
+      "status": "catalogue",
+      "batch": true,
+      "icon": "bed-double",
+      "height": 1.84,
       "description": "Personal berth with reading lamp, privacy curtain and shelf.",
       "role": "One berth; lamp off on grid failure",
-      "asset_scene": "res://assets/equipment/crew_bunk_optimised/godot/crew_bunk_optimised.tscn",
+      "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/crew_bunk.tscn",
       "cargo_cost": 100,
-      "valid_zones": ["living"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "living"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor_wall",
-      "effects": {"berths": 1, "happiness": 2, "power_draw": 1}
+      "effects": {
+        "berths": 1,
+        "happiness": 2,
+        "power_draw": 1
+      },
+      "size_m": [
+        2.28,
+        1.959,
+        1.129
+      ],
+      "pack": "mars_living_quarters_martian_hailmary_v1",
+      "system_note": "Crew need about eight hours of sleep every sol. Each bunk gives one person a bed, so a habitat needs a bunk for every crew member. The reading light runs on the habitat's electricity: switch it off when you're done, because at night the solar panels make nothing. The curtain gives privacy, which matters on a mission that lasts years.",
+      "system_links": [
+        "Crew berths",
+        "Power",
+        "Morale"
+      ]
     },
     {
       "id": "locker",
       "label": "Personal Locker",
-      "group": "living", "status": "catalogue", "icon": "package", "height": 2.0,
+      "group": "living",
+      "status": "catalogue",
+      "icon": "package",
+      "height": 2.0,
       "description": "Personal supplies and EVA storage.",
       "role": "Storage + wellbeing; open/close",
-      "asset_scene": "res://assets/equipment/living_quarters_phase1/locker.tscn",
-      "model_rotation_y": 3.14159265,
+      "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/locker.tscn",
       "cargo_cost": 40,
-      "valid_zones": ["living", "corridor"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "living",
+        "corridor",
+        "hygiene",
+        "medical",
+        "storage",
+        "airlock"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "floor_wall",
-      "effects": {"storage": 2, "happiness": 1}
+      "effects": {
+        "storage": 2,
+        "happiness": 1
+      },
+      "size_m": [
+        1.17,
+        2.058,
+        0.868
+      ],
+      "pack": "mars_living_quarters_martian_hailmary_v1",
+      "system_note": "Every astronaut brings clothes, tools and a few personal things, and floor space in a habitat is precious. Lockers keep belongings stowed, so rooms stay safe and uncluttered and nothing floats loose in an emergency.",
+      "system_links": [
+        "Storage",
+        "Morale"
+      ]
     },
     {
       "id": "common_table",
       "label": "Common Table",
-      "group": "living", "status": "catalogue", "icon": "users", "height": 0.78,
+      "group": "living",
+      "status": "catalogue",
+      "icon": "users",
+      "height": 0.78,
       "description": "Shared meal and planning surface with inset display.",
       "role": "Wellbeing; small power draw",
       "primary_action": "Read habitat status",
-      "asset_scene": "res://assets/equipment/living_quarters_phase1/common_table.tscn",
+      "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/common_table.tscn",
       "cargo_cost": 70,
-      "valid_zones": ["living", "science"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "living",
+        "science",
+        "galley",
+        "communications",
+        "medical"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor",
-      "effects": {"happiness": 4, "power_draw": 1}
+      "effects": {
+        "happiness": 4,
+        "power_draw": 1
+      },
+      "size_m": [
+        1.868,
+        0.919,
+        1.008
+      ],
+      "pack": "mars_living_quarters_martian_hailmary_v1",
+      "system_note": "Eating and planning together keeps a small crew working as a team. The table's console shows the habitat's live status: the same readiness checks Mission Control uses to plan the next sol.",
+      "system_links": [
+        "Morale",
+        "Mission planning",
+        "Power"
+      ]
     },
     {
       "id": "task_light",
       "label": "Task Light",
-      "group": "living", "status": "catalogue", "icon": "lightbulb", "height": 0.5, "mount_height": 1.5,
+      "group": "living",
+      "status": "catalogue",
+      "icon": "lightbulb",
+      "height": 0.5,
+      "mount_height": 1.5,
       "description": "Adjustable wall-mounted work light.",
       "role": "Comfort; visible on/off",
-      "asset_scene": "res://assets/equipment/living_quarters_phase1/task_light.tscn",
+      "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/task_light.tscn",
       "cargo_cost": 25,
-      "valid_zones": ["living", "science", "hydroponics", "corridor"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "living",
+        "science",
+        "hydroponics",
+        "corridor",
+        "storage",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "wall",
-      "effects": {"happiness": 1, "power_draw": 1}
+      "effects": {
+        "happiness": 1,
+        "power_draw": 1
+      },
+      "size_m": [
+        0.945,
+        0.417,
+        0.793
+      ],
+      "pack": "mars_living_quarters_martian_hailmary_v1",
+      "system_note": "A small light aimed at your work uses far less power than lighting a whole room. On Mars every watt counts, especially at night when the solar panels make nothing, so switch it off when you leave.",
+      "system_links": [
+        "Power",
+        "Morale"
+      ]
     },
     {
       "id": "privacy_divider",
       "label": "Privacy Divider",
-      "group": "living", "status": "cosmetic", "icon": "bed-double", "height": 1.95,
+      "group": "living",
+      "status": "cosmetic",
+      "icon": "bed-double",
+      "height": 1.95,
       "description": "Folding three-panel screen.",
       "role": "Personalisation only",
-      "asset_scene": "res://assets/equipment/living_quarters_phase1/privacy_divider.tscn",
+      "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/privacy_divider.tscn",
       "cargo_cost": 30,
-      "valid_zones": ["living"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "living",
+        "medical",
+        "hygiene"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        2.357,
+        1.781,
+        0.866
+      ],
+      "pack": "mars_living_quarters_martian_hailmary_v1",
+      "system_note": "Living for months in a small space with the same few people is stressful. Dividers make a private corner without the cargo mass of building another room.",
+      "system_links": [
+        "Morale",
+        "Cargo"
+      ]
     },
     {
       "id": "exercise_station",
       "label": "Exercise Station",
-      "group": "living", "status": "future", "icon": "users", "height": 2.3,
+      "group": "living",
+      "status": "future",
+      "icon": "users",
+      "height": 2.3,
       "description": "Compact resistance trainer with display.",
       "role": "Future wellbeing benefit",
-      "asset_scene": "res://assets/equipment/living_quarters_phase1/exercise_station.tscn",
+      "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/exercise_station.tscn",
       "cargo_cost": 90,
-      "valid_zones": ["living"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "living",
+        "medical"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.16,
+        2.062,
+        1.435
+      ],
+      "pack": "mars_living_quarters_martian_hailmary_v1",
+      "system_note": "Mars gravity is only 38% of Earth's, so bones and muscles slowly weaken. Astronauts exercise about two hours a day to stay strong enough to work, and fit for the return to Earth.",
+      "system_links": [
+        "Crew health",
+        "Morale"
+      ]
     },
     {
       "id": "science_workbench",
       "label": "Science Workbench",
-      "group": "science", "status": "catalogue", "batch": true, "icon": "flask-conical", "height": 1.0,
+      "group": "science",
+      "status": "catalogue",
+      "batch": true,
+      "icon": "flask-conical",
+      "height": 1.0,
       "description": "Analytical workstation with screen, sample tray and tool rail.",
       "role": "Research; display dark when unpowered",
       "primary_action": "Read workbench",
-      "interaction_note": "Workbench status: sample workflow ready. Install a sample-analysis station to expand the laboratory.",
-      "asset_scene": "res://assets/equipment/science_workbench.glb",
+      "asset_scene": "res://assets/equipment/mars_science_geology_ice_martian_hailmary_v1/science_workbench.tscn",
       "cargo_cost": 180,
-      "valid_zones": ["science"],
-      "footprint": [2, 1],
-      "placement": "floor_wall",
-      "effects": {"research": 3, "power_draw": 3}
-    },
-    {
-      "id": "sample_analysis_station",
-      "label": "Sample Analysis Station",
-      "group": "science", "status": "future", "icon": "flask-conical", "height": 1.3,
-      "description": "Sealed glovebox for Mars samples.",
-      "role": "Future research specialisation",
-      "primary_action": "Read analysis station",
-      "interaction_note": "Sample analysis station: sealed handling bay ready. Research specialisation will be added with the science simulation.",
-      "asset_scene": "res://assets/equipment/sample_analysis_station.glb",
-      "cargo_cost": 160,
-      "valid_zones": ["science"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "science"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {
+        "research": 3,
+        "power_draw": 3
+      },
+      "size_m": [
+        1.49,
+        1.668,
+        0.947
+      ],
+      "pack": "mars_science_geology_ice_martian_hailmary_v1",
+      "system_note": "The crew's main bench for studying what rovers and spacewalks bring back. Drilled cores show layers of rock and dust laid down over millions of years, and the sealed chamber tests buried ice. Clues like these help scientists work out how Mars's surface has changed, and whether it once had liquid water.",
+      "system_links": [
+        "Research",
+        "Rover samples",
+        "Power"
+      ]
     },
     {
       "id": "microscope_station",
       "label": "Microscope Station",
-      "group": "science", "status": "future", "icon": "flask-conical", "height": 1.2,
+      "group": "science",
+      "status": "future",
+      "icon": "flask-conical",
+      "height": 1.2,
       "description": "Close-analysis bench with image monitor.",
       "role": "Future biology/geology bonus",
       "primary_action": "Read microscope",
-      "interaction_note": "Microscope station: optical bench calibrated for close inspection of geological and biological samples.",
-      "asset_scene": "res://assets/equipment/microscope_station.glb",
+      "asset_scene": "res://assets/equipment/mars_science_geology_ice_martian_hailmary_v1/microscope_station.tscn",
       "cargo_cost": 90,
-      "valid_zones": ["science"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "science"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
-    },
-    {
-      "id": "planetary_data_console",
-      "label": "Planetary Data Console",
-      "group": "science", "status": "future", "icon": "satellite", "height": 1.4,
-      "description": "Orbital map and telemetry console.",
-      "role": "Reads local-site conditions",
-      "primary_action": "Read console",
-      "interaction_note": "Planetary data console: local telemetry link established.",
-      "asset_scene": "res://assets/equipment/planetary_data_console.glb",
-      "cargo_cost": 110,
-      "valid_zones": ["science"],
-      "footprint": [1, 1],
-      "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.3,
+        1.809,
+        0.78
+      ],
+      "pack": "mars_science_geology_ice_martian_hailmary_v1",
+      "system_note": "Up close, the shape and texture of tiny grains tell a story: wind-polished, water-cemented or fresh from a volcano. Studying grains helps explain how Mars's rocks formed and changed.",
+      "system_links": [
+        "Research",
+        "Power"
+      ]
     },
     {
       "id": "sample_storage_cabinet",
       "label": "Sample Storage Cabinet",
-      "group": "science", "status": "future", "icon": "package", "height": 1.9,
+      "group": "science",
+      "status": "future",
+      "icon": "package",
+      "height": 1.9,
       "description": "Tagged sealed sample archive.",
       "role": "Storage; optional research support",
-      "asset_scene": "res://assets/equipment/sample_storage_cabinet.tscn",
+      "asset_scene": "res://assets/equipment/mars_science_geology_ice_martian_hailmary_v1/sample_storage_cabinet.tscn",
       "cargo_cost": 70,
-      "valid_zones": ["science", "storage"],
-      "footprint": [1, 1],
-      "placement": "floor_wall",
-      "effects": {}
+      "valid_zones": [
+        "science",
+        "storage",
+        "medical"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        1.47,
+        1.938,
+        0.843
+      ],
+      "pack": "mars_science_geology_ice_martian_hailmary_v1",
+      "system_note": "A cold, dry archive for ice, cores and rock samples. Careful storage keeps samples unchanged so they can be compared, tested again later, or one day sent back to Earth.",
+      "system_links": [
+        "Research",
+        "Storage",
+        "Power"
+      ]
     },
     {
       "id": "grow_tray",
       "label": "Grow Tray",
-      "group": "hydroponics", "status": "catalogue", "batch": true, "icon": "sprout", "height": 1.8,
+      "group": "hydroponics",
+      "status": "catalogue",
+      "batch": true,
+      "icon": "sprout",
+      "height": 1.8,
       "description": "Vertical-slice hero: lit crop rack, reservoir and nutrient line.",
       "role": "Food; uses power and water",
-      "asset_scene": "res://assets/equipment/hydroponics_phase2/grow_tray.tscn",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/grow_tray.tscn",
       "cargo_cost": 120,
-      "valid_zones": ["hydroponics"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "hydroponics"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor",
-      "effects": {"food": 3, "happiness": 1, "water_draw": 1, "power_draw": 2}
+      "effects": {
+        "food": 3,
+        "happiness": 1,
+        "water_draw": 1,
+        "power_draw": 2
+      },
+      "size_m": [
+        1.469,
+        2.066,
+        0.852
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "Plants turn light, water, nutrients and carbon dioxide into food and oxygen. Three tiers of crops under LED grow lights fit a lot of growing into a small floor space. If the lights go off, the plants stop growing, so the food supply depends on the power supply.",
+      "system_links": [
+        "Food",
+        "Water",
+        "Power",
+        "Air"
+      ]
     },
     {
       "id": "seedling_station",
       "label": "Seedling Station",
-      "group": "hydroponics", "status": "future", "icon": "sprout", "height": 1.2,
+      "group": "hydroponics",
+      "status": "future",
+      "icon": "sprout",
+      "height": 1.2,
       "description": "Germination bench with humidity dome.",
       "role": "Future crop-cycle support",
-      "asset_scene": "res://assets/equipment/hydroponics_phase2/seedling_station.tscn",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/seedling_station.tscn",
       "cargo_cost": 80,
-      "valid_zones": ["hydroponics"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "hydroponics"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.571,
+        1.806,
+        0.877
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "Young plants are fragile, so they start here under a clear lid that keeps them warm and humid. Once they're strong enough they move to the grow racks, so new crops are always coming through to replace the ones you harvest.",
+      "system_links": [
+        "Food",
+        "Water",
+        "Power"
+      ]
     },
     {
       "id": "nutrient_mixer",
       "label": "Nutrient Mixer",
-      "group": "hydroponics", "status": "future", "icon": "droplets", "height": 1.4,
+      "group": "hydroponics",
+      "status": "future",
+      "icon": "droplets",
+      "height": 1.4,
       "description": "Dosing tanks and plumbing manifold.",
       "role": "Future hydroponics efficiency",
-      "asset_scene": "res://assets/equipment/hydroponics_phase2/nutrient_mixer.tscn",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/nutrient_mixer.tscn",
       "cargo_cost": 90,
-      "valid_zones": ["hydroponics"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "hydroponics"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.519,
+        1.745,
+        0.917
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "On Mars there's no rich soil, so plants grow in water with dissolved nutrients (hydroponics). This mixer measures and doses those nutrients into the water that feeds every grow tray. The wrong mix stunts or kills the crops.",
+      "system_links": [
+        "Food",
+        "Water"
+      ]
     },
     {
       "id": "harvest_cart",
       "label": "Harvest Cart",
-      "group": "hydroponics", "status": "cosmetic", "icon": "wheat", "height": 0.9,
+      "group": "hydroponics",
+      "status": "cosmetic",
+      "icon": "wheat",
+      "height": 0.9,
       "description": "Movable crop collection cart.",
       "role": "Decorative / future food transfer",
-      "asset_scene": "res://assets/equipment/hydroponics_phase2/harvest_cart.tscn",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/harvest_cart.tscn",
       "cargo_cost": 30,
-      "valid_zones": ["hydroponics", "storage"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "hydroponics",
+        "storage",
+        "galley"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
-    },
-    {
-      "id": "hydroponics_sensor_panel",
-      "label": "Hydroponics Sensor Panel",
-      "group": "hydroponics", "status": "future", "icon": "monitor", "height": 0.6, "mount_height": 1.3,
-      "description": "Temperature, humidity, water and light readouts.",
-      "role": "Feedback-only monitor",
-      "asset_scene": "res://assets/equipment/hydroponics_phase2/hydroponics_sensor_panel.tscn",
-      "cargo_cost": 35,
-      "valid_zones": ["hydroponics"],
-      "footprint": [1, 1],
-      "placement": "wall",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.416,
+        1.674,
+        0.903
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "Moves harvested food to the galley and stores. Inedible stems and leaves go to waste management to be recycled, so the habitat's nutrients go round in a loop rather than being thrown away.",
+      "system_links": [
+        "Food",
+        "Waste"
+      ]
     },
     {
       "id": "greenhouse_planter",
-      "label": "Greenhouse Planter",
-      "group": "hydroponics", "status": "future", "icon": "flower-2", "height": 0.7,
-      "description": "Larger daylight-facing planted bed.",
+      "label": "Large Planter",
+      "group": "hydroponics",
+      "status": "future",
+      "icon": "flower-2",
+      "height": 0.7,
+      "description": "A deep, shielded planter for larger crops, grown indoors under LED lighting.",
       "role": "Food or wellbeing variant",
-      "asset_scene": "res://assets/equipment/greenhouse_planter.glb",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/greenhouse_planter.tscn",
       "cargo_cost": 110,
-      "valid_zones": ["hydroponics"],
-      "footprint": [2, 2],
+      "valid_zones": [
+        "hydroponics"
+      ],
+      "footprint": [
+        2,
+        2
+      ],
       "placement": "floor",
-      "effects": {}
-    },
-    {
-      "id": "greenhouse_shade_screen",
-      "label": "Shade Screen",
-      "group": "hydroponics", "status": "future", "icon": "sun", "height": 2.2,
-      "description": "Retractable radiation and light louvres.",
-      "role": "Future temperature/radiation control",
-      "asset_scene": "res://assets/equipment/greenhouse_shade_screen.glb",
-      "cargo_cost": 60,
-      "valid_zones": ["hydroponics"],
-      "footprint": [2, 1],
-      "placement": "floor_wall",
-      "effects": {}
-    },
-    {
-      "id": "greenhouse_observation_seat",
-      "label": "Observation Seat",
-      "group": "hydroponics", "status": "cosmetic", "icon": "mountain-snow", "height": 0.9,
-      "description": "View-facing bench with side table.",
-      "role": "Wellbeing / personalisation",
-      "asset_scene": "res://assets/equipment/greenhouse_observation_seat.glb",
-      "cargo_cost": 45,
-      "valid_zones": ["hydroponics"],
-      "footprint": [2, 1],
-      "placement": "floor",
-      "effects": {}
-    },
-    {
-      "id": "pollination_tool_station",
-      "label": "Pollination Station",
-      "group": "hydroponics", "status": "future", "icon": "flower-2", "height": 1.1,
-      "description": "Crop maintenance tools and magnifier lamp.",
-      "role": "Future crop reliability",
-      "asset_scene": "res://assets/equipment/pollination_tool_station.glb",
-      "cargo_cost": 50,
-      "valid_zones": ["hydroponics"],
-      "footprint": [1, 1],
-      "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        2.223,
+        1.64,
+        1.23
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "A deep, well-shielded planter for bigger crops such as potatoes and tomatoes. It grows indoors under grow lights, because a glass greenhouse would expose the crops and crew to Mars's dangerous radiation.",
+      "system_links": [
+        "Food",
+        "Water",
+        "Power",
+        "Air"
+      ]
     },
     {
       "id": "air_recycler",
       "label": "Air Recycler",
-      "group": "life_support", "status": "catalogue", "batch": true, "icon": "wind", "height": 2.1,
+      "group": "life_support",
+      "status": "catalogue",
+      "batch": true,
+      "icon": "wind",
+      "height": 2.1,
       "description": "CO2 scrubber cabinet with fan, filter cartridges and ducts.",
       "role": "Life support; active/fault states",
       "primary_action": "Read recycler",
-      "interaction_note": "Air recycler status: nominal. Carbon-dioxide scrubber capacity is contributing to the habitat life-support total.",
-      "asset_scene": "res://assets/equipment/air_recycler.glb",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/air_recycler.tscn",
       "cargo_cost": 160,
-      "valid_zones": ["life_support"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "life_support"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor_wall",
-      "effects": {"life": 4, "power_draw": 3}
+      "effects": {
+        "life": 4,
+        "power_draw": 3
+      },
+      "size_m": [
+        1.478,
+        1.891,
+        0.897
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "Every breath the crew takes uses oxygen and adds carbon dioxide. The recycler pulls air through filters that scrub out carbon dioxide and dust, and pumps fresh air back into the habitat. Without it, the air becomes dangerous within hours. Switch it off and watch what happens to the habitat's air.",
+      "system_links": [
+        "Air",
+        "Power"
+      ]
     },
     {
       "id": "water_reclaimer",
       "label": "Water Reclaimer",
-      "group": "life_support", "status": "future", "icon": "droplets", "height": 2.0,
+      "group": "life_support",
+      "status": "future",
+      "icon": "droplets",
+      "height": 2.0,
       "description": "Grey-water recovery and filtration columns.",
       "role": "Future: reduces water demand",
       "primary_action": "Read reclaimer",
-      "interaction_note": "Water reclaimer: filtration hardware installed. Closed-loop water recovery will be added with the life-support simulation.",
-      "asset_scene": "res://assets/equipment/water_reclaimer.glb",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/water_reclaimer.tscn",
       "cargo_cost": 170,
-      "valid_zones": ["life_support"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "life_support"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.415,
+        1.875,
+        1.307
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "Water is too heavy to ship from Earth, so almost all of it is recycled: wash water, condensation from the air and even urine are filtered and cleaned to drinking quality. About 90% of the water gets reused again and again.",
+      "system_links": [
+        "Water",
+        "Power",
+        "Waste"
+      ]
     },
     {
       "id": "oxygen_reserve_tank",
       "label": "Oxygen Reserve",
-      "group": "life_support", "status": "future", "icon": "wind", "height": 1.8,
+      "group": "life_support",
+      "status": "future",
+      "icon": "wind",
+      "height": 1.8,
       "description": "Emergency oxygen bank with gauges.",
       "role": "Stored oxygen — never created from nothing",
       "primary_action": "Read oxygen reserve",
-      "interaction_note": "Oxygen reserve: emergency storage bank installed. It remains a visual safety system until stored-gas gameplay is implemented.",
-      "asset_scene": "res://assets/equipment/oxygen_reserve_tank.glb",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/oxygen_reserve_tank.tscn",
       "cargo_cost": 140,
-      "valid_zones": ["life_support", "airlock"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "life_support",
+        "airlock",
+        "engineering",
+        "storage",
+        "medical"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.449,
+        1.865,
+        1.004
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "Backup oxygen stored under pressure. If the air recycler fails, or someone uses the airlock, these tanks keep the crew safe while repairs are made. The valves and regulator control how fast oxygen flows into the habitat.",
+      "system_links": [
+        "Air",
+        "Airlock"
+      ]
     },
     {
       "id": "thermal_control_unit",
       "label": "Thermal Control Unit",
-      "group": "life_support", "status": "future", "icon": "settings", "height": 1.6,
+      "group": "life_support",
+      "status": "future",
+      "icon": "settings",
+      "height": 1.6,
       "description": "Heat exchanger, pump and hot/cold loops.",
       "role": "Future heating and cooling",
       "primary_action": "Read thermal unit",
-      "interaction_note": "Thermal control unit: pump and heat-exchanger assembly ready. Room temperature control is a future simulation pass.",
-      "asset_scene": "res://assets/equipment/thermal_control_unit.glb",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/thermal_control_unit.tscn",
       "cargo_cost": 150,
-      "valid_zones": ["life_support"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "life_support"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
-    },
-    {
-      "id": "life_support_console",
-      "label": "Life Support Console",
-      "group": "life_support", "status": "future", "icon": "monitor", "height": 1.3,
-      "description": "Control and alarm panel.",
-      "role": "Diagnostics: air, water, thermal",
-      "primary_action": "Read console",
-      "interaction_note": "Life-support console: diagnostics display online. Air, water and thermal alarms will connect here when those systems become interactive.",
-      "asset_scene": "res://assets/equipment/life_support_console.glb",
-      "cargo_cost": 80,
-      "valid_zones": ["life_support"],
-      "footprint": [1, 1],
-      "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.488,
+        1.901,
+        1.213
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "Mars nights drop to −80 °C, while people and machines make heat inside. This unit pumps coolant through hot and cold loops, moving heat to where it's needed and dumping the rest outside, so the habitat stays at a comfortable temperature.",
+      "system_links": [
+        "Heating",
+        "Power"
+      ]
     },
     {
       "id": "cargo_rack",
       "label": "Cargo Rack",
-      "group": "storage", "status": "future", "batch": true, "icon": "package", "height": 2.0,
+      "group": "storage",
+      "status": "future",
+      "batch": true,
+      "icon": "package",
+      "height": 2.0,
       "description": "Secured shelving with strapped bins.",
       "role": "Future inventory capacity",
       "primary_action": "Read cargo rack",
-      "interaction_note": "Cargo rack: secured storage bays ready. Item-by-item inventory tracking is a future logistics pass.",
-      "asset_scene": "res://assets/equipment/cargo_rack.glb",
+      "asset_scene": "res://assets/equipment/mars_storage_maintenance_martian_hailmary_v1/cargo_rack.tscn",
       "cargo_cost": 60,
-      "valid_zones": ["storage", "vehicle_bay"],
-      "footprint": [2, 1],
-      "placement": "floor_wall",
-      "effects": {}
-    },
-    {
-      "id": "spares_cabinet",
-      "label": "Spares Cabinet",
-      "group": "storage", "status": "future", "icon": "hammer", "height": 1.9,
-      "description": "Tools and replacement-parts locker.",
-      "role": "Eighteen individual spares drawers",
-      "asset_scene": "res://assets/equipment/spares_cabinet.tscn",
-      "walkthrough": true,
-      "cargo_cost": 70,
-      "valid_zones": ["storage", "vehicle_bay"],
-      "footprint": [1, 1],
-      "placement": "floor_wall",
-      "effects": {}
-    },
-    {
-      "id": "cold_storage_unit",
-      "label": "Cold Storage Unit",
-      "group": "storage", "status": "future", "icon": "mountain-snow", "height": 1.9,
-      "description": "Insulated food and sample storage.",
-      "role": "Powered indicator; door animation",
-      "asset_scene": "res://assets/equipment/cold_storage_unit.tscn",
-      "cargo_cost": 120,
-      "valid_zones": ["storage"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "storage",
+        "vehicle_bay",
+        "engineering",
+        "galley",
+        "hydroponics"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.462,
+        2.097,
+        0.957
+      ],
+      "pack": "mars_storage_maintenance_martian_hailmary_v1",
+      "system_note": "Holds supplies delivered from Earth, secured so nothing shifts during landing or dust storms. Everything here counted against the mission's cargo budget.",
+      "system_links": [
+        "Storage",
+        "Cargo",
+        "Food"
+      ]
     },
     {
       "id": "tool_bench",
       "label": "Tool Bench",
-      "group": "storage", "status": "future", "icon": "hammer", "height": 1.0,
+      "group": "storage",
+      "status": "future",
+      "icon": "hammer",
+      "height": 1.0,
       "description": "Repair and EVA prep bench with pegboard and vice.",
       "role": "Three working drawers; future maintenance efficiency",
-      "asset_scene": "res://assets/equipment/tool_bench.tscn",
+      "asset_scene": "res://assets/equipment/mars_storage_maintenance_martian_hailmary_v1/tool_bench.tscn",
       "cargo_cost": 90,
-      "valid_zones": ["storage", "vehicle_bay"],
-      "footprint": [2, 1],
-      "placement": "floor_wall",
-      "effects": {}
+      "valid_zones": [
+        "storage",
+        "vehicle_bay",
+        "engineering",
+        "life_support"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        1.48,
+        2.068,
+        0.887
+      ],
+      "pack": "mars_storage_maintenance_martian_hailmary_v1",
+      "system_note": "With Earth months away, the crew has to fix things themselves. The tool bench, vise and spare parts let them repair anything from a fan to a suit part.",
+      "system_links": [
+        "Maintenance",
+        "Every system"
+      ]
     },
     {
       "id": "rover_charger",
       "label": "Rover Charger",
-      "group": "vehicle_bay", "status": "future", "icon": "zap", "height": 1.2,
+      "group": "vehicle_bay",
+      "status": "future",
+      "icon": "zap",
+      "height": 1.2,
       "description": "Floor cradle with cable reel and charge readout.",
       "role": "Active only with grid power",
       "primary_action": "Read charge status",
-      "interaction_note": "ROVER CHARGER\nCharging bay ready. A future rover simulation will report battery level and charging progress here.",
-      "asset_scene": "res://assets/equipment/rover_charger.glb",
+      "asset_scene": "res://assets/equipment/mars_vehicle_eva_martian_hailmary_v1/rover_charger.tscn",
       "cargo_cost": 130,
-      "valid_zones": ["vehicle_bay"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.42,
+        1.398,
+        1.273
+      ],
+      "pack": "mars_vehicle_eva_martian_hailmary_v1",
+      "system_note": "Rovers let the crew travel kilometres to collect samples and check equipment. They run on batteries recharged from the habitat's power grid, so long drives are planned around the power the habitat can spare.",
+      "system_links": [
+        "Power",
+        "Rover",
+        "Research"
+      ]
     },
     {
       "id": "eva_tool_station",
       "label": "EVA Tool Station",
-      "group": "vehicle_bay", "status": "future", "icon": "hammer", "height": 1.0,
+      "group": "vehicle_bay",
+      "status": "future",
+      "icon": "hammer",
+      "height": 1.0,
       "description": "Rover and EVA service bench.",
       "role": "Future expedition support",
       "primary_action": "Inspect EVA tools",
-      "interaction_note": "EVA TOOL STATION\nTethered tools are secured for rover servicing and suit preparation.",
-      "asset_scene": "res://assets/equipment/eva_tool_station.glb",
+      "asset_scene": "res://assets/equipment/mars_vehicle_eva_martian_hailmary_v1/eva_tool_station.tscn",
       "cargo_cost": 100,
-      "valid_zones": ["vehicle_bay"],
-      "footprint": [2, 1],
-      "placement": "floor_wall",
-      "effects": {}
+      "valid_zones": [
+        "vehicle_bay"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        1.43,
+        1.955,
+        0.87
+      ],
+      "pack": "mars_vehicle_eva_martian_hailmary_v1",
+      "system_note": "Where the crew prepares for work outside: tethered tools, sample bags and dust brushes. Good preparation keeps EVAs short and safe.",
+      "system_links": [
+        "Airlock",
+        "Research",
+        "Crew safety"
+      ]
     },
     {
       "id": "suit_rack",
       "label": "Suit Rack",
-      "group": "vehicle_bay", "status": "future", "icon": "users", "height": 2.0,
+      "group": "vehicle_bay",
+      "status": "future",
+      "icon": "users",
+      "height": 2.0,
       "description": "Pressure suit storage and drying rack.",
       "role": "Future EVA preparation",
       "primary_action": "Inspect suit rack",
-      "interaction_note": "SUIT RACK\nTwo pressure suits are stored and drying. EVA suit checks will be added with expedition gameplay.",
-      "asset_scene": "res://assets/equipment/suit_rack.glb",
+      "asset_scene": "res://assets/equipment/mars_vehicle_eva_martian_hailmary_v1/suit_rack.tscn",
       "cargo_cost": 80,
-      "valid_zones": ["vehicle_bay", "airlock"],
-      "footprint": [2, 1],
-      "placement": "floor_wall",
-      "effects": {}
-    },
-    {
-      "id": "decontamination_arch",
-      "label": "Decontamination Arch",
-      "group": "vehicle_bay", "status": "future", "icon": "door-closed", "height": 2.5, "walkthrough": true,
-      "description": "Dust-control portal over a floor grate.",
-      "role": "Future dust-management feedback",
-      "primary_action": "Read decon status",
-      "interaction_note": "DECONTAMINATION ARCH\nDust-control cycle ready. It is a walkthrough fitting and does not alter the bay structure.",
-      "asset_scene": "res://assets/equipment/decontamination_arch.glb",
-      "cargo_cost": 150,
-      "valid_zones": ["vehicle_bay", "airlock"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "vehicle_bay",
+        "airlock"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.43,
+        2.01,
+        0.985
+      ],
+      "pack": "mars_vehicle_eva_martian_hailmary_v1",
+      "system_note": "Pressure suits are personal spacecraft: they supply oxygen, keep the right pressure, control temperature and protect against dust and radiation. They're checked and serviced here between every EVA (spacewalk).",
+      "system_links": [
+        "Airlock",
+        "Air",
+        "Crew safety"
+      ]
     },
     {
       "id": "corridor_light_strip",
       "label": "Corridor Light Strip",
-      "group": "corridor", "status": "future", "icon": "lightbulb", "height": 0.12, "mount_height": 0.1,
+      "group": "corridor",
+      "status": "future",
+      "icon": "lightbulb",
+      "height": 0.12,
+      "mount_height": 0.1,
       "description": "Low-profile route lighting at the wall base.",
       "role": "Power draw; navigation",
       "asset_scene": "res://assets/equipment/corridor_light_strip.glb",
       "cargo_cost": 20,
-      "valid_zones": ["corridor", "airlock"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "corridor",
+        "airlock"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "wall",
       "effects": {}
     },
     {
       "id": "wayfinding_panel",
       "label": "Wayfinding Panel",
-      "group": "corridor", "status": "cosmetic", "icon": "map-pin", "height": 0.8, "mount_height": 1.2,
+      "group": "corridor",
+      "status": "cosmetic",
+      "icon": "map-pin",
+      "height": 0.8,
+      "mount_height": 1.2,
       "description": "Room directions and emergency route.",
       "role": "Reads room and system labels",
       "asset_scene": "res://assets/equipment/wayfinding_panel.glb",
       "cargo_cost": 20,
-      "valid_zones": ["corridor"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "wall",
       "effects": {}
     },
     {
       "id": "fire_safety_station",
       "label": "Fire Safety Station",
-      "group": "corridor", "status": "future", "icon": "triangle-alert", "height": 1.0, "mount_height": 0.8,
-      "description": "Emergency response cabinet.",
+      "group": "general",
+      "status": "future",
+      "icon": "triangle-alert",
+      "height": 1.0,
+      "mount_height": 0.8,
+      "description": "Extinguisher, fire blanket and first-aid drawer in one safety point.",
       "role": "Future safety readiness",
-      "asset_scene": "res://assets/equipment/fire_safety_station.glb",
+      "asset_scene": "res://assets/equipment/mars_general_habitat_repack/fire_safety_station.tscn",
       "cargo_cost": 45,
-      "valid_zones": ["corridor", "airlock"],
-      "footprint": [1, 1],
-      "placement": "wall",
-      "effects": {}
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        0.68,
+        1.408,
+        0.563
+      ],
+      "pack": "mars_general_habitat_repack",
+      "system_note": "Fire is one of the most serious dangers in a sealed habitat. Each safety station holds an extinguisher, a fire blanket and first-aid supplies, ready for the first person on the scene.",
+      "system_links": [
+        "Crew safety",
+        "Air"
+      ]
     },
     {
       "id": "utility_conduit",
       "label": "Utility Conduit",
-      "group": "corridor", "status": "cosmetic", "icon": "move-vertical", "height": 0.3, "mount_height": 2.3,
+      "group": "corridor",
+      "status": "cosmetic",
+      "icon": "move-vertical",
+      "height": 0.3,
+      "mount_height": 2.3,
       "description": "Pipe and cable run with brackets.",
       "role": "Engineered look only",
       "asset_scene": "res://assets/equipment/utility_conduit.glb",
       "cargo_cost": 25,
-      "valid_zones": ["corridor", "storage", "life_support"],
-      "footprint": [2, 1],
+      "valid_zones": [
+        "corridor",
+        "storage",
+        "life_support",
+        "engineering",
+        "hydroponics",
+        "vehicle_bay",
+        "airlock"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "wall",
       "effects": {}
     },
     {
       "id": "airlock_control_panel",
       "label": "Airlock Control Panel",
-      "group": "airlock", "status": "future", "icon": "monitor", "height": 0.7, "mount_height": 1.2,
+      "group": "airlock",
+      "status": "future",
+      "icon": "monitor",
+      "height": 0.7,
+      "mount_height": 1.2,
       "description": "Cycle and pressure status display.",
       "role": "Mirrors sealed / cycling state",
       "asset_scene": "res://assets/equipment/airlock_control_panel.glb",
       "cargo_cost": 40,
-      "valid_zones": ["airlock"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "airlock"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "wall",
       "effects": {}
     },
     {
       "id": "suit_service_panel",
       "label": "Suit Service Panel",
-      "group": "airlock", "status": "future", "icon": "zap", "height": 0.9, "mount_height": 1.0,
+      "group": "airlock",
+      "status": "future",
+      "icon": "zap",
+      "height": 0.9,
+      "mount_height": 1.0,
       "description": "Suit oxygen and power umbilicals.",
       "role": "Future EVA preparation",
       "asset_scene": "res://assets/equipment/suit_service_panel.glb",
       "cargo_cost": 50,
-      "valid_zones": ["airlock", "vehicle_bay"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
       "placement": "wall",
       "effects": {}
     },
     {
       "id": "dust_grate",
       "label": "Dust Grate",
-      "group": "airlock", "status": "cosmetic", "icon": "footprints", "height": 0.05, "walkthrough": true,
+      "group": "airlock",
+      "status": "cosmetic",
+      "icon": "footprints",
+      "height": 0.05,
+      "walkthrough": true,
       "description": "Regolith capture flooring.",
       "role": "Cosmetic initially",
       "asset_scene": "res://assets/equipment/dust_grate.glb",
       "cargo_cost": 35,
-      "valid_zones": ["airlock", "vehicle_bay", "corridor"],
-      "footprint": [2, 2],
+      "valid_zones": [
+        "airlock",
+        "vehicle_bay",
+        "corridor"
+      ],
+      "footprint": [
+        2,
+        2
+      ],
       "placement": "floor",
       "effects": {}
     },
     {
       "id": "emergency_supply_lockbox",
-      "label": "Emergency Lockbox",
-      "group": "airlock", "status": "future", "icon": "package", "height": 0.6, "mount_height": 1.1,
-      "description": "Emergency tools and medical items.",
+      "label": "Emergency Supply Locker",
+      "group": "general",
+      "status": "future",
+      "icon": "package",
+      "height": 0.6,
+      "mount_height": 1.1,
+      "description": "Emergency oxygen bottles, survival kits and thermal packs.",
       "role": "Future emergency inventory",
-      "asset_scene": "res://assets/equipment/emergency_supply_lockbox.glb",
-      "cargo_cost": 40,
-      "valid_zones": ["airlock", "corridor"],
-      "footprint": [1, 1],
-      "placement": "wall",
-      "effects": {}
+      "asset_scene": "res://assets/equipment/mars_general_habitat_repack/emergency_supply_lockbox.tscn",
+      "cargo_cost": 60,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        0.791,
+        1.729,
+        0.523
+      ],
+      "pack": "mars_general_habitat_repack",
+      "system_note": "Backup oxygen, survival kits and thermal packs, kept ready in case a system fails. Good habitats have emergency supplies in more than one place.",
+      "system_links": [
+        "Crew safety",
+        "Air",
+        "Heating"
+      ]
     },
     {
       "id": "power_distribution_panel",
-      "label": "Distribution Panel",
-      "group": "power", "status": "future", "icon": "zap", "height": 1.6, "mount_height": 0.3,
+      "label": "Power Distribution Cabinet",
+      "group": "power",
+      "status": "future",
+      "icon": "zap",
+      "height": 1.6,
+      "mount_height": 0.3,
       "description": "Breaker cabinet, door open.",
       "role": "Future grid diagnostics",
       "primary_action": "Read distribution panel",
-      "interaction_note": "Distribution panel: breaker cabinet installed. Circuit-level diagnostics are a future engineering simulation feature.",
-      "asset_scene": "res://assets/equipment/power_distribution_panel.glb",
+      "asset_scene": "res://assets/equipment/mars_power_engineering_martian_hailmary_v1/power_distribution_panel.tscn",
       "cargo_cost": 70,
-      "valid_zones": ["engineering", "storage", "corridor", "life_support", "vehicle_bay"],
-      "footprint": [1, 1],
-      "placement": "wall",
-      "effects": {}
+      "valid_zones": [
+        "engineering",
+        "storage",
+        "corridor",
+        "life_support",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        1.444,
+        2.042,
+        0.831
+      ],
+      "pack": "mars_power_engineering_martian_hailmary_v1",
+      "system_note": "Every watt from the solar panels and reactor passes through here before it reaches the rooms. Breakers protect each circuit, and the big orange main isolator can cut the whole habitat off from its power, which engineers do before working on the wiring. Try switching it off and watch what loses power.",
+      "system_links": [
+        "Power",
+        "Every room"
+      ]
     },
     {
       "id": "battery_bank",
       "label": "Battery Bank",
-      "group": "power", "status": "future", "icon": "zap", "height": 1.5,
+      "group": "power",
+      "status": "future",
+      "icon": "zap",
+      "height": 1.5,
       "description": "Stacked storage modules with charge bars.",
       "role": "Storage only — no generation",
       "primary_action": "Read battery bank",
-      "interaction_note": "Battery bank: energy storage hardware installed. Charge level and reserve capacity will be added with the engineering simulation.",
-      "asset_scene": "res://assets/equipment/battery_bank.glb",
+      "asset_scene": "res://assets/equipment/mars_power_engineering_martian_hailmary_v1/battery_bank.tscn",
       "cargo_cost": 220,
-      "valid_zones": ["engineering", "storage", "life_support", "vehicle_bay"],
-      "footprint": [2, 1],
-      "placement": "floor_wall",
-      "effects": {}
-    },
-    {
-      "id": "inverter_cabinet",
-      "label": "Inverter Cabinet",
-      "group": "power", "status": "future", "icon": "settings", "height": 1.9,
-      "description": "Conditions power from external generation.",
-      "role": "Fan/readout respond to load",
-      "primary_action": "Read inverter",
-      "interaction_note": "Inverter cabinet: power-conditioning hardware installed. Its fan and load response will be connected to the grid simulation later.",
-      "asset_scene": "res://assets/equipment/inverter_cabinet.glb",
-      "cargo_cost": 140,
-      "valid_zones": ["engineering", "storage", "life_support", "vehicle_bay"],
-      "footprint": [1, 1],
-      "placement": "floor_wall",
-      "effects": {}
-    },
-    {
-      "id": "reactor_monitor_console",
-      "label": "Reactor Monitor",
-      "group": "power", "status": "future", "icon": "atom", "height": 1.3,
-      "description": "Remote compact-reactor telemetry.",
-      "role": "Read only — no student control",
-      "primary_action": "Read reactor monitor",
-      "interaction_note": "Reactor monitor: remote telemetry display installed. It will remain read-only when live reactor diagnostics are added.",
-      "asset_scene": "res://assets/equipment/reactor_monitor_console.glb",
-      "cargo_cost": 90,
-      "valid_zones": ["engineering", "storage", "life_support", "science"],
-      "footprint": [1, 1],
+      "valid_zones": [
+        "engineering",
+        "storage",
+        "life_support",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.446,
+        2.079,
+        0.878
+      ],
+      "pack": "mars_power_engineering_martian_hailmary_v1",
+      "system_note": "Solar panels only work in daylight, but the crew needs power all night too. Batteries store spare daytime electricity so the air recycler, heaters and lights keep running after sunset. The more batteries you have, the longer you can last on stored power.",
+      "system_links": [
+        "Power",
+        "Solar",
+        "Heating"
+      ]
     },
     {
-      "id": "cable_tray",
-      "label": "Cable Tray",
-      "group": "power", "status": "cosmetic", "icon": "move-vertical", "height": 0.15,
-      "description": "Overhead ladder tray with cable runs.",
-      "role": "Engineered look only",
-      "primary_action": "Read cable tray",
-      "interaction_note": "Cable tray: overhead service route installed. It is cosmetic until the electrical network has visible routing.",
-      "asset_scene": "res://assets/equipment/cable_tray.glb",
+      "id": "galley_counter",
+      "label": "Galley Counter",
+      "group": "galley",
+      "status": "future",
+      "icon": "cooking-pot",
+      "height": 1.0,
+      "description": "Primary food-preparation counter for packaged meals and ingredients.",
+      "role": "Future meal preparation",
+      "asset_scene": "res://assets/equipment/mars_galley_dining_repack/galley_counter.tscn",
+      "cargo_cost": 120,
+      "valid_zones": [
+        "galley"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        1.433,
+        1.315,
+        0.842
+      ],
+      "pack": "mars_galley_dining_repack",
+      "system_note": "The habitat's kitchen: a food warmer, sink and storage. Cooking is mostly reheating, but preparing food together is part of crew life.",
+      "system_links": [
+        "Food",
+        "Water",
+        "Power",
+        "Morale"
+      ]
+    },
+    {
+      "id": "pantry_cabinet",
+      "label": "Pantry Cabinet",
+      "group": "galley",
+      "status": "future",
+      "icon": "archive",
+      "height": 1.9,
+      "description": "Dry-food storage cabinet with labelled meal bins.",
+      "role": "Future food inventory",
+      "asset_scene": "res://assets/equipment/mars_galley_dining_repack/pantry_cabinet.tscn",
+      "cargo_cost": 90,
+      "valid_zones": [
+        "galley",
+        "storage"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        1.37,
+        1.98,
+        0.891
+      ],
+      "pack": "mars_galley_dining_repack",
+      "system_note": "Long-life food shipped from Earth, stored until the hydroponics bay grows enough fresh food to supplement it.",
+      "system_links": [
+        "Food",
+        "Cargo"
+      ]
+    },
+    {
+      "id": "potable_water_dispenser",
+      "label": "Water Dispenser",
+      "group": "galley",
+      "status": "catalogue",
+      "icon": "glass-water",
+      "height": 1.5,
+      "description": "A refill point for crew drinking water.",
+      "role": "Future water-use feedback",
+      "asset_scene": "res://assets/equipment/mars_galley_dining_repack/potable_water_dispenser.tscn",
+      "cargo_cost": 55,
+      "valid_zones": [
+        "galley",
+        "living",
+        "medical",
+        "science"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "water_draw": 1
+      },
+      "size_m": [
+        0.664,
+        1.528,
+        0.774
+      ],
+      "pack": "mars_galley_dining_repack",
+      "system_note": "Clean drinking water from the Water Reclaimer. Watching this tap is a good reminder that the habitat's water goes round in a loop.",
+      "system_links": [
+        "Water"
+      ]
+    },
+    {
+      "id": "hygiene_shower",
+      "label": "Low-Water Wash Station",
+      "group": "hygiene",
+      "status": "catalogue",
+      "icon": "shower-head",
+      "height": 2.1,
+      "description": "A basin, metered tap and hand sprayer that use as little water as possible.",
+      "role": "Future hygiene feedback",
+      "asset_scene": "res://assets/equipment/mars_crew_hygiene_repack/hygiene_shower.tscn",
+      "cargo_cost": 140,
+      "valid_zones": [
+        "hygiene"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "water_draw": 2,
+        "power_draw": 1
+      },
+      "size_m": [
+        1.42,
+        2.08,
+        0.822
+      ],
+      "pack": "mars_crew_hygiene_repack",
+      "system_note": "Washing keeps the crew healthy, but water is precious. This station uses short metered bursts and sends the used water back to be recycled.",
+      "system_links": [
+        "Water",
+        "Crew health"
+      ]
+    },
+    {
+      "id": "hygiene_toilet",
+      "label": "Vacuum Toilet",
+      "group": "hygiene",
+      "status": "catalogue",
+      "icon": "circle-dot",
+      "height": 1.2,
+      "description": "Compact vacuum toilet with a sealed waste connection.",
+      "role": "Future waste feedback",
+      "asset_scene": "res://assets/equipment/mars_crew_hygiene_repack/hygiene_toilet.tscn",
+      "cargo_cost": 115,
+      "valid_zones": [
+        "hygiene"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "power_draw": 1
+      },
+      "size_m": [
+        0.86,
+        1.245,
+        1.03
+      ],
+      "pack": "mars_crew_hygiene_repack",
+      "system_note": "A spacecraft-style toilet that uses air flow instead of water. Waste is collected, and urine is recycled into clean water by Life Support, so even the bathroom is part of the water loop.",
+      "system_links": [
+        "Water",
+        "Waste",
+        "Air"
+      ]
+    },
+    {
+      "id": "medical_cabinet",
+      "label": "Medical Supply Cabinet",
+      "group": "medical",
+      "status": "future",
+      "icon": "cross",
+      "height": 1.8,
+      "description": "Lockable cabinet for medicines, trauma kits and diagnostic supplies.",
+      "role": "Future medical inventory",
+      "asset_scene": "res://assets/equipment/mars_medical_bay_repack/medical_cabinet.tscn",
+      "cargo_cost": 85,
+      "valid_zones": [
+        "medical"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        1.24,
+        2.064,
+        1.009
+      ],
+      "pack": "mars_medical_bay_repack",
+      "system_note": "Medicines, bandages and diagnostic kits brought from Earth. With no pharmacy for millions of kilometres, supplies are planned for every likely problem, and used carefully.",
+      "system_links": [
+        "Crew health",
+        "Cargo"
+      ]
+    },
+    {
+      "id": "medical_exam_cot",
+      "label": "Medical Exam Cot",
+      "group": "medical",
+      "status": "future",
+      "icon": "bed",
+      "height": 0.9,
+      "description": "A compact examination and recovery cot.",
+      "role": "Future crew care",
+      "asset_scene": "res://assets/equipment/mars_medical_bay_repack/medical_exam_cot.tscn",
+      "cargo_cost": 135,
+      "valid_zones": [
+        "medical"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        2.28,
+        1.656,
+        1.16
+      ],
+      "pack": "mars_medical_bay_repack",
+      "system_note": "The crew's doctor uses the exam cot for check-ups and treatment. Space travel affects bones, muscles, eyes and mood, so regular checks catch problems early, far from any hospital.",
+      "system_links": [
+        "Crew health",
+        "Morale"
+      ]
+    },
+    {
+      "id": "waste_sorting_unit",
+      "label": "Waste Sorting Unit",
+      "group": "waste_management",
+      "status": "catalogue",
+      "icon": "recycle",
+      "height": 1.7,
+      "description": "Three colour-coded chutes over a compactor: sort, squash and seal waste.",
+      "role": "Future closed-loop processing",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/waste_sorting_unit.tscn",
+      "cargo_cost": 170,
+      "valid_zones": [
+        "waste_management"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "power_draw": 2
+      },
+      "size_m": [
+        1.63,
+        1.17,
+        0.776
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "communications_station",
+      "label": "Communications Data Rack",
+      "group": "communications",
+      "status": "catalogue",
+      "icon": "satellite",
+      "height": 1.5,
+      "description": "Radio and data equipment that keeps the habitat in touch with Earth and the rovers.",
+      "role": "Future mission link",
+      "asset_scene": "res://assets/equipment/mars_mission_operations_repack/communications_station.tscn",
+      "cargo_cost": 145,
+      "valid_zones": [
+        "communications"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "power_draw": 1
+      },
+      "size_m": [
+        1.37,
+        2.065,
+        0.989
+      ],
+      "pack": "mars_mission_operations_repack",
+      "system_note": "Radio and data equipment that links the habitat to Earth, orbiting satellites and the rovers. Messages take minutes to cross between planets, so the crew must solve most problems themselves.",
+      "system_links": [
+        "Communications",
+        "Power"
+      ]
+    },
+    {
+      "id": "integrated_mess_booth",
+      "label": "Mess Booth",
+      "group": "living",
+      "status": "catalogue",
+      "icon": "utensils",
+      "height": 0.82,
+      "description": "A curved six-seat booth around a shared table, with backless benches set back for easy getting in and out.",
+      "role": "Dining",
+      "asset_scene": "res://assets/equipment/mars_galley_dining_repack/integrated_mess_booth.tscn",
+      "cargo_cost": 160,
+      "valid_zones": [
+        "living",
+        "galley"
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 4,
+        "power_draw": 1
+      },
+      "size_m": [
+        3.748,
+        0.82,
+        3.002
+      ],
+      "pack": "mars_galley_dining_repack",
+      "system_note": "A shared table where the whole crew can sit together. Eating and talking together matters for wellbeing on a long, isolated mission.",
+      "system_links": [
+        "Morale",
+        "Food"
+      ]
+    },
+    {
+      "id": "first_aid_kit",
+      "status": "future",
+      "height": 1.0,
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {},
+      "asset_scene": "res://assets/equipment/mars_general_habitat_repack/first_aid_kit.tscn",
+      "role": "Safety",
+      "description": "A portable kit for cuts, burns and sprains. Place it on a floor or a table.",
+      "label": "First Aid Kit",
+      "group": "general",
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "placement": "floor",
+      "icon": "plus",
+      "cargo_cost": 8,
+      "size_m": [
+        0.485,
+        0.394,
+        0.316
+      ],
+      "pack": "mars_general_habitat_repack",
+      "system_note": "For everyday cuts, burns and sprains. Small injuries are the most common medical problem on a mission, so kits are kept close to where people work.",
+      "system_links": [
+        "Crew health"
+      ]
+    },
+    {
+      "id": "first_aid_kit_wall",
+      "status": "future",
+      "height": 1.0,
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {},
+      "asset_scene": "res://assets/equipment/mars_general_habitat_repack/first_aid_kit.tscn",
+      "role": "Safety",
+      "description": "The same first aid kit on a wall bracket, at chest height where anyone can find it.",
+      "label": "Wall First Aid Kit",
+      "group": "general",
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "placement": "wall",
+      "icon": "plus",
+      "cargo_cost": 8,
+      "size_m": [
+        0.485,
+        0.394,
+        0.316
+      ],
+      "pack": "mars_general_habitat_repack",
+      "system_note": "For everyday cuts, burns and sprains. Small injuries are the most common medical problem on a mission, so kits are kept close to where people work.",
+      "system_links": [
+        "Crew health"
+      ],
+      "mount_height": 1.25,
+      "model_offset": [
+        0,
+        -0.197,
+        -0.158
+      ]
+    },
+    {
+      "id": "portable_interior_work_light",
+      "status": "future",
+      "height": 1.0,
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {},
+      "asset_scene": "res://assets/equipment/mars_general_habitat_repack/portable_interior_work_light.tscn",
+      "role": "Maintenance",
+      "description": "A battery work light for repairs in dim corners.",
+      "label": "Portable Work Light",
+      "group": "general",
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "placement": "floor",
+      "icon": "lightbulb",
+      "cargo_cost": 15,
+      "size_m": [
+        0.658,
+        1.592,
+        0.375
+      ],
+      "pack": "mars_general_habitat_repack",
+      "system_note": "A battery light for repairs in corners the ceiling lights don't reach. It runs on its own battery, so it still works during a power cut.",
+      "system_links": [
+        "Maintenance"
+      ]
+    },
+    {
+      "id": "supply_crate_small",
+      "status": "future",
+      "height": 1.0,
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {},
+      "asset_scene": "res://assets/equipment/mars_general_habitat_repack/supply_crate_small.tscn",
+      "role": "Storage",
+      "description": "A sealed small crate of spare supplies.",
+      "label": "Supply Crate (Small)",
+      "group": "general",
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "placement": "floor",
+      "icon": "package",
+      "cargo_cost": 15,
+      "size_m": [
+        0.511,
+        0.327,
+        0.465
+      ],
+      "pack": "mars_general_habitat_repack",
+      "system_note": "A sealed crate of spare supplies delivered from Earth.",
+      "system_links": [
+        "Cargo",
+        "Storage"
+      ]
+    },
+    {
+      "id": "supply_crate_medium",
+      "status": "future",
+      "height": 1.0,
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {},
+      "asset_scene": "res://assets/equipment/mars_general_habitat_repack/supply_crate_medium.tscn",
+      "role": "Storage",
+      "description": "A sealed medium crate of spare supplies.",
+      "label": "Supply Crate (Medium)",
+      "group": "general",
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "placement": "floor",
+      "icon": "package",
+      "cargo_cost": 25,
+      "size_m": [
+        0.681,
+        0.447,
+        0.554
+      ],
+      "pack": "mars_general_habitat_repack",
+      "system_note": "A sealed crate of spare supplies delivered from Earth.",
+      "system_links": [
+        "Cargo",
+        "Storage"
+      ]
+    },
+    {
+      "id": "supply_crate_large",
+      "status": "future",
+      "height": 1.0,
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {},
+      "asset_scene": "res://assets/equipment/mars_general_habitat_repack/supply_crate_large.tscn",
+      "role": "Storage",
+      "description": "A sealed large crate of spare supplies.",
+      "label": "Supply Crate (Large)",
+      "group": "general",
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "placement": "floor",
+      "icon": "package",
+      "cargo_cost": 40,
+      "size_m": [
+        0.87,
+        0.587,
+        0.655
+      ],
+      "pack": "mars_general_habitat_repack",
+      "system_note": "A sealed crate of spare supplies delivered from Earth.",
+      "system_links": [
+        "Cargo",
+        "Storage"
+      ]
+    },
+    {
+      "id": "mission_planning_console",
+      "status": "future",
+      "height": 1.0,
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {},
+      "asset_scene": "res://assets/equipment/mars_mission_operations_repack/mission_planning_console.tscn",
+      "role": "Mission planning",
+      "description": "The desk where the crew plans each day's work and checks the habitat's systems.",
+      "label": "Mission Planning Console",
+      "group": "communications",
+      "valid_zones": [
+        "communications",
+        "science"
+      ],
+      "placement": "floor",
+      "icon": "monitor",
+      "cargo_cost": 110,
+      "size_m": [
+        1.73,
+        1.185,
+        0.987
+      ],
+      "pack": "mars_mission_operations_repack",
+      "system_note": "The crew plans each day here: who works on what, what needs fixing, and which places to explore. Its lamps show the habitat's readiness at a glance.",
+      "system_links": [
+        "Every system",
+        "Research"
+      ]
+    },
+    {
+      "id": "mars_survey_board",
+      "status": "future",
+      "height": 1.0,
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {},
+      "asset_scene": "res://assets/equipment/mars_mission_operations_repack/mars_survey_board.tscn",
+      "role": "Mission planning",
+      "description": "A live map of the landing site and a globe showing where on Mars the habitat stands.",
+      "label": "Mars Survey Board",
+      "group": "communications",
+      "valid_zones": [
+        "communications",
+        "science",
+        "living"
+      ],
+      "placement": "floor",
+      "icon": "map-pin",
+      "cargo_cost": 70,
+      "size_m": [
+        2.44,
+        1.993,
+        0.563
+      ],
+      "pack": "mars_mission_operations_repack",
+      "system_note": "A live map of the landing site from the habitat's own data, showing your rooms, buried ice, the rover and you. Switch to the globe to see where on Mars the habitat stands.",
+      "system_links": [
+        "Exploration",
+        "Water",
+        "Research"
+      ]
+    },
+    {
+      "id": "wall_cabin_heater",
+      "label": "Wall Cabin Heater",
+      "group": "general",
+      "status": "catalogue",
+      "icon": "flame",
+      "height": 0.48,
+      "mount_height": 0.6,
+      "description": "A wall-mounted heating panel with Off, Low and High settings.",
+      "role": "Extra heating",
+      "cargo_cost": 20,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "wall",
+      "effects": {
+        "power_draw_levels": [
+          0,
+          1,
+          2
+        ],
+        "heat_levels_c": [
+          0,
+          6,
+          12
+        ]
+      },
+      "system_note": "A backup heater for one room. It turns electricity into warmth: the higher the setting, the more power it uses. It only works while the habitat has power, and Life Support's climate control is still the main heating.",
+      "system_links": [
+        "Heating",
+        "Power"
+      ],
+      "asset_scene": "res://assets/equipment/mars_indoor_heaters_martian_hailmary_v1/wall_cabin_heater.tscn",
+      "size_m": [
+        0.836,
+        0.479,
+        0.238
+      ],
+      "pack": "mars_indoor_heaters_martian_hailmary_v1"
+    },
+    {
+      "id": "portable_utility_heater",
+      "label": "Portable Utility Heater",
+      "group": "general",
+      "status": "catalogue",
+      "icon": "flame",
+      "height": 0.75,
+      "description": "A movable fan heater with Off, Low and High settings.",
+      "role": "Extra heating",
       "cargo_cost": 30,
-      "valid_zones": ["engineering", "storage", "corridor", "life_support", "vehicle_bay", "science"],
-      "footprint": [2, 1],
-      "placement": "ceiling",
-      "effects": {}
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "power_draw_levels": [
+          0,
+          2,
+          3
+        ],
+        "heat_levels_c": [
+          0,
+          8,
+          14
+        ]
+      },
+      "system_note": "A fan heater that can be moved wherever it's needed, such as a cold workshop or a room whose climate control has failed. It warms faster than the wall heater, but uses more power.",
+      "system_links": [
+        "Heating",
+        "Power"
+      ],
+      "asset_scene": "res://assets/equipment/mars_indoor_heaters_martian_hailmary_v1/portable_utility_heater.tscn",
+      "size_m": [
+        0.593,
+        0.744,
+        0.416
+      ],
+      "pack": "mars_indoor_heaters_martian_hailmary_v1"
     },
     {
-      "id": "crew_chair", "label": "Crew Chair", "group": "living", "status": "cosmetic", "icon": "armchair", "height": 1.0,
-      "description": "A compact adjustable chair for a personal desk.", "role": "Personalisation", "asset_scene": "res://assets/equipment/crew_chair.glb", "cargo_cost": 35,
-      "valid_zones": ["living", "communications"], "footprint": [1, 1], "placement": "floor", "effects": {"happiness": 1}
+      "id": "cargo_crate_small",
+      "label": "Small Cargo Crate",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "package",
+      "description": "A small sealed case for supplies delivered to the surface.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "Every kilogram landed on Mars costs fuel, so supplies arrive packed tightly in tough, sealed crates.",
+      "system_links": [
+        "Cargo"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_support_martian_hailmary_v2/cargo_crate_small.tscn",
+      "size_m": [
+        0.654,
+        0.408,
+        0.592
+      ],
+      "pack": "mars_exterior_support_martian_hailmary_v2"
     },
     {
-      "id": "crew_personal_desk", "label": "Personal Desk", "group": "living", "status": "cosmetic", "icon": "table-properties", "height": 1.1,
-      "description": "A small desk for private work, notes and personal effects.", "role": "Personalisation", "asset_scene": "res://assets/equipment/crew_personal_desk.glb", "cargo_cost": 70,
-      "valid_zones": ["living", "communications"], "footprint": [2, 1], "placement": "floor_wall", "effects": {"happiness": 1}
+      "id": "cargo_crate_large",
+      "label": "Large Cargo Crate",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "package",
+      "description": "A large sealed case for supplies delivered to the surface.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "Every kilogram landed on Mars costs fuel, so supplies arrive packed tightly in tough, sealed crates.",
+      "system_links": [
+        "Cargo"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_support_martian_hailmary_v2/cargo_crate_large.tscn",
+      "size_m": [
+        1.004,
+        0.658,
+        0.842
+      ],
+      "pack": "mars_exterior_support_martian_hailmary_v2"
     },
     {
-      "id": "galley_counter", "label": "Galley Counter", "group": "galley", "status": "future", "icon": "cooking-pot", "height": 1.0,
-      "description": "Primary food-preparation counter for packaged meals and ingredients.", "role": "Future meal preparation", "asset_scene": "res://assets/equipment/galley_counter.glb", "cargo_cost": 120,
-      "valid_zones": ["galley"], "footprint": [2, 1], "placement": "floor_wall", "effects": {}
+      "id": "equipment_pallet",
+      "label": "Loaded Cargo Pallet",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "package",
+      "description": "A pallet of strapped-down cargo cases.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "Deliveries land on pallets with everything strapped down for the bumpy descent. The crew unload them and move the supplies inside.",
+      "system_links": [
+        "Cargo",
+        "Storage"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_support_martian_hailmary_v2/equipment_pallet.tscn",
+      "size_m": [
+        1.742,
+        1.1,
+        1.34
+      ],
+      "pack": "mars_exterior_support_martian_hailmary_v2"
     },
     {
-      "id": "galley_sink", "label": "Galley Sink", "group": "galley", "status": "future", "icon": "waves", "height": 1.0,
-      "description": "Wash and food-preparation sink with a compact reclaim connection.", "role": "Future water-use feedback", "asset_scene": "res://assets/equipment/galley_sink.glb", "cargo_cost": 85,
-      "valid_zones": ["galley"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"water_draw": 1}
+      "id": "comms_antenna",
+      "label": "Communications Mast",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "satellite",
+      "description": "A tripod mast with a dish and antennas.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "A tall mast sends signals further: up to satellites orbiting Mars and out to rovers working beyond the horizon.",
+      "system_links": [
+        "Communications",
+        "Exploration"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_support_martian_hailmary_v2/comms_antenna.tscn",
+      "size_m": [
+        1.845,
+        4.741,
+        1.802
+      ],
+      "pack": "mars_exterior_support_martian_hailmary_v2"
     },
     {
-      "id": "food_warmer", "label": "Food Warmer", "group": "galley", "status": "future", "icon": "heater", "height": 0.7,
-      "description": "Compact reheat unit for prepared meals.", "role": "Future meal service", "asset_scene": "res://assets/equipment/food_warmer.glb", "cargo_cost": 45,
-      "valid_zones": ["galley"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"power_draw": 1}
+      "id": "exterior_workbench",
+      "label": "Outdoor Workbench",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "wrench",
+      "description": "A sheltered bench for repairs outside.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "Some jobs are easier outside than dragging dusty parts through the airlock. The crew fix rover parts and equipment here, in their suits.",
+      "system_links": [
+        "Maintenance"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_support_martian_hailmary_v2/exterior_workbench.tscn",
+      "size_m": [
+        1.8,
+        1.821,
+        0.91
+      ],
+      "pack": "mars_exterior_support_martian_hailmary_v2"
     },
     {
-      "id": "pantry_cabinet", "label": "Pantry Cabinet", "group": "galley", "status": "future", "icon": "archive", "height": 1.9,
-      "description": "Dry-food storage cabinet with labelled meal bins.", "role": "Future food inventory", "asset_scene": "res://assets/equipment/pantry_cabinet.glb", "cargo_cost": 90,
-      "valid_zones": ["galley", "storage"], "footprint": [1, 1], "placement": "floor_wall", "effects": {}
+      "id": "high_light_post",
+      "label": "Tall Light Post",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "lightbulb",
+      "description": "A tall grid-powered light for paths and work areas.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "Mars nights are long and very dark. Fixed lights mark the way between the airlock and work areas, but they draw on the habitat's power.",
+      "system_links": [
+        "Power",
+        "Crew safety"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/high_light_post.tscn",
+      "size_m": [
+        1.53,
+        3.755,
+        0.67
+      ],
+      "pack": "mars_exterior_hero_refresh_martian_hailmary_v1"
     },
     {
-      "id": "potable_water_dispenser", "label": "Water Dispenser", "group": "galley", "status": "future", "icon": "glass-water", "height": 1.5,
-      "description": "A refill point for crew drinking water.", "role": "Future water-use feedback", "asset_scene": "res://assets/equipment/potable_water_dispenser.glb", "cargo_cost": 55,
-      "valid_zones": ["galley", "living"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"water_draw": 1}
+      "id": "path_beacon",
+      "label": "Path Beacon",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "map-pin",
+      "description": "A small solar route marker.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "Beacons mark safe routes, so someone returning in the dark or a dust storm can find the airlock.",
+      "system_links": [
+        "Crew safety",
+        "Exploration"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_support_martian_hailmary_v2/path_beacon.tscn",
+      "size_m": [
+        0.37,
+        1.129,
+        0.37
+      ],
+      "pack": "mars_exterior_support_martian_hailmary_v2"
     },
     {
-      "id": "hygiene_shower", "label": "Hygiene Shower", "group": "hygiene", "status": "future", "icon": "shower-head", "height": 2.1,
-      "description": "Water-efficient wash stall for crew hygiene.", "role": "Future hygiene feedback", "asset_scene": "res://assets/equipment/hygiene_shower.glb", "cargo_cost": 140,
-      "valid_zones": ["hygiene"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"water_draw": 2, "power_draw": 1}
+      "id": "portable_work_light",
+      "label": "Portable Floodlight",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "lightbulb",
+      "description": "A battery floodlight for outdoor worksites.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "A battery floodlight can be carried to wherever work is happening, without running cables from the habitat.",
+      "system_links": [
+        "Maintenance",
+        "Crew safety"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/portable_work_light.tscn",
+      "size_m": [
+        0.846,
+        2.067,
+        0.516
+      ],
+      "pack": "mars_exterior_hero_refresh_martian_hailmary_v1"
     },
     {
-      "id": "hygiene_toilet", "label": "Vacuum Toilet", "group": "hygiene", "status": "future", "icon": "circle-dot", "height": 1.2,
-      "description": "Compact vacuum toilet with a sealed waste connection.", "role": "Future waste feedback", "asset_scene": "res://assets/equipment/hygiene_toilet.glb", "cargo_cost": 115,
-      "valid_zones": ["hygiene"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"power_draw": 1}
+      "id": "safety_barrier",
+      "label": "Safety Barrier",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "shield",
+      "description": "A freestanding barrier for marking hazards.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "Barriers mark hazards such as a drill site, unstable ground or a rover working area, so nobody walks into danger.",
+      "system_links": [
+        "Crew safety"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_support_martian_hailmary_v2/safety_barrier.tscn",
+      "size_m": [
+        1.78,
+        1.104,
+        0.46
+      ],
+      "pack": "mars_exterior_support_martian_hailmary_v2"
     },
     {
-      "id": "hygiene_washbasin", "label": "Washbasin", "group": "hygiene", "status": "future", "icon": "droplets", "height": 1.0,
-      "description": "Hand-wash station with a reclaim drain.", "role": "Future hygiene feedback", "asset_scene": "res://assets/equipment/hygiene_washbasin.glb", "cargo_cost": 55,
-      "valid_zones": ["hygiene"], "footprint": [1, 1], "placement": "floor_wall", "effects": {"water_draw": 1}
+      "id": "solar_floodlight",
+      "label": "Solar Floodlight",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "sun",
+      "description": "A floodlight with its own solar panel and battery.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "Its own solar panel charges a battery by day, so it shines at night without drawing on the habitat's power.",
+      "system_links": [
+        "Power",
+        "Crew safety"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/solar_floodlight.tscn",
+      "size_m": [
+        0.982,
+        2.968,
+        0.741
+      ],
+      "pack": "mars_exterior_hero_refresh_martian_hailmary_v1"
     },
     {
-      "id": "medical_cabinet", "label": "Medical Cabinet", "group": "medical", "status": "future", "icon": "cross", "height": 1.8,
-      "description": "Lockable cabinet for medicines, trauma kits and diagnostic supplies.", "role": "Future medical inventory", "asset_scene": "res://assets/equipment/medical_cabinet.glb", "cargo_cost": 85,
-      "valid_zones": ["medical"], "footprint": [1, 1], "placement": "floor_wall", "effects": {}
+      "id": "hazard_bollard",
+      "label": "Hazard Bollard",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "triangle-alert",
+      "description": "A bright marker post with a warning light.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "Bright posts mark the edges of routes and work areas. Their lights blink so they can be seen through dust.",
+      "system_links": [
+        "Crew safety"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_support_martian_hailmary_v2/hazard_bollard.tscn",
+      "size_m": [
+        0.35,
+        1.028,
+        0.35
+      ],
+      "pack": "mars_exterior_support_martian_hailmary_v2"
     },
     {
-      "id": "medical_exam_cot", "label": "Medical Exam Cot", "group": "medical", "status": "future", "icon": "bed", "height": 0.9,
-      "description": "A compact examination and recovery cot.", "role": "Future crew care", "asset_scene": "res://assets/equipment/medical_exam_cot.glb", "cargo_cost": 135,
-      "valid_zones": ["medical"], "footprint": [2, 1], "placement": "floor", "effects": {}
+      "id": "surface_reactor",
+      "label": "Compact Reactor",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "atom",
+      "description": "Visual model of the site's compact reactor.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "A compact reactor makes steady power day and night, and through dust storms that cover solar panels. Its radiators shed waste heat into the cold.",
+      "system_links": [
+        "Power",
+        "Heating"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/surface_reactor.tscn",
+      "size_m": [
+        2.47,
+        2.114,
+        1.688
+      ],
+      "pack": "mars_exterior_hero_refresh_martian_hailmary_v1"
     },
     {
-      "id": "waste_sorting_unit", "label": "Waste Sorting Unit", "group": "waste_management", "status": "future", "icon": "recycle", "height": 1.7,
-      "description": "Separates recoverable material from sealed waste streams.", "role": "Future closed-loop processing", "asset_scene": "res://assets/equipment/waste_sorting_unit.glb", "cargo_cost": 170,
-      "valid_zones": ["waste_management"], "footprint": [2, 1], "placement": "floor_wall", "effects": {"power_draw": 2}
+      "id": "ice_drill",
+      "label": "Ice Extractor",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "drill",
+      "description": "Visual model of the site's ice extractor.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.0,
+      "system_note": "Mars has water frozen underground. The drill heats the ice, pumps up the water and stores it in the tank for the habitat.",
+      "system_links": [
+        "Water",
+        "Power"
+      ],
+      "asset_scene": "res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/ice_drill.tscn",
+      "size_m": [
+        2.39,
+        2.638,
+        1.745
+      ],
+      "pack": "mars_exterior_hero_refresh_martian_hailmary_v1"
     },
     {
-      "id": "communications_station", "label": "Communications Station", "group": "communications", "status": "future", "icon": "radio", "height": 1.5,
-      "description": "A dedicated console for surface telemetry and mission communications.", "role": "Future mission link", "asset_scene": "res://assets/equipment/communications_station.glb", "cargo_cost": 145,
-      "valid_zones": ["communications", "science"], "footprint": [2, 1], "placement": "floor_wall", "effects": {"power_draw": 1}
+      "id": "oxygen_generator",
+      "label": "Oxygen Generator",
+      "group": "life_support",
+      "status": "catalogue",
+      "icon": "wind",
+      "height": 1.86,
+      "description": "Splits water into oxygen using electricity (electrolysis).",
+      "role": "Makes breathable oxygen",
+      "cargo_cost": 300,
+      "valid_zones": [
+        "life_support"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Makes the oxygen the crew breathe by splitting water into oxygen and hydrogen with electricity, like the oxygen generator on the International Space Station. The oxygen goes into the cabin air; the hydrogen is vented outside. It needs a steady supply of water and power.",
+      "system_links": [
+        "Air",
+        "Water",
+        "Power"
+      ],
+      "asset_scene": "res://assets/equipment/mars_oxygen_generator_v1/oxygen_generator.tscn",
+      "size_m": [
+        1.21,
+        1.855,
+        0.8
+      ],
+      "pack": "mars_oxygen_generator_v1"
+    },
+    {
+      "id": "crew_lander",
+      "label": "Crew Lander",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "rocket",
+      "description": "The lander that brought the crew to Mars.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 4.7,
+      "system_note": "The spacecraft that brought you down to the surface: a small pressurised cabin on landing legs. It's always a safe place to shelter and save, but it's far too small to live in for long. That's why you need a habitat.",
+      "system_links": [
+        "Shelter"
+      ],
+      "asset_scene": "res://assets/equipment/mars_crew_lander_v1/crew_lander.tscn",
+      "size_m": [
+        7.64,
+        4.674,
+        6.84
+      ],
+      "pack": "mars_crew_lander_v1"
+    },
+    {
+      "id": "galley_table_set",
+      "label": "Galley Table Set",
+      "group": "galley",
+      "status": "catalogue",
+      "icon": "utensils",
+      "height": 1.0,
+      "description": "A table for four with chairs: somewhere to sit down and eat together.",
+      "role": "Dining",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/galley_table_set.tscn",
+      "cargo_cost": 70,
+      "valid_zones": [
+        "galley",
+        "living",
+        "communications"
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 3
+      },
+      "system_note": "Shared meals are one of the biggest boosts to crew morale on long missions, and a table gives the day a rhythm.",
+      "system_links": [
+        "Morale",
+        "Food"
+      ],
+      "size_m": [
+        1.6,
+        0.86,
+        1.87
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "galley_oven",
+      "label": "Galley Oven",
+      "group": "galley",
+      "status": "cosmetic",
+      "icon": "cooking-pot",
+      "height": 1.0,
+      "description": "A compact convection oven with an induction hob on top.",
+      "role": "Cooking",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/galley_oven.tscn",
+      "cargo_cost": 60,
+      "valid_zones": [
+        "galley"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Heats food without open flames. In a sealed habitat, fire and smoke are serious dangers, so cooking is electric and carefully ventilated.",
+      "system_links": [
+        "Food",
+        "Power"
+      ],
+      "size_m": [
+        0.63,
+        0.936,
+        0.691
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "galley_rehydration_station",
+      "label": "Rehydration Station",
+      "group": "galley",
+      "status": "cosmetic",
+      "icon": "droplets",
+      "height": 1.0,
+      "description": "Hot and cold water for freeze-dried food pouches.",
+      "role": "Food prep",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/galley_rehydration_station.tscn",
+      "cargo_cost": 45,
+      "valid_zones": [
+        "galley"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Most food arrives freeze-dried, which makes it light to launch. Adding hot water brings it back to life, using some of the base's water.",
+      "system_links": [
+        "Food",
+        "Water"
+      ],
+      "size_m": [
+        0.635,
+        1.34,
+        0.485
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "galley_freezer",
+      "label": "Galley Freezer",
+      "group": "galley",
+      "status": "cosmetic",
+      "icon": "refrigerator",
+      "height": 1.0,
+      "description": "A fridge over a freezer, for fresh crops and frozen meals.",
+      "role": "Food storage",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/galley_freezer.tscn",
+      "cargo_cost": 110,
+      "valid_zones": [
+        "galley",
+        "storage"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Keeps fresh food from Hydroponics and frozen meals safe. It runs all day and night, so it's a steady load on the power system.",
+      "system_links": [
+        "Food",
+        "Power"
+      ],
+      "size_m": [
+        0.75,
+        1.86,
+        0.785
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "recycling_hopper_plastics",
+      "label": "Plastics Hopper",
+      "group": "waste_management",
+      "status": "cosmetic",
+      "icon": "recycle",
+      "height": 1.0,
+      "description": "A hopper for sorted plastics, ready to be shredded and reused.",
+      "role": "Recycling",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/recycling_hopper_plastics.tscn",
+      "cargo_cost": 55,
+      "valid_zones": [
+        "waste_management",
+        "storage"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Plastic waste can be shredded and melted into filament for the 3D printer: rubbish becomes spare parts.",
+      "system_links": [
+        "Waste",
+        "Recycling"
+      ],
+      "size_m": [
+        0.67,
+        1.28,
+        0.67
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "recycling_hopper_metals",
+      "label": "Metals Hopper",
+      "group": "waste_management",
+      "status": "cosmetic",
+      "icon": "recycle",
+      "height": 1.0,
+      "description": "A hopper for scrap metal: cans, offcuts and broken parts.",
+      "role": "Recycling",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/recycling_hopper_metals.tscn",
+      "cargo_cost": 55,
+      "valid_zones": [
+        "waste_management",
+        "storage",
+        "engineering"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Every kilogram launched from Earth is precious, so scrap metal is kept for repairs instead of thrown away.",
+      "system_links": [
+        "Waste",
+        "Recycling"
+      ],
+      "size_m": [
+        0.67,
+        1.28,
+        0.67
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "compost_hopper",
+      "label": "Compost Hopper",
+      "group": "waste_management",
+      "status": "cosmetic",
+      "icon": "sprout",
+      "height": 1.0,
+      "description": "A hopper for food scraps and plant waste, turned into compost.",
+      "role": "Recycling",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/compost_hopper.tscn",
+      "cargo_cost": 55,
+      "valid_zones": [
+        "waste_management",
+        "hydroponics"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Organic waste breaks down into nutrients for the grow trays, closing the loop between the galley and Hydroponics.",
+      "system_links": [
+        "Waste",
+        "Food"
+      ],
+      "size_m": [
+        0.67,
+        1.28,
+        0.67
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "iv_drip_stand",
+      "label": "IV Drip Stand",
+      "group": "medical",
+      "status": "cosmetic",
+      "icon": "syringe",
+      "height": 1.0,
+      "description": "A wheeled pole with fluid bags and an infusion pump.",
+      "role": "Treatment",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/iv_drip_stand.tscn",
+      "cargo_cost": 12,
+      "valid_zones": [
+        "medical"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Gives fluids and medicine straight into a vein, for dehydration, illness or injury, when the nearest hospital is months away.",
+      "system_links": [
+        "Crew health"
+      ],
+      "size_m": [
+        0.587,
+        1.998,
+        0.64
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "crew_vitals_monitor",
+      "label": "Crew Vitals Monitor",
+      "group": "medical",
+      "status": "cosmetic",
+      "icon": "heart-pulse",
+      "height": 1.0,
+      "description": "A wall screen showing every crew member's heart rate, oxygen level and temperature.",
+      "role": "Monitoring",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/crew_vitals_monitor.tscn",
+      "cargo_cost": 15,
+      "valid_zones": [
+        "medical",
+        "communications"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "wall",
+      "effects": {},
+      "system_note": "Wearable sensors send each person's vital signs here, so problems are spotted early, and doctors on Earth can see them too.",
+      "system_links": [
+        "Crew health",
+        "Communications"
+      ],
+      "mount_height": 1.5,
+      "size_m": [
+        0.94,
+        0.58,
+        0.114
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "surgery_cart",
+      "label": "Surgery Cart",
+      "group": "medical",
+      "status": "cosmetic",
+      "icon": "plus",
+      "height": 1.0,
+      "description": "A wheeled cart with drawers of instruments and a sterile tray.",
+      "role": "Treatment",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/surgery_cart.tscn",
+      "cargo_cost": 40,
+      "valid_zones": [
+        "medical"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Keeps sterile instruments together and ready. On Mars the crew must be able to handle emergencies themselves.",
+      "system_links": [
+        "Crew health"
+      ],
+      "size_m": [
+        0.736,
+        0.955,
+        0.641
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "medical_exam_light",
+      "label": "Exam Light",
+      "group": "medical",
+      "status": "cosmetic",
+      "icon": "lamp",
+      "height": 1.0,
+      "description": "A bright examination lamp on a wheeled stand.",
+      "role": "Examination",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/medical_exam_light.tscn",
+      "cargo_cost": 18,
+      "valid_zones": [
+        "medical"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Bright, shadow-free light for examining injuries and doing small procedures.",
+      "system_links": [
+        "Crew health",
+        "Power"
+      ],
+      "size_m": [
+        0.569,
+        1.672,
+        1.011
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "work_desk",
+      "label": "Work Desk",
+      "group": "general",
+      "status": "cosmetic",
+      "icon": "monitor",
+      "height": 1.0,
+      "description": "A desk with drawers, a laptop and a mug.",
+      "role": "Work space",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/work_desk.tscn",
+      "cargo_cost": 35,
+      "valid_zones": [
+        "living",
+        "science",
+        "communications",
+        "medical",
+        "engineering",
+        "storage",
+        "galley"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Crew spend hours on reports, experiments and messages home. A personal desk helps with focus and routine.",
+      "system_links": [
+        "Morale",
+        "Research"
+      ],
+      "size_m": [
+        1.2,
+        0.99,
+        0.638
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "crew_chair",
+      "label": "Crew Chair",
+      "group": "general",
+      "status": "cosmetic",
+      "icon": "armchair",
+      "height": 1.0,
+      "description": "A swivel chair on castors.",
+      "role": "Seating",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/crew_chair.tscn",
+      "cargo_cost": 12,
+      "valid_zones": [
+        "living",
+        "science",
+        "communications",
+        "medical",
+        "engineering",
+        "storage",
+        "galley",
+        "hydroponics"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Light and adjustable. In Mars gravity (about a third of Earth's), chairs can be built much lighter.",
+      "system_links": [
+        "Morale"
+      ],
+      "size_m": [
+        0.622,
+        1.0,
+        0.642
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "open_shelving",
+      "label": "Open Shelving",
+      "group": "general",
+      "status": "cosmetic",
+      "icon": "package",
+      "height": 1.0,
+      "description": "Open shelves with labelled storage tubs.",
+      "role": "Storage",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/open_shelving.tscn",
+      "cargo_cost": 30,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Labelled tubs mean anyone can find tools and spares fast: important when something breaks.",
+      "system_links": [
+        "Cargo"
+      ],
+      "size_m": [
+        1.06,
+        1.8,
+        0.44
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "plant_pot",
+      "label": "Potted Plant",
+      "group": "general",
+      "status": "catalogue",
+      "icon": "flower-2",
+      "height": 1.0,
+      "description": "A potted plant: a little green in a world of red.",
+      "role": "Morale",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/plant_pot.tscn",
+      "cargo_cost": 15,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 1
+      },
+      "system_note": "Studies on the ISS and in Antarctic bases show that looking after plants improves crew wellbeing.",
+      "system_links": [
+        "Morale"
+      ],
+      "size_m": [
+        0.64,
+        1.045,
+        0.61
+      ],
+      "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "wall_whiteboard",
+      "label": "Whiteboard",
+      "group": "general",
+      "status": "cosmetic",
+      "icon": "presentation",
+      "height": 1.0,
+      "description": "A wall whiteboard for plans, sketches and the day's schedule.",
+      "role": "Planning",
+      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/wall_whiteboard.tscn",
+      "cargo_cost": 8,
+      "valid_zones": [
+        "living",
+        "science",
+        "communications",
+        "medical",
+        "engineering",
+        "storage",
+        "galley",
+        "hydroponics",
+        "life_support"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "wall",
+      "effects": {},
+      "system_note": "Quick to update and needs no power: perfect for the day's tasks, sketches and reminders.",
+      "system_links": [
+        "Research"
+      ],
+      "mount_height": 1.5,
+      "size_m": [
+        1.24,
+        0.87,
+        0.095
+      ],
+      "pack": "mars_habitat_furnishings_v1"
     }
   ]
 }

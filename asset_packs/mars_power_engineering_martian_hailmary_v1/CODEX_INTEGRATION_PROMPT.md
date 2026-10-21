@@ -1,0 +1,9 @@
+Integrate the two Power & Engineering equipment assets from this pack into my Year 9 Mars Habitat Godot project, **one room at a time**. Before replacing anything, preserve a named backup of the current `power_distribution_panel` and `battery_bank` GLBs/scenes/scripts and their placement configuration. Do not touch structural wall/door/window components or alter the rest of the habitat.
+
+Use the GLBs from `models/`. Keep the existing catalogue IDs and asset_scene paths where possible and preserve any existing power generation, battery capacity, resource effects, save/load, place/remove, valid zones, collision and footprint contracts. The GLBs are +Y-up, -Z forward, metres and should occupy their existing 1.5 m equipment cells. Audit the footprint in-game before updating bounds.
+
+Test the distribution cabinet alone first, then the battery bank. Build simple collisions using boxes/capsules (not complex trimesh collision). Confirm placement, removal, camera movement, reload, shadows, material appearance and performance. Do not introduce a detailed power-grid-cabling simulation.
+
+The cabinet has named `Main_Isolator_Rotary`, `Emergency_Stop_Plunger`, breaker handle (`BreakerBank_...`), and `Inspection_Door` mesh nodes. The battery bank has one movable `Battery_Cassette_R1_L` set of nodes, six `Battery_ChargeIndicator_...` bars, and `Battery_Main_Disconnect`; other cartridges were intentionally batched into static geometry for performance. Godot can animate parts grouped by their shared node-name prefix. None of those animations is yet linked to gameplay.
+
+Make interactions simple: inspect cabinet, toggle main power, inspect battery state; represent status with actual game data and emissive indicator materials or short contextual UI. Never bake text/telemetry into materials. Keep shaders and real-time lights minimal. Profile a normal populated room before trying to cut geometry further. Do not delete older models or alter other room packages.

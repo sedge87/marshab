@@ -1,0 +1,45 @@
+{
+  "asset_id": "power_distribution_panel",
+  "filename": "power_distribution_cabinet_martian_hailmary.glb",
+  "triangles": 31216,
+  "mesh_nodes": 34,
+  "materials": 13,
+  "bounds_min_m": [
+    -0.72,
+    -0.0005,
+    -0.431
+  ],
+  "bounds_max_m": [
+    0.724,
+    2.042,
+    0.4
+  ],
+  "dimensions_m": [
+    1.444,
+    2.043,
+    0.831
+  ],
+  "interactive_nodes": [
+    "Emergency_Stop_Plunger__orange",
+    "Main_Isolator_Rotary__steel",
+    "Main_Isolator_Rotary__white",
+    "Main_Isolator_Rotary__orange",
+    "BreakerBank_R3_C5_Handle__steel",
+    "BreakerBank_R3_C4_Handle__steel",
+    "BreakerBank_R3_C3_Handle__steel",
+    "BreakerBank_R3_C2_Handle__steel",
+    "BreakerBank_R3_C1_Handle__steel",
+    "BreakerBank_R2_C5_Handle__steel",
+    "BreakerBank_R2_C4_Handle__steel",
+    "BreakerBank_R2_C3_Handle__steel",
+    "BreakerBank_R2_C2_Handle__steel",
+    "BreakerBank_R2_C1_Handle__steel",
+    "BreakerBank_R1_C5_Handle__steel",
+    "BreakerBank_R1_C4_Handle__steel",
+    "BreakerBank_R1_C3_Handle__steel",
+    "BreakerBank_R1_C2_Handle__steel",
+    "BreakerBank_R1_C1_Handle__orange"
+  ],
+  "baked_text": false,
+  "functional_simulation_implemented": false
+}

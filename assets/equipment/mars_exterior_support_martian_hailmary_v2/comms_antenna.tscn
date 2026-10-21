@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_rig.gd" id="1_rig"]
+[ext_resource type="PackedScene" path="res://assets/equipment/mars_exterior_support_martian_hailmary_v2/models/comms_antenna.glb" id="2_model"]
+
+[node name="CommsAntenna" type="Node3D"]
+script = ExtResource("1_rig")
+equipment_id = "comms_antenna"
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.1055, -0.009, 0.14)

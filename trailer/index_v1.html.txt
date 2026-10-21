@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Noto Sans";
+        src: url("assets/fonts/NotoSans.ttf") format("truetype");
+        font-weight: 100 900;
+      }
+      @font-face {
+        font-family: "Noto Sans Mono";
+        src: url("assets/fonts/NotoSansMono.ttf") format("truetype");
+        font-weight: 100 900;
+      }
+      /* Mars dusk palette: near-black tinted warm, bone-white type, rust accent. */
+      :root {
+        --ground: #0d0907;
+        --ink: #f3ebe2;
+        --muted: #c9b8a8;
+        --accent: #e0733c;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--ground);
+        font-family: "Noto Sans", sans-serif;
+      }
+      video.clip {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      /* Vignette and 2.39:1 letterbox over the footage. */
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(8, 5, 3, 0.55) 100%);
+        pointer-events: none;
+        z-index: 40;
+      }
+      .bar {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 138px;
+        background: #070504;
+        z-index: 60;
+      }
+      #bar-top { top: 0; }
+      #bar-bottom { bottom: 0; }
+      #fade {
+        position: absolute;
+        inset: 0;
+        background: #070504;
+        z-index: 50;
+        opacity: 0;
+      }
+      /* Lower-third lines sit just above the bottom bar. */
+      .line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 38px;
+        height: 64px;
+        align-items: center;
+        display: flex;
+        justify-content: center;
+        z-index: 70;
+      }
+      .line p {
+        color: var(--ink);
+        font-size: 40px;
+        font-weight: 400;
+        letter-spacing: 0.06em;
+        text-shadow: 0 2px 18px rgba(0, 0, 0, 0.75);
+      }
+      /* End card. */
+      #title-card {
+        position: absolute;
+        inset: 0;
+        z-index: 80;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding-top: 238px;
+        gap: 22px;
+      }
+      #eyebrow {
+        font-family: "Noto Sans Mono", monospace;
+        font-size: 24px;
+        letter-spacing: 0.42em;
+        color: var(--accent);
+        text-transform: uppercase;
+      }
+      #wordmark {
+        font-size: 150px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        color: var(--ink);
+        line-height: 1;
+        text-shadow: 0 4px 40px rgba(0, 0, 0, 0.6);
+      }
+      #wordmark span { color: var(--accent); }
+      #tagline {
+        font-size: 36px;
+        font-weight: 300;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      #rule {
+        width: 420px;
+        height: 2px;
+        background: var(--accent);
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="62">
+      <!-- Footage (track 0). Each shot is trimmed from its start. -->
+      <video id="v-night-sky" class="clip" src="assets/night_sky.mp4" muted playsinline data-start="0" data-duration="6.5" data-track-index="0"></video>
+      <video id="v-touchdown" class="clip" src="assets/touchdown.mp4" muted playsinline data-start="6.5" data-duration="8" data-track-index="0"></video>
+      <video id="v-hatch" class="clip" src="assets/hatch.mp4" muted playsinline data-start="14.5" data-duration="5" data-track-index="0"></video>
+      <video id="v-step-out" class="clip" src="assets/step_out.mp4" muted playsinline data-start="19.5" data-duration="6" data-track-index="0"></video>
+      <video id="v-golden" class="clip" src="assets/golden_base.mp4" muted playsinline data-start="25.5" data-duration="5.5" data-media-start="1" data-track-index="0"></video>
+      <video id="v-ridge" class="clip" src="assets/ridge.mp4" muted playsinline data-start="31" data-duration="4.5" data-media-start="0.6" data-track-index="0"></video>
+      <video id="v-ice" class="clip" src="assets/ice.mp4" muted playsinline data-start="35.5" data-duration="4.5" data-media-start="0.6" data-track-index="0"></video>
+      <video id="v-night-base" class="clip" src="assets/night_base.mp4" muted playsinline data-start="40" data-duration="5.5" data-media-start="0.5" data-track-index="0"></video>
+      <video id="v-galley" class="clip" src="assets/galley.mp4" muted playsinline data-start="45.5" data-duration="4" data-media-start="0.5" data-track-index="0"></video>
+      <video id="v-hydroponics" class="clip" src="assets/hydroponics.mp4" muted playsinline data-start="49.5" data-duration="3.5" data-media-start="0.5" data-track-index="0"></video>
+      <video id="v-finale" class="clip" src="assets/finale.mp4" muted playsinline data-start="53" data-duration="8" data-track-index="0"></video>
+
+      <div id="vignette"></div>
+      <div id="fade"></div>
+      <div id="bar-top" class="bar"></div>
+      <div id="bar-bottom" class="bar"></div>
+
+      <!-- Titles (track 1). -->
+      <div id="l1" class="line clip" data-start="1.2" data-duration="4.4" data-track-index="1"><p>Before anyone can live on Mars,</p></div>
+      <div id="l2" class="line clip" data-start="8" data-duration="4.6" data-track-index="1"><p>everything they need has to land first.</p></div>
+      <div id="l3" class="line clip" data-start="20.2" data-duration="4.4" data-track-index="1"><p>Step outside.</p></div>
+      <div id="l4" class="line clip" data-start="26.2" data-duration="4.2" data-track-index="1"><p>Design the habitat.</p></div>
+      <div id="l5" class="line clip" data-start="31.3" data-duration="3.9" data-track-index="1"><p>Choose your site.</p></div>
+      <div id="l6" class="line clip" data-start="35.9" data-duration="3.7" data-track-index="1"><p>Find the ice.</p></div>
+      <div id="l7" class="line clip" data-start="40.6" data-duration="4.4" data-track-index="1"><p>Keep the power on through the night.</p></div>
+      <div id="l8" class="line clip" data-start="46" data-duration="6.4" data-track-index="1"><p>And make it a home.</p></div>
+
+      <div id="title-card" class="clip" data-start="54.6" data-duration="7.4" data-track-index="1">
+        <div id="eyebrow">Year 9 · Mission to Mars</div>
+        <div id="wordmark">MARS<span>:</span> HABITAT</div>
+        <div id="rule"></div>
+        <div id="tagline">Design it. Test it. Live in it.</div>
+      </div>
+
+      <!-- Music (track 2): composed from the game's own stems. -->
+      <audio id="score" src="assets/score.wav" data-start="0" data-duration="62" data-track-index="2" data-volume="1"></audio>
+
+      <div id="grain-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100">
+        <div class="grain-texture"></div>
+      </div>
+    </div>
+
+    <style>
+      @keyframes hf-grain-noise {
+        0%, 100% { transform: translate(0, 0); }
+        10% { transform: translate(-5%, -5%); }
+        20% { transform: translate(-10%, 5%); }
+        30% { transform: translate(5%, -10%); }
+        40% { transform: translate(-5%, 15%); }
+        50% { transform: translate(-10%, 5%); }
+        60% { transform: translate(15%, 0); }
+        70% { transform: translate(0, 10%); }
+        80% { transform: translate(-15%, 0); }
+        90% { transform: translate(10%, 5%); }
+      }
+      #grain-overlay .grain-texture {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        opacity: 0.07;
+        animation: hf-grain-noise 0.5s steps(1) infinite;
+      }
+    </style>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      // Black dips: open from black, into the touchdown, after the touchdown
+      // settles, into night, and out at the end.
+      const dip = (at, down, up) => {
+        tl.to("#fade", { opacity: 1, duration: down, ease: "power1.in" }, at - down);
+        tl.to("#fade", { opacity: 0, duration: up, ease: "power1.out" }, at);
+      };
+      tl.fromTo("#fade", { opacity: 1 }, { opacity: 0, duration: 2.4, ease: "power1.inOut" }, 0);
+      dip(6.5, 0.6, 0.9);
+      dip(14.5, 0.35, 0.6);
+      dip(40, 0.5, 0.8);
+      dip(53, 0.6, 1.2);
+      tl.to("#fade", { opacity: 0.55, duration: 1.6, ease: "power1.inOut" }, 54.2);   // dim the finale under the title
+      tl.to("#fade", { opacity: 1, duration: 1.4, ease: "power1.in" }, 60.4);
+
+      // Lines: slow rise and fade in, drift, fade out.
+      const lines = [["#l1", 1.2, 4.4], ["#l2", 8, 4.6], ["#l3", 20.2, 4.4], ["#l4", 26.2, 4.2], ["#l5", 31.3, 3.9], ["#l6", 35.9, 3.7], ["#l7", 40.6, 4.4], ["#l8", 46, 6.4]];
+      for (const [sel, start, dur] of lines) {
+        const p = sel + " p";
+        tl.fromTo(p, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 1.1, ease: "power2.out" }, start);
+        tl.to(p, { opacity: 0, y: -6, duration: 0.8, ease: "power1.in" }, start + dur - 0.8);
+      }
+
+      // Title card.
+      tl.fromTo("#eyebrow", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 1.0, ease: "power2.out" }, 54.8);
+      tl.fromTo("#wordmark", { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 2.0, ease: "power3.out" }, 55.0);
+      tl.fromTo("#rule", { scaleX: 0 }, { scaleX: 1, duration: 1.2, ease: "power2.inOut" }, 55.9);
+      tl.fromTo("#tagline", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 1.0, ease: "power2.out" }, 56.4);
+      tl.to(["#eyebrow", "#wordmark", "#rule", "#tagline"], { opacity: 0, duration: 1.2, ease: "power1.in" }, 60.4);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

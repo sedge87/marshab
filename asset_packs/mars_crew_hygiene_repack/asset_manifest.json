@@ -1,0 +1,30 @@
+[
+  {
+    "id": "hygiene_toilet",
+    "model": "models/habitat_toilet.glb",
+    "min_bounds_m": [
+      -0.430000007152557,
+      0.0,
+      -0.545000016689301
+    ],
+    "max_bounds_m": [
+      0.430000007152557,
+      1.24500000476837,
+      0.484499990940094
+    ]
+  },
+  {
+    "id": "hygiene_shower",
+    "model": "models/low_water_wash_station.glb",
+    "min_bounds_m": [
+      -0.709999978542328,
+      0.0,
+      -0.246999993920326
+    ],
+    "max_bounds_m": [
+      0.709999978542328,
+      2.07999992370605,
+      0.574999988079071
+    ]
+  }
+]

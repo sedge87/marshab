@@ -2,6 +2,8 @@ extends SceneTree
 
 # Contract test for the compressed site clock and serialisable three-slot saves.
 func _initialize() -> void:
+	# Never touch the player's real save slots.
+	MHGame.save_directory = "user://test_habitats"
 	MHGame.site_id = "plains"
 	var cycle := MHSiteDayNight.new()
 	root.add_child(cycle)

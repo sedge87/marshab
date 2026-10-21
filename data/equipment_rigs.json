@@ -1,0 +1,4299 @@
+{
+  "_comment": "How each item's moving parts behave (scripts/equipment_rig.gd). parts are mesh-name prefixes from the delivered GLB (the text before '__'); positions and axes are in the model's own space, where the front faces -Z. key: primary = E, secondary = F, tertiary = G. Types: slide (move by offset), cycle_slide (open the next part each press; tray_depth adds drawer sides), stretch (scale along an axis from one edge), blind (roll-down blind hanging from its top edge; on = let down/closed), hinge (rotate about an axis at an edge, e.g. edge max_y + axis x for a lid, or edge center for valves and levers; cavity builds a shelved interior with belongings behind the doors), light (toggle a lamp; optional colour; powered lights draw their item's power only while on), workout (animate parts for a few seconds; a move may stretch with scale about an anchor), inspect (show a live readout), machine (run/stop: spin rotors, glow lamps, flip a switch; default true starts running), harvest (crops drop and regrow over regrow_seconds; the prompt counts down). machine also takes sweep (gauge needles that wander while running) and note_on/note_off (shown when switched). slide may take hollow {body, items} to swap a solid drawer body for an open tray. cavity items may be shape rotor with spin_state. powered: true/'power' gates only the item's power draw on that switch, 'all' gates every catalogue effect. Resource values stay in equipment_catalog.json. grid_isolator: true on a machine makes its switch cut all generation to the habitat when off. inspect readout may be habitat_status or power_status. inspect may instead list observations [[title, text], ...], shown one per press. light may take at [x,y,z] to place the lamp directly. workout with a note shows that note instead of the info card (use reps 1 for a quick press). map draws the live survey map on its screen parts (selector part switches site/Mars view). hinge may take reveal: contents in model space shown while open. levels cycles settings (levels names, state = index): glow [[parts lit from level 1], [from level 2]...], dial {parts, axis, angle per level}, spin faster each level, notes per level and note_no_power; levels only run on grid power, and power_draw_levels / heat_levels_c in the catalogue give its power and warmth. spin may take at [x,y,z] as its pivot. light own_power: true keeps it lit in a habitat power cut. machine blink: seconds makes its glow parts flash while running.",
+  "crew_bunk": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "blind",
+        "parts": [
+          "Privacy_Curtain"
+        ],
+        "width_scale": 8.2,
+        "rolled": 0.08,
+        "label_on": "Raise curtain",
+        "label_off": "Lower curtain",
+        "state": "curtain"
+      },
+      {
+        "key": "secondary",
+        "type": "light",
+        "emitter": [
+          "Reading_Light_Emitter"
+        ],
+        "aim": [
+          0,
+          -1,
+          0
+        ],
+        "energy": 5.0,
+        "range": 2.4,
+        "angle": 45,
+        "powered": true,
+        "label_on": "Reading light off",
+        "label_off": "Reading light on",
+        "state": "light",
+        "colour": "#FFB867"
+      },
+      {
+        "key": "tertiary",
+        "type": "cycle_slide",
+        "groups": [
+          [
+            "Drawer_01_Face",
+            "Drawer_01_Handle"
+          ],
+          [
+            "Drawer_02_Face",
+            "Drawer_02_Handle"
+          ],
+          [
+            "Drawer_03_Face",
+            "Drawer_03_Handle"
+          ]
+        ],
+        "offset": [
+          0,
+          0,
+          -0.32
+        ],
+        "label": "Drawer",
+        "state": "drawers",
+        "tray_depth": 0.3
+      }
+    ]
+  },
+  "locker": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Locker_Door_L"
+            ],
+            "edge": "min_x",
+            "angle": 105
+          },
+          {
+            "parts": [
+              "Locker_Door_R"
+            ],
+            "edge": "max_x",
+            "angle": -105
+          }
+        ],
+        "label_on": "Close doors",
+        "label_off": "Open doors",
+        "state": "doors",
+        "cavity": {
+          "lining": "#3B4246",
+          "trim": "#C9CED0",
+          "divider": true,
+          "shelves": [
+            0.45,
+            0.76
+          ],
+          "items": [
+            {
+              "shape": "box",
+              "size": [
+                0.2,
+                0.05,
+                0.12
+              ],
+              "at": [
+                0.16,
+                0.76
+              ],
+              "colour": "#5E8C93"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.2,
+                0.05,
+                0.12
+              ],
+              "at": [
+                0.17,
+                0.795
+              ],
+              "colour": "#C9D3D6"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.2,
+                0.05,
+                0.12
+              ],
+              "at": [
+                0.16,
+                0.83
+              ],
+              "colour": "#5E8C93"
+            },
+            {
+              "shape": "sphere",
+              "size": [
+                0.16,
+                0.15,
+                0.14
+              ],
+              "at": [
+                0.36,
+                0.76
+              ],
+              "colour": "#E8E6DF"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.15,
+                0.1,
+                0.12
+              ],
+              "at": [
+                0.74,
+                0.76
+              ],
+              "colour": "#8C969A"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.06,
+                0.08,
+                0.06
+              ],
+              "at": [
+                0.88,
+                0.76
+              ],
+              "colour": "#E07B39"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.2,
+                0.42,
+                0.04
+              ],
+              "at": [
+                0.25,
+                0.47
+              ],
+              "colour": "#E07B39"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.18,
+                0.11,
+                0.12
+              ],
+              "at": [
+                0.73,
+                0.45
+              ],
+              "colour": "#5E8C93"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.12,
+                0.02,
+                0.09
+              ],
+              "at": [
+                0.75,
+                0.53
+              ],
+              "colour": "#2A2F33"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.1,
+                0.15,
+                0.13
+              ],
+              "at": [
+                0.12,
+                0.0
+              ],
+              "colour": "#4A4F52"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.1,
+                0.15,
+                0.13
+              ],
+              "at": [
+                0.31,
+                0.0
+              ],
+              "colour": "#4A4F52"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.34,
+                0.17,
+                0.13
+              ],
+              "at": [
+                0.74,
+                0.0
+              ],
+              "colour": "#4E7F86"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "common_table": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "readout": "habitat_status",
+        "glow": [
+          "Planning_Display_00",
+          "Table_Planning_Console"
+        ],
+        "label": "Check habitat status"
+      }
+    ]
+  },
+  "task_light": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "light",
+        "emitter": [
+          "Lamp_Emitter"
+        ],
+        "aim": [
+          0,
+          -1,
+          -0.35
+        ],
+        "energy": 5.0,
+        "range": 2.6,
+        "angle": 38,
+        "powered": true,
+        "label_on": "Light off",
+        "label_off": "Light on",
+        "state": "light",
+        "colour": "#FFB867"
+      }
+    ]
+  },
+  "privacy_divider": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Panel_Left"
+            ],
+            "pivot": [
+              -0.38,
+              0,
+              -0.01
+            ],
+            "angle": -60
+          },
+          {
+            "parts": [
+              "Panel_Right"
+            ],
+            "pivot": [
+              0.38,
+              0,
+              -0.01
+            ],
+            "angle": 60
+          }
+        ],
+        "label_on": "Unfold panels",
+        "label_off": "Fold panels",
+        "state": "folded"
+      }
+    ]
+  },
+  "exercise_station": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "workout",
+        "seconds": 4.0,
+        "reps": 4,
+        "moves": [
+          {
+            "parts": [
+              "Grip_L",
+              "Grip_R"
+            ],
+            "offset": [
+              0,
+              -0.157,
+              -0.129
+            ]
+          },
+          {
+            "parts": [
+              "Cable_Run"
+            ],
+            "anchor": [
+              "center",
+              "max",
+              "max"
+            ],
+            "scale": [
+              1,
+              1.235,
+              1.235
+            ]
+          },
+          {
+            "parts": [
+              "Resistance_Stack"
+            ],
+            "offset": [
+              0,
+              0.22,
+              0
+            ]
+          }
+        ],
+        "label": "Work out"
+      }
+    ]
+  },
+  "grow_tray": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "harvest",
+        "parts": [
+          "Tier_1_Harvest_Crops",
+          "Tier_2_Harvest_Crops",
+          "Tier_3_Harvest_Crops"
+        ],
+        "regrow_seconds": 120,
+        "label": "Harvest crops",
+        "note": "Fresh greens for the crew. The plants grow back under the LEDs, using water, nutrients and power, and they also take in carbon dioxide and give out oxygen.",
+        "label_growing": "Crops growing back"
+      },
+      {
+        "key": "secondary",
+        "type": "machine",
+        "state": "running",
+        "default": true,
+        "powered": "all",
+        "glow": [
+          "Tier_1_LED_Emitter",
+          "Tier_2_LED_Emitter",
+          "Tier_3_LED_Emitter",
+          "Status_Lamps"
+        ],
+        "switch": {
+          "parts": [
+            "Pump_Switch"
+          ],
+          "axis": "x",
+          "angle": 35
+        },
+        "label_on": "Switch grow lights off",
+        "label_off": "Switch grow lights on",
+        "note_off": "Grow lights off. The plants stop growing, so this tray no longer adds food (and saves its power).",
+        "note_on": "Grow lights on. Light, water and nutrients keep the crops growing."
+      }
+    ]
+  },
+  "seedling_station": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Lid_Frame",
+              "Lid_Acrylic"
+            ],
+            "edge": "max_y",
+            "axis": "x",
+            "angle": 75
+          }
+        ],
+        "label_on": "Close lid",
+        "label_off": "Open lid",
+        "state": "lid"
+      },
+      {
+        "key": "secondary",
+        "type": "light",
+        "emitter": [
+          "Grow_Light_Emitter"
+        ],
+        "aim": [
+          0,
+          -1,
+          0
+        ],
+        "energy": 3.0,
+        "range": 1.6,
+        "angle": 60,
+        "colour": "#E9B8FF",
+        "powered": true,
+        "default": true,
+        "label_on": "Grow light off",
+        "label_off": "Grow light on",
+        "state": "light"
+      }
+    ]
+  },
+  "nutrient_mixer": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "running",
+        "default": true,
+        "glow": [
+          "Status_Lamps"
+        ],
+        "switch": {
+          "parts": [
+            "Pump_Toggle"
+          ],
+          "axis": "x",
+          "angle": 40
+        },
+        "label_on": "Stop mixing pump",
+        "label_off": "Start mixing pump",
+        "sweep": [
+          {
+            "parts": [
+              "Pressure_Needle"
+            ],
+            "edge": "min_x",
+            "axis": "z",
+            "angle": 35,
+            "speed": 2.2
+          },
+          {
+            "parts": [
+              "Nutrient_Needle"
+            ],
+            "edge": "min_x",
+            "axis": "z",
+            "angle": 25,
+            "speed": 1.4
+          }
+        ],
+        "note_off": "Mixing pump stopped. Fresh nutrients no longer reach the grow trays; in a real habitat the crops would slowly starve.",
+        "note_on": "Mixing pump running. Nutrients are dosed into the water that feeds every grow tray (watch the gauges)."
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Service_Door"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close service door",
+        "label_off": "Open service door",
+        "state": "door",
+        "cavity": {
+          "lining": "#2F3639",
+          "trim": "#9AA3A6",
+          "items": [
+            {
+              "shape": "rotor",
+              "size": [
+                0.17,
+                0.17,
+                0.03
+              ],
+              "at": [
+                0.24,
+                0.22
+              ],
+              "colour": "#E07B39",
+              "spin_state": "running",
+              "speed": 10
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.08,
+                0.16,
+                0.04
+              ],
+              "at": [
+                0.55,
+                0.12
+              ],
+              "colour": "#4E9A6B"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.08,
+                0.16,
+                0.04
+              ],
+              "at": [
+                0.7,
+                0.12
+              ],
+              "colour": "#D9A441"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.08,
+                0.16,
+                0.04
+              ],
+              "at": [
+                0.85,
+                0.12
+              ],
+              "colour": "#5E8C93"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.5,
+                0.02,
+                0.02
+              ],
+              "at": [
+                0.5,
+                0.78
+              ],
+              "colour": "#B9C2C5"
+            }
+          ]
+        }
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Dose_Valve_Handle"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": 90
+          },
+          {
+            "parts": [
+              "Intake_Valve_Handle"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": 90
+          }
+        ],
+        "label_on": "Close valves",
+        "label_off": "Open valves",
+        "state": "valves"
+      }
+    ]
+  },
+  "harvest_cart": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "slide",
+        "parts": [
+          "Lower_Drawer"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.34
+        ],
+        "label_on": "Close drawer",
+        "label_off": "Open drawer",
+        "state": "drawer",
+        "hollow": {
+          "body": "Lower_Drawer__bone",
+          "lining": "#6E7A62",
+          "items": [
+            {
+              "shape": "box",
+              "size": [
+                0.16,
+                0.08,
+                0.12
+              ],
+              "at": [
+                0.2,
+                0.3
+              ],
+              "colour": "#7FA35B"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.16,
+                0.08,
+                0.12
+              ],
+              "at": [
+                0.2,
+                0.7
+              ],
+              "colour": "#C9733C"
+            },
+            {
+              "shape": "sphere",
+              "size": [
+                0.08,
+                0.08,
+                0.08
+              ],
+              "at": [
+                0.55,
+                0.25
+              ],
+              "colour": "#C8463A"
+            },
+            {
+              "shape": "sphere",
+              "size": [
+                0.08,
+                0.08,
+                0.08
+              ],
+              "at": [
+                0.66,
+                0.3
+              ],
+              "colour": "#C8463A"
+            },
+            {
+              "shape": "sphere",
+              "size": [
+                0.09,
+                0.08,
+                0.09
+              ],
+              "at": [
+                0.6,
+                0.62
+              ],
+              "colour": "#B89A5A"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.12,
+                0.05,
+                0.16
+              ],
+              "at": [
+                0.84,
+                0.5
+              ],
+              "colour": "#E8E4DA"
+            }
+          ]
+        }
+      },
+      {
+        "key": "secondary",
+        "type": "harvest",
+        "parts": [
+          "Harvested_Produce_Left",
+          "Harvested_Produce_Right"
+        ],
+        "regrow_seconds": 45,
+        "label": "Unload produce",
+        "note": "Produce goes to the galley and food stores. Nothing is wasted on Mars: scraps and inedible stems go to the waste system to be composted or recycled.",
+        "label_growing": "Next load arriving"
+      }
+    ]
+  },
+  "greenhouse_planter": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "harvest",
+        "parts": [
+          "Harvest_Crops_Front",
+          "Harvest_Crops_Middle",
+          "Harvest_Crops_Back"
+        ],
+        "regrow_seconds": 150,
+        "label": "Harvest crops",
+        "label_growing": "Crops growing back"
+      },
+      {
+        "key": "secondary",
+        "type": "light",
+        "emitter": [
+          "LED_Lighting"
+        ],
+        "aim": [
+          0,
+          -1,
+          -0.6
+        ],
+        "energy": 3.0,
+        "range": 2.0,
+        "angle": 60,
+        "colour": "#E9B8FF",
+        "powered": true,
+        "default": true,
+        "label_on": "Grow lights off",
+        "label_off": "Grow lights on",
+        "state": "light"
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Service_Hatch"
+            ],
+            "edge": "max_y",
+            "axis": "x",
+            "angle": 80
+          }
+        ],
+        "label_on": "Close service hatch",
+        "label_off": "Open service hatch",
+        "state": "hatch"
+      }
+    ]
+  },
+  "air_recycler": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "running",
+        "default": true,
+        "powered": "all",
+        "spin": [
+          {
+            "parts": [
+              "Fan_Rotor"
+            ],
+            "axis": "z",
+            "speed": 9.0
+          }
+        ],
+        "glow": [
+          "Indicator_Lamps"
+        ],
+        "switch": {
+          "parts": [
+            "System_Lever"
+          ],
+          "axis": "x",
+          "angle": 45
+        },
+        "label_on": "Shut down recycler",
+        "label_off": "Start recycler",
+        "note_off": "Air recycler shut down. Carbon dioxide will start building up: check Air on the readiness panel.",
+        "note_on": "Air recycler running. Fans pull cabin air through the filters to scrub out carbon dioxide."
+      },
+      {
+        "key": "secondary",
+        "type": "cycle_slide",
+        "groups": [
+          [
+            "Filter_Cartridge_A"
+          ],
+          [
+            "Filter_Cartridge_B"
+          ],
+          [
+            "Filter_Cartridge_C"
+          ]
+        ],
+        "offset": [
+          0,
+          0,
+          -0.3
+        ],
+        "label": "Pull filter",
+        "state": "filters"
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Service_Door"
+            ],
+            "edge": "min_y",
+            "axis": "x",
+            "angle": -85
+          }
+        ],
+        "label_on": "Close service door",
+        "label_off": "Open service door",
+        "state": "door"
+      }
+    ]
+  },
+  "water_reclaimer": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "running",
+        "default": true,
+        "spin": [
+          {
+            "parts": [
+              "pump_rotor"
+            ],
+            "axis": "x",
+            "speed": 10.0
+          }
+        ],
+        "glow": [
+          "indicator_lamps"
+        ],
+        "label_on": "Stop reclaimer",
+        "label_off": "Start reclaimer",
+        "note_off": "Water reclaimer stopped. Used water is no longer being cleaned for reuse.",
+        "note_on": "Water reclaimer running. Used water is filtered back to drinking quality."
+      },
+      {
+        "key": "secondary",
+        "type": "cycle_slide",
+        "groups": [
+          [
+            "filter_cartridge_A"
+          ],
+          [
+            "filter_cartridge_B"
+          ]
+        ],
+        "offset": [
+          0,
+          0,
+          -0.32
+        ],
+        "label": "Pull filter",
+        "state": "filters"
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "access_hatch"
+            ],
+            "edge": "max_z",
+            "angle": -100
+          }
+        ],
+        "label_on": "Close access hatch",
+        "label_off": "Open access hatch",
+        "state": "hatch",
+        "cavity": {
+          "face": "+x",
+          "lining": "#2F3639",
+          "trim": "#9AA3A6",
+          "items": [
+            {
+              "shape": "pipe",
+              "size": [
+                0.04,
+                0.6,
+                0.04
+              ],
+              "at": [
+                0.18,
+                0.02
+              ],
+              "colour": "#4F8FB0"
+            },
+            {
+              "shape": "pipe",
+              "size": [
+                0.04,
+                0.6,
+                0.04
+              ],
+              "at": [
+                0.34,
+                0.02
+              ],
+              "colour": "#8A9A6B"
+            },
+            {
+              "shape": "pipe",
+              "size": [
+                0.035,
+                0.3,
+                0.035
+              ],
+              "at": [
+                0.42,
+                0.6
+              ],
+              "colour": "#4F8FB0",
+              "across": true
+            },
+            {
+              "shape": "rotor",
+              "size": [
+                0.1,
+                0.1,
+                0.02
+              ],
+              "at": [
+                0.42,
+                0.5
+              ],
+              "colour": "#E07B39"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.09,
+                0.2,
+                0.04
+              ],
+              "at": [
+                0.72,
+                0.08
+              ],
+              "colour": "#D9DEE0"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.07,
+                0.03,
+                0.045
+              ],
+              "at": [
+                0.72,
+                0.33
+              ],
+              "colour": "#5E8C93"
+            },
+            {
+              "shape": "sphere",
+              "size": [
+                0.08,
+                0.08,
+                0.03
+              ],
+              "at": [
+                0.75,
+                0.72
+              ],
+              "colour": "#F2F0EA"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "thermal_control_unit": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "running",
+        "default": true,
+        "spin": [
+          {
+            "parts": [
+              "pump_rotor"
+            ],
+            "axis": "z",
+            "speed": 8.0
+          }
+        ],
+        "glow": [
+          "status_lamps_on"
+        ],
+        "label_on": "Stop coolant pump",
+        "label_off": "Start coolant pump",
+        "note_off": "Coolant pump stopped. Heat is no longer being moved around the habitat.",
+        "note_on": "Coolant pump running. Heat moves from warm equipment to where it is needed."
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "hot_valve_wheel"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": 180
+          },
+          {
+            "parts": [
+              "cold_valve_wheel"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": -180
+          }
+        ],
+        "label_on": "Close loop valves",
+        "label_off": "Open loop valves",
+        "state": "valves"
+      }
+    ]
+  },
+  "oxygen_reserve_tank": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "outlet_valve_wheel"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": 270
+          }
+        ],
+        "label_on": "Close outlet valve",
+        "label_off": "Open outlet valve",
+        "state": "outlet"
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "isolation_lever"
+            ],
+            "edge": "min_y",
+            "axis": "x",
+            "angle": -70
+          }
+        ],
+        "label_on": "Isolate tanks",
+        "label_off": "Connect tanks",
+        "state": "isolation"
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "regulator_knob"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": 120
+          }
+        ],
+        "label_on": "Lower regulator",
+        "label_off": "Raise regulator",
+        "state": "regulator"
+      }
+    ]
+  },
+  "power_distribution_panel": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "main",
+        "default": true,
+        "grid_isolator": true,
+        "switch": {
+          "parts": [
+            "Main_Isolator_Rotary"
+          ],
+          "axis": "z",
+          "angle": -90
+        },
+        "label_on": "Turn main isolator off",
+        "label_off": "Turn main isolator on",
+        "note_off": "Main isolator OFF. Electricity from the generators no longer reaches the habitat: lights, life support and grow lights all lose power. Turn it back on to restore the grid.",
+        "note_on": "Main isolator ON. Power from the solar arrays and reactor flows to every room again."
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Inspection_Door"
+            ],
+            "edge": "min_z",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close inspection door",
+        "label_off": "Open inspection door",
+        "state": "door",
+        "cavity": {
+          "face": "+x",
+          "lining": "#2F3639",
+          "trim": "#9AA3A6",
+          "items": [
+            {
+              "shape": "pipe",
+              "size": [
+                0.03,
+                0.6,
+                0.03
+              ],
+              "at": [
+                0.2,
+                0.08
+              ],
+              "colour": "#C9733C"
+            },
+            {
+              "shape": "pipe",
+              "size": [
+                0.03,
+                0.6,
+                0.03
+              ],
+              "at": [
+                0.32,
+                0.08
+              ],
+              "colour": "#C9733C"
+            },
+            {
+              "shape": "pipe",
+              "size": [
+                0.03,
+                0.6,
+                0.03
+              ],
+              "at": [
+                0.44,
+                0.08
+              ],
+              "colour": "#C9733C"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.12,
+                0.08,
+                0.035
+              ],
+              "at": [
+                0.75,
+                0.62
+              ],
+              "colour": "#E8E4DA"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.12,
+                0.08,
+                0.035
+              ],
+              "at": [
+                0.75,
+                0.45
+              ],
+              "colour": "#E8E4DA"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.12,
+                0.08,
+                0.035
+              ],
+              "at": [
+                0.75,
+                0.28
+              ],
+              "colour": "#E07B39"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.3,
+                0.025,
+                0.03
+              ],
+              "at": [
+                0.4,
+                0.85
+              ],
+              "colour": "#4E9A6B"
+            }
+          ]
+        }
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "readout": "power_status",
+        "label": "Check power"
+      }
+    ]
+  },
+  "battery_bank": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "readout": "power_status",
+        "label": "Check charge",
+        "glow": [
+          "Battery_ChargeIndicator_R1_L",
+          "Battery_ChargeIndicator_R1_R",
+          "Battery_ChargeIndicator_R2_L",
+          "Battery_ChargeIndicator_R2_R",
+          "Battery_ChargeIndicator_R3_L",
+          "Battery_ChargeIndicator_R3_R"
+        ]
+      },
+      {
+        "key": "secondary",
+        "type": "slide",
+        "parts": [
+          "Battery_Cassette_R1_L"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.38
+        ],
+        "label_on": "Push cassette back in",
+        "label_off": "Pull out battery cassette",
+        "state": "cassette"
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Battery_Main_Disconnect"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": 90
+          }
+        ],
+        "label_on": "Reconnect battery",
+        "label_off": "Disconnect battery",
+        "state": "disconnect"
+      }
+    ]
+  },
+  "science_workbench": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Examine the core",
+        "glow": [
+          "Worklight_Emitter"
+        ],
+        "observations": [
+          [
+            "Layered core",
+            "This drilled core has thin, flat layers of different colours. Layers like these usually build up slowly as sand, mud or ash settle, one on top of another, so the bottom layers are the oldest."
+          ],
+          [
+            "Rounded grains",
+            "Some layers hold smooth, rounded grains. Grains get rounded by being tumbled for a long time, by wind or by flowing water, which suggests this material travelled before it settled."
+          ],
+          [
+            "A pale band",
+            "A pale band runs through the middle. Minerals like this can form when water evaporates and leaves dissolved salts behind: a clue that liquid water may once have been here."
+          ],
+          [
+            "Cracked surface layer",
+            "The top layer is cracked into polygon shapes. On Earth, similar cracks form when wet mud dries or ground repeatedly freezes and thaws. One sample can't prove which; more samples help."
+          ]
+        ]
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Ice_Chamber_Hatch"
+            ],
+            "edge": "max_z",
+            "axis": "x",
+            "angle": 95
+          }
+        ],
+        "label_on": "Close ice chamber",
+        "label_off": "Open ice chamber",
+        "state": "hatch",
+        "note_on": "Ice chamber open. Ice drilled from under the surface is kept sealed and cold here, then warmed slowly: if it melts into clean water, the habitat could one day use deposits like it."
+      },
+      {
+        "key": "tertiary",
+        "type": "slide",
+        "parts": [
+          "Specimen_Drawer"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.3
+        ],
+        "tray_depth": 0.3,
+        "label_on": "Close specimen drawer",
+        "label_off": "Open specimen drawer",
+        "state": "drawer"
+      }
+    ]
+  },
+  "microscope_station": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Look through the microscope",
+        "glow": [
+          "Sample_Illuminator"
+        ],
+        "observations": [
+          [
+            "Wind-polished grains",
+            "Under magnification the sand grains are frosted and pitted, like glass that's been sandblasted. That pattern is typical of grains blown about by wind for a very long time."
+          ],
+          [
+            "Grains glued together",
+            "These grains are cemented together by a fine mineral 'glue'. On Earth that kind of cement often forms when water soaks through sediment and leaves minerals behind as it dries."
+          ],
+          [
+            "Tiny round spheres",
+            "A few tiny, round mineral spheres sit among the grains. Similar spheres found by NASA's Opportunity rover are thought to have grown inside rock soaked by groundwater."
+          ],
+          [
+            "Volcanic crystals",
+            "Dark, sharp-edged crystals here are volcanic. They haven't been worn down much, so they probably haven't travelled far from where they formed."
+          ]
+        ]
+      },
+      {
+        "key": "secondary",
+        "type": "light",
+        "emitter": [
+          "Sample_Illuminator"
+        ],
+        "aim": [
+          0,
+          -1,
+          0
+        ],
+        "energy": 2.5,
+        "range": 0.8,
+        "angle": 50,
+        "colour": "#F4F1FF",
+        "default": true,
+        "label_on": "Sample light off",
+        "label_off": "Sample light on",
+        "state": "light"
+      },
+      {
+        "key": "tertiary",
+        "type": "slide",
+        "parts": [
+          "Sample_Drawer"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.28
+        ],
+        "tray_depth": 0.26,
+        "label_on": "Close sample drawer",
+        "label_off": "Open sample drawer",
+        "state": "drawer"
+      }
+    ]
+  },
+  "sample_storage_cabinet": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Cold_Archive_Door"
+            ],
+            "edge": "min_x",
+            "angle": 105
+          }
+        ],
+        "label_on": "Close cold archive",
+        "label_off": "Open cold archive",
+        "state": "door"
+      },
+      {
+        "key": "secondary",
+        "type": "cycle_slide",
+        "groups": [
+          [
+            "Core_Archive_Drawer_1"
+          ],
+          [
+            "Core_Archive_Drawer_2"
+          ],
+          [
+            "Core_Archive_Drawer_3"
+          ],
+          [
+            "Core_Archive_Drawer_4"
+          ],
+          [
+            "Core_Archive_Drawer_5"
+          ]
+        ],
+        "offset": [
+          0,
+          0,
+          -0.32
+        ],
+        "tray_depth": 0.3,
+        "label": "Core drawer",
+        "state": "drawers"
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "label": "Read the archive log",
+        "observations": [
+          [
+            "Why keep samples?",
+            "Every sample is labelled with where and how deep it was collected. Comparing samples from different places and depths is how scientists build up a picture of how Mars changed over time."
+          ],
+          [
+            "Kept cold and dry",
+            "Ice and some minerals change if they warm up or get damp. Keeping samples cold and sealed means later tests show what Mars was like, not what the habitat did to them."
+          ],
+          [
+            "Back to Earth",
+            "Some samples may one day be flown back to Earth, where much bigger laboratories can study them in far more detail."
+          ]
+        ]
+      }
+    ]
+  },
+  "suit_rack": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "slide",
+        "parts": [
+          "suit_1_service"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.3
+        ],
+        "label_on": "Dock suit 1",
+        "label_off": "Prepare suit 1",
+        "state": "suit1",
+        "note_on": "Suit 1 out for checks: seals, oxygen supply, cooling water and radio are all tested before anyone steps into the airlock."
+      },
+      {
+        "key": "secondary",
+        "type": "slide",
+        "parts": [
+          "suit_2_service"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.3
+        ],
+        "label_on": "Dock suit 2",
+        "label_off": "Prepare suit 2",
+        "state": "suit2"
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "label": "Read suit checklist",
+        "observations": [
+          [
+            "Never alone",
+            "Spacewalks (EVAs) always happen in pairs, so there's someone to help if a suit or tool fails. That's why the rack holds two suits."
+          ],
+          [
+            "Breathe first",
+            "Suits run at lower pressure than the habitat, so astronauts breathe pure oxygen first to flush nitrogen from their blood, which avoids 'the bends'."
+          ],
+          [
+            "Dust is the enemy",
+            "Martian dust is fine, sharp and clings to everything. Suits are brushed down outside and checked here, so dust doesn't damage seals or get breathed in."
+          ]
+        ]
+      }
+    ]
+  },
+  "rover_charger": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "slide",
+        "parts": [
+          "charging_plug"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.35
+        ],
+        "label_on": "Stow charging plug",
+        "label_off": "Connect rover",
+        "state": "plug",
+        "note_on": "Charging plug out. A rover's batteries take hours to fill from the habitat grid; charging during the day uses spare solar power."
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "service_hatch"
+            ],
+            "edge": "max_y",
+            "axis": "x",
+            "angle": 80
+          }
+        ],
+        "label_on": "Close service hatch",
+        "label_off": "Open service hatch",
+        "state": "hatch"
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "readout": "power_status",
+        "label": "Check grid power"
+      }
+    ]
+  },
+  "eva_tool_station": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "cabinet_door_left"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          },
+          {
+            "parts": [
+              "cabinet_door_right"
+            ],
+            "edge": "max_x",
+            "angle": -100
+          }
+        ],
+        "label_on": "Close tool cabinet",
+        "label_off": "Open tool cabinet",
+        "state": "doors",
+        "cavity": {
+          "lining": "#2F3639",
+          "trim": "#9AA3A6",
+          "divider": true,
+          "items": [
+            {
+              "shape": "box",
+              "size": [
+                0.04,
+                0.22,
+                0.03
+              ],
+              "at": [
+                0.15,
+                0.15
+              ],
+              "colour": "#E07B39"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.04,
+                0.18,
+                0.03
+              ],
+              "at": [
+                0.28,
+                0.15
+              ],
+              "colour": "#9AA3A6"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.12,
+                0.08,
+                0.04
+              ],
+              "at": [
+                0.6,
+                0.05
+              ],
+              "colour": "#4E7F86"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.1,
+                0.06,
+                0.04
+              ],
+              "at": [
+                0.82,
+                0.05
+              ],
+              "colour": "#D9A441"
+            },
+            {
+              "shape": "pipe",
+              "size": [
+                0.025,
+                0.2,
+                0.025
+              ],
+              "at": [
+                0.42,
+                0.15
+              ],
+              "colour": "#2A2F33"
+            }
+          ]
+        }
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "case_lid"
+            ],
+            "edge": "max_z",
+            "axis": "x",
+            "angle": 95
+          }
+        ],
+        "label_on": "Close sample case",
+        "label_off": "Open sample case",
+        "state": "lid"
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "label": "Plan the EVA",
+        "observations": [
+          [
+            "Tools on tethers",
+            "Every tool is clipped on. A dropped tool outside is hard to find in dust and gloves are clumsy, so tethers save time and tools."
+          ],
+          [
+            "Sample bags",
+            "Rock and soil samples go into numbered, sealed bags noting where they came from, ready for the Science Lab."
+          ],
+          [
+            "Plan the walk",
+            "Each EVA has a planned route and time limit set by the suit's oxygen, with a safety margin to get back to the airlock."
+          ]
+        ]
+      }
+    ]
+  },
+  "tool_bench": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Tool_Cupboard_Left"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          },
+          {
+            "parts": [
+              "Tool_Cupboard_Right"
+            ],
+            "edge": "max_x",
+            "angle": -100
+          }
+        ],
+        "label_on": "Close cupboards",
+        "label_off": "Open cupboards",
+        "state": "doors",
+        "cavity": {
+          "lining": "#2F3639",
+          "trim": "#9AA3A6",
+          "divider": true,
+          "items": [
+            {
+              "shape": "box",
+              "size": [
+                0.04,
+                0.22,
+                0.03
+              ],
+              "at": [
+                0.15,
+                0.15
+              ],
+              "colour": "#E07B39"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.04,
+                0.18,
+                0.03
+              ],
+              "at": [
+                0.28,
+                0.15
+              ],
+              "colour": "#9AA3A6"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.12,
+                0.08,
+                0.04
+              ],
+              "at": [
+                0.6,
+                0.05
+              ],
+              "colour": "#4E7F86"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.1,
+                0.06,
+                0.04
+              ],
+              "at": [
+                0.82,
+                0.05
+              ],
+              "colour": "#D9A441"
+            },
+            {
+              "shape": "pipe",
+              "size": [
+                0.025,
+                0.2,
+                0.025
+              ],
+              "at": [
+                0.42,
+                0.15
+              ],
+              "colour": "#2A2F33"
+            }
+          ]
+        }
+      },
+      {
+        "key": "secondary",
+        "type": "slide",
+        "parts": [
+          "Spares_Tray"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.35
+        ],
+        "label_on": "Push spares tray in",
+        "label_off": "Pull out spares tray",
+        "state": "tray",
+        "note_on": "Spare parts are precious on Mars: the next delivery from Earth could be two years away, so crews repair things rather than replace them."
+      },
+      {
+        "key": "tertiary",
+        "type": "light",
+        "at": [
+          0,
+          1.9,
+          -0.15
+        ],
+        "aim": [
+          0,
+          -1,
+          -0.4
+        ],
+        "energy": 3.0,
+        "range": 2.4,
+        "angle": 50,
+        "colour": "#FFE2B0",
+        "label_on": "Bench light off",
+        "label_off": "Bench light on",
+        "state": "light"
+      }
+    ]
+  },
+  "cargo_rack": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Cargo_Retainer_Bar"
+            ],
+            "edge": "min_x",
+            "axis": "z",
+            "angle": -80
+          }
+        ],
+        "label_on": "Lock retainer bar",
+        "label_off": "Release retainer bar",
+        "state": "retainer",
+        "note_off": "Retainer locked. Cargo is strapped down for landing and dust storms, so nothing can shift or fall."
+      },
+      {
+        "key": "secondary",
+        "type": "cycle_slide",
+        "groups": [
+          [
+            "Supply_Case_Upper_Left"
+          ],
+          [
+            "Supply_Case_Upper_Right"
+          ],
+          [
+            "Supply_Container_Middle"
+          ],
+          [
+            "Cargo_Case_Lower_Left"
+          ],
+          [
+            "Cargo_Case_Lower_Right"
+          ]
+        ],
+        "offset": [
+          0,
+          0,
+          -0.38
+        ],
+        "label": "Pull out case",
+        "state": "cases"
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "label": "Check the manifest",
+        "observations": [
+          [
+            "Every kilogram counts",
+            "Each kilogram landed on Mars costs a lot of fuel to deliver. That's why your habitat has a cargo budget, and why crews plan supplies carefully."
+          ],
+          [
+            "Spares and food",
+            "Cargo racks hold the things the habitat can't make yet: spare parts, medical supplies and food reserves until the hydroponics produce enough."
+          ],
+          [
+            "Pack for emergencies",
+            "Some cargo is kept as an emergency reserve, enough to keep the crew alive if a system fails while it's repaired."
+          ]
+        ]
+      }
+    ]
+  },
+  "medical_exam_cot": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "light",
+        "emitter": [
+          "warm_exam_light"
+        ],
+        "aim": [
+          0,
+          -1,
+          -0.3
+        ],
+        "energy": 3.0,
+        "range": 2.2,
+        "angle": 45,
+        "colour": "#FFE6C4",
+        "label_on": "Exam light off",
+        "label_off": "Exam light on",
+        "state": "light"
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "hinged_backrest_cushion"
+            ],
+            "edge": "max_x",
+            "axis": "z",
+            "angle": -35
+          }
+        ],
+        "label_on": "Lower backrest",
+        "label_off": "Raise backrest",
+        "state": "backrest"
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "label": "Run a health check",
+        "observations": [
+          [
+            "Bones and muscles",
+            "In Mars's low gravity, bones and muscles weaken a little every week. Regular checks show whether the crew's exercise is enough."
+          ],
+          [
+            "Radiation dose",
+            "Each crew member wears a badge that records radiation. The thin Martian air and lack of a magnetic field let more through than on Earth, so doses are tracked carefully."
+          ],
+          [
+            "Far from help",
+            "A hospital is months away. The crew are trained to treat each other, with help from doctors on Earth whose messages take 5 to 20 minutes to arrive."
+          ],
+          [
+            "Mind matters",
+            "Isolation and stress are health risks too. Checks include sleep and mood, not just the body."
+          ]
+        ]
+      }
+    ]
+  },
+  "medical_cabinet": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "hinged_medical_door_light_aluminium",
+              "hinged_medical_door_translucent_glass",
+              "hinged_medical_door_mechanical_grey"
+            ],
+            "edge": "max_x",
+            "angle": -55
+          }
+        ],
+        "label_on": "Close supply door",
+        "label_off": "Open supply door",
+        "state": "door"
+      },
+      {
+        "key": "secondary",
+        "type": "cycle_slide",
+        "groups": [
+          [
+            "drawer_0_front"
+          ],
+          [
+            "drawer_1_front"
+          ],
+          [
+            "drawer_2_front"
+          ]
+        ],
+        "offset": [
+          0,
+          0,
+          -0.28
+        ],
+        "tray_depth": 0.28,
+        "label": "Supply drawer",
+        "state": "drawers"
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "label": "Check supplies",
+        "observations": [
+          [
+            "Every item counts",
+            "Medicines and bandages arrive from Earth with the cargo. Crews track every item, because a resupply might be two years away."
+          ],
+          [
+            "Medicines expire",
+            "Some medicines break down faster in space radiation. Doctors plan stock with this in mind and choose the most stable versions."
+          ],
+          [
+            "First aid first",
+            "Most problems on a mission are small: cuts, sprains and headaches. A well-stocked first-aid kit handles most of them."
+          ]
+        ]
+      }
+    ]
+  },
+  "hygiene_toilet": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "lid_hinged",
+              "lid_seal_hinged",
+              "lid_pull_hinged"
+            ],
+            "edge": "min_y",
+            "axis": "x",
+            "angle": -88
+          }
+        ],
+        "label_on": "Open lid",
+        "label_off": "Close lid",
+        "state": "lid"
+      },
+      {
+        "key": "secondary",
+        "type": "workout",
+        "seconds": 0.6,
+        "reps": 1,
+        "moves": [
+          {
+            "parts": [
+              "flush_start_button"
+            ],
+            "offset": [
+              0,
+              -0.008,
+              0
+            ]
+          }
+        ],
+        "label": "Flush",
+        "note": "Flushed. Air flow, not water, pulls waste away: it saves water, and works whatever the gravity. Liquid waste goes to the Water Reclaimer to be cleaned and reused."
+      },
+      {
+        "key": "tertiary",
+        "type": "slide",
+        "parts": [
+          "vacuum_filter_cartridge"
+        ],
+        "offset": [
+          0.18,
+          0,
+          0
+        ],
+        "label_on": "Refit filter",
+        "label_off": "Pull odour filter",
+        "state": "filter",
+        "note_on": "The odour filter cleans the air the toilet's fan pulls through. In a sealed habitat, smells can't just drift outside."
+      }
+    ]
+  },
+  "hygiene_shower": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "workout",
+        "seconds": 0.6,
+        "reps": 1,
+        "moves": [
+          {
+            "parts": [
+              "water_button",
+              "warm_water_button"
+            ],
+            "offset": [
+              0,
+              -0.008,
+              0
+            ]
+          }
+        ],
+        "label": "Wash hands",
+        "note": "A metered tap gives a short burst of water. Used (grey) water drains to the Water Reclaimer, where it's cleaned and used again."
+      },
+      {
+        "key": "secondary",
+        "type": "slide",
+        "parts": [
+          "greywater_filter_drawer"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.3
+        ],
+        "tray_depth": 0.3,
+        "label_on": "Close filter drawer",
+        "label_off": "Pull greywater filter",
+        "state": "filter",
+        "note_on": "The greywater filter catches soap scum and hair before the water goes for recycling."
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "lower_supply_hatch"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close supply hatch",
+        "label_off": "Open supply hatch",
+        "state": "hatch"
+      }
+    ]
+  },
+  "galley_counter": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "warmer_door"
+            ],
+            "edge": "min_y",
+            "axis": "x",
+            "angle": -85
+          }
+        ],
+        "label_on": "Close food warmer",
+        "label_off": "Open food warmer",
+        "state": "warmer"
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "sink_storage_door"
+            ],
+            "edge": "max_x",
+            "angle": -100
+          }
+        ],
+        "label_on": "Close cupboard",
+        "label_off": "Open cupboard",
+        "state": "cupboard"
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "tap_lever"
+            ],
+            "edge": "center",
+            "angle": 40
+          }
+        ],
+        "label_on": "Turn tap off",
+        "label_off": "Run the tap",
+        "state": "tap",
+        "note_on": "Tap running. Galley water is recycled water, cleaned in Life Support, so every drop is used more than once."
+      }
+    ]
+  },
+  "pantry_cabinet": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "pantry_door"
+            ],
+            "edge": "min_x",
+            "angle": 105
+          }
+        ],
+        "label_on": "Close pantry",
+        "label_off": "Open pantry",
+        "state": "door",
+        "cavity": {
+          "lining": "#2F3639",
+          "trim": "#C9CED0",
+          "shelves": [
+            0.38,
+            0.72
+          ],
+          "items": [
+            {
+              "shape": "box",
+              "size": [
+                0.16,
+                0.1,
+                0.1
+              ],
+              "at": [
+                0.15,
+                0.0
+              ],
+              "colour": "#D9A441"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.16,
+                0.1,
+                0.1
+              ],
+              "at": [
+                0.4,
+                0.0
+              ],
+              "colour": "#C8463A"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.12,
+                0.16,
+                0.1
+              ],
+              "at": [
+                0.7,
+                0.0
+              ],
+              "colour": "#E8E4DA"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.14,
+                0.08,
+                0.1
+              ],
+              "at": [
+                0.2,
+                0.42
+              ],
+              "colour": "#7FA35B"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.14,
+                0.08,
+                0.1
+              ],
+              "at": [
+                0.45,
+                0.42
+              ],
+              "colour": "#7FA35B"
+            },
+            {
+              "shape": "pipe",
+              "size": [
+                0.07,
+                0.14,
+                0.07
+              ],
+              "at": [
+                0.75,
+                0.42
+              ],
+              "colour": "#5E8C93"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.2,
+                0.06,
+                0.1
+              ],
+              "at": [
+                0.3,
+                0.76
+              ],
+              "colour": "#E07B39"
+            },
+            {
+              "shape": "pipe",
+              "size": [
+                0.06,
+                0.12,
+                0.06
+              ],
+              "at": [
+                0.7,
+                0.76
+              ],
+              "colour": "#E8E4DA"
+            }
+          ]
+        }
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Check food stores",
+        "observations": [
+          [
+            "Long-life food",
+            "Most stored food is freeze-dried or sealed in pouches so it lasts for years. Add water and it's ready to eat."
+          ],
+          [
+            "Fresh food matters",
+            "Even the best stored food gets boring. Fresh greens from Hydroponics give the crew vitamins and something to look forward to."
+          ],
+          [
+            "Plan for every day",
+            "A crew of six needs thousands of meals for a mission. Stores are counted and rotated, oldest first."
+          ]
+        ]
+      }
+    ]
+  },
+  "potable_water_dispenser": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "workout",
+        "seconds": 0.6,
+        "reps": 1,
+        "moves": [
+          {
+            "parts": [
+              "dispense_paddle"
+            ],
+            "offset": [
+              0,
+              0,
+              0.02
+            ]
+          }
+        ],
+        "label": "Fill a cup",
+        "note": "Fresh drinking water, recycled and cleaned by the Water Reclaimer. Each person needs about 2–3 litres a day to drink."
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "filter_service_hatch"
+            ],
+            "edge": "max_y",
+            "axis": "x",
+            "angle": 80
+          }
+        ],
+        "label_on": "Close filter hatch",
+        "label_off": "Open filter hatch",
+        "state": "filter"
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "service_access"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close service access",
+        "label_off": "Open service access",
+        "state": "access"
+      }
+    ]
+  },
+  "integrated_mess_booth": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Sit down for a meal",
+        "observations": [
+          [
+            "Eating together",
+            "Shared meals are one of the most important parts of a mission: they keep a small crew talking, laughing and working as a team."
+          ],
+          [
+            "Daily briefing",
+            "Many missions start the day here: what needs fixing, who is going outside, and what's happening on Earth."
+          ],
+          [
+            "A taste of home",
+            "Crews celebrate birthdays and holidays with special food saved for the occasion. Little things make a long mission bearable."
+          ]
+        ]
+      },
+      {
+        "key": "secondary",
+        "type": "slide",
+        "parts": [
+          "removable_serving_insert"
+        ],
+        "offset": [
+          0,
+          0.12,
+          0
+        ],
+        "label_on": "Set serving tray down",
+        "label_off": "Lift serving tray",
+        "state": "tray"
+      }
+    ]
+  },
+  "supply_crate_small": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "lid_white_painted",
+              "lid_seal_black_rubber",
+              "top_spine_alloy",
+              "stacking_guides_alloy"
+            ],
+            "edge": "max_z",
+            "axis": "x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close crate",
+        "label_off": "Open crate",
+        "state": "lid",
+        "reveal": [
+          {
+            "shape": "box",
+            "size": [
+              0.396,
+              0.012,
+              0.324
+            ],
+            "at": [
+              0,
+              0.306,
+              0
+            ],
+            "colour": "#2A2F33"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.154,
+              0.07,
+              0.126
+            ],
+            "at": [
+              -0.099,
+              0.345,
+              -0.054
+            ],
+            "colour": "#E8E4DA"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.132,
+              0.05,
+              0.144
+            ],
+            "at": [
+              0.099,
+              0.33499999999999996,
+              0.018
+            ],
+            "colour": "#5E8C93"
+          },
+          {
+            "shape": "pipe",
+            "size": [
+              0.06,
+              0.1,
+              0.06
+            ],
+            "at": [
+              0.022000000000000002,
+              0.36,
+              0.081
+            ],
+            "colour": "#E07B39"
+          }
+        ]
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the label",
+        "observations": [
+          [
+            "Packed for Mars",
+            "Crates are packed tightly and logged by weight, because every kilogram sent to Mars costs fuel."
+          ],
+          [
+            "Spares and supplies",
+            "Most crates hold spare parts, filters, clothing and long-life supplies the habitat can't make for itself yet."
+          ]
+        ]
+      }
+    ]
+  },
+  "supply_crate_medium": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "lid_white_painted",
+              "lid_seal_black_rubber",
+              "top_spine_alloy",
+              "stacking_guides_alloy"
+            ],
+            "edge": "max_z",
+            "axis": "x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close crate",
+        "label_off": "Open crate",
+        "state": "lid",
+        "reveal": [
+          {
+            "shape": "box",
+            "size": [
+              0.54,
+              0.012,
+              0.41400000000000003
+            ],
+            "at": [
+              0,
+              0.426,
+              0
+            ],
+            "colour": "#2A2F33"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.21,
+              0.07,
+              0.161
+            ],
+            "at": [
+              -0.135,
+              0.46499999999999997,
+              -0.069
+            ],
+            "colour": "#E8E4DA"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.18,
+              0.05,
+              0.18400000000000002
+            ],
+            "at": [
+              0.135,
+              0.45499999999999996,
+              0.023000000000000003
+            ],
+            "colour": "#5E8C93"
+          },
+          {
+            "shape": "pipe",
+            "size": [
+              0.06,
+              0.1,
+              0.06
+            ],
+            "at": [
+              0.03,
+              0.48,
+              0.10350000000000001
+            ],
+            "colour": "#E07B39"
+          }
+        ]
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the label",
+        "observations": [
+          [
+            "Packed for Mars",
+            "Crates are packed tightly and logged by weight, because every kilogram sent to Mars costs fuel."
+          ],
+          [
+            "Spares and supplies",
+            "Most crates hold spare parts, filters, clothing and long-life supplies the habitat can't make for itself yet."
+          ]
+        ]
+      }
+    ]
+  },
+  "supply_crate_large": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "lid_white_painted",
+              "lid_seal_black_rubber",
+              "top_spine_alloy",
+              "stacking_guides_alloy"
+            ],
+            "edge": "max_z",
+            "axis": "x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close crate",
+        "label_off": "Open crate",
+        "state": "lid",
+        "reveal": [
+          {
+            "shape": "box",
+            "size": [
+              0.7200000000000001,
+              0.012,
+              0.5040000000000001
+            ],
+            "at": [
+              0,
+              0.5660000000000001,
+              0
+            ],
+            "colour": "#2A2F33"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.27999999999999997,
+              0.07,
+              0.196
+            ],
+            "at": [
+              -0.18000000000000002,
+              0.6050000000000001,
+              -0.084
+            ],
+            "colour": "#E8E4DA"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.24,
+              0.05,
+              0.22400000000000003
+            ],
+            "at": [
+              0.18000000000000002,
+              0.5950000000000001,
+              0.028000000000000004
+            ],
+            "colour": "#5E8C93"
+          },
+          {
+            "shape": "pipe",
+            "size": [
+              0.06,
+              0.1,
+              0.06
+            ],
+            "at": [
+              0.04000000000000001,
+              0.6200000000000001,
+              0.12600000000000003
+            ],
+            "colour": "#E07B39"
+          }
+        ]
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the label",
+        "observations": [
+          [
+            "Packed for Mars",
+            "Crates are packed tightly and logged by weight, because every kilogram sent to Mars costs fuel."
+          ],
+          [
+            "Spares and supplies",
+            "Most crates hold spare parts, filters, clothing and long-life supplies the habitat can't make for itself yet."
+          ]
+        ]
+      }
+    ]
+  },
+  "fire_safety_station": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "slide",
+        "parts": [
+          "extinguisher_safety_red",
+          "extinguisher_dark_alloy",
+          "extinguisher_satin_steel",
+          "extinguisher_handle_dark_alloy",
+          "extinguisher_handle_black_rubber",
+          "extinguisher_hose_black_rubber"
+        ],
+        "offset": [
+          0,
+          0.12,
+          -0.3
+        ],
+        "label_on": "Return extinguisher",
+        "label_off": "Take extinguisher",
+        "state": "extinguisher",
+        "note_on": "A fire in a sealed habitat is one of the most dangerous emergencies: smoke has nowhere to go. Crews train to tackle small fires fast, and to seal off a room and starve a big fire of air."
+      },
+      {
+        "key": "secondary",
+        "type": "slide",
+        "parts": [
+          "first_aid_drawer_white_painted",
+          "first_aid_drawer_teal",
+          "first_aid_symbol_safety_red",
+          "drawer_handle_satin_steel"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.25
+        ],
+        "tray_depth": 0.22,
+        "label_on": "Close first-aid drawer",
+        "label_off": "Open first-aid drawer",
+        "state": "drawer"
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "label": "Safety checklist",
+        "observations": [
+          [
+            "Fire needs oxygen",
+            "Fire needs fuel, heat and oxygen. The habitat's air has all the oxygen a fire needs, so electrical faults and hot equipment are watched closely."
+          ],
+          [
+            "Know where it is",
+            "Every crew member should know the nearest extinguisher and first-aid point without thinking. Safety stations go in every busy room."
+          ]
+        ]
+      }
+    ]
+  },
+  "emergency_supply_lockbox": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "left_door_white_painted",
+              "door_seal_rubber_gasket",
+              "left_door_handle_dark_alloy",
+              "left_door_latch_orange",
+              "door_medical_symbol_teal"
+            ],
+            "edge": "min_x",
+            "angle": 105
+          }
+        ],
+        "label_on": "Close locker",
+        "label_off": "Open locker",
+        "state": "door"
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Check emergency supplies",
+        "observations": [
+          [
+            "Emergency oxygen",
+            "If the air system fails or a room loses pressure, these bottles give each person time to reach safety or put on a suit."
+          ],
+          [
+            "Thermal packs",
+            "If heating fails at night, Mars gets deadly cold within hours. Thermal blankets and heat packs buy time for repairs."
+          ],
+          [
+            "Spread out",
+            "Emergency supplies are kept in more than one room, so a problem in one part of the habitat doesn't cut the crew off from them."
+          ]
+        ]
+      }
+    ]
+  },
+  "first_aid_kit": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "lid_white_ceramic",
+              "lid_seal_rubber_gasket",
+              "lid_front_white_painted",
+              "medical_cross_safety_red"
+            ],
+            "edge": "min_x",
+            "angle": 105
+          }
+        ],
+        "label_on": "Close kit",
+        "label_off": "Open kit",
+        "state": "lid",
+        "reveal": [
+          {
+            "shape": "box",
+            "size": [
+              0.38,
+              0.2,
+              0.006
+            ],
+            "at": [
+              0,
+              0.18,
+              -0.113
+            ],
+            "colour": "#2A2F33"
+          },
+          {
+            "shape": "pipe",
+            "size": [
+              0.05,
+              0.09,
+              0.05
+            ],
+            "at": [
+              -0.12,
+              0.2,
+              -0.14
+            ],
+            "colour": "#E8E4DA"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.09,
+              0.06,
+              0.03
+            ],
+            "at": [
+              0.0,
+              0.22,
+              -0.13
+            ],
+            "colour": "#C8463A"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.09,
+              0.05,
+              0.03
+            ],
+            "at": [
+              0.12,
+              0.13,
+              -0.13
+            ],
+            "colour": "#5E8C93"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.1,
+              0.04,
+              0.03
+            ],
+            "at": [
+              0.0,
+              0.12,
+              -0.13
+            ],
+            "colour": "#E8E4DA"
+          }
+        ]
+      }
+    ]
+  },
+  "portable_interior_work_light": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "light",
+        "emitter": [
+          "led_diffuser_light_diffuser"
+        ],
+        "aim": [
+          0,
+          -0.35,
+          -1
+        ],
+        "energy": 3.5,
+        "range": 4.0,
+        "angle": 50,
+        "colour": "#F4F6FF",
+        "label_on": "Switch light off",
+        "label_off": "Switch light on",
+        "state": "light"
+      }
+    ]
+  },
+  "mission_planning_console": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "readout": "habitat_status",
+        "glow": [
+          "indicator_lamps"
+        ],
+        "label": "Check habitat systems"
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "mission_selector_knob"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": 90
+          }
+        ],
+        "label_on": "Turn selector back",
+        "label_off": "Turn mission selector",
+        "state": "selector",
+        "note_on": "Mission planning is coming: soon you'll choose targets here, like sampling the buried ice, then head out on the rover."
+      },
+      {
+        "key": "tertiary",
+        "type": "slide",
+        "parts": [
+          "access_drawer"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.25
+        ],
+        "tray_depth": 0.25,
+        "label_on": "Close drawer",
+        "label_off": "Open drawer",
+        "state": "drawer"
+      }
+    ]
+  },
+  "mars_survey_board": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "map",
+        "screen": [
+          "map_screen_mount"
+        ],
+        "selector": [
+          "map_mode_selector"
+        ],
+        "selector_angle": 90,
+        "label_on": "Show site map",
+        "label_off": "Show Mars globe",
+        "state": "mars_view"
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the map",
+        "observations": [
+          [
+            "Reading the map",
+            "North is up. Your rooms are drawn in their site-plan colours, the orange arrow is you, and the yellow square is the rover."
+          ],
+          [
+            "Blue circles",
+            "Pale blue areas mark ice buried under the surface. Ice extractors placed over them supply the habitat with water."
+          ],
+          [
+            "Dark ground",
+            "Dark areas are cliffs, crater walls or mounds where the habitat can't be built."
+          ]
+        ]
+      }
+    ]
+  },
+  "communications_station": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "uplink",
+        "default": true,
+        "powered": "all",
+        "switch": {
+          "parts": [
+            "uplink_switch"
+          ],
+          "axis": "x",
+          "angle": 45
+        },
+        "label_on": "Switch uplink off",
+        "label_off": "Switch uplink on",
+        "note_off": "Uplink off. No messages can reach Earth or the rovers until it's back on.",
+        "note_on": "Uplink on. Messages to Earth take between 5 and 20 minutes each way, depending on where the planets are."
+      },
+      {
+        "key": "secondary",
+        "type": "slide",
+        "parts": [
+          "service_data_module"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.3
+        ],
+        "label_on": "Insert data module",
+        "label_off": "Pull data module",
+        "state": "module"
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "label": "Read the comms log",
+        "observations": [
+          [
+            "Light-speed delay",
+            "Radio travels at the speed of light, but Mars is so far away that a message takes 5–20 minutes to arrive. There's no live chat with Earth."
+          ],
+          [
+            "Solving problems alone",
+            "Because of the delay, the crew has to handle emergencies themselves. Earth helps plan, but can't steer."
+          ],
+          [
+            "Relay satellites",
+            "Satellites orbiting Mars pass messages between the habitat, the rovers and Earth."
+          ]
+        ]
+      }
+    ]
+  },
+  "wall_cabin_heater": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "levels",
+        "state": "heat",
+        "label": "Heater",
+        "levels": [
+          "Off",
+          "Low",
+          "High"
+        ],
+        "glow": [
+          [
+            "indicator_low"
+          ],
+          [
+            "indicator_high"
+          ]
+        ],
+        "dial": {
+          "parts": [
+            "heat_level_dial",
+            "dial_pointer"
+          ],
+          "axis": "z",
+          "angle": -60
+        },
+        "notes": [
+          "Heater off. It uses no power now.",
+          "Heater running: Low. Gentle warmth for this room.",
+          "Heater running: High. More warmth, but it uses more power."
+        ],
+        "note_no_power": "The heater is switched on, but the habitat has no power, so it makes no heat. It'll start again when power returns."
+      },
+      {
+        "key": "secondary",
+        "type": "workout",
+        "seconds": 0.6,
+        "reps": 1,
+        "moves": [
+          {
+            "parts": [
+              "thermal_trip_button"
+            ],
+            "offset": [
+              0,
+              0,
+              0.006
+            ]
+          }
+        ],
+        "label": "Test safety cut-out",
+        "note": "Safety cut-out tested. If the heater ever gets too hot, this trip switches it off, so a blocked heater can't start a fire."
+      }
+    ]
+  },
+  "portable_utility_heater": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "levels",
+        "state": "heat",
+        "label": "Heater",
+        "levels": [
+          "Off",
+          "Low",
+          "High"
+        ],
+        "glow": [
+          [
+            "indicator_low"
+          ],
+          [
+            "indicator_high"
+          ]
+        ],
+        "dial": {
+          "parts": [
+            "heat_level_dial",
+            "dial_pointer"
+          ],
+          "axis": "z",
+          "angle": -60
+        },
+        "notes": [
+          "Heater off. It uses no power now.",
+          "Heater running: Low. Gentle warmth for this room.",
+          "Heater running: High. More warmth, but it uses more power."
+        ],
+        "note_no_power": "The heater is switched on, but the habitat has no power, so it makes no heat. It'll start again when power returns.",
+        "spin": [
+          {
+            "parts": [
+              "blower_blades",
+              "blower_hub"
+            ],
+            "axis": "z",
+            "speed": 9
+          }
+        ]
+      },
+      {
+        "key": "secondary",
+        "type": "slide",
+        "parts": [
+          "filter_cartridge",
+          "filter_release_tab"
+        ],
+        "offset": [
+          0.16,
+          0,
+          0
+        ],
+        "label_on": "Refit air filter",
+        "label_off": "Pull air filter",
+        "state": "filter",
+        "note_on": "The air filter stops dust being blown around the room. A clogged filter makes the fan work harder for less heat."
+      }
+    ]
+  },
+  "cargo_crate_small": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "upper_lid",
+              "lid_gasket",
+              "lid_latches"
+            ],
+            "edge": "max_z",
+            "axis": "x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close crate",
+        "label_off": "Open crate",
+        "state": "lid",
+        "reveal": [
+          {
+            "shape": "box",
+            "size": [
+              0.432,
+              0.012,
+              0.30600000000000005
+            ],
+            "at": [
+              0,
+              0.4,
+              0
+            ],
+            "colour": "#2A2F33"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.16799999999999998,
+              0.08,
+              0.119
+            ],
+            "at": [
+              -0.108,
+              0.445,
+              -0.051000000000000004
+            ],
+            "colour": "#E8E4DA"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.144,
+              0.06,
+              0.136
+            ],
+            "at": [
+              0.108,
+              0.43500000000000005,
+              0.017
+            ],
+            "colour": "#5E8C93"
+          },
+          {
+            "shape": "pipe",
+            "size": [
+              0.07,
+              0.12,
+              0.07
+            ],
+            "at": [
+              0.024,
+              0.47000000000000003,
+              0.07650000000000001
+            ],
+            "colour": "#E07B39"
+          }
+        ]
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Check the contents",
+        "observations": [
+          [
+            "Sealed against dust",
+            "Rubber seals keep fine Martian dust out. Dust gets into everything and wears out moving parts."
+          ],
+          [
+            "Bring it inside",
+            "Supplies are stored outside until they're needed, then carried in through the airlock and brushed clean."
+          ]
+        ]
+      }
+    ]
+  },
+  "cargo_crate_large": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "upper_lid",
+              "lid_gasket",
+              "lid_latches"
+            ],
+            "edge": "max_z",
+            "axis": "x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close crate",
+        "label_off": "Open crate",
+        "state": "lid",
+        "reveal": [
+          {
+            "shape": "box",
+            "size": [
+              0.756,
+              0.012,
+              0.522
+            ],
+            "at": [
+              0,
+              0.645,
+              0
+            ],
+            "colour": "#2A2F33"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.294,
+              0.08,
+              0.20299999999999999
+            ],
+            "at": [
+              -0.189,
+              0.6900000000000001,
+              -0.087
+            ],
+            "colour": "#E8E4DA"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.252,
+              0.06,
+              0.23199999999999998
+            ],
+            "at": [
+              0.189,
+              0.68,
+              0.028999999999999998
+            ],
+            "colour": "#5E8C93"
+          },
+          {
+            "shape": "pipe",
+            "size": [
+              0.07,
+              0.12,
+              0.07
+            ],
+            "at": [
+              0.042,
+              0.7150000000000001,
+              0.1305
+            ],
+            "colour": "#E07B39"
+          }
+        ]
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Check the contents",
+        "observations": [
+          [
+            "Sealed against dust",
+            "Rubber seals keep fine Martian dust out. Dust gets into everything and wears out moving parts."
+          ],
+          [
+            "Bring it inside",
+            "Supplies are stored outside until they're needed, then carried in through the airlock and brushed clean."
+          ]
+        ]
+      }
+    ]
+  },
+  "equipment_pallet": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "ratchet_lever"
+            ],
+            "edge": "center",
+            "axis": "x",
+            "angle": 70
+          }
+        ],
+        "label_on": "Tighten straps",
+        "label_off": "Release straps",
+        "state": "straps",
+        "note_off": "Straps tightened. Cargo is strapped down hard for landing, when it shakes and jolts more than on any road."
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the manifest",
+        "observations": [
+          [
+            "Every kilogram counts",
+            "Each kilogram landed on Mars costs a lot of fuel to deliver. That's why the habitat has a cargo budget."
+          ],
+          [
+            "Plan the unloading",
+            "Crews plan which cases come inside first: food and spares before anything that can wait."
+          ]
+        ]
+      }
+    ]
+  },
+  "comms_antenna": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "tracking",
+        "default": true,
+        "label_on": "Stop tracking",
+        "label_off": "Track satellite",
+        "spin": [
+          {
+            "parts": [
+              "dish_yoke",
+              "dish_brackets",
+              "dish_reflector",
+              "dish_rim",
+              "receiver_feed",
+              "receiver_struts"
+            ],
+            "axis": "y",
+            "at": [
+              0,
+              2.74,
+              0
+            ],
+            "speed": 0.25
+          }
+        ],
+        "glow": [
+          "top_beacon_light_diffuser",
+          "signal_port_amber_glow"
+        ],
+        "blink": 1.6,
+        "note_on": "Tracking. The dish follows a relay satellite as it crosses the sky, keeping the link to Earth open for as long as it's overhead.",
+        "note_off": "Dish parked. No messages can be relayed until it tracks a satellite again."
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Check the link",
+        "observations": [
+          [
+            "Height helps",
+            "Radio signals travel in straight lines. A tall mast sees further over hills and crater rims, so rovers stay in contact for longer."
+          ],
+          [
+            "Passing satellites",
+            "Relay satellites are overhead for only a few minutes at a time, so big messages are sent in short windows."
+          ]
+        ]
+      }
+    ]
+  },
+  "exterior_workbench": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "slide",
+        "parts": [
+          "drawer_front",
+          "drawer_handle",
+          "mount_bolts"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.4
+        ],
+        "tray_depth": 0.5,
+        "label_on": "Close drawer",
+        "label_off": "Open drawer",
+        "state": "drawer"
+      },
+      {
+        "key": "secondary",
+        "type": "light",
+        "emitter": [
+          "power_indicator"
+        ],
+        "at": [
+          0,
+          1.72,
+          0.05
+        ],
+        "aim": [
+          0,
+          -1,
+          -0.25
+        ],
+        "energy": 3.0,
+        "range": 3.0,
+        "angle": 60,
+        "colour": "#FFE2B0",
+        "label_on": "Bench light off",
+        "label_off": "Bench light on",
+        "state": "light"
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "service_crate_lid"
+            ],
+            "edge": "max_z",
+            "axis": "x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close spares box",
+        "label_off": "Open spares box",
+        "state": "spares",
+        "reveal": [
+          {
+            "shape": "box",
+            "size": [
+              0.342,
+              0.012,
+              0.324
+            ],
+            "at": [
+              0,
+              0.62,
+              0
+            ],
+            "colour": "#2A2F33"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.13299999999999998,
+              0.08,
+              0.126
+            ],
+            "at": [
+              -0.0855,
+              0.665,
+              -0.054
+            ],
+            "colour": "#E8E4DA"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.11399999999999999,
+              0.06,
+              0.144
+            ],
+            "at": [
+              0.0855,
+              0.655,
+              0.018
+            ],
+            "colour": "#5E8C93"
+          },
+          {
+            "shape": "pipe",
+            "size": [
+              0.07,
+              0.12,
+              0.07
+            ],
+            "at": [
+              0.019000000000000003,
+              0.69,
+              0.081
+            ],
+            "colour": "#E07B39"
+          }
+        ]
+      }
+    ]
+  },
+  "high_light_post": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "light",
+        "emitter": [
+          "led_emitter"
+        ],
+        "aim": [
+          0,
+          -0.55,
+          -1
+        ],
+        "energy": 6.0,
+        "range": 22.0,
+        "angle": 65,
+        "colour": "#F4F6FF",
+        "default": true,
+        "label_on": "Switch light off",
+        "label_off": "Switch light on",
+        "state": "light"
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "junction_cover"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close junction box",
+        "label_off": "Open junction box",
+        "state": "cover"
+      }
+    ]
+  },
+  "path_beacon": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "light",
+        "emitter": [
+          "beacon_light_diffuser"
+        ],
+        "aim": [
+          0,
+          -0.3,
+          -1
+        ],
+        "energy": 1.5,
+        "range": 6.0,
+        "angle": 70,
+        "colour": "#FFB347",
+        "default": true,
+        "own_power": true,
+        "label_on": "Switch beacon off",
+        "label_off": "Switch beacon on",
+        "state": "light"
+      }
+    ]
+  },
+  "portable_work_light": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "light",
+        "emitter": [
+          "led_emitter"
+        ],
+        "aim": [
+          0,
+          -0.35,
+          -1
+        ],
+        "energy": 4.0,
+        "range": 14.0,
+        "angle": 55,
+        "colour": "#F4F6FF",
+        "default": true,
+        "own_power": true,
+        "label_on": "Switch floodlight off",
+        "label_off": "Switch floodlight on",
+        "state": "light"
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "service_lid",
+              "service_latch"
+            ],
+            "edge": "max_y",
+            "axis": "x",
+            "angle": 80
+          }
+        ],
+        "label_on": "Close battery hatch",
+        "label_off": "Open battery hatch",
+        "state": "hatch",
+        "note_on": "The battery is charged inside the habitat, then carried out. In the cold, batteries run down faster, so the case is insulated."
+      }
+    ]
+  },
+  "solar_floodlight": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "light",
+        "emitter": [
+          "led_emitter"
+        ],
+        "aim": [
+          0,
+          -0.4,
+          -1
+        ],
+        "energy": 4.0,
+        "range": 14.0,
+        "angle": 55,
+        "colour": "#F4F6FF",
+        "default": true,
+        "own_power": true,
+        "label_on": "Switch floodlight off",
+        "label_off": "Switch floodlight on",
+        "state": "light"
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Check the battery",
+        "glow": [
+          "charged_status"
+        ],
+        "observations": [
+          [
+            "Charged by day",
+            "The panel charges the battery while the Sun is up. It works without the habitat's power, so it keeps shining during a power cut."
+          ],
+          [
+            "Dust on the panel",
+            "Dust settling on the panel cuts how much it charges. A dust storm can leave it with too little for the night."
+          ]
+        ]
+      }
+    ]
+  },
+  "safety_barrier": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "lamp",
+        "default": true,
+        "glow": [
+          "barrier_light_diffuser"
+        ],
+        "blink": 0.9,
+        "label_on": "Switch warning lamp off",
+        "label_off": "Switch warning lamp on"
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the warning",
+        "observations": [
+          [
+            "Mark the danger",
+            "Barriers go around drill sites, soft ground and rover working areas. In a bulky suit with a dusty visor, a hazard is easy to miss."
+          ]
+        ]
+      }
+    ]
+  },
+  "hazard_bollard": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "lamp",
+        "default": true,
+        "glow": [
+          "top_light_diffuser"
+        ],
+        "blink": 1.2,
+        "label_on": "Switch warning lamp off",
+        "label_off": "Switch warning lamp on",
+        "note_on": "Flashing lamps are easier to spot through blowing dust than steady ones."
+      }
+    ]
+  },
+  "surface_reactor": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "isolator",
+        "default": true,
+        "label_on": "Isolate reactor",
+        "label_off": "Connect reactor",
+        "switch": {
+          "parts": [
+            "master_isolator",
+            "master_handle"
+          ],
+          "axis": "z",
+          "angle": 90
+        },
+        "glow": [
+          "power_indicators",
+          "external_lamps_bright_green"
+        ],
+        "spin": [
+          {
+            "parts": [
+              "fan_blades",
+              "fan_hub"
+            ],
+            "axis": "z",
+            "speed": 10
+          }
+        ],
+        "note_off": "Reactor isolated: it no longer sends power to the habitat. If it was the main power source, the lights and machines inside will go off.",
+        "note_on": "Reactor connected. It makes steady power day and night, whatever the weather."
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "access_hatch",
+              "access_hatch_fasteners",
+              "access_handle"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close service hatch",
+        "label_off": "Open service hatch",
+        "state": "hatch",
+        "reveal": [
+          {
+            "shape": "box",
+            "size": [
+              0.56,
+              0.44,
+              0.01
+            ],
+            "at": [
+              -0.15,
+              1.33,
+              -0.56
+            ],
+            "colour": "#2A2F33"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.12,
+              0.3,
+              0.05
+            ],
+            "at": [
+              -0.32,
+              1.33,
+              -0.58
+            ],
+            "colour": "#5E8C93"
+          },
+          {
+            "shape": "box",
+            "size": [
+              0.12,
+              0.3,
+              0.05
+            ],
+            "at": [
+              -0.15,
+              1.33,
+              -0.58
+            ],
+            "colour": "#E8E4DA"
+          },
+          {
+            "shape": "pipe",
+            "size": [
+              0.05,
+              0.3,
+              0.05
+            ],
+            "at": [
+              0.02,
+              1.33,
+              -0.58
+            ],
+            "colour": "#E07B39"
+          }
+        ]
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "label": "Read the reactor log",
+        "observations": [
+          [
+            "Day and night",
+            "Solar panels stop at night and in dust storms. A reactor keeps making power all the time, which is why it's worth its heavy cargo cost."
+          ],
+          [
+            "Getting rid of heat",
+            "The fins at the sides are radiators. They shed the heat the reactor can't turn into electricity."
+          ],
+          [
+            "Keep your distance",
+            "The reactor is placed away from the rooms, so the ground and distance shield the crew from its radiation."
+          ]
+        ]
+      }
+    ]
+  },
+  "ice_drill": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "drill",
+        "default": true,
+        "label_on": "Stop drilling",
+        "label_off": "Start drilling",
+        "switch": {
+          "parts": [
+            "physical_switches"
+          ],
+          "axis": "x",
+          "angle": 40
+        },
+        "glow": [
+          "state_light"
+        ],
+        "spin": [
+          {
+            "parts": [
+              "auger_flight",
+              "drill_shaft",
+              "drill_tip"
+            ],
+            "axis": "y",
+            "speed": 7
+          },
+          {
+            "parts": [
+              "pump_rotor_guard"
+            ],
+            "axis": "x",
+            "speed": 10
+          }
+        ],
+        "note_off": "Drill stopped. It uses no power now, but the habitat gets no new water from it.",
+        "note_on": "Drilling. The drill heats buried ice so it melts, and the pump lifts the water into the tank. It uses a lot of power."
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Check the water",
+        "observations": [
+          [
+            "Water from ice",
+            "Water is the most useful thing on Mars: it's for drinking, washing, growing plants, and it can even be split into oxygen to breathe."
+          ],
+          [
+            "Richer ground",
+            "The paler blue the ground looks in the build view, the more ice is buried there and the more water a drill can pump."
+          ],
+          [
+            "Clean it first",
+            "Melted Martian ice contains salts and dust, so it's filtered in Life Support before anyone drinks it."
+          ]
+        ]
+      }
+    ]
+  },
+  "oxygen_generator": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "running",
+        "default": true,
+        "powered": "all",
+        "switch": {
+          "parts": [
+            "run_switch"
+          ],
+          "axis": "x",
+          "angle": 40
+        },
+        "glow": [
+          "status_lamp"
+        ],
+        "spin": [
+          {
+            "parts": [
+              "pump_rotor"
+            ],
+            "axis": "z",
+            "speed": 8
+          }
+        ],
+        "sweep": [
+          {
+            "parts": [
+              "o2_gauge_needle"
+            ],
+            "edge": "min_y",
+            "axis": "z",
+            "angle": 25,
+            "speed": 1.5
+          }
+        ],
+        "label_on": "Stop oxygen generator",
+        "label_off": "Start oxygen generator",
+        "note_on": "Running: electricity splits water into oxygen and hydrogen. Each sol it turns about 3.4 litres of water into 3 kg of oxygen, enough for three or four crew.",
+        "note_off": "Stopped: no new oxygen. The crew are now breathing the air already in the habitat and whatever is in the reserve tanks."
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "service_door"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close service door",
+        "label_off": "Open service door",
+        "state": "door",
+        "note_on": "The electrolysis stack: thin plates with water flowing between them. Electricity passing through splits each water molecule (H₂O) into hydrogen and oxygen."
+      },
+      {
+        "key": "tertiary",
+        "type": "inspect",
+        "label": "How it works",
+        "observations": [
+          [
+            "Water in, oxygen out",
+            "Two water molecules (2 H₂O) split into two hydrogen molecules (2 H₂) and one oxygen molecule (O₂). The oxygen goes to the cabin air."
+          ],
+          [
+            "What about the hydrogen?",
+            "On the ISS the hydrogen is vented into space or combined with CO₂ to make water and methane. Here it's vented outside."
+          ],
+          [
+            "A thirsty machine",
+            "Making oxygen uses water, so more crew means more water from the ice drills or the reclaimer."
+          ],
+          [
+            "Power hungry",
+            "Splitting water takes a lot of electricity. If the power fails, oxygen stops, so this machine is protected as life support."
+          ]
+        ]
+      }
+    ]
+  },
+  "crew_lander": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "hatch_ramp"
+            ],
+            "edge": "min_y",
+            "axis": "x",
+            "angle": -123
+          }
+        ],
+        "state": "hatch",
+        "default": false,
+        "label_on": "Close hatch",
+        "label_off": "Open hatch",
+        "note_on": "The hatch swings down to become a ramp. Outside: Mars. Take a moment to look around before you start building."
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the cabin log",
+        "observations": [
+          [
+            "Landed safely",
+            "The lander touched down on its four legs; the engines' scorch marks are still on the ground. It is small and cramped: a place to shelter, not to live."
+          ],
+          [
+            "Why build a habitat?",
+            "Six people can't live in a cabin this size for long. They need room to sleep, grow food, recycle air and water, and work. That's your job."
+          ],
+          [
+            "Always a safe place",
+            "If you get lost or cold, the lander is marked on your compass. Come back here to shelter."
+          ]
+        ]
+      }
+    ]
+  },
+  "galley_freezer": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "fridge_door"
+            ],
+            "edge": "min_x",
+            "angle": 105
+          }
+        ],
+        "label_on": "Close fridge",
+        "label_off": "Open fridge",
+        "state": "fridge"
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "freezer_door"
+            ],
+            "edge": "min_x",
+            "angle": 105
+          }
+        ],
+        "label_on": "Close freezer",
+        "label_off": "Open freezer",
+        "state": "freezer"
+      }
+    ]
+  },
+  "galley_oven": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "oven_door",
+              "oven_window",
+              "oven_handle"
+            ],
+            "edge": "min_y",
+            "angle": -80,
+            "axis": "x"
+          }
+        ],
+        "label_on": "Close oven",
+        "label_off": "Open oven",
+        "state": "door"
+      }
+    ]
+  },
+  "waste_sorting_unit": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "compactor_door",
+              "compactor_window",
+              "compactor_handle"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close compactor",
+        "label_off": "Open compactor",
+        "state": "door"
+      }
+    ]
+  },
+  "medical_exam_light": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "light",
+        "emitter": [
+          "lamp_face"
+        ],
+        "aim": [
+          0,
+          -1,
+          0
+        ],
+        "energy": 6.0,
+        "range": 3.0,
+        "angle": 50,
+        "colour": "#FFF6E8",
+        "powered": true,
+        "label_on": "Turn off light",
+        "label_off": "Turn on light",
+        "state": "light"
+      }
+    ]
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "id": "science_workbench",
+  "name": "Core and Ice Analysis Workbench",
+  "file": "science_workbench.glb",
+  "description": "Bench for comparing sediment layers in returned cores and examining water ice in a sealed chamber.",
+  "connected_systems": [
+    "Rover sampling",
+    "Electricity",
+    "Research missions"
+  ],
+  "classroom_role": "Open chamber, inspect layered core, adjust physical pump controls",
+  "triangle_count": 13984,
+  "mesh_groups": 29,
+  "material_count": 21,
+  "dimensions_xyz_m": [
+    1.49,
+    1.668,
+    0.947
+  ],
+  "bounds_min_m": [
+    -0.745,
+    0.007,
+    -0.507
+  ],
+  "bounds_max_m": [
+    0.745,
+    1.675,
+    0.44
+  ],
+  "interaction_components": [
+    "Core_Clamp",
+    "Heater_Set_Knob",
+    "Ice_Chamber_Hatch",
+    "Pump_Toggle",
+    "Specimen_Drawer",
+    "Worklight_Emitter"
+  ],
+  "baked_text": false,
+  "static_screen_data": false,
+  "active_simulation": false,
+  "placement": "free within permitted Science Laboratory zone; collision and walking clearance verified in Godot",
+  "base_footprint_m": [
+    1.5,
+    1.5
+  ]
+}

@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_rig.gd" id="1_rig"]
+[ext_resource type="PackedScene" path="res://assets/equipment/mars_indoor_heaters_martian_hailmary_v1/models/wall_cabin_heater.glb" id="2_model"]
+
+[node name="WallCabinHeater" type="Node3D"]
+script = ExtResource("1_rig")
+equipment_id = "wall_cabin_heater"
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0, 0.0025, -0.003)

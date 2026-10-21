@@ -13,3 +13,16 @@ __pycache__/
 
 # Video render scratch files
 brag-output/
+
+# Trailer: raw captures and rendered videos are large; the edit (trailer/*.html),
+# capture scripts (tools/trailer_*.gd) and score script rebuild them.
+trailer_footage/
+trailer/node_modules/
+trailer/.hyperframes/
+trailer/assets/*.mp4
+trailer/assets/*.wav
+trailer/assets/v2/
+docs/*.mp4
+# Raw pack zips before import (asset_packs/ keeps the sources).
+_asset_staging/
+artifacts/

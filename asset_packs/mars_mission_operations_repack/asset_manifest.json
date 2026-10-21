@@ -1,0 +1,44 @@
+[
+  {
+    "id": "mission_planning_console",
+    "model": "models/mission_planning_console.glb",
+    "min_bounds_m": [
+      -0.865000009536743,
+      0.0324999988079071,
+      -0.634999990463257
+    ],
+    "max_bounds_m": [
+      0.865000009536743,
+      1.21700000762939,
+      0.351735949516296
+    ]
+  },
+  {
+    "id": "mars_survey_board",
+    "model": "models/mars_survey_board.glb",
+    "min_bounds_m": [
+      -1.22000002861023,
+      0.0020000000949949,
+      -0.257999986410141
+    ],
+    "max_bounds_m": [
+      1.22000002861023,
+      1.99500000476837,
+      0.304999977350235
+    ]
+  },
+  {
+    "id": "communications_station",
+    "model": "models/communications_data_rack.glb",
+    "min_bounds_m": [
+      -0.685000002384186,
+      0.0,
+      -0.554000020027161
+    ],
+    "max_bounds_m": [
+      0.685000002384186,
+      2.06500005722046,
+      0.434958696365356
+    ]
+  }
+]

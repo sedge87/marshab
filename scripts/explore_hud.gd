@@ -33,11 +33,26 @@ var _telemetry_sunlight: Label
 var _sol_clock: Label
 var _telemetry_context: Label
 var _telemetry_key := ""
+var _hint_strip: Control
+var _hint_inside := false
+# Habitat systems panel (the life-support simulation's stores and warnings).
+var _systems_panel: PanelContainer
+var _systems_title: Label
+var _systems_rows := {}
+var _systems_warnings: VBoxContainer
+var _systems_age := 1.0
+# While the player is still in the lander only the crosshair, prompts and
+# notes show; the rest fades in when they step outside (set_minimal).
+var _minimal := false
+var _minimal_nodes: Array = []
+## "ROBOT" in Missions before the crew land (set by the world).
+var chip_prefix := ""
 
 func setup(target_player: Node3D, target_builder: BuildController) -> void:
 	player = target_player
 	builder = target_builder
 	builder.habitat_changed.connect(_refresh_readiness)
+	builder.power_changed.connect(_refresh_readiness.bind(true))
 
 func _ready() -> void:
 	name = "ExploreHUD"
@@ -50,7 +65,7 @@ func _ready() -> void:
 	var visor := MHWidgets.Visor.new()
 	visor.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(visor)
-	_root.add_child(MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["E"], "Interact", "accent"], [["F"], "Light"], [["B"], "Build"], [["M"], "Mission Control"], [["Esc"], "Pause"]]))
+	_refresh_hint_strip()
 	# Compass, centred top inside the visor.
 	var compass_band := CenterContainer.new()
 	compass_band.anchor_right = 1
@@ -60,14 +75,19 @@ func _ready() -> void:
 	_root.add_child(compass_band)
 	_compass = MHWidgets.Compass.new()
 	compass_band.add_child(_compass)
-	_root.add_child(_build_sol_clock())
+	var sol_clock := _build_sol_clock()
+	_root.add_child(sol_clock)
+	_minimal_nodes = [compass_band, sol_clock]
 	# Colony chip, top-left inside the visor.
 	_chip_slot = Control.new()
 	_chip_slot.position = Vector2(104, 104)
 	_chip_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_chip_slot)
 	# Compact site readout: useful context without competing with the build HUD.
-	_root.add_child(_site_telemetry())
+	var telemetry := _site_telemetry()
+	_root.add_child(telemetry)
+	_root.add_child(_build_systems_panel())
+	_minimal_nodes += [_chip_slot, telemetry, _systems_panel]
 	# Readiness, top-right.
 	_readiness_slot = MHStyle.vbox(0)
 	_readiness_slot.anchor_left = 1
@@ -77,6 +97,7 @@ func _ready() -> void:
 	_readiness_slot.offset_top = 104
 	_readiness_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_readiness_slot)
+	_minimal_nodes.append(_readiness_slot)
 	# Crosshair + interact prompt in the centre.
 	var centre := CenterContainer.new()
 	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -130,6 +151,21 @@ func _build_equipment_note() -> void:
 	_note_panel.add_child(column)
 	note_band.add_child(_note_panel)
 
+## Hide everything but the crosshair, prompts and notes (inside the lander at
+## the start), or fade it all back in.
+func set_minimal(on: bool) -> void:
+	_minimal = on
+	for node in _minimal_nodes:
+		var control := node as CanvasItem
+		if control == null: continue
+		if on:
+			control.visible = false
+		else:
+			control.visible = true
+			control.modulate.a = 0.0
+			create_tween().tween_property(control, "modulate:a", 1.0, 1.2)
+	if not on: _update_systems_panel()
+
 func show_equipment_note(title: String, note: String) -> void:
 	if _note_panel == null or note.is_empty():
 		return
@@ -159,12 +195,104 @@ func _site_telemetry() -> PanelContainer:
 	var second_row := MHStyle.hbox(14)
 	_telemetry_radiation = _telemetry_metric("RADIATION", str(telemetry.get("radiation", "—")), MHStyle.WARN)
 	second_row.add_child(_telemetry_radiation.get_parent())
-	_telemetry_sunlight = _telemetry_metric("SUNLIGHT", str(telemetry.get("sunlight", "—")), MHStyle.VALID)
+	_telemetry_sunlight = _telemetry_metric("SOLAR", "—", MHStyle.VALID)
 	second_row.add_child(_telemetry_sunlight.get_parent())
 	column.add_child(second_row)
 	column.add_child(MHStyle.body("Shift estimates · suit required outside", 10, MHStyle.TEXT_MUTED))
 	panel.add_child(column)
 	return panel
+
+func _build_systems_panel() -> PanelContainer:
+	_systems_panel = MHStyle.hud_panel(12, false, true)
+	_systems_panel.position = Vector2(104, 372)
+	_systems_panel.custom_minimum_size = Vector2(300, 0)
+	_systems_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var column := MHStyle.vbox(6)
+	_systems_title = MHStyle.eyebrow("Habitat systems", MHStyle.accent, 10)
+	column.add_child(_systems_title)
+	for id in ["battery", "water", "food", "air", "crew"]:
+		var row := MHStyle.vbox(2)
+		var head := MHStyle.hbox(8)
+		var caption := MHStyle.eyebrow({"battery": "Battery", "water": "Water", "food": "Food", "air": "Air", "crew": "Crew health"}[id], MHStyle.TEXT_MUTED, 9)
+		caption.custom_minimum_size = Vector2(78, 0)
+		head.add_child(caption)
+		var value := MHStyle.mono("—", 12, MHStyle.TEXT_PRIMARY, 600)
+		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		head.add_child(value)
+		row.add_child(head)
+		var track := ColorRect.new()
+		track.color = Color(1, 1, 1, .08)
+		track.custom_minimum_size = Vector2(0, 4)
+		var fill := ColorRect.new()
+		fill.color = MHStyle.VALID
+		fill.custom_minimum_size = Vector2(0, 4)
+		track.add_child(fill)
+		row.add_child(track)
+		column.add_child(row)
+		_systems_rows[id] = {"value": value, "track": track, "fill": fill}
+	_systems_warnings = MHStyle.vbox(3)
+	column.add_child(_systems_warnings)
+	_systems_panel.add_child(column)
+	return _systems_panel
+
+func _set_system_row(id: String, text: String, fraction: float, tone: Color) -> void:
+	var row: Dictionary = _systems_rows[id]
+	(row.value as Label).text = text
+	(row.value as Label).add_theme_color_override("font_color", tone if tone != MHStyle.VALID else MHStyle.TEXT_PRIMARY)
+	var fill: ColorRect = row.fill
+	fill.color = tone
+	fill.size = Vector2(maxf(0.0, (row.track as Control).size.x * clampf(fraction, 0.0, 1.0)), 4)
+
+## Battery, water, food, air and crew health from the habitat simulation,
+## with the most serious warnings (each says why).
+func _update_systems_panel() -> void:
+	if _systems_panel == null or builder == null: return
+	var sim: RefCounted = builder.simulation()
+	var inv: Dictionary = sim.inventory()
+	_systems_panel.visible = MHGame.simulation_on() and int(inv.get("cells", 0)) > 0 and not _minimal
+	if not _systems_panel.visible: return
+	var last: Dictionary = sim.last
+	var flows: Dictionary = sim.daily_flows(false)
+	var crew: int = sim.crew_count()
+	_systems_title.text = "HABITAT SYSTEMS · %d CREW%s" % [crew, " · DUST STORM" if bool(last.get("storm", false)) else ""]
+	# Battery: charge and whether it is filling or draining.
+	var capacity := float(inv.capacity.kwh)
+	var rate := float(last.get("battery_rate_kw", 0.0))
+	if capacity <= 0.0:
+		_set_system_row("battery", "No battery bank", 0.0, MHStyle.WARN)
+	else:
+		var pct := float(sim.battery_kwh) / capacity
+		var trend := "charging +%.1f kW" % rate if rate > .05 else ("−%.1f kW · empty ~%s" % [-rate, _clock_after(float(sim.battery_kwh) / -rate)] if rate < -.05 else "steady")
+		_set_system_row("battery", "%d%% · %s" % [roundi(pct * 100.0), trend], pct, MHStyle.VALID if pct > .3 else (MHStyle.WARN if pct > .1 else MHStyle.DANGER))
+	# Water and food: stored amount and how many sols it lasts.
+	var water_net := float(flows.water_made) - float(flows.water_used)
+	var water_cap := float(inv.capacity.water)
+	var water_text := "%d L · %s" % [roundi(sim.water_l), ("+%d L a sol" % roundi(water_net) if water_net > 0.5 else "steady") if water_net >= 0.0 else "lasts %.1f sols" % (float(sim.water_l) / -water_net)]
+	_set_system_row("water", water_text, float(sim.water_l) / maxf(1.0, water_cap), MHStyle.VALID if water_net >= 0.0 else (MHStyle.WARN if float(sim.water_l) / -water_net > 3.0 else MHStyle.DANGER))
+	var food_net := float(flows.food_grown) - float(flows.food_eaten)
+	var food_sols := float(sim.food_kg) / -food_net if food_net < 0.0 else 999.0
+	_set_system_row("food", "%d kg · %s" % [roundi(sim.food_kg), "lasts %d sols" % floori(food_sols) if food_sols < 999.0 else "growing enough"], minf(1.0, food_sols / 60.0), MHStyle.VALID if food_sols > 20.0 else (MHStyle.WARN if food_sols > 5.0 else MHStyle.DANGER))
+	var co2 := float(sim.co2_pct)
+	var o2 := float(sim.o2_pct)
+	var air_tone := MHStyle.DANGER if co2 > 1.0 or o2 < 19.5 else (MHStyle.WARN if co2 > .5 or o2 < 20.0 else MHStyle.VALID)
+	_set_system_row("air", "O₂ %.1f%% · CO₂ %.2f%%" % [o2, co2], clampf(1.0 - co2 / 1.0, 0.0, 1.0), air_tone)
+	var health := float(sim.crew_health)
+	_set_system_row("crew", "%d%%%s" % [roundi(health), "" if MHGame.crew_can_be_harmed() else " · Freedom mode: no harm"], health / 100.0, MHStyle.VALID if health > 70.0 else (MHStyle.WARN if health > 30.0 else MHStyle.DANGER))
+	for child in _systems_warnings.get_children(): child.queue_free()
+	var shown := 0
+	for warning in sim.warnings():
+		if shown >= 3 or str(warning.level) == "info": continue
+		var line := MHStyle.body("• " + str(warning.text), 11, MHStyle.DANGER if str(warning.level) == "danger" else MHStyle.WARN)
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.custom_minimum_size = Vector2(276, 0)
+		_systems_warnings.add_child(line)
+		shown += 1
+
+## The sol clock time after some game hours, e.g. "04:30".
+func _clock_after(hours: float) -> String:
+	if hours > 48.0: return "in %d sols" % floori(hours / 24.6)
+	var at := fmod(MHGame.sol_hour + hours, 24.0)
+	return "%02d:%02d" % [int(at), int(fmod(at, 1.0) * 60.0)]
 
 func _build_sol_clock() -> PanelContainer:
 	var panel := MHStyle.hud_panel(7, false, true)
@@ -196,9 +324,14 @@ func _process(delta: float) -> void:
 	_compass.heading = wrapf(rad_to_deg(-player.rotation.y), 0.0, 360.0)
 	_compass.markers = _markers()
 	_compass.queue_redraw()
+	_refresh_hint_strip()
 	_update_chip()
 	_update_telemetry()
 	_update_sol_clock()
+	_systems_age += delta
+	if _systems_age > .5:
+		_systems_age = 0.0
+		_update_systems_panel()
 	_update_prompt()
 	if _note_time_left > 0.0:
 		_note_time_left = maxf(0.0, _note_time_left - delta)
@@ -208,11 +341,26 @@ func _process(delta: float) -> void:
 		_collapsed = true
 		_render_readiness()
 
+# The B hint names the build view it will actually open from where the player
+# stands, and offers Shift+B for the Site plan while inside.
+func _refresh_hint_strip() -> void:
+	var inside := builder != null and builder.player_can_furnish()
+	if _hint_strip != null and inside == _hint_inside:
+		return
+	_hint_inside = inside
+	if _hint_strip != null:
+		_hint_strip.queue_free()
+	var build_hints: Array = [[["B"], "Furnish room"], [["Shift", "B"], "Site plan"]] if inside else [[["B"], "Site plan"]]
+	_hint_strip = MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["E"], "Interact", "accent"], [["F"], "Light"]] + build_hints + [[["M"], "Mission Control"], [["Esc"], "Pause"]])
+	_root.add_child(_hint_strip)
+	# Keep the strip under the other HUD layers, where it was originally built.
+	_root.move_child(_hint_strip, 1)
+
 func _update_telemetry() -> void:
 	if _telemetry_temp == null or builder == null:
 		return
 	var climate := builder.climate_at(player.global_position)
-	var key := str([climate.temperature, climate.radiation, climate.context, MHGame.sol_hour, MHGame.sunlight_fraction])
+	var key := str([climate.temperature, climate.radiation, climate.context, MHGame.sol_hour, MHGame.sunlight_fraction, roundi(MHGame.solar_irradiance(MHGame.sol_hour) * 100.0)])
 	if key == _telemetry_key:
 		return
 	_telemetry_key = key
@@ -221,8 +369,11 @@ func _update_telemetry() -> void:
 	_telemetry_radiation.add_theme_color_override("font_color", MHStyle.WARN if str(climate.radiation) == "High" else MHStyle.VALID)
 	_telemetry_context.text = "%s · %s" % [str(climate.context), MHGame.formatted_sol_time()]
 	if _telemetry_sunlight != null:
-		_telemetry_sunlight.text = "%d%%" % roundi(MHGame.sunlight_fraction * 100.0)
-		_telemetry_sunlight.add_theme_color_override("font_color", MHStyle.VALID if MHGame.sunlight_fraction > .1 else MHStyle.TEXT_MUTED)
+		# Share of full panel output available now: builds through the morning,
+		# fades in the evening and drops early where terrain hides the sun.
+		var solar := MHGame.solar_irradiance(MHGame.sol_hour)
+		_telemetry_sunlight.text = "%d%%" % roundi(solar * 100.0)
+		_telemetry_sunlight.add_theme_color_override("font_color", MHStyle.VALID if solar > .1 else MHStyle.TEXT_MUTED)
 
 func _update_sol_clock() -> void:
 	if _sol_clock == null:
@@ -233,6 +384,9 @@ func _update_sol_clock() -> void:
 
 func _markers() -> Array:
 	var out: Array = []
+	for landmark in get_tree().get_nodes_in_group("landmark"):
+		var spot := (landmark as Node3D).global_position - player.global_position
+		out.append({"bearing": wrapf(rad_to_deg(atan2(spot.x, -spot.z)), 0.0, 360.0), "label": str(landmark.get_meta("landmark_label", "")), "distance": Vector2(spot.x, spot.z).length()})
 	for candidate in get_tree().get_nodes_in_group("airlock_door"):
 		var door := candidate as Node3D
 		if door == null or not door.has_method("door_label"): continue
@@ -243,11 +397,15 @@ func _markers() -> Array:
 	return out
 
 func _update_chip() -> void:
-	var context := "ZONE · OUTSIDE · " + MHGame.site_name()
+	var context := chip_prefix + "ZONE · OUTSIDE · " + MHGame.site_name()
 	var cell := Vector2i(roundi(player.global_position.x / BuildController.CELL), roundi(player.global_position.z / BuildController.CELL))
 	for zone in builder.zones:
 		if cell in zone.cells and str(zone.kind) != "solar":
-			context = "ZONE · " + str(BuildController.ZONE_TYPES[zone.kind].label).to_upper()
+			context = chip_prefix + "ZONE · " + str(BuildController.ZONE_TYPES[zone.kind].label).to_upper()
+	# Inside a lander (the crew cabin or a cargo hold).
+	for landmark in get_tree().get_nodes_in_group("landmark"):
+		if (landmark.has_method("hold_contains") and landmark.hold_contains(player.global_position)) or (landmark.has_method("cabin_contains") and landmark.cabin_contains(player.global_position)):
+			context = chip_prefix + "INSIDE · " + str(landmark.get_meta("landmark_label", "LANDER"))
 	if context == _chip_context: return
 	_chip_context = context
 	for child in _chip_slot.get_children(): child.queue_free()
@@ -261,7 +419,7 @@ func _update_prompt() -> void:
 		if target.has_method("interaction_prompt"):
 			var prompt: Dictionary = target.call("interaction_prompt")
 			var actions: Array[String] = []
-			for action in [["E", "primary"], ["F", "secondary"], ["G", "tertiary"]]:
+			for action in [["E", "primary"], ["F", "secondary"], ["G", "tertiary"], ["I", "info"]]:
 				var action_name := str(prompt.get(str(action[1]), ""))
 				if not action_name.is_empty(): actions.append("%s %s" % [str(action[0]), action_name])
 			_prompt_keys.text = "  ".join(actions)
@@ -295,17 +453,21 @@ func _looked_at_interactable() -> Node:
 		node = node.get_parent()
 	return null
 
-func _refresh_readiness() -> void:
+func _refresh_readiness(quiet := false) -> void:
 	var items := builder.readiness()
 	var key := str(items)
 	if key == _readiness_key: return
 	_readiness_key = key
-	_readiness_age = 0.0
-	_collapsed = false
+	# Layout changes pop the panel open; power drifting with the sun only
+	# updates it in place.
+	if not quiet:
+		_readiness_age = 0.0
+		_collapsed = false
 	_render_readiness()
 
 func _render_readiness() -> void:
 	for child in _readiness_slot.get_children(): child.queue_free()
+	if MHGame.game_mode == "missions": return   # the mission panel shows the requirements instead
 	var items := builder.readiness()
 	var met := builder.readiness_met()
 	if _collapsed or met == items.size():

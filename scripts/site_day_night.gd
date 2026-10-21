@@ -9,14 +9,25 @@ signal conditions_changed
 var environment: OriginalMarsEnvironment
 var builder: BuildController
 var hour := 8.0
+# Debug controls: clock speed multiplier and a full stop.
+var time_scale := 1.0
+var frozen := false
 var _last_sunlight := -1.0
+var _since_power_refresh := 0.0
 
 func setup(target_environment: OriginalMarsEnvironment, target_builder: BuildController) -> void:
 	environment = target_environment
 	builder = target_builder
 	_apply_conditions(true)
 
+## Jump the clock to an hour (debug tools).
+func set_hour(new_hour: float) -> void:
+	hour = wrapf(new_hour, 0.0, 24.0)
+	_apply_conditions(true)
+
 func _process(delta: float) -> void:
+	if frozen: return
+	delta *= time_scale
 	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
 	var sunrise := float(cycle.get("sunrise_hour", 5.0))
 	var sunset := float(cycle.get("sunset_hour", 19.0))
@@ -25,7 +36,9 @@ func _process(delta: float) -> void:
 	var daylight_seconds := maxf(1.0, float(cycle.get("daylight_minutes", 15.0)) * 60.0)
 	var night_seconds := maxf(1.0, float(cycle.get("night_minutes", 5.0)) * 60.0)
 	var is_day := hour >= sunrise and hour < sunset
-	hour = wrapf(hour + delta * ((daylight_hours / daylight_seconds) if is_day else (night_hours / night_seconds)), 0.0, 24.0)
+	var step_hours := delta * ((daylight_hours / daylight_seconds) if is_day else (night_hours / night_seconds))
+	if builder != null: builder.advance_simulation(step_hours, hour)
+	hour = wrapf(hour + step_hours, 0.0, 24.0)
 	_apply_conditions()
 
 func restore_state(state: Dictionary) -> void:
@@ -57,7 +70,11 @@ func _apply_conditions(force := false) -> void:
 	MHGame.set_site_conditions(hour, sunlight, outside_temp)
 	if environment != null:
 		environment.apply_daylight(sunlight)
-	if builder != null and (force or absf(sunlight - _last_sunlight) > .015):
+	# Solar output and heating drift all sol long, so refresh the grid a few
+	# times a second rather than only when the sky brightness changes.
+	_since_power_refresh += get_process_delta_time()
+	if builder != null and (force or absf(sunlight - _last_sunlight) > .015 or _since_power_refresh > .4):
+		_since_power_refresh = 0.0
 		builder.refresh_power_grid()
 	_last_sunlight = sunlight
 	conditions_changed.emit()

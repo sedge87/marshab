@@ -1,0 +1,75 @@
+{
+  "style": "The Martian + Project Hail Mary inspired original functional sci-fi",
+  "units": "metres; Y up; -Z forward",
+  "assets": [
+    {
+      "id": "wall_cabin_heater",
+      "triangles": 1700,
+      "mesh_groups": 14,
+      "materials": 12,
+      "dimensions_xyz_m": [
+        0.836,
+        0.479,
+        0.238
+      ],
+      "bounds_m": [
+        [
+          -0.418,
+          -0.242,
+          -0.235
+        ],
+        [
+          0.418,
+          0.237,
+          0.003
+        ]
+      ],
+      "named_components": [
+        "dial_pointer",
+        "heat_level_dial",
+        "indicator_high",
+        "indicator_low",
+        "on_off_switch",
+        "static_equipment",
+        "thermal_trip_button"
+      ],
+      "file": "wall_cabin_heater.glb"
+    },
+    {
+      "id": "portable_utility_heater",
+      "triangles": 1652,
+      "mesh_groups": 17,
+      "materials": 10,
+      "dimensions_xyz_m": [
+        0.593,
+        0.744,
+        0.416
+      ],
+      "bounds_m": [
+        [
+          -0.274,
+          0.001,
+          -0.206
+        ],
+        [
+          0.319,
+          0.745,
+          0.21
+        ]
+      ],
+      "named_components": [
+        "blower_blades",
+        "blower_hub",
+        "dial_pointer",
+        "filter_cartridge",
+        "filter_release_tab",
+        "heat_level_dial",
+        "indicator_high",
+        "indicator_low",
+        "on_off_knob",
+        "static_equipment"
+      ],
+      "file": "portable_utility_heater.glb"
+    }
+  ]
+}

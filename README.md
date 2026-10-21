@@ -23,7 +23,8 @@ An in-progress Year 9 Mars habitat construction project. Students lay out a habi
 | Look | Mouse |
 | Sprint | Shift |
 | Release mouse / pause | Escape |
-| Toggle Build / Explore | B |
+| Build: Site plan outside, Interior inside a room / back to Explore | B |
+| Swap Site plan ⇄ Interior | Shift+B |
 | Build camera | WASD, wheel zoom, Q/E orbit |
 | Rotate airlock, hangar or solar face | R |
 | Interact with airlock / bay doors | E |
@@ -31,7 +32,7 @@ An in-progress Year 9 Mars habitat construction project. Students lay out a habi
 | Remove tool (full refund) | X (or Delete over a zone) |
 | Undo last placement | Ctrl+Z |
 | Show / hide the catalogue | Tab |
-| Furnish a room (Interior tab) | Pick an item, left-click a room cell · R turns it |
+| Furnish a room (Interior, first person) | Tab for the kit, aim and left-click · R or wheel turns it |
 | Mission Control | M |
 
 Escape opens the pause screen: Resume, Mission Control, Controls, Settings, or Exit to main menu. Graphics settings (quality preset, sun shadows, dust, window glow, render scale, field of view) and audio levels (master, music, ambience, effects) are saved to `user://settings.cfg`.

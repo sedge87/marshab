@@ -1,0 +1,5 @@
+Galley & Dining: FOUR equipment assets.
+New: integrated_mess_booth/integrated_mess_booth.glb (inside models/).
+Previous three: existing_galley_models/*.glb — retained unchanged.
+Review the new booth in its self-contained Godot project folder and read CODEX_INTEGRATION_PROMPT.md.
+This archive is a model package, not an update to your running game.

@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_rig.gd" id="1_rig"]
+[ext_resource type="PackedScene" path="res://assets/equipment/mars_habitat_furnishings_v1/models/galley_oven.glb" id="2_model"]
+
+[node name="GalleyOven" type="Node3D"]
+script = ExtResource("1_rig")
+equipment_id = "galley_oven"
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0, -0.0, 0.0305)

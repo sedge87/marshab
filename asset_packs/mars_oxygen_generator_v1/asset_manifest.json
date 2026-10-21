@@ -1,0 +1,16 @@
+{
+  "style": "The Martian + Project Hail Mary inspired practical habitat hardware (matches the Life Support pack)",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "oxygen_generator",
+      "display_name": "Oxygen Generator",
+      "file": "oxygen_generator.glb",
+      "placement": "floor",
+      "rooms": ["life_support"],
+      "bounds_m": [[-0.605, 0.0, -0.395], [0.605, 1.855, 0.405]],
+      "named_components": ["service_door", "electrolysis_stack", "stack_end_plates", "o2_separator", "h2_separator", "o2_outlet", "h2_vent", "water_inlet", "water_feed", "pump_rotor", "pump_guard", "run_switch", "status_lamp", "o2_gauge_needle", "o2_gauge_face", "control_panel", "cabinet_shell", "top_cap"],
+      "moving_parts": {"service_door": "hinged on its left edge (as seen from the front: right)", "pump_rotor": "spins about the front axis", "run_switch": "flips", "o2_gauge_needle": "sweeps", "status_lamp": "glows while running"}
+    }
+  ]
+}

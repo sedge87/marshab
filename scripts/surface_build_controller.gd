@@ -11,6 +11,10 @@ var player: CharacterBody3D
 var active := false
 var selected_id := ""
 var rotation_offset := 0.0
+## Hold R to keep turning (a tap still turns 15°); Shift+R turns the other way.
+const HOLD_DELAY := .25
+const HOLD_SPEED := deg_to_rad(120.0)
+var _r_held := 0.0
 var preview: Node3D
 var _hit := {}
 var _valid_reason := "Look at outdoor ground"
@@ -60,7 +64,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if event.keycode == KEY_R:
-			rotation_offset = wrapf(rotation_offset + PI / 12.0, -PI, PI)
+			rotation_offset = wrapf(rotation_offset + (-PI if event.shift_pressed else PI) / 12.0, -PI, PI)
 			_refresh_preview(true)
 			get_viewport().set_input_as_handled()
 			return
@@ -76,9 +80,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			rotation_offset = wrapf(rotation_offset + (PI / 24.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -PI / 24.0), -PI, PI)
 			_refresh_preview(true)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if active:
+		_hold_rotate(delta)
 		_refresh_preview(false)
+
+## While R is held past HOLD_DELAY the item turns smoothly.
+func _hold_rotate(delta: float) -> bool:
+	if not Input.is_physical_key_pressed(KEY_R):
+		_r_held = 0.0
+		return false
+	_r_held += delta
+	if _r_held < HOLD_DELAY: return false
+	var direction := -1.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0
+	rotation_offset = wrapf(rotation_offset + HOLD_SPEED * delta * direction, -PI, PI)
+	return true
 
 func _raycast() -> Dictionary:
 	var camera := player.get_node_or_null("Head/Camera3D") as Camera3D

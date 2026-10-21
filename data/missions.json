@@ -1,0 +1,482 @@
+{
+  "_comment": "Missions campaign (docs/missions-design.md). One site, cargo first, then the crew. payload_kg is that mission's delivery; the cargo budget is every payload so far. checks: landing_safe, landing_clear, always_powered, water_per_sol (min L/sol), no_zone (kind). rover/lander: whether the scout rover and the crew lander are on site. player: robot (construction robot, Missions 2-3) or crew.",
+  "missions": [
+    {
+      "id": "landing_zones",
+      "number": 1,
+      "title": "Landing Zones",
+      "nasa_step": "Landing planning",
+      "available": true,
+      "situation": "Your site is chosen and the landers are on their way. Every cargo lander, and later the crew, will come down inside a landing ellipse. Choose a safe landing zone, and where the base will go, far enough away that engine blast can't damage it.",
+      "requirements": [
+        {"id": "landing_safe", "text": "The whole landing ellipse is on flat, safe ground", "check": "landing_safe"},
+        {"id": "landing_clear", "text": "The base site is at least 12 m from the edge of the landing ellipse", "check": "landing_clear"}
+      ],
+      "stretch": [{"id": "close", "text": "Base within 40 m of the landing target: handy, but still safe", "check": "landing_close"}]
+    },
+    {
+      "id": "cargo_power_water",
+      "number": 2,
+      "title": "Cargo Landing 1: Power and Water",
+      "nasa_step": "Pre-deploying power and ice mining",
+      "available": true,
+      "player": "robot",
+      "rover": false,
+      "lander": false,
+      "crew": 0,
+      "payload_kg": 12000,
+      "sols": 5,
+      "events": [{"type": "storm", "sol": 3, "sols": 2}],
+      "situation": "The first cargo lander has touched down. Its construction robot (you) must set up the power system and the ice drills before anyone leaves Earth. Nobody will be here to fix it: it has to run on its own, through every night and a dust storm.",
+      "cargo_lander": 1,
+      "previous_line": "Landing zone and base site chosen",
+      "brief": "You're the construction robot inside Cargo Lander 1. The crew won't leave Earth until their power and water are already working here.",
+      "goal": "Build a power system and ice drills that keep running, unattended, for 5 sols, through every night and a dust storm.",
+      "steps": [
+        {"id": "roll_out", "text": "Roll out of the cargo lander", "how": "Look at the ramp door and press E to lower it, then drive down.", "check": "left_lander"},
+        {"id": "plan", "text": "Open the site plan", "how": "Press B outside. The site plan is a top-down view for placing rooms and equipment.", "check": "opened_plan"},
+        {"id": "solar", "text": "Place solar arrays", "how": "In the site plan, open Resources and place Solar Arrays on flat open ground. Power is cabled, so anywhere outside the landing zone works.", "check": "zone", "kind": "solar", "marker": "base"},
+        {"id": "engineering", "text": "Build a Power & Engineering room", "how": "Rooms tab: drag out a Power & Engineering room. It's where the batteries live.", "check": "zone", "kind": "engineering", "marker": "base"},
+        {"id": "airlock", "text": "Add an airlock to the room", "how": "Structure tab: place an Airlock against the room's wall, outer end facing Mars. It's how the robot gets in.", "check": "zone", "kind": "airlock", "marker": "base"},
+        {"id": "battery", "text": "Add a battery bank inside it", "how": "Go in through the airlock, then press B inside the room to furnish it. Batteries carry the drills through the night.", "check": "item", "item": "battery_bank"},
+        {"id": "ice", "text": "Place an ice extractor on pale blue ground", "how": "Follow BEST ICE on your compass. Richer ice makes more water.", "check": "zone", "kind": "ice_extractor", "marker": "ice"},
+        {"id": "test", "text": "Test your design", "how": "Press T. It fast-forwards 5 sols, nights and the storm included, and shows what failed and why.", "check": "tested"},
+        {"id": "pass", "text": "Pass the test and complete the mission", "how": "Not passing yet? Read the report, change one thing, and test again.", "check": "passed"}
+      ],
+      "unlock_zones": ["solar", "reactor", "ice_extractor", "engineering", "airlock", "corridor"],
+      "unlock_items": ["battery_bank", "power_distribution_panel"],
+      "requirements": [
+        {"id": "always_powered", "text": "Power never runs out, through every night and the dust storm", "check": "always_powered"},
+        {"id": "water", "text": "The ice drills make at least 60 L of water a sol, ready for the crew", "check": "water_per_sol", "min": 60}
+      ],
+      "stretch": [{"id": "no_reactor", "text": "No reactor: solar and batteries only", "check": "no_zone", "kind": "reactor"}],
+      "hints": [
+        "Press B to open the site plan. Power is under Resources.",
+        "A Power & Engineering room holds the batteries. Give it an airlock, walk in and press B to furnish it.",
+        "Solar arrays only work by day. Batteries carry the drills through the night.",
+        "Pale blue ground has the most ice. Drills make more water there.",
+        "Press T to test your design: it fast-forwards 5 sols, including the storm."
+      ]
+    },
+    {
+      "id": "cargo_habitat",
+      "number": 3,
+      "title": "Cargo Landing 2: The Habitat",
+      "nasa_step": "Checking out the habitat before the crew launch",
+      "available": true,
+      "player": "robot",
+      "rover": false,
+      "lander": false,
+      "crew": 0,
+      "payload_kg": 20000,
+      "sols": 10,
+      "cargo_lander": 2,
+      "previous_line": "Power and water are running",
+      "situation": "The second cargo lander has brought the habitat itself: rooms, an airlock and Life Support. Robots must build it and prove it works before the crew launch. Nobody is aboard yet, so the habitat has to keep itself warm and breathable on its own, powered by the system you built in Mission 2.",
+      "brief": "You're the construction robot inside Cargo Lander 2. It carries the habitat: rooms, an airlock and the Life Support machines.",
+      "goal": "Build a habitat that stays above 15 °C with breathable air for 10 sols, with nobody aboard, on your Mission 2 power system.",
+      "unlock_zones": [
+        "life_support",
+        "living",
+        "galley",
+        "hygiene",
+        "medical",
+        "storage",
+        "corridor",
+        "airlock"
+      ],
+      "unlock_items": [
+        "air_recycler",
+        "oxygen_generator",
+        "thermal_control_unit",
+        "water_reclaimer",
+        "oxygen_reserve_tank",
+        "wall_cabin_heater",
+        "portable_utility_heater"
+      ],
+      "steps": [
+        {
+          "id": "roll_out",
+          "text": "Roll out of Cargo Lander 2",
+          "how": "Look at the ramp door and press E to lower it, then drive down.",
+          "check": "left_lander"
+        },
+        {
+          "id": "life_support",
+          "text": "Build a Life Support room",
+          "how": "Site plan, Rooms tab: drag out Life Support next to your Power & Engineering room, so they share a wall.",
+          "check": "zone",
+          "kind": "life_support",
+          "marker": "base"
+        },
+        {
+          "id": "tcu",
+          "text": "Add a thermal control unit",
+          "how": "Walk into Life Support and press B. The thermal control unit keeps every room warm.",
+          "check": "item",
+          "item": "thermal_control_unit"
+        },
+        {
+          "id": "o2",
+          "text": "Add an oxygen generator",
+          "how": "It splits water into oxygen and hydrogen. It needs power and water, so it depends on Mission 2.",
+          "check": "item",
+          "item": "oxygen_generator"
+        },
+        {
+          "id": "recycler",
+          "text": "Add an air recycler",
+          "how": "It scrubs carbon dioxide from the air. Nobody is breathing yet, but the crew will be.",
+          "check": "item",
+          "item": "air_recycler"
+        },
+        {
+          "id": "living",
+          "text": "Build a Living Quarters room",
+          "how": "Where the crew will sleep. It has to stay warm too, so join it to the habitat.",
+          "check": "zone",
+          "kind": "living"
+        },
+        {
+          "id": "test",
+          "text": "Test your design",
+          "how": "Press T. It fast-forwards 10 sols and checks every room's temperature and the air.",
+          "check": "tested"
+        },
+        {
+          "id": "pass",
+          "text": "Pass the test and complete the mission",
+          "how": "Cold rooms? More heating, fewer windows, or less outside wall. Read the report and change one thing.",
+          "check": "passed"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "warm",
+          "text": "Every room stays above 15 °C for 10 sols",
+          "check": "min_temp",
+          "min": 15
+        },
+        {
+          "id": "air",
+          "text": "The air stays breathable: enough oxygen, little carbon dioxide",
+          "check": "breathable"
+        },
+        {
+          "id": "powered",
+          "text": "Power never runs out",
+          "check": "always_powered"
+        }
+      ],
+      "stretch": [
+        {
+          "id": "spare",
+          "text": "Keep 15% of this mission's payload to spare",
+          "check": "payload_spare",
+          "fraction": 0.15
+        }
+      ],
+      "hints": [
+        "Life Support holds the machines that keep everyone alive. Put it next to Power & Engineering.",
+        "Rooms lose heat through their outside walls and windows. Compact bases stay warmer.",
+        "The thermal control unit heats every connected room. A wall heater can top up a cold one.",
+        "Press T to test: 10 sols, every night included."
+      ]
+    },
+    {
+      "id": "crew_land",
+      "number": 4,
+      "title": "The Crew Land",
+      "nasa_step": "Crew arrival",
+      "available": true,
+      "player": "crew",
+      "crew": 4,
+      "payload_kg": 10000,
+      "sols": 10,
+      "crew_arrival": true,
+      "previous_line": "The habitat passed its checks",
+      "situation": "The habitat passed its checks, so the crew launched. Months later, their lander touches down inside your landing ellipse. Four people now depend on everything you built. Make the habitat a place they can live: beds, food, water and hygiene.",
+      "brief": "You're one of four crew inside the lander. Outside is the base your robots built.",
+      "goal": "Keep four crew safe for their first 10 sols: oxygen, carbon dioxide, water, food and temperature all in the safe range.",
+      "unlock_groups": [
+        "living",
+        "galley",
+        "hygiene",
+        "medical",
+        "general",
+        "storage",
+        "corridor",
+        "airlock",
+        "waste_management",
+        "communications"
+      ],
+      "unlock_zones": [
+        "waste_management",
+        "communications"
+      ],
+      "steps": [
+        {
+          "id": "hatch",
+          "text": "Open the hatch and step onto Mars",
+          "how": "Look at the hatch and press E. Walk down the ramp.",
+          "check": "left_lander"
+        },
+        {
+          "id": "airlock",
+          "text": "Go inside through the airlock",
+          "how": "Follow BASE SITE on your compass. Press E at the airlock door.",
+          "check": "inside",
+          "marker": "base"
+        },
+        {
+          "id": "bunks",
+          "text": "Place four crew bunks",
+          "how": "In Living Quarters, press B. Every crew member needs a berth.",
+          "check": "item",
+          "item": "crew_bunk",
+          "count": 4
+        },
+        {
+          "id": "food",
+          "text": "Set up the galley",
+          "how": "Build a Galley and add a rehydration station or a counter: most food arrives freeze-dried.",
+          "check": "item_any",
+          "items": [
+            "galley_rehydration_station",
+            "galley_counter"
+          ]
+        },
+        {
+          "id": "toilet",
+          "text": "Add a toilet",
+          "how": "Build a Hygiene room. The water reclaimer recycles about 93% of the crew's water.",
+          "check": "item",
+          "item": "hygiene_toilet"
+        },
+        {
+          "id": "test",
+          "text": "Test your design",
+          "how": "Press T. It fast-forwards 10 sols with four people breathing, eating and drinking.",
+          "check": "tested"
+        },
+        {
+          "id": "pass",
+          "text": "Pass the test and complete the mission",
+          "how": "The report says what went wrong first. Fix that, then test again.",
+          "check": "passed"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "berths",
+          "text": "There are bunks for all four crew",
+          "check": "crew_aboard",
+          "min": 4
+        },
+        {
+          "id": "safe",
+          "text": "Oxygen, carbon dioxide, water, food and temperature stay safe for 10 sols",
+          "check": "crew_safe"
+        }
+      ],
+      "stretch": [
+        {
+          "id": "no_reclaimer",
+          "text": "No water reclaimer: bring enough water instead",
+          "check": "no_item",
+          "item": "water_reclaimer"
+        }
+      ],
+      "hints": [
+        "Four people breathe out about 4 kg of carbon dioxide a sol. The air recycler removes it.",
+        "Each person drinks and washes with about 10 L of water a sol. Reclaiming it saves the drills.",
+        "The crew lander brought 60 sols of food. Growing more comes in Mission 6.",
+        "Press T to test. You can walk around the base too: it's yours now."
+      ]
+    },
+    {
+      "id": "storm_season",
+      "number": 5,
+      "title": "Dust Storm Season",
+      "nasa_step": "Surface operations",
+      "available": true,
+      "player": "crew",
+      "crew": 4,
+      "payload_kg": 6000,
+      "sols": 8,
+      "events": [
+        {
+          "type": "storm",
+          "sol": 2,
+          "sols": 5
+        }
+      ],
+      "previous_line": "The crew are settled in",
+      "situation": "Dust storm season has arrived. Mission Control forecasts a five-sol storm that will block most of the sunlight. Solar power will drop to a trickle. Life support must stay on the whole time, even if other things have to switch off.",
+      "brief": "A five-sol dust storm is coming. Solar power will almost stop.",
+      "goal": "Keep life support powered all the way through the storm, and keep the crew's health above 80%.",
+      "unlock_items": [
+        "battery_bank",
+        "power_distribution_panel"
+      ],
+      "steps": [
+        {
+          "id": "batteries",
+          "text": "Store more energy: at least four battery banks",
+          "how": "In Power & Engineering, press B. Batteries carry the base when the sun is blocked.",
+          "check": "item",
+          "item": "battery_bank",
+          "count": 4
+        },
+        {
+          "id": "test",
+          "text": "Test through the storm",
+          "how": "Press T. It runs 8 sols, with a 5-sol storm from sol 2. Watch the battery line on the graph.",
+          "check": "tested"
+        },
+        {
+          "id": "pass",
+          "text": "Pass the test and complete the mission",
+          "how": "Life support switches off last. If it still ran out, add storage, or power that doesn't need the sun.",
+          "check": "passed"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "life_support",
+          "text": "Life support has power through the whole storm",
+          "check": "life_support_powered"
+        },
+        {
+          "id": "health",
+          "text": "Crew health stays above 80%",
+          "check": "crew_health_min",
+          "min": 80
+        }
+      ],
+      "stretch": [
+        {
+          "id": "no_cuts",
+          "text": "No power cuts at all, even lights and labs",
+          "check": "always_powered"
+        }
+      ],
+      "hints": [
+        "In a storm, power is shared by priority: life support first, then heating, lights, and last labs and drills.",
+        "A reactor runs day and night, storm or not. It's heavy, but you have this landing's payload.",
+        "Batteries only help if there's spare power to charge them before the storm.",
+        "Press T to test: the storm starts on sol 2."
+      ]
+    },
+    {
+      "id": "self_sufficiency",
+      "number": 6,
+      "title": "Toward Self-Sufficiency",
+      "nasa_step": "Expanding and sustaining the base",
+      "available": true,
+      "player": "crew",
+      "crew": 6,
+      "payload_kg": 14000,
+      "sols": 100,
+      "sample_hours": 3,
+      "previous_line": "The base survived the storm",
+      "situation": "Two more crew are on their way, with a supply lander carrying 60 sols of food for everyone. After that, the next resupply is a long way off. To last, the base must start growing its own food and doing the science the crew came for. This is the final test: six crew, 100 sols.",
+      "brief": "Six crew, 100 sols, and the next resupply is a long way off.",
+      "goal": "Keep six crew safe for 100 sols while growing at least a quarter of their food and running research.",
+      "unlock_zones": [
+        "hydroponics",
+        "science"
+      ],
+      "unlock_groups": [
+        "hydroponics",
+        "science"
+      ],
+      "steps": [
+        {
+          "id": "bunks",
+          "text": "Bunks for six crew",
+          "how": "Two more people are coming. Add bunks in Living Quarters.",
+          "check": "item",
+          "item": "crew_bunk",
+          "count": 6
+        },
+        {
+          "id": "hydro",
+          "text": "Build a Hydroponics room",
+          "how": "Plants need light, water and warmth. Join it to the habitat.",
+          "check": "zone",
+          "kind": "hydroponics"
+        },
+        {
+          "id": "trays",
+          "text": "Add at least seven grow trays",
+          "how": "Each tray grows about 4% of six people's food, so seven feed a quarter. They use power and water too.",
+          "check": "item",
+          "item": "grow_tray",
+          "count": 7
+        },
+        {
+          "id": "lab",
+          "text": "Build a Science Lab with a workbench",
+          "how": "Research is why the crew came. A workbench lets them start.",
+          "check": "item",
+          "item": "science_workbench"
+        },
+        {
+          "id": "test",
+          "text": "Test your design",
+          "how": "Press T. It fast-forwards 100 sols: about three months on Mars.",
+          "check": "tested"
+        },
+        {
+          "id": "pass",
+          "text": "Pass the test and complete the campaign",
+          "how": "Food running out? Grow more, or add storage. Check power and water first: plants need both.",
+          "check": "passed"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "berths",
+          "text": "There are bunks for all six crew",
+          "check": "crew_aboard",
+          "min": 6
+        },
+        {
+          "id": "grown",
+          "text": "The base grows at least 25% of the crew's food",
+          "check": "food_grown",
+          "min": 0.25
+        },
+        {
+          "id": "research",
+          "text": "The crew are doing research",
+          "check": "research",
+          "min": 1
+        },
+        {
+          "id": "safe",
+          "text": "Oxygen, carbon dioxide, water, food and temperature stay safe for 100 sols",
+          "check": "crew_safe"
+        }
+      ],
+      "stretch": [
+        {
+          "id": "grow40",
+          "text": "Grow 40% of the food",
+          "check": "food_grown",
+          "min": 0.4
+        }
+      ],
+      "hints": [
+        "Six people eat about 11 kg of food a sol. Each grow tray grows about 0.4 kg.",
+        "Six people need more oxygen and more CO₂ scrubbing than four: check the oxygen generators and air recyclers.",
+        "Grow lights use a lot of power. Check the night and the storms still work.",
+        "Plants drink water. Your ice drills and reclaimer have to keep up.",
+        "Press T to test all 100 sols."
+      ],
+      "step_hours": 0.5,
+      "food_delivery_sols": 60
+    }
+  ]
+}

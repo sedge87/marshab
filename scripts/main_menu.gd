@@ -1,4 +1,7 @@
 extends Control
+const LANDING_PICKER_SCRIPT := preload("res://scripts/landing_picker.gd")
+const MHMissions := preload("res://scripts/mh_missions.gd")
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 # Title flow (shots 1a–1d): Title → Site select → Colony setup → Landing.
 # The backdrop is the real Mars environment with a display-only colony built
@@ -21,8 +24,8 @@ const CAMERAS := {
 	"hero": [Vector3(10.5, 1.25, 12.5), Vector3(.2, 2.4, 1.2), 36.0],
 	"loading": [Vector3(46, 5.5, 36), Vector3(0, 2.5, -6), 26.0],
 	"site-plains": [Vector3(95, 46, 95), Vector3(0, 0, -10), 34.0],
-	"site-ridge": [Vector3(70, 30, 70), Vector3(-25, 6, -10), 40.0],
-	"site-crater": [Vector3(110, 62, 120), Vector3(0, 0, 0), 40.0],
+	"site-ridge": [Vector3(6, 52, 112), Vector3(0, 2, -30), 44.0],
+	"site-crater": [Vector3(80, 46, 92), Vector3(-4, 0, -4), 44.0],
 	"site-ice": [Vector3(95, 42, 95), Vector3(0, 0, -10), 34.0]
 }
 
@@ -31,6 +34,8 @@ var environment
 var display_builder: BuildController
 var camera: Camera3D
 var marker: Node3D
+var _site_preview_built := false
+var _landing_label: Label
 var ui_root: Control
 var screen: Control
 var screen_id := ""
@@ -90,6 +95,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		if screen_id == "site": show_screen("title")
 		elif screen_id == "colony": show_screen("site")
+		elif screen_id == "landing": show_screen("colony")
 
 # ---------- backdrop ----------
 func _build_backdrop() -> void:
@@ -214,6 +220,8 @@ func show_screen(id: String) -> void:
 			environment.apply_palette(MHGame.palette_name()); _set_camera("site-" + MHGame.site_id); _site_screen()
 		"colony":
 			environment.apply_palette("golden"); _set_camera("hero"); _colony_screen()
+		"landing":
+			environment.apply_palette(MHGame.palette_name()); _set_camera("hero"); _landing_screen()
 		"loading":
 			environment.apply_palette("golden"); _set_camera("loading", false); _loading_screen()
 	MHGame.apply_settings(get_viewport(), environment.world_environment.environment, environment.sun, [])
@@ -277,28 +285,69 @@ func _title_screen() -> void:
 	head.add_child(MHStyle.eyebrow("Year 9 · Mission to Mars", MHStyle.accent, 18))
 	var mark := MHStyle.wordmark(136)
 	head.add_child(mark)
-	var pitch := MHStyle.body("Design a home for a crew of %s on %s of cargo. Then walk through it." % [MHStyle.count_word(BuildController.CREW_TARGET), MHStyle.kg(BuildController.CARGO_BUDGET)], 26)
+	var pitch := MHStyle.body("Design a home for a crew of %s on %s of cargo. Then walk through it." % [MHStyle.count_word(BuildController.CREW_TARGET), MHStyle.kg(MHGame.mission_cargo_budget())], 26)
 	pitch.custom_minimum_size.x = 600
 	pitch.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	head.add_child(pitch)
 	var menu := MHStyle.vbox(12)
 	_place(menu, Vector2(120, 620), 480)
 	var hero := _hero_button("New colony", "Choose a site · name your colony", "plus")
-	hero.pressed.connect(show_screen.bind("site"))
+	hero.pressed.connect(func() -> void:
+		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
+		show_screen("site"))
 	menu.add_child(hero)
+	# Missions: the NASA-style campaign, with its own saves.
+	var campaign := MHGame.save_slot_summary(1, "missions")
+	if bool(campaign.get("exists", false)):
+		var resume := MHStyle.button("Continue missions · %s" % str(campaign.get("colony_name", "")), "secondary", "rocket")
+		resume.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		resume.pressed.connect(_load_slot.bind(1, "missions"))
+		menu.add_child(resume)
+	var missions := MHStyle.button("New missions campaign" if bool(campaign.get("exists", false)) else "Missions campaign", "ghost" if bool(campaign.get("exists", false)) else "secondary", "clipboard-check")
+	missions.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	missions.tooltip_text = "Set up a Mars base step by step, like NASA: landing zones, cargo first, then the crew."
+	missions.pressed.connect(func() -> void:
+		MHGame.game_mode = "missions"
+		MHMissions.reset()
+		show_screen("site"))
+	menu.add_child(missions)
 	var quick := MHStyle.button("Quick start · %s" % MHGame.site_name(), "secondary", "rocket")
 	quick.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	quick.pressed.connect(show_screen.bind("loading"))
+	quick.pressed.connect(func() -> void:
+		MHGame.landing_target = Vector2.INF
+		show_screen("loading"))
 	menu.add_child(quick)
-	for slot in range(1, MHGame.SAVE_SLOT_COUNT + 1):
-		var summary := MHGame.save_slot_summary(slot)
-		if not bool(summary.get("exists", false)):
-			continue
-		var load := MHStyle.button("Load %d · %s" % [slot, str(summary.get("colony_name", "Habitat"))], "ghost", "save")
-		load.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		load.tooltip_text = "Saved %s at %s" % [str(summary.get("site_name", "Mars")), str(summary.get("saved_at", ""))]
-		load.pressed.connect(_load_slot.bind(slot))
-		menu.add_child(load)
+	# Saves sit in their own scrolling panel beside the menu, so a long list
+	# never pushes the menu off the bottom of the screen. Mission saves and
+	# free-play saves are kept apart (MHGame.SAVE_SETS).
+	var saves := MHStyle.vbox(8)
+	for save_set in ["missions", "free_play"]:
+		var heading_added := false
+		for slot in range(1, MHGame.SAVE_SLOT_COUNT + 1):
+			var summary := MHGame.save_slot_summary(slot, save_set)
+			if not bool(summary.get("exists", false)):
+				continue
+			if not heading_added:
+				saves.add_child(MHStyle.eyebrow("%s saves" % MHGame.SAVE_SETS[save_set], MHStyle.TEXT_MUTED, 11))
+				heading_added = true
+			var load := MHStyle.button("Load %d · %s" % [slot, str(summary.get("colony_name", "Habitat"))], "ghost", "save", 44)
+			load.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			load.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			load.tooltip_text = "%s · saved at %s on %s" % [str(summary.get("mode", "")), str(summary.get("site_name", "Mars")), str(summary.get("saved_at", ""))]
+			load.pressed.connect(_load_slot.bind(slot, save_set))
+			saves.add_child(load)
+	if saves.get_child_count() > 0:
+		var saves_panel := PanelContainer.new()
+		saves_panel.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD, MHStyle.BORDER_SUBTLE, 8, 1, Vector4(16, 14, 16, 14)))
+		saves_panel.position = Vector2(640, 620)
+		saves_panel.custom_minimum_size = Vector2(380, 0)
+		screen.add_child(saves_panel)
+		var scroll := ScrollContainer.new()
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scroll.custom_minimum_size = Vector2(348, minf(saves.get_combined_minimum_size().y, 330.0))
+		saves_panel.add_child(scroll)
+		saves.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(saves)
 	var row := MHStyle.hbox(12)
 	var settings := MHStyle.button("Settings", "ghost", "settings")
 	settings.pressed.connect(_open_settings)
@@ -318,8 +367,8 @@ func _title_screen() -> void:
 		bar.add_child(h)
 	hero.grab_focus.call_deferred()
 
-func _load_slot(slot: int) -> void:
-	if MHGame.prepare_habitat_load(slot):
+func _load_slot(slot: int, save_set := "") -> void:
+	if MHGame.prepare_habitat_load(slot, save_set):
 		show_screen("loading")
 
 func _hero_button(title_text: String, meta: String, icon_name: String) -> Button:
@@ -389,8 +438,8 @@ func _site_screen() -> void:
 	tag.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, MHStyle.BORDER_SUBTLE, MHStyle.RADIUS_MD, 1, Vector4(14, 10, 14, 10)))
 	var tag_col := MHStyle.vbox(4)
 	tag_col.add_child(MHStyle.eyebrow("Landing zone", MHStyle.accent, 13))
-	var area := int(BuildController.LIMIT * 2)
-	tag_col.add_child(MHStyle.label("%d × %d m build area" % [area, area], 20, MHStyle.TEXT_PRIMARY, 700))
+	_landing_label = MHStyle.label(MHSiteTerrain.describe_build_area(), 20, MHStyle.TEXT_PRIMARY, 700)
+	tag_col.add_child(_landing_label)
 	tag.add_child(tag_col)
 	_callout.add_child(tag)
 	var stem := ColorRect.new()
@@ -442,7 +491,7 @@ func _site_card(entry: Dictionary) -> Button:
 	text.add_child(MHStyle.title(str(entry.name), 28))
 	text.add_child(MHStyle.body(str(entry.blurb), 18))
 	var badges := MHStyle.hbox(8)
-	for badge in entry.get("badges", []): badges.add_child(MHStyle.badge(str(badge[0]), str(badge[1])))
+	for badge in MHGame.site_card(entry).badges: badges.add_child(MHStyle.badge(str(badge[0]), str(badge[1])))
 	text.add_child(badges)
 	row.add_child(text)
 	return card
@@ -470,7 +519,11 @@ func _palette_thumb(palette_name: String, icon_name: String) -> Control:
 	return thumb
 
 func _choose_site(id: String, move_camera := true) -> void:
-	MHGame.site_id = id
+	# Preview the chosen site's own generated landscape behind the menu.
+	if MHGame.site_id != id or not _site_preview_built:
+		MHGame.site_id = id
+		environment.rebuild_site()
+		_site_preview_built = true
 	for site_key in _site_buttons:
 		var card: Button = _site_buttons[site_key]
 		var style := MHStyle.selected_box(0) if site_key == id else MHStyle.control_box(0)
@@ -479,13 +532,14 @@ func _choose_site(id: String, move_camera := true) -> void:
 	environment.apply_palette(MHGame.palette_name())
 	MHGame.apply_settings(get_viewport(), environment.world_environment.environment, environment.sun, [])
 	if move_camera: _set_camera("site-" + id)
+	if _landing_label != null: _landing_label.text = MHSiteTerrain.describe_build_area()
 	for child in _site_conditions.get_children(): child.queue_free()
 	var site := MHGame.site()
 	var panel := MHStyle.hud_panel(28, false, true)
 	var col := MHStyle.vbox(18)
 	col.add_child(MHStyle.eyebrow(str(site.name), MHStyle.accent))
 	col.add_child(MHStyle.title("Site conditions", 26))
-	for condition in site.get("conditions", []):
+	for condition in MHGame.site_card(site).conditions:
 		col.add_child(MHWidgets.Meter.new().setup(str(condition[0]), float(condition[1]), 10.0, "", str(condition[3])))
 		var meter: MHWidgets.Meter = col.get_child(col.get_child_count() - 1)
 		meter.value_label = str(condition[2])
@@ -523,6 +577,24 @@ func _colony_screen() -> void:
 	name_hint.add_child(counter)
 	name_box.add_child(name_hint)
 	form.add_child(name_box)
+	# Game mode: the cargo challenge, or free building.
+	var mode_box := MHStyle.vbox(8)
+	var mode_head := MHStyle.hbox(12)
+	mode_head.add_child(MHStyle.eyebrow("Game mode"))
+	mode_head.add_child(MHStyle.mono("Missions: from the title screen", 13, MHStyle.TEXT_MUTED))
+	mode_box.add_child(mode_head)
+	if MHGame.game_mode == "missions":
+		mode_box.add_child(MHStyle.title("Missions campaign", 24))
+	else:
+		var modes := MHWidgets.Segmented.new().setup(MHGame.GAME_MODES.values(), str(MHGame.GAME_MODES.get(MHGame.game_mode, "Survival")), 44)
+		modes.changed.connect(func(label: String) -> void:
+			MHGame.game_mode = MHGame.GAME_MODES.find_key(label)
+			show_screen("colony"))
+		mode_box.add_child(modes)
+	var cargo_note := " Land with %s of cargo." % MHStyle.kg(MHGame.mission_cargo_budget()) if not MHGame.cargo_unlimited() else ""
+	var mode_note := "Set up your base step by step, the way NASA would: choose landing zones, send the cargo first, test everything, then land the crew." if MHGame.game_mode == "missions" else str(MHGame.GAME_MODE_NOTES.get(MHGame.game_mode, "")) + cargo_note
+	mode_box.add_child(MHStyle.body(mode_note, 14, MHStyle.TEXT_MUTED))
+	form.add_child(mode_box)
 	_name_field.text_changed.connect(func(text: String) -> void:
 		MHGame.colony_name = text.strip_edges()
 		counter.text = "%d / 24" % text.length()
@@ -613,9 +685,9 @@ func _colony_screen() -> void:
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(show_screen.bind("site"))
 	bar.add_child(back)
-	_land_button = MHStyle.button("Land at %s" % MHGame.site_name(), "primary", "rocket")
+	_land_button = MHStyle.button("Choose where to land", "primary", "map-pin")
 	_land_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_land_button.pressed.connect(show_screen.bind("loading"))
+	_land_button.pressed.connect(show_screen.bind("landing"))
 	bar.add_child(_land_button)
 	_refresh_plaque()
 	_name_field.grab_focus.call_deferred()
@@ -643,6 +715,122 @@ func _refresh_plaque() -> void:
 	col.add_child(MHStyle.body("Rails, door frames and beacons on every module take your accent.", 16))
 	panel.add_child(col)
 	_plaque_slot.add_child(panel)
+
+# 1c+ --------------------------------------------------------------
+## Land step: pick the landing target on a top-down site map. The ellipse
+## shows where the lander might touch down (Survival); Freedom and Creative
+## land exactly on target.
+func _landing_screen() -> void:
+	_scrim("right", .62, .95, .4)
+	_stepper(2)
+	_place(MHStyle.display("Choose where to land", 64), Vector2(120, 120))
+	var picker := LANDING_PICKER_SCRIPT.new()
+	picker.position = Vector2(120, 230)
+	picker.custom_minimum_size = Vector2(760, 600)
+	picker.size = Vector2(760, 600)
+	screen.add_child(picker)
+	if MHMissions.active():
+		_mission_one_panel(picker)
+		return
+	var panel := MHStyle.hud_panel(24, false, true)
+	panel.position = Vector2(930, 230)
+	panel.custom_minimum_size = Vector2(520, 0)
+	var col := MHStyle.vbox(14)
+	col.add_child(MHStyle.eyebrow("%s · %s" % [MHGame.site_name(), str(MHGame.GAME_MODES.get(MHGame.game_mode, ""))], MHStyle.accent))
+	col.add_child(MHStyle.title("The landing ellipse", 28))
+	var how := MHStyle.body("A lander can't touch down on an exact spot. It comes down somewhere inside the oval around your target: the landing ellipse. Pick flat, open ground with room to spare. Click or drag on the map.", 17)
+	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(how)
+	var mode_note := "Survival: your lander will touch down somewhere inside the ellipse." if not (MHGame.game_mode == "freedom" or MHGame.game_mode == "creative") else "%s: your lander will touch down exactly on the target." % str(MHGame.GAME_MODES.get(MHGame.game_mode, ""))
+	var mode_label := MHStyle.body(mode_note, 16, MHStyle.TEXT_PRIMARY)
+	mode_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(mode_label)
+	var status := MHStyle.body("", 17)
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(status)
+	var suggest := MHStyle.button("Use the suggested spot", "ghost", "map-pin")
+	suggest.pressed.connect(picker.use_suggested)
+	col.add_child(suggest)
+	panel.add_child(col)
+	screen.add_child(panel)
+	var bar := _bottom_bar()
+	bar.alignment = BoxContainer.ALIGNMENT_END
+	var back := MHStyle.button("Back", "ghost", "chevron-left")
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	back.pressed.connect(show_screen.bind("colony"))
+	bar.add_child(back)
+	var land := MHStyle.button("Land at %s" % MHGame.site_name(), "primary", "rocket")
+	land.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	land.pressed.connect(func() -> void:
+		MHGame.landing_target = picker.target
+		show_screen("loading"))
+	bar.add_child(land)
+	var show_verdict := func(_target: Vector2, verdict: Dictionary) -> void:
+		status.text = str(verdict.get("text", ""))
+		var level := str(verdict.get("level", "red"))
+		status.add_theme_color_override("font_color", MHStyle.VALID if level == "green" else (MHStyle.WARN if level == "orange" else MHStyle.DANGER))
+		land.disabled = level == "red"
+	picker.target_changed.connect(show_verdict)
+	show_verdict.call(picker.target, picker.verdict)
+
+## Missions: the Land step is Mission 1, Landing Zones. Left-click sets the
+## landing target, right-click the base site; both checks update live.
+func _mission_one_panel(picker: Control) -> void:
+	var mission := MHMissions.get_mission("landing_zones")
+	picker.base_mode = true
+	var panel := MHStyle.hud_panel(24, false, true)
+	panel.position = Vector2(930, 230)
+	panel.custom_minimum_size = Vector2(520, 0)
+	var col := MHStyle.vbox(12)
+	col.add_child(MHStyle.eyebrow("Mission 1 · %s" % str(mission.nasa_step), MHStyle.accent))
+	col.add_child(MHStyle.title(str(mission.title), 28))
+	var situation := MHStyle.body(str(mission.situation), 16)
+	situation.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(situation)
+	col.add_child(MHStyle.mono("LEFT-CLICK  landing target    RIGHT-CLICK  base site", 12, MHStyle.TEXT_MUTED))
+	var rows := MHStyle.vbox(8)
+	col.add_child(rows)
+	panel.add_child(col)
+	screen.add_child(panel)
+	var bar := _bottom_bar()
+	bar.alignment = BoxContainer.ALIGNMENT_END
+	var back := MHStyle.button("Back", "ghost", "chevron-left")
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	back.pressed.connect(show_screen.bind("colony"))
+	bar.add_child(back)
+	var confirm := MHStyle.button("Confirm landing zone", "primary", "rocket")
+	confirm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	confirm.pressed.connect(func() -> void:
+		MHMissions.progress.landing_target = picker.target
+		MHMissions.progress.base_site = picker.base_site
+		MHMissions.complete("landing_zones")
+		MHGame.landing_target = Vector2.INF
+		show_screen("loading"))
+	bar.add_child(confirm)
+	var refresh := func(_target: Vector2, _verdict: Dictionary) -> void:
+		for child in rows.get_children(): child.queue_free()
+		var result: Dictionary = MHMissions.check_landing(picker.target, picker.base_site)
+		for line in [[bool(result.landing_safe), str(mission.requirements[0].text), str(result.landing_text)], [bool(result.landing_clear), str(mission.requirements[1].text), str(result.clear_text)]]:
+			var row := MHStyle.hbox(10)
+			row.add_child(MHStyle.icon("circle-check" if line[0] else "circle-x", 20, MHStyle.VALID if line[0] else MHStyle.DANGER))
+			var words := MHStyle.vbox(2)
+			var head := MHStyle.body(line[1], 15, MHStyle.TEXT_PRIMARY)
+			head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			head.custom_minimum_size.x = 420
+			words.add_child(head)
+			var detail := MHStyle.body(line[2], 13)
+			detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			detail.custom_minimum_size.x = 420
+			words.add_child(detail)
+			row.add_child(words)
+			rows.add_child(row)
+		var stretch := MHStyle.body(("★ Stretch goal met: " if bool(result.close) else "☆ Stretch goal: ") + str(mission.stretch[0].text), 13, MHStyle.accent if bool(result.close) else MHStyle.TEXT_MUTED)
+		stretch.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		stretch.custom_minimum_size.x = 440
+		rows.add_child(stretch)
+		confirm.disabled = not bool(result.passed)
+	picker.target_changed.connect(refresh)
+	refresh.call(picker.target, picker.verdict)
 
 # 1d ---------------------------------------------------------------
 func _loading_screen() -> void:
@@ -678,7 +866,8 @@ func _loading_screen() -> void:
 	screen.add_child(title)
 	title.add_child(MHStyle.eyebrow("Touchdown · " + MHGame.site_name(), MHStyle.accent, 18))
 	title.add_child(MHStyle.display(MHGame.colony_name, 104))
-	title.add_child(MHStyle.mono("Crew of %d · %s cargo delivered" % [BuildController.CREW_TARGET, MHStyle.kg(BuildController.CARGO_BUDGET)], 18, MHStyle.TEXT_SECONDARY))
+	var cargo_line := "%s cargo delivered" % MHStyle.kg(MHGame.mission_cargo_budget()) if not MHGame.cargo_unlimited() else "Creative · unlimited cargo"
+	title.add_child(MHStyle.mono("Crew of %d · %s" % [BuildController.CREW_TARGET, cargo_line], 18, MHStyle.TEXT_SECONDARY))
 	var lower := MHStyle.hbox(80)
 	lower.anchor_top = 1
 	lower.anchor_bottom = 1

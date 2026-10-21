@@ -1,0 +1,46 @@
+{
+  "id": "sample_storage_cabinet",
+  "name": "Ice and Geological Sample Archive",
+  "file": "sample_storage_cabinet.glb",
+  "description": "Secure cold/dry sample storage for ice, drilled sediment cores and geological specimens.",
+  "connected_systems": [
+    "Sample analysis",
+    "Habitat power",
+    "Mission research"
+  ],
+  "classroom_role": "Open storage door and drawers to retrieve and compare samples",
+  "triangle_count": 14648,
+  "mesh_groups": 40,
+  "material_count": 16,
+  "dimensions_xyz_m": [
+    1.47,
+    1.938,
+    0.842
+  ],
+  "bounds_min_m": [
+    -0.735,
+    0.007,
+    -0.453
+  ],
+  "bounds_max_m": [
+    0.735,
+    1.945,
+    0.39
+  ],
+  "interaction_components": [
+    "Cold_Archive_Door",
+    "Core_Archive_Drawer_1",
+    "Core_Archive_Drawer_2",
+    "Core_Archive_Drawer_3",
+    "Core_Archive_Drawer_4",
+    "Core_Archive_Drawer_5"
+  ],
+  "baked_text": false,
+  "static_screen_data": false,
+  "active_simulation": false,
+  "placement": "free within permitted Science Laboratory zone; collision and walking clearance verified in Godot",
+  "base_footprint_m": [
+    1.5,
+    1.5
+  ]
+}
