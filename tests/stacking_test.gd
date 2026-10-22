@@ -42,6 +42,30 @@ func _initialize() -> void:
 	var table_id := str(b.placed_interior[0].placement_id)
 	b.remove_free_interior_equipment(table_id)
 	_check(b.placed_interior.size() == 1 and str(b.placed_interior[0].id) == "supply_crate_large", "clearing the table removes what was on it")
+
+	# Shelving: things go on any shelf that has room under the next one.
+	var shelf_at := Vector3(4.5, y, 6.0)
+	b.place_free_interior_equipment("open_shelving", shelf_at, 0.0, Vector2i(1, 2), b.free_interior_visual("open_shelving", shelf_at, 0.0))
+	_check(b.free_interior_invalid_reason("supply_crate_small", Vector3(4.3, y + .945, 6.0), Vector3.UP, 0.0) == "", "a small crate goes on the middle shelf")
+	_check(b.free_interior_invalid_reason("portable_utility_heater", Vector3(4.5, y + .945, 6.0), Vector3.UP, 0.0) == "Too tall for this shelf", "the heater is too tall for a shelf")
+	_check(b.free_interior_invalid_reason("portable_utility_heater", Vector3(4.5, y + 1.785, 6.0), Vector3.UP, 0.0) == "", "but fits on top")
+	_check(b.free_interior_invalid_reason("crew_mug", Vector3(4.6, y + .525, 6.0), Vector3.UP, 0.0) == "", "odds and ends go on shelves")
+	_check(b.free_interior_invalid_reason("guitar", Vector3(4.6, y + .525, 6.0), Vector3.UP, 0.0) == "Place this on the floor", "the guitar stays on the floor")
+
+	# Odds & Ends: a tab of small things, placeable in any room.
+	var odds: Array = EquipmentCatalog.entries().keys().filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == "odds_and_ends")
+	_check(odds.size() == 14, "fourteen odds and ends (%d)" % odds.size())
+	for id in odds:
+		_check(ResourceLoader.exists(str(EquipmentCatalog.get_entry(id).get("asset_scene", ""))), "%s has a model" % id)
+	_check(bool(EquipmentCatalog.get_entry("portable_utility_heater").get("stackable", false)) and float(EquipmentCatalog.get_entry("mission_planning_console").get("surface_height", 0.0)) > 0.0, "the heater stacks and the console has a desk")
+
+	# Outdoors: crates on the pallet and on each other.
+	b.placed_surface = [{"placement_id": "s1", "id": "equipment_pallet", "position": Vector3(40, 0, 40), "rotation_y": 0.0}]
+	var ground := b._terrain_height(Vector3(40, 0, 40))
+	b.placed_surface[0].position = Vector3(40, ground, 40)
+	_check(b.surface_invalid_reason("cargo_crate_small", Vector3(40.2, ground + 1.05, 40)) == "", "a crate sits on the loaded pallet (%s)" % b.surface_invalid_reason("cargo_crate_small", Vector3(40.2, ground + 1.05, 40)))
+	_check(b.surface_invalid_reason("equipment_pallet", Vector3(40, ground + 1.05, 40)) == "Place this on level ground", "a pallet can't go on a pallet")
+	_check(b.surface_invalid_reason("cargo_crate_small", Vector3(40, ground + 2.0, 40)) != "", "nor can a crate float")
 	if failures == 0:
-		print("Stacking test passed: small items on tables and crates, big items on the floor, removal clears the top.")
+		print("Stacking test passed: tables, shelves with headroom, crates, odds and ends, outdoor crates, and removal clears the top.")
 	quit(1 if failures > 0 else 0)

@@ -129,11 +129,11 @@ const ZONE_INFO := {
 # selected only through the first-person construction controller.
 const CATEGORIES := [["rooms","Rooms","bed-double"],["structure","Structure","box"],["power","Resources","sun"],["surface","Surface gear","package"]]
 const SURFACE_EQUIPMENT := {
-	"cargo_crate_small": {"label":"Small Cargo Crate", "icon":"package", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/cargo_crate_small.tscn", "radius":0.4, "height":0.45},
-	"cargo_crate_large": {"label":"Large Cargo Crate", "icon":"package", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/cargo_crate_large.tscn", "radius":0.6, "height":0.7},
-	"equipment_pallet": {"label":"Loaded Cargo Pallet", "icon":"package", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/equipment_pallet.tscn", "radius":1.0, "height":1.1},
+	"cargo_crate_small": {"label":"Small Cargo Crate", "icon":"package", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/cargo_crate_small.tscn", "radius":0.4, "height":0.45, "stackable":true, "top":0.41, "top_radius":0.3},
+	"cargo_crate_large": {"label":"Large Cargo Crate", "icon":"package", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/cargo_crate_large.tscn", "radius":0.6, "height":0.7, "stackable":true, "top":0.66, "top_radius":0.45},
+	"equipment_pallet": {"label":"Loaded Cargo Pallet", "icon":"package", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/equipment_pallet.tscn", "radius":1.0, "height":1.1, "top":1.05, "top_radius":0.7},
 	"comms_antenna": {"label":"Communications Mast", "icon":"satellite", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/comms_antenna.tscn", "radius":0.95, "height":4.5},
-	"exterior_workbench": {"label":"Outdoor Workbench", "icon":"wrench", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/exterior_workbench.tscn", "radius":0.95, "height":1.8},
+	"exterior_workbench": {"label":"Outdoor Workbench", "icon":"wrench", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/exterior_workbench.tscn", "radius":0.95, "height":1.8, "top":0.96, "top_radius":0.5},
 	"high_light_post": {"label":"Tall Light Post", "icon":"lightbulb", "asset":"res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/high_light_post.tscn", "radius":0.4, "height":3.7},
 	"path_beacon": {"label":"Path Beacon", "icon":"map-pin", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/path_beacon.tscn", "radius":0.22, "height":1.1},
 	"portable_work_light": {"label":"Portable Floodlight", "icon":"lightbulb", "asset":"res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/portable_work_light.tscn", "radius":0.42, "height":2.0},
@@ -1066,10 +1066,14 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 	if placement == "floor" and surface_normal.dot(Vector3.UP) < .82: return "Place this on the floor"
 	if placement == "wall" and absf(surface_normal.dot(Vector3.UP)) > .28: return "Mount this on an interior wall"
 	if placement == "ceiling" and surface_normal.dot(Vector3.UP) > -.82: return "Mount this on the ceiling"
-	# Above the floor: only small items, and only on a table, desk, counter or crate.
+	# Above the floor: only small items, and only on a table, desk, counter,
+	# shelf or crate, with room under the shelf above.
+	var support := {}
 	if placement in ["floor", "floor_wall"] and world_position.y > habitat_base_y + .2:
 		if not bool(entry.get("stackable", false)): return "Place this on the floor"
-		if stack_support(id, world_position, rotation_y).is_empty(): return "Set this on a table, desk, counter or crate"
+		support = stack_support(id, world_position, rotation_y)
+		if support.is_empty(): return "Set this on a table, desk, counter, shelf or crate"
+		if world_position.y + _free_interior_size(entry).y > _headroom(support, world_position.y): return "Too tall for this shelf"
 	if _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	# A free-positioned item must fit wholly inside valid room cells. Checking the
 	# four footprint corners prevents a player from burying it in the shell wall
@@ -1102,6 +1106,7 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 			var other_size := _free_interior_size(other_entry)
 			var other_position: Vector3 = item.get("position", Vector3.ZERO)
 			var other_rotation := float(item.get("rotation_y", 0.0))
+			if item == support: continue
 			# Stacked: one sits on top of the other, so their heights don't meet.
 			if world_position.y >= other_position.y + _occupied_height(other_entry) - .03 or world_position.y + size.y <= other_position.y + .03:
 				continue
@@ -1115,10 +1120,27 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 	return ""
 
 ## How high an item fills: up to its working top for tables, desks and
-## crates (things stand on that), otherwise its full height.
+## crates (things stand on that), otherwise its full height. Shelving fills
+## its full height: things go on its shelves, not beside them.
 func _occupied_height(entry: Dictionary) -> float:
+	var tops := surface_tops(entry)
+	return tops[0] if tops.size() == 1 else _free_interior_size(entry).y
+
+## Heights (above its base) that things can stand on: one working top, or
+## every shelf of a shelving unit.
+func surface_tops(entry: Dictionary) -> Array:
+	if entry.has("surface_heights"): return entry.surface_heights
 	var top := float(entry.get("surface_height", 0.0))
-	return top if top > 0.0 else _free_interior_size(entry).y
+	return [top] if top > 0.0 else []
+
+## The top of anything standing on this surface at height y: the underside
+## of the next shelf up (shelves are 2.5 cm thick), or no limit.
+func _headroom(support: Dictionary, y: float) -> float:
+	var base := (support.get("position", Vector3.ZERO) as Vector3).y
+	var limit := INF
+	for top in surface_tops(EquipmentCatalog.get_entry(str(support.get("id", "")))):
+		if base + float(top) > y + .05: limit = minf(limit, base + float(top) - .025 + .01)
+	return limit
 
 ## The table, desk, counter or crate a small item would rest on at this spot,
 ## or {} if none. Its whole footprint has to sit on that top.
@@ -1126,25 +1148,24 @@ func stack_support(id: String, world_position: Vector3, rotation_y: float) -> Di
 	var size := _free_interior_size(EquipmentCatalog.get_entry(id))
 	for item in placed_interior:
 		var other := EquipmentCatalog.get_entry(str(item.get("id", "")))
-		var top := float(other.get("surface_height", 0.0))
 		var at: Vector3 = item.get("position", Vector3.ZERO)
-		if top <= 0.0 or absf(at.y + top - world_position.y) > .05: continue
-		if _rests_within(world_position, size, rotation_y, at, _surface_size(other), float(item.get("rotation_y", 0.0))):
-			return item
+		for top in surface_tops(other):
+			if absf(at.y + float(top) - world_position.y) > .05: continue
+			if _rests_within(world_position, size, rotation_y, at, _surface_size(other), float(item.get("rotation_y", 0.0))):
+				return item
 	return {}
 
 ## Items resting on this one (placed on its top).
 func items_resting_on(item: Dictionary) -> Array:
 	var resting: Array = []
 	var other := EquipmentCatalog.get_entry(str(item.get("id", "")))
-	var top := float(other.get("surface_height", 0.0))
-	if top <= 0.0: return resting
 	var at: Vector3 = item.get("position", Vector3.ZERO)
-	for candidate in placed_interior:
-		var position: Vector3 = candidate.get("position", Vector3.ZERO)
-		if candidate == item or absf(at.y + top - position.y) > .05: continue
-		if _rests_within(position, Vector3(.02, 0, .02), 0.0, at, _surface_size(other), float(item.get("rotation_y", 0.0))):
-			resting.append(candidate)
+	for top in surface_tops(other):
+		for candidate in placed_interior:
+			var position: Vector3 = candidate.get("position", Vector3.ZERO)
+			if candidate == item or absf(at.y + float(top) - position.y) > .05: continue
+			if _rests_within(position, Vector3(.02, 0, .02), 0.0, at, _surface_size(other), float(item.get("rotation_y", 0.0))):
+				resting.append(candidate)
 	return resting
 
 ## The usable top of a surface item (width, depth), centred on it.
@@ -4374,12 +4395,32 @@ func surface_invalid_reason(id: String, position: Vector3) -> String:
 	if MHMissions.active() and not MHMissions.item_unlocked(id): return "Not delivered yet: this arrives in a later mission"
 	if MHMissions.in_blast_zone(Vector2(position.x, position.z)): return "Inside the landing zone: engine blast would damage it"
 	var radius := float(entry.get("radius", .6))
+	# Off the ground: crates only, on a pallet, a workbench or another crate.
+	if position.y > _terrain_height(position) + .2:
+		if not bool(entry.get("stackable", false)): return "Place this on level ground"
+		if surface_stack_support(id, position).is_empty(): return "Set this on a pallet, workbench or crate"
 	for item in placed_surface:
 		var other: Dictionary = item as Dictionary
 		var other_entry := surface_entry(str(other.get("id", "")))
-		if position.distance_to(other.get("position", Vector3.ZERO) as Vector3) < radius + float(other_entry.get("radius", .6)) + .25:
+		var other_position: Vector3 = other.get("position", Vector3.ZERO)
+		# Stacked: one sits on top of the other, so their heights don't meet.
+		var other_top := float(other_entry.get("top", other_entry.get("height", 1.2)))
+		if position.y >= other_position.y + other_top - .03 or position.y + float(entry.get("height", 1.2)) <= other_position.y + .03:
+			continue
+		if Vector2(position.x, position.z).distance_to(Vector2(other_position.x, other_position.z)) < radius + float(other_entry.get("radius", .6)) + .25:
 			return "Too close to surface equipment"
 	return ""
+
+## The pallet, workbench or crate an outdoor crate would rest on here, or {}.
+func surface_stack_support(id: String, position: Vector3) -> Dictionary:
+	if not bool(surface_entry(id).get("stackable", false)): return {}
+	for item in placed_surface:
+		var other_entry := surface_entry(str(item.get("id", "")))
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		if not other_entry.has("top") or absf(at.y + float(other_entry.top) - position.y) > .05: continue
+		if Vector2(position.x - at.x, position.z - at.z).length() <= float(other_entry.get("top_radius", .3)):
+			return item
+	return {}
 
 func surface_visual(id: String, position: Vector3, rotation_y: float) -> Node3D:
 	var entry := surface_entry(id)
@@ -4424,9 +4465,18 @@ func place_surface_equipment(id: String, position: Vector3, rotation_y: float, v
 
 func remove_surface_equipment(placement_id: String) -> bool:
 	for index in range(placed_surface.size() - 1, -1, -1):
-		if str((placed_surface[index] as Dictionary).get("placement_id", "")) != placement_id:
+		var item: Dictionary = placed_surface[index]
+		if str(item.get("placement_id", "")) != placement_id:
 			continue
-		placed_surface.remove_at(index)
+		# Crates stacked on it come off with it.
+		var top := float(surface_entry(str(item.get("id", ""))).get("top", 0.0))
+		var reach := float(surface_entry(str(item.get("id", ""))).get("top_radius", .3))
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		for other in placed_surface.duplicate():
+			var other_at: Vector3 = other.get("position", Vector3.ZERO)
+			if top > 0.0 and other != item and absf(at.y + top - other_at.y) < .05 and Vector2(other_at.x - at.x, other_at.z - at.z).length() <= reach:
+				remove_surface_equipment(str(other.get("placement_id", "")))
+		placed_surface.remove_at(placed_surface.find(item))
 		for child in surface_furnishing.get_children():
 			if str(child.get_meta("surface_placement_id", "")) == placement_id:
 				child.queue_free()

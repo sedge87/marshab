@@ -596,7 +596,8 @@ def crew_chair():
 
 
 def open_shelving():
-    """Open shelving with labelled storage tubs."""
+    """Open shelving: labelled storage tubs on the bottom shelf, the rest left
+    free for the player to fill (kits, crates, odds and ends)."""
     join("uprights_dark_alloy", [box("p", x - 0.022, x + 0.022, y - 0.022, y + 0.022, 0.0, 1.8, "dark_alloy", 0.006) for x in (-0.5, 0.5) for y in (-0.19, 0.19)])
     join("upright_slots_graphite", [box("h", x - 0.006, x + 0.006, 0.212, 0.214, 0.15 + i * 0.1, 0.17 + i * 0.1, "graphite", 0) for x in (-0.5, 0.5) for i in range(16)])
     braces = [rod("x", (x, -0.19, 0.1), (x, 0.19, 1.7), 0.006, "alloy", 8) for x in (-0.5, 0.5)]
@@ -606,8 +607,7 @@ def open_shelving():
     join("shelf_lips_alloy", [box("l", -0.5, 0.5, 0.195, 0.21, z + 0.02, z + 0.05, "alloy", 0.003) for z in (0.08, 0.5, 0.92, 1.34)])
     tubs = {"cool_blue": [], "orange": [], "warm_panel": [], "teal_soft": []}
     lids, labels = [], []
-    layout = [(0.105, [("cool_blue", -0.25), ("cool_blue", 0.2)]), (0.525, [("warm_panel", -0.28), ("orange", 0.05), ("warm_panel", 0.32)]),
-              (0.945, [("teal_soft", -0.22), ("teal_soft", 0.22)]), (1.365, [("orange", -0.3), ("warm_panel", 0.0), ("cool_blue", 0.3)])]
+    layout = [(0.105, [("cool_blue", -0.25), ("orange", 0.04), ("cool_blue", 0.31)])]
     for z, items in layout:
         for mat, x in items:
             tubs[mat].append(box("t", x - 0.13, x + 0.13, -0.16, 0.16, z, z + 0.2, mat, 0.015))

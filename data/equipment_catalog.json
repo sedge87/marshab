@@ -75,6 +75,11 @@
       "id": "general",
       "label": "General Equipment",
       "icon": "package"
+    },
+    {
+      "id": "odds_and_ends",
+      "label": "Odds & Ends",
+      "icon": "sparkles"
     }
   ],
   "equipment": [
@@ -1879,6 +1884,11 @@
       "system_links": [
         "Every system",
         "Research"
+      ],
+      "surface_height": 0.82,
+      "surface_size": [
+        1.2,
+        0.4
       ]
     },
     {
@@ -2027,7 +2037,8 @@
         0.744,
         0.416
       ],
-      "pack": "mars_indoor_heaters_martian_hailmary_v1"
+      "pack": "mars_indoor_heaters_martian_hailmary_v1",
+      "stackable": true
     },
     {
       "id": "cargo_crate_small",
@@ -2916,7 +2927,7 @@
       "status": "cosmetic",
       "icon": "package",
       "height": 1.0,
-      "description": "Open shelves with labelled storage tubs.",
+      "description": "Open shelves with storage tubs on the bottom shelf. The other shelves are free for kits, crates and odds and ends.",
       "role": "Storage",
       "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/open_shelving.tscn",
       "cargo_cost": 30,
@@ -2949,7 +2960,17 @@
         0.44
       ],
       "pack": "mars_habitat_furnishings_v1",
-      "printable": true
+      "printable": true,
+      "surface_heights": [
+        0.525,
+        0.945,
+        1.365,
+        1.785
+      ],
+      "surface_size": [
+        0.94,
+        0.38
+      ]
     },
     {
       "id": "plant_pot",
@@ -3101,6 +3122,632 @@
         2.67
       ],
       "pack": "mars_fabrication_v1"
+    },
+    {
+      "id": "crew_mug",
+      "label": "Crew Mug",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "coffee",
+      "height": 0.3,
+      "description": "A mug with the mission band. Coffee optional.",
+      "role": "Personal",
+      "cargo_cost": 1,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "On the ISS crews drink from pouches with straws. In Mars gravity, about 38% of Earth's, an ordinary cup works again.",
+      "system_links": [],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/crew_mug.tscn",
+      "size_m": [
+        0.128,
+        0.1,
+        0.086
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "crew_tablet",
+      "label": "Crew Tablet",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "tablet",
+      "height": 0.3,
+      "description": "A tablet on a folding stand, loaded with checklists and procedures.",
+      "role": "Personal",
+      "cargo_cost": 1,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "ISS crews follow step-by-step procedures on tablets, so nothing is done from memory.",
+      "system_links": [],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/crew_tablet.tscn",
+      "size_m": [
+        0.26,
+        0.168,
+        0.138
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "crew_laptop",
+      "label": "Laptop",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "laptop",
+      "height": 0.3,
+      "description": "An open laptop for planning, email home and data logging.",
+      "role": "Personal",
+      "cargo_cost": 2,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "The ISS runs on dozens of laptops. On Mars, a message to Earth takes 4 to 24 minutes each way.",
+      "system_links": [],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/crew_laptop.tscn",
+      "size_m": [
+        0.34,
+        0.214,
+        0.291
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "paper_books",
+      "label": "Paper Books",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "book-open",
+      "height": 0.3,
+      "description": "Three paper books. Heavy to ship, but nobody wants to read only screens.",
+      "role": "Personal",
+      "cargo_cost": 2,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 1
+      },
+      "system_note": "Each astronaut's personal kit allowance is about 1.5 kg, and books are a popular choice.",
+      "system_links": [
+        "Morale"
+      ],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/paper_books.tscn",
+      "size_m": [
+        0.222,
+        0.086,
+        0.162
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "photo_frame",
+      "label": "Photo Frame",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "image",
+      "height": 0.3,
+      "description": "A photo of Earth taken from Mars: a small blue star in the night sky.",
+      "role": "Personal",
+      "cargo_cost": 1,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 1
+      },
+      "system_note": "In 2014 the Curiosity rover photographed Earth from Mars: a bright point of light, like a star.",
+      "system_links": [
+        "Morale"
+      ],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/photo_frame.tscn",
+      "size_m": [
+        0.18,
+        0.235,
+        0.13
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "chess_set",
+      "label": "Chess Set",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "crown",
+      "height": 0.3,
+      "description": "A magnetic chess set, mid-game. The pieces can be printed.",
+      "role": "Personal",
+      "cargo_cost": 1,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 1
+      },
+      "system_note": "In 1970 the Soyuz 9 crew played chess against ground control by radio. Pieces this simple can be printed from Mars-made material.",
+      "system_links": [
+        "Morale"
+      ],
+      "printable": true,
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/chess_set.tscn",
+      "size_m": [
+        0.32,
+        0.095,
+        0.32
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "zero_g_plush",
+      "label": "Zero-G Plush",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "smile",
+      "height": 0.3,
+      "description": "A plush bear in a little suit, the crew's mascot.",
+      "role": "Personal",
+      "cargo_cost": 1,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 1
+      },
+      "system_note": "Crews carry a small plush toy as a zero-g indicator: when it starts to float, the rocket has reached orbit.",
+      "system_links": [
+        "Morale"
+      ],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/zero_g_plush.tscn",
+      "size_m": [
+        0.174,
+        0.222,
+        0.113
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "herb_pot",
+      "label": "Herb Pot",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "sprout",
+      "height": 0.3,
+      "description": "A small pot of basil for the galley.",
+      "role": "Personal",
+      "cargo_cost": 1,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 1
+      },
+      "system_note": "ISS crews have grown lettuce, kale and chilli peppers. Fresh greens add vitamins and lift morale.",
+      "system_links": [
+        "Morale"
+      ],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/herb_pot.tscn",
+      "size_m": [
+        0.138,
+        0.198,
+        0.138
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "desk_lamp",
+      "label": "Desk Lamp",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "lamp",
+      "height": 0.3,
+      "description": "An LED lamp on a jointed arm.",
+      "role": "Personal",
+      "cargo_cost": 1,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "The ISS uses LED lights that change colour through the day to help crews sleep on a schedule.",
+      "system_links": [],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/desk_lamp.tscn",
+      "size_m": [
+        0.25,
+        0.332,
+        0.14
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "water_bottle",
+      "label": "Water Bottle",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "droplets",
+      "height": 0.3,
+      "description": "A refillable water bottle.",
+      "role": "Personal",
+      "cargo_cost": 1,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "The ISS recovers about 98% of its water, including from sweat and urine. On Mars every litre is recycled too.",
+      "system_links": [],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/water_bottle.tscn",
+      "size_m": [
+        0.072,
+        0.254,
+        0.072
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "sample_jars",
+      "label": "Sample Jars",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "flask-conical",
+      "height": 0.3,
+      "description": "Three sealed jars of regolith in a carry tray.",
+      "role": "Personal",
+      "cargo_cost": 1,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "The Perseverance rover seals rock cores in tubes, ready for a future mission to bring them back to Earth.",
+      "system_links": [],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/sample_jars.tscn",
+      "size_m": [
+        0.26,
+        0.15,
+        0.1
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "toolbox",
+      "label": "Toolbox",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "hammer",
+      "height": 0.3,
+      "description": "A sealed toolbox with latches.",
+      "role": "Personal",
+      "cargo_cost": 6,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Mars dust is fine and sticky and gets into everything, so tools are kept in sealed boxes.",
+      "system_links": [],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/toolbox.tscn",
+      "size_m": [
+        0.41,
+        0.225,
+        0.217
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "ration_packs",
+      "label": "Ration Packs",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "package",
+      "height": 0.3,
+      "description": "A stack of food pouches.",
+      "role": "Personal",
+      "cargo_cost": 2,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "Space food is freeze-dried or heat-treated. For Mars, NASA wants food that stays good for five years.",
+      "system_links": [],
+      "stackable": true,
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/ration_packs.tscn",
+      "size_m": [
+        0.225,
+        0.14,
+        0.162
+      ],
+      "pack": "mars_odds_and_ends_v1"
+    },
+    {
+      "id": "guitar",
+      "label": "Guitar",
+      "group": "odds_and_ends",
+      "status": "catalogue",
+      "icon": "music",
+      "height": 0.3,
+      "description": "A guitar on a floor stand.",
+      "role": "Personal",
+      "cargo_cost": 3,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 1
+      },
+      "system_note": "A guitar has been on the ISS since 2001. In 2013 Chris Hadfield recorded Space Oddity there.",
+      "system_links": [
+        "Morale"
+      ],
+      "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/guitar.tscn",
+      "size_m": [
+        0.38,
+        1.109,
+        0.441
+      ],
+      "pack": "mars_odds_and_ends_v1"
     }
   ]
 }

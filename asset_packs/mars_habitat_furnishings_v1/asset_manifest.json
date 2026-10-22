@@ -348,38 +348,6 @@
       ]
     },
     {
-      "id": "open_shelving",
-      "file": "open_shelving.glb",
-      "placement": "floor",
-      "bounds_m": [
-        [
-          -0.53,
-          0.0,
-          -0.22
-        ],
-        [
-          0.53,
-          1.8,
-          0.22
-        ]
-      ],
-      "triangles": 7032,
-      "named_components": [
-        "cross_braces",
-        "feet_black",
-        "shelf_lips",
-        "shelves",
-        "storage_tubs",
-        "storage_tubs_cool",
-        "storage_tubs_teal",
-        "storage_tubs_warm",
-        "tub_labels_white",
-        "tub_lids",
-        "upright_slots",
-        "uprights_dark"
-      ]
-    },
-    {
       "id": "plant_pot",
       "file": "plant_pot.glb",
       "placement": "floor",
@@ -631,6 +599,36 @@
         "pump_lamp_bright",
         "pump_screen_screen",
         "pump_white"
+      ]
+    },
+    {
+      "id": "open_shelving",
+      "file": "open_shelving.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.53,
+          0.0,
+          -0.22
+        ],
+        [
+          0.53,
+          1.8,
+          0.22
+        ]
+      ],
+      "triangles": 4316,
+      "named_components": [
+        "cross_braces",
+        "feet_black",
+        "shelf_lips",
+        "shelves",
+        "storage_tubs",
+        "storage_tubs_cool",
+        "tub_labels_white",
+        "tub_lids",
+        "upright_slots",
+        "uprights_dark"
       ]
     }
   ]

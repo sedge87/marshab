@@ -114,6 +114,8 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		_update_hud()
 		return
 	var point: Vector3 = _hit.position
+	var on_top := _stack_point()
+	if on_top != Vector3.INF: point = on_top
 	_valid_reason = builder.surface_invalid_reason(selected_id, point)
 	if force_rebuild or preview == null:
 		if preview != null: preview.queue_free()
@@ -134,6 +136,28 @@ func _refresh_preview(force_rebuild: bool) -> void:
 			_valid_visual = _valid_reason.is_empty()
 	preview.visible = true
 	_update_hud()
+
+## Aiming at a pallet, workbench or crate with a crate: the spot on its top
+## under the crosshair. Vector3.INF when that doesn't apply.
+func _stack_point() -> Vector3:
+	if not bool(builder.surface_entry(selected_id).get("stackable", false)):
+		return Vector3.INF
+	var node := _hit.get("collider") as Node
+	while node != null and not node.has_meta("surface_placement_id"):
+		node = node.get_parent()
+	if node == null:
+		return Vector3.INF
+	for item in builder.placed_surface:
+		if str(item.get("placement_id", "")) != str(node.get_meta("surface_placement_id")):
+			continue
+		var entry := builder.surface_entry(str(item.get("id", "")))
+		var camera := player.get_node_or_null("Head/Camera3D") as Camera3D
+		var direction := -camera.global_transform.basis.z
+		if not entry.has("top") or direction.y > -.05:
+			return Vector3.INF
+		var height := (item.get("position", Vector3.ZERO) as Vector3).y + float(entry.top)
+		return camera.global_position + direction * ((height - camera.global_position.y) / direction.y)
+	return Vector3.INF
 
 func _set_preview(node: Node, valid: bool) -> void:
 	MHPlacementGhost.apply(node, valid)

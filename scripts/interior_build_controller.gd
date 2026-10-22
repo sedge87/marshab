@@ -321,9 +321,10 @@ func _refresh_preview(force_rebuild: bool) -> void:
 	preview.visible = true
 	_update_hud()
 
-## Aiming at a table, desk, counter or crate with a small item: the spot on
-## its working top under the crosshair (not the top of its collision box).
-## Vector3.INF when that doesn't apply.
+## Aiming at a table, desk, counter, shelf or crate with a small item: the
+## spot on its working top under the crosshair (not the top of its collision
+## box). For shelving, the first shelf the line of sight lands on. Vector3.INF
+## when that doesn't apply.
 func _stack_point() -> Vector3:
 	if not bool(EquipmentCatalog.get_entry(selected_id).get("stackable", false)):
 		return Vector3.INF
@@ -335,13 +336,21 @@ func _stack_point() -> Vector3:
 	for item in builder.placed_interior:
 		if str(item.get("placement_id", "")) != str(node.get_meta("interior_placement_id")):
 			continue
-		var top := float(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("surface_height", 0.0))
+		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
 		var camera := _camera()
 		var direction := -camera.global_transform.basis.z
-		if top <= 0.0 or direction.y > -.05:
+		if direction.y > -.05:
 			return Vector3.INF
-		var height := (item.get("position", Vector3.ZERO) as Vector3).y + top
-		return camera.global_position + direction * ((height - camera.global_position.y) / direction.y)
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		var best := Vector3.INF
+		var nearest := INF
+		for top in builder.surface_tops(entry):
+			var t := (at.y + float(top) - camera.global_position.y) / direction.y
+			var spot := camera.global_position + direction * t
+			if t > 0.0 and t < nearest and builder._rests_within(spot, Vector3(.02, 0, .02), 0.0, at, builder._surface_size(entry), float(item.get("rotation_y", 0.0))):
+				nearest = t
+				best = spot
+		return best
 	return Vector3.INF
 
 func _placement_yaw(normal: Vector3) -> float:

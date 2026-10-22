@@ -1,0 +1,377 @@
+{
+  "style": "Odds and ends: small personal and work items, same materials as the furnishings pack",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "crew_mug",
+      "file": "crew_mug.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.043,
+          0.0,
+          -0.043
+        ],
+        [
+          0.085,
+          0.1,
+          0.043
+        ]
+      ],
+      "triangles": 1600,
+      "named_components": [
+        "coffee",
+        "mug_band",
+        "mug_body_white",
+        "mug_handle_white",
+        "mug_patch"
+      ]
+    },
+    {
+      "id": "crew_tablet",
+      "file": "crew_tablet.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.13,
+          -0.001,
+          -0.071
+        ],
+        [
+          0.13,
+          0.167,
+          0.067
+        ]
+      ],
+      "triangles": 696,
+      "named_components": [
+        "stand_foot_dark",
+        "stand_leg_dark",
+        "tablet_bar",
+        "tablet_body",
+        "tablet_screen_dark",
+        "tablet_tiles_screen"
+      ]
+    },
+    {
+      "id": "paper_books",
+      "file": "paper_books.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.11,
+          0.0,
+          -0.081
+        ],
+        [
+          0.112,
+          0.086,
+          0.081
+        ]
+      ],
+      "triangles": 1164,
+      "named_components": [
+        "book0_cover_book",
+        "book0_pages",
+        "book0_title",
+        "book1_cover_book",
+        "book1_pages",
+        "book1_title",
+        "book2_cover",
+        "book2_pages",
+        "book2_title"
+      ]
+    },
+    {
+      "id": "photo_frame",
+      "file": "photo_frame.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.09,
+          -0.0,
+          -0.057
+        ],
+        [
+          0.09,
+          0.235,
+          0.073
+        ]
+      ],
+      "triangles": 656,
+      "named_components": [
+        "cloud_white",
+        "earth_earth",
+        "frame",
+        "horizon",
+        "land_leaf",
+        "leg_dark",
+        "photo"
+      ]
+    },
+    {
+      "id": "chess_set",
+      "file": "chess_set.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.16,
+          0.0,
+          -0.16
+        ],
+        [
+          0.16,
+          0.095,
+          0.16
+        ]
+      ],
+      "triangles": 5084,
+      "named_components": [
+        "board_frame",
+        "pieces",
+        "pieces_white",
+        "squares",
+        "squares_slate"
+      ]
+    },
+    {
+      "id": "zero_g_plush",
+      "file": "zero_g_plush.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.087,
+          0.001,
+          -0.062
+        ],
+        [
+          0.087,
+          0.223,
+          0.051
+        ]
+      ],
+      "triangles": 3076,
+      "named_components": [
+        "body_plush",
+        "collar",
+        "ears_plush",
+        "eyes",
+        "head_plush",
+        "limbs_plush",
+        "patch",
+        "snout_plush"
+      ]
+    },
+    {
+      "id": "herb_pot",
+      "file": "herb_pot.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.069,
+          0.0,
+          -0.069
+        ],
+        [
+          0.069,
+          0.198,
+          0.069
+        ]
+      ],
+      "triangles": 2068,
+      "named_components": [
+        "leaves_leaf",
+        "pot_band",
+        "pot_white",
+        "soil",
+        "stems_leaf"
+      ]
+    },
+    {
+      "id": "desk_lamp",
+      "file": "desk_lamp.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.07,
+          0.0,
+          -0.07
+        ],
+        [
+          0.18,
+          0.332,
+          0.07
+        ]
+      ],
+      "triangles": 1384,
+      "named_components": [
+        "arm",
+        "base",
+        "bulb_lamp",
+        "head_white",
+        "joints_dark",
+        "switch"
+      ]
+    },
+    {
+      "id": "water_bottle",
+      "file": "water_bottle.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.036,
+          0.0,
+          -0.036
+        ],
+        [
+          0.036,
+          0.254,
+          0.036
+        ]
+      ],
+      "triangles": 1680,
+      "named_components": [
+        "bottle",
+        "cap",
+        "label",
+        "loop",
+        "water_level_cool"
+      ]
+    },
+    {
+      "id": "sample_jars",
+      "file": "sample_jars.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.13,
+          0.0,
+          -0.05
+        ],
+        [
+          0.13,
+          0.15,
+          0.05
+        ]
+      ],
+      "triangles": 1816,
+      "named_components": [
+        "jars_iv",
+        "labels_white",
+        "lids",
+        "samples",
+        "tray",
+        "tray_handle_dark"
+      ]
+    },
+    {
+      "id": "toolbox",
+      "file": "toolbox.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.205,
+          0.0,
+          -0.112
+        ],
+        [
+          0.205,
+          0.225,
+          0.105
+        ]
+      ],
+      "triangles": 992,
+      "named_components": [
+        "box",
+        "handle_satin",
+        "label_white",
+        "latches_satin",
+        "lid",
+        "seal_black"
+      ]
+    },
+    {
+      "id": "ration_packs",
+      "file": "ration_packs.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.111,
+          0.0,
+          -0.082
+        ],
+        [
+          0.114,
+          0.14,
+          0.08
+        ]
+      ],
+      "triangles": 1248,
+      "named_components": [
+        "pouch0_label",
+        "pouch0_pouch",
+        "pouch1_label_bright",
+        "pouch1_pouch",
+        "pouch2_label_cool",
+        "pouch2_pouch",
+        "pouch3_label",
+        "pouch3_pouch"
+      ]
+    },
+    {
+      "id": "guitar",
+      "file": "guitar.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.19,
+          -0.01,
+          -0.231
+        ],
+        [
+          0.19,
+          1.099,
+          0.21
+        ]
+      ],
+      "triangles": 2776,
+      "named_components": [
+        "bridge",
+        "guitar_body",
+        "headstock_dark",
+        "neck_dark",
+        "pegs_satin",
+        "sound_hole",
+        "stand",
+        "strings_satin"
+      ]
+    },
+    {
+      "id": "crew_laptop",
+      "file": "crew_laptop.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.17,
+          0.0,
+          -0.171
+        ],
+        [
+          0.17,
+          0.214,
+          0.12
+        ]
+      ],
+      "triangles": 1548,
+      "named_components": [
+        "laptop_base",
+        "laptop_keys_dark",
+        "laptop_lid",
+        "laptop_pad_slate",
+        "laptop_plot_screen",
+        "laptop_screen_dark",
+        "laptop_sticker"
+      ]
+    }
+  ]
+}

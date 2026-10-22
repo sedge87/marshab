@@ -591,6 +591,62 @@
       "cargo_kg": 900.0,
       "power_kw": 1.5,
       "hours_per_sol": 24.0
+    },
+    "crew_mug": {
+      "room": "odds_and_ends",
+      "cargo_kg": 1.0
+    },
+    "crew_tablet": {
+      "room": "odds_and_ends",
+      "cargo_kg": 1.0
+    },
+    "crew_laptop": {
+      "room": "odds_and_ends",
+      "cargo_kg": 2.0
+    },
+    "paper_books": {
+      "room": "odds_and_ends",
+      "cargo_kg": 2.0
+    },
+    "photo_frame": {
+      "room": "odds_and_ends",
+      "cargo_kg": 1.0
+    },
+    "chess_set": {
+      "room": "odds_and_ends",
+      "cargo_kg": 1.0
+    },
+    "zero_g_plush": {
+      "room": "odds_and_ends",
+      "cargo_kg": 1.0
+    },
+    "herb_pot": {
+      "room": "odds_and_ends",
+      "cargo_kg": 1.0
+    },
+    "desk_lamp": {
+      "room": "odds_and_ends",
+      "cargo_kg": 1.0
+    },
+    "water_bottle": {
+      "room": "odds_and_ends",
+      "cargo_kg": 1.0
+    },
+    "sample_jars": {
+      "room": "odds_and_ends",
+      "cargo_kg": 1.0
+    },
+    "toolbox": {
+      "room": "odds_and_ends",
+      "cargo_kg": 6.0
+    },
+    "ration_packs": {
+      "room": "odds_and_ends",
+      "cargo_kg": 2.0
+    },
+    "guitar": {
+      "room": "odds_and_ends",
+      "cargo_kg": 3.0
     }
   },
   "sites": {

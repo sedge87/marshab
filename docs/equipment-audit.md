@@ -72,3 +72,10 @@ Task light, fire safety station, emergency lockbox, first aid kit (floor and wal
 - **Greyed-out cards:** the other tabs show everything they hold. Cards that don't fit this room are greyed out and marked "not for this room". Picking one (by click or number key) says where it fits instead of selecting it, for example "Crew bunk · Fits in Living Quarters".
 - **Compact tabs:** the selected tab shows its name and the others are icons with tooltips. Tabs with nothing for this room are dimmed.
 - **Code and test:** `scripts/interior_build_controller.gd` (`_refresh_contextual_selector`, `_tab_ids`, `_fits_here`, `_fits_in`); test `tests/build_bar_context_test.gd`.
+
+## Stacking (22 Oct)
+- **What stacks:** first aid kit, supply crates, plant pot, portable heater and all the Odds & Ends (except the guitar). Big items stay on the floor.
+- **Surfaces:** tables, desks, counters, benches, the surgery cart, the planning console desk and crates. The open shelving takes items on all four upper shelves, if there's room under the shelf above. Its storage tubs are now only on the bottom shelf.
+- **Outdoors:** cargo crates go on the loaded pallet, the outdoor workbench and other crates.
+- **Removing:** removing a surface removes what's on it.
+- **Odds & Ends tab:** 14 small things for any room: mug, tablet, laptop, paper books, photo of Earth, chess set (printable), zero-g plush, herb pot, desk lamp, water bottle, sample jars, toolbox, ration packs and a guitar. Each has a real-world note. Models: `asset_packs/mars_odds_and_ends_v1/source/build_odds_and_ends.py`.
