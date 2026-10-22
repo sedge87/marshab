@@ -167,5 +167,5 @@ Each new mission is roughly one lesson. Missions 7–10 also put the **alerts** 
 1. ~~**Alerts** (batch 4).~~ Done 23 Oct.
 2. ~~**Dossier and export** (batch 5).~~ Done 23 Oct.
 3. ~~**GAR-Y orders**, then the Mission 2 and 6 additions (batch 6, items 29–30).~~ Done 23 Oct.
-4. ~~**Monitoring station**~~ (done 23 Oct: Mission Control → Monitor, or E on the Mission Planning Console), then ~~the outside cameras~~ (done 23 Oct: a 6 m Camera Mast outdoors, up to 4, with a pan-tilt head; Mission Control → Cameras, E on a mast, or a wall screen's Camera mode), then **Showcase** (item 32, next). Showcase can use the monitoring view and the cameras.
+4. ~~**Monitoring station**~~ (done 23 Oct: Mission Control → Monitor, or E on the Mission Planning Console), then ~~the outside cameras~~ (done 23 Oct: a 6 m Camera Mast outdoors, up to 4, with a pan-tilt head; Mission Control → Cameras, E on a mast, or a wall screen's Camera mode), then ~~**Showcase**~~ (done 23 Oct: the Present button beside any save on the title screen). Showcase can use the monitoring view and the cameras.
 5. **Missions 7–10:** design them together first (item 31).

@@ -56,6 +56,7 @@ var _load_started := 0
 var _settings_panel: MHSettingsPanel
 
 func _ready() -> void:
+	MHGame.showcase = false   # back at the menu: whatever loads next is a normal game unless Present is pressed
 	MHGame.set_accent(MHGame.accent_index)
 	theme = MHStyle.theme()
 	_build_backdrop()
@@ -338,6 +339,13 @@ func _title_screen() -> void:
 			load.tooltip_text = "%s · saved at %s on %s" % [str(summary.get("mode", "")), str(summary.get("site_name", "Mars")), str(summary.get("saved_at", ""))]
 			load.pressed.connect(_load_slot.bind(slot, save_set))
 			save_row.add_child(load)
+			# Present: Showcase mode plays this base by itself (and never saves it).
+			var present := MHStyle.button("", "ghost", "presentation", 44)
+			present.tooltip_text = "Showcase: present this base on a big screen"
+			present.pressed.connect(func() -> void:
+				MHGame.showcase = true
+				_load_slot(slot, save_set))
+			save_row.add_child(present)
 			# Delete: a second click confirms.
 			var delete := MHStyle.button("", "ghost", "trash-2", 44)
 			delete.tooltip_text = "Delete this save"

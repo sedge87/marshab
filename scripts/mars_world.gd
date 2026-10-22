@@ -5,6 +5,7 @@ const ALERTS_SCRIPT := preload("res://scripts/habitat_alerts.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
+const SHOWCASE_SCRIPT := preload("res://scripts/showcase.gd")
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const ORIGINAL_ENVIRONMENT_SCRIPT := preload("res://scripts/original_mars_environment.gd")
@@ -36,6 +37,7 @@ var weather: Node   # scripts/weather.gd: storm warnings, haze, dust and sound
 var alerts: Node    # scripts/habitat_alerts.gd: habitat alerts (backlog 26)
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
+var showcase: Node              # scripts/showcase.gd, in Showcase mode
 var scout_rover: Node3D
 var interior_builder: MHInteriorBuildController
 var surface_builder: MHSurfaceBuildController
@@ -137,7 +139,7 @@ func _ready() -> void:
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)
 	_begin_lander_intro()
-	if MHMissions.active():
+	if MHMissions.active() and not MHGame.showcase:
 		if str(MHMissions.current().get("player", "crew")) == "robot": explore_hud.chip_prefix = "ROBOT · "
 		mission_hud = MISSION_HUD_SCRIPT.new()
 		mission_hud.setup(self)
@@ -148,6 +150,12 @@ func _ready() -> void:
 	MHAudio.music("surface")
 	MHAudio.ambience("outside")
 	MHAudio.build_layer(false)
+	# Showcase: the base presents itself (scripts/showcase.gd).
+	if MHGame.showcase:
+		_intro_stage = "done"
+		showcase = SHOWCASE_SCRIPT.new()
+		add_child(showcase)
+		showcase.setup.call_deferred(self)
 	MHAudio.muffle(false)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -167,7 +175,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			debug_panel.toggle()
 		get_viewport().set_input_as_handled()
 		return
-	if monitor != null: return   # the monitor handles Esc and M itself
+	if monitor != null or showcase != null: return   # those handle their own keys
 	if event.is_action_pressed("ui_cancel"):
 		if pause_menu == null: _show_pause()
 		else: _resume()

@@ -68,6 +68,8 @@ const GAME_MODE_NOTES := {
 	"creative": "No simulation and unlimited cargo: build anything.",
 }
 static var game_mode := "survival"
+## Showcase mode (scripts/showcase.gd): a save presenting itself. Nothing is saved.
+static var showcase := false
 ## Where the student chose to land (site x, z in metres), set on the menu's
 ## Land step; INF means "let the game pick" (quick start, loaded games).
 static var landing_target := Vector2.INF
@@ -294,6 +296,7 @@ static func _move_old_saves() -> void:
 			DirAccess.rename_absolute(ProjectSettings.globalize_path(old_path), ProjectSettings.globalize_path(new_path))
 
 static func save_habitat(slot: int, state: Dictionary, save_set := "") -> Error:
+	if showcase: return OK   # a showcase plays a copy and never writes the student's save
 	var absolute_directory := ProjectSettings.globalize_path("%s/%s" % [save_directory, _save_set(save_set)])
 	var directory_error := DirAccess.make_dir_recursive_absolute(absolute_directory)
 	if directory_error != OK:
