@@ -1,6 +1,10 @@
-# Mars Scout Rover companion
+# GAR-Y: the companion rover
 
-The small rover is an optional, self-contained companion for first-person exploration.
+**GAR-Y — Geological Analysis Rover, Y-Class.** GAR-Y is a multipurpose rover designed for geological surveys, surface sample collection, terrain mapping and identifying potential water-ice deposits.
+
+In game, look at GAR-Y to see its name. E pings it (it chirps and sweeps its mast), and I shows the description above. It's marked "GAR-Y" on the survey map. The name and text are in `scripts/companion_rover.gd` (`NAME`, `FULL_NAME`, `ABOUT`).
+
+It's an optional, self-contained companion for first-person exploration. (Files and code still use the old "scout rover" names.)
 
 ## Included files
 

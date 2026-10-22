@@ -593,7 +593,7 @@ func _spawn_scout_rover() -> void:
 		return
 	var rover_scene := load(SCOUT_ROVER_SCENE_PATH) as PackedScene
 	if rover_scene == null:
-		push_warning("Scout rover scene is unavailable; continuing without companion.")
+		push_warning("GAR-Y rover scene is unavailable; continuing without companion.")
 		return
 	scout_rover = rover_scene.instantiate() as Node3D
 	add_child(scout_rover)

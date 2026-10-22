@@ -87,7 +87,7 @@ func _draw_site() -> void:
 	var bar := 10.0 * size.y / (SITE_RADIUS * 2.0)
 	draw_line(Vector2(14, size.y - 18), Vector2(14 + bar, size.y - 18), Color("#F2F4F5"), 3.0)
 	draw_string(font, Vector2(20 + bar, size.y - 12), "10 m", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#F2F4F5"))
-	var legend := [["You", Color("#ED7C35")], ["Rover", Color("#D9A441")], ["Buried ice", Color("#8FD8FF")], ["Not buildable", Color("#4A2A22")]]
+	var legend := [["You", Color("#ED7C35")], ["GAR-Y", Color("#D9A441")], ["Buried ice", Color("#8FD8FF")], ["Not buildable", Color("#4A2A22")]]
 	var x := size.x - 150.0
 	var y := size.y - 18.0 * legend.size() - 6.0
 	for entry in legend:

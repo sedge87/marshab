@@ -167,9 +167,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				MHAudio.sfx("ui_click", -6.0)
 			get_viewport().set_input_as_handled()
 			return
+		# Only the number keys 1-9 pick cards (letters are movement and tools).
 		var number := int(event.keycode) - int(KEY_1)
 		var visible_cards := _visible_ids()
-		if number >= 0 and number < visible_cards.size():
+		if event.keycode >= KEY_1 and event.keycode <= KEY_9 and not event.ctrl_pressed and number < visible_cards.size():
 			_pick_card(visible_cards[number])
 			get_viewport().set_input_as_handled()
 			return

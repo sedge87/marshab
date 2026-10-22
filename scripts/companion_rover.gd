@@ -1,6 +1,8 @@
 class_name MHCompanionRover
 extends CharacterBody3D
 
+## GAR-Y, the Geological Analysis Rover, Y-Class: the crew's companion
+## rover. Look at it for its name; E pings it, I tells you what it does.
 ## A self-contained, optional companion. It deliberately owns no player or
 ## habitat state: remove its scene or set MarsWorld.SPAWN_SCOUT_ROVER to false.
 @export var follow_distance := 4.4
@@ -236,6 +238,26 @@ func _animate_motion(before: Vector3, delta: float) -> void:
 	if _lamp != null:
 		_lamp.rotation.y = sin(_scan_time * .46) * deg_to_rad(10.0)
 		_lamp.light_energy = 3.25 + sin(_scan_time * 1.7) * .18
+
+const NAME := "GAR-Y"
+const FULL_NAME := "Geological Analysis Rover, Y-Class"
+const ABOUT := "GAR-Y is a multipurpose rover designed for geological surveys, surface sample collection, terrain mapping and identifying potential water-ice deposits."
+
+# ---------- look at it (explore HUD) ----------
+
+func interaction_prompt() -> Dictionary:
+	return {"label": "%s · %s" % [NAME, FULL_NAME], "primary": "Ping", "info": "About"}
+
+## A ping: it chirps back and sweeps its mast round.
+func interact(_actor: Node = null) -> bool:
+	MHAudio.sfx_at("rover_chirp", self, -6.0, .6)
+	_scan_time += PI
+	_chirp_timer = randf_range(7.0, 13.0)
+	return true
+
+func interact_info(_actor: Node = null) -> bool:
+	get_tree().call_group("explore_hud", "show_equipment_note", "%s — %s" % [NAME, FULL_NAME], ABOUT)
+	return true
 
 func _pet_sounds(delta: float) -> void:
 

@@ -67,6 +67,14 @@ func _ready() -> void:
 	speed_row.add_child(_freeze_button)
 	col.add_child(speed_row)
 
+	col.add_child(MHStyle.eyebrow("Weather", MHStyle.accent))
+	var weather := _flow()
+	for spec in [["Forecast storm (1 h)", _weather.bind("forecast")], ["Dust storm now", _weather.bind("storm")], ["Clear sky", _weather.bind("clear")]]:
+		var w := _small_button(spec[0])
+		w.pressed.connect(spec[1])
+		weather.add_child(w)
+	col.add_child(weather)
+
 	col.add_child(MHStyle.eyebrow("Teleport", MHStyle.accent))
 	var teleports := _flow()
 	for spec in [["Where I look  [T]", _teleport_to_look], ["Habitat", _teleport_to_habitat], ["Spawn", _teleport_to_spawn]]:
@@ -130,6 +138,22 @@ func _jump_time(cycle_key: String) -> void:
 	if cycle_key == "night": hour = 0.5
 	elif not cycle_key.is_empty(): hour = float(cycle.get(cycle_key, 12.0)) + (.5 if cycle_key == "dawn_hour" else -.5)
 	world.day_night.set_hour(hour)
+
+## Try the weather without waiting for one: a forecast an hour out, a full
+## storm straight away (haze at full strength at once), or a clear sky.
+func _weather(kind: String) -> void:
+	var sim = world.builder.simulation()
+	match kind:
+		"forecast":
+			sim.storm_hours_left = 0.0
+			sim.forecast_storm(1.0)
+		"storm":
+			sim.start_storm(1.0)
+			if world.weather != null: world.weather._level = 1.0
+		"clear":
+			sim.storm_hours_left = 0.0
+			sim.storm_eta_hours = -1.0
+	world.builder.refresh_power_grid()
 
 func _teleport(to: Vector3) -> void:
 	world.player.global_position = to
