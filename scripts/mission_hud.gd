@@ -23,6 +23,8 @@ var _marker: Node3D
 ## The mission this world was loaded for. Completing it moves the campaign
 ## on; if you keep building instead, the next one waits to be started (J).
 var _loaded_mission := ""
+## H folds the panel down to the mission and its next step (kept for the session).
+static var _compact := false
 
 func setup(target_world: Node) -> void:
 	world = target_world
@@ -175,6 +177,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_J:
 		_open_brief()
 		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_H and not _next_mission_waiting():
+		_compact = not _compact
+		_refresh_panel()
+		get_viewport().set_input_as_handled()
 
 # ---------- the panel ----------
 
@@ -196,6 +202,18 @@ func _refresh_panel() -> void:
 	var used: int = world.builder.used_cargo()
 	_panel_body.add_child(MHStyle.mono("PAYLOAD  %s of %s used" % [MHStyle.kg(used), MHStyle.kg(budget)], 12, MHStyle.TEXT_SECONDARY if used <= budget else MHStyle.DANGER))
 	var steps: Array = mission.get("steps", [])
+	if _compact:
+		var next_step := MHMissions.current_step()
+		if not next_step.is_empty():
+			var row := MHStyle.hbox(8)
+			row.add_child(MHStyle.icon("circle-arrow-right", 18, MHStyle.accent))
+			var text := MHStyle.body(str(next_step.text), 14, MHStyle.TEXT_PRIMARY)
+			text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			text.custom_minimum_size.x = 340
+			row.add_child(text)
+			_panel_body.add_child(row)
+		_panel_body.add_child(MHStyle.mono("H  SHOW STEPS  ·  T TEST  ·  J BRIEF", 11, MHStyle.TEXT_MUTED))
+		return
 	if not steps.is_empty():
 		var done := MHMissions.steps_done(str(mission.id))
 		var next := MHMissions.current_step()
@@ -231,7 +249,7 @@ func _refresh_panel() -> void:
 		row.add_child(text)
 		_panel_body.add_child(row)
 	var versions := MHMissions.versions(str(mission.id))
-	_panel_body.add_child(MHStyle.mono("%s  ·  T TEST  ·  J BRIEF" % ("NOT TESTED YET" if versions.is_empty() else "VERSION %d TESTED" % versions.size()), 11, MHStyle.TEXT_MUTED))
+	_panel_body.add_child(MHStyle.mono("%s  ·  T TEST  ·  J BRIEF  ·  H HIDE" % ("NOT TESTED YET" if versions.is_empty() else "VERSION %d TESTED" % versions.size()), 11, MHStyle.TEXT_MUTED))
 
 # ---------- overlays ----------
 
@@ -430,14 +448,18 @@ func _show_report(report: Dictionary) -> void:
 		var words := MHStyle.vbox(2)
 		words.add_child(_wrapped(str(result.text), 18, MHStyle.TEXT_PRIMARY, 1000))
 		words.add_child(_wrapped(str(result.detail), 15, MHStyle.TEXT_SECONDARY, 1000))
+		if not bool(result.pass) and not str(result.get("tip", "")).is_empty():
+			words.add_child(_wrapped("Try this: " + str(result.tip), 15, MHStyle.accent, 1000))
 		row.add_child(words)
 		column.add_child(row)
 	for goal in report.stretch:
 		column.add_child(_wrapped(("★ Stretch goal met: " if goal.pass else "☆ Stretch goal: ") + str(goal.text), 15, MHStyle.accent if goal.pass else MHStyle.TEXT_MUTED, 1000))
-	var graph := TestGraph.new()
-	graph.report = report
-	graph.custom_minimum_size = Vector2(1100, 300)
-	column.add_child(graph)
+	for mode in ["battery", "power"]:
+		var graph := TestGraph.new()
+		graph.report = report
+		graph.mode = mode
+		graph.custom_minimum_size = Vector2(1100, 210)
+		column.add_child(graph)
 	# Once there's a crew: how close the air, food, warmth and health came.
 	if int(MHMissions.current().get("crew", 0)) > 0:
 		var life := LifeGraph.new()
@@ -486,6 +508,8 @@ func _start_next_mission() -> void:
 		get_tree().paused = false
 		get_tree().reload_current_scene()
 
+var _carry_slot := -1   # a full Free play slot chosen to replace
+
 ## After the final mission: what they achieved, then carry a copy of the base
 ## into free play. The finished campaign stays in the Missions saves.
 func _campaign_wrap_up(column: VBoxContainer) -> void:
@@ -494,12 +518,25 @@ func _campaign_wrap_up(column: VBoxContainer) -> void:
 	column.add_child(_wrapped("That was the final mission: the campaign is complete. Across all six missions you tested %d designs. Your base kept six people alive for 100 sols and started feeding itself." % tested, 20, MHStyle.TEXT_PRIMARY, 1100))
 	column.add_child(MHStyle.eyebrow("Carry on with your base", MHStyle.accent, 13))
 	column.add_child(_wrapped("A copy goes into your Free play saves. The finished campaign stays in the Missions saves, untouched.", 16, MHStyle.TEXT_SECONDARY, 1100))
-	var slot := -1
+	var slot := _carry_slot
 	for candidate in range(1, MHGame.SAVE_SLOT_COUNT + 1):
 		if slot < 0 and not bool(MHGame.save_slot_summary(candidate, "free_play").get("exists", false)): slot = candidate
 	if slot < 0:
-		column.add_child(_wrapped("Your three Free play save slots are full. Delete or overwrite one from the main menu first, then come back to this save.", 16, MHStyle.WARN, 1100))
+		# All three Free play slots are used (Missions saves are separate):
+		# choose one to replace, right here.
+		column.add_child(_wrapped("Your three Free play save slots are all in use (your Missions save is kept separately). Choose one to replace:", 16, MHStyle.WARN, 1100))
+		var slots := MHStyle.hbox(12)
+		for candidate in range(1, MHGame.SAVE_SLOT_COUNT + 1):
+			var summary := MHGame.save_slot_summary(candidate, "free_play")
+			var replace := MHStyle.button("Replace slot %d · %s · %s" % [candidate, str(summary.get("colony_name", "Habitat")), str(summary.get("saved_at", "")).get_slice(" ", 0)], "secondary", "save")
+			replace.pressed.connect(func() -> void:
+				_carry_slot = candidate
+				for child in column.get_children(): child.queue_free()
+				_campaign_wrap_up(column))
+			slots.add_child(replace)
+		column.add_child(slots)
 		return
+	if _carry_slot > 0: column.add_child(_wrapped("Your base will replace Free play slot %d." % _carry_slot, 16, MHStyle.TEXT_SECONDARY, 1100))
 	var buttons := MHStyle.hbox(12)
 	for mode in [["survival", "Survival", "Keep living there for real."], ["freedom", "Freedom", "Keep expanding without risk."], ["creative", "Creative", "Unlimited cargo: build your dream base."]]:
 		var button := MHStyle.button("%s · %s" % [mode[1], mode[2]], "primary" if mode[0] == "survival" else "secondary", "rocket")
@@ -516,10 +553,12 @@ func _carry_on(mode: String, slot: int) -> void:
 		get_tree().paused = false
 		get_tree().reload_current_scene()
 
-## Battery charge, solar and load over the test, with the storm shaded and
-## the first failure marked.
+## One chart from the test: "battery" (charge, 0-100%) or "power" (power
+## made against power used, kW). The storm is shaded; sol labels thin out on
+## long tests so they never overlap.
 class TestGraph extends Control:
 	var report: Dictionary
+	var mode := "battery"
 
 	func _draw() -> void:
 		var samples: Array = report.get("samples", [])
@@ -527,36 +566,58 @@ class TestGraph extends Control:
 		if samples.is_empty(): return
 		var font := ThemeDB.fallback_font
 		var total_hours: float = float(report.sols) * 24.0
-		var left := 56.0
-		var right := size.x - 56.0
+		var left := 70.0
+		var right := size.x - 30.0
 		var top := 40.0
 		var bottom := size.y - 34.0
 		var x_of := func(hours: float) -> float: return left + (right - left) * hours / total_hours
 		for storm in report.get("storms", []):
 			draw_rect(Rect2(Vector2(x_of.call(float(storm.start)), top), Vector2(x_of.call(float(storm.start) + float(storm.hours)) - x_of.call(float(storm.start)), bottom - top)), Color(.9, .45, .2, .18))
 			draw_string(font, Vector2(x_of.call(float(storm.start)) + 6, top + 16), "DUST STORM", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, .7, .45))
-		var max_kw := 1.0
-		for sample in samples: max_kw = maxf(max_kw, maxf(float(sample.generation_kw), float(sample.load_kw)))
-		var lines := {"battery": [], "solar": [], "load": []}
-		for sample in samples:
-			var x: float = x_of.call(float(sample.elapsed))
-			lines.battery.append(Vector2(x, bottom - (bottom - top) * float(sample.battery_pct) / 100.0))
-			lines.solar.append(Vector2(x, bottom - (bottom - top) * float(sample.generation_kw) / max_kw))
-			lines.load.append(Vector2(x, bottom - (bottom - top) * float(sample.load_kw) / max_kw))
-		draw_polyline(PackedVector2Array(lines.solar), Color("#F2C14E"), 2.0)
-		draw_polyline(PackedVector2Array(lines.load), Color(1, 1, 1, .7), 1.5)
-		draw_polyline(PackedVector2Array(lines.battery), MHStyle.VALID, 3.0)
-		for sol in range(int(report.sols) + 1):
+		var entries := []
+		if mode == "battery":
+			var points := PackedVector2Array()
+			for sample in samples:
+				points.append(Vector2(x_of.call(float(sample.elapsed)), bottom - (bottom - top) * float(sample.battery_pct) / 100.0))
+			# A faint line at 20%: below it the base is close to running flat.
+			var low_y := bottom - (bottom - top) * .2
+			draw_line(Vector2(left, low_y), Vector2(right, low_y), Color(1, .45, .45, .35), 1.0)
+			draw_polyline(points, MHStyle.VALID, 3.0)
+			draw_string(font, Vector2(10, top + 6), "100%", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MHStyle.VALID)
+			draw_string(font, Vector2(10, bottom), "0%", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MHStyle.VALID)
+			entries = [["BATTERY CHARGE", MHStyle.VALID]]
+		else:
+			var max_kw := 1.0
+			for sample in samples: max_kw = maxf(max_kw, maxf(float(sample.generation_kw), float(sample.load_kw)))
+			var made := PackedVector2Array()
+			var used := PackedVector2Array()
+			for sample in samples:
+				var x: float = x_of.call(float(sample.elapsed))
+				made.append(Vector2(x, bottom - (bottom - top) * float(sample.generation_kw) / max_kw))
+				used.append(Vector2(x, bottom - (bottom - top) * float(sample.load_kw) / max_kw))
+			draw_polyline(made, Color("#F2C14E"), 2.0)
+			draw_polyline(used, Color(1, 1, 1, .75), 1.5)
+			draw_string(font, Vector2(10, top + 6), "%d kW" % roundi(max_kw), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#F2C14E"))
+			draw_string(font, Vector2(10, bottom), "0 kW", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#F2C14E"))
+			entries = [["POWER MADE", Color("#F2C14E")], ["POWER USED", Color(1, 1, 1, .75)]]
+		# Sol ticks, labelled every n sols so labels keep at least 60 px apart.
+		var sols := int(report.sols)
+		var every := maxi(1, ceili(60.0 / maxf(1.0, (right - left) / maxf(1.0, float(sols)))))
+		for nice in [1, 2, 5, 10, 20, 25, 50, 100]:
+			if nice >= every:
+				every = nice
+				break
+		for sol in range(sols + 1):
 			var x: float = x_of.call(sol * 24.0)
-			draw_line(Vector2(x, bottom), Vector2(x, bottom + 5), Color(1, 1, 1, .5), 1.0)
-			if sol < int(report.sols): draw_string(font, Vector2(x + 4, bottom + 22), "Sol %d" % (sol + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, .7))
+			# Sol 1, then every n-th: 5, 10, 15 ...
+			var labelled := (sol + 1) % every == 0 or (sol == 0 and every != 2)
+			draw_line(Vector2(x, bottom), Vector2(x, bottom + (5 if labelled else 2)), Color(1, 1, 1, .5 if labelled else .2), 1.0)
+			if labelled and sol < sols: draw_string(font, Vector2(x + 4, bottom + 22), "Sol %d" % (sol + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, .7))
 		draw_line(Vector2(left, top), Vector2(left, bottom), Color(1, 1, 1, .3), 1.0)
 		draw_line(Vector2(left, bottom), Vector2(right, bottom), Color(1, 1, 1, .3), 1.0)
-		draw_string(font, Vector2(6, top + 6), "100%", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MHStyle.VALID)
-		draw_string(font, Vector2(right + 6, top + 6), "%d kW" % roundi(max_kw), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#F2C14E"))
-		# Legend along the top, clear of the sol labels underneath.
-		var x0 := left + 10.0
-		for entry in [["Battery charge", MHStyle.VALID], ["Power made (kW)", Color("#F2C14E")], ["Power used (kW)", Color(1, 1, 1, .7)]]:
+		# Title and key along the top.
+		var x0 := 12.0
+		for entry in entries:
 			draw_rect(Rect2(Vector2(x0, 14), Vector2(12, 4)), entry[1])
 			draw_string(font, Vector2(x0 + 16, 20), entry[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, .8))
 			x0 += font.get_string_size(entry[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 44.0

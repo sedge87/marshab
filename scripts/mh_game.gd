@@ -303,6 +303,12 @@ static func save_habitat(slot: int, state: Dictionary, save_set := "") -> Error:
 	file.store_var({"version": 1, "saved_at": Time.get_datetime_string_from_system(true), "save_set": _save_set(save_set), "state": state})
 	return OK
 
+## Deletes a save (main menu, after a second click to confirm).
+static func delete_habitat(slot: int, save_set := "") -> bool:
+	var path := _save_path(slot, save_set)
+	if not FileAccess.file_exists(path): return false
+	return DirAccess.remove_absolute(ProjectSettings.globalize_path(path)) == OK
+
 static func load_habitat(slot: int, save_set := "") -> Dictionary:
 	var path := _save_path(slot, save_set)
 	if not FileAccess.file_exists(path):

@@ -131,15 +131,24 @@ static func update_steps(builder: Node, flags: Dictionary) -> Array:
 	return ticked
 
 ## Steps that need what's built now (zones, items), re-checked as you build.
-const LIVE_STEPS := ["zone", "item", "item_any"]
+const LIVE_STEPS := ["zone", "item", "item_any", "food_share"]
 ## Steps un-ticked by the last update_steps (something they needed was removed).
 static var last_unticked: Array = []
 
 ## How far a counted step has got, e.g. "3 of 4" ("" if not counted).
 static func step_progress(step: Dictionary, builder: Node) -> String:
+	if str(step.get("check", "")) == "food_share":
+		return "%d%% of %d%%" % [roundi(food_share(builder, current()) * 100.0), roundi(float(step.get("min", .25)) * 100.0)]
 	if str(step.get("check", "")) != "item" or int(step.get("count", 1)) <= 1: return ""
 	var have: int = builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(step.item)).size()
 	return "%d of %d" % [have, int(step.count)]
+
+## The share of the mission crew's daily food that the placed growers make.
+static func food_share(builder: Node, mission: Dictionary) -> float:
+	var eaten: float = maxf(1.0, float(mission.get("crew", 0))) * MHResources.setting("food_per_person", 1.8)
+	var grown := 0.0
+	for item in builder.placed_interior: grown += MHResources.item_value(str(item.get("id", "")), "food_kg")
+	return grown / eaten
 
 ## The first step not yet done, or {} when all are done.
 static func current_step() -> Dictionary:
@@ -155,6 +164,7 @@ static func _step_met(step: Dictionary, builder: Node, flags: Dictionary, missio
 		"zone": return builder.zones.any(func(z): return str(z.kind) == str(step.kind))
 		"item": return builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(step.item)).size() >= int(step.get("count", 1))
 		"item_any": return builder.placed_interior.any(func(i): return (step.get("items", []) as Array).has(str(i.get("id", ""))))
+		"food_share": return food_share(builder, get_mission(mission_id)) >= float(step.get("min", .25))
 		"tested": return not versions(mission_id).is_empty()
 		"passed": return versions(mission_id).any(func(v): return bool(v.passed))
 	return false
@@ -263,17 +273,18 @@ static func run_test(builder: Node) -> Dictionary:
 		for requirement in mission.get("requirements", []):
 			if failures.has(requirement.id): continue
 			var why := _sample_failure(str(requirement.check), requirement, sample, sim)
-			if not why.is_empty(): failures[requirement.id] = {"at": hours, "why": why}
+			if not why.is_empty(): failures[requirement.id] = {"at": hours, "why": why, "tip": _tip(str(requirement.check), sample, fmod(start_hour + hours, 24.0), _in_storm(hours, storms), 0, why)}
 		for goal in mission.get("stretch", []):
 			if failures.has("stretch:" + str(goal.id)): continue
 			var why := _sample_failure(str(goal.check), goal, sample, sim)
 			if not why.is_empty(): failures["stretch:" + str(goal.id)] = {"at": hours, "why": why}
 	var results: Array = []
 	for requirement in mission.get("requirements", []):
-		var result := {"id": str(requirement.id), "text": str(requirement.text), "pass": true, "detail": ""}
+		var result := {"id": str(requirement.id), "text": str(requirement.text), "pass": true, "detail": "", "tip": ""}
 		if failures.has(requirement.id):
 			result.pass = false
 			result.detail = "Failed %s. %s" % [_when(float(failures[requirement.id].at), start_hour), str(failures[requirement.id].why)]
+			result.tip = str(failures[requirement.id].tip)
 		match str(requirement.check):
 			"always_powered":
 				if result.pass: result.detail = "Every system had power for all %d sols." % sols
@@ -343,6 +354,39 @@ static func _sample_failure(check: String, spec: Dictionary, sample: Dictionary,
 			if float(sample.food_kg) <= 0.0: return "The food ran out. " + _first_warning(sim, "food")
 		"crew_health_min":
 			if float(sample.crew_health) < float(spec.get("min", 80)): return "Crew health fell to %d%%. %s" % [roundi(float(sample.crew_health)), _first_warning(sim, "")]
+	return ""
+
+static func _in_storm(hours: float, storms: Array) -> bool:
+	for storm in storms:
+		if hours >= float(storm.start) and hours <= float(storm.start) + float(storm.hours): return true
+	return false
+
+## A plain-English "try this" for a failed check, from what the base was doing
+## at that moment (night or day, storm, battery, which supply ran out).
+static func _tip(check: String, sample: Dictionary, hour_of_day: float, storm: bool, depth := 0, why := "") -> String:
+	var night := hour_of_day < 6.0 or hour_of_day >= 18.0
+	match check:
+		"always_powered", "life_support_powered":
+			if storm: return "The dust storm cut the solar power. Store more energy in batteries before it arrives, or add a reactor: it doesn't need sunlight."
+			if float(sample.get("battery_pct", 0.0)) < 5.0 and night: return "The batteries ran flat in the night. Add more batteries, or more solar panels so they're full by sunset, or a reactor for steady power."
+			if float(sample.get("generation_kw", 0.0)) < float(sample.get("load_kw", 0.0)): return "The base used more power than it made, even in daylight. Add solar panels or a reactor, or switch off equipment you don't need."
+			return "Too much switched on at once. Add batteries to cover the peaks, or more power generation."
+		"min_temp":
+			if not why.contains("no thermal control unit") and not bool(sample.get("all_powered", true)): return "The heating lost power, so fix the power first and the rooms will stay warm."
+			return "Add heating (a thermal control unit, or a wall heater in the cold room) and keep it powered. Fewer windows and less outside wall lose less heat."
+		"breathable":
+			if float(sample.get("co2_pct", 0.0)) > MHResources.setting("co2_danger_pct", 1.0): return "The crew breathe out carbon dioxide. Add an air recycler to scrub it, and keep it powered."
+			return "Add an oxygen generator (it needs power and water) or more plants, and keep them powered."
+		"crew_safe":
+			if float(sample.get("o2_pct", 21.0)) < MHResources.setting("o2_min_pct", 19.5) or float(sample.get("co2_pct", 0.0)) > MHResources.setting("co2_danger_pct", 1.0):
+				return _tip("breathable", sample, hour_of_day, storm, depth, why)
+			if float(sample.get("water_l", 1.0)) <= 0.0: return "Make more water: ice drills outside, and a water reclaimer to recycle what the crew use."
+			if float(sample.get("food_kg", 1.0)) <= 0.0: return "Grow more food in Hydroponics, or bring more food in your cargo."
+			if float(sample.get("coldest_c", 20.0)) < MHResources.setting("cold_c", 12.0): return _tip("min_temp", sample, hour_of_day, storm, depth, why)
+			return ""
+		"crew_health_min":
+			if depth == 0: return "Health falls when air, warmth, food or water go wrong, and when the crew lack beds, exercise or privacy. " + _tip("crew_safe", sample, hour_of_day, storm, 1, why)
+			return ""
 	return ""
 
 ## Why rooms are getting cold, in plain words.

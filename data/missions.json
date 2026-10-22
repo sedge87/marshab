@@ -119,7 +119,6 @@
       ],
       "unlock_zones": [
         "solar",
-        "reactor",
         "ice_extractor",
         "engineering",
         "airlock",
@@ -415,19 +414,17 @@
       "previous_line": "The crew are settled in",
       "situation": "Dust storm season has arrived, and this one is planet-wide. Mission Control forecasts five sols of dust so thick it blocks nine-tenths of the sunlight: the solar arrays will make almost nothing. Life support must stay on the whole time, even if other things have to switch off.",
       "brief": "A five-sol, planet-wide dust storm is coming. Solar power will drop to a tenth.",
-      "goal": "Keep life support powered all the way through the storm, and keep the crew's health above 80%.",
+      "goal": "Keep life support powered all the way through the storm, and keep the crew's health above 80%. This landing brings a compact nuclear reactor.",
       "unlock_items": [
-        "battery_bank",
         "power_distribution_panel"
       ],
       "steps": [
         {
-          "id": "batteries",
-          "text": "Store more energy: at least four battery banks",
-          "how": "In Power & Engineering, press B. Batteries carry the base when the sun is blocked.",
-          "check": "item",
-          "item": "battery_bank",
-          "count": 4
+          "id": "reactor",
+          "text": "Install the compact reactor",
+          "how": "It arrived on this landing. Site plan, Power tab: it makes power day and night, storm or not. NASA's Kilopower project built and tested one like it for future Mars bases.",
+          "check": "zone",
+          "kind": "reactor"
         },
         {
           "id": "test",
@@ -468,6 +465,9 @@
         "A reactor runs day and night, storm or not. It's heavy, but you have this landing's payload.",
         "Batteries only help if there's spare power to charge them before the storm. Dimming empty rooms saves power too.",
         "Press T to test: the storm starts on sol 2."
+      ],
+      "unlock_zones": [
+        "reactor"
       ]
     },
     {
@@ -512,11 +512,10 @@
         },
         {
           "id": "trays",
-          "text": "Add at least seven grow trays",
-          "how": "Each tray grows about 4% of six people's food, so seven feed a quarter. They use power and water too.",
-          "check": "item",
-          "item": "grow_tray",
-          "count": 7
+          "text": "Grow at least a quarter of the crew's food",
+          "how": "Anything that grows food counts: grow trays, seedling stations, planters. Each grow tray feeds about 4% of six people. They use power and water too.",
+          "check": "food_share",
+          "min": 0.25
         },
         {
           "id": "lab",

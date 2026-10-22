@@ -63,7 +63,10 @@ func _apply_visuals() -> void:
 	# Indoors (habitat or lander cabin) the haze and its orange tint fade away
 	# quickly: the storm is outside the walls.
 	var indoors: bool = env != null and (env.inside_habitat or env.cabin_dim or world.builder.is_inside(world.player.global_position))
-	_haze = move_toward(_haze, _level if on and not indoors else 0.0, get_process_delta_time() * 1.6)
+	# Out into a storm it thickens over a couple of seconds, like the light
+	# adjusting; stepping inside clears it quickly.
+	var haze_target := _level if on and not indoors else 0.0
+	_haze = move_toward(_haze, haze_target, get_process_delta_time() * (.4 if haze_target > _haze else 1.6))
 	if not on: _haze = 0.0
 	if env != null: env.storm = _haze
 	if _storm_dust == null: return

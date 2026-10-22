@@ -18,7 +18,7 @@ const STRUCTURE_TOOLS := [
 	{"id": "partition", "label": "Partition wall", "icon": "brick-wall", "text": "Divide a room into bedrooms or cubicles. Hold the mouse button and drag along the floor to draw 1.5 m panels. The room stays one space for air and heat."},
 	{"id": "partition_glass", "label": "Glass partition", "icon": "panels-top-left", "text": "A glass panel in a metal frame: it divides the room but keeps it open and light. Drag to draw, or aim at a wall panel to glaze it."},
 	{"id": "partition_door", "label": "Partition door", "icon": "door-open", "text": "A door in a partition wall: aim at a wall panel to turn it into a door, or at the floor to add one. Press E to open it."},
-	{"id": "interior_door", "label": "Room door", "icon": "door-closed", "text": "A doorway in a shared wall, so two sealed rooms connect."},
+	{"id": "interior_door", "label": "Room door", "icon": "door-closed", "text": "A doorway in a shared wall, so two sealed rooms connect. For an open corridor end, aim at the floor right by the opening."},
 	{"id": "window", "label": "Window", "icon": "sun", "text": "Glazes one outside wall bay. A view of Mars, but glass loses heat faster than the hull."},
 	{"id": "remove", "label": "Remove", "icon": "trash-2", "text": "Aim at an item, door or window and click to remove it. Cargo is refunded."},
 ]
@@ -508,6 +508,13 @@ func _remove_target() -> void:
 		builder.remove_free_interior_equipment(str(node.get_meta("interior_placement_id")))
 		MHAudio.sfx("remove")
 		return
+	# Walk-over items (dust grates, mats) have no collision: aiming at the
+	# floor inside one picks it.
+	var flat := _walkover_at(hit.position)
+	if not flat.is_empty():
+		builder.remove_free_interior_equipment(flat)
+		MHAudio.sfx("remove")
+		return
 	# Interior doors: aim at the hatch or the wall right beside it to seal
 	# that wall again.
 	var door_index := builder.interior_door_index_near(hit.position)
@@ -519,6 +526,17 @@ func _remove_target() -> void:
 	if window_index >= 0:
 		builder.remove_window(window_index)
 		MHAudio.sfx("remove")
+
+## The walk-over item (no collision) whose footprint covers this floor point.
+func _walkover_at(point: Vector3) -> String:
+	for item in builder.placed_interior:
+		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
+		if not bool(entry.get("walkthrough", false)): continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		var size: Vector3 = builder._free_interior_size(entry)
+		if absf(point.y - at.y) < .3 and builder._rests_within(point, Vector3(.02, 0, .02), 0.0, at, Vector2(size.x, size.z), float(item.get("rotation_y", 0.0))):
+			return str(item.get("placement_id", ""))
+	return ""
 
 func _build_hud() -> void:
 	if _hud != null:

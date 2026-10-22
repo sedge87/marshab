@@ -330,12 +330,26 @@ func _title_screen() -> void:
 			if not heading_added:
 				saves.add_child(MHStyle.eyebrow("%s saves" % MHGame.SAVE_SETS[save_set], MHStyle.TEXT_MUTED, 11))
 				heading_added = true
+			var save_row := MHStyle.hbox(6)
 			var load := MHStyle.button("Load %d · %s" % [slot, str(summary.get("colony_name", "Habitat"))], "ghost", "save", 44)
 			load.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			load.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			load.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			load.tooltip_text = "%s · saved at %s on %s" % [str(summary.get("mode", "")), str(summary.get("site_name", "Mars")), str(summary.get("saved_at", ""))]
 			load.pressed.connect(_load_slot.bind(slot, save_set))
-			saves.add_child(load)
+			save_row.add_child(load)
+			# Delete: a second click confirms.
+			var delete := MHStyle.button("", "ghost", "trash-2", 44)
+			delete.tooltip_text = "Delete this save"
+			delete.pressed.connect(func() -> void:
+				if delete.text.is_empty():
+					delete.text = "Delete?"
+					delete.theme_type_variation = "DangerButton"
+					return
+				MHGame.delete_habitat(slot, save_set)
+				show_screen(screen_id))
+			save_row.add_child(delete)
+			saves.add_child(save_row)
 	if saves.get_child_count() > 0:
 		var saves_panel := PanelContainer.new()
 		saves_panel.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD, MHStyle.BORDER_SUBTLE, 8, 1, Vector4(16, 14, 16, 14)))

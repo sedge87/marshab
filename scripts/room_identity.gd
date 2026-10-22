@@ -94,7 +94,8 @@ static func _band(builder: Node, holder: Node3D, zone: Dictionary, outline: Pack
 		return
 	var doors: Array = []
 	for door in builder.root.find_children("*", "Node3D", true, false):
-		if door.is_in_group("airlock_door"): doors.append(Vector2(door.position.x, door.position.z))
+		# Doors from before this rebuild are still there, queued for deletion.
+		if door.is_in_group("airlock_door") and not door.is_queued_for_deletion(): doors.append(Vector2(door.position.x, door.position.z))
 	for index in range(outline.size()):
 		var a := outline[index]
 		var b := outline[(index + 1) % outline.size()]
@@ -220,7 +221,7 @@ static func _two_walls(outline: PackedVector2Array) -> Array:
 static func _door_signs(builder: Node, holder: Node3D, base_y: float) -> void:
 	var plate := _material(Color("#14191C"))
 	for door in builder.root.find_children("*", "Node3D", true, false):
-		if not door.is_in_group("airlock_door"): continue
+		if not door.is_in_group("airlock_door") or door.is_queued_for_deletion(): continue   # a removed door's sign goes with it
 		var position: Vector3 = door.position
 		var facing: Vector3 = door.transform.basis.z
 		var normal := Vector2(facing.x, facing.z).normalized()

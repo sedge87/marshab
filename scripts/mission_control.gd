@@ -100,7 +100,7 @@ func _cargo_column() -> Control:
 	col.add_child(grow)
 	var systems := builder._systems()
 	var stats := MHStyle.hbox(12)
-	for stat in [["Research", str(systems.research)], ["Zones", str(builder.zones.size())], ["Fitted", str(builder.placed_equipment.size())]]:
+	for stat in [["Research", str(systems.research)], ["Zones", str(builder.zones.size())], ["Fitted", str(builder.placed_equipment.size() + builder.placed_interior.size())]]:
 		var tile := PanelContainer.new()
 		tile.theme_type_variation = "RaisedPanel"
 		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -120,7 +120,9 @@ func _stacked_bar(breakdown: Dictionary, used: int) -> Control:
 		bar.draw_rect(Rect2(Vector2.ZERO, bar.size), MHStyle.INK_800)
 		var x := 0.0
 		for id in ["rooms", "structure", "power", "equipment"]:
-			var w: float = bar.size.x * float(breakdown[id]) / MHGame.mission_cargo_budget()
+			# Scaled to the budget, or to what's used if that's more (Creative).
+			var scale_kg := float(maxi(MHGame.mission_cargo_budget(), used)) if not MHGame.cargo_unlimited() else float(maxi(used, 1))
+			var w: float = minf(bar.size.x * float(breakdown[id]) / scale_kg, bar.size.x - x)
 			if w > 0.0:
 				bar.draw_rect(Rect2(x, 0, w, bar.size.y), CATEGORY_COLOURS[id])
 				x += w + (2.0 if w > 2.0 else 0.0))
@@ -167,14 +169,14 @@ func _plan_column() -> Control:
 	var head := MHStyle.hbox(8)
 	head.add_child(MHStyle.eyebrow("Habitat plan"))
 	head.add_child(MHStyle.spacer())
-	head.add_child(MHStyle.mono("Grid 1 m · cell 3 m", 13, MHStyle.TEXT_MUTED))
+	head.add_child(MHStyle.mono("Scroll to zoom · drag to move · double-click to reset", 13, MHStyle.TEXT_MUTED))
 	col.add_child(head)
 	var plan := PlanView.new()
 	plan.builder = builder
 	plan.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(plan)
 	var legend := MHStyle.hbox(18)
-	for entry in [["You", MHStyle.VALID], ["Airlock face", MHStyle.accent], ["Room", MHStyle.CELL_LINE], ["Solar", MHStyle.BEACON_YELLOW]]:
+	for entry in [["You", MHStyle.VALID], ["GAR-Y", PlanView.GAR_Y], ["Door", MHStyle.INK_100], ["Outer hatch", MHStyle.accent], ["Room", MHStyle.CELL_LINE], ["Solar", MHStyle.BEACON_YELLOW]]:
 		var item := MHStyle.hbox(8)
 		var swatch := ColorRect.new()
 		swatch.color = entry[1]
@@ -188,10 +190,45 @@ func _plan_column() -> Control:
 
 # Blueprint plan generated from the placed zones.
 class PlanView extends Control:
+	const GAR_Y := Color(0.55, 0.82, 1.0)
 	var builder: BuildController
+	var zoom := 1.0
+	var pan := Vector2.ZERO
+	var _dragging := false
 	func _ready() -> void:
 		clip_contents = true
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		mouse_default_cursor_shape = Control.CURSOR_MOVE
 		resized.connect(queue_redraw)
+
+	# GAR-Y and the player move while the map is open.
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	## Wheel zooms about the cursor, any button drags, double-click resets.
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton:
+			var button := event as InputEventMouseButton
+			if button.pressed and (button.button_index == MOUSE_BUTTON_WHEEL_UP or button.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+				var old := zoom
+				zoom = clampf(zoom * (1.15 if button.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.15), 0.5, 6.0)
+				# Keep the point under the cursor still.
+				var from_centre := button.position - size * .5 - pan
+				pan -= from_centre * (zoom / old - 1.0)
+				accept_event()
+				queue_redraw()
+			elif button.double_click:
+				zoom = 1.0
+				pan = Vector2.ZERO
+				accept_event()
+				queue_redraw()
+			elif button.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
+				_dragging = button.pressed
+				accept_event()
+		elif event is InputEventMouseMotion and _dragging:
+			pan += (event as InputEventMouseMotion).relative
+			accept_event()
+			queue_redraw()
 	func _draw() -> void:
 		draw_style_box(MHStyle.box(MHStyle.BLUEPRINT, MHStyle.BORDER_SUBTLE, MHStyle.RADIUS_SM), Rect2(Vector2.ZERO, size))
 		if builder.zones.is_empty():
@@ -210,6 +247,8 @@ class PlanView extends Control:
 		var cells_h := float(max_c.y - min_c.y + 3)
 		var unit := minf(size.x / cells_w, size.y / cells_h)
 		var origin := (size - Vector2(cells_w, cells_h) * unit) * .5 + Vector2(unit, unit) - Vector2(min_c) * unit
+		origin = size * .5 + (origin - size * .5) * zoom + pan
+		unit *= zoom
 		# 1 m grid with brighter 3 m cell lines
 		var metre := unit / BuildController.CELL
 		var boundary := origin - Vector2(unit, unit) * .5
@@ -245,7 +284,38 @@ class PlanView extends Control:
 				var tw := font_b.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 				if tw < unit * sqrt(float(zone.cells.size())) * 1.4:
 					draw_string(font_b, centre + Vector2(-tw * .5, 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MHStyle.INK_100)
+		_draw_doors(origin, unit)
+		_draw_gar_y(origin, unit, font_b)
 		_draw_player(origin, unit, font_b)
+
+	func _plan_point(origin: Vector2, unit: float, world: Vector3) -> Vector2:
+		return origin + Vector2(world.x, world.z) / BuildController.CELL * unit
+
+	## Every door: outer hatches in the accent colour, inside doors in white.
+	func _draw_doors(origin: Vector2, unit: float) -> void:
+		var r := clampf(unit * .09, 3.0, 9.0)
+		for node in get_tree().get_nodes_in_group("airlock_door"):
+			var door := node as AirlockDoor
+			if door == null or door.is_queued_for_deletion() or not door.is_inside_tree(): continue
+			var at := _plan_point(origin, unit, door.global_position)
+			var colour: Color = MHStyle.accent if door._leads_to_environment() else MHStyle.INK_100
+			var across := Vector2(cos(door.global_rotation.y), -sin(door.global_rotation.y)) * r * 1.8
+			draw_line(at - across, at + across, MHStyle.BLUEPRINT, r * 1.4)
+			draw_line(at - across, at + across, colour, r * .8)
+		for node in get_tree().get_nodes_in_group("partition_door"):
+			if node.is_queued_for_deletion() or not node.has_method("centre"): continue
+			var at := _plan_point(origin, unit, node.centre())
+			draw_circle(at, r * .8, MHStyle.INK_100)
+
+	## GAR-Y's position: a small blue rover dot with its name.
+	func _draw_gar_y(origin: Vector2, unit: float, font: Font) -> void:
+		var rover := get_tree().get_first_node_in_group("gar_y") as Node3D
+		if rover == null: return
+		var at := _plan_point(origin, unit, rover.global_position)
+		if not Rect2(Vector2.ZERO, size).grow(-8).has_point(at): return
+		draw_circle(at, 9, Color(GAR_Y, .2))
+		draw_rect(Rect2(at - Vector2(5, 4), Vector2(10, 8)), GAR_Y)
+		draw_string(font, at + Vector2(10, 4), "GAR-Y", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, GAR_Y)
 
 	## Where the player is and which way they face: an arrow with "YOU". Off
 	## the plan (out on the surface) it sits on the nearest edge, pointing
@@ -253,7 +323,7 @@ class PlanView extends Control:
 	func _draw_player(origin: Vector2, unit: float, font: Font) -> void:
 		var player := get_tree().get_first_node_in_group("player") as Node3D
 		if player == null: return
-		var at := origin + Vector2(player.global_position.x, player.global_position.z) / BuildController.CELL * unit
+		var at := _plan_point(origin, unit, player.global_position)
 		var heading := Vector2(-sin(player.global_rotation.y), -cos(player.global_rotation.y))
 		var inside := Rect2(Vector2.ZERO, size).grow(-14).has_point(at)
 		if not inside:

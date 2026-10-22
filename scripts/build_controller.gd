@@ -403,7 +403,9 @@ func _process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_Q): pivot.rotate_y(1.4*delta)
 	if Input.is_key_pressed(KEY_E): pivot.rotate_y(-1.4*delta)
 	if move.length()>0:
-		pivot.position+=pivot.basis*move.normalized()*16.0*delta
+		# Faster when zoomed out; Shift doubles it.
+		var pan_speed:=28.0*zoom/54.0*(2.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0)
+		pivot.position+=pivot.basis*move.normalized()*pan_speed*delta
 		var site_limit := _site_build_limit()
 		pivot.position.x=clampf(pivot.position.x,-site_limit,site_limit); pivot.position.z=clampf(pivot.position.z,-site_limit,site_limit)
 	_update_player_marker()
@@ -1144,7 +1146,16 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 				return "Too close to existing equipment"
 		if _partition_crossing(world_position, size, rotation_y) >= 0:
 			return "Blocked by a partition wall"
+	if _covers_light_panel(world_position, _free_interior_size(entry)): return "Keep the room's light panel clear"
 	return ""
+
+## Would something here cover a room's light panel (on the wall at 1.3 m)?
+func _covers_light_panel(at: Vector3, size: Vector3) -> bool:
+	for panel in get_tree().get_nodes_in_group("room_light_panel"):
+		var spot: Vector3 = (panel as Node3D).global_position
+		var reach := maxf(size.x, size.z) * .5 + .2
+		if Vector2(at.x - spot.x, at.z - spot.z).length() < reach and at.y < spot.y + .2 and at.y + maxf(size.y, .3) > spot.y - .2: return true
+	return false
 
 ## How high an item fills: up to its working top for tables, desks and
 ## crates (things stand on that), otherwise its full height. Shelving fills
@@ -1158,7 +1169,13 @@ func _occupied_height(entry: Dictionary) -> float:
 func surface_tops(entry: Dictionary) -> Array:
 	if entry.has("surface_heights"): return entry.surface_heights
 	var top := float(entry.get("surface_height", 0.0))
-	return [top] if top > 0.0 else []
+	if top > 0.0: return [top]
+	# Anything else low and solid on the floor (a hopper, an oven, a console)
+	# takes small things on its top too.
+	if str(entry.get("placement", "floor")) == "floor" and not bool(entry.get("walkthrough", false)) and not bool(entry.get("stackable", false)):
+		var height := _free_interior_size(entry).y
+		if height > .25 and height <= 1.35: return [height]
+	return []
 
 ## The top of anything standing on this surface at height y: the underside
 ## of the next shelf up (shelves are 2.5 cm thick), or no limit.
@@ -1422,6 +1439,18 @@ func _place_selected_equipment(cell: Vector2i) -> void:
 # Equipment whose room was removed goes with it, so its cargo is refunded too.
 func _prune_equipment() -> int:
 	var refund := 0
+	# Outdoor items a new or bigger room now covers: they'd be stuck inside
+	# where the outdoor tools can't reach them, so they come off (cargo back).
+	var swallowed := 0
+	for index in range(placed_surface.size() - 1, -1, -1):
+		var outdoor: Dictionary = placed_surface[index]
+		if not is_inside(outdoor.get("position", Vector3.ZERO) as Vector3): continue
+		placed_surface.remove_at(index)
+		for child in surface_furnishing.get_children():
+			if str(child.get_meta("surface_placement_id", "")) == str(outdoor.get("placement_id", "")): child.queue_free()
+		swallowed += 1
+	if swallowed > 0:
+		_flash_notice("info", "Outdoor items cleared", "%d outdoor item%s inside the new room %s removed (cargo returned)." % [swallowed, "" if swallowed == 1 else "s", "was" if swallowed == 1 else "were"])
 	for index in range(placed_equipment.size() - 1, -1, -1):
 		var item: Dictionary = placed_equipment[index]
 		var cell: Vector2i = item.get("cell", Vector2i(9999, 9999))
@@ -2337,7 +2366,11 @@ func _rebuild() -> void:
 	_prune_partitions()
 	if attachment_refund > 0:
 		_flash_notice("info", "Mounted equipment removed", "+%s cargo returned — its wall changed." % MHStyle.kg(attachment_refund))
-	for child in root.get_children(): child.queue_free()
+	# Out of the tree straight away (not just queued), so nothing built below
+	# finds the old doors, lights or panels.
+	for child in root.get_children():
+		root.remove_child(child)
+		child.queue_free()
 	_hull_bays = []
 	_windows_built = {}
 	for zone in zones:
@@ -2457,6 +2490,8 @@ func _add_light_panels() -> void:
 		var best_score := INF
 		for wall in _room_walls(zone):
 			var mid: Vector2 = wall.mid
+			# Not behind furniture that's already there.
+			if placed_interior.any(func(i): return Vector2((i.position as Vector3).x, (i.position as Vector3).z).distance_to(mid) < .9): continue
 			var score := 999.0
 			for door in doors: score = minf(score, mid.distance_to(door))
 			if score < 1.0: continue   # the doorway itself
@@ -3895,6 +3930,17 @@ func _after_room_placed() -> void:
 func interior_door_from_world_point(point: Vector3, normal: Vector3) -> Dictionary:
 	var shared := _shared_outline_wall_at(Vector2(point.x, point.z))
 	if not shared.is_empty(): return shared
+	# Aiming at the floor by an open threshold (a corridor's open end, say):
+	# the nearest cell edge within 0.7 m is the doorway.
+	if normal.y > .7:
+		var floor_cell := Vector2i(roundi(point.x / CELL), roundi(point.z / CELL))
+		var offset := Vector2(point.x, point.z) - Vector2(floor_cell) * CELL
+		var floor_side := Vector2i.ZERO
+		if absf(offset.x) >= absf(offset.y) and absf(offset.x) > HALF_CELL - .7: floor_side = Vector2i(signi(roundi(signf(offset.x))), 0)
+		elif absf(offset.y) > HALF_CELL - .7: floor_side = Vector2i(0, signi(roundi(signf(offset.y))))
+		if floor_side == Vector2i.ZERO: return {}
+		if floor_side.x < 0 or floor_side.y < 0: return {"cell": floor_cell + floor_side, "side": -floor_side}
+		return {"cell": floor_cell, "side": floor_side}
 	# A rendered wall has thickness, so its two faces return slightly different
 	# hit positions. Use the hit face normal to identify the room-side cell first,
 	# then canonicalise it; this makes aiming from either room target one opening.

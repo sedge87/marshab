@@ -76,6 +76,39 @@ func _initialize() -> void:
 	var panel_text := ""
 	for label in world.mission_hud._panel_body.find_children("*", "Label", true, false): panel_text += label.text + " "
 	_check(panel_text.contains("Mission 5 is ready") and panel_text.contains("START MISSION 5"), "the panel says Mission 5 is ready (%s)" % panel_text.strip_edges())
+	# 23 Oct backlog, batches 1 and 2.
+	# Failed checks come with a plain-English tip.
+	var tip: String = MHMissions._tip("always_powered", {"battery_pct": 0.0, "generation_kw": 0.0, "load_kw": 3.0}, 2.0, false)
+	_check(tip.contains("night"), "a flat battery at 02:00 gets a night-time tip (%s)" % tip)
+	_check(MHMissions._tip("always_powered", {}, 12.0, true).contains("storm"), "a power cut in a storm gets a storm tip")
+	_check((report.results as Array).all(func(r): return (r as Dictionary).has("tip")), "every result carries a tip field")
+	# Both test charts draw.
+	for mode in ["battery", "power"]:
+		var graph = world.mission_hud.TestGraph.new()
+		graph.report = report
+		graph.mode = mode
+		graph.size = Vector2(1100, 210)
+		root.add_child(graph)
+		await process_frame
+		graph.queue_free()
+	# Mission 6: any food grower counts towards a quarter of the crew's food.
+	var final: Dictionary = MHMissions.missions()[-1]
+	var food_step: Dictionary = (final.steps as Array).filter(func(s): return str(s.get("check", "")) == "food_share")[0]
+	var kept: Array = b.placed_interior.duplicate()
+	for i in 7: b.placed_interior.append({"id": "grow_tray"})
+	_check(MHMissions._step_met(food_step, b, {}, str(final.id)), "seven grow trays feed a quarter of six crew (%.2f)" % MHMissions.food_share(b, final))
+	b.placed_interior = kept.duplicate()
+	for i in 3: b.placed_interior.append({"id": "grow_tray"})
+	_check(not MHMissions._step_met(food_step, b, {}, str(final.id)), "three do not")
+	b.placed_interior = kept
+	# An outdoor item a room now covers is cleared, so it can't get stuck.
+	b.placed_surface.append({"id": "test_item", "position": Vector3(33.0, b.habitat_base_y, 3.0), "placement_id": "swallowed"})
+	b._prune_equipment()
+	_check(not b.placed_surface.any(func(p): return str(p.get("placement_id", "")) == "swallowed"), "an outdoor item inside a room is cleared")
+	# Saves can be deleted.
+	MHGame.save_habitat(3, {"colony_name": "Delete me"}, "free_play")
+	_check(MHGame.delete_habitat(3, "free_play") and not bool(MHGame.save_slot_summary(3, "free_play").get("exists", false)), "a save can be deleted")
+
 	if failures == 0:
-		print("Mission feedback test passed: steps un-tick, next mission waits, life support strips, planet-wide storm, health causes.")
+		print("Mission feedback test passed: steps un-tick, next mission waits, life support strips, planet-wide storm, health causes, tips, charts, food share, cleared outdoor items, deleting saves.")
 	quit(1 if failures > 0 else 0)
