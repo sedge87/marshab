@@ -7,6 +7,8 @@ extends Control
 ##   wayfinding · this room, its lights and temperature, and the way to the
 ##                nearest airlock
 ##   sign       · the player's own text
+##   camera     · the outside camera masts, a new picture each second (cycles
+##                masts every 8 s when there are several)
 ## The viewport only re-renders when this redraws (about once a second).
 
 const MHResources := preload("res://scripts/mh_resources.gd")
@@ -17,6 +19,10 @@ var sign_text := ""
 var mount: Node3D
 var viewport: SubViewport
 var _since := 1.0
+var _cam_port: SubViewport
+var _cam: Camera3D
+var _cam_index := 0
+var _cam_clock := 0.0
 var _spin := 0.0
 
 func _ready() -> void:
@@ -30,6 +36,7 @@ func _process(delta: float) -> void:
 		refresh()
 
 func refresh() -> void:
+	if mode == "camera": _aim_camera()
 	queue_redraw()
 	if viewport != null: viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 
@@ -53,6 +60,7 @@ func _draw() -> void:
 		"earth": _draw_planet(true)
 		"wayfinding": _draw_wayfinding()
 		"sign": _draw_sign()
+		"camera": _draw_camera()
 
 # ---------- habitat status ----------
 
@@ -180,6 +188,44 @@ func _draw_wayfinding() -> void:
 	draw_colored_polygon(PackedVector2Array([c2 + dir * r, c2 - dir * r * .2 + side * r * .6, c2 - dir * r * .2 - side * r * .6]), MHStyle.VALID)
 	draw_line(c2 - dir * r * .9, c2 - dir * r * .1, MHStyle.VALID, r * .32)
 	_text("AIRLOCK  %d m" % roundi(to.length()), box.position + Vector2(box.size.y + 30 * u, box.size.y * .5 + 18 * u), int(48 * u), MHStyle.TEXT_PRIMARY, 800)
+
+# ---------- outside camera ----------
+
+func _masts() -> Array:
+	return get_tree().get_nodes_in_group("camera_mast").filter(func(m): return is_instance_valid(m) and m.is_inside_tree())
+
+func _aim_camera() -> void:
+	var masts := _masts()
+	if masts.is_empty(): return
+	if _cam_port == null:
+		_cam_port = SubViewport.new()
+		_cam_port.size = Vector2i(640, 360)
+		_cam_port.world_3d = get_tree().root.find_world_3d()
+		_cam = Camera3D.new()
+		_cam.current = true
+		_cam.far = 900.0
+		_cam_port.add_child(_cam)
+		add_child(_cam_port)
+	_cam_clock += 1.0
+	if _cam_clock >= 8.0:
+		_cam_clock = 0.0
+		_cam_index += 1
+	var mast: Node = masts[_cam_index % masts.size()]
+	_cam.global_transform = mast.camera_view()
+	_cam.fov = float(mast.camera_setting("cam_fov", 60.0))
+	_cam_port.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+func _draw_camera() -> void:
+	var u := size.y / 360.0
+	var masts := _masts()
+	if masts.is_empty() or _cam_port == null:
+		_text("NO CAMERA MASTS", Vector2(24, size.y * .5 / u) * u, int(28 * u), MHStyle.TEXT_MUTED, 700)
+		_text("Build one outside: site plan, Outdoor, Camera Mast.", Vector2(24, size.y * .5 / u + 34) * u, int(16 * u), MHStyle.TEXT_MUTED, 500)
+		return
+	draw_texture_rect(_cam_port.get_texture(), Rect2(Vector2.ZERO, size), false)
+	draw_rect(Rect2(Vector2(10, 10) * u, Vector2(190, 30) * u), Color(0, 0, 0, .55))
+	draw_circle(Vector2(26, 25) * u, 6 * u, Color(1, .25, .2))
+	_text("MAST %d · LIVE" % (_cam_index % masts.size() + 1), Vector2(40, 31) * u, int(16 * u), MHStyle.TEXT_PRIMARY, 700)
 
 # ---------- the player's sign ----------
 

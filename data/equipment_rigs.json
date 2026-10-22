@@ -4494,12 +4494,14 @@
         "modes": [
           "status",
           "mars",
-          "earth"
+          "earth",
+          "camera"
         ],
         "mode_labels": [
           "habitat status",
           "Mars",
-          "Earth"
+          "Earth",
+          "the outside cameras"
         ],
         "state": "screen_mode",
         "pixels": 640
@@ -4529,6 +4531,15 @@
         "key": "secondary",
         "type": "sign_edit",
         "label": "Write a sign"
+      }
+    ]
+  },
+  "camera_mast": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "camera",
+        "label": "Look through the camera"
       }
     ]
   }

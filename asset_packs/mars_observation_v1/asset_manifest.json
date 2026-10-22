@@ -1,0 +1,50 @@
+{
+  "style": "Observation: the pan-tilt camera mast, in the house style",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "camera_mast",
+      "file": "camera_mast.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.856,
+          0.0,
+          -0.97
+        ],
+        [
+          0.856,
+          6.205,
+          0.545
+        ]
+      ],
+      "triangles": 5892,
+      "named_components": [
+        "bearing",
+        "collar",
+        "conduit_black",
+        "foot_dark",
+        "guy_brackets",
+        "head_tilt_band",
+        "head_tilt_body_white",
+        "head_tilt_lens_barrel",
+        "head_tilt_lens_dark",
+        "head_tilt_rear_vent_dark",
+        "head_tilt_sunshade",
+        "head_tilt_tally_status",
+        "head_yaw_axles_satin",
+        "head_yaw_turntable_dark",
+        "head_yaw_yoke_white",
+        "hub",
+        "junction_body_white",
+        "junction_cap_warm",
+        "junction_label",
+        "junction_rails",
+        "pole_lower_satin",
+        "pole_upper_satin",
+        "rungs_dark",
+        "status_light_status"
+      ]
+    }
+  ]
+}

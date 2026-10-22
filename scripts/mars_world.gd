@@ -4,6 +4,7 @@ const WEATHER_SCRIPT := preload("res://scripts/weather.gd")
 const ALERTS_SCRIPT := preload("res://scripts/habitat_alerts.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
+const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const ORIGINAL_ENVIRONMENT_SCRIPT := preload("res://scripts/original_mars_environment.gd")
@@ -34,7 +35,7 @@ var dust: CPUParticles3D
 var weather: Node   # scripts/weather.gd: storm warnings, haze, dust and sound
 var alerts: Node    # scripts/habitat_alerts.gd: habitat alerts (backlog 26)
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
-var monitor: Control            # scripts/habitat_monitor.gd: the live habitat monitor, while open
+var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var scout_rover: Node3D
 var interior_builder: MHInteriorBuildController
 var surface_builder: MHSurfaceBuildController
@@ -696,7 +697,17 @@ func _open_mission_control() -> void:
 ## (you stand still). From Mission Control's header or the Mission Planning
 ## Console in the base.
 func open_monitor() -> void:
-	if monitor != null: return
+	_open_live_view(HABITAT_MONITOR.new().setup(self))
+
+## The outside cameras, live like the monitor (pressing E on a mast opens it on that mast).
+func open_cameras(mast: Node = null) -> void:
+	_open_live_view(HABITAT_CAMERAS.new().setup(self, mast))
+
+## A full-screen live view (monitor or cameras): the game keeps running and you stand still.
+func _open_live_view(view: Control) -> void:
+	if monitor != null:
+		view.queue_free()
+		return
 	if mission_control != null: mission_control._close()
 	if pause_menu != null: _close_pause()
 	get_tree().paused = false
@@ -704,7 +715,7 @@ func open_monitor() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	player.set_meta("ui_freeze", true)
 	if mission_hud != null: mission_hud.visible = false
-	monitor = HABITAT_MONITOR.new().setup(self)
+	monitor = view
 	monitor.closed.connect(func() -> void:
 		monitor = null
 		player.set_meta("ui_freeze", false)

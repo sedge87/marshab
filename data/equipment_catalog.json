@@ -2205,6 +2205,35 @@
       "pack": "mars_exterior_support_martian_hailmary_v2"
     },
     {
+      "id": "camera_mast",
+      "label": "Camera Mast",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "monitor",
+      "description": "A 6 m pole with a pan-tilt camera on top. Watch it from Mission Control's Cameras view or a wall screen.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 60,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 6.2,
+      "system_note": "Mission control teams watch surface work through fixed and pan-tilt cameras. From up high, one camera can cover the whole base and its approaches.",
+      "system_links": [
+        "Communications",
+        "Exploration"
+      ],
+      "asset_scene": "res://assets/equipment/mars_observation_v1/camera_mast.tscn",
+      "size_m": [
+        1.712,
+        6.205,
+        1.515
+      ],
+      "pack": "mars_observation_v1"
+    },
+    {
       "id": "exterior_workbench",
       "label": "Outdoor Workbench",
       "group": "exterior",
@@ -3242,7 +3271,7 @@
       "icon": "monitor",
       "height": 0.72,
       "mount_height": 1.45,
-      "description": "Shows the habitat's status, or a view of Mars or Earth. Press E to change the picture.",
+      "description": "Shows the habitat's status, a view of Mars or Earth, or your outside cameras. Press E to change the picture.",
       "role": "Information and morale",
       "cargo_cost": 8,
       "valid_zones": [

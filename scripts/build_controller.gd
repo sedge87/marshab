@@ -136,6 +136,7 @@ const SURFACE_EQUIPMENT := {
 	"equipment_pallet": {"label":"Loaded Cargo Pallet", "icon":"package", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/equipment_pallet.tscn", "radius":1.0, "height":1.1, "top":1.05, "top_radius":0.7},
 	"comms_antenna": {"label":"Communications Mast", "icon":"satellite", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/comms_antenna.tscn", "radius":0.95, "height":4.5},
 	"exterior_workbench": {"label":"Outdoor Workbench", "icon":"wrench", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/exterior_workbench.tscn", "radius":0.95, "height":1.8, "top":0.96, "top_radius":0.5},
+	"camera_mast": {"label":"Camera Mast", "icon":"monitor", "asset":"res://assets/equipment/mars_observation_v1/camera_mast.tscn", "radius":0.9, "height":6.2},
 	"high_light_post": {"label":"Tall Light Post", "icon":"lightbulb", "asset":"res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/high_light_post.tscn", "radius":0.4, "height":3.7},
 	"path_beacon": {"label":"Path Beacon", "icon":"map-pin", "asset":"res://assets/equipment/mars_exterior_support_martian_hailmary_v2/path_beacon.tscn", "radius":0.22, "height":1.1},
 	"portable_work_light": {"label":"Portable Floodlight", "icon":"lightbulb", "asset":"res://assets/equipment/mars_exterior_hero_refresh_martian_hailmary_v1/portable_work_light.tscn", "radius":0.42, "height":2.0},
@@ -4706,6 +4707,7 @@ func surface_invalid_reason(id: String, position: Vector3) -> String:
 	var entry := surface_entry(id)
 	if entry.is_empty(): return "Unknown surface equipment"
 	if is_inside(position): return "Keep surface equipment outside the habitat"
+	if id == "camera_mast" and placed_surface.filter(func(s): return str(s.get("id", "")) == "camera_mast").size() >= 4: return "Up to 4 camera masts per base"
 	if lander != null and lander.keeps_clear(Vector2(position.x, position.z), float(entry.get("radius", .6))): return "Too close to the lander"
 	if MHMissions.active() and not MHMissions.item_unlocked(id): return "Not delivered yet: this arrives in a later mission"
 	if MHMissions.in_blast_zone(Vector2(position.x, position.z)): return "Inside the landing zone: engine blast would damage it"

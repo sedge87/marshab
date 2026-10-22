@@ -16,6 +16,9 @@ const INFO_SCREEN := preload("res://scripts/info_screen.gd")
 @export var equipment_id := ""
 var _maps: Dictionary = {}  # action index -> survey map Control
 var _screens: Dictionary = {}  # action index -> info screen Control (info_screen.gd)
+## A camera mast's pan-tilt head ("camera" action): {yaw: Node3D, tilt: Node3D, lens: Vector3 in tilt space}.
+var _cam: Dictionary = {}
+var _sweep_from := 0.0
 
 var _actions: Array = []
 var _state: Dictionary = {}
@@ -82,7 +85,7 @@ func _action_label(action: Dictionary) -> String:
 			var level := _level(action)
 			var now := str(names[level]).to_upper() + (" (NO POWER)" if level > 0 and not _grid_powered else "")
 			return "%s %s → %s" % [str(action.get("label", "Setting")), now, str(names[(level + 1) % names.size()]).to_upper()]
-		"workout", "inspect", "play", "sign_edit", "monitor":
+		"workout", "inspect", "play", "sign_edit", "monitor", "camera":
 			return str(action.get("label", "Use"))
 		"screen":
 			var labels: Array = action.get("mode_labels", action.get("modes", []))
@@ -132,6 +135,9 @@ func _run(key: String, _actor: Node) -> bool:
 			"monitor":
 				get_tree().call_group("habitat_world", "open_monitor")
 				return true
+			"camera":
+				get_tree().call_group("habitat_world", "open_cameras", self)
+				return true
 			"levels":
 				var names: Array = action.get("levels", ["Off", "On"])
 				_set_state(str(action.state), (_level(action) + 1) % names.size())
@@ -152,6 +158,34 @@ func _run(key: String, _actor: Node) -> bool:
 		MHAudio.sfx("ui_click", -6.0)
 		return true
 	return false
+
+# ---------- camera masts (habitat_cameras.gd drives these) ----------
+
+## Point the head: yaw (radians, round the pole) and pitch (up is positive).
+func set_aim(yaw: float, pitch: float, save := true) -> void:
+	if _cam.is_empty(): return
+	pitch = clampf(pitch, deg_to_rad(-70.0), deg_to_rad(35.0))
+	(_cam.yaw as Node3D).rotation.y = wrapf(yaw, -PI, PI)
+	(_cam.tilt as Node3D).rotation.x = pitch
+	if save:
+		_set_state("cam_yaw", wrapf(yaw, -PI, PI))
+		_set_state("cam_pitch", pitch)
+
+func aim() -> Vector2:
+	return Vector2(float(_state.get("cam_yaw", 0.0)), float(_state.get("cam_pitch", -.2)))
+
+func camera_setting(key: String, fallback: Variant) -> Variant:
+	return _state.get(key, fallback)
+
+func set_camera_setting(key: String, value: Variant) -> void:
+	_set_state(key, value)
+	if key == "cam_sweep" and not bool(value) and not _cam.is_empty(): set_aim((_cam.yaw as Node3D).rotation.y, aim().y)
+
+## Where the camera sees from: just in front of the lens, looking along -Z.
+func camera_view() -> Transform3D:
+	if _cam.is_empty(): return global_transform
+	var tilt := _cam.tilt as Node3D
+	return Transform3D(tilt.global_transform.basis.orthonormalized(), tilt.global_transform * (_cam.lens as Vector3))
 
 func _screen_mode(action: Dictionary) -> int:
 	return int(_state.get(str(action.get("state", "")), 0))
@@ -307,6 +341,23 @@ func _build_action(index: int, action: Dictionary) -> void:
 				var pivot := _pivot_for(meshes, box.get_center())
 				if float(action.get("tray_depth", 0.0)) > 0.0: _add_drawer_tray(pivot, box, float(action.tray_depth), meshes[0])
 				pivots.append({"pivot": pivot})
+		"camera":
+			# A camera mast: the head pans round the pole and the camera tilts
+			# in its yoke (parts head_yaw_* and head_tilt_*). Aim is saved.
+			var yaw_meshes := _parts(["head_yaw"])
+			var tilt_meshes := _parts(["head_tilt"])
+			if yaw_meshes.is_empty() or tilt_meshes.is_empty(): return
+			var yaw_box := _bounds(yaw_meshes)
+			var axle_box := _bounds(_parts(["head_yaw_axles"]))
+			var lens_box := _bounds(_parts(["head_tilt_lens"]))
+			var yaw_pivot := _pivot_for(yaw_meshes, Vector3(yaw_box.get_center().x, yaw_box.position.y, axle_box.get_center().z))
+			var tilt_pivot := Node3D.new()
+			tilt_pivot.name = "TiltPivot"
+			yaw_pivot.add_child(tilt_pivot)
+			tilt_pivot.position = axle_box.get_center() - yaw_pivot.position
+			for mesh in tilt_meshes: mesh.reparent(tilt_pivot, true)
+			_cam = {"yaw": yaw_pivot, "tilt": tilt_pivot, "lens": lens_box.get_center() - axle_box.get_center() + Vector3(0, 0, -.06)}
+			add_to_group("camera_mast")
 		"screen":
 			# A live screen (info_screen.gd) on the part's display, like "map".
 			var display := _parts(action.get("screen", []))
@@ -614,6 +665,9 @@ func _axis_vector(name: String) -> Vector3:
 
 func _process(delta: float) -> void:
 	_clock += delta
+	# A camera mast on auto-sweep pans slowly back and forth.
+	if not _cam.is_empty() and bool(_state.get("cam_sweep", false)):
+		(_cam.yaw as Node3D).rotation.y = float(_state.get("cam_yaw", 0.0)) + sin(_clock * .12) * 1.4
 	for index in _sweepers:
 		var running := _on(_actions[index])
 		for entry in _sweepers[index]:
@@ -711,6 +765,8 @@ func _apply_state(index: int, animate: bool) -> void:
 			_set_glow(light_entry.get("glow", []), on, true)
 		"inspect":
 			_set_glow((_lights.get(index, {}) as Dictionary).get("glow", []), true)
+		"camera":
+			if not _cam.is_empty(): set_aim(float(_state.get("cam_yaw", 0.0)), float(_state.get("cam_pitch", -.2)), false)
 		"screen":
 			if _screens.has(index):
 				var modes: Array = action.get("modes", ["status"])

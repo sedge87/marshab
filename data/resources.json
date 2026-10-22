@@ -672,6 +672,12 @@
     "mini_gar_y": {
       "room": "odds_and_ends",
       "cargo_kg": 1.0
+    },
+    "camera_mast": {
+      "room": "exterior",
+      "cargo_kg": 60.0,
+      "power_kw": 0.05,
+      "hours_per_sol": 24.0
     }
   },
   "sites": {

@@ -400,6 +400,9 @@
         "Each person drinks and washes with about 10 L of water a sol. Reclaiming it saves the drills.",
         "The crew lander brought 60 sols of food. Growing more comes in Mission 6.",
         "Press T to test. You can walk around the base too: it's yours now."
+      ],
+      "unlock_items": [
+        "camera_mast"
       ]
     },
     {
