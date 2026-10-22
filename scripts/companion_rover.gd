@@ -1,5 +1,6 @@
 class_name MHCompanionRover
 extends CharacterBody3D
+const MHPalette := preload("res://scripts/mh_palette.gd")
 
 ## GAR-Y, the Geological Analysis Rover, Y-Class: the crew's companion.
 ##

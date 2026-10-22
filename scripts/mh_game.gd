@@ -1,5 +1,6 @@
 class_name MHGame
 extends RefCounted
+const MHPalette := preload("res://scripts/mh_palette.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 # Session-wide state that survives scene changes: colony identity chosen on the

@@ -1,4 +1,5 @@
 extends CanvasLayer
+const MHDossier := preload("res://scripts/mh_dossier.gd")
 
 ## Missions mode on screen: the mission panel (top right) with the step
 ## tracker (each step ticks itself off) and the requirements, a "next step"

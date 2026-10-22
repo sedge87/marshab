@@ -1,4 +1,5 @@
 extends SceneTree
+const MHDossier := preload("res://scripts/mh_dossier.gd")
 
 # The mission dossier (backlog 27): versions keep checks, graphs, prediction
 # and note; "what fixed it"; the student name; the HTML export; and the

@@ -1,4 +1,5 @@
 extends Node
+const MHPalette := preload("res://scripts/mh_palette.gd")
 
 ## Renders each catalogue item's real model into a small picture for the
 ## build bar, one item per frame, in its own hidden world. Pictures are cached

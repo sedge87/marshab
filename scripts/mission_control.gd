@@ -1,5 +1,6 @@
 class_name MHMissionControl
 extends Control
+const MHDossier := preload("res://scripts/mh_dossier.gd")
 
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const MISSION_HUD := preload("res://scripts/mission_hud.gd")

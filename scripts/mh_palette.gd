@@ -1,4 +1,3 @@
-class_name MHPalette
 extends RefCounted
 
 ## The habitat's house materials. Models come from several asset packs, each

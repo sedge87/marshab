@@ -1,4 +1,3 @@
-class_name MHDossier
 extends RefCounted
 
 ## The mission dossier (backlog item 27, docs/designs-batches-4-6.md).

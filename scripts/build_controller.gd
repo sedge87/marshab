@@ -1,5 +1,6 @@
 class_name BuildController
 extends Node
+const MHPalette := preload("res://scripts/mh_palette.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 # One floorplan is the source of truth for plan tiles, visible shell and collision.

@@ -1,4 +1,5 @@
 extends Node3D
+const MHPalette := preload("res://scripts/mh_palette.gd")
 
 ## The crew lander: where every game begins. It stands on level ground near the
 ## build area, hatch facing the site, always in the same spot for a site (so

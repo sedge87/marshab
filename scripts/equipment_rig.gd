@@ -1,4 +1,5 @@
 extends Node3D
+const MHPalette := preload("res://scripts/mh_palette.gd")
 
 # Interaction rig for delivered equipment packs. Each wrapper scene made by
 # tools/import_asset_pack.py is this node with the pack's GLB as "Model".

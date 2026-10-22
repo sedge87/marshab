@@ -1,4 +1,5 @@
 extends SceneTree
+const MHPalette := preload("res://scripts/mh_palette.gd")
 
 # House materials (scripts/mh_palette.gd, docs/house-style.md): material roles
 # map onto one shared set, natural/signal materials are left alone, and every
