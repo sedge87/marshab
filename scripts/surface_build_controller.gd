@@ -1,5 +1,6 @@
 class_name MHSurfaceBuildController
 extends Node
+const MHPlacementGhost := preload("res://scripts/placement_ghost.gd")
 
 ## First-person free placement for non-structural outdoor props.  This does
 ## not alter the plan-grid reactor, ice extractor, habitat shell or airlocks.
@@ -135,18 +136,7 @@ func _refresh_preview(force_rebuild: bool) -> void:
 	_update_hud()
 
 func _set_preview(node: Node, valid: bool) -> void:
-	var tint := Color("#57F6B3") if valid else Color("#FF5A61")
-	for mesh_node in node.find_children("*", "MeshInstance3D", true, false):
-		var mesh := mesh_node as MeshInstance3D
-		var source := mesh.get_active_material(0) as StandardMaterial3D
-		var material := source.duplicate() as StandardMaterial3D if source != null else StandardMaterial3D.new()
-		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		material.albedo_color = Color(tint, .38)
-		material.emission_enabled = true
-		material.emission = tint
-		material.emission_energy_multiplier = .04
-		mesh.material_override = material
-		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	MHPlacementGhost.apply(node, valid)
 
 func _place_preview() -> void:
 	if preview == null or not _valid_reason.is_empty() or _hit.is_empty():

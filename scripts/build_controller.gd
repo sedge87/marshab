@@ -1037,6 +1037,10 @@ func remove_free_interior_equipment(placement_id: String) -> Dictionary:
 		var item: Dictionary = placed_interior[index]
 		if str(item.get("placement_id", "")) != placement_id:
 			continue
+		# Whatever stood on it comes off with it.
+		for resting in items_resting_on(item):
+			remove_free_interior_equipment(str(resting.get("placement_id", "")))
+		index = placed_interior.find(item)
 		placed_interior.remove_at(index)
 		for child in furnishing.get_children():
 			if str(child.get_meta("interior_placement_id", "")) == placement_id:
@@ -1062,6 +1066,10 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 	if placement == "floor" and surface_normal.dot(Vector3.UP) < .82: return "Place this on the floor"
 	if placement == "wall" and absf(surface_normal.dot(Vector3.UP)) > .28: return "Mount this on an interior wall"
 	if placement == "ceiling" and surface_normal.dot(Vector3.UP) > -.82: return "Mount this on the ceiling"
+	# Above the floor: only small items, and only on a table, desk, counter or crate.
+	if placement in ["floor", "floor_wall"] and world_position.y > habitat_base_y + .2:
+		if not bool(entry.get("stackable", false)): return "Place this on the floor"
+		if stack_support(id, world_position, rotation_y).is_empty(): return "Set this on a table, desk, counter or crate"
 	if _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	# A free-positioned item must fit wholly inside valid room cells. Checking the
 	# four footprint corners prevents a player from burying it in the shell wall
@@ -1094,6 +1102,9 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 			var other_size := _free_interior_size(other_entry)
 			var other_position: Vector3 = item.get("position", Vector3.ZERO)
 			var other_rotation := float(item.get("rotation_y", 0.0))
+			# Stacked: one sits on top of the other, so their heights don't meet.
+			if world_position.y >= other_position.y + _occupied_height(other_entry) - .03 or world_position.y + size.y <= other_position.y + .03:
+				continue
 			# Test the actual rotated floor footprints rather than a circular
 			# approximation. It permits neat adjacent rows but catches the visual
 			# intersections that the previous forgiving radius allowed.
@@ -1102,6 +1113,59 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 		if _partition_crossing(world_position, size, rotation_y) >= 0:
 			return "Blocked by a partition wall"
 	return ""
+
+## How high an item fills: up to its working top for tables, desks and
+## crates (things stand on that), otherwise its full height.
+func _occupied_height(entry: Dictionary) -> float:
+	var top := float(entry.get("surface_height", 0.0))
+	return top if top > 0.0 else _free_interior_size(entry).y
+
+## The table, desk, counter or crate a small item would rest on at this spot,
+## or {} if none. Its whole footprint has to sit on that top.
+func stack_support(id: String, world_position: Vector3, rotation_y: float) -> Dictionary:
+	var size := _free_interior_size(EquipmentCatalog.get_entry(id))
+	for item in placed_interior:
+		var other := EquipmentCatalog.get_entry(str(item.get("id", "")))
+		var top := float(other.get("surface_height", 0.0))
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		if top <= 0.0 or absf(at.y + top - world_position.y) > .05: continue
+		if _rests_within(world_position, size, rotation_y, at, _surface_size(other), float(item.get("rotation_y", 0.0))):
+			return item
+	return {}
+
+## Items resting on this one (placed on its top).
+func items_resting_on(item: Dictionary) -> Array:
+	var resting: Array = []
+	var other := EquipmentCatalog.get_entry(str(item.get("id", "")))
+	var top := float(other.get("surface_height", 0.0))
+	if top <= 0.0: return resting
+	var at: Vector3 = item.get("position", Vector3.ZERO)
+	for candidate in placed_interior:
+		var position: Vector3 = candidate.get("position", Vector3.ZERO)
+		if candidate == item or absf(at.y + top - position.y) > .05: continue
+		if _rests_within(position, Vector3(.02, 0, .02), 0.0, at, _surface_size(other), float(item.get("rotation_y", 0.0))):
+			resting.append(candidate)
+	return resting
+
+## The usable top of a surface item (width, depth), centred on it.
+func _surface_size(entry: Dictionary) -> Vector2:
+	var given: Array = entry.get("surface_size", [])
+	if given.size() == 2: return Vector2(float(given[0]), float(given[1]))
+	var size := _free_interior_size(entry)
+	return Vector2(size.x, size.z)
+
+## True when a rotated footprint lies on a rotated top (with a little overhang).
+func _rests_within(at: Vector3, size: Vector3, rotation_y: float, top_at: Vector3, top_size: Vector2, top_rotation: float) -> bool:
+	var facing := Vector2(cos(rotation_y), -sin(rotation_y))
+	var side := Vector2(-facing.y, facing.x)
+	var top_facing := Vector2(cos(top_rotation), -sin(top_rotation))
+	var top_side := Vector2(-top_facing.y, top_facing.x)
+	for sign_x in [-1.0, 1.0]:
+		for sign_z in [-1.0, 1.0]:
+			var corner: Vector2 = Vector2(at.x - top_at.x, at.z - top_at.z) + facing * size.x * .5 * sign_x + side * size.z * .5 * sign_z
+			if absf(corner.dot(top_facing)) > top_size.x * .5 + .06 or absf(corner.dot(top_side)) > top_size.y * .5 + .06:
+				return false
+	return true
 
 ## Index of the first partition whose panel overlaps a rotated floor footprint, or -1.
 func _partition_crossing(at: Vector3, size: Vector3, rotation_y: float) -> int:

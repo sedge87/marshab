@@ -1,5 +1,6 @@
 class_name MHInteriorBuildController
 extends Node
+const MHPlacementGhost := preload("res://scripts/placement_ghost.gd")
 
 ## First-person construction is intentionally independent from BuildController's
 ## exterior plan camera.  It uses catalogue effects/costs, but records metres
@@ -297,6 +298,10 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		preview.visible = true
 		_update_hud()
 		return
+	var on_top := _stack_point()
+	if on_top != Vector3.INF:
+		point = on_top
+		normal = Vector3.UP
 	_valid_reason = builder.free_interior_invalid_reason(selected_id, point, normal, _placement_yaw(normal))
 	if force_rebuild or preview == null:
 		if preview != null: preview.queue_free()
@@ -316,6 +321,29 @@ func _refresh_preview(force_rebuild: bool) -> void:
 	preview.visible = true
 	_update_hud()
 
+## Aiming at a table, desk, counter or crate with a small item: the spot on
+## its working top under the crosshair (not the top of its collision box).
+## Vector3.INF when that doesn't apply.
+func _stack_point() -> Vector3:
+	if not bool(EquipmentCatalog.get_entry(selected_id).get("stackable", false)):
+		return Vector3.INF
+	var node := _hit.get("collider") as Node
+	while node != null and not node.has_meta("interior_placement_id"):
+		node = node.get_parent()
+	if node == null:
+		return Vector3.INF
+	for item in builder.placed_interior:
+		if str(item.get("placement_id", "")) != str(node.get_meta("interior_placement_id")):
+			continue
+		var top := float(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("surface_height", 0.0))
+		var camera := _camera()
+		var direction := -camera.global_transform.basis.z
+		if top <= 0.0 or direction.y > -.05:
+			return Vector3.INF
+		var height := (item.get("position", Vector3.ZERO) as Vector3).y + top
+		return camera.global_position + direction * ((height - camera.global_position.y) / direction.y)
+	return Vector3.INF
+
 func _placement_yaw(normal: Vector3) -> float:
 	# Floor equipment follows the viewer's heading. Future wall entries face out
 	# from the hit surface without requiring an exterior-grid direction.
@@ -334,19 +362,7 @@ func _disable_preview_collision(node: Node) -> void:
 		(light as Light3D).visible = false
 
 func _set_preview_material(node: Node, valid: bool) -> void:
-	var tint := Color("#57F6B3") if valid else Color("#FF5A61")
-	for child in node.find_children("*", "MeshInstance3D", true, false):
-		var mesh := child as MeshInstance3D
-		var source := mesh.get_active_material(0) as StandardMaterial3D
-		var material := source.duplicate() as StandardMaterial3D if source != null else StandardMaterial3D.new()
-		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		material.albedo_color = Color(tint, .38)
-		material.emission_enabled = true
-		material.emission = tint
-		material.emission_energy_multiplier = 1.25
-		material.no_depth_test = true
-		mesh.material_override = material
-		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	MHPlacementGhost.apply(node, valid)
 
 func _interior_door_preview(target: Dictionary, hit_normal: Vector3) -> Node3D:
 	var holder := Node3D.new()
@@ -365,10 +381,10 @@ func _interior_door_preview(target: Dictionary, hit_normal: Vector3) -> Node3D:
 	surface_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	surface_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	surface_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	surface_material.albedo_color = Color("#57F6B3", .18)
+	surface_material.albedo_color = Color("#57F6B3", .1)
 	surface_material.emission_enabled = true
 	surface_material.emission = Color("#57F6B3")
-	surface_material.emission_energy_multiplier = 1.25
+	surface_material.emission_energy_multiplier = .6
 	surface_material.no_depth_test = true
 	surface.material_override = surface_material
 	holder.add_child(surface)

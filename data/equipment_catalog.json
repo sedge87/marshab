@@ -196,7 +196,8 @@
         "Mission planning",
         "Power"
       ],
-      "printable": true
+      "printable": true,
+      "surface_height": 0.92
     },
     {
       "id": "task_light",
@@ -349,7 +350,8 @@
         "Research",
         "Rover samples",
         "Power"
-      ]
+      ],
+      "surface_height": 0.9
     },
     {
       "id": "microscope_station",
@@ -808,7 +810,8 @@
       "system_links": [
         "Maintenance",
         "Every system"
-      ]
+      ],
+      "surface_height": 0.93
     },
     {
       "id": "rover_charger",
@@ -1257,7 +1260,8 @@
         "Water",
         "Power",
         "Morale"
-      ]
+      ],
+      "surface_height": 1.0
     },
     {
       "id": "pantry_cabinet",
@@ -1603,7 +1607,8 @@
       "system_note": "For everyday cuts, burns and sprains. Small injuries are the most common medical problem on a mission, so kits are kept close to where people work.",
       "system_links": [
         "Crew health"
-      ]
+      ],
+      "stackable": true
     },
     {
       "id": "first_aid_kit_wall",
@@ -1743,7 +1748,9 @@
         "Cargo",
         "Storage"
       ],
-      "printable": true
+      "printable": true,
+      "surface_height": 0.33,
+      "stackable": true
     },
     {
       "id": "supply_crate_medium",
@@ -1789,7 +1796,9 @@
         "Cargo",
         "Storage"
       ],
-      "printable": true
+      "printable": true,
+      "surface_height": 0.45,
+      "stackable": true
     },
     {
       "id": "supply_crate_large",
@@ -1835,7 +1844,9 @@
         "Cargo",
         "Storage"
       ],
-      "printable": true
+      "printable": true,
+      "surface_height": 0.59,
+      "stackable": true
     },
     {
       "id": "mission_planning_console",
@@ -2486,7 +2497,12 @@
         1.87
       ],
       "pack": "mars_habitat_furnishings_v1",
-      "printable": true
+      "printable": true,
+      "surface_height": 0.74,
+      "surface_size": [
+        0.7,
+        1.0
+      ]
     },
     {
       "id": "galley_oven",
@@ -2779,7 +2795,8 @@
         0.955,
         0.641
       ],
-      "pack": "mars_habitat_furnishings_v1"
+      "pack": "mars_habitat_furnishings_v1",
+      "surface_height": 0.92
     },
     {
       "id": "medical_exam_light",
@@ -2849,7 +2866,8 @@
         0.99,
         0.638
       ],
-      "pack": "mars_habitat_furnishings_v1"
+      "pack": "mars_habitat_furnishings_v1",
+      "surface_height": 0.75
     },
     {
       "id": "crew_chair",
@@ -2976,7 +2994,8 @@
         0.61
       ],
       "pack": "mars_habitat_furnishings_v1",
-      "printable": true
+      "printable": true,
+      "stackable": true
     },
     {
       "id": "wall_whiteboard",
