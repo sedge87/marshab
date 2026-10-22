@@ -892,10 +892,12 @@ func _card(id: String, index: int) -> Button:
 	if structure.is_empty():
 		picture.texture = MHIcons.texture(str(entry.get("icon", "package")), 48)
 		picture.modulate = Color(1, 1, 1, .35)
+		var picture_ref: WeakRef = weakref(picture)   # the card may be rebuilt before its picture is ready
 		ModelThumbnails.request(get_tree(), id, func(texture: Texture2D) -> void:
-			if is_instance_valid(picture) and texture != null:
-				picture.texture = texture
-				picture.modulate = Color.WHITE)
+			var shown := picture_ref.get_ref() as TextureRect
+			if shown != null and texture != null:
+				shown.texture = texture
+				shown.modulate = Color.WHITE)
 	else:
 		picture.texture = MHIcons.texture(str(structure.icon), 56)
 		picture.modulate = MHStyle.accent if selected else MHStyle.TEXT_SECONDARY

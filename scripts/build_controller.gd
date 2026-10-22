@@ -5198,8 +5198,10 @@ func _part_picture(id: String) -> Control:
 	var colour:Color=plan_colour(id)
 	if PART_MODELS.has(id):
 		var picture:=TextureRect.new(); picture.custom_minimum_size=Vector2(170,104); picture.expand_mode=TextureRect.EXPAND_IGNORE_SIZE; picture.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED; picture.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		var part_ref: WeakRef=weakref(picture)   # the card may be rebuilt before its picture is ready
 		ModelThumbnails.request(get_tree(),str(PART_MODELS[id]),func(texture: Texture2D) -> void:
-			if is_instance_valid(picture): picture.texture=texture)
+			var shown:=part_ref.get_ref() as TextureRect
+			if shown!=null: shown.texture=texture)
 		return picture
 	var tile:=PanelContainer.new(); tile.custom_minimum_size=Vector2(170,104); tile.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	tile.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.BLUEPRINT.lerp(colour,.32),colour.lightened(.1),6,1))
@@ -5251,9 +5253,11 @@ func _surface_equipment_card(id: String,index := 0) -> Button:
 	var column:=card.get_meta("column") as VBoxContainer
 	var picture:=TextureRect.new(); picture.custom_minimum_size=Vector2(170,104); picture.expand_mode=TextureRect.EXPAND_IGNORE_SIZE; picture.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED; picture.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	picture.texture=MHIcons.texture(str(entry.icon),48); picture.modulate=Color(1,1,1,.35)
+	var picture_ref: WeakRef=weakref(picture)   # the card may be rebuilt before its picture is ready
 	ModelThumbnails.request(get_tree(),id,func(texture: Texture2D) -> void:
-		if is_instance_valid(picture) and texture!=null:
-			picture.texture=texture; picture.modulate=Color.WHITE)
+		var shown:=picture_ref.get_ref() as TextureRect
+		if shown!=null and texture!=null:
+			shown.texture=texture; shown.modulate=Color.WHITE)
 	column.add_child(picture)
 	var name_label:=MHStyle.label(str(entry.label),14,MHStyle.TEXT_PRIMARY,600); name_label.clip_text=true; name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS; column.add_child(name_label)
 	column.add_child(MHStyle.mono("%d  ·  %s" % [index,MHStyle.kg(int(EquipmentCatalog.get_entry(id).get("cargo_cost",0)))],11,MHStyle.TEXT_MUTED))
