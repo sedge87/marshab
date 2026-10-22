@@ -190,11 +190,17 @@ func _process(delta: float) -> void:
 	_apply_light_budget()
 	var eye := get_viewport().get_camera_3d()
 	if eye != null: builder.update_furniture_visibility(eye.global_position)
+	# Room lights: the room you're in counts as occupied (like a motion sensor).
+	var you_in := builder._room_key_at(Vector2(player.global_position.x, player.global_position.z)) if builder.is_inside(player.global_position) else ""
+	if builder.simulation().player_room != you_in:
+		builder.simulation().player_room = you_in
+		builder.simulation().invalidate()
+	builder.update_room_lights()
 	var inside: bool = not builder.build_mode and (builder.is_inside(player.global_position) or bool(lander.cabin_contains(player.global_position)))
 	MHAudio.ambience("inside" if inside else "outside")
 	# Interior fill light only while the habitat's own lights are on (not in
 	# the lander, which keeps its own dim cabin lighting).
-	var fill := not builder.build_mode and builder.is_inside(player.global_position) and builder.grid_power_online()
+	var fill := not builder.build_mode and builder.is_inside(player.global_position) and builder.room_light_state(you_in) == "on"
 	var in_cabin: bool = lander.cabin_contains(player.global_position) or cargo_landers.any(func(c): return c.hold_contains(player.global_position))
 	var in_habitat: bool = not builder.build_mode and builder.is_inside(player.global_position)
 	if environment.interior_fill != fill or environment.cabin_dim != in_cabin or environment.inside_habitat != in_habitat:
@@ -207,6 +213,11 @@ func _apply_light_budget() -> void:
 	if _budget_dirty:
 		_budget_dirty = false
 		_budget_lights = find_children("*", "Light3D", true, false).filter(func(l): return not (l is DirectionalLight3D) and not player.is_ancestor_of(l) and not bool(l.get_meta("budget_exempt", false)))
+		# Lights at the edge of the budget fade out with distance, not pop.
+		for light in _budget_lights:
+			(light as Light3D).distance_fade_enabled = true
+			(light as Light3D).distance_fade_begin = LIGHT_RANGE - 10.0
+			(light as Light3D).distance_fade_length = 8.0
 	var camera := get_viewport().get_camera_3d()
 	if camera == null: return
 	var eye := camera.global_position

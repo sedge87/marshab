@@ -60,6 +60,27 @@ var _inventory: Dictionary = {}
 var _pending_hours := 0.0
 var _stale_power := true
 var _rng := RandomNumberGenerator.new()
+## Room lighting. Each room is "on", "dim" (night strips) or "off". Auto:
+## on where the crew are scheduled to be this hour or where you are, dim
+## elsewhere. A wall panel can force a room (saved). Lighting power follows.
+var light_overrides := {}      # room key -> "on" | "dim" | "off"
+var player_room := ""          # room key you're in (set by the world)
+const LIGHT_FACTOR := {"on": 1.0, "dim": .12, "off": 0.0}
+
+func light_state(room: Dictionary, occupants: float) -> String:
+	var forced := str(light_overrides.get(room.key, ""))
+	if not forced.is_empty(): return forced
+	return "on" if occupants > .25 or str(room.key) == player_room else "dim"
+
+## Every room's light state right now: {room key: "on" | "dim" | "off"}.
+func room_light_states(hour: float) -> Dictionary:
+	var inv := inventory()
+	var people := _crew_by_room(inv.rooms, crew_count_for(inv.capacity), hour)
+	var states := {}
+	for index in range(inv.rooms.size()):
+		states[inv.rooms[index].key] = light_state(inv.rooms[index], float(people[index]))
+	return states
+
 ## Random dust storms in play; Mission tests script their storms instead.
 var random_storms := true
 
@@ -77,7 +98,7 @@ func invalidate() -> void:
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
 		"room_temp": room_temp.duplicate(), "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
-		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg}
+		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate()}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -89,6 +110,7 @@ func load(state: Dictionary) -> void:
 	_known_capacity = (state.get("known_capacity", _known_capacity) as Dictionary).duplicate()
 	_food_delivered = bool(state.get("food_delivered", false))
 	printed_kg = float(state.get("printed_kg", 0.0))
+	light_overrides = (state.get("light_overrides", {}) as Dictionary).duplicate()
 	invalidate()
 
 # ---------- what is in the habitat ----------
@@ -318,7 +340,10 @@ func step(dt: float, hour: float) -> void:
 		var spec := MHResources.room(str(room.kind))
 		room_base_kw.append(float(room.cells) * float(spec.get("always_kw_per_cell", .03)))
 	var room_light_kw: Array = []
-	for room in rooms: room_light_kw.append(float(room.cells) * float(MHResources.room(str(room.kind)).get("light_kw_per_cell", .05)) if night else 0.0)
+	for index in range(rooms.size()):
+		var room: Dictionary = rooms[index]
+		var level: float = LIGHT_FACTOR[light_state(room, float(people[index]))]
+		room_light_kw.append(float(room.cells) * float(MHResources.room(str(room.kind)).get("light_kw_per_cell", .05)) * level if night else 0.0)
 	var loss: Array = []
 	var window_u := u * MHResources.setting("window_loss_factor", 6.0) * MHResources.setting("window_area", 3.0)
 	for index in range(rooms.size()):
@@ -543,10 +568,12 @@ func step_power_only(hour: float) -> void:
 	var inv := inventory()
 	var tiers := {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0}
 	var night := MHGame.solar_irradiance(hour) < .05
-	for room in inv.rooms:
+	var people := _crew_by_room(inv.rooms, crew_count_for(inv.capacity), hour)
+	for index in range(inv.rooms.size()):
+		var room: Dictionary = inv.rooms[index]
 		var spec := MHResources.room(str(room.kind))
 		tiers[1] += float(room.cells) * float(spec.get("always_kw_per_cell", .03))
-		if night: tiers[3] += float(room.cells) * float(spec.get("light_kw_per_cell", .05))
+		if night: tiers[3] += float(room.cells) * float(spec.get("light_kw_per_cell", .05)) * float(LIGHT_FACTOR[light_state(room, float(people[index]))])
 	for item in inv.items: tiers[item.tier] += item.power
 	for richness in inv.drills: tiers[4] += MHResources.item_value("ice_drill", "power_kw", 3.0)
 	tiers[4] += int(inv.get("intakes", 0)) * MHResources.item_value("regolith_intake", "power_kw", 1.5)

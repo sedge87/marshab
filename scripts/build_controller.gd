@@ -10,6 +10,7 @@ const HABITAT_SIM := preload("res://scripts/habitat_sim.gd")
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const ModelThumbnails := preload("res://scripts/model_thumbnails.gd")
 const PARTITION_DOOR_SCRIPT := preload("res://scripts/partition_door.gd")
+const ROOM_LIGHT_PANEL := preload("res://scripts/room_light_panel.gd")
 const ICE_SURVEY_SHADER := preload("res://shaders/ice_survey.gdshader")
 const ROOM_IDENTITY := preload("res://scripts/room_identity.gd")
 ## Interior partition walls: 1.5 m segments on the half-cell grid inside a
@@ -2381,12 +2382,173 @@ func _rebuild() -> void:
 		_add_door(Vector3(door_cell.x * CELL, 0, door_cell.y * CELL), door_side, "INTERIOR", true)
 	_build_partitions()
 	ROOM_IDENTITY.build(self)   # colour bands, door signs, per-room overhead detail
+	_add_room_fills()
+	_add_light_panels()
 	_prune_hull_windows()
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
 	for zone in zones: _add_zone_label(zone)
 	_set_build_view(build_mode); _update_budget(); _update_summary(); _update_systems(); _apply_grid_power()
+	update_room_lights(true)
 	habitat_changed.emit()
+
+# ---------- room lighting ----------
+# Each room is on, dim or off (HabitatSim.light_state: the crew's schedule,
+# where you are, and wall-panel overrides). A lit room gets one soft fill
+# light (one per 3x3 cells in big rooms) instead of a light per fixture, so a
+# whole base needs a couple of dozen real lights; fixtures glow to match.
+
+const FILL_ON := Color("#FFE7B2")
+const FILL_DIM := Color("#8FA6CF")
+
+func _room_key_at(point: Vector2) -> String:
+	var zone := _zone_at_point(point)
+	return simulation()._room_key(zone) if not zone.is_empty() else ""
+
+## Clusters of a room's floor (centre, radius) for its fill lights.
+func _fill_spots(zone: Dictionary) -> Array:
+	if zone.has("outline"):
+		var outline := zone_outline(zone)
+		var middle := _outline_centroid(outline)
+		var reach := 0.0
+		for point in outline: reach = maxf(reach, point.distance_to(middle))
+		return [[middle, minf(reach * .85 + 1.0, 11.0)]]
+	var blocks := {}
+	for cell in zone.get("cells", []):
+		var block := Vector2i(floori(float(cell.x) / 3.0), floori(float(cell.y) / 3.0))
+		if not blocks.has(block): blocks[block] = []
+		blocks[block].append(cell)
+	var spots: Array = []
+	for block in blocks:
+		var middle := Vector2.ZERO
+		for cell in blocks[block]: middle += Vector2(cell.x, cell.y) * CELL
+		middle /= float(blocks[block].size())
+		var reach := 0.0
+		for cell in blocks[block]: reach = maxf(reach, (Vector2(cell.x, cell.y) * CELL).distance_to(middle))
+		spots.append([middle, reach + 2.6])
+	return spots
+
+func _add_room_fills() -> void:
+	for zone in zones:
+		if not _is_habitat_zone(zone): continue
+		var key: String = simulation()._room_key(zone)
+		for spot in _fill_spots(zone):
+			var light := OmniLight3D.new()
+			light.name = "RoomFill"
+			light.position = Vector3(spot[0].x, habitat_base_y + 2.45, spot[0].y)
+			light.omni_range = float(spot[1])
+			light.omni_attenuation = 1.15
+			light.shadow_enabled = false
+			light.light_energy = 0.0
+			light.visible = false
+			light.set_meta("room_key", key)
+			light.set_meta("budget_exempt", true)
+			light.set_meta("full_energy", 1.9 if str(zone.kind) == "hydroponics" else 1.45)
+			light.add_to_group("room_fill")
+			root.add_child(light)
+
+## One light panel per room, on a solid wall (not a window), preferring the
+## wall nearest a door so it's by the way in.
+func _add_light_panels() -> void:
+	var doors: Array = get_tree().get_nodes_in_group("airlock_door").map(func(d): return Vector2((d as Node3D).global_position.x, (d as Node3D).global_position.z))
+	for zone in zones:
+		if not _is_habitat_zone(zone): continue
+		var best := {}
+		var best_score := INF
+		for wall in _room_walls(zone):
+			var mid: Vector2 = wall.mid
+			var score := 999.0
+			for door in doors: score = minf(score, mid.distance_to(door))
+			if score < 1.0: continue   # the doorway itself
+			if score < best_score:
+				best_score = score
+				best = wall
+		if best.is_empty(): continue
+		var inward: Vector2 = best.inward
+		var at: Vector2 = best.mid + inward * .1
+		var panel := StaticBody3D.new()
+		panel.set_script(ROOM_LIGHT_PANEL)
+		panel.name = "LightPanel"
+		panel.collision_layer = 1
+		panel.position = Vector3(at.x, habitat_base_y + 1.3, at.y)
+		panel.rotation.y = atan2(-inward.x, -inward.y) + PI
+		var plate := MeshInstance3D.new(); var plate_mesh := BoxMesh.new(); plate_mesh.size = Vector3(.16, .24, .04); plate.mesh = plate_mesh
+		var plate_material := StandardMaterial3D.new(); plate_material.albedo_color = MHStyle.SEAL_DARK.lightened(.1); plate.material_override = plate_material
+		panel.add_child(plate)
+		var lamp := MeshInstance3D.new(); var lamp_mesh := BoxMesh.new(); lamp_mesh.size = Vector3(.1, .03, .01); lamp.mesh = lamp_mesh
+		lamp.position = Vector3(0, .06, -.025)
+		var lamp_material := StandardMaterial3D.new(); lamp_material.emission_enabled = true; lamp_material.emission_energy_multiplier = 1.2
+		lamp.material_override = lamp_material
+		panel.add_child(lamp)
+		var key_plate := MeshInstance3D.new(); var key_mesh := BoxMesh.new(); key_mesh.size = Vector3(.08, .08, .015); key_plate.mesh = key_mesh
+		key_plate.position = Vector3(0, -.04, -.025)
+		var key_material := StandardMaterial3D.new(); key_material.albedo_color = Color("#D8DDDF"); key_plate.material_override = key_material
+		panel.add_child(key_plate)
+		var shape := CollisionShape3D.new(); var box := BoxShape3D.new(); box.size = Vector3(.2, .28, .08); shape.shape = box
+		panel.add_child(shape)
+		root.add_child(panel)
+		panel.call("setup", self, simulation()._room_key(zone), str(ZONE_TYPES.get(str(zone.kind), {}).get("label", zone.kind)), lamp_material)
+
+## A room's solid walls: [{mid: Vector2, inward: Vector2}].
+func _room_walls(zone: Dictionary) -> Array:
+	var walls: Array = []
+	if zone.has("outline"):
+		var outline := zone_outline(zone)
+		var middle := _outline_centroid(outline)
+		for index in range(outline.size()):
+			var a: Vector2 = outline[index]
+			var b: Vector2 = outline[(index + 1) % outline.size()]
+			if a.distance_to(b) < 1.5: continue
+			var mid := (a + b) * .5
+			var inward := (b - a).orthogonal().normalized()
+			if inward.dot(middle - mid) < 0.0: inward = -inward
+			walls.append({"mid": mid, "inward": inward})
+		return walls
+	for cell in zone.get("cells", []):
+		for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			if not _should_build_wall(cell, side): continue
+			var mid := Vector2(cell.x, cell.y) * CELL + Vector2(side) * CELL * .5
+			if _window_index_at(mid, Vector2(side)) >= 0: continue
+			walls.append({"mid": mid, "inward": -Vector2(side)})
+	return walls
+
+## The light state of a room right now ("on", "dim" or "off").
+func room_light_state(key: String) -> String:
+	if not grid_power_online(): return "off"
+	return str(simulation().room_light_states(MHGame.sol_hour).get(key, "dim"))
+
+## Sets every fill light and fixture to its room's state; fades changes.
+func update_room_lights(force := false) -> void:
+	if not is_inside_tree(): return
+	var online := grid_power_online()
+	var states: Dictionary = simulation().room_light_states(MHGame.sol_hour) if online else {}
+	if not force and states == _last_light_states and online == _last_lights_online: return
+	_last_light_states = states
+	_last_lights_online = online
+	for node in get_tree().get_nodes_in_group("room_fill"):
+		var light := node as OmniLight3D
+		var state := str(states.get(str(light.get_meta("room_key", "")), "off"))
+		# Only lit rooms get a real light: in this renderer every light redraws
+		# what it touches, so dim rooms are just their glowing night strips.
+		var energy := float(light.get_meta("full_energy", 1.45)) if state == "on" else 0.0
+		light.light_color = FILL_ON if state == "on" else FILL_DIM
+		if energy > 0.0: light.visible = true
+		var fade := light.create_tween()   # dies with the light if a rebuild removes it
+		fade.tween_property(light, "light_energy", energy, .8 if not force else .01)
+		if energy <= 0.0: fade.tween_callback(func() -> void: light.visible = false)
+	for node in get_tree().get_nodes_in_group("room_fixture"):
+		var mesh := node as MeshInstance3D
+		var material := mesh.material_override as StandardMaterial3D
+		if material == null: continue
+		var state := str(states.get(str(mesh.get_meta("room_key", "")), "off"))
+		material.emission_enabled = state != "off"
+		material.albedo_color = Color("#F3E4C6") if state == "on" else (Color("#A9B6CC") if state == "dim" else Color("#293034"))
+		material.emission = Color("#FFE7B2") if state == "on" else Color("#5E7FB8")
+		material.emission_energy_multiplier = 1.7 if state == "on" else .45
+	for node in get_tree().get_nodes_in_group("room_light_panel"): node.refresh()
+
+var _last_light_states := {}
+var _last_lights_online := false
 
 func _merge_touching_same_type_rooms() -> void:
 	# Rooms of the same purpose that share a wall are one continuous volume,
@@ -3085,24 +3247,11 @@ func _add_powered_fixture(position: Vector3, zone_kind: String, basis := Basis.I
 	diffuser_material.emission = Color("#FFE7B2")
 	diffuser_material.emission_energy_multiplier = 1.7
 	diffuser.material_override = diffuser_material
-	diffuser.add_to_group("grid_powered_light")
-	diffuser.set_meta("grid_emission_on", Color("#FFE7B2"))
-	diffuser.set_meta("grid_emission_off", Color("#293034"))
+	# Lit by its room's state (update_room_lights), not by a light of its own:
+	# each room has one soft fill light instead of one light per fixture.
+	diffuser.add_to_group("room_fixture")
+	diffuser.set_meta("room_key", _room_key_at(Vector2(position.x, position.z)))
 	fixture.add_child(diffuser)
-	var light := OmniLight3D.new()
-	light.position = Vector3(0, -.20, 0)
-	light.light_color = Color("#FFE7B2")
-	# One light per two cells must light the whole enclosed room at night, not
-	# merely make the diffuser itself visible.
-	# Overlapping fixtures (one per two cells) plus the interior fill light;
-	# brighter values blew out the white composite walls and equipment.
-	light.light_energy = 1.5 if zone_kind != "hydroponics" else 1.9
-	light.omni_range = 6.5
-	light.omni_attenuation = 1.4   # falls off towards the walls instead of flattening them
-	light.shadow_enabled = false
-	light.add_to_group("grid_powered_light")
-	light.set_meta("grid_light_energy", light.light_energy)
-	fixture.add_child(light)
 
 func _cell_walls(cell: Vector2i,zone: Dictionary) -> void:
 	var zone_kind:=str(zone.kind); var colour:Color=ZONE_TYPES[zone_kind].colour; var centre:=Vector3(cell.x*CELL,0,cell.y*CELL)
@@ -4456,6 +4605,7 @@ func _apply_grid_power() -> void:
 			material.emission_enabled = online
 			material.albedo_color = Color("#F3E4C6") if online else Color("#293034")
 			material.emission = device.get_meta("grid_emission_on", Color.WHITE) if online else device.get_meta("grid_emission_off", Color("#293034"))
+	update_room_lights()
 
 func _solar_efficiency(direction: Vector2i, sun_heading := Vector2.INF) -> float:
 	# Panels catch most light facing the sun. It crosses the southern sky, so a
