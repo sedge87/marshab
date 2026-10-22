@@ -45,6 +45,11 @@ func _ready() -> void:
 	var esc := MHStyle.keycap("Esc")
 	esc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(esc)
+	var monitor_button := MHStyle.button("Monitor", "primary", "monitor")
+	monitor_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	monitor_button.tooltip_text = "The habitat's systems live, room by room"
+	monitor_button.pressed.connect(func() -> void: get_tree().call_group("habitat_world", "open_monitor"))
+	header.add_child(monitor_button)
 	var alerts := get_tree().get_first_node_in_group("habitat_alerts")
 	var count: int = (alerts.history as Array).size() if alerts != null else 0
 	if MHMissions.active():

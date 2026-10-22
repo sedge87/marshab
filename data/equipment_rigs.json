@@ -3016,12 +3016,8 @@
     "actions": [
       {
         "key": "primary",
-        "type": "inspect",
-        "readout": "habitat_status",
-        "glow": [
-          "indicator_lamps"
-        ],
-        "label": "Check habitat systems"
+        "type": "monitor",
+        "label": "Open the habitat monitor"
       },
       {
         "key": "secondary",

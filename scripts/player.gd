@@ -59,7 +59,7 @@ func _physics_process(delta: float) -> void:
 	# Exterior construction uses the same movement keys to pan its bird's-eye
 	# camera. Freeze the character in place so panning never changes the real
 	# player cell represented by the build-mode marker.
-	if bool(get_meta("build_mode_active", false)):
+	if bool(get_meta("build_mode_active", false)) or bool(get_meta("ui_freeze", false)):
 		velocity = Vector3.ZERO
 		return
 	if bool(get_meta("debug_fly", false)):

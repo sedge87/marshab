@@ -3,6 +3,7 @@ extends Node3D
 const WEATHER_SCRIPT := preload("res://scripts/weather.gd")
 const ALERTS_SCRIPT := preload("res://scripts/habitat_alerts.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
+const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const ORIGINAL_ENVIRONMENT_SCRIPT := preload("res://scripts/original_mars_environment.gd")
@@ -33,6 +34,7 @@ var dust: CPUParticles3D
 var weather: Node   # scripts/weather.gd: storm warnings, haze, dust and sound
 var alerts: Node    # scripts/habitat_alerts.gd: habitat alerts (backlog 26)
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
+var monitor: Control            # scripts/habitat_monitor.gd: the live habitat monitor, while open
 var scout_rover: Node3D
 var interior_builder: MHInteriorBuildController
 var surface_builder: MHSurfaceBuildController
@@ -74,6 +76,7 @@ var _arrival_landed := false
 const ARRIVAL_LENGTH := 10.5
 
 func _ready() -> void:
+	add_to_group("habitat_world")
 	MHGame.set_accent(MHGame.accent_index)
 	_build_landscape()
 	if MHMissions.active() and MHGame.pending_save_state.has("missions_progress"):
@@ -163,6 +166,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			debug_panel.toggle()
 		get_viewport().set_input_as_handled()
 		return
+	if monitor != null: return   # the monitor handles Esc and M itself
 	if event.is_action_pressed("ui_cancel"):
 		if pause_menu == null: _show_pause()
 		else: _resume()
@@ -687,6 +691,26 @@ func _open_mission_control() -> void:
 		if mission_hud != null: mission_hud.visible = true
 		_unpause())
 	overlay_layer.add_child(mission_control)
+
+## The habitat monitor: live, so the game keeps running while you read it
+## (you stand still). From Mission Control's header or the Mission Planning
+## Console in the base.
+func open_monitor() -> void:
+	if monitor != null: return
+	if mission_control != null: mission_control._close()
+	if pause_menu != null: _close_pause()
+	get_tree().paused = false
+	MHAudio.muffle(false)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	player.set_meta("ui_freeze", true)
+	if mission_hud != null: mission_hud.visible = false
+	monitor = HABITAT_MONITOR.new().setup(self)
+	monitor.closed.connect(func() -> void:
+		monitor = null
+		player.set_meta("ui_freeze", false)
+		if mission_hud != null: mission_hud.visible = true
+		_unpause())
+	overlay_layer.add_child(monitor)
 
 func _show_pause() -> void:
 	if mission_control != null: return

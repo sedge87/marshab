@@ -38,6 +38,10 @@ var _pills: HBoxContainer
 var _edge: ColorRect
 var _clock := 0.0
 var _explained: Dictionary = {}   # alert ids already explained this session
+## The last sol of power made, power used and battery charge, every quarter
+## hour, for the monitoring station's strip (habitat_monitor.gd). Not saved.
+var day: Array = []
+var _last_sample := -1.0
 var _was_inside := true
 var _welcomed := false
 var _welcome_wait := 0.0
@@ -68,9 +72,19 @@ func _process(delta: float) -> void:
 	if get_tree().paused: return
 	_welcome()
 	if not MHGame.simulation_on(): return
+	_record_day()
 	var found := evaluate()
 	if not bool(MHGame.setting("alert_advisories")): found = found.filter(func(a): return str(a.level) != "advisory")
 	_update(found)
+
+func _record_day() -> void:
+	var s = sim()
+	var now := float(s.hours_run)
+	if _last_sample >= 0.0 and now - _last_sample < .25: return
+	_last_sample = now
+	var snap: Dictionary = s.snapshot(MHGame.sol_hour)
+	day.append({"t": now, "made": float(snap.generation_kw), "used": float(snap.load_kw), "battery": float(snap.battery_pct)})
+	while not day.is_empty() and now - float(day[0].t) > 24.0: day.pop_front()
 
 ## Coming in from outside: the habitat greets you (not more than once a minute).
 func _welcome() -> void:

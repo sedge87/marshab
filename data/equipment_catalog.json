@@ -1914,7 +1914,7 @@
       "effects": {},
       "asset_scene": "res://assets/equipment/mars_mission_operations_repack/mission_planning_console.tscn",
       "role": "Mission planning",
-      "description": "The desk where the crew plans each day's work and checks the habitat's systems.",
+      "description": "The base's monitoring station: press E to see every room and system live.",
       "label": "Mission Planning Console",
       "group": "communications",
       "valid_zones": [
