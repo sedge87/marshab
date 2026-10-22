@@ -644,8 +644,14 @@ func _set_glow(meshes: Array, on: bool, dark_when_off := false) -> void:
 			var source := mesh_instance.get_active_material(0) as StandardMaterial3D
 			var lit := source.duplicate() as StandardMaterial3D if source != null else StandardMaterial3D.new()
 			lit.emission_enabled = true
-			lit.emission = Color("#9CE8FF") if not str(mesh_instance.name).to_lower().contains("lamp") and not str(mesh_instance.name).to_lower().contains("light") else Color("#FFE2A6")
+			var lamp := str(mesh_instance.name).to_lower().contains("lamp") or str(mesh_instance.name).to_lower().contains("light")
+			lit.emission = Color("#FFE2A6") if lamp else Color("#9CE8FF")
 			lit.emission_energy_multiplier = 2.6
+			if not lamp:
+				# Screens and status panels: a soft glow on a darkened face, so a
+				# display reads as a display instead of a white blowout.
+				lit.albedo_color = lit.albedo_color.darkened(.55)
+				lit.emission_energy_multiplier = .55
 			var dark := source.duplicate() as StandardMaterial3D if source != null else StandardMaterial3D.new()
 			if dark_when_off:
 				dark.albedo_color = Color("#4A4F52")

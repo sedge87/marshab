@@ -308,6 +308,7 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		preview = builder.free_interior_visual(selected_id, point, _placement_yaw(normal))
 		preview.name = "InteriorBuildPreview"
 		preview.set_meta("preview", true)
+		_strip_behaviour(preview)
 		add_child(preview)
 		_disable_preview_collision(preview)
 		_set_preview_material(preview, _valid_reason.is_empty())
@@ -361,6 +362,12 @@ func _placement_yaw(normal: Vector3) -> float:
 		return atan2(-normal.x, -normal.z) + rotation_offset
 	# Models face -Z; turn them half round so the front faces the player.
 	return player.rotation.y + PI + float(entry.get("model_rotation_y", 0.0)) + rotation_offset
+
+## A hologram is only a shape: no interaction rig (its lamps, glow materials
+## and cupboard interiors) and no inspect wrapper running on it.
+func _strip_behaviour(node: Node) -> void:
+	for child in node.find_children("*", "", true, false):
+		if child.get_script() != null: child.set_script(null)
 
 func _disable_preview_collision(node: Node) -> void:
 	for body in node.find_children("*", "StaticBody3D", true, false):

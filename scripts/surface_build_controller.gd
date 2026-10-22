@@ -121,6 +121,9 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		if preview != null: preview.queue_free()
 		preview = builder.surface_visual(selected_id, point, player.rotation.y + rotation_offset)
 		preview.name = "SurfaceBuildPreview"
+		# A hologram is only a shape: no interaction rig running on it.
+		for child in preview.find_children("*", "", true, false):
+			if child.get_script() != null: child.set_script(null)
 		add_child(preview)
 		for body in preview.find_children("*", "StaticBody3D", true, false):
 			(body as StaticBody3D).collision_layer = 0
