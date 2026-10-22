@@ -300,10 +300,15 @@ def hum(length=8.0):
     out = np.zeros_like(t)
     for k, amp in ((1, 1.0), (2, 0.5), (3, 0.28), (4, 0.12), (6, 0.05)):
         out += np.sin(2 * np.pi * 50 * k * t) * amp
-    fan = lowpass(noise(length), 700) * 1.2
-    vent = bandpass(noise(length), 1800, 400) * 0.2 * (0.7 + 0.3 * np.sin(2 * np.pi * 1 / length * t))
+    # Mostly a soft electrical hum; the air handling is a low murmur, not a
+    # rush (the same noise draws as before, so the files after this one
+    # regenerate unchanged).
+    fan = lowpass(noise(length), 160)
+    fan = fan / np.std(fan) * 0.18
+    vent = bandpass(noise(length), 1800, 400)
+    vent = vent / np.std(vent) * 0.012 * (0.7 + 0.3 * np.sin(2 * np.pi * 1 / length * t))
     # A slow 0.5 Hz life-support "breath" (4 whole cycles per loop).
-    return (out * 0.35 + fan + vent) * (0.85 + 0.15 * np.sin(2 * np.pi * 4 / length * t))
+    return (out * 0.5 + fan + vent) * (0.92 + 0.08 * np.sin(2 * np.pi * 4 / length * t))
 
 
 # ---------- effects ----------

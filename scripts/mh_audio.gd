@@ -238,7 +238,7 @@ func _set_build_layer(on: bool) -> void:
 func _set_space(space: String) -> void:
 	if space == _space: return
 	_space = space
-	var levels: Array = {"outside": [-12.0, -80.0], "inside": [-44.0, -15.0], "menu": [-20.0, -80.0], "off": [-80.0, -80.0]}.get(space, [-80.0, -80.0])
+	var levels: Array = {"outside": [-12.0, -80.0], "inside": [-80.0, -27.0], "menu": [-20.0, -80.0], "off": [-80.0, -80.0]}.get(space, [-80.0, -80.0])
 	_fade(_wind, levels[0], 1.5, levels[0] <= -80.0)
 	_fade(_hum, levels[1], 1.0, levels[1] <= -80.0)
 	_apply_storm()
