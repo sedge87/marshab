@@ -1,0 +1,47 @@
+{
+  "style": "GAR-Y rover dock: pad, pylon and charging plug, same materials as the furnishings pack",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "rover_charger",
+      "file": "rover_charger.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.59,
+          -0.003,
+          -0.8
+        ],
+        [
+          0.59,
+          1.03,
+          0.817
+        ]
+      ],
+      "triangles": 3820,
+      "named_components": [
+        "badge",
+        "battery_bars_screen",
+        "cable_black",
+        "charging_plug",
+        "charging_plug_tip_satin",
+        "chevrons",
+        "guide_rails",
+        "pad",
+        "pad_deck_slate",
+        "plug_housing",
+        "pylon-colonly",
+        "pylon_base",
+        "pylon_cap_white",
+        "pylon_rover",
+        "rail_lights_lamp",
+        "ramp_lip",
+        "screen_dark",
+        "screen_frame",
+        "service_hatch_warm",
+        "side",
+        "status_ring_screen"
+      ]
+    }
+  ]
+}

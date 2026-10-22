@@ -34,7 +34,7 @@ func _initialize() -> void:
 	var x := -6.0
 	var rigs := {}
 	for id in ITEMS:
-		_check(str(EquipmentCatalog.get_entry(id).get("asset_scene", "")).contains("hailmary"), "%s uses the new pack scene" % id)
+		_check(str(EquipmentCatalog.get_entry(id).get("asset_scene", "")).contains("hailmary" if id != "rover_charger" else "mars_rover_dock_v1"), "%s uses the new pack scene" % id)   # the charger is now GAR-Y's dock
 		_check(not str(EquipmentCatalog.get_entry(id).get("system_note", "")).is_empty(), "%s has an info card" % id)
 		var at := Vector3(x, builder.habitat_base_y, 0)
 		var visual := builder.free_interior_visual(id, at, 0.0)

@@ -88,6 +88,25 @@ func _initialize() -> void:
 	g.interact()
 	_check(not g.napping, "a ping wakes it")
 
+	# Docking: a GAR-Y dock in its room; it reverses on and the plug goes in.
+	var dock_at := Vector3(67.5, y, 61.5)
+	b.place_free_interior_equipment("rover_charger", dock_at, PI, Vector2i(22, 20), b.free_interior_visual("rover_charger", dock_at, PI))
+	var dock_visual: Node3D = g._item_visual(str(b.placed_interior[-1].placement_id))
+	var dock_rig: Node = dock_visual.get_node("Model")
+	_check(not dock_visual.find_children("*", "CollisionShape3D", true, false).is_empty() and dock_visual.get_node_or_null("InteriorCollision") != null and (dock_visual.get_node("InteriorCollision") as Node).get_child_count() == 0, "the dock's collision is its pylon only, so GAR-Y can drive onto the pad")
+	world.player.global_position = Vector3(59.5, y + .2, 66.5)
+	g.global_position = Vector3(65.0, y + .2, 64.0)
+	g.velocity = Vector3.ZERO
+	_check(g._start_charge(), "GAR-Y heads for its dock")
+	await _wait(9.0)
+	var dock_spot: Vector3 = Transform3D(Basis(Vector3.UP, PI), dock_at) * g.DOCK_SPOT
+	_check(g.docked and g.napping, "it docks and naps")
+	_check(Vector2(g.global_position.x, g.global_position.z).distance_to(Vector2(dock_spot.x, dock_spot.z)) < .15 and absf(wrapf(g.rotation.y - PI, -PI, PI)) < .1, "on the pad, facing out (%s)" % [g.global_position])
+	_check(bool(dock_rig._state.get("plug", false)), "the charging plug slides into its bumper")
+	_check(g.status_text().begins_with("charging"), "its prompt says it's charging")
+	g._wake()
+	_check(not bool(dock_rig._state.get("plug", false)) and not g.docked, "waking up unplugs it")
+
 	# Autonomy off: no errands start on their own.
 	MHGame._settings["gary_autonomy"] = false
 	g._mischief_timer = 0.0; g._plush_timer = 0.0; g._survey_timer = 0.0
@@ -100,5 +119,5 @@ func _initialize() -> void:
 	g.restore_state(saved)
 	_check(g.flags.size() == 1 and g.ice_found == 1, "flags come back on load")
 	if failures == 0:
-		print("GAR-Y test passed: model, torch, ping, survey flags, carrying clutter, plush, naps, autonomy switch and saving.")
+		print("GAR-Y test passed: model, torch, ping, survey flags, carrying clutter, plush, docking, naps, autonomy switch and saving.")
 	quit(1 if failures > 0 else 0)

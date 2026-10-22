@@ -1583,12 +1583,12 @@
         "offset": [
           0,
           0,
-          -0.35
+          -0.09
         ],
         "label_on": "Stow charging plug",
-        "label_off": "Connect rover",
+        "label_off": "Extend charging plug",
         "state": "plug",
-        "note_on": "Charging plug out. A rover's batteries take hours to fill from the habitat grid; charging during the day uses spare solar power."
+        "note_on": "Charging plug out. GAR-Y docks here at night when it's in this room; its batteries refill from the habitat grid."
       },
       {
         "key": "secondary",

@@ -138,6 +138,14 @@ func _run(key: String, _actor: Node) -> bool:
 		return true
 	return false
 
+## Sets an action's state from outside (GAR-Y docking plugs itself in).
+func set_state_key(key: String, value: Variant) -> void:
+	for index in range(_actions.size()):
+		if str(_actions[index].get("state", "")) == key:
+			_set_state(key, value)
+			_apply_state(index, true)
+			return
+
 func _set_state(key: String, value: Variant) -> void:
 	_state[key] = value
 	if _builder() != null and not _placement_id().is_empty(): _builder().set_interior_state(_placement_id(), key, value)

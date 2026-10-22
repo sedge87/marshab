@@ -70,6 +70,7 @@ var _worry_timer := 0.0
 var _pings: Array = []
 var _was_storm := false
 var _carried: Node3D
+var _rest_until := 0         # a nap or dock lasts at least until this (msec)
 
 # ---- movement (as before) ----
 var _roam_goal := Vector3.INF
@@ -190,12 +191,14 @@ func _physics_process(delta: float) -> void:
 		_stuck_timer = _stuck_timer + delta if progress < .01 else 0.0
 		if _stuck_timer > 2.0:
 			_stuck_timer = 0.0
-			if not task.is_empty(): _end_task(true)
+			# Blocked just short (by you, say): close enough to carry on.
+			if not task.is_empty() and distance < 1.3: _arrived()
+			elif not task.is_empty(): _end_task(true)
 			elif _roam_goal != Vector3.INF: _roam_goal = _pick_roam_goal()
 	_animate(before, delta)
 	_pet_sounds(delta)
 	# Stranded far away (and not off on an errand): respawn behind the player.
-	var leash := catch_up_distance * (2.6 if not task.is_empty() else 1.0)
+	var leash := catch_up_distance * (2.6 if not task.is_empty() else 1.0) if not docked else 40.0
 	if global_position.distance_to(target.global_position) > leash:
 		if not task.is_empty(): _end_task(true)
 		global_position = _spawn_point()
@@ -217,7 +220,9 @@ func _think(delta: float) -> void:
 	# Naps: at night once it's been still near you a while; wakes for daylight,
 	# a ping, or when you walk off.
 	if napping:
-		if not dark or target.global_position.distance_to(global_position) > 7.0:
+		# On its dock it stays on charge while you move about the base.
+		var wander_off := 40.0 if docked else 7.0
+		if (not dark and Time.get_ticks_msec() > _rest_until) or target.global_position.distance_to(global_position) > wander_off:
 			_wake()
 	elif task.is_empty() and dark and _idle_time > NAP_AFTER:
 		if indoors and autonomy and _start_charge(): pass
@@ -466,7 +471,11 @@ func _nudge_plush() -> void:
 	_say("happy")
 	_end_task()
 
-# ---- night: dock on a charger in the room, or nap ----
+# ---- night: dock on its charger in the room, or nap ----
+
+## Where GAR-Y sits on a dock's pad (dock-local), and where it lines up first.
+const DOCK_SPOT := Vector3(0, 0, -0.16)
+const DOCK_APPROACH := Vector3(0, 0, -1.45)
 
 func _start_charge() -> bool:
 	if habitat == null: return false
@@ -474,25 +483,53 @@ func _start_charge() -> bool:
 	for item in habitat.placed_interior:
 		var at: Vector3 = item.get("position", Vector3.ZERO)
 		if str(item.get("id", "")) != "rover_charger" or habitat._zone_at_point(Vector2(at.x, at.z)) != room: continue
-		var yaw := float(item.get("rotation_y", 0.0))
-		var front := Vector3(-sin(yaw), 0, -cos(yaw))
-		_start("charge", at + front * .9, {"at": at})
+		var dock := Transform3D(Basis(Vector3.UP, float(item.get("rotation_y", 0.0))), at)
+		_start("charge", dock * DOCK_APPROACH, {"placement_id": str(item.placement_id), "dock": dock})
 		return true
 	return false
 
+## Lines up in front of the pad, reverses on, and the dock's plug slides
+## into its rear bumper.
 func _dock() -> void:
-	_face(task_data.at as Vector3)
+	_busy = true
+	var dock: Transform3D = task_data.dock
+	var yaw := dock.basis.get_euler().y
+	var turn := create_tween().set_trans(Tween.TRANS_SINE)
+	turn.tween_property(self, "rotation:y", rotation.y + wrapf(yaw - rotation.y, -PI, PI), .6)
+	await turn.finished
+	if task != "charge": return
+	var spot := dock * DOCK_SPOT
+	spot.y = global_position.y
+	var back := create_tween().set_trans(Tween.TRANS_SINE)
+	back.tween_property(self, "global_position", spot, 2.2)
+	await back.finished
+	if task != "charge": return
+	var rig := _dock_rig(str(task_data.placement_id))
+	if rig != null: rig.set_state_key("plug", true)
+	_say("sleepy")
 	docked = true
+	task_data = {"placement_id": task_data.placement_id}
 	task = ""
 	task_goal = Vector3.INF
+	_busy = false
 	_nap()
+
+func _dock_rig(placement_id: String) -> Node:
+	var visual := _item_visual(placement_id) if habitat != null else null
+	var rig := visual.get_node_or_null("Model") if visual != null else null
+	return rig if rig != null and rig.has_method("set_state_key") else null
 
 func _nap() -> void:
 	napping = true
+	_rest_until = Time.get_ticks_msec() + (60000 if docked else 20000)
 	_say("sleepy")
 	_set_pose("stow")
 
 func _wake() -> void:
+	if docked:
+		var rig := _dock_rig(str(task_data.get("placement_id", "")))
+		if rig != null: rig.set_state_key("plug", false)
+		task_data = {}
 	napping = false
 	docked = false
 	_idle_time = 0.0

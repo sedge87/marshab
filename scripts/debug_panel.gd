@@ -77,12 +77,12 @@ func _ready() -> void:
 
 	col.add_child(MHStyle.eyebrow("GAR-Y", MHStyle.accent))
 	var gary := _flow()
-	for spec in [["Survey now", "start_survey"], ["Move clutter", "start_fetch"], ["Nudge plush", "start_plush"], ["Nap", "_nap"]]:
+	for spec in [["Survey now", "start_survey"], ["Move clutter", "start_fetch"], ["Nudge plush", "start_plush"], ["Dock", "_start_charge"], ["Nap", "_nap"]]:
 		var g := _small_button(spec[0])
 		g.pressed.connect(func() -> void:
 			var rover = world.scout_rover
 			if rover == null: return
-			if spec[1] != "_nap" and not bool(rover.call(spec[1])): _info.text = "GAR-Y: nothing to do for that here (no odds and ends or plush in its room, or it's inside)."
+			if spec[1] != "_nap" and not bool(rover.call(spec[1])): _info.text = "GAR-Y: nothing to do for that here (no odds and ends, plush or GAR-Y dock in its room, or it's outside)."
 			elif spec[1] == "_nap": rover.call("_nap"))
 		gary.add_child(g)
 	col.add_child(gary)

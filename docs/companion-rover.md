@@ -8,7 +8,8 @@
 - **Moves clutter (indoors, very rare):** about every 20–30 minutes it picks up a small Odds & Ends item from the floor of its room. It carries the item in its gripper and puts it down at a new spot that passes the normal placement rules. The new spot is saved, and a toast owns up to it.
 - **Plays with the plush:** about every 8–15 minutes indoors, it rolls up to the zero-g plush and nudges it, so it squeaks.
 - **Worries:** indoors, if the power grid is down, it chirps worriedly and a toast says so.
-- **Naps:** at night, once it has been still near you for a while, it naps, with sleepy blue eyes, its head drooped and its lamp off. If there's a rover charger in its room, it docks there first ("charging"). It wakes at daylight, when you walk off, or when you ping it.
+- **Naps:** at night, once it has been still near you for a while, it naps, with sleepy blue eyes, its head drooped and its lamp off. It wakes at daylight, when you walk off, or when you ping it.
+- **Docks:** if there's a **GAR-Y Dock** in its room (Vehicle Bay, Storage or Power & Engineering), it docks there instead. It lines up in front of the pad, reverses on, the plug slides into its rear bumper, and its prompt says "charging". It stays on charge while you move about the base, and unplugs and rolls off at daylight (after at least a minute) or when you ping it.
 - **Ping (E):** a happy chirp and a wiggle. Ping three times quickly for a spin.
 - **Look at it:** shows "GAR-Y · <what it's doing>".
 - **Info (I):** the description, plus the ice deposits flagged and samples collected.
@@ -24,6 +25,7 @@
 - `assets/companions/gar_y.glb`: the exported model. The old `mars_scout_rover` files in `assets/companions/` are no longer used.
 - `scenes/mars_scout_rover.tscn`: the collision and model wrapper (the path is kept from the old rover).
 - `scripts/companion_rover.gd`: movement, the routine, moods and saving. Its tuning constants (how often things happen, arm poses, mood colours) are at the top.
+- `asset_packs/mars_rover_dock_v1/source/build_rover_dock.py`: the dock model (catalogue id `rover_charger`). Its collision is the pylon only (`pylon-colonly`), so GAR-Y can drive onto the pad.
 - `BuildController.move_free_interior_equipment()` / `free_interior_move_reason()`: how it moves things legally.
 - Tests: `tests/gar_y_test.gd` and `tests/build_keys_rover_test.gd`.
 

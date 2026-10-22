@@ -820,18 +820,20 @@
     },
     {
       "id": "rover_charger",
-      "label": "Rover Charger",
+      "label": "GAR-Y Dock",
       "group": "vehicle_bay",
-      "status": "future",
+      "status": "catalogue",
       "icon": "zap",
       "height": 1.2,
-      "description": "Floor cradle with cable reel and charge readout.",
+      "description": "GAR-Y's charging dock: a pad it reverses onto and a pylon whose plug slides into its rear bumper.",
       "role": "Active only with grid power",
       "primary_action": "Read charge status",
-      "asset_scene": "res://assets/equipment/mars_vehicle_eva_martian_hailmary_v1/rover_charger.tscn",
+      "asset_scene": "res://assets/equipment/mars_rover_dock_v1/rover_charger.tscn",
       "cargo_cost": 130,
       "valid_zones": [
-        "vehicle_bay"
+        "vehicle_bay",
+        "storage",
+        "engineering"
       ],
       "footprint": [
         1,
@@ -840,11 +842,11 @@
       "placement": "floor",
       "effects": {},
       "size_m": [
-        1.42,
-        1.398,
-        1.273
+        1.18,
+        1.033,
+        1.617
       ],
-      "pack": "mars_vehicle_eva_martian_hailmary_v1",
+      "pack": "mars_rover_dock_v1",
       "system_note": "Rovers let the crew travel kilometres to collect samples and check equipment. They run on batteries recharged from the habitat's power grid, so long drives are planned around the power the habitat can spare.",
       "system_links": [
         "Power",
