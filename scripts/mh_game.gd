@@ -95,7 +95,28 @@ static func normalise_mode(mode: String) -> String:
 ## landing bonus (low sites have thicker air for parachutes).
 static func mission_cargo_budget() -> int:
 	if game_mode == "missions": return preload("res://scripts/mh_missions.gd").cargo_budget()
-	return roundi(MHResources.setting("cargo_budget_kg", 120000.0) * (1.0 + float(MHResources.site(site_id).get("cargo_bonus", 0.0))))
+	var start := MHResources.setting("freedom_cargo_budget_kg", 120000.0) if game_mode == "freedom" else MHResources.setting("cargo_budget_kg", 80000.0)
+	return roundi(start * (1.0 + float(MHResources.site(site_id).get("cargo_bonus", 0.0)))) + resupply_kg
+
+# ---------- resupply landers (Survival and Freedom) ----------
+## Cargo delivered by resupply landers so far, and how many have landed.
+## Saved with the base; reset for a new game.
+static var resupply_kg := 0
+static var resupply_count := 0
+
+static func resupplies_on() -> bool:
+	return game_mode in ["survival", "freedom"]
+
+## Sols between launch windows (compressed: real ones are ~26 months apart).
+static func resupply_interval_sols() -> float:
+	return MHResources.setting("resupply_sols_freedom", 2.0) if game_mode == "freedom" else MHResources.setting("resupply_sols_survival", 3.0)
+
+static func resupply_size_kg() -> int:
+	return int(MHResources.setting("resupply_kg_freedom", 20000.0) if game_mode == "freedom" else MHResources.setting("resupply_kg_survival", 15000.0))
+
+## Game hours (of simulation time) until the next resupply lands.
+static func resupply_due_in_hours(hours_run: float) -> float:
+	return (resupply_count + 1) * resupply_interval_sols() * 24.0 - hours_run
 
 ## The cargo limit every placement checks against.
 static func cargo_budget() -> int:

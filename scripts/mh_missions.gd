@@ -88,9 +88,12 @@ static func zone_unlocked(kind: String) -> bool:
 static func item_unlocked(id: String) -> bool:
 	if not active(): return true
 	var group := str(EquipmentCatalog.get_entry(id).get("group", ""))
+	# An item a mission delivers by name arrives only with that mission, even
+	# if an earlier mission unlocked the rest of its group.
+	var named_later := missions().any(func(m): return (m.get("unlock_items", []) as Array).has(id))
 	for mission in _so_far():
 		if (mission.get("unlock_items", []) as Array).has(id): return true
-		if (mission.get("unlock_groups", []) as Array).has(group): return true
+		if not named_later and (mission.get("unlock_groups", []) as Array).has(group): return true
 	return false
 
 ## How many crew this mission has aboard (0 for robot missions; free play: no cap).

@@ -21,7 +21,7 @@ var _hold_light: OmniLight3D
 
 func _ready() -> void:
 	add_to_group("landmark")
-	set_meta("landmark_label", "CARGO %d" % number)
+	if not has_meta("landmark_label"): set_meta("landmark_label", "CARGO %d" % number)
 	var hull := _material("#D9D6CE", .7)
 	var dark := _material("#3A4045", .6)
 	var foil := _material("#C9A24B", .35, .6)

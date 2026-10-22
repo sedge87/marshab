@@ -40,6 +40,9 @@ var room_temp := {}           # room key -> degrees C
 var crew_health := 100.0
 ## Missions: at most this many crew aboard (0 while robots build; -1 = no cap).
 var crew_cap := -1
+## Mars-made building material printed so far (kg), by regolith printers fed
+## by a running regolith intake. BuildController spends it on printable things.
+var printed_kg := 0.0
 ## The fast-forward Test may take bigger steps for long runs (100 sols).
 var run_step := STEP_HOURS
 var crew_evacuated := false
@@ -71,7 +74,7 @@ func invalidate() -> void:
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
 		"room_temp": room_temp.duplicate(), "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left,
-		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered}
+		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -82,6 +85,7 @@ func load(state: Dictionary) -> void:
 	storm_hours_left = float(state.get("storm_hours_left", 0.0)); hours_run = float(state.get("hours_run", 0.0))
 	_known_capacity = (state.get("known_capacity", _known_capacity) as Dictionary).duplicate()
 	_food_delivered = bool(state.get("food_delivered", false))
+	printed_kg = float(state.get("printed_kg", 0.0))
 	invalidate()
 
 # ---------- what is in the habitat ----------
@@ -155,6 +159,7 @@ func inventory() -> Dictionary:
 	var solar: Array = []
 	var reactors := 0
 	var drills: Array = []
+	var intakes := 0
 	for zone in builder.zones:
 		match str(zone.kind):
 			"solar":
@@ -163,6 +168,8 @@ func inventory() -> Dictionary:
 				if builder._power_source_connected(zone) and builder._zone_running(zone): reactors += 1
 			"ice_extractor":
 				if builder._zone_running(zone): drills.append(builder._ice_richness_at(zone.cells[0]))
+			"regolith_intake":
+				if builder._zone_running(zone): intakes += 1
 	var isolated := false
 	for placed in builder.placed_interior:
 		var isolator := EquipmentCatalog.grid_isolator_key(str(placed.get("id", "")))
@@ -172,7 +179,7 @@ func inventory() -> Dictionary:
 		capacity.kwh += item.stores_kwh; capacity.water += item.stores_water; capacity.o2 += item.stores_o2; capacity.food += item.stores_food
 		capacity.berths += item.berths
 		if item.id == "thermal_control_unit" and item.on: capacity.tcu_kw += item.heat_kw
-	_inventory = {"rooms": rooms, "items": items, "solar": solar, "reactors": reactors, "drills": drills, "isolated": isolated, "capacity": capacity,
+	_inventory = {"rooms": rooms, "items": items, "solar": solar, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
 		"cells": rooms.reduce(func(total, room): return total + int(room.cells), 0),
 		"zones_ref": builder.zones, "zone_count": builder.zones.size(), "items_ref": builder.placed_interior, "item_count": builder.placed_interior.size()}
 	_take_delivery(capacity)
@@ -318,6 +325,7 @@ func step(dt: float, hour: float) -> void:
 	var drill_kw := 0.0
 	for richness in inv.drills: drill_kw += MHResources.item_value("ice_drill", "power_kw", 3.0)
 	tiers[TIER_OTHER] += drill_kw
+	tiers[TIER_OTHER] += int(inv.intakes) * MHResources.item_value("regolith_intake", "power_kw", 1.5)
 	var generation := 0.0
 	var storm_factor := 1.0 - (float(site.get("storm_solar_cut", .6)) if storm_hours_left > 0.0 else 0.0)
 	generation += _solar_kw(inv.solar, hour) * storm_factor
@@ -371,6 +379,8 @@ func step(dt: float, hour: float) -> void:
 		for richness in inv.drills: drill_water += MHResources.setting("ice_drill_l", 120.0) * float(richness) * per_sol
 	water_l = clampf(water_l + water_made + water_recovered + drill_water - water_used, 0.0, float(inv.capacity.water))
 	food_kg = maxf(0.0, food_kg + food_grown - crew * MHResources.setting("food_per_person", 1.8) * per_sol)
+	# Printing: running printers make material while tier 4 has power and an intake feeds them.
+	if powered.tiers[TIER_OTHER]: printed_kg += print_rate(inv) * per_sol
 	if inv.cells > 0:
 		var o2_breathed := crew * MHResources.setting("o2_per_person", .84) * per_sol
 		var co2_out := crew * MHResources.setting("co2_per_person", 1.0) * per_sol
@@ -528,6 +538,7 @@ func step_power_only(hour: float) -> void:
 		if night: tiers[3] += float(room.cells) * float(spec.get("light_kw_per_cell", .05))
 	for item in inv.items: tiers[item.tier] += item.power
 	for richness in inv.drills: tiers[4] += MHResources.item_value("ice_drill", "power_kw", 3.0)
+	tiers[4] += int(inv.get("intakes", 0)) * MHResources.item_value("regolith_intake", "power_kw", 1.5)
 	var generation := 0.0
 	generation += _solar_kw(inv.solar, hour) * (1.0 - (float(MHResources.site(MHGame.site_id).get("storm_solar_cut", .6)) if storm_hours_left > 0.0 else 0.0))
 	generation += inv.reactors * MHResources.setting("reactor_kw", 10.0)
@@ -537,6 +548,14 @@ func step_power_only(hour: float) -> void:
 	last.merge({"hour": hour, "generation_kw": generation, "load_kw": powered.load_kw, "demand_kw": tiers[1] + tiers[2] + tiers[3] + tiers[4], "tiers": powered.tiers, "tier_kw": tiers, "free_power": MHGame.debug_free_power}, true)
 
 ## What the habitat makes and uses in a sol if everything has power: the
+## Mars-made material a sol from the printers now (0 without a running intake).
+func print_rate(inv: Dictionary) -> float:
+	if int(inv.get("intakes", 0)) <= 0: return 0.0
+	var printers := (inv.items as Array).filter(func(i): return i.id == "regolith_printer" and i.on).size()
+	if printers == 0: return 0.0
+	var recycling := (inv.items as Array).any(func(i): return i.id == "recycling_hopper_plastics")
+	return printers * MHResources.setting("print_kg_per_sol", 2000.0) * (1.0 + (MHResources.setting("print_recycle_bonus", .25) if recycling else 0.0))
+
 ## numbers behind the readiness checklist and the systems panel.
 ## planned: for the full mission crew (readiness); otherwise for the crew on board now.
 func daily_flows(planned := true) -> Dictionary:
@@ -556,6 +575,7 @@ func daily_flows(planned := true) -> Dictionary:
 		out.research += MHResources.item_value(item.id, "research")
 	out.water_made += minf(reclaimers * 70.0, crew * MHResources.setting("water_per_person", 10.0)) * MHResources.setting("reclaim_fraction", .93)
 	for richness in inv.drills: out.water_made += MHResources.setting("ice_drill_l", 120.0) * float(richness)
+	out["printed"] = print_rate(inv)
 	return out
 
 ## Rooms where the crew live and work (not airlocks, corridors, storage or the bay).

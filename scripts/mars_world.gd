@@ -53,6 +53,9 @@ var current_cargo_lander: Node3D
 var mission_flags := {"left_lander": false, "opened_plan": false, "inside": false}
 # Mission 4: the crew's own lander touches down and they start in its cabin.
 var crew_arrival := false
+# Survival and Freedom: resupply landers on compressed launch windows.
+var resupply_landers: Array = []   # [{position, yaw}] for saving
+var _resupply_check := 0.0
 var arrival_pending := false
 signal arrival_finished
 var _arrival_t := -1.0
@@ -164,6 +167,10 @@ func _open_surface_build(id: String) -> void:
 var _space_check := 0.0
 func _process(delta: float) -> void:
 	_update_lander_intro()
+	_resupply_check -= delta
+	if _resupply_check <= 0.0:
+		_resupply_check = 1.0
+		_check_resupply()
 	if _arrival_t >= 0.0: _update_arrival(delta)
 	if MHMissions.active():
 		if builder.build_mode: mission_flags.opened_plan = true
@@ -237,6 +244,72 @@ func _add_landing_zone_marker() -> void:
 		(marker.mesh as ArrayMesh).surface_set_material(0, material)
 		marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(marker)
+
+# ---------- resupply landers ----------
+
+## When a launch window comes round, a resupply lander comes down near the
+## crew lander, adds its cargo, and stays on site as a landmark.
+func _check_resupply() -> void:
+	if not MHGame.resupplies_on() or MHMissions.active() or _intro_stage != "done": return
+	if MHGame.resupply_due_in_hours(builder.simulation().hours_run) > 0.0: return
+	var spot := _resupply_spot()
+	MHGame.resupply_count += 1
+	MHGame.resupply_kg += MHGame.resupply_size_kg()
+	var record := {"position": spot.position, "yaw": float(spot.yaw)}
+	resupply_landers.append(record)
+	var cargo := _add_resupply_lander(spot.position, float(spot.yaw), MHGame.resupply_count)
+	# Seen from wherever the player is: a burn, a slow descent, dust, touchdown.
+	var ground: Vector3 = spot.position
+	cargo.global_position = ground + Vector3.UP * 60.0
+	cargo.set_ramp(false)
+	cargo.set_burn(true)
+	var tween := create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(cargo, "global_position", ground, 7.0)
+	tween.tween_callback(func() -> void:
+		cargo.set_burn(false)
+		cargo.set_ramp(true, true)
+		MHAudio.sfx("land", 0.0, 0.0))
+	MHAudio.sfx("landing", -2.0, 0.0)
+	explore_hud.show_equipment_note("Resupply %d landed" % MHGame.resupply_count, "A launch window came round: %s of cargo from Earth has landed near your lander. Next one in %s sols." % [MHStyle.kg(MHGame.resupply_size_kg()), str(snappedf(MHGame.resupply_interval_sols(), 0.5))])
+	builder.habitat_changed.emit()
+
+func _add_resupply_lander(at: Vector3, yaw: float, number: int) -> Node3D:
+	var cargo: Node3D = CARGO_LANDER_SCRIPT.new()
+	cargo.number = number
+	cargo.name = "ResupplyLander%d" % number
+	add_child(cargo)
+	cargo.set_meta("landmark_label", "RESUPPLY %d" % number)
+	cargo.global_position = at
+	cargo.rotation.y = yaw
+	cargo.set_ramp(true)
+	return cargo
+
+## Flat open ground 18–30 m from the crew lander, clear of the habitat and
+## earlier landers.
+func _resupply_spot() -> Dictionary:
+	var centre := Vector2(lander.global_position.x, lander.global_position.z)
+	var taken: Array = resupply_landers.map(func(r): return Vector2((r.position as Vector3).x, (r.position as Vector3).z))
+	for radius in [18.0, 23.0, 28.0, 34.0]:
+		for step in range(16):
+			var a: float = TAU * (step + MHGame.resupply_count * 5) / 16.0
+			var p: Vector2 = centre + Vector2(cos(a), sin(a)) * radius
+			if not MHSiteTerrain.is_buildable(p): continue
+			if not builder._zone_at_point(p).is_empty() or builder.is_inside(Vector3(p.x, builder.habitat_base_y + .5, p.y)): continue
+			var clear := true
+			for zone in builder.zones:
+				for cell in zone.get("cells", []):
+					if Vector2(cell.x * 3.0, cell.y * 3.0).distance_to(p) < 7.0: clear = false
+			for other in taken:
+				if (other as Vector2).distance_to(p) < 9.0: clear = false
+			if not clear: continue
+			var probe: Node3D = CARGO_LANDER_SCRIPT.new()
+			add_child(probe)
+			probe.place_at(p, centre)
+			var result := {"position": probe.global_position, "yaw": probe.rotation.y}
+			probe.queue_free()
+			return result
+	var fallback := centre + Vector2(20, 0)
+	return {"position": Vector3(fallback.x, MHSiteTerrain.height(fallback.x, fallback.y), fallback.y), "yaw": 0.0}
 
 # ---------- Missions: cargo landers and the touchdown cinematic ----------
 
@@ -607,7 +680,8 @@ func current_state() -> Dictionary:
 		"missions_progress": MHMissions.save_state() if MHMissions.active() else {},
 		"player_position": player.global_position,
 		"player_rotation_y": player.rotation.y,
-		"day_night": day_night.export_state() if day_night != null else {}
+		"day_night": day_night.export_state() if day_night != null else {},
+		"resupply": {"kg": MHGame.resupply_kg, "count": MHGame.resupply_count, "landers": resupply_landers.duplicate(true)}
 	}
 
 ## Missions autosave: the campaign base and its progress (slot 1 of the
@@ -635,7 +709,15 @@ func _load_habitat(slot: int) -> void:
 
 func _restore_pending_habitat() -> void:
 	if MHGame.pending_save_state.is_empty():
+		MHGame.resupply_kg = 0
+		MHGame.resupply_count = 0
 		return
+	var resupply: Dictionary = MHGame.pending_save_state.get("resupply", {})
+	MHGame.resupply_kg = int(resupply.get("kg", 0))
+	MHGame.resupply_count = int(resupply.get("count", 0))
+	for saved in resupply.get("landers", []):
+		_add_resupply_lander(saved.position as Vector3, float(saved.yaw), resupply_landers.size() + 1)
+		resupply_landers.append(saved)
 	var state := MHGame.pending_save_state
 	MHGame.pending_save_state = {}
 	builder.restore_habitat_state(state.get("builder", {}) as Dictionary)

@@ -385,7 +385,8 @@
       "goal": "Keep six crew safe for 100 sols while growing at least a quarter of their food and running research.",
       "unlock_zones": [
         "hydroponics",
-        "science"
+        "science",
+        "regolith_intake"
       ],
       "unlock_groups": [
         "hydroponics",
@@ -473,10 +474,14 @@
         "Six people need more oxygen and more CO₂ scrubbing than four: check the oxygen generators and air recyclers.",
         "Grow lights use a lot of power. Check the night and the storms still work.",
         "Plants drink water. Your ice drills and reclaimer have to keep up.",
-        "Press T to test all 100 sols."
+        "Press T to test all 100 sols.",
+        "Toward self-sufficiency: a regolith printer (Storage) fed by a regolith intake outside makes Mars-made material for walls, shelves and crates, so your cargo stretches further."
       ],
       "step_hours": 0.5,
-      "food_delivery_sols": 60
+      "food_delivery_sols": 60,
+      "unlock_items": [
+        "regolith_printer"
+      ]
     }
   ]
 }

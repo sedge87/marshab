@@ -16,10 +16,18 @@ const ROOM_IDENTITY := preload("res://scripts/room_identity.gd")
 ## room (bedrooms, toilet cubicles). The room stays one zone for the simulation.
 const PARTITION_STEP := 1.5
 const PARTITION_THICKNESS := .1
-var partitions: Array = []   # [{"a": Vector2, "b": Vector2, "door": bool}]
+var partitions: Array = []
+var mars_made_label: Label   # [{"a": Vector2, "b": Vector2, "door": bool}]
 const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
 ## Site-plan parts that have a real model (for thumbnails and the 3D preview).
-const PART_MODELS := {"reactor": "surface_reactor", "ice_extractor": "ice_drill"}
+const PART_MODELS := {"reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake"}
+## Single-cell outdoor machines (not rooms): power sources, drills, intakes.
+const SITE_MACHINES := ["solar", "reactor", "ice_extractor", "regolith_intake"]
+## Not ordinary rooms: connectors, the bay, and the outdoor machines.
+const NON_ROOM_KINDS := ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor", "regolith_intake"]
+## Room shells Mars-made (printed) material can pay for. Airlocks keep
+## Earth-made seals and mechanisms; outdoor machines are all Earth-made.
+const PRINTABLE_ZONE_EXCLUDES := ["airlock", "solar", "reactor", "ice_extractor", "regolith_intake"]
 var catalogue_preview: SubViewportContainer
 var catalogue_stage: PanelContainer
 var catalogue_details: PanelContainer
@@ -92,7 +100,8 @@ const ZONE_TYPES := {
 	"vehicle_bay":{"label":"Vehicle Bay","colour":Color(.88,.62,.12),"cost":CELL_COST},
 	"solar":{"label":"Solar Array","colour":Color(.18,.64,.94),"cost":CELL_COST},
 	"reactor":{"label":"Compact Reactor","colour":Color(.88,.30,.16),"cost":1200},
-	"ice_extractor":{"label":"Ice Extractor","colour":Color(.20,.82,.92),"cost":450}
+	"ice_extractor":{"label":"Ice Extractor","colour":Color(.20,.82,.92),"cost":450},
+	"regolith_intake":{"label":"Regolith Intake","colour":Color(.78,.48,.28),"cost":900}
 }
 
 # Catalogue metadata for the build HUD. Gameplay values stay in ZONE_TYPES.
@@ -113,7 +122,8 @@ const ZONE_INFO := {
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
 	"solar":{"cat":"power","icon":"sun","rule":"One cell · R aims","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
 	"reactor":{"cat":"power","icon":"atom","rule":"One cell","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
-	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."}
+	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
+	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"One cell","desc":"Digs Martian soil and feeds it to a regolith printer indoors, which turns it into building material."}
 }
 # Exterior construction deliberately excludes furnishing. Interior equipment is
 # selected only through the first-person construction controller.
@@ -368,8 +378,15 @@ func _unhandled_input(event: InputEvent) -> void:
 var _r_held := 0.0
 var _r_repeat := 0.0
 
+var _budget_refresh := 0.0
+
 func _process(delta: float) -> void:
 	if not build_mode: return
+	# Printing and resupplies change the cargo over time, not only on edits.
+	_budget_refresh -= delta
+	if _budget_refresh <= 0.0:
+		_budget_refresh = .5
+		_update_budget()
 	_hold_rotate_plan(delta)
 	_update_player_marker()
 	# Removing and furnishing pick against the deck the player sees, not the ground.
@@ -565,7 +582,7 @@ func _cells(a: Vector2i,b: Vector2i) -> Array:
 		for x in range(mini(a.x,b.x),maxi(a.x,b.x)+1):
 			for z in range(mini(a.y,b.y),maxi(a.y,b.y)+1): out.append(Vector2i(x,z))
 		return out
-	if kind=="solar" or kind=="reactor" or kind=="ice_extractor": return [b]
+	if kind in SITE_MACHINES: return [b]
 	if kind=="corridor" and a.x!=b.x and a.y!=b.y: return out
 	for x in range(mini(a.x,b.x),maxi(a.x,b.x)+1):
 		for z in range(mini(a.y,b.y),maxi(a.y,b.y)+1): out.append(Vector2i(x,z))
@@ -578,7 +595,7 @@ func _freeform_active() -> bool:
 	return tool == "place" and room_draw_mode == "freeform" and _freeform_mode_available()
 
 func _is_ordinary_room_kind(zone_kind: String) -> bool:
-	return zone_kind not in ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor"]
+	return zone_kind not in NON_ROOM_KINDS
 
 func _try_place_angled_outline_connector() -> bool:
 	var world_point := _world_point_at_mouse(habitat_base_y)
@@ -681,7 +698,7 @@ func _angled_outline_mount_at(point: Vector2) -> Dictionary:
 func _angled_outline_mount_invalid_reason(mount: Dictionary) -> String:
 	var mount_length := float(mount.get("length", CELL))
 	var mount_cost := cell_cost(kind) * (_angled_corridor_bays(mount_length) if kind == "corridor" else 1)
-	if _used_cargo() + mount_cost > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() + earth_cost(mount_cost, zone_printable(kind)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	for sample in _outline_site_samples(_angled_mount_outline(mount)):
 		var site_reason := MHSiteTerrain.unbuildable_reason(sample)
 		if not site_reason.is_empty(): return site_reason
@@ -909,7 +926,7 @@ func freeform_invalid_reason(points: PackedVector2Array) -> String:
 		else:
 			for cell in zone.get("cells", []):
 				if _polygons_overlap_area(points, _freeform_cell_polygon(cell)): return "Overlaps existing habitat"
-	if _used_cargo() + _freeform_cost(points) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() + earth_cost(_freeform_cost(points), zone_printable(kind)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	if is_inside_tree():
 		var base_y := habitat_base_y if not zones.is_empty() else _proposed_freeform_base_y(points)
 		var samples := points.duplicate()
@@ -979,7 +996,7 @@ func _is_habitat_zone(zone: Dictionary) -> bool:
 	var zone_kind := str(zone.kind)
 	# Power sources sit outside the pressure hull.  They must not erase an
 	# exterior wall simply because their build cell touches one.
-	return zone_kind != "solar" and zone_kind != "reactor" and zone_kind != "ice_extractor"
+	return not zone_kind in SITE_MACHINES
 
 ## Public placement API (Build-mode inventory, tests and any future first-person
 ## furnishing).  `visual` is optional so the systems can be tested without art;
@@ -1001,7 +1018,7 @@ func place_equipment(id: String, cell: Vector2i, visual: Node3D = null, facing :
 ## grid based.  `zone_cell` keeps room restrictions and safe pruning explicit.
 func place_free_interior_equipment(id: String, position: Vector3, rotation_y: float, zone_cell: Vector2i, visual: Node3D, anchor_normal := Vector3.UP) -> bool:
 	var entry := EquipmentCatalog.get_entry(id)
-	if entry.is_empty() or _used_cargo() + int(entry.get("cargo_cost", 0)) > MHGame.cargo_budget():
+	if entry.is_empty() or _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget():
 		return false
 	var placement_id := "interior_%d" % Time.get_ticks_usec()
 	placed_interior.append({"placement_id": placement_id, "id": id, "position": position, "rotation_y": rotation_y, "zone_cell": zone_cell, "anchor_normal": anchor_normal})
@@ -1045,7 +1062,7 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 	if placement == "floor" and surface_normal.dot(Vector3.UP) < .82: return "Place this on the floor"
 	if placement == "wall" and absf(surface_normal.dot(Vector3.UP)) > .28: return "Mount this on an interior wall"
 	if placement == "ceiling" and surface_normal.dot(Vector3.UP) > -.82: return "Mount this on the ceiling"
-	if _used_cargo() + int(entry.get("cargo_cost", 0)) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	# A free-positioned item must fit wholly inside valid room cells. Checking the
 	# four footprint corners prevents a player from burying it in the shell wall
 	# or bleeding it across into an incompatible room.
@@ -1063,7 +1080,7 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 				var corner_in_valid_room := false
 				for candidate in zones:
 					var candidate_kind := str(candidate.get("kind", ""))
-					if candidate_kind in ["solar", "reactor", "ice_extractor"]:
+					if candidate_kind in SITE_MACHINES:
 						continue
 					# Bays, airlocks and corridors are cells (or angled mounts), not outlines.
 					var inside := _point_in_zone(corner, candidate) if candidate_kind in ["airlock", "corridor", "vehicle_bay"] else Geometry2D.is_point_in_polygon(corner, zone_outline(candidate))
@@ -1188,7 +1205,7 @@ func equipment_invalid_reason(id: String, cell: Vector2i) -> String:
 	var valid_zones: Array = entry.get("valid_zones", [])
 	if not valid_zones.has(str(zone.kind)): return "Fits in %s" % _zone_list_text(valid_zones)
 	if not equipment_at(cell).is_empty(): return "This cell is already furnished"
-	if _used_cargo() + int(entry.get("cargo_cost", 0)) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	return ""
 
 func equipment_at(cell: Vector2i) -> Dictionary:
@@ -1554,7 +1571,7 @@ func _footprint_add_reason(cell: Vector2i) -> String:
 	if not connected: return "New cells must touch the selected room"
 	var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
 	if not site_reason.is_empty(): return site_reason
-	if _used_cargo() + cell_cost(str(zone.kind)) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() + earth_cost(cell_cost(str(zone.kind)), zone_printable(str(zone.kind))) > MHGame.cargo_budget(): return "Not enough cargo left"
 	var player := world.get_node_or_null("Player") as Node3D
 	if player != null and cell == Vector2i(roundi(player.global_position.x / CELL), roundi(player.global_position.z / CELL)):
 		return "Move clear of the player before building"
@@ -1693,7 +1710,7 @@ func _invalid_reason(cells: Array) -> String:
 		if not airlock_reason.is_empty(): return airlock_reason
 	if kind=="vehicle_bay" and not _valid_vehicle_bay(cells): return "2–4 cells each way, door facing outside, beside a room"
 	if kind=="ice_extractor" and _ice_richness_at(cells[0])<.12: return "No recoverable subsurface ice here"
-	if _used_cargo()+_zone_cost(cells)>MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo()+earth_cost(_zone_cost(cells), zone_printable(kind))>MHGame.cargo_budget(): return "Not enough cargo left"
 	# Build on a local, reasonably flat patch. A short foundation can bridge a
 	# shallow dip, but we reject hills and deep drops instead of making towers.
 	if is_inside_tree() and not zones.is_empty():
@@ -1875,12 +1892,13 @@ func _draw_preview(cells: Array,valid: bool) -> void:
 		var tile:=MeshInstance3D.new(); var mesh:=BoxMesh.new(); mesh.size=Vector3(CELL-.06,.04,CELL-.06); tile.mesh=mesh; tile.material_override=fill; tile.position=Vector3(cell.x*CELL,base_y+.05,cell.y*CELL); tile.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(tile)
 	# Hologram volume: translucent shell with bright edges (unlit #3EE58A / #FF4D4D).
 	var bounds:=_cell_bounds(cells)
-	var height:=2.9 if kind!="solar" and kind!="reactor" and kind!="ice_extractor" else (2.25 if kind=="reactor" else 1.6)
+	var height:=2.9 if not kind in SITE_MACHINES else (2.25 if kind=="reactor" else 1.6)
 	var volume_size:=Vector3(bounds.size.x*CELL,height,bounds.size.y*CELL)
 	var volume_centre:=Vector3((bounds.position.x+bounds.size.x*.5-.5)*CELL,base_y+height*.5,(bounds.position.y+bounds.size.y*.5-.5)*CELL)
 	if kind=="solar": volume_size=Vector3(2.4,height,1.6)
 	if kind=="reactor": volume_size=Vector3(2.1,height,2.1)
 	if kind=="ice_extractor": volume_size=Vector3(1.7,height,1.7)
+	if kind=="regolith_intake": volume_size=Vector3(2.0,1.2,2.4)
 	var ghost:=MeshInstance3D.new(); var box:=BoxMesh.new(); box.size=volume_size; ghost.mesh=box; ghost.material_override=fill; ghost.position=volume_centre; ghost.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(ghost)
 	preview.add_child(_box_edges(volume_centre,volume_size,edge))
 	if kind=="airlock": _airlock_arrow(_airlock_end(cells,airlock_direction,true),"OUTSIDE")
@@ -2171,6 +2189,7 @@ func _rebuild() -> void:
 		elif str(zone.kind)=="solar": _build_solar(zone)
 		elif str(zone.kind)=="reactor": _build_reactor(zone)
 		elif str(zone.kind)=="ice_extractor": _build_ice_extractor(zone)
+		elif str(zone.kind)=="regolith_intake": _build_regolith_intake(zone)
 		else:
 			for cell in zone.cells: _cell_walls(cell,zone)
 	for door_data in interior_doors:
@@ -2313,7 +2332,7 @@ func _zones_touch(first: Dictionary, second: Dictionary) -> bool:
 func _zone_surfaces(zone: Dictionary) -> void:
 	var cells:Array=zone.cells
 	var zone_kind:=str(zone.kind)
-	if zone_kind=="solar" or zone_kind=="reactor" or zone_kind=="ice_extractor": return
+	if zone_kind in SITE_MACHINES: return
 	var colour:Color=ZONE_TYPES[zone_kind].colour
 	var min_x: int=cells[0].x; var max_x: int=cells[0].x; var min_z: int=cells[0].y; var max_z: int=cells[0].y
 	for cell in cells:
@@ -3092,7 +3111,7 @@ func place_interior_door(cell: Vector2i, side: Vector2i) -> bool:
 
 func _hull_bay_can_glaze(zone_kind: String) -> bool:
 	# Rooms and corridors take windows; airlocks and vehicle bays stay solid.
-	return zone_kind not in ["airlock", "vehicle_bay", "solar", "reactor", "ice_extractor"]
+	return zone_kind not in ["airlock", "vehicle_bay"] + SITE_MACHINES
 
 ## Same direction for a wall whichever way it was walked.
 static func _canonical_wall_dir(tangent: Vector2) -> Vector2:
@@ -3313,7 +3332,7 @@ func partition_invalid_reason(segment: Dictionary, door := false, glass := false
 		var mid := (a + b) * .5
 		if _interior_footprints_overlap(at, _free_interior_size(entry), float(item.get("rotation_y", 0.0)), Vector3(mid.x, 0, mid.y), Vector3((b - a).length(), 0, PARTITION_THICKNESS), -atan2((b - a).y, (b - a).x)):
 			return "Blocked by the %s" % str(entry.get("label", "equipment")).to_lower()
-	if _used_cargo() + partition_cargo() > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() + earth_cost(partition_cargo(), true) > MHGame.cargo_budget(): return "Not enough cargo left"
 	return ""
 
 ## Add a wall, glass or door segment (or change a panel's type). Undo with Ctrl+Z.
@@ -3687,6 +3706,12 @@ func _build_ice_extractor(zone: Dictionary) -> void:
 	var position := Vector3(cell.x * CELL, _terrain_height(Vector3(cell.x * CELL, 0, cell.y * CELL)), cell.y * CELL)
 	_add_site_machine(zone, "ice_drill", position, Vector3(2.2, 2.6, 1.5))
 	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["ice_extractor"].colour,"ice_extractor")
+
+func _build_regolith_intake(zone: Dictionary) -> void:
+	var cell: Vector2i = zone.cells[0]
+	var position := Vector3(cell.x * CELL, _terrain_height(Vector3(cell.x * CELL, 0, cell.y * CELL)), cell.y * CELL)
+	_add_site_machine(zone, "regolith_intake", position, Vector3(2.0, 1.2, 2.4))
+	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["regolith_intake"].colour,"regolith_intake")
 
 ## A reactor or ice extractor model on its cell, with a solid box to walk
 ## around and its interaction rig (switch state saved in the zone).
@@ -4076,7 +4101,7 @@ func _zone_cost(cells: Array) -> int: return cell_cost(kind)*cells.size()
 ## Landed cargo (kg) for one 3 x 3 m cell of a room type, or one solar array,
 ## reactor or ice extractor, from the balance spreadsheet.
 func cell_cost(zone_kind: String) -> int:
-	var site_item: String = {"solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill"}.get(zone_kind, "")
+	var site_item: String = {"solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake"}.get(zone_kind, "")
 	if not site_item.is_empty(): return int(MHResources.item_value(site_item, "cargo_kg", 300.0))
 	return int(MHResources.room(zone_kind).get("cargo_kg_per_cell", 800.0))
 
@@ -4092,7 +4117,39 @@ func _recompute_zone_cost(zone: Dictionary) -> void:
 		zone["cost"] = ceili(_freeform_area(PackedVector2Array(zone.outline)) * cell_cost(zone_kind) / (CELL * CELL))
 	else:
 		zone["cost"] = cell_cost(zone_kind) * (zone.get("cells", []) as Array).size()
+## Earth cargo in use. Mars-made (printed) material pays for printable
+## things first, so it never needs tracking per item: removing a printed
+## wall simply frees the material again.
 func _used_cargo() -> int:
+	return _total_cargo() - mars_made_used()
+
+## Mars-made material made so far (printed by regolith printers).
+func mars_made_total() -> int:
+	return int(simulation().printed_kg)
+
+## The cost of everything printable that's placed: room shells, corridors,
+## partitions and printable furniture.
+func printable_cargo() -> int:
+	var total := 0
+	for zone in zones:
+		if not str(zone.kind) in PRINTABLE_ZONE_EXCLUDES: total += int(zone.cost)
+	for item in placed_interior:
+		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
+		if bool(entry.get("printable", false)): total += int(entry.get("cargo_cost", 0))
+	total += partitions.size() * partition_cargo()
+	return total
+
+func mars_made_used() -> int: return mini(mars_made_total(), printable_cargo())
+func mars_made_left() -> int: return mars_made_total() - mars_made_used()
+
+## How much Earth cargo a new thing costing `cost` would take.
+func earth_cost(cost: int, printable: bool) -> int:
+	return maxi(0, cost - mars_made_left()) if printable else cost
+
+func zone_printable(zone_kind: String) -> bool: return not zone_kind in PRINTABLE_ZONE_EXCLUDES
+func item_printable(id: String) -> bool: return bool(EquipmentCatalog.get_entry(id).get("printable", false))
+
+func _total_cargo() -> int:
 	var total:=0
 	for zone in zones: total+=int(zone.cost)
 	for item in placed_equipment:
@@ -4124,9 +4181,14 @@ func _update_budget() -> void:
 		cargo_meter.tone="info"
 		return
 	var remaining:=MHGame.cargo_budget()-_used_cargo()
+	cargo_meter.max_value=MHGame.cargo_budget()
 	cargo_meter.value_label=""
 	cargo_meter.value=remaining
 	cargo_meter.tone="accent" if remaining>MHGame.cargo_budget()*.1 else "warn"
+	if mars_made_label != null:
+		var printed := mars_made_total()
+		mars_made_label.visible = printed > 0 or simulation().print_rate(simulation().inventory()) > 0.0
+		mars_made_label.text = "MARS-MADE  %s in stock · %s used" % [MHStyle.kg(mars_made_left()), MHStyle.kg(mars_made_used())]
 
 func _update_summary() -> void:
 	if ready_badge_slot==null: return
@@ -4196,7 +4258,7 @@ func _systems() -> Dictionary:
 ## The reactor's master isolator / the ice extractor's run switch (saved in
 ## the zone's state; both start on).
 func _zone_running(zone: Dictionary) -> bool:
-	var key := "isolator" if str(zone.get("kind", "")) == "reactor" else "drill"
+	var key: String = {"reactor": "isolator", "regolith_intake": "intake"}.get(str(zone.get("kind", "")), "drill")
 	return bool((zone.get("state", {}) as Dictionary).get(key, true))
 
 func grid_power_online() -> bool:
@@ -4392,7 +4454,7 @@ func readiness() -> Array:
 	var habitat_cells:=0; var airlock_cells:=0; var reachable:=0
 	var route:=_airlock_connected_cells()
 	for zone in zones:
-		if str(zone.kind)=="solar" or str(zone.kind)=="reactor" or str(zone.kind)=="ice_extractor": continue
+		if str(zone.kind) in SITE_MACHINES: continue
 		habitat_cells+=zone.cells.size()
 		if str(zone.kind)=="airlock": airlock_cells+=zone.cells.size()
 		for cell in zone.cells:
@@ -4500,7 +4562,7 @@ func zone_outline(zone: Dictionary) -> PackedVector2Array:
 				supplied.append(raw_point as Vector2)
 		return supplied
 	var zone_kind := str(zone.get("kind", ""))
-	if zone_kind in ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor"]:
+	if zone_kind in NON_ROOM_KINDS:
 		return PackedVector2Array()
 	var edges: Dictionary = {}
 	for raw_cell in zone.get("cells", []):
@@ -4552,8 +4614,8 @@ func is_inside(point: Vector3) -> bool:
 		var zone_kind := str(zone.kind)
 		if zone.has("angled_mount"):
 			if _point_in_angled_mount(Vector2(point.x, point.z), zone.get("angled_mount", {})): return true
-		elif zone_kind in ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor"]:
-			if zone_kind not in ["solar", "reactor", "ice_extractor"] and cell in zone.cells:
+		elif zone_kind in NON_ROOM_KINDS:
+			if zone_kind not in SITE_MACHINES and cell in zone.cells:
 				return true
 		elif Geometry2D.is_point_in_polygon(Vector2(point.x, point.z), zone_outline(zone)):
 			return true
@@ -4679,7 +4741,7 @@ func climate_at(point: Vector3) -> Dictionary:
 	var zone_kind := ""
 	var here: Dictionary = {}
 	for zone in zones:
-		if str(zone.kind) != "solar" and str(zone.kind) != "reactor" and str(zone.kind) != "ice_extractor" and cell in zone.cells:
+		if not str(zone.kind) in SITE_MACHINES and cell in zone.cells:
 			zone_kind = str(zone.kind)
 			here = zone
 			break
@@ -4798,6 +4860,7 @@ func _ui() -> void:
 	var cargo_panel:=MHStyle.hud_panel(20); cargo_panel.mouse_filter=Control.MOUSE_FILTER_IGNORE; left.add_child(cargo_panel)
 	var cargo_box:=MHStyle.vbox(12); cargo_panel.add_child(cargo_box)
 	cargo_meter=MHWidgets.Meter.new().setup("Cargo remaining",MHGame.mission_cargo_budget(),MHGame.mission_cargo_budget(),"kg","accent",true); cargo_box.add_child(cargo_meter)
+	mars_made_label=MHStyle.mono("",13,Color("#E0A070"),600); mars_made_label.visible=false; cargo_box.add_child(mars_made_label)
 	var placing_row:=MHStyle.hbox(8); cargo_box.add_child(placing_row)
 	placing_label=MHStyle.mono("",14,MHStyle.TEXT_MUTED); placing_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL; placing_label.clip_text=true; placing_row.add_child(placing_label)
 	placing_delta=MHStyle.mono("",14,MHStyle.accent,600); placing_row.add_child(placing_delta)
@@ -5058,6 +5121,10 @@ func _part_chips(id: String) -> Array:
 		"ice_extractor":
 			chips.append(["up to %s L water a sol" % str(int(MHResources.setting("ice_drill_l",120.0))),MHStyle.VALID])
 			chips.append(["-%s kW" % str(MHResources.item_value("ice_drill","power_kw",3.0)),MHStyle.WARN])
+		"regolith_intake":
+			chips.append(["feeds the regolith printer",MHStyle.VALID])
+			chips.append(["-%s kW" % str(MHResources.item_value("regolith_intake","power_kw",1.5)),MHStyle.WARN])
+	if zone_printable(id) and str(ZONE_INFO[id].cat)!="power": chips.append(["can be printed",MHStyle.VALID])
 	var target:=float(MHResources.room(id).get("target_c",0.0))
 	if target>0.0 and str(ZONE_INFO[id].cat)=="rooms": chips.append(["kept at %d °C" % int(target),MHStyle.INFO])
 	if id in ["airlock","vehicle_bay","solar","corridor"]: chips.append(["Facing %s" % _facing_name(),MHStyle.TEXT_SECONDARY])
@@ -5132,7 +5199,7 @@ func _update_hologram_ui(cells: Array,reason: String, angled_mount: Dictionary =
 		placing_label.text="Placing %s" % placing_name; placing_delta.text=""
 	elif not equipment_id.is_empty():
 		var item_cost:=int(EquipmentCatalog.get_entry(equipment_id).get("cargo_cost",0))
-		var left:=MHGame.cargo_budget()-_used_cargo()-item_cost
+		var left:=MHGame.cargo_budget()-_used_cargo()-earth_cost(item_cost, item_printable(equipment_id))
 		placing_label.text="Placing %s" % placing_name
 		placing_delta.text="−%s → %s" % [MHStyle.kg(item_cost),MHStyle.kg(left)] if not cells.is_empty() else ""
 		placing_delta.add_theme_color_override("font_color",MHStyle.DANGER if left<0 else (MHStyle.WARN if left<MHGame.cargo_budget()*.1 else MHStyle.accent))
@@ -5143,7 +5210,7 @@ func _update_hologram_ui(cells: Array,reason: String, angled_mount: Dictionary =
 	elif _freeform_active():
 		var area := _freeform_area(freeform_points)
 		var freeform_cost := _freeform_cost(freeform_points)
-		var freeform_after := MHGame.cargo_budget() - _used_cargo() - freeform_cost
+		var freeform_after := MHGame.cargo_budget() - _used_cargo() - earth_cost(freeform_cost, zone_printable(kind))
 		placing_label.text = "Drawing %s" % ZONE_TYPES[kind].label
 		placing_delta.text = "−%s → %s" % [MHStyle.kg(freeform_cost), MHStyle.kg(freeform_after)] if freeform_points.size() >= 3 else ""
 		placing_delta.add_theme_color_override("font_color", MHStyle.DANGER if freeform_after < 0 else (MHStyle.WARN if freeform_after < MHGame.cargo_budget() * .1 else MHStyle.accent))
@@ -5158,7 +5225,7 @@ func _update_hologram_ui(cells: Array,reason: String, angled_mount: Dictionary =
 	elif not angled_mount.is_empty():
 		var angled_length := float(angled_mount.get("length", CELL))
 		var angled_cost := cell_cost(kind) * (_angled_corridor_bays(angled_length) if kind == "corridor" else 1)
-		var angled_after := MHGame.cargo_budget() - _used_cargo() - angled_cost
+		var angled_after := MHGame.cargo_budget() - _used_cargo() - earth_cost(angled_cost, zone_printable(kind))
 		placing_label.text = "Placing %s · 45° wall" % placing_name
 		placing_delta.text = "−%s → %s" % [MHStyle.kg(angled_cost), MHStyle.kg(angled_after)]
 		placing_delta.add_theme_color_override("font_color", MHStyle.DANGER if angled_after < 0 else (MHStyle.WARN if angled_after < MHGame.cargo_budget() * .1 else MHStyle.accent))
@@ -5167,9 +5234,10 @@ func _update_hologram_ui(cells: Array,reason: String, angled_mount: Dictionary =
 		if not reason.is_empty(): message = reason
 	else:
 		var cost:=_zone_cost(cells)
-		var after:=MHGame.cargo_budget()-_used_cargo()-cost
+		var earth := earth_cost(cost, zone_printable(kind))
+		var after:=MHGame.cargo_budget()-_used_cargo()-earth
 		placing_label.text="Placing %s" % ZONE_TYPES[kind].label
-		placing_delta.text="−%s → %s" % [MHStyle.kg(cost),MHStyle.kg(after)] if not cells.is_empty() else ""
+		placing_delta.text=("−%s → %s" % [MHStyle.kg(earth),MHStyle.kg(after)] + ("  (%s printed)" % MHStyle.kg(cost - earth) if earth < cost else "")) if not cells.is_empty() else ""
 		placing_delta.add_theme_color_override("font_color",MHStyle.DANGER if after<0 else (MHStyle.WARN if after<MHGame.cargo_budget()*.1 else MHStyle.accent))
 		if not reason.is_empty(): state="invalid"; message=reason
 		elif not cells.is_empty():

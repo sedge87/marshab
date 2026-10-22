@@ -1,0 +1,110 @@
+{
+  "style": "Fabrication: regolith printer and intake (matches the Martian/Hail Mary packs)",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "regolith_printer",
+      "file": "regolith_printer.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -1.51,
+          0.0,
+          -0.76
+        ],
+        [
+          1.72,
+          2.71,
+          0.824
+        ]
+      ],
+      "triangles": 23648,
+      "named_components": [
+        "beacon",
+        "beacon_base",
+        "bed_rim",
+        "console_body_white",
+        "console_buttons",
+        "console_post_dark",
+        "console_progress_screen",
+        "console_screen_screen",
+        "cross_beam",
+        "cross_beam_carriages_dark",
+        "deck_bolts_satin",
+        "deck_slate",
+        "deck_slots",
+        "estop_red",
+        "extractor_bands_dark",
+        "extractor_duct",
+        "feed_hopper_lid",
+        "feed_hopper_rim",
+        "feed_hopper_white",
+        "feed_hose_black",
+        "gantry_columns_white",
+        "gantry_top_frame_warm",
+        "hazard_band_lb",
+        "hazard_band_lf",
+        "hazard_band_rb",
+        "hazard_band_rf",
+        "head_badge",
+        "head_barrel_satin",
+        "head_carriage_white",
+        "head_glow",
+        "head_heater_bands",
+        "head_laser_lamp",
+        "head_nozzle_dark",
+        "hose_clamps_satin",
+        "plinth",
+        "power_cabinet_slate",
+        "power_cabinet_vent_dark",
+        "print_bed_slate",
+        "printed_panel",
+        "x_rail_satin",
+        "y_rails_satin"
+      ]
+    },
+    {
+      "id": "regolith_intake",
+      "file": "regolith_intake.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -1.0,
+          -0.05,
+          -1.39
+        ],
+        [
+          1.0,
+          1.135,
+          1.28
+        ]
+      ],
+      "triangles": 12060,
+      "named_components": [
+        "conveyor_cover_white",
+        "conveyor_legs",
+        "conveyor_load",
+        "drum_cradles_dark",
+        "feed_pipe",
+        "feed_pipe_flange_dark",
+        "feed_pipe_ground_collar",
+        "intake_label",
+        "motor_housing_slate",
+        "motor_vent_dark",
+        "physical_switches",
+        "scoop_arms",
+        "scoop_hub_dark",
+        "scoop_wheel",
+        "sieve_drum_hoops_dark",
+        "sieve_drum_white",
+        "sieve_mesh",
+        "skid_bolts_satin",
+        "skid_feet",
+        "skid_slate",
+        "state_light_bright",
+        "switch_box_white",
+        "trench_regolith"
+      ]
+    }
+  ]
+}

@@ -4295,5 +4295,86 @@
         "state": "light"
       }
     ]
+  },
+  "regolith_printer": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "print",
+        "default": true,
+        "label_on": "Stop printing",
+        "label_off": "Start printing",
+        "glow": [
+          "head_glow",
+          "beacon",
+          "console_progress",
+          "head_laser"
+        ],
+        "note_on": "Printing. Regolith from the intake is heated and pushed through the nozzle in layers. It uses a lot of power, and needs a running regolith intake outside.",
+        "note_off": "Printer stopped. It uses no power now, and makes no Mars-made material.",
+        "powered": "all"
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Look at the print",
+        "observations": [
+          [
+            "Layer by layer",
+            "Each ridge is one layer of regolith paste. The printer builds a curved wall panel a few centimetres at a time."
+          ],
+          [
+            "Made here, not shipped",
+            "Walls, floors, shelves and crates can be printed. Electronics, machines and life support still have to come from Earth."
+          ],
+          [
+            "Recycled binder",
+            "Shredded plastic from the recycling hoppers helps bind the soil, so recycling makes the printer faster."
+          ]
+        ]
+      }
+    ]
+  },
+  "regolith_intake": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "intake",
+        "default": true,
+        "label_on": "Stop the intake",
+        "label_off": "Start the intake",
+        "switch": {
+          "parts": [
+            "physical_switches"
+          ],
+          "axis": "x",
+          "angle": 40
+        },
+        "glow": [
+          "state_light"
+        ],
+        "spin": [
+          {
+            "parts": [
+              "scoop_wheel",
+              "scoop_hub"
+            ],
+            "axis": "x",
+            "speed": 2
+          },
+          {
+            "parts": [
+              "sieve_drum"
+            ],
+            "axis": "x",
+            "speed": 3
+          }
+        ],
+        "note_on": "Digging. The scoop wheel lifts regolith into the sieve, and the fine soil goes down the pipe to the printer.",
+        "note_off": "Intake stopped. The printer gets no soil until it runs again."
+      }
+    ]
   }
 }

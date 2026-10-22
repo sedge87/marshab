@@ -195,7 +195,8 @@
         "Morale",
         "Mission planning",
         "Power"
-      ]
+      ],
+      "printable": true
     },
     {
       "id": "task_light",
@@ -276,7 +277,8 @@
       "system_links": [
         "Morale",
         "Cargo"
-      ]
+      ],
+      "printable": true
     },
     {
       "id": "exercise_station",
@@ -768,7 +770,8 @@
         "Storage",
         "Cargo",
         "Food"
-      ]
+      ],
+      "printable": true
     },
     {
       "id": "tool_bench",
@@ -1737,7 +1740,8 @@
       "system_links": [
         "Cargo",
         "Storage"
-      ]
+      ],
+      "printable": true
     },
     {
       "id": "supply_crate_medium",
@@ -1782,7 +1786,8 @@
       "system_links": [
         "Cargo",
         "Storage"
-      ]
+      ],
+      "printable": true
     },
     {
       "id": "supply_crate_large",
@@ -1827,7 +1832,8 @@
       "system_links": [
         "Cargo",
         "Storage"
-      ]
+      ],
+      "printable": true
     },
     {
       "id": "mission_planning_console",
@@ -2477,7 +2483,8 @@
         0.86,
         1.87
       ],
-      "pack": "mars_habitat_furnishings_v1"
+      "pack": "mars_habitat_furnishings_v1",
+      "printable": true
     },
     {
       "id": "galley_oven",
@@ -2919,7 +2926,8 @@
         1.8,
         0.44
       ],
-      "pack": "mars_habitat_furnishings_v1"
+      "pack": "mars_habitat_furnishings_v1",
+      "printable": true
     },
     {
       "id": "plant_pot",
@@ -2963,7 +2971,8 @@
         1.045,
         0.61
       ],
-      "pack": "mars_habitat_furnishings_v1"
+      "pack": "mars_habitat_furnishings_v1",
+      "printable": true
     },
     {
       "id": "wall_whiteboard",
@@ -3004,6 +3013,71 @@
         0.095
       ],
       "pack": "mars_habitat_furnishings_v1"
+    },
+    {
+      "id": "regolith_printer",
+      "label": "Regolith Printer",
+      "group": "storage",
+      "status": "catalogue",
+      "icon": "box",
+      "height": 2.7,
+      "description": "A gantry 3D printer that builds wall panels, shelving and crates from Martian soil. Needs a regolith intake outside.",
+      "role": "Makes Mars-made building material",
+      "asset_scene": "res://assets/equipment/mars_fabrication_v1/regolith_printer.tscn",
+      "cargo_cost": 1800,
+      "valid_zones": [
+        "storage",
+        "engineering"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "power_draw": 4
+      },
+      "system_note": "Every kilogram launched from Earth is expensive. This printer binds Martian soil (regolith) into building material, so walls, shelves and crates can be made here instead of shipped. NASA has tested 3D-printed habitats for exactly this reason.",
+      "system_links": [
+        "Cargo",
+        "Power",
+        "Recycling"
+      ],
+      "size_m": [
+        3.23,
+        2.71,
+        1.584
+      ],
+      "pack": "mars_fabrication_v1"
+    },
+    {
+      "id": "regolith_intake",
+      "label": "Regolith Intake",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "mountain-snow",
+      "height": 1.0,
+      "description": "Visual model of the site's regolith intake.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "asset_scene": "res://assets/equipment/mars_fabrication_v1/regolith_intake.tscn",
+      "system_note": "A scoop wheel digs Martian soil, a sieve drum grades it, and a conveyor feeds it underground to the regolith printer.",
+      "system_links": [
+        "Cargo",
+        "Power"
+      ],
+      "size_m": [
+        2.0,
+        1.185,
+        2.67
+      ],
+      "pack": "mars_fabrication_v1"
     }
   ]
 }

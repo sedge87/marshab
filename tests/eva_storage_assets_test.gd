@@ -21,6 +21,7 @@ func _initialize() -> void:
 	await process_frame
 	var in_group: Array = []
 	for id in EquipmentCatalog.entries():
+		if str(EquipmentCatalog.get_entry(id).get("pack", "")) == "mars_fabrication_v1": continue   # later fabrication pack
 		if str(EquipmentCatalog.get_entry(id).get("group", "")) in ["vehicle_bay", "storage"]: in_group.append(id)
 	in_group.sort()
 	var expected := ITEMS.duplicate(); expected.sort()

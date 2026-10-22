@@ -901,6 +901,8 @@ func _stat_chips(id: String) -> Array:
 	if int(item.get("berths", 0)) > 0: chips.append(["%d berth" % int(item.berths), MHStyle.VALID])
 	if id == "thermal_control_unit": chips.append(["moves up to %s kW of heat" % _num(float(item.get("heat_kw", 12.0))), MHStyle.VALID])
 	if EquipmentCatalog.levels(id).size() > 0: chips.append(["warms its room", MHStyle.VALID])
+	if builder.item_printable(id): chips.append(["can be printed", MHStyle.VALID])
+	if id == "regolith_printer": chips.append(["+%s kg Mars-made a sol" % _num(MHResources.setting("print_kg_per_sol", 2000.0)), MHStyle.VALID])
 	return chips
 
 func _num(value: float) -> String:
