@@ -1332,6 +1332,7 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 			var model := (resource as PackedScene).instantiate() as Node3D
 			if model != null:
 				model.name = "Model"
+				MHPalette.apply(model)   # house materials (docs/house-style.md)
 				model.rotation.x = float(entry.get("model_rotation_x", 0.0))
 				model.rotation.z = float(entry.get("model_rotation_z", 0.0))
 				# Lets one model serve a second mounting (a floor kit hung on a wall).
@@ -1547,6 +1548,7 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 			var model := (resource as PackedScene).instantiate() as Node3D
 			if model != null:
 				model.name = "Model"
+				MHPalette.apply(model)   # house materials (docs/house-style.md)
 				model.rotation.x = float(entry.get("model_rotation_x", 0.0))
 				model.rotation.z = float(entry.get("model_rotation_z", 0.0))
 				# Lets one model serve a second mounting (a floor kit hung on a wall).
@@ -4138,6 +4140,7 @@ func _add_site_machine(zone: Dictionary, model_id: String, position: Vector3, si
 	if not path.is_empty() and ResourceLoader.exists(path):
 		var model := (load(path) as PackedScene).instantiate() as Node3D
 		model.name = "Model"
+		MHPalette.apply(model)   # house materials (docs/house-style.md)
 		holder.add_child(model)
 		if model.has_method("interaction_prompt"): body.set_meta("interaction_target", model)
 
@@ -4746,6 +4749,7 @@ func surface_visual(id: String, position: Vector3, rotation_y: float) -> Node3D:
 			var model := (scene as PackedScene).instantiate() as Node3D
 			if model != null:
 				model.name = "Model"
+				MHPalette.apply(model)   # house materials (docs/house-style.md)
 				holder.add_child(model)
 	var collision_body := StaticBody3D.new()
 	collision_body.name = "SurfaceCollision"

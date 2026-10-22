@@ -4516,7 +4516,7 @@
         "key": "primary",
         "type": "screen",
         "screen": [
-          "static__label_HAB-04"
+          "display_screen_glass"
         ],
         "modes": [
           "wayfinding",

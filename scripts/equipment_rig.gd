@@ -865,7 +865,6 @@ func _placement_id() -> String:
 ## One two-sided copy per source material, shared by every item that uses
 ## it (was a copy per mesh per item: thousands for a big base, slow to load).
 ## Anything that changes a material per item duplicates it first.
-static var _two_sided := {}
 
 func _make_materials_two_sided() -> void:
 	# Thin composite panels in delivered GLBs must stay visible from both sides
@@ -876,12 +875,5 @@ func _make_materials_two_sided() -> void:
 		for surface in mesh.mesh.get_surface_count():
 			var source := mesh.get_active_material(surface) as StandardMaterial3D
 			if source == null: continue
-			var key := source.get_instance_id()
-			if not _two_sided.has(key):
-				var material := source.duplicate() as StandardMaterial3D
-				material.cull_mode = BaseMaterial3D.CULL_DISABLED
-				# The Compatibility renderer has no indoor reflection probes, so very
-				# metallic finishes reflect nothing and turn black; keep a brushed look.
-				material.metallic = minf(material.metallic, .3)
-				_two_sided[key] = material
-			mesh.set_surface_override_material(surface, _two_sided[key])
+			# House materials: shared, two-sided, brushed (scripts/mh_palette.gd).
+			mesh.set_surface_override_material(surface, MHPalette.material(source))

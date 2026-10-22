@@ -22,8 +22,9 @@ var _hold_light: OmniLight3D
 func _ready() -> void:
 	add_to_group("landmark")
 	if not has_meta("landmark_label"): set_meta("landmark_label", "CARGO %d" % number)
-	var hull := _material("#D9D6CE", .7)
-	var dark := _material("#3A4045", .6)
+	# House materials (scripts/mh_palette.gd): white hull, graphite structure.
+	var hull := _material("#E3E7E5", .6)
+	var dark := _material("#4C5A61", .55)
 	var foil := _material("#C9A24B", .35, .6)
 	var accent := _material(MHStyle.accent.to_html(), .5)
 	# Descent stage: an octagonal deck under the hold, tanks and the engine.

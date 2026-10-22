@@ -1,0 +1,197 @@
+{
+  "style": "House refresh: the oldest placeholder panels rebuilt in the shared house style",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "airlock_control_panel",
+      "file": "airlock_control_panel.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.275,
+          -0.425,
+          -0.1
+        ],
+        [
+          0.275,
+          0.425,
+          -0.0
+        ]
+      ],
+      "triangles": 3376,
+      "named_components": [
+        "button_cycle",
+        "button_cycle_ring",
+        "button_cycle_tag_slate",
+        "button_seal_ring",
+        "button_seal_screen",
+        "button_seal_tag_slate",
+        "button_stop_red",
+        "button_stop_ring",
+        "button_stop_tag_slate",
+        "display_glow_screen",
+        "display_screen_glass_dark",
+        "hazard_band",
+        "hazard_stripes",
+        "panel_backplate",
+        "panel_body_white",
+        "panel_fixings_satin",
+        "panel_seam_black",
+        "screen_bezel",
+        "status_pressure_bezel",
+        "status_pressure_screen"
+      ]
+    },
+    {
+      "id": "suit_service_panel",
+      "file": "suit_service_panel.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.445,
+          -0.535,
+          -0.261
+        ],
+        [
+          0.445,
+          0.535,
+          -0.0
+        ]
+      ],
+      "triangles": 7768,
+      "named_components": [
+        "display_glow_screen",
+        "display_screen_glass_dark",
+        "hose_0",
+        "hose_1",
+        "name_plate_slate",
+        "port_0_collar_satin",
+        "port_0_socket",
+        "port_1_collar_satin",
+        "port_1_socket",
+        "service_backplate",
+        "service_body_white",
+        "service_fixings_satin",
+        "service_seam_black",
+        "status_head",
+        "valve_handles",
+        "valve_light_0_bezel",
+        "valve_light_0_screen",
+        "valve_light_1_bezel",
+        "valve_light_1_screen",
+        "valve_light_2_amber",
+        "valve_light_2_bezel",
+        "valve_rail_satin"
+      ]
+    },
+    {
+      "id": "utility_conduit",
+      "file": "utility_conduit.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -1.15,
+          -0.26,
+          -0.13
+        ],
+        [
+          1.15,
+          0.26,
+          -0.0
+        ]
+      ],
+      "triangles": 11568,
+      "named_components": [
+        "bracket_0_dark",
+        "bracket_0_foot",
+        "bracket_1_dark",
+        "bracket_1_foot",
+        "bracket_2_dark",
+        "bracket_2_foot",
+        "bracket_3_dark",
+        "bracket_3_foot",
+        "cable_tray",
+        "cables_black",
+        "oxygen_bands",
+        "pipe",
+        "pipe_clamps_satin_steel_dark",
+        "pipe_clamps_teal_dark",
+        "pipe_clamps_white_painted_dark",
+        "pipe_satin",
+        "pipe_white"
+      ]
+    },
+    {
+      "id": "corridor_light_strip",
+      "file": "corridor_light_strip.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.75,
+          -0.065,
+          -0.07
+        ],
+        [
+          0.75,
+          0.065,
+          -0.0
+        ]
+      ],
+      "triangles": 764,
+      "named_components": [
+        "end_caps_satin",
+        "housing",
+        "light_diffuser_lamp",
+        "route_arrow"
+      ]
+    },
+    {
+      "id": "wayfinding_panel",
+      "file": "wayfinding_panel.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.55,
+          -0.24,
+          -0.05
+        ],
+        [
+          0.55,
+          0.244,
+          -0.0
+        ]
+      ],
+      "triangles": 576,
+      "named_components": [
+        "display_screen_glass_dark",
+        "frame",
+        "side_bar",
+        "top_trim_satin"
+      ]
+    },
+    {
+      "id": "dust_grate",
+      "file": "dust_grate.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.7,
+          0.0,
+          -0.505
+        ],
+        [
+          0.7,
+          0.05,
+          0.505
+        ]
+      ],
+      "triangles": 5288,
+      "named_components": [
+        "bars_satin",
+        "edge_marks",
+        "ramps_dark",
+        "tray"
+      ]
+    }
+  ]
+}

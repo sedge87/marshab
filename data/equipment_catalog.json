@@ -933,7 +933,7 @@
       "mount_height": 0.1,
       "description": "Low-profile route lighting at the wall base.",
       "role": "Power draw; navigation",
-      "asset_scene": "res://assets/equipment/corridor_light_strip.glb",
+      "asset_scene": "res://assets/equipment/mars_house_refresh_v1/corridor_light_strip.tscn",
       "cargo_cost": 20,
       "valid_zones": [
         "corridor",
@@ -944,7 +944,13 @@
         1
       ],
       "placement": "wall",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.5,
+        0.13,
+        0.07
+      ],
+      "pack": "mars_house_refresh_v1"
     },
     {
       "id": "wayfinding_panel",
@@ -956,7 +962,7 @@
       "mount_height": 1.2,
       "description": "Shows the room, its lights and temperature, and the way to the airlock, or your own sign. Press E to change it.",
       "role": "Reads room and system labels",
-      "asset_scene": "res://assets/equipment/wayfinding_panel.tscn",
+      "asset_scene": "res://assets/equipment/mars_house_refresh_v1/wayfinding_panel.tscn",
       "cargo_cost": 20,
       "valid_zones": [
         "living",
@@ -979,7 +985,13 @@
         1
       ],
       "placement": "wall",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.1,
+        0.484,
+        0.05
+      ],
+      "pack": "mars_house_refresh_v1"
     },
     {
       "id": "fire_safety_station",
@@ -1037,7 +1049,7 @@
       "mount_height": 2.3,
       "description": "Pipe and cable run with brackets.",
       "role": "Engineered look only",
-      "asset_scene": "res://assets/equipment/utility_conduit.glb",
+      "asset_scene": "res://assets/equipment/mars_house_refresh_v1/utility_conduit.tscn",
       "cargo_cost": 25,
       "valid_zones": [
         "corridor",
@@ -1053,7 +1065,13 @@
         1
       ],
       "placement": "wall",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        2.3,
+        0.52,
+        0.13
+      ],
+      "pack": "mars_house_refresh_v1"
     },
     {
       "id": "airlock_control_panel",
@@ -1065,7 +1083,7 @@
       "mount_height": 1.2,
       "description": "Cycle and pressure status display.",
       "role": "Mirrors sealed / cycling state",
-      "asset_scene": "res://assets/equipment/airlock_control_panel.glb",
+      "asset_scene": "res://assets/equipment/mars_house_refresh_v1/airlock_control_panel.tscn",
       "cargo_cost": 40,
       "valid_zones": [
         "airlock"
@@ -1075,7 +1093,13 @@
         1
       ],
       "placement": "wall",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        0.55,
+        0.85,
+        0.1
+      ],
+      "pack": "mars_house_refresh_v1"
     },
     {
       "id": "suit_service_panel",
@@ -1087,7 +1111,7 @@
       "mount_height": 1.0,
       "description": "Suit oxygen and power umbilicals.",
       "role": "Future EVA preparation",
-      "asset_scene": "res://assets/equipment/suit_service_panel.glb",
+      "asset_scene": "res://assets/equipment/mars_house_refresh_v1/suit_service_panel.tscn",
       "cargo_cost": 50,
       "valid_zones": [
         "airlock",
@@ -1098,7 +1122,13 @@
         1
       ],
       "placement": "wall",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        0.89,
+        1.07,
+        0.261
+      ],
+      "pack": "mars_house_refresh_v1"
     },
     {
       "id": "dust_grate",
@@ -1110,7 +1140,7 @@
       "walkthrough": true,
       "description": "Regolith capture flooring.",
       "role": "Cosmetic initially",
-      "asset_scene": "res://assets/equipment/dust_grate.glb",
+      "asset_scene": "res://assets/equipment/mars_house_refresh_v1/dust_grate.tscn",
       "cargo_cost": 35,
       "valid_zones": [
         "airlock",
@@ -1122,7 +1152,13 @@
         2
       ],
       "placement": "floor",
-      "effects": {}
+      "effects": {},
+      "size_m": [
+        1.4,
+        0.05,
+        1.01
+      ],
+      "pack": "mars_house_refresh_v1"
     },
     {
       "id": "emergency_supply_lockbox",

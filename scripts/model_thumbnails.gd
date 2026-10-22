@@ -7,7 +7,7 @@ extends Node
 ## Texture2D (straight away if cached).
 const SIZE := Vector2i(256, 168)
 const DIRECTORY := "user://thumbnails"
-const VERSION := 6   # bump to re-render every thumbnail
+const VERSION := 7   # bump to re-render every thumbnail
 
 static var _cache := {}
 static var _baker: Node
@@ -110,6 +110,7 @@ static func instantiate_model(id: String) -> Node3D:
 	var model := scene.instantiate() as Node3D
 	# A display copy: no rig behaviour, lights or interaction.
 	model.set_script(null)
+	MHPalette.apply(model)
 	return model
 
 ## Point a camera at a model from a three-quarter front view (its front faces -Z).

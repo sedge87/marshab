@@ -126,6 +126,7 @@ func _ready() -> void:
 	_plush_timer = randf_range(PLUSH_EVERY.x, PLUSH_EVERY.y)
 	_worry_timer = randf_range(WORRY_EVERY.x, WORRY_EVERY.y)
 	_visual = get_node_or_null("RoverVisual") as Node3D
+	MHPalette.apply(self)   # house materials, like the rest of the base
 	for i in range(1, 7):
 		var wheel := find_child("Wheel_%d" % i, true, false) as Node3D
 		if wheel != null: _wheels.append(wheel)

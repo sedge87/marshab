@@ -20,6 +20,7 @@ func _ready() -> void:
 		push_warning("Crew lander model is missing: %s" % SCENE)
 		return
 	rig = scene.instantiate() as Node3D
+	MHPalette.apply(rig)
 	add_child(rig)
 	# Every collider on the lander points at its interaction rig (the hatch).
 	for body in rig.find_children("*", "StaticBody3D", true, false):
