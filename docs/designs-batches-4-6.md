@@ -165,7 +165,7 @@ Each new mission is roughly one lesson. Missions 7–10 also put the **alerts** 
 
 ## Build order
 1. ~~**Alerts** (batch 4).~~ Done 23 Oct.
-2. **Dossier and export** (batch 5). Next.
-3. **GAR-Y orders**, then the Mission 2 and 6 additions (batch 6, items 29–30).
+2. ~~**Dossier and export** (batch 5).~~ Done 23 Oct.
+3. **GAR-Y orders** (next), then the Mission 2 and 6 additions (batch 6, items 29–30).
 4. **Monitoring station**, then the outside cameras, then **Showcase** (items 28 and 32). Showcase can use the monitoring view and the cameras.
 5. **Missions 7–10:** design them together first (item 31).

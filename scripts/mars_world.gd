@@ -674,8 +674,12 @@ func _open_mission_control() -> void:
 	get_tree().paused = true
 	MHAudio.muffle(true)
 	mission_control = MHMissionControl.new().setup(builder)
+	# The mission panel and its toasts sit on a higher layer: hide them while
+	# Mission Control is open.
+	if mission_hud != null: mission_hud.visible = false
 	mission_control.closed.connect(func() -> void:
 		mission_control = null
+		if mission_hud != null: mission_hud.visible = true
 		_unpause())
 	overlay_layer.add_child(mission_control)
 

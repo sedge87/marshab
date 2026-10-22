@@ -424,13 +424,41 @@ func _best_ice() -> float:
 	for deposit in MHGame.site().get("ice_deposits", []): best = maxf(best, float(deposit.richness))
 	return best
 
-## Test: fast-forward on a copy of the base, then the report.
+## Test: first an optional prediction (for the dossier), then fast-forward
+## on a copy of the base, then the report.
 func _run_test() -> void:
+	var mission := MHMissions.current()
+	var column := _open_overlay()
+	column.add_child(MHStyle.eyebrow("Mission %d · Before you test · Version %d" % [int(mission.number), MHMissions.versions(str(mission.id)).size() + 1], MHStyle.accent, 16))
+	column.add_child(MHStyle.display("What do you think will happen?", 44))
+	column.add_child(_wrapped("Optional. A one-line prediction goes in your mission dossier, so you can compare it with the result. For example: \"The batteries will run flat on the second night.\"", 17, MHStyle.TEXT_SECONDARY, 1000))
+	var field := LineEdit.new()
+	field.max_length = 160
+	field.placeholder_text = "My prediction…"
+	field.custom_minimum_size = Vector2(900, 52)
+	column.add_child(field)
+	var buttons := MHStyle.hbox(12)
+	var go := MHStyle.button("Run the test", "primary", "play")
+	var skip := MHStyle.button("Skip", "secondary", "chevron-right")
+	var start := func(with_prediction: bool) -> void:
+		MHMissions.pending_prediction = field.text.strip_edges() if with_prediction else ""
+		_test_now()
+	go.pressed.connect(start.bind(true))
+	skip.pressed.connect(start.bind(false))
+	field.text_submitted.connect(func(_t: String) -> void: start.call(true))
+	buttons.add_child(go)
+	buttons.add_child(skip)
+	column.add_child(buttons)
+	field.grab_focus.call_deferred()
+
+func _test_now() -> void:
 	var mission := MHMissions.current()
 	var column := _open_overlay()
 	column.add_child(MHStyle.eyebrow("Mission %d · Test" % int(mission.number), MHStyle.accent, 16))
 	column.add_child(MHStyle.display("Testing… fast-forwarding %d sols" % int(mission.get("sols", 0)), 44))
 	await get_tree().process_frame
+	# The dossier's pictures of this version (plan and outside view).
+	await MHDossier.capture(world, str(mission.id), MHMissions.versions(str(mission.id)).size() + 1)
 	await get_tree().process_frame
 	_last_report = MHMissions.run_test(world.builder)
 	world.save_mission_progress()
@@ -474,6 +502,22 @@ func _show_report(report: Dictionary) -> void:
 		life.report = report
 		life.custom_minimum_size = Vector2(1100, 5 * 44 + 30)
 		column.add_child(life)
+	# The student's note on this version, for the dossier (optional).
+	var note_row := MHStyle.hbox(12)
+	var note := LineEdit.new()
+	note.max_length = 240
+	note.placeholder_text = "Optional note for your dossier: what will you change next, and why?"
+	note.custom_minimum_size = Vector2(860, 48)
+	note_row.add_child(note)
+	var save_note := MHStyle.button("Save note", "secondary", "save")
+	var keep := func() -> void:
+		MHMissions.set_version_note(str(mission.id), int(report.version), note.text)
+		world.save_mission_progress()
+		save_note.text = "Saved"
+	save_note.pressed.connect(keep)
+	note.text_submitted.connect(func(_t: String) -> void: keep.call())
+	note_row.add_child(save_note)
+	column.add_child(note_row)
 	var buttons := MHStyle.hbox(12)
 	if passed:
 		var done := MHStyle.button("Complete mission", "primary", "circle-check")

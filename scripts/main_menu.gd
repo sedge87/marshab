@@ -609,6 +609,19 @@ func _colony_screen() -> void:
 	var mode_note := "Set up your base step by step, the way NASA would: choose landing zones, send the cargo first, test everything, then land the crew." if MHGame.game_mode == "missions" else str(MHGame.GAME_MODE_NOTES.get(MHGame.game_mode, "")) + cargo_note
 	mode_box.add_child(MHStyle.body(mode_note, 14, MHStyle.TEXT_MUTED))
 	form.add_child(mode_box)
+	# Missions: the student's name, only for the exported mission dossier.
+	if MHGame.game_mode == "missions":
+		var student_box := MHStyle.vbox(6)
+		student_box.add_child(MHStyle.eyebrow("Your name (for your mission dossier)"))
+		var student := LineEdit.new()
+		student.max_length = 40
+		student.placeholder_text = "Optional"
+		student.text = MHMissions.student_name()
+		student.custom_minimum_size.y = 44
+		student.text_changed.connect(func(text: String) -> void: MHMissions.set_student_name(text))
+		student_box.add_child(student)
+		student_box.add_child(MHStyle.body("Only printed on your exported dossier. You can change it when you export.", 14, MHStyle.TEXT_MUTED))
+		form.add_child(student_box)
 	_name_field.text_changed.connect(func(text: String) -> void:
 		MHGame.colony_name = text.strip_edges()
 		counter.text = "%d / 24" % text.length()

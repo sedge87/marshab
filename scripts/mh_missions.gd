@@ -33,10 +33,13 @@ static func active() -> bool:
 
 ## A new campaign: Mission 1 (landing zones) is chosen on the menu's Land step.
 static func reset() -> void:
-	progress = {"current": "landing_zones", "completed": [], "landing_target": Vector2.INF, "base_site": Vector2.INF, "versions": {}, "briefed": {}}
+	progress = {"current": "landing_zones", "completed": [], "landing_target": Vector2.INF, "base_site": Vector2.INF, "versions": {}, "briefed": {},
+		"student_name": "", "campaign_id": str(int(Time.get_unix_time_from_system()))}
 
 static func ensure() -> void:
 	if progress.is_empty(): reset()
+	# Saves from before the dossier: give them an id for their pictures.
+	if not progress.has("campaign_id"): progress["campaign_id"] = str(int(Time.get_unix_time_from_system()))
 
 static func current() -> Dictionary:
 	ensure()
@@ -449,16 +452,90 @@ static func design_changes(before: Dictionary, after: Dictionary) -> String:
 		if change != 0: parts.append("%+d %s" % [change, SUMMARY_NAMES[key][0 if absi(change) == 1 else 1]])
 	return ", ".join(parts) if not parts.is_empty() else "No change to power, drills or rooms"
 
+## The student's optional prediction for the next Test ("What do you think will happen?").
+static var pending_prediction := ""
+
+## The student's optional note on a version ("What will you change, and why?").
+static func set_version_note(mission_id: String, version: int, note: String) -> void:
+	for entry in versions(mission_id):
+		if int(entry.version) == version: entry["note"] = note.strip_edges()
+
+static func student_name() -> String:
+	ensure()
+	return str(progress.get("student_name", ""))
+
+static func set_student_name(value: String) -> void:
+	ensure()
+	progress["student_name"] = value.strip_edges().substr(0, 40)
+
+## Every difference between two designs, in words: "+2 solar arrays, +1 air recycler".
+static func design_changes_full(before: Dictionary, after: Dictionary) -> String:
+	var parts: Array = []
+	var keys: Array = before.keys()
+	for key in after.keys():
+		if not keys.has(key): keys.append(key)
+	for key in keys:
+		if str(key) == "cargo_kg": continue
+		var change := int(after.get(key, 0)) - int(before.get(key, 0))
+		if change == 0: continue
+		var name: String
+		if SUMMARY_NAMES.has(key): name = str(SUMMARY_NAMES[key][0 if absi(change) == 1 else 1])
+		else:
+			name = str(EquipmentCatalog.get_entry(str(key)).get("label", str(key).capitalize())).to_lower()
+			if absi(change) != 1 and not name.ends_with("s"): name += "s"
+		parts.append("%+d %s" % [change, name])
+	return ", ".join(parts) if not parts.is_empty() else "no change to the design"
+
+## What fixed each check: for a check that failed and later passed, the first
+## passing version and the design changes since the last failing one.
+## [{id, text, failed_in, fixed_in, changes}]
+static func fixes(mission_id: String) -> Array:
+	var out: Array = []
+	var list := versions(mission_id)
+	var last_fail := {}
+	for entry in list:
+		for check_id in (entry.results as Dictionary):
+			var ok := bool(entry.results[check_id])
+			if not ok:
+				last_fail[check_id] = entry
+			elif last_fail.has(check_id):
+				var failed: Dictionary = last_fail[check_id]
+				var text := str(check_id)
+				for check in entry.get("checks", []):
+					if str(check.id) == str(check_id): text = str(check.text)
+				out.append({"id": str(check_id), "text": text, "failed_in": int(failed.version), "fixed_in": int(entry.version), "changes": design_changes_full(failed.design, entry.design)})
+				last_fail.erase(check_id)
+	return out
+
 static func versions(mission_id: String) -> Array:
 	ensure()
 	return (progress.versions as Dictionary).get(mission_id, [])
+
+## The mission dossier (backlog 27): each Test is kept as a version with what
+## the student needs to tell its story later: the design, every check with its
+## reason and tip, stretch goals, the alerts, the graphs (downsampled), the
+## optional prediction and note, and pictures (scripts/mh_dossier.gd).
+const DOSSIER_SAMPLE_KEYS := ["elapsed", "battery_pct", "generation_kw", "load_kw", "o2_pct", "co2_pct", "food_kg", "coldest_c", "crew_health"]
+const DOSSIER_POINTS := 240
 
 static func _record_version(report: Dictionary) -> void:
 	ensure()
 	var list: Array = (progress.versions as Dictionary).get(report.mission, [])
 	var results := {}
 	for result in report.results: results[result.id] = result.pass
-	list.append({"version": list.size() + 1, "time": Time.get_datetime_string_from_system(false, true), "design": report.design, "results": results, "passed": report.passed})
+	var checks: Array = []
+	for result in report.results: checks.append({"id": str(result.id), "text": str(result.text), "pass": bool(result.pass), "detail": str(result.detail), "tip": str(result.get("tip", ""))})
+	var samples: Array = report.get("samples", [])
+	var every := maxi(1, ceili(float(samples.size()) / DOSSIER_POINTS))
+	var graph: Array = []
+	for i in range(0, samples.size(), every):
+		var point := {}
+		for key in DOSSIER_SAMPLE_KEYS: point[key] = snappedf(float((samples[i] as Dictionary).get(key, 0.0)), .01)
+		graph.append(point)
+	list.append({"version": list.size() + 1, "time": Time.get_datetime_string_from_system(false, true), "design": report.design, "results": results, "passed": report.passed,
+		"checks": checks, "stretch": report.get("stretch", []), "alerts": report.get("alerts", []), "samples": graph, "storms": report.get("storms", []),
+		"sols": report.get("sols", 0), "start_hour": report.get("start_hour", 8.0), "prediction": str(pending_prediction), "note": ""})
+	pending_prediction = ""
 	(progress.versions as Dictionary)[report.mission] = list
 	report["version"] = list.size()
 	report["changes"] = design_changes(list[-2].design, report.design) if list.size() > 1 else "First test"

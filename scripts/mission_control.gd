@@ -1,6 +1,9 @@
 class_name MHMissionControl
 extends Control
 
+const MHMissions := preload("res://scripts/mh_missions.gd")
+const MISSION_HUD := preload("res://scripts/mission_hud.gd")
+
 # Mission Control overlay (shot 1j). Three columns over a dimmed scene:
 # cargo, readiness and a blueprint plan of the habitat, plus a suggested step.
 
@@ -43,6 +46,11 @@ func _ready() -> void:
 	header.add_child(esc)
 	var alerts := get_tree().get_first_node_in_group("habitat_alerts")
 	var count: int = (alerts.history as Array).size() if alerts != null else 0
+	if MHMissions.active():
+		var dossier_button := MHStyle.button("Dossier", "secondary", "book-open")
+		dossier_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		dossier_button.pressed.connect(_show_dossier)
+		header.add_child(dossier_button)
 	var log_button := MHStyle.button("Alert log (%d)" % count, "secondary", "triangle-alert")
 	log_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	log_button.pressed.connect(_show_alert_log)
@@ -60,6 +68,197 @@ func _ready() -> void:
 	body.add_child(_readiness_column())
 	body.add_child(_plan_column())
 	column.add_child(MHStyle.notice("info", "Suggested next step", builder.suggestion()))
+
+# ---------- the mission dossier (backlog 27) ----------
+
+var _dossier_detail: VBoxContainer
+var _dossier_status: Label
+
+## Every mission's versions, what failed and what fixed it, and export.
+func _show_dossier() -> void:
+	var scrim := ColorRect.new()
+	scrim.name = "Dossier"
+	scrim.color = Color(0, 0, 0, .6)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(scrim)
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right"]: margin.add_theme_constant_override("margin_" + side, 100)
+	margin.add_theme_constant_override("margin_top", 56)
+	margin.add_theme_constant_override("margin_bottom", 48)
+	scrim.add_child(margin)
+	var panel := _sheet(0)
+	margin.add_child(panel)
+	var col := MHStyle.vbox(14)
+	panel.add_child(col)
+	var head := MHStyle.hbox(10)
+	head.add_child(MHStyle.eyebrow("Mission dossier", MHStyle.accent, 16))
+	head.add_child(MHStyle.spacer())
+	head.add_child(MHStyle.mono("NAME ON THE DOSSIER", 12, MHStyle.TEXT_MUTED))
+	var name_field := LineEdit.new()
+	name_field.max_length = 40
+	name_field.placeholder_text = "Optional"
+	name_field.text = MHMissions.student_name()
+	name_field.custom_minimum_size = Vector2(260, 40)
+	name_field.text_changed.connect(func(text: String) -> void: MHMissions.set_student_name(text))
+	head.add_child(name_field)
+	var export_all := MHStyle.button("Export whole campaign", "primary", "save")
+	export_all.pressed.connect(func() -> void: _export_dossier([]))
+	head.add_child(export_all)
+	var back := MHStyle.button("Back", "secondary", "chevron-left")
+	back.pressed.connect(scrim.queue_free)
+	head.add_child(back)
+	col.add_child(head)
+	_dossier_status = MHStyle.body("Each Test is a version. Exports are web pages in Documents/MARS HABITAT: open one and print it to save a PDF.", 14, MHStyle.TEXT_MUTED)
+	col.add_child(_dossier_status)
+	var body := MHStyle.hbox(18)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(body)
+	var missions := MHStyle.vbox(8)
+	missions.custom_minimum_size.x = 300
+	body.add_child(missions)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body.add_child(scroll)
+	_dossier_detail = MHStyle.vbox(12)
+	_dossier_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_dossier_detail)
+	var first := ""
+	for mission in MHMissions.missions():
+		var id := str(mission.id)
+		var list := MHMissions.versions(id)
+		if list.is_empty() and not MHMissions.is_complete(id) and id != str(MHMissions.current().id): continue
+		var passed := MHMissions.is_complete(id) or list.any(func(v): return bool(v.passed))
+		var button := MHStyle.button("%d · %s  (%d)" % [int(mission.number), str(mission.title), list.size()], "ghost", "circle-check" if passed else "circle-dashed", 44)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		button.tooltip_text = "%d version%s tested" % [list.size(), "" if list.size() == 1 else "s"]
+		button.pressed.connect(_dossier_mission.bind(id))
+		missions.add_child(button)
+		if not list.is_empty(): first = id
+	if first.is_empty(): first = str(MHMissions.current().id)
+	_dossier_mission(first)
+
+func _export_dossier(ids: Array) -> void:
+	var path := MHDossier.export(ids, not OS.has_feature("headless") and DisplayServer.get_name() != "headless")
+	_dossier_status.text = ("Saved: " + path) if not path.is_empty() else "Couldn't save the dossier (is the Documents folder available?)"
+	_dossier_status.add_theme_color_override("font_color", MHStyle.VALID if not path.is_empty() else MHStyle.DANGER)
+
+func _dossier_clear() -> void:
+	for child in _dossier_detail.get_children(): child.queue_free()
+
+func _wrap(text: String, size := 15, colour := MHStyle.TEXT_SECONDARY) -> Label:
+	var label := MHStyle.body(text, size, colour)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return label
+
+func _dossier_mission(id: String, version := -1) -> void:
+	_dossier_clear()
+	var mission := MHMissions.get_mission(id)
+	var list := MHMissions.versions(id)
+	var head := MHStyle.hbox(10)
+	var titles := MHStyle.vbox(2)
+	titles.add_child(MHStyle.eyebrow("Mission %d · %s" % [int(mission.number), str(mission.get("nasa_step", ""))], MHStyle.accent, 12))
+	titles.add_child(MHStyle.title(str(mission.title), 26))
+	head.add_child(titles)
+	head.add_child(MHStyle.spacer())
+	if not list.is_empty():
+		var export_one := MHStyle.button("Export this mission", "secondary", "save")
+		export_one.pressed.connect(func() -> void: _export_dossier([id]))
+		head.add_child(export_one)
+	_dossier_detail.add_child(head)
+	_dossier_detail.add_child(_wrap("Goal: " + str(mission.get("goal", "")), 15, MHStyle.TEXT_PRIMARY))
+	if list.is_empty():
+		_dossier_detail.add_child(_wrap("Not tested yet. Press T in the habitat to run a Test: each one becomes a version here.", 16, MHStyle.TEXT_MUTED))
+		return
+	for fix in MHMissions.fixes(id):
+		_dossier_detail.add_child(_wrap("✓ %s: failed in version %d, fixed in version %d by %s." % [fix.text, int(fix.failed_in), int(fix.fixed_in), fix.changes], 15, MHStyle.VALID))
+	# Versions: one button each.
+	var row := MHStyle.hbox(8)
+	row.add_child(MHStyle.mono("VERSIONS", 12, MHStyle.TEXT_MUTED))
+	var shown: int = version if version > 0 else int(list[-1].version)
+	for entry in list:
+		var v := int(entry.version)
+		var b := MHStyle.button("V%d %s" % [v, "✓" if bool(entry.passed) else "✗"], "primary" if v == shown else "ghost", "", 36)
+		b.pressed.connect(_dossier_mission.bind(id, v))
+		row.add_child(b)
+	_dossier_detail.add_child(row)
+	var entry: Dictionary = list.filter(func(e): return int(e.version) == shown)[0]
+	_dossier_version(id, mission, entry, list)
+
+func _dossier_version(id: String, mission: Dictionary, entry: Dictionary, list: Array) -> void:
+	var v := int(entry.version)
+	_dossier_detail.add_child(MHStyle.title("Version %d · %s · %s" % [v, str(entry.time).replace("T", " "), "passed" if bool(entry.passed) else "not passed"], 20))
+	var index := list.find(entry)
+	_dossier_detail.add_child(_wrap("Changes: " + ("first test" if index <= 0 else MHMissions.design_changes_full(list[index - 1].design, entry.design))))
+	if not str(entry.get("prediction", "")).is_empty(): _dossier_detail.add_child(_wrap("Prediction: " + str(entry.prediction), 15, MHStyle.TEXT_PRIMARY))
+	# Pictures.
+	var pictures := MHStyle.hbox(12)
+	for kind in ["view", "plan"]:
+		var texture := MHDossier.image(id, v, kind)
+		if texture == null: continue
+		var rect := TextureRect.new()
+		rect.texture = texture
+		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+		rect.custom_minimum_size = Vector2(420, 250)
+		pictures.add_child(rect)
+	if pictures.get_child_count() > 0: _dossier_detail.add_child(pictures)
+	for check in entry.get("checks", []):
+		var line := MHStyle.hbox(8)
+		line.add_child(MHStyle.icon("circle-check" if bool(check.pass) else "circle-x", 18, MHStyle.VALID if bool(check.pass) else MHStyle.DANGER))
+		var words := MHStyle.vbox(2)
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.add_child(_wrap(str(check.text), 15, MHStyle.TEXT_PRIMARY))
+		words.add_child(_wrap(str(check.detail), 13))
+		if not bool(check.pass) and not str(check.get("tip", "")).is_empty(): words.add_child(_wrap("Try this: " + str(check.tip), 13, MHStyle.accent))
+		line.add_child(words)
+		_dossier_detail.add_child(line)
+	var alerts: Array = entry.get("alerts", [])
+	if not alerts.is_empty():
+		var said: PackedStringArray = []
+		for alert in alerts.slice(0, 5): said.append("%s: %s" % [str(alert.when), str(alert.title)])
+		_dossier_detail.add_child(_wrap("The habitat warned: " + "; ".join(said), 13, MHStyle.WARN))
+	# Graphs, drawn by the Test report's own charts.
+	var report := {"samples": entry.get("samples", []), "storms": entry.get("storms", []), "sols": entry.get("sols", 1), "start_hour": entry.get("start_hour", 8.0)}
+	if (report.samples as Array).size() > 1:
+		for mode in ["battery", "power"]:
+			var graph = MISSION_HUD.TestGraph.new()
+			graph.report = report
+			graph.mode = mode
+			graph.custom_minimum_size = Vector2(0, 170)
+			_dossier_detail.add_child(graph)
+		if int(mission.get("crew", 0)) > 0:
+			var life = MISSION_HUD.LifeGraph.new()
+			life.report = report
+			life.custom_minimum_size = Vector2(0, 5 * 44 + 30)
+			_dossier_detail.add_child(life)
+	if not str(entry.get("note", "")).is_empty(): _dossier_detail.add_child(_wrap("Note: " + str(entry.note), 15, MHStyle.TEXT_PRIMARY))
+	# Compare with another version.
+	if list.size() > 1:
+		var compare := MHStyle.hbox(10)
+		compare.add_child(MHStyle.mono("COMPARE WITH", 12, MHStyle.TEXT_MUTED))
+		var picker := OptionButton.new()
+		picker.add_item("Choose a version", 0)
+		for other in list:
+			if int(other.version) != v: picker.add_item("Version %d" % int(other.version), int(other.version))
+		compare.add_child(picker)
+		_dossier_detail.add_child(compare)
+		var result := _wrap("", 14, MHStyle.TEXT_PRIMARY)
+		_dossier_detail.add_child(result)
+		picker.item_selected.connect(func(i: int) -> void:
+			var other_v := picker.get_item_id(i)
+			if other_v == 0: return
+			var other: Dictionary = list.filter(func(e): return int(e.version) == other_v)[0]
+			var a: Dictionary = other if other_v < v else entry
+			var b: Dictionary = entry if other_v < v else other
+			var lines: PackedStringArray = ["From version %d to %d: %s." % [int(a.version), int(b.version), MHMissions.design_changes_full(a.design, b.design)]]
+			for check in b.get("checks", []):
+				var before := bool((a.results as Dictionary).get(check.id, false))
+				if bool(check.pass) != before: lines.append("%s %s" % [str(check.text), "now passes" if bool(check.pass) else "now fails"])
+			result.text = "\n".join(lines))
 
 ## Every alert the habitat has raised, newest first: when, how serious, what
 ## and the cause chain it gave. Click anywhere outside to close.
