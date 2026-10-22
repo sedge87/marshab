@@ -226,6 +226,18 @@ func toggle() -> void:
 	_pending_open=false
 	_target_amount=1.0
 
+## For GAR-Y: open (through the interlock if needed) or close this door.
+## It only ever does this to interior and vehicle-bay doors.
+func request_open() -> void:
+	if _target_amount < .5: toggle()
+
+func request_shut() -> void:
+	_pending_open = false
+	_target_amount = 0.0
+
+func is_open() -> bool:
+	return _amount > .82
+
 func _flash_locked() -> void:
 	_locked_message_until=Time.get_ticks_msec()+1400
 	if _status!=null:

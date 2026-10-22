@@ -7,6 +7,11 @@ var _leaf: Node3D
 
 func setup(leaf: Node3D) -> void:
 	_leaf = leaf
+	add_to_group("partition_door")
+
+## The middle of the doorway (the door node sits on its hinge post).
+func centre() -> Vector3:
+	return (get_parent() as Node3D).global_position if get_parent() is Node3D else global_position
 
 func interaction_prompt() -> Dictionary:
 	return {"label": "Door", "primary": "Close door" if open else "Open door"}
