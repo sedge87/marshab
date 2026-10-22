@@ -92,6 +92,14 @@ func _initialize() -> void:
 	_place(_grid("galley", [Vector2i(2, 0), Vector2i(2, 1)]))
 	_check(builder.interior_doors.size() == 1 and not builder._should_build_wall(Vector2i(1, 0), Vector2i(1, 0)) != not builder._should_build_wall(Vector2i(1, 1), Vector2i(1, 0)), "grid rooms of different purposes get exactly one door in their shared wall")
 
+	# A new room touching two others gets one door, not one per neighbour.
+	_reset()
+	_place(_grid("living", [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]))
+	_place(_grid("galley", [Vector2i(2, 0), Vector2i(3, 0)]))
+	var before := builder.interior_doors.size()
+	_place(_grid("hygiene", [Vector2i(2, 1), Vector2i(3, 1)]))
+	_check(builder.interior_doors.size() == before + 1, "a room next to two others gets one door (%d added)" % (builder.interior_doors.size() - before))
+
 	# Angled + angled of different purposes.
 	_reset()
 	_place(_angled("living", [Vector2(-1.5, -1.5), Vector2(4.5, -1.5), Vector2(4.5, 4.5), Vector2(1.5, 4.5), Vector2(-1.5, 1.5)]))

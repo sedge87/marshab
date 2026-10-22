@@ -3827,12 +3827,18 @@ func _rooms_have_door(first: Dictionary, second: Dictionary) -> bool:
 ## works without a trip to Interior mode. Returns the labels of rooms joined.
 ## Runs only on placement, so a door the player removes stays removed.
 func _add_doors_for_new_room(zone: Dictionary) -> Array:
+	# One door to get a new room connected: none if it already has a door to
+	# something, otherwise the best neighbour (a corridor first, then the
+	# longest shared wall). Any more doors are the player's choice (the
+	# Interior door tool), as is moving this one (remove it, place another).
 	var joined: Array = []
 	if zones.find(zone) < 0 or not _mergeable_room(zone): return joined
 	var mine := zone_outline(zone)
+	var best := {}
+	var best_score := -1.0
 	for other in zones:
 		if other == zone or not _mergeable_room(other) or str(other.kind) == str(zone.kind): continue
-		if _rooms_have_door(zone, other): continue
+		if _rooms_have_door(zone, other): return joined
 		var theirs := zone_outline(other)
 		var best_length := 0.0
 		var best_from := Vector2.ZERO
@@ -3849,8 +3855,13 @@ func _add_doors_for_new_room(zone: Dictionary) -> Array:
 		if best_length < CELL - .01: continue
 		var target := _door_target_on_wall(best_from, best_to)
 		if target.is_empty(): continue
-		_store_interior_door(target)
-		joined.append(str(ZONE_TYPES[str(other.kind)].label))
+		var score := best_length + (100.0 if str(other.kind) == "corridor" else 0.0)
+		if score > best_score:
+			best_score = score
+			best = {"target": target, "label": str(ZONE_TYPES[str(other.kind)].label)}
+	if not best.is_empty():
+		_store_interior_door(best.target)
+		joined.append(best.label)
 	return joined
 
 ## A valid 3 m door target on a shared wall from→to, as near its middle as
