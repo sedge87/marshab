@@ -1,7 +1,9 @@
 extends Node
 
-## PROTOTYPE (backlog item 26, docs/designs-batches-4-6.md): the habitat
-## speaks up when something starts going wrong, like Subnautica's PDA.
+## Habitat alerts (backlog item 26, docs/designs-batches-4-6.md): the habitat
+## computer speaks up when something starts going wrong, like Subnautica's
+## PDA and seabase: no name, one calm voice, short fixed lines
+## (assets/audio/voice, tools/generate_voice.py), numbers on screen.
 ##
 ## Every half second (real time) it reads the live simulation and works out
 ## each alert's level: advisory (blue, once), warning (amber, repeats every
@@ -9,9 +11,12 @@ extends Node
 ## escalated alert shows a banner at the top of the screen with a chime and
 ## its cause chain: the linked systems from the cause to what it threatens
 ## ("Power: none at night → Oxygen generator: off → O₂ 19.6% ↓ → Crew
-## health"). When it clears: "back to normal". While alerts are active, small
-## pills stay under the clock. Everything is kept in `history` for a Mission
-## Control tab. Dust storms stay with weather.gd, which already announces them.
+## health"). The first time each kind of alert appears, the banner also
+## says why it matters and stays up longer. When it clears: "back to normal".
+## While alerts are active, small pills stay under the clock. Everything is
+## kept in `history` for Mission Control's alert log. Dust storms stay with
+## weather.gd, which announces them (with the same voice). Coming in through
+## an airlock: "Welcome home" ("Welcome aboard" the first time).
 const MHResources := preload("res://scripts/mh_resources.gd")
 
 const REPEAT := {"warning": 90.0, "critical": 30.0}
@@ -32,9 +37,14 @@ var _banner_left := 0.0
 var _pills: HBoxContainer
 var _edge: ColorRect
 var _clock := 0.0
+var _explained: Dictionary = {}   # alert ids already explained this session
+var _was_inside := true
+var _welcomed := false
+var _welcome_wait := 0.0
 
 func setup(target_world: Node) -> void:
 	world = target_world
+	add_to_group("habitat_alerts")
 	_build_hud()
 
 func sim() -> RefCounted:
@@ -55,21 +65,39 @@ func _process(delta: float) -> void:
 	_check_in -= delta
 	if _check_in > 0.0: return
 	_check_in = .5
-	if not MHGame.simulation_on() or get_tree().paused: return
-	_update(evaluate())
+	if get_tree().paused: return
+	_welcome()
+	if not MHGame.simulation_on(): return
+	var found := evaluate()
+	if not bool(MHGame.setting("alert_advisories")): found = found.filter(func(a): return str(a.level) != "advisory")
+	_update(found)
+
+## Coming in from outside: the habitat greets you (not more than once a minute).
+func _welcome() -> void:
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	if player == null or world.builder == null: return
+	var inside: bool = world.builder.is_inside(player.global_position)
+	_welcome_wait -= .5
+	if inside and not _was_inside and _welcome_wait <= 0.0:
+		MHAudio.voice("welcome_home" if _welcomed else "welcome_aboard")
+		_welcomed = true
+		_welcome_wait = 60.0
+	_was_inside = inside
 
 # ---------- what is wrong right now ----------
 
 ## Every alert that applies now: [{id, level, title, text, chain: [[icon, text, ok]]}].
-func evaluate() -> Array:
-	var s = sim()
+## The Test passes its own simulation copy and hour to replay the same rules.
+func evaluate(test_sim: RefCounted = null, test_hour := -1.0) -> Array:
+	var s = test_sim if test_sim != null else sim()
+	var sol_hour: float = test_hour if test_hour >= 0.0 else MHGame.sol_hour
 	var out: Array = []
 	var inv: Dictionary = s.inventory()
 	if int(inv.cells) == 0: return out
-	var snap: Dictionary = s.snapshot(MHGame.sol_hour)
+	var snap: Dictionary = s.snapshot(sol_hour)
 	var tiers: Dictionary = s.last.get("tiers", {})
 	var crew: int = s.crew_count_for(inv.capacity)
-	var night := MHGame.sol_hour < 6.0 or MHGame.sol_hour >= 18.0
+	var night := sol_hour < 6.0 or sol_hour >= 18.0
 	var power_link := _power_link(snap, inv, night, s)
 	var items: Array = inv.items
 
@@ -86,7 +114,7 @@ func evaluate() -> Array:
 			"text": "Switched off to save power: %s." % ", ".join(off),
 			"chain": [power_link, ["triangle-alert", "Off: " + str(off[0]), false]]})
 	# Batteries low with the night coming.
-	var hours_to_dark := 18.0 - MHGame.sol_hour
+	var hours_to_dark := 18.0 - sol_hour
 	if float(inv.capacity.kwh) > 0.0 and hours_to_dark > 0.0 and hours_to_dark <= 3.0 and float(snap.battery_pct) < 40.0:
 		out.append({"id": "battery_sunset", "level": "advisory", "title": "Batteries low before sunset",
 			"text": "%d%% charged with %s until dark. Overnight everything runs on the batteries." % [roundi(float(snap.battery_pct)), _hours(hours_to_dark)],
@@ -148,6 +176,22 @@ func evaluate() -> Array:
 			"chain": [["triangle-alert", ", ".join(s.health_causes), false], ["heart-pulse", "Health %d%% %s" % [roundi(health), _trend("health", health)], false]]})
 	return out
 
+## Why each kind of alert matters, shown the first time it appears.
+const EXPLAIN := {
+	"life_support_power": "Life support is the first thing to get power and the last to lose it. If it goes, the air, water and heat all start to fail at once.",
+	"power": "When there isn't enough power, the habitat sheds load in order: labs and galley first, then lights, then heating, and life support last.",
+	"battery_sunset": "Solar panels stop at sunset. Everything overnight runs on what the batteries stored during the day.",
+	"o2": "People breathe in oxygen and breathe out carbon dioxide. On Mars the oxygen generator makes more by splitting water, and it needs power to do it.",
+	"co2": "Each crew member breathes out about 1 kg of CO₂ a day. Above 1% it causes headaches and poor thinking. Air recyclers scrub it out.",
+	"cold": "The habitat loses heat to Mars all the time, faster through windows and outside walls. Heaters need power to keep up, especially at night.",
+	"water": "Water is drunk, washed with, fed to plants and split into oxygen. Ice drills mine it, and the water reclaimer recycles most of what's used.",
+	"food": "Six people eat about 11 kg of food a sol. Supply landers bring freeze-dried food; growing your own makes the base last.",
+	"health": "Crew health falls when the air, warmth, water or food go wrong, and recovers once they're fixed.",
+}
+## The voice line for an alert at a level (see tools/generate_voice.py).
+static func voice_line(id: String, level: String) -> String:
+	return "resolved_" + id if level == "resolved" else "%s_%s" % [id, level]
+
 ## The first link of most chains: where the power is (or isn't) coming from.
 func _power_link(snap: Dictionary, inv: Dictionary, night: bool, s: RefCounted) -> Array:
 	if float(s.storm_hours_left) > 0.0: return ["sun", "Dust storm: solar cut", false]
@@ -202,12 +246,21 @@ func _update(alerts: Array) -> void:
 	_refresh_pills()
 
 func _record(alert: Dictionary, level: String) -> void:
-	history.append({"time": Time.get_datetime_string_from_system(false, true), "sol_hour": MHGame.sol_hour, "id": alert.id, "level": level, "title": alert.title, "text": alert.text})
+	var sol := floori(float(sim().hours_run) / 24.0) + 1 if world != null else 1
+	history.append({"time": Time.get_datetime_string_from_system(false, true), "sol": sol, "sol_hour": MHGame.sol_hour, "id": alert.id, "level": level, "title": alert.title, "text": alert.text, "chain": alert.get("chain", [])})
 
 func _announce(alert: Dictionary, level: String, reminder := false) -> void:
 	_record(alert, level)
 	MHAudio.sfx(str(LEVEL_SOUND[level]), -8.0 if reminder else -3.0, 0.0)
+	# Speak it when it starts, escalates or clears; critical alerts again on each reminder.
+	if not reminder or level == "critical": MHAudio.voice(voice_line(str(alert.id), level))
+	var first := level != "resolved" and not _explained.has(str(alert.id)) and EXPLAIN.has(str(alert.id))
+	if first:
+		_explained[str(alert.id)] = true
+		alert = alert.duplicate()
+		alert["why"] = EXPLAIN[str(alert.id)]
 	_show_banner(alert, level, reminder)
+	if first: _banner_left = BANNER_SECONDS * 2.0
 
 # ---------- on screen ----------
 
@@ -262,6 +315,11 @@ func _show_banner(alert: Dictionary, level: String, reminder: bool) -> void:
 		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		body.custom_minimum_size.x = 720
 		column.add_child(body)
+	if alert.has("why"):
+		var why := MHStyle.body("Why it matters: " + str(alert.why), 14, MHStyle.TEXT_PRIMARY)
+		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		why.custom_minimum_size.x = 720
+		column.add_child(why)
 	var chain: Array = alert.get("chain", [])
 	if not chain.is_empty():
 		var row := MHStyle.hbox(6)

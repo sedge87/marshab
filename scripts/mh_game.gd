@@ -24,7 +24,7 @@ const PALETTES := {
 }
 
 # Audio levels (0–100) live in the same settings file, under [audio].
-const VOLUME_KEYS := ["vol_master", "vol_music", "vol_ambience", "vol_sfx"]
+const VOLUME_KEYS := ["vol_master", "vol_music", "vol_ambience", "vol_sfx", "vol_voice"]
 
 const PRESETS := {
 	"low": {"shadows": false, "dust": false, "weather": false, "glow": false, "render_scale": 0.75},
@@ -474,6 +474,7 @@ static func defaults() -> Dictionary:
 	d["preset"] = "medium"
 	d["fov"] = 70
 	d["gary_autonomy"] = true
+	d["alert_advisories"] = true
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
 	return d
 

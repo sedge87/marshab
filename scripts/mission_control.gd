@@ -41,6 +41,12 @@ func _ready() -> void:
 	var esc := MHStyle.keycap("Esc")
 	esc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(esc)
+	var alerts := get_tree().get_first_node_in_group("habitat_alerts")
+	var count: int = (alerts.history as Array).size() if alerts != null else 0
+	var log_button := MHStyle.button("Alert log (%d)" % count, "secondary", "triangle-alert")
+	log_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	log_button.pressed.connect(_show_alert_log)
+	header.add_child(log_button)
 	var close := MHStyle.button("Close", "secondary", "x")
 	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	close.pressed.connect(_close)
@@ -54,6 +60,62 @@ func _ready() -> void:
 	body.add_child(_readiness_column())
 	body.add_child(_plan_column())
 	column.add_child(MHStyle.notice("info", "Suggested next step", builder.suggestion()))
+
+## Every alert the habitat has raised, newest first: when, how serious, what
+## and the cause chain it gave. Click anywhere outside to close.
+func _show_alert_log() -> void:
+	var alerts := get_tree().get_first_node_in_group("habitat_alerts")
+	var history: Array = (alerts.history as Array).duplicate() if alerts != null else []
+	history.reverse()
+	var scrim := ColorRect.new()
+	scrim.color = Color(0, 0, 0, .55)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(scrim)
+	var centre := CenterContainer.new()
+	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(centre)
+	var panel := _sheet(980)
+	centre.add_child(panel)
+	var col := MHStyle.vbox(12)
+	panel.add_child(col)
+	var head := MHStyle.hbox(8)
+	head.add_child(MHStyle.eyebrow("Alert log", MHStyle.accent))
+	head.add_child(MHStyle.spacer())
+	var back := MHStyle.button("Back", "secondary", "chevron-left")
+	back.pressed.connect(scrim.queue_free)
+	head.add_child(back)
+	col.add_child(head)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(920, 560)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	var list := MHStyle.vbox(10)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	if history.is_empty():
+		list.add_child(MHStyle.body("No alerts yet. The habitat speaks up here when something starts to go wrong.", 16, MHStyle.TEXT_MUTED))
+	var names := {"advisory": "ADVISORY", "warning": "WARNING", "critical": "CRITICAL", "resolved": "ALL CLEAR"}
+	for entry in history:
+		var level := str(entry.get("level", "warning"))
+		var tone: Color = alerts.LEVEL_COLOUR.get(level, MHStyle.WARN)
+		var row := MHStyle.hbox(12)
+		row.add_child(MHStyle.mono("SOL %d %02d:%02d" % [int(entry.get("sol", 1)), int(entry.get("sol_hour", 0.0)), int(fmod(float(entry.get("sol_hour", 0.0)), 1.0) * 60.0)], 13, MHStyle.TEXT_MUTED))
+		row.add_child(MHStyle.icon("circle-check" if level == "resolved" else "triangle-alert", 18, tone))
+		var words := MHStyle.vbox(2)
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.add_child(MHStyle.label("%s · %s" % [names.get(level, level.to_upper()), str(entry.get("title", ""))], 16, MHStyle.TEXT_PRIMARY, 600))
+		var detail := str(entry.get("text", ""))
+		var chain: Array = entry.get("chain", [])
+		if not chain.is_empty():
+			var links: Array = []
+			for link in chain: links.append(str(link[1]))
+			detail += ("\n" if not detail.is_empty() else "") + "  →  ".join(links)
+		if not detail.is_empty():
+			var body := MHStyle.body(detail, 14, MHStyle.TEXT_SECONDARY)
+			body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			words.add_child(body)
+		row.add_child(words)
+		list.add_child(row)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M):

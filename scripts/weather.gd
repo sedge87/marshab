@@ -82,12 +82,15 @@ func _announce(state: String, eta: float, storm_left: float) -> void:
 	match state:
 		"forecast":
 			MHAudio.sfx("storm_alert")
+			MHAudio.voice("storm_forecast")
 			_show_toast("DUST STORM FORECAST", "Orbiters see a storm coming: it arrives in about %d hours and will cut solar power by %d%%. Charge the batteries and switch off what you don't need." % [ceili(eta), cut], MHStyle.WARN)
 		"storm":
 			MHAudio.sfx("storm_alert")
+			MHAudio.voice("storm_arrived")
 			_show_toast("DUST STORM", "Solar output is down %d%% for about %s. Batteries and any reactor carry the base until it clears." % [cut, _duration(storm_left)], MHStyle.DANGER)
 		"calm":
 			MHAudio.sfx("all_clear")
+			MHAudio.voice("storm_cleared")
 			_show_toast("STORM CLEARED", "The sky is clearing and the solar arrays are back to full output.", MHStyle.VALID)
 
 func _duration(hours: float) -> String:

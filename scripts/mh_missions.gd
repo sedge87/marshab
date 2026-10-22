@@ -7,6 +7,7 @@ extends RefCounted
 const PATH := "res://data/missions.json"
 const HABITAT_SIM := preload("res://scripts/habitat_sim.gd")
 const LANDING_PICKER := preload("res://scripts/landing_picker.gd")
+const HABITAT_ALERTS := preload("res://scripts/habitat_alerts.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const BLAST_MARGIN := 12.0     # metres from the landing ellipse that engine blast reaches
 const CLOSE_BASE := 40.0       # stretch goal: base this close to the landing target
@@ -259,6 +260,11 @@ static func run_test(builder: Node) -> Dictionary:
 	var food_in := 0.0
 	var crew: int = sim.crew_count()
 	var research := float(sim.daily_flows(false).get("research", 0.0))
+	# The habitat's alerts replayed on the test run: the early warnings the
+	# crew would have had (first time each alert reaches each level).
+	var alert_rules: Node = HABITAT_ALERTS.new()
+	var alerts_seen := {}
+	var alerts: Array = []
 	while hours < sols * 24.0 - .001:
 		for storm in storms:
 			if absf(hours - float(storm.start)) < .001: sim.start_storm(float(storm.hours) / 24.0, float(storm.get("cut", -1.0)))
@@ -270,6 +276,11 @@ static func run_test(builder: Node) -> Dictionary:
 		sample["water_in"] = float(sim.last.get("water_in", 0.0))
 		food_in += float(sim.last.get("food_in", 0.0)) * step / 24.0
 		samples.append(sample)
+		for alert in alert_rules.evaluate(sim, hour):
+			var key := "%s:%s" % [alert.id, alert.level]
+			if alerts_seen.has(key): continue
+			alerts_seen[key] = true
+			alerts.append({"at": hours, "when": _when(hours, start_hour), "level": str(alert.level), "title": str(alert.title)})
 		for requirement in mission.get("requirements", []):
 			if failures.has(requirement.id): continue
 			var why := _sample_failure(str(requirement.check), requirement, sample, sim)
@@ -330,7 +341,8 @@ static func run_test(builder: Node) -> Dictionary:
 		stretch.append({"text": str(goal.text), "pass": met})
 	var passed := results.all(func(r): return bool(r.pass))
 	var report := {"mission": str(mission.id), "samples": samples, "results": results, "stretch": stretch, "passed": passed,
-		"storms": storms, "start_hour": start_hour, "sols": sols, "design": design_summary(builder)}
+		"storms": storms, "start_hour": start_hour, "sols": sols, "design": design_summary(builder), "alerts": alerts}
+	alert_rules.free()
 	_record_version(report)
 	return report
 

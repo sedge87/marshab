@@ -52,11 +52,13 @@ The chain is built from the simulation's real state: which power tier dropped, w
 
 About 12 alert types cover the current sim: power, battery-at-sunset, storm, O₂, CO₂, cold, water, food, crew health, berths, unpowered life support, and an airlock left open.
 
-### Decisions for you
-1. Voice: **A** (synthetic voice) or **B** (chimes only)?
-2. What should the habitat computer be called? Suggestions: "HAB", "Hestia", or no name.
-3. Should critical alerts pause fast-forward or the Test? (Recommended: no, they go in the report.)
-4. Freedom mode: alerts on, but crew health can't fall. Is that right?
+### Decided (23 Oct) and built
+1. **Voice:** like Subnautica, a calm synthetic voice saying short fixed lines (Windows "Hazel", en-GB, generated offline by `tools/generate_voice.py`; 28 lines in `assets/audio/voice`).
+2. **No name,** as in Subnautica: it's the habitat speaking. It says "Welcome aboard" the first time you come in, and "Welcome home" after that.
+3. **Alerts don't pause** fast-forward or the Test. The Test report lists "What the habitat would have told you".
+4. **Freedom mode:** alerts are on, and the crew can't come to harm.
+
+Settings: a **Habitat voice** volume slider (Audio), and a **Habitat advisories** toggle (warnings and critical alerts always sound). Mission Control has an **Alert log** button.
 
 ---
 
@@ -85,27 +87,35 @@ Every Test already saves a **version**: its design summary, the result of each c
 - one section per mission: the goal, the NASA step, every version, the final design, what failed and what fixed it, the stretch goals, the predictions and notes;
 - an appendix with the final base's systems summary.
 
-### Decisions for you
-1. **Student name:** ask once when Missions starts, or type it on the export screen? (Recommended: the export screen, so nothing is stored for students who don't export.)
-2. Should the prediction and note prompts be **on, off or optional**? (Recommended: optional, with a Skip button.)
-3. One file for the **whole campaign** (recommended), or one per mission?
-4. Do you have **CAT headings or criteria** the sections should match? If so, send me them and I'll mirror their wording.
+### Decided (23 Oct)
+1. **Student name:** asked when Missions starts, and editable on the export screen.
+2. **Prediction and note prompts:** optional, with a Skip button.
+3. **Export:** both. One file for the whole campaign, plus a per-mission export from each mission's dossier page.
+4. **CAT headings:** none needed. Use the plain headings above.
 
 ---
 
 ## Batch 6 · Bigger features
 
-### 28 · Observation cameras
-- **The item:** a small ceiling-corner camera, limited to **one per room and 8 per base**.
-- **Placing it:**
-  - in **Mission Control → Cameras**, click a room on the habitat map to add or remove its camera; it mounts itself in the room's best corner, facing the middle;
-  - or place it by hand like any wall item.
-- **Watching:**
-  - the Cameras panel shows the selected feed large, with the others as thumbnails;
-  - ← and → (or Tab) step through them;
-  - each feed is labelled with its room, temperature and lights.
-- **Wall screens** get a "Camera" mode that cycles through, or shows one chosen camera.
-- **Performance:** only one feed renders live (480×270, 15 fps). The others refresh a snapshot every few seconds, so cameras cost about one extra small view.
+### 28 · Outside cameras and a habitat monitoring station (revised 23 Oct)
+You'd rather not have cameras in every room. The revised idea is two things.
+
+**Outside observation cameras (optional).**
+- A camera mast you place outside (an outdoor item, up to 4), pointing wherever you aim it when you place it, e.g. at the solar field, the drills or the landing pad.
+- Its feed shows in Mission Control and on wall screens (a "Camera" mode).
+- Only one feed renders live at a time (480×270), so it's cheap.
+
+**Habitat monitoring station (Mission Control).**
+- A new **Monitor** tab that shows the base working in real time. It's built from data, not cameras, so it costs almost nothing.
+- **The habitat map, live:** each room is tinted by its state (green fine, amber warning, red critical) and labelled with its temperature, lights on, dim or off, and crew present.
+- **Click a room** to see its machines: on or off, powered or not, and what each one is doing (e.g. "Air recycler: scrubbing 1.2 kg CO₂ a sol").
+- **Whole-base flows:**
+  - a power bar (made vs used, battery %, time to empty);
+  - air (O₂ and CO₂ with arrows);
+  - water and food (made vs used, sols left);
+  - the active alerts from batch 4.
+- **A 24-hour strip** of the last sol for power and battery, so students can watch the day/night cycle play out.
+- **Optional:** a physical "Monitoring Station" console item. Using it opens the same view, so it fits the habitat fiction.
 
 ### 29 · GAR-Y orders
 - **Radial menu:** hold **G** while looking at GAR-Y, or from anywhere if it's within 30 m. The orders are:
@@ -145,17 +155,17 @@ Each new mission is roughly one lesson. Missions 7–10 also put the **alerts** 
 - **On screen:** large live stats (crew, power, O₂, water, food, research), plus the dossier's headline facts, e.g. "Passed Mission 6 on version 4".
 - **No build interface.** Esc returns to the menu. An attract loop runs unattended for the showcase night.
 
-### Decisions for you (batch 6)
-1. Cameras: are **one per room and 8 per base** the right limits?
-2. GAR-Y orders key: hold **G** (recommended; G is already "tertiary use" only on items), or a different key?
-3. Missions 7–10: approve the **four missions above**, or swap any of them for other candidates (water contamination, comms blackout on its own, a crop failure)?
-4. Showcase: should it show the **student's name**? (It's off unless typed on export.)
+### Decided (23 Oct)
+1. **Cameras:** none inside rooms. Outside cameras are optional, and there's a habitat **monitoring station** in Mission Control (see 28).
+2. **GAR-Y orders:** hold **G**. Approved.
+3. **Missions 7–10:** parked. We'll work out what each one asks students to do before building any. The four above are only candidates.
+4. **Showcase:** the student's name is optional.
 
 ---
 
-## Suggested build order after your approval
-1. **Alerts** (batch 4): about a day.
-2. **Dossier and export** (batch 5): about a day.
+## Build order
+1. ~~**Alerts** (batch 4).~~ Done 23 Oct.
+2. **Dossier and export** (batch 5). Next.
 3. **GAR-Y orders**, then the Mission 2 and 6 additions (batch 6, items 29–30).
-4. **Cameras**, then **Showcase** (items 28 and 32): Showcase reuses the cameras.
-5. **Missions 7–10**, one at a time, each with its mechanic and campaign test (item 31).
+4. **Monitoring station**, then the outside cameras, then **Showcase** (items 28 and 32). Showcase can use the monitoring view and the cameras.
+5. **Missions 7–10:** design them together first (item 31).

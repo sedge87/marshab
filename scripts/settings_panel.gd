@@ -102,7 +102,7 @@ func _graphics() -> Control:
 	form.add_child(preset_box)
 	var toggles := MHStyle.vbox(20)
 	_switches.clear()
-	for toggle in [["shadows", "Sun shadows", "Biggest single cost. Turn off first if the game stutters."], ["dust", "Dust particles", "Only drawn within 10 m of the camera."], ["weather", "Weather effects", "Storm haze, dusty skies and blowing dust. With this off, storms still happen and are still announced."], ["gary_autonomy", "GAR-Y autonomy", "GAR-Y goes off surveying, naps at night and, very rarely, moves your odds and ends around."], ["glow", "Window glow", "Bloom on lit windows and beacons."]]:
+	for toggle in [["shadows", "Sun shadows", "Biggest single cost. Turn off first if the game stutters."], ["dust", "Dust particles", "Only drawn within 10 m of the camera."], ["weather", "Weather effects", "Storm haze, dusty skies and blowing dust. With this off, storms still happen and are still announced."], ["gary_autonomy", "GAR-Y autonomy", "GAR-Y goes off surveying, naps at night and, very rarely, moves your odds and ends around."], ["alert_advisories", "Habitat advisories", "Early heads-ups (like low batteries before sunset). Warnings and critical alerts always sound."], ["glow", "Window glow", "Bloom on lit windows and beacons."]]:
 		var row := MHStyle.hbox(18)
 		var sw := MHWidgets.Switch.new()
 		sw.button_pressed = bool(_values.get(toggle[0], false))
@@ -173,7 +173,7 @@ func _audio() -> Control:
 	var form := MHStyle.vbox(30)
 	form.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_child(form)
-	for row in [["vol_master", "Master", "Everything at once."], ["vol_music", "Music", "Slow synth score. It never repeats the same way twice."], ["vol_ambience", "Ambience", "Wind on the surface, life-support hum inside the habitat."], ["vol_sfx", "Effects", "Airlocks, building, footsteps and menu clicks."]]:
+	for row in [["vol_master", "Master", "Everything at once."], ["vol_music", "Music", "Slow synth score. It never repeats the same way twice."], ["vol_ambience", "Ambience", "Wind on the surface, life-support hum inside the habitat."], ["vol_sfx", "Effects", "Airlocks, building, footsteps and menu clicks."], ["vol_voice", "Habitat voice", "The habitat computer's spoken alerts and greetings."]]:
 		var col := MHStyle.vbox(10)
 		var text := MHStyle.hbox(12)
 		text.add_child(MHStyle.label(row[1], 19, MHStyle.TEXT_PRIMARY, 600))

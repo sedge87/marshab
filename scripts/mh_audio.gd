@@ -11,7 +11,7 @@ extends Node
 # adds a soft data pulse. Missing files are skipped silently.
 
 const DIR := "res://assets/audio/"
-const BUSES := ["Music", "Ambience", "SFX"]
+const BUSES := ["Music", "Ambience", "SFX", "Voice"]
 const PADS := ["pad_dm9", "pad_bbmaj7", "pad_gm9", "pad_fadd9", "pad_am7", "pad_csus2"]
 # Which chords may follow which: keeps the harmony moving without lurching.
 const PAD_NEXT := {
@@ -84,6 +84,13 @@ static func build_layer(on: bool) -> void:
 	var d := director()
 	if d != null: d._run("_set_build_layer", [on])
 
+# The habitat computer's voice (assets/audio/voice, tools/generate_voice.py).
+# One line at a time: others wait their turn (at most two), and a line already
+# waiting isn't queued twice.
+static func voice(id: String) -> void:
+	var d := director()
+	if d != null: d._run("_play_voice", [id])
+
 # Muffles music and ambience behind pause / Mission Control.
 static func muffle(on: bool) -> void:
 	var d := director()
@@ -92,9 +99,9 @@ static func muffle(on: bool) -> void:
 # Applies volume settings (0–100). Pass unsaved values to preview them.
 static func apply_volumes(values := {}) -> void:
 	_ensure_buses()
-	for key in ["vol_master", "vol_music", "vol_ambience", "vol_sfx"]:
+	for key in ["vol_master", "vol_music", "vol_ambience", "vol_sfx", "vol_voice"]:
 		var percent := float(values.get(key, MHGame.setting(key)))
-		var bus := AudioServer.get_bus_index({"vol_master": "Master", "vol_music": "Music", "vol_ambience": "Ambience", "vol_sfx": "SFX"}[key])
+		var bus := AudioServer.get_bus_index({"vol_master": "Master", "vol_music": "Music", "vol_ambience": "Ambience", "vol_sfx": "SFX", "vol_voice": "Voice"}[key])
 		AudioServer.set_bus_mute(bus, percent <= 0.0)
 		AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(percent, 1.0) / 100.0))
 
@@ -105,7 +112,7 @@ static func _ensure_buses() -> void:
 		var index := AudioServer.bus_count - 1
 		AudioServer.set_bus_name(index, bus_name)
 		AudioServer.set_bus_send(index, "Master")
-		if bus_name != "SFX":
+		if bus_name != "SFX" and bus_name != "Voice":
 			var filter := AudioEffectLowPassFilter.new()
 			filter.cutoff_hz = 900.0
 			AudioServer.add_bus_effect(index, filter)
@@ -115,6 +122,8 @@ static func _ensure_buses() -> void:
 var _streams := {}
 var _sfx_players: Array[AudioStreamPlayer] = []
 var _next_sfx := 0
+var _voice: AudioStreamPlayer
+var _voice_queue: Array[String] = []
 var _drone: AudioStreamPlayer
 var _pulse: AudioStreamPlayer
 var _pads: Array[AudioStreamPlayer] = []
@@ -142,6 +151,8 @@ func _ready() -> void:
 	_ensure_buses()
 	apply_volumes()
 	for i in 10: _sfx_players.append(_player("SFX"))
+	_voice = _player("Voice")
+	_voice.finished.connect(_next_voice)
 	_drone = _player("Music", "music/drone", true)
 	_pulse = _player("Music", "music/pulse", true)
 	for i in 2: _pads.append(_player("Music"))
@@ -289,6 +300,19 @@ func _play_sfx(id: String, volume_db: float, pitch_jitter: float) -> void:
 	p.volume_db = volume_db + float(SFX_TRIM.get(id, -3.0))
 	p.pitch_scale = randf_range(1.0 - pitch_jitter, 1.0 + pitch_jitter)
 	p.play()
+
+func _play_voice(id: String) -> void:
+	if _stream("voice/" + id) == null: return
+	if _voice.playing:
+		if not _voice_queue.has(id) and _voice_queue.size() < 2: _voice_queue.append(id)
+		return
+	_voice.stream = _stream("voice/" + id)
+	_voice.volume_db = -2.0
+	_voice.play()
+
+func _next_voice() -> void:
+	if _voice_queue.is_empty(): return
+	_play_voice(_voice_queue.pop_front())
 
 func _play_at(id: String, target: Node3D, volume_db: float, height := 1.4) -> void:
 	var stream := _stream("sfx/" + id)

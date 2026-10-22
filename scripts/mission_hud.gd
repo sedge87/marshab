@@ -452,6 +452,14 @@ func _show_report(report: Dictionary) -> void:
 			words.add_child(_wrapped("Try this: " + str(result.tip), 15, MHStyle.accent, 1000))
 		row.add_child(words)
 		column.add_child(row)
+	# The habitat's alerts on the test run: the early warning students would have had.
+	var warned: Array = report.get("alerts", [])
+	if not warned.is_empty():
+		column.add_child(MHStyle.eyebrow("What the habitat would have told you", MHStyle.accent, 13))
+		var colours := {"advisory": Color("#5DC8F9"), "warning": Color("#F5C542"), "critical": Color("#E5484D")}
+		for entry in warned.slice(0, 8):
+			column.add_child(_wrapped("%s · %s · %s" % [str(entry.when).substr(0, 1).to_upper() + str(entry.when).substr(1), str(entry.level).to_upper(), str(entry.title)], 15, colours.get(str(entry.level), MHStyle.WARN), 1000))
+		if warned.size() > 8: column.add_child(_wrapped("…and %d more in the alert log." % (warned.size() - 8), 14, MHStyle.TEXT_MUTED, 1000))
 	for goal in report.stretch:
 		column.add_child(_wrapped(("★ Stretch goal met: " if goal.pass else "☆ Stretch goal: ") + str(goal.text), 15, MHStyle.accent if goal.pass else MHStyle.TEXT_MUTED, 1000))
 	for mode in ["battery", "power"]:
