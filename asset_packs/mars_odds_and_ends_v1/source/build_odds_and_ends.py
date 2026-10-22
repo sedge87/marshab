@@ -52,43 +52,66 @@ def tilt(obj, angle, axis="X", pivot=(0, 0, 0)):
     return obj
 
 
+def lean_back(objs, degrees, pivot=(0, 0, 0)):
+    """Leans parts back (their tops towards -Y, away from the front) about a
+    pivot on the X axis. Done on the mesh data with a matrix, so the direction
+    doesn't depend on the rotate operator's sign convention."""
+    from mathutils import Matrix
+    turn = Matrix.Translation(pivot) @ Matrix.Rotation(math.radians(degrees), 4, "X") @ Matrix.Translation((-pivot[0], -pivot[1], -pivot[2]))
+    for obj in objs:
+        obj.data.transform(turn @ obj.matrix_world)
+        obj.matrix_world = Matrix.Identity(4)
+
+
+def tube(name, centre, radius, length, mat, inward=False, verts=40):
+    """An open-ended tube (no caps); inward=True faces its normals inwards for an inner wall."""
+    bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=radius, depth=length, location=centre, end_fill_type="NOTHING")
+    obj = bpy.context.active_object
+    if inward:
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.mesh.flip_normals()
+        bpy.ops.object.mode_set(mode="OBJECT")
+    return _finish(obj, name, mat)
+
+
 def crew_mug():
     """A crew mug with a mission band: in Mars gravity a cup works again."""
-    cyl("mug_body_white_painted", (0, 0, 0.05), 0.042, 0.1, "white_painted", verts=40, bevel=0.004)
+    tube("mug_body_white_painted", (0, 0, 0.05), 0.042, 0.1, "white_painted")
+    tube("mug_inside_white_painted", (0, 0, 0.052), 0.037, 0.096, "white_painted", inward=True)
+    torus("mug_rim_white_painted", (0, 0, 0.1), 0.0395, 0.0028, "white_painted")
+    cyl("mug_base_white_painted", (0, 0, 0.003), 0.042, 0.006, "white_painted", verts=40, bevel=0.002)
     cyl("mug_band_orange", (0, 0, 0.068), 0.0425, 0.016, "orange", verts=40)
     torus("mug_handle_white_painted", (0.052, 0, 0.052), 0.026, 0.007, "white_painted", axis="y")
-    cyl("coffee_coffee", (0, 0, 0.094), 0.037, 0.004, "coffee", verts=32)
+    cyl("coffee_coffee", (0, 0, 0.075), 0.037, 0.004, "coffee", verts=32)
     cyl("mug_patch_teal", (0, 0.042, 0.04), 0.012, 0.003, "teal", axis="y", verts=20)
 
 
 def crew_tablet():
-    """A procedures tablet leaning on its folding stand."""
-    parts = []
-    body = box("tablet_body_graphite", -0.13, 0.13, -0.006, 0.006, 0.0, 0.18, "graphite", 0.008)
-    screen = box("tablet_screen_dark_glass", -0.12, 0.12, 0.006, 0.008, 0.01, 0.17, "dark_glass", 0)
-    tiles = join("tablet_tiles_screen_cyan", [box("t", x, x + 0.05, 0.008, 0.009, z, z + 0.035, "screen_cyan", 0) for x in (-0.105, -0.045, 0.015) for z in (0.03, 0.08, 0.125)])
-    bar = box("tablet_bar_orange", 0.07, 0.105, 0.008, 0.009, 0.03, 0.16, "orange", 0)
-    for obj in (body, screen, tiles, bar):
-        tilt(obj, math.radians(-22), "X", (0, 0, 0))
-    box("stand_foot_dark_alloy", -0.1, 0.1, -0.02, 0.03, 0.0, 0.01, "dark_alloy", 0.004)
-    stand = box("stand_leg_dark_alloy", -0.08, 0.08, -0.005, 0.0, 0.0, 0.12, "dark_alloy", 0.002)
-    tilt(stand, math.radians(28), "X", (0, -0.06, 0))
+    """A procedures tablet leaning back on its folding stand, screen to the front."""
+    box("stand_base_dark_alloy", -0.1, 0.1, -0.11, 0.03, 0.0, 0.01, "dark_alloy", 0.004)
+    box("stand_lip_dark_alloy", -0.1, 0.1, 0.014, 0.026, 0.01, 0.026, "dark_alloy", 0.003)
+    body = box("tablet_body_graphite", -0.13, 0.13, -0.006, 0.006, 0.01, 0.19, "graphite", 0.008)
+    screen = box("tablet_screen_dark_glass", -0.12, 0.12, 0.006, 0.008, 0.02, 0.18, "dark_glass", 0)
+    tiles = join("tablet_tiles_screen_cyan", [box("t", x, x + 0.05, 0.008, 0.009, z, z + 0.035, "screen_cyan", 0) for x in (-0.105, -0.045, 0.015) for z in (0.04, 0.09, 0.135)])
+    bar = box("tablet_bar_orange", 0.07, 0.105, 0.008, 0.009, 0.04, 0.17, "orange", 0)
+    lean_back([body, screen, tiles, bar], 20, (0, 0, 0.01))
+    join("stand_struts_dark_alloy", [rod("s", (x, -0.052, 0.12), (x, -0.105, 0.01), 0.005, "dark_alloy") for x in (-0.07, 0.07)])
 
 
 def crew_laptop():
-    """An open laptop: the ISS runs on dozens of them."""
-    cabinet_base = box("laptop_base_graphite", -0.17, 0.17, -0.12, 0.12, 0.0, 0.02, "graphite", 0.006)
-    keys = [box("k", -0.15 + i * 0.0215, -0.15 + i * 0.0215 + 0.017, -0.06 + j * 0.022, -0.06 + j * 0.022 + 0.017, 0.02, 0.023, "dark_alloy", 0)
+    """An open laptop, screen to the front: the ISS runs on dozens of them."""
+    box("laptop_base_graphite", -0.17, 0.17, -0.12, 0.12, 0.0, 0.02, "graphite", 0.006)
+    keys = [box("k", -0.15 + i * 0.0215, -0.15 + i * 0.0215 + 0.017, -0.1 + j * 0.022, -0.1 + j * 0.022 + 0.017, 0.02, 0.023, "dark_alloy", 0)
             for i in range(14) for j in range(5)]
     join("laptop_keys_dark_alloy", keys)
-    box("laptop_pad_slate_panel", -0.05, 0.05, -0.11, -0.065, 0.02, 0.0215, "slate_panel", 0.002)
-    lid = box("laptop_lid_graphite", -0.17, 0.17, 0.11, 0.122, 0.0, 0.22, "graphite", 0.006)
-    screen = box("laptop_screen_dark_glass", -0.155, 0.155, 0.106, 0.11, 0.015, 0.205, "dark_glass", 0)
-    plot = join("laptop_plot_screen_green", [box("p", -0.13 + i * 0.026, -0.13 + i * 0.026 + 0.02, 0.105, 0.106, 0.03, 0.03 + h, "screen_green", 0)
+    box("laptop_pad_slate_panel", -0.05, 0.05, 0.04, 0.1, 0.02, 0.0215, "slate_panel", 0.002)
+    lid = box("laptop_lid_graphite", -0.17, 0.17, -0.122, -0.11, 0.01, 0.23, "graphite", 0.006)
+    screen = box("laptop_screen_dark_glass", -0.155, 0.155, -0.11, -0.106, 0.025, 0.215, "dark_glass", 0)
+    plot = join("laptop_plot_screen_green", [box("p", -0.13 + i * 0.026, -0.13 + i * 0.026 + 0.02, -0.106, -0.105, 0.04, 0.04 + h, "screen_green", 0)
                                            for i, h in enumerate((0.04, 0.07, 0.06, 0.1, 0.12, 0.09, 0.14, 0.13, 0.15, 0.11))])
-    for obj in (lid, screen, plot):
-        tilt(obj, math.radians(-14), "X", (0, 0.116, 0.01))
-    box("laptop_sticker_orange", -0.14, -0.1, 0.123, 0.124, 0.15, 0.19, "orange", 0)
+    sticker = box("laptop_sticker_orange", -0.14, -0.1, -0.124, -0.122, 0.16, 0.2, "orange", 0)
+    lean_back([lid, screen, plot, sticker], 14, (0, -0.116, 0.015))
 
 
 def paper_books():
@@ -104,16 +127,14 @@ def paper_books():
 
 def photo_frame():
     """A framed photo of Earth as seen from Mars: a small blue star."""
-    parts = [box("frame_alloy", -0.09, 0.09, -0.008, 0.008, 0.0, 0.24, "alloy", 0.006)]
+    frame = box("frame_alloy", -0.09, 0.09, -0.008, 0.008, 0.0, 0.24, "alloy", 0.006)
     photo = box("photo_graphite", -0.075, 0.075, 0.008, 0.01, 0.015, 0.225, "graphite", 0)
     earth = cyl("earth_earth_blue", (0.0, 0.011, 0.14), 0.035, 0.003, "earth_blue", axis="y", verts=32)
     land = join("land_leaf_light", [cyl("l", (x, 0.0125, z), r, 0.002, "leaf_light", axis="y", verts=12) for x, z, r in ((-0.01, 0.15, 0.012), (0.015, 0.13, 0.009))])
     cloud = cyl("cloud_white_painted", (0.012, 0.0127, 0.158), 0.008, 0.002, "white_painted", axis="y", verts=12)
     horizon = box("horizon_regolith", -0.075, 0.075, 0.009, 0.011, 0.015, 0.06, "regolith", 0)
-    for obj in parts + [photo, earth, land, cloud, horizon]:
-        tilt(obj, math.radians(-12), "X", (0, 0, 0))
-    leg = box("leg_dark_alloy", -0.015, 0.015, -0.004, 0.0, 0.0, 0.16, "dark_alloy", 0.002)
-    tilt(leg, math.radians(25), "X", (0, -0.03, 0))
+    lean_back([frame, photo, earth, land, cloud, horizon], 12, (0, 0.008, 0))
+    rod("leg_dark_alloy", (0, -0.035, 0.12), (0, -0.085, 0.004), 0.005, "dark_alloy")
 
 
 def chess_set():

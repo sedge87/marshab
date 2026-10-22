@@ -1,7 +1,8 @@
 class_name MHPauseMenu
 extends Control
 
-# Pause screen (shot 1k): action list on the left, Controls sheet on the right,
+# Pause screen (shot 1k): action list on the left, Controls sheet on the right
+# (closed until the Controls button opens it),
 # over the last frame blurred and dimmed. The tree is paused while it is open.
 
 signal resumed
@@ -40,7 +41,7 @@ func _ready() -> void:
 	var resume := _row(list, "Resume", "primary", "play")
 	resume.pressed.connect(func() -> void: resumed.emit())
 	_row(list, "Mission Control", "secondary", "clipboard-check").pressed.connect(func() -> void: mission_control.emit())
-	_controls_button = _row(list, "Controls", "selected", "keyboard")
+	_controls_button = _row(list, "Controls", "secondary", "keyboard")
 	_controls_button.pressed.connect(_toggle_controls)
 	_row(list, "Settings", "secondary", "settings").pressed.connect(func() -> void: settings.emit())
 	list.add_child(MHStyle.eyebrow("%s saves" % MHGame.SAVE_SETS[MHGame.save_set_for_mode(MHGame.game_mode)], MHStyle.accent, 13))
@@ -55,6 +56,7 @@ func _ready() -> void:
 	footer.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	list.add_child(footer)
 	_controls_sheet = _build_controls()
+	_controls_sheet.visible = false
 	add_child(_controls_sheet)
 	resume.grab_focus.call_deferred()
 

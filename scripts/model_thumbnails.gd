@@ -7,7 +7,7 @@ extends Node
 ## Texture2D (straight away if cached).
 const SIZE := Vector2i(256, 168)
 const DIRECTORY := "user://thumbnails"
-const VERSION := 5   # bump to re-render every thumbnail
+const VERSION := 6   # bump to re-render every thumbnail
 
 static var _cache := {}
 static var _baker: Node

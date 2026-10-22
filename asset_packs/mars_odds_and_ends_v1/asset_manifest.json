@@ -3,57 +3,6 @@
   "units": "metres; Y up; -Z forward; floor origin",
   "assets": [
     {
-      "id": "crew_mug",
-      "file": "crew_mug.glb",
-      "placement": "floor",
-      "bounds_m": [
-        [
-          -0.043,
-          0.0,
-          -0.043
-        ],
-        [
-          0.085,
-          0.1,
-          0.043
-        ]
-      ],
-      "triangles": 1600,
-      "named_components": [
-        "coffee",
-        "mug_band",
-        "mug_body_white",
-        "mug_handle_white",
-        "mug_patch"
-      ]
-    },
-    {
-      "id": "crew_tablet",
-      "file": "crew_tablet.glb",
-      "placement": "floor",
-      "bounds_m": [
-        [
-          -0.13,
-          -0.001,
-          -0.071
-        ],
-        [
-          0.13,
-          0.167,
-          0.067
-        ]
-      ],
-      "triangles": 696,
-      "named_components": [
-        "stand_foot_dark",
-        "stand_leg_dark",
-        "tablet_bar",
-        "tablet_body",
-        "tablet_screen_dark",
-        "tablet_tiles_screen"
-      ]
-    },
-    {
       "id": "paper_books",
       "file": "paper_books.glb",
       "placement": "floor",
@@ -80,33 +29,6 @@
         "book2_cover",
         "book2_pages",
         "book2_title"
-      ]
-    },
-    {
-      "id": "photo_frame",
-      "file": "photo_frame.glb",
-      "placement": "floor",
-      "bounds_m": [
-        [
-          -0.09,
-          -0.0,
-          -0.057
-        ],
-        [
-          0.09,
-          0.235,
-          0.073
-        ]
-      ],
-      "triangles": 656,
-      "named_components": [
-        "cloud_white",
-        "earth_earth",
-        "frame",
-        "horizon",
-        "land_leaf",
-        "leg_dark",
-        "photo"
       ]
     },
     {
@@ -347,6 +269,61 @@
       ]
     },
     {
+      "id": "crew_mug",
+      "file": "crew_mug.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.043,
+          0.0,
+          -0.043
+        ],
+        [
+          0.085,
+          0.103,
+          0.043
+        ]
+      ],
+      "triangles": 2528,
+      "named_components": [
+        "coffee",
+        "mug_band",
+        "mug_base_white",
+        "mug_body_white",
+        "mug_handle_white",
+        "mug_inside_white",
+        "mug_patch",
+        "mug_rim_white"
+      ]
+    },
+    {
+      "id": "crew_tablet",
+      "file": "crew_tablet.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.13,
+          0.0,
+          -0.03
+        ],
+        [
+          0.13,
+          0.18,
+          0.11
+        ]
+      ],
+      "triangles": 816,
+      "named_components": [
+        "stand_base_dark",
+        "stand_lip_dark",
+        "stand_struts_dark",
+        "tablet_bar",
+        "tablet_body",
+        "tablet_screen_dark",
+        "tablet_tiles_screen"
+      ]
+    },
+    {
       "id": "crew_laptop",
       "file": "crew_laptop.glb",
       "placement": "floor",
@@ -354,12 +331,12 @@
         [
           -0.17,
           0.0,
-          -0.171
+          -0.12
         ],
         [
           0.17,
-          0.214,
-          0.12
+          0.224,
+          0.173
         ]
       ],
       "triangles": 1548,
@@ -371,6 +348,33 @@
         "laptop_plot_screen",
         "laptop_screen_dark",
         "laptop_sticker"
+      ]
+    },
+    {
+      "id": "photo_frame",
+      "file": "photo_frame.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.09,
+          -0.002,
+          -0.008
+        ],
+        [
+          0.09,
+          0.234,
+          0.09
+        ]
+      ],
+      "triangles": 528,
+      "named_components": [
+        "cloud_white",
+        "earth_earth",
+        "frame",
+        "horizon",
+        "land_leaf",
+        "leg_dark",
+        "photo"
       ]
     }
   ]

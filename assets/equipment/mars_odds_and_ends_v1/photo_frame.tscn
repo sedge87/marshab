@@ -8,4 +8,4 @@ script = ExtResource("1_rig")
 equipment_id = "photo_frame"
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0, 0.0, -0.008)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0, 0.002, -0.041)

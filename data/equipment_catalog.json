@@ -3161,7 +3161,7 @@
       "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/crew_mug.tscn",
       "size_m": [
         0.128,
-        0.1,
+        0.103,
         0.086
       ],
       "pack": "mars_odds_and_ends_v1"
@@ -3204,8 +3204,8 @@
       "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/crew_tablet.tscn",
       "size_m": [
         0.26,
-        0.168,
-        0.138
+        0.18,
+        0.14
       ],
       "pack": "mars_odds_and_ends_v1"
     },
@@ -3247,8 +3247,8 @@
       "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/crew_laptop.tscn",
       "size_m": [
         0.34,
-        0.214,
-        0.291
+        0.224,
+        0.293
       ],
       "pack": "mars_odds_and_ends_v1"
     },
@@ -3341,8 +3341,8 @@
       "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/photo_frame.tscn",
       "size_m": [
         0.18,
-        0.235,
-        0.13
+        0.236,
+        0.098
       ],
       "pack": "mars_odds_and_ends_v1"
     },

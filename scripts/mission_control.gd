@@ -174,7 +174,7 @@ func _plan_column() -> Control:
 	plan.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(plan)
 	var legend := MHStyle.hbox(18)
-	for entry in [["Airlock face", MHStyle.accent], ["Room", MHStyle.CELL_LINE], ["Solar", MHStyle.BEACON_YELLOW]]:
+	for entry in [["You", MHStyle.VALID], ["Airlock face", MHStyle.accent], ["Room", MHStyle.CELL_LINE], ["Solar", MHStyle.BEACON_YELLOW]]:
 		var item := MHStyle.hbox(8)
 		var swatch := ColorRect.new()
 		swatch.color = entry[1]
@@ -245,3 +245,28 @@ class PlanView extends Control:
 				var tw := font_b.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 				if tw < unit * sqrt(float(zone.cells.size())) * 1.4:
 					draw_string(font_b, centre + Vector2(-tw * .5, 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MHStyle.INK_100)
+		_draw_player(origin, unit, font_b)
+
+	## Where the player is and which way they face: an arrow with "YOU". Off
+	## the plan (out on the surface) it sits on the nearest edge, pointing
+	## towards them.
+	func _draw_player(origin: Vector2, unit: float, font: Font) -> void:
+		var player := get_tree().get_first_node_in_group("player") as Node3D
+		if player == null: return
+		var at := origin + Vector2(player.global_position.x, player.global_position.z) / BuildController.CELL * unit
+		var heading := Vector2(-sin(player.global_rotation.y), -cos(player.global_rotation.y))
+		var inside := Rect2(Vector2.ZERO, size).grow(-14).has_point(at)
+		if not inside:
+			var centre := size * .5
+			heading = (at - centre).normalized()
+			at = Vector2(clampf(at.x, 14, size.x - 14), clampf(at.y, 14, size.y - 14))
+		var side := Vector2(-heading.y, heading.x)
+		var arrow := PackedVector2Array([at + heading * 11, at - heading * 7 + side * 7, at - heading * 3, at - heading * 7 - side * 7])
+		draw_circle(at, 13, Color(MHStyle.VALID, .18))
+		draw_colored_polygon(arrow, MHStyle.VALID)
+		draw_polyline(arrow + PackedVector2Array([arrow[0]]), MHStyle.BLUEPRINT, 1.5)
+		var label := "YOU" if inside else "YOU · OUTSIDE"
+		var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+		var spot := at + Vector2(-tw * .5, 26)
+		spot = Vector2(clampf(spot.x, 4, size.x - tw - 4), clampf(spot.y, 14, size.y - 4))
+		draw_string(font, spot, label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, MHStyle.VALID)

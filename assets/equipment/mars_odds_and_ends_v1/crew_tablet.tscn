@@ -8,4 +8,4 @@ script = ExtResource("1_rig")
 equipment_id = "crew_tablet"
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0, 0.001, 0.002)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0, -0.0, -0.04)
