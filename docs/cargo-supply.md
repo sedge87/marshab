@@ -1,4 +1,4 @@
-# Cargo supply: resupply landers and the regolith printer
+# Cargo supply: the regolith printer
 
 Built 22 Oct 2026 to answer one question: "how do players get more cargo, for a reason that teaches something?"
 
@@ -19,28 +19,27 @@ The cargo panel in the site plan shows Earth cargo left and Mars-made material (
 ## The regolith printer
 - **Regolith Printer:** a gantry 3D printer placed in **Storage** or **Power & Engineering**. It's 1,800 kg and draws 4 kW, and E switches it on and off. The model is in `asset_packs/mars_fabrication_v1/`.
 - **Regolith Intake:** outdoors, under Site plan › Resources. It's a scoop wheel, a sieve drum and a conveyor, at 900 kg and 1.5 kW. The printer needs at least one intake running.
-- **Output:** 2,000 kg of Mars-made material a sol per printer, or 25% more when the base has a plastics recycling hopper (shredded plastic binds the soil).
+- **Output:** 2,500 kg of Mars-made material a sol per printer, or 25% more when the base has a plastics recycling hopper (shredded plastic binds the soil).
 - **Power:** the printer is on the lowest priority tier, so it's the first thing switched off when power runs short.
 - **Real-world basis:** NASA's 3D-Printed Habitat Challenge, and MOXIE making oxygen on Mars.
 
-## Resupply landers (Survival and Freedom)
+## Starting cargo and Earth resupply
 
-| Mode | Start | Resupply |
+| Mode | Start | How it grows |
 | --- | --- | --- |
-| Survival | 80 t | +15 t every 3 sols (one sol is about 20 minutes of play) |
-| Freedom | 120 t | +20 t every 2 sols |
+| Survival | 100 t | Regolith printer |
+| Freedom | 140 t | Regolith printer |
 | Creative | Unlimited | — |
-| Missions | Each mission's payload | The mission landings are the resupplies. The printer and intake arrive in Mission 6. |
+| Missions | Each mission's payload | The mission landings. The printer and intake arrive in Mission 6. |
 
-- **Countdown:** the HUD clock shows the time to the next resupply, for example "RESUPPLY 15 H".
-- **Landing:** a cargo lander comes down 18–30 m from the crew lander, clear of the habitat, and stays as a compass landmark ("RESUPPLY 2").
-- **Real-world basis:** Earth and Mars line up about every 26 months. The game compresses that and says so.
+- **Earth resupply is switched off** (22 Oct). Timed resupply landers made the printer pointless, so the printer is now the only way to grow the base. Printed material pays for room shells first, including ones already built, which frees Earth cargo for machines.
+- **To switch resupply back on:** set `resupply_enabled` to 1 on the Settings tab. The landers (+15 t every 3 sols in Survival, +20 t every 2 sols in Freedom), the HUD countdown and saving all still work.
 
 ## Where it lives
 - **Numbers:** `docs/MarsHabitat_Balance.xlsx`, Settings and Equipment tabs, imported into `data/resources.json`.
 - **Cargo pools:** `BuildController` (`mars_made_total`, `printable_cargo`, `earth_cost`).
 - **Printing:** `scripts/habitat_sim.gd` (`printed_kg`, `print_rate`).
-- **Resupply:** `MHGame` (budgets and schedule) and `scripts/mars_world.gd` (`_check_resupply`, saving).
+- **Resupply (switched off):** `MHGame` (budgets, `resupplies_on`, schedule) and `scripts/mars_world.gd` (`_check_resupply`, saving).
 - **Test:** `tests/cargo_supply_test.gd`.
 
 ## Ideas for later

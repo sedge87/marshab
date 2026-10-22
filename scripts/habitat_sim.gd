@@ -554,7 +554,7 @@ func print_rate(inv: Dictionary) -> float:
 	var printers := (inv.items as Array).filter(func(i): return i.id == "regolith_printer" and i.on).size()
 	if printers == 0: return 0.0
 	var recycling := (inv.items as Array).any(func(i): return i.id == "recycling_hopper_plastics")
-	return printers * MHResources.setting("print_kg_per_sol", 2000.0) * (1.0 + (MHResources.setting("print_recycle_bonus", .25) if recycling else 0.0))
+	return printers * MHResources.setting("print_kg_per_sol", 2500.0) * (1.0 + (MHResources.setting("print_recycle_bonus", .25) if recycling else 0.0))
 
 ## numbers behind the readiness checklist and the systems panel.
 ## planned: for the full mission crew (readiness); otherwise for the crew on board now.

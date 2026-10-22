@@ -12,6 +12,7 @@ const ModelThumbnails := preload("res://scripts/model_thumbnails.gd")
 const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
 ## The build bar's last tab: doors, windows and removing things.
 const STRUCTURE_TAB := "_structure"
+const HERE_TAB := "_here"
 const STRUCTURE_TOOLS := [
 	{"id": "partition", "label": "Partition wall", "icon": "brick-wall", "text": "Divide a room into bedrooms or cubicles. Hold the mouse button and drag along the floor to draw 1.5 m panels. The room stays one space for air and heat."},
 	{"id": "partition_glass", "label": "Glass partition", "icon": "panels-top-left", "text": "A glass panel in a metal frame: it divides the room but keeps it open and light. Drag to draw, or aim at a wall panel to glaze it."},
@@ -44,7 +45,10 @@ var _selector_cards: HBoxContainer
 var _selector_context: Label
 var _selector_zone_kind := ""
 var _selector_group := ""
-var _selector_items: Array[String] = []
+var _selector_items: Array[String] = []   # what fits the room the player is in
+var _catalog_items: Array[String] = []    # everything unlocked, for the fixed tabs
+var _blocked_note := ""
+var _blocked_until := 0
 var _remove_mode := false
 var _selected_structure := ""
 var _door_target := {}
@@ -92,6 +96,7 @@ func enter() -> void:
 		_was_minimal = bool(explore.get("_minimal"))
 		explore.call("set_minimal", true)   # a clean screen while building
 	_build_hud()
+	_refresh_contextual_selector(true)
 	# Choosing the part is the first step of interior construction, rather than
 	# a hidden secondary menu. Selecting a tile returns to the aimed placement
 	# view with the mouse captured.
@@ -658,6 +663,10 @@ func _context_zone() -> Dictionary:
 	# By position, so angled (free-form) rooms list their equipment too.
 	return builder._zone_at_point(Vector2(player.global_position.x, player.global_position.z))
 
+## The bar keeps the same tabs and card positions in every room, so Q / E and
+## the number keys always land in the same place. "This room" comes first and
+## lists only what fits here; the other tabs list everything they hold, with
+## the items that don't fit this room greyed out.
 func _refresh_contextual_selector(force := false) -> void:
 	if _bar == null:
 		return
@@ -665,90 +674,112 @@ func _refresh_contextual_selector(force := false) -> void:
 	var zone_kind := str(zone.get("kind", ""))
 	if not force and zone_kind == _selector_zone_kind:
 		return
+	var room_changed := force or zone_kind != _selector_zone_kind
 	_selector_zone_kind = zone_kind
 	if not _mode_switcher.is_empty():
 		(_mode_switcher.purpose as Label).text = _purpose_text()
-	_selector_items.clear()
+	_catalog_items.clear()
 	for raw_id in _catalogue_ids():
 		var id := str(raw_id)
-		var entry := EquipmentCatalog.get_entry(id)
-		if not entry.is_empty() and builder.interior_asset_available(id) and not zone_kind.is_empty() and (entry.get("valid_zones", []) as Array).has(zone_kind) and MHMissions.item_unlocked(id):
-			_selector_items.append(id)
-	if _selector_items.is_empty():
-		_selector_group = ""
-		for child in _selector_tabs.get_children():
-			child.queue_free()
-		for child in _selector_cards.get_children():
-			child.queue_free()
-		if _selector_context != null:
-			_selector_context.text = "WALK INTO A ROOM TO FURNISH IT"
-		return
-	var groups: Array[String] = []
+		if not EquipmentCatalog.get_entry(id).is_empty() and builder.interior_asset_available(id) and MHMissions.item_unlocked(id):
+			_catalog_items.append(id)
+	# This room: its own kit first, then shared things in tab order.
+	_selector_items.clear()
+	var order: Array[String] = [_room_group(zone_kind)]
 	for group in EquipmentCatalog.groups():
-		var group_id := str((group as Dictionary).get("id", ""))
-		for id in _selector_items:
-			if str(EquipmentCatalog.get_entry(id).get("group", "")) == group_id:
-				groups.append(group_id)
-				break
-	if not groups.has(_selector_group):
-		_selector_group = str(EquipmentCatalog.get_entry(selected_id).get("group", groups[0]))
-		if not groups.has(_selector_group):
-			_selector_group = groups[0]
-	if not _selector_items.has(selected_id):
+		if not order.has(str(group.id)): order.append(str(group.id))
+	for group_id in order:
+		for id in _catalog_items:
+			if str(EquipmentCatalog.get_entry(id).get("group", "")) == group_id and _fits_here(id):
+				_selector_items.append(id)
+	if room_changed and _selector_group != STRUCTURE_TAB and not zone_kind.is_empty():
+		_selector_group = HERE_TAB
+	if not _tab_ids().has(_selector_group):
+		_selector_group = HERE_TAB
+	if not _selector_items.has(selected_id) and not _selector_items.is_empty():
 		selected_id = _selector_items[0]
 		rotation_offset = 0.0
-	_render_selector_tabs(groups)
+	_render_selector_tabs()
 	_render_selector_cards()
 	if _selector_context != null:
-		var zone_label := str(BuildController.ZONE_TYPES.get(zone_kind, {}).get("label", "completed habitat"))
-		_selector_context.text = "%s · %d ITEMS   " % [zone_label.to_upper(), _selector_items.size()]
+		if zone_kind.is_empty(): _selector_context.text = "WALK INTO A ROOM TO FURNISH IT   "
+		else: _selector_context.text = "%s · %d FIT HERE   " % [str(BuildController.ZONE_TYPES.get(zone_kind, {}).get("label", "room")).to_upper(), _selector_items.size()]
 
-func _render_selector_tabs(groups: Array[String]) -> void:
+## The equipment tab named after a room type (Power & Engineering uses Power).
+func _room_group(zone_kind: String) -> String:
+	return "power" if zone_kind == "engineering" else zone_kind
+
+func _fits_here(id: String) -> bool:
+	return not _selector_zone_kind.is_empty() and (EquipmentCatalog.get_entry(id).get("valid_zones", []) as Array).has(_selector_zone_kind)
+
+## "Fits in Galley, Storage" for a greyed-out card.
+func _fits_in(id: String) -> String:
+	if _selector_zone_kind.is_empty(): return "Walk into a room to furnish it"
+	var zones := EquipmentCatalog.get_entry(id).get("valid_zones", []) as Array
+	var labels: Array = []
+	for kind in BuildController.ZONE_TYPES:
+		if zones.has(kind) and not BuildController.SITE_MACHINES.has(kind) and kind != "regolith_intake":
+			labels.append(str(BuildController.ZONE_TYPES[kind].label))
+	return ("Fits in " + ", ".join(labels)) if not labels.is_empty() else "Doesn't fit indoors"
+
+## Fixed tabs: This room, every equipment tab with something unlocked, Structure.
+func _tab_ids() -> Array:
+	var tabs: Array = [HERE_TAB]
+	for group in EquipmentCatalog.groups():
+		var group_id := str(group.id)
+		for id in _catalog_items:
+			if str(EquipmentCatalog.get_entry(id).get("group", "")) == group_id:
+				tabs.append(group_id)
+				break
+	tabs.append(STRUCTURE_TAB)
+	return tabs
+
+## The selected tab shows its name; the others are icons with a tooltip, so
+## the row stays one width. Tabs with nothing for this room are dimmed.
+func _render_selector_tabs() -> void:
 	for child in _selector_tabs.get_children():
 		child.queue_free()
-	var specs: Array = []
+	var labels := {HERE_TAB: ["This room", "map-pin"], STRUCTURE_TAB: ["Structure", "door-closed"]}
 	for group in EquipmentCatalog.groups():
-		var details := group as Dictionary
-		if groups.has(str(details.get("id", ""))): specs.append([str(details.id), str(details.get("label", "")), str(details.get("icon", "package"))])
-	specs.append([STRUCTURE_TAB, "Structure", "door-closed"])
-	for spec in specs:
-		var selected: bool = spec[0] == _selector_group
+		labels[str(group.id)] = [str(group.get("label", "")), str(group.get("icon", "package"))]
+	for tab_id in _tab_ids():
+		var selected: bool = tab_id == _selector_group
+		var useful := _tab_useful(str(tab_id))
 		var tab := Button.new()
-		tab.text = "  " + str(spec[1])
-		tab.icon = MHIcons.texture(str(spec[2]), 18)
+		tab.text = ("  " + str(labels[tab_id][0])) if selected else ""
+		tab.tooltip_text = str(labels[tab_id][0]) + ("" if useful else " · nothing for this room")
+		tab.icon = MHIcons.texture(str(labels[tab_id][1]), 18)
 		tab.focus_mode = Control.FOCUS_NONE
-		tab.custom_minimum_size = Vector2(0, 40)
+		tab.custom_minimum_size = Vector2(0 if selected else 44, 40)
 		tab.add_theme_font_size_override("font_size", 15)
-		tab.add_theme_color_override("font_color", MHStyle.TEXT_PRIMARY if selected else MHStyle.TEXT_SECONDARY)
-		tab.add_theme_stylebox_override("normal", MHStyle.box(MHStyle.tint(MHStyle.accent, .22) if selected else MHStyle.SURFACE_CONTROL, MHStyle.accent if selected else MHStyle.BORDER_SUBTLE, 6, 1, Vector4(14, 6, 16, 6)))
-		tab.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, 6, 1, Vector4(14, 6, 16, 6)))
+		tab.add_theme_color_override("font_color", MHStyle.TEXT_PRIMARY)
+		tab.modulate.a = 1.0 if useful or selected else .4
+		var pad := Vector4(14, 6, 16, 6) if selected else Vector4(12, 6, 12, 6)
+		tab.add_theme_stylebox_override("normal", MHStyle.box(MHStyle.tint(MHStyle.accent, .22) if selected else MHStyle.SURFACE_CONTROL, MHStyle.accent if selected else MHStyle.BORDER_SUBTLE, 6, 1, pad))
+		tab.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, 6, 1, pad))
 		tab.add_theme_stylebox_override("pressed", tab.get_theme_stylebox("normal"))
-		tab.pressed.connect(_select_selector_group.bind(str(spec[0])))
+		tab.pressed.connect(_select_selector_group.bind(str(tab_id)))
 		_selector_tabs.add_child(tab)
+
+## Does this tab hold anything that fits the room the player is in?
+func _tab_useful(tab_id: String) -> bool:
+	if tab_id == STRUCTURE_TAB: return true
+	if tab_id == HERE_TAB: return not _selector_items.is_empty()
+	return _selector_items.any(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == tab_id)
 
 func _select_selector_group(group_id: String) -> void:
 	_selector_group = group_id
 	if group_id != STRUCTURE_TAB:
-		for id in _selector_items:
-			if str(EquipmentCatalog.get_entry(id).get("group", "")) == group_id:
+		for id in _visible_ids():
+			if _fits_here(id):
 				selected_id = id
 				_selected_structure = ""
 				_remove_mode = false
 				rotation_offset = 0.0
 				break
-	_render_selector_tabs(_available_groups())
+	_render_selector_tabs()
 	_render_selector_cards()
 	_refresh_preview(true)
-
-func _available_groups() -> Array[String]:
-	var groups: Array[String] = []
-	for group in EquipmentCatalog.groups():
-		var group_id := str((group as Dictionary).get("id", ""))
-		for id in _selector_items:
-			if str(EquipmentCatalog.get_entry(id).get("group", "")) == group_id:
-				groups.append(group_id)
-				break
-	return groups
 
 func _render_selector_cards() -> void:
 	for child in _selector_cards.get_children():
@@ -757,19 +788,19 @@ func _render_selector_cards() -> void:
 	for id in _visible_ids():
 		index += 1
 		_selector_cards.add_child(_card(id, index))
-
-## Tabs in order (equipment groups for this room, then Structure).
-func _tab_ids() -> Array:
-	var tabs: Array = []
-	for group in _available_groups(): tabs.append(group)
-	tabs.append(STRUCTURE_TAB)
-	return tabs
+	if index == 0:
+		var note := MHStyle.mono("WALK INTO A ROOM TO SEE WHAT FITS IT", 13, MHStyle.TEXT_MUTED)
+		note.custom_minimum_size = Vector2(420, 160)
+		note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_selector_cards.add_child(note)
 
 ## Card ids in the current tab (equipment ids, or structure tool ids).
 func _visible_ids() -> Array:
 	if _selector_group == STRUCTURE_TAB:
 		return STRUCTURE_TOOLS.map(func(tool): return str(tool.id))
-	return _selector_items.filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == _selector_group)
+	if _selector_group == HERE_TAB:
+		return _selector_items.duplicate()
+	return _catalog_items.filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == _selector_group)
 
 func _structure_tool(id: String) -> Dictionary:
 	for tool in STRUCTURE_TOOLS:
@@ -777,6 +808,13 @@ func _structure_tool(id: String) -> Dictionary:
 	return {}
 
 func _pick_card(id: String) -> void:
+	if _selector_group != STRUCTURE_TAB and not _fits_here(id):
+		# Greyed out: say where it goes instead of picking it.
+		MHAudio.sfx("invalid")
+		_blocked_note = "%s · %s" % [str(EquipmentCatalog.get_entry(id).get("label", id)), _fits_in(id)]
+		_blocked_until = Time.get_ticks_msec() + 2500
+		_update_hud()
+		return
 	MHAudio.sfx("ui_click", -6.0)
 	if _selector_group == STRUCTURE_TAB:
 		if id == "remove": _set_remove_mode(true)
@@ -791,14 +829,19 @@ func _is_selected(id: String) -> bool:
 	return id == selected_id and _selected_structure.is_empty() and not _remove_mode
 
 ## One picture card: a rendered thumbnail of the real model, its number key,
-## name and cargo mass.
+## name and cargo mass. Items that don't fit this room are greyed out and say
+## where they do fit.
 func _card(id: String, index: int) -> Button:
 	var structure := _structure_tool(id) if _selector_group == STRUCTURE_TAB else {}
 	var entry := EquipmentCatalog.get_entry(id)
-	var selected := _is_selected(id)
+	var fits := not structure.is_empty() or _fits_here(id)
+	var selected := _is_selected(id) and fits
 	var card := Button.new()
 	card.custom_minimum_size = Vector2(186, 164)
 	card.focus_mode = Control.FOCUS_NONE
+	if not fits:
+		card.tooltip_text = _fits_in(id)
+		card.modulate = Color(1, 1, 1, .42)
 	card.add_theme_stylebox_override("normal", MHStyle.box(MHStyle.tint(MHStyle.accent, .16) if selected else MHStyle.SURFACE_CONTROL, MHStyle.accent if selected else MHStyle.BORDER_SUBTLE, 8, 2 if selected else 1, Vector4(8, 8, 8, 8)))
 	card.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.accent if selected else MHStyle.BORDER_STRONG, 8, 2 if selected else 1, Vector4(8, 8, 8, 8)))
 	card.add_theme_stylebox_override("pressed", card.get_theme_stylebox("hover"))
@@ -829,7 +872,7 @@ func _card(id: String, index: int) -> Button:
 	name.clip_text = true
 	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	column.add_child(name)
-	var sub := MHStyle.mono(("%d  ·  %s" % [index, MHStyle.kg(int(entry.get("cargo_cost", 0)))]) if structure.is_empty() else "%d" % index, 11, MHStyle.TEXT_MUTED)
+	var sub := MHStyle.mono(("%d  ·  %s" % [index, (MHStyle.kg(int(entry.get("cargo_cost", 0))) if fits else "NOT FOR THIS ROOM")]) if structure.is_empty() else "%d" % index, 11, MHStyle.TEXT_MUTED)
 	column.add_child(sub)
 	card.add_child(column)
 	card.pressed.connect(_pick_card.bind(id))
@@ -844,7 +887,13 @@ func _update_hud() -> void:
 	var tone := MHStyle.WARN if _remove_mode else (MHStyle.VALID if ok else MHStyle.DANGER)
 	_tag_icon.texture = MHIcons.texture("trash-2" if _remove_mode else ("circle-check" if ok else "circle-x"), 18)
 	_tag_icon.modulate = tone
-	if _remove_mode: _tag_label.text = "AIM AT AN ITEM, DOOR OR WINDOW   ·   LMB REMOVE"
+	if Time.get_ticks_msec() < _blocked_until:
+		ok = false
+		tone = MHStyle.WARN
+		_tag_icon.texture = MHIcons.texture("map-pin", 18)
+		_tag_icon.modulate = tone
+		_tag_label.text = _blocked_note.to_upper()
+	elif _remove_mode: _tag_label.text = "AIM AT AN ITEM, DOOR OR WINDOW   ·   LMB REMOVE"
 	elif ok and (_selected_structure == "partition" or _selected_structure == "partition_glass"): _tag_label.text = "FITS HERE   ·   HOLD LMB AND DRAG TO DRAW"
 	elif ok and _selected_structure == "partition_door": _tag_label.text = "FITS HERE   ·   LMB PLACE DOOR"
 	elif ok: _tag_label.text = "FITS HERE   ·   LMB PLACE   ·   HOLD R ROTATE"
@@ -902,7 +951,7 @@ func _stat_chips(id: String) -> Array:
 	if id == "thermal_control_unit": chips.append(["moves up to %s kW of heat" % _num(float(item.get("heat_kw", 12.0))), MHStyle.VALID])
 	if EquipmentCatalog.levels(id).size() > 0: chips.append(["warms its room", MHStyle.VALID])
 	if builder.item_printable(id): chips.append(["can be printed", MHStyle.VALID])
-	if id == "regolith_printer": chips.append(["+%s kg Mars-made a sol" % _num(MHResources.setting("print_kg_per_sol", 2000.0)), MHStyle.VALID])
+	if id == "regolith_printer": chips.append(["+%s kg Mars-made a sol" % _num(MHResources.setting("print_kg_per_sol", 2500.0)), MHStyle.VALID])
 	return chips
 
 func _num(value: float) -> String:

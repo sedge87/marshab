@@ -95,7 +95,7 @@ static func normalise_mode(mode: String) -> String:
 ## landing bonus (low sites have thicker air for parachutes).
 static func mission_cargo_budget() -> int:
 	if game_mode == "missions": return preload("res://scripts/mh_missions.gd").cargo_budget()
-	var start := MHResources.setting("freedom_cargo_budget_kg", 120000.0) if game_mode == "freedom" else MHResources.setting("cargo_budget_kg", 80000.0)
+	var start := MHResources.setting("freedom_cargo_budget_kg", 140000.0) if game_mode == "freedom" else MHResources.setting("cargo_budget_kg", 100000.0)
 	return roundi(start * (1.0 + float(MHResources.site(site_id).get("cargo_bonus", 0.0)))) + resupply_kg
 
 # ---------- resupply landers (Survival and Freedom) ----------
@@ -104,8 +104,10 @@ static func mission_cargo_budget() -> int:
 static var resupply_kg := 0
 static var resupply_count := 0
 
+## Switched off in the balance sheet (resupply_enabled): the regolith printer
+## is how the base grows now. The landers stay in the code to switch back on.
 static func resupplies_on() -> bool:
-	return game_mode in ["survival", "freedom"]
+	return game_mode in ["survival", "freedom"] and MHResources.setting("resupply_enabled", 0.0) > 0.0
 
 ## Sols between launch windows (compressed: real ones are ~26 months apart).
 static func resupply_interval_sols() -> float:

@@ -364,7 +364,8 @@
       "asset_scene": "res://assets/equipment/mars_science_geology_ice_martian_hailmary_v1/microscope_station.tscn",
       "cargo_cost": 90,
       "valid_zones": [
-        "science"
+        "science",
+        "medical"
       ],
       "footprint": [
         1,
@@ -471,7 +472,8 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/seedling_station.tscn",
       "cargo_cost": 80,
       "valid_zones": [
-        "hydroponics"
+        "hydroponics",
+        "science"
       ],
       "footprint": [
         2,
@@ -2868,7 +2870,9 @@
         "engineering",
         "storage",
         "galley",
-        "hydroponics"
+        "hydroponics",
+        "waste_management",
+        "life_support"
       ],
       "footprint": [
         1,

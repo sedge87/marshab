@@ -2,9 +2,10 @@ extends SceneTree
 
 # More cargo over time: starting budgets per mode, Mars-made (printed)
 # material paying for printable things first, the regolith printer in the
-# simulation, resupply landers on launch windows, and saving all of it.
+# simulation, and resupply landers (switched off; still work when switched on).
 # Run with: godot --headless --path . --script res://tests/cargo_supply_test.gd
 const MHMissions := preload("res://scripts/mh_missions.gd")
+const MHResources := preload("res://scripts/mh_resources.gd")
 var failures := 0
 
 func _check(ok: bool, what: String) -> void:
@@ -24,13 +25,14 @@ func _initialize() -> void:
 	# Budgets per mode.
 	MHGame.resupply_kg = 0; MHGame.resupply_count = 0
 	MHGame.game_mode = "survival"
-	_check(MHGame.cargo_budget() == 80000, "Survival starts with 80 t (%d)" % MHGame.cargo_budget())
+	_check(MHGame.cargo_budget() == 100000, "Survival starts with 100 t (%d)" % MHGame.cargo_budget())
 	MHGame.game_mode = "freedom"
-	_check(MHGame.cargo_budget() == 120000, "Freedom starts with 120 t (%d)" % MHGame.cargo_budget())
+	_check(MHGame.cargo_budget() == 140000, "Freedom starts with 140 t (%d)" % MHGame.cargo_budget())
 	MHGame.resupply_kg = 20000
-	_check(MHGame.cargo_budget() == 140000, "resupplies add to the budget")
+	_check(MHGame.cargo_budget() == 160000, "resupplies add to the budget")
 	MHGame.resupply_kg = 0
 	MHGame.game_mode = "survival"
+	_check(not MHGame.resupplies_on(), "Earth resupply is switched off: the printer grows the base")
 	_check(is_equal_approx(MHGame.resupply_interval_sols(), 3.0) and MHGame.resupply_size_kg() == 15000, "Survival: 15 t every 3 sols")
 
 	# Mars-made material pays for printable things first.
@@ -63,7 +65,7 @@ func _initialize() -> void:
 	b._rebuild()
 	b.simulation().invalidate()
 	b.simulation().run_hours(24.0, 8.0)
-	_check(absf(b.simulation().printed_kg - 2000.0) < 30.0, "a powered printer with an intake prints about 2,000 kg a sol (%d)" % roundi(b.simulation().printed_kg))
+	_check(absf(b.simulation().printed_kg - 2500.0) < 40.0, "a powered printer with an intake prints about 2,500 kg a sol (%d)" % roundi(b.simulation().printed_kg))
 	b.placed_interior[0].state = {"print": false}
 	b.simulation().invalidate()
 	var before: float = b.simulation().printed_kg
@@ -72,20 +74,26 @@ func _initialize() -> void:
 	b.placed_interior[0].state = {}
 	b.placed_interior.append({"placement_id": "p3", "id": "recycling_hopper_plastics", "position": Vector3(1.5, b.habitat_base_y, 4.5), "zone_cell": Vector2i(0, 1), "rotation_y": 0.0, "state": {}})
 	b.simulation().invalidate()
-	_check(is_equal_approx(b.simulation().print_rate(b.simulation().inventory()), 2500.0), "a plastics recycling hopper speeds printing up by 25%")
+	_check(is_equal_approx(b.simulation().print_rate(b.simulation().inventory()), 3125.0), "a plastics recycling hopper speeds printing up by 25%")
 	var saved: Dictionary = b.simulation().save()
 	_check(is_equal_approx(float(saved.printed_kg), b.simulation().printed_kg), "printed material is saved")
 	MHGame.debug_free_power = false
 	world.queue_free()
 	await process_frame
 
-	# Resupply landers in the real world.
+	# Resupply landers in the real world: none while switched off...
 	MHGame.game_mode = "survival"; MHGame.pending_save_state = {}; MHGame.landing_target = Vector2.INF
 	var mars: Node = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(mars)
 	for i in 5: await process_frame
 	mars._intro_stage = "done"
 	var budget := MHGame.cargo_budget()
+	mars.builder.simulation().hours_run = 3.0 * 24.0 + 1.0
+	mars._check_resupply()
+	_check(MHGame.resupply_count == 0, "no resupply lands while switched off")
+	# ...and they still work when the balance sheet switches them on.
+	MHResources.data().settings["resupply_enabled"] = 1.0
+	mars.builder.simulation().hours_run = 0.0
 	mars._check_resupply()
 	_check(MHGame.resupply_count == 0, "nothing lands before the launch window")
 	mars.builder.simulation().hours_run = 3.0 * 24.0 + 1.0
@@ -122,6 +130,7 @@ func _initialize() -> void:
 	MHMissions.progress.current = "self_sufficiency"
 	_check(MHMissions.item_unlocked("regolith_printer") and MHMissions.zone_unlocked("regolith_intake"), "Mission 6 delivers the printer and intake")
 	MHGame.game_mode = "survival"
+	MHResources.data().settings["resupply_enabled"] = 0.0
 	if failures == 0:
-		print("Cargo supply test passed: budgets, Mars-made material, the printer, resupply landers, saving and Mission 6.")
+		print("Cargo supply test passed: budgets, Mars-made material, the printer, switchable resupply landers, saving and Mission 6.")
 	quit(1 if failures > 0 else 0)
