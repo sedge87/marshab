@@ -53,6 +53,7 @@ const SNAP := .65
 
 static var _cache: Dictionary = {}   # source material id -> house material
 static var _made: Dictionary = {}    # house material ids (never re-mapped)
+static var _accented: Array = []     # orange-role materials: they follow the colony accent
 static var enabled := true
 
 ## Map every surface of every mesh under `root` onto the house materials.
@@ -87,12 +88,27 @@ static func material(source: StandardMaterial3D) -> StandardMaterial3D:
 		out.albedo_color = Color(spec[0].r, spec[0].g, spec[0].b, source.albedo_color.a)
 		out.metallic = spec[1]
 		out.roughness = spec[2]
+		# The house accent is the colony's chosen accent (main menu), like the
+		# habitat's rails and bands, so the whole base recolours together.
+		if role == "orange":
+			out.albedo_color = accent_colour()
+			_accented.append(weakref(out))
 	elif role == "neutral":
 		var mapped := _ladder(source.albedo_color)
 		out.albedo_color = Color(mapped.r, mapped.g, mapped.b, source.albedo_color.a)
 	_cache[key] = out
 	_made[out.get_instance_id()] = true
 	return out
+
+## Equipment accents: the colony accent, a touch softer so small parts don't glare.
+static func accent_colour() -> Color:
+	return MHGame.accent().lerp(ROLES.orange[0], .25)
+
+## The colony accent changed: recolour every accent part.
+static func set_accent() -> void:
+	for ref in _accented:
+		var material := (ref as WeakRef).get_ref() as StandardMaterial3D
+		if material != null: material.albedo_color = accent_colour()
 
 ## A material's role: a ROLES key, "neutral" (unnamed grey/white) or "keep".
 static func role_of(source: StandardMaterial3D) -> String:

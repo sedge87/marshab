@@ -17,7 +17,7 @@ There are now two layers that keep everything consistent.
 | graphite | graphite, recess, deep, gunmetal, powder coat | `#4C5A61` | satin, roughness .55 |
 | rubber | rubber, gasket, seal, hose | `#323B40` | roughness .85 |
 | glass | dark/black glass | `#25333A` | gloss, roughness .08 |
-| orange (the house accent) | orange, ochre | `#E98A45` | satin |
+| accent | orange, ochre | the colony accent (main menu), softened a touch; `#E98A45` with Safety orange | satin |
 | amber (caution) | amber, yellow, warning | `#F2C35A` | satin |
 | teal (soft trim) | teal | `#8CC3CB` | satin |
 
@@ -55,7 +55,7 @@ New models use the furnishings pack's helpers. Load them with `exec`, as `asset_
 
 ## What changed on 22–23 Oct
 
-- **House materials** apply to all 105 catalogue models, GAR-Y and the crew lander. The cargo lander's hull and frame now use the same white and graphite.
+- **House materials** apply to all 105 catalogue models (their accents follow the colony accent you pick), GAR-Y and the crew lander. The cargo lander's hull and frame now use the same white and graphite.
 - **The six oldest placeholder models were rebuilt** in the house style (`asset_packs/mars_house_refresh_v1`). These were cream panels with toy-like buttons:
   - airlock control panel;
   - suit service panel;

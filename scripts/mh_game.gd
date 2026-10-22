@@ -349,6 +349,7 @@ static func set_accent(index: int) -> void:
 	accent_index = clampi(index, 0, MHStyle.COLONY_ACCENTS.size() - 1)
 	MHStyle.set_accent(accent())
 	accent_material().albedo_color = accent()
+	MHPalette.set_accent()
 
 # One material shared by every rail, lintel, airlock band and beacon, so the
 # colony accent recolours the whole base in one frame.

@@ -35,6 +35,12 @@ func _initialize() -> void:
 	_check(MHPalette.material(source) == MHPalette.material(source), "materials are shared")
 	_check(MHPalette.material(MHPalette.material(source)) == MHPalette.material(source), "house materials are left as they are")
 	_check(MHPalette.material(source).cull_mode == BaseMaterial3D.CULL_DISABLED, "house materials are two-sided")
+	# Accent parts follow the colony accent chosen in the main menu.
+	var accent_part := MHPalette.material(_mat("Storage_orange", "#EEC79B"))
+	MHGame.set_accent(1)   # Solar blue
+	_check(accent_part.albedo_color.b > accent_part.albedo_color.r, "accents turn blue with a Solar blue colony")
+	MHGame.set_accent(0)
+	_check(accent_part.albedo_color.r > accent_part.albedo_color.b, "and back to orange")
 	# Every catalogue model: each named-role surface carries its house colour.
 	var models := 0
 	for id in EquipmentCatalog.entries():
