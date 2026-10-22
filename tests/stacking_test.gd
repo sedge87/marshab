@@ -54,7 +54,7 @@ func _initialize() -> void:
 
 	# Odds & Ends: a tab of small things, placeable in any room.
 	var odds: Array = EquipmentCatalog.entries().keys().filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == "odds_and_ends")
-	_check(odds.size() == 14, "fourteen odds and ends (%d)" % odds.size())
+	_check(odds.size() == 15, "fifteen odds and ends, with the mini GAR-Y (%d)" % odds.size())
 	for id in odds:
 		_check(ResourceLoader.exists(str(EquipmentCatalog.get_entry(id).get("asset_scene", ""))), "%s has a model" % id)
 	_check(bool(EquipmentCatalog.get_entry("portable_utility_heater").get("stackable", false)) and float(EquipmentCatalog.get_entry("mission_planning_console").get("surface_height", 0.0)) > 0.0, "the heater stacks and the console has a desk")

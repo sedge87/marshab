@@ -22,6 +22,7 @@ func _initialize() -> void:
 	var in_group: Array = []
 	for id in EquipmentCatalog.entries():
 		if str(EquipmentCatalog.get_entry(id).get("pack", "")) == "mars_habitat_furnishings_v1": continue   # later furnishings pack
+		if str(EquipmentCatalog.get_entry(id).get("pack", "")) == "mars_crew_comforts_v1": continue   # the kitchenette pack (batch 3)
 		if str(EquipmentCatalog.get_entry(id).get("group", "")) in ["medical", "hygiene", "galley"]: in_group.append(id)
 	in_group.sort()
 	var expected := ITEMS.filter(func(id): return id != "integrated_mess_booth"); expected.sort()   # the booth moved to Living Quarters

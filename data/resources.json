@@ -648,6 +648,30 @@
     "guitar": {
       "room": "odds_and_ends",
       "cargo_kg": 3.0
+    },
+    "work_desk_blank": {
+      "room": "general",
+      "cargo_kg": 30.0
+    },
+    "galley_kitchenette": {
+      "room": "galley",
+      "cargo_kg": 200.0,
+      "power_kw": 2.0,
+      "hours_per_sol": 3.0
+    },
+    "galley_bench_unit": {
+      "room": "galley",
+      "cargo_kg": 40.0
+    },
+    "wall_screen": {
+      "room": "general",
+      "cargo_kg": 8.0,
+      "power_kw": 0.08,
+      "hours_per_sol": 12.0
+    },
+    "mini_gar_y": {
+      "room": "odds_and_ends",
+      "cargo_kg": 1.0
     }
   },
   "sites": {

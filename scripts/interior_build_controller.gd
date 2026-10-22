@@ -15,9 +15,10 @@ const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
 const STRUCTURE_TAB := "_structure"
 const HERE_TAB := "_here"
 const STRUCTURE_TOOLS := [
-	{"id": "partition", "label": "Partition wall", "icon": "brick-wall", "text": "Divide a room into bedrooms or cubicles. Hold the mouse button and drag along the floor to draw 1.5 m panels. The room stays one space for air and heat."},
+	{"id": "partition", "label": "Partition wall", "icon": "brick-wall", "text": "Divide a room into bedrooms or cubicles. Hold the mouse button and drag along the floor to draw 1.5 m panels; R switches to 45° panels. The room stays one space for air and heat."},
 	{"id": "partition_glass", "label": "Glass partition", "icon": "panels-top-left", "text": "A glass panel in a metal frame: it divides the room but keeps it open and light. Drag to draw, or aim at a wall panel to glaze it."},
-	{"id": "partition_door", "label": "Partition door", "icon": "door-open", "text": "A door in a partition wall: aim at a wall panel to turn it into a door, or at the floor to add one. Press E to open it."},
+	{"id": "partition_door", "label": "Partition door", "icon": "door-open", "text": "A door in a partition wall: aim at a wall panel to turn it into a door, or at the floor to add one. Press E to open it: it swings away from you."},
+	{"id": "partition_glass_door", "label": "Glass door", "icon": "door-open", "text": "A glass door in a metal frame, for a partition: light gets through but it still closes off the space. Aim at a wall panel, or at the floor to add one."},
 	{"id": "interior_door", "label": "Room door", "icon": "door-closed", "text": "A doorway in a shared wall, so two sealed rooms connect. For an open corridor end, aim at the floor right by the opening."},
 	{"id": "window", "label": "Window", "icon": "sun", "text": "Glazes one outside wall bay. A view of Mars, but glass loses heat faster than the hull."},
 	{"id": "remove", "label": "Remove", "icon": "trash-2", "text": "Aim at an item, door or window and click to remove it. Cargo is refunded."},
@@ -72,6 +73,8 @@ var _hints: Label
 var _was_minimal := false
 var _partition_target := {}
 var _last_painted := ""
+## Partition tools: R switches between straight and 45° panels.
+var _partition_angled := false
 
 ## Every placeable interior item, in inventory-group order (outdoor props
 ## excluded): new catalogue items appear here without code changes.
@@ -135,6 +138,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if event.keycode == KEY_B or event.keycode == KEY_ESCAPE:
 			exit()
+			get_viewport().set_input_as_handled()
+			return
+		if event.keycode == KEY_R and _selected_structure.begins_with("partition"):
+			_partition_angled = not _partition_angled
+			_refresh_preview(true)
 			get_viewport().set_input_as_handled()
 			return
 		if event.keycode == KEY_R:
@@ -259,9 +267,12 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		_update_hud()
 		return
 	if _selected_structure.begins_with("partition"):
-		_partition_target = builder.partition_segment_at(point - normal * .05 if absf(normal.y) < .5 else point)
-		var door := _selected_structure == "partition_door"
-		var glass := _selected_structure == "partition_glass"
+		_partition_target = builder.partition_segment_at(point - normal * .05 if absf(normal.y) < .5 else point, _partition_angled and absf(normal.y) >= .5)
+		# Aiming at a panel that's already there (straight or 45°): that panel.
+		var existing := builder.partition_index_near(point) if absf(normal.y) < .5 else -1
+		if existing >= 0: _partition_target = {"a": builder.partitions[existing].a, "b": builder.partitions[existing].b}
+		var door := _selected_structure in ["partition_door", "partition_glass_door"]
+		var glass := _selected_structure in ["partition_glass", "partition_glass_door"]
 		_valid_reason = builder.partition_invalid_reason(_partition_target, door, glass)
 		if force_rebuild or preview == null:
 			if preview != null: preview.queue_free()
@@ -274,6 +285,8 @@ func _refresh_preview(force_rebuild: bool) -> void:
 			_preview_material_valid = _valid_reason.is_empty()
 		preview.visible = true
 		preview.transform = builder.partition_transform(_partition_target)
+		if not _partition_target.is_empty():
+			preview.scale.x = (_partition_target.a as Vector2).distance_to(_partition_target.b) / BuildController.PARTITION_STEP
 		# Hold the button and drag to keep drawing panels.
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not _selector_open and _valid_reason.is_empty():
 			var key := str(_partition_target)
@@ -469,7 +482,7 @@ func _place_preview() -> void:
 		return
 	if _selected_structure.begins_with("partition"):
 		_last_painted = str(_partition_target)
-		if builder.place_partition(_partition_target, _selected_structure == "partition_door", _selected_structure == "partition_glass"):
+		if builder.place_partition(_partition_target, _selected_structure in ["partition_door", "partition_glass_door"], _selected_structure in ["partition_glass", "partition_glass_door"]):
 			MHAudio.sfx("place")
 			_refresh_preview(true)
 		else:
@@ -947,8 +960,8 @@ func _update_hud() -> void:
 		_tag_icon.modulate = tone
 		_tag_label.text = _blocked_note.to_upper()
 	elif _remove_mode: _tag_label.text = "AIM AT AN ITEM, DOOR OR WINDOW   ·   LMB REMOVE"
-	elif ok and (_selected_structure == "partition" or _selected_structure == "partition_glass"): _tag_label.text = "FITS HERE   ·   HOLD LMB AND DRAG TO DRAW"
-	elif ok and _selected_structure == "partition_door": _tag_label.text = "FITS HERE   ·   LMB PLACE DOOR"
+	elif ok and (_selected_structure == "partition" or _selected_structure == "partition_glass"): _tag_label.text = "FITS HERE   ·   HOLD LMB AND DRAG TO DRAW   ·   R %s" % ("STRAIGHT" if _partition_angled else "45°")
+	elif ok and _selected_structure in ["partition_door", "partition_glass_door"]: _tag_label.text = "FITS HERE   ·   LMB PLACE DOOR   ·   R %s" % ("STRAIGHT" if _partition_angled else "45°")
 	elif ok: _tag_label.text = "FITS HERE   ·   LMB PLACE   ·   HOLD R ROTATE"
 	else: _tag_label.text = _valid_reason.to_upper()
 	_tag_label.add_theme_color_override("font_color", tone if not ok or _remove_mode else MHStyle.TEXT_PRIMARY)

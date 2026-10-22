@@ -3426,7 +3426,10 @@ func _shared_outline_wall_at(point: Vector2) -> Dictionary:
 					if along < interval.x - .05 or along > interval.y + .05: continue
 					if interval.y - interval.x < CELL - .01:
 						return {"wall_a": a + tangent * interval.x, "wall_b": a + tangent * interval.y, "invalid": "Shared wall is too short for a 3 m doorway"}
-					var centre := clampf(along, interval.x + HALF_CELL, interval.y - HALF_CELL)
+					# Snap to the 1.5 m wall grid (doors line up with cells and panels).
+					var offset := a.dot(tangent)
+					var snapped := roundf((along + offset) / HALF_CELL) * HALF_CELL - offset
+					var centre := clampf(snapped, interval.x + HALF_CELL, interval.y - HALF_CELL)
 					return {"wall_a": a + tangent * (centre - HALF_CELL), "wall_b": a + tangent * (centre + HALF_CELL)}
 	return {}
 
@@ -3626,9 +3629,18 @@ static func partition_cargo() -> int:
 
 ## The 1.5 m partition segment nearest a floor point: on the half-cell grid,
 ## along whichever grid line is closest. {a, b} on the ground plane.
-func partition_segment_at(point: Vector3) -> Dictionary:
+func partition_segment_at(point: Vector3, angled := false) -> Dictionary:
 	var p := Vector2(point.x, point.z)
 	var step := PARTITION_STEP
+	if angled:
+		# A 45° panel across one 1.5 m grid square: whichever diagonal is nearer.
+		var x0 := floorf(p.x / step) * step
+		var z0 := floorf(p.y / step) * step
+		var u := (p.x - x0) / step
+		var v := (p.y - z0) / step
+		if absf(u - v) < absf(u + v - 1.0):
+			return {"a": Vector2(x0, z0), "b": Vector2(x0 + step, z0 + step)}
+		return {"a": Vector2(x0 + step, z0), "b": Vector2(x0, z0 + step)}
 	var gx := roundf(p.x / step) * step
 	var gz := roundf(p.y / step) * step
 	if absf(p.x - gx) < absf(p.y - gz):
@@ -3692,9 +3704,9 @@ func place_partition(segment: Dictionary, door := false, glass := false) -> bool
 	if index >= 0:
 		_history.append({"type": "partition", "segment": {"a": segment.a, "b": segment.b}, "was_door": bool(partitions[index].door), "was_glass": bool(partitions[index].get("glass", false))})
 		partitions[index].door = door
-		partitions[index].glass = glass and not door
+		partitions[index].glass = glass
 	else:
-		partitions.append({"a": segment.a, "b": segment.b, "door": door, "glass": glass and not door})
+		partitions.append({"a": segment.a, "b": segment.b, "door": door, "glass": glass})
 		_history.append({"type": "partition", "segment": {"a": segment.a, "b": segment.b}})
 	_rebuild()
 	habitat_changed.emit()
@@ -3755,7 +3767,7 @@ func _build_partitions() -> void:
 		holder.name = "Partition_%d" % index
 		holder.transform = partition_transform(segment)
 		root.add_child(holder)
-		var length := PARTITION_STEP + .02
+		var length := (segment.a as Vector2).distance_to(segment.b) + .02
 		if bool(segment.get("glass", false)) and not bool(segment.door):
 			# Glass: a brushed metal frame (posts, sill, head and a mid rail) round
 			# two panes. Still solid to walk into.
@@ -3782,12 +3794,22 @@ func _build_partitions() -> void:
 			var leaf := Node3D.new()
 			door.add_child(leaf)
 			door.call("setup", leaf)
-			var leaf_body := _partition_box(leaf, Vector3(opening - .02, 2.06, .05), Vector3(opening * .5, 1.04, 0), panel, index, true)
+			var leaf_body: Node3D
+			if bool(segment.get("glass", false)):
+				# Glass door: a slim metal frame round one pane (the pane is what you click).
+				var w := opening - .02
+				for x in [.03, w - .03]:
+					_partition_box(leaf, Vector3(.06, 2.06, .06), Vector3(x, 1.03, 0), frame, index, false)
+				for y in [.03, 1.0, 2.03]:
+					_partition_box(leaf, Vector3(w, .06, .06), Vector3(w * .5, y, 0), frame, index, false)
+				leaf_body = _partition_box(leaf, Vector3(w - .08, 1.98, .03), Vector3(w * .5, 1.03, 0), glass_material, index, true)
+			else:
+				leaf_body = _partition_box(leaf, Vector3(opening - .02, 2.06, .05), Vector3(opening * .5, 1.04, 0), panel, index, true)
 			leaf_body.set_meta("interaction_target", door)
 			_partition_box(leaf, Vector3(.04, .3, .09), Vector3(opening - .12, 1.0, 0), accent, index, false)
 		# Site plan: a dark line (orange for doors).
 		var plan := MeshInstance3D.new()
-		var plan_mesh := BoxMesh.new(); plan_mesh.size = Vector3(PARTITION_STEP, .04, .14); plan.mesh = plan_mesh
+		var plan_mesh := BoxMesh.new(); plan_mesh.size = Vector3(length, .04, .14); plan.mesh = plan_mesh
 		var plan_material := StandardMaterial3D.new(); plan_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		plan_material.albedo_color = MHStyle.accent if bool(segment.door) else Color("#0E1417")
 		plan.material_override = plan_material

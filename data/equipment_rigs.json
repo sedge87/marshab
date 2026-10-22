@@ -4402,5 +4402,138 @@
         "motion": "squash"
       }
     ]
+  },
+  "galley_kitchenette": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "oven_door",
+              "oven_window",
+              "oven_handle"
+            ],
+            "edge": "min_y",
+            "angle": -80,
+            "axis": "x"
+          }
+        ],
+        "label_on": "Close oven",
+        "label_off": "Open oven",
+        "state": "door"
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "fridge_door",
+              "fridge_handle"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close fridge",
+        "label_off": "Open fridge",
+        "state": "fridge"
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "tap_lever"
+            ],
+            "edge": "center",
+            "angle": 40
+          }
+        ],
+        "label_on": "Turn tap off",
+        "label_off": "Run the tap",
+        "state": "tap",
+        "note_on": "Tap running. Galley water is recycled water, cleaned in Life Support, so every drop is used more than once."
+      }
+    ]
+  },
+  "galley_bench_unit": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "door_l"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          },
+          {
+            "parts": [
+              "door_r"
+            ],
+            "edge": "max_x",
+            "angle": -100
+          }
+        ],
+        "label_on": "Close cupboards",
+        "label_off": "Open cupboards",
+        "state": "cupboards"
+      }
+    ]
+  },
+  "wall_screen": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "screen",
+        "screen": [
+          "display_screen_glass"
+        ],
+        "modes": [
+          "status",
+          "mars",
+          "earth"
+        ],
+        "mode_labels": [
+          "habitat status",
+          "Mars",
+          "Earth"
+        ],
+        "state": "screen_mode",
+        "pixels": 640
+      }
+    ]
+  },
+  "wayfinding_panel": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "screen",
+        "screen": [
+          "static__label_HAB-04"
+        ],
+        "modes": [
+          "wayfinding",
+          "sign"
+        ],
+        "mode_labels": [
+          "directions",
+          "your sign"
+        ],
+        "state": "screen_mode",
+        "pixels": 640
+      },
+      {
+        "key": "secondary",
+        "type": "sign_edit",
+        "label": "Write a sign"
+      }
+    ]
   }
 }

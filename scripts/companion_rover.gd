@@ -858,7 +858,7 @@ func _manage_doors() -> void:
 		var to: Vector3 = node.centre() - global_position
 		to.y = 0.0
 		if not bool(node.open) and to.length() < 1.5 and to.normalized().dot(ahead) > .3:
-			node.interact()
+			node.interact(self)
 			if not _opened.has(node): _opened.append(node)
 	for door in _opened.duplicate():
 		if not is_instance_valid(door):

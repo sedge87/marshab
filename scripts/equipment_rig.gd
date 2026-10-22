@@ -10,9 +10,11 @@ extends Node3D
 # State (curtain closed, light on, …) is saved with the placed item.
 
 const SURVEY_MAP := preload("res://scripts/survey_map.gd")
+const INFO_SCREEN := preload("res://scripts/info_screen.gd")
 
 @export var equipment_id := ""
 var _maps: Dictionary = {}  # action index -> survey map Control
+var _screens: Dictionary = {}  # action index -> info screen Control (info_screen.gd)
 
 var _actions: Array = []
 var _state: Dictionary = {}
@@ -79,8 +81,12 @@ func _action_label(action: Dictionary) -> String:
 			var level := _level(action)
 			var now := str(names[level]).to_upper() + (" (NO POWER)" if level > 0 and not _grid_powered else "")
 			return "%s %s → %s" % [str(action.get("label", "Setting")), now, str(names[(level + 1) % names.size()]).to_upper()]
-		"workout", "inspect", "play":
+		"workout", "inspect", "play", "sign_edit":
 			return str(action.get("label", "Use"))
+		"screen":
+			var labels: Array = action.get("mode_labels", action.get("modes", []))
+			if labels.is_empty(): return "Screen"
+			return "Show " + str(labels[(_screen_mode(action) + 1) % labels.size()])
 	return str(action.get("label_on" if _on(action) else "label_off", "Use"))
 
 func interact(actor: Node = null) -> bool: return _run("primary", actor)
@@ -117,6 +123,11 @@ func _run(key: String, _actor: Node) -> bool:
 			"play":
 				_play(action)
 				return true
+			"screen":
+				_set_state(str(action.state), (_screen_mode(action) + 1) % maxi(1, (action.get("modes", []) as Array).size()))
+			"sign_edit":
+				_edit_sign(action)
+				return true
 			"levels":
 				var names: Array = action.get("levels", ["Off", "On"])
 				_set_state(str(action.state), (_level(action) + 1) % names.size())
@@ -137,6 +148,60 @@ func _run(key: String, _actor: Node) -> bool:
 		MHAudio.sfx("ui_click", -6.0)
 		return true
 	return false
+
+func _screen_mode(action: Dictionary) -> int:
+	return int(_state.get(str(action.get("state", "")), 0))
+
+## F on a wayfinding panel: type your own sign. The game pauses while you type.
+func _edit_sign(action: Dictionary) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 50
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	get_tree().root.add_child(layer)
+	var scrim := ColorRect.new()
+	scrim.color = Color(0, 0, 0, .6)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(scrim)
+	var centre := CenterContainer.new()
+	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	centre.theme = MHStyle.theme()
+	layer.add_child(centre)
+	var box := MHStyle.menu_panel(28, true)
+	centre.add_child(box)
+	var column := MHStyle.vbox(14)
+	box.add_child(column)
+	column.add_child(MHStyle.eyebrow(str(action.get("label", "Write a sign")), MHStyle.accent, 14))
+	var field := LineEdit.new()
+	field.text = str(_state.get("sign_text", ""))
+	field.max_length = 60
+	field.placeholder_text = "e.g. Quiet please: crew sleeping"
+	field.custom_minimum_size = Vector2(580, 48)
+	column.add_child(field)
+	column.add_child(MHStyle.body("Enter to save, Esc to cancel. Leave it empty to show directions again.", 14, MHStyle.TEXT_SECONDARY))
+	var was_paused := get_tree().paused
+	var mouse := Input.mouse_mode
+	get_tree().paused = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	var close := func(save: bool) -> void:
+		if save:
+			var text := field.text.strip_edges()
+			_set_state("sign_text", text)
+			# Show the sign (or the directions again when it's cleared).
+			for index in range(_actions.size()):
+				if str(_actions[index].get("type", "")) != "screen": continue
+				var modes: Array = _actions[index].get("modes", [])
+				var want := modes.find("sign") if not text.is_empty() else 0
+				if want >= 0: _set_state(str(_actions[index].state), want)
+				_apply_state(index, true)
+		get_tree().paused = was_paused
+		Input.mouse_mode = mouse
+		layer.queue_free()
+	field.text_submitted.connect(func(_t: String) -> void: close.call(true))
+	field.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventKey and event.pressed and (event as InputEventKey).keycode == KEY_ESCAPE:
+			field.accept_event()
+			close.call(false))
+	field.grab_focus.call_deferred()
 
 ## Sets an action's state from outside (GAR-Y docking plugs itself in).
 func set_state_key(key: String, value: Variant) -> void:
@@ -238,6 +303,32 @@ func _build_action(index: int, action: Dictionary) -> void:
 				var pivot := _pivot_for(meshes, box.get_center())
 				if float(action.get("tray_depth", 0.0)) > 0.0: _add_drawer_tray(pivot, box, float(action.tray_depth), meshes[0])
 				pivots.append({"pivot": pivot})
+		"screen":
+			# A live screen (info_screen.gd) on the part's display, like "map".
+			var display := _parts(action.get("screen", []))
+			if display.is_empty(): return
+			var area := _bounds(display)
+			var view := SubViewport.new()
+			view.size = Vector2i(int(action.get("pixels", 640)), int(float(action.get("pixels", 640)) * area.size.y / maxf(.01, area.size.x)))
+			view.transparent_bg = false
+			view.render_target_update_mode = SubViewport.UPDATE_ONCE
+			add_child(view)
+			var screen_ui := INFO_SCREEN.new()
+			screen_ui.mount = self
+			screen_ui.viewport = view
+			view.add_child(screen_ui)
+			_screens[index] = screen_ui
+			var face := MeshInstance3D.new()
+			face.name = "InfoScreen"
+			var plane := QuadMesh.new(); plane.size = Vector2(area.size.x, area.size.y); face.mesh = plane
+			var face_material := StandardMaterial3D.new()
+			face_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			face_material.albedo_texture = view.get_texture()
+			face.material_override = face_material
+			face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			_model().add_child(face)
+			face.position = Vector3(area.get_center().x, area.get_center().y, area.position.z - .004)
+			face.rotation.y = PI
 		"map":
 			# A live map on the part's screen mount, drawn by survey_map.gd into a
 			# SubViewport and shown on a quad just in front of the mount (-Z).
@@ -616,6 +707,12 @@ func _apply_state(index: int, animate: bool) -> void:
 			_set_glow(light_entry.get("glow", []), on, true)
 		"inspect":
 			_set_glow((_lights.get(index, {}) as Dictionary).get("glow", []), true)
+		"screen":
+			if _screens.has(index):
+				var modes: Array = action.get("modes", ["status"])
+				_screens[index].mode = str(modes[_screen_mode(action) % maxi(1, modes.size())])
+				_screens[index].sign_text = str(_state.get("sign_text", ""))
+				_screens[index].refresh()
 		"map":
 			if _maps.has(index):
 				(_maps[index]).mode = "mars" if on else "site"

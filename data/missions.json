@@ -338,9 +338,10 @@
         {
           "id": "food",
           "text": "Set up the galley",
-          "how": "Build a Galley and add a rehydration station or a counter: most food arrives freeze-dried.",
+          "how": "Build a Galley and add the kitchenette: its rehydration tap brings freeze-dried food back to life.",
           "check": "item_any",
           "items": [
+            "galley_kitchenette",
             "galley_rehydration_station",
             "galley_counter"
           ]

@@ -18,6 +18,13 @@ var _shutter_width := 2.64
 var _shutter_height := 2.46
 var _pending_open := false
 var _heard_target := 0.0
+# Interior doors open by themselves when someone walks up (not airlock or
+# hangar hatches, which stay manual for pressure safety). E still works and
+# pauses the automatic behaviour for a few seconds.
+const AUTO_RANGE := 2.3
+var _auto_check := 0.0
+var _auto_away := 0.0
+var _manual_until := 0
 
 func setup(door_name := "AIRLOCK", create_inner_frame := false, shutter_width := 2.64, shutter_height := 2.46) -> void:
 	add_to_group("airlock_door")
@@ -192,7 +199,37 @@ func _add_box_visual(parent: StaticBody3D,size: Vector3,material: Material,solid
 		collision.shape=shape
 		parent.add_child(collision)
 
+func is_automatic() -> bool:
+	return _door_name == "INTERIOR"
+
+func _auto_step(delta: float) -> void:
+	_auto_check -= delta
+	if _auto_check > 0.0: return
+	_auto_check = .15
+	if Time.get_ticks_msec() < _manual_until: return
+	var near := false
+	for group in ["player", "gar_y"]:
+		var body := get_tree().get_first_node_in_group(group) as Node3D
+		if body == null: continue
+		var offset := body.global_position - global_position
+		if Vector2(offset.x, offset.z).length() < AUTO_RANGE and absf(offset.y) < 2.5: near = true
+	if near:
+		_auto_away = 0.0
+		# Never while a hatch to Mars is open: the interlock wins.
+		if _target_amount < .5 and _habitat_inner_doors_closed() and not _outer_hatch_open(): _target_amount = 1.0
+	elif _target_amount > .5:
+		_auto_away += .15
+		if _auto_away > 1.2: _target_amount = 0.0
+
+func _outer_hatch_open() -> bool:
+	if not is_inside_tree(): return false
+	for node in get_tree().get_nodes_in_group("airlock_door"):
+		var door := node as AirlockDoor
+		if door != null and door._leads_to_environment() and (not door.is_closed() or door._pending_open): return true
+	return false
+
 func _physics_process(delta: float) -> void:
+	if is_automatic(): _auto_step(delta)
 	if _pending_open and _habitat_inner_doors_closed():
 		_pending_open=false
 		_target_amount=1.0
@@ -210,6 +247,7 @@ func _physics_process(delta: float) -> void:
 	_update_status()
 
 func toggle() -> void:
+	if is_automatic(): _manual_until = Time.get_ticks_msec() + 5000
 	if _target_amount>.5:
 		_pending_open=false
 		_target_amount=0.0
@@ -274,6 +312,12 @@ func _update_status() -> void:
 		_indicator_material.albedo_color=MHStyle.VALID
 		_indicator_material.emission=MHStyle.VALID*.8
 		_warning_light.light_energy=.18
+	elif is_automatic() and not _outer_hatch_open():
+		_status.text="AUTOMATIC DOOR"
+		_status.modulate=MHStyle.INK_100
+		_indicator_material.albedo_color=MHStyle.INFO
+		_indicator_material.emission=MHStyle.INFO*.6
+		_warning_light.light_energy=.2
 	else:
 		_status.text="E — OPEN "+_door_name+" DOOR"
 		_status.modulate=MHStyle.INK_100

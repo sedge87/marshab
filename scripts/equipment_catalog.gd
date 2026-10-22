@@ -37,11 +37,12 @@ static func groups() -> Array:
 	entries()
 	return _groups
 
-## Entry ids in one inventory section, in catalogue order.
+## Entry ids in one inventory section, in catalogue order. Retired items
+## (merged into newer ones) stay loadable from saves but aren't offered.
 static func ids_in_group(group_id: String) -> Array:
 	var out: Array = []
 	for id in entries():
-		if str(entries()[id].get("group", "")) == group_id:
+		if str(entries()[id].get("group", "")) == group_id and not bool(entries()[id].get("retired", false)):
 			out.append(id)
 	return out
 
