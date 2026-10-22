@@ -158,6 +158,9 @@ const INTERIOR_FILL_COLOUR := Color("#E9E2D6")
 ## sky the colour of the ground and thick ochre fog. Set by MHWeather (only
 ## when Weather effects are on; the storm itself happens either way).
 var storm := 0.0
+var _indoor_blend := 0.0      # 0 outdoors, 1 indoors; eases across the threshold
+var _cabin_blend := 0.0
+var _indoor_energy := INTERIOR_FILL_ENERGY
 const STORM_SKY := Color("#6E4A34")
 const STORM_FOG := Color("#9A6A48")
 
@@ -171,16 +174,27 @@ func apply_daylight(sunlight: float) -> void:
 	sun.light_energy = float(_palette_values.get("sun_energy", 0.8)) * lerpf(0.025, 1.0, level)
 	world_environment.environment.ambient_light_energy = float(_palette_values.get("ambient_energy", 0.35)) * lerpf(0.018, 1.0, level)
 	world_environment.environment.ambient_light_color = _palette_values.get("ambient", Color.WHITE)
-	if cabin_dim:
-		# Inside the lander: a dim, enclosed cabin, so stepping out into the
-		# sunlight is a moment.
-		world_environment.environment.ambient_light_energy *= .3
-	if inside_habitat:
-		# Indoors the room's own lamps do the work: a flat, neutral fill (dim
-		# when the power is off), and the sun no longer floods the interior.
-		world_environment.environment.ambient_light_energy = INTERIOR_FILL_ENERGY if interior_fill else INTERIOR_DARK_ENERGY
-		world_environment.environment.ambient_light_color = INTERIOR_FILL_COLOUR
-		sun.light_energy *= INDOOR_SUN
+	# Inside the lander: a dim, enclosed cabin, so stepping out into the
+	# sunlight is a moment (eased the same way as the habitat threshold).
+	_cabin_blend = move_toward(_cabin_blend, 1.0 if cabin_dim else 0.0, (get_process_delta_time() if is_inside_tree() else 1.0) / 1.5)
+	if _cabin_blend > 0.0: world_environment.environment.ambient_light_energy *= lerpf(1.0, .3, smoothstep(0.0, 1.0, _cabin_blend))
+	# Indoors the room's own lamps do the work: a flat, neutral fill (dim when
+	# the power is off), and the sun no longer floods the interior. Crossing
+	# the threshold blends between the two like eyes adjusting: about 2.5 s
+	# stepping out into the night, about a second coming back in.
+	var delta := get_process_delta_time() if is_inside_tree() else 1.0
+	var toward := 1.0 if inside_habitat else 0.0
+	_indoor_blend = move_toward(_indoor_blend, toward, delta / (1.0 if toward > _indoor_blend else 2.5))
+	# The indoor level only changes while you're inside (lights switching), so
+	# stepping out fades from the room you actually left.
+	if inside_habitat: _indoor_energy = move_toward(_indoor_energy, INTERIOR_FILL_ENERGY if interior_fill else INTERIOR_DARK_ENERGY, delta * .4)
+	if _indoor_blend > 0.0:
+		var outdoor_energy: float = world_environment.environment.ambient_light_energy
+		var outdoor_colour: Color = world_environment.environment.ambient_light_color
+		var eased := smoothstep(0.0, 1.0, _indoor_blend)
+		world_environment.environment.ambient_light_energy = lerpf(outdoor_energy, _indoor_energy, eased)
+		world_environment.environment.ambient_light_color = outdoor_colour.lerp(INTERIOR_FILL_COLOUR, eased)
+		sun.light_energy *= lerpf(1.0, INDOOR_SUN, eased)
 	if _sky_material != null:
 		# Mars has a thin atmosphere, but midnight is still a true, dark sky—not
 		# the washed-out daytime procedural sky from the initial implementation.
