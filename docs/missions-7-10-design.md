@@ -1,0 +1,152 @@
+# Missions 7–10: draft design (for discussion)
+
+This is a proposal to talk through. Nothing in it is built.
+
+## 1. Where the campaign stands (Missions 1–6)
+
+| # | Mission | Who's there | Payload | Test length | What it asks | What the Test throws at it |
+|---|---|---|---|---|---|---|
+| 1 | Landing Zones | – | – | – | A safe, clear landing site | – |
+| 2 | Power and Water | robot (+ GAR-Y) | 12 t | 5 sols | Power always on; 60 L water a sol | A dust storm (sol 3) |
+| 3 | The Habitat | robot | 20 t | 10 sols | Rooms above 15 °C, breathable, always powered | – |
+| 4 | The Crew Land | 4 crew | 10 t | 10 sols | Bunks for 4; air, water, food and warmth safe | – |
+| 5 | Dust Storm Season | 4 crew | 6 t | 8 sols | Life support powered; health above 80% | A 90% storm for 5 sols |
+| 6 | Toward Self-Sufficiency | 6 crew | 14 t | 100 sols | Grow 25% of the food; research; crew safe | – |
+
+**What works:**
+- **One site and one base all the way through.** Decisions carry over: Mission 3's layout is still your base in Mission 6.
+- **The understand → design → test → improve loop,** with versions and the dossier.
+- **Each mission adds one idea:** power, then the habitat, then the crew, then a storm, then food and research.
+
+**What's thin, and what Missions 7–10 should fix:**
+1. **Every Test is a steady-state check.** "Do the numbers stay in range for N sols?" Only the storms are an *event*. Real Mars risk is mostly events: things going wrong at a bad moment.
+2. **Only one of NASA's five crew hazards is modelled.** The five are Radiation, Isolation and confinement, Distance from Earth, Gravity, and a Hostile/closed environment (NASA calls them "RIDGE"). Today the game covers the hostile environment: air, cold and storms.
+3. **The crew are just a number.** Six crew means six times the oxygen. Nobody gets sick, tired, homesick or hurt, so the medical bay, privacy, exercise and the odds and ends barely matter.
+4. **Nothing breaks.** Equipment runs forever, so redundancy and spares have no reason to exist.
+5. **Layout hardly matters.** A room is a heat and air volume. Where rooms sit, and which doors separate them, never changes the outcome.
+
+## 2. Principles for Missions 7–10
+
+1. **You design the base and its rules; the Test brings the trouble.** The Test can't play the game for the student. So each new hazard comes with an *automatic protocol* the student sets up, like "the crew go to the shelter" or "doors seal on a breach". The Test then runs the event against their design. That's how real habitats are engineered: you can't rely on someone doing the right thing in the moment.
+2. **One new idea per mission,** and everything earlier still counts. Mission 9 still needs warm, breathable rooms.
+3. **Fair tests.** Events happen at the same moment in every version of a mission, so students can compare versions fairly. The finale is the exception: it runs several different "futures" and the base must survive all of them, which teaches robustness rather than tuning to one test.
+4. **The base carries on.** Early layout choices pay off or bite later. That's the story of an engineering project.
+5. **Each hazard is explained with real science,** through the habitat's voice alerts, the "Why it matters" cards and the dossier.
+6. **The live game feels it too, not just the Test.** After a mission is passed, its hazard can happen during normal play, with the alerts, so the base feels alive.
+
+## 3. The proposed second act: "Living on Mars"
+
+Act 1 (Missions 1–6) is *getting there*. Act 2 (Missions 7–10) is *living there*: the hazards, one at a time, then all together.
+
+| # | Mission | NASA hazard | New idea (the mechanic) | Payload | Test length |
+|---|---|---|---|---|---|
+| 7 | Solar Storm Shelter | Radiation | Shielding, and a designated shelter room | 6 t (mostly printed regolith) | 10 sols with a solar particle event |
+| 8 | The Long Day's Work | Gravity, plus the crew as people | Named crew with jobs, fitness and wellbeing | 8 t | 30 sols |
+| 9 | Hull Breach | Hostile/closed environment | Pressure compartments; doors that seal | 8 t | 10 sols with a breach |
+| 10 | The Long Silence | Isolation and distance (all five together) | Breakdowns and spares; no help from Earth | 15 t | 200 sols, three different futures |
+
+The medical emergency becomes an event inside Mission 8 rather than a mission of its own, because it needs the crew to be people first.
+
+### Mission 7 · Solar Storm Shelter (Radiation)
+- **Story:** The orbiters warn of a solar particle event: high-energy protons from a solar flare, arriving within hours. Mars has no global magnetic field and a thin atmosphere, so the crew need a shielded room.
+- **New mechanic: shielding.**
+  - Each room gets a *shield rating*. It comes from what's between the room and the sky: hull alone is low; stacked storage, water tanks and printed regolith are better.
+  - New items:
+    - **Regolith shield blocks**, printed by Mission 6's regolith printer, so local material does the job instead of cargo from Earth (in-situ resource use);
+    - **Water wall panels**: water is an excellent shield, and you need it anyway.
+- **New mechanic: room roles.** You mark one room as the **storm shelter** from a wall panel or Mission Control.
+- **Protocol:** When the warning sounds, the crew go to the shelter and the doors close. The voice says "Solar particle event. All crew to the storm shelter."
+- **Requirements:**
+  - The shelter's shield rating is at or above the safe line.
+  - It has room for every crew member (floor space per person).
+  - It has its own air and warmth for 2 sols with its doors shut.
+  - Everyone reaches it within the warning time (path length from where they work).
+  - The crew's radiation dose stays under the limit.
+- **Stretch:** Shield the bunks as well, so the crew can sleep in the shelter. Real habitat designs do this.
+
+### Mission 8 · The Long Day's Work (Gravity, and the crew as people)
+- **Story:** Six people, 30 sols, real work. Bones and muscles weaken in 38% gravity without exercise. Someone will get hurt.
+- **New mechanic: the crew as people.** Six named crew with roles: commander, engineer, doctor, botanist, geologist, communications.
+  - Work needs people: grow trays need botanist hours, the lab needs the geologist, repairs need the engineer.
+  - Each person has **fitness** (falls without the exercise station, which models gravity) and **wellbeing** (privacy, personal items, plants, windows, crowding, noise).
+  - The odds and ends finally *do* something.
+- **Event: an injury on sol 12.** The engineer is hurt.
+  - They need the Medical Bay: exam cot, medical cabinet, power.
+  - Their work falls on the others.
+  - Earth is 4–24 minutes away by message, so the doctor treats them alone.
+- **Requirements:**
+  - Everyone's fitness stays above the line.
+  - The patient recovers by sol 20.
+  - The base keeps running while they're out: food and research still meet a target.
+  - Average wellbeing stays above the line.
+- **A new screen:** a **crew roster** in Mission Control: who's where, doing what, and how they are.
+
+### Mission 9 · Hull Breach (hostile, closed environment)
+- **Story:** A micrometeoroid punctures a module. Air rushes out. What happens next depends on your floor plan.
+- **New mechanic: pressure compartments.**
+  - Each room holds its own pressure.
+  - Doors between rooms seal automatically on an alarm. Interior doors become pressure doors.
+  - Open corridor ends and archways don't seal, so a breach empties everything connected to them.
+  - A **patch kit** (spares) fixes it.
+  - Emergency **O₂ reserve tanks** bring rooms back to full pressure.
+- **Event:** A breach in one room, the same room in every version. If the student's design depends on luck, the dossier shows which room would have been worst.
+- **Requirements:**
+  - The other rooms keep their pressure.
+  - Nobody is trapped: every room has two ways out, or a safe route.
+  - The breach is patched within 2 hours.
+  - Air is back to safe within 6 hours.
+- **Stretch:** Survive a breach in *any* room. The Test tries each one.
+- **Why it's good:** A Mission 3 decision (an open-plan layout) now matters. Students redesign with compartments, as real stations do.
+
+### Mission 10 · The Long Silence (isolation and distance: everything together)
+- **Story:** Mars passes behind the Sun from Earth (solar conjunction). For 14 sols there's no contact and no resupply. The crew stay 200 sols, and things break.
+- **New mechanic: breakdowns and spares.**
+  - Machines have a failure chance.
+  - The engineer repairs them with spare parts. Spares are a new cargo item, and the printer can make some.
+  - Repairs take time.
+  - Redundancy (two of anything life-critical) keeps the base running while one is being fixed.
+- **Isolation:** wellbeing falls faster during the blackout. Recreation, personal items, plants, windows and video messages before the blackout all help.
+- **The Test runs three different futures,** with different breakdowns and different injuries, plus a solar particle event and a storm. The base must pass all three. That teaches robust design, not tuning to one run.
+- **Requirements:**
+  - Crew safe, fit and well for 200 sols.
+  - No life-critical system down for more than 12 hours.
+  - At least 50% of the food grown.
+  - Research target met.
+- **The ending:** the campaign wrap-up. Showcase mode and the dossier tell the whole story.
+
+## 4. New mechanics, sized
+
+| Mechanic | Used by | Size | Notes |
+|---|---|---|---|
+| Test events framework (beyond storms) | 7–10 | S | Extends the storm events in `missions.json` |
+| Room roles (shelter, …) | 7, 9 | S | A wall panel or Mission Control sets them; saved |
+| Shielding and radiation dose | 7, 10 | M | Shield rating per room from neighbours and items; dose over the test |
+| Printed regolith shield blocks, water walls | 7 | S–M | New items in the house style; the printer finally has a purpose |
+| Named crew: roles, work hours, fitness, wellbeing | 8, 10 | L | The biggest one. Also drives the monitor, alerts and showcase captions |
+| Injury and medical care | 8, 10 | M | Needs named crew |
+| Room pressure and sealing doors | 9, 10 | M | Doors already open and close; add sealing and per-room pressure |
+| Breakdowns, repairs and spares | 10 | M | Failure chance per machine; spares item; repair time |
+| Several futures per Test | 10 | S | Run the Test with 3 seeds |
+| Live hazards after a mission is passed | all | S–M | The same events in normal play, rarely |
+
+The build order follows the mission order: 7 (S/M), 8 (L), 9 (M), 10 (M), each with its campaign test.
+
+## 5. Constraints across the whole campaign
+
+- **Payload** stays tight. Later missions lean on *local* production (the printer and the ice) rather than cargo, which is the real long-term plan for Mars bases.
+- **Durations** grow: 10, 30, 10, 200 sols. Fast-forward handles 200 sols in a few seconds.
+- **Crew:** six from Mission 6 onward. Mission 8 makes them individuals.
+- **Unlocks:**
+  - Mission 7: shield blocks, water walls, room roles.
+  - Mission 8: crew roster, exercise matters, medical.
+  - Mission 9: pressure doors, patch kits.
+  - Mission 10: spares, recreation items.
+- **Fairness:** each mission's events happen at the same moments in every version. Mission 10 runs three futures.
+
+## 6. Questions to decide together
+
+1. **Named crew (Mission 8):** do you want the crew as six individuals with roles? It's the biggest change, and it makes the medical, gravity and isolation missions possible. Without it, Missions 8 and 10 stay abstract.
+2. **Order:** Radiation, then people, then breach, then the finale. Or should the breach come before the people?
+3. **Live hazards:** after passing a mission, should its hazard happen occasionally during normal play (with the alerts), or only in Tests?
+4. **Difficulty:** is the 200-sol, three-futures finale right for Year 9, or too punishing? It could be two futures, or a gentler failure rate.
+5. **Anything missing** you'd like the campaign to teach, e.g. getting to Mars, EVA safety, or planetary protection?
