@@ -79,7 +79,7 @@ func _action_label(action: Dictionary) -> String:
 			var level := _level(action)
 			var now := str(names[level]).to_upper() + (" (NO POWER)" if level > 0 and not _grid_powered else "")
 			return "%s %s → %s" % [str(action.get("label", "Setting")), now, str(names[(level + 1) % names.size()]).to_upper()]
-		"workout", "inspect":
+		"workout", "inspect", "play":
 			return str(action.get("label", "Use"))
 	return str(action.get("label_on" if _on(action) else "label_off", "Use"))
 
@@ -113,6 +113,9 @@ func _run(key: String, _actor: Node) -> bool:
 				_inspect(action)
 			"harvest":
 				_harvest(index, action)
+				return true
+			"play":
+				_play(action)
 				return true
 			"levels":
 				var names: Array = action.get("levels", ["Off", "On"])
@@ -660,6 +663,28 @@ func _set_glow(meshes: Array, on: bool, dark_when_off := false) -> void:
 			_glow_materials[mesh_instance] = [dark, lit]
 		var pair: Array = _glow_materials[mesh_instance]
 		mesh_instance.material_override = pair[1] if on else pair[0]
+
+# ---------- play (guitar, plush) ----------
+
+## A sound from the item itself, one of a few variants, with a little motion:
+## "squash" (a squeezed plush) or "shake" (a strummed guitar).
+func _play(action: Dictionary) -> void:
+	var variants := maxi(1, int(action.get("variants", 1)))
+	var sound := str(action.get("sound", ""))
+	if variants > 1: sound += "_%d" % (randi() % variants)
+	MHAudio.sfx_at(sound, self, 0.0, float(action.get("height", .5)))
+	var model := _model()
+	if model == null: return
+	var tween := create_tween().set_trans(Tween.TRANS_SINE)
+	match str(action.get("motion", "")):
+		"squash":
+			tween.tween_property(model, "scale", Vector3(1.12, .82, 1.12), .09)
+			tween.tween_property(model, "scale", Vector3(.96, 1.06, .96), .12)
+			tween.tween_property(model, "scale", Vector3.ONE, .14)
+		"shake":
+			var rest := model.rotation
+			for angle in [.025, -.02, .012, 0.0]:
+				tween.tween_property(model, "rotation", rest + Vector3(0, 0, angle), .07)
 
 # ---------- workout and inspect ----------
 

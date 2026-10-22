@@ -47,6 +47,9 @@ var printed_kg := 0.0
 var run_step := STEP_HOURS
 var crew_evacuated := false
 var storm_hours_left := 0.0
+## Hours until a forecast storm arrives (-1: none forecast). Orbiters map
+## Mars weather every sol, so storms come with a warning.
+var storm_eta_hours := -1.0
 var hours_run := 0.0
 var _known_capacity := {"kwh": 0.0, "water": 0.0, "o2": 0.0}
 var _food_delivered := false
@@ -73,7 +76,7 @@ func invalidate() -> void:
 
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
-		"room_temp": room_temp.duplicate(), "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left,
+		"room_temp": room_temp.duplicate(), "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
 		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg}
 
 func load(state: Dictionary) -> void:
@@ -82,7 +85,7 @@ func load(state: Dictionary) -> void:
 	o2_reserve_kg = float(state.get("o2_reserve_kg", 0.0)); o2_pct = float(state.get("o2_pct", 21.0)); co2_pct = float(state.get("co2_pct", 0.04))
 	room_temp = (state.get("room_temp", {}) as Dictionary).duplicate()
 	crew_health = float(state.get("crew_health", 100.0)); crew_evacuated = bool(state.get("crew_evacuated", false))
-	storm_hours_left = float(state.get("storm_hours_left", 0.0)); hours_run = float(state.get("hours_run", 0.0))
+	storm_hours_left = float(state.get("storm_hours_left", 0.0)); storm_eta_hours = float(state.get("storm_eta_hours", -1.0)); hours_run = float(state.get("hours_run", 0.0))
 	_known_capacity = (state.get("known_capacity", _known_capacity) as Dictionary).duplicate()
 	_food_delivered = bool(state.get("food_delivered", false))
 	printed_kg = float(state.get("printed_kg", 0.0))
@@ -280,6 +283,11 @@ func run_hours(hours: float, start_hour: float, sample_every := 1.0) -> Array:
 func start_storm(sols := -1.0) -> void:
 	var length := sols if sols > 0.0 else float(MHResources.site(MHGame.site_id).get("storm_sols", 3.0))
 	storm_hours_left = length * 24.0
+	storm_eta_hours = -1.0
+
+## Forecasts a storm to arrive in this many hours (the HUD warns until then).
+func forecast_storm(hours := -1.0) -> void:
+	storm_eta_hours = hours if hours >= 0.0 else MHResources.setting("storm_warning_hours", 10.0)
 
 # ---------- one step ----------
 
@@ -294,8 +302,11 @@ func step(dt: float, hour: float) -> void:
 	hours_run += dt
 	# Dust storms (random in play; tests can start one).
 	if storm_hours_left > 0.0: storm_hours_left = maxf(0.0, storm_hours_left - dt)
+	elif storm_eta_hours >= 0.0:
+		storm_eta_hours -= dt
+		if storm_eta_hours <= 0.0: start_storm()
 	elif random_storms and _rng.randf() < float(site.get("dust_storms_per_100_sols", 1.0)) / 100.0 / 24.0 * dt:
-		start_storm()
+		forecast_storm()
 	for room in rooms:
 		if not room_temp.has(room.key): room_temp[room.key] = _starting_temp(room, outside)
 	# --- people: where the crew are at this hour ---
@@ -400,7 +411,7 @@ func step(dt: float, hour: float) -> void:
 	_crew_condition(dt, crew, rooms, people)
 	last = {"hour": hour, "generation_kw": generation, "load_kw": powered.load_kw, "demand_kw": tiers[1] + tiers[2] + tiers[3] + tiers[4],
 		"tiers": powered.tiers, "tier_kw": tiers, "battery_rate_kw": powered.battery_kw, "heat_pump_kw": pump.electric_kw, "outside_c": outside,
-		"storm": storm_hours_left > 0.0, "crew": crew, "people": people, "water_in": (water_made + water_recovered + drill_water) / per_sol,
+		"storm": storm_hours_left > 0.0, "storm_hours_left": storm_hours_left, "storm_eta": storm_eta_hours, "crew": crew, "people": people, "water_in": (water_made + water_recovered + drill_water) / per_sol,
 		"water_out": water_used / per_sol, "food_in": food_grown / per_sol, "o2_in": o2_made / per_sol, "co2_out": co2_removed / per_sol,
 		"heat_capacity_short": pump.get("short", false), "night": night, "free_power": MHGame.debug_free_power}
 
@@ -649,4 +660,6 @@ func warnings() -> Array:
 		out.append({"level": "info", "text": "%d of %d crew have bunks; the rest wait on the lander." % [mini(int(inv.capacity.berths), int(MHResources.setting("crew", 6.0))), int(MHResources.setting("crew", 6.0))]})
 	if storm_hours_left > 0.0:
 		out.append({"level": "warn", "text": "Dust storm: solar output is down for about %d more sols." % ceili(storm_hours_left / 24.0)})
+	elif storm_eta_hours >= 0.0:
+		out.append({"level": "warn", "text": "Dust storm forecast in %d hours: charge the batteries and cut what you don't need." % ceili(storm_eta_hours)})
 	return out

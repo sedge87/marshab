@@ -473,6 +473,104 @@ def landing():
     return reverb(mix(rumble, sub * 0.8, at(touch * 1.2, 3.55)), 2.0, 0.25)
 
 
+# ---------- weather and odds & ends (22 Oct) ----------
+# Kept after everything else so the older sounds regenerate byte-identical.
+def storm(length=24.0):
+    """A dust storm outside: a heavy, gusting roar with grit on the visor."""
+    t = seconds(length)
+    out = np.zeros_like(t)
+    for centre, width, cycles, phase, amp in ((140, 90, 4, 0.3, 1.0), (380, 200, 7, 2.1, 0.8), (900, 400, 11, 4.4, 0.45), (2400, 900, 5, 1.0, 0.18)):
+        band = bandpass(noise(length), centre, width)
+        gust = 0.45 + 0.55 * np.sin(2 * np.pi * cycles / length * t + phase) ** 2
+        out += band / np.std(band) * gust * amp
+    grit = highpass(noise(length), 3500)
+    grit *= (0.3 + 0.7 * np.clip(np.sin(2 * np.pi * 9 / length * t + 0.7), 0, 1) ** 3)
+    return out + grit * 0.12
+
+
+def storm_inside(length=16.0):
+    """The same storm through the hull: a low buffet and sand ticking on the shell."""
+    t = seconds(length)
+    rumble = lowpass(noise(length), 220) * (0.6 + 0.4 * np.sin(2 * np.pi * 3 / length * t) ** 2)
+    out = rumble / np.std(rumble)
+    ticks = np.zeros_like(t)
+    for start in rng.uniform(0, length - 0.05, 260):
+        i = int(start * RATE)
+        n = int(0.012 * RATE)
+        ticks[i:i + n] += rng.standard_normal(n) * np.exp(-np.arange(n) / (0.002 * RATE)) * rng.uniform(0.2, 1.0)
+    return out + highpass(ticks, 2500) * 0.5
+
+
+def two_tone(f_high, f_low, gap=0.32, length=1.6):
+    """A habitat caution chime: two soft bell tones."""
+    def tone(f, l):
+        tt = seconds(l)
+        return (np.sin(2 * np.pi * f * tt) + 0.35 * np.sin(2 * np.pi * f * 2.01 * tt)) * decay(l, 0.35, 0.004)
+    return reverb(mix(tone(f_high, length), at(tone(f_low, length - gap), gap)), 1.4, 0.25)
+
+
+def storm_alert():
+    return mix(two_tone(note("A5"), note("E5")), at(two_tone(note("A5"), note("E5")) * 0.7, 0.75))
+
+
+def all_clear():
+    out = np.zeros(int(1.8 * RATE))
+    for i, n in enumerate(("D5", "F5", "A5")):
+        tt = seconds(1.4)
+        tone = (np.sin(2 * np.pi * note(n) * tt) + 0.3 * np.sin(2 * np.pi * note(n) * 2 * tt)) * decay(1.4, 0.4, 0.004)
+        out = mix(out, at(tone * (0.9 - 0.1 * i), 0.13 * i, len(out) / RATE))
+    return reverb(out, 1.4, 0.25)
+
+
+def pluck(freq, length=2.6, brightness=0.5):
+    """Karplus-Strong string: a burst of noise in a tuned, damped delay line."""
+    period = int(RATE / freq)
+    burst = rng.uniform(-1, 1, period)
+    soft = np.convolve(burst, np.ones(5) / 5, "same")   # a thumb, not a pick
+    buffer = soft * (1 - brightness) + burst * brightness
+    buffer -= buffer.mean()
+    out = np.zeros(int(length * RATE))
+    for i in range(len(out)):
+        out[i] = buffer[i % period]
+        buffer[i % period] = 0.996 * 0.5 * (buffer[i % period] + buffer[(i + 1) % period])
+    return highpass(out, 70)
+
+
+def strum(notes, gap=0.028):
+    """A down-strum: each string a few milliseconds after the last, with a wooden body."""
+    length = 2.8
+    out = np.zeros(int(length * RATE))
+    for i, n in enumerate(notes):
+        out = mix(out, at(pluck(note(n), length - i * gap, 0.2) * (1.0 - 0.06 * i), i * gap, length))
+    out = lowpass(out, 2600)
+    body = bandpass(out, 220, 160) * 0.5
+    return reverb(out + body, 1.6, 0.22, 2800)
+
+
+def squeak(f0, f1, length=0.32):
+    """A soft plush squeak: a rubbery whistle bending up and back, and a cloth puff."""
+    tt = seconds(length)
+    bend = f0 + (f1 - f0) * np.sin(np.pi * tt / length)
+    wobble = 1 + 0.03 * np.sin(2 * np.pi * 24 * tt)
+    tone = np.sin(2 * np.pi * np.cumsum(bend * wobble) / RATE)
+    tone = bandpass(tone + 0.3 * np.sign(tone) * 0.2, (f0 + f1) / 2, 600)
+    env = np.sin(np.pi * tt / length) ** 1.5
+    puff = lowpass(noise(length), 900) * decay(length, 0.05) * 0.4
+    return tone * env * 0.8 + puff
+
+
+def main_weather():
+    write("ambience/storm", storm(), -3, edges=False)
+    write("ambience/storm_inside", storm_inside(), -3, edges=False)
+    write("sfx/storm_alert", storm_alert(), -2)
+    write("sfx/all_clear", all_clear(), -2)
+    for i, chord in enumerate((("D3", "A3", "D4", "F4", "A4"), ("F2", "C3", "F3", "A3", "C4", "F4"),
+                               ("C3", "E3", "G3", "C4", "E4"), ("A2", "E3", "A3", "C4", "E4"))):
+        write(f"sfx/guitar_strum_{i}", strum(chord), -3)
+    for i, (f0, f1) in enumerate(((900, 1350), (1000, 1500), (820, 1250))):
+        write(f"sfx/plush_squeak_{i}", squeak(f0, f1), -4)
+
+
 def main():
     global OUTPUT
     if len(sys.argv) < 2:
@@ -501,6 +599,7 @@ def main():
     for i in range(4):
         write(f"sfx/step_dirt_{i}", step_dirt(), -2)
         write(f"sfx/step_metal_{i}", step_metal(), -2)
+    main_weather()
     total = 0
     for name, length in WRITTEN:
         total += length

@@ -27,9 +27,9 @@ const PALETTES := {
 const VOLUME_KEYS := ["vol_master", "vol_music", "vol_ambience", "vol_sfx"]
 
 const PRESETS := {
-	"low": {"shadows": false, "dust": false, "glow": false, "render_scale": 0.75},
-	"medium": {"shadows": true, "dust": true, "glow": false, "render_scale": 1.0},
-	"high": {"shadows": true, "dust": true, "glow": true, "render_scale": 1.0}
+	"low": {"shadows": false, "dust": false, "weather": false, "glow": false, "render_scale": 0.75},
+	"medium": {"shadows": true, "dust": true, "weather": true, "glow": false, "render_scale": 1.0},
+	"high": {"shadows": true, "dust": true, "weather": true, "glow": true, "render_scale": 1.0}
 }
 
 # One list of controls feeds the pause sheet and Settings → Controls.

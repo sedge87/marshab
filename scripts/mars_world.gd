@@ -1,5 +1,6 @@
 extends Node3D
 
+const WEATHER_SCRIPT := preload("res://scripts/weather.gd")
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const ORIGINAL_ENVIRONMENT_SCRIPT := preload("res://scripts/original_mars_environment.gd")
@@ -27,6 +28,7 @@ var overlay_layer: CanvasLayer
 var pause_menu: MHPauseMenu
 var mission_control: MHMissionControl
 var dust: CPUParticles3D
+var weather: Node   # scripts/weather.gd: storm warnings, haze, dust and sound
 var scout_rover: Node3D
 var interior_builder: MHInteriorBuildController
 var surface_builder: MHSurfaceBuildController
@@ -116,6 +118,9 @@ func _ready() -> void:
 		player.rotation.y = float(cabin.yaw)
 		player.safe_position = player.global_position
 	_build_hud()
+	weather = WEATHER_SCRIPT.new()
+	add_child(weather)
+	weather.setup(self)
 	_begin_lander_intro()
 	if MHMissions.active():
 		if str(MHMissions.current().get("player", "crew")) == "robot": explore_hud.chip_prefix = "ROBOT · "

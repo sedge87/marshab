@@ -102,7 +102,7 @@ func _graphics() -> Control:
 	form.add_child(preset_box)
 	var toggles := MHStyle.vbox(20)
 	_switches.clear()
-	for toggle in [["shadows", "Sun shadows", "Biggest single cost. Turn off first if the game stutters."], ["dust", "Dust particles", "Only drawn within 10 m of the camera."], ["glow", "Window glow", "Bloom on lit windows and beacons."]]:
+	for toggle in [["shadows", "Sun shadows", "Biggest single cost. Turn off first if the game stutters."], ["dust", "Dust particles", "Only drawn within 10 m of the camera."], ["weather", "Weather effects", "Storm haze, dusty skies and blowing dust. With this off, storms still happen and are still announced."], ["glow", "Window glow", "Bloom on lit windows and beacons."]]:
 		var row := MHStyle.hbox(18)
 		var sw := MHWidgets.Switch.new()
 		sw.button_pressed = bool(_values.get(toggle[0], false))

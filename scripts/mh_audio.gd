@@ -29,7 +29,10 @@ const BELL_NOTES := [-12, -9, -7, -5, -2, 0, 3, 5, 7]
 const SFX_TRIM := {
 	"ui_hover": -16.0, "ui_click": -9.0, "ui_back": -9.0, "ui_confirm": -6.0, "invalid": -14.0,
 	"warn": -8.0, "undo": -6.0, "rotate": -9.0, "rover_chirp": -10.0, "place": -2.0, "remove": -4.0, "jump": -10.0,
-	"land": -6.0, "ladder": -4.0, "landing": -2.0, "mode_build": -6.0, "mode_explore": -6.0
+	"land": -6.0, "ladder": -4.0, "landing": -2.0, "mode_build": -6.0, "mode_explore": -6.0,
+	"storm_alert": -7.0, "all_clear": -8.0,
+	"guitar_strum_0": -5.0, "guitar_strum_1": -5.0, "guitar_strum_2": -5.0, "guitar_strum_3": -5.0,
+	"plush_squeak_0": -12.0, "plush_squeak_1": -12.0, "plush_squeak_2": -12.0
 }
 # Mood -> [drone dB, pad dB, seconds between pads, seconds between bells].
 const MOODS := {
@@ -55,10 +58,17 @@ static func sfx(id: String, volume_db := 0.0, pitch_jitter := 0.04) -> void:
 	var d := director()
 	if d != null: d._run("_play_sfx", [id, volume_db, pitch_jitter])
 
-# Plays an effect from a point in the world (airlock doors).
-static func sfx_at(id: String, target: Node3D, volume_db := 0.0) -> void:
+# Plays an effect from a point in the world (airlock doors), height metres
+# above the target's origin.
+static func sfx_at(id: String, target: Node3D, volume_db := 0.0, height := 1.4) -> void:
 	var d := director()
-	if d != null and target != null: d._run("_play_at", [id, target, volume_db])
+	if d != null and target != null: d._run("_play_at", [id, target, volume_db, height])
+
+# Dust storm loudness, 0 (calm) to 1 (full storm): a roar outside, a muffled
+# buffet and sand ticks through the hull inside. Set smoothly by MHWeather.
+static func weather(storm_level: float) -> void:
+	var d := director()
+	if d != null: d._run("_set_weather", [storm_level])
 
 # "menu", "surface" or "off".
 static func music(mood: String) -> void:
@@ -111,6 +121,9 @@ var _pads: Array[AudioStreamPlayer] = []
 var _bell: AudioStreamPlayer
 var _wind: AudioStreamPlayer
 var _hum: AudioStreamPlayer
+var _storm: AudioStreamPlayer
+var _storm_inside: AudioStreamPlayer
+var _storm_level := 0.0
 var _mood := "off"
 var _space := "off"
 var _build_on := false
@@ -135,6 +148,8 @@ func _ready() -> void:
 	_bell = _player("Music")
 	_wind = _player("Ambience", "ambience/wind", true)
 	_hum = _player("Ambience", "ambience/hum", true)
+	_storm = _player("Ambience", "ambience/storm", true)
+	_storm_inside = _player("Ambience", "ambience/storm_inside", true)
 	# Every button in the game gets the same hover tick and click.
 	get_tree().node_added.connect(_hook_button)
 	_hook_tree(get_tree().root)
@@ -226,6 +241,23 @@ func _set_space(space: String) -> void:
 	var levels: Array = {"outside": [-12.0, -80.0], "inside": [-28.0, -15.0], "menu": [-20.0, -80.0], "off": [-80.0, -80.0]}.get(space, [-80.0, -80.0])
 	_fade(_wind, levels[0], 1.5, levels[0] <= -80.0)
 	_fade(_hum, levels[1], 1.0, levels[1] <= -80.0)
+	_apply_storm()
+
+func _set_weather(level: float) -> void:
+	_storm_level = clampf(level, 0.0, 1.0)
+	_apply_storm()
+
+func _apply_storm() -> void:
+	var inside := _space == "inside"
+	for pair in [[_storm, -7.0, not inside and _space != "menu" and _space != "off"], [_storm_inside, -13.0, inside]]:
+		var p: AudioStreamPlayer = pair[0]
+		if p == null or p.stream == null: continue
+		var on: bool = pair[2] and _storm_level > .01
+		if not on:
+			if p.playing: p.stop()
+			continue
+		p.volume_db = lerpf(-40.0, float(pair[1]), sqrt(_storm_level))
+		if not p.playing: p.play()
 
 func _set_muffle(on: bool) -> void:
 	for bus_name in ["Music", "Ambience"]:
@@ -258,7 +290,7 @@ func _play_sfx(id: String, volume_db: float, pitch_jitter: float) -> void:
 	p.pitch_scale = randf_range(1.0 - pitch_jitter, 1.0 + pitch_jitter)
 	p.play()
 
-func _play_at(id: String, target: Node3D, volume_db: float) -> void:
+func _play_at(id: String, target: Node3D, volume_db: float, height := 1.4) -> void:
 	var stream := _stream("sfx/" + id)
 	if stream == null or not is_instance_valid(target) or not target.is_inside_tree(): return
 	var p := AudioStreamPlayer3D.new()
@@ -269,7 +301,7 @@ func _play_at(id: String, target: Node3D, volume_db: float) -> void:
 	p.max_distance = 40.0
 	p.pitch_scale = randf_range(.97, 1.03)
 	target.add_child(p)
-	p.position = Vector3(0, 1.4, 0)
+	p.position = Vector3(0, height, 0)
 	p.finished.connect(p.queue_free)
 	p.tree_exiting.connect(func() -> void: p.stop(); p.stream = null)
 	p.play()

@@ -1,5 +1,5 @@
 {
-  "_comment": "How each item's moving parts behave (scripts/equipment_rig.gd). parts are mesh-name prefixes from the delivered GLB (the text before '__'); positions and axes are in the model's own space, where the front faces -Z. key: primary = E, secondary = F, tertiary = G. Types: slide (move by offset), cycle_slide (open the next part each press; tray_depth adds drawer sides), stretch (scale along an axis from one edge), blind (roll-down blind hanging from its top edge; on = let down/closed), hinge (rotate about an axis at an edge, e.g. edge max_y + axis x for a lid, or edge center for valves and levers; cavity builds a shelved interior with belongings behind the doors), light (toggle a lamp; optional colour; powered lights draw their item's power only while on), workout (animate parts for a few seconds; a move may stretch with scale about an anchor), inspect (show a live readout), machine (run/stop: spin rotors, glow lamps, flip a switch; default true starts running), harvest (crops drop and regrow over regrow_seconds; the prompt counts down). machine also takes sweep (gauge needles that wander while running) and note_on/note_off (shown when switched). slide may take hollow {body, items} to swap a solid drawer body for an open tray. cavity items may be shape rotor with spin_state. powered: true/'power' gates only the item's power draw on that switch, 'all' gates every catalogue effect. Resource values stay in equipment_catalog.json. grid_isolator: true on a machine makes its switch cut all generation to the habitat when off. inspect readout may be habitat_status or power_status. inspect may instead list observations [[title, text], ...], shown one per press. light may take at [x,y,z] to place the lamp directly. workout with a note shows that note instead of the info card (use reps 1 for a quick press). map draws the live survey map on its screen parts (selector part switches site/Mars view). hinge may take reveal: contents in model space shown while open. levels cycles settings (levels names, state = index): glow [[parts lit from level 1], [from level 2]...], dial {parts, axis, angle per level}, spin faster each level, notes per level and note_no_power; levels only run on grid power, and power_draw_levels / heat_levels_c in the catalogue give its power and warmth. spin may take at [x,y,z] as its pivot. light own_power: true keeps it lit in a habitat power cut. machine blink: seconds makes its glow parts flash while running.",
+  "_comment": "How each item's moving parts behave (scripts/equipment_rig.gd). parts are mesh-name prefixes from the delivered GLB (the text before '__'); positions and axes are in the model's own space, where the front faces -Z. key: primary = E, secondary = F, tertiary = G. Types: slide (move by offset), cycle_slide (open the next part each press; tray_depth adds drawer sides), stretch (scale along an axis from one edge), blind (roll-down blind hanging from its top edge; on = let down/closed), hinge (rotate about an axis at an edge, e.g. edge max_y + axis x for a lid, or edge center for valves and levers; cavity builds a shelved interior with belongings behind the doors), light (toggle a lamp; optional colour; powered lights draw their item's power only while on), workout (animate parts for a few seconds; a move may stretch with scale about an anchor), inspect (show a live readout), machine (run/stop: spin rotors, glow lamps, flip a switch; default true starts running), harvest (crops drop and regrow over regrow_seconds; the prompt counts down). machine also takes sweep (gauge needles that wander while running) and note_on/note_off (shown when switched). slide may take hollow {body, items} to swap a solid drawer body for an open tray. cavity items may be shape rotor with spin_state. powered: true/'power' gates only the item's power draw on that switch, 'all' gates every catalogue effect. Resource values stay in equipment_catalog.json. grid_isolator: true on a machine makes its switch cut all generation to the habitat when off. inspect readout may be habitat_status or power_status. inspect may instead list observations [[title, text], ...], shown one per press. light may take at [x,y,z] to place the lamp directly. workout with a note shows that note instead of the info card (use reps 1 for a quick press). map draws the live survey map on its screen parts (selector part switches site/Mars view). hinge may take reveal: contents in model space shown while open. levels cycles settings (levels names, state = index): glow [[parts lit from level 1], [from level 2]...], dial {parts, axis, angle per level}, spin faster each level, notes per level and note_no_power; levels only run on grid power, and power_draw_levels / heat_levels_c in the catalogue give its power and warmth. spin may take at [x,y,z] as its pivot. light own_power: true keeps it lit in a habitat power cut. machine blink: seconds makes its glow parts flash while running. play (a sound from the item, one of `variants`, at `height`; motion squash or shake: the guitar and plush).",
   "crew_bunk": {
     "actions": [
       {
@@ -4374,6 +4374,32 @@
         ],
         "note_on": "Digging. The scoop wheel lifts regolith into the sieve, and the fine soil goes down the pipe to the printer.",
         "note_off": "Intake stopped. The printer gets no soil until it runs again."
+      }
+    ]
+  },
+  "guitar": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "play",
+        "label": "Strum a chord",
+        "sound": "guitar_strum",
+        "variants": 4,
+        "height": 0.6,
+        "motion": "shake"
+      }
+    ]
+  },
+  "zero_g_plush": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "play",
+        "label": "Give it a squeeze",
+        "sound": "plush_squeak",
+        "variants": 3,
+        "height": 0.1,
+        "motion": "squash"
       }
     ]
   }

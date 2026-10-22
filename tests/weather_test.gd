@@ -1,0 +1,73 @@
+extends SceneTree
+
+# Dust storms: forecast then storm then clear in the simulation (saved), the
+# weather node's warning pill, haze and sound level, the Weather effects
+# switch, plus the guitar and plush sounds and the pause menu's closed
+# Controls sheet.
+# Run with: godot --headless --path . --script res://tests/weather_test.gd
+var failures := 0
+
+func _check(ok: bool, what: String) -> void:
+	if not ok:
+		failures += 1
+		print("FAIL ", what)
+
+func _initialize() -> void:
+	MHGame.site_id = "plains"; MHGame.game_mode = "survival"; MHGame.pending_save_state = {}; MHGame.landing_target = Vector2.INF
+	var world = load("res://scenes/mars_world.tscn").instantiate()
+	root.add_child(world)
+	for i in 10: await process_frame
+	world._intro_stage = "done"
+	world.explore_hud.set_minimal(false)
+	world.day_night.frozen = true
+	var sim = world.builder.simulation()
+	sim.random_storms = false
+	var weather = world.weather
+	_check(weather != null, "the world has a weather node")
+
+	# The simulation: a forecast counts down, then the storm arrives and ends.
+	sim.forecast_storm(2.0)
+	for i in 3: await process_frame
+	_check(weather._state == "forecast" and weather._pill.visible and weather._pill_label.text.begins_with("STORM IN"), "a forecast shows the warning pill (%s)" % weather._pill_label.text)
+	_check(weather._toast != null and is_instance_valid(weather._toast), "and a toast")
+	var saved: Dictionary = sim.save()
+	_check(is_equal_approx(float(saved.storm_eta_hours), sim.storm_eta_hours), "the forecast is saved")
+	sim.run_hours(3.0, 12.0)
+	_check(sim.storm_hours_left > 0.0 and sim.storm_eta_hours < 0.0, "the storm arrives when the forecast runs out")
+	for i in 3: await process_frame
+	_check(weather._state == "storm" and weather._pill_label.text.begins_with("DUST STORM"), "the pill switches to the storm")
+	weather._level = .9
+	for i in 3: await process_frame
+	_check(world.environment.storm > .5, "the sky hazes over (%.2f)" % world.environment.storm)
+	MHGame._settings["weather"] = false
+	for i in 3: await process_frame
+	_check(is_zero_approx(world.environment.storm) and not weather._storm_dust.emitting, "Weather effects off: no haze or blowing dust")
+	MHGame._settings["weather"] = true
+	sim.storm_hours_left = 0.0
+	for i in 3: await process_frame
+	_check(weather._state == "calm" and not weather._pill.visible, "the storm clears and the pill goes")
+	_check(MHGame.PRESETS.low.weather == false and MHGame.PRESETS.high.weather == true, "Low turns weather effects off")
+
+	# Guitar and plush make their sounds.
+	var b: BuildController = world.builder
+	for id in ["guitar", "zero_g_plush"]:
+		var v := b.free_interior_visual(id, Vector3(30, 0, 30), 0.0)
+		world.add_child(v)
+		await process_frame
+		var rig: Node = v.get_node("Model")
+		_check(str(rig.interaction_prompt().get("primary", "")) in ["Strum a chord", "Give it a squeeze"], "%s has its play action" % id)
+		_check(rig.interact(), "%s plays" % id)
+		var sound := "sfx/guitar_strum_0" if id == "guitar" else "sfx/plush_squeak_0"
+		_check(ResourceLoader.exists("res://assets/audio/%s.wav" % sound), "%s sound exists" % id)
+
+	# The pause menu opens with the Controls sheet closed.
+	var pause := MHPauseMenu.new()
+	root.add_child(pause)
+	await process_frame
+	_check(not pause._controls_sheet.visible, "pause opens without the Controls sheet")
+	pause._toggle_controls()
+	_check(pause._controls_sheet.visible, "the Controls button opens it")
+	pause.queue_free()
+	if failures == 0:
+		print("Weather test passed: forecast, storm, haze, effects switch, guitar, plush and the pause menu.")
+	quit(1 if failures > 0 else 0)

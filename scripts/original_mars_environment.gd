@@ -154,6 +154,12 @@ const INTERIOR_FILL_ENERGY := .2
 const INTERIOR_DARK_ENERGY := .05   # power off: only what spills from screens and the head lamp
 const INDOOR_SUN := .3              # sunlight that leaks through walls (no shadows on low settings)
 const INTERIOR_FILL_COLOUR := Color("#E9E2D6")
+## Dust storm haze, 0 (clear) to 1 (full storm): a dimmer, browner sun, a
+## sky the colour of the ground and thick ochre fog. Set by MHWeather (only
+## when Weather effects are on; the storm itself happens either way).
+var storm := 0.0
+const STORM_SKY := Color("#6E4A34")
+const STORM_FOG := Color("#9A6A48")
 
 func apply_daylight(sunlight: float) -> void:
 	# Keep the art-direction palette, but let the simulated sun visibly set. A
@@ -186,8 +192,23 @@ func apply_daylight(sunlight: float) -> void:
 		world_environment.environment.fog_density = lerpf(.0008, float(_palette_values.get("fog_density", .0024)), level)
 	# When the base grid is online its window strips are deliberately brighter at
 	# night, providing a clear warm navigational cue without lifting the sky.
+	if storm > .001: _apply_storm(level)
 	MHGame.set_window_glow(float(_palette_values.get("window", .9)) * lerpf(1.75, .9, level))
 	_update_celestial_bodies(level)
+
+func _apply_storm(level: float) -> void:
+	var haze := clampf(storm, 0.0, 1.0)
+	sun.light_energy *= lerpf(1.0, .22, haze)
+	sun.light_color = sun.light_color.lerp(Color("#D9A57C"), haze * .6)
+	if not inside_habitat and not cabin_dim:
+		world_environment.environment.ambient_light_color = (world_environment.environment.ambient_light_color as Color).lerp(STORM_FOG, haze * .5)
+	if _sky_material != null:
+		var dim := lerpf(.15, 1.0, level)
+		_sky_material.sky_top_color = _sky_material.sky_top_color.lerp(STORM_SKY * dim, haze * .85)
+		_sky_material.sky_horizon_color = _sky_material.sky_horizon_color.lerp(STORM_FOG * dim, haze * .9)
+		_sky_material.ground_horizon_color = _sky_material.ground_horizon_color.lerp(STORM_FOG * dim, haze * .8)
+		world_environment.environment.fog_light_color = world_environment.environment.fog_light_color.lerp(STORM_FOG * dim, haze)
+		world_environment.environment.fog_density *= lerpf(1.0, 24.0, haze)
 
 func _apply_martian_sun_direction(sunlight: float) -> void:
 	# The directional light is the actual solar source: it rises in the east,

@@ -55,6 +55,7 @@ func _initialize() -> void:
 	# A sensible habitat on the plains keeps everything running for three sols.
 	var good := _habitat("plains", 6, _full_kit())
 	var sim: RefCounted = good.simulation()
+	sim.random_storms = false   # storms are tested on their own below, not left to chance
 	_check(int(sim.crew_count()) == 6, "six bunks bring six crew in (got %d)" % sim.crew_count())
 	_check(is_equal_approx(float(sim.battery_kwh), 300.0), "new batteries arrive charged")
 	_check(float(sim.food_kg) > 0.0, "the lander delivers food when the crew move in")

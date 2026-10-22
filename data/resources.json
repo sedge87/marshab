@@ -37,6 +37,7 @@
     "print_kg_per_sol": 2500.0,
     "print_recycle_bonus": 0.25,
     "resupply_enabled": 0.0,
+    "storm_warning_hours": 10.0,
     "window_cargo_kg": 150.0
   },
   "rooms": {
@@ -651,27 +652,27 @@
   },
   "sites": {
     "plains": {
-      "dust_storms_per_100_sols": 1.5,
+      "dust_storms_per_100_sols": 6.0,
       "storm_solar_cut": 0.7,
-      "storm_sols": 4.0,
+      "storm_sols": 2.0,
       "cargo_bonus": 0.0
     },
     "ridge": {
-      "dust_storms_per_100_sols": 2.0,
+      "dust_storms_per_100_sols": 8.0,
       "storm_solar_cut": 0.6,
-      "storm_sols": 3.0,
+      "storm_sols": 1.5,
       "cargo_bonus": 0.08
     },
     "crater": {
-      "dust_storms_per_100_sols": 1.0,
+      "dust_storms_per_100_sols": 4.0,
       "storm_solar_cut": 0.5,
-      "storm_sols": 3.0,
+      "storm_sols": 1.5,
       "cargo_bonus": 0.0
     },
     "ice": {
-      "dust_storms_per_100_sols": 1.2,
+      "dust_storms_per_100_sols": 5.0,
       "storm_solar_cut": 0.6,
-      "storm_sols": 5.0,
+      "storm_sols": 2.5,
       "cargo_bonus": 0.08
     }
   }

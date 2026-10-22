@@ -1,6 +1,8 @@
 class_name MHExploreHUD
 extends CanvasLayer
 
+const MHResources := preload("res://scripts/mh_resources.gd")
+
 # First-person HUD (shot 1h): visor brackets, compass with airlock markers,
 # colony chip, readiness panel (unmet items only), crosshair, interact prompt
 # and the controls strip.
@@ -372,6 +374,9 @@ func _update_telemetry() -> void:
 		# Share of full panel output available now: builds through the morning,
 		# fades in the evening and drops early where terrain hides the sun.
 		var solar := MHGame.solar_irradiance(MHGame.sol_hour)
+		# A dust storm blocks much of the sunlight reaching the arrays.
+		if builder != null and float(builder.simulation().storm_hours_left) > 0.0:
+			solar *= 1.0 - float(MHResources.site(MHGame.site_id).get("storm_solar_cut", .6))
 		_telemetry_sunlight.text = "%d%%" % roundi(solar * 100.0)
 		_telemetry_sunlight.add_theme_color_override("font_color", MHStyle.VALID if solar > .1 else MHStyle.TEXT_MUTED)
 
