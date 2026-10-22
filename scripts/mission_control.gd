@@ -437,6 +437,22 @@ func _plan_column() -> Control:
 	plan.builder = builder
 	plan.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(plan)
+	# Send GAR-Y: arm the button, then click a room (go there and wait) or
+	# outside (survey there).
+	var gary := get_tree().get_first_node_in_group("gar_y")
+	if gary != null and gary.has_method("order"):
+		var send_row := MHStyle.hbox(10)
+		var send := MHStyle.button("Send GAR-Y", "secondary", "map-pin", 40)
+		var said := MHStyle.body("", 13, MHStyle.TEXT_SECONDARY)
+		said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		send.pressed.connect(func() -> void:
+			plan.send_mode = true
+			said.text = "Click where to send it: a room (it goes there and waits) or outside (it surveys there).")
+		plan.sent.connect(func(why: String) -> void: said.text = why if not why.is_empty() else "GAR-Y is on its way.")
+		send_row.add_child(send)
+		send_row.add_child(said)
+		col.add_child(send_row)
 	var legend := MHStyle.hbox(18)
 	for entry in [["You", MHStyle.VALID], ["GAR-Y", PlanView.GAR_Y], ["Door", MHStyle.INK_100], ["Outer hatch", MHStyle.accent], ["Room", MHStyle.CELL_LINE], ["Solar", MHStyle.BEACON_YELLOW]]:
 		var item := MHStyle.hbox(8)
@@ -453,7 +469,11 @@ func _plan_column() -> Control:
 # Blueprint plan generated from the placed zones.
 class PlanView extends Control:
 	const GAR_Y := Color(0.55, 0.82, 1.0)
+	signal sent(why: String)
 	var builder: BuildController
+	var send_mode := false      # the next click sends GAR-Y there
+	var _origin := Vector2.ZERO
+	var _unit := 1.0
 	var zoom := 1.0
 	var pan := Vector2.ZERO
 	var _dragging := false
@@ -484,6 +504,13 @@ class PlanView extends Control:
 				pan = Vector2.ZERO
 				accept_event()
 				queue_redraw()
+			elif send_mode and button.pressed and button.button_index == MOUSE_BUTTON_LEFT:
+				send_mode = false
+				var flat := (button.position - _origin) / _unit * BuildController.CELL
+				var point := Vector3(flat.x, builder.habitat_base_y, flat.y)
+				var gary := get_tree().get_first_node_in_group("gar_y")
+				sent.emit(str(gary.order("goto", point)) if gary != null else "GAR-Y isn't here.")
+				accept_event()
 			elif button.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
 				_dragging = button.pressed
 				accept_event()
@@ -511,6 +538,8 @@ class PlanView extends Control:
 		var origin := (size - Vector2(cells_w, cells_h) * unit) * .5 + Vector2(unit, unit) - Vector2(min_c) * unit
 		origin = size * .5 + (origin - size * .5) * zoom + pan
 		unit *= zoom
+		_origin = origin
+		_unit = unit
 		# 1 m grid with brighter 3 m cell lines
 		var metre := unit / BuildController.CELL
 		var boundary := origin - Vector2(unit, unit) * .5

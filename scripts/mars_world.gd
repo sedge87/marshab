@@ -2,6 +2,7 @@ extends Node3D
 
 const WEATHER_SCRIPT := preload("res://scripts/weather.gd")
 const ALERTS_SCRIPT := preload("res://scripts/habitat_alerts.gd")
+const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const ORIGINAL_ENVIRONMENT_SCRIPT := preload("res://scripts/original_mars_environment.gd")
@@ -30,7 +31,8 @@ var pause_menu: MHPauseMenu
 var mission_control: MHMissionControl
 var dust: CPUParticles3D
 var weather: Node   # scripts/weather.gd: storm warnings, haze, dust and sound
-var alerts: Node    # scripts/habitat_alerts.gd: PROTOTYPE habitat alerts (backlog 26)
+var alerts: Node    # scripts/habitat_alerts.gd: habitat alerts (backlog 26)
+var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var scout_rover: Node3D
 var interior_builder: MHInteriorBuildController
 var surface_builder: MHSurfaceBuildController
@@ -127,6 +129,9 @@ func _ready() -> void:
 	alerts = ALERTS_SCRIPT.new()
 	add_child(alerts)
 	alerts.setup(self)
+	gar_y_orders = GAR_Y_ORDERS.new()
+	add_child(gar_y_orders)
+	gar_y_orders.setup(self)
 	_begin_lander_intro()
 	if MHMissions.active():
 		if str(MHMissions.current().get("player", "crew")) == "robot": explore_hud.chip_prefix = "ROBOT · "
@@ -640,7 +645,7 @@ func _spawn_scout_rover() -> void:
 
 	if not SPAWN_SCOUT_ROVER:
 		return
-	# Missions: the rover arrives with the crew (Mission 4 on).
+	# Missions: GAR-Y rolls out with the first cargo (Mission 2) to prospect for ice.
 	if MHMissions.active() and not bool(MHMissions.current().get("rover", true)):
 		return
 	var rover_scene := load(SCOUT_ROVER_SCENE_PATH) as PackedScene

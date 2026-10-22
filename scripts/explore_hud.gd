@@ -360,7 +360,8 @@ func _refresh_hint_strip() -> void:
 	if _hint_strip != null:
 		_hint_strip.queue_free()
 	var build_hints: Array = [[["B"], "Furnish room"], [["Shift", "B"], "Site plan"]] if inside else [[["B"], "Site plan"]]
-	_hint_strip = MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["E"], "Interact", "accent"], [["F"], "Light"]] + build_hints + [[["M"], "Mission Control"], [["Esc"], "Pause"]])
+	var gary: Array = [[["G"], "Hold: GAR-Y"]] if get_tree().get_first_node_in_group("gar_y") != null else []
+	_hint_strip = MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["E"], "Interact", "accent"], [["F"], "Light"]] + gary + build_hints + [[["M"], "Mission Control"], [["Esc"], "Pause"]])
 	_root.add_child(_hint_strip)
 	# Keep the strip under the other HUD layers, where it was originally built.
 	_root.move_child(_hint_strip, 1)

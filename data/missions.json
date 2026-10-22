@@ -35,7 +35,7 @@
       "nasa_step": "Pre-deploying power and ice mining",
       "available": true,
       "player": "robot",
-      "rover": false,
+      "rover": true,
       "lander": false,
       "crew": 0,
       "payload_kg": 12000,
@@ -47,7 +47,7 @@
           "sols": 2
         }
       ],
-      "situation": "The first cargo lander has touched down. Its construction robot (you) must set up the power system and the ice drills before anyone leaves Earth. Nobody will be here to fix it: it has to run on its own, through every night and a dust storm.",
+      "situation": "The first cargo lander has touched down. Its construction robot (you) and GAR-Y, a small survey rover, must set up the power system and the ice drills before anyone leaves Earth. Nobody will be here to fix it: it has to run on its own, through every night and a dust storm.",
       "cargo_lander": 1,
       "previous_line": "Landing zone and base site chosen",
       "brief": "You're the construction robot inside Cargo Lander 1. The crew won't leave Earth until their power and water are already working here.",
@@ -95,6 +95,14 @@
           "how": "Go in through the airlock, then press B inside the room to furnish it. Batteries carry the drills through the night.",
           "check": "item",
           "item": "battery_bank"
+        },
+        {
+          "id": "survey",
+          "text": "Send GAR-Y to survey for ice (2 spots)",
+          "how": "Hold G near GAR-Y, aim at the ground and choose Survey there. It flags buried ice of 25% or more: drills do best on its flags.",
+          "check": "counter",
+          "key": "gar_y_surveys",
+          "count": 2
         },
         {
           "id": "ice",
@@ -153,7 +161,7 @@
         "Press B to open the site plan. Power is under Resources.",
         "A Power & Engineering room holds the batteries. Give it an airlock, walk in and press B to furnish it.",
         "Solar arrays only work by day. Batteries carry the drills through the night.",
-        "Pale blue ground has the most ice. Drills make more water there.",
+        "Pale blue ground has the most ice. Hold G near GAR-Y and choose Survey there: it flags rich ice for your drills.",
         "Press T to test your design: it fast-forwards 5 sols, including the storm."
       ]
     },
@@ -164,7 +172,7 @@
       "nasa_step": "Checking out the habitat before the crew launch",
       "available": true,
       "player": "robot",
-      "rover": false,
+      "rover": true,
       "lander": false,
       "crew": 0,
       "payload_kg": 20000,
@@ -569,6 +577,13 @@
           "text": "Grow 40% of the food",
           "check": "food_grown",
           "min": 0.4
+        },
+        {
+          "id": "core",
+          "text": "Send GAR-Y for a core sample for the Science Lab (+20% research)",
+          "check": "counter",
+          "key": "core_sample",
+          "count": 1
         }
       ],
       "hints": [

@@ -2,7 +2,7 @@ extends SceneTree
 
 # Missions campaign, phase 1: mission data and progress, Mission 1's landing
 # checks, unlocks and payload budget, the blast zone, the world in a robot
-# mission (no lander or rover yet), the Test (pass, fail with a reason, and
+# mission (no crew lander yet; GAR-Y comes with the cargo), the Test (pass, fail with a reason, and
 # versions with changes) and saving progress with the base.
 # Run with: godot --headless --path . --script res://tests/missions_test.gd
 const MHMissions := preload("res://scripts/mh_missions.gd")
@@ -47,7 +47,8 @@ func _initialize() -> void:
 	var world: Node = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 20: await process_frame
-	_check(not world.lander.present and world.scout_rover == null, "no lander or rover before the crew arrive")
+	_check(not world.lander.present, "no crew lander before the crew arrive")
+	_check(world.scout_rover != null, "GAR-Y rolls out with the first cargo to survey for ice")
 	# Mission 2 opens with Cargo Lander 1's touchdown; the robot rides in its hold.
 	_check(bool(world.arrival_pending) and world.current_cargo_lander != null, "Mission 2 starts with the cargo lander's touchdown")
 	world._finish_arrival()

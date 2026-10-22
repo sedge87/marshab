@@ -141,6 +141,8 @@ static var last_unticked: Array = []
 
 ## How far a counted step has got, e.g. "3 of 4" ("" if not counted).
 static func step_progress(step: Dictionary, builder: Node) -> String:
+	if str(step.get("check", "")) == "counter" and int(step.get("count", 1)) > 1:
+		return "%d of %d" % [mini(counter(str(step.key)), int(step.count)), int(step.count)]
 	if str(step.get("check", "")) == "food_share":
 		return "%d%% of %d%%" % [roundi(food_share(builder, current()) * 100.0), roundi(float(step.get("min", .25)) * 100.0)]
 	if str(step.get("check", "")) != "item" or int(step.get("count", 1)) <= 1: return ""
@@ -169,6 +171,7 @@ static func _step_met(step: Dictionary, builder: Node, flags: Dictionary, missio
 		"item": return builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(step.item)).size() >= int(step.get("count", 1))
 		"item_any": return builder.placed_interior.any(func(i): return (step.get("items", []) as Array).has(str(i.get("id", ""))))
 		"food_share": return food_share(builder, get_mission(mission_id)) >= float(step.get("min", .25))
+		"counter": return counter(str(step.key)) >= int(step.get("count", 1))
 		"tested": return not versions(mission_id).is_empty()
 		"passed": return versions(mission_id).any(func(v): return bool(v.passed))
 	return false
@@ -341,6 +344,7 @@ static func run_test(builder: Node) -> Dictionary:
 			"no_item": met = not builder.placed_interior.any(func(i): return str(i.get("id", "")) == str(goal.item))
 			"payload_spare": met = builder.used_cargo() <= cargo_budget() - int(float(mission.get("payload_kg", 0)) * float(goal.get("fraction", .15)))
 			"food_grown": met = food_in / maxf(.001, float(crew) * MHResources.setting("food_per_person", 1.8) * sols) >= float(goal.get("min", .4))
+			"counter": met = counter(str(goal.key)) >= int(goal.get("count", 1))
 		stretch.append({"text": str(goal.text), "pass": met})
 	var passed := results.all(func(r): return bool(r.pass))
 	var report := {"mission": str(mission.id), "samples": samples, "results": results, "stretch": stretch, "passed": passed,
@@ -451,6 +455,18 @@ static func design_changes(before: Dictionary, after: Dictionary) -> String:
 		var change := int(after.get(key, 0)) - int(before.get(key, 0))
 		if change != 0: parts.append("%+d %s" % [change, SUMMARY_NAMES[key][0 if absi(change) == 1 else 1]])
 	return ", ".join(parts) if not parts.is_empty() else "No change to power, drills or rooms"
+
+## Something that happened in the base, counted for steps and goals
+## ("gar_y_surveys", "core_sample").
+static func bump(key: String) -> void:
+	if not active(): return
+	ensure()
+	if not progress.has("counters"): progress["counters"] = {}
+	progress.counters[key] = int((progress.counters as Dictionary).get(key, 0)) + 1
+
+static func counter(key: String) -> int:
+	ensure()
+	return int((progress.get("counters", {}) as Dictionary).get(key, 0))
 
 ## The student's optional prediction for the next Test ("What do you think will happen?").
 static var pending_prediction := ""

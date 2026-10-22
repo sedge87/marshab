@@ -1,6 +1,7 @@
 class_name MHCompanionRover
 extends CharacterBody3D
 const MHPalette := preload("res://scripts/mh_palette.gd")
+const MHMissions := preload("res://scripts/mh_missions.gd")
 
 ## GAR-Y, the Geological Analysis Rover, Y-Class: the crew's companion.
 ##
@@ -68,6 +69,14 @@ var mood := "curious"
 var ice_found := 0
 var samples := 0
 var flags: Array = []          # flag positions (Vector3), saved
+## Orders (hold G, or the Mission Control map): see order().
+var staying := false           # "Stay": waits here until told otherwise
+var has_core := false          # carrying a core sample for the Science Lab (saved)
+var surveys_ordered := 0
+var _stay_point := Vector3.INF
+var _ordered := false          # the current errand was an order: more time, always reports back
+var _core_check := 0.0
+var _told_no_lab := false
 var _mood_override := ""
 var _mood_timer := 0.0
 var _busy := false             # mid-animation: stand still
@@ -245,7 +254,12 @@ func _think(delta: float) -> void:
 	elif task.is_empty() and dark and not _escorting() and _idle_time > (6.0 if indoors else NAP_AFTER):
 		if indoors and autonomy and _start_charge(): pass
 		else: _nap()
-	if not autonomy or napping or not task.is_empty() or _busy or _escorting():
+	# Back inside with a core sample: take it to the Science Lab (checked every few seconds).
+	_core_check -= delta
+	if has_core and indoors and task.is_empty() and not _busy and not napping and _core_check <= 0.0:
+		_core_check = 3.0
+		_start_core_delivery()
+	if staying or not autonomy or napping or not task.is_empty() or _busy or _escorting():
 		return
 	if indoors:
 		_mischief_timer -= delta
@@ -269,7 +283,8 @@ func _think(delta: float) -> void:
 			start_survey()
 
 func task_age_limit() -> float:
-	return 40.0 if not task.is_empty() else 0.0
+	if task.is_empty(): return 0.0
+	return 150.0 if _ordered or task == "patrol" else 40.0
 
 func _start(kind: String, goal: Vector3, data := {}) -> void:
 	task = kind
@@ -283,10 +298,12 @@ func _start(kind: String, goal: Vector3, data := {}) -> void:
 ## Clears the current errand. failed: put back anything it was carrying.
 func _end_task(failed := false) -> void:
 	if failed and _carried != null: _put_down(str(task_data.get("placement_id", "")), task_data.get("from", Vector3.ZERO) as Vector3, float(task_data.get("from_yaw", 0.0)))
+	if failed and _ordered: _toast("GAR-Y couldn't finish", "It couldn't get there. Try a spot it can drive to.", MHStyle.WARN)
 	task = ""
 	task_goal = Vector3.INF
 	task_data = {}
 	_busy = false
+	_ordered = false
 	if not docked: _set_pose("stow")
 
 func _arrived() -> void:
@@ -296,6 +313,14 @@ func _arrived() -> void:
 		"deliver": _deliver()
 		"plush": _nudge_plush()
 		"charge": _dock()
+		"goto":
+			staying = true
+			_stay_point = global_position
+			_say("happy")
+			_end_task()
+		"core": _core_here()
+		"core_deliver": _core_delivered()
+		"patrol": _patrol_next()
 
 # ---- survey: scan, then flag ice or scoop a sample ----
 
@@ -324,6 +349,7 @@ func _survey_here() -> void:
 		_plant_flag(global_position + -global_transform.basis.z * .9)
 		await _arm_move("stow", .6)
 		ice_found += 1
+		if _ordered: _survey_done()
 		_say("tada")
 		_toast("GAR-Y found buried ice", "About %d%% ice under the flag it just planted. An ice extractor there would do well." % roundi(richness * 100.0), MHStyle.INFO)
 	else:
@@ -332,7 +358,10 @@ func _survey_here() -> void:
 		await _arm_move("stow", .7)
 		samples += 1
 		_say("happy")
-		if samples == 1 or samples % 5 == 0:
+		if _ordered:
+			_survey_done()
+			_toast("GAR-Y surveyed the spot", "No buried ice here (under 25%%). It scooped a regolith sample instead: %d so far." % samples, MHStyle.INFO)
+		elif samples == 1 or samples % 5 == 0:
 			_toast("GAR-Y scooped a sample", "Regolith samples collected so far: %d. No buried ice here." % samples, MHStyle.INFO)
 	_end_task()
 
@@ -408,7 +437,7 @@ func _pick_up() -> void:
 	visual.reparent(_grip, true)
 	visual.position = Vector3.ZERO
 	await _arm_move("carry", .7)
-	var spot := _new_spot(str(task_data.placement_id), task_data.from as Vector3)
+	var spot := _spot_by_player(str(task_data.placement_id)) if bool(task_data.get("to_player", false)) else _new_spot(str(task_data.placement_id), task_data.from as Vector3)
 	task_data.to = spot.position
 	task_data.to_yaw = spot.yaw
 	task = "deliver"
@@ -437,7 +466,10 @@ func _deliver() -> void:
 	var placement_id := str(task_data.placement_id)
 	var moved := _put_down(placement_id, task_data.to as Vector3, float(task_data.to_yaw))
 	await _arm_move("stow", .7)
-	if moved and (task_data.to as Vector3).distance_to(task_data.from as Vector3) > .5:
+	if moved and bool(task_data.get("to_player", false)):
+		_say("tada")
+		_toast("GAR-Y brought you the %s" % str(EquipmentCatalog.get_entry(str(task_data.id)).get("label", "item")).to_lower(), "Delivered.", MHStyle.VALID)
+	elif moved and (task_data.to as Vector3).distance_to(task_data.from as Vector3) > .5:
 		_say("tada")
 		_toast("GAR-Y moved your %s" % str(EquipmentCatalog.get_entry(str(task_data.id)).get("label", "things")).to_lower(), "It's somewhere else in the room now. GAR-Y seems very pleased with itself.", MHStyle.INFO)
 	_end_task()
@@ -552,6 +584,185 @@ func _wake() -> void:
 	docked = false
 	_idle_time = 0.0
 
+# ---------- orders (backlog 29) ----------
+
+## The orders the menu offers right now (they depend on where GAR-Y is).
+func available_orders() -> Array:
+	if _self_indoors(): return ["come", "stay", "home", "fetch", "patrol"]
+	return ["come", "stay", "home", "survey", "core"]
+
+const ORDER_LABELS := {"come": "Come here", "stay": "Stay here", "home": "Go home", "fetch": "Fetch", "patrol": "Patrol",
+	"survey": "Survey there", "core": "Core sample", "goto": "Go there"}
+
+## Carry out an order. point: where you're aiming (survey, core, goto); item:
+## the placement you're looking at (fetch). Returns "" or why it can't.
+func order(kind: String, point := Vector3.INF, item := "") -> String:
+	if habitat == null or target == null: return "GAR-Y isn't ready."
+	if napping: _wake()
+	if not task.is_empty():
+		_ordered = false   # replaced, not failed
+		_end_task(true)
+	_escort_until = 0
+	var indoors := _self_indoors()
+	match kind:
+		"come":
+			staying = false
+			_escort_until = Time.get_ticks_msec() + ESCORT_MS
+			_say("happy")
+		"stay":
+			if staying:
+				staying = false
+				_say("happy")
+				return ""
+			staying = true
+			_stay_point = global_position
+			_say("curious")
+		"home":
+			staying = false
+			if indoors:
+				if not _start_charge(): return "There's no GAR-Y Dock inside yet. Build one in the Vehicle Bay, Storage or Power & Engineering."
+			else:
+				var wait := _airlock_waiting_spot()
+				if wait == Vector3.INF: return "There's no airlock to wait at."
+				_start("goto", wait)
+			_ordered = true
+			_say("happy")
+		"survey", "goto", "core":
+			if point == Vector3.INF: return "Aim at the ground where you want GAR-Y to go."
+			var inside_point: bool = habitat.is_inside(point)
+			if inside_point != indoors: return "GAR-Y can't use the airlock on its own. Ping it (E) so it comes through with you."
+			if Vector2(point.x - global_position.x, point.z - global_position.z).length() > 60.0: return "That's too far for GAR-Y (over 60 m)."
+			if kind != "goto" and inside_point: return "Surveys and core samples are for outside."
+			if kind == "core" and has_core: return "GAR-Y is already carrying a core sample. Bring it inside to the Science Lab."
+			staying = false
+			point.y = global_position.y
+			_start(kind if kind != "goto" else ("goto" if inside_point else "survey"), point)
+			_ordered = true
+			_say("curious")
+		"fetch":
+			if not indoors: return "GAR-Y fetches things inside the habitat."
+			var placement := _fetch_choice(item)
+			if placement.is_empty(): return "Look at a small item (odds and ends) first, or put some sample jars in the base."
+			staying = false
+			var at: Vector3 = placement.position
+			_start("fetch", at + (global_position - at).normalized() * .45, {"placement_id": str(placement.placement_id), "id": str(placement.id), "from": at, "from_yaw": float(placement.get("rotation_y", 0.0)), "to_player": true})
+			_ordered = true
+			_say("curious")
+		"patrol":
+			if not indoors: return "GAR-Y patrols inside the habitat."
+			var points: Array = []
+			for zone in habitat.zones:
+				if not habitat._is_habitat_zone(zone) or str(zone.get("kind", "")) == "airlock": continue
+				var centre := Vector3.ZERO
+				for cell in zone.cells: centre += Vector3(cell.x * 3.0, 0, cell.y * 3.0)
+				centre /= maxf(1.0, float((zone.cells as Array).size()))
+				centre.y = global_position.y
+				if habitat.is_inside(centre): points.append(centre)
+			if points.is_empty(): return "There are no rooms to patrol."
+			staying = false
+			_start("patrol", points[0], {"points": points.slice(1), "rooms": points.size()})
+			_say("curious")
+		_:
+			return "Unknown order."
+	return ""
+
+## Small items it can carry: the one you're looking at, else sample jars, else the plush.
+func _fetch_choice(placement_id: String) -> Dictionary:
+	var found := {}
+	for preference in [placement_id, "sample_jars", "zero_g_plush"]:
+		for entry in habitat.placed_interior:
+			var id := str(entry.get("id", ""))
+			var matches: bool = str(entry.get("placement_id", "")) == preference if preference == placement_id else id == preference
+			if not matches or preference.is_empty(): continue
+			var info := EquipmentCatalog.get_entry(id)
+			if str(info.get("group", "")) != "odds_and_ends" or not habitat.items_resting_on(entry).is_empty(): continue
+			if not habitat.is_inside(entry.position as Vector3): continue
+			return entry
+	return found
+
+## A free floor spot right in front of you for something it fetched.
+func _spot_by_player(placement_id: String) -> Dictionary:
+	var ahead := -target.global_transform.basis.z
+	ahead.y = 0.0
+	ahead = ahead.normalized() if ahead.length() > .01 else Vector3.FORWARD
+	for distance in [1.0, 1.4, .8, 1.8]:
+		for side in [0.0, .6, -.6, 1.0, -1.0]:
+			var spot: Vector3 = target.global_position + ahead * distance + ahead.cross(Vector3.UP) * side
+			spot.y = habitat.habitat_base_y
+			if habitat.is_inside(spot) and habitat.free_interior_move_reason(placement_id, spot, target.rotation.y).is_empty():
+				return {"position": spot, "yaw": target.rotation.y}
+	return {"position": task_data.get("from", global_position), "yaw": float(task_data.get("from_yaw", 0.0))}
+
+## Outside the nearest airlock's outer hatch, where it waits to be let in.
+func _airlock_waiting_spot() -> Vector3:
+	var best := Vector3.INF
+	for node in get_tree().get_nodes_in_group("airlock_door"):
+		var door := node as AirlockDoor
+		if door == null or not door._leads_to_environment() or door.door_label() == "HANGAR": continue
+		# A couple of metres out from the hatch, on the side away from the habitat.
+		for direction in [door.global_transform.basis.z, -door.global_transform.basis.z]:
+			var spot: Vector3 = door.global_position + direction * 2.6
+			if habitat.is_inside(spot): continue
+			spot.y = global_position.y
+			if best == Vector3.INF or spot.distance_to(global_position) < best.distance_to(global_position): best = spot
+	return best
+
+func _survey_done() -> void:
+	surveys_ordered += 1
+	MHMissions.bump("gar_y_surveys")
+
+# ---- core sample: drill outside, carry it in, deliver to the Science Lab ----
+
+func _core_here() -> void:
+	_busy = true
+	_scan_time += 2.0
+	await _arm_move("scoop", .9)
+	await get_tree().create_timer(1.6).timeout
+	if task != "core": return
+	await _arm_move("carry", .8)
+	has_core = true
+	_say("tada")
+	_toast("GAR-Y took a core sample", "A tube of layered regolith from below the surface. Bring GAR-Y inside (ping it so it follows you through the airlock) and it'll take the core to the Science Lab.", MHStyle.INFO)
+	_end_task()
+
+func _start_core_delivery() -> void:
+	var labs: Array = habitat.zones.filter(func(z): return str(z.get("kind", "")) == "science")
+	if labs.is_empty():
+		if not _told_no_lab: _toast("GAR-Y has a core sample", "There's no Science Lab to take it to yet. It'll keep it safe until there is.", MHStyle.WARN)
+		_told_no_lab = true
+		return
+	var cell: Vector2i = (labs[0].cells as Array)[0]
+	var spot := Vector3(cell.x * 3.0, global_position.y, cell.y * 3.0)
+	_start("core_deliver", spot)
+	_ordered = true
+
+func _core_delivered() -> void:
+	_busy = true
+	await _arm_move("reach", .8)
+	if task != "core_deliver": return
+	has_core = false
+	habitat.simulation().research_boost_hours = 240.0
+	MHMissions.bump("core_sample")
+	await _arm_move("stow", .6)
+	_say("tada")
+	_toast("Core sample delivered", "The Science Lab is studying GAR-Y's core: research +20% for the next 10 sols.", MHStyle.VALID)
+	_end_task()
+
+# ---- patrol: every room in turn, then a report ----
+
+func _patrol_next() -> void:
+	var left: Array = task_data.get("points", [])
+	if not left.is_empty():
+		task_goal = left.pop_front()
+		task_data.points = left
+		_task_age = 0.0
+		return
+	var alerts := get_tree().get_first_node_in_group("habitat_alerts")
+	var active: int = (alerts._active as Dictionary).size() if alerts != null else 0
+	_say("happy" if active == 0 else "worried")
+	_toast("GAR-Y finished its patrol", "%d room%s checked. %s" % [int(task_data.get("rooms", 0)), "" if int(task_data.get("rooms", 0)) == 1 else "s", "All quiet." if active == 0 else "%d alert%s active: see Mission Control's alert log." % [active, "" if active == 1 else "s"]], MHStyle.VALID if active == 0 else MHStyle.WARN)
+	_end_task()
+
 # ---------- look at it (explore HUD) ----------
 
 func interaction_prompt() -> Dictionary:
@@ -565,12 +776,19 @@ func status_text() -> String:
 		"fetch": return "eyeing your %s" % str(EquipmentCatalog.get_entry(str(task_data.get("id", ""))).get("label", "things")).to_lower()
 		"deliver": return "carrying your %s" % str(EquipmentCatalog.get_entry(str(task_data.get("id", ""))).get("label", "things")).to_lower()
 		"plush": return "up to something"
+		"goto": return "on its way"
+		"core": return "taking a core sample"
+		"core_deliver": return "taking a core sample to the lab"
+		"patrol": return "on patrol"
+	if staying: return "staying put" + (" · carrying a core sample" if has_core else "")
+	if has_core: return "carrying a core sample"
 	if _escorting(): return "coming with you"
 	return "worried" if _storm() else FULL_NAME
 
 ## A ping: it wakes, chirps and wiggles. Three pings in a row: a spin.
 func interact(_actor: Node = null) -> bool:
 	if napping: _wake()
+	staying = false
 	# "Come with me": follow closely for a while (through airlocks you cycle).
 	if not task.is_empty(): _end_task(true)
 	_escort_until = Time.get_ticks_msec() + ESCORT_MS
@@ -597,12 +815,13 @@ func interact_info(_actor: Node = null) -> bool:
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"flags": flags.duplicate(), "ice_found": ice_found, "samples": samples}
+	return {"flags": flags.duplicate(), "ice_found": ice_found, "samples": samples, "has_core": has_core}
 
 func restore_state(state: Dictionary) -> void:
 	flags = (state.get("flags", []) as Array).duplicate()
 	ice_found = int(state.get("ice_found", 0))
 	samples = int(state.get("samples", 0))
+	has_core = bool(state.get("has_core", false))
 	if not flags.is_empty(): _rebuild_flags()
 
 # ---------- moods, voice, body ----------
@@ -722,6 +941,9 @@ func _player_indoors() -> bool:
 func _follow_point() -> Vector3:
 	if task_goal != Vector3.INF:
 		return _routed(task_goal, TASK_STOP)
+	if staying:
+		_stop = .4
+		return _stay_point if _stay_point != Vector3.INF else global_position
 	if _escorting():
 		# Close behind you; into an airlock chamber with you, and out the other side.
 		_stop = 1.6

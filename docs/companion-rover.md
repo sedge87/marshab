@@ -20,6 +20,25 @@
 - **Debug panel (Ctrl+Shift+F12):** a GAR-Y row to trigger a survey, clutter-moving, a plush nudge or a nap.
 - **Saved:** its flags and tallies are saved with the base. Moved items save like any placement.
 
+## Orders (23 Oct)
+Hold **G** for a radial menu: move the mouse towards an order and let go. A quick tap of G still does an item's third action. GAR-Y must be within 30 m.
+
+- **Inside:**
+  - **Come here:** follows you closely.
+  - **Stay here / Carry on:** waits until told otherwise.
+  - **Go home:** goes to its dock to charge.
+  - **Fetch:** brings you the small item you're looking at, or else the sample jars or the plush.
+  - **Patrol:** visits every room, then reports any active alerts.
+- **Outside:**
+  - **Come here** and **Stay here**, as inside.
+  - **Go home:** waits by the airlock.
+  - **Survey there:** where you're aiming, or about 12 m ahead.
+  - **Core sample:** drills a core where you're aiming. Brought inside, GAR-Y takes it to the Science Lab: research +20% for 10 sols.
+- **Mission Control map:** the **Send GAR-Y** button, then a click: a room means it goes there and waits; outside means it surveys there.
+- **The airlock rule** still holds: GAR-Y never cycles an airlock on its own.
+
+Missions: GAR-Y now rolls out with the first cargo. Mission 2's step "Send GAR-Y to survey for ice (2 spots)" counts ordered surveys. Mission 6's stretch goal is a core sample for the lab. Code: `scripts/gar_y_orders.gd` (the menu) and `order()` in `scripts/companion_rover.gd`.
+
 ## Files
 - `asset_packs/gar_y_v1/source/build_gar_y.py`: the Blender model (it uses the furnishings pack's materials). Pivots: `Wheel_1..6`, `Mast` › `Head` › `Eye_L` / `Eye_R` / `LampMount`, and `ArmShoulder` › `ArmElbow` › `ArmWrist` › `Grip`.
 - `assets/companions/gar_y.glb`: the exported model. The old `mars_scout_rover` files in `assets/companions/` are no longer used.

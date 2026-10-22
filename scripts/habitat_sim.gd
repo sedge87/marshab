@@ -56,6 +56,8 @@ var storm_cut := -1.0
 ## Mars weather every sol, so storms come with a warning.
 var storm_eta_hours := -1.0
 var hours_run := 0.0
+## A core sample in the Science Lab (GAR-Y, Mission 6): research +20% while this lasts.
+var research_boost_hours := 0.0
 var _known_capacity := {"kwh": 0.0, "water": 0.0, "o2": 0.0}
 var _food_delivered := false
 
@@ -103,7 +105,7 @@ func invalidate() -> void:
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
 		"room_temp": room_temp.duplicate(), "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
-		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate()}
+		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -116,6 +118,7 @@ func load(state: Dictionary) -> void:
 	_food_delivered = bool(state.get("food_delivered", false))
 	printed_kg = float(state.get("printed_kg", 0.0))
 	light_overrides = (state.get("light_overrides", {}) as Dictionary).duplicate()
+	research_boost_hours = float(state.get("research_boost_hours", 0.0))
 	invalidate()
 
 # ---------- what is in the habitat ----------
@@ -335,6 +338,7 @@ func step(dt: float, hour: float) -> void:
 	hours_run += dt
 	# Dust storms (random in play; tests can start one).
 	if storm_hours_left > 0.0: storm_hours_left = maxf(0.0, storm_hours_left - dt)
+	if research_boost_hours > 0.0: research_boost_hours = maxf(0.0, research_boost_hours - dt)
 	elif storm_eta_hours >= 0.0:
 		storm_eta_hours -= dt
 		if storm_eta_hours <= 0.0: start_storm()
@@ -625,6 +629,7 @@ func daily_flows(planned := true) -> Dictionary:
 		out.research += MHResources.item_value(item.id, "research")
 	out.water_made += minf(reclaimers * 70.0, crew * MHResources.setting("water_per_person", 10.0)) * MHResources.setting("reclaim_fraction", .93)
 	for richness in inv.drills: out.water_made += MHResources.setting("ice_drill_l", 120.0) * float(richness)
+	if research_boost_hours > 0.0: out.research *= 1.2
 	out["printed"] = print_rate(inv)
 	return out
 
