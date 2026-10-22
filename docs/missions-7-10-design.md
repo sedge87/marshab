@@ -27,6 +27,8 @@ This is a proposal to talk through. Nothing in it is built.
 
 ## 2. Principles for Missions 7–10
 
+0. **Whole-habitat stats, room-level events (decided 23 Oct).** Like Subnautica, everything you monitor is base-wide: one temperature (room temperatures are being merged), one air, one power. Rooms matter through *properties* (the shelter's shield rating) and *events* (where a breach happens, which doors seal). They don't carry stats of their own.
+
 1. **You design the base and its rules; the Test brings the trouble.** The Test can't play the game for the student. So each new hazard comes with an *automatic protocol* the student sets up, like "the crew go to the shelter" or "doors seal on a breach". The Test then runs the event against their design. That's how real habitats are engineered: you can't rely on someone doing the right thing in the moment.
 2. **One new idea per mission,** and everything earlier still counts. Mission 9 still needs warm, breathable rooms.
 3. **Fair tests.** Events happen at the same moment in every version of a mission, so students can compare versions fairly. The finale is the exception: it runs several different "futures" and the base must survive all of them, which teaches robustness rather than tuning to one test.
@@ -42,7 +44,7 @@ Act 1 (Missions 1–6) is *getting there*. Act 2 (Missions 7–10) is *living th
 |---|---|---|---|---|---|
 | 7 | Solar Storm Shelter | Radiation | Shielding, and a designated shelter room | 6 t (mostly printed regolith) | 10 sols with a solar particle event |
 | 8 | The Long Day's Work | Gravity, plus the crew as people | Named crew with jobs, fitness and wellbeing | 8 t | 30 sols |
-| 9 | Hull Breach | Hostile/closed environment | Pressure compartments; doors that seal | 8 t | 10 sols with a breach |
+| 9 | Hull Breach | Hostile/closed environment | Breaches and bulkhead doors (one habitat air stat) | 8 t | 10 sols with a breach |
 | 10 | The Long Silence | Isolation and distance (all five together) | Breakdowns and spares; no help from Earth | 15 t | 200 sols, three different futures |
 
 The medical emergency becomes an event inside Mission 8 rather than a mission of its own, because it needs the crew to be people first.
@@ -82,21 +84,20 @@ The medical emergency becomes an event inside Mission 8 rather than a mission of
 - **A new screen:** a **crew roster** in Mission Control: who's where, doing what, and how they are.
 
 ### Mission 9 · Hull Breach (hostile, closed environment)
-- **Story:** A micrometeoroid punctures a module. Air rushes out. What happens next depends on your floor plan.
-- **New mechanic: pressure compartments.**
-  - Each room holds its own pressure.
-  - Doors between rooms seal automatically on an alarm. Interior doors become pressure doors.
-  - Open corridor ends and archways don't seal, so a breach empties everything connected to them.
-  - A **patch kit** (spares) fixes it.
-  - Emergency **O₂ reserve tanks** bring rooms back to full pressure.
-- **Event:** A breach in one room, the same room in every version. If the student's design depends on luck, the dossier shows which room would have been worst.
+- **Story:** A micrometeoroid punctures a module. Air starts leaking out of the habitat. How bad it gets depends on your floor plan.
+- **New mechanic: breaches, Subnautica-style.**
+  - The habitat keeps **one** air and pressure stat, as it does now.
+  - A breach is an *event* in one module: air leaks out of the whole habitat until it's patched.
+  - **Bulkhead doors** contain it: if doors separate the breached module, they seal automatically and only that module's air is lost, once.
+  - With an open-plan layout (open corridor ends, archways), the whole habitat bleeds air.
+  - A **patch kit** (spares) fixes the hole, and the **O₂ reserve tanks** top the air back up.
+- **Event:** a breach in one module, the same one in every version. The dossier shows which module would have been worst.
 - **Requirements:**
-  - The other rooms keep their pressure.
-  - Nobody is trapped: every room has two ways out, or a safe route.
+  - Air stays breathable through the breach (it never drops below the safe line).
   - The breach is patched within 2 hours.
-  - Air is back to safe within 6 hours.
-- **Stretch:** Survive a breach in *any* room. The Test tries each one.
-- **Why it's good:** A Mission 3 decision (an open-plan layout) now matters. Students redesign with compartments, as real stations do.
+  - Air is back to normal within 6 hours.
+- **Stretch:** survive a breach in *any* module. The Test tries each one.
+- **Why it's good:** a Mission 3 layout decision now matters. Students add bulkhead doors, as real stations are built in sealable sections. They still only watch one number.
 
 ### Mission 10 · The Long Silence (isolation and distance: everything together)
 - **Story:** Mars passes behind the Sun from Earth (solar conjunction). For 14 sols there's no contact and no resupply. The crew stay 200 sols, and things break.
@@ -124,7 +125,7 @@ The medical emergency becomes an event inside Mission 8 rather than a mission of
 | Printed regolith shield blocks, water walls | 7 | S–M | New items in the house style; the printer finally has a purpose |
 | Named crew: roles, work hours, fitness, wellbeing | 8, 10 | L | The biggest one. Also drives the monitor, alerts and showcase captions |
 | Injury and medical care | 8, 10 | M | Needs named crew |
-| Room pressure and sealing doors | 9, 10 | M | Doors already open and close; add sealing and per-room pressure |
+| Breaches and bulkhead doors | 9, 10 | M | One habitat air stat; a breach drains it until patched; sealing doors limit the loss to that module |
 | Breakdowns, repairs and spares | 10 | M | Failure chance per machine; spares item; repair time |
 | Several futures per Test | 10 | S | Run the Test with 3 seeds |
 | Live hazards after a mission is passed | all | S–M | The same events in normal play, rarely |
@@ -139,7 +140,7 @@ The build order follows the mission order: 7 (S/M), 8 (L), 9 (M), 10 (M), each w
 - **Unlocks:**
   - Mission 7: shield blocks, water walls, room roles.
   - Mission 8: crew roster, exercise matters, medical.
-  - Mission 9: pressure doors, patch kits.
+  - Mission 9: bulkhead doors, patch kits.
   - Mission 10: spares, recreation items.
 - **Fairness:** each mission's events happen at the same moments in every version. Mission 10 runs three futures.
 
