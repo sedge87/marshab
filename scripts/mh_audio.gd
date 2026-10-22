@@ -238,7 +238,7 @@ func _set_build_layer(on: bool) -> void:
 func _set_space(space: String) -> void:
 	if space == _space: return
 	_space = space
-	var levels: Array = {"outside": [-12.0, -80.0], "inside": [-28.0, -15.0], "menu": [-20.0, -80.0], "off": [-80.0, -80.0]}.get(space, [-80.0, -80.0])
+	var levels: Array = {"outside": [-12.0, -80.0], "inside": [-44.0, -15.0], "menu": [-20.0, -80.0], "off": [-80.0, -80.0]}.get(space, [-80.0, -80.0])
 	_fade(_wind, levels[0], 1.5, levels[0] <= -80.0)
 	_fade(_hum, levels[1], 1.0, levels[1] <= -80.0)
 	_apply_storm()
@@ -249,7 +249,7 @@ func _set_weather(level: float) -> void:
 
 func _apply_storm() -> void:
 	var inside := _space == "inside"
-	for pair in [[_storm, -7.0, not inside and _space != "menu" and _space != "off"], [_storm_inside, -13.0, inside]]:
+	for pair in [[_storm, -7.0, not inside and _space != "menu" and _space != "off"], [_storm_inside, -24.0, inside]]:
 		var p: AudioStreamPlayer = pair[0]
 		if p == null or p.stream == null: continue
 		var on: bool = pair[2] and _storm_level > .01
@@ -302,6 +302,9 @@ func _play_at(id: String, target: Node3D, volume_db: float, height := 1.4) -> vo
 	p.pitch_scale = randf_range(.97, 1.03)
 	target.add_child(p)
 	p.position = Vector3(0, height, 0)
+	# Indoors, sounds from further off are usually outside or through a wall.
+	var camera := get_viewport().get_camera_3d()
+	if _space == "inside" and camera != null and target.global_position.distance_to(camera.global_position) > 6.0: p.volume_db -= 14.0
 	p.finished.connect(p.queue_free)
 	p.tree_exiting.connect(func() -> void: p.stop(); p.stream = null)
 	p.play()
