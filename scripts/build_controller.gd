@@ -1053,6 +1053,32 @@ func remove_free_interior_equipment(placement_id: String) -> Dictionary:
 		return item
 	return {}
 
+## Why an already-placed item couldn't sit at a new spot ("" if it can),
+## judged as if it weren't where it is now (GAR-Y moving clutter).
+func free_interior_move_reason(placement_id: String, world_position: Vector3, rotation_y: float) -> String:
+	var index := placed_interior.find_custom(func(item): return str(item.get("placement_id", "")) == placement_id)
+	if index < 0: return "Not placed"
+	var item: Dictionary = placed_interior[index]
+	placed_interior.remove_at(index)
+	var reason := free_interior_invalid_reason(str(item.id), world_position, Vector3.UP, rotation_y)
+	placed_interior.insert(index, item)
+	return reason
+
+## Moves a placed item (and its visual) to a new legal spot; saved like any change.
+func move_free_interior_equipment(placement_id: String, world_position: Vector3, rotation_y: float) -> bool:
+	if not free_interior_move_reason(placement_id, world_position, rotation_y).is_empty(): return false
+	for item in placed_interior:
+		if str(item.get("placement_id", "")) != placement_id: continue
+		item.position = world_position
+		item.rotation_y = rotation_y
+		item.zone_cell = Vector2i(roundi(world_position.x / CELL), roundi(world_position.z / CELL))
+	for child in furnishing.get_children():
+		if str(child.get_meta("interior_placement_id", "")) == placement_id:
+			(child as Node3D).global_position = world_position
+			(child as Node3D).rotation = Vector3(0, rotation_y, 0)
+	habitat_changed.emit()
+	return true
+
 func free_interior_invalid_reason(id: String, world_position: Vector3, surface_normal: Vector3, rotation_y := 0.0) -> String:
 	var entry := EquipmentCatalog.get_entry(id)
 	if entry.is_empty(): return "Unknown interior item"

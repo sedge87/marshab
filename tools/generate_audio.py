@@ -576,6 +576,36 @@ def main_weather():
         write(f"sfx/plush_squeak_{i}", squeak(f0, f1), -4)
 
 
+# ---------- GAR-Y's voice (22 Oct) ----------
+# Short, soft synth blips with glides: a friendly little machine, never a
+# voice. Appended last so every earlier file regenerates unchanged.
+def blip(f0, f1, length, vibrato=0.0):
+    tt = seconds(length)
+    glide = f0 * (f1 / f0) ** (tt / length)
+    freq = glide * (1 + vibrato * np.sin(2 * np.pi * 18 * tt))
+    tone = np.sin(2 * np.pi * np.cumsum(freq) / RATE) + 0.25 * np.sin(4 * np.pi * np.cumsum(freq) / RATE)
+    return tone * np.sin(np.pi * tt / length) ** 0.8
+
+
+def phrase(notes, gap=0.03):
+    """notes: (f0, f1, length[, vibrato]) blips one after another."""
+    total = sum(n[2] + gap for n in notes) + 0.3
+    out = np.zeros(int(total * RATE))
+    t = 0.0
+    for n in notes:
+        out = mix(out, at(blip(n[0], n[1], n[2], n[3] if len(n) > 3 else 0.0), t, total))
+        t += n[2] + gap
+    return reverb(lowpass(out, 3800), 0.9, 0.18)
+
+
+def main_gary():
+    write("sfx/gary_happy", phrase([(880, 1320, 0.07), (1100, 1650, 0.06), (1320, 1980, 0.1)]), -3)
+    write("sfx/gary_curious", phrase([(700, 1150, 0.16), (1000, 1250, 0.06)]), -3)
+    write("sfx/gary_worried", phrase([(900, 640, 0.12, 0.03), (900, 640, 0.12, 0.03)], gap=0.08), -3)
+    write("sfx/gary_sleepy", phrase([(620, 380, 0.45, 0.01)]), -4)
+    write("sfx/gary_tada", phrase([(660, 660, 0.06), (880, 880, 0.06), (1320, 1760, 0.22, 0.02)], gap=0.02), -3)
+
+
 def main():
     global OUTPUT
     if len(sys.argv) < 2:
@@ -605,6 +635,7 @@ def main():
         write(f"sfx/step_dirt_{i}", step_dirt(), -2)
         write(f"sfx/step_metal_{i}", step_metal(), -2)
     main_weather()
+    main_gary()
     total = 0
     for name, length in WRITTEN:
         total += length

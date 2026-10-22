@@ -127,6 +127,10 @@ func _build_hud() -> void:
 	_pill.visible = false
 	band.add_child(_pill)
 
+## A short toast under the sol clock (also used by GAR-Y).
+func toast(title: String, text: String, tone: Color = MHStyle.INFO) -> void:
+	_show_toast(title, text, tone)
+
 func _show_toast(title: String, text: String, tone: Color) -> void:
 	if _toast != null and is_instance_valid(_toast): _toast.queue_free()
 	_toast = PanelContainer.new()

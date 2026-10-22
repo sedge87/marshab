@@ -466,6 +466,7 @@ static func defaults() -> Dictionary:
 	var d: Dictionary = PRESETS["medium"].duplicate()
 	d["preset"] = "medium"
 	d["fov"] = 70
+	d["gary_autonomy"] = true
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
 	return d
 

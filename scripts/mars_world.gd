@@ -204,7 +204,7 @@ func _process(delta: float) -> void:
 func _apply_light_budget() -> void:
 	if _budget_dirty:
 		_budget_dirty = false
-		_budget_lights = find_children("*", "Light3D", true, false).filter(func(l): return not (l is DirectionalLight3D) and not player.is_ancestor_of(l))
+		_budget_lights = find_children("*", "Light3D", true, false).filter(func(l): return not (l is DirectionalLight3D) and not player.is_ancestor_of(l) and not bool(l.get_meta("budget_exempt", false)))
 	var camera := get_viewport().get_camera_3d()
 	if camera == null: return
 	var eye := camera.global_position
@@ -686,7 +686,8 @@ func current_state() -> Dictionary:
 		"player_position": player.global_position,
 		"player_rotation_y": player.rotation.y,
 		"day_night": day_night.export_state() if day_night != null else {},
-		"resupply": {"kg": MHGame.resupply_kg, "count": MHGame.resupply_count, "landers": resupply_landers.duplicate(true)}
+		"resupply": {"kg": MHGame.resupply_kg, "count": MHGame.resupply_count, "landers": resupply_landers.duplicate(true)},
+		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {}
 	}
 
 ## Missions autosave: the campaign base and its progress (slot 1 of the
@@ -726,6 +727,7 @@ func _restore_pending_habitat() -> void:
 	var state := MHGame.pending_save_state
 	MHGame.pending_save_state = {}
 	builder.restore_habitat_state(state.get("builder", {}) as Dictionary)
+	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
 	player.global_position = state.get("player_position", player.global_position) as Vector3
 	player.rotation.y = float(state.get("player_rotation_y", player.rotation.y))
 	player.safe_position = player.global_position
