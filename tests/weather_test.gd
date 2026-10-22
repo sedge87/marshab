@@ -37,8 +37,22 @@ func _initialize() -> void:
 	for i in 3: await process_frame
 	_check(weather._state == "storm" and weather._pill_label.text.begins_with("DUST STORM"), "the pill switches to the storm")
 	weather._level = .9
+	weather._haze = .9
 	for i in 3: await process_frame
 	_check(world.environment.storm > .5, "the sky hazes over (%.2f)" % world.environment.storm)
+	# Indoors the haze goes.
+	var cells := []
+	for x in range(30, 33):
+		for z in range(30, 33): cells.append(Vector2i(x, z))
+	world.builder.zones = [{"kind": "living", "cells": cells, "door_direction": Vector2i(0, -1), "cost": 600}]
+	world.builder._rebuild()
+	var outside_at: Vector3 = world.player.global_position
+	world.player.global_position = Vector3(93, world.builder.habitat_base_y + .2, 93)
+	for i in 90: await process_frame
+	_check(world.environment.storm < .05, "no storm haze inside the habitat (%.2f)" % world.environment.storm)
+	world.player.global_position = outside_at
+	weather._level = .9
+	weather._haze = .9
 	MHGame._settings["weather"] = false
 	for i in 3: await process_frame
 	_check(is_zero_approx(world.environment.storm) and not weather._storm_dust.emitting, "Weather effects off: no haze or blowing dust")

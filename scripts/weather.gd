@@ -14,6 +14,7 @@ const RAMP_PER_SECOND := .12   # how fast the haze builds and clears (real secon
 
 var world: Node
 var _level := 0.0
+var _haze := 0.0               # the haze actually shown (none indoors)
 var _state := ""               # "", "calm", "forecast" or "storm"
 var _sound_age := 0.0
 var _layer: CanvasLayer
@@ -59,9 +60,13 @@ func _process(delta: float) -> void:
 func _apply_visuals() -> void:
 	var on := effects_on()
 	var env = world.environment
-	if env != null: env.storm = _level if on else 0.0
+	# Indoors (habitat or lander cabin) the haze and its orange tint fade away
+	# quickly: the storm is outside the walls.
+	var indoors: bool = env != null and (env.inside_habitat or env.cabin_dim or world.builder.is_inside(world.player.global_position))
+	_haze = move_toward(_haze, _level if on and not indoors else 0.0, get_process_delta_time() * 1.6)
+	if not on: _haze = 0.0
+	if env != null: env.storm = _haze
 	if _storm_dust == null: return
-	var indoors: bool = env != null and (env.inside_habitat or env.cabin_dim)
 	var blowing: bool = on and _level > .05 and not indoors and not world.builder.build_mode
 	if _storm_dust.emitting != blowing: _storm_dust.emitting = blowing
 	_storm_dust.visible = blowing or _storm_dust.emitting
