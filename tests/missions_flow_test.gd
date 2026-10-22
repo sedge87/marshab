@@ -39,6 +39,8 @@ func _initialize() -> void:
 	_campaign_at("cargo_habitat", ["cargo_power_water"])
 	var world: Node = await _world()
 	_check(bool(world.arrival_pending) and world.current_cargo_lander != null and int(world.current_cargo_lander.number) == 2, "Mission 3 opens with Cargo Lander 2's touchdown")
+	var first: Array = MHMissions.cargo_landers().filter(func(c): return int(c.number) == 1)
+	if not first.is_empty(): _check((first[0].position as Vector3).distance_to(world.current_cargo_lander.global_position) > 10.0, "Cargo Lander 2 lands clear of Cargo Lander 1")
 	_check(world.cargo_landers.size() == 2, "Cargo Lander 1 is still on site (%d landers)" % world.cargo_landers.size())
 	_check(int(world.builder.simulation().crew_cap) == 0 and str(world.explore_hud.chip_prefix) == "ROBOT · ", "Mission 3 is still robots only")
 	var caption_text := ""
@@ -53,6 +55,14 @@ func _initialize() -> void:
 	_campaign_at("crew_land", ["cargo_power_water", "cargo_habitat"])
 	world = await _world()
 	_check(bool(world.crew_arrival) and bool(world.lander.present), "Mission 4 lands the crew lander")
+	_check(bool(world.arrival_pending) and world._arrival_t >= 0.0, "with a touchdown cutscene for the crew lander")
+	var crew_caption := ""
+	for label in world._arrival_layer.find_children("*", "Label", true, false): crew_caption += label.text + " "
+	_check(crew_caption.to_lower().contains("crew lander"), "captioned as the crew lander (%s)" % crew_caption.strip_edges())
+	world._finish_arrival()
+	await process_frame
+	var crew_spot := Vector2(world.lander.global_position.x, world.lander.global_position.z)
+	_check(MHMissions.cargo_landers().all(func(c): return Vector2((c.position as Vector3).x, (c.position as Vector3).z).distance_to(crew_spot) > 10.0), "the crew lander lands clear of the cargo landers (%s)" % [MHMissions.cargo_landers().map(func(c): return roundi(Vector2((c.position as Vector3).x, (c.position as Vector3).z).distance_to(crew_spot)))])
 	_check(world.lander.cabin_contains(world.player.global_position), "the crew start inside the lander's cabin")
 	_check(int(world.builder.simulation().crew_cap) == 4 and str(world.explore_hud.chip_prefix) != "ROBOT · ", "Mission 4 has four crew, not a robot")
 	_check(str(MHMissions.current_step().get("id", "")) == "hatch", "the first step is to open the hatch")

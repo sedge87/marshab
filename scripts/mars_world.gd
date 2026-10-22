@@ -86,10 +86,11 @@ func _ready() -> void:
 		if bool(mission.get("crew_arrival", false)) and not MHMissions.arrived(str(mission.id)):
 			crew_arrival = true
 			_start_in_lander = true
+			arrival_pending = true   # the crew lander's descent, then you're in the cabin
 			var target := MHMissions.landing_target()
 			var rng := RandomNumberGenerator.new()
 			rng.randomize()
-			lander.place_at(LANDING_PICKER_SCRIPT.touchdown(target if not is_inf(target.x) else Vector2.ZERO, "missions", rng))
+			lander.place_at(_clear_touchdown(target if not is_inf(target.x) else Vector2.ZERO, rng))
 	_spawn_player()
 	_spawn_scout_rover()
 	builder = BUILD_CONTROLLER_SCRIPT.new()
@@ -351,9 +352,28 @@ func _spawn_cargo_landers() -> void:
 	rng.randomize()
 	current_cargo_lander = _add_cargo_lander(number)
 	var base := MHMissions.base_site()
-	current_cargo_lander.place_at(LANDING_PICKER_SCRIPT.touchdown(target, "missions", rng), base if not is_inf(base.x) else Vector2.ZERO)
+	current_cargo_lander.place_at(_clear_touchdown(target, rng), base if not is_inf(base.x) else Vector2.ZERO)
 	MHMissions.cargo_landers().append({"number": number, "position": current_cargo_lander.global_position, "yaw": current_cargo_lander.rotation.y})
 	arrival_pending = true
+
+## A touchdown point in the landing ellipse that keeps clear of the landers
+## already down: the best of several tries, at least 16 m from the others
+## where the ellipse allows.
+func _clear_touchdown(target: Vector2, rng: RandomNumberGenerator) -> Vector2:
+	var taken: Array = MHMissions.cargo_landers().map(func(c): return Vector2((c.position as Vector3).x, (c.position as Vector3).z))
+	for cargo in cargo_landers: taken.append(Vector2(cargo.global_position.x, cargo.global_position.z))
+	if lander != null and lander.present: taken.append(Vector2(lander.global_position.x, lander.global_position.z))
+	var best := LANDING_PICKER_SCRIPT.touchdown(target, "missions", rng) as Vector2
+	var best_gap := -1.0
+	for attempt in 40:
+		var spot: Vector2 = LANDING_PICKER_SCRIPT.touchdown(target, "missions", rng) if attempt > 0 else best
+		var gap := INF
+		for other in taken: gap = minf(gap, spot.distance_to(other))
+		if gap > best_gap:
+			best_gap = gap
+			best = spot
+		if best_gap >= 16.0: break
+	return best
 
 func _add_cargo_lander(number: int) -> Node3D:
 	var cargo: Node3D = CARGO_LANDER_SCRIPT.new()
@@ -367,7 +387,7 @@ func _add_cargo_lander(number: int) -> Node3D:
 ## Captions close Mission 1 and introduce this landing. Any key skips it.
 func _start_arrival() -> void:
 	var mission := MHMissions.current()
-	var cargo := current_cargo_lander
+	var cargo := _arrival_craft()
 	_arrival_landed = false
 	_arrival_from = cargo.global_position
 	cargo.global_position = _arrival_from + Vector3.UP * 90.0
@@ -429,8 +449,11 @@ func _start_arrival() -> void:
 			bar.anchor_bottom = 1
 			bar.offset_top = -150
 		_arrival_layer.add_child(bar)
+	var title := str(mission.get("title", ""))
+	var headline := title.get_slice(": ", 1) if title.contains(": ") else title
+	var touchdown := "Crew lander · Touchdown · %d crew aboard" % int(mission.get("crew", 4)) if crew_arrival else "Cargo Lander %d · Touchdown · %s payload" % [int(mission.get("cargo_lander", 1)), MHStyle.kg(int(mission.get("payload_kg", 0)))]
 	var captions := [["Mission %d complete" % (int(mission.get("number", 2)) - 1), str(mission.get("previous_line", ""))],
-		["Cargo Lander %d · Touchdown · %s payload" % [int(mission.get("cargo_lander", 1)), MHStyle.kg(int(mission.get("payload_kg", 0)))], str(mission.get("title", "")).get_slice(": ", 1)]]
+		[touchdown, headline]]
 	for caption in captions:
 		var box := MHStyle.vbox(6)
 		box.anchor_top = 1
@@ -450,9 +473,14 @@ func _start_arrival() -> void:
 	MHAudio.sfx("landing", 0.0, 0.0)
 	_arrival_t = 0.0
 
+## What's landing in the cutscene: the crew lander (Mission 4) or this
+## mission's cargo lander.
+func _arrival_craft() -> Node3D:
+	return lander if crew_arrival else current_cargo_lander
+
 func _update_arrival(delta: float) -> void:
 	_arrival_t += delta
-	var cargo := current_cargo_lander
+	var cargo := _arrival_craft()
 	# Descent: fast at first, easing to a gentle touchdown at 7 s.
 	var fall := clampf(_arrival_t / 7.0, 0.0, 1.0)
 	var height := 90.0 * pow(1.0 - fall, 2.6)
@@ -478,7 +506,7 @@ func _fade_caption(box: Control, t: float, start: float, end: float) -> void:
 func _finish_arrival() -> void:
 	if _arrival_t < 0.0: return
 	_arrival_t = -1.0
-	var cargo := current_cargo_lander
+	var cargo := _arrival_craft()
 	cargo.global_position = _arrival_from
 	cargo.set_burn(false)
 	if _arrival_dust != null:
@@ -487,7 +515,7 @@ func _finish_arrival() -> void:
 	_arrival_camera.queue_free()
 	_arrival_layer.queue_free()
 	_arrival_caption.clear()
-	var start: Dictionary = cargo.hold_start()
+	var start: Dictionary = lander.cabin_start() if crew_arrival else cargo.hold_start()
 	player.global_position = start.position
 	player.rotation.y = float(start.yaw)
 	player.safe_position = player.global_position
@@ -496,10 +524,16 @@ func _finish_arrival() -> void:
 	explore_hud.visible = true
 	if mission_hud != null: mission_hud.visible = true
 	arrival_pending = false
+	arrival_finished.emit()
+	if crew_arrival:
+		# The crew lander: you're in the cabin; open the hatch to step out
+		# (the lander intro marks the mission arrived once you're out).
+		explore_hud.show_equipment_note("Touchdown", "The crew have landed. Look at the hatch and press E to open it.")
+		_play_intro()
+		return
 	MHMissions.set_arrived(str(MHMissions.current().id))
 	save_mission_progress()
 	_play_intro()
-	arrival_finished.emit()
 
 func _land_lander() -> void:
 	var saved: Dictionary = MHGame.pending_save_state.get("lander", {})

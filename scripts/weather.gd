@@ -75,7 +75,7 @@ func _apply_visuals() -> void:
 # ---------- warnings ----------
 
 func _announce(state: String, eta: float, storm_left: float) -> void:
-	var cut := roundi(float(MHResources.site(MHGame.site_id).get("storm_solar_cut", .6)) * 100.0)
+	var cut := roundi((float(sim().solar_cut()) if float(sim().storm_hours_left) > 0.0 else float(MHResources.site(MHGame.site_id).get("storm_solar_cut", .6))) * 100.0)
 	match state:
 		"forecast":
 			MHAudio.sfx("storm_alert")

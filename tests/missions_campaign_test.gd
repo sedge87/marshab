@@ -86,6 +86,7 @@ func _initialize() -> void:
 	MHMissions.progress.current = "storm_season"
 	var m5_weak := MHMissions.run_test(b)
 	if verbose: print("  Mission 5 (as built):\n    " + _report(m5_weak))
+	_check(not bool(m5_weak.passed), "Mission 4's base doesn't simply pass Mission 5's planet-wide storm")
 	b.zones.append({"kind": "reactor", "cells": [c + Vector2i(-6, 6)], "cost": 0})
 	b._rebuild()
 	b.simulation().invalidate()

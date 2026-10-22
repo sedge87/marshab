@@ -128,6 +128,46 @@ func keeps_clear(point: Vector2, margin := 0.0) -> bool:
 	var local := to_local(Vector3(point.x, global_position.y, point.y))
 	return absf(local.x) < 4.2 + margin and local.z > -6.8 - margin and local.z < 3.8 + margin
 
+## Descent engines on or off (the Mission 4 touchdown cutscene): four plumes
+## under the cabin, made the same way as the cargo lander's.
+var _plume: Node3D
+
+func set_burn(on: bool) -> void:
+	if _plume == null:
+		_plume = Node3D.new()
+		add_child(_plume)
+		for offset in [Vector2(1.2, 1.0), Vector2(-1.2, 1.0), Vector2(1.2, -1.0), Vector2(-1.2, -1.0)]:
+			var flame := CPUParticles3D.new()
+			flame.position = Vector3(offset.x, FLOOR_HEIGHT - .3, offset.y)
+			flame.amount = 50
+			flame.lifetime = .35
+			flame.direction = Vector3.DOWN
+			flame.spread = 8.0
+			flame.initial_velocity_min = 14.0
+			flame.initial_velocity_max = 20.0
+			flame.gravity = Vector3.ZERO
+			flame.scale_amount_min = .5
+			flame.scale_amount_max = 1.0
+			var quad := QuadMesh.new(); quad.size = Vector2(.5, .5)
+			var glow := StandardMaterial3D.new()
+			glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			glow.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+			glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			glow.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			glow.albedo_color = Color(1.0, .62, .3, .55)
+			glow.albedo_texture = preload("res://scripts/cargo_lander.gd").soft_puff_texture()
+			quad.material = glow
+			flame.mesh = quad
+			_plume.add_child(flame)
+		var light := OmniLight3D.new()
+		light.light_color = Color("#FFB070")
+		light.light_energy = 6.0
+		light.omni_range = 14.0
+		light.position = Vector3(0, .2, 0)
+		_plume.add_child(light)
+	_plume.visible = on
+	for particles in _plume.find_children("*", "CPUParticles3D", true, false): (particles as CPUParticles3D).emitting = on
+
 func hatch_open() -> bool:
 	return rig != null and bool(rig.call("_state_on", "hatch"))
 

@@ -9,10 +9,24 @@
       "available": true,
       "situation": "Your site is chosen and the landers are on their way. Every cargo lander, and later the crew, will come down inside a landing ellipse. Choose a safe landing zone, and where the base will go, far enough away that engine blast can't damage it.",
       "requirements": [
-        {"id": "landing_safe", "text": "The whole landing ellipse is on flat, safe ground", "check": "landing_safe"},
-        {"id": "landing_clear", "text": "The base site is at least 12 m from the edge of the landing ellipse", "check": "landing_clear"}
+        {
+          "id": "landing_safe",
+          "text": "The whole landing ellipse is on flat, safe ground",
+          "check": "landing_safe"
+        },
+        {
+          "id": "landing_clear",
+          "text": "The base site is at least 12 m from the edge of the landing ellipse",
+          "check": "landing_clear"
+        }
       ],
-      "stretch": [{"id": "close", "text": "Base within 40 m of the landing target: handy, but still safe", "check": "landing_close"}]
+      "stretch": [
+        {
+          "id": "close",
+          "text": "Base within 40 m of the landing target: handy, but still safe",
+          "check": "landing_close"
+        }
+      ]
     },
     {
       "id": "cargo_power_water",
@@ -26,30 +40,116 @@
       "crew": 0,
       "payload_kg": 12000,
       "sols": 5,
-      "events": [{"type": "storm", "sol": 3, "sols": 2}],
+      "events": [
+        {
+          "type": "storm",
+          "sol": 3,
+          "sols": 2
+        }
+      ],
       "situation": "The first cargo lander has touched down. Its construction robot (you) must set up the power system and the ice drills before anyone leaves Earth. Nobody will be here to fix it: it has to run on its own, through every night and a dust storm.",
       "cargo_lander": 1,
       "previous_line": "Landing zone and base site chosen",
       "brief": "You're the construction robot inside Cargo Lander 1. The crew won't leave Earth until their power and water are already working here.",
       "goal": "Build a power system and ice drills that keep running, unattended, for 5 sols, through every night and a dust storm.",
       "steps": [
-        {"id": "roll_out", "text": "Roll out of the cargo lander", "how": "Look at the ramp door and press E to lower it, then drive down.", "check": "left_lander"},
-        {"id": "plan", "text": "Open the site plan", "how": "Press B outside. The site plan is a top-down view for placing rooms and equipment.", "check": "opened_plan"},
-        {"id": "solar", "text": "Place solar arrays", "how": "In the site plan, open Resources and place Solar Arrays on flat open ground. Power is cabled, so anywhere outside the landing zone works.", "check": "zone", "kind": "solar", "marker": "base"},
-        {"id": "engineering", "text": "Build a Power & Engineering room", "how": "Rooms tab: drag out a Power & Engineering room. It's where the batteries live.", "check": "zone", "kind": "engineering", "marker": "base"},
-        {"id": "airlock", "text": "Add an airlock to the room", "how": "Structure tab: place an Airlock against the room's wall, outer end facing Mars. It's how the robot gets in.", "check": "zone", "kind": "airlock", "marker": "base"},
-        {"id": "battery", "text": "Add a battery bank inside it", "how": "Go in through the airlock, then press B inside the room to furnish it. Batteries carry the drills through the night.", "check": "item", "item": "battery_bank"},
-        {"id": "ice", "text": "Place an ice extractor on pale blue ground", "how": "Follow BEST ICE on your compass. Richer ice makes more water.", "check": "zone", "kind": "ice_extractor", "marker": "ice"},
-        {"id": "test", "text": "Test your design", "how": "Press T. It fast-forwards 5 sols, nights and the storm included, and shows what failed and why.", "check": "tested"},
-        {"id": "pass", "text": "Pass the test and complete the mission", "how": "Not passing yet? Read the report, change one thing, and test again.", "check": "passed"}
+        {
+          "id": "roll_out",
+          "text": "Roll out of the cargo lander",
+          "how": "Look at the ramp door and press E to lower it, then drive down.",
+          "check": "left_lander"
+        },
+        {
+          "id": "plan",
+          "text": "Open the site plan",
+          "how": "Press B outside. The site plan is a top-down view for placing rooms and equipment.",
+          "check": "opened_plan"
+        },
+        {
+          "id": "solar",
+          "text": "Place solar arrays",
+          "how": "In the site plan, open Resources and place Solar Arrays on flat open ground. Power is cabled, so anywhere outside the landing zone works.",
+          "check": "zone",
+          "kind": "solar",
+          "marker": "base"
+        },
+        {
+          "id": "engineering",
+          "text": "Build a Power & Engineering room",
+          "how": "Rooms tab: drag out a Power & Engineering room. It's where the batteries live.",
+          "check": "zone",
+          "kind": "engineering",
+          "marker": "base"
+        },
+        {
+          "id": "airlock",
+          "text": "Add an airlock to the room",
+          "how": "Structure tab: place an Airlock against the room's wall, outer end facing Mars. It's how the robot gets in.",
+          "check": "zone",
+          "kind": "airlock",
+          "marker": "base"
+        },
+        {
+          "id": "battery",
+          "text": "Add a battery bank inside it",
+          "how": "Go in through the airlock, then press B inside the room to furnish it. Batteries carry the drills through the night.",
+          "check": "item",
+          "item": "battery_bank"
+        },
+        {
+          "id": "ice",
+          "text": "Place an ice extractor on pale blue ground",
+          "how": "Follow BEST ICE on your compass. Richer ice makes more water.",
+          "check": "zone",
+          "kind": "ice_extractor",
+          "marker": "ice"
+        },
+        {
+          "id": "test",
+          "text": "Test your design",
+          "how": "Press T. It fast-forwards 5 sols, nights and the storm included, and shows what failed and why.",
+          "check": "tested"
+        },
+        {
+          "id": "pass",
+          "text": "Pass the test and complete the mission",
+          "how": "Not passing yet? Read the report, change one thing, and test again.",
+          "check": "passed"
+        }
       ],
-      "unlock_zones": ["solar", "reactor", "ice_extractor", "engineering", "airlock", "corridor"],
-      "unlock_items": ["battery_bank", "power_distribution_panel"],
+      "unlock_zones": [
+        "solar",
+        "reactor",
+        "ice_extractor",
+        "engineering",
+        "airlock",
+        "corridor"
+      ],
+      "unlock_items": [
+        "battery_bank",
+        "power_distribution_panel"
+      ],
       "requirements": [
-        {"id": "always_powered", "text": "Power never runs out, through every night and the dust storm", "check": "always_powered"},
-        {"id": "water", "text": "The ice drills make at least 60 L of water a sol, ready for the crew", "check": "water_per_sol", "min": 60}
+        {
+          "id": "always_powered",
+          "text": "Power never runs out, through every night and the dust storm",
+          "check": "always_powered"
+        },
+        {
+          "id": "water",
+          "text": "The ice drills make at least 60 L of water a sol, ready for the crew",
+          "check": "water_per_sol",
+          "min": 60
+        }
       ],
-      "stretch": [{"id": "no_reactor", "text": "No reactor: solar and batteries only", "check": "no_zone", "kind": "reactor"}],
+      "stretch": [
+        {
+          "id": "no_reactor",
+          "text": "No reactor: solar and batteries only",
+          "check": "no_zone",
+          "kind": "reactor"
+        }
+      ],
       "hints": [
         "Press B to open the site plan. Power is under Resources.",
         "A Power & Engineering room holds the batteries. Give it an airlock, walk in and press B to furnish it.",
@@ -308,12 +408,13 @@
         {
           "type": "storm",
           "sol": 2,
-          "sols": 5
+          "sols": 5,
+          "solar_cut": 0.9
         }
       ],
       "previous_line": "The crew are settled in",
-      "situation": "Dust storm season has arrived. Mission Control forecasts a five-sol storm that will block most of the sunlight. Solar power will drop to a trickle. Life support must stay on the whole time, even if other things have to switch off.",
-      "brief": "A five-sol dust storm is coming. Solar power will almost stop.",
+      "situation": "Dust storm season has arrived, and this one is planet-wide. Mission Control forecasts five sols of dust so thick it blocks nine-tenths of the sunlight: the solar arrays will make almost nothing. Life support must stay on the whole time, even if other things have to switch off.",
+      "brief": "A five-sol, planet-wide dust storm is coming. Solar power will drop to a tenth.",
       "goal": "Keep life support powered all the way through the storm, and keep the crew's health above 80%.",
       "unlock_items": [
         "battery_bank",
@@ -331,7 +432,7 @@
         {
           "id": "test",
           "text": "Test through the storm",
-          "how": "Press T. It runs 8 sols, with a 5-sol storm from sol 2. Watch the battery line on the graph.",
+          "how": "Press T. It runs 8 sols, with a 5-sol storm from sol 2 that blocks 90% of the sunlight. Watch the battery line on the graph.",
           "check": "tested"
         },
         {
@@ -363,8 +464,9 @@
       ],
       "hints": [
         "In a storm, power is shared by priority: life support first, then heating, lights, and last labs and drills.",
+        "Work out what life support needs: the power used line during the storm, times five sols. That's how much stored or steady power you need.",
         "A reactor runs day and night, storm or not. It's heavy, but you have this landing's payload.",
-        "Batteries only help if there's spare power to charge them before the storm.",
+        "Batteries only help if there's spare power to charge them before the storm. Dimming empty rooms saves power too.",
         "Press T to test: the storm starts on sol 2."
       ]
     },

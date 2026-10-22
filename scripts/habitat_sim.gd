@@ -38,6 +38,8 @@ var o2_pct := 21.0
 var co2_pct := 0.04
 var room_temp := {}           # room key -> degrees C
 var crew_health := 100.0
+## Why crew health is falling right now (plain words), for the HUD.
+var health_causes: Array = []
 ## Missions: at most this many crew aboard (0 while robots build; -1 = no cap).
 var crew_cap := -1
 ## Mars-made building material printed so far (kg), by regolith printers fed
@@ -47,6 +49,9 @@ var printed_kg := 0.0
 var run_step := STEP_HOURS
 var crew_evacuated := false
 var storm_hours_left := 0.0
+## How much sunlight this storm blocks (0-1); -1 uses the site's usual storm.
+## Mission 5's planet-wide storm blocks far more than a regional one.
+var storm_cut := -1.0
 ## Hours until a forecast storm arrives (-1: none forecast). Orbiters map
 ## Mars weather every sol, so storms come with a warning.
 var storm_eta_hours := -1.0
@@ -302,9 +307,15 @@ func run_hours(hours: float, start_hour: float, sample_every := 1.0) -> Array:
 			samples.append(snapshot(hour))
 	return samples
 
-func start_storm(sols := -1.0) -> void:
+func start_storm(sols := -1.0, cut := -1.0) -> void:
 	var length := sols if sols > 0.0 else float(MHResources.site(MHGame.site_id).get("storm_sols", 3.0))
 	storm_hours_left = length * 24.0
+	storm_cut = cut
+
+## The share of sunlight the current storm blocks (0 when there's no storm).
+func solar_cut() -> float:
+	if storm_hours_left <= 0.0: return 0.0
+	return storm_cut if storm_cut >= 0.0 else float(MHResources.site(MHGame.site_id).get("storm_solar_cut", .6))
 	storm_eta_hours = -1.0
 
 ## Forecasts a storm to arrive in this many hours (the HUD warns until then).
@@ -363,7 +374,7 @@ func step(dt: float, hour: float) -> void:
 	tiers[TIER_OTHER] += drill_kw
 	tiers[TIER_OTHER] += int(inv.intakes) * MHResources.item_value("regolith_intake", "power_kw", 1.5)
 	var generation := 0.0
-	var storm_factor := 1.0 - (float(site.get("storm_solar_cut", .6)) if storm_hours_left > 0.0 else 0.0)
+	var storm_factor := 1.0 - solar_cut()
 	generation += _solar_kw(inv.solar, hour) * storm_factor
 	generation += inv.reactors * MHResources.setting("reactor_kw", 10.0)
 	if MHGame.debug_free_power: generation = 1.0e6
@@ -533,16 +544,17 @@ func _power(dt: float, generation: float, tiers: Dictionary, capacity_kwh: float
 	return {"tiers": on, "load_kw": load, "battery_kw": battery_kw}
 
 func _crew_condition(dt: float, crew: int, rooms: Array, people: Array) -> void:
+	health_causes = []
 	if crew <= 0: return
 	var harm := 0.0
-	if co2_pct > 3.0: harm += 10.0
-	elif co2_pct > MHResources.setting("co2_danger_pct", 1.0): harm += 1.0
-	if o2_pct < 16.0: harm += 10.0
-	elif o2_pct < MHResources.setting("o2_min_pct", 19.5): harm += 1.0
+	if co2_pct > 3.0: harm += 10.0; health_causes.append("CO₂ dangerous")
+	elif co2_pct > MHResources.setting("co2_danger_pct", 1.0): harm += 1.0; health_causes.append("CO₂ high")
+	if o2_pct < 16.0: harm += 10.0; health_causes.append("oxygen dangerous")
+	elif o2_pct < MHResources.setting("o2_min_pct", 19.5): harm += 1.0; health_causes.append("oxygen low")
 	for index in range(rooms.size()):
-		if float(people[index]) > 0.0 and float(room_temp[rooms[index].key]) < MHResources.setting("danger_cold_c", 5.0): harm += 3.0; break
-	if water_l <= 0.0: harm += 1.0
-	if food_kg <= 0.0: harm += .3
+		if float(people[index]) > 0.0 and float(room_temp[rooms[index].key]) < MHResources.setting("danger_cold_c", 5.0): harm += 3.0; health_causes.append("a crewed room is freezing"); break
+	if water_l <= 0.0: harm += 1.0; health_causes.append("no water")
+	if food_kg <= 0.0: harm += .3; health_causes.append("no food")
 	if harm > 0.0:
 		if MHGame.crew_can_be_harmed():
 			crew_health = maxf(0.0, crew_health - harm * dt)
@@ -578,7 +590,7 @@ func step_power_only(hour: float) -> void:
 	for richness in inv.drills: tiers[4] += MHResources.item_value("ice_drill", "power_kw", 3.0)
 	tiers[4] += int(inv.get("intakes", 0)) * MHResources.item_value("regolith_intake", "power_kw", 1.5)
 	var generation := 0.0
-	generation += _solar_kw(inv.solar, hour) * (1.0 - (float(MHResources.site(MHGame.site_id).get("storm_solar_cut", .6)) if storm_hours_left > 0.0 else 0.0))
+	generation += _solar_kw(inv.solar, hour) * (1.0 - solar_cut())
 	generation += inv.reactors * MHResources.setting("reactor_kw", 10.0)
 	if MHGame.debug_free_power: generation = 1.0e6
 	if inv.isolated: generation = 0.0

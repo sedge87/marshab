@@ -116,12 +116,30 @@ static func update_steps(builder: Node, flags: Dictionary) -> Array:
 	var mission := current()
 	var done := steps_done(str(mission.id))
 	var ticked: Array = []
+	last_unticked = []
 	for step in mission.get("steps", []):
-		if done.has(str(step.id)): continue
+		if done.has(str(step.id)):
+			# Build steps stay live: remove what one needed and it un-ticks
+			# (stepping out, opening the plan and testing are one-offs).
+			if LIVE_STEPS.has(str(step.get("check", ""))) and not _step_met(step, builder, flags, str(mission.id)):
+				done.erase(str(step.id))
+				last_unticked.append(step)
+			continue
 		if _step_met(step, builder, flags, str(mission.id)):
 			done.append(str(step.id))
 			ticked.append(step)
 	return ticked
+
+## Steps that need what's built now (zones, items), re-checked as you build.
+const LIVE_STEPS := ["zone", "item", "item_any"]
+## Steps un-ticked by the last update_steps (something they needed was removed).
+static var last_unticked: Array = []
+
+## How far a counted step has got, e.g. "3 of 4" ("" if not counted).
+static func step_progress(step: Dictionary, builder: Node) -> String:
+	if str(step.get("check", "")) != "item" or int(step.get("count", 1)) <= 1: return ""
+	var have: int = builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(step.item)).size()
+	return "%d of %d" % [have, int(step.count)]
 
 ## The first step not yet done, or {} when all are done.
 static func current_step() -> Dictionary:
@@ -222,7 +240,7 @@ static func run_test(builder: Node) -> Dictionary:
 	var start_hour := 8.0
 	var storms: Array = []
 	for event in mission.get("events", []):
-		if str(event.type) == "storm": storms.append({"start": (float(event.sol) - 1.0) * 24.0, "hours": float(event.sols) * 24.0})
+		if str(event.type) == "storm": storms.append({"start": (float(event.sol) - 1.0) * 24.0, "hours": float(event.sols) * 24.0, "cut": float(event.get("solar_cut", -1.0))})
 	var samples: Array = []
 	var failures := {}
 	var hours := 0.0
@@ -233,7 +251,7 @@ static func run_test(builder: Node) -> Dictionary:
 	var research := float(sim.daily_flows(false).get("research", 0.0))
 	while hours < sols * 24.0 - .001:
 		for storm in storms:
-			if absf(hours - float(storm.start)) < .001: sim.start_storm(float(storm.hours) / 24.0)
+			if absf(hours - float(storm.start)) < .001: sim.start_storm(float(storm.hours) / 24.0, float(storm.get("cut", -1.0)))
 		var chunk: Array = sim.run_hours(step, hour, step)
 		hours += step
 		hour = fmod(start_hour + hours, 24.0)

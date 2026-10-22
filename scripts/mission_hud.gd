@@ -20,8 +20,16 @@ var _next_how: Label
 var _toast: PanelContainer
 var _marker: Node3D
 
+## The mission this world was loaded for. Completing it moves the campaign
+## on; if you keep building instead, the next one waits to be started (J).
+var _loaded_mission := ""
+
 func setup(target_world: Node) -> void:
 	world = target_world
+	_loaded_mission = str(MHMissions.current().get("id", ""))
+
+func _next_mission_waiting() -> bool:
+	return not _loaded_mission.is_empty() and str(MHMissions.current().get("id", "")) != _loaded_mission
 
 func _ready() -> void:
 	layer = 21
@@ -87,12 +95,18 @@ func _update_steps() -> bool:
 	for step in ticked:
 		MHAudio.sfx("ui_confirm", -4.0)
 		_show_toast(str(step.text))
-	if not ticked.is_empty(): world.save_mission_progress()
+	for step in MHMissions.last_unticked:
+		# Something a finished step needed was removed: say so, and it's back
+		# on the list until it's put right.
+		MHAudio.sfx("warn", -2.0)
+		var progress := MHMissions.step_progress(step, world.builder)
+		_show_toast("%s%s" % [str(step.text), (" (now %s)" % progress) if not progress.is_empty() else ""], true)
+	if not ticked.is_empty() or not MHMissions.last_unticked.is_empty(): world.save_mission_progress()
 	var step := MHMissions.current_step()
 	_next_label.text = "" if step.is_empty() else str(step.text)
 	_next_how.text = str(step.get("how", ""))
 	_set_marker(str(step.get("marker", "")))
-	return not ticked.is_empty()
+	return not ticked.is_empty() or not MHMissions.last_unticked.is_empty()
 
 ## A compass landmark for the current step: the base site or the best ice.
 func _set_marker(kind: String) -> void:
@@ -120,7 +134,7 @@ func _set_marker(kind: String) -> void:
 	_marker.set_meta("landmark_label", label)
 	_marker.global_position = Vector3(at.x, 0, at.y)
 
-func _show_toast(text: String) -> void:
+func _show_toast(text: String, warning := false) -> void:
 	if _toast != null: _toast.queue_free()
 	_toast = MHStyle.hud_panel(12, false, true)
 	_toast.theme = MHStyle.theme()
@@ -131,9 +145,10 @@ func _show_toast(text: String) -> void:
 	_toast.offset_right = 260
 	_toast.offset_top = 150
 	var row := MHStyle.hbox(10)
-	row.add_child(MHStyle.icon("circle-check", 22, MHStyle.VALID))
+	var tone := MHStyle.WARN if warning else MHStyle.VALID
+	row.add_child(MHStyle.icon("triangle-alert" if warning else "circle-check", 22, tone))
 	var words := MHStyle.vbox(2)
-	words.add_child(MHStyle.eyebrow("Step done", MHStyle.VALID, 11))
+	words.add_child(MHStyle.eyebrow("Step undone" if warning else "Step done", tone, 11))
 	var label := MHStyle.body(text, 16, MHStyle.TEXT_PRIMARY)
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	words.add_child(label)
@@ -141,7 +156,7 @@ func _show_toast(text: String) -> void:
 	_toast.add_child(row)
 	add_child(_toast)
 	var fade := _toast.create_tween()
-	fade.tween_interval(2.6)
+	fade.tween_interval(4.5 if warning else 2.6)
 	fade.tween_property(_toast, "modulate:a", 0.0, .5)
 	fade.tween_callback(_toast.queue_free)
 
@@ -154,7 +169,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if get_tree().paused: return
 	if event.keycode == KEY_T:
-		_run_test()
+		if _next_mission_waiting(): _open_brief()   # start it first
+		else: _run_test()
 		get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_J:
 		_open_brief()
@@ -165,6 +181,15 @@ func _unhandled_input(event: InputEvent) -> void:
 func _refresh_panel() -> void:
 	for child in _panel_body.get_children(): child.queue_free()
 	var mission := MHMissions.current()
+	if _next_mission_waiting():
+		_panel_body.add_child(MHStyle.eyebrow("Mission %d complete" % (int(mission.number) - 1), MHStyle.VALID, 11))
+		_panel_body.add_child(MHStyle.title("Mission %d is ready" % int(mission.number), 20))
+		var ready_text := MHStyle.body("%s. Keep improving this base as long as you like, then press J to start it." % str(mission.title), 14, MHStyle.TEXT_SECONDARY)
+		ready_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ready_text.custom_minimum_size.x = 380
+		_panel_body.add_child(ready_text)
+		_panel_body.add_child(MHStyle.mono("J  START MISSION %d" % int(mission.number), 12, MHStyle.accent, 700))
+		return
 	_panel_body.add_child(MHStyle.eyebrow("Mission %d · %s" % [int(mission.number), str(mission.get("nasa_step", ""))], MHStyle.accent, 11))
 	_panel_body.add_child(MHStyle.title(str(mission.title), 20))
 	var budget := MHMissions.cargo_budget()
@@ -315,6 +340,11 @@ func _open_short_brief() -> void:
 func _open_brief() -> void:
 	var mission := MHMissions.current()
 	var column := _open_overlay()
+	if _next_mission_waiting():
+		var start := MHStyle.button("Start Mission %d" % int(mission.number), "primary", "rocket")
+		start.pressed.connect(_start_next_mission)
+		column.add_child(start)
+		start.grab_focus.call_deferred()
 	_header(column, "Mission %d · %s · %s" % [int(mission.number), str(mission.get("nasa_step", "")), MHGame.site_name()], str(mission.title))
 	column.add_child(_wrapped(str(mission.get("situation", "")), 20, MHStyle.TEXT_PRIMARY, 1100))
 	var body := MHStyle.hbox(28)
@@ -408,6 +438,12 @@ func _show_report(report: Dictionary) -> void:
 	graph.report = report
 	graph.custom_minimum_size = Vector2(1100, 300)
 	column.add_child(graph)
+	# Once there's a crew: how close the air, food, warmth and health came.
+	if int(MHMissions.current().get("crew", 0)) > 0:
+		var life := LifeGraph.new()
+		life.report = report
+		life.custom_minimum_size = Vector2(1100, 5 * 44 + 30)
+		column.add_child(life)
 	var buttons := MHStyle.hbox(12)
 	if passed:
 		var done := MHStyle.button("Complete mission", "primary", "circle-check")
@@ -493,12 +529,12 @@ class TestGraph extends Control:
 		var total_hours: float = float(report.sols) * 24.0
 		var left := 56.0
 		var right := size.x - 56.0
-		var top := 24.0
+		var top := 40.0
 		var bottom := size.y - 34.0
 		var x_of := func(hours: float) -> float: return left + (right - left) * hours / total_hours
 		for storm in report.get("storms", []):
 			draw_rect(Rect2(Vector2(x_of.call(float(storm.start)), top), Vector2(x_of.call(float(storm.start) + float(storm.hours)) - x_of.call(float(storm.start)), bottom - top)), Color(.9, .45, .2, .18))
-			draw_string(font, Vector2(x_of.call(float(storm.start)) + 6, top + 14), "DUST STORM", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, .7, .45))
+			draw_string(font, Vector2(x_of.call(float(storm.start)) + 6, top + 16), "DUST STORM", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, .7, .45))
 		var max_kw := 1.0
 		for sample in samples: max_kw = maxf(max_kw, maxf(float(sample.generation_kw), float(sample.load_kw)))
 		var lines := {"battery": [], "solar": [], "load": []}
@@ -518,8 +554,63 @@ class TestGraph extends Control:
 		draw_line(Vector2(left, bottom), Vector2(right, bottom), Color(1, 1, 1, .3), 1.0)
 		draw_string(font, Vector2(6, top + 6), "100%", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MHStyle.VALID)
 		draw_string(font, Vector2(right + 6, top + 6), "%d kW" % roundi(max_kw), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#F2C14E"))
+		# Legend along the top, clear of the sol labels underneath.
 		var x0 := left + 10.0
 		for entry in [["Battery charge", MHStyle.VALID], ["Power made (kW)", Color("#F2C14E")], ["Power used (kW)", Color(1, 1, 1, .7)]]:
-			draw_rect(Rect2(Vector2(x0, size.y - 14), Vector2(12, 4)), entry[1])
-			draw_string(font, Vector2(x0 + 16, size.y - 8), entry[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, .8))
-			x0 += 170.0
+			draw_rect(Rect2(Vector2(x0, 14), Vector2(12, 4)), entry[1])
+			draw_string(font, Vector2(x0 + 16, 20), entry[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, .8))
+			x0 += font.get_string_size(entry[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 44.0
+
+## Life support over the test, one strip each: oxygen, carbon dioxide, food,
+## the coldest crewed room and crew health, each with its safe line, so
+## students can see how close it came (and when).
+class LifeGraph extends Control:
+	var report: Dictionary
+	const ROW := 44.0
+	# label, sample key, axis low, axis high, safe line, safe when above it, colour, unit
+	const ROWS := [
+		["Oxygen", "o2_pct", 15.0, 25.0, 19.5, true, Color("#7FD6FF"), "%"],
+		["Carbon dioxide", "co2_pct", 0.0, 2.0, 1.0, false, Color("#C9A8FF"), "%"],
+		["Food", "food_kg", 0.0, -1.0, 0.0, true, Color("#9AE07A"), " kg"],
+		["Coldest room", "coldest_c", -10.0, 30.0, 15.0, true, Color("#FFB37A"), " °C"],
+		["Crew health", "crew_health", 0.0, 100.0, 50.0, true, Color("#FF8A8A"), "%"]]
+
+	func _draw() -> void:
+		var samples: Array = report.get("samples", [])
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, .35))
+		if samples.is_empty(): return
+		var font := ThemeDB.fallback_font
+		var total_hours: float = float(report.sols) * 24.0
+		var left := 170.0
+		var right := size.x - 90.0
+		draw_string(font, Vector2(12, 18), "LIFE SUPPORT OVER THE TEST", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, .6))
+		for index in range(ROWS.size()):
+			var spec: Array = ROWS[index]
+			var top := 28.0 + index * ROW
+			var bottom := top + ROW - 10.0
+			var low: float = spec[2]
+			var high: float = spec[3]
+			if high < 0.0:
+				high = 1.0
+				for sample in samples: high = maxf(high, float(sample.get(spec[1], 0.0)))
+			var y_of := func(value: float) -> float: return bottom - (bottom - top) * clampf((value - low) / (high - low), 0.0, 1.0)
+			draw_rect(Rect2(Vector2(left, top), Vector2(right - left, bottom - top)), Color(1, 1, 1, .04))
+			# The safe line, dashed, with the unsafe side tinted.
+			var safe_y: float = y_of.call(float(spec[4]))
+			var unsafe := Rect2(Vector2(left, safe_y), Vector2(right - left, bottom - safe_y)) if bool(spec[5]) else Rect2(Vector2(left, top), Vector2(right - left, safe_y - top))
+			draw_rect(unsafe, Color(1, .3, .3, .07))
+			var dash := left
+			while dash < right:
+				draw_line(Vector2(dash, safe_y), Vector2(minf(dash + 6.0, right), safe_y), Color(1, .45, .45, .55), 1.0)
+				dash += 12.0
+			var points := PackedVector2Array()
+			var worst := float(samples[0].get(spec[1], 0.0))
+			for sample in samples:
+				var value := float(sample.get(spec[1], 0.0))
+				worst = minf(worst, value) if bool(spec[5]) else maxf(worst, value)
+				points.append(Vector2(left + (right - left) * float(sample.elapsed) / total_hours, y_of.call(value)))
+			draw_polyline(points, spec[6], 2.0)
+			draw_string(font, Vector2(12, top + 18), str(spec[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, spec[6])
+			var bad: bool = (worst < float(spec[4])) if bool(spec[5]) else (worst > float(spec[4]))
+			var word: String = ("fell to " if bad else "lowest ") if bool(spec[5]) else ("rose to " if bad else "highest ")
+			draw_string(font, Vector2(right + 8, top + 18), word + str(snappedf(worst, .1)) + str(spec[7]), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, MHStyle.DANGER if bad else Color(1, 1, 1, .6))

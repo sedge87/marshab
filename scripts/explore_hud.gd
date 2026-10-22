@@ -279,7 +279,14 @@ func _update_systems_panel() -> void:
 	var air_tone := MHStyle.DANGER if co2 > 1.0 or o2 < 19.5 else (MHStyle.WARN if co2 > .5 or o2 < 20.0 else MHStyle.VALID)
 	_set_system_row("air", "O₂ %.1f%% · CO₂ %.2f%%" % [o2, co2], clampf(1.0 - co2 / 1.0, 0.0, 1.0), air_tone)
 	var health := float(sim.crew_health)
-	_set_system_row("crew", "%d%%%s" % [roundi(health), "" if MHGame.crew_can_be_harmed() else " · Freedom mode: no harm"], health / 100.0, MHStyle.VALID if health > 70.0 else (MHStyle.WARN if health > 30.0 else MHStyle.DANGER))
+	# Why it's changing: what's harming the crew (CO2, oxygen, cold, water,
+	# food), or that it's recovering because everything is safe again.
+	var causes: Array = sim.health_causes
+	var trend := ""
+	if not causes.is_empty(): trend = " · falling: " + ", ".join(causes)
+	elif health < 99.5: trend = " · recovering"
+	if not MHGame.crew_can_be_harmed(): trend = " · Freedom mode: no harm"
+	_set_system_row("crew", "%d%%%s" % [roundi(health), trend], health / 100.0, MHStyle.DANGER if not causes.is_empty() and MHGame.crew_can_be_harmed() else (MHStyle.VALID if health > 70.0 else (MHStyle.WARN if health > 30.0 else MHStyle.DANGER)))
 	for child in _systems_warnings.get_children(): child.queue_free()
 	var shown := 0
 	for warning in sim.warnings():
@@ -376,7 +383,7 @@ func _update_telemetry() -> void:
 		var solar := MHGame.solar_irradiance(MHGame.sol_hour)
 		# A dust storm blocks much of the sunlight reaching the arrays.
 		if builder != null and float(builder.simulation().storm_hours_left) > 0.0:
-			solar *= 1.0 - float(MHResources.site(MHGame.site_id).get("storm_solar_cut", .6))
+			solar *= 1.0 - float(builder.simulation().solar_cut())
 		_telemetry_sunlight.text = "%d%%" % roundi(solar * 100.0)
 		_telemetry_sunlight.add_theme_color_override("font_color", MHStyle.VALID if solar > .1 else MHStyle.TEXT_MUTED)
 
