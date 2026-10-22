@@ -229,8 +229,30 @@ static func ground_colour(p: Vector2, h: float, slope: float) -> Color:
 # ---------- meshes ----------
 
 ## Walkable ground mesh with matching trimesh collision, as children of `body`.
+## Generated ground meshes are the same every time for a site, so they're
+## cached in user://terrain_cache (about 0.6 s off every load). The key
+## includes this script's own text and the site's settings, so any change to
+## the terrain makes a fresh cache.
+const CACHE_DIR := "user://terrain_cache"
+
+static func _cache_key(tag: String) -> String:
+	var source := FileAccess.get_file_as_string("res://scripts/site_terrain.gd")
+	if source.is_empty(): return ""   # exported build without sources: just generate
+	return "%s/%s_%s_%d.res" % [CACHE_DIR, str(MHGame.site().get("id", "site")), tag, hash([source, settings(), MHGame.site().get("ice_deposits", [])])]
+
+static func _cached(tag: String, make: Callable) -> Resource:
+	var path := _cache_key(tag)
+	if not path.is_empty() and FileAccess.file_exists(path):
+		var cached := ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
+		if cached != null: return cached
+	var made: Resource = make.call()
+	if not path.is_empty():
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CACHE_DIR))
+		ResourceSaver.save(made, path)
+	return made
+
 static func build_ground(body: StaticBody3D) -> void:
-	var mesh := _grid_mesh(-INNER_EXTENT, INNER_EXTENT, INNER_STEP, -1.0)
+	var mesh: ArrayMesh = _cached("ground", func() -> ArrayMesh: return _grid_mesh(-INNER_EXTENT, INNER_EXTENT, INNER_STEP, -1.0))
 	var visual := MeshInstance3D.new()
 	visual.name = "SiteGround"
 	visual.mesh = mesh
@@ -238,14 +260,14 @@ static func build_ground(body: StaticBody3D) -> void:
 	body.add_child(visual)
 	var collision := CollisionShape3D.new()
 	collision.name = "SiteGround_collision"
-	collision.shape = mesh.create_trimesh_shape()
+	collision.shape = _cached("ground_shape", func() -> Shape3D: return mesh.create_trimesh_shape())
 	body.add_child(collision)
 
 ## Coarse horizon beyond the walkable ground (no collision; past the boundary).
 static func build_horizon() -> MeshInstance3D:
 	var visual := MeshInstance3D.new()
 	visual.name = "SiteHorizon"
-	visual.mesh = _grid_mesh(-OUTER_EXTENT, OUTER_EXTENT, OUTER_STEP, INNER_EXTENT)
+	visual.mesh = _cached("horizon", func() -> ArrayMesh: return _grid_mesh(-OUTER_EXTENT, OUTER_EXTENT, OUTER_STEP, INNER_EXTENT))
 	visual.material_override = _ground_material()
 	return visual
 

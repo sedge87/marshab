@@ -78,6 +78,22 @@ func _initialize() -> void:
 	_check(g._escorting() and g.status_text() == "coming with you", "a ping: come with me")
 	await _wait(5.0)
 	_check(g.global_position.distance_to(p.global_position) < 3.0, "and it follows you closely (%.1f m)" % g.global_position.distance_to(p.global_position))
+	# Room culling: furniture in another room is only drawn through an open door.
+	g.queue_free()
+	var desk_at := Vector3(15.0, y, 4.5)
+	b.place_free_interior_equipment("work_desk", desk_at, 0.0, Vector2i(5, 1), b.free_interior_visual("work_desk", desk_at, 0.0))
+	var desk: Node3D = b.furnishing.get_child(b.furnishing.get_child_count() - 1)
+	var door = interior[0]
+	if door.is_open(): door.request_shut()
+	await _wait(1.0)
+	b.update_furniture_visibility(Vector3(1.0, y + 1.6, 3.0))
+	_check(not desk.visible, "a desk in the galley isn't drawn from the living quarters with the door shut")
+	door.request_open()
+	await _wait(1.0)
+	b.update_furniture_visibility(Vector3(1.0, y + 1.6, 3.0))
+	_check(desk.visible, "it is through the open door")
+	b.update_furniture_visibility(Vector3(15.0, y + 1.6, 60.0))
+	_check(not desk.visible, "and not from far outside")
 	if failures == 0:
-		print("GAR-Y navigation test passed: rooms via doors, doors closed behind, no airlocks, stays in, comes with you.")
+		print("GAR-Y navigation test passed: rooms via doors, doors closed behind, no airlocks, stays in, comes with you, and room culling.")
 	quit(1 if failures > 0 else 0)

@@ -188,6 +188,8 @@ func _process(delta: float) -> void:
 	if _space_check > 0.0: return
 	_space_check = .3
 	_apply_light_budget()
+	var eye := get_viewport().get_camera_3d()
+	if eye != null: builder.update_furniture_visibility(eye.global_position)
 	var inside: bool = not builder.build_mode and (builder.is_inside(player.global_position) or bool(lander.cabin_contains(player.global_position)))
 	MHAudio.ambience("inside" if inside else "outside")
 	# Interior fill light only while the habitat's own lights are on (not in

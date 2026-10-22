@@ -1240,6 +1240,59 @@ func _interior_footprints_overlap(first_position: Vector3, first_size: Vector3, 
 			return false
 	return true
 
+## Room culling: furniture is the biggest drawing cost (about 40 meshes an
+## item), so only what you could see is drawn. Inside, that's your room, any
+## room seen through an open interior door, and anything within a few metres;
+## outside, what's near enough to glimpse through a window; in the site plan,
+## everything. MarsWorld calls this a few times a second.
+const FURNITURE_NEAR := 5.0
+const FURNITURE_OUTSIDE := 18.0
+
+func update_furniture_visibility(eye: Vector3) -> void:
+	if furnishing == null: return
+	if build_mode:
+		for child in furnishing.get_children(): (child as Node3D).visible = true
+		return
+	var here: Dictionary = _zone_at_point(Vector2(eye.x, eye.z)) if is_inside(eye) else {}
+	var rooms := {}
+	if not here.is_empty():
+		rooms[zones.find(here)] = true
+		# Through open doors (twice, to see a room beyond a corridor).
+		for pass_index in 2:
+			for node in get_tree().get_nodes_in_group("airlock_door"):
+				var door := node as AirlockDoor
+				if door == null or door.is_closed(): continue
+				var at := door.global_position
+				for axis in [Vector2(1.2, 0), Vector2(0, 1.2)]:
+					var a: Dictionary = _zone_at_point(Vector2(at.x, at.z) - axis)
+					var b: Dictionary = _zone_at_point(Vector2(at.x, at.z) + axis)
+					if a.is_empty() or b.is_empty() or a == b: continue
+					if rooms.has(zones.find(a)) or rooms.has(zones.find(b)):
+						rooms[zones.find(a)] = true
+						rooms[zones.find(b)] = true
+	var item_rooms := {}
+	for item in placed_interior:
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		item_rooms[str(item.get("placement_id", ""))] = zones.find(_zone_at_point(Vector2(at.x, at.z)))
+	for child in furnishing.get_children():
+		var visual := child as Node3D
+		var distance := visual.global_position.distance_to(eye)
+		var show := distance < FURNITURE_NEAR
+		if not show:
+			show = rooms.has(item_rooms.get(str(visual.get_meta("interior_placement_id", "")), -2)) if not here.is_empty() else distance < FURNITURE_OUTSIDE
+		visual.visible = show
+
+## Furniture is only drawn within this distance of the camera: across the
+## base or behind walls it costs nothing (outdoor props get further).
+const INTERIOR_DRAW_DISTANCE := 30.0
+const SURFACE_DRAW_DISTANCE := 90.0
+
+static func set_draw_distance(node: Node, distance: float) -> void:
+	for geometry in node.find_children("*", "GeometryInstance3D", true, false):
+		var instance := geometry as GeometryInstance3D
+		instance.visibility_range_end = distance
+		instance.visibility_range_end_margin = 2.0
+
 func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> Node3D:
 	var entry := EquipmentCatalog.get_entry(id)
 	var size := _free_interior_size(entry)
@@ -1294,6 +1347,7 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 	# Rigged items show power through their own lamps; the status lamp is for un-rigged models.
 	if EquipmentCatalog.rig(id).is_empty() and int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0 and (not model_loaded or not _bind_equipment_power_visuals(holder)):
 		_add_equipment_power_lamp(body, size)
+	set_draw_distance(holder, INTERIOR_DRAW_DISTANCE)
 	return holder
 
 ## The first-person palette is an art-facing build surface. Do not advertise a
@@ -1499,6 +1553,7 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 	# Rigged items show power through their own lamps; the status lamp is for un-rigged models.
 	if EquipmentCatalog.rig(id).is_empty() and int(EquipmentCatalog.effects(id).get("power_draw", 0)) > 0 and (not model_loaded or not _bind_equipment_power_visuals(holder)):
 		_add_equipment_power_lamp(body, size)
+	set_draw_distance(holder, INTERIOR_DRAW_DISTANCE)
 	return holder
 
 func _add_equipment_placeholder(body: StaticBody3D, size: Vector3, tint: Color) -> void:
@@ -4046,6 +4101,7 @@ func _add_box(position: Vector3,size: Vector3,colour: Color,solid: bool,group :=
 		var visual:=MeshInstance3D.new(); var mesh:=BoxMesh.new(); mesh.size=size; visual.mesh=mesh; var material:=StandardMaterial3D.new(); material.albedo_color=colour; material.roughness=.70; visual.material_override=material; body.add_child(visual)
 	if solid: var collision:=CollisionShape3D.new(); var shape:=BoxShape3D.new(); shape.size=size; collision.shape=shape; body.add_child(collision)
 
+
 func _add_glass_box(position: Vector3,size: Vector3,colour: Color,solid: bool,group := "") -> void:
 	var body:=StaticBody3D.new(); body.position=position; body.collision_layer=1; if not group.is_empty(): body.add_to_group(group); root.add_child(body)
 	var visual:=MeshInstance3D.new(); var mesh:=BoxMesh.new(); mesh.size=size; visual.mesh=mesh; var material:=StandardMaterial3D.new(); material.albedo_color=colour; material.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA; material.roughness=.18; material.metallic=.15; visual.material_override=material; body.add_child(visual)
@@ -4475,6 +4531,7 @@ func surface_visual(id: String, position: Vector3, rotation_y: float) -> Node3D:
 	collision.position.y = shape.height * .5
 	collision_body.add_child(collision)
 	holder.add_child(collision_body)
+	set_draw_distance(holder, SURFACE_DRAW_DISTANCE)
 	return holder
 
 func place_surface_equipment(id: String, position: Vector3, rotation_y: float, visual: Node3D) -> bool:
