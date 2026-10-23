@@ -24,6 +24,7 @@ const STRUCTURE_TOOLS := [
 	{"id": "upgrade_regolith", "label": "Regolith shielding", "icon": "shield", "text": "Bags of Mars soil stacked against an outside wall, against radiation. Printed by the regolith printer, so it costs no cargo once you're printing. Aim at an outside wall."},
 	{"id": "upgrade_water", "label": "Water wall", "icon": "droplets", "text": "A water tank panel on an outside wall. Water is one of the best radiation shields. Aim at an outside wall."},
 	{"id": "upgrade_roof", "label": "Roof shielding", "icon": "house", "text": "Regolith piled on the whole roof of a room: most radiation comes from overhead. Aim at the ceiling."},
+	{"id": "upgrade_ladder", "label": "Roof ladder", "icon": "arrow-up", "text": "A ladder up an outside wall to the roof, with a safety rail round the edge. Outside, press E on it to climb. Aim at an outside wall without a window."},
 	{"id": "upgrade_acoustic", "label": "Sound insulation", "icon": "volume-x", "text": "Padded panels on a wall between two rooms, so a noisy neighbour (Power & Engineering, Life Support, a printer) doesn't keep anyone awake. Aim at a shared wall."},
 	{"id": "remove", "label": "Remove", "icon": "trash-2", "text": "Aim at an item, door, window or wall upgrade and click to remove it. Cargo is refunded."},
 ]

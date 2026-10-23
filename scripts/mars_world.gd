@@ -6,6 +6,7 @@ const ALERTS_SCRIPT := preload("res://scripts/habitat_alerts.gd")
 const MISSION_CONTROL_LINK := preload("res://scripts/mission_control_link.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const SLEEP := preload("res://scripts/sleep.gd")
+const CARRY := preload("res://scripts/carry.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
 const SHOWCASE_SCRIPT := preload("res://scripts/showcase.gd")
@@ -46,6 +47,7 @@ var _earth_link_state := {}
 ## into free play, so Mission Control can still open its dossier.
 var campaign_record := {}
 var sleep: Node   # scripts/sleep.gd: sleep at a bunk to pass the time
+var carry: Node   # scripts/carry.gd: pick up small things and put them elsewhere
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
@@ -161,6 +163,9 @@ func _ready() -> void:
 	sleep = SLEEP.new()
 	add_child(sleep)
 	sleep.setup(self)
+	carry = CARRY.new()
+	add_child(carry)
+	carry.setup(self)
 	gar_y_orders = GAR_Y_ORDERS.new()
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)
@@ -822,6 +827,8 @@ func _return_menu() -> void:
 # ---------- three-slot habitat saves ----------
 ## Everything a save (or a debug site reload) needs to rebuild this colony.
 func current_state() -> Dictionary:
+	# Whatever you're carrying goes back first, so it's never lost from a save.
+	if carry != null: carry.put_back()
 	return {
 		"site_id": MHGame.site_id,
 		"site_name": MHGame.site_name(),

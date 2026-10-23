@@ -9,6 +9,8 @@ extends RefCounted
 ##                       very good radiation shield.
 ##   Roof shielding      Regolith piled on a room's whole roof: most radiation
 ##                       comes from overhead.
+##   Roof ladder         A ladder on an outside wall, up to a railed roof
+##                       (scripts/roof_ladder.gd: E climbs up and down).
 ##   Sound insulation    Padded panels on a wall shared by two rooms, so a noisy
 ##                       neighbour (Power & Engineering, Life Support, a
 ##                       printer) doesn't keep the Living Quarters awake.
@@ -24,11 +26,13 @@ const KINDS := {
 	"regolith": {"place": "outer", "label": "Regolith shielding", "points": 8.0, "cargo": 900, "printable": true, "icon": "shield"},
 	"water": {"place": "outer", "label": "Water wall", "points": 10.0, "cargo": 260, "printable": false, "icon": "droplets"},
 	"roof": {"place": "roof", "label": "Roof shielding", "points": 8.0, "cargo": 900, "printable": true, "icon": "house"},
+	"ladder": {"place": "outer", "label": "Roof ladder", "points": 0.0, "cargo": 60, "printable": false, "icon": "arrow-up"},
 	"acoustic": {"place": "shared", "label": "Sound insulation", "points": 0.0, "cargo": 80, "printable": false, "icon": "volume-x"},
 }
 const REGOLITH := Color("#8E6248")
 const WATER := Color("#5A7480")
 const PADDING := Color("#47525A")
+const ROOF_LADDER := preload("res://scripts/roof_ladder.gd")
 const SIDES := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
 static func spec(kind: String) -> Dictionary:
@@ -180,6 +184,7 @@ static func build(builder: Node) -> void:
 	var cell_size: float = BuildController.CELL
 	builder.wall_upgrades = builder.wall_upgrades.filter(func(record): return _still_valid(builder, record))
 	var base_y: float = builder.habitat_base_y
+	_roof_rails(builder)
 	for record in builder.wall_upgrades:
 		var kind := str(record.kind)
 		if kind == "roof":
@@ -193,6 +198,7 @@ static func build(builder: Node) -> void:
 		match kind:
 			"regolith": _bags(builder, mid + out * .3, basis, cell_size - .1)
 			"water": _tank(builder, mid + out * .25, basis, cell_size - .2)
+			"ladder": _ladder(builder, record, mid, out, basis)
 			"acoustic":
 				for face in [-1.0, 1.0]:
 					_padding(builder, mid + out * (face * .13), basis, cell_size - .5)
@@ -238,6 +244,19 @@ static func _box(builder: Node, at: Vector3, size: Vector3, basis: Basis, materi
 		shape.shape = box_shape
 		body.add_child(shape)
 
+## An invisible solid wall (behind the roof rail).
+static func _barrier(builder: Node, at: Vector3, size: Vector3, basis: Basis) -> void:
+	var body := StaticBody3D.new()
+	body.transform = Transform3D(basis, at)
+	body.collision_layer = 1
+	body.add_to_group("wall_upgrade")
+	builder.root.add_child(body)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	shape.shape = box
+	body.add_child(shape)
+
 ## Courses of regolith bags against the wall, each course a little staggered.
 static func _bags(builder: Node, at: Vector3, basis: Basis, length: float) -> void:
 	var courses := 6
@@ -263,9 +282,61 @@ static func _padding(builder: Node, at: Vector3, basis: Basis, length: float) ->
 		var x := -length * .5 + length * step / 5.0
 		_box(builder, at + Vector3.UP * 1.35 + basis.x * x, Vector3(.025, 2.2, .07), basis, _material(PADDING.darkened(.25), 1.0))
 
+## A steel ladder from the ground to hoops above the roof edge, and the body
+## you aim at to climb (scripts/roof_ladder.gd).
+static func _ladder(builder: Node, record: Dictionary, mid: Vector3, out: Vector3, basis: Basis) -> void:
+	var steel := _material(MHStyle.FRAME_STEEL, .45)
+	var foot := mid + out * .32
+	var ground: float = builder._terrain_height(Vector3(foot.x, 0, foot.z))
+	var bottom := minf(ground, mid.y) - .1
+	var top := mid.y + 3.9
+	for side in [-.28, .28]:
+		_box(builder, Vector3(foot.x, (bottom + top) * .5, foot.z) + basis.x * side, Vector3(.05, top - bottom, .05), basis, steel)
+	var rung := bottom + .3
+	while rung < mid.y + 3.0:
+		_box(builder, Vector3(foot.x, rung, foot.z), Vector3(.56, .035, .035), basis, steel)
+		rung += .3
+	# Safety hoops where you step on and off at the top.
+	for height in [3.25, 3.7]:
+		_box(builder, Vector3(foot.x, mid.y + height, foot.z) + out * .18, Vector3(.62, .04, .04), basis, MHGame.accent_material())
+	var body: StaticBody3D = ROOF_LADDER.new()
+	body.transform = Transform3D(basis, Vector3(foot.x, (bottom + top) * .5, foot.z))
+	body.collision_layer = 1
+	builder.root.add_child(body)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(.66, top - bottom, .2)
+	shape.shape = box
+	body.add_child(shape)
+	body.setup(builder, record.mid, record.outward)
+
+## With a ladder, a rail round the roof edge (1 m, the colony accent), with a
+## gap where each ladder comes up.
+static func _roof_rails(builder: Node) -> void:
+	var ladders: Array = builder.wall_upgrades.filter(func(r): return str(r.kind) == "ladder")
+	if ladders.is_empty(): return
+	var cell_size: float = BuildController.CELL
+	var top: float = builder.habitat_base_y + 2.975
+	var rail := MHGame.accent_material()
+	var post := _material(MHStyle.FRAME_STEEL, .45)
+	for zone in builder.zones:
+		if not builder._is_habitat_zone(zone) or zone.has("angled_mount"): continue
+		for cell in zone.get("cells", []):
+			for side in SIDES:
+				if builder._is_habitat_zone(builder._zone_across(cell, side)): continue
+				var edge_mid := (Vector2(cell) + Vector2(side) * .5) * cell_size
+				if ladders.any(func(l): return (l.mid as Vector2).distance_to(edge_mid) < .6): continue
+				var along := Vector3(-side.y, 0, side.x)
+				var at := Vector3(edge_mid.x, top, edge_mid.y) - Vector3(side.x, 0, side.y) * .12
+				var basis := Basis(along, Vector3.UP, along.cross(Vector3.UP))
+				_barrier(builder, at + Vector3.UP * .5, Vector3(cell_size, 1.0, .1), basis)
+				for height in [.5, 1.0]:
+					_box(builder, at + Vector3.UP * height, Vector3(cell_size, .05, .05), basis, rail)
+				_box(builder, at + Vector3.UP * .5 - along * (cell_size * .5 - .03), Vector3(.06, 1.0, .06), basis, post)
+
 ## Regolith piled on one roof square, in two rows of bags.
 static func _roof(builder: Node, centre: Vector3, cell_size: float) -> void:
-	_box(builder, centre + Vector3.UP * .16, Vector3(cell_size - .2, .32, cell_size - .2), Basis.IDENTITY, _material(REGOLITH))
+	_box(builder, centre + Vector3.UP * .16, Vector3(cell_size - .2, .32, cell_size - .2), Basis.IDENTITY, _material(REGOLITH), true)
 	for side in [-1.0, 1.0]:
 		_box(builder, centre + Vector3(0, .36, side * cell_size * .22), Vector3(cell_size - .5, .14, cell_size * .38), Basis.IDENTITY, _material(REGOLITH.lightened(.05)))
 

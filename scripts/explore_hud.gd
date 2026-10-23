@@ -438,6 +438,9 @@ func _update_prompt() -> void:
 			for action in [["E", "primary"], ["F", "secondary"], ["G", "tertiary"], ["Z", "sleep"], ["I", "info"]]:
 				var action_name := str(prompt.get(str(action[1]), ""))
 				if not action_name.is_empty(): actions.append("%s %s" % [str(action[0]), action_name])
+			var carry := get_tree().get_first_node_in_group("carry")
+			var pickup: String = carry.call("pickup_key", target) if carry != null else ""
+			if not pickup.is_empty(): actions.insert(mini(1, actions.size()), "%s Pick up" % pickup)
 			_prompt_keys.text = "  ".join(actions)
 			_prompt_verb.text = str(prompt.get("label", "Equipment"))
 			_prompt_state.text = ""

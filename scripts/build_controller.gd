@@ -5185,7 +5185,8 @@ func zone_outline(zone: Dictionary) -> PackedVector2Array:
 
 # True when a world point is on the deck of a habitat zone (drives the interior hum).
 func is_inside(point: Vector3) -> bool:
-	if point.y<habitat_base_y-.6 or point.y>habitat_base_y+4.0: return false
+	# Up on the roof (above the ceiling) is outside.
+	if point.y<habitat_base_y-.6 or point.y>habitat_base_y+ROOM_HEIGHT+.02: return false
 	var cell:=Vector2i(roundi(point.x/CELL),roundi(point.z/CELL))
 	for zone in zones:
 		var zone_kind := str(zone.kind)
