@@ -290,36 +290,43 @@ static func _padding(builder: Node, at: Vector3, basis: Basis, length: float, fa
 		_box(builder, at + Vector3.UP * 1.3 + basis.x * (-length * .5 + length * step / 8.0) + toward * .017, Vector3(.012, 2.0, .01), basis, seam)
 	_box(builder, at + Vector3.UP * 2.15 + basis.x * (length * .5 - .25) + toward * .02, Vector3(.2, .12, .01), basis, MHGame.accent_material())
 
-## A steel ladder from the ground to hoops above the roof edge, and the body
-## you aim at to climb (scripts/roof_ladder.gd).
+## A steel ladder from the ground to the roof edge. Its rails carry on to
+## handrail height and bend over the edge down onto the roof (a gooseneck),
+## lining up with an opening in the roof rail; the body you aim at to climb
+## is scripts/roof_ladder.gd.
+const LADDER_HALF_WIDTH := .28
 static func _ladder(builder: Node, record: Dictionary, mid: Vector3, out: Vector3, basis: Basis) -> void:
 	var steel := _material(MHStyle.FRAME_STEEL, .45)
 	var foot := mid + out * .32
 	var ground: float = builder._terrain_height(Vector3(foot.x, 0, foot.z))
 	var bottom := minf(ground, mid.y) - .1
-	var top := mid.y + 3.9
-	for side in [-.28, .28]:
-		_box(builder, Vector3(foot.x, (bottom + top) * .5, foot.z) + basis.x * side, Vector3(.05, top - bottom, .05), basis, steel)
+	var roof := mid.y + 2.975
+	var grab := roof + 1.0
+	var inward := mid - out * .35
+	for side in [-LADDER_HALF_WIDTH, LADDER_HALF_WIDTH]:
+		var across: Vector3 = basis.x * side
+		_box(builder, Vector3(foot.x, (bottom + grab) * .5, foot.z) + across, Vector3(.05, grab - bottom, .05), basis, steel)
+		# Over the edge and down onto the roof.
+		var over := (foot + inward) * .5
+		_box(builder, Vector3(over.x, grab, over.z) + across, Vector3(.05, .05, foot.distance_to(inward) + .05), basis, steel)
+		_box(builder, Vector3(inward.x, (roof + grab) * .5, inward.z) + across, Vector3(.05, grab - roof, .05), basis, steel)
 	var rung := bottom + .3
-	while rung < mid.y + 3.0:
-		_box(builder, Vector3(foot.x, rung, foot.z), Vector3(.56, .035, .035), basis, steel)
+	while rung < roof - .05:
+		_box(builder, Vector3(foot.x, rung, foot.z), Vector3(LADDER_HALF_WIDTH * 2.0, .035, .035), basis, steel)
 		rung += .3
-	# Safety hoops where you step on and off at the top.
-	for height in [3.25, 3.7]:
-		_box(builder, Vector3(foot.x, mid.y + height, foot.z) + out * .18, Vector3(.62, .04, .04), basis, MHGame.accent_material())
 	var body: StaticBody3D = ROOF_LADDER.new()
-	body.transform = Transform3D(basis, Vector3(foot.x, (bottom + top) * .5, foot.z))
+	body.transform = Transform3D(basis, Vector3(foot.x, (bottom + grab) * .5, foot.z))
 	body.collision_layer = 1
 	builder.root.add_child(body)
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(.66, top - bottom, .2)
+	box.size = Vector3(LADDER_HALF_WIDTH * 2.0 + .1, grab - bottom, .2)
 	shape.shape = box
 	body.add_child(shape)
 	body.setup(builder, record.mid, record.outward)
 
-## With a ladder, a rail round the roof edge (1 m, the colony accent), with a
-## gap where each ladder comes up.
+## With a ladder, a rail round the roof edge (1 m, the colony accent), with an
+## opening where each ladder comes up, lined up with the ladder's rails.
 static func _roof_rails(builder: Node) -> void:
 	var ladders: Array = builder.wall_upgrades.filter(func(r): return str(r.kind) == "ladder")
 	if ladders.is_empty(): return
@@ -333,14 +340,21 @@ static func _roof_rails(builder: Node) -> void:
 			for side in SIDES:
 				if builder._is_habitat_zone(builder._zone_across(cell, side)): continue
 				var edge_mid := (Vector2(cell) + Vector2(side) * .5) * cell_size
-				if ladders.any(func(l): return (l.mid as Vector2).distance_to(edge_mid) < .6): continue
 				var along := Vector3(-side.y, 0, side.x)
-				var at := Vector3(edge_mid.x, top, edge_mid.y) - Vector3(side.x, 0, side.y) * .12
+				var centre := Vector3(edge_mid.x, top, edge_mid.y) - Vector3(side.x, 0, side.y) * .12
 				var basis := Basis(along, Vector3.UP, along.cross(Vector3.UP))
-				_barrier(builder, at + Vector3.UP * .5, Vector3(cell_size, 1.0, .1), basis)
-				for height in [.5, 1.0]:
-					_box(builder, at + Vector3.UP * height, Vector3(cell_size, .05, .05), basis, rail)
-				_box(builder, at + Vector3.UP * .5 - along * (cell_size * .5 - .03), Vector3(.06, 1.0, .06), basis, post)
+				# Runs along this edge, [from, to] from its centre; split round a ladder.
+				var runs := [[-cell_size * .5, cell_size * .5]]
+				if ladders.any(func(l): return (l.mid as Vector2).distance_to(edge_mid) < .6):
+					runs = [[-cell_size * .5, -LADDER_HALF_WIDTH], [LADDER_HALF_WIDTH, cell_size * .5]]
+				for run in runs:
+					var length := float(run[1]) - float(run[0])
+					var at: Vector3 = centre + along * ((float(run[0]) + float(run[1])) * .5)
+					_barrier(builder, at + Vector3.UP * .5, Vector3(length, 1.0, .1), basis)
+					for height in [.5, 1.0]:
+						_box(builder, at + Vector3.UP * height, Vector3(length, .05, .05), basis, rail)
+					for end in run:
+						_box(builder, centre + along * float(end) + Vector3.UP * .5, Vector3(.06, 1.0, .06), basis, post)
 
 ## A thin layer of regolith on one roof square, inset from the edge, with
 ## faint lines; solid, so you can walk on it.
