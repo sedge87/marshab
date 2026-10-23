@@ -4910,10 +4910,9 @@ func readiness() -> Array:
 	var food_detail := "Grows %.1f of %.1f kg a sol" % [flows.food_grown, flows.food_eaten] + (" · %d sols stored" % floori(food_sols) if float(sim.food_kg) > 0.0 and float(flows.food_grown) < float(flows.food_eaten) else "")
 	items.append({"id": "food", "label": "Food", "detail": food_detail, "status": "met" if food_sols >= 30.0 or float(flows.food_grown) >= float(flows.food_eaten) else ("partial" if float(sim.food_kg) > 0.0 or float(flows.food_grown) > 0.0 else "unmet"), "icon": "wheat"})
 	var rooms: Array = sim.crewed_rooms()
-	var warm := 0
-	for room in rooms:
-		if float(sim.room_temp.get(room.key, 20.0)) >= 18.0: warm += 1
-	items.append({"id": "heat", "label": "Heating", "detail": "%d / %d rooms comfortable" % [warm, rooms.size()] if MHGame.simulation_on() else "Off in Creative", "status": "met" if warm == rooms.size() and not rooms.is_empty() else ("partial" if warm > 0 else "unmet"), "icon": "sun"})
+	var habitat_c := float(sim.habitat_temp)
+	var warm := not rooms.is_empty() and habitat_c >= 18.0
+	items.append({"id": "heat", "label": "Heating", "detail": ("Habitat %d °C (comfortable 18–24 °C)" % roundi(habitat_c)) if MHGame.simulation_on() else "Off in Creative", "status": "met" if warm else ("partial" if habitat_c >= MHResources.setting("cold_c", 12.0) else "unmet"), "icon": "sun"})
 	items.append(_fitted_target_item("research","Research capability",int(systems.research),int(systems.research_capacity),RESEARCH_TARGET,"flask-conical"))
 	var power_status := "met"
 	var power_detail := "Unlimited in Creative"
@@ -5560,8 +5559,7 @@ func _part_chips(id: String) -> Array:
 			chips.append(["feeds the regolith printer",MHStyle.VALID])
 			chips.append(["-%s kW" % str(MHResources.item_value("regolith_intake","power_kw",1.5)),MHStyle.WARN])
 	if zone_printable(id) and str(ZONE_INFO[id].cat)!="power": chips.append(["can be printed",MHStyle.VALID])
-	var target:=float(MHResources.room(id).get("target_c",0.0))
-	if target>0.0 and str(ZONE_INFO[id].cat)=="rooms": chips.append(["kept at %d °C" % int(target),MHStyle.INFO])
+	if id in ["airlock","vehicle_bay"]: chips.append(["unheated",MHStyle.INFO])
 	if id in ["airlock","vehicle_bay","solar","corridor"]: chips.append(["Facing %s" % _facing_name(),MHStyle.TEXT_SECONDARY])
 	return chips
 

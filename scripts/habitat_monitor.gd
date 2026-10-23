@@ -5,8 +5,9 @@ extends Control
 ## cameras. The game keeps running underneath (you stand still), so it's
 ## live.
 ##   left:   the habitat map, each room tinted by its state (green fine,
-##           amber warning, red critical) with its temperature, lights and
-##           crew; outside, the solar arrays and drills. Click a room.
+##           amber warning, red critical) with its lights and crew; outside,
+##           the solar arrays and drills. Click a room. (One temperature for
+##           the whole habitat, in the whole-base panel.)
 ##   right:  the room's machines (on, powered, and what each is doing), then
 ##           whole-base flows (power, air, water, food, crew) and alerts.
 ##   bottom: the last sol of power made, power used and battery charge.
@@ -136,10 +137,13 @@ func room_reading(index: int) -> Dictionary:
 	var crewed := not str(room.kind) in ["airlock", "corridor", "storage", "vehicle_bay"]
 	if crewed and temp < MHResources.setting("danger_cold_c", 5.0):
 		state = "danger"
-		problems.append("Dangerously cold")
+		problems.append("The habitat is dangerously cold")
 	elif crewed and temp < MHResources.setting("cold_c", 12.0):
 		state = "warn"
-		problems.append("Cold")
+		problems.append("The habitat is cold")
+	if crewed and state == "ok" and (s.cold_spots as Array).has(str(room.label)):
+		state = "warn"
+		problems.append("Cold spot: not enough heating reaches this room")
 	for item in inv.items:
 		if int(item.room) != index or not bool(item.on) or float(item.power) <= 0.0: continue
 		if not online or not bool(tiers.get(int(item.tier), true)):
@@ -180,7 +184,7 @@ func _fill_room() -> void:
 	var reading := room_reading(selected)
 	var tone: Color = STATE_COLOURS[reading.state]
 	_room_panel.add_child(MHStyle.eyebrow(str(room.label), tone, 14))
-	_room_panel.add_child(_line("%d °C (aim %d °C) · lights %s · %d crew here" % [roundi(float(reading.temp)), roundi(float(room.target)), str(reading.lights), int(reading.crew)], MHStyle.TEXT_PRIMARY, 15))
+	_room_panel.add_child(_line("Lights %s · %d crew here%s" % [str(reading.lights), int(reading.crew), " · unheated, %d °C" % roundi(float(reading.temp)) if str(room.kind) in ["airlock", "vehicle_bay"] else ""], MHStyle.TEXT_PRIMARY, 15))
 	for problem in reading.problems: _room_panel.add_child(_line("⚠ " + str(problem), tone))
 	var tiers: Dictionary = sim().last.get("tiers", {})
 	var online: bool = builder().grid_power_online()
@@ -214,6 +218,8 @@ func _fill_flows() -> void:
 	var power := "Power: %.1f kW made, %.1f kW used · battery %d%%" % [made, used, roundi(float(snap.battery_pct))]
 	if used > made and float(s.battery_kwh) > 0.0: power += " · empty in %s" % _hours(float(s.battery_kwh) / (used - made))
 	_flows_panel.add_child(_line(power, MHStyle.TEXT_PRIMARY if made >= used or float(snap.battery_pct) > 20.0 else MHStyle.WARN, 15))
+	_flows_panel.add_child(_line("Temperature: %d °C %s (comfortable 18–24 °C)" % [roundi(float(s.habitat_temp)), _trend("temp", float(s.habitat_temp))],
+		MHStyle.TEXT_PRIMARY if float(s.habitat_temp) >= 18.0 else (MHStyle.WARN if float(s.habitat_temp) >= 12.0 else MHStyle.DANGER), 15))
 	_flows_panel.add_child(_line("Air: O₂ %.1f%% %s · CO₂ %.2f%% %s" % [float(snap.o2_pct), _trend("o2", float(snap.o2_pct)), float(snap.co2_pct), _trend("co2", float(snap.co2_pct))],
 		MHStyle.TEXT_PRIMARY if float(snap.o2_pct) >= 19.5 and float(snap.co2_pct) <= 1.0 else MHStyle.DANGER, 15))
 	var crew := int(flows.crew)
@@ -324,7 +330,7 @@ class MonitorMap extends Control:
 			var title := str(room.label).to_upper()
 			var tw := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 			draw_string(font, centre + Vector2(-tw * .5, -8), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MHStyle.INK_100)
-			var detail := "%d °C · %s%s" % [roundi(float(reading.temp)), str(reading.lights).to_upper(), " · %d crew" % int(reading.crew) if int(reading.crew) > 0 else ""]
+			var detail := "%s%s" % [str(reading.lights).to_upper(), " · %d crew" % int(reading.crew) if int(reading.crew) > 0 else ""]
 			var dw := small.get_string_size(detail, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 			draw_string(small, centre + Vector2(-dw * .5, 12), detail, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, tone)
 		# Legend.

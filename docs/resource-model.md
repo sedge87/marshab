@@ -28,7 +28,7 @@ Debug mode stays hidden. Saved games made in Sandbox mode load as Creative.
 ## How it works
 
 The habitat has **stores** (battery charge, water, oxygen and CO₂ in the air,
-food, and the temperature of each room) and **flows** (what each machine,
+food, and one habitat temperature) and **flows** (what each machine,
 person and plant adds or takes away). The simulation steps through game time,
 so real-time play and the fast-forward Test behave the same.
 
@@ -38,10 +38,19 @@ so real-time play and the fast-forward Test behave the same.
 - **Shortages:** loads switch off in priority order. Life support goes last, then heating, then lights, then everything else.
 - **Dust storms** cut solar output by 50–70% for several sols. On solar sites, students must plan which loads to switch off.
 
-### Temperature, room by room
-- **Heat lost:** heat leaks out through the hull (U value × hull area × the temperature difference). Windows leak about 6× more than the same area of hull.
-- **Heat gained:** people (0.1 kW each) and every machine indoors, because almost all electricity ends up as heat. The thermal control unit (a heat pump: 1 kW of electricity moves about 3 kW of heat, up to 12 kW) and heaters make up the rest.
-- **Between rooms:** connected rooms share heat. Rooms warm and cool gradually.
+### Temperature: one for the habitat, but heat has to reach each room (23 Oct)
+Like Subnautica, you watch **one habitat temperature**. The game aims to keep it near 21 °C; comfortable is 18–24 °C. Airlocks and the vehicle bay are unheated by design.
+- **Heat lost:** each heated room leaks heat through its hull (U value × hull area × the temperature difference). Windows leak about 6× more than the same area of hull. A compact layout has less outside wall, so it loses less.
+- **Heat gained, room by room:**
+  - people (0.1 kW each), lights and machines warm the room they're in, because almost all electricity ends up as heat;
+  - **a spot heater** (wall or portable) warms its own room and the rooms next door, up to what they need. Any extra is wasted, so ten heaters in one room don't heat the far end of the base;
+  - **the thermal control unit** is a ducted heat pump. It reaches every heated room, and 1 kW of electricity moves about 3 kW of heat, up to 12 kW per unit.
+- **Cold spots:** a heated room that doesn't get enough heat is a cold spot. It shows on the monitor and in an alert, so students see *where* the heating falls short.
+- **The habitat temperature** follows all the heat that reaches the rooms against all the heat they lose, and changes gradually.
+- **Teaching points:**
+  - central heating (a heat pump) beats lots of spot heaters on efficiency;
+  - spot heaters only help where they are;
+  - one central unit is a single point of failure, so a spare heater is a sensible backup.
 
 ### Air
 - **Crew:** breathe in 0.84 kg of oxygen and breathe out 1 kg of CO₂ each per sol.
@@ -80,6 +89,6 @@ spare. Each site needs a different approach:
 ## What the student sees
 
 - **Systems panel:** each store as a bar with its flows. For example, "Batteries 62%, −1.8 kW, empty at 04:30".
-- **Plan view:** a heat map of room temperatures.
-- **Every warning gives a reason.** For example, "Living Quarters is 6 °C: no heating, and its window loses heat."
+- **Monitor (Mission Control):** rooms tinted by state, with cold spots in amber, and one habitat temperature in the whole-base panel.
+- **Every warning gives a reason.** For example, "The habitat is cold (9 °C): there is no thermal control unit or heater", or "Cold spot: Hydroponics. Not enough heat reaches it."
 - **Fast-forward test:** one sol in about 10 seconds, with graphs and a pass or fail for each requirement.

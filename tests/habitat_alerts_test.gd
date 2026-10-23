@@ -43,7 +43,7 @@ func _initialize() -> void:
 	for id in alerts.EXPLAIN:
 		for level in ["warning", "critical", "resolved"]:
 			if level == "warning" and id == "life_support_power": continue
-			if level == "critical" and id in ["power", "battery_sunset"]: continue
+			if level == "critical" and id in ["power", "battery_sunset", "cold_spot"]: continue
 			if id == "battery_sunset" and level != "advisory": continue
 			_check(ResourceLoader.exists("res://assets/audio/voice/%s.wav" % alerts.voice_line(id, level)), "voice line for %s %s" % [id, level])
 	_check(ResourceLoader.exists("res://assets/audio/voice/battery_sunset_advisory.wav"), "voice line for the sunset advisory")

@@ -210,7 +210,7 @@ static func _charts(version: Dictionary, crew: bool) -> String:
 	out += _chart(version, [["generation_kw", "#F2C14E", "Power made (kW)"], ["load_kw", "#8A949A", "Power used (kW)"]], 0.0, top)
 	if crew:
 		out += _chart(version, [["o2_pct", "#4FA8D8", "Oxygen (%)"]], 15.0, 25.0, 19.5)
-		out += _chart(version, [["coldest_c", "#E08A4A", "Coldest room (°C)"]], -10.0, 30.0, 15.0)
+		out += _chart(version, [["coldest_c", "#E08A4A", "Habitat temperature (°C)"]], -10.0, 30.0, 15.0)
 		out += _chart(version, [["crew_health", "#D9534F", "Crew health (%)"]], 0.0, 100.0, 50.0)
 	return out + "</div>"
 

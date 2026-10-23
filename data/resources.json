@@ -29,6 +29,7 @@
     "o2_min_pct": 19.5,
     "cold_c": 12.0,
     "danger_cold_c": 5.0,
+    "habitat_target_c": 21.0,
     "freedom_cargo_budget_kg": 140000.0,
     "resupply_sols_survival": 3.0,
     "resupply_kg_survival": 15000.0,

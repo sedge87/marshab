@@ -156,21 +156,21 @@ func evaluate(test_sim: RefCounted = null, test_hour := -1.0) -> Array:
 		chain.append_array([["wind", why, false], ["wind", "CO₂ %.2f%% %s" % [co2, _trend("co2", co2)], false], ["heart-pulse", "Crew health", true]])
 		out.append({"id": "co2", "level": co2_level, "title": "Carbon dioxide rising", "text": "Every breath adds CO₂ to the air. An air recycler scrubs it out.", "chain": chain})
 	# Cold rooms.
-	var coldest := 99.0
-	var coldest_room := ""
-	for room in s.crewed_rooms():
-		var t := float(s.room_temp.get(room.key, 20.0))
-		if t < coldest:
-			coldest = t
-			coldest_room = str(room.label)
-	if coldest < MHResources.setting("cold_c", 12.0):
+	var coldest := float(s.habitat_temp)
+	if not (s.crewed_rooms() as Array).is_empty() and coldest < MHResources.setting("cold_c", 12.0):
 		var heaters: Array = items.filter(func(i): return s.HEAT_ITEMS.has(str(i.id)) and float(i.power) > 0.0)
 		var why := "No heating" if float(inv.capacity.tcu_kw) <= 0.0 and heaters.is_empty() else ("Heating: no power" if not bool(tiers.get(2, true)) else "Heating at full stretch")
 		var chain: Array = []
 		if not bool(tiers.get(2, true)): chain.append(power_link)
-		chain.append_array([["flame", why, false], ["flame", "%s %d °C %s" % [coldest_room, roundi(coldest), _trend("cold", coldest)], false], ["heart-pulse", "Crew health", true]])
-		out.append({"id": "cold", "level": "critical" if coldest < MHResources.setting("danger_cold_c", 5.0) else "warning", "title": "%s is cold" % coldest_room,
+		chain.append_array([["flame", why, false], ["flame", "Habitat %d °C %s" % [roundi(coldest), _trend("cold", coldest)], false], ["heart-pulse", "Crew health", true]])
+		out.append({"id": "cold", "level": "critical" if coldest < MHResources.setting("danger_cold_c", 5.0) else "warning", "title": "The habitat is cold",
 			"text": "Mars nights fall below -70 °C. Heat leaks out through the walls and windows all the time.", "chain": chain})
+	# Cold spots: rooms the heating doesn't reach (the habitat as a whole may be fine).
+	if not (s.crewed_rooms() as Array).is_empty() and coldest >= MHResources.setting("cold_c", 12.0) and not (s.cold_spots as Array).is_empty():
+		var spots: Array = s.cold_spots
+		out.append({"id": "cold_spot", "level": "warning", "title": "Cold spot: %s" % ", ".join(spots.slice(0, 2)),
+			"text": "Not enough heat reaches %s. Spot heaters only warm their own room and the rooms next door." % ("these rooms" if spots.size() > 1 else str(spots[0])),
+			"chain": [["flame", "Heaters too far away", false], ["flame", "%s cold" % str(spots[0]), false], ["heart-pulse", "Crew comfort", true]]})
 	# Water and food.
 	var water_net := float(s.last.get("water_out", 0.0)) - float(s.last.get("water_in", 0.0))
 	if crew > 0 and water_net > 0.0 and float(snap.water_l) / water_net < 3.0:
@@ -198,6 +198,7 @@ const EXPLAIN := {
 	"o2": "People breathe in oxygen and breathe out carbon dioxide. On Mars the oxygen generator makes more by splitting water, and it needs power to do it.",
 	"co2": "Each crew member breathes out about 1 kg of CO₂ a day. Above 1% it causes headaches and poor thinking. Air recyclers scrub it out.",
 	"cold": "The habitat loses heat to Mars all the time, faster through windows and outside walls. Heaters need power to keep up, especially at night.",
+	"cold_spot": "A spot heater warms the room it's in and the rooms next door, nothing further. A thermal control unit is ducted to every room, and gives about three times the heat for the same power.",
 	"water": "Water is drunk, washed with, fed to plants and split into oxygen. Ice drills mine it, and the water reclaimer recycles most of what's used.",
 	"food": "Six people eat about 11 kg of food a sol. Supply landers bring freeze-dried food; growing your own makes the base last.",
 	"health": "Crew health falls when the air, warmth, water or food go wrong, and recovers once they're fixed.",

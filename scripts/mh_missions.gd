@@ -308,7 +308,7 @@ static func run_test(builder: Node) -> Dictionary:
 			"life_support_powered":
 				if result.pass: result.detail = "Life support had power the whole time."
 			"min_temp":
-				if result.pass: result.detail = "The coldest room never fell below %d °C." % int(requirement.get("min", 15))
+				if result.pass: result.detail = "The habitat never fell below %d °C." % int(requirement.get("min", 15))
 			"breathable":
 				if result.pass: result.detail = "Oxygen and carbon dioxide stayed in the safe range."
 			"crew_safe":
@@ -361,14 +361,14 @@ static func _sample_failure(check: String, spec: Dictionary, sample: Dictionary,
 		"life_support_powered":
 			if not bool(sample.get("life_support", true)): return "Life support lost power. " + _first_warning(sim, "power")
 		"min_temp":
-			if float(sample.coldest_c) < float(spec.get("min", 15)): return "A room fell to %d °C. %s" % [roundi(float(sample.coldest_c)), _heating_reason(sim)]
+			if float(sample.coldest_c) < float(spec.get("min", 15)): return "The habitat fell to %d °C. %s" % [roundi(float(sample.coldest_c)), _heating_reason(sim)]
 		"breathable":
 			if float(sample.o2_pct) < MHResources.setting("o2_min_pct", 19.5): return "Oxygen fell to %.1f%%. %s" % [float(sample.o2_pct), _first_warning(sim, "air")]
 			if float(sample.co2_pct) > MHResources.setting("co2_danger_pct", 1.0): return "Carbon dioxide rose to %.1f%%. %s" % [float(sample.co2_pct), _first_warning(sim, "air")]
 		"crew_safe":
 			var air := _sample_failure("breathable", spec, sample, sim)
 			if not air.is_empty(): return air
-			if float(sample.coldest_c) < MHResources.setting("cold_c", 12.0): return "A room fell to %d °C. %s" % [roundi(float(sample.coldest_c)), _first_warning(sim, "cold")]
+			if float(sample.coldest_c) < MHResources.setting("cold_c", 12.0): return "The habitat fell to %d °C. %s" % [roundi(float(sample.coldest_c)), _first_warning(sim, "cold")]
 			if float(sample.water_l) <= 0.0: return "The water ran out. " + _first_warning(sim, "water")
 			if float(sample.food_kg) <= 0.0: return "The food ran out. " + _first_warning(sim, "food")
 		"crew_health_min":
@@ -392,7 +392,7 @@ static func _tip(check: String, sample: Dictionary, hour_of_day: float, storm: b
 			return "Too much switched on at once. Add batteries to cover the peaks, or more power generation."
 		"min_temp":
 			if not why.contains("no thermal control unit") and not bool(sample.get("all_powered", true)): return "The heating lost power, so fix the power first and the rooms will stay warm."
-			return "Add heating (a thermal control unit, or a wall heater in the cold room) and keep it powered. Fewer windows and less outside wall lose less heat."
+			return "Add heating (a thermal control unit, or a heater anywhere inside) and keep it powered. Fewer windows and a compact layout with less outside wall lose less heat."
 		"breathable":
 			if float(sample.get("co2_pct", 0.0)) > MHResources.setting("co2_danger_pct", 1.0): return "The crew breathe out carbon dioxide. Add an air recycler to scrub it, and keep it powered."
 			return "Add an oxygen generator (it needs power and water) or more plants, and keep them powered."

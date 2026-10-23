@@ -82,7 +82,7 @@ func _draw_status() -> void:
 		["Carbon dioxide", "%.2f%%" % float(snap.co2_pct), Color("#C9A8FF"), float(snap.co2_pct) <= MHResources.setting("co2_danger_pct", 1.0)],
 		["Water", "%d L" % roundi(float(snap.water_l)), Color("#6FB8FF"), float(snap.water_l) > 0.0],
 		["Food", "%d kg" % roundi(float(snap.food_kg)), Color("#9AE07A"), float(snap.food_kg) > 0.0],
-		["Coldest room", "%d °C" % roundi(float(snap.coldest_c)), Color("#FFB37A"), float(snap.coldest_c) >= 15.0],
+		["Temperature", "%d °C" % roundi(float(snap.coldest_c)), Color("#FFB37A"), float(snap.coldest_c) >= 15.0],
 		["Crew health", "%d%%" % roundi(float(snap.crew_health)), Color("#FF8A8A"), float(snap.crew_health) >= 50.0]]
 	var columns := 3
 	var cell_w := (size.x - 48 * u) / columns

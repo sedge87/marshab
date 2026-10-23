@@ -676,7 +676,7 @@ class TestGraph extends Control:
 			x0 += font.get_string_size(entry[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 44.0
 
 ## Life support over the test, one strip each: oxygen, carbon dioxide, food,
-## the coldest crewed room and crew health, each with its safe line, so
+## the habitat temperature and crew health, each with its safe line, so
 ## students can see how close it came (and when).
 class LifeGraph extends Control:
 	var report: Dictionary
@@ -686,7 +686,7 @@ class LifeGraph extends Control:
 		["Oxygen", "o2_pct", 15.0, 25.0, 19.5, true, Color("#7FD6FF"), "%"],
 		["Carbon dioxide", "co2_pct", 0.0, 2.0, 1.0, false, Color("#C9A8FF"), "%"],
 		["Food", "food_kg", 0.0, -1.0, 0.0, true, Color("#9AE07A"), " kg"],
-		["Coldest room", "coldest_c", -10.0, 30.0, 15.0, true, Color("#FFB37A"), " °C"],
+		["Temperature", "coldest_c", -10.0, 30.0, 15.0, true, Color("#FFB37A"), " °C"],
 		["Crew health", "crew_health", 0.0, 100.0, 50.0, true, Color("#FF8A8A"), "%"]]
 
 	func _draw() -> void:

@@ -24,7 +24,6 @@ const RECYCLER_MAKES_OXYGEN := false
 const WORK_ROOMS := ["science", "hydroponics", "engineering", "communications", "life_support", "medical", "storage", "waste_management", "vehicle_bay"]
 const AIR_DENSITY := 1.2      # kg per m3 of cabin air
 const CELL_VOLUME := 26.1     # m3: 3 x 3 x 2.9 m
-const ROOM_LINK_KW_PER_C := 0.15  # heat shared per touching cell edge between rooms
 const THERMAL_MASS_KWH_PER_C := 0.07  # per cell: air, structure and contents
 
 var builder: Node
@@ -36,7 +35,15 @@ var food_kg := 0.0
 var o2_reserve_kg := 0.0
 var o2_pct := 21.0
 var co2_pct := 0.04
-var room_temp := {}           # room key -> degrees C
+## One temperature for the whole habitat (merged from per-room, 23 Oct): like
+## Subnautica, everything you monitor is base-wide. room_temp still gives each
+## room a reading: heated rooms share habitat_temp; airlocks and the vehicle
+## bay are unheated by design and sit between it and outside.
+var habitat_temp := 20.0
+## Heated rooms the heating can't keep up with (see _heat_coverage).
+var cold_spots: Array = []
+var room_temp := {}           # room key -> degrees C (derived, see _sync_room_temps)
+const UNHEATED := ["airlock", "vehicle_bay"]
 var crew_health := 100.0
 ## Why crew health is falling right now (plain words), for the HUD.
 var health_causes: Array = []
@@ -104,14 +111,19 @@ func invalidate() -> void:
 
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
-		"room_temp": room_temp.duplicate(), "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
+		"habitat_temp": habitat_temp, "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
 		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
 	battery_kwh = float(state.get("battery_kwh", 0.0)); water_l = float(state.get("water_l", 0.0)); food_kg = float(state.get("food_kg", 0.0))
 	o2_reserve_kg = float(state.get("o2_reserve_kg", 0.0)); o2_pct = float(state.get("o2_pct", 21.0)); co2_pct = float(state.get("co2_pct", 0.04))
-	room_temp = (state.get("room_temp", {}) as Dictionary).duplicate()
+	# Older saves kept a temperature per room: the warmest heated one stands in.
+	habitat_temp = float(state.get("habitat_temp", -999.0))
+	if habitat_temp < -500.0:
+		var old: Dictionary = state.get("room_temp", {})
+		habitat_temp = float(old.values().max()) if not old.is_empty() else 20.0
+	room_temp = {}
 	crew_health = float(state.get("crew_health", 100.0)); crew_evacuated = bool(state.get("crew_evacuated", false))
 	storm_hours_left = float(state.get("storm_hours_left", 0.0)); storm_eta_hours = float(state.get("storm_eta_hours", -1.0)); hours_run = float(state.get("hours_run", 0.0))
 	_known_capacity = (state.get("known_capacity", _known_capacity) as Dictionary).duplicate()
@@ -157,17 +169,15 @@ func inventory() -> Dictionary:
 				for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 					if not builder._is_habitat_zone(builder._zone_across(cell, side)): hull += cell_size * BuildController.ROOM_HEIGHT
 		var room := {"key": _room_key(zone), "kind": kind, "label": str(BuildController.ZONE_TYPES.get(kind, {}).get("label", kind)), "cells": count, "hull_m2": hull,
-			"windows": 0, "target": float(MHResources.room(kind).get("target_c", 18.0)), "zone": zone, "links": {}}
+			"windows": 0, "zone": zone, "next": []}
 		for cell in cells: room_of_cell[cell] = rooms.size()
 		rooms.append(room)
-	# Shared walls between rooms let heat flow from warm rooms to cold ones.
+	# Rooms that share a wall: a spot heater also warms the rooms next door.
 	for index in range(rooms.size()):
 		for cell in rooms[index].zone.get("cells", []):
-			for side in [Vector2i(1, 0), Vector2i(0, 1)]:
+			for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				var other: int = room_of_cell.get(cell + side, -1)
-				if other >= 0 and other != index:
-					rooms[index].links[other] = int(rooms[index].links.get(other, 0)) + 1
-					rooms[other].links[index] = int(rooms[other].links.get(index, 0)) + 1
+				if other >= 0 and other != index and not (rooms[index].next as Array).has(other): rooms[index].next.append(other)
 	for window in builder.hull_windows:
 		var inside: Vector2 = Vector2(window.mid) - Vector2(window.dir) * .75
 		var cell := Vector2i(roundi(inside.x / cell_size), roundi(inside.y / cell_size))
@@ -344,8 +354,7 @@ func step(dt: float, hour: float) -> void:
 		if storm_eta_hours <= 0.0: start_storm()
 	elif random_storms and _rng.randf() < float(site.get("dust_storms_per_100_sols", 1.0)) / 100.0 / 24.0 * dt:
 		forecast_storm()
-	for room in rooms:
-		if not room_temp.has(room.key): room_temp[room.key] = _starting_temp(room, outside)
+	if room_temp.size() != rooms.size(): _sync_room_temps(rooms, outside)
 	# --- people: where the crew are at this hour ---
 	var people := _crew_by_room(rooms, crew, hour)
 	# --- room loads and heat balance before power (to size the heat pump) ---
@@ -363,12 +372,11 @@ func step(dt: float, hour: float) -> void:
 	var window_u := u * MHResources.setting("window_loss_factor", 6.0) * MHResources.setting("window_area", 3.0)
 	for index in range(rooms.size()):
 		var room: Dictionary = rooms[index]
-		loss.append((float(room.hull_m2) * u + float(room.windows) * window_u) * (float(room_temp[room.key]) - outside) / 1000.0)
-	# Heat from machines and people assuming everything gets power.
-	var gains := _room_gains(rooms, inv.items, people, room_base_kw, room_light_kw, {1: true, 2: true, 3: true, 4: true})
-	var pump := _heat_pump(rooms, loss, gains, float(inv.capacity.tcu_kw))
+		loss.append((float(room.hull_m2) * u + float(room.windows) * window_u) * (habitat_temp - outside) / 1000.0 if _heated(room) else 0.0)
+	# Heat reaching each room, assuming everything gets power (sizes the heat pump's draw).
+	var heat := _heat_coverage(rooms, inv.items, people, room_base_kw, room_light_kw, {1: true, 2: true, 3: true, 4: true}, loss, float(inv.capacity.tcu_kw))
 	# --- power ---
-	var tiers := {1: 0.0, 2: pump.electric_kw, 3: 0.0, 4: 0.0}
+	var tiers := {1: 0.0, 2: heat.electric_kw, 3: 0.0, 4: 0.0}
 	for index in range(rooms.size()):
 		tiers[TIER_LIFE] += room_base_kw[index]
 		tiers[TIER_LIGHT] += room_light_kw[index]
@@ -385,28 +393,25 @@ func step(dt: float, hour: float) -> void:
 	if inv.isolated: generation = 0.0
 	var powered := _power(dt, generation, tiers, float(inv.capacity.kwh), inv.isolated)
 	# --- heat with the power actually available ---
-	gains = _room_gains(rooms, inv.items, people, room_base_kw, room_light_kw, powered.tiers)
-	if not powered.tiers[TIER_HEAT]: pump = {"delivered": [], "electric_kw": 0.0}
-	# Each room relaxes exponentially towards the temperature where its heat
-	# in and out balance (neighbours held for the step). Same answer as a
-	# plain Euler step when dt is small, and stable for long fast-forward steps.
-	var temps_before := room_temp.duplicate()
+	heat = _heat_coverage(rooms, inv.items, people, room_base_kw, room_light_kw, powered.tiers, loss, float(inv.capacity.tcu_kw))
+	# One habitat temperature: the heat that actually reaches the heated rooms
+	# (see _heat_coverage) against all the heat they lose through the hull and
+	# windows. It relaxes exponentially towards the balance temperature, which
+	# is stable for long fast-forward steps.
+	var hull_g := 0.0
+	var mass := 0.0
+	var heat_in := float(heat.useful)
 	for index in range(rooms.size()):
-		var room: Dictionary = rooms[index]
-		var t := float(temps_before[room.key])
-		var hull_g := (float(room.hull_m2) * u + float(room.windows) * window_u) / 1000.0   # kW per °C to outside
-		var heat_in := float(gains[index]) + (float(pump.delivered[index]) if index < (pump.delivered as Array).size() else 0.0) + hull_g * outside
-		var g := hull_g
-		for other in room.links:
-			var link_g := ROOM_LINK_KW_PER_C * int(room.links[other])
-			heat_in += link_g * float(temps_before[rooms[other].key])
-			g += link_g
-		var mass := float(room.cells) * THERMAL_MASS_KWH_PER_C
-		if g <= 0.000001:
-			room_temp[room.key] = t + heat_in * dt / mass
+		if not _heated(rooms[index]): continue
+		hull_g += (float(rooms[index].hull_m2) * u + float(rooms[index].windows) * window_u) / 1000.0   # kW per °C to outside
+		mass += float(rooms[index].cells) * THERMAL_MASS_KWH_PER_C
+	if mass > 0.0:
+		if hull_g <= 0.000001: habitat_temp += heat_in * dt / mass
 		else:
-			var balance := heat_in / g
-			room_temp[room.key] = balance + (t - balance) * exp(-g * dt / mass)
+			var balance := heat_in / hull_g + outside
+			habitat_temp = balance + (habitat_temp - balance) * exp(-hull_g * dt / mass)
+	cold_spots = heat.cold_spots
+	_sync_room_temps(rooms, outside)
 	# --- air, water, food ---
 	var per_sol := dt / 24.0
 	var air_kg := maxf(1.0, float(inv.cells) * CELL_VOLUME * AIR_DENSITY)
@@ -450,10 +455,10 @@ func step(dt: float, hour: float) -> void:
 	# --- crew condition ---
 	_crew_condition(dt, crew, rooms, people)
 	last = {"hour": hour, "generation_kw": generation, "load_kw": powered.load_kw, "demand_kw": tiers[1] + tiers[2] + tiers[3] + tiers[4],
-		"tiers": powered.tiers, "tier_kw": tiers, "battery_rate_kw": powered.battery_kw, "heat_pump_kw": pump.electric_kw, "outside_c": outside,
+		"tiers": powered.tiers, "tier_kw": tiers, "battery_rate_kw": powered.battery_kw, "heat_pump_kw": heat.electric_kw, "outside_c": outside, "heat_wasted_kw": heat.wasted,
 		"storm": storm_hours_left > 0.0, "storm_hours_left": storm_hours_left, "storm_eta": storm_eta_hours, "crew": crew, "people": people, "water_in": (water_made + water_recovered + drill_water) / per_sol,
 		"water_out": water_used / per_sol, "food_in": food_grown / per_sol, "o2_in": o2_made / per_sol, "co2_out": co2_removed / per_sol,
-		"heat_capacity_short": pump.get("short", false), "night": night, "free_power": MHGame.debug_free_power}
+		"heat_capacity_short": heat.short, "night": night, "free_power": MHGame.debug_free_power}
 
 ## Solar output at an hour: each array catches most light facing the sun
 ## (same rule as the build view's "SOLAR % AT NOON" label).
@@ -465,11 +470,19 @@ func _solar_kw(facings: Array, hour: float) -> float:
 	for facing in facings: total += MHResources.setting("solar_peak_kw", 10.0) * (.55 + .45 * (facing as Vector2).dot(heading)) * sun
 	return total
 
-func _starting_temp(room: Dictionary, outside: float) -> float:
-	# A new room starts at the average of the rooms it joins, or just above outside.
-	var temps: Array = []
-	for other_key in room_temp: temps.append(room_temp[other_key])
-	return temps.reduce(func(a, b): return a + b, 0.0) / temps.size() if not temps.is_empty() else outside + 10.0
+## The habitat's comfortable target (heat pump set point).
+static func habitat_target() -> float:
+	return MHResources.setting("habitat_target_c", 21.0)
+
+static func _heated(room: Dictionary) -> bool:
+	return not str(room.kind) in UNHEATED
+
+## Each room's reading: the habitat temperature, or (airlocks and the vehicle
+## bay, unheated by design) halfway between it and outside.
+func _sync_room_temps(rooms: Array, outside: float) -> void:
+	room_temp = {}
+	for room in rooms:
+		room_temp[room.key] = habitat_temp if _heated(room) else (habitat_temp + outside) * .5
 
 ## Crew positions by hour: asleep in Living Quarters at night, in the Galley at
 ## mealtimes, spread over the work rooms in the day.
@@ -494,38 +507,66 @@ func _crew_by_room(rooms: Array, crew: int, hour: float) -> Array:
 	for index in choices: people[index] = crew * float(rooms[index].cells) / total_cells
 	return people
 
-func _room_gains(rooms: Array, items: Array, people: Array, base_kw: Array, light_kw: Array, tiers: Dictionary) -> Array:
-	var gains: Array = []
-	for index in range(rooms.size()):
-		gains.append(float(people[index]) * MHResources.setting("body_heat_kw", .1) + (base_kw[index] if tiers[TIER_LIFE] else 0.0) + (light_kw[index] if tiers[TIER_LIGHT] else 0.0))
-	for item in items:
-		if item.room < 0 or not tiers[item.tier] or item.id == "thermal_control_unit": continue
-		gains[item.room] += item.power   # almost all electricity ends up as heat
-	return gains
-
-## The thermal control unit: a heat pump serving every room. It moves heat into
-## rooms below target (or out of rooms too hot), up to its capacity.
-func _heat_pump(rooms: Array, loss: Array, gains: Array, capacity_kw: float) -> Dictionary:
-	var want: Array = []
-	var total := 0.0
+## How heat reaches the rooms (the coverage rule, 23 Oct):
+##   - people, lights and machines warm the room they're in;
+##   - a spot heater (wall or portable) warms its own room and the rooms next
+##     door, up to what they need; heat beyond that is wasted;
+##   - the thermal control unit (a ducted heat pump, about 3 kW of heat per kW
+##     of power) tops up every heated room, up to its capacity;
+##   - a heated room still short of what it loses is a cold spot.
+## A room "needs" what it loses, plus enough to warm up towards the target.
+## Returns {useful, electric_kw, short, wasted, cold_spots: [labels]}.
+func _heat_coverage(rooms: Array, items: Array, people: Array, base_kw: Array, light_kw: Array, tiers: Dictionary, loss: Array, tcu_kw: float) -> Dictionary:
+	var target := habitat_target()
+	var need: Array = []
+	var have: Array = []
 	for index in range(rooms.size()):
 		var room: Dictionary = rooms[index]
-		var t := float(room_temp[room.key])
-		var mass := float(room.cells) * THERMAL_MASS_KWH_PER_C
-		var need := 0.0
-		if t < float(room.target) + .5:
-			need = maxf(0.0, (float(room.target) - t) * mass / 1.0 + float(loss[index]) - float(gains[index]))
-		elif t > float(room.target) + 4.0:
-			need = -maxf(0.0, (t - float(room.target) - 2.0) * mass / 1.0 + float(gains[index]) - float(loss[index]))
-		want.append(need)
-		total += absf(need)
-	var share := minf(1.0, capacity_kw / total) if total > 0.0 else 0.0
-	var delivered: Array = []
-	var moved := 0.0
-	for need in want:
-		delivered.append(float(need) * share)
-		moved += absf(float(need) * share)
-	return {"delivered": delivered, "electric_kw": moved / MHResources.setting("heat_pump_cop", 3.0), "short": total > capacity_kw + .01}
+		var warm_up := maxf(0.0, (target - habitat_temp) * float(room.cells) * THERMAL_MASS_KWH_PER_C)
+		need.append(float(loss[index]) + warm_up if _heated(room) else 0.0)
+		have.append(float(people[index]) * MHResources.setting("body_heat_kw", .1) + (base_kw[index] if tiers[TIER_LIFE] else 0.0) + (light_kw[index] if tiers[TIER_LIGHT] else 0.0))
+	for item in items:
+		if item.room < 0 or not tiers[item.tier] or item.id == "thermal_control_unit" or HEAT_ITEMS.has(item.id): continue
+		have[item.room] += item.power   # almost all electricity ends up as heat
+	# Spot heaters: their room and its neighbours, filling whoever still needs heat.
+	var wasted := 0.0
+	for item in items:
+		if not HEAT_ITEMS.has(item.id) or item.room < 0 or not tiers[item.tier] or float(item.power) <= 0.0: continue
+		var kw := float(item.power)
+		var reach: Array = [item.room] + (rooms[item.room].next as Array)
+		reach = reach.filter(func(r): return _heated(rooms[r]))
+		for attempt in 4:
+			var open: Array = reach.filter(func(r): return float(have[r]) < float(need[r]) - .001)
+			if open.is_empty() or kw <= .001: break
+			var each := kw / open.size()
+			for r in open:
+				var take := minf(each, float(need[r]) - float(have[r]))
+				have[r] += take
+				kw -= take
+		wasted += kw
+	# The thermal control unit reaches every heated room.
+	var short := 0.0
+	for index in range(rooms.size()): short += maxf(0.0, float(need[index]) - float(have[index]))
+	var delivered := 0.0
+	if tiers[TIER_HEAT] and tcu_kw > 0.0 and short > 0.0:
+		delivered = minf(tcu_kw, short)
+		var share := delivered / short
+		for index in range(rooms.size()): have[index] += maxf(0.0, float(need[index]) - float(have[index])) * share
+	var useful := 0.0
+	var cold: Array = []
+	for index in range(rooms.size()):
+		if not _heated(rooms[index]): continue
+		useful += minf(float(have[index]), float(need[index]))   # heat beyond what a room needs doesn't warm the others
+		if float(loss[index]) > .05 and float(have[index]) < float(loss[index]) * .9: cold.append(str(rooms[index].label))
+	# Too warm: the heat pump runs backwards and takes the excess out.
+	if tiers[TIER_HEAT] and tcu_kw > 0.0 and habitat_temp > target + 4.0:
+		var mass := 0.0
+		for index in range(rooms.size()):
+			if _heated(rooms[index]): mass += float(rooms[index].cells) * THERMAL_MASS_KWH_PER_C
+		var cooling := minf(tcu_kw, (habitat_temp - target - 2.0) * mass)
+		useful -= cooling
+		delivered += cooling
+	return {"useful": useful, "electric_kw": delivered / MHResources.setting("heat_pump_cop", 3.0), "short": short > tcu_kw + .01, "wasted": wasted, "cold_spots": cold}
 
 ## Supply the highest tiers the generators and batteries can carry; shed the rest.
 func _power(dt: float, generation: float, tiers: Dictionary, capacity_kwh: float, isolated := false) -> Dictionary:
@@ -556,7 +597,7 @@ func _crew_condition(dt: float, crew: int, rooms: Array, people: Array) -> void:
 	if o2_pct < 16.0: harm += 10.0; health_causes.append("oxygen dangerous")
 	elif o2_pct < MHResources.setting("o2_min_pct", 19.5): harm += 1.0; health_causes.append("oxygen low")
 	for index in range(rooms.size()):
-		if float(people[index]) > 0.0 and float(room_temp[rooms[index].key]) < MHResources.setting("danger_cold_c", 5.0): harm += 3.0; health_causes.append("a crewed room is freezing"); break
+		if float(people[index]) > 0.0 and float(room_temp.get(rooms[index].key, habitat_temp)) < MHResources.setting("danger_cold_c", 5.0): harm += 3.0; health_causes.append("the habitat is freezing"); break
 	if water_l <= 0.0: harm += 1.0; health_causes.append("no water")
 	if food_kg <= 0.0: harm += .3; health_causes.append("no food")
 	if harm > 0.0:
@@ -643,15 +684,14 @@ func room_temperature(zone: Dictionary) -> float:
 ## Tests start with the heating already having warmed every room (like
 ## full batteries): what's tested is whether it keeps them warm.
 func prewarm_rooms() -> void:
-	for room in crewed_rooms():
-		var target := float(MHResources.room(str(room.kind)).get("target_c", 18.0))
-		room_temp[room.key] = maxf(float(room_temp.get(room.key, -60.0)), target)
+	habitat_temp = maxf(habitat_temp, habitat_target())
+	room_temp = {}
 
 ## One reading for graphs and test reports.
 func snapshot(hour: float) -> Dictionary:
 	var inv := inventory()
-	var coldest := 99.0
-	for room in crewed_rooms(): coldest = minf(coldest, float(room_temp.get(room.key, 20.0)))
+	# "coldest_c" (kept as the key for saved versions) is now the habitat temperature.
+	var coldest := habitat_temp if not crewed_rooms().is_empty() else 99.0
 	return {"hours": hours_run, "hour": hour, "battery_pct": 100.0 * battery_kwh / maxf(.001, float(inv.capacity.kwh)) if float(inv.capacity.kwh) > 0.0 else 0.0,
 		"battery_kwh": battery_kwh, "generation_kw": float(last.get("generation_kw", 0.0)), "load_kw": float(last.get("load_kw", 0.0)),
 		"water_l": water_l, "food_kg": food_kg, "o2_pct": o2_pct, "co2_pct": co2_pct, "coldest_c": coldest if coldest < 98.0 else 0.0,
@@ -679,21 +719,20 @@ func warnings() -> Array:
 		out.append({"level": "danger" if co2_pct > MHResources.setting("co2_danger_pct", 1.0) else "warn", "text": "CO₂ is %.1f%% and rising: %s." % [co2_pct, why]})
 	if o2_pct < 20.0:
 		out.append({"level": "danger" if o2_pct < MHResources.setting("o2_min_pct", 19.5) else "warn", "text": "Oxygen is %.1f%%: %s." % [o2_pct, "the reserve tanks are empty" if o2_reserve_kg <= 0.0 else "the reserve tanks are running down"]})
-	# Cold rooms where the crew live and work, coldest first, in one warning.
-	var cold: Array = crewed_rooms().filter(func(room): return float(room_temp.get(room.key, 20.0)) < MHResources.setting("cold_c", 12.0))
-	cold.sort_custom(func(a, b): return float(room_temp.get(a.key, 20.0)) < float(room_temp.get(b.key, 20.0)))
-	if not cold.is_empty():
+	# The habitat is cold (one temperature for the whole base).
+	if not crewed_rooms().is_empty() and habitat_temp < MHResources.setting("cold_c", 12.0):
 		var why := "the heating is still warming it up"
 		var heaters_here: Array = (inv.items as Array).filter(func(i): return HEAT_ITEMS.has(i.id) and i.power > 0.0)
 		if float(inv.capacity.tcu_kw) <= 0.0 and heaters_here.is_empty(): why = "there is no thermal control unit or heater"
 		elif not tiers.get(2, true): why = "there is no power for heating"
-		elif bool(last.get("heat_capacity_short", false)): why = "the thermal control units are at full capacity"
-		var names: Array = []
-		for room in cold.slice(0, 3): names.append("%s %d °C" % [room.label, roundi(float(room_temp.get(room.key, 20.0)))])
-		var windows: bool = int(cold.reduce(func(total, room): return total + int(room.windows), 0)) > 0
-		var coldest := float(room_temp.get(cold[0].key, 20.0))
-		out.append({"level": "danger" if coldest < MHResources.setting("danger_cold_c", 5.0) else "warn",
-			"text": "%s cold (%s%s): %s%s." % ["%d rooms are" % cold.size() if cold.size() > 1 else "A room is", ", ".join(names), ", …" if cold.size() > 3 else "", why, ", and windows lose heat" if windows else ""]})
+		elif bool(last.get("heat_capacity_short", false)): why = "the heating is at full capacity"
+		var windows: bool = int((inv.rooms as Array).reduce(func(total, room): return total + int(room.windows), 0)) > 0
+		out.append({"level": "danger" if habitat_temp < MHResources.setting("danger_cold_c", 5.0) else "warn",
+			"text": "The habitat is cold (%d °C): %s%s." % [roundi(habitat_temp), why, ", and windows lose heat" if windows else ""]})
+	# Cold spots: heated rooms the heating doesn't reach well enough.
+	elif not crewed_rooms().is_empty() and not cold_spots.is_empty():
+		out.append({"level": "warn", "text": "Cold spot%s: %s. Not enough heat reaches %s: add a spot heater in or next to %s, or a thermal control unit (it reaches every room)." % [
+			"s" if cold_spots.size() > 1 else "", ", ".join(cold_spots.slice(0, 3)), "them" if cold_spots.size() > 1 else "it", "them" if cold_spots.size() > 1 else "it"]})
 	var water_per_sol := float(last.get("water_out", 0.0)) - float(last.get("water_in", 0.0))
 	if crew > 0 and water_per_sol > 0.0 and water_l / water_per_sol < 3.0:
 		out.append({"level": "danger" if water_l <= 0.0 else "warn", "text": "Water runs out in %.1f sols: using %d L more than is made each sol." % [water_l / water_per_sol, roundi(water_per_sol)]})

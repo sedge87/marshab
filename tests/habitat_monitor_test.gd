@@ -52,13 +52,21 @@ func _initialize() -> void:
 	for i in range(rooms.size()):
 		if str(rooms[i].kind) == "living": living = i
 		if str(rooms[i].kind) == "hydroponics": hydro = i
-	sim.room_temp[rooms[living].key] = 20.0
-	_check(m.room_reading(living).state == "ok", "a warm room with nothing switched off is fine")
-	sim.room_temp[rooms[living].key] = 10.0
-	_check(m.room_reading(living).state == "warn", "a cold room is a warning")
-	sim.room_temp[rooms[living].key] = 2.0
-	_check(m.room_reading(living).state == "danger" and (m.room_reading(living).problems as Array).has("Dangerously cold"), "a freezing room is critical")
-	sim.room_temp[rooms[living].key] = 20.0
+	# One habitat temperature (merged 23 Oct), plus cold spots the heating can't reach.
+	var set_temp := func(t: float) -> void:
+		sim.habitat_temp = t
+		sim._sync_room_temps(rooms, -40.0)
+	sim.cold_spots = []
+	set_temp.call(20.0)
+	_check(m.room_reading(living).state == "ok", "a warm habitat with nothing switched off is fine")
+	set_temp.call(10.0)
+	_check(m.room_reading(living).state == "warn", "a cold habitat is a warning")
+	set_temp.call(2.0)
+	_check(m.room_reading(living).state == "danger" and (m.room_reading(living).problems as Array).has("The habitat is dangerously cold"), "a freezing habitat is critical")
+	set_temp.call(20.0)
+	sim.cold_spots = [str(rooms[living].label)]
+	_check(m.room_reading(living).state == "warn" and str(m.room_reading(living).problems).contains("Cold spot"), "a room the heating can't reach is a cold spot")
+	sim.cold_spots = []
 
 	# What machines are doing.
 	var tray: Dictionary = (sim.inventory().items as Array).filter(func(i): return str(i.id) == "grow_tray")[0]

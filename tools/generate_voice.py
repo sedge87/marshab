@@ -60,6 +60,8 @@ LINES = {
     "storm_cleared": "Dust storm has passed. Solar output recovering.",
     "welcome_home": "Welcome home.",
     "welcome_aboard": "Welcome aboard. Habitat systems online.",
+    "cold_spot_warning": "Warning. Cold spot detected.",
+    "resolved_cold_spot": "Heating restored.",
 }
 
 
