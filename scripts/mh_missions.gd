@@ -69,6 +69,14 @@ static func save_state() -> Dictionary:
 static func load_state(state: Dictionary) -> void:
 	if state.is_empty(): reset()
 	else: progress = state.duplicate(true)
+	# A campaign finished before later missions existed (Mission 6 used to be
+	# the last) moves on to the next mission that is available now.
+	var guard := 0
+	while is_complete(str(progress.current)) and guard < 20:
+		guard += 1
+		var next := next_after(str(progress.current))
+		if next.is_empty() or not bool(next.get("available", false)): break
+		progress.current = str(next.id)
 
 # ---------- what this mission allows ----------
 
