@@ -71,24 +71,22 @@ vec2 polygons(vec2 p, float size) {
 }
 
 void ice_ground(inout vec3 colour, vec2 p, float near, float flatness) {
-	// Each frozen polygon its own shade; dark troughs between them, with
-	// frost caught along their rims.
+	// Each frozen polygon its own shade; shallow troughs between them with a
+	// little frost caught in them (realistic pass: subtle, not white grout).
 	vec2 poly = polygons(p, 9.0);
-	colour *= mix(0.94, 1.06, poly.y);
+	colour *= mix(0.96, 1.04, poly.y);
 	float trough = 1.0 - smoothstep(0.12, 0.45, poly.x);
-	float rim = smoothstep(0.3, 0.55, poly.x) * (1.0 - smoothstep(0.55, 1.2, poly.x));
-	colour = mix(colour, colour * vec3(0.62, 0.6, 0.64), trough * 0.85);
-	colour = mix(colour, frost_colour, rim * 0.35);
+	colour = mix(colour, colour * vec3(0.8, 0.78, 0.8), trough * 0.5);
+	colour = mix(colour, frost_colour, trough * 0.05 * smoothstep(0.5, 0.8, value_noise(p * 0.5)));
 	// Hairline cracks inside each polygon, up close.
 	// Warped and patchy, so they read as fractures, not paving.
 	vec2 warped = p + vec2(fbm(p * 0.9), fbm(p * 0.9 + 9.0)) * 0.9 + vec2(41.0, 17.0);
 	vec2 fine = polygons(warped, 2.3);
 	float hairline = (1.0 - smoothstep(0.015, 0.045, fine.x)) * smoothstep(0.4, 0.65, value_noise(p * 0.35));
 	colour *= 1.0 - 0.14 * hairline * near;
-	// Frost drifts: pale blue-white patches, heavier on level ground.
-	float drift = smoothstep(0.48, 0.7, fbm(p * 0.07 + 5.0)) * (0.5 + 0.5 * flatness);
-	float sparkle = value_noise(p * 18.0) * near;
-	colour = mix(colour, frost_colour, clamp(drift * 0.5 + sparkle * drift * 0.2, 0.0, 0.58));
+	// Frost: a few thin patches on level ground, not a snowfield.
+	float drift = smoothstep(0.58, 0.75, fbm(p * 0.07 + 5.0)) * flatness;
+	colour = mix(colour, frost_colour, clamp(drift * 0.28, 0.0, 0.3));
 }
 
 // ---------- realistic Open Plains (style 2, 24 Oct) ----------
@@ -188,6 +186,29 @@ void fragment() {
 		NORMAL = n;
 	} else if (style == 1) {
 		ice_ground(colour, p, near, flatness);
+		// Exposed ice (UV.x): the cliff face, banded blue-white ice with thin
+		// layers of dust between, streaked where blocks have fallen away.
+		if (UV.x > 0.01) {
+			float layers = fract(world_pos.y / 2.3 + fbm(vec2(world_pos.z * 0.05, world_pos.y * 0.2)) * 0.35);
+			vec3 ice = mix(vec3(0.6, 0.66, 0.7), vec3(0.72, 0.77, 0.8), value_noise(vec2(world_pos.z * 0.3, world_pos.y * 1.5)));
+			ice = mix(ice, vec3(0.48, 0.41, 0.37), smoothstep(0.78, 0.92, layers));
+			// Dust washed down the face in streaks.
+			ice = mix(ice, ice * vec3(0.86, 0.8, 0.76), smoothstep(0.55, 0.8, value_noise(vec2(world_pos.z * 0.8, world_pos.y * 0.05))));
+			ice *= mix(0.9, 1.04, value_noise(vec2(world_pos.z * 2.0, world_pos.y * 0.15)));
+			colour = mix(colour, ice, UV.x);
+		}
+		// Bright ice (UV.y): dug up by fresh craters, and Korolev's dome.
+		if (UV.y > 0.01) {
+			// Patchy, as real exposures are, and dulled by dust.
+			vec3 ice = mix(vec3(0.74, 0.79, 0.82), vec3(0.84, 0.87, 0.89), fbm(p * 0.3));
+			float patchy = smoothstep(0.35, 0.6, fbm(p * 0.9 + 7.0));
+			colour = mix(colour, ice, UV.y * mix(0.55, 1.0, patchy));
+		}
+		// Glacier rubble (UV2.x): grooved and pitted debris over the ice.
+		if (UV2.x > 0.01) {
+			float pits = smoothstep(0.6, 0.75, fbm(p * 0.6));
+			colour = mix(colour, colour * mix(1.0, 0.75, pits), UV2.x);
+		}
 	} else {
 		// Dust ripples: wavy crests about 0.7 m apart, only on level ground.
 		float phase = dot(p, wind) * 9.0 + fbm(p * 0.6) * 6.0;
@@ -204,7 +225,7 @@ void fragment() {
 		colour *= mix(1.0, mix(0.94, 1.05, grit), 1.0 - smoothstep(3.0, 16.0, length(VERTEX)));
 	}
 
-	if (style != 2) {
+	if (style == 0) {
 		// Pebbles: about one in six 0.8 m cells holds a small round stone.
 		vec2 cell = floor(p * 1.25);
 		vec2 local = fract(p * 1.25);
@@ -226,7 +247,7 @@ void fragment() {
 	}
 
 	ALBEDO = colour;
-	// Ice catches a faint sheen; dust doesn't.
-	ROUGHNESS = style == 1 ? 0.7 : 1.0;
-	SPECULAR = style == 1 ? 0.25 : 0.0;
+	// Ice catches a faint sheen; dust doesn't. Exposed ice shines a little more.
+	ROUGHNESS = style == 1 ? mix(0.75, 0.6, max(UV.x, UV.y)) : 1.0;
+	SPECULAR = style == 1 ? 0.2 : 0.0;
 }

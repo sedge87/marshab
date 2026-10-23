@@ -258,12 +258,106 @@ static func _crater_height(p: Vector2) -> float:
 	h = maxf(h, pow(mound, 1.4) * float(s.get("mound_height", 8.0)))
 	return h
 
+# ---------- Ice Fields: "the ice frontier" (realistic pass, 24 Oct) ----------
+# Real places, combined: a cliff of exposed, banded water ice under a thin
+# dusty cap (the mid-latitude ice scarps HiRISE found in 2018); mesas wrapped
+# in debris-covered glaciers (Deuteronilus Mensae); small fresh craters that
+# dug up bright ice, with dark blast halos (Arcadia Planitia), placed just
+# outside the build area beside the richest buried ice; and on the eastern
+# horizon a crater filled with a dome of ice (Korolev). Polygon ground in
+# between, as at Utopia Planitia and the Phoenix landing site.
+
+const ICE_CLIFF_X := -104.0
+const ICE_CLIFF_TOP := 26.0
+const KOROLEV := Vector3(330.0, -150.0, 120.0)   # x, z, radius
+static var _ice_craters: Array = []
+static var _ice_mesas: Array = [[Vector2(-20.0, -158.0), 16.0, 18.0], [Vector2(70.0, 168.0), 14.0, 15.0]]
+
+static func _ice_setup() -> void:
+	_plains_setup()
+	if not _ice_craters.is_empty(): return
+	# Beside each buried ice deposit, just outside the build area.
+	var half := float(settings().get("pad_half", 70.0)) + PAD_MARGIN
+	for deposit in MHGame.site().get("ice_deposits", []):
+		var at := Vector2(float(deposit.x), float(deposit.z))
+		var out := at.normalized() if at.length() > 1.0 else Vector2.RIGHT
+		var edge := half / maxf(absf(out.x), absf(out.y))
+		_ice_craters.append([at + out * (edge - at.length() + 16.0), 5.5 + float(deposit.richness) * 3.0, .22])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 909
+	while _ice_craters.size() < 9:
+		var c := Vector2(rng.randf_range(-118.0, 118.0), rng.randf_range(-118.0, 118.0))
+		if absf(c.x) < half + 10.0 and absf(c.y) < half + 10.0: continue
+		if c.x < ICE_CLIFF_X + 20.0: continue
+		_ice_craters.append([c, rng.randf_range(3.0, 6.0), .2])
+
+## Where the ice cliff's foot runs (scalloped, as sublimation carves alcoves).
+static func _ice_cliff_line(z: float) -> float:
+	return ICE_CLIFF_X + 7.0 * sin(z * .035) + 4.0 * sin(z * .09 + 1.0)
+
+## Masks for the ground shader: Vector3(exposed ice face, bright ice, glacier rubble).
+static func ground_masks(p: Vector2, h: float) -> Vector3:
+	if shape() != "ice": return Vector3.ZERO
+	_ice_setup()
+	var face := 0.0
+	var d := _ice_cliff_line(p.y) - p.x
+	if d > -1.0 and d < 7.0 and h > 3.0 and h < ICE_CLIFF_TOP - 1.5: face = 1.0
+	var bright := 0.0
+	for crater in _ice_craters:
+		var x: float = p.distance_to(crater[0]) / float(crater[1])
+		bright = maxf(bright, 1.0 - smoothstep(.3, .55, x))
+	var k := p.distance_to(Vector2(KOROLEV.x, KOROLEV.y)) / KOROLEV.z
+	bright = maxf(bright, 1.0 - smoothstep(.7, .85, k))
+	var rubble := 0.0
+	for mesa in _ice_mesas:
+		var md := p.distance_to(mesa[0])
+		rubble = maxf(rubble, smoothstep(float(mesa[1]) - 2.0, float(mesa[1]) + 2.0, md) * (1.0 - smoothstep(float(mesa[1]) + 38.0, float(mesa[1]) + 48.0, md)))
+	return Vector3(face, bright, rubble)
+
 static func _ice_height(p: Vector2) -> float:
-	var outside := _rise(p, PAD_MARGIN, 60.0)
-	# Polygonal ground: the crack troughs only cut in outside the build pad.
-	var trough := (1.0 - smoothstep(.0, .9, _polygon_edge_distance(p))) * .5
-	var pits := maxf(0.0, _noise(p, 1.6) - .45) * 3.0
-	return outside * (5.5 + _noise(p, .6) * 1.5 - trough - pits)
+	_ice_setup()
+	var outside := _rise(p, PAD_MARGIN, 45.0)
+	var h := 0.0
+	if outside > 0.0:
+		# Gentle swells; polygon troughs only shallow, as on the real plains.
+		h = 1.2 + _plains_noise.get_noise_2d(p.x + 500.0, p.y) * 2.6 + _plains_detail.get_noise_2d(p.x, p.y) * .4
+		h -= (1.0 - smoothstep(.0, .9, _polygon_edge_distance(p))) * .35
+		for crater in _ice_craters:
+			var d: float = p.distance_to(crater[0])
+			if d < float(crater[1]) * 2.6: h += _crater_profile(d, crater[1], crater[2])
+		# Hills close the horizon.
+		var r := p.length()
+		h += smoothstep(200.0, 620.0, r) * (22.0 + _plains_noise.get_noise_2d(p.x * .4, p.y * .4 + 200.0) * 22.0) + smoothstep(480.0, 720.0, r) * 40.0
+		h *= outside
+	# The ice cliff: a talus of fallen blocks, a steep face of exposed ice, a dusty plateau.
+	var d := _ice_cliff_line(p.y) - p.x
+	if d > -14.0:
+		var top := ICE_CLIFF_TOP + _plains_noise.get_noise_2d(p.x * 2.0, p.y * 2.0) * 3.0
+		var cliff := 0.0
+		if d < 0.0: cliff = 5.0 * smoothstep(-14.0, 0.0, d) + _plains_detail.get_noise_2d(p.x * 3.0, p.y * 3.0) * .8 * smoothstep(-14.0, -2.0, d)
+		elif d < 5.0: cliff = lerpf(5.0, top, smoothstep(0.0, 5.0, d))
+		else: cliff = top + smoothstep(5.0, 60.0, d) * 6.0
+		h = maxf(h, cliff)
+	# Mesas wrapped in debris-covered glaciers: lobes with ridges and pits.
+	for index in range(_ice_mesas.size()):
+		var mesa: Array = _ice_mesas[index]
+		var md := p.distance_to(mesa[0])
+		if md > float(mesa[1]) + 52.0: continue
+		var apron_end := float(mesa[1]) + 42.0 + 6.0 * sin(atan2(p.y - mesa[0].y, p.x - mesa[0].x) * 4.0 + index)
+		var lobe := pow(maxf(0.0, 1.0 - smoothstep(float(mesa[1]), apron_end, md)), .55) * 8.0
+		if lobe > 0.0:
+			lobe += sin(md * 1.1) * .35 * (1.0 - smoothstep(apron_end - 8.0, apron_end, md))   # flow ridges
+			lobe -= maxf(0.0, _plains_detail.get_noise_2d(p.x * 2.5, p.y * 2.5) - .25) * 1.6   # sublimation pits
+		h = maxf(h, maxf(lobe, _mesa_height(p, mesa[0], float(mesa[1]), float(mesa[2]), index * 5 + 11)))
+	# Korolev on the horizon: a raised rim round a dome of ice.
+	var kd := p.distance_to(Vector2(KOROLEV.x, KOROLEV.y)) / KOROLEV.z
+	if kd < 2.2:
+		var rim := 46.0 * exp(-pow((kd - 1.0) / .22, 2.0))
+		var dome := 62.0 * maxf(0.0, 1.0 - kd * kd / (.85 * .85))
+		# Keep the horizon hills low round it, so it stands clear.
+		h = lerpf(minf(h, 12.0), h, smoothstep(1.4, 2.2, kd))
+		h = maxf(h, maxf(rim, dome))
+	return h
 
 ## 0–1 shade picked per frozen polygon (by its nearest jittered centre).
 static func _polygon_shade(p: Vector2) -> float:
@@ -314,9 +408,19 @@ static func ground_colour(p: Vector2, h: float, slope: float) -> Color:
 		"crater":
 			if h > .6: colour = base.darkened(.12).lerp(Color("#C08458"), smoothstep(10.0, 22.0, h))
 		"ice":
-			# Patterned ground: each frozen polygon its own shade, with darker
-			# troughs only where they are wide enough for the mesh to draw.
-			colour = base.darkened(.05 + .09 * _polygon_shade(p)).lerp(Color("#6E5548"), (1.0 - smoothstep(.4, 1.6, _polygon_edge_distance(p))) * .3)
+			# Patterned ground: each frozen polygon its own shade, with slightly
+			# darker troughs (subtle, as in the Phoenix lander's photos).
+			colour = base.darkened(.04 + .06 * _polygon_shade(p)).lerp(Color("#6E5548"), (1.0 - smoothstep(.4, 1.6, _polygon_edge_distance(p))) * .18)
+			_ice_setup()
+			# Dark blast halos round the fresh ice craters.
+			for crater in _ice_craters:
+				var x: float = p.distance_to(crater[0]) / float(crater[1])
+				if x < 7.0: colour = colour.darkened(.22 * smoothstep(1.0, 1.4, x) * (1.0 - smoothstep(2.5, 7.0, x)))
+			var masks := ground_masks(p, h)
+			colour = colour.lerp(Color("#C9D0D3"), masks.y * .8)
+			colour = colour.lerp(Color("#7A6A60"), masks.z * .55)
+			# The plateau's dusty cap above the ice cliff.
+			if _ice_cliff_line(p.y) - p.x > 4.0 and h > ICE_CLIFF_TOP - 2.0: colour = colour.darkened(.12)
 		_:
 			# Open Plains: butterscotch dust, darker basaltic sand in crater
 			# floors and hollows, paler ejecta round crater rims, and layered
@@ -362,7 +466,7 @@ static func _cached(tag: String, make: Callable) -> Resource:
 	return made
 
 static func build_ground(body: StaticBody3D) -> void:
-	var step := INNER_STEP_PLAINS if shape() == "plains" else INNER_STEP
+	var step := INNER_STEP_PLAINS if shape() in ["plains", "ice"] else INNER_STEP
 	var mesh: ArrayMesh = _cached("ground", func() -> ArrayMesh: return _grid_mesh(-INNER_EXTENT, INNER_EXTENT, step, -1.0))
 	var visual := MeshInstance3D.new()
 	visual.name = "SiteGround"
@@ -405,8 +509,10 @@ static func _grid_mesh(from: float, to: float, step: float, skip_inside: float) 
 			heights[zi * side + xi] = height(from + xi * step, from + zi * step)
 	var normals := PackedVector3Array()
 	var colours := PackedColorArray()
+	var masks := PackedVector3Array()
 	normals.resize(side * side)
 	colours.resize(side * side)
+	masks.resize(side * side)
 	for zi in range(side):
 		for xi in range(side):
 			var x := from + xi * step
@@ -418,6 +524,7 @@ static func _grid_mesh(from: float, to: float, step: float, skip_inside: float) 
 			var normal := Vector3(left - right, 2.0 * step, back - front).normalized()
 			normals[zi * side + xi] = normal
 			colours[zi * side + xi] = ground_colour(Vector2(x, z), heights[zi * side + xi], 1.0 - absf(normal.y))
+			masks[zi * side + xi] = ground_masks(Vector2(x, z), heights[zi * side + xi])
 	for zi in range(count):
 		for xi in range(count):
 			var x0 := from + xi * step
@@ -431,6 +538,8 @@ static func _grid_mesh(from: float, to: float, step: float, skip_inside: float) 
 					var gx := index % side
 					var gz := index / side
 					surface.set_color(colours[index])
+					surface.set_uv(Vector2(masks[index].x, masks[index].y))
+					surface.set_uv2(Vector2(masks[index].z, 0.0))
 					surface.set_normal(normals[index])
 					surface.add_vertex(Vector3(from + gx * step, heights[index], from + gz * step))
 	return surface.commit()
@@ -443,16 +552,21 @@ static func _grid_mesh(from: float, to: float, step: float, skip_inside: float) 
 ## "tilt" (radians, x and z) and "stretch" (a non-uniform scale).
 static func _plains_rocks() -> Array:
 	_plains_setup()
-	var s := settings()
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 2024
-	var placements: Array = []
-	var wanted := int(s.get("rock_count", 240))
 	var hotspots: Array = []
 	for crater in _plains_craters:
 		if (crater[0] as Vector2).length() < 150.0: hotspots.append([crater[0], float(crater[1]) * 1.1, float(crater[1]) * .5])
-	for mesa in s.get("mesas", []):
+	for mesa in settings().get("mesas", []):
 		hotspots.append([Vector2(float(mesa[0]), float(mesa[1])), float(mesa[2]) + 12.0, 9.0])
+	return _scatter_rocks(hotspots, 2024)
+
+## Many small rocks and few big ones, about half gathered round hotspots
+## ([centre, ring radius, spread]), part buried and leaning with the ground.
+static func _scatter_rocks(hotspots: Array, seed_value: int) -> Array:
+	var s := settings()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var placements: Array = []
+	var wanted := int(s.get("rock_count", 240))
 	var attempts := 0
 	while placements.size() < wanted and attempts < wanted * 40:
 		attempts += 1
@@ -474,9 +588,22 @@ static func _plains_rocks() -> Array:
 			"tilt": tilt, "stretch": Vector3(rng.randf_range(.85, 1.2), rng.randf_range(.7, 1.1), rng.randf_range(.85, 1.2))})
 	return placements
 
-## Small stones near you (no collision): [Transform3D]. Open Plains only.
+## Ice Fields rocks: a rock-strewn plain (Viking 2), fallen blocks at the
+## foot of the ice cliff, and rubble along the glacier fronts.
+static func _ice_rocks() -> Array:
+	_ice_setup()
+	var hotspots: Array = []
+	for z in range(-120, 121, 12):
+		hotspots.append([Vector2(_ice_cliff_line(float(z)) + 7.0, float(z)), 0.0, 6.0])
+	for mesa in _ice_mesas:
+		hotspots.append([mesa[0], float(mesa[1]) + 42.0, 5.0])
+	for crater in _ice_craters:
+		hotspots.append([crater[0], float(crater[1]) * 1.2, float(crater[1]) * .5])
+	return _scatter_rocks(hotspots, 2031)
+
+## Small stones near you (no collision): [Transform3D]. Open Plains and Ice Fields.
 static func pebble_transforms(count := 3500) -> Array:
-	if shape() != "plains": return []
+	if not shape() in ["plains", "ice"]: return []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77
 	var out: Array = []
@@ -486,7 +613,7 @@ static func pebble_transforms(count := 3500) -> Array:
 		var p := Vector2(rng.randf_range(-118.0, 118.0), rng.randf_range(-118.0, 118.0))
 		if p.length() > 120.0 or _pad_distance(p) < 1.5: continue
 		# More stones on rims and ejecta, fewer in sand-filled hollows.
-		var marks := plains_crater_marks(p)
+		var marks := plains_crater_marks(p) if shape() == "plains" else Vector2.ZERO
 		if rng.randf() < marks.x * .7: continue
 		var size := rng.randf_range(.07, .3) * (1.0 + marks.y)
 		var basis := Basis.from_euler(Vector3(rng.randf_range(-.4, .4), rng.randf_range(0.0, TAU), rng.randf_range(-.4, .4))).scaled(Vector3(size, size * rng.randf_range(.5, .9), size * rng.randf_range(.8, 1.2)))
@@ -497,6 +624,7 @@ static func pebble_transforms(count := 3500) -> Array:
 ## [{mesh, position: Vector3, scale, yaw}].
 static func rock_placements() -> Array:
 	if shape() == "plains": return _plains_rocks()
+	if shape() == "ice": return _ice_rocks()
 	var s := settings()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(str(MHGame.site().get("id", "plains")))

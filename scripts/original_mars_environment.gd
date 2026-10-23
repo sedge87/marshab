@@ -370,7 +370,7 @@ func _rock_material() -> ShaderMaterial:
 	var ground := Color(str(MHSiteTerrain.settings().get("ground", "#A9603E")))
 	var material := ShaderMaterial.new()
 	material.shader = preload("res://shaders/mars_rock.gdshader")
-	material.set_shader_parameter("rock_colour", ground.darkened(.28) if MHSiteTerrain.shape() == "plains" else ground.darkened(.42))
+	material.set_shader_parameter("rock_colour", ground.darkened(.28) if MHSiteTerrain.shape() in ["plains", "ice"] else ground.darkened(.42))
 	material.set_shader_parameter("dust_colour", ground.lightened(.06))
 	return material
 

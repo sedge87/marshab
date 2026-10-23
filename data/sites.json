@@ -248,8 +248,8 @@
       "terrain": {
         "shape": "ice",
         "pad_half": 70.0,
-        "ground": "#9E7C6A",
-        "rock_count": 35,
+        "ground": "#8F7564",
+        "rock_count": 320,
         "rock_scale": 0.8
       },
       "sun": {
