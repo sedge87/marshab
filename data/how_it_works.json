@@ -12,8 +12,18 @@
         "So your base must sit outside the blast zone, but close enough to walk to the cargo."
       ],
       "remember": "Land on flat, clear ground, and keep the base out of the blast zone.",
-      "check": {"question": "Why can't you build right next to the landing target?", "options": ["The engine blast would damage it", "The ground is too soft", "Robots can't drive there"], "answer": 0},
-      "missions": ["landing_zones"],
+      "check": {
+        "question": "Why can't you build right next to the landing target?",
+        "options": [
+          "The engine blast would damage it",
+          "The ground is too soft",
+          "Robots can't drive there"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "landing_zones"
+      ],
       "triggers": []
     },
     {
@@ -28,8 +38,18 @@
         "Engineers do this too: design, test, improve, and test again."
       ],
       "remember": "Failing a Test is normal. Read why, change one thing, and test again.",
-      "check": {"question": "Your Test fails. What's the best next step?", "options": ["Read the reason, change something, test again", "Start the mission over", "Add one of everything"], "answer": 0},
-      "missions": ["cargo_power_water"],
+      "check": {
+        "question": "Your Test fails. What's the best next step?",
+        "options": [
+          "Read the reason, change something, test again",
+          "Start the mission over",
+          "Add one of everything"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "cargo_power_water"
+      ],
       "triggers": []
     },
     {
@@ -44,9 +64,23 @@
         "A reactor makes the same power day and night, whatever the weather."
       ],
       "remember": "Make more power than you use in the day, and store enough to last the night.",
-      "check": {"question": "It's midnight. Where does the base's power come from?", "options": ["The batteries (or a reactor)", "The solar arrays", "The ice drills"], "answer": 0},
-      "missions": ["cargo_power_water"],
-      "triggers": ["solar", "battery_bank", "power_distribution_panel"]
+      "check": {
+        "question": "It's midnight. Where does the base's power come from?",
+        "options": [
+          "The batteries (or a reactor)",
+          "The solar arrays",
+          "The ice drills"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "cargo_power_water"
+      ],
+      "triggers": [
+        "solar",
+        "battery_bank",
+        "power_distribution_panel"
+      ]
     },
     {
       "id": "water",
@@ -60,9 +94,22 @@
         "Later, a water reclaimer cleans used water so it can be used again."
       ],
       "remember": "Put drills on rich ice and keep them powered.",
-      "check": {"question": "Where should you put an ice extractor?", "options": ["On pale blue ground, where the ice is richest", "Inside the habitat", "As far from the base as possible"], "answer": 0},
-      "missions": ["cargo_power_water"],
-      "triggers": ["ice_extractor", "water_reclaimer"]
+      "check": {
+        "question": "Where should you put an ice extractor?",
+        "options": [
+          "On pale blue ground, where the ice is richest",
+          "Inside the habitat",
+          "As far from the base as possible"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "cargo_power_water"
+      ],
+      "triggers": [
+        "ice_extractor",
+        "water_reclaimer"
+      ]
     },
     {
       "id": "gar_y",
@@ -76,8 +123,18 @@
         "It never goes through an airlock on its own. Press E on it so it follows you through."
       ],
       "remember": "Hold G and point. GAR-Y does the scouting so you don't have to.",
-      "check": {"question": "How do you get GAR-Y outside?", "options": ["Press E on it so it follows you through the airlock", "Order it to open the airlock", "It can't ever go outside"], "answer": 0},
-      "missions": ["cargo_power_water"],
+      "check": {
+        "question": "How do you get GAR-Y outside?",
+        "options": [
+          "Press E on it so it follows you through the airlock",
+          "Order it to open the airlock",
+          "It can't ever go outside"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "cargo_power_water"
+      ],
       "triggers": []
     },
     {
@@ -92,9 +149,23 @@
         "A room that doesn't get enough heat becomes a cold spot."
       ],
       "remember": "One thermal control unit warms the whole base. Spot heaters are for small bases, far rooms, or backup.",
-      "check": {"question": "Which one warms every room in the base?", "options": ["A thermal control unit", "A spot heater", "A window"], "answer": 0},
-      "missions": ["cargo_habitat"],
-      "triggers": ["thermal_control_unit", "wall_cabin_heater", "portable_utility_heater"]
+      "check": {
+        "question": "Which one warms every room in the base?",
+        "options": [
+          "A thermal control unit",
+          "A spot heater",
+          "A window"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "cargo_habitat"
+      ],
+      "triggers": [
+        "thermal_control_unit",
+        "wall_cabin_heater",
+        "portable_utility_heater"
+      ]
     },
     {
       "id": "air",
@@ -108,9 +179,23 @@
         "Oxygen reserve tanks top the air up if it starts to run low."
       ],
       "remember": "Oxygen in, CO₂ out: you need both machines, and both need power.",
-      "check": {"question": "Which machine removes the CO₂ people breathe out?", "options": ["The air recycler", "The oxygen generator", "The thermal control unit"], "answer": 0},
-      "missions": ["cargo_habitat"],
-      "triggers": ["air_recycler", "oxygen_generator", "oxygen_reserve_tank"]
+      "check": {
+        "question": "Which machine removes the CO₂ people breathe out?",
+        "options": [
+          "The air recycler",
+          "The oxygen generator",
+          "The thermal control unit"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "cargo_habitat"
+      ],
+      "triggers": [
+        "air_recycler",
+        "oxygen_generator",
+        "oxygen_reserve_tank"
+      ]
     },
     {
       "id": "crew",
@@ -124,9 +209,21 @@
         "The habitat warns you early. Listen for its voice and check the alerts."
       ],
       "remember": "Bunk, air, water, food, warmth: keep all five safe for every crew member.",
-      "check": {"question": "Crew health is falling. What should you check first?", "options": ["The alerts: they say what's wrong", "The cargo left", "The landing site"], "answer": 0},
-      "missions": ["crew_land"],
-      "triggers": ["crew_bunk"]
+      "check": {
+        "question": "Crew health is falling. What should you check first?",
+        "options": [
+          "The alerts: they say what's wrong",
+          "The cargo left",
+          "The landing site"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "crew_land"
+      ],
+      "triggers": [
+        "crew_bunk"
+      ]
     },
     {
       "id": "food",
@@ -140,9 +237,24 @@
         "The more food you grow, the longer the base can last on its own."
       ],
       "remember": "Bring food to start, then grow more of it yourself.",
-      "check": {"question": "What do grow trays need?", "options": ["Power, water and light", "Just water", "Nothing, once they're placed"], "answer": 0},
-      "missions": ["crew_land", "self_sufficiency"],
-      "triggers": ["grow_tray", "galley_kitchenette"]
+      "check": {
+        "question": "What do grow trays need?",
+        "options": [
+          "Power, water and light",
+          "Just water",
+          "Nothing, once they're placed"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "crew_land",
+        "self_sufficiency",
+        "long_silence"
+      ],
+      "triggers": [
+        "grow_tray",
+        "galley_kitchenette"
+      ]
     },
     {
       "id": "storms",
@@ -156,9 +268,21 @@
         "When power runs short, life support keeps going longest."
       ],
       "remember": "Before a storm: full batteries. For long storms: a reactor.",
-      "check": {"question": "Which power source keeps working in a dust storm?", "options": ["The reactor", "The solar arrays", "Neither"], "answer": 0},
-      "missions": ["storm_season"],
-      "triggers": ["reactor"]
+      "check": {
+        "question": "Which power source keeps working in a dust storm?",
+        "options": [
+          "The reactor",
+          "The solar arrays",
+          "Neither"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "storm_season"
+      ],
+      "triggers": [
+        "reactor"
+      ]
     },
     {
       "id": "research",
@@ -172,9 +296,170 @@
         "GAR-Y can bring a core sample from outside for a boost."
       ],
       "remember": "A powered lab with a workbench, and the research adds up every sol.",
-      "check": {"question": "What does the crew need to start research?", "options": ["A Science Lab with a workbench", "A bigger airlock", "More solar arrays"], "answer": 0},
-      "missions": ["self_sufficiency"],
-      "triggers": ["science_workbench"]
+      "check": {
+        "question": "What does the crew need to start research?",
+        "options": [
+          "A Science Lab with a workbench",
+          "A bigger airlock",
+          "More solar arrays"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "self_sufficiency",
+        "crew_people"
+      ],
+      "triggers": [
+        "science_workbench"
+      ]
+    },
+    {
+      "id": "radiation",
+      "title": "Radiation and the shelter",
+      "icon": "radiation",
+      "picture": "radiation",
+      "lines": [
+        "Mars has no magnetic field and thin air, so radiation from the Sun reaches the ground.",
+        "Sometimes the Sun throws out a burst of radiation called a solar particle event. You get about half an hour's warning.",
+        "The crew hide in a storm shelter: a small room with lots of shielding round it.",
+        "Shield points: the hull gives 5. Regolith walls and water walls add more, shared over the room's floor. Aim for 20."
+      ],
+      "remember": "A small room with lots of shielding makes a safe shelter.",
+      "check": {
+        "question": "Why is a small shelter easier to make safe?",
+        "options": [
+          "The same shielding is shared over less floor",
+          "Radiation can't fit in small rooms",
+          "Small rooms are warmer"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "solar_shelter",
+        "long_silence"
+      ],
+      "triggers": [
+        "storm_shelter_locker",
+        "regolith_shield_block",
+        "water_wall_panel"
+      ]
+    },
+    {
+      "id": "fitness",
+      "title": "Staying fit, getting better",
+      "icon": "dumbbell",
+      "picture": "fitness",
+      "lines": [
+        "Mars gravity is only 38% of Earth's. Without exercise, bones and muscles slowly get weaker.",
+        "Each powered exercise station keeps about 3 crew fit. Six crew need two.",
+        "If someone gets hurt, they get better in a Medical Bay with an exam cot and a medical cabinet.",
+        "Tired or hurt crew work slower, so less research and food gets done."
+      ],
+      "remember": "Exercise every sol, and keep a Medical Bay ready.",
+      "check": {
+        "question": "How many exercise stations do six crew need?",
+        "options": [
+          "Two",
+          "One",
+          "Six"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "crew_people"
+      ],
+      "triggers": [
+        "exercise_station",
+        "medical_exam_cot"
+      ]
+    },
+    {
+      "id": "wellbeing",
+      "title": "Feeling okay",
+      "icon": "smile",
+      "picture": "wellbeing",
+      "lines": [
+        "Living far from home in a small base is hard. Wellbeing shows how the crew are feeling.",
+        "It depends on six needs: sleep, space, meals together, a bit of home, meaningful work and contact with Earth.",
+        "The Crew screen in Mission Control shows which needs are missing, and what would fix them.",
+        "Wellbeing changes slowly, over a few sols, so fix problems early."
+      ],
+      "remember": "Look after all six needs, not just the numbers.",
+      "check": {
+        "question": "Which of these helps wellbeing?",
+        "options": [
+          "Photos, plants and a window",
+          "More batteries",
+          "A bigger airlock"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "crew_people",
+        "long_silence"
+      ],
+      "triggers": [
+        "common_table",
+        "privacy_divider",
+        "photo_frame"
+      ]
+    },
+    {
+      "id": "breach",
+      "title": "Breaches and hatches",
+      "icon": "gauge",
+      "picture": "breach",
+      "lines": [
+        "A tiny space rock can punch a hole in the hull. Air starts rushing out.",
+        "Hatches (interior doors) seal by themselves. Rooms joined without a hatch, like an open corridor end, lose their air together.",
+        "Air pressure shows how much of the habitat still holds its air.",
+        "A patch kit seals the hole. Then an air reserve rack refills the empty rooms."
+      ],
+      "remember": "Build in sections: hatches keep a breach small.",
+      "check": {
+        "question": "Why put a hatch at the end of a corridor?",
+        "options": [
+          "So a breach only empties one small section",
+          "To keep the corridor warm",
+          "So GAR-Y can't get through"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "hull_breach"
+      ],
+      "triggers": [
+        "hull_patch_kit",
+        "air_reserve_rack"
+      ]
+    },
+    {
+      "id": "breakdowns",
+      "title": "Breakdowns and spares",
+      "icon": "wrench",
+      "picture": "breakdowns",
+      "lines": [
+        "Machines wear out. Far from Earth, the crew have to fix them.",
+        "Each repair uses a spare part, and the Engineer is fastest.",
+        "Redundancy means having two of everything that keeps people alive. If one breaks, the other carries on.",
+        "A running regolith printer slowly makes more spares."
+      ],
+      "remember": "Two of everything life-critical, and spares to fix them.",
+      "check": {
+        "question": "An air recycler breaks. What keeps the crew safe until it's fixed?",
+        "options": [
+          "A second air recycler",
+          "A bigger battery",
+          "The comms antenna"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "long_silence"
+      ],
+      "triggers": [
+        "spare_parts_rack"
+      ]
     }
   ]
 }

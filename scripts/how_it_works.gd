@@ -16,7 +16,9 @@ const MHMissions := preload("res://scripts/mh_missions.gd")
 
 ## Which card explains a failed Test check.
 const CHECK_CARDS := {"always_powered": "power", "life_support_powered": "power", "min_temp": "heating", "breathable": "air",
-	"crew_aboard": "crew", "crew_safe": "crew", "crew_health_min": "crew", "water_per_sol": "water", "food_grown": "food", "research": "research"}
+	"crew_aboard": "crew", "crew_safe": "crew", "crew_health_min": "crew", "water_per_sol": "water", "food_grown": "food", "research": "research",
+	"research_total": "research", "shelter_ready": "radiation", "dose_max": "radiation", "fitness_min": "fitness", "patient_recovered": "fitness",
+	"wellbeing_min": "wellbeing", "pressure_min": "breach", "breach_patched": "breach", "breach_restored": "breach", "systems_up": "breakdowns"}
 
 static var _cards: Array = []
 
@@ -263,6 +265,11 @@ class Picture extends Control:
 			"food": _food()
 			"storms": _storms()
 			"research": _research()
+			"radiation": _radiation()
+			"fitness": _fitness()
+			"wellbeing": _wellbeing()
+			"breach": _breach()
+			"breakdowns": _breakdowns()
 
 	func _node(at: Vector2, icon: String, label: String, colour: Color, w := 150.0) -> Rect2:
 		var r := Rect2(at - Vector2(w * .5, 34), Vector2(w, 68))
@@ -401,6 +408,76 @@ class Picture extends Control:
 		_node(Vector2(640, 75), "zap", "Full batteries first", GOOD, 200)
 		_node(Vector2(640, 185), "atom", "Reactor: no change", GOOD, 200)
 		_text("Dust storm", Vector2(240, 30), 15, Color(1, .7, .45))
+
+	func _room_box(r: Rect2, colour: Color, fill := .14) -> void:
+		draw_rect(r, Color(colour, fill))
+		draw_rect(r, colour, false, 2.0)
+
+	func _radiation() -> void:
+		draw_texture_rect(MHIcons.texture("sun", 40), Rect2(Vector2(40, 100), Vector2(40, 40)), false, WARM)
+		_text("Solar particle event", Vector2(60, 170), 13, WARM)
+		for k in 3: _arrow(Vector2(100, 90 + k * 30), Vector2(200, 90 + k * 30), Color(WARM, .7))
+		# A big room: little protection.
+		_room_box(Rect2(Vector2(220, 50), Vector2(250, 140)), BAD)
+		_text("Big room", Vector2(345, 40), 13, BAD)
+		_text("5 + 16 ÷ 6 squares = 7 points", Vector2(345, 215), 13, BAD)
+		draw_texture_rect(MHIcons.texture("users", 26), Rect2(Vector2(332, 106), Vector2(26, 26)), false, MHStyle.TEXT_PRIMARY)
+		# The shelter: small, thick shielding.
+		var shelter := Rect2(Vector2(600, 70), Vector2(140, 100))
+		for k in 4: draw_rect(shelter.grow(4 + k * 5), Color(.56, .31, .19, .55 - k * .1), false, 5.0)
+		_room_box(shelter, GOOD)
+		draw_texture_rect(MHIcons.texture("users", 26), Rect2(shelter.get_center() - Vector2(13, 13), Vector2(26, 26)), false, MHStyle.TEXT_PRIMARY)
+		_text("Storm shelter", Vector2(670, 40), 13, GOOD)
+		_text("5 + 30 ÷ 2 squares = 20 points", Vector2(670, 222), 13, GOOD)
+
+	func _fitness() -> void:
+		_node(Vector2(120, 70), "orbit", "Mars gravity 38%", DIM, 170)
+		_node(Vector2(120, 180), "dumbbell", "Exercise station", GOOD, 170)
+		_node(Vector2(440, 125), "users", "Crew fitness", COOL, 160)
+		_arrow(Vector2(207, 78), Vector2(358, 115), BAD, "down")
+		_arrow(Vector2(207, 172), Vector2(358, 135), GOOD, "up")
+		_node(Vector2(740, 70), "heart-pulse", "Hurt: needs care", BAD, 180)
+		_node(Vector2(740, 180), "heart-pulse", "Medical Bay", GOOD, 180)
+		_arrow(Vector2(740, 146), Vector2(740, 106), GOOD, "")
+		_text("cot + cabinet + power", Vector2(740, 236), 12, GOOD)
+
+	func _wellbeing() -> void:
+		var needs := [["bed-double", "Sleep"], ["panels-top-left", "Space"], ["utensils", "Meals together"], ["image", "A bit of home"], ["wrench", "Meaningful work"], ["satellite", "Contact with Earth"]]
+		for i in needs.size():
+			var at := Vector2(150 + (i % 3) * 290, 75 + (i / 3) * 110)
+			_node(at, str(needs[i][0]), str(needs[i][1]), GOOD if i != 5 else WARM, 200)
+		_text("Blackout: no contact with Earth for 14 sols", Vector2(730, 245), 12, WARM)
+
+	func _breach() -> void:
+		# Open plan: three rooms share their air.
+		_text("Open corridor end: one big section", Vector2(220, 28), 13, BAD)
+		for k in 3: _room_box(Rect2(Vector2(40 + k * 120, 50), Vector2(110, 90)), BAD, .3)
+		draw_rect(Rect2(Vector2(150, 85), Vector2(10, 20)), Color(BAD, .3))
+		draw_rect(Rect2(Vector2(270, 85), Vector2(10, 20)), Color(BAD, .3))
+		_text("All three lose air", Vector2(220, 165), 13, BAD)
+		draw_circle(Vector2(95, 95), 7, MHStyle.TEXT_PRIMARY)
+		# Sections: a hatch seals the breach in.
+		_text("Hatches: small sections", Vector2(660, 28), 13, GOOD)
+		_room_box(Rect2(Vector2(480, 50), Vector2(110, 90)), BAD, .3)
+		_room_box(Rect2(Vector2(600, 50), Vector2(110, 90)), GOOD)
+		_room_box(Rect2(Vector2(720, 50), Vector2(110, 90)), GOOD)
+		for x in [590.0, 710.0]: draw_rect(Rect2(Vector2(x, 80), Vector2(10, 30)), WARM)
+		draw_circle(Vector2(535, 95), 7, MHStyle.TEXT_PRIMARY)
+		_text("Only one room loses air", Vector2(655, 165), 13, GOOD)
+		_node(Vector2(330, 215), "wrench", "Patch kit: seal it", WARM, 190)
+		_node(Vector2(600, 215), "gauge", "Air reserve: refill", COOL, 190)
+		_arrow(Vector2(425, 215), Vector2(505, 215), DIM)
+
+	func _breakdowns() -> void:
+		_node(Vector2(130, 75), "wind", "Air recycler 1", BAD, 170)
+		_text("Broken", Vector2(130, 130), 13, BAD)
+		_node(Vector2(130, 185), "wind", "Air recycler 2", GOOD, 170)
+		_text("Still working: crew safe", Vector2(130, 240), 12, GOOD)
+		_node(Vector2(470, 75), "package", "Spare part", COOL, 160)
+		_node(Vector2(470, 185), "users", "Engineer", COOL, 160)
+		_arrow(Vector2(390, 75), Vector2(217, 75), COOL, "6 hours")
+		_node(Vector2(760, 130), "rotate-cw", "Printer: more spares", WARM, 200)
+		_arrow(Vector2(660, 115), Vector2(553, 85), WARM)
 
 	func _research() -> void:
 		_node(Vector2(140, 120), "flask-conical", "Science Lab", COOL, 160)

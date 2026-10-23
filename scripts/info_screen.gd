@@ -5,7 +5,9 @@ extends Control
 ##   status     · power made and used, battery, air, water, food, warmth, crew
 ##   mars/earth · a view of the planet (with the light-time to Earth)
 ##   wayfinding · this room, its lights and temperature, and the way to the
-##                nearest airlock
+##                nearest airlock; in a solar particle event, the way to the
+##                storm shelter (any wayfinding panel, even one showing a sign).
+##                The arrow follows the route through doorways.
 ##   sign       · the player's own text
 ##   camera     · the outside camera masts, a new picture each second (cycles
 ##                masts every 8 s when there are several)
@@ -59,7 +61,7 @@ func _draw() -> void:
 		"mars": _draw_planet(false)
 		"earth": _draw_planet(true)
 		"wayfinding": _draw_wayfinding()
-		"sign": _draw_sign()
+		"sign": _draw_wayfinding() if _emergency() else _draw_sign()
 		"camera": _draw_camera()
 
 # ---------- habitat status ----------
@@ -159,22 +161,42 @@ func _draw_wayfinding() -> void:
 	if not zone.is_empty() and MHGame.simulation_on():
 		lights = builder.room_light_state(builder.simulation()._room_key(zone)).to_upper()
 	_text("LIGHTS %s  ·  %d °C" % [lights, roundi(float(climate.get("temperature", 20.0)))], Vector2(24, 128) * u, int(30 * u), MHStyle.TEXT_PRIMARY, 700)
-	# The way to the nearest airlock.
-	var best := Vector2.INF
-	for z in builder.zones:
-		if str(z.kind) != "airlock": continue
-		var c := Vector2.ZERO
-		for cell in z.cells: c += Vector2(cell.x, cell.y) * BuildController.CELL
-		c /= maxf(1.0, float((z.cells as Array).size()))
-		if best == Vector2.INF or c.distance_to(Vector2(front.x, front.z)) < best.distance_to(Vector2(front.x, front.z)): best = c
+	# Where to: the nearest airlock, or the storm shelter in a solar particle event.
+	var targets: Array = []
+	var dest := "AIRLOCK"
+	var tone := MHStyle.VALID
+	if _emergency():
+		var sim: RefCounted = builder.simulation()
+		var place: Dictionary = sim.life.shelter(sim.inventory())
+		dest = "SHELTER"
+		tone = MHStyle.WARN
+		if not place.is_empty(): targets = [sim.inventory().rooms[int(place.index)].zone]
+	else:
+		targets = builder.zones.filter(func(z): return str(z.kind) == "airlock")
 	var box := Rect2(Vector2(24, 156) * u, Vector2(size.x - 48 * u, size.y - 172 * u))
-	draw_rect(box, Color(1, 1, 1, .05))
-	if best == Vector2.INF:
-		_text("NO AIRLOCK YET", box.position + Vector2(20, 80) * u, int(40 * u), MHStyle.WARN, 700)
+	draw_rect(box, Color(tone, .12) if dest == "SHELTER" else Color(1, 1, 1, .05))
+	if targets.is_empty():
+		_text("NO %s YET" % dest, box.position + Vector2(20, 80) * u, int(40 * u), MHStyle.WARN, 700)
 		return
-	var to := best - Vector2(front.x, front.z)
-	if str(zone.get("kind", "")) == "airlock" or to.length() < 2.0:
-		_text("AIRLOCK HERE", box.position + Vector2(20, 80) * u, int(44 * u), MHStyle.VALID, 800)
+	var here := Vector2(front.x, front.z)
+	if targets.has(zone):
+		_text("%s HERE" % dest, box.position + Vector2(20, 80) * u, int(44 * u), tone, 800)
+		return
+	# Follow the route through doorways when there is one; otherwise point straight.
+	var route := _route(builder, here, targets)
+	var best := Vector2.INF
+	var length := 0.0
+	if route.size() >= 2:
+		best = route[mini(route.size() - 1, _first_turn(route))]
+		for i in range(route.size() - 1): length += (route[i] as Vector2).distance_to(route[i + 1])
+	else:
+		for z in targets:
+			var c := _zone_centre(z)
+			if best == Vector2.INF or c.distance_to(here) < best.distance_to(here): best = c
+		length = best.distance_to(here)
+	var to := best - here
+	if to.length() < .5:
+		_text("%s HERE" % dest, box.position + Vector2(20, 80) * u, int(44 * u), tone, 800)
 		return
 	# Screen up = straight on from the viewer (into the wall), screen right = the viewer's right.
 	var basis := mount.global_transform.basis
@@ -185,9 +207,65 @@ func _draw_wayfinding() -> void:
 	var r := box.size.y * .36
 	var dir := Vector2(sin(angle), -cos(angle))
 	var side := Vector2(-dir.y, dir.x)
-	draw_colored_polygon(PackedVector2Array([c2 + dir * r, c2 - dir * r * .2 + side * r * .6, c2 - dir * r * .2 - side * r * .6]), MHStyle.VALID)
-	draw_line(c2 - dir * r * .9, c2 - dir * r * .1, MHStyle.VALID, r * .32)
-	_text("AIRLOCK  %d m" % roundi(to.length()), box.position + Vector2(box.size.y + 30 * u, box.size.y * .5 + 18 * u), int(48 * u), MHStyle.TEXT_PRIMARY, 800)
+	draw_colored_polygon(PackedVector2Array([c2 + dir * r, c2 - dir * r * .2 + side * r * .6, c2 - dir * r * .2 - side * r * .6]), tone)
+	draw_line(c2 - dir * r * .9, c2 - dir * r * .1, tone, r * .32)
+	_text("%s  %d m" % [dest, roundi(length)], box.position + Vector2(box.size.y + 30 * u, box.size.y * .5 + 18 * u), int(48 * u), MHStyle.TEXT_PRIMARY, 800)
+
+## A solar particle event is coming or under way: panels point to the shelter.
+func _emergency() -> bool:
+	var builder := _builder()
+	if builder == null: return false
+	var life: RefCounted = builder.simulation().life
+	return float(life.spe_eta) >= 0.0 or life.spe_active()
+
+func _zone_centre(z: Dictionary) -> Vector2:
+	if z.has("outline"):
+		var c := Vector2.ZERO
+		for point in z.outline: c += point
+		return c / maxf(1.0, (z.outline as Array).size())
+	var c := Vector2.ZERO
+	for cell in z.cells: c += Vector2(cell.x, cell.y) * BuildController.CELL
+	return c / maxf(1.0, float((z.cells as Array).size()))
+
+## The walking route (cell centres) from a point to any of the target zones,
+## through openings and doors only (no walls). [] when there's no grid route.
+func _route(builder: BuildController, from: Vector2, targets: Array) -> Array:
+	var start := Vector2i(roundi(from.x / BuildController.CELL), roundi(from.y / BuildController.CELL))
+	if builder._zone_at(start).is_empty(): return []
+	var goal := {}
+	for z in targets:
+		for cell in z.get("cells", []): goal[cell] = true
+	if goal.is_empty(): return []
+	var came := {start: start}
+	var queue: Array = [start]
+	var found := Vector2i(999999, 0)
+	while not queue.is_empty() and came.size() < 4000:
+		var cell: Vector2i = queue.pop_front()
+		if goal.has(cell):
+			found = cell
+			break
+		for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var next: Vector2i = cell + side
+			if came.has(next) or builder._zone_at(next).is_empty(): continue
+			if builder._should_build_wall(cell, side) or builder._should_build_wall(next, -side): continue
+			came[next] = cell
+			queue.append(next)
+	if found.x == 999999: return []
+	var path: Array = []
+	var at := found
+	while at != start:
+		path.push_front(Vector2(at.x, at.y) * BuildController.CELL)
+		at = came[at]
+	path.push_front(from)
+	return path
+
+## How far along the route before it first changes direction.
+func _first_turn(route: Array) -> int:
+	if route.size() < 3: return route.size() - 1
+	var heading := ((route[2] as Vector2) - (route[1] as Vector2)).normalized()
+	for i in range(2, route.size() - 1):
+		if ((route[i + 1] as Vector2) - (route[i] as Vector2)).normalized().dot(heading) < .9: return i
+	return route.size() - 1
 
 # ---------- outside camera ----------
 

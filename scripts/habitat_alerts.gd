@@ -188,7 +188,67 @@ func evaluate(test_sim: RefCounted = null, test_hour := -1.0) -> Array:
 		out.append({"id": "health", "level": "critical" if health < 50.0 else "warning", "title": "Crew health falling",
 			"text": "Crew health %d%%. Fix the cause and they recover." % roundi(health),
 			"chain": [["triangle-alert", ", ".join(s.health_causes), false], ["heart-pulse", "Health %d%% %s" % [roundi(health), _trend("health", health)], false]]})
+	_life_alerts(s, inv, out)
 	return out
+
+## Act 2: radiation, breaches, breakdowns and the crew as people (habitat_life.gd).
+func _life_alerts(s: RefCounted, inv: Dictionary, out: Array) -> void:
+	var life: RefCounted = s.life
+	if life == null or s.crew_count() <= 0: return
+	var place: Dictionary = life.shelter(inv)
+	if float(life.spe_eta) >= 0.0:
+		var where := "No storm shelter: the crew stay where they are" if place.is_empty() else "Shelter: %s, %d shield points" % [str(place.label), roundi(float(place.rating))]
+		out.append({"id": "radiation", "level": "critical", "title": "Solar particle event: all crew to the shelter",
+			"text": "Radiation from a solar flare arrives in %s." % _hours(maxf(0.0, float(life.spe_eta))),
+			"chain": [["sun", "Solar flare", true], ["radiation", where, place.is_empty()], ["users", "Crew dose", false]]})
+	elif life.spe_active():
+		out.append({"id": "radiation", "level": "warning", "title": "Radiation storm: crew sheltering",
+			"text": "Dose so far %d mSv (limit 50). About %s to go." % [roundi(float(life.event_dose_msv)), _hours(float(life.spe_hours_left))],
+			"chain": [["sun", "Solar particle event", false], ["radiation", "%s: %d points" % [str(place.get("label", "No shelter")), roundi(float(place.get("rating", 5.0)))], place.is_empty()], ["users", "%d mSv" % roundi(float(life.event_dose_msv)), false]]})
+	var pressure: float = life.pressure_pct(inv)
+	if not (life.breach as Dictionary).is_empty() and float(life.breach.get("patched_at", -1.0)) < 0.0:
+		var vented: Array = life.section_rooms(inv, _room_index(inv, str(life.breach.room))).map(func(i): return str(inv.rooms[i].label))
+		var kit: bool = (inv.all_items as Array).any(func(i): return str(i.id) == "hull_patch_kit")
+		out.append({"id": "breach", "level": "critical", "title": "Hull breach: %s" % str(life.breach.get("label", "")),
+			"text": "Hatches sealed. Losing air from: %s. Air pressure %d%%." % [", ".join(vented.slice(0, 3)), roundi(pressure)],
+			"chain": [["triangle-alert", "Hole in the hull", false], ["gauge", "Pressure %d%% %s" % [roundi(pressure), _trend("pressure", pressure)], false], ["wrench", "Patch kit ready" if kit else "No patch kit!", not kit]]})
+	elif pressure < 99.5:
+		out.append({"id": "repress", "level": "advisory", "title": "Repressurising",
+			"text": "Air pressure %d%%. %s" % [roundi(pressure), "Refilling from the air reserve." if float(life.air_reserve_kg) > 0.0 else "The air reserve is empty: those rooms stay empty."],
+			"chain": [["gauge", "Pressure %d%%" % roundi(pressure), false], ["wind", "Air reserve %d kg" % roundi(float(life.air_reserve_kg)), float(life.air_reserve_kg) <= 0.0]]})
+	if not (life.broken as Dictionary).is_empty():
+		var names: Array = life.broken_labels()
+		var down: bool = not (life.down_hours as Dictionary).is_empty()
+		out.append({"id": "breakdown", "level": "critical" if down else "warning", "title": "%s broken" % str(names[0]) + (" (+%d more)" % (names.size() - 1) if names.size() > 1 else ""),
+			"text": ("Being repaired: %s left." % _hours(float(life.repair_left)) if not str(life.repairing).is_empty() else "No spare parts to repair it!") + (" A whole system is down." if down else " A second unit is keeping things going."),
+			"chain": [["wrench", "%d broken" % names.size(), false], ["package", "%d spares left" % int(life.spares), int(life.spares) == 0], ["heart-pulse", "Crew" if down else "Redundancy", down]]})
+	if float(life.blackout_hours_left) > 0.0:
+		out.append({"id": "blackout", "level": "advisory", "title": "No contact with Earth",
+			"text": "The Sun is between Mars and Earth: %s until contact returns." % _sols(float(life.blackout_hours_left) / 24.0),
+			"chain": [["sun", "Solar conjunction", true], ["satellite", "Comms blackout", false], ["smile", "Wellbeing", true]]})
+	if not life.crew_on or (life.crew as Array).is_empty(): return
+	for p in life.injured():
+		var ready: bool = life.medical_ready(inv, s.last.get("tiers", {4: true}))
+		out.append({"id": "injury", "level": "warning" if not ready else "advisory", "title": "%s is injured" % str(p.name),
+			"text": "Recovering in the Medical Bay: %s left." % _sols(float(p.injured_h) / 24.0) if ready else "They can't recover without a Medical Bay with an exam cot and a medical cabinet.",
+			"chain": [["heart-pulse", "%s (%s)" % [str(p.name), str(life.role(str(p.role)).get("label", ""))], false], ["heart-pulse", "Medical Bay ready" if ready else "No Medical Bay", not ready]]})
+		break
+	var fitness: float = life.lowest_fitness()
+	if fitness < 78.0:
+		out.append({"id": "fitness", "level": "critical" if fitness < 70.0 else "warning", "title": "Crew fitness falling",
+			"text": "Lowest fitness %d%%. Mars gravity weakens bones and muscles without exercise." % roundi(fitness),
+			"chain": [["orbit", "38% gravity", true], ["dumbbell", "%d exercise station%s" % [int(life._stations_cache), "" if int(life._stations_cache) == 1 else "s"], int(life._stations_cache) == 0], ["users", "Fitness %d%% %s" % [roundi(fitness), _trend("fitness", fitness)], false]]})
+	var wellbeing: float = life.average_wellbeing()
+	if wellbeing < 66.0:
+		var missing: Array = (life._needs_cache as Array).filter(func(n): return float(n.score) < .9).map(func(n): return str(n.label))
+		out.append({"id": "wellbeing", "level": "critical" if wellbeing < 60.0 else "warning", "title": "Crew wellbeing low",
+			"text": "Wellbeing %d%%. Missing: %s. The Crew screen in Mission Control has details." % [roundi(wellbeing), ", ".join(missing.slice(0, 3)) if not missing.is_empty() else "nothing, so it will recover"],
+			"chain": [["smile", "Wellbeing %d%% %s" % [roundi(wellbeing), _trend("wellbeing", wellbeing)], false], ["users", "Slower work", true]]})
+
+func _room_index(inv: Dictionary, key: String) -> int:
+	for i in range((inv.rooms as Array).size()):
+		if str(inv.rooms[i].key) == key: return i
+	return -1
 
 ## Why each kind of alert matters, shown the first time it appears.
 const EXPLAIN := {
@@ -202,6 +262,14 @@ const EXPLAIN := {
 	"water": "Water is drunk, washed with, fed to plants and split into oxygen. Ice drills mine it, and the water reclaimer recycles most of what's used.",
 	"food": "Six people eat about 11 kg of food a sol. Supply landers bring freeze-dried food; growing your own makes the base last.",
 	"health": "Crew health falls when the air, warmth, water or food go wrong, and recovers once they're fixed.",
+	"radiation": "Mars has no magnetic field and thin air, so radiation from solar flares reaches the ground. A small, well-shielded storm shelter protects the crew for the day it lasts.",
+	"breach": "Hatches seal automatically, so only the rooms joined to the breached one without a hatch lose their air. Then a patch kit seals the hole.",
+	"repress": "Once the hole is patched, stored air from the air reserve racks refills the empty rooms.",
+	"breakdown": "Machines wear out. Each repair uses a spare part. Having two of every life-critical machine (redundancy) keeps the crew safe while one is fixed.",
+	"blackout": "Every two years Mars passes behind the Sun from Earth, and for about two weeks no messages get through. Crews have to manage on their own.",
+	"injury": "With Earth up to 24 minutes away by message, the crew's doctor treats injuries here, in the Medical Bay.",
+	"fitness": "In 38% gravity bones and muscles slowly weaken. Each powered exercise station keeps about three crew fit.",
+	"wellbeing": "Wellbeing depends on six needs: sleep, space, meals together, a bit of home, meaningful work and contact with Earth.",
 }
 ## The voice line for an alert at a level (see tools/generate_voice.py).
 static func voice_line(id: String, level: String) -> String:

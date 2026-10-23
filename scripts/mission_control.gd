@@ -5,6 +5,7 @@ const MHDossier := preload("res://scripts/mh_dossier.gd")
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const MISSION_HUD := preload("res://scripts/mission_hud.gd")
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
+const CREW_SCREEN := preload("res://scripts/crew_screen.gd")
 
 # Mission Control overlay (shot 1j). Three columns over a dimmed scene:
 # cargo, readiness and a blueprint plan of the habitat, plus a suggested step.
@@ -51,6 +52,11 @@ func _ready() -> void:
 	guide.tooltip_text = "How the habitat's systems work"
 	guide.pressed.connect(_show_field_guide)
 	header.add_child(guide)
+	var crew_button := MHStyle.button("Crew", "secondary", "users")
+	crew_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	crew_button.tooltip_text = "Who your crew are, how they are, and what they need"
+	crew_button.pressed.connect(_show_crew)
+	header.add_child(crew_button)
 	var monitor_button := MHStyle.button("Monitor", "primary", "monitor")
 	monitor_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	monitor_button.tooltip_text = "The habitat's systems live, room by room"
@@ -85,6 +91,11 @@ func _ready() -> void:
 	body.add_child(_readiness_column())
 	body.add_child(_plan_column())
 	column.add_child(MHStyle.notice("info", "Suggested next step", builder.suggestion()))
+
+func _show_crew() -> void:
+	var screen: ColorRect = CREW_SCREEN.new()
+	add_child(screen)
+	screen.open(builder)
 
 ## The Field guide: every How it works card unlocked so far.
 func _show_field_guide() -> void:

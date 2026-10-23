@@ -233,6 +233,21 @@ func _fill_flows() -> void:
 	if float(flows.research) > 0.0 or float(s.research_boost_hours) > 0.0:
 		_flows_panel.add_child(_line("Research: %.1f a sol%s" % [float(flows.research), " (core sample +20%%, %s left)" % _hours(float(s.research_boost_hours)) if float(s.research_boost_hours) > 0.0 else ""], MHStyle.TEXT_PRIMARY, 15))
 	if float(s.storm_hours_left) > 0.0: _flows_panel.add_child(_line("Dust storm: solar cut for %s" % _hours(float(s.storm_hours_left)), MHStyle.WARN, 15))
+	# Act 2: air pressure, radiation, the crew as people, repairs.
+	var life: RefCounted = s.life
+	var pressure: float = life.pressure_pct(inv)
+	_flows_panel.add_child(_line("Air pressure: %d%%%s" % [roundi(pressure), "" if pressure > 99.5 else " · hull breach" if not (life.breach as Dictionary).is_empty() and float(life.breach.get("patched_at", -1.0)) < 0.0 else " · refilling"],
+		MHStyle.TEXT_PRIMARY if pressure > 99.5 else (MHStyle.WARN if pressure >= 70.0 else MHStyle.DANGER), 15))
+	var dose_line := "Radiation: %d mSv so far" % roundi(float(life.dose_msv))
+	if life.spe_active(): dose_line += " · SOLAR EVENT, %d mSv this event" % roundi(float(life.event_dose_msv))
+	_flows_panel.add_child(_line(dose_line, MHStyle.WARN if life.spe_active() else MHStyle.TEXT_PRIMARY, 15))
+	if life.crew_on and not (life.crew as Array).is_empty():
+		_flows_panel.add_child(_line("Crew: lowest fitness %d%% · wellbeing %d%%%s" % [roundi(life.lowest_fitness()), roundi(life.average_wellbeing()), " · %d injured" % (life.injured() as Array).size() if not (life.injured() as Array).is_empty() else ""],
+			MHStyle.TEXT_PRIMARY if life.lowest_fitness() >= 75.0 and life.average_wellbeing() >= 65.0 else MHStyle.WARN, 15))
+	if not (life.broken as Dictionary).is_empty() or int(life.spares) > 0:
+		_flows_panel.add_child(_line("Repairs: %s · %d spare parts" % ["%s broken" % ", ".join(life.broken_labels()) if not (life.broken as Dictionary).is_empty() else "nothing broken", int(life.spares)],
+			MHStyle.WARN if not (life.broken as Dictionary).is_empty() else MHStyle.TEXT_PRIMARY, 15))
+	if float(life.blackout_hours_left) > 0.0: _flows_panel.add_child(_line("No contact with Earth for %s" % _sols(float(life.blackout_hours_left) / 24.0), MHStyle.WARN, 15))
 	var alerts = world.alerts
 	_flows_panel.add_child(MHStyle.eyebrow("Alerts", MHStyle.accent, 13))
 	if alerts == null or (alerts._active as Dictionary).is_empty():

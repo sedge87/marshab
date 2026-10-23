@@ -123,6 +123,7 @@ func _ready() -> void:
 	day_night.setup(environment, builder)
 	_restore_pending_habitat()
 	if MHMissions.active(): MHMissions.deliver_mission_food(builder.simulation())
+	configure_life()
 	if crew_arrival:
 		var cabin: Dictionary = lander.cabin_start()
 		player.global_position = cabin.position
@@ -382,6 +383,26 @@ func _spawn_cargo_landers() -> void:
 ## A touchdown point in the landing ellipse that keeps clear of the landers
 ## already down: the best of several tries, at least 16 m from the others
 ## where the ellipse allows.
+## Act 2 in live play: named crew (Mission 8 on, and free play) and, with
+## the Settings toggle, rare hazards from missions already passed.
+func configure_life() -> void:
+	var sim: RefCounted = builder.simulation()
+	var life: RefCounted = sim.life
+	var kinds: Array = []
+	if MHMissions.active():
+		life.crew_on = int(MHMissions.current().get("number", 1)) >= 8
+		if bool(MHGame.setting("live_hazards")):
+			if MHMissions.is_complete("solar_shelter"): kinds.append("spe")
+			if MHMissions.is_complete("hull_breach"): kinds.append("breach")
+			if MHMissions.is_complete("long_silence"): kinds.append("breakdowns")
+		if life.crew_on:
+			life.ensure_crew(sim.crew_count(), MHMissions.progress.get("crew_names", []))
+			life.set_names(MHMissions.progress.get("crew_names", []))
+	else:
+		life.crew_on = MHGame.simulation_on()
+		if MHGame.game_mode == "survival" and bool(MHGame.setting("live_hazards")): kinds = ["spe", "breach", "breakdowns"]
+	life.live_kinds = kinds
+
 func _clear_touchdown(target: Vector2, rng: RandomNumberGenerator, avoid_lander := true) -> Vector2:
 	var taken: Array = MHMissions.cargo_landers().map(func(c): return Vector2((c.position as Vector3).x, (c.position as Vector3).z))
 	for cargo in cargo_landers: taken.append(Vector2(cargo.global_position.x, cargo.global_position.z))
