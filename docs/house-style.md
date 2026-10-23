@@ -66,3 +66,22 @@ New models use the furnishings pack's helpers. Load them with `exec`, as `asset_
 
   The ids are unchanged, so saves still load.
 - **Before and after contact sheets:** `docs/house-style/before_*.jpg` and `after_*.jpg`, plus a room (`mixed1.jpg`, `mixed3.jpg`).
+
+## What changed on 24 Oct: the shell, and Act 2's equipment
+
+- **Walls, corridors and corner posts** are rebuilt in the house style (`asset_packs/mars_shell_refresh_v1`, same names, sizes and origins in `assets/showcase_modules/`; the originals are in `backups/shell_before_20261024/`):
+  - a graphite kick plate;
+  - inset white panels with rubber seams, and a small vent;
+  - one slim orange rail at 1 m, which reads as an EVA handrail outside;
+  - a graphite light cove.
+
+  Corridor bays get a plated deck, end frames and chamfered light strips.
+- **Kit colours** (MHGame.kit_material) now use the house palette: white hull `#F2F3F0`, shell panels `#E3E7E5`, graphite seals `#4C5A61`.
+- **Floors** are a graphite deck in 1.5 m plates, with only a hint of the room's colour. **Ceilings** are white panels. Both use a small tiling texture in world space, so the seams line up across rooms.
+- **Living on Mars pack** (`asset_packs/mars_living_on_mars_v1`), for Missions 7–10:
+  - a regolith shield wall;
+  - a water wall;
+  - a storm shelter locker;
+  - a hull patch kit;
+  - an air reserve rack;
+  - a spare parts rack.

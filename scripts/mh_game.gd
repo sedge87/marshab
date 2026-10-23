@@ -376,9 +376,10 @@ static func kit_material(role: String) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.resource_name = "Kit " + role
 	match role:
-		"hull": m.albedo_color = MHStyle.STRUCTURAL_WHITE; m.roughness = .48; m.metallic = .05
-		"panel": m.albedo_color = Color("#C6CCCF"); m.roughness = .6; m.metallic = .05
-		"seal": m.albedo_color = MHStyle.SEAL_DARK; m.roughness = .55; m.metallic = .25
+		# The house palette (docs/house-style.md): white hull, shell panels, graphite seals.
+		"hull": m.albedo_color = Color("#F2F3F0"); m.roughness = .55; m.metallic = 0.0
+		"panel": m.albedo_color = Color("#E3E7E5"); m.roughness = .58; m.metallic = 0.0
+		"seal": m.albedo_color = Color("#4C5A61"); m.roughness = .55; m.metallic = .15
 		"steel": m.albedo_color = MHStyle.FRAME_STEEL; m.roughness = .38; m.metallic = .65
 		"glass":
 			m.albedo_color = Color("#121a1f"); m.roughness = .12; m.metallic = .4

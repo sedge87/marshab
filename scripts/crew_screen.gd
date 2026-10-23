@@ -58,7 +58,9 @@ func open(target_builder: Node) -> void:
 	var save := MHStyle.button("Save names", "primary", "save", 44)
 	save.pressed.connect(_save_names)
 	names_row.add_child(save)
-	names_row.add_child(MHStyle.body("Click a name to change it.", 15, MHStyle.TEXT_MUTED))
+	var hint := MHStyle.label("Click a name to change it.", 15, MHStyle.TEXT_MUTED)
+	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	names_row.add_child(hint)
 	col.add_child(names_row)
 	# Needs and safety side by side
 	var lower := MHStyle.hbox(16)

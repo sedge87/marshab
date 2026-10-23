@@ -3138,7 +3138,12 @@ func _add_freeform_slab(outline: PackedVector2Array, y: float, thickness: float,
 	var mesh := surface.commit()
 	var body := StaticBody3D.new(); body.collision_layer = 1; body.collision_mask = 1; body.add_to_group(group); root.add_child(body)
 	var visual := MeshInstance3D.new(); visual.mesh = mesh
-	var material := StandardMaterial3D.new(); material.albedo_color = colour; material.roughness = .70; material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var material: StandardMaterial3D
+	match group:
+		"habitat_floor": material = _deck_material(colour).duplicate()
+		"habitat_roof": material = _ceiling_material().duplicate()
+		_: material = StandardMaterial3D.new(); material.albedo_color = colour; material.roughness = .70
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	visual.material_override = material; body.add_child(visual)
 	var collision := CollisionShape3D.new(); var shape := ConcavePolygonShape3D.new(); shape.set_faces(faces); collision.shape = shape; body.add_child(collision)
 
@@ -4340,9 +4345,62 @@ func _add_plan_tile(centre: Vector3,colour: Color,zone_kind: String) -> void:
 func _add_box(position: Vector3,size: Vector3,colour: Color,solid: bool,group := "",show_visual := true) -> void:
 	var body:=StaticBody3D.new(); body.position=position; body.collision_layer=1; body.collision_mask=1; if not group.is_empty(): body.add_to_group(group); root.add_child(body)
 	if show_visual:
-		var visual:=MeshInstance3D.new(); var mesh:=BoxMesh.new(); mesh.size=size; visual.mesh=mesh; var material:=StandardMaterial3D.new(); material.albedo_color=colour; material.roughness=.70; visual.material_override=material; body.add_child(visual)
+		var visual:=MeshInstance3D.new(); var mesh:=BoxMesh.new(); mesh.size=size; visual.mesh=mesh
+		var material: StandardMaterial3D
+		match group:
+			"habitat_floor": material = _deck_material(colour)
+			"habitat_roof": material = _ceiling_material()
+			_: material = StandardMaterial3D.new(); material.albedo_color=colour; material.roughness=.70
+		visual.material_override=material; body.add_child(visual)
 	if solid: var collision:=CollisionShape3D.new(); var shape:=BoxShape3D.new(); shape.size=size; collision.shape=shape; body.add_child(collision)
 
+
+# ---------- house-style floor and ceiling (docs/house-style.md) ----------
+# A graphite deck in 1.5 m plates with a hint of the room's colour, and a white
+# ceiling in panels: both drawn by a small tiling texture in world space, so
+# seams line up across rooms. Shared per colour.
+static var _decks := {}
+static var _ceiling: StandardMaterial3D
+static var _plate_texture: ImageTexture
+
+static func _plate_lines() -> ImageTexture:
+	if _plate_texture != null: return _plate_texture
+	var image := Image.create(64, 64, false, Image.FORMAT_RGB8)
+	image.fill(Color(1, 1, 1))
+	for i in 64:
+		for edge in [0, 1, 63]:
+			image.set_pixel(i, edge, Color(.72, .72, .72)); image.set_pixel(edge, i, Color(.72, .72, .72))
+	# Small fixings near each corner.
+	for c in [Vector2i(5, 5), Vector2i(58, 5), Vector2i(5, 58), Vector2i(58, 58)]:
+		image.set_pixelv(c, Color(.8, .8, .8))
+	image.generate_mipmaps()
+	_plate_texture = ImageTexture.create_from_image(image)
+	return _plate_texture
+
+static func _deck_material(room_colour: Color) -> StandardMaterial3D:
+	var key := room_colour.to_html(false)
+	if _decks.has(key): return _decks[key]
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color("#5A666C").lerp(room_colour, .16)
+	m.albedo_texture = _plate_lines()
+	m.uv1_triplanar = true
+	m.uv1_world_triplanar = true
+	m.uv1_scale = Vector3(1, 1, 1) / 1.5
+	m.roughness = .62
+	m.metallic = .1
+	_decks[key] = m
+	return m
+
+static func _ceiling_material() -> StandardMaterial3D:
+	if _ceiling != null: return _ceiling
+	_ceiling = StandardMaterial3D.new()
+	_ceiling.albedo_color = Color("#E3E7E5")
+	_ceiling.albedo_texture = _plate_lines()
+	_ceiling.uv1_triplanar = true
+	_ceiling.uv1_world_triplanar = true
+	_ceiling.uv1_scale = Vector3(1, 1, 1) / 1.5
+	_ceiling.roughness = .58
+	return _ceiling
 
 func _add_glass_box(position: Vector3,size: Vector3,colour: Color,solid: bool,group := "") -> void:
 	var body:=StaticBody3D.new(); body.position=position; body.collision_layer=1; if not group.is_empty(): body.add_to_group(group); root.add_child(body)
