@@ -75,6 +75,7 @@ static func build(builder: Node) -> void:
 		_band(builder, holder, zone, outline, base_y, colour)
 		_kit(holder, outline, base_y, KITS.get(kind, []))
 	_door_signs(builder, holder, base_y)
+	_emblems(builder, holder, base_y)
 
 # ---------- the colour band ----------
 
@@ -252,6 +253,86 @@ static func _door_signs(builder: Node, holder: Node3D, base_y: float) -> void:
 			label.position = Vector3(at.x, base_y + 2.58, at.y) + Basis(Vector3.UP, yaw) * Vector3(.08, 0, .015)
 			label.rotation.y = yaw
 			holder.add_child(label)
+
+# ---------- the colony emblem ----------
+
+## The emblem chosen on the colony screen, like a mission patch: a roundel
+## above every outside airlock door, and a larger one with the colony's name
+## on one outside wall of each room of two squares or more (never on a window).
+static func _emblems(builder: Node, holder: Node3D, base_y: float) -> void:
+	for door in builder.root.find_children("*", "Node3D", true, false):
+		if not door.is_in_group("airlock_door") or door.is_queued_for_deletion(): continue
+		var position: Vector3 = door.position
+		var facing: Vector3 = door.transform.basis.z
+		var normal := Vector2(facing.x, facing.z).normalized()
+		for side: float in [1.0, -1.0]:
+			# The side that faces Mars.
+			if not builder._zone_at_point(Vector2(position.x, position.z) + normal * side * .8).is_empty(): continue
+			if builder._zone_at_point(Vector2(position.x, position.z) - normal * side * .8).is_empty(): continue
+			var at := Vector2(position.x, position.z) + normal * side * .32
+			_roundel(holder, Vector3(at.x, base_y + 2.62, at.y), atan2(normal.x * side, normal.y * side), .27, "")
+	var done := {}
+	for bay in builder.get("_hull_bays"):
+		var mid: Vector2 = bay.mid
+		var outward: Vector2 = bay.outward
+		var zone: Dictionary = builder._zone_at_point(mid - outward * .8)
+		if zone.is_empty() or str(zone.get("kind", "")) in ["corridor", "airlock", "vehicle_bay"]: continue
+		var cells: int = (zone.get("cells", []) as Array).size()
+		if cells > 0 and cells < 2: continue
+		var key: String = builder.simulation()._room_key(zone)
+		if done.has(key): continue
+		if builder._window_index_at(mid, builder._canonical_wall_dir(bay.tangent)) >= 0: continue
+		done[key] = true
+		var at := mid + outward * .2
+		_roundel(holder, Vector3(at.x, base_y + 1.55, at.y), atan2(outward.x, outward.y), .5, MHGame.colony_name.to_upper())
+
+static func _roundel(holder: Node3D, at: Vector3, yaw: float, radius: float, caption: String) -> void:
+	var node := Node3D.new()
+	node.name = "ColonyEmblem"
+	node.position = at
+	node.rotation.y = yaw
+	holder.add_child(node)
+	# A graphite rim, the accent disc, then the emblem in white.
+	var rim := MeshInstance3D.new()
+	var rim_mesh := CylinderMesh.new()
+	rim_mesh.top_radius = radius * 1.12; rim_mesh.bottom_radius = radius * 1.12; rim_mesh.height = .02; rim_mesh.radial_segments = 40
+	rim.mesh = rim_mesh
+	rim.rotation.x = PI * .5
+	rim.material_override = _material(Color("#4C5A61"))
+	node.add_child(rim)
+	var disc := MeshInstance3D.new()
+	var disc_mesh := CylinderMesh.new()
+	disc_mesh.top_radius = radius; disc_mesh.bottom_radius = radius; disc_mesh.height = .03; disc_mesh.radial_segments = 40
+	disc.mesh = disc_mesh
+	disc.rotation.x = PI * .5
+	disc.position.z = .006
+	disc.material_override = MHGame.accent_material()
+	node.add_child(disc)
+	var icon := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(radius * 1.25, radius * 1.25)
+	icon.mesh = quad
+	icon.position.z = .024
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = MHIcons.texture(MHGame.emblem, 128)
+	material.albedo_color = Color("#F6F4EE")
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.roughness = .5
+	icon.material_override = material
+	node.add_child(icon)
+	for child in node.get_children(): (child as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if caption.length() >= 2:
+		var label := Label3D.new()
+		label.text = caption
+		label.font = MHStyle.font(800, false, 3)
+		label.font_size = 48
+		label.pixel_size = .004
+		label.modulate = Color("#F6F4EE")
+		label.outline_modulate = Color("#2C353A")
+		label.outline_size = 10
+		label.double_sided = false
+		label.position = Vector3(0, -radius - .2, .03)
+		node.add_child(label)
 
 # ---------- helpers ----------
 
