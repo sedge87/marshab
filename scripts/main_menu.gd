@@ -36,6 +36,8 @@ var camera: Camera3D
 var marker: Node3D
 var _site_preview_built := false
 var _landing_label: Label
+## Quick start goes straight to the landing map; Back returns to the title.
+var _quick_start := false
 var ui_root: Control
 var screen: Control
 var screen_id := ""
@@ -96,7 +98,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		if screen_id == "site": show_screen("title")
 		elif screen_id == "colony": show_screen("site")
-		elif screen_id == "landing": show_screen("colony")
+		elif screen_id == "landing": show_screen("title" if _quick_start else "colony")
 
 # ---------- backdrop ----------
 func _build_backdrop() -> void:
@@ -295,6 +297,7 @@ func _title_screen() -> void:
 	var hero := _hero_button("New colony", "Choose a site · name your colony", "plus")
 	hero.pressed.connect(func() -> void:
 		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
+		_quick_start = false
 		show_screen("site"))
 	menu.add_child(hero)
 	# Missions: the NASA-style campaign, with its own saves.
@@ -315,8 +318,11 @@ func _title_screen() -> void:
 	var quick := MHStyle.button("Quick start · %s" % MHGame.site_name(), "secondary", "rocket")
 	quick.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	quick.pressed.connect(func() -> void:
+		# Straight to choosing where to land (skipping the site and colony steps).
+		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
 		MHGame.landing_target = Vector2.INF
-		show_screen("loading"))
+		_quick_start = true
+		show_screen("landing"))
 	menu.add_child(quick)
 	# Saves sit in their own scrolling panel beside the menu, so a long list
 	# never pushes the menu off the bottom of the screen. Mission saves and
@@ -792,7 +798,7 @@ func _landing_screen() -> void:
 	bar.alignment = BoxContainer.ALIGNMENT_END
 	var back := MHStyle.button("Back", "ghost", "chevron-left")
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	back.pressed.connect(show_screen.bind("colony"))
+	back.pressed.connect(func() -> void: show_screen("title" if _quick_start else "colony"))
 	bar.add_child(back)
 	var land := MHStyle.button("Land at %s" % MHGame.site_name(), "primary", "rocket")
 	land.size_flags_vertical = Control.SIZE_SHRINK_CENTER
