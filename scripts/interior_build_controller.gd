@@ -316,6 +316,11 @@ func _refresh_preview(force_rebuild: bool) -> void:
 	if on_top != Vector3.INF:
 		point = on_top
 		normal = Vector3.UP
+	_snap_yaw = NAN
+	var beside := _side_by_side(point)
+	if not beside.is_empty():
+		point = beside.point
+		_snap_yaw = float(beside.yaw)
 	_valid_reason = builder.free_interior_invalid_reason(selected_id, point, normal, _placement_yaw(normal))
 	if force_rebuild or preview == null:
 		if preview != null: preview.queue_free()
@@ -368,7 +373,33 @@ func _stack_point() -> Vector3:
 		return best
 	return Vector3.INF
 
+## Units that line up (galley benches): aiming near the end of one already
+## placed snaps the new one flush against it, facing the same way, as long as
+## that spot is free. {} when there's nothing to snap to.
+const SIDE_SNAP_REACH := .5
+var _snap_yaw := NAN
+func _side_by_side(point: Vector3) -> Dictionary:
+	var entry := EquipmentCatalog.get_entry(selected_id)
+	if not bool(entry.get("snaps_side_by_side", false)): return {}
+	# The builder's own footprint, plus the 2 cm breathing gap it insists on.
+	var width: float = builder._free_interior_size(entry).x + .025
+	var best := {}
+	var nearest := SIDE_SNAP_REACH
+	for item in builder.placed_interior:
+		if str(item.get("id", "")) != selected_id: continue
+		var yaw := float(item.get("rotation_y", 0.0))
+		var along := Basis(Vector3.UP, yaw).x
+		for side: float in [-1.0, 1.0]:
+			var spot: Vector3 = (item.get("position", Vector3.ZERO) as Vector3) + along * width * side
+			spot.y = point.y
+			var gap := Vector2(spot.x - point.x, spot.z - point.z).length()
+			if gap < nearest and builder.free_interior_invalid_reason(selected_id, spot, Vector3.UP, yaw).is_empty():
+				nearest = gap
+				best = {"point": spot, "yaw": yaw}
+	return best
+
 func _placement_yaw(normal: Vector3) -> float:
+	if not is_nan(_snap_yaw): return _snap_yaw
 	# Floor equipment follows the viewer's heading. Future wall entries face out
 	# from the hit surface without requiring an exterior-grid direction.
 	var entry := EquipmentCatalog.get_entry(selected_id)

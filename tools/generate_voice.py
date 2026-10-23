@@ -1,20 +1,27 @@
-"""Generates the habitat computer's voice lines as 16-bit mono WAV files.
+"""Generates every spoken line as 16-bit mono WAV files.
 
-Like Subnautica's PDA and seabase computer: no name, one calm voice, short
-fixed phrases ("Warning. Oxygen level falling."). The exact numbers are shown
-on screen, not spoken, so a small set of lines covers every alert.
+Two speakers, both from data/voice_lines.json:
+  - The habitat (named by the player, "ARDEN" by default) talks in the first
+    person, warm and a little dry, and says what to do, not just what's wrong.
+    Voice "Microsoft Hazel" (en-GB), close and in the room: gentle EQ, a touch
+    of warmth and a small cabin reverb. No chorus or band-limiting: it should
+    sound like someone in the habitat with you, not a ship's computer.
+  - Mission Control talks from Earth over a radio link. Voice "Microsoft
+    David" (en-US) through a narrow radio band, soft static, and the
+    two-tone "Quindar" beeps NASA used on Apollo at the start and end of
+    each transmission.
 
-Each line is spoken by Windows' built-in speech engine (offline, voice
-"Microsoft Hazel", en-GB), then given a quiet "habitat
-computer" treatment from generate_audio.py's helpers: telephone-band EQ, a
-little saturation, a faint doubled chorus and a short metal-room reverb.
+Each line has a few variants so it doesn't repeat: <id>_<n>.wav for the
+habitat, mc_<id>_<n>.wav for Mission Control. The game picks one at random
+and shows its text as a caption.
 
 Usage:
     python tools/generate_voice.py [<output folder>]
 Default output: <project>/assets/audio/voice. Needs numpy and Windows.
-Adding a line: append it to LINES (existing files are regenerated identically).
+Old files in the folder are removed first, so renamed lines don't linger.
 """
 
+import json
 import subprocess
 import sys
 import tempfile
@@ -26,74 +33,20 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import generate_audio as ga  # noqa: E402
 
-VOICE = "Microsoft Hazel Desktop"
+ROOT = Path(__file__).resolve().parent.parent
+LINES = json.loads((ROOT / "data" / "voice_lines.json").read_text(encoding="utf-8"))
+HABITAT_VOICE = "Microsoft Hazel Desktop"
+CONTROL_VOICE = "Microsoft David Desktop"
 RATE = ga.RATE
 
-# id -> what the habitat says. Alerts are <alert id>_<level>; clears are
-# resolved_<alert id>. habitat_alerts.gd plays them by these names.
-LINES = {
-    "life_support_power_critical": "Critical. Life support has no power.",
-    "power_warning": "Warning. Power demand exceeds supply. Non-essential systems offline.",
-    "battery_sunset_advisory": "Advisory. Battery reserves low. Sunset approaching.",
-    "o2_warning": "Warning. Oxygen level falling.",
-    "o2_critical": "Critical. Oxygen level low.",
-    "co2_warning": "Warning. Carbon dioxide level rising.",
-    "co2_critical": "Critical. Carbon dioxide at dangerous levels.",
-    "cold_warning": "Warning. Cabin temperature falling.",
-    "cold_critical": "Critical. Cabin temperature dangerously low.",
-    "water_warning": "Warning. Water reserves low.",
-    "water_critical": "Critical. Water reserves depleted.",
-    "food_warning": "Warning. Food supplies running low.",
-    "food_critical": "Critical. Food supplies depleted.",
-    "health_warning": "Warning. Crew health declining.",
-    "health_critical": "Critical. Crew health in danger.",
-    "resolved_life_support_power": "Life support restored.",
-    "resolved_power": "Power restored.",
-    "resolved_o2": "Oxygen levels normal.",
-    "resolved_co2": "Carbon dioxide levels normal.",
-    "resolved_cold": "Cabin temperature normal.",
-    "resolved_water": "Water supply stable.",
-    "resolved_food": "Food supply stable.",
-    "resolved_health": "Crew health recovering.",
-    "storm_forecast": "Advisory. Dust storm forecast. Charge the batteries.",
-    "storm_arrived": "Warning. Dust storm overhead. Solar output reduced.",
-    "storm_cleared": "Dust storm has passed. Solar output recovering.",
-    "welcome_home": "Welcome home.",
-    "welcome_aboard": "Welcome aboard. Habitat systems online.",
-    "cold_spot_warning": "Warning. Cold spot detected.",
-    "radiation_critical": "Warning. Solar particle event detected. All crew to the storm shelter.",
-    "radiation_warning": "Radiation storm in progress. Remain in the storm shelter.",
-    "resolved_radiation": "Radiation levels normal. All clear.",
-    "breach_critical": "Critical. Hull breach detected. Sealing hatches.",
-    "resolved_breach": "Hull breach sealed.",
-    "repress_advisory": "Repressurising.",
-    "resolved_repress": "Pressure restored.",
-    "breakdown_warning": "Warning. Equipment failure.",
-    "breakdown_critical": "Critical. Life support system offline.",
-    "resolved_breakdown": "Repairs complete.",
-    "blackout_advisory": "Advisory. Communications blackout. Contact with Earth lost.",
-    "resolved_blackout": "Communications with Earth restored.",
-    "injury_warning": "Medical alert. Crew member injured.",
-    "injury_advisory": "Medical alert. Crew member injured.",
-    "fitness_warning": "Advisory. Crew fitness declining.",
-    "fitness_critical": "Warning. Crew fitness low.",
-    "wellbeing_warning": "Advisory. Crew wellbeing low.",
-    "wellbeing_critical": "Warning. Crew wellbeing critical.",
-    "resolved_injury": "Crew member recovered.",
-    "seismic_activity": "Seismic activity detected.",
-    "resolved_fitness": "Crew fitness restored.",
-    "resolved_wellbeing": "Crew wellbeing improving.",
-    "resolved_cold_spot": "Heating restored.",
-}
 
-
-def speak(text, path):
+def speak(text, path, voice, rate):
     """Windows speech to a WAV file at the game's sample rate."""
     script = (
         "Add-Type -AssemblyName System.Speech;"
         "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer;"
-        f"$s.SelectVoice('{VOICE}');"
-        "$s.Rate = 0;"
+        f"$s.SelectVoice('{voice}');"
+        f"$s.Rate = {rate};"
         f"$f = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo({RATE}, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono);"
         f"$s.SetOutputToWaveFile('{path}', $f);"
         f"$s.Speak('{text}');"
@@ -104,34 +57,56 @@ def speak(text, path):
 
 def read_wav(path):
     with wave.open(str(path), "rb") as f:
-        data = np.frombuffer(f.readframes(f.getnframes()), dtype="<i2").astype(np.float64) / 32768.0
-    return data
+        return np.frombuffer(f.readframes(f.getnframes()), dtype="<i2").astype(np.float64) / 32768.0
 
 
-def computer(signal):
-    """The habitat-computer treatment: band-limited, slightly saturated, a
-    faint doubled copy and a small hard room."""
-    # Trim silence the speech engine leaves at each end.
+def trim(signal):
+    """Trim the silence the speech engine leaves at each end."""
     level = np.abs(signal)
     on = np.where(level > level.max() * 0.02)[0]
-    if len(on): signal = signal[max(0, on[0] - int(.03 * RATE)): on[-1] + int(.08 * RATE)]
-    voiced = ga.highpass(ga.lowpass(signal, 6500), 180)
-    voiced = np.tanh(voiced * 1.6) / np.tanh(1.6)
-    # A doubled copy 11 ms late and a hair sharp reads as "synthetic", not robotic.
-    double = np.interp(np.arange(len(voiced)) * 1.004, np.arange(len(voiced)), voiced, right=0.0)
-    double = np.roll(double, int(.011 * RATE)); double[: int(.011 * RATE)] = 0
-    voiced = voiced * .85 + double * .25
-    return ga.reverb(voiced, length=.7, mix=.16, brightness=5000)
+    return signal[max(0, on[0] - int(.03 * RATE)): on[-1] + int(.08 * RATE)] if len(on) else signal
+
+
+def habitat(signal):
+    """Close and warm: a little low-end lift, soft top, a small cabin."""
+    voiced = ga.highpass(trim(signal), 90)
+    voiced = voiced + ga.lowpass(voiced, 300) * .25
+    voiced = ga.lowpass(voiced, 8500)
+    voiced = np.tanh(voiced * 1.15) / np.tanh(1.15)
+    return ga.reverb(voiced, length=.45, mix=.1, brightness=6000)
+
+
+def quindar(freq):
+    """One Apollo-style Quindar tone: 250 ms of a pure sine."""
+    t = np.arange(int(.25 * RATE)) / RATE
+    return np.sin(2 * np.pi * freq * t) * .35 * ga.fade_edges(np.ones(len(t)), .005, .01)
+
+
+def radio(signal):
+    """Earth on the radio: narrow band, a bit of crunch, static, beeps either side."""
+    voiced = ga.highpass(ga.lowpass(trim(signal), 3200, 4), 350, 4)
+    voiced = np.tanh(voiced * 2.4) / np.tanh(2.4)
+    gap = np.zeros(int(.08 * RATE))
+    body = np.concatenate([quindar(2525), gap, voiced, gap, quindar(2475)])
+    static = ga.bandpass(ga.noise((len(body) + 2) / RATE)[: len(body)], 2200, 2600) * .03
+    return body + static
 
 
 def main():
-    output = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "assets" / "audio" / "voice"
+    output = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "assets" / "audio" / "voice"
     ga.OUTPUT = output.parent
+    for old in output.glob("*.wav"): old.unlink()
+    for old in output.glob("*.wav.import"): old.unlink()
+    jobs = []
+    for line_id, variants in LINES["habitat"].items():
+        for n, text in enumerate(variants): jobs.append((f"{line_id}_{n}", text, HABITAT_VOICE, 0, habitat))
+    for line_id, variants in LINES["mission_control"].items():
+        for n, text in enumerate(variants): jobs.append((f"mc_{line_id}_{n}", text, CONTROL_VOICE, 1, radio))
     with tempfile.TemporaryDirectory() as scratch:
-        for name, text in LINES.items():
+        for name, text, voice, rate, treatment in jobs:
             raw = Path(scratch) / f"{name}.wav"
-            speak(text.replace("'", "''"), raw)
-            ga.write(f"{output.name}/{name}", computer(read_wav(raw)), -3)
+            speak(text.replace("'", "''"), raw, voice, rate)
+            ga.write(f"{output.name}/{name}", treatment(read_wav(raw)), -3)
     for name, length in ga.WRITTEN:
         print(f"  {name:40s} {length:5.2f} s")
     print(f"Wrote {len(ga.WRITTEN)} voice lines to {output}")

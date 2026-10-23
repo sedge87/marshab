@@ -51,6 +51,8 @@ const CONTROLS := [
 static var colony_name := "Habitat One"
 static var mission_statement := ""
 static var emblem := "rocket"
+## What the habitat is called; it speaks under this name (captions).
+static var habitat_name := "ARDEN"
 static var accent_index := 0
 static var site_id := "plains"
 
@@ -350,6 +352,7 @@ static func prepare_habitat_load(slot: int, save_set := "") -> bool:
 	colony_name = str(state.get("colony_name", colony_name))
 	mission_statement = str(state.get("mission_statement", mission_statement))
 	emblem = str(state.get("emblem", emblem))
+	habitat_name = str(state.get("habitat_name", "ARDEN"))
 	set_accent(int(state.get("accent_index", accent_index)))
 	game_mode = normalise_mode(str(state.get("game_mode", "survival")))
 	return true

@@ -84,12 +84,29 @@ static func build_layer(on: bool) -> void:
 	var d := director()
 	if d != null: d._run("_set_build_layer", [on])
 
-# The habitat computer's voice (assets/audio/voice, tools/generate_voice.py).
-# One line at a time: others wait their turn (at most two), and a line already
-# waiting isn't queued twice.
+# The habitat's voice (data/voice_lines.json, tools/generate_voice.py): a
+# random variant of the line, never the same one twice running, with its text
+# as a caption under the habitat's name. One line at a time: others wait their
+# turn (at most two), and a line already waiting isn't queued twice.
 static func voice(id: String) -> void:
 	var d := director()
-	if d != null: d._run("_play_voice", [id])
+	if d != null: d._run("_queue_voice", ["habitat", id, ""])
+
+# Mission Control on the radio from Earth (mc_<id>_<n>.wav), with a note under
+# the caption (how long ago it was sent).
+static func radio(id: String, note := "") -> void:
+	var d := director()
+	if d != null: d._run("_queue_voice", ["mission_control", id, note])
+
+const VOICE_LINES := "res://data/voice_lines.json"
+static var _lines: Dictionary = {}
+
+## Every line's variants: {"habitat": {id: [text]}, "mission_control": {...}}.
+static func lines() -> Dictionary:
+	if _lines.is_empty():
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(VOICE_LINES))
+		if parsed is Dictionary: _lines = parsed
+	return _lines
 
 # Muffles music and ambience behind pause / Mission Control.
 static func muffle(on: bool) -> void:
@@ -123,7 +140,11 @@ var _streams := {}
 var _sfx_players: Array[AudioStreamPlayer] = []
 var _next_sfx := 0
 var _voice: AudioStreamPlayer
-var _voice_queue: Array[String] = []
+var _voice_queue: Array[Dictionary] = []
+var _last_variant := {}
+var _caption_layer: CanvasLayer
+var _caption: PanelContainer
+var _caption_left := 0.0
 var _drone: AudioStreamPlayer
 var _pulse: AudioStreamPlayer
 var _pads: Array[AudioStreamPlayer] = []
@@ -195,6 +216,7 @@ func _stream(id: String, loop := false) -> AudioStream:
 	return stream
 
 func _process(delta: float) -> void:
+	_process_caption(delta)
 	if _mood == "off": return
 	var mood: Array = MOODS[_mood]
 	_pad_timer -= delta
@@ -301,18 +323,74 @@ func _play_sfx(id: String, volume_db: float, pitch_jitter: float) -> void:
 	p.pitch_scale = randf_range(1.0 - pitch_jitter, 1.0 + pitch_jitter)
 	p.play()
 
-func _play_voice(id: String) -> void:
-	if _stream("voice/" + id) == null: return
+func _queue_voice(speaker: String, id: String, note: String) -> void:
+	var variants: Array = (lines().get(speaker, {}) as Dictionary).get(id, [])
+	if variants.is_empty(): return
+	var line := {"speaker": speaker, "id": id, "note": note}
 	if _voice.playing:
-		if not _voice_queue.has(id) and _voice_queue.size() < 2: _voice_queue.append(id)
+		if not _voice_queue.any(func(q): return q.id == id) and _voice_queue.size() < 2: _voice_queue.append(line)
 		return
-	_voice.stream = _stream("voice/" + id)
-	_voice.volume_db = -2.0
+	_play_line(line)
+
+func _play_line(line: Dictionary) -> void:
+	var speaker := str(line.speaker)
+	var variants: Array = (lines().get(speaker, {}) as Dictionary).get(str(line.id), [])
+	var key := speaker + "/" + str(line.id)
+	var n := randi() % variants.size()
+	if variants.size() > 1 and n == int(_last_variant.get(key, -1)): n = (n + 1) % variants.size()
+	_last_variant[key] = n
+	var file := "voice/%s%s_%d" % ["mc_" if speaker == "mission_control" else "", str(line.id), n]
+	var stream := _stream(file)
+	if stream == null: return
+	_voice.stream = stream
+	_voice.volume_db = -2.0 if speaker == "habitat" else -5.0
 	_voice.play()
+	var who := "Mission Control" if speaker == "mission_control" else MHGame.habitat_name
+	_show_caption(who, str(variants[n]), str(line.get("note", "")), stream.get_length())
 
 func _next_voice() -> void:
 	if _voice_queue.is_empty(): return
-	_play_voice(_voice_queue.pop_front())
+	_play_line(_voice_queue.pop_front())
+
+# Captions for everything said, bottom centre (classrooms often play muted).
+func _show_caption(who: String, text: String, note: String, seconds: float) -> void:
+	if _caption_layer == null:
+		_caption_layer = CanvasLayer.new()
+		_caption_layer.layer = 7
+		add_child(_caption_layer)
+	if _caption != null and is_instance_valid(_caption): _caption.queue_free()
+	var radio := who == "Mission Control"
+	_caption = PanelContainer.new()
+	_caption.theme = MHStyle.theme()
+	_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_caption.add_theme_stylebox_override("panel", MHStyle.box(Color(MHStyle.SURFACE_HUD, .82), Color(0, 0, 0, 0), 8, 0, Vector4(18, 10, 18, 10)))
+	_caption.anchor_left = .5
+	_caption.anchor_right = .5
+	_caption.anchor_top = 1.0
+	_caption.anchor_bottom = 1.0
+	_caption.offset_bottom = -132
+	_caption.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_caption.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	var col := MHStyle.vbox(2)
+	_caption.add_child(col)
+	var head := MHStyle.hbox(8)
+	head.add_child(MHStyle.eyebrow(who, MHStyle.INFO if radio else MHGame.accent(), 13))
+	if not note.is_empty(): head.add_child(MHStyle.mono(note, 12, MHStyle.TEXT_MUTED))
+	col.add_child(head)
+	var words := MHStyle.body(text, 18, MHStyle.TEXT_PRIMARY)
+	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	words.custom_minimum_size.x = minf(720.0, 14.0 * text.length() * .62 + 40.0)
+	col.add_child(words)
+	_caption_layer.add_child(_caption)
+	_caption_left = seconds + 2.0
+
+func _process_caption(delta: float) -> void:
+	if _caption == null or not is_instance_valid(_caption): return
+	_caption_left -= delta
+	_caption.modulate.a = clampf(_caption_left / .5, 0.0, 1.0)
+	if _caption_left <= 0.0:
+		_caption.queue_free()
+		_caption = null
 
 func _play_at(id: String, target: Node3D, volume_db: float, height := 1.4) -> void:
 	var stream := _stream("sfx/" + id)

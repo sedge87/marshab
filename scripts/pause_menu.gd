@@ -12,12 +12,15 @@ signal exit_to_menu
 signal save_requested(slot: int)
 signal load_requested(slot: int)
 
+const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
+
 var _controls_sheet: Control
 var _controls_button: Button
 var _slots: HBoxContainer
 var _save_status: Label
 # Slot awaiting a second click to confirm overwriting an existing save.
 var _confirm_slot := 0
+var _guide: Control
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -44,6 +47,11 @@ func _ready() -> void:
 	_controls_button = _row(list, "Controls", "secondary", "keyboard")
 	_controls_button.pressed.connect(_toggle_controls)
 	_row(list, "Settings", "secondary", "settings").pressed.connect(func() -> void: settings.emit())
+	var guide := _row(list, "Field guide", "secondary", "book-open")
+	guide.tooltip_text = "Every How it works card, and the switch for pop-up cards"
+	guide.pressed.connect(func() -> void:
+		_guide = HOW_IT_WORKS.guide(get_tree())
+		add_child(_guide))
 	list.add_child(MHStyle.eyebrow("%s saves" % MHGame.SAVE_SETS[MHGame.save_set_for_mode(MHGame.game_mode)], MHStyle.accent, 13))
 	_slots = MHStyle.hbox(6)
 	list.add_child(_slots)
@@ -139,4 +147,8 @@ func _build_controls() -> Control:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
+		# Esc backs out of the Field guide first.
+		if is_instance_valid(_guide) and not _guide.is_queued_for_deletion():
+			_guide.queue_free()
+			return
 		resumed.emit()

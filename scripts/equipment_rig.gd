@@ -832,12 +832,21 @@ func _set_glow(meshes: Array, on: bool, dark_when_off := false) -> void:
 # ---------- play (guitar, plush) ----------
 
 ## A sound from the item itself, one of a few variants, with a little motion:
-## "squash" (a squeezed plush) or "shake" (a strummed guitar).
+## "squash" (a squeezed plush), "shake" (a strummed guitar) or "spin" (a hop
+## and a twirl: GAR-y). With captions, each press shows the next one in a
+## shuffled order, so none repeats until all have been seen.
+var _caption_order: Array = []
 func _play(action: Dictionary) -> void:
 	var variants := maxi(1, int(action.get("variants", 1)))
 	var sound := str(action.get("sound", ""))
 	if variants > 1: sound += "_%d" % (randi() % variants)
 	MHAudio.sfx_at(sound, self, 0.0, float(action.get("height", .5)))
+	var captions: Array = action.get("captions", [])
+	if not captions.is_empty():
+		if _caption_order.is_empty():
+			_caption_order = range(captions.size())
+			_caption_order.shuffle()
+		get_tree().call_group("explore_hud", "show_equipment_note", str(action.get("title", "")), str(captions[int(_caption_order.pop_back())]))
 	var model := _model()
 	if model == null: return
 	var tween := create_tween().set_trans(Tween.TRANS_SINE)
@@ -850,6 +859,15 @@ func _play(action: Dictionary) -> void:
 			var rest := model.rotation
 			for angle in [.025, -.02, .012, 0.0]:
 				tween.tween_property(model, "rotation", rest + Vector3(0, 0, angle), .07)
+		"spin":
+			var rest_y := model.position.y
+			var turn := model.rotation.y
+			tween.set_parallel(true)
+			tween.tween_property(model, "rotation:y", turn + TAU, .55)
+			tween.tween_property(model, "position:y", rest_y + .06, .2).set_ease(Tween.EASE_OUT)
+			tween.tween_property(model, "position:y", rest_y, .25).set_ease(Tween.EASE_IN).set_delay(.25)
+			tween.set_parallel(false)
+			tween.tween_callback(func() -> void: model.rotation.y = turn)
 
 # ---------- workout and inspect ----------
 

@@ -4386,6 +4386,33 @@
       }
     ]
   },
+  "mini_gar_y": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "play",
+        "label": "Give GAR-y a pat",
+        "sound": "gary_happy",
+        "height": 0.15,
+        "motion": "spin",
+        "title": "GAR-y",
+        "captions": [
+          "GAR-y is helping!",
+          "GAR-y found a rock. GAR-y loves the rock.",
+          "GAR-y has named the rock Gerald.",
+          "GAR-y is small, but GAR-y has big plans.",
+          "GAR-y would like to report: everything is excellent.",
+          "GAR-y did a spin. GAR-y is very proud of the spin.",
+          "GAR-y is 24 centimetres of pure enthusiasm.",
+          "GAR-y misses Gerald. Gerald is right there.",
+          "GAR-y thinks you are doing a great job.",
+          "GAR-y has surveyed this desk. No ice. Many crumbs.",
+          "GAR-y wants to be a real rover when it grows up.",
+          "GAR-y is charging. GAR-y runs on pats."
+        ]
+      }
+    ]
+  },
   "zero_g_plush": {
     "actions": [
       {

@@ -3,6 +3,7 @@ extends Node3D
 const WEATHER_SCRIPT := preload("res://scripts/weather.gd")
 const SITE_WEATHER := preload("res://scripts/site_weather.gd")
 const ALERTS_SCRIPT := preload("res://scripts/habitat_alerts.gd")
+const MISSION_CONTROL_LINK := preload("res://scripts/mission_control_link.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
@@ -38,6 +39,8 @@ var weather: Node   # scripts/weather.gd: storm warnings, haze, dust and sound
 ## Each site's own weather (frost, fog, dust devils, quakes, twilight clouds).
 var site_weather: Node3D
 var alerts: Node    # scripts/habitat_alerts.gd: habitat alerts (backlog 26)
+var earth_link: Node   # scripts/mission_control_link.gd: delayed messages from Earth
+var _earth_link_state := {}
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
@@ -142,6 +145,10 @@ func _ready() -> void:
 	alerts = ALERTS_SCRIPT.new()
 	add_child(alerts)
 	alerts.setup(self)
+	earth_link = MISSION_CONTROL_LINK.new()
+	add_child(earth_link)
+	earth_link.setup(self)
+	earth_link.restore_state(_earth_link_state)
 	gar_y_orders = GAR_Y_ORDERS.new()
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)
@@ -809,6 +816,7 @@ func current_state() -> Dictionary:
 		"colony_name": MHGame.colony_name,
 		"mission_statement": MHGame.mission_statement,
 		"emblem": MHGame.emblem,
+		"habitat_name": MHGame.habitat_name,
 		"accent_index": MHGame.accent_index,
 		"game_mode": MHGame.game_mode,
 		"builder": builder.export_habitat_state(),
@@ -818,6 +826,7 @@ func current_state() -> Dictionary:
 		"player_rotation_y": player.rotation.y,
 		"day_night": day_night.export_state() if day_night != null else {},
 		"resupply": {"kg": MHGame.resupply_kg, "count": MHGame.resupply_count, "landers": resupply_landers.duplicate(true)},
+		"mission_control": earth_link.export_state() if earth_link != null else {},
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {}
 	}
 
@@ -858,6 +867,7 @@ func _restore_pending_habitat() -> void:
 	var state := MHGame.pending_save_state
 	MHGame.pending_save_state = {}
 	builder.restore_habitat_state(state.get("builder", {}) as Dictionary)
+	_earth_link_state = state.get("mission_control", {}) as Dictionary
 	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
 	player.global_position = state.get("player_position", player.global_position) as Vector3
 	player.rotation.y = float(state.get("player_rotation_y", player.rotation.y))

@@ -29,6 +29,7 @@ const CAMERAS := {
 	"site-ice": [Vector3(95, 42, 95), Vector3(0, 0, -10), 34.0]
 }
 
+const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
 var backdrop: Node3D
 var environment
 var display_builder: BuildController
@@ -380,6 +381,10 @@ func _title_screen() -> void:
 	var settings := MHStyle.button("Settings", "ghost", "settings")
 	settings.pressed.connect(_open_settings)
 	row.add_child(settings)
+	var guide := MHStyle.button("Field guide", "ghost", "book-open")
+	guide.tooltip_text = "How the habitat's systems work"
+	guide.pressed.connect(func() -> void: add_child(HOW_IT_WORKS.guide(get_tree())))
+	row.add_child(guide)
 	var quit := MHStyle.button("Quit", "ghost", "log-out")
 	quit.pressed.connect(func() -> void: get_tree().quit())
 	row.add_child(quit)
@@ -604,7 +609,25 @@ func _colony_screen() -> void:
 	var counter := MHStyle.mono("", 13, MHStyle.TEXT_MUTED)
 	name_hint.add_child(counter)
 	name_box.add_child(name_hint)
-	form.add_child(name_box)
+	name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Beside it: what the habitat itself is called (it speaks under this name).
+	var name_row := MHStyle.hbox(16)
+	name_row.add_child(name_box)
+	var voice_box := MHStyle.vbox(8)
+	voice_box.custom_minimum_size.x = 200
+	voice_box.add_child(MHStyle.eyebrow("Habitat's name"))
+	var voice_field := LineEdit.new()
+	voice_field.max_length = 12
+	voice_field.placeholder_text = "ARDEN"
+	voice_field.text = MHGame.habitat_name
+	voice_field.custom_minimum_size.y = 56
+	voice_field.tooltip_text = "Your habitat talks to you. This is what it's called."
+	voice_field.text_changed.connect(func(text: String) -> void:
+		MHGame.habitat_name = text.strip_edges().to_upper() if text.strip_edges().length() > 0 else "ARDEN")
+	voice_box.add_child(voice_field)
+	voice_box.add_child(MHStyle.body("It talks to you.", 15, MHStyle.TEXT_MUTED))
+	name_row.add_child(voice_box)
+	form.add_child(name_row)
 	# Game mode: the cargo challenge, or free building.
 	var mode_box := MHStyle.vbox(8)
 	var mode_head := MHStyle.hbox(12)

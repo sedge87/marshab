@@ -1,9 +1,11 @@
 extends Node
 
 ## Habitat alerts (backlog item 26, docs/designs-batches-4-6.md): the habitat
-## computer speaks up when something starts going wrong, like Subnautica's
-## PDA and seabase: no name, one calm voice, short fixed lines
-## (assets/audio/voice, tools/generate_voice.py), numbers on screen.
+## speaks up when something starts going wrong. It has a name (MHGame.habitat_name,
+## "ARDEN" by default) and talks in the first person, warm and a little dry,
+## saying what to do (data/voice_lines.json, a few variants of each line, with
+## captions). Numbers stay on screen. When all is well it makes the odd remark:
+## at sunrise and sunset, and now and then when nothing's wrong.
 ##
 ## Every half second (real time) it reads the live simulation and works out
 ## each alert's level: advisory (blue, once), warning (amber, repeats every
@@ -45,6 +47,8 @@ var _last_sample := -1.0
 var _was_inside := true
 var _welcomed := false
 var _welcome_wait := 0.0
+var _remark_wait := 300.0
+var _remarked := {}   # "dawn"/"dusk" -> the sol it was last said
 
 func setup(target_world: Node) -> void:
 	world = target_world
@@ -72,6 +76,7 @@ func _process(delta: float) -> void:
 	if get_tree().paused: return
 	_welcome()
 	if not MHGame.simulation_on(): return
+	_remark()
 	_record_day()
 	var found := evaluate()
 	if not bool(MHGame.setting("alert_advisories")): found = found.filter(func(a): return str(a.level) != "advisory")
@@ -85,6 +90,26 @@ func _record_day() -> void:
 	var snap: Dictionary = s.snapshot(MHGame.sol_hour)
 	day.append({"t": now, "made": float(snap.generation_kw), "used": float(snap.load_kw), "battery": float(snap.battery_pct)})
 	while not day.is_empty() and now - float(day[0].t) > 24.0: day.pop_front()
+
+## The habitat's small talk, only indoors and only when no alert is up:
+## sunrise and sunset once a sol, otherwise a remark every 7 to 14 minutes.
+func _remark() -> void:
+	_remark_wait -= .5
+	if not _active.is_empty() or not _was_inside: return
+	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+	var sunrise := float(cycle.get("sunrise_hour", 5.0))
+	var sunset := float(cycle.get("sunset_hour", 19.0))
+	var hour := MHGame.sol_hour
+	var sol := floori(float(sim().hours_run) / 24.0)
+	for moment: String in ["dawn", "dusk"]:
+		var at := sunrise if moment == "dawn" else sunset
+		if hour >= at and hour < at + .75 and int(_remarked.get(moment, -1)) != sol:
+			_remarked[moment] = sol
+			MHAudio.voice("remark_" + moment)
+			return
+	if _remark_wait > 0.0: return
+	_remark_wait = randf_range(420.0, 840.0)
+	MHAudio.voice("remark_night" if hour >= sunset + 1.0 or hour < sunrise - .5 else "remark_calm")
 
 ## Coming in from outside: the habitat greets you (not more than once a minute).
 func _welcome() -> void:

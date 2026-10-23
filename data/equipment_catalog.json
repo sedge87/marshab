@@ -91,6 +91,11 @@
       "batch": true,
       "icon": "bed-double",
       "height": 1.84,
+      "surface_height": 0.9,
+      "surface_size": [
+        1.8,
+        0.66
+      ],
       "description": "Personal berth with reading lamp, privacy curtain and shelf.",
       "role": "One berth; lamp off on grid failure",
       "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/crew_bunk.tscn",
@@ -2609,6 +2614,7 @@
         1
       ],
       "placement": "floor",
+      "snaps_side_by_side": true,
       "effects": {},
       "system_note": "Every surface in a habitat is shared: a worktop is a food bench at mealtimes and a desk the rest of the day.",
       "system_links": [
@@ -4002,12 +4008,12 @@
     },
     {
       "id": "mini_gar_y",
-      "label": "Mini GAR-Y",
+      "label": "GAR-y",
       "group": "odds_and_ends",
       "status": "catalogue",
       "icon": "truck",
       "height": 0.24,
-      "description": "A toy GAR-Y for a desk or shelf.",
+      "description": "GAR-Y's little sibling, for a desk or shelf. Give it a pat.",
       "role": "Personal",
       "cargo_cost": 1,
       "valid_zones": [

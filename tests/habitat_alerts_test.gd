@@ -46,8 +46,8 @@ func _initialize() -> void:
 			if level == "critical" and id in ["power", "battery_sunset", "cold_spot", "repress", "blackout", "injury"]: continue
 			if level == "warning" and id in ["breach", "repress", "blackout"]: continue
 			if id == "battery_sunset" and level != "advisory": continue
-			_check(ResourceLoader.exists("res://assets/audio/voice/%s.wav" % alerts.voice_line(id, level)), "voice line for %s %s" % [id, level])
-	_check(ResourceLoader.exists("res://assets/audio/voice/battery_sunset_advisory.wav"), "voice line for the sunset advisory")
+			_check(_has_voice(alerts.voice_line(id, level)), "voice line for %s %s" % [id, level])
+	_check(_has_voice("battery_sunset_advisory"), "voice line for the sunset advisory")
 
 	# Levels follow the readings.
 	sim.o2_pct = 19.8
@@ -91,3 +91,11 @@ func _initialize() -> void:
 	if failures == 0:
 		print("Habitat alerts test passed: levels, cause chains, voice lines, raise/clear, explainers, log and test report.")
 	quit(1 if failures > 0 else 0)
+
+## A line in data/voice_lines.json with a recording for every variant.
+func _has_voice(id: String) -> bool:
+	var variants: Array = (MHAudio.lines().get("habitat", {}) as Dictionary).get(id, [])
+	if variants.is_empty(): return false
+	for n in range(variants.size()):
+		if not ResourceLoader.exists("res://assets/audio/voice/%s_%d.wav" % [id, n]): return false
+	return true

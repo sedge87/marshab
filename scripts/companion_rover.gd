@@ -35,6 +35,7 @@ const MHMissions := preload("res://scripts/mh_missions.gd")
 @export var wheel_radius := 0.165
 
 const NAME := "GAR-Y"
+const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
 const FULL_NAME := "Geological Analysis Rover, Y-Class"
 const ABOUT := "GAR-Y is a multipurpose rover designed for geological surveys, surface sample collection, terrain mapping and identifying potential water-ice deposits."
 ## Eye colour and brightness for each mood.
@@ -53,6 +54,24 @@ const NAP_AFTER := 25.0
 const TASK_STOP := .75
 const MAX_FLAGS := 12
 const ESCORT_MS := 90000
+## GAR-Y's rock collection: now and then a survey turns up a special rock,
+## which GAR-Y names and keeps beside its charger. Each is a real kind of
+## Mars rock: [name, kind, what it tells us, colour]. Gerald always comes first.
+const ROCKS := [
+	["Gerald", "Basalt", "Dark volcanic rock. Most of the surface of Mars is made of it.", Color("#4A4440")],
+	["Blueberry", "Hematite concretion", "A little iron-rich ball that formed in water. Opportunity found thousands of them.", Color("#5B4A55")],
+	["Olive", "Olivine basalt", "Green crystals that break down quickly in water, so this spot has been dry for a very long time.", Color("#6E7448")],
+	["Sparkles", "Gypsum vein", "A white mineral left behind by water trickling through cracks in the rock.", Color("#E6E1D6")],
+	["Swiss", "Vesicular basalt", "Full of holes made by gas bubbles as the lava cooled.", Color("#5E5650")],
+	["Pebbles", "River conglomerate", "Smooth, rounded stones cemented together: an ancient riverbed, like the one Curiosity found.", Color("#8A6A50")],
+	["Professor Crumbles", "Mudstone", "Fine layers of mud from an old lake. Good places to look for signs of ancient life.", Color("#9A7660")],
+	["Sue", "Sulfur crystals", "Bright yellow. In 2024 Curiosity drove over a rock, cracked it open and found pure sulfur inside.", Color("#D8C25A")],
+	["Clay-ton", "Clay-rich rock", "Clay forms in water that is not too acidic or salty: water that life could have used.", Color("#A0705A")],
+	["Visitor", "Iron meteorite", "A lump of iron and nickel from space. Rovers have found several lying on Mars.", Color("#6A6A6E")],
+	["Rusty", "Dust-coated rock", "Mars dust is mostly rusty iron oxide, finer than flour. It coats everything orange.", Color("#B5653A")],
+	["Salty", "Perchlorate salt crust", "Salts in the soil that are harmful to people. It's why the crew clean dust off their suits.", Color("#D9CDB8")],
+]
+const ROCK_CHANCE := .35
 const OWN_DOORS := ["INTERIOR", "BAY"]   # never OUTER, INNER or HANGAR: airlocks are yours to cycle
 
 var target: Node3D
@@ -68,6 +87,7 @@ var docked := false
 var mood := "curious"
 var ice_found := 0
 var samples := 0
+var rocks: Array = []          # ROCKS indices found, in order (saved)
 var flags: Array = []          # flag positions (Vector3), saved
 ## Orders (hold G, or the Mission Control map): see order().
 var staying := false           # "Stay": waits here until told otherwise
@@ -106,6 +126,7 @@ var _idle_time := 0.0
 var _scan_time := 0.0
 var _wander_phase := 0.0
 var _chirp_timer := 0.0
+var _met := false            # the GAR-Y card has had its chance this session
 
 # ---- the body ----
 var _visual: Node3D
@@ -119,6 +140,8 @@ var _grip: Node3D
 var _lamp: SpotLight3D
 var _blink_timer := 3.0
 var _flag_root: Node3D
+var _rock_root: Node3D
+var _rocks_shown := false
 
 func setup(follow_target: Node3D) -> MHCompanionRover:
 	target = follow_target
@@ -179,6 +202,12 @@ func _physics_process(delta: float) -> void:
 	# Build mode uses an isometric construction camera; keep the rover out of it.
 	var building := bool(target.get_meta("build_mode_active", false))
 	visible = not building
+	# Free play: the first time you walk up to GAR-Y, its card (once ever;
+	# in Missions it's in the brief).
+	if not _rocks_shown: _rebuild_rocks()
+	if not _met and not building and global_position.distance_to(target.global_position) < 4.0:
+		_met = true
+		if not MHMissions.active(): HOW_IT_WORKS.first_meeting(get_tree(), "gar_y", "Meet GAR-Y")
 	if building:
 		if not task.is_empty(): _end_task(true)
 		velocity = Vector3.ZERO
@@ -358,12 +387,72 @@ func _survey_here() -> void:
 		await _arm_move("stow", .7)
 		samples += 1
 		_say("happy")
+		var rock := _find_rock()
 		if _ordered:
 			_survey_done()
-			_toast("GAR-Y surveyed the spot", "No buried ice here (under 25%%). It scooped a regolith sample instead: %d so far." % samples, MHStyle.INFO)
-		elif samples == 1 or samples % 5 == 0:
+			if rock < 0: _toast("GAR-Y surveyed the spot", "No buried ice here (under 25%%). It scooped a regolith sample instead: %d so far." % samples, MHStyle.INFO)
+		elif rock < 0 and (samples == 1 or samples % 5 == 0):
 			_toast("GAR-Y scooped a sample", "Regolith samples collected so far: %d. No buried ice here." % samples, MHStyle.INFO)
+		if rock >= 0:
+			_say("tada")
+			var found: Array = ROCKS[rock]
+			_toast("GAR-Y found a special rock. It has named it %s." % found[0], "%s: %s It's keeping %s by its charger (%d of %d)." % [found[1], found[2], found[0], rocks.size(), ROCKS.size()], MHStyle.VALID)
 	_end_task()
+
+## Sometimes a sample is a special rock it hasn't got yet (Gerald first).
+## Returns its ROCKS index, or -1.
+func _find_rock() -> int:
+	if rocks.size() >= ROCKS.size(): return -1
+	if not rocks.is_empty() and randf() > ROCK_CHANCE: return -1
+	var left: Array = range(ROCKS.size()).filter(func(i): return not rocks.has(i))
+	var pick: int = 0 if rocks.is_empty() else int(left.pick_random())
+	rocks.append(pick)
+	_rebuild_rocks()
+	return pick
+
+## The collection, in rows on the floor beside the first GAR-Y Dock indoors
+## (none shown until there's a dock).
+func _rebuild_rocks() -> void:
+	_rocks_shown = true
+	if habitat == null: return
+	if habitat.has_signal("habitat_changed") and not habitat.is_connected("habitat_changed", _on_habitat_changed):
+		habitat.connect("habitat_changed", _on_habitat_changed)
+	if _rock_root == null or not is_instance_valid(_rock_root):
+		_rock_root = Node3D.new()
+		_rock_root.name = "GarYRocks"
+		(get_parent() if get_parent() != null else self).add_child.call_deferred(_rock_root)
+	for child in _rock_root.get_children(): child.queue_free()
+	if rocks.is_empty(): return
+	for item in habitat.placed_interior:
+		if str(item.get("id", "")) != "rover_charger": continue
+		var dock := Transform3D(Basis(Vector3.UP, float(item.get("rotation_y", 0.0))), item.get("position", Vector3.ZERO) as Vector3)
+		for n in range(rocks.size()):
+			var index := int(rocks[n])
+			var spec: Array = ROCKS[index]
+			var size := .05 + .025 * float((index * 7) % 5) / 4.0
+			var rock := MeshInstance3D.new()
+			rock.name = str(spec[0])
+			var mesh := SphereMesh.new()
+			mesh.radius = size
+			mesh.height = size * 2.0
+			mesh.radial_segments = 7
+			mesh.rings = 4
+			rock.mesh = mesh
+			var material := StandardMaterial3D.new()
+			material.albedo_color = spec[3]
+			material.roughness = .4 if index == 3 or index == 9 else .9
+			material.metallic = .5 if index == 9 else 0.0
+			rock.material_override = material
+			# Two neat rows along the dock's right side, each rock squashed a
+			# little differently so they read as stones, not marbles.
+			var local := Vector3(.7 + .15 * float(n / 6), size * .6, -.38 + .15 * float(n % 6))
+			var shape := Basis(Vector3.UP, float(index) * 1.3).scaled(Vector3(1.2 - .05 * float(index % 3), .6 + .05 * float(index % 4), 1.0))
+			rock.transform = dock * Transform3D(shape, local)
+			_rock_root.add_child(rock)
+		return
+
+func _on_habitat_changed() -> void:
+	_rebuild_rocks.call_deferred()
 
 func _plant_flag(spot: Vector3) -> void:
 	spot.y = global_position.y
@@ -809,19 +898,23 @@ func interact(_actor: Node = null) -> bool:
 
 func interact_info(_actor: Node = null) -> bool:
 	var tally := "\nIce deposits flagged: %d · Regolith samples: %d" % [ice_found, samples]
+	if not rocks.is_empty():
+		tally += "\nRock collection (%d of %d): %s" % [rocks.size(), ROCKS.size(), ", ".join(rocks.map(func(i): return str(ROCKS[int(i)][0])))]
 	get_tree().call_group("explore_hud", "show_equipment_note", "%s — %s" % [NAME, FULL_NAME], ABOUT + tally)
 	return true
 
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"flags": flags.duplicate(), "ice_found": ice_found, "samples": samples, "has_core": has_core}
+	return {"flags": flags.duplicate(), "ice_found": ice_found, "samples": samples, "has_core": has_core, "rocks": rocks.duplicate()}
 
 func restore_state(state: Dictionary) -> void:
 	flags = (state.get("flags", []) as Array).duplicate()
 	ice_found = int(state.get("ice_found", 0))
 	samples = int(state.get("samples", 0))
 	has_core = bool(state.get("has_core", false))
+	rocks = (state.get("rocks", []) as Array).map(func(i): return int(i))
+	_rebuild_rocks()
 	if not flags.is_empty(): _rebuild_flags()
 
 # ---------- moods, voice, body ----------

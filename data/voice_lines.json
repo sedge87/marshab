@@ -1,0 +1,320 @@
+{
+  "_about": "Everything the habitat and Mission Control say. tools/generate_voice.py speaks each variant to assets/audio/voice/<id>_<n>.wav (Mission Control as mc_<id>_<n>.wav); the game plays a random variant and shows its text as a caption. The habitat speaks in the first person, warm and a little dry, and says what to do, not just what's wrong. Keep lines short: the numbers are on screen.",
+  "habitat": {
+    "life_support_power_critical": [
+      "Life support has no power. I can't keep the air clean without it.",
+      "I've lost power to life support. Get me power, any way you can.",
+      "Life support is dark. This one's serious. Power, please."
+    ],
+    "power_warning": [
+      "I'm using more power than I'm making. I've switched off the extras.",
+      "Power's short. I've turned off what we can live without.",
+      "We're over budget on power. Some systems are off until we catch up."
+    ],
+    "battery_sunset_advisory": [
+      "Heads up. The batteries are low, and the sun's going down.",
+      "Sunset's coming and the batteries aren't full. Worth a look.",
+      "Night's on its way. I'd like more charge in the batteries."
+    ],
+    "o2_warning": [
+      "I'm losing oxygen faster than I can make it.",
+      "Oxygen's dropping. Check the oxygen generator.",
+      "The air's getting thin in here. Oxygen is falling."
+    ],
+    "o2_critical": [
+      "Oxygen is low. Everyone's breathing harder. Please hurry.",
+      "Oxygen is critical. Fix the generator, or open the reserve tank.",
+      "We're running out of oxygen. This is the big one."
+    ],
+    "co2_warning": [
+      "Carbon dioxide is building up. The air needs scrubbing.",
+      "The air's getting stale. Carbon dioxide is rising.",
+      "I can't clear the carbon dioxide fast enough."
+    ],
+    "co2_critical": [
+      "Carbon dioxide is at a dangerous level. Headaches are next.",
+      "The carbon dioxide is too high. Get the air recycler running.",
+      "Carbon dioxide is critical. The crew can't stay in this air."
+    ],
+    "cold_warning": [
+      "It's getting cold in here. Check the heaters.",
+      "Cabin temperature's dropping. Mars is winning.",
+      "I'm losing heat. Somebody turn the heating up."
+    ],
+    "cold_critical": [
+      "It's dangerously cold. The crew need heat now.",
+      "The cabin is freezing. Heaters, please. Quickly.",
+      "Temperature is critical. Nobody can work in this cold."
+    ],
+    "water_warning": [
+      "We're running low on water.",
+      "Water's getting low. The reclaimer or the ice extractor might help.",
+      "The water tanks are low. Time to find more."
+    ],
+    "water_critical": [
+      "We're out of water. This is urgent.",
+      "The water's gone. The crew can't last long without it.",
+      "No water left. Please make this the first thing you fix."
+    ],
+    "food_warning": [
+      "Food's running low. The grow trays could use some help.",
+      "We're getting through the food faster than we grow it.",
+      "The pantry's looking empty."
+    ],
+    "food_critical": [
+      "We're out of food. The crew are hungry.",
+      "No food left. Grow more, or wait for a supply drop.",
+      "The food has run out. This one can't wait."
+    ],
+    "health_warning": [
+      "The crew aren't doing well. Their health is slipping.",
+      "Crew health is dropping. Something here is hurting them.",
+      "I'm worried about the crew. Check the systems panel."
+    ],
+    "health_critical": [
+      "The crew are in danger. Please fix this now.",
+      "Crew health is critical. Whatever's wrong, it's urgent.",
+      "The crew can't take much more of this."
+    ],
+    "resolved_life_support_power": [
+      "Life support's back. Thank you.",
+      "Power to life support restored. Breathing easy again.",
+      "Life support is running. That was close."
+    ],
+    "resolved_power": [
+      "Power's back to normal.",
+      "Power's balanced again. Switching things back on.",
+      "We're making enough power again."
+    ],
+    "resolved_o2": [
+      "Oxygen's back to normal. Breathe easy.",
+      "The air's good again.",
+      "Oxygen restored. Nice work."
+    ],
+    "resolved_co2": [
+      "The air's clean again.",
+      "Carbon dioxide is back to normal.",
+      "Fresh air. Well, fresh for Mars."
+    ],
+    "resolved_cold": [
+      "It's warm again. Much better.",
+      "Cabin temperature's back to normal.",
+      "Heating's caught up. Cosy."
+    ],
+    "resolved_water": [
+      "Water supply is steady again.",
+      "We've got enough water again.",
+      "The tanks are filling. Good."
+    ],
+    "resolved_food": [
+      "Food supply's steady again.",
+      "We've got enough food again.",
+      "The pantry's back in business."
+    ],
+    "resolved_health": [
+      "The crew are on the mend.",
+      "Crew health is improving. Good.",
+      "Everyone's looking better."
+    ],
+    "storm_forecast": [
+      "There's a dust storm coming. Charge the batteries while the sun's out.",
+      "Storm on the way. Fill the batteries now. The panels won't get much soon.",
+      "I can see a dust storm on the horizon. Let's get ready."
+    ],
+    "storm_arrived": [
+      "The storm's here. The panels are barely getting any sun.",
+      "We're in the dust storm now. Go easy on the power.",
+      "Dust storm overhead. Solar power is down to a trickle."
+    ],
+    "storm_cleared": [
+      "The storm's passed. The sun's coming back.",
+      "Dust storm's over. The panels are waking up.",
+      "We made it through the storm. Nice."
+    ],
+    "welcome_home": [
+      "Welcome home.",
+      "Welcome back.",
+      "There you are. Welcome back.",
+      "Home sweet habitat."
+    ],
+    "welcome_aboard": [
+      "Welcome aboard. All systems online. I'm glad you're here."
+    ],
+    "cold_spot_warning": [
+      "One of the rooms has a cold spot.",
+      "There's a cold spot. A room isn't getting enough heat.",
+      "Somewhere in here is colder than it should be."
+    ],
+    "radiation_critical": [
+      "Solar particle event. Everyone to the storm shelter, now.",
+      "The Sun's thrown a radiation storm at us. Get to the shelter.",
+      "Radiation alert. Storm shelter, everyone. Don't wait."
+    ],
+    "radiation_warning": [
+      "The radiation storm's still going. Stay in the shelter.",
+      "Not yet. It's still not safe outside the shelter.",
+      "Radiation's still high. Hang in there."
+    ],
+    "resolved_radiation": [
+      "Radiation's back to normal. You can come out.",
+      "All clear. The radiation storm has passed.",
+      "Safe to leave the shelter now."
+    ],
+    "breach_critical": [
+      "Hull breach. I'm sealing the hatches.",
+      "We've got a hole in the hull. Sealing the doors.",
+      "Breach. Air is leaking. Closing the hatches."
+    ],
+    "resolved_breach": [
+      "Breach sealed. No more leaks.",
+      "The hole's patched.",
+      "Hull's sealed. Good patch."
+    ],
+    "repress_advisory": [
+      "Repressurising.",
+      "Putting the air back in."
+    ],
+    "resolved_repress": [
+      "Pressure's back to normal.",
+      "Air pressure restored."
+    ],
+    "breakdown_warning": [
+      "Something's broken. It needs a repair.",
+      "A machine has failed. Spare parts would help.",
+      "We've got a breakdown."
+    ],
+    "breakdown_critical": [
+      "A life support machine has failed. It needs fixing right away.",
+      "Life support's broken. Spare parts, please.",
+      "Critical breakdown. Life support is down."
+    ],
+    "resolved_breakdown": [
+      "Repairs done. Everything's working.",
+      "Fixed. Good as new.",
+      "That's sorted. Thanks."
+    ],
+    "blackout_advisory": [
+      "We've lost contact with Earth. The Sun's in the way.",
+      "The Sun's between us and Earth. No messages for a while.",
+      "Blackout. Earth can't hear us. We're on our own for now."
+    ],
+    "resolved_blackout": [
+      "We're back in touch with Earth.",
+      "Contact with Earth restored. Messages are getting through again.",
+      "Earth's back. Mission Control will be glad to hear from us."
+    ],
+    "injury_warning": [
+      "Someone's been hurt. They need the medical bay.",
+      "A crew member is injured.",
+      "We've got an injury. Medical bay, please."
+    ],
+    "injury_advisory": [
+      "Someone's been hurt. Nothing serious, but they need looking after.",
+      "Minor injury. The medical bay can help."
+    ],
+    "fitness_warning": [
+      "The crew aren't getting enough exercise. Their muscles are weakening.",
+      "Low gravity's getting to the crew. They need exercise.",
+      "Crew fitness is slipping."
+    ],
+    "fitness_critical": [
+      "The crew are getting weak. They need exercise stations.",
+      "Crew fitness is low. Bones and muscles are suffering.",
+      "The crew are losing strength. Get them exercising."
+    ],
+    "wellbeing_warning": [
+      "The crew are feeling low.",
+      "Morale's dipping. Check what they're missing.",
+      "The crew could use a bit of cheering up."
+    ],
+    "wellbeing_critical": [
+      "The crew are really struggling. They need more than air and food.",
+      "Morale is very low. The crew page shows what's missing.",
+      "The crew are unhappy. Let's look after them."
+    ],
+    "resolved_injury": [
+      "They've recovered. Back to work.",
+      "The injured crew member is better now."
+    ],
+    "resolved_fitness": [
+      "Crew fitness is back up.",
+      "The crew are getting strong again."
+    ],
+    "resolved_wellbeing": [
+      "The crew are feeling better.",
+      "Morale's picking up. Good."
+    ],
+    "resolved_cold_spot": [
+      "The cold spot's gone.",
+      "Every room's warm again."
+    ],
+    "seismic_activity": [
+      "I felt that. A marsquake. Nothing to worry about.",
+      "Marsquake. Just a small one. Everything's holding.",
+      "Did you feel that? Seismic activity. We're fine."
+    ],
+    "remark_dawn": [
+      "Sunrise. The panels are waking up.",
+      "Morning. Another sol on Mars.",
+      "The sun's up. Blue light to start, then butterscotch."
+    ],
+    "remark_dusk": [
+      "Sunset. Look out a window. The sky goes blue around the sun.",
+      "Getting dark. I'll keep the lights on.",
+      "Evening. The batteries take over from here."
+    ],
+    "remark_night": [
+      "Quiet night. All systems normal.",
+      "It's minus seventy outside. Glad we're in here.",
+      "If you look up tonight, the bright dot is Earth."
+    ],
+    "remark_calm": [
+      "Everything's running nicely. Just thought you'd like to know.",
+      "Air's fresh, the heaters are on, nothing's on fire. A good day.",
+      "All systems normal. I like it when it's boring.",
+      "I've checked everything twice. We're fine.",
+      "Did you know a sol is thirty-nine minutes longer than a day on Earth?"
+    ]
+  },
+  "mission_control": {
+    "hello": [
+      "Mission Control here. We've got your landing signal. Welcome to Mars. Everyone here is cheering.",
+      "This is Mission Control. Landing confirmed. Welcome to Mars."
+    ],
+    "first_room": [
+      "Mission Control. We see your first sealed room. That's a real home on another planet.",
+      "Mission Control. Pressure readings from your first room look great. Nice building."
+    ],
+    "storm_after": [
+      "Mission Control. We saw the dust storm on our satellites. Glad you came through it.",
+      "Mission Control. Our weather team tracked that storm. It looks like you handled it well."
+    ],
+    "critical_after": [
+      "Mission Control. We just saw your critical alert. By the time this reaches you, we hope it's already fixed.",
+      "Mission Control. We got your alert. We know you're on your own for this one. We trust you."
+    ],
+    "blackout_after": [
+      "Mission Control. The Sun's out of the way. It's good to hear from you again.",
+      "Mission Control. Contact restored. We missed you."
+    ],
+    "sol_10": [
+      "Mission Control. Ten sols on Mars. Keep it up."
+    ],
+    "sol_30": [
+      "Mission Control. Thirty sols. That's longer than anyone has ever stayed on Mars before."
+    ],
+    "sol_100": [
+      "Mission Control. One hundred sols. The whole team signed a card for you."
+    ],
+    "sol_669": [
+      "Mission Control. A full Martian year. Happy anniversary, colony."
+    ],
+    "tip": [
+      "Mission Control. Reminder: water is heavy to ship from Earth. Every litre you recycle is a win.",
+      "Mission Control. Our engineers say batteries are your best friend at night. And during storms.",
+      "Mission Control. The crew's families say hello.",
+      "Mission Control. Take a moment to look outside. Not many people have seen that view.",
+      "Mission Control. Students on Earth are following your mission. No pressure."
+    ]
+  }
+}

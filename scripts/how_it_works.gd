@@ -7,7 +7,8 @@ extends Node
 ##   - from the mission panel (K: the card behind the current step);
 ##   - the first time you place a key machine (once ever);
 ##   - from a failed Test check ("How it works: Heating");
-##   - in Mission Control's Field guide (every card unlocked so far).
+##   - in the Field guide (every card unlocked so far): Mission Control,
+##     the pause menu and the title screen, with the pop-up switch.
 ## show() opens the viewer over anything (it pauses the game while open).
 
 const PATH := "res://data/how_it_works.json"
@@ -89,8 +90,70 @@ static func first_time(tree: SceneTree, placed_id: String) -> void:
 	if id.is_empty() or seen(id) or not enabled(): return
 	show(tree, [id], "New: how this works")
 
+## Meeting something for the first time (GAR-Y): its card, once ever.
+static func first_meeting(tree: SceneTree, id: String, eyebrow: String) -> void:
+	if seen(id) or not enabled(): return
+	show(tree, [id], eyebrow)
+
 static func enabled() -> bool:
 	return DisplayServer.get_name() != "headless" and not MHGame.showcase and bool(MHGame.setting("tutorial_cards"))
+
+# ---------- the Field guide ----------
+
+## The Field guide: every card unlocked so far, as a list to open. Shared by
+## Mission Control, the pause menu and the title screen. Add the returned
+## scrim to a Control; it frees itself on Back (or call close on it).
+static func guide(tree: SceneTree) -> ColorRect:
+	var scrim := ColorRect.new()
+	scrim.name = "FieldGuide"
+	scrim.color = Color(0, 0, 0, .55)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.mouse_filter = Control.MOUSE_FILTER_STOP
+	var centre := CenterContainer.new()
+	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(centre)
+	var panel := MHStyle.menu_panel(28)
+	panel.custom_minimum_size.x = 860
+	centre.add_child(panel)
+	var col := MHStyle.vbox(12)
+	panel.add_child(col)
+	var head := MHStyle.hbox(8)
+	head.add_child(MHStyle.eyebrow("Field guide: how it works", MHStyle.accent))
+	head.add_child(MHStyle.spacer())
+	var back := MHStyle.button("Back", "secondary", "chevron-left")
+	back.pressed.connect(scrim.queue_free)
+	head.add_child(back)
+	col.add_child(head)
+	var ids: Array = unlocked()
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	col.add_child(grid)
+	for i in range(ids.size()):
+		var c := card(str(ids[i]))
+		var b := MHStyle.button(str(c.get("title", ids[i])), "ghost", str(c.get("icon", "info")), 52)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.custom_minimum_size.x = 390
+		b.tooltip_text = str(c.get("remember", ""))
+		b.pressed.connect(func() -> void: show(tree, ids.slice(i) + ids.slice(0, i), "Field guide"))
+		grid.add_child(b)
+	col.add_child(MHStyle.body("More cards unlock as the missions go on." if MHMissions.active() else "Every card is here in free play.", 14, MHStyle.TEXT_MUTED))
+	# Pop-up cards on or off, right here (the same switch as in Settings).
+	var row := MHStyle.hbox(14)
+	var sw := MHWidgets.Switch.new()
+	sw.button_pressed = bool(MHGame.setting("tutorial_cards"))
+	sw.toggled.connect(func(on: bool) -> void:
+		var values := MHGame.settings()
+		values["tutorial_cards"] = on
+		MHGame.save_settings(values))
+	row.add_child(sw)
+	var text := MHStyle.vbox(2)
+	text.add_child(MHStyle.label("Show cards as I play", 17, MHStyle.TEXT_PRIMARY, 600))
+	text.add_child(MHStyle.body("A card pops up the first time you place a key machine or meet GAR-Y. They're always here either way.", 14, MHStyle.TEXT_MUTED))
+	row.add_child(text)
+	col.add_child(row)
+	return scrim
 
 # ---------- the viewer ----------
 
