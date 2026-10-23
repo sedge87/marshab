@@ -479,6 +479,7 @@ static func defaults() -> Dictionary:
 	d["fov"] = 70
 	d["gary_autonomy"] = true
 	d["alert_advisories"] = true
+	d["tutorial_cards"] = true
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
 	return d
 

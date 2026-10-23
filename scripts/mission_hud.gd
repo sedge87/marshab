@@ -7,6 +7,7 @@ const MHDossier := preload("res://scripts/mh_dossier.gd")
 ## brief and versions (J), and the Test (T): a fast-forward run with a
 ## report, reasons and graphs. See docs/missions-design.md.
 const MHMissions := preload("res://scripts/mh_missions.gd")
+const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
 
 var world: Node
 var _panel: PanelContainer
@@ -178,6 +179,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_J:
 		_open_brief()
 		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_K:
+		var step_card := HOW_IT_WORKS.for_step(MHMissions.current_step())
+		var all := HOW_IT_WORKS.for_mission(str(MHMissions.current().id))
+		if not step_card.is_empty(): all.erase(step_card); all.push_front(step_card)
+		HOW_IT_WORKS.show(get_tree(), all if not all.is_empty() else HOW_IT_WORKS.unlocked())
+		get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_H and not _next_mission_waiting():
 		_compact = not _compact
 		_refresh_panel()
@@ -250,7 +257,7 @@ func _refresh_panel() -> void:
 		row.add_child(text)
 		_panel_body.add_child(row)
 	var versions := MHMissions.versions(str(mission.id))
-	_panel_body.add_child(MHStyle.mono("%s  ·  T TEST  ·  J BRIEF  ·  H HIDE" % ("NOT TESTED YET" if versions.is_empty() else "VERSION %d TESTED" % versions.size()), 11, MHStyle.TEXT_MUTED))
+	_panel_body.add_child(MHStyle.mono("%s  ·  T TEST  ·  J BRIEF  ·  K HOW IT WORKS  ·  H HIDE" % ("NOT TESTED YET" if versions.is_empty() else "VERSION %d TESTED" % versions.size()), 11, MHStyle.TEXT_MUTED))
 
 # ---------- overlays ----------
 
@@ -339,13 +346,23 @@ func _open_short_brief() -> void:
 	column.add_child(_wrapped(str(mission.brief), 18, MHStyle.TEXT_PRIMARY, 776))
 	column.add_child(MHStyle.eyebrow("Your goal", MHStyle.accent, 12))
 	column.add_child(_wrapped(str(mission.get("goal", "")), 18, MHStyle.TEXT_PRIMARY, 776))
+	var learn := HOW_IT_WORKS.for_mission(str(mission.id))
+	if not learn.is_empty():
+		column.add_child(MHStyle.eyebrow("What you need to know", MHStyle.accent, 12))
+		column.add_child(_learn_row(learn))
 	var first := MHMissions.current_step()
 	if not first.is_empty():
 		column.add_child(MHStyle.eyebrow("First step", MHStyle.accent, 12))
 		column.add_child(_wrapped("%s. %s" % [str(first.text), str(first.get("how", ""))], 17, MHStyle.TEXT_SECONDARY, 776))
 	column.add_child(_wrapped("The steps stay on screen, top right, and tick themselves off as you go.", 15, MHStyle.TEXT_MUTED, 776))
 	var buttons := MHStyle.hbox(12)
-	var go := MHStyle.button("Let's go", "primary", "play")
+	# New to these systems: learning comes first.
+	var unseen := learn.filter(func(id): return not HOW_IT_WORKS.seen(id))
+	if not unseen.is_empty():
+		var how := MHStyle.button("Learn how it works (%d)" % unseen.size(), "primary", "book-open")
+		how.pressed.connect(func() -> void: HOW_IT_WORKS.show(get_tree(), unseen))
+		buttons.add_child(how)
+	var go := MHStyle.button("Let's go", "secondary" if not unseen.is_empty() else "primary", "play")
 	go.pressed.connect(_close_overlay)
 	buttons.add_child(go)
 	var more := MHStyle.button("Full brief  (J)", "ghost", "clipboard-check")
@@ -385,6 +402,10 @@ func _open_brief() -> void:
 	var right := MHStyle.vbox(12)
 	right.custom_minimum_size.x = 440
 	body.add_child(right)
+	var learn := HOW_IT_WORKS.for_mission(str(mission.id))
+	if not learn.is_empty():
+		right.add_child(MHStyle.eyebrow("How it works", MHStyle.accent, 13))
+		right.add_child(_learn_row(learn, true))
 	right.add_child(MHStyle.eyebrow("Constraints", MHStyle.accent, 13))
 	var who := "A construction robot: no crew yet" if str(mission.get("player", "crew")) == "robot" else "%d crew" % int(mission.get("crew", 0))
 	for line in ["Payload this landing: %s (total budget so far %s)" % [MHStyle.kg(int(mission.get("payload_kg", 0))), MHStyle.kg(MHMissions.cargo_budget())],
@@ -405,6 +426,20 @@ func _open_brief() -> void:
 	var start := MHStyle.button("Start designing" if versions.is_empty() else "Back to building", "primary", "play")
 	start.pressed.connect(_close_overlay)
 	column.add_child(start)
+
+## Buttons for How it works cards (each opens the viewer from that card).
+func _learn_row(ids: Array, stacked := false) -> Container:
+	var row: Container = MHStyle.vbox(6) if stacked else HFlowContainer.new()
+	if row is HFlowContainer:
+		(row as HFlowContainer).add_theme_constant_override("h_separation", 8)
+		(row as HFlowContainer).add_theme_constant_override("v_separation", 8)
+	for i in range(ids.size()):
+		var c := HOW_IT_WORKS.card(str(ids[i]))
+		var b := MHStyle.button(str(c.get("title", ids[i])), "ghost", str(c.get("icon", "info")), 40)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.pressed.connect(func() -> void: HOW_IT_WORKS.show(get_tree(), ids.slice(i) + ids.slice(0, i)))
+		row.add_child(b)
+	return row
 
 func _version_line(versions: Array, number: int) -> String:
 	var design: Dictionary = versions[number - 1].design
@@ -479,6 +514,13 @@ func _show_report(report: Dictionary) -> void:
 		words.add_child(_wrapped(str(result.detail), 15, MHStyle.TEXT_SECONDARY, 1000))
 		if not bool(result.pass) and not str(result.get("tip", "")).is_empty():
 			words.add_child(_wrapped("Try this: " + str(result.tip), 15, MHStyle.accent, 1000))
+		if not bool(result.pass):
+			var card_id := _card_for_result(result)
+			if not card_id.is_empty():
+				var learn := MHStyle.button("How it works: %s" % str(HOW_IT_WORKS.card(card_id).get("title", "")), "ghost", "book-open", 36)
+				learn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+				learn.pressed.connect(func() -> void: HOW_IT_WORKS.show(get_tree(), [card_id]))
+				words.add_child(learn)
 		row.add_child(words)
 		column.add_child(row)
 	# The habitat's alerts on the test run: the early warning students would have had.
@@ -528,6 +570,19 @@ func _show_report(report: Dictionary) -> void:
 	back.pressed.connect(_close_overlay)
 	buttons.add_child(back)
 	column.add_child(buttons)
+
+## The card that explains why a check failed (crew safety: by its reason).
+func _card_for_result(result: Dictionary) -> String:
+	var check := ""
+	for requirement in MHMissions.current().get("requirements", []):
+		if str(requirement.id) == str(result.id): check = str(requirement.check)
+	if check == "crew_safe":
+		var why := str(result.get("detail", "")).to_lower()
+		if why.contains("oxygen") or why.contains("carbon"): return "air"
+		if why.contains("°c") or why.contains("cold"): return "heating"
+		if why.contains("water"): return "water"
+		if why.contains("food"): return "food"
+	return str(HOW_IT_WORKS.CHECK_CARDS.get(check, ""))
 
 func _complete_mission() -> void:
 	var mission := MHMissions.current()

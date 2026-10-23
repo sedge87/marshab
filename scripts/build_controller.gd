@@ -1,6 +1,7 @@
 class_name BuildController
 extends Node
 const MHPalette := preload("res://scripts/mh_palette.gd")
+const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 # One floorplan is the source of truth for plan tiles, visible shell and collision.
@@ -368,7 +369,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if reason.is_empty():
 				if zones.is_empty(): habitat_base_y=_proposed_base_y(cells)
 				var zone := {"kind":kind,"cells":cells,"door_direction":airlock_direction,"cost":_zone_cost(cells)}
-				zones.append(zone); _history.append({"type":"zone","zone":zone})
+				zones.append(zone); _history.append({"type":"zone","zone":zone}); _learn(str(zone.kind))
 				_rebuild()
 				_after_room_placed()
 				MHAudio.sfx("place")
@@ -614,6 +615,7 @@ func _try_place_angled_outline_connector() -> bool:
 	var zone := {"kind": kind, "cells": [], "angled_mount": mount, "door_direction": airlock_direction, "cost": cell_cost(kind)}
 	zones.append(zone)
 	_history.append({"type": "zone", "zone": zone})
+	_learn(str(zone.kind))
 	_rebuild()
 	MHAudio.sfx("place")
 	return true
@@ -655,6 +657,7 @@ func _finish_angled_corridor_drag() -> void:
 	var zone := {"kind": "corridor", "cells": [], "angled_mount": mount, "door_direction": airlock_direction, "cost": cell_cost("corridor") * bays}
 	zones.append(zone)
 	_history.append({"type": "zone", "zone": zone})
+	_learn(str(zone.kind))
 	_rebuild()
 	MHAudio.sfx("place")
 
@@ -861,6 +864,7 @@ func _finish_freeform() -> void:
 	var zone := {"kind": kind, "cells": cells, "outline": freeform_points.duplicate(), "door_direction": airlock_direction, "cost": _freeform_cost(freeform_points)}
 	zones.append(zone)
 	_history.append({"type": "zone", "zone": zone})
+	_learn(str(zone.kind))
 	_cancel_freeform()
 	_rebuild()
 	_after_room_placed()
@@ -1021,12 +1025,17 @@ func place_equipment(id: String, cell: Vector2i, visual: Node3D = null, facing :
 ## First-person interior construction records exact metres rather than cells.
 ## Only the interior controller calls this API; the exterior planner remains
 ## grid based.  `zone_cell` keeps room restrictions and safe pruning explicit.
+## The first time something key is placed, its How it works card (once ever).
+func _learn(id: String) -> void:
+	if is_inside_tree() and not display_only: HOW_IT_WORKS.first_time.call_deferred(get_tree(), id)
+
 func place_free_interior_equipment(id: String, position: Vector3, rotation_y: float, zone_cell: Vector2i, visual: Node3D, anchor_normal := Vector3.UP) -> bool:
 	var entry := EquipmentCatalog.get_entry(id)
 	if entry.is_empty() or _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget():
 		return false
 	var placement_id := "interior_%d" % Time.get_ticks_usec()
 	placed_interior.append({"placement_id": placement_id, "id": id, "position": position, "rotation_y": rotation_y, "zone_cell": zone_cell, "anchor_normal": anchor_normal})
+	_learn(id)
 	visual.name = "Interior_%s" % placement_id
 	visual.set_meta("equipment_id", id)
 	visual.set_meta("interior_placement_id", placement_id)

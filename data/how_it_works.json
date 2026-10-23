@@ -1,0 +1,180 @@
+{
+  "_comment": "How it works: game-mechanic tutorial cards (scripts/how_it_works.gd). Very simple language. lines: what to know, one idea each. remember: the one thing to take away. check: one tap-to-answer question, never graded. missions: shown in these missions' briefs. triggers: items or zones whose first placement shows the card once.",
+  "cards": [
+    {
+      "id": "landing",
+      "title": "Landing safely",
+      "icon": "rocket",
+      "picture": "landing",
+      "lines": [
+        "A lander can't hit an exact spot. It comes down somewhere inside an oval called the landing ellipse.",
+        "Its rocket engine blasts rocks and dust in every direction as it lands.",
+        "So your base must sit outside the blast zone, but close enough to walk to the cargo."
+      ],
+      "remember": "Land on flat, clear ground, and keep the base out of the blast zone.",
+      "check": {"question": "Why can't you build right next to the landing target?", "options": ["The engine blast would damage it", "The ground is too soft", "Robots can't drive there"], "answer": 0},
+      "missions": ["landing_zones"],
+      "triggers": []
+    },
+    {
+      "id": "testing",
+      "title": "Testing your design",
+      "icon": "play",
+      "picture": "testing",
+      "lines": [
+        "Press T to run a Test. It fast-forwards your base through the whole mission in a few seconds.",
+        "The report shows what passed, what failed, and why, with graphs.",
+        "Every Test is saved as a version, so you can see what each change did.",
+        "Engineers do this too: design, test, improve, and test again."
+      ],
+      "remember": "Failing a Test is normal. Read why, change one thing, and test again.",
+      "check": {"question": "Your Test fails. What's the best next step?", "options": ["Read the reason, change something, test again", "Start the mission over", "Add one of everything"], "answer": 0},
+      "missions": ["cargo_power_water"],
+      "triggers": []
+    },
+    {
+      "id": "power",
+      "title": "Power, day and night",
+      "icon": "sun",
+      "picture": "power",
+      "lines": [
+        "Solar arrays make power only while the sun is up. At night they make none.",
+        "Batteries store spare power in the day and give it back at night.",
+        "If the batteries run flat, the base switches things off to save power: labs and drills first, then lights, then heating. Life support goes last.",
+        "A reactor makes the same power day and night, whatever the weather."
+      ],
+      "remember": "Make more power than you use in the day, and store enough to last the night.",
+      "check": {"question": "It's midnight. Where does the base's power come from?", "options": ["The batteries (or a reactor)", "The solar arrays", "The ice drills"], "answer": 0},
+      "missions": ["cargo_power_water"],
+      "triggers": ["solar", "battery_bank", "power_distribution_panel"]
+    },
+    {
+      "id": "water",
+      "title": "Water from ice",
+      "icon": "droplets",
+      "picture": "water",
+      "lines": [
+        "Mars has ice buried under the ground. An ice extractor drills it out and melts it into water.",
+        "Pale blue ground has more ice, so drills make more water there. GAR-Y can survey to find it.",
+        "Drills need power to work, including at night.",
+        "Later, a water reclaimer cleans used water so it can be used again."
+      ],
+      "remember": "Put drills on rich ice and keep them powered.",
+      "check": {"question": "Where should you put an ice extractor?", "options": ["On pale blue ground, where the ice is richest", "Inside the habitat", "As far from the base as possible"], "answer": 0},
+      "missions": ["cargo_power_water"],
+      "triggers": ["ice_extractor", "water_reclaimer"]
+    },
+    {
+      "id": "gar_y",
+      "title": "Giving GAR-Y orders",
+      "icon": "truck",
+      "picture": "gar_y",
+      "lines": [
+        "GAR-Y is your survey rover. Hold G near it to open its orders, move the mouse to one and let go.",
+        "Outside: Survey there, Core sample, Come here, Stay, Go home.",
+        "Inside: Fetch, Patrol, Come here, Stay, Go home.",
+        "It never goes through an airlock on its own. Press E on it so it follows you through."
+      ],
+      "remember": "Hold G and point. GAR-Y does the scouting so you don't have to.",
+      "check": {"question": "How do you get GAR-Y outside?", "options": ["Press E on it so it follows you through the airlock", "Order it to open the airlock", "It can't ever go outside"], "answer": 0},
+      "missions": ["cargo_power_water"],
+      "triggers": []
+    },
+    {
+      "id": "heating",
+      "title": "Keeping warm",
+      "icon": "flame",
+      "picture": "heating",
+      "lines": [
+        "Mars is freezing, so heat leaks out of the habitat all the time. Windows and outside walls leak the most.",
+        "A spot heater only warms its own room and the rooms right next to it.",
+        "A thermal control unit is like central heating. It is ducted to every room, and gives about 3 times more heat for the same power.",
+        "A room that doesn't get enough heat becomes a cold spot."
+      ],
+      "remember": "One thermal control unit warms the whole base. Spot heaters are for small bases, far rooms, or backup.",
+      "check": {"question": "Which one warms every room in the base?", "options": ["A thermal control unit", "A spot heater", "A window"], "answer": 0},
+      "missions": ["cargo_habitat"],
+      "triggers": ["thermal_control_unit", "wall_cabin_heater", "portable_utility_heater"]
+    },
+    {
+      "id": "air",
+      "title": "Air to breathe",
+      "icon": "wind",
+      "picture": "air",
+      "lines": [
+        "Every person breathes in oxygen and breathes out carbon dioxide (CO₂).",
+        "An oxygen generator makes oxygen by splitting water. It needs power and water.",
+        "An air recycler takes the CO₂ out of the air. Too much CO₂ gives people headaches, and then it's dangerous.",
+        "Oxygen reserve tanks top the air up if it starts to run low."
+      ],
+      "remember": "Oxygen in, CO₂ out: you need both machines, and both need power.",
+      "check": {"question": "Which machine removes the CO₂ people breathe out?", "options": ["The air recycler", "The oxygen generator", "The thermal control unit"], "answer": 0},
+      "missions": ["cargo_habitat"],
+      "triggers": ["air_recycler", "oxygen_generator", "oxygen_reserve_tank"]
+    },
+    {
+      "id": "crew",
+      "title": "Looking after the crew",
+      "icon": "users",
+      "picture": "crew",
+      "lines": [
+        "Each crew member needs a bunk, air, water, food and warmth.",
+        "If any of those go wrong, crew health starts to fall. Fix it, and they slowly recover.",
+        "No bunk means no room: crew without one wait on the lander.",
+        "The habitat warns you early. Listen for its voice and check the alerts."
+      ],
+      "remember": "Bunk, air, water, food, warmth: keep all five safe for every crew member.",
+      "check": {"question": "Crew health is falling. What should you check first?", "options": ["The alerts: they say what's wrong", "The cargo left", "The landing site"], "answer": 0},
+      "missions": ["crew_land"],
+      "triggers": ["crew_bunk"]
+    },
+    {
+      "id": "food",
+      "title": "Food",
+      "icon": "wheat",
+      "picture": "food",
+      "lines": [
+        "The crew each eat about 1.8 kg of food a sol.",
+        "Food brought from Earth runs out one day, and the next delivery is a long way off.",
+        "Grow trays in Hydroponics grow food. They need power, water and light.",
+        "The more food you grow, the longer the base can last on its own."
+      ],
+      "remember": "Bring food to start, then grow more of it yourself.",
+      "check": {"question": "What do grow trays need?", "options": ["Power, water and light", "Just water", "Nothing, once they're placed"], "answer": 0},
+      "missions": ["crew_land", "self_sufficiency"],
+      "triggers": ["grow_tray", "galley_kitchenette"]
+    },
+    {
+      "id": "storms",
+      "title": "Dust storms",
+      "icon": "triangle-alert",
+      "picture": "storms",
+      "lines": [
+        "A dust storm blocks the sun for days, so solar arrays make much less power.",
+        "Orbiters spot storms coming, so you get a warning first. Charge the batteries!",
+        "A reactor isn't affected: it makes the same power in any weather.",
+        "When power runs short, life support keeps going longest."
+      ],
+      "remember": "Before a storm: full batteries. For long storms: a reactor.",
+      "check": {"question": "Which power source keeps working in a dust storm?", "options": ["The reactor", "The solar arrays", "Neither"], "answer": 0},
+      "missions": ["storm_season"],
+      "triggers": ["reactor"]
+    },
+    {
+      "id": "research",
+      "title": "Research",
+      "icon": "flask-conical",
+      "picture": "research",
+      "lines": [
+        "Research is why the crew came to Mars.",
+        "A Science Lab with a workbench lets the crew do experiments every sol.",
+        "Equipment in the lab adds more research, if it has power.",
+        "GAR-Y can bring a core sample from outside for a boost."
+      ],
+      "remember": "A powered lab with a workbench, and the research adds up every sol.",
+      "check": {"question": "What does the crew need to start research?", "options": ["A Science Lab with a workbench", "A bigger airlock", "More solar arrays"], "answer": 0},
+      "missions": ["self_sufficiency"],
+      "triggers": ["science_workbench"]
+    }
+  ]
+}

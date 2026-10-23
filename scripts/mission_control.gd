@@ -4,6 +4,7 @@ const MHDossier := preload("res://scripts/mh_dossier.gd")
 
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const MISSION_HUD := preload("res://scripts/mission_hud.gd")
+const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
 
 # Mission Control overlay (shot 1j). Three columns over a dimmed scene:
 # cargo, readiness and a blueprint plan of the habitat, plus a suggested step.
@@ -45,6 +46,11 @@ func _ready() -> void:
 	var esc := MHStyle.keycap("Esc")
 	esc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	header.add_child(esc)
+	var guide := MHStyle.button("Field guide", "secondary", "book-open")
+	guide.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	guide.tooltip_text = "How the habitat's systems work"
+	guide.pressed.connect(_show_field_guide)
+	header.add_child(guide)
 	var monitor_button := MHStyle.button("Monitor", "primary", "monitor")
 	monitor_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	monitor_button.tooltip_text = "The habitat's systems live, room by room"
@@ -79,6 +85,42 @@ func _ready() -> void:
 	body.add_child(_readiness_column())
 	body.add_child(_plan_column())
 	column.add_child(MHStyle.notice("info", "Suggested next step", builder.suggestion()))
+
+## The Field guide: every How it works card unlocked so far.
+func _show_field_guide() -> void:
+	var scrim := ColorRect.new()
+	scrim.color = Color(0, 0, 0, .55)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(scrim)
+	var centre := CenterContainer.new()
+	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(centre)
+	var panel := _sheet(860)
+	centre.add_child(panel)
+	var col := MHStyle.vbox(12)
+	panel.add_child(col)
+	var head := MHStyle.hbox(8)
+	head.add_child(MHStyle.eyebrow("Field guide: how it works", MHStyle.accent))
+	head.add_child(MHStyle.spacer())
+	var back := MHStyle.button("Back", "secondary", "chevron-left")
+	back.pressed.connect(scrim.queue_free)
+	head.add_child(back)
+	col.add_child(head)
+	var ids: Array = HOW_IT_WORKS.unlocked()
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	col.add_child(grid)
+	for i in range(ids.size()):
+		var c := HOW_IT_WORKS.card(str(ids[i]))
+		var b := MHStyle.button(str(c.get("title", ids[i])), "ghost", str(c.get("icon", "info")), 52)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.custom_minimum_size.x = 390
+		b.tooltip_text = str(c.get("remember", ""))
+		b.pressed.connect(func() -> void: HOW_IT_WORKS.show(get_tree(), ids.slice(i) + ids.slice(0, i), "Field guide"))
+		grid.add_child(b)
+	col.add_child(MHStyle.body("More cards unlock as the missions go on." if MHMissions.active() else "Every card is here in free play.", 14, MHStyle.TEXT_MUTED))
 
 # ---------- the mission dossier (backlog 27) ----------
 
