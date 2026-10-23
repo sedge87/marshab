@@ -2,7 +2,7 @@ extends RefCounted
 
 ## Wall and roof upgrades (Batch C): improvements to the habitat's walls, not
 ## things placed in rooms. Interior build → Structure tab.
-##   Regolith shielding  Bags of Mars soil stacked against an outside wall bay,
+##   Regolith shielding  Mars soil packed behind an outside wall bay's panel,
 ##                       printed by the regolith printer (no cargo from Earth
 ##                       once you're printing). Blocks radiation.
 ##   Water wall          A water tank panel on an outside wall bay. Water is a
@@ -29,9 +29,17 @@ const KINDS := {
 	"ladder": {"place": "outer", "label": "Roof ladder", "points": 0.0, "cargo": 60, "printable": false, "icon": "arrow-up"},
 	"acoustic": {"place": "shared", "label": "Sound insulation", "points": 0.0, "cargo": 80, "printable": false, "icon": "volume-x"},
 }
-const REGOLITH := Color("#8E6248")
-const WATER := Color("#5A7480")
-const PADDING := Color("#47525A")
+## Subtle on purpose (user feedback, 24 Oct): a flush panel inside the bay's
+## frame, a tint off the white hull, faint lines and a small tag, so you can
+## tell it's shielded and with what, without it changing the base's shape.
+const REGOLITH := Color("#CDB096")        # pale sand
+const REGOLITH_LINE := Color("#B8987C")
+const REGOLITH_TAG := Color("#8E6248")
+const WATER := Color("#BDCBD1")           # pale blue-grey
+const WATER_LINE := Color("#A6B8C0")
+const WATER_TAG := Color("#3F82B8")
+const PADDING := Color("#C9CBC6")
+const PADDING_LINE := Color("#B4B7B1")
 const ROOF_LADDER := preload("res://scripts/roof_ladder.gd")
 const SIDES := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
@@ -196,12 +204,12 @@ static func build(builder: Node) -> void:
 		var mid := Vector3(record.mid.x, base_y, record.mid.y)
 		var out := Vector3(outward.x, 0, outward.y)
 		match kind:
-			"regolith": _bags(builder, mid + out * .3, basis, cell_size - .1)
-			"water": _tank(builder, mid + out * .25, basis, cell_size - .2)
+			"regolith": _cladding(builder, mid, out, basis, REGOLITH, REGOLITH_LINE, REGOLITH_TAG, true)
+			"water": _cladding(builder, mid, out, basis, WATER, WATER_LINE, WATER_TAG, false)
 			"ladder": _ladder(builder, record, mid, out, basis)
 			"acoustic":
 				for face in [-1.0, 1.0]:
-					_padding(builder, mid + out * (face * .13), basis, cell_size - .5)
+					_padding(builder, mid + out * (face * .11), basis, cell_size - .6, face)
 
 static func _still_valid(builder: Node, record: Dictionary) -> bool:
 	match str(spec(str(record.kind)).get("place", "")):
@@ -257,30 +265,30 @@ static func _barrier(builder: Node, at: Vector3, size: Vector3, basis: Basis) ->
 	shape.shape = box
 	body.add_child(shape)
 
-## Courses of regolith bags against the wall, each course a little staggered.
-static func _bags(builder: Node, at: Vector3, basis: Basis, length: float) -> void:
-	var courses := 6
-	var height := 2.9 / courses
-	for row in courses:
-		var shade := REGOLITH.lightened(.06) if row % 2 == 0 else REGOLITH.darkened(.05)
-		var shift := basis.x * (.12 if row % 2 == 0 else -.12)
-		var depth := .42 - row * .02
-		_box(builder, at + Vector3.UP * (height * (row + .5)) + shift - basis.z * (depth * .5 - .2), Vector3(length - .25, height - .04, depth), basis, _material(shade))
-	_box(builder, at + Vector3.UP * 1.45, Vector3(length, 2.9, .3), basis, _material(REGOLITH.darkened(.15)), true)
+## A flush panel inside the bay's frame, just proud of the hull: horizontal
+## courses for regolith, vertical ribs for a water wall, and a small tag.
+static func _cladding(builder: Node, mid: Vector3, out: Vector3, basis: Basis, colour: Color, line: Color, tag: Color, courses: bool) -> void:
+	var face := mid + out * .12
+	var width := 2.55
+	_box(builder, face + Vector3.UP * 1.35, Vector3(width, 2.35, .04), basis, _material(colour))
+	var line_material := _material(line)
+	if courses:
+		for row in range(1, 7):
+			_box(builder, face + out * .022 + Vector3.UP * (.18 + row * .335), Vector3(width, .016, .008), basis, line_material)
+	else:
+		for column in range(1, 6):
+			_box(builder, face + out * .022 + Vector3.UP * 1.35 + basis.x * (-width * .5 + width * column / 6.0), Vector3(.03, 2.35, .008), basis, line_material)
+	_box(builder, face + out * .025 + Vector3.UP * 2.25 + basis.x * (width * .5 - .3), Vector3(.2, .2, .01), basis, _material(tag, .6))
 
-## A ribbed water tank panel with a small gauge.
-static func _tank(builder: Node, at: Vector3, basis: Basis, length: float) -> void:
-	_box(builder, at + Vector3.UP * 1.4, Vector3(length, 2.6, .28), basis, _material(WATER, .4), true)
-	for height in [.5, 1.4, 2.3]:
-		_box(builder, at + Vector3.UP * height - basis.z * .16, Vector3(length + .04, .08, .06), basis, _material(WATER.lightened(.2), .35))
-	_box(builder, at + Vector3.UP * 1.9 + basis.x * (length * .35) - basis.z * .17, Vector3(.18, .18, .04), basis, MHGame.accent_material())
-
-## Padded, quilted panels on a shared wall (one face).
-static func _padding(builder: Node, at: Vector3, basis: Basis, length: float) -> void:
-	_box(builder, at + Vector3.UP * 1.35, Vector3(length, 2.2, .05), basis, _material(PADDING, 1.0))
-	for step in range(1, 5):
-		var x := -length * .5 + length * step / 5.0
-		_box(builder, at + Vector3.UP * 1.35 + basis.x * x, Vector3(.025, 2.2, .07), basis, _material(PADDING.darkened(.25), 1.0))
+## A quilted panel on one face of a shared wall, close to the wall colour,
+## with a small accent tag.
+static func _padding(builder: Node, at: Vector3, basis: Basis, length: float, face: float) -> void:
+	var toward := basis.z * (-1.0 if face > 0.0 else 1.0)
+	_box(builder, at + Vector3.UP * 1.3, Vector3(length, 2.0, .03), basis, _material(PADDING, 1.0))
+	var seam := _material(PADDING_LINE, 1.0)
+	for step in range(1, 8):
+		_box(builder, at + Vector3.UP * 1.3 + basis.x * (-length * .5 + length * step / 8.0) + toward * .017, Vector3(.012, 2.0, .01), basis, seam)
+	_box(builder, at + Vector3.UP * 2.15 + basis.x * (length * .5 - .25) + toward * .02, Vector3(.2, .12, .01), basis, MHGame.accent_material())
 
 ## A steel ladder from the ground to hoops above the roof edge, and the body
 ## you aim at to climb (scripts/roof_ladder.gd).
@@ -334,11 +342,13 @@ static func _roof_rails(builder: Node) -> void:
 					_box(builder, at + Vector3.UP * height, Vector3(cell_size, .05, .05), basis, rail)
 				_box(builder, at + Vector3.UP * .5 - along * (cell_size * .5 - .03), Vector3(.06, 1.0, .06), basis, post)
 
-## Regolith piled on one roof square, in two rows of bags.
+## A thin layer of regolith on one roof square, inset from the edge, with
+## faint lines; solid, so you can walk on it.
 static func _roof(builder: Node, centre: Vector3, cell_size: float) -> void:
-	_box(builder, centre + Vector3.UP * .16, Vector3(cell_size - .2, .32, cell_size - .2), Basis.IDENTITY, _material(REGOLITH), true)
-	for side in [-1.0, 1.0]:
-		_box(builder, centre + Vector3(0, .36, side * cell_size * .22), Vector3(cell_size - .5, .14, cell_size * .38), Basis.IDENTITY, _material(REGOLITH.lightened(.05)))
+	_box(builder, centre + Vector3.UP * .03, Vector3(cell_size - .35, .06, cell_size - .35), Basis.IDENTITY, _material(REGOLITH), true)
+	var line := _material(REGOLITH_LINE)
+	for offset in [-.75, 0.0, .75]:
+		_box(builder, centre + Vector3(0, .065, offset), Vector3(cell_size - .35, .008, .02), Basis.IDENTITY, line)
 
 ## Shield a whole room: this upgrade on every free outside wall bay, and
 ## optionally the roof. Returns how many records were added (tests, tools).
