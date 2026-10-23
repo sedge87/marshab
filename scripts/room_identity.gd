@@ -275,7 +275,7 @@ static func _emblems(builder: Node, holder: Node3D, base_y: float) -> void:
 		if builder._window_index_at(mid, builder._canonical_wall_dir(bay.tangent)) >= 0: continue
 		done[key] = true
 		var at := mid + outward * .2
-		_tattoo(holder, Vector3(at.x, base_y + 1.55, at.y), atan2(outward.x, outward.y), 1.5, MHGame.colony_name.to_upper())
+		_tattoo(holder, Vector3(at.x, base_y + 1.7, at.y), atan2(outward.x, outward.y), .9, MHGame.colony_name.to_upper())
 	# Airlocks (their walls never take windows, so they aren't hull bays): a
 	# side wall that faces Mars, on the cell nearest the outer door.
 	var cell_size: float = builder.CELL
@@ -287,7 +287,7 @@ static func _emblems(builder: Node, holder: Node3D, base_y: float) -> void:
 			if builder._is_habitat_zone(builder._zone_across(cell, side)): continue
 			var normal := Vector2(side.x, side.y)
 			var at := Vector2(cell.x, cell.y) * cell_size + normal * (cell_size * .5 + .2)
-			_tattoo(holder, Vector3(at.x, base_y + 1.6, at.y), atan2(normal.x, normal.y), 1.1, "")
+			_tattoo(holder, Vector3(at.x, base_y + 1.7, at.y), atan2(normal.x, normal.y), .8, "")
 			break
 
 const TATTOO_SHADER := """
@@ -295,6 +295,7 @@ shader_type spatial;
 render_mode cull_back, shadows_disabled;
 uniform sampler2D emblem : source_color, filter_linear_mipmap;
 uniform vec4 ink : source_color = vec4(0.91, 0.54, 0.27, 1.0);
+uniform float fade = 0.5;   // subtle: faded paint, not a fresh decal
 float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vnoise(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
@@ -304,7 +305,7 @@ void fragment() {
 	float wear = smoothstep(0.25, 0.75, vnoise(UV * 26.0) * 0.6 + vnoise(UV * 90.0) * 0.4);
 	ALBEDO = ink.rgb;
 	ROUGHNESS = 0.7;
-	ALPHA = shape * mix(0.72, 0.95, wear);
+	ALPHA = shape * fade * mix(0.7, 1.0, wear);
 }
 """
 
@@ -331,12 +332,12 @@ static func _tattoo(holder: Node3D, at: Vector3, yaw: float, size: float, captio
 		label.text = caption
 		label.font = MHStyle.font(800, false, 6)
 		label.font_size = 64
-		label.pixel_size = .0045
-		label.modulate = MHGame.accent()
+		label.pixel_size = .0028
+		label.modulate = Color(MHGame.accent(), .5)
 		label.outline_size = 0
 		label.double_sided = false
 		label.shaded = true
-		label.position = Vector3(0, -size * .5 - .16, .002)
+		label.position = Vector3(0, -size * .5 - .1, .002)
 		node.add_child(label)
 
 # ---------- helpers ----------
