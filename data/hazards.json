@@ -64,7 +64,7 @@
   },
   "breakdowns": {
     "machines": ["air_recycler", "oxygen_generator", "water_reclaimer", "thermal_control_unit"],
-    "mean_sols_between": 120.0,
+    "mean_sols_between": 200.0,
     "repair_hours": 6.0,
     "repair_hours_no_engineer": 12.0,
     "spares_per_rack": {"spare_parts_rack": 8},

@@ -834,7 +834,7 @@
       "crew": 6,
       "payload_kg": 8000,
       "sols": 10,
-      "step_hours": 0.05,
+      "step_hours": 0.1,
       "sample_hours": 0.25,
       "food_delivery_sols": 10,
       "named_crew": true,
@@ -941,7 +941,7 @@
       "crew": 6,
       "payload_kg": 15000,
       "sols": 200,
-      "step_hours": 1.0,
+      "step_hours": 2.0,
       "sample_hours": 4,
       "food_delivery_sols": 100,
       "named_crew": true,
@@ -1091,7 +1091,7 @@
       ],
       "hints": [
         "Redundancy: two of everything life-critical. When one breaks, the other carries on.",
-        "Each repair uses a spare part. No spares, no repair.",
+        "Each repair uses a spare part. No spares, no repair. Eight machines break about eight times in 200 sols: one rack is cutting it fine. A running regolith printer makes more.",
         "The blackout takes away contact with Earth, so wellbeing drops. Meet the other needs well before it starts.",
         "The three futures are different, but the same every time you test, so you can compare versions fairly."
       ],

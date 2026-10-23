@@ -197,7 +197,7 @@ All Act 2 tuning numbers live in `data/hazards.json`, not the balance workbook, 
 
 ### Mission 10 · The long silence
 - **200 sols**, three futures (seeds). Each has: a 14-sol comms blackout (solar conjunction) from sol 90; one solar particle event; one dust storm; one injury (a different person in each future); and breakdowns.
-- **Breakdowns**: life-critical machines (air recycler, oxygen generator, water reclaimer, thermal control unit, ice drill) fail on average once every 120 sols each. A broken machine does nothing until repaired.
+- **Breakdowns**: life-critical machines (air recycler, oxygen generator, water reclaimer, thermal control unit) fail on average once every 200 sols each (gentle, for Year 9). A broken machine does nothing until repaired.
 - **Repair**: one spare part plus 6 hours with the Engineer (12 without). Spare parts are stored in a spares rack (8 each); a running regolith printer makes one every 10 sols.
 - **Checks**: crew safe; fitness and wellbeing above the line; no life-critical *system* (all units of a type broken) down for more than 12 hours; 50% of food grown; research met; dose under the limit. Every future must pass.
 

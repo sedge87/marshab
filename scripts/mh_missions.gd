@@ -320,7 +320,7 @@ static func run_test(builder: Node) -> Dictionary:
 				var inv: Dictionary = builder.simulation().inventory()
 				for room in inv.rooms:
 					if str(room.kind) in ["airlock", "vehicle_bay"]: continue
-					var trial := _simulate(builder, mission, 0, str(room.key))
+					var trial := _simulate(builder, mission, 0, str(room.key), true)
 					if float(trial.min_pressure) < float(goal.get("min", 70)) or not bool((trial.breach as Dictionary).get("patched", false)):
 						met = false
 						break
@@ -340,7 +340,7 @@ static func run_test(builder: Node) -> Dictionary:
 	return report
 
 ## One run of the Test (one "future"). breach_room overrides where a breach hits.
-static func _simulate(builder: Node, mission: Dictionary, future: int, breach_room: String) -> Dictionary:
+static func _simulate(builder: Node, mission: Dictionary, future: int, breach_room: String, breach_only := false) -> Dictionary:
 	var sim: RefCounted = HABITAT_SIM.new(builder)
 	sim.load(builder.simulation().save())
 	sim.crew_cap = int(mission.get("crew", 0))
@@ -393,7 +393,12 @@ static func _simulate(builder: Node, mission: Dictionary, future: int, breach_ro
 	var injured_at := -1.0
 	var recovered_at := -1.0
 	var min_pressure := 100.0
-	while hours < sols * 24.0 - .001:
+	var end_hours := sols * 24.0
+	# A breach trial only needs the hours around the breach.
+	if breach_only:
+		for event in timed:
+			if str(event[1]) == "breach": end_hours = minf(end_hours, float(event[0]) + 8.0)
+	while hours < end_hours - .001:
 		for storm in storms:
 			if absf(hours - float(storm.start)) < .001: sim.start_storm(float(storm.hours) / 24.0, float(storm.get("cut", -1.0)))
 		for event in timed:

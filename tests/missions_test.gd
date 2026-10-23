@@ -20,7 +20,7 @@ func _initialize() -> void:
 	MHGame.save_directory = "user://test_habitats"
 	MHGame.game_mode = "missions"
 	MHMissions.reset()
-	_check(MHMissions.missions().size() == 6, "six missions in the campaign")
+	_check(MHMissions.missions().size() == 10, "ten missions in the campaign")
 	_check(str(MHMissions.current().id) == "landing_zones", "a new campaign starts with Mission 1, Landing Zones")
 
 	# Mission 1: the landing ellipse must be safe and the base clear of engine blast.

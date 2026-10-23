@@ -64,6 +64,12 @@ var worst_down_hours := 0.0
 var blackout_hours_left := 0.0
 var research_done := 0.0
 var injuries_recovered := 0
+# Wellbeing needs change slowly: worked out about once a game hour.
+var _needs_cache: Array = []
+var _needs_age := 99.0
+var _needs_inv: Dictionary = {}
+var _stations_cache := 0
+var _medical_cache := false
 
 func _init(owner: RefCounted = null) -> void:
 	sim = owner
@@ -395,6 +401,9 @@ func _breakdown_step(dt: float, inv: Dictionary) -> void:
 		for item in inv.items:
 			if not machines.has(str(item.id)) or is_broken(item) or str(item.get("pid", "")).is_empty(): continue
 			if rng.randf() < chance: broken[str(item.pid)] = {"id": str(item.id), "hours": 0.0}
+	if broken.is_empty() and down_hours.is_empty():
+		_print_spares(dt, inv)
+		return
 	for key in broken: broken[key].hours = float(broken[key].hours) + dt
 	# Repairs: one at a time, each needs a spare part.
 	if repairing.is_empty() or not broken.has(repairing):
@@ -410,12 +419,7 @@ func _breakdown_step(dt: float, inv: Dictionary) -> void:
 		if repair_left <= 0.0:
 			broken.erase(repairing)
 			repairing = ""
-	# The printer makes spare parts.
-	if sim.print_rate(inv) > 0.0:
-		spare_progress += dt / (float(b.printer_sols_per_spare) * 24.0)
-		if spare_progress >= 1.0:
-			spare_progress -= 1.0
-			if spares < int(_known.get("spares", 0)) + 4: spares += 1
+	_print_spares(dt, inv)
 	# Systems down: every unit of a life-critical machine broken.
 	for id in machines:
 		var units: Array = (inv.items as Array).filter(func(i): return str(i.id) == str(id))
@@ -424,6 +428,14 @@ func _breakdown_step(dt: float, inv: Dictionary) -> void:
 			worst_down_hours = maxf(worst_down_hours, float(down_hours[id]))
 		else:
 			down_hours.erase(id)
+
+## A running regolith printer slowly makes spare parts.
+func _print_spares(dt: float, inv: Dictionary) -> void:
+	if int(inv.get("intakes", 0)) <= 0 or sim.print_rate(inv) <= 0.0: return
+	spare_progress += dt / (float(data().breakdowns.printer_sols_per_spare) * 24.0)
+	if spare_progress >= 1.0:
+		spare_progress -= 1.0
+		if spares < int(_known.get("spares", 0)) + 4: spares += 1
 
 ## New spare racks and air reserve racks arrive full.
 func take_delivery(inv: Dictionary) -> void:
@@ -465,8 +477,12 @@ func shelter_index(inv: Dictionary) -> int:
 
 # ---------- each step ----------
 
+var _delivered_inv: Dictionary = {}
+
 func pre_step(dt: float, _hour: float, inv: Dictionary) -> void:
-	take_delivery(inv)
+	if not is_same(_delivered_inv, inv):
+		take_delivery(inv)
+		_delivered_inv = inv
 	if blackout_hours_left > 0.0: blackout_hours_left = maxf(0.0, blackout_hours_left - dt)
 	if spe_eta >= 0.0:
 		spe_eta -= dt
@@ -512,11 +528,20 @@ func post_step(dt: float, inv: Dictionary, tiers: Dictionary, crew_n: int, resea
 	if not crew_on: return out
 	ensure_crew(crew_n)
 	var f: Dictionary = data().fitness
-	var stations := exercise_stations(inv, tiers)
+	_needs_age += dt
+	if _needs_age >= 1.0 or not is_same(_needs_inv, inv) or _needs_cache.is_empty():
+		_needs_cache = needs(inv, tiers)
+		_stations_cache = (inv.items as Array).filter(func(i): return str(i.id) == "exercise_station" and not is_broken(i)).size()
+		_medical_cache = medical_ready(inv, {4: true})
+		_needs_age = 0.0
+		_needs_inv = inv
+	# Exercise and treatment need power (labs and galley tier) at the time.
+	var powered := bool(tiers.get(4, false))
+	var stations := _stations_cache if powered else 0
 	var healthy := crew.filter(func(p): return float(p.injured_h) <= 0.0).size()
 	var coverage := minf(1.0, stations * float(f.crew_per_station) / maxf(1.0, healthy))
-	var medical := medical_ready(inv, tiers)
-	var need_list := needs(inv, tiers)
+	var medical := _medical_cache and powered
+	var need_list := _needs_cache
 	var drift := per_sol / maxf(.1, float(value("wellbeing", "drift_sols", 5.0)))
 	for p in crew:
 		var hurt := float(p.injured_h) > 0.0

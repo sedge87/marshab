@@ -149,7 +149,7 @@ func _initialize() -> void:
 	var fragile := _base(true)
 	var bsim = fragile.simulation()
 	bsim.life.breakdowns_on = true
-	bsim.life.breakdown_scale = 500.0
+	bsim.life.breakdown_scale = 3000.0
 	bsim.life.rng.seed = 3
 	bsim.run_hours(12.0, 8.0, 1.0)
 	_check(bsim.life.broken.size() > 0, "machines break (%d broken)" % bsim.life.broken.size())

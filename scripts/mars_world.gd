@@ -100,7 +100,7 @@ func _ready() -> void:
 			var target := MHMissions.landing_target()
 			var rng := RandomNumberGenerator.new()
 			rng.randomize()
-			lander.place_at(_clear_touchdown(target if not is_inf(target.x) else Vector2.ZERO, rng))
+			lander.place_at(_clear_touchdown(target if not is_inf(target.x) else Vector2.ZERO, rng, false))
 	_spawn_player()
 	_spawn_scout_rover()
 	builder = BUILD_CONTROLLER_SCRIPT.new()
@@ -382,10 +382,10 @@ func _spawn_cargo_landers() -> void:
 ## A touchdown point in the landing ellipse that keeps clear of the landers
 ## already down: the best of several tries, at least 16 m from the others
 ## where the ellipse allows.
-func _clear_touchdown(target: Vector2, rng: RandomNumberGenerator) -> Vector2:
+func _clear_touchdown(target: Vector2, rng: RandomNumberGenerator, avoid_lander := true) -> Vector2:
 	var taken: Array = MHMissions.cargo_landers().map(func(c): return Vector2((c.position as Vector3).x, (c.position as Vector3).z))
 	for cargo in cargo_landers: taken.append(Vector2(cargo.global_position.x, cargo.global_position.z))
-	if lander != null and lander.present: taken.append(Vector2(lander.global_position.x, lander.global_position.z))
+	if avoid_lander and lander != null and lander.present: taken.append(Vector2(lander.global_position.x, lander.global_position.z))
 	var best := LANDING_PICKER_SCRIPT.touchdown(target, "missions", rng) as Vector2
 	var best_gap := -1.0
 	for attempt in 40:
@@ -565,7 +565,7 @@ func _land_lander() -> void:
 	elif MHMissions.active() and not is_inf(MHMissions.landing_target().x):
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
-		lander.place_at(LANDING_PICKER_SCRIPT.touchdown(MHMissions.landing_target(), "missions", rng))
+		lander.place_at(_clear_touchdown(MHMissions.landing_target(), rng, false))
 	elif not MHGame.pending_save_state.is_empty() or is_inf(MHGame.landing_target.x):
 		lander.place_on_site()
 	else:

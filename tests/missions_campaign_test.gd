@@ -31,7 +31,7 @@ func _initialize() -> void:
 	MHMissions.progress.landing_target = target
 	MHMissions.progress.base_site = base
 	MHMissions.complete("landing_zones")
-	_check(MHMissions.missions().all(func(m): return bool(m.get("available", false))), "all six missions are available")
+	_check(MHMissions.missions().all(func(m): return bool(m.get("available", false))), "every mission is available")
 	var budgets := []
 	for id in ["cargo_power_water", "cargo_habitat", "crew_land", "storm_season", "self_sufficiency"]:
 		MHMissions.progress.current = id
