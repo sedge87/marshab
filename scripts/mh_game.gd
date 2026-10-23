@@ -473,7 +473,7 @@ static func configure_sun(sun: DirectionalLight3D, palette: Dictionary) -> void:
 	sun.light_energy = palette.sun_energy
 	sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_AND_SKY
 	sun.shadow_enabled = bool(setting("shadows"))
-	sun.shadow_bias = 0.04
+	sun.shadow_bias = 0.06
 	# Pushes shadow sampling off gently sloping ground, so it doesn't stripe
 	# into rings ("shadow acne") around you.
 	sun.shadow_normal_bias = 2.2

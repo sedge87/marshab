@@ -7,6 +7,7 @@ render_mode diffuse_lambert, specular_disabled;
 
 uniform vec3 rock_colour : source_color = vec3(0.45, 0.24, 0.16);
 uniform vec3 dust_colour : source_color = vec3(0.72, 0.42, 0.27);
+uniform float frost_cover = 0.0;   // Ice Fields dawn frost (scripts/site_weather.gd)
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -37,6 +38,8 @@ void fragment() {
 	colour *= mix(1.0, 0.82, smoothstep(0.8, 0.88, noise3(world_pos * 9.0)));
 	// Dust settles on upward faces.
 	colour = mix(colour, dust_colour, smoothstep(0.55, 0.95, world_normal.y) * 0.55);
+	// Frost on the shaded sides and tops at dawn (Viking 2 saw it round rock bases).
+	colour = mix(colour, vec3(0.84, 0.88, 0.92), frost_cover * smoothstep(0.1, 0.6, world_normal.y - world_normal.x * 0.5) * 0.45);
 	ALBEDO = colour;
 	ROUGHNESS = 1.0;
 	SPECULAR = 0.0;

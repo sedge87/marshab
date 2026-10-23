@@ -12,6 +12,10 @@ uniform float detail_distance = 70.0;   // fine detail fades out by here
 uniform vec2 wind = vec2(0.82, 0.57);   // ripple crests run across this
 uniform int style = 0;                  // 0 = dusty ground, 1 = ice fields, 2 = realistic plains
 uniform vec3 frost_colour : source_color = vec3(0.86, 0.90, 0.95);
+// Site weather (scripts/site_weather.gd): dawn frost on the Ice Fields, and
+// dark dust-devil tracks on the Open Plains (x1, z1, x2, z2), then (strength).
+uniform float frost_cover = 0.0;
+uniform vec4 tracks[32];
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -250,6 +254,27 @@ void fragment() {
 		colour = mix(colour, colour * mix(0.68, 0.88, strata), steep);
 	}
 
+	// Dust-devil tracks: dark lines where the vortex lifted the bright dust.
+	if (style == 2) {
+		for (int i = 0; i < 16; i++) {
+			vec4 seg = tracks[i * 2];
+			float strength = tracks[i * 2 + 1].x;
+			if (strength <= 0.0) continue;
+			vec2 a = seg.xy; vec2 b = seg.zw;
+			vec2 ab = b - a;
+			float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 0.0001), 0.0, 1.0);
+			float d = length(p - (a + ab * t));
+			colour *= 1.0 - 0.22 * strength * (1.0 - smoothstep(0.6, 2.2, d + value_noise(p * 2.0) * 0.6));
+		}
+	}
+	// Dawn frost: thin, patchy; the sunward slopes lose it first, shade keeps it.
+	if (frost_cover > 0.0) {
+		float patch = fbm(p * 0.35 + 3.0) * 0.75 + fbm(p * 1.7 + 9.0) * 0.25;
+		float shade = clamp(0.5 - world_normal.x * 0.6 + world_normal.z * 0.4, 0.0, 1.0);
+		// Viking 2's frost was a thin coating: patchy, the ground showing through.
+		float frost = smoothstep(0.0, 0.2, frost_cover * 0.7 - patch * 0.9 + shade * 0.25 - 0.12) * flatness;
+		colour = mix(colour, frost_colour * 0.92, frost * 0.38);
+	}
 	ALBEDO = colour;
 	// Ice catches a faint sheen; dust doesn't. Exposed ice shines a little more.
 	ROUGHNESS = style == 1 ? mix(0.75, 0.6, max(UV.x, UV.y)) : 1.0;

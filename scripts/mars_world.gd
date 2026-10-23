@@ -1,6 +1,7 @@
 extends Node3D
 
 const WEATHER_SCRIPT := preload("res://scripts/weather.gd")
+const SITE_WEATHER := preload("res://scripts/site_weather.gd")
 const ALERTS_SCRIPT := preload("res://scripts/habitat_alerts.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
@@ -34,6 +35,8 @@ var pause_menu: MHPauseMenu
 var mission_control: MHMissionControl
 var dust: CPUParticles3D
 var weather: Node   # scripts/weather.gd: storm warnings, haze, dust and sound
+## Each site's own weather (frost, fog, dust devils, quakes, twilight clouds).
+var site_weather: Node3D
 var alerts: Node    # scripts/habitat_alerts.gd: habitat alerts (backlog 26)
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
@@ -133,6 +136,9 @@ func _ready() -> void:
 	weather = WEATHER_SCRIPT.new()
 	add_child(weather)
 	weather.setup(self)
+	site_weather = SITE_WEATHER.new()
+	add_child(site_weather)
+	site_weather.setup(self)
 	alerts = ALERTS_SCRIPT.new()
 	add_child(alerts)
 	alerts.setup(self)

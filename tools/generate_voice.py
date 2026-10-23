@@ -80,6 +80,7 @@ LINES = {
     "wellbeing_warning": "Advisory. Crew wellbeing low.",
     "wellbeing_critical": "Warning. Crew wellbeing critical.",
     "resolved_injury": "Crew member recovered.",
+    "seismic_activity": "Seismic activity detected.",
     "resolved_fitness": "Crew fitness restored.",
     "resolved_wellbeing": "Crew wellbeing improving.",
     "resolved_cold_spot": "Heating restored.",
