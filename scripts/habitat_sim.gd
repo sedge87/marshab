@@ -6,6 +6,7 @@ extends RefCounted
 ## play and fast-forward tests behave the same. Numbers come from
 ## data/resources.json (docs/MarsHabitat_Balance.xlsx); docs/resource-model.md
 ## explains the rules.
+const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
 
@@ -66,6 +67,12 @@ var storm_cut := -1.0
 ## Mars weather every sol, so storms come with a warning.
 var storm_eta_hours := -1.0
 var hours_run := 0.0
+## Weather wear (weather_wear.gd): dust on each solar array (0-1, by room key)
+## and the dust coat on the hull. Off unless the world switches it on, so the
+## mission Tests and Creative stay clean.
+var weather_wear := false
+var panel_dust := {}
+var hull_dust := 0.0
 ## A core sample in the Science Lab (GAR-Y, Mission 6): research +20% while this lasts.
 var research_boost_hours := 0.0
 var _known_capacity := {"kwh": 0.0, "water": 0.0, "o2": 0.0}
@@ -116,7 +123,7 @@ func invalidate() -> void:
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
 		"habitat_temp": habitat_temp, "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
-		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save()}
+		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -133,6 +140,8 @@ func load(state: Dictionary) -> void:
 	_known_capacity = (state.get("known_capacity", _known_capacity) as Dictionary).duplicate()
 	_food_delivered = bool(state.get("food_delivered", false))
 	printed_kg = float(state.get("printed_kg", 0.0))
+	panel_dust = (state.get("panel_dust", {}) as Dictionary).duplicate()
+	hull_dust = float(state.get("hull_dust", 0.0))
 	light_overrides = (state.get("light_overrides", {}) as Dictionary).duplicate()
 	research_boost_hours = float(state.get("research_boost_hours", 0.0))
 	life.load(state.get("life", {}))
@@ -210,13 +219,16 @@ func inventory() -> Dictionary:
 		items.append(_item_record(id, MHResources.item(id), placed.get("state", {}), -1))
 	# Generators and drills.
 	var solar: Array = []
+	var solar_keys: Array = []
 	var reactors := 0
 	var drills: Array = []
 	var intakes := 0
 	for zone in builder.zones:
 		match str(zone.kind):
 			"solar":
-				if builder._power_source_connected(zone): solar.append(Vector2(builder._airlock_side(zone)))
+				if builder._power_source_connected(zone):
+					solar.append(Vector2(builder._airlock_side(zone)))
+					solar_keys.append(_room_key(zone))
 			"reactor":
 				if builder._power_source_connected(zone) and builder._zone_running(zone): reactors += 1
 			"ice_extractor":
@@ -232,7 +244,7 @@ func inventory() -> Dictionary:
 		capacity.kwh += item.stores_kwh; capacity.water += item.stores_water; capacity.o2 += item.stores_o2; capacity.food += item.stores_food
 		capacity.berths += item.berths
 		if item.id == "thermal_control_unit" and item.on: capacity.tcu_kw += item.heat_kw
-	_inventory = {"rooms": rooms, "items": items, "all_items": all_items, "solar": solar, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
+	_inventory = {"rooms": rooms, "items": items, "all_items": all_items, "solar": solar, "solar_keys": solar_keys, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
 		"cells": rooms.reduce(func(total, room): return total + int(room.cells), 0),
 		"zones_ref": builder.zones, "zone_count": builder.zones.size(), "items_ref": builder.placed_interior, "item_count": builder.placed_interior.size()}
 	_take_delivery(capacity)
@@ -358,6 +370,7 @@ func step(dt: float, hour: float) -> void:
 	hours_run += dt
 	# Dust storms (random in play; tests can start one).
 	if storm_hours_left > 0.0: storm_hours_left = maxf(0.0, storm_hours_left - dt)
+	if weather_wear: _wear(dt)
 	if research_boost_hours > 0.0: research_boost_hours = maxf(0.0, research_boost_hours - dt)
 	elif storm_eta_hours >= 0.0:
 		storm_eta_hours -= dt
@@ -402,7 +415,7 @@ func step(dt: float, hour: float) -> void:
 	tiers[TIER_OTHER] += int(inv.intakes) * MHResources.item_value("regolith_intake", "power_kw", 1.5)
 	var generation := 0.0
 	var storm_factor := 1.0 - solar_cut()
-	generation += _solar_kw(inv.solar, hour) * storm_factor
+	generation += _solar_kw(inv.solar, hour, inv.get("solar_keys", [])) * storm_factor
 	generation += inv.reactors * MHResources.setting("reactor_kw", 10.0)
 	if MHGame.debug_free_power: generation = 1.0e6
 	if inv.isolated: generation = 0.0
@@ -482,13 +495,54 @@ func step(dt: float, hour: float) -> void:
 
 ## Solar output at an hour: each array catches most light facing the sun
 ## (same rule as the build view's "SOLAR % AT NOON" label).
-func _solar_kw(facings: Array, hour: float) -> float:
+func _solar_kw(facings: Array, hour: float, keys: Array = []) -> float:
 	var sun := MHGame.solar_irradiance(hour)
 	if sun <= 0.0: return 0.0
 	var heading := MHGame.sun_heading(hour)
 	var total := 0.0
-	for facing in facings: total += MHResources.setting("solar_peak_kw", 10.0) * (.55 + .45 * (facing as Vector2).dot(heading)) * sun
+	for i in range(facings.size()):
+		var clean := solar_clean(str(keys[i]), hour) if i < keys.size() else 1.0
+		total += MHResources.setting("solar_peak_kw", 10.0) * (.55 + .45 * (facings[i] as Vector2).dot(heading)) * sun * clean
 	return total
+
+# ---------- weather wear ----------
+
+## How much of an array's sunlight reaches its cells (1 = spotless): dust and
+## any frost still on it this hour.
+func solar_clean(key: String, hour: float) -> float:
+	if not weather_wear: return 1.0
+	var dust := float(panel_dust.get(key, 0.0))
+	return (1.0 - dust * WEATHER_WEAR.DUST_LOSS) * (1.0 - WEATHER_WEAR.frost(MHGame.site_id, hour) * WEATHER_WEAR.FROST_LOSS)
+
+## The average share of solar power lost to dust, and to frost, right now.
+func solar_wear(hour: float) -> Dictionary:
+	var keys: Array = inventory().get("solar_keys", [])
+	if not weather_wear or keys.is_empty(): return {"dust": 0.0, "frost": 0.0}
+	var dust := 0.0
+	for key in keys: dust += float(panel_dust.get(key, 0.0)) * WEATHER_WEAR.DUST_LOSS
+	return {"dust": dust / keys.size(), "frost": WEATHER_WEAR.frost(MHGame.site_id, hour) * WEATHER_WEAR.FROST_LOSS}
+
+## Dust settles (fast in a storm), gusts now and then clean an array, and the
+## hull's dust coat wears away.
+func _wear(dt: float) -> void:
+	var sols := dt / 24.0
+	var storm := storm_hours_left > 0.0
+	var rate := WEATHER_WEAR.STORM_DUST_PER_SOL if storm else float(WEATHER_WEAR.DUST_PER_SOL.get(MHGame.site_id, .02))
+	for key in inventory().get("solar_keys", []):
+		var dust := minf(WEATHER_WEAR.MAX_DUST, float(panel_dust.get(key, 0.0)) + rate * sols)
+		if not storm and _rng.randf() < WEATHER_WEAR.GUST_CLEAN_PER_SOL * sols: dust *= WEATHER_WEAR.GUST_LEAVES
+		panel_dust[key] = dust
+	if storm: hull_dust = minf(1.0, hull_dust + 1.5 * sols)
+	else: hull_dust *= pow(.5, sols / WEATHER_WEAR.HULL_HALF_LIFE_SOLS)
+	_stale_power = true
+
+## Clean an array (a dust devil, or a crew member with a brush): it keeps
+## this share of its dust. Returns how much came off.
+func clean_array(key: String, keep := 0.0) -> float:
+	var before := float(panel_dust.get(key, 0.0))
+	panel_dust[key] = before * keep
+	_stale_power = true
+	return before - before * keep
 
 ## The habitat's comfortable target (heat pump set point).
 static func habitat_target() -> float:
@@ -662,7 +716,7 @@ func step_power_only(hour: float) -> void:
 	for richness in inv.drills: tiers[4] += MHResources.item_value("ice_drill", "power_kw", 3.0)
 	tiers[4] += int(inv.get("intakes", 0)) * MHResources.item_value("regolith_intake", "power_kw", 1.5)
 	var generation := 0.0
-	generation += _solar_kw(inv.solar, hour) * (1.0 - solar_cut())
+	generation += _solar_kw(inv.solar, hour, inv.get("solar_keys", [])) * (1.0 - solar_cut())
 	generation += inv.reactors * MHResources.setting("reactor_kw", 10.0)
 	if MHGame.debug_free_power: generation = 1.0e6
 	if inv.isolated: generation = 0.0
@@ -768,6 +822,11 @@ func warnings() -> Array:
 		out.append({"level": "danger" if food_kg <= 0.0 else "warn", "text": "Food runs out in %d sols." % floori(food_kg / food_per_sol)})
 	if int(inv.capacity.berths) < int(MHResources.setting("crew", 6.0)):
 		out.append({"level": "info", "text": "%d of %d crew have bunks; the rest wait on the lander." % [mini(int(inv.capacity.berths), int(MHResources.setting("crew", 6.0))), int(MHResources.setting("crew", 6.0))]})
+	var wear := solar_wear(MHGame.sol_hour)
+	if float(wear.dust) >= .1:
+		out.append({"level": "warn" if float(wear.dust) >= .25 else "info", "text": "Dusty solar panels: %d%% less power. Brush them off (E on an array), or wait for a dust devil or a gust to clean them." % roundi(float(wear.dust) * 100.0)})
+	if float(wear.frost) >= .05 and MHGame.solar_irradiance(MHGame.sol_hour) > 0.0:
+		out.append({"level": "info", "text": "Morning frost on the panels: %d%% less power until the sun sublimates it." % roundi(float(wear.frost) * 100.0)})
 	if storm_hours_left > 0.0:
 		out.append({"level": "warn", "text": "Dust storm: solar output is down for about %d more sols." % ceili(storm_hours_left / 24.0)})
 	elif storm_eta_hours >= 0.0:

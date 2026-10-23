@@ -1,8 +1,10 @@
 extends Node3D
 
 ## Each site's own weather, from what NASA has actually seen there (realistic
-## pass, 24 Oct). Visual and sound only: nothing here changes the simulation.
-## Settings → Weather effects turns it all off. Dust storms stay in weather.gd.
+## pass, 24 Oct). Visual and sound, plus drawing the marks weather leaves
+## (weather_wear.gd: dust and frost on panels, hull and windows) and sending
+## dust devils over the solar arrays to clean them. Settings → Weather effects
+## turns the visuals off. Dust storms stay in weather.gd.
 ##   Every site    blue sunsets: fine dust lets blue light through near the Sun
 ##                 (Curiosity, Gale Crater, 2015).
 ##   Ice Fields    dawn frost that sublimates through the morning, last in the
@@ -21,6 +23,12 @@ extends Node3D
 
 const TERRAIN := preload("res://scripts/site_terrain.gd")
 const WEATHER_SCRIPT := preload("res://scripts/weather.gd")
+const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
+const DEVIL_CLEAN_REACH := 7.0
+var _marks_check := 0.0
+var _dressed: Array[Material] = []
+var _windows: Array = []           # [pane, material]
+var _cleaned := {}                 # devil node id -> array keys it has cleaned
 var _indoors := false
 const MAX_TRACKS := 16
 
@@ -65,6 +73,10 @@ func setup(target_world: Node) -> void:
 		_:
 			_build_streaks(Vector3(1, 0, 0))
 	_build_halo()
+	var builder: Node = world.builder
+	if builder != null and builder.has_signal("habitat_changed"):
+		builder.habitat_changed.connect(func() -> void: _dress_marks.call_deferred())
+	_dress_marks.call_deferred()
 
 # ---------- each frame ----------
 
@@ -77,7 +89,7 @@ func _process(delta: float) -> void:
 	# within 12 m of you (the room) and particles spawn in a ring outside.
 	_indoors = inside
 	for layer in _fog: (layer.material_override as ShaderMaterial).set_shader_parameter("near_fade", Vector2(12.0, 28.0) if inside else Vector2(1.5, 14.0))
-	if _snow != null: WEATHER_SCRIPT._set_ring(_snow, inside, Vector3(22.0, .5, 22.0))
+	if _snow != null: WEATHER_SCRIPT._set_ring(_snow, inside, Vector3(22.0, 5.0, 22.0))
 	if _streaks != null: WEATHER_SCRIPT._set_ring(_streaks, inside, Vector3(26.0, 1.2, 26.0))
 	var hour := MHGame.sol_hour
 	var sun := _sun_altitude(hour)
@@ -93,6 +105,10 @@ func _process(delta: float) -> void:
 			_update_devils(on, hour, delta, true)
 			_update_gusts(on, hour)
 			_update_quake(on, delta)
+	_marks_check -= delta
+	if _marks_check <= 0.0:
+		_marks_check = .5
+		_update_marks(on, hour)
 	if _last_hour >= 0.0:
 		var passed := fposmod(hour - _last_hour, 24.0)
 		if passed < 2.0: _age_tracks(passed)
@@ -192,12 +208,12 @@ func _set_fog(amount: float, lift := 0.0) -> void:
 
 func _build_snow() -> void:
 	_snow = CPUParticles3D.new()
-	_snow.amount = 700
+	_snow.amount = 1100
 	_snow.lifetime = 9.0
 	_snow.preprocess = 9.0
 	_snow.local_coords = false
 	_snow.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-	_snow.emission_box_extents = Vector3(22.0, .5, 22.0)
+	_snow.emission_box_extents = Vector3(22.0, 5.0, 22.0)
 	_snow.direction = Vector3(.15, -1.0, .05)
 	_snow.spread = 12.0
 	_snow.gravity = Vector3(0, -.35, 0)
@@ -206,12 +222,13 @@ func _build_snow() -> void:
 	_snow.scale_amount_min = .5
 	_snow.scale_amount_max = 1.2
 	var quad := QuadMesh.new()
-	quad.size = Vector2(.035, .035)
+	quad.size = Vector2(.08, .08)
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.albedo_color = Color(.92, .95, 1.0, .9)
+	material.albedo_texture = _soft_dot()
+	material.albedo_color = Color(.92, .95, 1.0, .95)
 	material.emission_enabled = true
 	material.emission = Color(.75, .8, .9)
 	material.emission_energy_multiplier = 1.6
@@ -233,7 +250,7 @@ func _update_ice(on: bool, hour: float, sun: float) -> void:
 		_snow.visible = snowing
 		_snow.emitting = snowing
 		var cam := _camera()
-		if snowing and cam != null: _snow.global_position = cam.global_position + Vector3(0, 9.0, 0)
+		if snowing and cam != null: _snow.global_position = cam.global_position + Vector3(0, 5.0, 0)
 	# Low ice fog at dawn, lifting as the sun climbs.
 	var fog := 0.0
 	if hour >= 4.5 and hour < 9.0: fog = smoothstep(4.5, 6.0, hour) * (1.0 - smoothstep(7.0, 9.0, hour))
@@ -299,12 +316,13 @@ func _build_streaks(direction: Vector3) -> void:
 	_streaks.scale_amount_min = .6
 	_streaks.scale_amount_max = 1.4
 	var quad := QuadMesh.new()
-	quad.size = Vector2(.06, 1.6)
+	quad.size = Vector2(.14, 2.2)
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	material.albedo_color = Color(.78, .62, .48, .18)
+	material.albedo_color = Color(.8, .62, .47, .22)
+	material.albedo_texture = _soft_wisp()
 	quad.material = material
 	_streaks.mesh = quad
 	_streaks.emitting = false
@@ -327,18 +345,24 @@ func _update_gusts(on: bool, hour: float) -> void:
 const DEVIL_SHADER := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
-uniform vec4 tint : source_color = vec4(0.76, 0.6, 0.47, 1.0);
+uniform vec4 tint : source_color = vec4(0.6, 0.43, 0.31, 1.0);
 uniform float opacity = 0.0;
+uniform float height = 40.0;
+varying float up;   // 0 at the foot, 1 at the top
 float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vnoise(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
+void vertex() { up = VERTEX.y / height + 0.5; }
 void fragment() {
 	// Dust swirling up and round the funnel; thickest low down.
 	float swirl = vnoise(vec2(UV.x * 10.0 + TIME * 2.4 + UV.y * 5.0, UV.y * 7.0 - TIME * 1.6));
 	swirl = swirl * 0.7 + vnoise(vec2(UV.x * 23.0 + TIME * 3.1, UV.y * 15.0 - TIME * 2.0)) * 0.3;
-	float body = smoothstep(0.0, 0.08, UV.y) * (1.0 - smoothstep(0.35, 1.0, UV.y)) * 0.6 + (1.0 - smoothstep(0.0, 0.25, UV.y)) * 0.4;
-	ALBEDO = tint.rgb * mix(0.85, 1.1, swirl);
-	ALPHA = clamp(opacity * body * smoothstep(0.25, 0.75, swirl), 0.0, 1.0);
+	// Dense and dark at the foot, thinning and fraying toward the wide top.
+	float foot = 1.0 - smoothstep(0.0, 0.3, up);
+	float body = (1.0 - smoothstep(0.55, 1.0, up)) * 0.6 + foot * 0.4;
+	float bands = 0.75 + 0.25 * sin(UV.x * 6.28318 * 3.0 - up * 14.0 - TIME * 5.0);
+	ALBEDO = tint.rgb * mix(0.7, 1.08, swirl) * mix(1.0, 0.78, foot);
+	ALPHA = clamp(opacity * body * bands * (0.5 + 0.5 * smoothstep(0.2, 0.8, swirl)) * 2.0, 0.0, 0.85);
 }
 """
 
@@ -369,11 +393,12 @@ func _spawn_devil(avoid_pad: bool) -> void:
 	var material := ShaderMaterial.new()
 	material.shader = Shader.new()
 	material.shader.code = DEVIL_SHADER
+	material.set_shader_parameter("height", height)
 	funnel.material_override = material
 	devil.add_child(funnel)
 	var skirt := CPUParticles3D.new()
-	skirt.amount = 40
-	skirt.lifetime = 2.5
+	skirt.amount = 70
+	skirt.lifetime = 3.0
 	skirt.local_coords = false
 	skirt.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	skirt.emission_sphere_radius = 2.0
@@ -382,9 +407,9 @@ func _spawn_devil(avoid_pad: bool) -> void:
 	skirt.initial_velocity_min = 1.0
 	skirt.initial_velocity_max = 2.5
 	skirt.gravity = Vector3(0, -.3, 0)
-	skirt.scale_amount_min = 1.0
-	skirt.scale_amount_max = 2.2
-	skirt.mesh = _dust_quad(Color(.74, .58, .45, .25))
+	skirt.scale_amount_min = 1.6
+	skirt.scale_amount_max = 3.4
+	skirt.mesh = _dust_quad(Color(.72, .55, .42, .38))
 	devil.add_child(skirt)
 	add_child(devil)
 	devil.global_position = Vector3(at.x, TERRAIN.height(at.x, at.y), at.y)
@@ -402,7 +427,7 @@ func _update_devils(on: bool, hour: float, delta: float, avoid_pad: bool) -> voi
 		var node: Node3D = devil.node
 		devil.age = float(devil.age) + delta
 		var fade := smoothstep(0.0, 6.0, float(devil.age)) * (1.0 - smoothstep(float(devil.life) - 8.0, float(devil.life), float(devil.age)))
-		(devil.material as ShaderMaterial).set_shader_parameter("opacity", fade * .55 if on else 0.0)
+		(devil.material as ShaderMaterial).set_shader_parameter("opacity", fade * .9 if on else 0.0)
 		node.visible = on
 		# Wander, staying on site.
 		var v: Vector2 = devil.velocity
@@ -411,6 +436,7 @@ func _update_devils(on: bool, hour: float, delta: float, avoid_pad: bool) -> voi
 		if here.length() > 120.0: v = -v
 		devil.velocity = v
 		node.global_position = Vector3(here.x, TERRAIN.height(here.x, here.y), here.y)
+		_devil_cleans(devil, here)
 		# Leave a dark track (Open Plains), a segment every few metres.
 		if site == "plains" and here.distance_to(devil.last) > 6.0:
 			_add_track(devil.last, here)
@@ -442,6 +468,79 @@ func _push_tracks() -> void:
 			segments.append(Vector4.ZERO)
 			segments.append(Vector4.ZERO)
 	for material in _ground_materials: (material as ShaderMaterial).set_shader_parameter("tracks", segments)
+
+## A dust devil passing over a solar array blows it clean, as they did for
+## Spirit and Opportunity. Each devil cleans an array once.
+func _devil_cleans(devil: Dictionary, here: Vector2) -> void:
+	var builder: Node = world.builder
+	var sim: RefCounted = builder.simulation()
+	if not sim.weather_wear or float(devil.age) < 6.0: return
+	var done: Array = _cleaned.get(devil.node.get_instance_id(), [])
+	for panel in get_tree().get_nodes_in_group("solar_array"):
+		var at: Vector3 = (panel as Node3D).global_position
+		if done.has(panel.key) or Vector2(at.x, at.z).distance_to(here) > DEVIL_CLEAN_REACH: continue
+		done.append(panel.key)
+		var gained := float(sim.clean_array(str(panel.key), .15)) * WEATHER_WEAR.DUST_LOSS
+		if gained >= .03 and world.get("weather") != null:
+			world.weather.toast("A dust devil cleaned a solar array", "It blew most of the dust off: about %d%% more power from that array. NASA's rovers were saved by cleaning events like this." % roundi(gained * 100.0), MHStyle.VALID)
+	_cleaned[devil.node.get_instance_id()] = done
+
+# ---------- the marks weather leaves (weather_wear.gd) ----------
+
+## Hull modules, roof and windows get the dust-and-frost overlay. The kit's
+## hull, panel and seal materials are shared by every module, so one next
+## pass on each covers the whole outside.
+func _dress_marks() -> void:
+	var builder: Node = world.builder
+	if builder == null or not WEATHER_WEAR.enabled(): return
+	var hull := WEATHER_WEAR.hull_material()
+	var targets: Array[Material] = [MHGame.kit_material("hull"), MHGame.kit_material("panel"), MHGame.kit_material("seal")]
+	for mesh in builder.root.find_children("*", "MeshInstance3D", true, false):
+		var instance := mesh as MeshInstance3D
+		if instance.mesh == null: continue
+		for i in instance.mesh.get_surface_count():
+			var material := instance.get_active_material(i)
+			if material is StandardMaterial3D and material.resource_name.begins_with("MH Roof") and not targets.has(material): targets.append(material)
+	for material in targets:
+		if material.next_pass == null:
+			material.next_pass = hull
+			_dressed.append(material)
+	# The plain hull walls and the roof are boxes with their own materials.
+	for group in ["habitat_wall", "habitat_roof"]:
+		for body in get_tree().get_nodes_in_group(group):
+			if (body as Node).is_in_group("hull_window_glass"): continue
+			for child in (body as Node).get_children():
+				if child is MeshInstance3D: (child as MeshInstance3D).material_overlay = hull
+	_windows.clear()
+	for glass in get_tree().get_nodes_in_group("hull_window_glass"):
+		for pane in (glass as Node).get_children():
+			if not pane is MeshInstance3D: continue
+			var size: Vector3 = ((pane as MeshInstance3D).mesh as BoxMesh).size if (pane as MeshInstance3D).mesh is BoxMesh else Vector3(2, 1.2, .04)
+			var material := WEATHER_WEAR.window_material(Vector2(size.x, size.y))
+			(pane as MeshInstance3D).material_overlay = material
+			_windows.append(material)
+
+func _update_marks(on: bool, hour: float) -> void:
+	var sim: RefCounted = world.builder.simulation()
+	var wear: bool = on and sim.weather_wear
+	var frost := WEATHER_WEAR.frost(site, hour) if wear else 0.0
+	var dust: float = float(sim.hull_dust) if wear else 0.0
+	var hull := WEATHER_WEAR.hull_material()
+	hull.set_shader_parameter("dust", dust)
+	hull.set_shader_parameter("frost", frost)
+	hull.set_shader_parameter("base_y", float(world.builder.habitat_base_y))
+	hull.set_shader_parameter("outside", 0.0 if _indoors else 1.0)
+	for material in _windows:
+		(material as ShaderMaterial).set_shader_parameter("dust", dust * .6)
+		(material as ShaderMaterial).set_shader_parameter("frost", frost)
+	for panel in get_tree().get_nodes_in_group("solar_array"): panel.refresh(hour)
+
+## The kit materials outlive this scene (the title screen's habitat uses them):
+## take the overlay back off.
+func _exit_tree() -> void:
+	for material in _dressed:
+		if is_instance_valid(material): material.next_pass = null
+	_dressed.clear()
 
 # ---------- marsquakes (Open Plains) ----------
 
@@ -636,6 +735,19 @@ func _dust_quad(colour: Color) -> QuadMesh:
 	material.albedo_texture = _soft_dot()
 	quad.material = material
 	return quad
+
+static var _wisp: ImageTexture
+## A vertical wisp for wind streaks (they're aligned to their motion).
+static func _soft_wisp() -> ImageTexture:
+	if _wisp != null: return _wisp
+	var image := Image.create(16, 64, false, Image.FORMAT_RGBA8)
+	for x in 16:
+		for y in 64:
+			var u := (float(x) - 7.5) / 7.5
+			var a := sin(float(y) / 63.0 * PI) * exp(-u * u * 3.0)
+			image.set_pixel(x, y, Color(1, 1, 1, a * a))
+	_wisp = ImageTexture.create_from_image(image)
+	return _wisp
 
 static var _dot: ImageTexture
 static func _soft_dot() -> ImageTexture:

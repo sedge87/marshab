@@ -63,6 +63,8 @@ const SHOWCASE_CORNER := preload("res://assets/showcase_modules/mh_corner_post.g
 const SHOWCASE_AIRLOCK := preload("res://assets/showcase_modules/mh_airlock_surround.glb")
 const SHOWCASE_CORRIDOR := preload("res://assets/showcase_modules/mh_corridor_bay.glb")
 const SHOWCASE_SOLAR := preload("res://assets/showcase_modules/mh_solar_array.glb")
+const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
+const SOLAR_ARRAY_INTERACTABLE := preload("res://scripts/solar_array_interactable.gd")
 const ROOF_ACCESSORY_SCENES := {
 	"living": preload("res://assets/structural_kit/roof_living_comms_mast.glb"),
 	"science": preload("res://assets/structural_kit/roof_science_dish.glb"),
@@ -4134,7 +4136,25 @@ func _build_vehicle_bay(zone: Dictionary) -> void:
 func _build_solar(zone: Dictionary) -> void:
 	var cell:Vector2i=zone.cells[0]
 	var position:=Vector3(cell.x*CELL,_terrain_height(Vector3(cell.x*CELL,0,cell.y*CELL)),cell.y*CELL)
-	_add_showcase(SHOWCASE_SOLAR,position,_direction_yaw(_airlock_side(zone)))
+	var asset := _add_showcase(SHOWCASE_SOLAR,position,_direction_yaw(_airlock_side(zone)))
+	# Dust and frost on the cells (weather_wear.gd), and a slab over the panels
+	# to look at and brush clean.
+	var overlay := WEATHER_WEAR.panel_material()
+	for mesh in asset.find_children("Solar photovoltaic surface*", "MeshInstance3D", true, false):
+		(mesh as MeshInstance3D).material_overlay = overlay
+	var slab := SOLAR_ARRAY_INTERACTABLE.new()
+	slab.name = "SolarArray"
+	slab.collision_layer = 1
+	slab.collision_mask = 0
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(2.9, .35, 1.15)
+	shape.shape = box
+	shape.position = Vector3(0, 1.45, .05)
+	shape.rotation.x = -.6
+	slab.add_child(shape)
+	asset.add_child(slab)
+	slab.setup(self, simulation()._room_key(zone), overlay)
 	# The visual comes from Blender; this small base prevents the player walking
 	# through the mast without giving the solar panel an oversized collider. A
 	# larger pad also makes its ground contact clear on uneven Mars terrain.
@@ -4362,14 +4382,15 @@ func _wall_yaw(side: Vector2i) -> float:
 	if side==Vector2i(0,1): return PI
 	return -PI*.5
 
-func _add_showcase(scene: PackedScene,position: Vector3,yaw := 0.0,model_scale := Vector3.ONE) -> void:
-	var asset:=scene.instantiate()
+func _add_showcase(scene: PackedScene,position: Vector3,yaw := 0.0,model_scale := Vector3.ONE) -> Node3D:
+	var asset:=scene.instantiate() as Node3D
 	asset.position=position
 	asset.rotation.y=yaw
 	asset.scale=model_scale
 	asset.add_to_group("habitat_showcase_visual")
 	MHGame.apply_kit_materials(asset)
 	root.add_child(asset)
+	return asset
 
 func _add_plan_tile(centre: Vector3,colour: Color,zone_kind: String) -> void:
 	var tile:=MeshInstance3D.new(); var mesh:=BoxMesh.new(); mesh.size=Vector3(CELL-.28,.045,CELL-.28); tile.mesh=mesh
