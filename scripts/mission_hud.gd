@@ -545,6 +545,18 @@ func _show_report(report: Dictionary) -> void:
 		life.report = report
 		life.custom_minimum_size = Vector2(1100, 5 * 44 + 30)
 		column.add_child(life)
+	# Act 2: the readings this mission checks (radiation, pressure, fitness, wellbeing).
+	var act2: Array = []
+	var checks: Array = (mission.get("requirements", []) as Array).map(func(q): return str(q.check))
+	for row in LifeGraph.ACT2_ROWS:
+		if checks.has(str(row[8])): act2.append(row)
+	if not act2.is_empty():
+		var hazards := LifeGraph.new()
+		hazards.report = report
+		hazards.rows = act2
+		hazards.title = "LIVING ON MARS OVER THE TEST"
+		hazards.custom_minimum_size = Vector2(1100, act2.size() * 44 + 30)
+		column.add_child(hazards)
 	# The student's note on this version, for the dossier (optional).
 	var note_row := MHStyle.hbox(12)
 	var note := LineEdit.new()
@@ -743,6 +755,14 @@ class LifeGraph extends Control:
 		["Food", "food_kg", 0.0, -1.0, 0.0, true, Color("#9AE07A"), " kg"],
 		["Temperature", "coldest_c", -10.0, 30.0, 15.0, true, Color("#FFB37A"), " °C"],
 		["Crew health", "crew_health", 0.0, 100.0, 50.0, true, Color("#FF8A8A"), "%"]]
+	# The same, plus the check each row belongs to (shown only when the mission checks it).
+	const ACT2_ROWS := [
+		["Radiation (event)", "event_dose_msv", 0.0, 100.0, 50.0, false, Color("#F5C542"), " mSv", "dose_max"],
+		["Air pressure", "pressure_pct", 0.0, 100.0, 70.0, true, Color("#7FD6FF"), "%", "pressure_min"],
+		["Lowest fitness", "fitness", 40.0, 100.0, 70.0, true, Color("#9AE07A"), "%", "fitness_min"],
+		["Wellbeing", "wellbeing", 30.0, 100.0, 60.0, true, Color("#E9A5FF"), "%", "wellbeing_min"]]
+	var rows: Array = ROWS
+	var title := "LIFE SUPPORT OVER THE TEST"
 
 	func _draw() -> void:
 		var samples: Array = report.get("samples", [])
@@ -751,10 +771,10 @@ class LifeGraph extends Control:
 		var font := ThemeDB.fallback_font
 		var total_hours: float = float(report.sols) * 24.0
 		var left := 170.0
-		var right := size.x - 90.0
-		draw_string(font, Vector2(12, 18), "LIFE SUPPORT OVER THE TEST", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, .6))
-		for index in range(ROWS.size()):
-			var spec: Array = ROWS[index]
+		var right := size.x - 110.0
+		draw_string(font, Vector2(12, 18), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, .6))
+		for index in range(rows.size()):
+			var spec: Array = rows[index]
 			var top := 28.0 + index * ROW
 			var bottom := top + ROW - 10.0
 			var low: float = spec[2]
@@ -782,4 +802,5 @@ class LifeGraph extends Control:
 			draw_string(font, Vector2(12, top + 18), str(spec[0]), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, spec[6])
 			var bad: bool = (worst < float(spec[4])) if bool(spec[5]) else (worst > float(spec[4]))
 			var word: String = ("fell to " if bad else "lowest ") if bool(spec[5]) else ("rose to " if bad else "highest ")
-			draw_string(font, Vector2(right + 8, top + 18), word + str(snappedf(worst, .1)) + str(spec[7]), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, MHStyle.DANGER if bad else Color(1, 1, 1, .6))
+			var shown := str(roundi(worst)) if absf(worst) >= 10.0 else str(snappedf(worst, .1))
+			draw_string(font, Vector2(right + 8, top + 18), word + shown + str(spec[7]), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, MHStyle.DANGER if bad else Color(1, 1, 1, .6))

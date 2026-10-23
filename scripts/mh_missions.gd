@@ -521,6 +521,10 @@ static func _judge(requirement: Dictionary, run: Dictionary, sols: int, start_ho
 					else: result.tip = "A shelter needs 1 floor square for every 3 crew, and heating that reaches it."
 		"dose_max":
 			if result.pass: result.detail = "The event dose was %d mSv (limit %d)." % [roundi(float(run.worst_event_msv)), int(requirement.get("max", 50))]
+			else:
+				var place: Dictionary = run.shelter
+				result.detail = "In the solar particle event the crew got %d mSv of radiation (limit %d)%s." % [roundi(float(run.worst_event_msv)), int(requirement.get("max", 50)),
+					": there was no storm shelter" if place.is_empty() else ", sheltering in %s with %d shield points" % [str(place.label), roundi(float(place.rating))]]
 		"fitness_min":
 			if result.pass: result.detail = "Everyone stayed fit: the lowest was %d%%." % roundi(life.lowest_fitness())
 		"wellbeing_min":

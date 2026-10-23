@@ -92,7 +92,7 @@ func _initialize() -> void:
 		await process_frame
 		graph.queue_free()
 	# Mission 6: any food grower counts towards a quarter of the crew's food.
-	var final: Dictionary = MHMissions.missions()[-1]
+	var final: Dictionary = MHMissions.get_mission("self_sufficiency")
 	var food_step: Dictionary = (final.steps as Array).filter(func(s): return str(s.get("check", "")) == "food_share")[0]
 	var kept: Array = b.placed_interior.duplicate()
 	for i in 7: b.placed_interior.append({"id": "grow_tray"})
