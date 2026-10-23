@@ -4046,6 +4046,251 @@
         0.257
       ],
       "pack": "mars_crew_comforts_v1"
+    },
+    {
+      "id": "regolith_shield_block",
+      "label": "Regolith Shield Wall",
+      "group": "storage",
+      "status": "catalogue",
+      "icon": "brick-wall",
+      "height": 2.15,
+      "description": "Interlocking blocks printed from Mars soil, stacked against a wall as radiation shielding.",
+      "role": "Radiation shielding (8 points)",
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 900,
+      "printable": true,
+      "system_note": "Mars soil (regolith) is a good shield: a thick layer stops most of the radiation from a solar storm. Printing it here costs no cargo from Earth, which is how real Mars bases plan to do it.",
+      "system_links": [
+        "Radiation",
+        "Mars-made"
+      ],
+      "asset_scene": "res://assets/equipment/mars_living_on_mars_v1/regolith_shield_block.tscn",
+      "size_m": [
+        1.32,
+        2.15,
+        0.36
+      ],
+      "pack": "mars_living_on_mars_v1"
+    },
+    {
+      "id": "water_wall_panel",
+      "label": "Water Wall",
+      "group": "storage",
+      "status": "catalogue",
+      "icon": "droplets",
+      "height": 2.06,
+      "description": "A slim tank of water hung against a wall: radiation shielding that also stores 200 L of water.",
+      "role": "Radiation shielding (10 points) and 200 L of water",
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 260,
+      "system_note": "Water is one of the best radiation shields, because it's full of hydrogen. Designers put the water a base needs anyway around the places the crew sleep and shelter.",
+      "system_links": [
+        "Radiation",
+        "Water"
+      ],
+      "asset_scene": "res://assets/equipment/mars_living_on_mars_v1/water_wall_panel.tscn",
+      "size_m": [
+        1.24,
+        2.06,
+        0.35
+      ],
+      "pack": "mars_living_on_mars_v1"
+    },
+    {
+      "id": "storm_shelter_locker",
+      "label": "Storm Shelter Locker",
+      "group": "general",
+      "status": "catalogue",
+      "icon": "radiation",
+      "height": 2.0,
+      "description": "Emergency food, water, first aid and dosimeters for a day in the shelter. The room it's in becomes the storm shelter.",
+      "role": "Makes this room the storm shelter",
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 140,
+      "system_note": "Solar particle events give only minutes to an hour of warning. Real habitat designs keep a small, well-shielded room ready, with supplies, so the crew can shelter for a day or more.",
+      "system_links": [
+        "Radiation",
+        "Crew health"
+      ],
+      "asset_scene": "res://assets/equipment/mars_living_on_mars_v1/storm_shelter_locker.tscn",
+      "size_m": [
+        0.93,
+        2.0,
+        0.605
+      ],
+      "pack": "mars_living_on_mars_v1"
+    },
+    {
+      "id": "hull_patch_kit",
+      "label": "Hull Patch Kit",
+      "group": "general",
+      "status": "catalogue",
+      "icon": "wrench",
+      "height": 0.6,
+      "description": "Patch plates, sealant and tools in a wall case, for sealing a hole in the hull.",
+      "role": "Lets the crew patch a breach",
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "wall",
+      "effects": {},
+      "cargo_cost": 40,
+      "system_note": "Micrometeoroids are tiny grains of rock travelling faster than a bullet. The ISS has been hit many times. Crews train to find a leak, seal off that section and patch it.",
+      "system_links": [
+        "Air",
+        "Hull"
+      ],
+      "asset_scene": "res://assets/equipment/mars_living_on_mars_v1/hull_patch_kit.tscn",
+      "size_m": [
+        0.66,
+        0.585,
+        0.2
+      ],
+      "pack": "mars_living_on_mars_v1"
+    },
+    {
+      "id": "air_reserve_rack",
+      "label": "Air Reserve Rack",
+      "group": "life_support",
+      "status": "catalogue",
+      "icon": "gauge",
+      "height": 1.55,
+      "description": "Four tanks of stored air (nitrogen and oxygen) with a manifold, to refill a section after a breach.",
+      "role": "60 kg of stored air for repressurising",
+      "valid_zones": [
+        "life_support",
+        "engineering",
+        "storage",
+        "airlock",
+        "corridor"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 380,
+      "system_note": "Habitat air is mostly nitrogen with about a fifth oxygen, at roughly Earth's pressure. After a leak is patched, stored gas refills the empty section before anyone goes back in.",
+      "system_links": [
+        "Air",
+        "Hull"
+      ],
+      "asset_scene": "res://assets/equipment/mars_living_on_mars_v1/air_reserve_rack.tscn",
+      "size_m": [
+        1.76,
+        1.55,
+        0.78
+      ],
+      "pack": "mars_living_on_mars_v1"
+    },
+    {
+      "id": "spare_parts_rack",
+      "label": "Spare Parts Rack",
+      "group": "storage",
+      "status": "catalogue",
+      "icon": "package",
+      "height": 2.06,
+      "description": "Shelves of labelled spare parts: pumps, filters, seals and circuit boards. Each repair uses one.",
+      "role": "8 spare parts for repairs",
+      "valid_zones": [
+        "storage",
+        "engineering",
+        "life_support",
+        "corridor"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 300,
+      "system_note": "Far from Earth, every broken part has to be fixed here. Missions carry spares for the parts most likely to fail, and 3D printers can make some of them.",
+      "system_links": [
+        "Repairs",
+        "Cargo"
+      ],
+      "asset_scene": "res://assets/equipment/mars_living_on_mars_v1/spare_parts_rack.tscn",
+      "size_m": [
+        1.25,
+        2.06,
+        0.535
+      ],
+      "pack": "mars_living_on_mars_v1"
     }
   ]
 }

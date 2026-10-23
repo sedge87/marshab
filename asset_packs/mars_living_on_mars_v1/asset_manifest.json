@@ -1,0 +1,264 @@
+{
+  "style": "Living on Mars: shielding, shelter, breach and repair equipment for Missions 7-10, in the house style",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "water_wall_panel",
+      "file": "water_wall_panel.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.62,
+          0.0,
+          -0.195
+        ],
+        [
+          0.62,
+          2.06,
+          0.155
+        ]
+      ],
+      "triangles": 4532,
+      "named_components": [
+        "bladder_cushions_warm",
+        "fill_pipe_satin",
+        "fill_valve_wheel",
+        "frame_backplate",
+        "gauge_body",
+        "gauge_face_white",
+        "gauge_needle_red",
+        "level_marks",
+        "sight_frame_satin",
+        "sight_glass_dark",
+        "tank_fixings_satin",
+        "tank_shell_white",
+        "water_level_water"
+      ]
+    },
+    {
+      "id": "storm_shelter_locker",
+      "file": "storm_shelter_locker.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.465,
+          0.0,
+          -0.315
+        ],
+        [
+          0.465,
+          2.0,
+          0.29
+        ]
+      ],
+      "triangles": 3784,
+      "named_components": [
+        "Shelter_Door_L_band",
+        "Shelter_Door_L_handle",
+        "Shelter_Door_L_seam_black",
+        "Shelter_Door_L_trefoil",
+        "Shelter_Door_L_white",
+        "Shelter_Door_R_band",
+        "Shelter_Door_R_handle",
+        "Shelter_Door_R_readout_screen",
+        "Shelter_Door_R_screen_bezel",
+        "Shelter_Door_R_seam_black",
+        "Shelter_Door_R_status_amber",
+        "Shelter_Door_R_status_bezel",
+        "Shelter_Door_R_white",
+        "body_white",
+        "cap_white",
+        "display_screen_glass_dark",
+        "plinth",
+        "vent"
+      ]
+    },
+    {
+      "id": "hull_patch_kit",
+      "file": "hull_patch_kit.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.33,
+          -0.26,
+          -0.2
+        ],
+        [
+          0.33,
+          0.325,
+          -0.0
+        ]
+      ],
+      "triangles": 2556,
+      "named_components": [
+        "Patch_Lid_band",
+        "Patch_Lid_handle",
+        "Patch_Lid_label",
+        "Patch_Lid_latches_satin",
+        "Patch_Lid_seam_black",
+        "Patch_Lid_white",
+        "beacon_base",
+        "beacon_red",
+        "case_backplate",
+        "case_body_white",
+        "patch_plates_satin",
+        "sealant_cartridges"
+      ]
+    },
+    {
+      "id": "air_reserve_rack",
+      "file": "air_reserve_rack.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.88,
+          0.0,
+          -0.39
+        ],
+        [
+          0.88,
+          1.55,
+          0.39
+        ]
+      ],
+      "triangles": 15188,
+      "named_components": [
+        "base_plate",
+        "gauge_0_body",
+        "gauge_0_face_white",
+        "gauge_0_needle_red",
+        "gauge_1_body",
+        "gauge_1_face_white",
+        "gauge_1_needle_red",
+        "main_valve_wheel",
+        "manifold_block_satin",
+        "post_-8_-3_dark",
+        "post_-8_3_dark",
+        "post_7_-3_dark",
+        "post_7_3_dark",
+        "rack_status_bezel",
+        "rack_status_screen",
+        "rail_back_0_dark",
+        "rail_back_14_dark",
+        "rail_front_0_dark",
+        "rail_front_14_dark",
+        "tank_0_band",
+        "tank_0_composite",
+        "tank_0_dome_composite",
+        "tank_0_neck_composite",
+        "tank_0_straps_satin",
+        "tank_0_valve_satin",
+        "tank_1_band",
+        "tank_1_composite",
+        "tank_1_dome_composite",
+        "tank_1_neck_composite",
+        "tank_1_straps_satin",
+        "tank_1_valve_satin",
+        "tank_2_band",
+        "tank_2_composite",
+        "tank_2_dome_composite",
+        "tank_2_neck_composite",
+        "tank_2_straps_satin",
+        "tank_2_valve_satin",
+        "tank_3_band_white",
+        "tank_3_composite",
+        "tank_3_dome_composite",
+        "tank_3_neck_composite",
+        "tank_3_straps_satin",
+        "tank_3_valve_satin"
+      ]
+    },
+    {
+      "id": "spare_parts_rack",
+      "file": "spare_parts_rack.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.625,
+          0.0,
+          -0.285
+        ],
+        [
+          0.625,
+          2.06,
+          0.25
+        ]
+      ],
+      "triangles": 6920,
+      "named_components": [
+        "Tool_Drawer_front_white",
+        "Tool_Drawer_handle",
+        "back_panel",
+        "bin_0_0",
+        "bin_0_0_label_white",
+        "bin_0_0_mark",
+        "bin_0_1",
+        "bin_0_1_label_white",
+        "bin_0_1_mark",
+        "bin_0_2",
+        "bin_0_2_label_white",
+        "bin_0_2_mark",
+        "bin_1_0",
+        "bin_1_0_label_white",
+        "bin_1_0_mark",
+        "bin_1_1",
+        "bin_1_1_label_white",
+        "bin_1_1_mark",
+        "bin_1_2",
+        "bin_1_2_label_white",
+        "bin_1_2_mark",
+        "bin_2_0",
+        "bin_2_0_label_white",
+        "bin_2_0_mark",
+        "bin_2_1",
+        "bin_2_1_label_white",
+        "bin_2_1_mark",
+        "bin_2_2",
+        "bin_2_2_label_white",
+        "bin_2_2_mark",
+        "display_screen_glass_dark",
+        "part_filter_white",
+        "part_pump_satin",
+        "part_seal_black",
+        "shelf_0_white",
+        "shelf_1_white",
+        "shelf_2_white",
+        "shelf_3_white",
+        "shelf_4_white",
+        "tablet_body",
+        "tablet_rows_screen",
+        "upright_L_dark",
+        "upright_R_dark"
+      ]
+    },
+    {
+      "id": "regolith_shield_block",
+      "file": "regolith_shield_block.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.66,
+          0.0,
+          -0.18
+        ],
+        [
+          0.66,
+          2.15,
+          0.18
+        ]
+      ],
+      "triangles": 7168,
+      "named_components": [
+        "blocks_regolith",
+        "frame_base",
+        "frame_bolts_satin",
+        "frame_left_dark",
+        "frame_right_dark",
+        "frame_top_dark",
+        "layer_lines_regolith",
+        "tag_band",
+        "tag_plate_white"
+      ]
+    }
+  ]
+}

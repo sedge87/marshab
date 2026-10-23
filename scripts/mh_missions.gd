@@ -135,7 +135,7 @@ static func update_steps(builder: Node, flags: Dictionary) -> Array:
 	return ticked
 
 ## Steps that need what's built now (zones, items), re-checked as you build.
-const LIVE_STEPS := ["zone", "item", "item_any", "food_share"]
+const LIVE_STEPS := ["zone", "item", "item_any", "food_share", "shelter", "needs", "sections", "redundant"]
 ## Steps un-ticked by the last update_steps (something they needed was removed).
 static var last_unticked: Array = []
 
@@ -145,6 +145,13 @@ static func step_progress(step: Dictionary, builder: Node) -> String:
 		return "%d of %d" % [mini(counter(str(step.key)), int(step.count)), int(step.count)]
 	if str(step.get("check", "")) == "food_share":
 		return "%d%% of %d%%" % [roundi(food_share(builder, current()) * 100.0), roundi(float(step.get("min", .25)) * 100.0)]
+	match str(step.get("check", "")):
+		"shelter": return "%d of %d points" % [roundi(shelter_points(builder)), int(step.get("min", 20))]
+		"needs": return "%d of 6" % needs_met(builder)
+		"sections": return "biggest %d%%" % roundi(largest_section(builder) * 100.0)
+		"redundant":
+			var doubled := (step.get("items", []) as Array).filter(func(id): return builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(id)).size() >= 2).size()
+			return "%d of %d doubled" % [doubled, (step.get("items", []) as Array).size()]
 	if str(step.get("check", "")) != "item" or int(step.get("count", 1)) <= 1: return ""
 	var have: int = builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(step.item)).size()
 	return "%d of %d" % [have, int(step.count)]
@@ -155,6 +162,37 @@ static func food_share(builder: Node, mission: Dictionary) -> float:
 	var grown := 0.0
 	for item in builder.placed_interior: grown += MHResources.item_value(str(item.get("id", "")), "food_kg")
 	return grown / eaten
+
+## The storm shelter's shield points now (0 without a shelter).
+static func shelter_points(builder: Node) -> float:
+	var sim: RefCounted = builder.simulation()
+	return float(sim.life.shelter(sim.inventory()).get("rating", 0.0))
+
+## How many of the crew's six needs are met now (a need counts at 90%).
+static func needs_met(builder: Node) -> int:
+	var sim: RefCounted = builder.simulation()
+	var inv: Dictionary = sim.inventory()
+	if sim.life.crew.is_empty(): sim.life.ensure_crew(maxi(1, int(current().get("crew", 6))), progress.get("crew_names", []))
+	var tiers: Dictionary = sim.last.get("tiers", {1: true, 2: true, 3: true, 4: true})
+	return (sim.life.needs(inv, tiers) as Array).filter(func(n): return float(n.score) >= .9).size()
+
+## The biggest section's share of the habitat (rooms joined without a hatch).
+static func largest_section(builder: Node) -> float:
+	var sim: RefCounted = builder.simulation()
+	var inv: Dictionary = sim.inventory()
+	var total := 0.0
+	var by_section := {}
+	var map: Dictionary = sim.life.sections(inv)
+	for index in range((inv.rooms as Array).size()):
+		var cells := float(inv.rooms[index].cells)
+		total += cells
+		by_section[map[index]] = float(by_section.get(map[index], 0.0)) + cells
+	if total <= 0.0: return 1.0
+	return float(by_section.values().max()) / total
+
+static func set_crew_names(names: Array) -> void:
+	ensure()
+	progress["crew_names"] = names.duplicate()
 
 ## The first step not yet done, or {} when all are done.
 static func current_step() -> Dictionary:
@@ -172,6 +210,11 @@ static func _step_met(step: Dictionary, builder: Node, flags: Dictionary, missio
 		"item_any": return builder.placed_interior.any(func(i): return (step.get("items", []) as Array).has(str(i.get("id", ""))))
 		"food_share": return food_share(builder, get_mission(mission_id)) >= float(step.get("min", .25))
 		"counter": return counter(str(step.key)) >= int(step.get("count", 1))
+		"shelter": return shelter_points(builder) >= float(step.get("min", 20))
+		"crew_named": return not (progress.get("crew_names", []) as Array).is_empty()
+		"needs": return needs_met(builder) >= int(step.get("min", 4))
+		"sections": return largest_section(builder) <= float(step.get("max", .4)) + .001
+		"redundant": return (step.get("items", []) as Array).all(func(id): return builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(id)).size() >= 2)
 		"tested": return not versions(mission_id).is_empty()
 		"passed": return versions(mission_id).any(func(v): return bool(v.passed))
 	return false
@@ -243,6 +286,61 @@ static func check_landing(target: Vector2, base: Vector2) -> Dictionary:
 ## requirement's result with a reason, stretch goals and a design summary.
 static func run_test(builder: Node) -> Dictionary:
 	var mission := current()
+	var futures := maxi(1, int(mission.get("futures", 1)))
+	var runs: Array = []
+	for future in range(futures): runs.append(_simulate(builder, mission, future, ""))
+	var sols := int(mission.get("sols", 3))
+	var start_hour := 8.0
+	var first: Dictionary = runs[0]
+	var crew: int = int(first.crew)
+	var results: Array = []
+	for requirement in mission.get("requirements", []):
+		var result := {"id": str(requirement.id), "text": str(requirement.text), "pass": true, "detail": "", "tip": ""}
+		for run_index in range(runs.size()):
+			var run: Dictionary = runs[run_index]
+			var one := _judge(requirement, run, sols, start_hour)
+			if not bool(one.pass) or run_index == 0:
+				result.pass = bool(one.pass); result.detail = str(one.detail); result.tip = str(one.get("tip", ""))
+				if futures > 1 and not bool(one.pass): result.detail = "In future %d of %d: %s" % [run_index + 1, futures, result.detail]
+			if not bool(one.pass): break
+		if bool(result.pass) and futures > 1: result.detail = "All %d futures. %s" % [futures, result.detail]
+		results.append(result)
+	var stretch: Array = []
+	for goal in mission.get("stretch", []):
+		var met := not (first.failures as Dictionary).has("stretch:" + str(goal.id))
+		match str(goal.check):
+			"no_zone": met = builder.zones.filter(func(z): return str(z.kind) == str(goal.kind)).is_empty()
+			"no_item": met = not builder.placed_interior.any(func(i): return str(i.get("id", "")) == str(goal.item))
+			"payload_spare": met = builder.used_cargo() <= cargo_budget() - int(float(mission.get("payload_kg", 0)) * float(goal.get("fraction", .15)))
+			"food_grown": met = float(first.food_in) / maxf(.001, float(crew) * MHResources.setting("food_per_person", 1.8) * sols) >= float(goal.get("min", .4))
+			"counter": met = counter(str(goal.key)) >= int(goal.get("count", 1))
+			"breach_any":
+				# A breach in every room in turn: the habitat must hold its air each time.
+				met = true
+				var inv: Dictionary = builder.simulation().inventory()
+				for room in inv.rooms:
+					if str(room.kind) in ["airlock", "vehicle_bay"]: continue
+					var trial := _simulate(builder, mission, 0, str(room.key))
+					if float(trial.min_pressure) < float(goal.get("min", 70)) or not bool((trial.breach as Dictionary).get("patched", false)):
+						met = false
+						break
+			"shelter_bunks":
+				var place: Dictionary = first.shelter
+				met = not place.is_empty() and (first.inventory.all_items as Array).filter(func(i): return str(i.id) == "crew_bunk" and int(i.room) == int(place.index)).size() >= crew
+		stretch.append({"text": str(goal.text), "pass": met})
+	var shown: Dictionary = first
+	for run in runs:
+		if not (run.failures as Dictionary).is_empty():
+			shown = run
+			break
+	var passed := results.all(func(r): return bool(r.pass))
+	var report := {"mission": str(mission.id), "samples": shown.samples, "results": results, "stretch": stretch, "passed": passed,
+		"storms": shown.storms, "start_hour": start_hour, "sols": sols, "design": design_summary(builder), "alerts": shown.alerts, "futures": futures}
+	_record_version(report)
+	return report
+
+## One run of the Test (one "future"). breach_room overrides where a breach hits.
+static func _simulate(builder: Node, mission: Dictionary, future: int, breach_room: String) -> Dictionary:
 	var sim: RefCounted = HABITAT_SIM.new(builder)
 	sim.load(builder.simulation().save())
 	sim.crew_cap = int(mission.get("crew", 0))
@@ -251,13 +349,36 @@ static func run_test(builder: Node) -> Dictionary:
 	sim.random_storms = false
 	sim.storm_hours_left = 0.0
 	sim.invalidate()
+	var life: RefCounted = sim.life
+	life.live_kinds = []
+	life.crew_on = bool(mission.get("named_crew", false))
+	life.breakdowns_on = bool(mission.get("breakdowns", false))
+	life.breakdown_scale = float(mission.get("breakdown_scale", 1.0))
+	life.rng.seed = 1000 + future * 7919
+	# A fresh start for the Test: no leftover breaches, events or broken machines.
+	life.breach = {}; life.section_pressure = {}; life.broken = {}; life.repairing = ""; life.spe_eta = -1.0; life.spe_hours_left = 0.0
+	life.dose_msv = 0.0; life.event_dose_msv = 0.0; life.worst_event_msv = 0.0; life.worst_down_hours = 0.0; life.down_hours = {}
+	life.blackout_hours_left = 0.0; life.research_done = 0.0
 	var inventory: Dictionary = sim.inventory()
 	sim.battery_kwh = float(inventory.capacity.kwh)   # tests start with full batteries
+	life.take_delivery(inventory)
+	life.air_reserve_kg = float(life._known.get("air", 0.0))
+	life.spares = int(life._known.get("spares", 0))
+	if life.crew_on:
+		life.ensure_crew(sim.crew_count(), progress.get("crew_names", []))
+		for p in life.crew:
+			p.fitness = float(life.value("fitness", "start", 100.0)); p.wellbeing = float(life.value("wellbeing", "start", 80.0)); p.injured_h = 0.0
+	var shelter_at_start: Dictionary = life.shelter(inventory)
 	var sols := int(mission.get("sols", 3))
 	var start_hour := 8.0
 	var storms: Array = []
+	var timed: Array = []   # [hours, type, event]
 	for event in mission.get("events", []):
-		if str(event.type) == "storm": storms.append({"start": (float(event.sol) - 1.0) * 24.0, "hours": float(event.sols) * 24.0, "cut": float(event.get("solar_cut", -1.0))})
+		match str(event.type):
+			"storm": storms.append({"start": (_pick(event.sol, future) - 1.0) * 24.0, "hours": float(event.sols) * 24.0, "cut": float(event.get("solar_cut", -1.0))})
+			_:
+				var at := (_pick(event.get("sol", 1), future) - 1.0) * 24.0 + _pick(event.get("hour", start_hour), future) - start_hour
+				timed.append([maxf(0.0, at), str(event.type), event])
 	var samples: Array = []
 	var failures := {}
 	var hours := 0.0
@@ -265,15 +386,28 @@ static func run_test(builder: Node) -> Dictionary:
 	var step := float(mission.get("sample_hours", SAMPLE_HOURS))
 	var food_in := 0.0
 	var crew: int = sim.crew_count()
-	var research := float(sim.daily_flows(false).get("research", 0.0))
-	# The habitat's alerts replayed on the test run: the early warnings the
-	# crew would have had (first time each alert reaches each level).
 	var alert_rules: Node = HABITAT_ALERTS.new()
 	var alerts_seen := {}
 	var alerts: Array = []
+	var breach_log := {}
+	var injured_at := -1.0
+	var recovered_at := -1.0
+	var min_pressure := 100.0
 	while hours < sols * 24.0 - .001:
 		for storm in storms:
 			if absf(hours - float(storm.start)) < .001: sim.start_storm(float(storm.hours) / 24.0, float(storm.get("cut", -1.0)))
+		for event in timed:
+			if hours + .0001 < float(event[0]) or hours >= float(event[0]) + step - .0001: continue
+			var spec: Dictionary = event[2]
+			match str(event[1]):
+				"spe": life.forecast_spe(float(spec.get("warning_hours", -1.0)))
+				"injury":
+					if life.crew_on and life.injure(str(_pick_value(spec.get("role", "engineer"), future))): injured_at = hours
+				"breach":
+					var room := breach_room if not breach_room.is_empty() else str(spec.get("room", ""))
+					if room.is_empty(): room = life.default_breach_room(sim.inventory())
+					life.start_breach(sim.inventory(), room)
+				"blackout": life.start_blackout(float(spec.get("sols", 14)))
 		var chunk: Array = sim.run_hours(step, hour, step)
 		hours += step
 		hour = fmod(start_hour + hours, 24.0)
@@ -282,6 +416,9 @@ static func run_test(builder: Node) -> Dictionary:
 		sample["water_in"] = float(sim.last.get("water_in", 0.0))
 		food_in += float(sim.last.get("food_in", 0.0)) * step / 24.0
 		samples.append(sample)
+		min_pressure = minf(min_pressure, float(sample.get("pressure_pct", 100.0)))
+		if not (life.breach as Dictionary).is_empty(): breach_log = (life.breach as Dictionary).duplicate()
+		if injured_at >= 0.0 and recovered_at < 0.0 and (life.injured() as Array).is_empty(): recovered_at = hours
 		for alert in alert_rules.evaluate(sim, hour):
 			var key := "%s:%s" % [alert.id, alert.level]
 			if alerts_seen.has(key): continue
@@ -295,63 +432,131 @@ static func run_test(builder: Node) -> Dictionary:
 			if failures.has("stretch:" + str(goal.id)): continue
 			var why := _sample_failure(str(goal.check), goal, sample, sim)
 			if not why.is_empty(): failures["stretch:" + str(goal.id)] = {"at": hours, "why": why}
-	var results: Array = []
-	for requirement in mission.get("requirements", []):
-		var result := {"id": str(requirement.id), "text": str(requirement.text), "pass": true, "detail": "", "tip": ""}
-		if failures.has(requirement.id):
-			result.pass = false
-			result.detail = "Failed %s. %s" % [_when(float(failures[requirement.id].at), start_hour), str(failures[requirement.id].why)]
-			result.tip = str(failures[requirement.id].tip)
-		match str(requirement.check):
-			"always_powered":
-				if result.pass: result.detail = "Every system had power for all %d sols." % sols
-			"life_support_powered":
-				if result.pass: result.detail = "Life support had power the whole time."
-			"min_temp":
-				if result.pass: result.detail = "The habitat never fell below %d °C." % int(requirement.get("min", 15))
-			"breathable":
-				if result.pass: result.detail = "Oxygen and carbon dioxide stayed in the safe range."
-			"crew_safe":
-				if result.pass: result.detail = "Air, water, food and temperature stayed safe for all %d sols." % sols
-			"crew_health_min":
-				if result.pass: result.detail = "Crew health stayed above %d%%." % int(requirement.get("min", 80))
-			"crew_aboard":
-				result.pass = crew >= int(requirement.get("min", 1))
-				result.detail = "Bunks for %d of %d crew." % [crew, int(requirement.get("min", 1))] + ("" if result.pass else " Add crew bunks in Living Quarters.")
-			"food_grown":
-				var eaten: float = float(crew) * MHResources.setting("food_per_person", 1.8) * sols
-				var share := food_in / maxf(.001, eaten)
-				result.pass = share >= float(requirement.get("min", .25))
-				result.detail = "The base grew %d%% of the food (needs %d%%)." % [roundi(share * 100.0), roundi(float(requirement.get("min", .25)) * 100.0)] + ("" if result.pass else " Add grow trays, and make sure they keep power and water.")
-			"research":
-				result.pass = research >= float(requirement.get("min", 1))
-				result.detail = "Research: %s a sol." % str(snappedf(research, .1)) + ("" if result.pass else " Build a Science Lab and add a workbench.")
-			"water_per_sol":
-				var total := 0.0
-				for sample in samples: total += float(sample.water_in)
-				var average := total / maxf(1.0, samples.size())
-				result.pass = average >= float(requirement.get("min", 60))
-				var drills := (inventory.drills as Array).size()
-				result.detail = "The drills made %d L a sol on average (needs %d)." % [roundi(average), int(requirement.get("min", 60))]
-				if not result.pass:
-					result.detail += " " + ("There are no ice drills yet." if drills == 0 else "Add another drill, place drills on richer ice (paler blue), or make sure they keep their power.")
-		results.append(result)
-	var stretch: Array = []
-	for goal in mission.get("stretch", []):
-		var met := not failures.has("stretch:" + str(goal.id))
-		match str(goal.check):
-			"no_zone": met = builder.zones.filter(func(z): return str(z.kind) == str(goal.kind)).is_empty()
-			"no_item": met = not builder.placed_interior.any(func(i): return str(i.get("id", "")) == str(goal.item))
-			"payload_spare": met = builder.used_cargo() <= cargo_budget() - int(float(mission.get("payload_kg", 0)) * float(goal.get("fraction", .15)))
-			"food_grown": met = food_in / maxf(.001, float(crew) * MHResources.setting("food_per_person", 1.8) * sols) >= float(goal.get("min", .4))
-			"counter": met = counter(str(goal.key)) >= int(goal.get("count", 1))
-		stretch.append({"text": str(goal.text), "pass": met})
-	var passed := results.all(func(r): return bool(r.pass))
-	var report := {"mission": str(mission.id), "samples": samples, "results": results, "stretch": stretch, "passed": passed,
-		"storms": storms, "start_hour": start_hour, "sols": sols, "design": design_summary(builder), "alerts": alerts}
 	alert_rules.free()
-	_record_version(report)
-	return report
+	if not breach_log.is_empty(): breach_log["patched"] = float(breach_log.get("patched_at", -1.0)) >= 0.0
+	return {"samples": samples, "failures": failures, "food_in": food_in, "crew": crew, "alerts": alerts, "storms": storms, "inventory": inventory,
+		"research": float(sim.daily_flows(false).get("research", 0.0)), "research_done": float(life.research_done), "shelter": shelter_at_start,
+		"worst_event_msv": float(life.worst_event_msv), "breach": breach_log, "injured_at": injured_at, "recovered_at": recovered_at,
+		"min_pressure": min_pressure, "worst_down": float(life.worst_down_hours), "life": life}
+
+## Event values can differ by future: a list gives one per future.
+static func _pick(v: Variant, future: int) -> float:
+	return float(_pick_value(v, future))
+
+static func _pick_value(v: Variant, future: int) -> Variant:
+	if v is Array: return (v as Array)[future % (v as Array).size()]
+	return v
+
+## The verdict on one requirement for one run: {pass, detail, tip}.
+static func _judge(requirement: Dictionary, run: Dictionary, sols: int, start_hour: float) -> Dictionary:
+	var failures: Dictionary = run.failures
+	var result := {"pass": true, "detail": "", "tip": ""}
+	if failures.has(requirement.id):
+		result.pass = false
+		result.detail = "Failed %s. %s" % [_when(float(failures[requirement.id].at), start_hour), str(failures[requirement.id].why)]
+		result.tip = str(failures[requirement.id].tip)
+	var crew := int(run.crew)
+	var life: RefCounted = run.life
+	match str(requirement.check):
+		"always_powered":
+			if result.pass: result.detail = "Every system had power for all %d sols." % sols
+		"life_support_powered":
+			if result.pass: result.detail = "Life support had power the whole time."
+		"min_temp":
+			if result.pass: result.detail = "The habitat never fell below %d °C." % int(requirement.get("min", 15))
+		"breathable":
+			if result.pass: result.detail = "Oxygen and carbon dioxide stayed in the safe range."
+		"crew_safe":
+			if result.pass: result.detail = "Air, water, food and temperature stayed safe for all %d sols." % sols
+		"crew_health_min":
+			if result.pass: result.detail = "Crew health stayed above %d%%." % int(requirement.get("min", 80))
+		"crew_aboard":
+			result.pass = crew >= int(requirement.get("min", 1))
+			result.detail = "Bunks for %d of %d crew." % [crew, int(requirement.get("min", 1))] + ("" if result.pass else " Add crew bunks in Living Quarters.")
+		"food_grown":
+			var eaten: float = float(crew) * MHResources.setting("food_per_person", 1.8) * sols
+			var share := float(run.food_in) / maxf(.001, eaten)
+			result.pass = share >= float(requirement.get("min", .25))
+			result.detail = "The base grew %d%% of the food (needs %d%%)." % [roundi(share * 100.0), roundi(float(requirement.get("min", .25)) * 100.0)] + ("" if result.pass else " Add grow trays, and make sure they keep power and water.")
+		"research":
+			result.pass = float(run.research) >= float(requirement.get("min", 1))
+			result.detail = "Research: %s a sol." % str(snappedf(float(run.research), .1)) + ("" if result.pass else " Build a Science Lab and add a workbench.")
+		"research_total":
+			var per_sol := float(run.research_done) / maxf(1.0, sols)
+			result.pass = per_sol >= float(requirement.get("min", 1))
+			result.detail = "The crew managed %s research a sol on average (needs %s)." % [str(snappedf(per_sol, .1)), str(requirement.get("min", 1))]
+			if not result.pass: result.detail += " Tired, unhappy or injured crew work slower: look after them, and add lab equipment."
+		"water_per_sol":
+			var total := 0.0
+			for sample in run.samples: total += float(sample.water_in)
+			var average := total / maxf(1.0, (run.samples as Array).size())
+			result.pass = average >= float(requirement.get("min", 60))
+			var drills := (run.inventory.drills as Array).size()
+			result.detail = "The drills made %d L a sol on average (needs %d)." % [roundi(average), int(requirement.get("min", 60))]
+			if not result.pass:
+				result.detail += " " + ("There are no ice drills yet." if drills == 0 else "Add another drill, place drills on richer ice (paler blue), or make sure they keep their power.")
+		"shelter_ready":
+			var place: Dictionary = run.shelter
+			var safe := float(life.value("radiation", "safe_points", 20.0))
+			if place.is_empty():
+				result.pass = false
+				result.detail = "There's no storm shelter yet."
+				result.tip = "Pick a small room and place a Storm Shelter Locker in it. Then add shielding: regolith shield blocks and water wall panels."
+			else:
+				var problems: Array = []
+				if float(place.rating) < safe: problems.append("its shielding is %d points (needs %d)" % [roundi(float(place.rating)), roundi(safe)])
+				if int(place.capacity) < crew: problems.append("it only fits %d of %d crew" % [int(place.capacity), crew])
+				if not bool(place.heated): problems.append("it isn't heated")
+				elif bool(place.cold): problems.append("it's a cold spot")
+				result.pass = problems.is_empty()
+				result.detail = "The shelter is %s: %d shield points, room for %d." % [str(place.label), roundi(float(place.rating)), int(place.capacity)]
+				if not result.pass:
+					result.detail = "The shelter (%s) isn't ready: %s." % [str(place.label), ", ".join(problems)]
+					if float(place.rating) < safe: result.tip = "Shielding is spread over the room's floor, so a small shelter is easier to protect. Add regolith shield blocks (printed) or water wall panels."
+					else: result.tip = "A shelter needs 1 floor square for every 3 crew, and heating that reaches it."
+		"dose_max":
+			if result.pass: result.detail = "The event dose was %d mSv (limit %d)." % [roundi(float(run.worst_event_msv)), int(requirement.get("max", 50))]
+		"fitness_min":
+			if result.pass: result.detail = "Everyone stayed fit: the lowest was %d%%." % roundi(life.lowest_fitness())
+		"wellbeing_min":
+			if result.pass: result.detail = "Wellbeing averaged %d%% at the end." % roundi(life.average_wellbeing())
+		"patient_recovered":
+			var by := float(requirement.get("by_sol", 22)) * 24.0
+			if float(run.injured_at) < 0.0:
+				result.detail = "Nobody was injured."
+			elif float(run.recovered_at) >= 0.0 and float(run.recovered_at) <= by:
+				result.detail = "The patient recovered %s." % _when(float(run.recovered_at), start_hour)
+			else:
+				result.pass = false
+				result.detail = "The patient hadn't recovered by sol %d." % int(requirement.get("by_sol", 22))
+				result.tip = "Injured crew recover in a Medical Bay with an exam cot and a medical cabinet, with power."
+		"pressure_min":
+			if result.pass: result.detail = "Air pressure never fell below %d%% (lowest %d%%)." % [int(requirement.get("min", 70)), roundi(float(run.min_pressure))]
+		"breach_patched":
+			var b: Dictionary = run.breach
+			if b.is_empty(): result.detail = "No breach happened."
+			elif float(b.get("patched_at", -1.0)) >= 0.0 and float(b.patched_at) <= float(requirement.get("hours", 2)):
+				result.detail = "The hole was patched in %s." % _duration(float(b.patched_at))
+			else:
+				result.pass = false
+				result.detail = "The hole wasn't patched within %d hours." % int(requirement.get("hours", 2))
+				result.tip = "Keep a hull patch kit in the habitat. The Engineer patches fastest." if not bool(b.get("had_kit", false)) else "The Engineer patches fastest: make sure they're fit and well."
+		"breach_restored":
+			var b: Dictionary = run.breach
+			if b.is_empty(): result.detail = "No breach happened."
+			elif float(b.get("restored_at", -1.0)) >= 0.0 and float(b.restored_at) <= float(requirement.get("hours", 6)):
+				result.detail = "Full pressure was back in %s." % _duration(float(b.restored_at))
+			else:
+				result.pass = false
+				result.detail = "The air wasn't back to full pressure within %d hours." % int(requirement.get("hours", 6))
+				result.tip = "An air reserve rack refills a vented section once the hole is patched. Small sealed sections need less air."
+		"systems_up":
+			if result.pass: result.detail = "No life-critical system was down for more than %d hours." % int(requirement.get("max", 12))
+	return result
+
+static func _duration(hours: float) -> String:
+	if hours < 1.0: return "%d minutes" % maxi(1, roundi(hours * 60.0))
+	return "%s hours" % str(snappedf(hours, .1))
 
 ## Why a sample fails a check, or "" if it's fine (checks that run every sample).
 static func _sample_failure(check: String, spec: Dictionary, sample: Dictionary, sim: RefCounted) -> String:
@@ -373,6 +578,16 @@ static func _sample_failure(check: String, spec: Dictionary, sample: Dictionary,
 			if float(sample.food_kg) <= 0.0: return "The food ran out. " + _first_warning(sim, "food")
 		"crew_health_min":
 			if float(sample.crew_health) < float(spec.get("min", 80)): return "Crew health fell to %d%%. %s" % [roundi(float(sample.crew_health)), _first_warning(sim, "")]
+		"dose_max":
+			if float(sample.get("event_dose_msv", 0.0)) > float(spec.get("max", 50)): return "The crew got %d mSv of radiation in the solar particle event (limit %d)." % [roundi(float(sample.event_dose_msv)), int(spec.get("max", 50))]
+		"fitness_min":
+			if float(sample.get("fitness", 100.0)) < float(spec.get("min", 70)): return "Someone's fitness fell to %d%%." % roundi(float(sample.fitness))
+		"wellbeing_min":
+			if float(sample.get("wellbeing", 100.0)) < float(spec.get("min", 60)): return "Average wellbeing fell to %d%%." % roundi(float(sample.wellbeing))
+		"pressure_min":
+			if float(sample.get("pressure_pct", 100.0)) < float(spec.get("min", 70)): return "Air pressure fell to %d%%: the breach vented too much of the habitat." % roundi(float(sample.pressure_pct))
+		"systems_up":
+			if float(sample.get("down_h", 0.0)) > float(spec.get("max", 12)): return "A life-critical system was down for over %d hours: %s." % [int(spec.get("max", 12)), ", ".join(sim.life.broken_labels())]
 	return ""
 
 static func _in_storm(hours: float, storms: Array) -> bool:
@@ -403,6 +618,16 @@ static func _tip(check: String, sample: Dictionary, hour_of_day: float, storm: b
 			if float(sample.get("food_kg", 1.0)) <= 0.0: return "Grow more food in Hydroponics, or bring more food in your cargo."
 			if float(sample.get("coldest_c", 20.0)) < MHResources.setting("cold_c", 12.0): return _tip("min_temp", sample, hour_of_day, storm, depth, why)
 			return ""
+		"dose_max":
+			return "Shelter the crew: a small room with a Storm Shelter Locker and lots of shielding (regolith blocks, water walls). Check its shield points."
+		"fitness_min":
+			return "Bones and muscles weaken in Mars gravity. Each powered exercise station keeps about 3 crew fit."
+		"wellbeing_min":
+			return "Open the crew roster in Mission Control: it lists what the crew are missing (sleep, space, meals together, a bit of home, work, contact with Earth)."
+		"pressure_min":
+			return "Put hatches (interior doors) at corridor ends so a breach only vents one small section. Open-plan bases lose their air."
+		"systems_up":
+			return "Build two of every life-critical machine (redundancy), and keep spare parts so the Engineer can repair them."
 		"crew_health_min":
 			if depth == 0: return "Health falls when air, warmth, food or water go wrong, and when the crew lack beds, exercise or privacy. " + _tip("crew_safe", sample, hour_of_day, storm, 1, why)
 			return ""
@@ -531,7 +756,7 @@ static func versions(mission_id: String) -> Array:
 ## the student needs to tell its story later: the design, every check with its
 ## reason and tip, stretch goals, the alerts, the graphs (downsampled), the
 ## optional prediction and note, and pictures (scripts/mh_dossier.gd).
-const DOSSIER_SAMPLE_KEYS := ["elapsed", "battery_pct", "generation_kw", "load_kw", "o2_pct", "co2_pct", "food_kg", "coldest_c", "crew_health"]
+const DOSSIER_SAMPLE_KEYS := ["elapsed", "battery_pct", "generation_kw", "load_kw", "o2_pct", "co2_pct", "food_kg", "coldest_c", "crew_health", "fitness", "wellbeing", "pressure_pct", "dose_msv"]
 const DOSSIER_POINTS := 240
 
 static func _record_version(report: Dictionary) -> void:

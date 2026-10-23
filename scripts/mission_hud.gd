@@ -623,7 +623,7 @@ var _carry_slot := -1   # a full Free play slot chosen to replace
 func _campaign_wrap_up(column: VBoxContainer) -> void:
 	var tested := 0
 	for mission in MHMissions.missions(): tested += MHMissions.versions(str(mission.id)).size()
-	column.add_child(_wrapped("That was the final mission: the campaign is complete. Across all six missions you tested %d designs. Your base kept six people alive for 100 sols and started feeding itself." % tested, 20, MHStyle.TEXT_PRIMARY, 1100))
+	column.add_child(_wrapped("That was the final mission: the campaign is complete. Across all %d missions you tested %d designs. Your base kept six people alive, fit and well for 200 sols on their own, through breakdowns, radiation and a blackout, in three different futures." % [MHMissions.missions().size(), tested], 20, MHStyle.TEXT_PRIMARY, 1100))
 	column.add_child(MHStyle.eyebrow("Carry on with your base", MHStyle.accent, 13))
 	column.add_child(_wrapped("A copy goes into your Free play saves. The finished campaign stays in the Missions saves, untouched.", 16, MHStyle.TEXT_SECONDARY, 1100))
 	var slot := _carry_slot

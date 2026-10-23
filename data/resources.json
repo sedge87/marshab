@@ -679,6 +679,31 @@
       "cargo_kg": 60.0,
       "power_kw": 0.05,
       "hours_per_sol": 24.0
+    },
+    "regolith_shield_block": {
+      "room": "storage",
+      "cargo_kg": 900.0
+    },
+    "water_wall_panel": {
+      "room": "storage",
+      "cargo_kg": 260.0,
+      "stores_water_l": 200.0
+    },
+    "storm_shelter_locker": {
+      "room": "general",
+      "cargo_kg": 140.0
+    },
+    "hull_patch_kit": {
+      "room": "general",
+      "cargo_kg": 40.0
+    },
+    "air_reserve_rack": {
+      "room": "life_support",
+      "cargo_kg": 380.0
+    },
+    "spare_parts_rack": {
+      "room": "storage",
+      "cargo_kg": 300.0
     }
   },
   "sites": {

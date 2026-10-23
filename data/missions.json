@@ -544,7 +544,7 @@
         },
         {
           "id": "pass",
-          "text": "Pass the test and complete the campaign",
+          "text": "Pass the test and complete the mission",
           "how": "Food running out? Grow more, or add storage. Check power and water first: plants need both.",
           "check": "passed"
         }
@@ -601,6 +601,502 @@
       "food_delivery_sols": 60,
       "unlock_items": [
         "regolith_printer"
+      ]
+    },
+    {
+      "id": "solar_shelter",
+      "number": 7,
+      "title": "Solar Storm Shelter",
+      "nasa_step": "Living on Mars: radiation",
+      "available": true,
+      "player": "crew",
+      "crew": 6,
+      "payload_kg": 6000,
+      "sols": 10,
+      "step_hours": 0.25,
+      "sample_hours": 1,
+      "food_delivery_sols": 10,
+      "previous_line": "The base grows food and does research",
+      "situation": "Act 2: living on Mars. Mars has no global magnetic field and a thin atmosphere, so radiation from the Sun reaches the ground. Orbiters watching the Sun can warn of a solar particle event (a burst of high-energy protons from a solar flare) only about half an hour before it arrives. The crew need a shielded room to shelter in for a day.",
+      "brief": "A solar flare is coming. The crew need a shielded shelter, and only half an hour to get there.",
+      "goal": "Build a storm shelter that keeps the crew's radiation dose under 50 mSv through a solar particle event, while the rest of the base keeps running.",
+      "events": [
+        {
+          "type": "spe",
+          "sol": 4,
+          "hour": 14
+        }
+      ],
+      "steps": [
+        {
+          "id": "locker",
+          "text": "Choose a shelter room",
+          "how": "Place a Storm Shelter Locker (emergency food, water and dosimeters) in a small room. That room becomes the storm shelter.",
+          "check": "item",
+          "item": "storm_shelter_locker",
+          "learn": "radiation"
+        },
+        {
+          "id": "shield",
+          "text": "Shield the shelter to 20 points",
+          "how": "The hull gives 5 points. Regolith shield blocks (printed from Mars soil) and water wall panels add more. Shielding is spread over the floor, so a small room is easier to protect.",
+          "check": "shelter",
+          "min": 20,
+          "learn": "radiation"
+        },
+        {
+          "id": "test",
+          "text": "Test your design",
+          "how": "Press T. A solar particle event arrives on sol 4. The crew go to the shelter and stay a day.",
+          "check": "tested"
+        },
+        {
+          "id": "pass",
+          "text": "Pass the test and complete the mission",
+          "how": "Too much radiation? Add shielding, or make the shelter smaller. It needs a floor square for every 3 crew.",
+          "check": "passed"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "shelter",
+          "text": "The shelter has 20+ shield points, room for everyone, and heating",
+          "check": "shelter_ready"
+        },
+        {
+          "id": "dose",
+          "text": "The crew's dose in the event stays under 50 mSv",
+          "check": "dose_max",
+          "max": 50
+        },
+        {
+          "id": "safe",
+          "text": "Air, water, food and temperature stay safe",
+          "check": "crew_safe"
+        }
+      ],
+      "stretch": [
+        {
+          "id": "bunks",
+          "text": "Bunks for everyone inside the shelter, so the crew sleep shielded every night",
+          "check": "shelter_bunks"
+        }
+      ],
+      "hints": [
+        "Shield points = 5 (the hull) + the shielding in the room ÷ its floor squares.",
+        "A regolith shield block adds 8 points and is printed from Mars soil, so it costs no cargo from Earth. A water wall panel adds 10 and stores 200 L of water too.",
+        "Lockers, pantry cabinets and sample cabinets add a little shielding as well.",
+        "The shelter must be warm: the crew stay there a whole day. Check it isn't a cold spot.",
+        "Wayfinding panels point the way to the shelter during an event."
+      ],
+      "unlock_items": [
+        "storm_shelter_locker",
+        "regolith_shield_block",
+        "water_wall_panel"
+      ]
+    },
+    {
+      "id": "crew_people",
+      "number": 8,
+      "title": "The Long Day's Work",
+      "nasa_step": "Living on Mars: gravity and the crew",
+      "available": true,
+      "player": "crew",
+      "crew": 6,
+      "payload_kg": 8000,
+      "sols": 30,
+      "step_hours": 0.5,
+      "sample_hours": 2,
+      "food_delivery_sols": 30,
+      "named_crew": true,
+      "previous_line": "The crew have a radiation shelter",
+      "situation": "Six people, 30 sols, real work. In Mars gravity (38% of Earth's) bones and muscles weaken unless the crew exercise. Living in a small base far from home is hard on everyone too. And on sol 12, the Engineer is hurt in an accident. Earth is up to 24 minutes away by message, so the Doctor treats them here.",
+      "brief": "The crew become people: names, jobs, fitness and wellbeing. Someone will get hurt.",
+      "goal": "Keep all six crew fit and well for 30 sols, care for the injured Engineer, and keep the science and the food going.",
+      "events": [
+        {
+          "type": "injury",
+          "sol": 12,
+          "hour": 10,
+          "role": "engineer"
+        }
+      ],
+      "steps": [
+        {
+          "id": "names",
+          "text": "Meet and name your crew",
+          "how": "Open Mission Control (M) and choose Crew. Give your six crew their names.",
+          "check": "crew_named",
+          "learn": "wellbeing"
+        },
+        {
+          "id": "exercise",
+          "text": "Two exercise stations",
+          "how": "Each powered exercise station keeps about 3 crew fit. Six crew need two.",
+          "check": "item",
+          "item": "exercise_station",
+          "count": 2,
+          "learn": "fitness"
+        },
+        {
+          "id": "cot",
+          "text": "A Medical Bay with an exam cot",
+          "how": "Build a Medical Bay (if you haven't) and place an exam cot.",
+          "check": "item",
+          "item": "medical_exam_cot",
+          "learn": "fitness"
+        },
+        {
+          "id": "cabinet",
+          "text": "A medical supply cabinet",
+          "how": "Medicines and trauma kits, in the Medical Bay.",
+          "check": "item",
+          "item": "medical_cabinet"
+        },
+        {
+          "id": "wellbeing",
+          "text": "Meet the crew's needs",
+          "how": "The Crew screen lists six needs: sleep, space, meals together, a bit of home, meaningful work and contact with Earth. Meet at least four.",
+          "check": "needs",
+          "min": 4,
+          "learn": "wellbeing"
+        },
+        {
+          "id": "test",
+          "text": "Test your design",
+          "how": "Press T. It runs 30 sols. The Engineer is injured on sol 12.",
+          "check": "tested"
+        },
+        {
+          "id": "pass",
+          "text": "Pass the test and complete the mission",
+          "how": "Check the Crew screen: it says what each need is missing.",
+          "check": "passed"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "fit",
+          "text": "Everyone's fitness stays above 70%",
+          "check": "fitness_min",
+          "min": 70
+        },
+        {
+          "id": "well",
+          "text": "Average wellbeing stays above 60%",
+          "check": "wellbeing_min",
+          "min": 60
+        },
+        {
+          "id": "patient",
+          "text": "The injured Engineer recovers by sol 22",
+          "check": "patient_recovered",
+          "by_sol": 22
+        },
+        {
+          "id": "science",
+          "text": "The crew keep up at least 1 research a sol",
+          "check": "research_total",
+          "min": 1
+        },
+        {
+          "id": "safe",
+          "text": "Air, water, food and temperature stay safe",
+          "check": "crew_safe"
+        }
+      ],
+      "stretch": [
+        {
+          "id": "happy",
+          "text": "Wellbeing stays above 80%",
+          "check": "wellbeing_min",
+          "min": 80
+        }
+      ],
+      "hints": [
+        "Fitness falls a little every sol in Mars gravity. Powered exercise stations bring it back up.",
+        "Each person has a favourite thing (it's on the Crew screen). Having it in the base cheers them up.",
+        "Noise matters: bunks next to Power & Engineering or Life Support sleep badly.",
+        "Everyone has a job, and a room to do it in. Someone without their work room loses heart.",
+        "Injured crew can't work. The others cover, so work slows down until they recover."
+      ],
+      "unlock_groups": [
+        "odds_and_ends"
+      ]
+    },
+    {
+      "id": "hull_breach",
+      "number": 9,
+      "title": "Hull Breach",
+      "nasa_step": "Living on Mars: a hostile, closed environment",
+      "available": true,
+      "player": "crew",
+      "crew": 6,
+      "payload_kg": 8000,
+      "sols": 10,
+      "step_hours": 0.05,
+      "sample_hours": 0.25,
+      "food_delivery_sols": 10,
+      "named_crew": true,
+      "previous_line": "The crew are fit and well",
+      "situation": "A micrometeoroid (a grain of space rock moving faster than a bullet) punches a hole in the hull. Air starts rushing out. How bad it gets depends on your floor plan: hatches seal automatically, but open connections don't. Real stations are built in sections that can be sealed off for exactly this reason.",
+      "brief": "A hole in the hull. Your floor plan decides how much air you lose.",
+      "goal": "Keep the habitat's air pressure above 70% through a hull breach, patch the hole within 2 hours, and have full pressure back within 6.",
+      "events": [
+        {
+          "type": "breach",
+          "sol": 3,
+          "hour": 2
+        }
+      ],
+      "steps": [
+        {
+          "id": "kit",
+          "text": "Place a hull patch kit",
+          "how": "Emergency patches and sealant. The Engineer can patch a hole in an hour with it.",
+          "check": "item",
+          "item": "hull_patch_kit",
+          "learn": "breach"
+        },
+        {
+          "id": "reserve",
+          "text": "Add an air reserve rack",
+          "how": "Stored air to refill a vented section once the hole is patched.",
+          "check": "item",
+          "item": "air_reserve_rack",
+          "learn": "breach"
+        },
+        {
+          "id": "sections",
+          "text": "Seal your sections",
+          "how": "Rooms joined without a hatch share their air. Put interior doors (hatches) at corridor ends so no section is more than 40% of the base.",
+          "check": "sections",
+          "max": 0.4,
+          "learn": "breach"
+        },
+        {
+          "id": "test",
+          "text": "Test your design",
+          "how": "Press T. A breach hits Living Quarters on sol 3 at 02:00.",
+          "check": "tested"
+        },
+        {
+          "id": "pass",
+          "text": "Pass the test and complete the mission",
+          "how": "Air pressure too low? Make the breached section smaller with hatches. Not refilled? Add air reserve racks.",
+          "check": "passed"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "pressure",
+          "text": "Air pressure stays above 70%",
+          "check": "pressure_min",
+          "min": 70
+        },
+        {
+          "id": "patched",
+          "text": "The hole is patched within 2 hours",
+          "check": "breach_patched",
+          "hours": 2
+        },
+        {
+          "id": "restored",
+          "text": "Full pressure is back within 6 hours",
+          "check": "breach_restored",
+          "hours": 6
+        },
+        {
+          "id": "safe",
+          "text": "Air, water, food and temperature stay safe",
+          "check": "crew_safe"
+        }
+      ],
+      "stretch": [
+        {
+          "id": "anywhere",
+          "text": "Survive a breach in any room: the Test tries each one",
+          "check": "breach_any",
+          "min": 70
+        }
+      ],
+      "hints": [
+        "Air pressure is the share of the habitat that still holds its air.",
+        "A corridor end with no hatch joins rooms into one big section. Add an interior door there.",
+        "A bigger section vents more slowly, but loses more air in the end.",
+        "Each air reserve rack holds enough air to refill about 2 floor squares."
+      ],
+      "unlock_items": [
+        "hull_patch_kit",
+        "air_reserve_rack"
+      ]
+    },
+    {
+      "id": "long_silence",
+      "number": 10,
+      "title": "The Long Silence",
+      "nasa_step": "Living on Mars: isolation and distance",
+      "available": true,
+      "player": "crew",
+      "crew": 6,
+      "payload_kg": 15000,
+      "sols": 200,
+      "step_hours": 1.0,
+      "sample_hours": 4,
+      "food_delivery_sols": 100,
+      "named_crew": true,
+      "breakdowns": true,
+      "futures": 3,
+      "previous_line": "The base survived a hull breach",
+      "situation": "The finale. For 200 sols the crew are on their own, and Mars passes behind the Sun: for 14 sols there's no contact with Earth at all. Machines break, someone gets hurt, the Sun flares and a dust storm rolls in. You can't predict exactly when. So the Test runs three different futures, and your base has to survive all of them.",
+      "brief": "200 sols, things break, and for 14 of them Earth can't hear you.",
+      "goal": "Keep six crew safe, fit and well for 200 sols, in three different futures, with breakdowns, an injury, a solar particle event, a dust storm and a communications blackout.",
+      "events": [
+        {
+          "type": "blackout",
+          "sol": 90,
+          "sols": 14
+        },
+        {
+          "type": "spe",
+          "sol": [
+            40,
+            130,
+            160
+          ],
+          "hour": [
+            3,
+            15,
+            22
+          ]
+        },
+        {
+          "type": "storm",
+          "sol": [
+            150,
+            60,
+            100
+          ],
+          "sols": 4,
+          "solar_cut": 0.8
+        },
+        {
+          "type": "injury",
+          "sol": [
+            70,
+            110,
+            30
+          ],
+          "hour": 10,
+          "role": [
+            "engineer",
+            "botanist",
+            "commander"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "id": "spares",
+          "text": "A spare parts rack",
+          "how": "Eight spare parts. The Engineer uses one for each repair, and a running regolith printer makes more.",
+          "check": "item",
+          "item": "spare_parts_rack",
+          "learn": "breakdowns"
+        },
+        {
+          "id": "redundancy",
+          "text": "Two of every life-critical machine",
+          "how": "Air recycler, oxygen generator, water reclaimer and thermal control unit: if one breaks, the second keeps the crew alive while it's repaired.",
+          "check": "redundant",
+          "items": [
+            "air_recycler",
+            "oxygen_generator",
+            "water_reclaimer",
+            "thermal_control_unit"
+          ],
+          "learn": "breakdowns"
+        },
+        {
+          "id": "food",
+          "text": "Grow half the crew's food",
+          "how": "The next resupply is 100 sols away. Grow trays, planters and seedling stations all count.",
+          "check": "food_share",
+          "min": 0.5,
+          "learn": "food"
+        },
+        {
+          "id": "test",
+          "text": "Test three futures",
+          "how": "Press T. It runs 200 sols three times, with different breakdowns and events each time.",
+          "check": "tested"
+        },
+        {
+          "id": "pass",
+          "text": "Pass all three and complete the campaign",
+          "how": "Read which future failed and why. A robust base survives bad luck, not just one test.",
+          "check": "passed"
+        }
+      ],
+      "requirements": [
+        {
+          "id": "safe",
+          "text": "Air, water, food and temperature stay safe for 200 sols",
+          "check": "crew_safe"
+        },
+        {
+          "id": "systems",
+          "text": "No life-critical system is down for more than 12 hours",
+          "check": "systems_up",
+          "max": 12
+        },
+        {
+          "id": "fit",
+          "text": "Everyone's fitness stays above 70%",
+          "check": "fitness_min",
+          "min": 70
+        },
+        {
+          "id": "well",
+          "text": "Average wellbeing stays above 60%, even in the blackout",
+          "check": "wellbeing_min",
+          "min": 60
+        },
+        {
+          "id": "dose",
+          "text": "The solar particle event dose stays under 50 mSv",
+          "check": "dose_max",
+          "max": 50
+        },
+        {
+          "id": "grown",
+          "text": "The base grows at least half the food",
+          "check": "food_grown",
+          "min": 0.5
+        },
+        {
+          "id": "science",
+          "text": "The crew keep up at least 1 research a sol",
+          "check": "research_total",
+          "min": 1
+        }
+      ],
+      "stretch": [
+        {
+          "id": "no_down",
+          "text": "No system down for more than 2 hours",
+          "check": "systems_up",
+          "max": 2
+        }
+      ],
+      "hints": [
+        "Redundancy: two of everything life-critical. When one breaks, the other carries on.",
+        "Each repair uses a spare part. No spares, no repair.",
+        "The blackout takes away contact with Earth, so wellbeing drops. Meet the other needs well before it starts.",
+        "The three futures are different, but the same every time you test, so you can compare versions fairly."
+      ],
+      "unlock_items": [
+        "spare_parts_rack"
       ]
     }
   ]

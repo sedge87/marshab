@@ -4542,5 +4542,310 @@
         "label": "Look through the camera"
       }
     ]
+  },
+  "storm_shelter_locker": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Shelter_Door_L"
+            ],
+            "edge": "min_x",
+            "angle": 105
+          },
+          {
+            "parts": [
+              "Shelter_Door_R"
+            ],
+            "edge": "max_x",
+            "angle": -105
+          }
+        ],
+        "label_on": "Close doors",
+        "label_off": "Open doors",
+        "state": "doors",
+        "cavity": {
+          "lining": "#3B4246",
+          "trim": "#C9CED0",
+          "divider": true,
+          "shelves": [
+            0.4,
+            0.72
+          ],
+          "items": [
+            {
+              "shape": "box",
+              "size": [
+                0.22,
+                0.12,
+                0.16
+              ],
+              "at": [
+                0.15,
+                0.72
+              ],
+              "colour": "#C9D3D6"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.22,
+                0.12,
+                0.16
+              ],
+              "at": [
+                0.4,
+                0.72
+              ],
+              "colour": "#C9D3D6"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.16,
+                0.2,
+                0.12
+              ],
+              "at": [
+                0.75,
+                0.72
+              ],
+              "colour": "#E07B39"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.3,
+                0.26,
+                0.2
+              ],
+              "at": [
+                0.25,
+                0.4
+              ],
+              "colour": "#5E8C93"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.18,
+                0.1,
+                0.12
+              ],
+              "at": [
+                0.73,
+                0.4
+              ],
+              "colour": "#F2C35A"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.34,
+                0.3,
+                0.2
+              ],
+              "at": [
+                0.3,
+                0.0
+              ],
+              "colour": "#4E7F86"
+            },
+            {
+              "shape": "box",
+              "size": [
+                0.3,
+                0.3,
+                0.2
+              ],
+              "at": [
+                0.75,
+                0.0
+              ],
+              "colour": "#4E7F86"
+            }
+          ]
+        }
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the shelter plan",
+        "observations": [
+          [
+            "A day in the shelter",
+            "When a solar particle event is coming, everyone goes to the shelter and stays until the radiation drops, usually about a day. This locker holds food, water, first aid and dosimeters."
+          ],
+          [
+            "Dosimeters",
+            "A dosimeter measures how much radiation you have absorbed, in millisieverts (mSv). Astronauts wear them all the time."
+          ],
+          [
+            "Small is safer",
+            "Shielding is heavy. A small shelter needs less of it to be safe, so it's the room the crew squeeze into for a day, not the whole base."
+          ]
+        ]
+      }
+    ]
+  },
+  "hull_patch_kit": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Patch_Lid"
+            ],
+            "edge": "max_y",
+            "axis": "x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Close the case",
+        "label_off": "Open the case",
+        "state": "lid"
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the patch drill",
+        "observations": [
+          [
+            "Seal, then patch",
+            "First the hatches seal the leaking section, so the rest of the base keeps its air. Then someone in a suit patches the hole."
+          ],
+          [
+            "Faster than a bullet",
+            "Micrometeoroids can hit at over 10 km a second. Even a grain of sand at that speed can make a hole."
+          ]
+        ]
+      }
+    ]
+  },
+  "air_reserve_rack": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "main_valve_wheel"
+            ],
+            "edge": "center",
+            "axis": "y",
+            "angle": 270
+          }
+        ],
+        "label_on": "Close main valve",
+        "label_off": "Open main valve",
+        "state": "valve"
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the gauges",
+        "observations": [
+          [
+            "Mostly nitrogen",
+            "Habitat air is like Earth's: about four fifths nitrogen and one fifth oxygen. Nitrogen doesn't get used up, but it's lost when air leaks out."
+          ],
+          [
+            "Refilling a section",
+            "After a breach is patched, these tanks refill the empty section. Each rack holds enough air for about two floor squares."
+          ]
+        ]
+      }
+    ]
+  },
+  "spare_parts_rack": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "slide",
+        "parts": [
+          "Tool_Drawer"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.32
+        ],
+        "label_on": "Close tool drawer",
+        "label_off": "Open tool drawer",
+        "state": "drawer"
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Check the inventory",
+        "observations": [
+          [
+            "One part per repair",
+            "When a machine breaks, the Engineer swaps the broken part for a spare. No spare, no repair."
+          ],
+          [
+            "Printed spares",
+            "A regolith printer can make simple parts, slowly: about one every ten sols here."
+          ]
+        ]
+      }
+    ]
+  },
+  "regolith_shield_block": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Look at the blocks",
+        "observations": [
+          [
+            "Printed from Mars",
+            "Each block was printed from regolith (Mars soil) by the base's printer. You can see the printer's layers on its face."
+          ],
+          [
+            "Shield points",
+            "This wall adds 8 shield points to its room, shared over the room's floor. Pile shielding into a small room to make a good shelter."
+          ]
+        ]
+      }
+    ]
+  },
+  "water_wall_panel": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "fill_valve_wheel"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": 270
+          }
+        ],
+        "label_on": "Close fill valve",
+        "label_off": "Open fill valve",
+        "state": "fill"
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the level",
+        "observations": [
+          [
+            "A shield you can drink",
+            "Water is full of hydrogen, which is very good at stopping radiation. This panel adds 10 shield points and stores 200 L."
+          ]
+        ]
+      }
+    ]
   }
 }

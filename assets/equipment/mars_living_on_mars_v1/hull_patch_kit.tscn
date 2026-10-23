@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_rig.gd" id="1_rig"]
+[ext_resource type="PackedScene" path="res://assets/equipment/mars_living_on_mars_v1/models/hull_patch_kit.glb" id="2_model"]
+
+[node name="HullPatchKit" type="Node3D"]
+script = ExtResource("1_rig")
+equipment_id = "hull_patch_kit"
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0, -0.0325, 0.0)

@@ -7,6 +7,7 @@ extends RefCounted
 ## data/resources.json (docs/MarsHabitat_Balance.xlsx); docs/resource-model.md
 ## explains the rules.
 const MHResources := preload("res://scripts/mh_resources.gd")
+const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
 
 const STEP_HOURS := 0.1
 ## Shedding order when power runs short: 1 survives longest.
@@ -27,6 +28,8 @@ const CELL_VOLUME := 26.1     # m3: 3 x 3 x 2.9 m
 const THERMAL_MASS_KWH_PER_C := 0.07  # per cell: air, structure and contents
 
 var builder: Node
+## Act 2: the crew as people and the hazards (radiation, breaches, breakdowns).
+var life: RefCounted
 
 # ---- stores (saved) ----
 var battery_kwh := 0.0
@@ -101,6 +104,7 @@ var random_storms := true
 func _init(owner: Node = null) -> void:
 	builder = owner
 	_rng.randomize()
+	life = HABITAT_LIFE.new(self)
 
 ## Call whenever the layout or an item's switch changes.
 func invalidate() -> void:
@@ -112,7 +116,7 @@ func invalidate() -> void:
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
 		"habitat_temp": habitat_temp, "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
-		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours}
+		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save()}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -131,6 +135,7 @@ func load(state: Dictionary) -> void:
 	printed_kg = float(state.get("printed_kg", 0.0))
 	light_overrides = (state.get("light_overrides", {}) as Dictionary).duplicate()
 	research_boost_hours = float(state.get("research_boost_hours", 0.0))
+	life.load(state.get("life", {}))
 	invalidate()
 
 # ---------- what is in the habitat ----------
@@ -184,15 +189,20 @@ func inventory() -> Dictionary:
 		if room_of_cell.has(cell): rooms[room_of_cell[cell]].windows += 1
 	# Equipment inside rooms.
 	var items: Array = []
+	# Every placed thing and its room, balanced or not (wellbeing, shielding).
+	var all_items: Array = []
 	for placed in builder.placed_interior:
 		var id := str(placed.get("id", ""))
-		var balance := MHResources.item(id)
-		if balance.is_empty(): continue
 		var room_index: int = room_of_cell.get(placed.get("zone_cell", Vector2i(999999, 0)), -1)
 		if room_index < 0:
 			var at: Vector3 = placed.get("position", Vector3.ZERO)
 			room_index = room_of_cell.get(Vector2i(roundi(at.x / cell_size), roundi(at.z / cell_size)), -1)
-		items.append(_item_record(id, balance, placed.get("state", {}), room_index))
+		all_items.append({"id": id, "room": room_index})
+		var balance := MHResources.item(id)
+		if balance.is_empty(): continue
+		var record := _item_record(id, balance, placed.get("state", {}), room_index)
+		record["pid"] = str(placed.get("placement_id", ""))
+		items.append(record)
 	# Outdoor grid equipment.
 	for placed in builder.placed_surface:
 		var id := str(placed.get("id", ""))
@@ -222,7 +232,7 @@ func inventory() -> Dictionary:
 		capacity.kwh += item.stores_kwh; capacity.water += item.stores_water; capacity.o2 += item.stores_o2; capacity.food += item.stores_food
 		capacity.berths += item.berths
 		if item.id == "thermal_control_unit" and item.on: capacity.tcu_kw += item.heat_kw
-	_inventory = {"rooms": rooms, "items": items, "solar": solar, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
+	_inventory = {"rooms": rooms, "items": items, "all_items": all_items, "solar": solar, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
 		"cells": rooms.reduce(func(total, room): return total + int(room.cells), 0),
 		"zones_ref": builder.zones, "zone_count": builder.zones.size(), "items_ref": builder.placed_interior, "item_count": builder.placed_interior.size()}
 	_take_delivery(capacity)
@@ -354,6 +364,7 @@ func step(dt: float, hour: float) -> void:
 		if storm_eta_hours <= 0.0: start_storm()
 	elif random_storms and _rng.randf() < float(site.get("dust_storms_per_100_sols", 1.0)) / 100.0 / 24.0 * dt:
 		forecast_storm()
+	life.pre_step(dt, hour, inv)
 	if room_temp.size() != rooms.size(): _sync_room_temps(rooms, outside)
 	# --- people: where the crew are at this hour ---
 	var people := _crew_by_room(rooms, crew, hour)
@@ -374,13 +385,17 @@ func step(dt: float, hour: float) -> void:
 		var room: Dictionary = rooms[index]
 		loss.append((float(room.hull_m2) * u + float(room.windows) * window_u) * (habitat_temp - outside) / 1000.0 if _heated(room) else 0.0)
 	# Heat reaching each room, assuming everything gets power (sizes the heat pump's draw).
-	var heat := _heat_coverage(rooms, inv.items, people, room_base_kw, room_light_kw, {1: true, 2: true, 3: true, 4: true}, loss, float(inv.capacity.tcu_kw))
+	var working: Array = (inv.items as Array).filter(func(i): return not life.is_broken(i))
+	var tcu_kw := 0.0
+	for item in working:
+		if item.id == "thermal_control_unit" and item.on: tcu_kw += float(item.heat_kw)
+	var heat := _heat_coverage(rooms, working, people, room_base_kw, room_light_kw, {1: true, 2: true, 3: true, 4: true}, loss, tcu_kw)
 	# --- power ---
 	var tiers := {1: 0.0, 2: heat.electric_kw, 3: 0.0, 4: 0.0}
 	for index in range(rooms.size()):
 		tiers[TIER_LIFE] += room_base_kw[index]
 		tiers[TIER_LIGHT] += room_light_kw[index]
-	for item in inv.items: tiers[item.tier] += item.power
+	for item in working: tiers[item.tier] += item.power
 	var drill_kw := 0.0
 	for richness in inv.drills: drill_kw += MHResources.item_value("ice_drill", "power_kw", 3.0)
 	tiers[TIER_OTHER] += drill_kw
@@ -393,7 +408,7 @@ func step(dt: float, hour: float) -> void:
 	if inv.isolated: generation = 0.0
 	var powered := _power(dt, generation, tiers, float(inv.capacity.kwh), inv.isolated)
 	# --- heat with the power actually available ---
-	heat = _heat_coverage(rooms, inv.items, people, room_base_kw, room_light_kw, powered.tiers, loss, float(inv.capacity.tcu_kw))
+	heat = _heat_coverage(rooms, working, people, room_base_kw, room_light_kw, powered.tiers, loss, tcu_kw)
 	# One habitat temperature: the heat that actually reaches the heated rooms
 	# (see _heat_coverage) against all the heat they lose through the hull and
 	# windows. It relaxes exponentially towards the balance temperature, which
@@ -421,8 +436,10 @@ func step(dt: float, hour: float) -> void:
 	var water_used := crew * MHResources.setting("water_per_person", 10.0) * per_sol
 	var reclaim_capacity := 0.0
 	var food_grown := 0.0
-	for item in inv.items:
+	var research := 0.0
+	for item in working:
 		if not powered.tiers[item.tier] and item.power > 0.0: continue
+		research += MHResources.item_value(item.id, "research")
 		o2_made += item.o2 * per_sol
 		co2_removed += -minf(0.0, item.co2) * per_sol
 		if item.water > 0.0: water_made += item.water * per_sol
@@ -434,6 +451,7 @@ func step(dt: float, hour: float) -> void:
 	if powered.tiers[TIER_OTHER]:
 		for richness in inv.drills: drill_water += MHResources.setting("ice_drill_l", 120.0) * float(richness) * per_sol
 	water_l = clampf(water_l + water_made + water_recovered + drill_water - water_used, 0.0, float(inv.capacity.water))
+	food_grown *= life.food_speed()
 	food_kg = maxf(0.0, food_kg + food_grown - crew * MHResources.setting("food_per_person", 1.8) * per_sol)
 	# Printing: running printers make material while tier 4 has power and an intake feeds them.
 	if powered.tiers[TIER_OTHER]: printed_kg += print_rate(inv) * per_sol
@@ -453,7 +471,9 @@ func step(dt: float, hour: float) -> void:
 			o2_pct += released / 32.0 / (air_kg / 29.0) * 100.0
 		o2_pct = clampf(o2_pct, 0.0, 30.0)
 	# --- crew condition ---
-	_crew_condition(dt, crew, rooms, people)
+	if research_boost_hours > 0.0: research *= 1.2
+	var effects: Dictionary = life.post_step(dt, inv, powered.tiers, crew, research)
+	_crew_condition(dt, crew, rooms, people, effects)
 	last = {"hour": hour, "generation_kw": generation, "load_kw": powered.load_kw, "demand_kw": tiers[1] + tiers[2] + tiers[3] + tiers[4],
 		"tiers": powered.tiers, "tier_kw": tiers, "battery_rate_kw": powered.battery_kw, "heat_pump_kw": heat.electric_kw, "outside_c": outside, "heat_wasted_kw": heat.wasted,
 		"storm": storm_hours_left > 0.0, "storm_hours_left": storm_hours_left, "storm_eta": storm_eta_hours, "crew": crew, "people": people, "water_in": (water_made + water_recovered + drill_water) / per_sol,
@@ -490,6 +510,12 @@ func _crew_by_room(rooms: Array, crew: int, hour: float) -> Array:
 	var people: Array = []
 	for room in rooms: people.append(0.0)
 	if crew <= 0 or rooms.is_empty(): return people
+	# A solar particle event: everyone goes to the storm shelter.
+	if life != null and life.spe_active() and not _inventory.is_empty():
+		var shelter: int = life.shelter_index(_inventory)
+		if shelter >= 0 and shelter < people.size():
+			people[shelter] = float(crew)
+			return people
 	var wanted: Array = ["living"]
 	var h := int(hour)
 	if h in [7, 12, 18]: wanted = ["galley"]
@@ -588,10 +614,11 @@ func _power(dt: float, generation: float, tiers: Dictionary, capacity_kwh: float
 	battery_kwh = clampf(battery_kwh + battery_kw * dt, 0.0, capacity_kwh)
 	return {"tiers": on, "load_kw": load, "battery_kw": battery_kw}
 
-func _crew_condition(dt: float, crew: int, rooms: Array, people: Array) -> void:
+func _crew_condition(dt: float, crew: int, rooms: Array, people: Array, effects: Dictionary = {}) -> void:
 	health_causes = []
 	if crew <= 0: return
-	var harm := 0.0
+	var harm := float(effects.get("harm", 0.0))
+	health_causes.append_array(effects.get("causes", []))
 	if co2_pct > 3.0: harm += 10.0; health_causes.append("CO₂ dangerous")
 	elif co2_pct > MHResources.setting("co2_danger_pct", 1.0): harm += 1.0; health_causes.append("CO₂ high")
 	if o2_pct < 16.0: harm += 10.0; health_causes.append("oxygen dangerous")
@@ -696,7 +723,7 @@ func snapshot(hour: float) -> Dictionary:
 		"battery_kwh": battery_kwh, "generation_kw": float(last.get("generation_kw", 0.0)), "load_kw": float(last.get("load_kw", 0.0)),
 		"water_l": water_l, "food_kg": food_kg, "o2_pct": o2_pct, "co2_pct": co2_pct, "coldest_c": coldest if coldest < 98.0 else 0.0,
 		"crew_health": crew_health, "storm": storm_hours_left > 0.0, "all_powered": bool((last.get("tiers", {}) as Dictionary).get(4, false)),
-		"life_support": bool((last.get("tiers", {}) as Dictionary).get(1, true))}
+		"life_support": bool((last.get("tiers", {}) as Dictionary).get(1, true))}.merged(life.sample(inv))
 
 ## Plain-language problems, most serious first: [{level, text}].
 func warnings() -> Array:
