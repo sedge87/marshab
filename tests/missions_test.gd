@@ -87,7 +87,7 @@ func _initialize() -> void:
 	builder.simulation().invalidate()
 	world.mission_flags.opened_plan = true
 	MHMissions.update_steps(builder, world.mission_flags)
-	_check(str(MHMissions.current_step().get("id", "")) == "airlock", "building solar, a P&E room and a drill ticks those steps; next is the airlock: %s" % MHMissions.steps_done("cargo_power_water"))
+	_check(str(MHMissions.current_step().get("id", "")) == "airlock", "building solar, a P&E room and a drill ticks those steps; next is the airlock: %s" % [MHMissions.steps_done("cargo_power_water")])
 	var weak := MHMissions.run_test(builder)
 	_check(not bool(weak.passed), "a single solar array and no batteries fails the Test")
 	var power_result: Dictionary = (weak.results as Array).filter(func(r): return r.id == "always_powered")[0]
