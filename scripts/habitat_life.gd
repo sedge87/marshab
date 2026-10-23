@@ -176,7 +176,8 @@ func shield_rating(inv: Dictionary, room_index: int) -> float:
 	var hull := float(value("radiation", "hull_points", 5.0))
 	if room_index < 0 or room_index >= (inv.rooms as Array).size(): return hull
 	var points: Dictionary = value("radiation", "shield_points", {})
-	var extra := 0.0
+	# Shielding upgrades on its outside walls and roof, plus what's stored in it.
+	var extra := float(inv.rooms[room_index].get("shield_upgrades", 0.0))
 	for id in _ids_in(inv, room_index): extra += float(points.get(id, 0.0))
 	return hull + extra / maxf(1.0, float(inv.rooms[room_index].cells))
 
@@ -224,12 +225,16 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 	for index in range(rooms.size()):
 		if str(rooms[index].kind) != "living": continue
 		for other in rooms[index].next:
+			# Sound insulation on every shared wall keeps a noisy neighbour out.
+			if (rooms[index].get("quiet_from", []) as Array).has(other): continue
 			var kind := str(rooms[other].kind)
-			if (c.noisy_rooms as Array).has(kind) or _ids_in(inv, other).any(func(id): return (c.noisy_items as Array).has(id)) or _ids_in(inv, index).any(func(id): return (c.noisy_items as Array).has(id)):
+			if (c.noisy_rooms as Array).has(kind) or _ids_in(inv, other).any(func(id): return (c.noisy_items as Array).has(id)):
 				noisy = true
+		# A noisy machine in the room itself: insulation can't help.
+		if _ids_in(inv, index).any(func(id): return (c.noisy_items as Array).has(id)): noisy = true
 	var sleep := minf(1.0, float(bunks) / n) * (.5 if noisy else 1.0)
 	out.append({"id": "sleep", "label": "Sleep and privacy", "score": sleep,
-		"missing": "" if sleep >= .99 else ("Living Quarters is next to a noisy room" if noisy else "Not everyone has a bunk")})
+		"missing": "" if sleep >= .99 else ("Living Quarters is next to a noisy room: add sound insulation to the walls between them" if noisy else "Not everyone has a bunk")})
 	# 2. Space.
 	var living_cells := 0.0
 	for room in rooms:

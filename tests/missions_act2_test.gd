@@ -1,5 +1,7 @@
 extends SceneTree
 
+const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
+
 # Missions 7-10 are winnable, and have teeth: each mission's new idea is
 # needed to pass. Builds the same base as missions_campaign_test.gd through
 # Mission 6, then improves it mission by mission.
@@ -80,7 +82,7 @@ func _initialize() -> void:
 
 	# --- Mission 7: the storm shelter ---
 	MHMissions.progress.current = "solar_shelter"
-	_check(MHMissions.item_unlocked("storm_shelter_locker") and MHMissions.item_unlocked("regolith_shield_block"), "Mission 7 delivers the shelter locker and shield walls")
+	_check(MHMissions.item_unlocked("storm_shelter_locker") and MHMissions.structure_unlocked("upgrade_regolith") and MHMissions.structure_unlocked("upgrade_roof"), "Mission 7 delivers the shelter locker and wall and roof shielding")
 	_check(not MHMissions.item_unlocked("hull_patch_kit"), "but not Mission 9's patch kit")
 	MHMissions.deliver_mission_food(b.simulation())
 	var m7_none := _test(b, "Mission 7, no shelter")
@@ -88,7 +90,9 @@ func _initialize() -> void:
 	_item(b, "storm_shelter_locker", c, 2, 2, 1)
 	var m7_weak := _test(b, "Mission 7, locker only")
 	_check(_failed(m7_weak, "shelter") and _failed(m7_weak, "dose"), "a locker without shielding isn't enough")
-	_item(b, "regolith_shield_block", c, 2, 2, 4)
+	var lab: Dictionary = b._zone_at_point(Vector2(c + Vector2i(2, 2)) * 3.0)
+	WALL_UPGRADES.shield_room(b, lab)
+	b._rebuild()
 	var m7 := _test(b, "Mission 7, shielded Science Lab")
 	_check(bool(m7.passed), "a shielded 2-square shelter passes Mission 7:\n    " + _report(m7))
 

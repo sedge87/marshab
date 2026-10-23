@@ -7,6 +7,7 @@ extends RefCounted
 ## data/resources.json (docs/MarsHabitat_Balance.xlsx); docs/resource-model.md
 ## explains the rules.
 const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
+const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
 
@@ -183,7 +184,7 @@ func inventory() -> Dictionary:
 				for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 					if not builder._is_habitat_zone(builder._zone_across(cell, side)): hull += cell_size * BuildController.ROOM_HEIGHT
 		var room := {"key": _room_key(zone), "kind": kind, "label": str(BuildController.ZONE_TYPES.get(kind, {}).get("label", kind)), "cells": count, "hull_m2": hull,
-			"windows": 0, "zone": zone, "next": []}
+			"windows": 0, "zone": zone, "next": [], "shield_upgrades": 0.0, "quiet_from": []}
 		for cell in cells: room_of_cell[cell] = rooms.size()
 		rooms.append(room)
 	# Rooms that share a wall: a spot heater also warms the rooms next door.
@@ -192,6 +193,13 @@ func inventory() -> Dictionary:
 			for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				var other: int = room_of_cell.get(cell + side, -1)
 				if other >= 0 and other != index and not (rooms[index].next as Array).has(other): rooms[index].next.append(other)
+	# Wall and roof upgrades: shield points for each room, and which
+	# neighbours it's soundproofed from.
+	var upgrade_points := WALL_UPGRADES.room_points(room_of_cell, builder)
+	for index in upgrade_points: rooms[index].shield_upgrades = float(upgrade_points[index])
+	for index in range(rooms.size()):
+		for other in rooms[index].next:
+			if WALL_UPGRADES.insulated_between(builder, rooms[index].zone.get("cells", []), rooms[other].zone.get("cells", [])): rooms[index].quiet_from.append(other)
 	for window in builder.hull_windows:
 		var inside: Vector2 = Vector2(window.mid) - Vector2(window.dir) * .75
 		var cell := Vector2i(roundi(inside.x / cell_size), roundi(inside.y / cell_size))

@@ -1,5 +1,7 @@
 extends SceneTree
 
+const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
+
 # Act 2 (Missions 7-10): radiation shelters, the crew as people (fitness,
 # wellbeing, injuries), hull breaches and sections, breakdowns and spares.
 # docs/missions-7-10-design.md section 7.
@@ -92,10 +94,12 @@ func _initialize() -> void:
 	ssim.invalidate()
 	var weak: Dictionary = ssim.life.shelter(ssim.inventory())
 	_check(not weak.is_empty() and float(weak.rating) < 20.0 and not bool(weak.ok), "a locker alone makes a shelter, but a weak one (%s)" % [weak.get("rating")])
-	_add(shelter, "regolith_shield_block", "science", 4)
+	var lab: Dictionary = shelter.zones.filter(func(z): return str(z.kind) == "science")[0]
+	shelter._rebuild()
+	var shielded := WALL_UPGRADES.shield_room(shelter, lab)
 	ssim.invalidate()
 	var strong: Dictionary = ssim.life.shelter(ssim.inventory())
-	_check(float(strong.rating) >= 20.0 and int(strong.capacity) >= 6, "four shield walls in a 2-square lab: %d points, room for %d" % [roundi(float(strong.rating)), int(strong.capacity)])
+	_check(float(strong.rating) >= 20.0 and int(strong.capacity) >= 6, "regolith on the lab's outside walls and roof (%d upgrades): %d points, room for %d" % [shielded, roundi(float(strong.rating)), int(strong.capacity)])
 	ssim.life.forecast_spe(0.0)
 	ssim.run_hours(26.0, 8.0, 1.0)
 	_check(ssim.life.worst_event_msv < 50.0, "sheltered crew get under 50 mSv (%.0f)" % ssim.life.worst_event_msv)

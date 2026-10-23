@@ -65,6 +65,7 @@ const SHOWCASE_CORRIDOR := preload("res://assets/showcase_modules/mh_corridor_ba
 const SHOWCASE_SOLAR := preload("res://assets/showcase_modules/mh_solar_array.glb")
 const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
 const SOLAR_ARRAY_INTERACTABLE := preload("res://scripts/solar_array_interactable.gd")
+const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
 const ROOF_ACCESSORY_SCENES := {
 	"living": preload("res://assets/structural_kit/roof_living_comms_mast.glb"),
 	"science": preload("res://assets/structural_kit/roof_science_dish.glb"),
@@ -262,6 +263,8 @@ var _debug_backings_visible := true
 var _mode_switcher: Dictionary = {}
 ## Saved windows: {"mid": Vector2, "dir": Vector2} for each glazed hull bay.
 var hull_windows: Array = []
+## Wall and roof upgrades (scripts/wall_upgrades.gd): shielding and insulation.
+var wall_upgrades: Array = []
 ## Every Mars-facing wall bay built this rebuild, where a window may go:
 ## {mid, dir, tangent, outward, length, zone_kind}.
 var _hull_bays: Array = []
@@ -1131,6 +1134,7 @@ func _blocks_doorway(entry: Dictionary, world_position: Vector3, rotation_y: flo
 func free_interior_invalid_reason(id: String, world_position: Vector3, surface_normal: Vector3, rotation_y := 0.0) -> String:
 	var entry := EquipmentCatalog.get_entry(id)
 	if entry.is_empty(): return "Unknown interior item"
+	if entry.has("retired"): return str(entry.retired)
 	if not MHMissions.item_unlocked(id): return "Not delivered yet: this arrives in a later mission"
 	var sample := world_position + Vector3.UP * .35
 	if not is_inside(sample): return "Must be placed inside a completed habitat room"
@@ -2470,6 +2474,7 @@ func _rebuild() -> void:
 	_add_room_fills()
 	_add_light_panels()
 	_prune_hull_windows()
+	WALL_UPGRADES.build(self)
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
 	for zone in zones: _add_zone_label(zone)
@@ -3628,6 +3633,7 @@ func window_target_at(point: Vector3) -> Dictionary:
 func window_invalid_reason(target: Dictionary) -> String:
 	if target.is_empty(): return "Aim at an outside wall of a room or corridor"
 	if _window_index_at(target.mid, target.dir) >= 0: return "This wall bay already has a window"
+	if WALL_UPGRADES.index_at(self, "regolith", target) >= 0: return "This wall bay is shielded"
 	if _used_cargo() + window_cargo() > MHGame.cargo_budget(): return "Not enough cargo left"
 	return ""
 
@@ -3642,6 +3648,14 @@ func place_window(target: Dictionary) -> bool:
 	_history.append({"type": "window", "window": data})
 	_rebuild()
 	return true
+
+# ---------- wall and roof upgrades (scripts/wall_upgrades.gd) ----------
+
+func upgrade_target_at(upgrade: String, point: Vector3, normal: Vector3) -> Dictionary: return WALL_UPGRADES.target_at(self, upgrade, point, normal)
+func upgrade_invalid_reason(upgrade: String, target: Dictionary) -> String: return WALL_UPGRADES.invalid_reason(self, upgrade, target)
+func place_upgrade(upgrade: String, target: Dictionary) -> bool: return WALL_UPGRADES.place(self, upgrade, target)
+func upgrade_index_near(point: Vector3, normal: Vector3) -> int: return WALL_UPGRADES.index_near(self, point, normal)
+func remove_upgrade(index: int) -> void: WALL_UPGRADES.remove(self, index)
 
 ## Index of the window an aim point is on; -1 if none.
 func window_index_near(point: Vector3) -> int:
@@ -4662,6 +4676,7 @@ func printable_cargo() -> int:
 		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
 		if bool(entry.get("printable", false)): total += int(entry.get("cargo_cost", 0))
 	total += partitions.size() * partition_cargo()
+	total += WALL_UPGRADES.cargo(self, true)
 	return total
 
 func mars_made_used() -> int: return mini(mars_made_total(), printable_cargo())
@@ -4683,6 +4698,7 @@ func _total_cargo() -> int:
 		total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
 	total += hull_windows.size() * window_cargo()
 	total += partitions.size() * partition_cargo()
+	total += WALL_UPGRADES.cargo(self)
 	return total
 
 func _airlock_connected_cells() -> Dictionary:
@@ -4935,6 +4951,7 @@ func export_habitat_state() -> Dictionary:
 		"placed_interior": placed_interior.duplicate(true),
 		"interior_doors": interior_doors.duplicate(true),
 		"hull_windows": hull_windows.duplicate(true),
+		"wall_upgrades": wall_upgrades.duplicate(true),
 		"partitions": partitions.duplicate(true),
 		"placed_surface": placed_surface.duplicate(true),
 		"simulation": simulation().save(),
@@ -4965,6 +4982,7 @@ func restore_habitat_state(state: Dictionary) -> void:
 	placed_interior.clear()
 	interior_doors = (state.get("interior_doors", []) as Array).duplicate(true)
 	hull_windows = (state.get("hull_windows", []) as Array).duplicate(true)
+	wall_upgrades = (state.get("wall_upgrades", []) as Array).duplicate(true)
 	partitions = (state.get("partitions", []) as Array).duplicate(true)
 	# Older saves may contain the retired room_shape_modifiers key. It is
 	# deliberately ignored so those saves load as ordinary modular rooms.
@@ -4999,6 +5017,8 @@ func restore_habitat_state(state: Dictionary) -> void:
 	_sim = HABITAT_SIM.new(self)
 	simulation().load(state.get("simulation", {}) as Dictionary)
 	_rebuild()
+	# Shield blocks used to stand in rooms: they become wall upgrades now.
+	if WALL_UPGRADES.convert_old_blocks(self) > 0: _rebuild()
 
 func _update_systems() -> void:
 	simulation().invalidate()
@@ -5103,7 +5123,7 @@ func cargo_by_category() -> Dictionary:
 	for zone in zones: out[str(ZONE_INFO[zone.kind].cat)]+=int(zone.cost)
 	for item in placed_equipment: out.equipment+=int(EquipmentCatalog.get_entry(str(item.get("id",""))).get("cargo_cost",0))
 	for item in placed_interior: out.equipment+=int(EquipmentCatalog.get_entry(str(item.get("id",""))).get("cargo_cost",0))
-	out.structure+=hull_windows.size()*window_cargo()+partitions.size()*partition_cargo()
+	out.structure+=hull_windows.size()*window_cargo()+partitions.size()*partition_cargo()+WALL_UPGRADES.cargo(self)
 	return out
 
 func used_cargo() -> int: return _used_cargo()

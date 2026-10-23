@@ -108,6 +108,13 @@ static func item_unlocked(id: String) -> bool:
 		if not named_later and (mission.get("unlock_groups", []) as Array).has(group): return true
 	return false
 
+## A Structure tool (wall and roof upgrades) delivered by a mission
+## ("unlock_structures"); tools no mission names are always there.
+static func structure_unlocked(id: String) -> bool:
+	if not active(): return true
+	if not missions().any(func(m): return (m.get("unlock_structures", []) as Array).has(id)): return true
+	return _so_far().any(func(m): return (m.get("unlock_structures", []) as Array).has(id))
+
 ## How many crew this mission has aboard (0 for robot missions; free play: no cap).
 static func crew_cap() -> int:
 	if not active(): return -1

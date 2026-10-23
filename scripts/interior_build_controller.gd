@@ -21,7 +21,11 @@ const STRUCTURE_TOOLS := [
 	{"id": "partition_glass_door", "label": "Glass door", "icon": "door-open", "text": "A glass door in a metal frame, for a partition: light gets through but it still closes off the space. Aim at a wall panel, or at the floor to add one."},
 	{"id": "interior_door", "label": "Room door", "icon": "door-closed", "text": "A doorway in a shared wall, so two sealed rooms connect. For an open corridor end, aim at the floor right by the opening."},
 	{"id": "window", "label": "Window", "icon": "sun", "text": "Glazes one outside wall bay. A view of Mars, but glass loses heat faster than the hull."},
-	{"id": "remove", "label": "Remove", "icon": "trash-2", "text": "Aim at an item, door or window and click to remove it. Cargo is refunded."},
+	{"id": "upgrade_regolith", "label": "Regolith shielding", "icon": "shield", "text": "Bags of Mars soil stacked against an outside wall, against radiation. Printed by the regolith printer, so it costs no cargo once you're printing. Aim at an outside wall."},
+	{"id": "upgrade_water", "label": "Water wall", "icon": "droplets", "text": "A water tank panel on an outside wall. Water is one of the best radiation shields. Aim at an outside wall."},
+	{"id": "upgrade_roof", "label": "Roof shielding", "icon": "house", "text": "Regolith piled on the whole roof of a room: most radiation comes from overhead. Aim at the ceiling."},
+	{"id": "upgrade_acoustic", "label": "Sound insulation", "icon": "volume-x", "text": "Padded panels on a wall between two rooms, so a noisy neighbour (Power & Engineering, Life Support, a printer) doesn't keep anyone awake. Aim at a shared wall."},
+	{"id": "remove", "label": "Remove", "icon": "trash-2", "text": "Aim at an item, door, window or wall upgrade and click to remove it. Cargo is refunded."},
 ]
 # The selector starts with the validated Living Quarters batch, then keeps the
 # existing vertical-slice equipment available for its own valid rooms.
@@ -82,6 +86,8 @@ func _catalogue_ids() -> Array:
 	var ids: Array = []
 	for group in EquipmentCatalog.groups():
 		for id in EquipmentCatalog.ids_in_group(str(group.id)):
+			# Retired items (old shield blocks, now wall upgrades) aren't offered.
+			if EquipmentCatalog.get_entry(id).has("retired"): continue
 			if not ids.has(id): ids.append(id)
 	return ids
 
@@ -264,6 +270,26 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		if not _window_target.is_empty():
 			preview.transform = builder.window_target_transform(_window_target)
 			preview.scale = Vector3(float(_window_target.length) / BuildController.CELL, 1, 1)
+		_update_hud()
+		return
+	if _selected_structure.begins_with("upgrade_"):
+		var upgrade := _selected_structure.trim_prefix("upgrade_")
+		var target: Dictionary = builder.upgrade_target_at(upgrade, point, normal)
+		_upgrade_target = target
+		_valid_reason = builder.upgrade_invalid_reason(upgrade, target) if MHMissions.structure_unlocked(_selected_structure) else "Not delivered yet: this arrives in a later mission"
+		var key := str(target.get("mid", target.get("cells", "")))
+		if force_rebuild or preview == null or key != _upgrade_key:
+			_upgrade_key = key
+			if preview != null: preview.queue_free()
+			preview = _upgrade_preview(upgrade, target)
+			preview.name = "UpgradePreview"
+			add_child(preview)
+			_set_preview_material(preview, _valid_reason.is_empty())
+			_preview_material_valid = _valid_reason.is_empty()
+		elif _preview_material_valid != _valid_reason.is_empty():
+			_set_preview_material(preview, _valid_reason.is_empty())
+			_preview_material_valid = _valid_reason.is_empty()
+		preview.visible = not target.is_empty()
 		_update_hud()
 		return
 	if _selected_structure.begins_with("partition"):
@@ -484,6 +510,32 @@ func _partition_preview(door: bool) -> Node3D:
 	_set_preview_material(holder, true)
 	return holder
 
+var _upgrade_target := {}
+var _upgrade_key := ""
+
+## A ghost of the upgrade: a slab on the wall, or one per roof square.
+func _upgrade_preview(upgrade: String, target: Dictionary) -> Node3D:
+	var holder := Node3D.new()
+	if target.is_empty(): return holder
+	var cell_size: float = BuildController.CELL
+	var slabs: Array = []
+	if upgrade == "roof":
+		for cell in target.cells: slabs.append([Vector3(cell.x * cell_size, builder.habitat_base_y + 3.2, cell.y * cell_size), Vector3(cell_size - .2, .35, cell_size - .2), Basis.IDENTITY])
+	else:
+		var outward: Vector2 = target.outward
+		var basis: Basis = builder._bay_basis(Vector2(-outward.y, outward.x), outward)
+		var mid := Vector3(target.mid.x, builder.habitat_base_y + 1.45, target.mid.y)
+		var thick := .14 if upgrade == "acoustic" else .4
+		slabs.append([mid + Vector3(outward.x, 0, outward.y) * (0.0 if upgrade == "acoustic" else .3), Vector3(cell_size - .1, 2.9, thick), basis])
+	for slab in slabs:
+		var mesh := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = slab[1]
+		mesh.mesh = box
+		mesh.transform = Transform3D(slab[2], slab[0])
+		holder.add_child(mesh)
+	return holder
+
 func _window_preview() -> Node3D:
 	var holder := Node3D.new()
 	var band := MeshInstance3D.new()
@@ -506,6 +558,13 @@ func _place_preview() -> void:
 		return
 	if _selected_structure == "window":
 		if builder.place_window(_window_target):
+			MHAudio.sfx("place")
+			_refresh_preview(true)
+		else:
+			MHAudio.sfx("invalid")
+		return
+	if _selected_structure.begins_with("upgrade_"):
+		if builder.place_upgrade(_selected_structure.trim_prefix("upgrade_"), _upgrade_target):
 			MHAudio.sfx("place")
 			_refresh_preview(true)
 		else:
@@ -557,6 +616,12 @@ func _remove_target() -> void:
 	var flat := _walkover_at(hit.position)
 	if not flat.is_empty():
 		builder.remove_free_interior_equipment(flat)
+		MHAudio.sfx("remove")
+		return
+	# Wall and roof upgrades (shielding, insulation).
+	var upgrade_index := builder.upgrade_index_near(hit.position, (hit.get("normal", Vector3.UP) as Vector3).normalized())
+	if upgrade_index >= 0:
+		builder.remove_upgrade(upgrade_index)
 		MHAudio.sfx("remove")
 		return
 	# Thin wall-mounted items (a corridor light strip) are hard to hit: aiming
