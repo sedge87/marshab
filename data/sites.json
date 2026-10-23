@@ -8,7 +8,7 @@
       "coordinates": "3.0° N, 154.7° E",
       "terrain_profile": "elysium",
       "blurb": "Wide, level ground and the strongest sun. Water is scarce.",
-      "palette": "day",
+      "palette": "plains",
       "icon": "sun",
       "telemetry": {
         "temperature": "−25 °C",
@@ -37,8 +37,8 @@
       "terrain": {
         "shape": "plains",
         "pad_half": 60.0,
-        "ground": "#B0633E",
-        "rock_count": 55,
+        "ground": "#9A735C",
+        "rock_count": 240,
         "rock_scale": 0.9,
         "mesas": [
           [

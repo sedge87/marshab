@@ -69,6 +69,7 @@ func build(palette := "") -> void:
 
 func _ready() -> void:
 	_build_decor()
+	_build_pebbles()
 
 ## Replace the landscape with the currently selected site's (menu preview).
 func rebuild_site() -> void:
@@ -78,6 +79,7 @@ func rebuild_site() -> void:
 	add_child(_site_root)
 	_build_terrain()
 	_build_decor()
+	_build_pebbles()
 
 func _build_sky_and_lighting() -> void:
 	# The project targets the Compatibility renderer. Its stable built-in
@@ -315,7 +317,9 @@ func _build_decor() -> void:
 	for placement in MHSiteTerrain.rock_placements():
 		var model_name := str(placement.mesh)
 		var scale_amount := float(placement.scale)
-		var transform := Transform3D(Basis.from_euler(Vector3(0.0, deg_to_rad(float(placement.yaw)), 0.0)).scaled(Vector3.ONE * scale_amount), placement.position)
+		var tilt: Vector2 = placement.get("tilt", Vector2.ZERO)
+		var stretch: Vector3 = placement.get("stretch", Vector3.ONE)
+		var transform := Transform3D(Basis.from_euler(Vector3(tilt.x, deg_to_rad(float(placement.yaw)), tilt.y)).scaled(stretch * scale_amount), placement.position)
 		if not transforms_by_mesh.has(model_name):
 			transforms_by_mesh[model_name] = []
 		transforms_by_mesh[model_name].append(transform)
@@ -339,11 +343,34 @@ func _build_decor() -> void:
 		_add_decor_colliders(mesh, transforms)
 
 ## Boulders in the site's own ground colour, darker, with dust on top.
+## Thousands of small stones (one batched draw, no collision or shadows).
+func _build_pebbles() -> void:
+	var transforms: Array = MHSiteTerrain.pebble_transforms()
+	if transforms.is_empty(): return
+	# A very low-poly stone (about 30 triangles): thousands of them stay cheap.
+	var mesh := SphereMesh.new()
+	mesh.radial_segments = 6
+	mesh.rings = 3
+	mesh.radius = .5
+	mesh.height = .7
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.mesh = mesh
+	multimesh.instance_count = transforms.size()
+	for index in transforms.size(): multimesh.set_instance_transform(index, transforms[index])
+	var instance := MultiMeshInstance3D.new()
+	instance.name = "Pebbles"
+	instance.multimesh = multimesh
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	instance.visibility_range_end = 70.0
+	instance.material_override = _rock_material()
+	_site_root.add_child(instance)
+
 func _rock_material() -> ShaderMaterial:
 	var ground := Color(str(MHSiteTerrain.settings().get("ground", "#A9603E")))
 	var material := ShaderMaterial.new()
 	material.shader = preload("res://shaders/mars_rock.gdshader")
-	material.set_shader_parameter("rock_colour", ground.darkened(.42))
+	material.set_shader_parameter("rock_colour", ground.darkened(.28) if MHSiteTerrain.shape() == "plains" else ground.darkened(.42))
 	material.set_shader_parameter("dust_colour", ground.lightened(.06))
 	return material
 

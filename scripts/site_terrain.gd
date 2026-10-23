@@ -15,6 +15,7 @@ extends RefCounted
 const GROUND_SHADER := preload("res://shaders/mars_ground.gdshader")
 const INNER_EXTENT := 168.0 # walkable mesh with collision, ±m
 const INNER_STEP := 3.0
+const INNER_STEP_PLAINS := 2.0   # finer ground for the realistic Open Plains (craters, ledges)
 const OUTER_EXTENT := 720.0 # coarse horizon mesh, visual only
 const OUTER_STEP := 24.0
 # Ground stays exactly level this far beyond the pad, so cells on its edge
@@ -104,14 +105,117 @@ static func _noise(p: Vector2, scale: float) -> float:
 static func _rise(p: Vector2, start: float, width: float) -> float:
 	return smoothstep(start, start + width, _pad_distance(p))
 
+# ---------- Open Plains (realistic pass, 24 Oct) ----------
+# Modelled on Elysium Planitia (InSight's landing site): gently rolling lava
+# plains peppered with impact craters, low wrinkle ridges, and eroded mesas
+# with broken cliffs, ledges and slopes of fallen rock at their feet. Real
+# noise (FastNoiseLite) instead of layered sines; distant hills close the
+# horizon so the edge of the map never shows.
+
+static var _plains_noise: FastNoiseLite
+static var _plains_ridges: FastNoiseLite
+static var _plains_detail: FastNoiseLite
+static var _plains_craters: Array = []
+
+static func _plains_setup() -> void:
+	if _plains_noise != null: return
+	_plains_noise = FastNoiseLite.new()
+	_plains_noise.seed = 7; _plains_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_plains_noise.frequency = 1.0 / 170.0; _plains_noise.fractal_type = FastNoiseLite.FRACTAL_FBM; _plains_noise.fractal_octaves = 4
+	_plains_ridges = FastNoiseLite.new()
+	_plains_ridges.seed = 19; _plains_ridges.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_plains_ridges.frequency = 1.0 / 260.0; _plains_ridges.fractal_type = FastNoiseLite.FRACTAL_RIDGED; _plains_ridges.fractal_octaves = 3
+	_plains_detail = FastNoiseLite.new()
+	_plains_detail.seed = 31; _plains_detail.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_plains_detail.frequency = 1.0 / 23.0; _plains_detail.fractal_type = FastNoiseLite.FRACTAL_FBM; _plains_detail.fractal_octaves = 3
+	# Craters: many small, few large (as on real Mars), never on the build pad.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	var half := float(settings().get("pad_half", 60.0))
+	var tries := 0
+	while _plains_craters.size() < 70 and tries < 4000:
+		tries += 1
+		var radius := 3.5 * pow(rng.randf(), -0.55)
+		radius = minf(radius, 34.0)
+		var centre := Vector2(rng.randf_range(-420.0, 420.0), rng.randf_range(-420.0, 420.0))
+		var gap := Vector2(maxf(0.0, absf(centre.x) - half), maxf(0.0, absf(centre.y) - half)).length()
+		if gap < radius * 1.6 + 10.0: continue
+		var on_mesa := false
+		for mesa in settings().get("mesas", []):
+			if centre.distance_to(Vector2(float(mesa[0]), float(mesa[1]))) < float(mesa[2]) + radius + 14.0: on_mesa = true
+		if on_mesa: continue
+		_plains_craters.append([centre, radius, rng.randf_range(.16, .22)])
+	# One big, old crater in view of the base.
+	_plains_craters.append([Vector2(-138.0, 46.0), 30.0, .14])
+
+## Fresh-looking crater: a bowl, a raised rim and a fading ejecta apron.
+static func _crater_profile(d: float, radius: float, depth_ratio: float) -> float:
+	var x := d / radius
+	if x >= 2.6: return 0.0
+	var depth := radius * depth_ratio
+	var rim := radius * .07
+	if x < 1.0:
+		return -depth * (1.0 - x * x) + rim * smoothstep(.55, 1.0, x)
+	return rim * exp(-pow((x - 1.0) / .38, 2.0))
+
+## 0-1: how much of a crater's floor (dark sand gathers there) or rim and
+## ejecta (pale, rocky) a point is on: Vector2(floor, ejecta).
+static func plains_crater_marks(p: Vector2) -> Vector2:
+	_plains_setup()
+	var floor_mark := 0.0
+	var ejecta := 0.0
+	for crater in _plains_craters:
+		var d: float = p.distance_to(crater[0])
+		var radius: float = crater[1]
+		if d > radius * 2.6: continue
+		var x := d / radius
+		floor_mark = maxf(floor_mark, 1.0 - smoothstep(.45, .85, x))
+		ejecta = maxf(ejecta, smoothstep(.75, 1.0, x) * (1.0 - smoothstep(1.0, 2.4, x)))
+	return Vector2(floor_mark, ejecta)
+
+## An eroded mesa: a wobbly outline, a cliff with one ledge, and a talus apron.
+static func _mesa_height(p: Vector2, centre: Vector2, radius: float, top: float, seed_offset: int) -> float:
+	var to := p - centre
+	var d := to.length()
+	if d > radius + 40.0: return 0.0
+	var angle := atan2(to.y, to.x)
+	# Bays and spurs along the edge, like a real eroded escarpment.
+	var edge := radius * (1.0 + .16 * sin(angle * 3.0 + seed_offset) + .08 * sin(angle * 5.0 + seed_offset * 2.1))
+	var over := d - edge
+	var h := 0.0
+	if over <= 0.0:
+		h = top + _plains_detail.get_noise_2d(p.x, p.y) * .8
+	else:
+		# Cliff (steep) down to a ledge at 60%, a second cliff, then fallen rock.
+		var ledge_w := 4.0 + 3.0 * (sin(angle * 2.0 + seed_offset) * .5 + .5)
+		var ledge_top := top * .6
+		# Cliffs span three mesh cells, so their edges stay clean (no saw teeth).
+		if over < 6.0: h = lerpf(top, ledge_top, smoothstep(0.0, 6.0, over))
+		elif over < 6.0 + ledge_w: h = ledge_top - (over - 6.0) * .3
+		elif over < 11.0 + ledge_w: h = lerpf(ledge_top - ledge_w * .3, top * .28, smoothstep(6.0 + ledge_w, 11.0 + ledge_w, over))
+		else:
+			var talus := over - (11.0 + ledge_w)
+			h = top * .3 * (1.0 - smoothstep(0.0, 22.0, talus)) + _plains_detail.get_noise_2d(p.x * 2.0, p.y * 2.0) * .6 * (1.0 - smoothstep(0.0, 22.0, talus))
+	return maxf(h, 0.0)
+
 static func _plains_height(p: Vector2) -> float:
-	var outside := _rise(p, PAD_MARGIN, 36.0)
-	var h := outside * (2.6 + _noise(p, 1.0) * 1.4)
-	# Flat-topped mesas on the horizon: a recognisable open-plains skyline.
-	for mesa in settings().get("mesas", []):
-		var centre := Vector2(float(mesa[0]), float(mesa[1]))
-		var top := float(mesa[3]) * (1.0 - smoothstep(float(mesa[2]), float(mesa[2]) + 9.0, p.distance_to(centre)))
-		h = maxf(h, top)
+	_plains_setup()
+	var outside := _rise(p, PAD_MARGIN, 40.0)
+	if outside <= 0.0: return 0.0
+	# Gently rolling ground, low wrinkle ridges and small bumps.
+	var h := 2.2 + _plains_noise.get_noise_2d(p.x, p.y) * 6.0
+	h += pow(maxf(0.0, _plains_ridges.get_noise_2d(p.x, p.y)), 2.0) * 7.0
+	h += _plains_detail.get_noise_2d(p.x, p.y) * .7
+	for crater in _plains_craters:
+		var d: float = p.distance_to(crater[0])
+		if d < float(crater[1]) * 2.6: h += _crater_profile(d, crater[1], crater[2])
+	# Hills close the horizon (beyond where you can walk).
+	var r := p.length()
+	h += smoothstep(190.0, 620.0, r) * (34.0 + _plains_noise.get_noise_2d(p.x * .4 + 300.0, p.y * .4) * 30.0) + smoothstep(480.0, 720.0, r) * 45.0
+	h *= outside
+	for index in range((settings().get("mesas", []) as Array).size()):
+		var mesa: Array = settings().mesas[index]
+		h = maxf(h, _mesa_height(p, Vector2(float(mesa[0]), float(mesa[1])), float(mesa[2]), float(mesa[3]), index * 7 + 3))
 	return h
 
 static func _canyon_height(p: Vector2) -> float:
@@ -214,7 +318,13 @@ static func ground_colour(p: Vector2, h: float, slope: float) -> Color:
 			# troughs only where they are wide enough for the mesh to draw.
 			colour = base.darkened(.05 + .09 * _polygon_shade(p)).lerp(Color("#6E5548"), (1.0 - smoothstep(.4, 1.6, _polygon_edge_distance(p))) * .3)
 		_:
-			if h > 6.0: colour = base.lightened(.08).lerp(Color("#C9875C"), smoothstep(10.0, 20.0, h))
+			# Open Plains: butterscotch dust, darker basaltic sand in crater
+			# floors and hollows, paler ejecta round crater rims, and layered
+			# rock on the mesas.
+			var marks := plains_crater_marks(p)
+			colour = colour.lerp(Color("#5E4537"), marks.x * .55)
+			colour = colour.lerp(Color("#B9967A"), marks.y * .35)
+			if h > 5.0 and slope > .25: colour = colour.darkened(.05).lerp(Color("#8A6550"), .4)
 	# Gentle mottling so level ground never reads as one flat sheet.
 	colour = colour.darkened(.035 * (_noise(p, 3.1) + 1.0))
 	# Steep faces are darker, so landforms read clearly in flat site light.
@@ -252,7 +362,8 @@ static func _cached(tag: String, make: Callable) -> Resource:
 	return made
 
 static func build_ground(body: StaticBody3D) -> void:
-	var mesh: ArrayMesh = _cached("ground", func() -> ArrayMesh: return _grid_mesh(-INNER_EXTENT, INNER_EXTENT, INNER_STEP, -1.0))
+	var step := INNER_STEP_PLAINS if shape() == "plains" else INNER_STEP
+	var mesh: ArrayMesh = _cached("ground", func() -> ArrayMesh: return _grid_mesh(-INNER_EXTENT, INNER_EXTENT, step, -1.0))
 	var visual := MeshInstance3D.new()
 	visual.name = "SiteGround"
 	visual.mesh = mesh
@@ -276,7 +387,7 @@ static func build_horizon() -> MeshInstance3D:
 static func _ground_material() -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = GROUND_SHADER
-	material.set_shader_parameter("style", 1 if shape() == "ice" else 0)   # frost and frozen polygons
+	material.set_shader_parameter("style", 1 if shape() == "ice" else (2 if shape() == "plains" else 0))   # 1: frost; 2: realistic plains
 	return material
 
 ## Smooth-shaded grid: each vertex gets a normal from the height field and
@@ -326,9 +437,66 @@ static func _grid_mesh(from: float, to: float, step: float, skip_inside: float) 
 
 # ---------- rocks ----------
 
+## Open Plains rocks: many small, few big (a power law, like real boulder
+## fields), gathered round crater rims and at the feet of the mesas, part
+## buried and tilted to the ground. Off the build pad. Each placement may carry
+## "tilt" (radians, x and z) and "stretch" (a non-uniform scale).
+static func _plains_rocks() -> Array:
+	_plains_setup()
+	var s := settings()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2024
+	var placements: Array = []
+	var wanted := int(s.get("rock_count", 240))
+	var hotspots: Array = []
+	for crater in _plains_craters:
+		if (crater[0] as Vector2).length() < 150.0: hotspots.append([crater[0], float(crater[1]) * 1.1, float(crater[1]) * .5])
+	for mesa in s.get("mesas", []):
+		hotspots.append([Vector2(float(mesa[0]), float(mesa[1])), float(mesa[2]) + 12.0, 9.0])
+	var attempts := 0
+	while placements.size() < wanted and attempts < wanted * 40:
+		attempts += 1
+		var p: Vector2
+		if rng.randf() < .55 and not hotspots.is_empty():
+			var spot: Array = hotspots[rng.randi() % hotspots.size()]
+			var angle := rng.randf() * TAU
+			p = (spot[0] as Vector2) + Vector2.from_angle(angle) * (float(spot[1]) + rng.randf_range(-1.0, 1.0) * float(spot[2]))
+		else:
+			p = Vector2(rng.randf_range(-122.0, 122.0), rng.randf_range(-122.0, 122.0))
+		if p.length() > 124.0 or _pad_distance(p) < 3.0: continue
+		var size := clampf(.35 * pow(rng.randf(), -0.45), .3, 2.2) * float(s.get("rock_scale", 1.0))
+		var ground := height(p.x, p.y)
+		# Sit into the ground and lean with the slope.
+		var e := 1.0
+		var tilt := Vector2(atan2(height(p.x, p.y + e) - ground, e), -atan2(height(p.x + e, p.y) - ground, e))
+		tilt += Vector2(rng.randf_range(-.12, .12), rng.randf_range(-.12, .12))
+		placements.append({"mesh": ROCK_MODELS[rng.randi() % ROCK_MODELS.size()], "position": Vector3(p.x, ground - .12 * size, p.y), "scale": size, "yaw": rng.randf_range(0.0, 360.0),
+			"tilt": tilt, "stretch": Vector3(rng.randf_range(.85, 1.2), rng.randf_range(.7, 1.1), rng.randf_range(.85, 1.2))})
+	return placements
+
+## Small stones near you (no collision): [Transform3D]. Open Plains only.
+static func pebble_transforms(count := 3500) -> Array:
+	if shape() != "plains": return []
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	var out: Array = []
+	var attempts := 0
+	while out.size() < count and attempts < count * 4:
+		attempts += 1
+		var p := Vector2(rng.randf_range(-118.0, 118.0), rng.randf_range(-118.0, 118.0))
+		if p.length() > 120.0 or _pad_distance(p) < 1.5: continue
+		# More stones on rims and ejecta, fewer in sand-filled hollows.
+		var marks := plains_crater_marks(p)
+		if rng.randf() < marks.x * .7: continue
+		var size := rng.randf_range(.07, .3) * (1.0 + marks.y)
+		var basis := Basis.from_euler(Vector3(rng.randf_range(-.4, .4), rng.randf_range(0.0, TAU), rng.randf_range(-.4, .4))).scaled(Vector3(size, size * rng.randf_range(.5, .9), size * rng.randf_range(.8, 1.2)))
+		out.append(Transform3D(basis, Vector3(p.x, height(p.x, p.y) - size * .25, p.y)))
+	return out
+
 ## Deterministic rock scatter for the site, kept off the build pad:
 ## [{mesh, position: Vector3, scale, yaw}].
 static func rock_placements() -> Array:
+	if shape() == "plains": return _plains_rocks()
 	var s := settings()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(str(MHGame.site().get("id", "plains")))

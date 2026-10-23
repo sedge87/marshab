@@ -34,7 +34,7 @@ void fragment() {
 	float mottle = noise3(world_pos * 1.4) * 0.6 + noise3(world_pos * 5.0) * 0.4;
 	vec3 colour = rock_colour * mix(0.75, 1.15, mottle);
 	// Small dark pits.
-	colour *= mix(1.0, 0.7, smoothstep(0.78, 0.86, noise3(world_pos * 9.0)));
+	colour *= mix(1.0, 0.82, smoothstep(0.8, 0.88, noise3(world_pos * 9.0)));
 	// Dust settles on upward faces.
 	colour = mix(colour, dust_colour, smoothstep(0.55, 0.95, world_normal.y) * 0.55);
 	ALBEDO = colour;

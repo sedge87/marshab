@@ -19,6 +19,9 @@ const EMBLEMS := ["rocket", "orbit", "satellite", "mountain-snow", "sun", "atom"
 # direction towards the sun; energies are tuned for Godot's Compatibility renderer.
 const PALETTES := {
 	"day": {"sky_top": Color("#A06C49"), "sky_horizon": Color("#E6B98F"), "glow": Color("#FFF0D8"), "sun": Vector3(.62, .52, .58), "sun_colour": Color("#FFE9CF"), "sun_energy": 0.8, "ambient": Color("#E8C3A0"), "ambient_energy": 0.38, "ground": Color("#996142"), "fog": Color("#D5A07A"), "fog_density": .0024, "exposure": 0.85, "window": .9},
+	# Open Plains (realistic pass): butterscotch sky, thicker haze toward the
+	# horizon, a stronger sun and less fill, so the ground has shape.
+	"plains": {"sky_top": Color("#9A7155"), "sky_horizon": Color("#E2BC97"), "glow": Color("#FFF0D8"), "sun": Vector3(.62, .52, .58), "sun_colour": Color("#FFF2E6"), "sun_energy": 1.0, "ambient": Color("#C7AC98"), "ambient_energy": 0.3, "ground": Color("#BF9474"), "fog": Color("#BD9272"), "fog_density": .0019, "exposure": 0.8, "window": .9},
 	"cold": {"sky_top": Color("#8E7466"), "sky_horizon": Color("#E2CDBB"), "glow": Color("#FFF6EA"), "sun": Vector3(.55, .45, .65), "sun_colour": Color("#FFF1E2"), "sun_energy": 0.78, "ambient": Color("#E6D6C8"), "ambient_energy": 0.42, "ground": Color("#9C7A66"), "fog": Color("#D8C0AC"), "fog_density": .0026, "exposure": 0.85, "window": .9},
 	"golden": {"sky_top": Color("#563427"), "sky_horizon": Color("#D58E5E"), "glow": Color("#FFD6A2"), "sun": Vector3(.92, .14, .32), "sun_colour": Color("#FFC08A"), "sun_energy": 0.85, "ambient": Color("#C98B5F"), "ambient_energy": 0.3, "ground": Color("#814835"), "fog": Color("#B87550"), "fog_density": .003, "exposure": 0.82, "window": 1.8},
 	"dusk": {"sky_top": Color("#120E10"), "sky_horizon": Color("#6A4334"), "glow": Color("#9CCBE0"), "sun": Vector3(.95, .06, -.45), "sun_colour": Color("#DCE8EC"), "sun_energy": 0.65, "ambient": Color("#8C7E7A"), "ambient_energy": 0.42, "ground": Color("#3A2420"), "fog": Color("#4E3328"), "fog_density": .0034, "exposure": 1.05, "window": 3.6}
@@ -467,7 +470,9 @@ static func configure_sun(sun: DirectionalLight3D, palette: Dictionary) -> void:
 	sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_AND_SKY
 	sun.shadow_enabled = bool(setting("shadows"))
 	sun.shadow_bias = 0.04
-	sun.shadow_normal_bias = 1.2
+	# Pushes shadow sampling off gently sloping ground, so it doesn't stripe
+	# into rings ("shadow acne") around you.
+	sun.shadow_normal_bias = 2.2
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	sun.directional_shadow_max_distance = 46.0 if str(setting("preset")) != "high" else 80.0
 
