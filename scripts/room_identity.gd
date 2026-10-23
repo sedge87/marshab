@@ -256,27 +256,18 @@ static func _door_signs(builder: Node, holder: Node3D, base_y: float) -> void:
 
 # ---------- the colony emblem ----------
 
-## The emblem chosen on the colony screen, like a mission patch: a roundel
-## above every outside airlock door, and a larger one with the colony's name
-## on one outside wall of each room of two squares or more (never on a window).
+## The emblem chosen on the colony screen, painted straight onto the hull
+## like a tattoo (no badge round it), in the colony accent: on a side wall of
+## every airlock, and bigger, with the colony's name, on one outside wall of
+## each room of two squares or more (never on a window).
 static func _emblems(builder: Node, holder: Node3D, base_y: float) -> void:
-	for door in builder.root.find_children("*", "Node3D", true, false):
-		if not door.is_in_group("airlock_door") or door.is_queued_for_deletion(): continue
-		var position: Vector3 = door.position
-		var facing: Vector3 = door.transform.basis.z
-		var normal := Vector2(facing.x, facing.z).normalized()
-		for side: float in [1.0, -1.0]:
-			# The side that faces Mars.
-			if not builder._zone_at_point(Vector2(position.x, position.z) + normal * side * .8).is_empty(): continue
-			if builder._zone_at_point(Vector2(position.x, position.z) - normal * side * .8).is_empty(): continue
-			var at := Vector2(position.x, position.z) + normal * side * .32
-			_roundel(holder, Vector3(at.x, base_y + 2.62, at.y), atan2(normal.x * side, normal.y * side), .27, "")
 	var done := {}
 	for bay in builder.get("_hull_bays"):
 		var mid: Vector2 = bay.mid
 		var outward: Vector2 = bay.outward
 		var zone: Dictionary = builder._zone_at_point(mid - outward * .8)
-		if zone.is_empty() or str(zone.get("kind", "")) in ["corridor", "airlock", "vehicle_bay"]: continue
+		var kind := str(zone.get("kind", ""))
+		if zone.is_empty() or kind in ["corridor", "airlock", "vehicle_bay"]: continue
 		var cells: int = (zone.get("cells", []) as Array).size()
 		if cells > 0 and cells < 2: continue
 		var key: String = builder.simulation()._room_key(zone)
@@ -284,54 +275,68 @@ static func _emblems(builder: Node, holder: Node3D, base_y: float) -> void:
 		if builder._window_index_at(mid, builder._canonical_wall_dir(bay.tangent)) >= 0: continue
 		done[key] = true
 		var at := mid + outward * .2
-		_roundel(holder, Vector3(at.x, base_y + 1.55, at.y), atan2(outward.x, outward.y), .5, MHGame.colony_name.to_upper())
+		_tattoo(holder, Vector3(at.x, base_y + 1.55, at.y), atan2(outward.x, outward.y), 1.5, MHGame.colony_name.to_upper())
+	# Airlocks (their walls never take windows, so they aren't hull bays): a
+	# side wall that faces Mars, on the cell nearest the outer door.
+	var cell_size: float = builder.CELL
+	for zone in builder.zones:
+		if str(zone.get("kind", "")) != "airlock" or zone.has("angled_mount"): continue
+		var outside: Vector2i = builder._airlock_side(zone)
+		var cell: Vector2i = builder._airlock_end(zone.cells, outside, true)
+		for side in [Vector2i(outside.y, -outside.x), Vector2i(-outside.y, outside.x)]:
+			if builder._is_habitat_zone(builder._zone_across(cell, side)): continue
+			var normal := Vector2(side.x, side.y)
+			var at := Vector2(cell.x, cell.y) * cell_size + normal * (cell_size * .5 + .2)
+			_tattoo(holder, Vector3(at.x, base_y + 1.6, at.y), atan2(normal.x, normal.y), 1.1, "")
+			break
 
-static func _roundel(holder: Node3D, at: Vector3, yaw: float, radius: float, caption: String) -> void:
+const TATTOO_SHADER := """
+shader_type spatial;
+render_mode cull_back, shadows_disabled;
+uniform sampler2D emblem : source_color, filter_linear_mipmap;
+uniform vec4 ink : source_color = vec4(0.91, 0.54, 0.27, 1.0);
+float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vnoise(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y); }
+void fragment() {
+	float shape = texture(emblem, UV).a;
+	// Painted on and weathered by dust: slightly worn, never perfectly crisp.
+	float wear = smoothstep(0.25, 0.75, vnoise(UV * 26.0) * 0.6 + vnoise(UV * 90.0) * 0.4);
+	ALBEDO = ink.rgb;
+	ROUGHNESS = 0.7;
+	ALPHA = shape * mix(0.72, 0.95, wear);
+}
+"""
+
+static func _tattoo(holder: Node3D, at: Vector3, yaw: float, size: float, caption: String) -> void:
 	var node := Node3D.new()
 	node.name = "ColonyEmblem"
 	node.position = at
 	node.rotation.y = yaw
 	holder.add_child(node)
-	# A graphite rim, the accent disc, then the emblem in white.
-	var rim := MeshInstance3D.new()
-	var rim_mesh := CylinderMesh.new()
-	rim_mesh.top_radius = radius * 1.12; rim_mesh.bottom_radius = radius * 1.12; rim_mesh.height = .02; rim_mesh.radial_segments = 40
-	rim.mesh = rim_mesh
-	rim.rotation.x = PI * .5
-	rim.material_override = _material(Color("#4C5A61"))
-	node.add_child(rim)
-	var disc := MeshInstance3D.new()
-	var disc_mesh := CylinderMesh.new()
-	disc_mesh.top_radius = radius; disc_mesh.bottom_radius = radius; disc_mesh.height = .03; disc_mesh.radial_segments = 40
-	disc.mesh = disc_mesh
-	disc.rotation.x = PI * .5
-	disc.position.z = .006
-	disc.material_override = MHGame.accent_material()
-	node.add_child(disc)
 	var icon := MeshInstance3D.new()
 	var quad := QuadMesh.new()
-	quad.size = Vector2(radius * 1.25, radius * 1.25)
+	quad.size = Vector2(size, size)
 	icon.mesh = quad
-	icon.position.z = .024
-	var material := StandardMaterial3D.new()
-	material.albedo_texture = MHIcons.texture(MHGame.emblem, 128)
-	material.albedo_color = Color("#F6F4EE")
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.roughness = .5
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = TATTOO_SHADER
+	material.set_shader_parameter("emblem", MHIcons.texture(MHGame.emblem, 256))
+	material.set_shader_parameter("ink", MHGame.accent())
 	icon.material_override = material
+	icon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.add_child(icon)
-	for child in node.get_children(): (child as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if caption.length() >= 2:
 		var label := Label3D.new()
 		label.text = caption
-		label.font = MHStyle.font(800, false, 3)
-		label.font_size = 48
-		label.pixel_size = .004
-		label.modulate = Color("#F6F4EE")
-		label.outline_modulate = Color("#2C353A")
-		label.outline_size = 10
+		label.font = MHStyle.font(800, false, 6)
+		label.font_size = 64
+		label.pixel_size = .0045
+		label.modulate = MHGame.accent()
+		label.outline_size = 0
 		label.double_sided = false
-		label.position = Vector3(0, -radius - .2, .03)
+		label.shaded = true
+		label.position = Vector3(0, -size * .5 - .16, .002)
 		node.add_child(label)
 
 # ---------- helpers ----------
