@@ -262,11 +262,17 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 		else: no_room.append("%s (%s)" % [str(r.label), str(BuildController.ZONE_TYPES.get(str(r.room), {}).get("label", r.room))])
 	var work := float(have_room) / n
 	out.append({"id": "work", "label": "Meaningful work", "score": work, "missing": "" if no_room.is_empty() else "No work room for: " + ", ".join(no_room)})
-	# 6. Contact with Earth.
+	# 6. Contact with Earth: the mast outside and a communications station in
+	# a Communications room, both powered.
 	var antenna := (inv.items as Array).any(func(i): return str(i.id) == "comms_antenna") and bool(tiers.get(4, false))
-	var contact := 1.0 if antenna and blackout_hours_left <= 0.0 else 0.0
-	out.append({"id": "contact", "label": "Contact with Earth", "score": contact,
-		"missing": "" if contact > 0.0 else ("Blackout: the Sun is between Mars and Earth" if blackout_hours_left > 0.0 else "No powered comms antenna")})
+	var station := false
+	for index in range(rooms.size()):
+		if str(rooms[index].kind) == "communications" and _ids_in(inv, index).has("communications_station"): station = true
+	var contact := 1.0 if antenna and station and blackout_hours_left <= 0.0 else 0.0
+	var why := "Blackout: the Sun is between Mars and Earth"
+	if not antenna: why = "No powered Communications Mast outside"
+	elif not station: why = "No communications station in a Communications room"
+	out.append({"id": "contact", "label": "Contact with Earth", "score": contact, "missing": "" if contact > 0.0 else why})
 	return out
 
 func wellbeing_target(need_list: Array, p: Dictionary, inv: Dictionary) -> float:

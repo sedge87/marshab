@@ -69,7 +69,9 @@ func _ready() -> void:
 	header.add_child(cameras_button)
 	var alerts := get_tree().get_first_node_in_group("habitat_alerts")
 	var count: int = (alerts.history as Array).size() if alerts != null else 0
-	if MHMissions.active():
+	var habitat_world := get_tree().get_first_node_in_group("habitat_world")
+	var record: Dictionary = habitat_world.get("campaign_record") if habitat_world != null else {}
+	if MHMissions.active() or not record.is_empty():
 		var dossier_button := MHStyle.button("Dossier", "secondary", "book-open")
 		dossier_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		dossier_button.pressed.connect(_show_dossier)

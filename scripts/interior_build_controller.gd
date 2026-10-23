@@ -559,6 +559,13 @@ func _remove_target() -> void:
 		builder.remove_free_interior_equipment(flat)
 		MHAudio.sfx("remove")
 		return
+	# Thin wall-mounted items (a corridor light strip) are hard to hit: aiming
+	# at the wall right where one is picks it.
+	var mounted := _wall_item_at(hit.position)
+	if not mounted.is_empty():
+		builder.remove_free_interior_equipment(mounted)
+		MHAudio.sfx("remove")
+		return
 	# Interior doors: aim at the hatch or the wall right beside it to seal
 	# that wall again.
 	var door_index := builder.interior_door_index_near(hit.position)
@@ -570,6 +577,22 @@ func _remove_target() -> void:
 	if window_index >= 0:
 		builder.remove_window(window_index)
 		MHAudio.sfx("remove")
+
+## The wall-mounted item nearest this point on a wall (within half its
+## length, plus a little), or "".
+func _wall_item_at(point: Vector3) -> String:
+	var best := ""
+	var nearest := INF
+	for item in builder.placed_interior:
+		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
+		if str(entry.get("placement", "floor")) != "wall": continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		var reach := float((entry.get("size_m", [.6]) as Array)[0]) * .5 + .25
+		var gap := at.distance_to(point)
+		if gap < reach and gap < nearest:
+			nearest = gap
+			best = str(item.get("placement_id", ""))
+	return best
 
 ## The walk-over item (no collision) whose footprint covers this floor point.
 func _walkover_at(point: Vector3) -> String:

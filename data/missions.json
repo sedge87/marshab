@@ -402,7 +402,8 @@
         "Press T to test. You can walk around the base too: it's yours now."
       ],
       "unlock_items": [
-        "camera_mast"
+        "camera_mast",
+        "comms_antenna"
       ]
     },
     {
@@ -414,19 +415,19 @@
       "player": "crew",
       "crew": 4,
       "payload_kg": 6000,
-      "sols": 8,
+      "sols": 11,
       "events": [
         {
           "type": "storm",
           "sol": 2,
-          "sols": 5,
+          "sols": 7,
           "solar_cut": 0.9
         }
       ],
       "previous_line": "The crew are settled in",
-      "situation": "Dust storm season has arrived, and this one is planet-wide. Mission Control forecasts five sols of dust so thick it blocks nine-tenths of the sunlight: the solar arrays will make almost nothing. Life support must stay on the whole time, even if other things have to switch off.",
-      "brief": "A five-sol, planet-wide dust storm is coming. Solar power will drop to a tenth.",
-      "goal": "Keep life support powered all the way through the storm, and keep the crew's health above 80%. This landing brings a compact nuclear reactor.",
+      "situation": "Dust storm season has arrived, and this one is planet-wide, like the 2018 storm that ended the Opportunity rover's mission. Mission Control forecasts seven sols of dust so thick it blocks nine-tenths of the sunlight: the solar arrays will make almost nothing. Life support must stay on the whole time, even if other things have to switch off.",
+      "brief": "A seven-sol, planet-wide dust storm is coming. Solar power will drop to a tenth.",
+      "goal": "Keep life support powered and the habitat warm all the way through the storm, and keep the crew's health above 80%. This landing brings one compact nuclear reactor: it helps, but it can't carry the base on its own.",
       "unlock_items": [
         "power_distribution_panel"
       ],
@@ -434,20 +435,20 @@
         {
           "id": "reactor",
           "text": "Install the compact reactor",
-          "how": "It arrived on this landing. Site plan, Power tab: it makes power day and night, storm or not. NASA's Kilopower project built and tested one like it for future Mars bases.",
+          "how": "It arrived on this landing. Site plan, Power tab: 5 kW day and night, storm or not, like NASA's Kilopower. That's less than the base uses, so it can't do it alone: you'll need batteries charged before the storm too.",
           "check": "zone",
           "kind": "reactor"
         },
         {
           "id": "test",
           "text": "Test through the storm",
-          "how": "Press T. It runs 8 sols, with a 5-sol storm from sol 2 that blocks 90% of the sunlight. Watch the battery line on the graph.",
+          "how": "Press T. It runs 11 sols, with a 7-sol storm from sol 2 that blocks 90% of the sunlight. Watch the battery line on the graph.",
           "check": "tested"
         },
         {
           "id": "pass",
           "text": "Pass the test and complete the mission",
-          "how": "Life support switches off last. If it still ran out, add storage, or power that doesn't need the sun.",
+          "how": "Heating is the big load, and it switches off before life support. Ran out? Add battery banks and charge them before the storm, add solar arrays (even 10% of the sun adds up), and turn lights off in empty rooms.",
           "check": "passed"
         }
       ],
@@ -456,6 +457,12 @@
           "id": "life_support",
           "text": "Life support has power through the whole storm",
           "check": "life_support_powered"
+        },
+        {
+          "id": "warm",
+          "text": "The habitat stays above 15 °C",
+          "check": "min_temp",
+          "min": 15
         },
         {
           "id": "health",
@@ -480,7 +487,8 @@
       ],
       "unlock_zones": [
         "reactor"
-      ]
+      ],
+      "max_reactors": 1
     },
     {
       "id": "self_sufficiency",
@@ -630,8 +638,8 @@
       "steps": [
         {
           "id": "locker",
-          "text": "Choose a shelter room",
-          "how": "Place a Storm Shelter Locker (emergency food, water and dosimeters) in a small room. That room becomes the storm shelter.",
+          "text": "Make a storm shelter: place a Storm Shelter Locker",
+          "how": "Interior build (Shift+B), in a small room: that room becomes the storm shelter, where the crew wait out a solar particle event.",
           "check": "item",
           "item": "storm_shelter_locker",
           "learn": "radiation"
@@ -754,9 +762,15 @@
           "item": "medical_cabinet"
         },
         {
+          "id": "comms",
+          "text": "Set up the Communications room",
+          "check": "contact",
+          "how": "Build a Communications room and put a communications station inside it, then place the Communications Mast outside (site plan, Surface gear tab). Together they're the crew's contact with Earth."
+        },
+        {
           "id": "wellbeing",
           "text": "Meet the crew's needs",
-          "how": "The Crew screen lists six needs: sleep, space, meals together, a bit of home, meaningful work and contact with Earth. Meet at least four.",
+          "how": "The Crew screen (Mission Control, Crew) lists six needs: sleep, space, meals together, a bit of home, meaningful work and contact with Earth. Meet at least four. Each one says what it's missing.",
           "check": "needs",
           "min": 4,
           "learn": "wellbeing"
@@ -833,7 +847,7 @@
       "player": "crew",
       "crew": 6,
       "payload_kg": 8000,
-      "sols": 10,
+      "sols": 4,
       "step_hours": 0.1,
       "sample_hours": 0.25,
       "food_delivery_sols": 10,
@@ -861,7 +875,7 @@
         {
           "id": "reserve",
           "text": "Add an air reserve rack",
-          "how": "Stored air to refill a vented section once the hole is patched.",
+          "how": "Stored air (mostly nitrogen) to refill a section once the hole is patched. Not the Oxygen Reserve, which is breathing oxygen for when the oxygen generator fails. It goes in Life Support, Storage, Engineering, an airlock or a corridor, and works for the whole base wherever it is. Each rack refills about 2 floor squares.",
           "check": "item",
           "item": "air_reserve_rack",
           "learn": "breach"
@@ -877,7 +891,7 @@
         {
           "id": "test",
           "text": "Test your design",
-          "how": "Press T. A breach hits Living Quarters on sol 3 at 02:00.",
+          "how": "Press T. A breach hits Living Quarters on sol 3 at 02:00. The Test runs 4 sols.",
           "check": "tested"
         },
         {
@@ -999,7 +1013,7 @@
         {
           "id": "spares",
           "text": "A spare parts rack",
-          "how": "Eight spare parts. The Engineer uses one for each repair, and a running regolith printer makes more.",
+          "how": "Interior build (Shift+B): a Spare Parts Rack (Storage, Engineering, Life Support or a corridor) holds eight parts. The Engineer uses one for each repair, and a running regolith printer makes more.",
           "check": "item",
           "item": "spare_parts_rack",
           "learn": "breakdowns"
@@ -1020,7 +1034,7 @@
         {
           "id": "food",
           "text": "Grow half the crew's food",
-          "how": "The next resupply is 100 sols away. Grow trays, planters and seedling stations all count.",
+          "how": "The next resupply is 100 sols away. Grow trays, planters and seedling stations all count. The step shows how much you grow now.",
           "check": "food_share",
           "min": 0.5,
           "learn": "food"
@@ -1028,7 +1042,7 @@
         {
           "id": "test",
           "text": "Test three futures",
-          "how": "Press T. It runs 200 sols three times, with different breakdowns and events each time.",
+          "how": "Press T. It runs 200 sols three times (three futures), each with different breakdowns and events. It takes a little while.",
           "check": "tested"
         },
         {

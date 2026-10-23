@@ -211,14 +211,12 @@ func _refresh_panel() -> void:
 	_panel_body.add_child(MHStyle.mono("PAYLOAD  %s of %s used" % [MHStyle.kg(used), MHStyle.kg(budget)], 12, MHStyle.TEXT_SECONDARY if used <= budget else MHStyle.DANGER))
 	var steps: Array = mission.get("steps", [])
 	if _compact:
+		# Collapsed: just the current step, but all of it.
 		var next_step := MHMissions.current_step()
 		if not next_step.is_empty():
 			var row := MHStyle.hbox(8)
 			row.add_child(MHStyle.icon("circle-arrow-right", 18, MHStyle.accent))
-			var text := MHStyle.body(str(next_step.text), 14, MHStyle.TEXT_PRIMARY)
-			text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			text.custom_minimum_size.x = 340
-			row.add_child(text)
+			row.add_child(_step_words(next_step, true))
 			_panel_body.add_child(row)
 		_panel_body.add_child(MHStyle.mono("H  SHOW STEPS  ·  T TEST  ·  J BRIEF", 11, MHStyle.TEXT_MUTED))
 		return
@@ -231,17 +229,7 @@ func _refresh_panel() -> void:
 			var is_next := str(step.id) == str(next.get("id", ""))
 			var row := MHStyle.hbox(8)
 			row.add_child(MHStyle.icon("circle-check" if is_done else ("circle-arrow-right" if is_next else "circle-dashed"), 18, MHStyle.VALID if is_done else (MHStyle.accent if is_next else MHStyle.TEXT_MUTED)))
-			var words := MHStyle.vbox(2)
-			var text := MHStyle.body(str(step.text), 14 if is_next else 13, MHStyle.TEXT_PRIMARY if is_next else MHStyle.TEXT_MUTED)
-			text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			text.custom_minimum_size.x = 340
-			words.add_child(text)
-			if is_next:
-				var how := MHStyle.body(str(step.get("how", "")), 13, MHStyle.TEXT_SECONDARY)
-				how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				how.custom_minimum_size.x = 340
-				words.add_child(how)
-			row.add_child(words)
+			row.add_child(_step_words(step, is_next))
 			_panel_body.add_child(row)
 		_panel_body.add_child(MHStyle.eyebrow("The test checks", MHStyle.accent, 11))
 	var results := {}
@@ -258,6 +246,27 @@ func _refresh_panel() -> void:
 		_panel_body.add_child(row)
 	var versions := MHMissions.versions(str(mission.id))
 	_panel_body.add_child(MHStyle.mono("%s  ·  T TEST  ·  J BRIEF  ·  K HOW IT WORKS  ·  H HIDE" % ("NOT TESTED YET" if versions.is_empty() else "VERSION %d TESTED" % versions.size()), 11, MHStyle.TEXT_MUTED))
+
+## A step's words: the step, and for the current one how to do it and how
+## far it's got ("2 of 4 doubled · still need a second water reclaimer").
+func _step_words(step: Dictionary, current: bool) -> VBoxContainer:
+	var words := MHStyle.vbox(2)
+	var text := MHStyle.body(str(step.text), 14 if current else 13, MHStyle.TEXT_PRIMARY if current else MHStyle.TEXT_MUTED)
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.custom_minimum_size.x = 340
+	words.add_child(text)
+	if not current: return words
+	var how := MHStyle.body(str(step.get("how", "")), 13, MHStyle.TEXT_SECONDARY)
+	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	how.custom_minimum_size.x = 340
+	words.add_child(how)
+	var progress := MHMissions.step_progress(step, world.builder)
+	if not progress.is_empty():
+		var now := MHStyle.body("Now: " + progress, 13, MHStyle.accent)
+		now.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		now.custom_minimum_size.x = 340
+		words.add_child(now)
+	return words
 
 # ---------- overlays ----------
 
@@ -668,6 +677,7 @@ func _carry_on(mode: String, slot: int) -> void:
 	var state: Dictionary = world.current_state()
 	state["game_mode"] = mode
 	state["missions_progress"] = {}
+	state["campaign_record"] = MHMissions.save_state()
 	if MHGame.save_habitat(slot, state, "free_play") != OK: return
 	if MHGame.prepare_habitat_load(slot, "free_play"):
 		get_tree().paused = false

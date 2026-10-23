@@ -88,11 +88,40 @@ func _initialize() -> void:
 	if verbose: print("  Mission 5 (as built):\n    " + _report(m5_weak))
 	_check(not bool(m5_weak.passed), "Mission 4's base doesn't simply pass Mission 5's planet-wide storm")
 	b.zones.append({"kind": "reactor", "cells": [c + Vector2i(-6, 6)], "cost": 0})
+	# Mission 5 brings one reactor: a second is refused.
+	b.kind = "reactor"
+	var second_reactor := str(b._invalid_reason([c + Vector2i(-4, 6)]))
+	_check(second_reactor.contains("only 1 reactor"), "Mission 5 allows just the one reactor (%s)" % second_reactor)
+	# The reactor (5 kW) plus storage charged before the storm gets through.
+	_item(b, "battery_bank", c, 0, 1, 8)
 	b._rebuild()
 	b.simulation().invalidate()
 	var m5 := MHMissions.run_test(b)
 	if verbose or not bool(m5.passed): print("  Mission 5 (with a reactor):\n    " + _report(m5))
-	_check(bool(m5.passed), "a reactor carries life support through Mission 5's storm")
+	_check(bool(m5.passed), "a reactor and well-stocked batteries carry the base through Mission 5's storm")
+	# But a reactor alone isn't enough (24 Oct playtest: 4 panels and a reactor
+	# passed): with 4 arrays and one battery bank it fails.
+	var keep_zones: Array = b.zones.duplicate(true)
+	var keep_items: Array = b.placed_interior.duplicate(true)
+	var thin_solar := [0]   # arrays: lambdas capture plain ints by value
+	b.zones = b.zones.filter(func(z):
+		if str(z.kind) != "solar": return true
+		thin_solar[0] += 1
+		return thin_solar[0] <= 4)
+	var thin_batteries := [0]
+	b.placed_interior = b.placed_interior.filter(func(i):
+		if str(i.get("id", "")) != "battery_bank": return true
+		thin_batteries[0] += 1
+		return thin_batteries[0] <= 1)
+	b._rebuild()
+	b.simulation().invalidate()
+	var m5_thin := MHMissions.run_test(b)
+	if verbose: print("  Mission 5 (reactor, 4 arrays, 1 battery): " + _report(m5_thin))
+	_check(not bool(m5_thin.passed), "a reactor with only 4 arrays and one battery bank doesn't get through Mission 5's storm")
+	b.zones = keep_zones
+	b.placed_interior = keep_items
+	b._rebuild()
+	b.simulation().invalidate()
 
 	# --- Mission 6: six crew, 100 sols ---
 	MHMissions.progress.current = "self_sufficiency"

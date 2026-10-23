@@ -42,6 +42,9 @@ var site_weather: Node3D
 var alerts: Node    # scripts/habitat_alerts.gd: habitat alerts (backlog 26)
 var earth_link: Node   # scripts/mission_control_link.gd: delayed messages from Earth
 var _earth_link_state := {}
+## The finished campaign's record (versions, reports) for a base carried on
+## into free play, so Mission Control can still open its dossier.
+var campaign_record := {}
 var sleep: Node   # scripts/sleep.gd: sleep at a bunk to pass the time
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
@@ -92,6 +95,10 @@ func _ready() -> void:
 	_build_landscape()
 	if MHMissions.active() and MHGame.pending_save_state.has("missions_progress"):
 		MHMissions.load_state(MHGame.pending_save_state.get("missions_progress", {}) as Dictionary)
+	elif not (MHGame.pending_save_state.get("campaign_record", {}) as Dictionary).is_empty():
+		# A base carried on from a finished campaign keeps its dossier.
+		campaign_record = (MHGame.pending_save_state.campaign_record as Dictionary).duplicate(true)
+		MHMissions.progress = campaign_record.duplicate(true)
 	lander = CREW_LANDER_SCRIPT.new()
 	add_child(lander)
 	_land_lander()
@@ -827,6 +834,7 @@ func current_state() -> Dictionary:
 		"builder": builder.export_habitat_state(),
 		"lander": {"position": lander.global_position, "yaw": lander.rotation.y},
 		"missions_progress": MHMissions.save_state() if MHMissions.active() else {},
+		"campaign_record": campaign_record,
 		"player_position": player.global_position,
 		"player_rotation_y": player.rotation.y,
 		"day_night": day_night.export_state() if day_night != null else {},

@@ -143,7 +143,7 @@ static func update_steps(builder: Node, flags: Dictionary) -> Array:
 	return ticked
 
 ## Steps that need what's built now (zones, items), re-checked as you build.
-const LIVE_STEPS := ["zone", "item", "item_any", "food_share", "shelter", "needs", "sections", "redundant"]
+const LIVE_STEPS := ["zone", "item", "item_any", "food_share", "shelter", "needs", "sections", "redundant", "contact"]
 ## Steps un-ticked by the last update_steps (something they needed was removed).
 static var last_unticked: Array = []
 
@@ -156,13 +156,30 @@ static func step_progress(step: Dictionary, builder: Node) -> String:
 	match str(step.get("check", "")):
 		"shelter": return "%d of %d points" % [roundi(shelter_points(builder)), int(step.get("min", 20))]
 		"needs": return "%d of 6" % needs_met(builder)
+		"contact":
+			var mast: bool = builder.placed_surface.any(func(i): return str(i.get("id", "")) == "comms_antenna")
+			return "station %s · mast %s" % ["✓" if station_ready(builder) else "missing", "✓" if mast else "missing"]
 		"sections": return "biggest %d%%" % roundi(largest_section(builder) * 100.0)
 		"redundant":
-			var doubled := (step.get("items", []) as Array).filter(func(id): return builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(id)).size() >= 2).size()
-			return "%d of %d doubled" % [doubled, (step.get("items", []) as Array).size()]
+			var items: Array = step.get("items", [])
+			var single: Array = items.filter(func(id): return builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(id)).size() < 2)
+			var names: Array = single.map(func(id): return str(EquipmentCatalog.get_entry(str(id)).get("label", id)).to_lower())
+			return "%d of %d doubled%s" % [items.size() - single.size(), items.size(), (" · still need a second " + ", ".join(names)) if not names.is_empty() else ""]
 	if str(step.get("check", "")) != "item" or int(step.get("count", 1)) <= 1: return ""
 	var have: int = builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(step.item)).size()
 	return "%d of %d" % [have, int(step.count)]
+
+## Contact with Earth is set up: a communications station in a Communications
+## room, and the Communications Mast outside.
+static func contact_ready(builder: Node) -> bool:
+	return station_ready(builder) and builder.placed_surface.any(func(i): return str(i.get("id", "")) == "comms_antenna")
+
+static func station_ready(builder: Node) -> bool:
+	for item in builder.placed_interior:
+		if str(item.get("id", "")) != "communications_station": continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		if str(builder._zone_at_point(Vector2(at.x, at.z)).get("kind", "")) == "communications": return true
+	return false
 
 ## The share of the mission crew's daily food that the placed growers make.
 static func food_share(builder: Node, mission: Dictionary) -> float:
@@ -222,6 +239,7 @@ static func _step_met(step: Dictionary, builder: Node, flags: Dictionary, missio
 		"crew_named": return not (progress.get("crew_names", []) as Array).is_empty()
 		"needs": return needs_met(builder) >= int(step.get("min", 4))
 		"sections": return largest_section(builder) <= float(step.get("max", .4)) + .001
+		"contact": return contact_ready(builder)
 		"redundant": return (step.get("items", []) as Array).all(func(id): return builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(id)).size() >= 2)
 		"tested": return not versions(mission_id).is_empty()
 		"passed": return versions(mission_id).any(func(v): return bool(v.passed))

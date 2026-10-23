@@ -20,7 +20,7 @@
     "ice_drill_l": 120.0,
     "ice_typical": 0.8,
     "solar_peak_kw": 10.0,
-    "reactor_kw": 10.0,
+    "reactor_kw": 5.0,
     "battery_kwh": 50.0,
     "partition_cargo_kg": 60.0,
     "airlock_air_kg": 0.5,
@@ -440,7 +440,7 @@
     "surface_reactor": {
       "room": "outside",
       "cargo_kg": 2500.0,
-      "makes_power_kw": 10.0
+      "makes_power_kw": 5.0
     },
     "ice_drill": {
       "room": "outside",

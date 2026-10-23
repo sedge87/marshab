@@ -1934,6 +1934,9 @@ func _invalid_reason(cells: Array) -> String:
 		var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
 		if not site_reason.is_empty(): return site_reason
 	if not MHMissions.zone_unlocked(kind): return "Not delivered yet: this arrives in a later mission"
+	if kind=="reactor" and MHMissions.active():
+		var allowed:=int(MHMissions.current().get("max_reactors",99))
+		if zones.filter(func(z): return str(z.kind)=="reactor").size()>=allowed: return "This landing brought only %d reactor%s" % [allowed,"" if allowed==1 else "s"]
 	for cell in cells:
 		if lander != null and lander.keeps_clear(Vector2(cell.x * CELL, cell.y * CELL), CELL * .5): return "Too close to the lander"
 		if MHMissions.in_blast_zone(Vector2(cell.x * CELL, cell.y * CELL)): return "Inside the landing zone: engine blast would damage it"
