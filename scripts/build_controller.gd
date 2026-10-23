@@ -280,12 +280,23 @@ func _site_build_limit() -> float:
 func _ready() -> void:
 	add_to_group("habitat_builder")
 	habitat_changed.connect(_refresh_mode_switcher)
+	habitat_changed.connect(func() -> void: _mark_interior_layer.call_deferred())
 	root=Node3D.new(); root.name="StudentHabitat"; world.add_child(root)
 	preview=Node3D.new(); preview.name="ZonePreview"; world.add_child(preview)
 	furnishing=Node3D.new(); furnishing.name="HabitatEquipment"; world.add_child(furnishing)
 	surface_furnishing=Node3D.new(); surface_furnishing.name="SurfaceEquipment"; world.add_child(surface_furnishing)
 	if display_only: return
 	_camera(); _grid(); _ui(); _create_player_marker()
+
+## Everything the habitat is made of (and furnished with) also sits on visual
+## layer 2, so the indoor fill lights (OriginalMarsEnvironment) light the
+## inside of the base and nothing else: the night outside stays dark.
+const INTERIOR_LAYER := 2
+func _mark_interior_layer() -> void:
+	for holder in [root, furnishing]:
+		if holder == null or not is_instance_valid(holder): continue
+		for node in holder.find_children("*", "VisualInstance3D", true, false):
+			(node as VisualInstance3D).layers |= INTERIOR_LAYER
 
 func _unhandled_input(event: InputEvent) -> void:
 	if display_only: return
@@ -1093,6 +1104,28 @@ func move_free_interior_equipment(placement_id: String, world_position: Vector3,
 	habitat_changed.emit()
 	return true
 
+## Nothing may stand in a doorway or hang on a door: a box through every door
+## (its width, and a metre each side) must stay clear of the item's footprint.
+func _blocks_doorway(entry: Dictionary, world_position: Vector3, rotation_y: float) -> bool:
+	var size := _free_interior_size(entry)
+	var facing := Vector2(cos(rotation_y), -sin(rotation_y))
+	var side := Vector2(-facing.y, facing.x)
+	var points: Array = [Vector2(world_position.x, world_position.z)]
+	for sign_x in [-1.0, 1.0]:
+		for sign_z in [-1.0, 1.0]:
+			points.append(Vector2(world_position.x, world_position.z) + facing * size.x * .5 * sign_x + side * size.z * .5 * sign_z)
+	for node in get_tree().get_nodes_in_group("airlock_door"):
+		var door := node as Node3D
+		if door == null or not door.is_inside_tree() or door.is_queued_for_deletion(): continue
+		if world_position.y > door.global_position.y + 2.6: continue
+		var along := Vector2(door.global_transform.basis.x.x, door.global_transform.basis.x.z).normalized()
+		var through := Vector2(door.global_transform.basis.z.x, door.global_transform.basis.z.z).normalized()
+		var centre := Vector2(door.global_position.x, door.global_position.z)
+		for point in points:
+			var offset: Vector2 = point - centre
+			if absf(offset.dot(along)) < 1.3 and absf(offset.dot(through)) < 1.0: return true
+	return false
+
 func free_interior_invalid_reason(id: String, world_position: Vector3, surface_normal: Vector3, rotation_y := 0.0) -> String:
 	var entry := EquipmentCatalog.get_entry(id)
 	if entry.is_empty(): return "Unknown interior item"
@@ -1115,6 +1148,7 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 		if support.is_empty(): return "Set this on a table, desk, counter, shelf or crate"
 		if world_position.y + _free_interior_size(entry).y > _headroom(support, world_position.y): return "Too tall for this shelf"
 	if _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _blocks_doorway(entry, world_position, rotation_y): return "Keep the doorway clear"
 	# A free-positioned item must fit wholly inside valid room cells. Checking the
 	# four footprint corners prevents a player from burying it in the shell wall
 	# or bleeding it across into an incompatible room.
@@ -5394,7 +5428,7 @@ func _build_catalogue() -> void:
 	head.add_child(MHStyle.spacer())
 	catalogue_count=MHStyle.mono("",12,MHStyle.TEXT_MUTED); catalogue_count.size_flags_vertical=Control.SIZE_SHRINK_CENTER; head.add_child(catalogue_count)
 	var hint:=MHStyle.mono("   1-9  PICK    TAB  HIDE",12,MHStyle.TEXT_SECONDARY); hint.size_flags_vertical=Control.SIZE_SHRINK_CENTER; head.add_child(hint)
-	var scroll:=ScrollContainer.new(); scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; scroll.custom_minimum_size=Vector2(0,168); column.add_child(scroll)
+	var scroll:=ScrollContainer.new(); scroll.vertical_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; scroll.custom_minimum_size=Vector2(0,180); MHStyle.chunky_hscroll(scroll); column.add_child(scroll)
 	catalogue_grid=HBoxContainer.new(); catalogue_grid.add_theme_constant_override("separation",10); scroll.add_child(catalogue_grid)
 	equipment_list=MHStyle.vbox(12); equipment_list.visible=false; column.add_child(equipment_list)
 	# Details: preview stage (model or blueprint tile), then text and numbers.

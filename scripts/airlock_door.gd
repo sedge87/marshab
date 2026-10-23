@@ -69,26 +69,15 @@ func _leads_to_environment() -> bool:
 	# AirlockDoor instances are inner/bay/interior bulkheads.
 	return _door_name == "OUTER" or _door_name == "HANGAR"
 
+## Can this door open? Only when its own partner (the other end of the same
+## airlock, or bay) is sealed. Like a real airlock, the rest of the base stays
+## pressurised behind that inner door, so its doors carry on working.
 func _habitat_inner_doors_closed() -> bool:
-	if not _leads_to_environment():
-		return _partners_closed()
-	for node in get_tree().get_nodes_in_group("airlock_door"):
-		var door := node as AirlockDoor
-		if door != null and door != self and not door._leads_to_environment() and not door.is_closed():
-			return false
-	return true
+	return _partners_closed()
 
 func _seal_habitat_inner_doors() -> void:
-	if not _leads_to_environment():
-		for partner in _partners:
-			partner._request_close()
-		return
-	# Opening to Mars is a base-wide pressure event: close every inner hatch,
-	# not merely the airlock/hangar's immediate partner.
-	for node in get_tree().get_nodes_in_group("airlock_door"):
-		var door := node as AirlockDoor
-		if door != null and door != self and not door._leads_to_environment():
-			door._request_close()
+	for partner in _partners:
+		partner._request_close()
 
 func _request_close() -> void:
 	# A neighbouring door has requested a safe transfer. Cancel any request to
@@ -215,8 +204,7 @@ func _auto_step(delta: float) -> void:
 		if Vector2(offset.x, offset.z).length() < AUTO_RANGE and absf(offset.y) < 2.5: near = true
 	if near:
 		_auto_away = 0.0
-		# Never while a hatch to Mars is open: the interlock wins.
-		if _target_amount < .5 and _habitat_inner_doors_closed() and not _outer_hatch_open(): _target_amount = 1.0
+		if _target_amount < .5 and _habitat_inner_doors_closed(): _target_amount = 1.0
 	elif _target_amount > .5:
 		_auto_away += .15
 		if _auto_away > 1.2: _target_amount = 0.0
@@ -312,7 +300,7 @@ func _update_status() -> void:
 		_indicator_material.albedo_color=MHStyle.VALID
 		_indicator_material.emission=MHStyle.VALID*.8
 		_warning_light.light_energy=.18
-	elif is_automatic() and not _outer_hatch_open():
+	elif is_automatic():
 		_status.text="AUTOMATIC DOOR"
 		_status.modulate=MHStyle.INK_100
 		_indicator_material.albedo_color=MHStyle.INFO

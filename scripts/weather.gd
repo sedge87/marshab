@@ -60,20 +60,32 @@ func _process(delta: float) -> void:
 func _apply_visuals() -> void:
 	var on := effects_on()
 	var env = world.environment
-	# Indoors (habitat or lander cabin) the haze and its orange tint fade away
-	# quickly: the storm is outside the walls.
+	# Indoors the storm stays outside the walls but shows through the windows:
+	# the environment switches to fog that only starts a few metres away, and
+	# the dust blows past in a ring well beyond the room.
 	var indoors: bool = env != null and (env.inside_habitat or env.cabin_dim or world.builder.is_inside(world.player.global_position))
-	# Out into a storm it thickens over a couple of seconds, like the light
-	# adjusting; stepping inside clears it quickly.
-	var haze_target := _level if on and not indoors else 0.0
+	var haze_target := _level if on else 0.0
 	_haze = move_toward(_haze, haze_target, get_process_delta_time() * (.4 if haze_target > _haze else 1.6))
 	if not on: _haze = 0.0
 	if env != null: env.storm = _haze
 	if _storm_dust == null: return
-	var blowing: bool = on and _level > .05 and not indoors and not world.builder.build_mode
+	var blowing: bool = on and _level > .05 and not world.builder.build_mode
 	if _storm_dust.emitting != blowing: _storm_dust.emitting = blowing
+	_set_ring(_storm_dust, indoors, Vector3(9, 3, 9))
 	_storm_dust.visible = blowing or _storm_dust.emitting
 	_storm_dust.speed_scale = lerpf(.6, 1.4, _level)
+
+## Indoors, particles spawn in a ring outside (9-24 m away) instead of round you.
+static func _set_ring(particles: CPUParticles3D, indoors: bool, box: Vector3) -> void:
+	if indoors and particles.emission_shape != CPUParticles3D.EMISSION_SHAPE_RING:
+		particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+		particles.emission_ring_axis = Vector3.UP
+		particles.emission_ring_radius = 24.0
+		particles.emission_ring_inner_radius = 9.0
+		particles.emission_ring_height = box.y * 2.0
+	elif not indoors and particles.emission_shape != CPUParticles3D.EMISSION_SHAPE_BOX:
+		particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		particles.emission_box_extents = box
 
 # ---------- warnings ----------
 

@@ -216,6 +216,17 @@ static func theme() -> Theme:
 	_theme = t
 	return t
 
+## A chunky horizontal scroll bar for the build bars, easy to grab with a
+## mouse: a visible track and a tall grabber (the theme's default is a sliver).
+static func chunky_hscroll(scroll: ScrollContainer) -> void:
+	var bar := scroll.get_h_scroll_bar()
+	bar.custom_minimum_size.y = 16
+	bar.add_theme_stylebox_override("scroll", box(Color(1, 1, 1, .06), Color(0, 0, 0, 0), 6, 0, Vector4(2, 3, 2, 3)))
+	bar.add_theme_stylebox_override("grabber", box(Color(1, 1, 1, .34), Color(0, 0, 0, 0), 6))
+	bar.add_theme_stylebox_override("grabber_highlight", box(Color(1, 1, 1, .6), Color(0, 0, 0, 0), 6))
+	bar.add_theme_stylebox_override("grabber_pressed", box(accent, Color(0, 0, 0, 0), 6))
+	bar.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
 # The accent is user-overridable: rebuild the theme whenever it changes.
 static func set_accent(colour: Color) -> void:
 	accent = colour

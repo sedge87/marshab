@@ -156,6 +156,29 @@ const INTERIOR_FILL_ENERGY := .2
 const INTERIOR_DARK_ENERGY := .05   # power off: only what spills from screens and the head lamp
 const INDOOR_SUN := .3              # sunlight that leaks through walls (no shadows on low settings)
 const INTERIOR_FILL_COLOUR := Color("#E9E2D6")
+const NIGHT_FLOOR := .34                # share of the day's ambient left at midnight
+const NIGHT_TINT := Color("#8792AE")     # cool starlight
+## Fill lights for the inside of the habitat: from above (two angles) and a
+## softer bounce from below. They light only visual layer 2 (the habitat).
+const INTERIOR_FILLS := [[Vector3(-.4, -1.0, -.3), 1.0], [Vector3(.5, -1.0, .45), .8], [Vector3(.2, 1.0, -.35), .45]]
+var _interior_fills: Array[DirectionalLight3D] = []
+
+func _update_interior_fills(strength: float) -> void:
+	if _interior_fills.is_empty():
+		for spec in INTERIOR_FILLS:
+			var fill := DirectionalLight3D.new()
+			fill.name = "InteriorFill"
+			fill.light_cull_mask = 2
+			fill.shadow_enabled = false
+			fill.light_color = INTERIOR_FILL_COLOUR
+			fill.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
+			add_child(fill)
+			fill.look_at_from_position(Vector3.ZERO, Vector3(spec[0]), Vector3.FORWARD if absf((spec[0] as Vector3).normalized().y) > .99 else Vector3.UP)
+			_interior_fills.append(fill)
+	for i in range(_interior_fills.size()):
+		var fill := _interior_fills[i]
+		fill.visible = strength > .001
+		fill.light_energy = strength * float(INTERIOR_FILLS[i][1]) * 2.2
 ## Dust storm haze, 0 (clear) to 1 (full storm): a dimmer, browner sun, a
 ## sky the colour of the ground and thick ochre fog. Set by MHWeather (only
 ## when Weather effects are on; the storm itself happens either way).
@@ -174,8 +197,10 @@ func apply_daylight(sunlight: float) -> void:
 	var level := clampf(sunlight, 0.0, 1.0)
 	_apply_martian_sun_direction(level)
 	sun.light_energy = float(_palette_values.get("sun_energy", 0.8)) * lerpf(0.025, 1.0, level)
-	world_environment.environment.ambient_light_energy = float(_palette_values.get("ambient_energy", 0.35)) * lerpf(0.018, 1.0, level)
-	world_environment.environment.ambient_light_color = _palette_values.get("ambient", Color.WHITE)
+	# Night is dark but never pitch black: a faint, cool starlight floor, so
+	# shapes still read outside without the helmet light.
+	world_environment.environment.ambient_light_energy = float(_palette_values.get("ambient_energy", 0.35)) * lerpf(NIGHT_FLOOR, 1.0, level)
+	world_environment.environment.ambient_light_color = NIGHT_TINT.lerp(_palette_values.get("ambient", Color.WHITE), smoothstep(0.0, .35, level))
 	# Inside the lander: a dim, enclosed cabin, so stepping out into the
 	# sunlight is a moment (eased the same way as the habitat threshold).
 	_cabin_blend = move_toward(_cabin_blend, 1.0 if cabin_dim else 0.0, (get_process_delta_time() if is_inside_tree() else 1.0) / 1.5)
@@ -190,13 +215,11 @@ func apply_daylight(sunlight: float) -> void:
 	# The indoor level only changes while you're inside (lights switching), so
 	# stepping out fades from the room you actually left.
 	if inside_habitat: _indoor_energy = move_toward(_indoor_energy, INTERIOR_FILL_ENERGY if interior_fill else INTERIOR_DARK_ENERGY, delta * .4)
-	if _indoor_blend > 0.0:
-		var outdoor_energy: float = world_environment.environment.ambient_light_energy
-		var outdoor_colour: Color = world_environment.environment.ambient_light_color
-		var eased := smoothstep(0.0, 1.0, _indoor_blend)
-		world_environment.environment.ambient_light_energy = lerpf(outdoor_energy, _indoor_energy, eased)
-		world_environment.environment.ambient_light_color = outdoor_colour.lerp(INTERIOR_FILL_COLOUR, eased)
-		sun.light_energy *= lerpf(1.0, INDOOR_SUN, eased)
+	# The indoor fill lights only touch the habitat (visual layer 2), so the
+	# world outside keeps its own light: dark at night, seen from a doorway.
+	var eased := smoothstep(0.0, 1.0, _indoor_blend)
+	_update_interior_fills(_indoor_energy * eased)
+	if _indoor_blend > 0.0: sun.light_energy *= lerpf(1.0, INDOOR_SUN, eased)
 	if _sky_material != null:
 		# Mars has a thin atmosphere, but midnight is still a true, dark sky—not
 		# the washed-out daytime procedural sky from the initial implementation.
@@ -209,6 +232,7 @@ func apply_daylight(sunlight: float) -> void:
 	# When the base grid is online its window strips are deliberately brighter at
 	# night, providing a clear warm navigational cue without lifting the sky.
 	if storm > .001: _apply_storm(level)
+	elif world_environment.environment.fog_mode != Environment.FOG_MODE_EXPONENTIAL: world_environment.environment.fog_mode = Environment.FOG_MODE_EXPONENTIAL
 	MHGame.set_window_glow(float(_palette_values.get("window", .9)) * lerpf(1.75, .9, level))
 	_update_celestial_bodies(level)
 
@@ -225,6 +249,16 @@ func _apply_storm(level: float) -> void:
 		_sky_material.ground_horizon_color = _sky_material.ground_horizon_color.lerp(STORM_FOG * dim, haze * .8)
 		world_environment.environment.fog_light_color = world_environment.environment.fog_light_color.lerp(STORM_FOG * dim, haze)
 		world_environment.environment.fog_density *= lerpf(1.0, 24.0, haze)
+	# Indoors: fog that begins a few metres out, so the room stays clear while
+	# the storm fills the windows.
+	var env := world_environment.environment
+	if inside_habitat or cabin_dim:
+		env.fog_mode = Environment.FOG_MODE_DEPTH
+		env.fog_depth_begin = 7.0
+		env.fog_depth_end = lerpf(420.0, 38.0, haze)
+		env.fog_depth_curve = 1.4
+	else:
+		env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
 
 func _apply_martian_sun_direction(sunlight: float) -> void:
 	# The directional light is the actual solar source: it rises in the east,

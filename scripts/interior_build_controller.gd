@@ -600,7 +600,8 @@ func _build_bar() -> PanelContainer:
 	column.add_child(head)
 	var scroll := ScrollContainer.new()
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(0, 168)
+	scroll.custom_minimum_size = Vector2(0, 180)
+	MHStyle.chunky_hscroll(scroll)
 	column.add_child(scroll)
 	_selector_cards = HBoxContainer.new()
 	_selector_cards.add_theme_constant_override("separation", 10)

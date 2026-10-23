@@ -40,7 +40,8 @@ func _initialize() -> void:
 	weather._haze = .9
 	for i in 3: await process_frame
 	_check(world.environment.storm > .5, "the sky hazes over (%.2f)" % world.environment.storm)
-	# Indoors the haze goes.
+	# Indoors the storm still fills the windows, but the room itself stays clear:
+	# the fog only starts a few metres out, past the walls.
 	var cells := []
 	for x in range(30, 33):
 		for z in range(30, 33): cells.append(Vector2i(x, z))
@@ -49,7 +50,9 @@ func _initialize() -> void:
 	var outside_at: Vector3 = world.player.global_position
 	world.player.global_position = Vector3(93, world.builder.habitat_base_y + .2, 93)
 	for i in 90: await process_frame
-	_check(world.environment.storm < .05, "no storm haze inside the habitat (%.2f)" % world.environment.storm)
+	var env: Environment = world.environment.world_environment.environment
+	_check(world.environment.storm > .5, "the storm shows through the windows (%.2f)" % world.environment.storm)
+	_check(env.fog_mode == Environment.FOG_MODE_DEPTH and env.fog_depth_begin >= 5.0, "no haze inside the room itself")
 	world.player.global_position = outside_at
 	weather._level = .9
 	weather._haze = .9

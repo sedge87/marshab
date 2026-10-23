@@ -20,6 +20,8 @@ extends Node3D
 ##                 (InSight recorded 1,319); dust lifting in the morning gusts.
 
 const TERRAIN := preload("res://scripts/site_terrain.gd")
+const WEATHER_SCRIPT := preload("res://scripts/weather.gd")
+var _indoors := false
 const MAX_TRACKS := 16
 
 var world: Node
@@ -71,19 +73,25 @@ func _process(delta: float) -> void:
 	var inside := false
 	var env = world.get("environment")
 	if env != null: inside = bool(env.get("inside_habitat"))
+	# Indoors the weather carries on outside the windows: fog layers fade out
+	# within 12 m of you (the room) and particles spawn in a ring outside.
+	_indoors = inside
+	for layer in _fog: (layer.material_override as ShaderMaterial).set_shader_parameter("near_fade", Vector2(12.0, 28.0) if inside else Vector2(1.5, 14.0))
+	if _snow != null: WEATHER_SCRIPT._set_ring(_snow, inside, Vector3(22.0, .5, 22.0))
+	if _streaks != null: WEATHER_SCRIPT._set_ring(_streaks, inside, Vector3(26.0, 1.2, 26.0))
 	var hour := MHGame.sol_hour
 	var sun := _sun_altitude(hour)
 	if _ground_materials.is_empty(): _find_materials()
-	_update_halo(on and not inside, sun)
+	_update_halo(on, sun)
 	match site:
-		"ice": _update_ice(on and not inside, hour, sun)
-		"ridge": _update_canyon(on and not inside, hour, delta)
+		"ice": _update_ice(on, hour, sun)
+		"ridge": _update_canyon(on, hour, delta)
 		"crater":
 			_update_crater_sky(on, hour, sun)
 			_update_devils(on, hour, delta, false)
 		_:
 			_update_devils(on, hour, delta, true)
-			_update_gusts(on and not inside, hour)
+			_update_gusts(on, hour)
 			_update_quake(on, delta)
 	if _last_hour >= 0.0:
 		var passed := fposmod(hour - _last_hour, 24.0)
@@ -129,6 +137,7 @@ uniform vec4 tint : source_color = vec4(0.9, 0.86, 0.82, 1.0);
 uniform float density = 0.0;
 uniform float scale = 0.025;
 uniform vec2 drift = vec2(0.6, 0.25);
+uniform vec2 near_fade = vec2(1.5, 14.0);
 varying vec3 wpos;
 float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vnoise(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
@@ -138,7 +147,7 @@ void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	vec2 p = wpos.xz * scale + drift * TIME * 0.004;
 	float n = fbm(p + vec2(wpos.y * 0.37));
-	float near = smoothstep(1.5, 14.0, length(wpos - CAMERA_POSITION_WORLD));
+	float near = smoothstep(near_fade.x, near_fade.y, length(wpos - CAMERA_POSITION_WORLD));
 	// Soft edges all round (no hard line where a layer ends or meets a wall).
 	vec2 e = min(UV, 1.0 - UV);
 	float edge = smoothstep(0.0, 0.18, e.x) * smoothstep(0.0, 0.04, e.y);
