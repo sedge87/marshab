@@ -91,7 +91,7 @@
       "coordinates": "10.5° S, 68.0° W",
       "terrain_profile": "valles",
       "blurb": "A long canyon floor between towering cliffs. Shaded mornings, ice at the cliff foot.",
-      "palette": "day",
+      "palette": "canyon",
       "icon": "mountain-snow",
       "telemetry": {
         "temperature": "−22 °C",
@@ -129,8 +129,8 @@
         "pad_half_width": 22.5,
         "pad_length_half": 60.0,
         "wall_height": 38.0,
-        "ground": "#A85A3B",
-        "rock_count": 110,
+        "ground": "#9C6F58",
+        "rock_count": 260,
         "rock_scale": 1.2
       },
       "sun": {
@@ -145,7 +145,7 @@
       "coordinates": "5.4° S, 137.8° E",
       "terrain_profile": "gale",
       "blurb": "A round crater floor inside a sheltering rim. Mild nights, build around the mound.",
-      "palette": "golden",
+      "palette": "gale",
       "icon": "orbit",
       "telemetry": {
         "temperature": "−10 °C",
@@ -190,8 +190,8 @@
         "mound_radius": 11.0,
         "mound_clear": 12.0,
         "mound_height": 8.0,
-        "ground": "#A05A3A",
-        "rock_count": 80,
+        "ground": "#9A7059",
+        "rock_count": 240,
         "rock_scale": 1.0
       },
       "sun": {

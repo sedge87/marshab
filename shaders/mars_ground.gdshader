@@ -237,10 +237,14 @@ void fragment() {
 
 	// Steep faces: darker rock in wavy horizontal layers.
 	if (style == 2) {
-		// Broad layers of greyer rock in the mesa cliffs.
-		float layers = sin(world_pos.y * 1.3 + fbm(p * 0.06) * 2.5) * 0.5 + 0.5;
-		vec3 cliff = mix(vec3(0.42, 0.33, 0.28), vec3(0.58, 0.46, 0.38), layers);
-		colour = mix(colour, cliff * mix(0.85, 1.1, fbm(world_pos.xy * 0.4 + world_pos.zy * 0.4)), steep * 0.85);
+		// Greyer rock on cliffs: broken layers and streaks of dust and
+		// varnish running down the face, not stripes.
+		float along = world_pos.x + world_pos.z;
+		float layers = smoothstep(0.35, 0.65, fbm(vec2(along * 0.02, world_pos.y * 0.35)));
+		vec3 cliff = mix(vec3(0.4, 0.31, 0.27), vec3(0.54, 0.43, 0.36), layers);
+		cliff *= mix(0.82, 1.08, value_noise(vec2(along * 0.35, world_pos.y * 0.04)));
+		cliff *= mix(0.85, 1.08, fbm(world_pos.xy * 0.4 + world_pos.zy * 0.4));
+		colour = mix(colour, cliff, steep * 0.85);
 	} else {
 		float strata = sin(world_pos.y * 5.0 + fbm(p * 0.3) * 3.0) * 0.5 + 0.5;
 		colour = mix(colour, colour * mix(0.68, 0.88, strata), steep);

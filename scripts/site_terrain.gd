@@ -18,6 +18,8 @@ const INNER_STEP := 3.0
 const INNER_STEP_PLAINS := 2.0   # finer ground for the realistic Open Plains (craters, ledges)
 const OUTER_EXTENT := 720.0 # coarse horizon mesh, visual only
 const OUTER_STEP := 24.0
+const MIDDLE_EXTENT := 360.0   # Canyon Ridge only: a finer ring between the walkable ground and the horizon
+const MIDDLE_STEP := 6.0
 # Ground stays exactly level this far beyond the pad, so cells on its edge
 # sample flat ground.
 const PAD_MARGIN := 2.5
@@ -218,28 +220,104 @@ static func _plains_height(p: Vector2) -> float:
 		h = maxf(h, _mesa_height(p, Vector2(float(mesa[0]), float(mesa[1])), float(mesa[2]), float(mesa[3]), index * 7 + 3))
 	return h
 
+# ---------- Canyon Ridge (realistic pass, 24 Oct) ----------
+# Modelled on Valles Marineris (Melas and Candor Chasma): spur-and-gully
+# walls, where hard layers stand as cliff bands and soft layers as slopes
+# between them, with a fan of fallen rock out of each gully; a lumpy landslide
+# tongue across the floor downstream; a field of dark dunes upstream; and the
+# canyon running off into haze both ways.
+
+const CANYON_GULLY_SPACING := 26.0
+const CANYON_LANDSLIDE := Vector3(-36.0, 128.0, 30.0)   # x, z of its toe, half width
+
+## The wall's foot (distance from the axis), set back where gullies cut in.
+static func _canyon_foot(z: float, side: float) -> float:
+	var s := settings()
+	var foot := float(s.get("pad_half_width", 22.5)) + PAD_MARGIN + 3.0 + 2.5 * (1.0 + sin(z * .045 + side)) + 1.5 * (1.0 + sin(z * .11 + 1.0 + side * 2.0))
+	return foot
+
+## 0-1: how far into a gully this point along the wall is (1 at its centre).
+static func _canyon_gully(z: float, side: float) -> float:
+	var phase := z / CANYON_GULLY_SPACING + side * .37
+	return pow(.5 + .5 * cos(TAU * phase), 6.0)
+
 static func _canyon_height(p: Vector2) -> float:
+	_plains_setup()
 	var s := settings()
 	var wall_height := float(s.get("wall_height", 38.0))
-	# The wall foot wanders a little along the canyon but never onto the pad.
-	var foot := float(s.get("pad_half_width", 22.5)) + PAD_MARGIN + 2.0 + 2.5 * (1.0 + sin(p.y * .045)) + 1.5 * (1.0 + sin(p.y * .11 + 1.0))
-	var across := clampf((absf(p.x) - foot) / 18.0, 0.0, 1.0)
-	# Terraced walls: four broad ledges joined by steep risers.
-	var steps := 4.0
-	var layer := across * steps
-	var ledge := floorf(layer)
-	var climb := (ledge + smoothstep(.55, 1.0, layer - ledge)) / steps
-	if across >= 1.0: climb = 1.0
-	var h := climb * wall_height
-	if across >= 1.0: h += _noise(p, .7) * 3.0
-	# Beyond the surveyed stretch the floor carries a shallow dry channel.
-	var beyond := smoothstep(float(s.get("pad_length_half", 60.0)) + 4.0, float(s.get("pad_length_half", 60.0)) + 12.0, absf(p.y))
-	if beyond > 0.0 and absf(p.x) < foot:
-		var channel := 1.0 - smoothstep(1.5, 4.5, absf(p.x - 6.0 * sin(p.y * .05)))
-		h += beyond * (_noise(p, 2.0) * .5 - channel * .9)
+	var side := signf(p.x) if p.x != 0.0 else 1.0
+	var foot := _canyon_foot(p.y, side)
+	var gully := _canyon_gully(p.y, side) * (1.0 - smoothstep(150.0, 175.0, absf(p.y)))
+	# Gullies cut back into the wall, deeper higher up; the layers wander.
+	var u := absf(p.x) - foot + _plains_detail.get_noise_2d(p.x * .7, p.y * .7) * 2.2
+	u -= gully * 7.0 * smoothstep(0.0, 22.0, u)
+	# Stacked bands: cliffs (steep, short) and slopes (gentle, long).
+	var bands := [[0.0, 3.0, .18], [3.0, 3.5, .14], [6.5, 3.0, .2], [9.5, 5.0, .12], [14.5, 3.0, .2], [17.5, 6.0, .16]]
+	var h := 0.0
+	for band in bands:
+		h += wall_height * float(band[2]) * smoothstep(float(band[0]), float(band[0]) + float(band[1]), u)
+	h += smoothstep(0.0, 24.0, u) * (_plains_noise.get_noise_2d(p.x * 1.5, p.y * 1.5) * 2.5 + _plains_detail.get_noise_2d(p.x * 2.2, p.y * 2.2) * 1.3)
+	if u > 23.5: h += (u - 23.5) * .05 + _plains_noise.get_noise_2d(p.x, p.y) * 4.0   # the plateau beyond
+	# Fallen-rock fans spreading from each gully mouth onto the floor.
+	var fan_reach := 8.0 + 5.0 * gully
+	if u < 0.0 and u > -fan_reach:
+		h = maxf(h, 3.5 * gully * pow(1.0 + u / fan_reach, 1.5) + _plains_detail.get_noise_2d(p.x * 3.0, p.y * 3.0) * .4 * gully)
+	# Keep the build floor level.
+	var floor_factor := _rise(p, PAD_MARGIN, 4.0)
+	h *= maxf(floor_factor, smoothstep(-2.0, 0.0, u))
+	# Downstream (+z): a landslide tongue from the west wall.
+	var ls := CANYON_LANDSLIDE
+	if p.y > ls.y - 60.0 and absf(p.x - ls.x * .6) < ls.z * 1.8:
+		var along := clampf((p.y - (ls.y - 50.0)) / 50.0, 0.0, 1.0)
+		var across := absf(p.x - lerpf(-foot, ls.x, along)) / (ls.z * (.6 + .6 * along))
+		var tongue := (1.0 - smoothstep(.6, 1.0, across)) * (1.0 - smoothstep(ls.y + 25.0, ls.y + 45.0, p.y)) * smoothstep(ls.y - 60.0, ls.y - 40.0, p.y)
+		var hummocks := maxf(0.0, _plains_detail.get_noise_2d(p.x * 1.8, p.y * 1.8)) * 3.0
+		h = maxf(h, tongue * (6.5 + hummocks * 1.6))
+	# Upstream (-z): dark dunes across the floor.
+	if p.y < -75.0 and u < -2.0:
+		var dunes := _canyon_dunes(p)
+		h = maxf(h, dunes)
 	return h
 
+## Dark dunes: separate crescents (barchans), gentle on the windward side,
+## steep on the lee, horns pointing downwind (+z).
+static func _canyon_dunes(p: Vector2) -> float:
+	var mask := smoothstep(-75.0, -95.0, p.y) * (1.0 - smoothstep(-170.0, -190.0, p.y))
+	if mask <= 0.0: return 0.0
+	var size := 22.0
+	var cell := Vector2(floorf(p.x / size), floorf(p.y / size))
+	var best := 0.0
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			var c := cell + Vector2(dx, dz)
+			var jitter := Vector2(fposmod(sin(c.x * 12.99 + c.y * 78.23) * 437.5, 1.0), fposmod(sin(c.x * 39.35 + c.y * 11.13) * 921.7, 1.0))
+			var centre := (c + Vector2(.2, .2) + jitter * .6) * size
+			var r := 6.0 + 3.0 * jitter.x
+			var across := (p.x - centre.x) / r
+			var along := p.y - centre.y
+			var t := along / (r * 1.4) if along < 0.0 else along / (r * .5)
+			var dune := maxf(0.0, 1.0 - t * t - across * across)
+			# The scooped lee face between the horns.
+			var scoop := maxf(0.0, 1.0 - pow((along - r * .7) / (r * .55), 2.0) - pow(across / .6, 2.0))
+			best = maxf(best, (dune - scoop * .8) * (2.2 + jitter.y * 1.6))
+	return maxf(0.0, best) * mask
+
+## 0-1: dark dune sand (for colour).
+static func canyon_dune_sand(p: Vector2) -> float:
+	if shape() != "canyon" or p.y > -70.0: return 0.0
+	return smoothstep(-75.0, -95.0, p.y) * (1.0 - smoothstep(-170.0, -190.0, p.y))
+
+# ---------- Crater Basin (realistic pass, 24 Oct) ----------
+# Modelled on Gale Crater, where Curiosity explores: a layered central mound
+# (a small Mount Sharp) carved by wind into ridges; an inner wall of terraces,
+# slumped blocks and gullies, with an alluvial fan spreading from one gully
+# (like Peace Vallis, a sign water once flowed); dark sand drifting along the
+# wall foot (like the Bagnold Dunes); ejecta and far hills beyond the rim.
+
+const CRATER_FAN_ANGLE := 2.35   # radians: where the alluvial fan comes down
+
 static func _crater_height(p: Vector2) -> float:
+	_plains_setup()
 	var s := settings()
 	var r := p.length()
 	var angle := atan2(p.y, p.x)
@@ -249,14 +327,52 @@ static func _crater_height(p: Vector2) -> float:
 	var rim_height := float(s.get("rim_height", 22.0)) + wobble * .8
 	var h := 0.0
 	if r <= crest:
-		h = pow(smoothstep(floor_edge, crest, r), 1.6) * rim_height
+		# Gullies notch the wall every ~25 degrees, deeper near the top.
+		var gully := pow(.5 + .5 * cos(angle * 14.0 + 1.3), 8.0)
+		var t := smoothstep(floor_edge, crest, r - gully * 5.0 * smoothstep(floor_edge + 6.0, crest, r))
+		# Two terraces (slumped blocks) on the way up.
+		var terraced := t + .08 * sin(t * TAU * 2.0 + angle * 2.0)
+		h = pow(clampf(terraced, 0.0, 1.0), 1.5) * rim_height
+		h += smoothstep(floor_edge, crest, r) * _plains_detail.get_noise_2d(p.x * 1.4, p.y * 1.4) * 1.6
+		# The alluvial fan: a broad, gentle cone out of one gully mouth.
+		var fan_centre := Vector2.from_angle(CRATER_FAN_ANGLE) * (crest - 6.0)
+		var fd := p.distance_to(fan_centre)
+		var fan := maxf(0.0, 1.0 - fd / 26.0)
+		h = maxf(h, fan * fan * 9.0 * smoothstep(floor_edge - 1.0, floor_edge + 3.0, r))
 	else:
-		# Outer flank falls away to the surrounding plain.
-		h = lerpf(rim_height, 5.0, smoothstep(crest, crest + 40.0, r)) + _noise(p, .8) * 1.5 * smoothstep(crest, crest + 20.0, r)
-	# The central mound: a low peak the habitat has to build around.
-	var mound := 1.0 - smoothstep(0.0, float(s.get("mound_radius", 11.0)), _mound_distance(p))
-	h = maxf(h, pow(mound, 1.4) * float(s.get("mound_height", 8.0)))
+		# Outer flank falls away across its ejecta to the plain, then far hills.
+		h = lerpf(rim_height, 5.0, smoothstep(crest, crest + 40.0, r)) + _plains_noise.get_noise_2d(p.x, p.y) * 2.5 * smoothstep(crest, crest + 20.0, r)
+		h += _plains_detail.get_noise_2d(p.x, p.y) * .8 * smoothstep(crest, crest + 10.0, r)
+		h += smoothstep(200.0, 620.0, r) * (24.0 + _plains_noise.get_noise_2d(p.x * .4, p.y * .4) * 24.0) + smoothstep(480.0, 720.0, r) * 40.0
+	h *= maxf(_rise(p, PAD_MARGIN, 3.0), 0.0) if r < floor_edge + 1.0 else 1.0
+	# The central mound: a layered butte with terraces and wind-carved ridges.
+	h = maxf(h, crater_mound_height(p))
 	return h
+
+static func crater_mound_height(p: Vector2) -> float:
+	_plains_setup()
+	var s := settings()
+	var radius := float(s.get("mound_radius", 11.0))
+	var d := _mound_distance(p)
+	if d > radius: return 0.0
+	var centre: Array = s.get("mound_centre", [-14.0, -12.0])
+	var angle := atan2(p.y - float(centre[1]), p.x - float(centre[0]))
+	# An irregular outline (never beyond the mound's radius, so build rules hold).
+	var reach := radius * (.8 + .2 * (.5 + .5 * sin(angle * 3.0 + .7)) - .05 * absf(sin(angle * 7.0)))
+	if d > reach: return 0.0
+	var x := minf(1.0, (1.0 - d / reach) * 1.45)
+	# Uneven layers: each a bench then a short cliff, the boundaries wandering.
+	var steps := 3.0
+	var layer := x * steps + _plains_detail.get_noise_2d(p.x * 3.0, p.y * 3.0) * .25
+	var stepped := (floorf(layer) + smoothstep(.6, 1.0, fposmod(layer, 1.0))) / steps
+	var top := float(s.get("mound_height", 8.0)) * 1.4
+	# Mostly a slope, with the layers showing as ledges (not a stack of cliffs).
+	var h := (.62 * pow(x, 1.2) + .38 * clampf(stepped, 0.0, 1.0)) * top
+	# Wind-carved grooves (yardangs), irregular, mostly on the lower slopes.
+	var groove := absf(_plains_detail.get_noise_2d(p.x * 1.6 + p.y * 1.6, (p.y - p.x) * .35))
+	h -= (1.0 - smoothstep(0.0, .2, groove)) * .45 * (1.0 - x)
+	h += _plains_detail.get_noise_2d(p.x * 5.0, p.y * 5.0) * .25
+	return maxf(0.0, h)
 
 # ---------- Ice Fields: "the ice frontier" (realistic pass, 24 Oct) ----------
 # Real places, combined: a cliff of exposed, banded water ice under a thin
@@ -401,12 +517,26 @@ static func ground_colour(p: Vector2, h: float, slope: float) -> Color:
 	var colour := base
 	match shape():
 		"canyon":
-			# Layered strata: horizontal bands that read as an eroded canyon wall.
-			var bands := [Color("#9A5338"), Color("#B87149"), Color("#7E4430"), Color("#C88A5E"), Color("#8C4B33")]
-			if h > .6:
-				colour = bands[posmod(int(floorf(h / 4.2)), bands.size())]
+			# Layered rock: cliff-forming layers darker and greyer, slopes paler
+			# and dustier; dark basaltic sand in the dune field.
+			if h > 1.5 and canyon_dune_sand(p) < .1 and (slope > .2 or h > 8.0):
+				var layer := posmod(int(floorf(h / 5.0)), 4)
+				colour = [Color("#8A6250"), Color("#A47B62"), Color("#7A5747"), Color("#B08A70")][layer]
+				colour = colour.lerp(base, .25)
+			colour = colour.lerp(Color("#3F322C"), canyon_dune_sand(p) * .85)
 		"crater":
-			if h > .6: colour = base.darkened(.12).lerp(Color("#C08458"), smoothstep(10.0, 22.0, h))
+			# Wall rock paler toward the rim; the mound in layers of grey and
+			# tan; dark sand drifted along the wall foot; the fan paler.
+			if h > .6: colour = base.darkened(.08).lerp(Color("#B39072"), smoothstep(8.0, 22.0, h))
+			var mound := crater_mound_height(p)
+			if mound > .2:
+				colour = [Color("#8C7464"), Color("#A88B73"), Color("#7C6658"), Color("#B49A82")][posmod(int(floorf(mound / 2.2)), 4)]
+			var r := p.length()
+			var foot := float(settings().get("pad_radius", 45.0)) + PAD_MARGIN
+			var drift := (1.0 - smoothstep(0.0, 9.0, absf(r - foot - 4.0))) * smoothstep(.45, .7, (_noise(p * .2, 1.0) + 1.0) * .5)
+			colour = colour.lerp(Color("#43352E"), drift * .75)
+			var fan_centre := Vector2.from_angle(CRATER_FAN_ANGLE) * (float(settings().get("rim_radius", 76.0)) - 6.0)
+			colour = colour.lerp(Color("#B9997E"), (1.0 - smoothstep(10.0, 26.0, p.distance_to(fan_centre))) * .35)
 		"ice":
 			# Patterned ground: each frozen polygon its own shade, with slightly
 			# darker troughs (subtle, as in the Phoenix lander's photos).
@@ -466,12 +596,23 @@ static func _cached(tag: String, make: Callable) -> Resource:
 	return made
 
 static func build_ground(body: StaticBody3D) -> void:
-	var step := INNER_STEP_PLAINS if shape() in ["plains", "ice"] else INNER_STEP
+	var step := INNER_STEP_PLAINS
 	var mesh: ArrayMesh = _cached("ground", func() -> ArrayMesh: return _grid_mesh(-INNER_EXTENT, INNER_EXTENT, step, -1.0))
 	var visual := MeshInstance3D.new()
 	visual.name = "SiteGround"
-	visual.mesh = mesh
 	visual.material_override = _ground_material()
+	var patch := detail_patch()
+	if patch.has_area():
+		# Small landforms (Crater Basin's mound) get a fine patch of their own,
+		# set into a hole in the ground mesh; walking still uses the full ground.
+		visual.mesh = _cached("ground_holed", func() -> ArrayMesh: return _grid_mesh(-INNER_EXTENT, INNER_EXTENT, step, -1.0, patch))
+		var fine := MeshInstance3D.new()
+		fine.name = "SiteDetailPatch"
+		fine.mesh = _cached("detail_patch", func() -> ArrayMesh: return _rect_mesh(patch, .5))
+		fine.material_override = visual.material_override
+		body.add_child(fine)
+	else:
+		visual.mesh = mesh
 	body.add_child(visual)
 	var collision := CollisionShape3D.new()
 	collision.name = "SiteGround_collision"
@@ -482,8 +623,17 @@ static func build_ground(body: StaticBody3D) -> void:
 static func build_horizon() -> MeshInstance3D:
 	var visual := MeshInstance3D.new()
 	visual.name = "SiteHorizon"
-	visual.mesh = _cached("horizon", func() -> ArrayMesh: return _grid_mesh(-OUTER_EXTENT, OUTER_EXTENT, OUTER_STEP, INNER_EXTENT))
+	# The canyon's far walls need a finer middle ring, or its 24 m triangles
+	# show as pale ribbons down the canyon.
+	var middle := MIDDLE_EXTENT if shape() == "canyon" else INNER_EXTENT
+	visual.mesh = _cached("horizon", func() -> ArrayMesh: return _grid_mesh(-OUTER_EXTENT, OUTER_EXTENT, OUTER_STEP, middle))
 	visual.material_override = _ground_material()
+	if middle > INNER_EXTENT:
+		var ring := MeshInstance3D.new()
+		ring.name = "SiteMiddleRing"
+		ring.mesh = _cached("middle", func() -> ArrayMesh: return _grid_mesh(-MIDDLE_EXTENT, MIDDLE_EXTENT, MIDDLE_STEP, INNER_EXTENT))
+		ring.material_override = visual.material_override
+		visual.add_child(ring)
 	return visual
 
 ## Vertex colours (the site's own shading) plus procedural grit, ripples and
@@ -491,13 +641,26 @@ static func build_horizon() -> MeshInstance3D:
 static func _ground_material() -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = GROUND_SHADER
-	material.set_shader_parameter("style", 1 if shape() == "ice" else (2 if shape() == "plains" else 0))   # 1: frost; 2: realistic plains
+	material.set_shader_parameter("style", 1 if shape() == "ice" else 2)   # 1: frost; 2: realistic ground
 	return material
 
 ## Smooth-shaded grid: each vertex gets a normal from the height field and
 ## its own colour, so the ground rolls instead of showing 3 m facets. Quads
 ## entirely inside ±skip_inside are left out (the finer walkable mesh covers them).
-static func _grid_mesh(from: float, to: float, step: float, skip_inside: float) -> ArrayMesh:
+## The fine patch for a small landform, on the 2 m grid ({} area: none).
+static func detail_patch() -> Rect2:
+	if shape() != "crater": return Rect2()
+	var centre: Array = settings().get("mound_centre", [-14.0, -12.0])
+	var half := ceilf((float(settings().get("mound_radius", 11.0)) + 2.0) / 2.0) * 2.0
+	var cx := roundf(float(centre[0]) / 2.0) * 2.0
+	var cz := roundf(float(centre[1]) / 2.0) * 2.0
+	return Rect2(cx - half, cz - half, half * 2.0, half * 2.0)
+
+## A square patch of ground at its own resolution.
+static func _rect_mesh(rect: Rect2, step: float) -> ArrayMesh:
+	return _grid_mesh(0.0, rect.size.x, step, -1.0, Rect2(), rect.position)
+
+static func _grid_mesh(from: float, to: float, step: float, skip_inside: float, hole := Rect2(), origin := Vector2.ZERO) -> ArrayMesh:
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var count := roundi((to - from) / step)
@@ -506,7 +669,7 @@ static func _grid_mesh(from: float, to: float, step: float, skip_inside: float) 
 	heights.resize(side * side)
 	for zi in range(side):
 		for xi in range(side):
-			heights[zi * side + xi] = height(from + xi * step, from + zi * step)
+			heights[zi * side + xi] = height(origin.x + from + xi * step, origin.y + from + zi * step)
 	var normals := PackedVector3Array()
 	var colours := PackedColorArray()
 	var masks := PackedVector3Array()
@@ -515,8 +678,8 @@ static func _grid_mesh(from: float, to: float, step: float, skip_inside: float) 
 	masks.resize(side * side)
 	for zi in range(side):
 		for xi in range(side):
-			var x := from + xi * step
-			var z := from + zi * step
+			var x := origin.x + from + xi * step
+			var z := origin.y + from + zi * step
 			var left := heights[zi * side + maxi(xi - 1, 0)]
 			var right := heights[zi * side + mini(xi + 1, count)]
 			var back := heights[maxi(zi - 1, 0) * side + xi]
@@ -531,6 +694,8 @@ static func _grid_mesh(from: float, to: float, step: float, skip_inside: float) 
 			var z0 := from + zi * step
 			if skip_inside > 0.0 and x0 >= -skip_inside and x0 + step <= skip_inside and z0 >= -skip_inside and z0 + step <= skip_inside:
 				continue
+			if hole.has_area() and x0 >= hole.position.x - .01 and x0 + step <= hole.end.x + .01 and z0 >= hole.position.y - .01 and z0 + step <= hole.end.y + .01:
+				continue
 			var corners := [zi * side + xi, zi * side + xi + 1, (zi + 1) * side + xi, (zi + 1) * side + xi + 1]
 			for triangle in [[0, 1, 3], [0, 3, 2]]:
 				for corner in triangle:
@@ -541,7 +706,7 @@ static func _grid_mesh(from: float, to: float, step: float, skip_inside: float) 
 					surface.set_uv(Vector2(masks[index].x, masks[index].y))
 					surface.set_uv2(Vector2(masks[index].z, 0.0))
 					surface.set_normal(normals[index])
-					surface.add_vertex(Vector3(from + gx * step, heights[index], from + gz * step))
+					surface.add_vertex(Vector3(origin.x + from + gx * step, heights[index], origin.y + from + gz * step))
 	return surface.commit()
 
 # ---------- rocks ----------
@@ -601,9 +766,29 @@ static func _ice_rocks() -> Array:
 		hotspots.append([crater[0], float(crater[1]) * 1.2, float(crater[1]) * .5])
 	return _scatter_rocks(hotspots, 2031)
 
-## Small stones near you (no collision): [Transform3D]. Open Plains and Ice Fields.
+## Canyon Ridge rocks: big boulders fallen to the wall foot, rubble on the
+## gully fans and the landslide.
+static func _canyon_rocks() -> Array:
+	_plains_setup()
+	var hotspots: Array = []
+	for z in range(-120, 121, 13):
+		for side in [-1.0, 1.0]:
+			hotspots.append([Vector2(side * (_canyon_foot(float(z), side) - 2.0), float(z)), 0.0, 4.0])
+	hotspots.append([Vector2(CANYON_LANDSLIDE.x * .6, CANYON_LANDSLIDE.y - 10.0), 0.0, 20.0])
+	return _scatter_rocks(hotspots, 3131)
+
+## Crater Basin rocks: blocks fallen to the wall foot, rubble on the
+## mound's flanks and the fan, ejecta boulders outside the rim.
+static func _crater_rocks() -> Array:
+	_plains_setup()
+	var s := settings()
+	var hotspots: Array = [[Vector2.ZERO, float(s.get("pad_radius", 45.0)) + 8.0, 4.0], [Vector2.ZERO, float(s.get("rim_radius", 76.0)) + 18.0, 10.0]]
+	var centre: Array = s.get("mound_centre", [-14.0, -12.0])
+	hotspots.append([Vector2(float(centre[0]), float(centre[1])), float(s.get("mound_radius", 11.0)) * .9, 2.0])
+	return _scatter_rocks(hotspots, 4141)
+
+## Small stones near you (no collision): [Transform3D].
 static func pebble_transforms(count := 3500) -> Array:
-	if not shape() in ["plains", "ice"]: return []
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77
 	var out: Array = []
@@ -625,6 +810,8 @@ static func pebble_transforms(count := 3500) -> Array:
 static func rock_placements() -> Array:
 	if shape() == "plains": return _plains_rocks()
 	if shape() == "ice": return _ice_rocks()
+	if shape() == "canyon": return _canyon_rocks()
+	if shape() == "crater": return _crater_rocks()
 	var s := settings()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(str(MHGame.site().get("id", "plains")))
