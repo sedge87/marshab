@@ -14,6 +14,7 @@ const ModelThumbnails := preload("res://scripts/model_thumbnails.gd")
 const PARTITION_DOOR_SCRIPT := preload("res://scripts/partition_door.gd")
 const ROOM_LIGHT_PANEL := preload("res://scripts/room_light_panel.gd")
 const ICE_SURVEY_SHADER := preload("res://shaders/ice_survey.gdshader")
+const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
 const ROOM_IDENTITY := preload("res://scripts/room_identity.gd")
 ## Interior partition walls: 1.5 m segments on the half-cell grid inside a
 ## room (bedrooms, toilet cubicles). The room stays one zone for the simulation.
@@ -2316,8 +2317,8 @@ func _freeform_marker_material(colour: Color, alpha := 1.0) -> StandardMaterial3
 	_freeform_materials[key] = material
 	return material
 
-## Whole-site subsurface ice survey: a smooth field with contour lines,
-## drawn by shaders/ice_survey.gdshader from the site's deposits.
+## The ice overlay while placing an ice extractor: what's known about the ice
+## (scripts/ice_knowledge.gd), drawn by shaders/ice_survey.gdshader.
 func _add_ice_heatmap() -> void:
 	var limit := _site_build_limit()
 	var plane := PlaneMesh.new()
@@ -2327,12 +2328,15 @@ func _add_ice_heatmap() -> void:
 	field.mesh = plane
 	var material := ShaderMaterial.new()
 	material.shader = ICE_SURVEY_SHADER
+	# Only what's known: likely zones from orbit, and GAR-Y's surveyed spots
+	# (the most recent ones if there are more than the shader takes).
+	var known := ICE_KNOWLEDGE.overlay(get_tree())
 	var packed := PackedVector4Array()
-	for deposit in MHGame.site().get("ice_deposits", []):
-		if packed.size() >= 8: break
-		packed.append(Vector4(float(deposit.get("x", 0.0)), float(deposit.get("z", 0.0)), float(deposit.get("radius", 1.0)), float(deposit.get("richness", 0.0))))
+	var zones := ICE_KNOWLEDGE.likely_zones().size()
+	for i in range(mini(zones, 48)): packed.append(known[i])
+	for i in range(maxi(zones, known.size() - (48 - packed.size())), known.size()): packed.append(known[i])
 	var count := packed.size()
-	while packed.size() < 8: packed.append(Vector4.ZERO)
+	while packed.size() < 48: packed.append(Vector4.ZERO)
 	material.set_shader_parameter("deposits", packed)
 	material.set_shader_parameter("deposit_count", count)
 	field.material_override = material

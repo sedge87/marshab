@@ -36,6 +36,8 @@ const MHMissions := preload("res://scripts/mh_missions.gd")
 
 const NAME := "GAR-Y"
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
+const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
+const MHResources := preload("res://scripts/mh_resources.gd")
 const FULL_NAME := "Geological Analysis Rover, Y-Class"
 const ABOUT := "GAR-Y is a multipurpose rover designed for geological surveys, surface sample collection, terrain mapping and identifying potential water-ice deposits."
 ## Eye colour and brightness for each mood.
@@ -88,6 +90,10 @@ var mood := "curious"
 var ice_found := 0
 var samples := 0
 var rocks: Array = []          # ROCKS indices found, in order (saved)
+## Every spot surveyed: Vector3(x, z, ice richness measured) (saved). The
+## maps and the site plan's ice overlay show these (scripts/ice_knowledge.gd).
+var ice_samples: Array = []
+const MAX_SAMPLES := 80
 var flags: Array = []          # flag positions (Vector3), saved
 ## Orders (hold G, or the Mission Control map): see order().
 var staying := false           # "Stay": waits here until told otherwise
@@ -313,7 +319,7 @@ func _think(delta: float) -> void:
 
 func task_age_limit() -> float:
 	if task.is_empty(): return 0.0
-	return 150.0 if _ordered or task == "patrol" else 40.0
+	return 150.0 if _ordered or task == "patrol" else 40.0   # per stop on an ice hunt (reset at each)
 
 func _start(kind: String, goal: Vector3, data := {}) -> void:
 	task = kind
@@ -373,14 +379,17 @@ func _survey_here() -> void:
 	var at := Vector2(global_position.x, global_position.z)
 	var richness := float(habitat._ice_richness_at_point(at)) if habitat.has_method("_ice_richness_at_point") else 0.0
 	var near_flag := flags.any(func(f): return Vector2((f as Vector3).x, (f as Vector3).z).distance_to(at) < 10.0)
+	ice_samples.append(Vector3(at.x, at.y, snappedf(richness, .01)))
+	while ice_samples.size() > MAX_SAMPLES: ice_samples.pop_front()
+	var hunting: bool = task_data.has("hunt")
 	if richness >= .25 and not near_flag:
 		await _arm_move("reach", .7)
 		_plant_flag(global_position + -global_transform.basis.z * .9)
 		await _arm_move("stow", .6)
 		ice_found += 1
-		if _ordered: _survey_done()
+		if _ordered and not hunting: _survey_done()
 		_say("tada")
-		_toast("GAR-Y found buried ice", "About %d%% ice under the flag it just planted. An ice extractor there would do well." % roundi(richness * 100.0), MHStyle.INFO)
+		if not hunting: _toast("GAR-Y found buried ice", "About %d%% ice under the flag it just planted. An ice extractor there would do well." % roundi(richness * 100.0), MHStyle.INFO)
 	else:
 		await _arm_move("scoop", .8)
 		await get_tree().create_timer(.4).timeout
@@ -388,7 +397,8 @@ func _survey_here() -> void:
 		samples += 1
 		_say("happy")
 		var rock := _find_rock()
-		if _ordered:
+		if hunting: pass
+		elif _ordered:
 			_survey_done()
 			if rock < 0: _toast("GAR-Y surveyed the spot", "No buried ice here (under 25%%). It scooped a regolith sample instead: %d so far." % samples, MHStyle.INFO)
 		elif rock < 0 and (samples == 1 or samples % 5 == 0):
@@ -397,6 +407,31 @@ func _survey_here() -> void:
 			_say("tada")
 			var found: Array = ROCKS[rock]
 			_toast("GAR-Y found a special rock. It has named it %s." % found[0], "%s: %s It's keeping %s by its charger (%d of %d)." % [found[1], found[2], found[0], rocks.size(), ROCKS.size()], MHStyle.VALID)
+	if hunting: _hunt_next(at, richness)
+	else: _end_task()
+
+## "Find ice": on to the next stop of the survey loop, or report the best spot.
+func _hunt_next(at: Vector2, richness: float) -> void:
+	if richness > float(task_data.get("best", -1.0)):
+		task_data["best"] = richness
+		task_data["best_at"] = at
+	var left: Array = task_data.get("hunt", [])
+	_busy = false
+	if not left.is_empty():
+		var next: Vector2 = left.pop_front()
+		task_data.hunt = left
+		task_goal = Vector3(next.x, global_position.y, next.y)
+		_task_age = 0.0
+		return
+	_survey_done()
+	var stops := int(task_data.get("stops", 0))
+	var best := float(task_data.get("best", 0.0))
+	if best >= ICE_KNOWLEDGE.WORTH_DRILLING:
+		_say("tada")
+		_toast("GAR-Y's ice survey: found it", "%d spots checked. The best had about %d%% ice, and it's flagged. An ice extractor there would make about %d L of water a sol. The site plan's ice overlay shows everything it measured." % [stops, roundi(best * 100.0), roundi(MHResources.setting("ice_drill_l", 120.0) * best)], MHStyle.VALID)
+	else:
+		_say("worried")
+		_toast("GAR-Y's ice survey: not here", "%d spots checked, and the best had only %d%% ice: not worth drilling. Orbital radar only gives a rough idea. Try another likely zone." % [stops, roundi(best * 100.0)], MHStyle.WARN)
 	_end_task()
 
 ## Sometimes a sample is a special rock it hasn't got yet (Gerald first).
@@ -484,6 +519,17 @@ func _rebuild_flags() -> void:
 		var cloth_mesh := BoxMesh.new(); cloth_mesh.size = Vector3(.22, .13, .01)
 		cloth.mesh = cloth_mesh; cloth.material_override = flag_material; cloth.position = Vector3(.11, .62, 0)
 		flag.add_child(cloth)
+		# What GAR-Y measured here.
+		if habitat != null and habitat.has_method("_ice_richness_at_point"):
+			var tag := Label3D.new()
+			tag.text = "%d%% ICE" % roundi(100.0 * float(habitat._ice_richness_at_point(Vector2((spot as Vector3).x, (spot as Vector3).z))))
+			tag.font_size = 40
+			tag.pixel_size = .004
+			tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			tag.modulate = Color("#CFF3FF")
+			tag.outline_size = 8
+			tag.position = Vector3(0, .9, 0)
+			flag.add_child(tag)
 		_flag_root.add_child(flag)
 
 # ---- mischief: carry an odds-and-ends item somewhere else in the room ----
@@ -678,10 +724,10 @@ func _wake() -> void:
 ## The orders the menu offers right now (they depend on where GAR-Y is).
 func available_orders() -> Array:
 	if _self_indoors(): return ["come", "stay", "home", "fetch", "patrol"]
-	return ["come", "stay", "home", "survey", "core"]
+	return ["come", "stay", "home", "survey", "find_ice", "core"]
 
 const ORDER_LABELS := {"come": "Come here", "stay": "Stay here", "home": "Go home", "fetch": "Fetch", "patrol": "Patrol",
-	"survey": "Survey there", "core": "Core sample", "goto": "Go there"}
+	"survey": "Survey there", "core": "Core sample", "goto": "Go there", "find_ice": "Find ice"}
 
 ## Carry out an order. point: where you're aiming (survey, core, goto); item:
 ## the placement you're looking at (fetch). Returns "" or why it can't.
@@ -728,6 +774,19 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 			_start(kind if kind != "goto" else ("goto" if inside_point else "survey"), point)
 			_ordered = true
 			_say("curious")
+		"find_ice":
+			# Its own survey loop across the nearest likely zone from orbit.
+			if indoors: return "GAR-Y looks for ice outside. Ping it (E) so it comes through the airlock with you."
+			var here := Vector2(global_position.x, global_position.z)
+			var zone := ICE_KNOWLEDGE.nearest_zone(here, 90.0)
+			if zone.is_empty(): return "There's no likely ice within reach. Check the site map for where orbital radar sees it."
+			var stops := ICE_KNOWLEDGE.survey_stops(zone, here)
+			var first: Vector2 = stops.pop_front()
+			staying = false
+			_start("survey", Vector3(first.x, global_position.y, first.y), {"hunt": stops, "stops": stops.size() + 1, "best": -1.0})
+			_ordered = true
+			_say("curious")
+			_toast("GAR-Y is off to find ice", "It'll check %d spots across the likely zone, flag any ice worth drilling, and report back." % (stops.size() + 1), MHStyle.INFO)
 		"fetch":
 			if not indoors: return "GAR-Y fetches things inside the habitat."
 			var placement := _fetch_choice(item)
@@ -861,7 +920,7 @@ func status_text() -> String:
 	if docked: return "charging %d%%" % clampi(roundi(100.0 * fmod(Time.get_ticks_msec() / 90000.0, 1.0)), 5, 99)
 	if napping: return "napping"
 	match task:
-		"survey": return "surveying"
+		"survey": return ("finding ice: stop %d of %d" % [int(task_data.stops) - (task_data.hunt as Array).size(), int(task_data.stops)]) if task_data.has("hunt") else "surveying"
 		"fetch": return "eyeing your %s" % str(EquipmentCatalog.get_entry(str(task_data.get("id", ""))).get("label", "things")).to_lower()
 		"deliver": return "carrying your %s" % str(EquipmentCatalog.get_entry(str(task_data.get("id", ""))).get("label", "things")).to_lower()
 		"plush": return "up to something"
@@ -906,7 +965,7 @@ func interact_info(_actor: Node = null) -> bool:
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"flags": flags.duplicate(), "ice_found": ice_found, "samples": samples, "has_core": has_core, "rocks": rocks.duplicate()}
+	return {"flags": flags.duplicate(), "ice_found": ice_found, "samples": samples, "has_core": has_core, "rocks": rocks.duplicate(), "ice_samples": ice_samples.duplicate()}
 
 func restore_state(state: Dictionary) -> void:
 	flags = (state.get("flags", []) as Array).duplicate()
@@ -914,6 +973,7 @@ func restore_state(state: Dictionary) -> void:
 	samples = int(state.get("samples", 0))
 	has_core = bool(state.get("has_core", false))
 	rocks = (state.get("rocks", []) as Array).map(func(i): return int(i))
+	ice_samples = (state.get("ice_samples", []) as Array).duplicate()
 	_rebuild_rocks()
 	if not flags.is_empty(): _rebuild_flags()
 

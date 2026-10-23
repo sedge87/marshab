@@ -98,16 +98,16 @@
         },
         {
           "id": "survey",
-          "text": "Send GAR-Y to survey for ice (2 spots)",
-          "how": "Hold G near GAR-Y, aim at the ground and choose Survey there. It flags buried ice of 25% or more: drills do best on its flags.",
+          "text": "Send GAR-Y to find ice",
+          "how": "Orbital radar only shows where ice is likely. Hold G near GAR-Y and choose Find ice: it surveys the likely zone on its own, flags ice of 25% or more, and reports the best spot. (Survey there checks one spot you aim at.)",
           "check": "counter",
           "key": "gar_y_surveys",
-          "count": 2
+          "count": 1
         },
         {
           "id": "ice",
-          "text": "Place an ice extractor on pale blue ground",
-          "how": "Follow BEST ICE on your compass. Richer ice makes more water.",
+          "text": "Place an ice extractor where GAR-Y found ice",
+          "how": "Follow BEST ICE FOUND on your compass (it says LIKELY ICE until GAR-Y has found some). While placing, GAR-Y's measurements show on the ground: blue discs are ice, brown ones are dry. Richer ice makes more water.",
           "check": "zone",
           "kind": "ice_extractor",
           "marker": "ice"

@@ -5,6 +5,7 @@ extends Control
 # habitat's rooms, the astronaut and the rover. "mars" mode marks the
 # landing site on a schematic latitude/longitude globe.
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
+const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
 const SITE_RADIUS := 50.0 # metres from the site centre shown edge to edge (height)
 
 var mode := "site"
@@ -42,12 +43,17 @@ func _draw_site() -> void:
 	# Ground: buildable cells pale, cliffs and mounds dark, cached per site.
 	if _ground_site != MHGame.site_id: _build_ground()
 	draw_texture_rect(_ground_texture, Rect2(_world_to_map(Vector2(-SITE_RADIUS * size.x / size.y, -SITE_RADIUS)), Vector2(size.x, size.y)), false)
-	# Ice deposits.
-	for deposit in MHGame.site().get("ice_deposits", []):
-		var centre := _world_to_map(Vector2(float(deposit.x), float(deposit.z)))
-		var radius := float(deposit.radius) * size.y / (SITE_RADIUS * 2.0)
-		draw_circle(centre, radius, Color(.55, .85, 1.0, .18 + .3 * float(deposit.richness)))
-		draw_arc(centre, radius, 0, TAU, 32, Color("#8FD8FF"), 1.5)
+	# Likely ice from orbital radar: soft zones, not exact deposits (GAR-Y finds those).
+	for zone in ICE_KNOWLEDGE.likely_zones():
+		var centre := _world_to_map(zone.centre)
+		var radius := float(zone.radius) * size.y / (SITE_RADIUS * 2.0)
+		for ring in range(6, 0, -1):
+			draw_circle(centre, radius * ring / 6.0, Color(.55, .85, 1.0, .05))
+	# What GAR-Y has measured: a dot per surveyed spot, blue where there's ice.
+	for sample in ICE_KNOWLEDGE.samples(get_tree()):
+		var dot := _world_to_map(Vector2(sample.x, sample.y))
+		var rich := float(sample.z)
+		draw_circle(dot, 3.0 + 5.0 * rich, Color("#3F82B8").lerp(Color("#8FD8FF"), 1.0 - rich) if rich >= ICE_KNOWLEDGE.WORTH_DRILLING else Color(.7, .55, .45, .8))
 	# Rooms, in their site-plan colours.
 	var builder := get_tree().get_first_node_in_group("habitat_builder") as BuildController
 	if builder != null:
@@ -87,7 +93,7 @@ func _draw_site() -> void:
 	var bar := 10.0 * size.y / (SITE_RADIUS * 2.0)
 	draw_line(Vector2(14, size.y - 18), Vector2(14 + bar, size.y - 18), Color("#F2F4F5"), 3.0)
 	draw_string(font, Vector2(20 + bar, size.y - 12), "10 m", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#F2F4F5"))
-	var legend := [["You", Color("#ED7C35")], ["GAR-Y", Color("#D9A441")], ["Buried ice", Color("#8FD8FF")], ["Not buildable", Color("#4A2A22")]]
+	var legend := [["You", Color("#ED7C35")], ["GAR-Y", Color("#D9A441")], ["Likely ice · GAR-Y's finds", Color("#8FD8FF")], ["Not buildable", Color("#4A2A22")]]
 	var x := size.x - 150.0
 	var y := size.y - 18.0 * legend.size() - 6.0
 	for entry in legend:

@@ -118,7 +118,7 @@
       "picture": "gar_y",
       "lines": [
         "GAR-Y is your survey rover. Hold G near it to open its orders, move the mouse to one and let go.",
-        "Outside: Survey there, Core sample, Come here, Stay, Go home.",
+        "Outside: Find ice (it surveys the likely zone itself and reports the best spot), Survey there, Core sample, Come here, Stay, Go home.",
         "Inside: Fetch, Patrol, Come here, Stay, Go home.",
         "It never goes through an airlock on its own. Press E on it so it follows you through."
       ],

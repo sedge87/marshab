@@ -5,6 +5,7 @@ extends Control
 ## might touch down, coloured by how safe that ground is.
 ## Survival (and Missions) land somewhere inside the ellipse; Freedom and
 ## Creative land exactly on target (see touchdown()).
+const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const CREW_LANDER := preload("res://scripts/crew_lander.gd")
 const ELLIPSE_A := 9.0     # metres east-west (the approach direction)
@@ -145,12 +146,12 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("#10171B"))
 	if _ground == null: _build_ground()
 	draw_texture_rect(_ground, Rect2(Vector2.ZERO, size), false)
-	# Buried ice.
-	for deposit in MHGame.site().get("ice_deposits", []):
-		var centre := _to_map(Vector2(float(deposit.x), float(deposit.z)))
-		var radius := float(deposit.radius) / _metres_per_pixel()
-		draw_circle(centre, radius, Color(.55, .85, 1.0, .12 + .25 * float(deposit.richness)))
-		draw_arc(centre, radius, 0, TAU, 40, Color("#8FD8FF"), 1.5)
+	# Likely ice from orbital radar: soft zones, not exact deposits (GAR-Y finds those).
+	for zone in ICE_KNOWLEDGE.likely_zones():
+		var centre := _to_map(zone.centre)
+		var radius := float(zone.radius) * (1.0 / _metres_per_pixel())
+		for ring in range(6, 0, -1):
+			draw_circle(centre, radius * ring / 6.0, Color(.55, .85, 1.0, .05))
 	# The site centre, where most bases are built.
 	var middle := _to_map(Vector2.ZERO)
 	draw_line(middle - Vector2(8, 0), middle + Vector2(8, 0), Color(1, 1, 1, .35), 1.5)
@@ -190,7 +191,8 @@ func _draw() -> void:
 	draw_line(Vector2(16, size.y - 18), Vector2(16 + bar, size.y - 18), Color("#F2F4F5"), 3.0)
 	draw_string(font, Vector2(22 + bar, size.y - 12), "10 m", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#F2F4F5"))
 	var y := size.y - 66.0
-	for entry in [["Open ground", Color("#8A5236")], ["Cliffs, mounds, rough", Color("#4A2A22")], ["Buried ice", Color("#8FD8FF")]]:
+	draw_string(font, Vector2(size.x - 170, y - 20), "Send GAR-Y to find the exact spot", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("#B9C4C9"))
+	for entry in [["Open ground", Color("#8A5236")], ["Cliffs, mounds, rough", Color("#4A2A22")], ["Likely ice (orbital radar)", Color("#8FD8FF")]]:
 		draw_rect(Rect2(Vector2(size.x - 170, y - 10), Vector2(12, 12)), entry[1])
 		draw_string(font, Vector2(size.x - 152, y), entry[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("#F2F4F5"))
 		y += 18.0

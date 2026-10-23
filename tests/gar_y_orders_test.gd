@@ -88,7 +88,7 @@ func _initialize() -> void:
 	g.velocity = Vector3.ZERO
 	p.global_position = Vector3(6.0, b._terrain_height(Vector3(6.0, 0, 14.0)) + 1.0, 14.0)
 	await _wait(.5)
-	_check(g.available_orders() == ["come", "stay", "home", "survey", "core"], "outside: come, stay, home, survey, core")
+	_check(g.available_orders() == ["come", "stay", "home", "survey", "find_ice", "core"], "outside: come, stay, home, survey, find ice, core")
 	_check(not g.order("survey", Vector3(1.5, y, 1.5)).is_empty(), "surveys are for outside")
 	_check(g.order("survey", outside).is_empty(), "Survey there starts")
 	await _wait_until(30.0, func(): return g.task.is_empty())
@@ -110,10 +110,9 @@ func _initialize() -> void:
 	MHGame.game_mode = "missions"
 	MHMissions.reset()
 	var survey_step: Dictionary = (MHMissions.get_mission("cargo_power_water").steps as Array).filter(func(s): return str(s.id) == "survey")[0]
+	_check(not MHMissions._step_met(survey_step, b, {}, "cargo_power_water"), "no survey yet")
 	MHMissions.bump("gar_y_surveys")
-	_check(not MHMissions._step_met(survey_step, b, {}, "cargo_power_water") and MHMissions.step_progress(survey_step, b) == "1 of 2", "one survey: 1 of 2")
-	MHMissions.bump("gar_y_surveys")
-	_check(MHMissions._step_met(survey_step, b, {}, "cargo_power_water"), "two surveys tick Mission 2's step")
+	_check(MHMissions._step_met(survey_step, b, {}, "cargo_power_water"), "one survey (a whole Find ice loop counts as one) ticks Mission 2's step")
 	_check(bool(MHMissions.get_mission("cargo_power_water").rover), "GAR-Y comes on Mission 2")
 	_check((MHMissions.get_mission("self_sufficiency").stretch as Array).any(func(s): return str(s.get("key", "")) == "core_sample"), "Mission 6 has the core sample stretch goal")
 	MHGame.game_mode = "creative"

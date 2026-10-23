@@ -8,6 +8,7 @@ const MHDossier := preload("res://scripts/mh_dossier.gd")
 ## report, reasons and graphs. See docs/missions-design.md.
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
+const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
 
 var world: Node
 var _panel: PanelContainer
@@ -120,12 +121,17 @@ func _set_marker(kind: String) -> void:
 		at = MHMissions.base_site()
 		label = "BASE SITE"
 	elif kind == "ice":
-		var best := 0.0
-		for deposit in MHGame.site().get("ice_deposits", []):
-			if float(deposit.richness) > best:
-				best = float(deposit.richness)
-				at = Vector2(float(deposit.x), float(deposit.z))
-		label = "BEST ICE"
+		# What's known: GAR-Y's best find, else the likely zone nearest the base.
+		var found := ICE_KNOWLEDGE.best_found(get_tree())
+		if not found.is_empty() and float(found.richness) >= ICE_KNOWLEDGE.WORTH_DRILLING:
+			at = found.at
+			label = "BEST ICE FOUND"
+		else:
+			var near := MHMissions.base_site() if not is_inf(MHMissions.base_site().x) else Vector2.ZERO
+			var zone := ICE_KNOWLEDGE.nearest_zone(near)
+			if not zone.is_empty():
+				at = zone.centre
+				label = "LIKELY ICE"
 	if is_inf(at.x):
 		if _marker != null:
 			_marker.queue_free()

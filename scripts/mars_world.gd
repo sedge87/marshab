@@ -212,6 +212,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		else: _resume()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
 		_open_mission_control()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C and not event.ctrl_pressed and not bool(player.get_meta("build_mode_active", false)):
+		# C: straight to the Crew screen (in Mission Control).
+		_open_mission_control()
+		if mission_control != null: mission_control.call_deferred("_show_crew")
 
 func _open_interior_build() -> void:
 	if pause_menu != null or mission_control != null or interior_builder == null:

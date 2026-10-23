@@ -14,7 +14,7 @@ const HOLD := .25          # seconds: shorter is a tap (the item's G action)
 const RANGE := 30.0
 const RADIUS := 150.0
 const ICONS := {"come": "footprints", "stay": "map-pin", "home": "door-closed", "fetch": "package", "patrol": "clipboard-check",
-	"survey": "mountain-snow", "core": "flask-conical"}
+	"survey": "mountain-snow", "core": "flask-conical", "find_ice": "droplets"}
 
 var world: Node
 var _held := 0.0
@@ -178,4 +178,5 @@ func _hint(kind: String) -> String:
 		"patrol": return "Checks every room, then reports any alerts."
 		"survey": return "Drives where you're aiming and scans for buried ice." if _aim != Vector3.INF else "Aim at the ground first."
 		"core": return "Drills a core sample where you're aiming, for the Science Lab." if _aim != Vector3.INF else "Aim at the ground first."
+		"find_ice": return "Plans its own survey across the nearest likely ice zone, flags what it finds and reports the best spot."
 	return ""
