@@ -5,6 +5,7 @@ const SITE_WEATHER := preload("res://scripts/site_weather.gd")
 const ALERTS_SCRIPT := preload("res://scripts/habitat_alerts.gd")
 const MISSION_CONTROL_LINK := preload("res://scripts/mission_control_link.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
+const SLEEP := preload("res://scripts/sleep.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
 const SHOWCASE_SCRIPT := preload("res://scripts/showcase.gd")
@@ -41,6 +42,7 @@ var site_weather: Node3D
 var alerts: Node    # scripts/habitat_alerts.gd: habitat alerts (backlog 26)
 var earth_link: Node   # scripts/mission_control_link.gd: delayed messages from Earth
 var _earth_link_state := {}
+var sleep: Node   # scripts/sleep.gd: sleep at a bunk to pass the time
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
@@ -149,6 +151,9 @@ func _ready() -> void:
 	add_child(earth_link)
 	earth_link.setup(self)
 	earth_link.restore_state(_earth_link_state)
+	sleep = SLEEP.new()
+	add_child(sleep)
+	sleep.setup(self)
 	gar_y_orders = GAR_Y_ORDERS.new()
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)

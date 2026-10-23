@@ -274,6 +274,33 @@
       "All systems normal. I like it when it's boring.",
       "I've checked everything twice. We're fine.",
       "Did you know a sol is thirty-nine minutes longer than a day on Earth?"
+    ],
+    "sleep_not_now": [
+      "Not now. We've got a problem to fix first.",
+      "I can't let you sleep through this. Something's wrong."
+    ],
+    "goodnight": [
+      "Goodnight. I'll keep watch.",
+      "Sleep well. I'll wake you if anything happens.",
+      "Rest up. I've got the place."
+    ],
+    "wake_alert": [
+      "Wake up! Something's wrong.",
+      "Sorry to wake you. We've got a problem.",
+      "Up you get. This one can't wait."
+    ],
+    "wake_storm": [
+      "Wake up. The dust storm's here.",
+      "Sorry to wake you. The storm has arrived."
+    ],
+    "wake_morning": [
+      "Good morning. Here's what happened while you slept.",
+      "Morning. Here's the news.",
+      "Rise and shine. Everything's still here."
+    ],
+    "wake_normal": [
+      "You're awake. Here's what happened while you slept.",
+      "Welcome back. Here's what you missed."
     ]
   },
   "mission_control": {

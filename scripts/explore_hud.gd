@@ -435,7 +435,7 @@ func _update_prompt() -> void:
 		if target.has_method("interaction_prompt"):
 			var prompt: Dictionary = target.call("interaction_prompt")
 			var actions: Array[String] = []
-			for action in [["E", "primary"], ["F", "secondary"], ["G", "tertiary"], ["I", "info"]]:
+			for action in [["E", "primary"], ["F", "secondary"], ["G", "tertiary"], ["Z", "sleep"], ["I", "info"]]:
 				var action_name := str(prompt.get(str(action[1]), ""))
 				if not action_name.is_empty(): actions.append("%s %s" % [str(action[0]), action_name])
 			_prompt_keys.text = "  ".join(actions)

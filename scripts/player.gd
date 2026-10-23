@@ -40,6 +40,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	# I: the looked-at item's info card (what it does in the habitat).
 	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:
 		_use_looked_at_interactable("interact_info")
+	# Z: sleep, at a bunk (scripts/sleep.gd).
+	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_Z and not event.ctrl_pressed:
+		_use_looked_at_interactable("interact_sleep")
 	# G: a tap is the looked-at item's third action, holding it opens GAR-Y's
 	# orders. Both are handled by scripts/gar_y_orders.gd.
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:

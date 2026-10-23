@@ -59,6 +59,11 @@
         "label": "Drawer",
         "state": "drawers",
         "tray_depth": 0.3
+      },
+      {
+        "key": "sleep",
+        "type": "sleep",
+        "label": "Sleep"
       }
     ]
   },

@@ -16,9 +16,10 @@ habitat, mc_<id>_<n>.wav for Mission Control. The game picks one at random
 and shows its text as a caption.
 
 Usage:
-    python tools/generate_voice.py [<output folder>]
+    python tools/generate_voice.py [<output folder>] [--missing]
 Default output: <project>/assets/audio/voice. Needs numpy and Windows.
 Old files in the folder are removed first, so renamed lines don't linger.
+With --missing, nothing is removed and only lines without a file are spoken.
 """
 
 import json
@@ -93,10 +94,13 @@ def radio(signal):
 
 
 def main():
-    output = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "assets" / "audio" / "voice"
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    missing_only = "--missing" in sys.argv
+    output = Path(args[0]) if args else ROOT / "assets" / "audio" / "voice"
     ga.OUTPUT = output.parent
-    for old in output.glob("*.wav"): old.unlink()
-    for old in output.glob("*.wav.import"): old.unlink()
+    if not missing_only:
+        for old in output.glob("*.wav"): old.unlink()
+        for old in output.glob("*.wav.import"): old.unlink()
     jobs = []
     for line_id, variants in LINES["habitat"].items():
         for n, text in enumerate(variants): jobs.append((f"{line_id}_{n}", text, HABITAT_VOICE, 0, habitat))
@@ -104,6 +108,7 @@ def main():
         for n, text in enumerate(variants): jobs.append((f"mc_{line_id}_{n}", text, CONTROL_VOICE, 1, radio))
     with tempfile.TemporaryDirectory() as scratch:
         for name, text, voice, rate, treatment in jobs:
+            if missing_only and (output / f"{name}.wav").exists(): continue
             raw = Path(scratch) / f"{name}.wav"
             speak(text.replace("'", "''"), raw, voice, rate)
             ga.write(f"{output.name}/{name}", treatment(read_wav(raw)), -3)

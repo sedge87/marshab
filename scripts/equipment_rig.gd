@@ -85,7 +85,7 @@ func _action_label(action: Dictionary) -> String:
 			var level := _level(action)
 			var now := str(names[level]).to_upper() + (" (NO POWER)" if level > 0 and not _grid_powered else "")
 			return "%s %s → %s" % [str(action.get("label", "Setting")), now, str(names[(level + 1) % names.size()]).to_upper()]
-		"workout", "inspect", "play", "sign_edit", "monitor", "camera":
+		"workout", "inspect", "play", "sign_edit", "monitor", "camera", "sleep":
 			return str(action.get("label", "Use"))
 		"screen":
 			var labels: Array = action.get("mode_labels", action.get("modes", []))
@@ -96,6 +96,7 @@ func _action_label(action: Dictionary) -> String:
 func interact(actor: Node = null) -> bool: return _run("primary", actor)
 func interact_secondary(actor: Node = null) -> bool: return _run("secondary", actor)
 func interact_tertiary(actor: Node = null) -> bool: return _run("tertiary", actor)
+func interact_sleep(actor: Node = null) -> bool: return _run("sleep", actor)
 
 ## The item's info card: what it does in the habitat and what it connects to.
 func interact_info(_actor: Node = null) -> bool:
@@ -126,6 +127,9 @@ func _run(key: String, _actor: Node) -> bool:
 				return true
 			"play":
 				_play(action)
+				return true
+			"sleep":
+				get_tree().call_group("sleep", "open", self)
 				return true
 			"screen":
 				_set_state(str(action.state), (_screen_mode(action) + 1) % maxi(1, (action.get("modes", []) as Array).size()))

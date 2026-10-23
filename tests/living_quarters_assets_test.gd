@@ -64,6 +64,7 @@ func _initialize() -> void:
 		for index in range((rig.get("_actions") as Array).size()):
 			var action: Dictionary = rig.get("_actions")[index]
 			var kind := str(action.get("type", ""))
+			if kind == "sleep": continue   # no parts: it opens the sleep panel
 			if kind in ["light", "inspect"]:
 				_check((rig.get("_lights") as Dictionary).has(index), "%s %s found its parts" % [id, kind])
 			else:
