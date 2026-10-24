@@ -14,8 +14,13 @@ extends CharacterBody3D
 ## recover it if it's wedged against something.
 ##
 ## From the EVA-6 design: the roof solar panel trickle-charges the battery in
-## daylight (so a flat rover is never stranded for good), and the tail lights
-## glow red when braking or reversing.
+## daylight, and the tail lights glow red when braking or reversing.
+##
+## Running flat: when the main battery empties, a reserve takes over (about
+## 600 m at reduced speed, recharged only in the bay) and the HUD points home.
+## With both empty it can only crawl on its roof solar, in daylight; at night
+## it waits for sunrise. The rover charger in the bay can recall it: it drives
+## itself home on whatever it has (never on solar at night).
 ##
 ## Arcade handling on a bicycle model; the body follows the ground with four
 ## rays (pitch, roll and height, like suspension), and its collision box sits
@@ -26,7 +31,10 @@ const CARGO_LANDER := preload("res://scripts/cargo_lander.gd")   # its soft dust
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const MAX_SPEED := 6.5          # m/s (about 23 km/h)
 const REVERSE_SPEED := 2.5
-const LIMP_SPEED := 1.0         # flat battery
+const LIMP_SPEED := 1.0         # both batteries flat: crawling on roof solar (daylight only)
+const RESERVE_SPEED := 3.0      # m/s on the reserve battery
+const RESERVE_DRAIN_PER_M := 1.0 / 6.0   # reserve % per metre (about 600 m)
+const DAYLIGHT := 0.1           # sunlight above this powers the solar crawl
 const ACCEL := 2.3
 const BRAKE := 6.5
 const COAST := 0.9
@@ -47,6 +55,9 @@ var builder: Node
 var speed := 0.0
 var steer := 0.0
 var battery := 100.0
+var reserve := 100.0
+## Driving itself home after a recall from the rover charger.
+var recalling := false
 var lights_on := false
 var driving := false
 var first_person := false
@@ -69,6 +80,9 @@ var _was_charging := false
 var _tail_lights: Array[MeshInstance3D] = []
 var _tail_glow: StandardMaterial3D
 var _braking := false
+var _recall_stage := ""         # "approach" (outside the hangar), then "enter"
+var _stuck := 0.0
+var _backing := 0.0
 
 func setup(target_builder: Node) -> void:
 	builder = target_builder
@@ -127,7 +141,7 @@ func interact_secondary(_actor: Node = null) -> bool:
 
 func interact_info(_actor: Node = null) -> bool:
 	get_tree().call_group("explore_hud", "show_equipment_note", "Crew rover",
-		"A small pressurised rover for two, with suitports at the back and a cargo deck. About 4 km to a charge; it charges in the vehicle bay, and opens the hangar door as you drive up to it. W/S drive, A/D steer, Space brake, F lights, V view, E get out.")
+		"The EVA-6: a pressurised rover with a rear docking hatch and a roof solar panel. About 4 km to a charge, then a reserve for about 600 m; it charges in the vehicle bay, and the roof panel tops it up by day (never at night). The rover charger in the bay can recall it home. W/S drive, A/D steer, Space brake, F lights, V view, R free it, E get out.")
 	return true
 
 # ---------- getting in and out ----------
@@ -227,7 +241,11 @@ func _physics_process(delta: float) -> void:
 		throttle = _axis(KEY_W, "move_forward") - _axis(KEY_S, "move_back")
 		steer_in = _axis(KEY_A, "move_left") - _axis(KEY_D, "move_right")
 		braking = Input.is_key_pressed(KEY_SPACE)
-	var top := MAX_SPEED if battery > 0.0 else LIMP_SPEED
+	elif recalling and not get_tree().paused:
+		var drive := _autopilot(delta)
+		throttle = drive.x
+		steer_in = drive.y
+	var top := top_speed()
 	_set_braking(braking or (throttle < 0.0 and speed < 0.05))
 	if braking:
 		speed = move_toward(speed, 0.0, BRAKE * delta)
@@ -313,14 +331,98 @@ func _spin_wheels(delta: float, moved: float) -> void:
 		wheel.set_meta("spin", spin)
 		wheel.transform.basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, spin)
 
+## What it can do now: full speed on the battery, slower on the reserve, a
+## solar crawl by day with both flat, nothing at night.
+func top_speed() -> float:
+	if battery > 0.0: return MAX_SPEED
+	if reserve > 0.0: return RESERVE_SPEED
+	return LIMP_SPEED if MHGame.sunlight_fraction > DAYLIGHT else 0.0
+
 func _battery(delta: float, moved: float) -> void:
-	battery = maxf(0.0, battery - moved * DRAIN_PER_M)
+	if battery > 0.0: battery = maxf(0.0, battery - moved * DRAIN_PER_M)
+	elif reserve > 0.0:
+		var was := reserve
+		reserve = maxf(0.0, reserve - moved * RESERVE_DRAIN_PER_M)
+		if was > 99.9 and driving: _flash("Main battery flat", "Running on the reserve: about 600 m. Head home to the vehicle bay.")
+		if was > 0.0 and reserve <= 0.0 and driving: _flash("Reserve flat", "Crawling on solar by day only. At night it can't move until sunrise.")
 	var charging := _in_bay() and absf(speed) < 0.1
-	if charging: battery = minf(100.0, battery + CHARGE_PER_S * delta)
+	if charging:
+		battery = minf(100.0, battery + CHARGE_PER_S * delta)
+		reserve = minf(100.0, reserve + CHARGE_PER_S * delta)
 	# The roof panel, in daylight, wherever it is outside.
 	elif not _in_bay(): battery = minf(100.0, battery + SOLAR_PER_S * clampf(MHGame.sunlight_fraction, 0.0, 1.0) * delta)
 	if charging and not _was_charging and driving and battery < 99.0: MHAudio.sfx("ui_confirm", -8.0)
 	_was_charging = charging
+
+func _flash(title: String, text: String) -> void:
+	get_tree().call_group("explore_hud", "show_equipment_note", title, text)
+	MHAudio.sfx("warn", -6.0)
+
+# ---------- recall ----------
+
+## The first vehicle bay: {centre, door (the hangar's outside face), out}.
+func _home() -> Dictionary:
+	if builder == null: return {}
+	for zone in builder.zones:
+		if str(zone.get("kind", "")) != "vehicle_bay": continue
+		var outside: Vector2i = zone.get("door_direction", Vector2i(0, -1))
+		var face: Dictionary = builder._zone_face(zone, outside)
+		var centre := Vector2.ZERO
+		for cell in zone.cells: centre += Vector2(cell) * BuildController.CELL
+		centre /= float((zone.cells as Array).size())
+		var door: Vector3 = face.position
+		return {"centre": centre, "door": Vector2(door.x, door.z), "out": Vector2(outside)}
+	return {}
+
+## Called by the rover charger: drive home on its own. Returns what to tell
+## the player.
+func recall() -> String:
+	var home := _home()
+	if home.is_empty(): return "There's no vehicle bay to come home to."
+	if driving: return "Someone's driving it."
+	if _in_bay(): return "The rover's already here in the bay."
+	if top_speed() <= 0.0: return "Its battery and reserve are flat and it's dark: it can't move until sunrise, when its roof panel can crawl it home."
+	recalling = true
+	_recall_stage = "approach"
+	_stuck = 0.0
+	var how := "on its battery" if battery > 0.0 else ("on its reserve" if reserve > 0.0 else "slowly, on its roof solar")
+	return "Recalled: the rover is driving home %s, %d m away." % [how, roundi(Vector2(global_position.x, global_position.z).distance_to(home.centre))]
+
+## Steering for the drive home: [throttle, steer]. Out to a point in front of
+## the hangar, then straight in to the middle of the bay. If it stops making
+## progress it backs off and tries again.
+func _autopilot(delta: float) -> Vector2:
+	var home := _home()
+	if home.is_empty():
+		recalling = false
+		return Vector2.ZERO
+	var at := Vector2(global_position.x, global_position.z)
+	var approach: Vector2 = home.door + home.out * 7.0
+	var target: Vector2 = approach if _recall_stage == "approach" else home.centre
+	if _recall_stage == "approach" and at.distance_to(approach) < 2.5: _recall_stage = "enter"
+	if _recall_stage == "enter" and at.distance_to(home.centre) < 1.2:
+		recalling = false
+		speed = 0.0
+		if _hangar != null and _hangar.is_open(): _hangar.request_shut()
+		_hangar = null
+		return Vector2.ZERO
+	if top_speed() <= 0.0:   # nightfall on solar: it stops and waits
+		return Vector2.ZERO
+	if _backing > 0.0:
+		_backing -= delta
+		return Vector2(-1.0, 0.6)
+	if absf(speed) < 0.2:
+		_stuck += delta
+		if _stuck > 2.5:
+			_stuck = 0.0
+			_backing = 1.5
+	else:
+		_stuck = 0.0
+	var to := target - at
+	var wanted := atan2(-to.x, -to.y)
+	var error := wrapf(wanted - rotation.y, -PI, PI)
+	var near := clampf(at.distance_to(target) / 6.0, 0.35, 1.0)
+	return Vector2(near if absf(error) < 1.4 else 0.4, clampf(error * 1.6, -1.0, 1.0))
 
 ## Tail lights glow while braking or reversing.
 func _set_braking(on: bool) -> void:
@@ -349,7 +451,7 @@ func _in_bay() -> bool:
 ## The hangar door opens as you drive up to it (sealing the bay's other doors
 ## first, through the interlock) and shuts once you're well clear.
 func _hangar_doors() -> void:
-	if not driving:
+	if not driving and not recalling:
 		return
 	var nearest: Node = null
 	var nearest_distance := 1e9
@@ -366,7 +468,8 @@ func _hangar_doors() -> void:
 	if nearest_distance < 8.5 and absf(speed) > 0.05 and heading.dot(to_door.normalized()) > 0.55:
 		if not nearest.is_open(): nearest.request_open()
 		_hangar = nearest
-	elif _hangar != null and _hangar.is_open() and (_hangar as Node3D).global_position.distance_to(global_position) > 9.5:
+	elif _hangar != null and _hangar.is_open() and ((_hangar as Node3D).global_position.distance_to(global_position) > 9.5 or (_in_bay() and nearest_distance > 3.5 and absf(speed) < 0.3)):
+		# Well clear outside, or parked inside: shut it behind you.
 		_hangar.request_shut()
 		_hangar = null
 
@@ -498,18 +601,38 @@ func _show_hud(on: bool) -> void:
 
 func _update_hud() -> void:
 	if _readout == null: return
-	var solar := not _was_charging and MHGame.sunlight_fraction > 0.1 and battery < 100.0
-	var state := "charging" if _was_charging else ("FLAT: limping home on solar" if battery <= 1.0 else ("solar topping up" if solar and absf(speed) < 0.1 else ("lights on" if lights_on else "")))
-	_readout.text = "%3d km/h   ·   battery %d%%%s" % [roundi(absf(speed) * 3.6), roundi(battery), "   ·   " + state if not state.is_empty() else ""]
+	var solar := not _was_charging and MHGame.sunlight_fraction > DAYLIGHT and battery < 100.0
+	var power := "battery %d%%" % roundi(battery) if battery > 0.0 else ("RESERVE %d%%" % roundi(reserve) if reserve > 0.0 else "FLAT")
+	var state := ""
+	if _was_charging: state = "charging"
+	elif battery <= 0.0: state = _home_marker() + ("" if reserve > 0.0 else ("   ·   solar crawl" if top_speed() > 0.0 else "   ·   dark: wait for sunrise"))
+	elif solar and absf(speed) < 0.1: state = "solar topping up"
+	elif lights_on: state = "lights on"
+	_readout.text = "%3d km/h   ·   %s%s" % [roundi(absf(speed) * 3.6), power, "   ·   " + state if not state.is_empty() else ""]
 	_readout.modulate = MHStyle.DANGER if battery < 15.0 else MHStyle.TEXT_PRIMARY
+
+## "home 240 m" with an arrow: the way back to the vehicle bay, from where
+## the rover faces.
+func _home_marker() -> String:
+	var home := _home()
+	if home.is_empty(): return "no vehicle bay"
+	var to: Vector2 = home.centre - Vector2(global_position.x, global_position.z)
+	var bearing := wrapf(atan2(-to.x, -to.y) - rotation.y, -PI, PI)
+	var arrows := ["\u2191", "\u2196", "\u2190", "\u2199", "\u2193", "\u2198", "\u2192", "\u2197"]
+	var arrow: String = arrows[posmod(roundi(bearing / (PI / 4.0)), 8)]
+	return "home %d m %s" % [roundi(to.length()), arrow]
 
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"position": global_position, "yaw": rotation.y, "battery": battery, "lights": lights_on}
+	return {"position": global_position, "yaw": rotation.y, "battery": battery, "reserve": reserve, "lights": lights_on, "recalling": recalling}
 
 func restore_state(state: Dictionary) -> void:
 	if state.has("position"): global_position = state.position as Vector3
 	rotation.y = float(state.get("yaw", rotation.y))
 	battery = float(state.get("battery", battery))
+	reserve = float(state.get("reserve", reserve))
+	if bool(state.get("recalling", false)):
+		recalling = true
+		_recall_stage = "approach"
 	_set_lights(bool(state.get("lights", false)))

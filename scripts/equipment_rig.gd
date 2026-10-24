@@ -85,7 +85,7 @@ func _action_label(action: Dictionary) -> String:
 			var level := _level(action)
 			var now := str(names[level]).to_upper() + (" (NO POWER)" if level > 0 and not _grid_powered else "")
 			return "%s %s → %s" % [str(action.get("label", "Setting")), now, str(names[(level + 1) % names.size()]).to_upper()]
-		"workout", "inspect", "play", "sign_edit", "monitor", "camera", "sleep":
+		"workout", "inspect", "play", "sign_edit", "monitor", "camera", "sleep", "recall_rover":
 			return str(action.get("label", "Use"))
 		"screen":
 			var labels: Array = action.get("mode_labels", action.get("modes", []))
@@ -135,6 +135,12 @@ func _run(key: String, _actor: Node) -> bool:
 				_set_state(str(action.state), (_screen_mode(action) + 1) % maxi(1, (action.get("modes", []) as Array).size()))
 			"sign_edit":
 				_edit_sign(action)
+				return true
+			"recall_rover":
+				# The crew rover drives itself home (scripts/crew_rover.gd).
+				var rover := get_tree().get_first_node_in_group("crew_rover")
+				var note := "There's no crew rover yet: it comes with a vehicle bay." if rover == null else str(rover.recall())
+				get_tree().call_group("explore_hud", "show_equipment_note", "Crew rover", note)
 				return true
 			"monitor":
 				get_tree().call_group("habitat_world", "open_monitor")

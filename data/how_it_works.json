@@ -545,9 +545,9 @@
       "icon": "truck",
       "picture": "rover",
       "lines": [
-        "Build a vehicle bay and the crew rover is waiting inside. Look at it and press E to drive.",
-        "The hangar door opens as you drive up, and shuts behind you.",
-        "About 4 km to a charge. Park in the bay to charge; in daylight its roof panel slowly tops it up.",
+        "Build a vehicle bay and the crew rover waits inside. Look at it and press E to drive.",
+        "The hangar opens as you drive up. The rover charger in the bay can recall it home.",
+        "About 4 km to a charge, then a reserve for 600 m. Its roof panel helps by day, never at night.",
         "W and S drive, A and D steer, Space brakes, F lights, V view, R frees it, E gets out."
       ],
       "remember": "The rover goes further than you can walk, but it has to come home to charge.",
