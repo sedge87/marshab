@@ -86,5 +86,16 @@ func _initialize() -> void:
 	assert(builder.placed_interior.filter(func(i): return str(i.id) in ["regolith_shield_block", "water_wall_panel"]).is_empty(), "The old blocks are gone from the room.")
 	assert(builder.wall_upgrades.size() == 2 and builder.wall_upgrades.any(func(r): return str(r.kind) == "water"), "They became a regolith wall and a water wall (%s)." % str(builder.wall_upgrades))
 	assert(not builder.free_interior_invalid_reason("regolith_shield_block", Vector3(0, y, 0), Vector3.UP).is_empty(), "Old blocks can't be placed any more.")
+	# The roof rail runs round the outside of the whole base only: a free-shape
+	# room's outline (not every square inside it), and never between rooms.
+	var outline := PackedVector2Array([Vector2(-1.5, -1.5), Vector2(4.5, -1.5), Vector2(4.5, 4.5), Vector2(-1.5, 4.5)])
+	builder.zones = [{"kind": "medical", "cells": builder._freeform_cells(outline), "outline": outline, "door_direction": Vector2i(0, -1), "cost": 0},
+		{"kind": "living", "cells": [Vector2i(2, 0)], "door_direction": Vector2i(0, -1), "cost": 0}]
+	builder._rebuild()
+	var edges: Array = WALL_UPGRADES._outer_edges(builder)
+	assert(edges.size() == 7, "A free-shape room's 4 sides (one only partly open) and a square room's 3 open sides (%d)." % edges.size())
+	var east: Array = edges.filter(func(e): return absf((e[0] as Vector2).x - 4.5) < .01 and absf((e[1] as Vector2).x - 4.5) < .01)
+	assert(east.size() == 1 and absf((east[0][0] as Vector2).distance_to(east[0][1]) - 3.0) < .01, "Where it meets the living room, no rail: only the open half of that side (%s)." % str(east))
+	assert(edges.all(func(e): return not builder._is_habitat_zone(builder._zone_at_point(((e[0] as Vector2) + (e[1] as Vector2)) * .5 + (e[2] as Vector2) * .3))), "Every rail edge has open ground beyond it.")
 	print("Wall upgrades test passed: shielding on outside walls and roofs, no windows there, cargo, insulation against noise, saving, removing, mission unlocks and old blocks converted.")
 	quit(0)

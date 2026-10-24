@@ -325,36 +325,86 @@ static func _ladder(builder: Node, record: Dictionary, mid: Vector3, out: Vector
 	body.add_child(shape)
 	body.setup(builder, record.mid, record.outward)
 
-## With a ladder, a rail round the roof edge (1 m, the colony accent), with an
-## opening where each ladder comes up, lined up with the ladder's rails.
+## With a ladder, a rail round the outside edge of the whole base's roof (1 m,
+## the colony accent), with an opening where each ladder comes up. It follows
+## each room's real outline (free-shape rooms too), and only where there's open
+## ground just beyond the edge, so no rail runs between rooms or across a room.
 static func _roof_rails(builder: Node) -> void:
 	var ladders: Array = builder.wall_upgrades.filter(func(r): return str(r.kind) == "ladder")
 	if ladders.is_empty(): return
-	var cell_size: float = BuildController.CELL
 	var top: float = builder.habitat_base_y + 2.975
 	var rail := MHGame.accent_material()
 	var post := _material(MHStyle.FRAME_STEEL, .45)
+	for edge in _outer_edges(builder):
+		var a: Vector2 = edge[0]
+		var b: Vector2 = edge[1]
+		var out: Vector2 = edge[2]
+		var length := a.distance_to(b)
+		var tangent := (b - a) / length
+		var mid := (a + b) * .5
+		# Runs along this edge, [from, to] from its middle; split round a ladder.
+		var runs := [[-length * .5, length * .5]]
+		for ladder in ladders:
+			var offset: Vector2 = (ladder.mid as Vector2) - mid
+			if absf(offset.dot(out)) > .3 or absf(offset.dot(tangent)) > length * .5: continue
+			var at := offset.dot(tangent)
+			var split: Array = []
+			for run in runs:
+				if at + LADDER_HALF_WIDTH <= float(run[0]) or at - LADDER_HALF_WIDTH >= float(run[1]): split.append(run); continue
+				if at - LADDER_HALF_WIDTH - float(run[0]) > .1: split.append([float(run[0]), at - LADDER_HALF_WIDTH])
+				if float(run[1]) - (at + LADDER_HALF_WIDTH) > .1: split.append([at + LADDER_HALF_WIDTH, float(run[1])])
+			runs = split
+		var along := Vector3(tangent.x, 0, tangent.y)
+		var basis := Basis(along, Vector3.UP, along.cross(Vector3.UP))
+		var centre := Vector3(mid.x, top, mid.y) - Vector3(out.x, 0, out.y) * .12
+		for run in runs:
+			var run_length := float(run[1]) - float(run[0])
+			var at: Vector3 = centre + along * ((float(run[0]) + float(run[1])) * .5)
+			_barrier(builder, at + Vector3.UP * .5, Vector3(run_length, 1.0, .1), basis)
+			for height in [.5, 1.0]:
+				_box(builder, at + Vector3.UP * height, Vector3(run_length, .05, .05), basis, rail)
+			for end in run:
+				_box(builder, centre + along * float(end) + Vector3.UP * .5, Vector3(.06, 1.0, .06), basis, post)
+
+## The base's outer roof edges: [a, b, outward] for every edge of every room
+## (its outline, or its squares) that has open ground just beyond it.
+static func _outer_edges(builder: Node) -> Array:
+	var edges: Array = []
+	var half: float = BuildController.CELL * .5
 	for zone in builder.zones:
 		if not builder._is_habitat_zone(zone) or zone.has("angled_mount"): continue
-		for cell in zone.get("cells", []):
-			for side in SIDES:
-				if builder._is_habitat_zone(builder._zone_across(cell, side)): continue
-				var edge_mid := (Vector2(cell) + Vector2(side) * .5) * cell_size
-				var along := Vector3(-side.y, 0, side.x)
-				var centre := Vector3(edge_mid.x, top, edge_mid.y) - Vector3(side.x, 0, side.y) * .12
-				var basis := Basis(along, Vector3.UP, along.cross(Vector3.UP))
-				# Runs along this edge, [from, to] from its centre; split round a ladder.
-				var runs := [[-cell_size * .5, cell_size * .5]]
-				if ladders.any(func(l): return (l.mid as Vector2).distance_to(edge_mid) < .6):
-					runs = [[-cell_size * .5, -LADDER_HALF_WIDTH], [LADDER_HALF_WIDTH, cell_size * .5]]
-				for run in runs:
-					var length := float(run[1]) - float(run[0])
-					var at: Vector3 = centre + along * ((float(run[0]) + float(run[1])) * .5)
-					_barrier(builder, at + Vector3.UP * .5, Vector3(length, 1.0, .1), basis)
-					for height in [.5, 1.0]:
-						_box(builder, at + Vector3.UP * height, Vector3(length, .05, .05), basis, rail)
-					for end in run:
-						_box(builder, centre + along * float(end) + Vector3.UP * .5, Vector3(.06, 1.0, .06), basis, post)
+		var sides: Array = []
+		var outline: PackedVector2Array = builder.zone_outline(zone) if zone.has("outline") or not str(zone.kind) in BuildController.NON_ROOM_KINDS else PackedVector2Array()
+		if outline.size() >= 3:
+			for i in range(outline.size()): sides.append([outline[i], outline[(i + 1) % outline.size()]])
+		else:
+			for cell in zone.get("cells", []):
+				var c := Vector2(cell) * BuildController.CELL
+				var corners := [c + Vector2(-half, -half), c + Vector2(half, -half), c + Vector2(half, half), c + Vector2(-half, half)]
+				for i in 4: sides.append([corners[i], corners[(i + 1) % 4]])
+		for side in sides:
+			var a: Vector2 = side[0]
+			var b: Vector2 = side[1]
+			var length := a.distance_to(b)
+			if length < .2: continue
+			var normal := (b - a).normalized().orthogonal()
+			var out := -normal if builder._point_in_zone((a + b) * .5 + normal * .3, zone) else normal
+			if builder._point_in_zone((a + b) * .5 + out * .3, zone): continue   # inside the room
+			# In short pieces, so a side only partly shared with the next room
+			# keeps its rail just where there's open ground; open pieces in a
+			# row join back into one run.
+			var pieces := maxi(1, ceili(length / .75))
+			var run_start := -1
+			for i in range(pieces + 1):
+				var open := false
+				if i < pieces:
+					var piece_mid := a.lerp(b, (i + .5) / pieces)
+					open = not builder._is_habitat_zone(builder._zone_at_point(piece_mid + out * .3))
+				if open and run_start < 0: run_start = i
+				elif not open and run_start >= 0:
+					edges.append([a.lerp(b, float(run_start) / pieces), a.lerp(b, float(i) / pieces), out])
+					run_start = -1
+	return edges
 
 ## A thin layer of regolith on one roof square, inset from the edge, with
 ## faint lines; solid, so you can walk on it.
