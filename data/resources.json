@@ -670,6 +670,10 @@
       "power_kw": 0.08,
       "hours_per_sol": 12.0
     },
+    "retro_mars_poster": {
+      "room": "general",
+      "cargo_kg": 1.0
+    },
     "mini_gar_y": {
       "room": "odds_and_ends",
       "cargo_kg": 1.0

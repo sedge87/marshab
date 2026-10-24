@@ -5626,7 +5626,10 @@ func _refresh_catalogue() -> void:
 		if not MHMissions.zone_unlocked(kind) and equipment_id.is_empty():
 			for id in ZONE_TYPES:
 				if str(ZONE_INFO[id].cat)==category and MHMissions.zone_unlocked(id): kind=id; break
-		for id in ZONE_TYPES:
+		# Rooms in alphabetical order; the other tabs keep their own order.
+		var ids:=ZONE_TYPES.keys()
+		if category=="rooms": ids.sort_custom(func(a,b): return str(ZONE_TYPES[a].label).naturalnocasecmp_to(str(ZONE_TYPES[b].label))<0)
+		for id in ids:
 			if str(ZONE_INFO[id].cat)!=category: continue
 			if not MHMissions.zone_unlocked(id): continue   # Missions: only this payload's parts
 			shown+=1

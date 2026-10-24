@@ -1,0 +1,35 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_rig.gd" id="1_rig"]
+[ext_resource type="Texture2D" path="res://assets/equipment/posters/retro_mars_poster.webp" id="2_art"]
+
+[sub_resource type="StandardMaterial3D" id="paper"]
+resource_name = "Poster paper"
+albedo_texture = ExtResource("2_art")
+roughness = 0.85
+
+[sub_resource type="QuadMesh" id="art_mesh"]
+material = SubResource("paper")
+size = Vector2(0.64, 0.8)
+
+[sub_resource type="StandardMaterial3D" id="frame"]
+resource_name = "Poster frame graphite"
+albedo_color = Color(0.3, 0.35, 0.38, 1)
+
+[sub_resource type="BoxMesh" id="frame_mesh"]
+material = SubResource("frame")
+size = Vector3(0.7, 0.86, 0.025)
+
+[node name="RetroMarsPoster" type="Node3D"]
+script = ExtResource("1_rig")
+equipment_id = "retro_mars_poster"
+
+[node name="Model" type="Node3D" parent="."]
+
+[node name="Frame" type="MeshInstance3D" parent="Model"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.0125)
+mesh = SubResource("frame_mesh")
+
+[node name="Art" type="MeshInstance3D" parent="Model"]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, -0.0265)
+mesh = SubResource("art_mesh")

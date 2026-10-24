@@ -3316,6 +3316,52 @@
       "pack": "mars_crew_comforts_v1"
     },
     {
+      "id": "retro_mars_poster",
+      "label": "Retro Mars Poster",
+      "group": "general",
+      "status": "catalogue",
+      "icon": "image",
+      "height": 0.86,
+      "mount_height": 1.5,
+      "description": "A retro travel poster of a little base under a starry Martian sky: \"A home beyond Earth\".",
+      "role": "Morale",
+      "cargo_cost": 1,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "life_support",
+        "engineering",
+        "galley",
+        "hygiene",
+        "medical",
+        "waste_management",
+        "communications",
+        "corridor",
+        "airlock",
+        "vehicle_bay"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "wall",
+      "effects": {
+        "happiness": 1
+      },
+      "system_note": "Crews on long missions decorate their quarters: posters, photos and drawings from home make a metal room feel like theirs.",
+      "system_links": [
+        "Morale"
+      ],
+      "asset_scene": "res://assets/equipment/posters/retro_mars_poster.tscn",
+      "size_m": [
+        0.7,
+        0.86,
+        0.03
+      ]
+    },
+    {
       "id": "regolith_printer",
       "label": "Regolith Printer",
       "group": "storage",
