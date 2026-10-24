@@ -327,6 +327,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode==KEY_B:
 			var active_player := world.get_node_or_null("Player") as Node
+			if active_player != null and bool(active_player.get_meta("driving", false)):
+				return   # get out of the rover first
 			if active_player != null and bool(active_player.get_meta("interior_build_active", false)):
 				return
 			if active_player != null and bool(active_player.get_meta("surface_build_active", false)):
@@ -4420,6 +4422,7 @@ func _build_vehicle_bay(zone: Dictionary) -> void:
 	# Internal doors may share the pressurised habitat, but all must close before
 	# the hangar can open to Mars.
 	hangar.setup("HANGAR",true,face.width,2.58); _add_door_plan_marker(hangar,"HANGAR",face.width-.4)
+	_add_bay_ramp(face, outside)
 	for bay_door in bay_doors:
 		hangar.add_partner(bay_door)
 		bay_door.add_partner(hangar)
@@ -4569,6 +4572,63 @@ func _airlock_end(cells: Array,direction: Vector2i,outside: bool) -> Vector2i:
 
 func _face_preview_cell(cells: Array,direction: Vector2i) -> Vector2i:
 	return _airlock_end(cells,direction,true)
+
+## A plated ramp from the hangar door down to the ground, so the crew rover
+## (scripts/crew_rover.gd) can drive in and out. Orange edge strips mark it.
+func _add_bay_ramp(face: Dictionary, outside: Vector2i) -> void:
+	var out := Vector3(outside.x, 0, outside.y)
+	var top: Vector3 = face.position
+	var far := top + out * 3.2
+	far.y = _terrain_height(Vector3(far.x, 0, far.z)) - .02
+	if top.y - far.y < .04: return
+	var along := (top - far).normalized()
+	var across := Vector3.UP.cross(along).normalized()
+	var normal := along.cross(across).normalized()
+	if normal.y < 0: normal = -normal
+	var basis := Basis(across, normal, along)
+	var width := float(face.width) - .2
+	var length := top.distance_to(far)
+	var body := StaticBody3D.new()
+	body.collision_layer = 1
+	body.add_to_group("vehicle_bay_ramp")
+	body.transform = Transform3D(basis, (top + far) * .5 - normal * .07)
+	root.add_child(body)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(width, .14, length + .1)
+	shape.shape = box
+	body.add_child(shape)
+	var deck := MeshInstance3D.new()
+	var deck_mesh := BoxMesh.new()
+	deck_mesh.size = box.size
+	deck.mesh = deck_mesh
+	deck.material_override = MHGame.kit_material("seal")
+	body.add_child(deck)
+	var stripe_material := StandardMaterial3D.new()
+	stripe_material.albedo_color = MHStyle.SAFETY_ORANGE
+	stripe_material.roughness = .5
+	for side in [-1.0, 1.0]:
+		var stripe := MeshInstance3D.new()
+		var stripe_mesh := BoxMesh.new()
+		stripe_mesh.size = Vector3(.12, .02, length)
+		stripe.mesh = stripe_mesh
+		stripe.material_override = stripe_material
+		stripe.position = Vector3(side * (width * .5 - .1), .08, 0)
+		body.add_child(stripe)
+	# Raised treads, so it reads as a ramp and not a slab.
+	var tread_material := StandardMaterial3D.new()
+	tread_material.albedo_color = MHStyle.FRAME_STEEL
+	tread_material.metallic = .5
+	tread_material.roughness = .4
+	var count := int(length / .45)
+	for i in count:
+		var tread := MeshInstance3D.new()
+		var tread_mesh := BoxMesh.new()
+		tread_mesh.size = Vector3(width - .5, .025, .05)
+		tread.mesh = tread_mesh
+		tread.material_override = tread_material
+		tread.position = Vector3(0, .08, -length * .5 + (i + .5) * length / count)
+		body.add_child(tread)
 
 func _zone_face(zone: Dictionary,direction: Vector2i) -> Dictionary:
 	var cells:Array=zone.cells; var min_x: int=cells[0].x; var max_x: int=cells[0].x; var min_z: int=cells[0].y; var max_z: int=cells[0].y

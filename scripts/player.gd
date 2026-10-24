@@ -35,7 +35,8 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	# Build modes reuse E (orbit) and other keys; explore actions must not fire
 	# behind the build camera, so only mouse-look below is shared.
-	var exploring := not _any_build_mode_active()
+	# Driving the crew rover (scripts/crew_rover.gd): it takes the keys.
+	var exploring := not _any_build_mode_active() and not bool(get_meta("driving", false))
 	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		if not _use_looked_at_interactable("interact"):
 			_toggle_nearby_airlock_door()
@@ -69,7 +70,7 @@ func _physics_process(delta: float) -> void:
 	# Exterior construction uses the same movement keys to pan its bird's-eye
 	# camera. Freeze the character in place so panning never changes the real
 	# player cell represented by the build-mode marker.
-	if bool(get_meta("build_mode_active", false)) or bool(get_meta("ui_freeze", false)):
+	if bool(get_meta("build_mode_active", false)) or bool(get_meta("ui_freeze", false)) or bool(get_meta("driving", false)):
 		velocity = Vector3.ZERO
 		return
 	if bool(get_meta("debug_fly", false)):

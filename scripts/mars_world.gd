@@ -52,6 +52,11 @@ var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y 
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
 var scout_rover: Node3D
+## The crew rover (scripts/crew_rover.gd): it appears in the vehicle bay once
+## the base has one, and is saved with the base.
+const CREW_ROVER_SCRIPT := preload("res://scripts/crew_rover.gd")
+var crew_rover: CharacterBody3D
+var _crew_rover_state := {}
 var interior_builder: MHInteriorBuildController
 var surface_builder: MHSurfaceBuildController
 var day_night: MHSiteDayNight
@@ -126,6 +131,7 @@ func _ready() -> void:
 	if scout_rover != null: scout_rover.set("habitat", builder)   # it roams the rooms indoors
 	builder.mission_control_requested.connect(_open_mission_control)
 	builder.habitat_changed.connect(func() -> void: _budget_dirty = true)
+	builder.habitat_changed.connect(_sync_crew_rover)
 	if MHMissions.active(): builder.simulation().crew_cap = MHMissions.crew_cap()
 	builder.interior_build_requested.connect(_open_interior_build)
 	builder.surface_build_requested.connect(_open_surface_build)
@@ -139,6 +145,7 @@ func _ready() -> void:
 	add_child(day_night)
 	day_night.setup(environment, builder)
 	_restore_pending_habitat()
+	_sync_crew_rover()
 	if MHMissions.active(): MHMissions.deliver_mission_food(builder.simulation())
 	configure_life()
 	if crew_arrival:
@@ -725,6 +732,28 @@ func _spawn_scout_rover() -> void:
 	scout_rover.global_position = lander.beside_ramp() if _start_in_lander else player.global_position + player.global_transform.basis.z * 2.4
 	scout_rover.call("setup", player)
 
+## The crew rover: a saved one comes back where it was left; otherwise it
+## appears in the first vehicle bay, facing the hangar door.
+func _sync_crew_rover() -> void:
+	if crew_rover != null or builder == null: return
+	var bay: Dictionary = {}
+	for zone in builder.zones:
+		if str(zone.get("kind", "")) == "vehicle_bay": bay = zone
+	if bay.is_empty() and _crew_rover_state.is_empty(): return
+	crew_rover = CREW_ROVER_SCRIPT.new()
+	crew_rover.setup(builder)
+	add_child(crew_rover)
+	if not _crew_rover_state.is_empty():
+		crew_rover.restore_state(_crew_rover_state)
+		_crew_rover_state = {}
+		return
+	var centre := Vector2.ZERO
+	for cell in bay.cells: centre += Vector2(cell) * BuildController.CELL
+	centre /= float((bay.cells as Array).size())
+	var outside: Vector2i = bay.get("door_direction", Vector2i(0, -1))
+	crew_rover.global_position = Vector3(centre.x, builder.habitat_base_y + 0.05, centre.y)
+	crew_rover.rotation.y = builder._direction_yaw(outside)
+
 func _build_hud() -> void:
 	explore_hud = MHExploreHUD.new()
 	explore_hud.setup(player, builder)
@@ -851,7 +880,8 @@ func current_state() -> Dictionary:
 		"day_night": day_night.export_state() if day_night != null else {},
 		"resupply": {"kg": MHGame.resupply_kg, "count": MHGame.resupply_count, "landers": resupply_landers.duplicate(true)},
 		"mission_control": earth_link.export_state() if earth_link != null else {},
-		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {}
+		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
+		"crew_rover": crew_rover.export_state() if crew_rover != null else {}
 	}
 
 ## Missions autosave: the campaign base and its progress (slot 1 of the
@@ -893,6 +923,7 @@ func _restore_pending_habitat() -> void:
 	builder.restore_habitat_state(state.get("builder", {}) as Dictionary)
 	_earth_link_state = state.get("mission_control", {}) as Dictionary
 	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
+	_crew_rover_state = state.get("crew_rover", {}) as Dictionary
 	player.global_position = state.get("player_position", player.global_position) as Vector3
 	player.rotation.y = float(state.get("player_rotation_y", player.rotation.y))
 	player.safe_position = player.global_position
