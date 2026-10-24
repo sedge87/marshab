@@ -93,6 +93,7 @@ static func cargo_budget() -> int:
 
 static func zone_unlocked(kind: String) -> bool:
 	if not active() or kind == "ladder": return true   # a roof ladder isn't a delivery
+	if kind.begins_with("shield_"): return structure_unlocked("upgrade_" + kind.trim_prefix("shield_"))
 	for mission in _so_far():
 		if (mission.get("unlock_zones", []) as Array).has(kind): return true
 	return false

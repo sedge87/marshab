@@ -31,7 +31,10 @@ const SITE_MACHINES := ["solar", "reactor", "ice_extractor", "regolith_intake"]
 const NON_ROOM_KINDS := ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor", "regolith_intake"]
 ## Room shells Mars-made (printed) material can pay for. Airlocks keep
 ## Earth-made seals and mechanisms; outdoor machines are all Earth-made.
-const PRINTABLE_ZONE_EXCLUDES := ["airlock", "solar", "reactor", "ice_extractor", "regolith_intake", "ladder"]
+const PRINTABLE_ZONE_EXCLUDES := ["airlock", "solar", "reactor", "ice_extractor", "regolith_intake", "ladder", "shield_water"]
+## Site plan cards that put a wall upgrade on (scripts/wall_upgrades.gd), not a
+## zone: card id -> upgrade kind. Shielding goes on from here or from inside.
+const SITE_UPGRADES := {"ladder": "ladder", "shield_regolith": "regolith", "shield_water": "water", "shield_roof": "roof"}
 var catalogue_preview: SubViewportContainer
 var catalogue_stage: PanelContainer
 var catalogue_details: PanelContainer
@@ -112,7 +115,10 @@ const ZONE_TYPES := {
 	"ice_extractor":{"label":"Ice Extractor","colour":Color(.20,.82,.92),"cost":450},
 	"regolith_intake":{"label":"Regolith Intake","colour":Color(.78,.48,.28),"cost":900},
 	# Not a zone: a ladder up an outside wall (a wall upgrade, scripts/wall_upgrades.gd).
-	"ladder":{"label":"Roof Ladder","colour":Color(.85,.58,.30),"cost":60}
+	"ladder":{"label":"Roof Ladder","colour":Color(.85,.58,.30),"cost":60},
+	"shield_regolith":{"label":"Regolith Shielding","colour":Color(.60,.42,.30),"cost":900},
+	"shield_water":{"label":"Water Wall","colour":Color(.25,.51,.72),"cost":260},
+	"shield_roof":{"label":"Roof Shielding","colour":Color(.55,.45,.38),"cost":900}
 }
 
 # Catalogue metadata for the build HUD. Gameplay values stay in ZONE_TYPES.
@@ -130,6 +136,9 @@ const ZONE_INFO := {
 	"communications":{"cat":"rooms","icon":"radio","rule":"Drag an area","desc":"Plan missions, map the site and keep in touch with Earth and the rovers."},
 	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates · click 45° wall","desc":"Creates a sealed passage. Click an exact 45° free-form wall for a rotated connector."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates · click 45° wall","desc":"The way in and out. Click an exact 45° free-form wall for a rotated airlock; otherwise the inner end must touch a room."},
+	"shield_regolith":{"cat":"structure","icon":"shield","rule":"Click an outside wall","desc":"Bags of Mars soil against an outside wall, against radiation. Printed by the regolith printer. You can also add it from inside: Furnish room, aim at the wall."},
+	"shield_water":{"cat":"structure","icon":"droplets","rule":"Click an outside wall","desc":"A water tank panel on an outside wall: water is one of the best radiation shields. You can also add it from inside: Furnish room, aim at the wall."},
+	"shield_roof":{"cat":"structure","icon":"house","rule":"Click a room","desc":"Regolith over a room's whole roof: most radiation comes from overhead. You can also add it from inside: Furnish room, aim at the ceiling."},
 	"ladder":{"cat":"structure","icon":"arrow-up","rule":"Click an outside wall","desc":"A ladder up an outside wall to the roof, with a safety rail round the edge. Outside, look at it and press E to climb."},
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
 	"solar":{"cat":"power","icon":"sun","rule":"One cell · R aims","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
@@ -378,7 +387,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _freeform_active():
 			if event.pressed and not _pointer_over_ui(): _add_freeform_point()
 			return
-		if kind == "ladder":
+		if kind in SITE_UPGRADES:
 			if event.pressed and not _pointer_over_ui(): _place_ladder()
 			return
 		if event.pressed and not _pointer_over_ui() and kind in ["airlock", "corridor"]:
@@ -439,7 +448,7 @@ func _process(delta: float) -> void:
 		var site_limit := _site_build_limit()
 		pivot.position.x=clampf(pivot.position.x,-site_limit,site_limit); pivot.position.z=clampf(pivot.position.z,-site_limit,site_limit)
 	_update_player_marker()
-	if kind != "ladder" or tool=="remove" or not equipment_id.is_empty(): _hide_ladder_ghost()
+	if not kind in SITE_UPGRADES or tool=="remove" or not equipment_id.is_empty(): _hide_ladder_ghost()
 	if tool=="remove" or _pointer_over_ui():
 		_draw_preview([],false); _update_hologram_ui([],"")
 		return
@@ -474,7 +483,7 @@ func _process(delta: float) -> void:
 				_draw_angled_outline_connector_preview(angled_mount, mount_reason.is_empty())
 				_update_hologram_ui([], mount_reason, angled_mount)
 				return
-	if kind == "ladder":
+	if kind in SITE_UPGRADES:
 		_draw_preview([],false)
 		var ladder_reason := _ladder_preview()
 		_update_hologram_ui([], ladder_reason)
@@ -3684,12 +3693,18 @@ func _update_plan_legend() -> void:
 
 # ---------- roof ladders on the site plan ----------
 
-var _ladder_ghost: MeshInstance3D
+var _ladder_ghost: Node3D
+var _ladder_ghost_key := ""
 
-## The outside wall bay nearest the cursor, as a ladder target ({} if none).
+## What the selected Site plan upgrade card would go on: the outside wall bay
+## nearest the cursor, or for roof shielding the room under it ({} if none).
 func _ladder_target() -> Dictionary:
 	var at := _world_point_at_mouse(habitat_base_y)
 	if is_inf(at.x): return {}
+	if SITE_UPGRADES.get(kind, "") == "roof":
+		var zone := _zone_at_point(Vector2(at.x, at.z))
+		if zone.is_empty() or not _is_habitat_zone(zone) or (zone.get("cells", []) as Array).is_empty(): return {}
+		return {"cells": (zone.cells as Array).duplicate(), "zone": zone}
 	var best := {}
 	var nearest := 1.6
 	for bay in _hull_bays:
@@ -3699,34 +3714,56 @@ func _ladder_target() -> Dictionary:
 			best = {"mid": bay.mid, "dir": bay.dir, "outward": bay.outward, "length": bay.length, "tangent": bay.tangent}
 	return best
 
-## A ghost ladder on the wall under the cursor; returns why it can't go there.
+func _site_upgrade_reason(target: Dictionary) -> String:
+	var upgrade := str(SITE_UPGRADES.get(kind, "ladder"))
+	if target.is_empty(): return "Point at a room" if upgrade == "roof" else "Point at an outside wall"
+	if upgrade != "ladder" and not MHMissions.structure_unlocked("upgrade_" + upgrade): return "Not delivered yet: this arrives in a later mission"
+	return upgrade_invalid_reason(upgrade, target)
+
+## A ghost of the upgrade on the wall or roof under the cursor; returns why it
+## can't go there.
 func _ladder_preview() -> String:
 	var target := _ladder_target()
-	var reason := "Point at an outside wall" if target.is_empty() else upgrade_invalid_reason("ladder", target)
-	if _ladder_ghost == null or not is_instance_valid(_ladder_ghost):
+	var reason := _site_upgrade_reason(target)
+	var upgrade := str(SITE_UPGRADES.get(kind, "ladder"))
+	var key := upgrade + str(target.get("mid", target.get("cells", "")))
+	if _ladder_ghost == null or not is_instance_valid(_ladder_ghost) or key != _ladder_ghost_key:
 		_ensure_preview_materials()
-		_ladder_ghost = MeshInstance3D.new()
-		var box := BoxMesh.new()
-		box.size = Vector3(.7, 3.9, .2)
-		_ladder_ghost.mesh = box
-		_ladder_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if _ladder_ghost != null and is_instance_valid(_ladder_ghost): _ladder_ghost.queue_free()
+		_ladder_ghost_key = key
+		_ladder_ghost = Node3D.new()
 		add_child(_ladder_ghost)
+		var slabs: Array = []
+		if upgrade == "roof":
+			for cell in target.get("cells", []): slabs.append([Vector3(cell.x * CELL, habitat_base_y + ROOM_HEIGHT + .25, cell.y * CELL), Vector3(CELL - .1, .3, CELL - .1), Basis.IDENTITY])
+		elif not target.is_empty():
+			var outward: Vector2 = target.outward
+			var basis := _bay_basis(Vector2(-outward.y, outward.x), outward)
+			if upgrade == "ladder":
+				slabs.append([Vector3(target.mid.x, habitat_base_y + 1.95, target.mid.y) + Vector3(outward.x, 0, outward.y) * .32, Vector3(.7, 3.9, .2), basis])
+			else:
+				slabs.append([Vector3(target.mid.x, habitat_base_y + 1.45, target.mid.y) + Vector3(outward.x, 0, outward.y) * .3, Vector3(float(target.length) - .1, 2.9, .4), basis])
+		for slab in slabs:
+			var mesh := MeshInstance3D.new()
+			var box := BoxMesh.new()
+			box.size = slab[1]
+			mesh.mesh = box
+			mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mesh.transform = Transform3D(slab[2], slab[0])
+			_ladder_ghost.add_child(mesh)
 	_ladder_ghost.visible = not target.is_empty()
-	if not target.is_empty():
-		var outward: Vector2 = target.outward
-		var mid := Vector3(target.mid.x, habitat_base_y + 1.95, target.mid.y) + Vector3(outward.x, 0, outward.y) * .32
-		_ladder_ghost.global_transform = Transform3D(_bay_basis(Vector2(-outward.y, outward.x), outward), mid)
-		_ladder_ghost.material_override = _preview_valid_material if reason.is_empty() else _preview_invalid_material
+	for mesh in _ladder_ghost.get_children():
+		(mesh as MeshInstance3D).material_override = _preview_valid_material if reason.is_empty() else _preview_invalid_material
 	return reason
 
 func _place_ladder() -> void:
 	var target := _ladder_target()
-	var reason := "Point at an outside wall" if target.is_empty() else upgrade_invalid_reason("ladder", target)
+	var reason := _site_upgrade_reason(target)
 	if not reason.is_empty():
 		_flash_notice("invalid", "Can't place here", reason + ".")
 		MHAudio.sfx("invalid")
 		return
-	place_upgrade("ladder", target)
+	place_upgrade(str(SITE_UPGRADES.get(kind, "ladder")), target)
 	MHAudio.sfx("place")
 
 func _hide_ladder_ghost() -> void:
@@ -4641,14 +4678,15 @@ func _add_support(point: Vector3,ground: float) -> void:
 	_add_box(Vector3(point.x,ground+.08,point.z),Vector3(.62,.16,.62),MHStyle.SEAL_DARK.darkened(.3),true,"habitat_support")
 
 func _remove_at(cell: Vector2i) -> void:
-	# A roof ladder by the wall under the cursor.
+	# A roof ladder or wall shielding by the outside wall under the cursor.
 	var at_mouse := _world_point_at_mouse(habitat_base_y)
 	if not is_inf(at_mouse.x):
 		for index in range(wall_upgrades.size()):
 			var record: Dictionary = wall_upgrades[index]
-			if str(record.kind) == "ladder" and (record.mid as Vector2).distance_to(Vector2(at_mouse.x, at_mouse.z)) < 1.3:
+			if str(record.kind) in ["ladder", "regolith", "water"] and (record.mid as Vector2).distance_to(Vector2(at_mouse.x, at_mouse.z)) < (1.3 if str(record.kind) == "ladder" else .8):
+				var spec: Dictionary = WALL_UPGRADES.spec(str(record.kind))
 				remove_upgrade(index)
-				_flash_notice("valid", "Removed", "Roof ladder · +%s cargo returned." % MHStyle.kg(cell_cost("ladder")))
+				_flash_notice("valid", "Removed", "%s · +%s cargo returned." % [str(spec.label), MHStyle.kg(int(spec.cargo))])
 				return
 	# Furniture comes out before the room around it.
 	var item:=remove_equipment_at(cell)
@@ -4713,7 +4751,7 @@ func _zone_cost(cells: Array) -> int: return cell_cost(kind)*cells.size()
 ## Landed cargo (kg) for one 3 x 3 m cell of a room type, or one solar array,
 ## reactor or ice extractor, from the balance spreadsheet.
 func cell_cost(zone_kind: String) -> int:
-	if zone_kind == "ladder": return int(WALL_UPGRADES.spec("ladder").cargo)
+	if zone_kind in SITE_UPGRADES: return int(WALL_UPGRADES.spec(str(SITE_UPGRADES[zone_kind])).cargo)
 	var site_item: String = {"solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake"}.get(zone_kind, "")
 	if not site_item.is_empty(): return int(MHResources.item_value(site_item, "cargo_kg", 300.0))
 	return int(MHResources.room(zone_kind).get("cargo_kg_per_cell", 800.0))
@@ -5573,7 +5611,7 @@ func _select_kind(id: String) -> void:
 	# Solar panels start facing the noon sun (south); R still turns them.
 	if id=="solar" and kind!="solar": airlock_direction=Vector2i(0,1)
 	kind=id; equipment_id=""; dragging=false; category=str(ZONE_INFO[id].cat); _set_tool("place"); _preview_key=""
-	if id != "ladder": _hide_ladder_ghost()
+	if not id in SITE_UPGRADES: _hide_ladder_ghost()
 	if not _freeform_mode_available(): _cancel_freeform()
 	_refresh_catalogue()
 
@@ -5721,7 +5759,7 @@ func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
 	var column:=card.get_meta("column") as VBoxContainer
 	column.add_child(_part_picture(id))
 	var name_label:=MHStyle.label(str(ZONE_TYPES[id].label),14,MHStyle.TEXT_PRIMARY,600); name_label.clip_text=true; name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS; column.add_child(name_label)
-	var mass:=MHStyle.mono(("%s / cell" % MHStyle.kg(cell_cost(id))) if str(ZONE_INFO[id].cat)!="power" and id!="ladder" else MHStyle.kg(cell_cost(id)),11,MHStyle.DANGER if unaffordable else MHStyle.TEXT_MUTED); column.add_child(mass)
+	var mass:=MHStyle.mono(("%s / cell" % MHStyle.kg(cell_cost(id))) if str(ZONE_INFO[id].cat)!="power" and (not id in SITE_UPGRADES or id=="shield_roof") else MHStyle.kg(cell_cost(id)),11,MHStyle.DANGER if unaffordable else MHStyle.TEXT_MUTED); column.add_child(mass)
 	card.set_meta("number_label",mass)
 	return card
 
@@ -5773,7 +5811,7 @@ func _chip(text: String,colour: Color) -> PanelContainer:
 
 ## A part's cost and what it does, from the balance spreadsheet.
 func _part_chips(id: String) -> Array:
-	var chips:Array=[[("%s / cell" % MHStyle.kg(cell_cost(id))) if str(ZONE_INFO[id].cat)!="power" and id!="ladder" else MHStyle.kg(cell_cost(id)),MHStyle.TEXT_SECONDARY],[str(ZONE_INFO[id].rule),MHStyle.INFO]]
+	var chips:Array=[[("%s / cell" % MHStyle.kg(cell_cost(id))) if str(ZONE_INFO[id].cat)!="power" and (not id in SITE_UPGRADES or id=="shield_roof") else MHStyle.kg(cell_cost(id)),MHStyle.TEXT_SECONDARY],[str(ZONE_INFO[id].rule),MHStyle.INFO]]
 	match id:
 		"solar": chips.append(["up to %s kW at noon" % str(int(MHResources.setting("solar_peak_kw",10.0))),MHStyle.VALID])
 		"reactor": chips.append(["%s kW day and night" % str(int(MHResources.setting("reactor_kw",10.0))),MHStyle.VALID])
