@@ -67,6 +67,8 @@ const SHOWCASE_SOLAR := preload("res://assets/showcase_modules/mh_solar_array.gl
 const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
 const SOLAR_ARRAY_INTERACTABLE := preload("res://scripts/solar_array_interactable.gd")
 const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
+const FLOOR_PLAN := preload("res://scripts/floor_plan.gd")
+var plan_legend: Control
 const ROOF_ACCESSORY_SCENES := {
 	"living": preload("res://assets/structural_kit/roof_living_comms_mast.glb"),
 	"science": preload("res://assets/structural_kit/roof_science_dish.glb"),
@@ -353,6 +355,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif build_mode and event.keycode==KEY_X: _set_tool("place" if tool=="remove" else "remove")
 		elif build_mode and event.keycode==KEY_Z and event.ctrl_pressed: _undo()
 		elif build_mode and event.keycode==KEY_TAB: _set_catalogue_open(not catalogue.visible); get_viewport().set_input_as_handled()
+		elif build_mode and event.keycode==KEY_L and plan_legend!=null: plan_legend.visible=not plan_legend.visible; get_viewport().set_input_as_handled()
 	if not build_mode or not event is InputEventMouseButton: return
 	# Wheel notches arrive as a press and a release; zoom once per notch.
 	if event.button_index==MOUSE_BUTTON_WHEEL_UP:
@@ -416,6 +419,7 @@ func _process(delta: float) -> void:
 		_update_budget()
 	_hold_rotate_plan(delta)
 	_update_player_marker()
+	_update_plan_legend()
 	# Removing and furnishing pick against the deck the player sees, not the ground.
 	hover=_cell_at_mouse(habitat_base_y if tool=="remove" or not equipment_id.is_empty() else 0.0)
 	if grid!=null:
@@ -2492,6 +2496,7 @@ func _rebuild() -> void:
 	_add_light_panels()
 	_prune_hull_windows()
 	WALL_UPGRADES.build(self)
+	FLOOR_PLAN.build(self)   # walls and symbols on the Site plan
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
 	for zone in zones: _add_zone_label(zone)
@@ -3613,16 +3618,8 @@ func _add_window_bay(mid: Vector2, tangent: Vector2, outward: Vector2, length: f
 	glass.add_child(pane)
 	var collision := CollisionShape3D.new(); var shape := BoxShape3D.new(); shape.size = Vector3(length - .5, glass_height, .06); collision.shape = shape
 	glass.add_child(collision)
-	# Site-plan marker: a pale blue bar along the wall.
-	var marker := MeshInstance3D.new(); marker.name = "WindowPlanMarker"
-	var marker_mesh := BoxMesh.new(); marker_mesh.size = Vector3(length - .5, .06, .4); marker.mesh = marker_mesh
-	var marker_material := StandardMaterial3D.new(); marker_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; marker_material.albedo_color = Color("#8FD8FF")
-	marker.material_override = marker_material
-	marker.transform = Transform3D(basis, Vector3(mid.x, habitat_base_y + .14, mid.y))
-	marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	marker.add_to_group("habitat_plan")
-	marker.visible = build_mode
-	root.add_child(marker)
+	# Site plan: the window symbol (scripts/floor_plan.gd).
+	FLOOR_PLAN.window(self, mid, basis, length)
 
 ## Windows whose wall bay no longer faces Mars (room removed, wall now
 ## shared or opened) are taken out and their cargo refunded.
@@ -3673,6 +3670,17 @@ func upgrade_invalid_reason(upgrade: String, target: Dictionary) -> String: retu
 func place_upgrade(upgrade: String, target: Dictionary) -> bool: return WALL_UPGRADES.place(self, upgrade, target)
 func upgrade_index_near(point: Vector3, normal: Vector3) -> int: return WALL_UPGRADES.index_near(self, point, normal)
 func remove_upgrade(index: int) -> void: WALL_UPGRADES.remove(self, index)
+
+## The legend's north arrow turns with the camera; its scale bar shows 5 m.
+func _update_plan_legend() -> void:
+	if plan_legend == null or not plan_legend.visible or camera == null: return
+	var focus := Vector3(pivot.position.x, habitat_base_y, pivot.position.z)
+	var at := camera.unproject_position(focus)
+	var right := camera.global_transform.basis.x
+	right.y = 0.0
+	var five := camera.unproject_position(focus + right.normalized() * 5.0).distance_to(at)
+	var north := camera.unproject_position(focus + Vector3(0, 0, -5)) - at
+	plan_legend.update(Vector2(0, -1).angle_to(north) if north.length() > 1.0 else 0.0, five)
 
 # ---------- roof ladders on the site plan ----------
 
@@ -4409,18 +4417,7 @@ func _airlock_side(zone: Dictionary) -> Vector2i:
 ## A short bar across the wall at every door, shown only on the site plan, so
 ## the plan says which spaces connect.
 func _add_door_plan_marker(door: Node3D, door_name: String, width := CELL - .6) -> void:
-	var marker := MeshInstance3D.new()
-	marker.name = "DoorPlanMarker"
-	var mesh := BoxMesh.new(); mesh.size = Vector3(width, .06, .5); marker.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color = MHStyle.accent if door_name in ["OUTER", "HANGAR"] else (MHStyle.BEACON_YELLOW if door_name in ["INNER", "BAY"] else Color("#F2F4F5"))
-	marker.material_override = material
-	marker.position = Vector3(0, .14, 0)
-	marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	marker.add_to_group("habitat_plan")
-	marker.visible = build_mode
-	door.add_child(marker)
+	FLOOR_PLAN.door(self, door, door_name, width)
 
 func _add_door(centre: Vector3,side: Vector2i,door_name := "AIRLOCK",show_surround := true) -> AirlockDoor:
 	var position:=centre+Vector3(side.x*CELL*.5,habitat_base_y,side.y*CELL*.5)
@@ -5519,6 +5516,7 @@ func _ui() -> void:
 	var placing_row:=MHStyle.hbox(8); cargo_box.add_child(placing_row)
 	placing_label=MHStyle.mono("",14,MHStyle.TEXT_MUTED); placing_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL; placing_label.clip_text=true; placing_row.add_child(placing_label)
 	placing_delta=MHStyle.mono("",14,MHStyle.accent,600); placing_row.add_child(placing_delta)
+	plan_legend=FLOOR_PLAN.Legend.new(); left.add_child(plan_legend)
 	notice_column=MHStyle.vbox(12); notice_column.position=Vector2(32,0); notice_column.mouse_filter=Control.MOUSE_FILTER_IGNORE; left.add_child(notice_column)
 	# Top-centre: Site plan | Interior | Explore switch over the free viewport
 	_mode_switcher=MHStyle.build_mode_switcher("site","Site plan · rooms, corridors, airlocks and power",func() -> void: pass,_switch_to_interior,_toggle)
