@@ -80,6 +80,23 @@ I went through all 92 interior items with it. Most hold up well. The fixes:
   - A fretted ebony neck with dot inlays, and a tilted headstock with six tuners.
   - It leans back on a real A-frame stand: padded cradle, neck yoke, and legs that go round the body rather than in front of it.
 - **Drawers:** the tool bench's spares tray and the spare-parts rack's tool drawer now pull out as trays with sides and a back, not bare fronts.
+- **Emergency supply locker:** its right-hand door had been exported swung wide open along the cabinet's side, so the front was always half open.
+  - I repaired the GLB with a small Blender script, `asset_packs/mars_general_habitat_repack/source/fix_emergency_locker.py`. The pack had no source.
+  - It now has two closed doors, and both swing open.
+- **An interaction for 24 items that had none,** using the rig's existing action types, so no new code. Items you can pick up keep E for picking up, and their action is on F.
+  - **The desk lamp** switches on.
+  - **The herb pot and plant** can be watered, and the water bottle drunk from.
+  - **Chess:** make a move.
+  - **Books:** read a page.
+  - **Tablet:** messages from Mission Control and home.
+  - **Laptop:** the sol report.
+  - **Also on look:** the photo, the samples, the toolbox, the ration label, the mug and the poster.
+  - **Medical:** the IV stand, vitals monitor and surgery cart.
+  - **The three recycling hoppers.**
+  - **The galley table:** sit for a meal.
+  - **The airlock control panel, suit service panel and dust grate:** each explains its step of going outside.
+
+  These are small, mostly information. The deeper versions are in the ideas document.
 
 **Not changed, and why:**
 - **Bunks and the regolith printer** didn't frame well in the lab because they're too big for its camera. They're not broken.
@@ -92,3 +109,7 @@ I went through all 92 interior items with it. Most hold up well. The fixes:
 - **The ideas document:** read `docs/moment-to-moment-gameplay.md` and answer the four questions at the end. Then I can start on the first batch.
 - **Playtest the rover:** build a vehicle bay (Site plan → Structure) and drive it. It needs a real feel test with a keyboard: steering weight, top speed and the camera distance are all one-line tweaks at the top of `scripts/crew_rover.gd`.
 - **`project.godot`:** it shows a one-line reorder that the Godot editor made. I left it alone.
+- **Three old test failures, none from tonight:**
+  - `eva_storage_assets_test` and `general_ops_assets_test` expect exact item lists per room group. They now also count the retired shield blocks and the Retro Mars Poster, both from earlier sessions.
+  - `general_ops_assets_test` and `final_assets_test` also fail on the mission console's monitor parts, a heater warmth check and the camera mast model. I didn't touch any of these.
+  - Worth a quick tidy of the tests when convenient.
