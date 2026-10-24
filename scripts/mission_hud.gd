@@ -635,10 +635,13 @@ func _campaign_wrap_up(column: VBoxContainer) -> void:
 	for candidate in range(1, MHGame.SAVE_SLOT_COUNT + 1):
 		if slot < 0 and not bool(MHGame.save_slot_summary(candidate, "free_play").get("exists", false)): slot = candidate
 	if slot < 0:
-		# All three Free play slots are used (Missions saves are separate):
+		# Every Free play slot is used (Missions saves are separate):
 		# choose one to replace, right here.
-		column.add_child(_wrapped("Your three Free play save slots are all in use (your Missions save is kept separately). Choose one to replace:", 16, MHStyle.WARN, 1100))
-		var slots := MHStyle.hbox(12)
+		column.add_child(_wrapped("All %d of your Free play save slots are in use (your Missions save is kept separately). Choose one to replace:" % MHGame.SAVE_SLOT_COUNT, 16, MHStyle.WARN, 1100))
+		var slots := GridContainer.new()
+		slots.columns = 2
+		slots.add_theme_constant_override("h_separation", 12)
+		slots.add_theme_constant_override("v_separation", 10)
 		for candidate in range(1, MHGame.SAVE_SLOT_COUNT + 1):
 			var summary := MHGame.save_slot_summary(candidate, "free_play")
 			var replace := MHStyle.button("Replace slot %d · %s · %s" % [candidate, str(summary.get("colony_name", "Habitat")), str(summary.get("saved_at", "")).get_slice(" ", 0)], "secondary", "save")

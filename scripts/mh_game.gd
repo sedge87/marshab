@@ -12,7 +12,7 @@ const SETTINGS_PATH := "user://settings.cfg"
 const SAVE_DIRECTORY := "user://habitats"
 # Tests point this at their own folder so they never overwrite real saves.
 static var save_directory := SAVE_DIRECTORY
-const SAVE_SLOT_COUNT := 3
+const SAVE_SLOT_COUNT := 6   # per save set (Free play, Missions)
 const EMBLEMS := ["rocket", "orbit", "satellite", "mountain-snow", "sun", "atom"]
 
 # Lighting presets from the reference scene (mars-scene.js PAL). sun is the
