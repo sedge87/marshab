@@ -2,7 +2,7 @@ extends SceneTree
 
 # Run with: godot --headless --path . --script res://tests/batch_g_test.gd
 # Batch G (Missions playtest, 24 Oct): the Communications Mast arrives in
-# Mission 4; Mission 8's contact step needs a station in a Communications room
+# Mission 4; Mission 8's contact step needs a station in Mission Operations
 # and the mast; the crew's Contact with Earth says which is missing; the
 # redundancy step names what still needs a second; Mission 9 tests 4 sols;
 # Mission 5 allows one reactor; and a wall-mounted strip can be picked for
@@ -41,13 +41,13 @@ func _initialize() -> void:
 	assert(MHMissions.step_progress(step, builder) == "station ✓ · mast missing", "The step says the mast is missing (%s)." % MHMissions.step_progress(step, builder))
 	builder.placed_surface.append({"id": "comms_antenna", "position": Vector3(9, 0, 9)})
 	assert(MHMissions.contact_ready(builder), "Station and mast: contact is set up.")
-	# The crew's need: the station must be in a Communications room.
+	# The crew's need: the station must be in Mission Operations.
 	builder.placed_interior[0].position = Vector3(3, y, 0)
 	builder.placed_interior[0].zone_cell = Vector2i(1, 0)
 	builder.simulation().invalidate()
 	var sim: RefCounted = builder.simulation()
 	var contact: Dictionary = (sim.life.needs(sim.inventory(), {1: true, 2: true, 3: true, 4: true}) as Array).filter(func(n): return str(n.id) == "contact")[0]
-	assert(float(contact.score) == 0.0 and str(contact.missing).contains("communications station"), "A station outside the Communications room doesn't count (%s)." % contact.missing)
+	assert(float(contact.score) == 0.0 and str(contact.missing).contains("communications station"), "A station outside Mission Operations doesn't count (%s)." % contact.missing)
 	# Redundancy names what still needs a second.
 	var redundancy: Dictionary = (MHMissions.get_mission("long_silence").steps as Array).filter(func(s): return str(s.id) == "redundancy")[0]
 	var said := MHMissions.step_progress(redundancy, builder)

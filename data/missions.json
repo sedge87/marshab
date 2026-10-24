@@ -767,9 +767,9 @@
         },
         {
           "id": "comms",
-          "text": "Set up the Communications room",
+          "text": "Set up Mission Operations",
           "check": "contact",
-          "how": "Build a Communications room and put a communications station inside it, then place the Communications Mast outside (site plan, Surface gear tab). Together they're the crew's contact with Earth."
+          "how": "Build a Mission Operations room and put a communications station inside it, then place the Communications Mast outside (site plan, Surface gear tab). Together they're the crew's contact with Earth."
         },
         {
           "id": "wellbeing",

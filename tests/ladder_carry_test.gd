@@ -70,5 +70,27 @@ func _initialize() -> void:
 	var bunk_id := str(b.placed_interior[-1].placement_id)
 	var bunk_visual: Node = b.furnishing.find_children("*", "", true, false).filter(func(n): return n.has_meta("interior_placement_id") and str(n.get_meta("interior_placement_id")) == bunk_id)[0]
 	assert(carry.pickable_id(bunk_visual).is_empty(), "A bunk can't be picked up.")
+	# Ladders go on from outside now: a Structure card on the Site plan, not an
+	# interior tool, and in Missions it's always there.
+	assert(str(BuildController.ZONE_INFO.ladder.cat) == "structure" and b.cell_cost("ladder") == 60, "A Roof Ladder card on the Site plan's Structure tab.")
+	assert(not load("res://scripts/interior_build_controller.gd").STRUCTURE_TOOLS.any(func(t): return str(t.id) == "upgrade_ladder"), "Not an interior tool any more.")
+	# Something sitting on a table can be looked at, through the table's box.
+	var table_at := Vector3(.4, y, .2)
+	b.placed_interior = b.placed_interior.filter(func(i): return str(i.id) != "crew_bunk")
+	b._rebuild()
+	assert(b.place_free_interior_equipment("common_table", table_at, 0.0, Vector2i.ZERO, b.free_interior_visual("common_table", table_at, 0.0)), "A table.")
+	var table_id := str(b.placed_interior[-1].placement_id)
+	var on_table := table_at + Vector3(.3, .92, 0)
+	var on_reason: String = b.free_interior_invalid_reason("sample_jars", on_table, Vector3.UP, 0.0)
+	assert(on_reason.is_empty(), "Sample jars fit on the table (%s)." % on_reason)
+	b.place_free_interior_equipment("sample_jars", on_table, 0.0, Vector2i.ZERO, b.free_interior_visual("sample_jars", on_table, 0.0))
+	var jars_id := str(b.placed_interior[-1].placement_id)
+	await process_frame
+	var hud: Node = get_first_node_in_group("explore_hud")
+	var eye := on_table + Vector3(1.2, 1.0, 0)
+	var picked: Node = hud._item_on_furniture(eye, (on_table + Vector3.UP * .05 - eye).normalized(), eye.distance_to(on_table) + .2, table_id)
+	assert(picked != null and carry.pickable_id(picked) == jars_id, "Looking at the table where the jars sit picks the jars.")
+	var other_side := table_at + Vector3(-1.6, 1.3, .3)
+	assert(hud._item_on_furniture(other_side, (table_at + Vector3(-.7, .9, .3) - other_side).normalized(), 1.2, table_id) == null, "Looking at an empty part of the table doesn't.")
 	print("Ladder and carry test passed: the ladder up and down, a railed roof that's outside, picking up, putting down, putting back and saving mid-carry.")
 	quit(0)

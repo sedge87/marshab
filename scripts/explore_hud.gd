@@ -462,6 +462,12 @@ func _looked_at_interactable() -> Node:
 	query.collision_mask = 1
 	var hit := player.get_world_3d().direct_space_state.intersect_ray(query)
 	var node := hit.get("collider") as Node if not hit.is_empty() else null
+	# Looking at a table, shelf or cabinet: something sitting on or in it may
+	# be what you mean, even though the furniture's own collision box is hit
+	# first (a shelf's box wraps everything on its shelves).
+	if node != null and _placement_of(node) != "":
+		var on_top := _item_on_furniture(camera.global_position, -camera.global_transform.basis.z, camera.global_position.distance_to(hit.position), _placement_of(node))
+		if on_top != null: return on_top
 	while node != null:
 		if node.has_meta("interaction_target"):
 			var target := node.get_meta("interaction_target") as Node
@@ -470,6 +476,44 @@ func _looked_at_interactable() -> Node:
 		if node.has_method("interaction_prompt") or node.has_method("prompt_verb"):
 			return node
 		node = node.get_parent()
+	return null
+
+## The placed item a node belongs to ("" if none).
+func _placement_of(node: Node) -> String:
+	while node != null and not node.has_meta("interior_placement_id"): node = node.get_parent()
+	return "" if node == null else str(node.get_meta("interior_placement_id"))
+
+## The nearest raised item (not on the floor) the line of sight passes
+## through, from just in front of the furniture that was hit to a little
+## beyond it; its interactable, or null.
+func _item_on_furniture(origin: Vector3, direction: Vector3, hit_distance: float, support_id: String) -> Node:
+	if builder == null: return null
+	var best_id := ""
+	var nearest := hit_distance + 1.2
+	for item in builder.placed_interior:
+		var placement := str(item.get("placement_id", ""))
+		if placement == support_id: continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		if at.y < builder.habitat_base_y + .12: continue
+		var size: Vector3 = builder._free_interior_size(EquipmentCatalog.get_entry(str(item.get("id", ""))))
+		var turn := Basis(Vector3.UP, float(item.get("rotation_y", 0.0)))
+		var centre := at + Vector3.UP * size.y * .5
+		var local_origin: Vector3 = turn.inverse() * (origin - centre)
+		var local_direction: Vector3 = turn.inverse() * direction
+		var box := AABB(-size * .5 - Vector3.ONE * .04, size + Vector3.ONE * .08)
+		var entry_point: Variant = box.intersects_ray(local_origin, local_direction)
+		if entry_point == null: continue
+		var distance := (entry_point as Vector3).distance_to(local_origin)
+		if distance < nearest:
+			nearest = distance
+			best_id = placement
+	if best_id.is_empty(): return null
+	for holder in builder.furnishing.get_children():
+		if not holder.has_meta("interior_placement_id") or str(holder.get_meta("interior_placement_id")) != best_id: continue
+		if holder.has_method("interaction_prompt"): return holder
+		for child in holder.find_children("*", "", true, false):
+			if child.has_method("interaction_prompt") or child.has_method("prompt_verb"): return child
+		return holder
 	return null
 
 func _refresh_readiness(quiet := false) -> void:

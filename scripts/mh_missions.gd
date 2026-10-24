@@ -92,7 +92,7 @@ static func cargo_budget() -> int:
 	return total
 
 static func zone_unlocked(kind: String) -> bool:
-	if not active(): return true
+	if not active() or kind == "ladder": return true   # a roof ladder isn't a delivery
 	for mission in _so_far():
 		if (mission.get("unlock_zones", []) as Array).has(kind): return true
 	return false
@@ -176,8 +176,8 @@ static func step_progress(step: Dictionary, builder: Node) -> String:
 	var have: int = builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(step.item)).size()
 	return "%d of %d" % [have, int(step.count)]
 
-## Contact with Earth is set up: a communications station in a Communications
-## room, and the Communications Mast outside.
+## Contact with Earth is set up: a communications station in Mission
+## Operations (the "communications" room), and the Communications Mast outside.
 static func contact_ready(builder: Node) -> bool:
 	return station_ready(builder) and builder.placed_surface.any(func(i): return str(i.get("id", "")) == "comms_antenna")
 

@@ -268,7 +268,7 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 	var work := float(have_room) / n
 	out.append({"id": "work", "label": "Meaningful work", "score": work, "missing": "" if no_room.is_empty() else "No work room for: " + ", ".join(no_room)})
 	# 6. Contact with Earth: the mast outside and a communications station in
-	# a Communications room, both powered.
+	# Mission Operations (the "communications" room), both powered.
 	var antenna := (inv.items as Array).any(func(i): return str(i.id) == "comms_antenna") and bool(tiers.get(4, false))
 	var station := false
 	for index in range(rooms.size()):
@@ -276,7 +276,7 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 	var contact := 1.0 if antenna and station and blackout_hours_left <= 0.0 else 0.0
 	var why := "Blackout: the Sun is between Mars and Earth"
 	if not antenna: why = "No powered Communications Mast outside"
-	elif not station: why = "No communications station in a Communications room"
+	elif not station: why = "No communications station in Mission Operations"
 	out.append({"id": "contact", "label": "Contact with Earth", "score": contact, "missing": "" if contact > 0.0 else why})
 	return out
 
