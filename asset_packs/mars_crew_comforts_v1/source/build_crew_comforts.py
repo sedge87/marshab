@@ -56,12 +56,76 @@ def work_desk_blank():
     join("sockets_orange", [box("s", x - 0.012, x + 0.012, -0.262, -0.258, 0.688, 0.702, "orange", 0) for x in (-0.24, -0.15, -0.06)])
 
 
-def base_units(x0, x1, y0=-0.32, y1=0.32, top=0.92):
-    """A run of galley base cupboards with a continuous worktop and upstand."""
+def base_units(x0, x1, y0=-0.32, y1=0.32, top=0.92, bays=None):
+    """A run of galley base cupboards with a continuous worktop and upstand.
+    bays: [(prefix, bx0, bx1, kind)]: each bay behind a door is a real
+    compartment (back, sides, floor, roof and liner) with things inside;
+    kind "solid" is a closed block (behind drawers). (Fixed 24 Oct: doors
+    used to open onto a solid carcass.)"""
     box("plinth_graphite", x0 + 0.03, x1 - 0.03, y0 + 0.05, y1 - 0.05, 0.0, 0.1, "graphite", 0.008)
-    box("carcass_warm_shell", x0, x1, y0, y1 - 0.02, 0.09, top - 0.04, "warm_shell", 0.014)
+    if bays is None:
+        box("carcass_warm_shell", x0, x1, y0, y1 - 0.02, 0.09, top - 0.04, "warm_shell", 0.014)
+    else:
+        for prefix, bx0, bx1, kind in bays:
+            if kind == "solid":
+                box(f"{prefix}_block_warm_shell", bx0, bx1, y0, y1 - 0.02, 0.09, top - 0.04, "warm_shell", 0.014)
+                continue
+            liner = {"fridge": "white_painted", "oven": "graphite"}.get(kind, "warm_panel")
+            hollow(prefix, bx0, bx1, y0, y1 - 0.02, 0.09, top - 0.04, 0.018, "warm_shell", liner)
+            BAY_CONTENTS[kind](prefix, bx0 + 0.02, bx1 - 0.02, y0 + 0.03, y1 - 0.05, 0.11, top - 0.06)
     box("worktop_worktop", x0 - 0.015, x1 + 0.015, y0, y1 + 0.03, top - 0.04, top, "worktop", 0.012)
     box("upstand_worktop", x0 - 0.015, x1 + 0.015, y0, y0 + 0.02, top, top + 0.1, "worktop", 0.006)
+
+
+# ---------- what's behind the doors ----------
+
+def _fridge_contents(p, x0, x1, y0, y1, z0, z1):
+    for i, z in enumerate((z0 + (z1 - z0) * .36, z0 + (z1 - z0) * .68)):
+        box(f"{p}_shelf_{i}_satin_steel", x0, x1, y0, y1 - 0.02, z, z + 0.008, "satin_steel", 0.002)
+    box(f"{p}_lamp_lamp_white", x0 + 0.1, x1 - 0.1, y0 + 0.05, y0 + 0.08, z1 - 0.02, z1 - 0.005, "lamp_white", 0)
+    w = x1 - x0
+    cartons = [box("c", x0 + w * f - 0.035, x0 + w * f + 0.035, y0 + 0.04, y0 + 0.11, z0, z0 + 0.19, "white_painted", 0.006) for f in (0.18, 0.34)]
+    join(f"{p}_cartons_white_painted", cartons)
+    join(f"{p}_carton_tops_teal", [box("c", x0 + w * f - 0.035, x0 + w * f + 0.035, y0 + 0.04, y0 + 0.11, z0 + 0.19, z0 + 0.21, "teal", 0.004) for f in (0.18, 0.34)])
+    zs = z0 + (z1 - z0) * .36 + 0.008
+    join(f"{p}_pouches_pouch_silver", [box("q", x0 + w * f - 0.05, x0 + w * f + 0.05, y0 + 0.05, y0 + 0.13, zs, zs + 0.13, "pouch_silver", 0.01) for f in (0.2, 0.42, 0.64)])
+    join(f"{p}_greens_leaf_green", [sphere("g", (x0 + w * f, y0 + 0.16, z0 + 0.06), 0.07, "leaf_green", scale=(1.0, 1.0, 0.8), segments=14) for f in (0.7, 0.84)])
+    zt = z0 + (z1 - z0) * .68 + 0.008
+    join(f"{p}_tubs_amber", [cyl("t", (x0 + w * f, y0 + 0.12, zt + 0.04), 0.045, 0.08, "amber", verts=20, bevel=0.005) for f in (0.3, 0.55)])
+
+
+def _sink_contents(p, x0, x1, y0, y1, z0, z1):
+    xm = (x0 + x1) / 2
+    join(f"{p}_trap_satin_steel", [rod("t", (xm, y0 + 0.2, z1), (xm, y0 + 0.2, z1 - 0.22), 0.022, "satin_steel"),
+                                   rod("t", (xm, y0 + 0.2, z1 - 0.22), (xm, y0 + 0.02, z1 - 0.26), 0.022, "satin_steel")])
+    join(f"{p}_supply_pipes_dark_alloy", [rod("s", (x, y0 + 0.02, z0 + 0.35), (x, y0 + 0.02, z1), 0.012, "dark_alloy") for x in (xm - 0.1, xm + 0.1)])
+    cyl(f"{p}_bottle_teal", (x0 + 0.07, y0 + 0.16, z0 + 0.11), 0.04, 0.22, "teal", verts=20, bevel=0.01)
+    cyl(f"{p}_bottle_orange", (x0 + 0.17, y0 + 0.2, z0 + 0.09), 0.035, 0.18, "orange", verts=20, bevel=0.01)
+    box(f"{p}_cloths_cool_blue", x1 - 0.18, x1 - 0.04, y0 + 0.1, y0 + 0.25, z0, z0 + 0.05, "cool_blue", 0.01)
+
+
+def _oven_contents(p, x0, x1, y0, y1, z0, z1):
+    zr = z0 + (z1 - z0) * .45
+    rack = [rod("r", (x0 + 0.02, y, zr), (x1 - 0.02, y, zr), 0.004, "satin_steel", 6) for y in [y0 + 0.04 + i * 0.05 for i in range(10)] if y < y1 - 0.03]
+    rack += [rod("r", (x, y0 + 0.03, zr), (x, y1 - 0.04, zr), 0.005, "satin_steel", 6) for x in (x0 + 0.02, x1 - 0.02)]
+    join(f"{p}_rack_satin_steel", rack)
+    join(f"{p}_element_amber", [rod("e", (x0 + 0.05, y, z1 - 0.03), (x1 - 0.05, y, z1 - 0.03), 0.006, "amber", 8) for y in (y0 + 0.08, (y0 + y1) / 2, y1 - 0.08)])
+    box(f"{p}_tray_dark_alloy", x0 + 0.08, x1 - 0.08, y0 + 0.06, y1 - 0.08, zr + 0.006, zr + 0.026, "dark_alloy", 0.006)
+    box(f"{p}_meal_orange", x0 + 0.14, x1 - 0.14, y0 + 0.1, y1 - 0.12, zr + 0.026, zr + 0.05, "orange", 0.012)
+
+
+def _cupboard_contents(p, x0, x1, y0, y1, z0, z1):
+    zs = z0 + (z1 - z0) * .5
+    box(f"{p}_shelf_warm_panel", x0, x1, y0, y1 - 0.02, zs, zs + 0.014, "warm_panel", 0.003)
+    w = x1 - x0
+    join(f"{p}_plates_white_painted", [cyl("pl", (x0 + w * .3, y0 + 0.16, z0 + 0.008 + i * 0.016), 0.11, 0.012, "white_painted", verts=28, bevel=0.003) for i in range(6)])
+    join(f"{p}_bowls_teal_soft", [cyl("bw", (x0 + w * .72, y0 + 0.15, z0 + 0.03 + i * 0.045), 0.075, 0.05, "teal_soft", verts=24, radius2=0.055, bevel=0.004) for i in range(3)])
+    join(f"{p}_boxes_pouch_silver", [box("bx", x0 + w * f - 0.06, x0 + w * f + 0.06, y0 + 0.04, y0 + 0.2, zs + 0.014, zs + 0.2, "pouch_silver", 0.008) for f in (0.22, 0.48)])
+    box(f"{p}_box_label_orange", x0 + w * .22 - 0.04, x0 + w * .22 + 0.04, y0 + 0.2, y0 + 0.204, zs + 0.08, zs + 0.12, "orange", 0)
+    join(f"{p}_mugs_cool_blue", [cyl("m", (x0 + w * f, y0 + 0.14, zs + 0.06), 0.04, 0.09, "cool_blue", verts=20, bevel=0.004) for f in (0.74, 0.86)])
+
+
+BAY_CONTENTS = {"fridge": _fridge_contents, "sink": _sink_contents, "oven": _oven_contents, "cupboard": _cupboard_contents}
 
 
 def door_front(prefix, x0, x1, z0, z1, y, mat="white_painted", pull_top=True):
@@ -76,7 +140,8 @@ def galley_kitchenette():
     cupboards and a light strip under them. Worktop at 0.92 m."""
     X0, X1 = -1.2, 1.2
     Y0, Y1 = -0.32, 0.32
-    base_units(X0, X1, Y0, Y1)
+    base_units(X0, X1, Y0, Y1, bays=[("fridgebay", -1.2, -0.6, "fridge"), ("sinkbay", -0.6, 0.0, "sink"),
+                                      ("ovenbay", 0.0, 0.6, "oven"), ("drawerbay", 0.6, 1.2, "solid")])
     # Fronts, left to right: fridge (0.6), sink cupboard (0.6), oven (0.6), drawers (0.6).
     box("fridge_door_white_painted", -1.194, -0.606, Y1 - 0.02, Y1, 0.11, 0.86, "white_painted", 0.01)
     rod("fridge_handle_satin_steel", (-0.65, Y1 + 0.03, 0.3), (-0.65, Y1 + 0.03, 0.78), 0.011, "satin_steel")
@@ -134,7 +199,7 @@ def galley_bench_unit():
     """A matching 1.2 m base unit: two cupboards and a clear worktop to put
     things on. Lines up with the kitchenette."""
     Y0, Y1 = -0.32, 0.32
-    base_units(-0.6, 0.6, Y0, Y1)
+    base_units(-0.6, 0.6, Y0, Y1, bays=[("cupboard_left", -0.6, 0.0, "cupboard"), ("cupboard_right", 0.0, 0.6, "cupboard")])
     door_front("door_l", -0.6, 0.0, 0.11, 0.86, Y1 - 0.02)
     door_front("door_r", 0.0, 0.6, 0.11, 0.86, Y1 - 0.02)
     box("label_orange", -0.05, 0.05, Y1 + 0.0, Y1 + 0.004, 0.8, 0.82, "orange", 0)

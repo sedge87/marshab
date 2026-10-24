@@ -29,6 +29,8 @@ COLORS.update({
     "plush_tan": ((0.78, 0.60, 0.42, 1), .0, .98),
     "plush_white": ((0.92, 0.92, 0.90, 1), .0, .98),
     "spruce": ((0.86, 0.68, 0.42, 1), .02, .45),
+    "walnut": ((0.36, 0.21, 0.11, 1), .02, .45),
+    "ebony": ((0.07, 0.06, 0.06, 1), .02, .4),
     "book_red": ((0.62, 0.17, 0.15, 1), .02, .7),
     "book_navy": ((0.14, 0.22, 0.38, 1), .02, .7),
     "earth_blue": ((0.20, 0.45, 0.85, 1), .0, .3),
@@ -253,23 +255,101 @@ def ration_packs():
             tilt(obj, turn, "Z", (0, 0, 0))
 
 
+def _guitar_outline(scale=1.0, steps=40):
+    """Half-widths of an acoustic body (a dreadnought-ish figure of eight),
+    from the tail (z=0) to the neck joint (z=0.5), smoothly blended."""
+    pts = []
+    for i in range(steps + 1):
+        z = 0.5 * i / steps
+        lower = math.sqrt(max(0.0, 0.2 ** 2 - (z - 0.17) ** 2))
+        upper = math.sqrt(max(0.0, 0.155 ** 2 - (z - 0.37) ** 2))
+        k = 40.0   # smooth maximum: rounds the waist
+        w = math.log(math.exp(k * lower) + math.exp(k * upper)) / k - math.log(2) / k * 0.6
+        w = max(w, 0.0)
+        if z < 0.02 or z > 0.48: w *= max(0.0, min(1.0, (min(z, 0.5 - z)) / 0.02)) ** 0.5
+        pts.append((w * scale, z))
+    return pts
+
+
+def _guitar_slab(name, y0, y1, mat, inset=0.0, bevel=0.01):
+    """The body outline extruded between y0 and y1 (front faces +Y)."""
+    pts = _guitar_outline()
+    ring = [(max(w - inset, 0.001), z) for w, z in pts] + [(-max(w - inset, 0.001), z) for w, z in reversed(pts)]
+    mesh = bpy.data.meshes.new(name)
+    verts = [(x, y0, z) for x, z in ring] + [(x, y1, z) for x, z in ring]
+    n = len(ring)
+    faces = [list(range(n))[::-1], list(range(n, 2 * n))]
+    faces += [[i, (i + 1) % n, n + (i + 1) % n, n + i] for i in range(n)]
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    return _finish(obj, name, mat, bevel, 3)
+
+
 def guitar():
-    """A guitar on a floor stand: there has been one on the ISS since 2001."""
-    body_parts = [sphere("b", (0, 0, 0.3), 0.19, "spruce", scale=(1.0, 0.45, 1.0), segments=28),
-                  sphere("b", (0, 0, 0.53), 0.14, "spruce", scale=(1.0, 0.45, 1.0), segments=28)]
-    body = join("guitar_body_spruce", body_parts)
-    hole = cyl("sound_hole_graphite", (0, 0.082, 0.45), 0.045, 0.006, "graphite", axis="y", verts=28)
-    bridge = box("bridge_graphite", -0.06, 0.06, 0.08, 0.092, 0.27, 0.295, "graphite", 0.004)
-    neck = box("neck_dark_alloy", -0.025, 0.025, -0.02, 0.03, 0.62, 1.0, "dark_alloy", 0.008)
-    head = box("headstock_dark_alloy", -0.04, 0.04, -0.015, 0.025, 1.0, 1.12, "dark_alloy", 0.01)
-    strings = join("strings_satin_steel", [rod("s", (x, 0.035, 0.28), (x * 0.6, 0.035, 1.06), 0.0012, "satin_steel", 6) for x in (-0.018, -0.011, -0.004, 0.004, 0.011, 0.018)])
-    pegs = join("pegs_satin_steel", [cyl("p", (sx * 0.052, 0.005, z), 0.006, 0.025, "satin_steel", axis="x", verts=8) for sx in (-1, 1) for z in (1.03, 1.065, 1.1)])
-    for obj in (body, hole, bridge, neck, head, strings, pegs):
-        tilt(obj, math.radians(-12), "X", (0, 0, 0.12))
-    stand = [rod("l", (0, 0.0, 0.0), (x, 0.0, 0.0), 0.01, "graphite") for x in (-0.18, 0.18)]
-    stand += [rod("f", (0, -0.2, 0.01), (0, 0.15, 0.01), 0.01, "graphite"), rod("u", (0, -0.2, 0.01), (0, -0.12, 0.75), 0.01, "graphite")]
-    stand += [rod("c", (x, 0.08, 0.02), (x, 0.08, 0.13), 0.012, "black_rubber") for x in (-0.14, 0.14)]
+    """A steel-string guitar on an A-frame floor stand: there has been one
+    on the ISS since 2001. (Rebuilt 24 Oct: a proper body outline, a fretted
+    neck, six tuners, a pickguard and a padded stand it actually rests in.)"""
+    parts = []
+    # Body: spruce top, darker sides and back, black binding round the top.
+    parts.append(_guitar_slab("guitar_back_walnut", -0.05, 0.035, "walnut", bevel=0.012))
+    parts.append(_guitar_slab("guitar_top_spruce", 0.035, 0.045, "spruce", inset=0.006, bevel=0.003))
+    parts.append(_guitar_slab("guitar_binding_ebony", 0.033, 0.043, "ebony", bevel=0.002))
+    hole = cyl("sound_hole_ebony", (0, 0.046, 0.335), 0.048, 0.004, "ebony", axis="y", verts=36)
+    rosette = torus("rosette_satin_steel", (0, 0.046, 0.335), 0.056, 0.003, "satin_steel", axis="y")
+    guard = box("pickguard_ebony", 0.045, 0.11, 0.045, 0.048, 0.2, 0.28, "ebony", 0.012)
+    bridge = box("bridge_ebony", -0.065, 0.065, 0.045, 0.055, 0.12, 0.145, "ebony", 0.004)
+    saddle = box("saddle_white_painted", -0.04, 0.04, 0.055, 0.06, 0.13, 0.135, "white_painted", 0.001)
+    pins = join("bridge_pins_white_painted", [cyl("p", (x, 0.057, 0.122), 0.0035, 0.006, "white_painted", axis="y", verts=8) for x in (-0.025, -0.015, -0.005, 0.005, 0.015, 0.025)])
+    # Neck: walnut neck, ebony fretboard with steel frets and dot inlays.
+    neck = box("neck_walnut", -0.024, 0.024, 0.0, 0.035, 0.48, 0.92, "walnut", 0.012)
+    heel = box("neck_heel_walnut", -0.026, 0.026, -0.03, 0.035, 0.46, 0.52, "walnut", 0.015)
+    board = box("fretboard_ebony", -0.027, 0.027, 0.035, 0.045, 0.4, 0.92, "ebony", 0.003)
+    frets = join("frets_satin_steel", [box("f", -0.027, 0.027, 0.045, 0.047, 0.92 - d, 0.922 - d, "satin_steel", 0) for d in [0.52 * (1 - 0.5 ** (i / 12)) for i in range(1, 19)]])
+    dots = join("fret_dots_white_painted", [cyl("d", (0, 0.046, 0.92 - 0.52 * (1 - 0.5 ** (i / 12)) + 0.012), 0.004, 0.002, "white_painted", axis="y", verts=10) for i in (2.5, 4.5, 6.5, 8.5, 11.5)])
+    nut = box("nut_white_painted", -0.027, 0.027, 0.035, 0.049, 0.918, 0.926, "white_painted", 0.002)
+    # Headstock, tilted back, with six tuners.
+    head = box("headstock_walnut", -0.04, 0.04, 0.0, 0.016, 0.925, 1.1, "walnut", 0.01)
+    face = box("headstock_face_ebony", -0.036, 0.036, 0.016, 0.019, 0.94, 1.09, "ebony", 0.004)
+    tuners = []
+    for side in (-1, 1):
+        for z in (0.97, 1.015, 1.06):
+            tuners.append(cyl("t", (side * 0.047, 0.008, z), 0.005, 0.02, "satin_steel", axis="x", verts=10))
+            tuners.append(box("t", side * 0.058 - 0.006, side * 0.058 + 0.006, 0.0, 0.016, z - 0.009, z + 0.009, "satin_steel", 0.003))
+    tuners = join("tuners_satin_steel", tuners)
+    for obj in (head, face, tuners):
+        tilt(obj, math.radians(14), "X", (0, 0.0, 0.925))
+    strings = join("strings_satin_steel", [rod("s", (x, 0.06, 0.13), (x * 0.82, 0.05, 0.92), 0.0011, "satin_steel", 6) for x in (-0.022, -0.013, -0.0045, 0.0045, 0.013, 0.022)])
+    guitar_parts = [p for p in parts] + [hole, rosette, guard, bridge, saddle, pins, neck, heel, board, frets, dots, nut, head, face, tuners, strings]
+    # Stand height: the body's tail sits in the cradle 8 cm up; the whole
+    # guitar leans back 14 degrees onto the neck yoke.
+    for obj in guitar_parts:
+        obj.location.z += 0.08
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True); bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.transform_apply(location=True)
+        tilt(obj, math.radians(14), "X", (0, -0.02, 0.09))
+    # A-frame stand: two splayed front legs, a back leg, a padded cradle and a yoke.
+    # The legs come up either side of the body and meet behind it.
+    stand = [rod("l", (sx * 0.23, 0.1, 0.0), (sx * 0.21, -0.17, 0.3), 0.011, "graphite") for sx in (-1, 1)]
+    stand += [rod("x", (-0.21, -0.17, 0.3), (0.21, -0.17, 0.3), 0.011, "graphite")]
+    stand += [rod("b", (0, -0.34, 0.0), (0, -0.17, 0.3), 0.011, "graphite")]
+    stand += [rod("u", (0, -0.17, 0.3), (0, -0.215, 0.86), 0.01, "graphite")]
+    stand += [rod("a", (sx * 0.23, 0.1, 0.0), (sx * 0.16, 0.06, 0.075), 0.01, "graphite") for sx in (-1, 1)]
+    feet = [cyl("f", (sx * 0.23, 0.1, 0.008), 0.018, 0.016, "black_rubber", verts=12) for sx in (-1, 1)]
+    feet.append(cyl("f", (0, -0.34, 0.008), 0.018, 0.016, "black_rubber", verts=12))
     join("stand_graphite", stand)
+    join("stand_feet_black_rubber", feet)
+    join("stand_cradle_black_rubber", [rod("c", (-0.16, 0.06, 0.075), (0.16, 0.06, 0.075), 0.016, "black_rubber"),
+                                       rod("c", (-0.16, 0.06, 0.075), (-0.16, 0.085, 0.13), 0.014, "black_rubber"),
+                                       rod("c", (0.16, 0.06, 0.075), (0.16, 0.085, 0.13), 0.014, "black_rubber")])
+    join("stand_yoke_black_rubber", [rod("y", (-0.045, -0.2, 0.86), (-0.045, -0.17, 0.9), 0.009, "black_rubber"),
+                                     rod("y", (0.045, -0.2, 0.86), (0.045, -0.17, 0.9), 0.009, "black_rubber"),
+                                     rod("y", (-0.045, -0.2, 0.86), (0.045, -0.2, 0.86), 0.009, "black_rubber")])
 
 
 MODELS = [

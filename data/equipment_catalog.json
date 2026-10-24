@@ -4046,9 +4046,9 @@
       ],
       "asset_scene": "res://assets/equipment/mars_odds_and_ends_v1/guitar.tscn",
       "size_m": [
-        0.38,
-        1.109,
-        0.441
+        0.5,
+        1.15,
+        0.48
       ],
       "pack": "mars_odds_and_ends_v1"
     },

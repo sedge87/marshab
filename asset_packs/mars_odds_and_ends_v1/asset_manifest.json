@@ -241,34 +241,6 @@
       ]
     },
     {
-      "id": "guitar",
-      "file": "guitar.glb",
-      "placement": "floor",
-      "bounds_m": [
-        [
-          -0.19,
-          -0.01,
-          -0.231
-        ],
-        [
-          0.19,
-          1.099,
-          0.21
-        ]
-      ],
-      "triangles": 2776,
-      "named_components": [
-        "bridge",
-        "guitar_body",
-        "headstock_dark",
-        "neck_dark",
-        "pegs_satin",
-        "sound_hole",
-        "stand",
-        "strings_satin"
-      ]
-    },
-    {
       "id": "crew_mug",
       "file": "crew_mug.glb",
       "placement": "floor",
@@ -375,6 +347,49 @@
         "land_leaf",
         "leg_dark",
         "photo"
+      ]
+    },
+    {
+      "id": "guitar",
+      "file": "guitar.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.248,
+          -0.007,
+          -0.118
+        ],
+        [
+          0.248,
+          1.142,
+          0.358
+        ]
+      ],
+      "triangles": 9464,
+      "named_components": [
+        "bridge",
+        "bridge_pins_white",
+        "fret_dots_white",
+        "fretboard",
+        "frets_satin",
+        "guitar_back",
+        "guitar_binding",
+        "guitar_top",
+        "headstock",
+        "headstock_face",
+        "neck",
+        "neck_heel",
+        "nut_white",
+        "pickguard",
+        "rosette_satin",
+        "saddle_white",
+        "sound_hole",
+        "stand",
+        "stand_cradle_black",
+        "stand_feet_black",
+        "stand_yoke_black",
+        "strings_satin",
+        "tuners_satin"
       ]
     }
   ]
