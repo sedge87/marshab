@@ -2,7 +2,7 @@ extends SceneTree
 const MHDossier := preload("res://scripts/mh_dossier.gd")
 
 # The mission dossier (backlog 27): versions keep checks, graphs, prediction
-# and note; "what fixed it"; the student name; the HTML export; and the
+# and note; "what fixed it"; the player name; the HTML export; and the
 # Dossier view in Mission Control.
 # Run with: godot --headless --path . --script res://tests/dossier_test.gd
 const MHMissions := preload("res://scripts/mh_missions.gd")
@@ -19,9 +19,9 @@ func _initialize() -> void:
 	MHGame.site_id = "plains"; MHGame.game_mode = "missions"; MHGame.pending_save_state = {}
 	MHGame.colony_name = "Kestrel Base"
 	MHMissions.reset()
-	_check(MHMissions.progress.has("campaign_id") and MHMissions.student_name() == "", "a new campaign has an id and no name yet")
-	MHMissions.set_student_name("  Sam Rivers  ")
-	_check(MHMissions.student_name() == "Sam Rivers", "the student name is kept (trimmed)")
+	_check(MHMissions.progress.has("campaign_id") and MHMissions.player_name() == "", "a new campaign has an id and no name yet")
+	MHMissions.set_player_name("  Sam Rivers  ")
+	_check(MHMissions.player_name() == "Sam Rivers", "the commander name is kept (trimmed)")
 	var target: Vector2 = PICKER.suggested()
 	MHMissions.progress.landing_target = target
 	MHMissions.progress.base_site = target + Vector2(30, 0)
@@ -63,11 +63,11 @@ func _initialize() -> void:
 
 	# The HTML export.
 	var page := MHDossier.html(["crew_land"])
-	_check(page.begins_with("<!doctype html>") and page.contains("Kestrel Base") and page.contains("Sam Rivers"), "the page has the colony and student name")
+	_check(page.begins_with("<!doctype html>") and page.contains("Kestrel Base") and page.contains("Sam Rivers"), "the page has the colony and commander name")
 	_check(page.contains("Version 1") and page.contains("Version 2") and page.contains("<svg"), "every version with its charts")
 	_check(page.contains("Prediction:") and page.contains("Note:"), "the prediction and note")
 	_check(page.contains("What failed, and what fixed it"), "and what fixed it")
-	MHMissions.set_student_name("")
+	MHMissions.set_player_name("")
 	_check(not MHDossier.html(["crew_land"]).contains("Engineer:"), "no name, no name line")
 
 	# Mission Control's Dossier view.

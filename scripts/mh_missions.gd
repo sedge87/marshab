@@ -34,7 +34,7 @@ static func active() -> bool:
 ## A new campaign: Mission 1 (landing zones) is chosen on the menu's Land step.
 static func reset() -> void:
 	progress = {"current": "landing_zones", "completed": [], "landing_target": Vector2.INF, "base_site": Vector2.INF, "versions": {}, "briefed": {},
-		"student_name": "", "campaign_id": str(int(Time.get_unix_time_from_system()))}
+		"player_name": "", "campaign_id": str(int(Time.get_unix_time_from_system()))}
 
 static func ensure() -> void:
 	if progress.is_empty(): reset()
@@ -735,21 +735,22 @@ static func counter(key: String) -> int:
 	ensure()
 	return int((progress.get("counters", {}) as Dictionary).get(key, 0))
 
-## The student's optional prediction for the next Test ("What do you think will happen?").
+## The player's optional prediction for the next Test ("What do you think will happen?").
 static var pending_prediction := ""
 
-## The student's optional note on a version ("What will you change, and why?").
+## The player's optional note on a version ("What will you change, and why?").
 static func set_version_note(mission_id: String, version: int, note: String) -> void:
 	for entry in versions(mission_id):
 		if int(entry.version) == version: entry["note"] = note.strip_edges()
 
-static func student_name() -> String:
+static func player_name() -> String:
 	ensure()
-	return str(progress.get("student_name", ""))
+	# Older campaigns saved it as "student_name".
+	return str(progress.get("player_name", progress.get("student_name", "")))
 
-static func set_student_name(value: String) -> void:
+static func set_player_name(value: String) -> void:
 	ensure()
-	progress["student_name"] = value.strip_edges().substr(0, 40)
+	progress["player_name"] = value.strip_edges().substr(0, 40)
 
 ## Every difference between two designs, in words: "+2 solar arrays, +1 air recycler".
 static func design_changes_full(before: Dictionary, after: Dictionary) -> String:
@@ -795,7 +796,7 @@ static func versions(mission_id: String) -> Array:
 	return (progress.versions as Dictionary).get(mission_id, [])
 
 ## The mission dossier (backlog 27): each Test is kept as a version with what
-## the student needs to tell its story later: the design, every check with its
+## the player needs to tell its story later: the design, every check with its
 ## reason and tip, stretch goals, the alerts, the graphs (downsampled), the
 ## optional prediction and note, and pictures (scripts/mh_dossier.gd).
 const DOSSIER_SAMPLE_KEYS := ["elapsed", "battery_pct", "generation_kw", "load_kw", "o2_pct", "co2_pct", "food_kg", "coldest_c", "crew_health", "fitness", "wellbeing", "pressure_pct", "dose_msv"]

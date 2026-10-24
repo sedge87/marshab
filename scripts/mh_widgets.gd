@@ -1,8 +1,8 @@
 class_name MHWidgets
 extends RefCounted
 
-# Custom-drawn controls from the MARS: HABITAT design system. Each one is cheap
-# to draw (no shaders except the pause blur) so the HUD stays light on school laptops.
+# Custom-drawn controls from the Outpost One: Mars design system. Each one is cheap
+# to draw (no shaders except the pause blur) so the HUD stays light on older laptops.
 
 # Ink scrim that fades to transparent. direction is where the dark edge sits.
 class Fade extends Control:

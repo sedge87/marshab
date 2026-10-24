@@ -10,7 +10,7 @@ size = Vector3(1.11, 1.84, 0.74)
 script = ExtResource("1_script")
 display_name = "Nutrient Mixer"
 primary_action = "Inspect nutrient mixer"
-educational_note = "NUTRIENT MIXER\nTwin concentrate tanks dose mineral solution into the hydroponic recirculation loop."
+info_note = "NUTRIENT MIXER\nTwin concentrate tanks dose mineral solution into the hydroponic recirculation loop."
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
 

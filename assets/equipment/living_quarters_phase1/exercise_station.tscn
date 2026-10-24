@@ -7,6 +7,6 @@
 script = ExtResource("1_script")
 display_name = "Exercise Station"
 primary_action = "Inspect training station"
-educational_note = "EXERCISE STATION\nResistance exercise helps astronauts protect muscles and bones in reduced gravity."
+info_note = "EXERCISE STATION\nResistance exercise helps astronauts protect muscles and bones in reduced gravity."
 
 [node name="Model" parent="." instance=ExtResource("2_model")]

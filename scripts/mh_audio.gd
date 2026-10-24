@@ -352,7 +352,7 @@ func _next_voice() -> void:
 	if _voice_queue.is_empty(): return
 	_play_line(_voice_queue.pop_front())
 
-# Captions for everything said, bottom centre (classrooms often play muted).
+# Captions for everything said, bottom centre (for playing with the sound off).
 func _show_caption(who: String, text: String, note: String, seconds: float) -> void:
 	if _caption_layer == null:
 		_caption_layer = CanvasLayer.new()

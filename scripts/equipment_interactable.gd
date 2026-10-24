@@ -7,7 +7,7 @@ extends Node3D
 @export var display_name := "Equipment"
 @export var primary_action := "Inspect"
 @export var secondary_action := ""
-@export_multiline var educational_note := ""
+@export_multiline var info_note := ""
 @export var light_node_path: NodePath
 @export var emissive_node_path: NodePath
 
@@ -63,7 +63,7 @@ func interaction_prompt() -> Dictionary:
 func interact(_actor: Node = null) -> bool:
 	var note := _live_readout()
 	if note.is_empty():
-		note = educational_note
+		note = info_note
 	if not note.is_empty():
 		get_tree().call_group("explore_hud", "show_equipment_note", display_name, note)
 	return true

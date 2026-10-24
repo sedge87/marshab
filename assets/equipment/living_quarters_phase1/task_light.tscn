@@ -8,7 +8,7 @@ script = ExtResource("1_script")
 display_name = "Task Light"
 primary_action = "Inspect work light"
 secondary_action = "Toggle light"
-educational_note = "TASK LIGHT\nFocused light helps crew read, repair and work without lighting the whole room."
+info_note = "TASK LIGHT\nFocused light helps crew read, repair and work without lighting the whole room."
 light_node_path = NodePath("EquipmentLight")
 emissive_node_path = NodePath("Model/world/Lamp_Diffuser__glow")
 

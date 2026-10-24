@@ -29,9 +29,9 @@ This is a proposal to talk through. Nothing in it is built.
 
 0. **Whole-habitat stats, room-level events (decided 23 Oct).** Like Subnautica, everything you monitor is base-wide: one temperature (room temperatures are being merged), one air, one power. Rooms matter through *properties* (the shelter's shield rating) and *events* (where a breach happens, which doors seal). They don't carry stats of their own.
 
-1. **You design the base and its rules; the Test brings the trouble.** The Test can't play the game for the student. So each new hazard comes with an *automatic protocol* the student sets up, like "the crew go to the shelter" or "doors seal on a breach". The Test then runs the event against their design. That's how real habitats are engineered: you can't rely on someone doing the right thing in the moment.
+1. **You design the base and its rules; the Test brings the trouble.** The Test can't play the game for the player. So each new hazard comes with an *automatic protocol* the player sets up, like "the crew go to the shelter" or "doors seal on a breach". The Test then runs the event against their design. That's how real habitats are engineered: you can't rely on someone doing the right thing in the moment.
 2. **One new idea per mission,** and everything earlier still counts. Mission 9 still needs warm, breathable rooms.
-3. **Fair tests.** Events happen at the same moment in every version of a mission, so students can compare versions fairly. The finale is the exception: it runs several different "futures" and the base must survive all of them, which teaches robustness rather than tuning to one test.
+3. **Fair tests.** Events happen at the same moment in every version of a mission, so players can compare versions fairly. The finale is the exception: it runs several different "futures" and the base must survive all of them, which teaches robustness rather than tuning to one test.
 4. **The base carries on.** Early layout choices pay off or bite later. That's the story of an engineering project.
 5. **Each hazard is explained with real science,** through the habitat's voice alerts, the "Why it matters" cards and the dossier.
 6. **The live game feels it too, not just the Test.** After a mission is passed, its hazard can happen during normal play, with the alerts, so the base feels alive.
@@ -97,7 +97,7 @@ The medical emergency becomes an event inside Mission 8 rather than a mission of
   - The breach is patched within 2 hours.
   - Air is back to normal within 6 hours.
 - **Stretch:** survive a breach in *any* module. The Test tries each one.
-- **Why it's good:** a Mission 3 layout decision now matters. Students add bulkhead doors, as real stations are built in sealable sections. They still only watch one number.
+- **Why it's good:** a Mission 3 layout decision now matters. Players add bulkhead doors, as real stations are built in sealable sections. They still only watch one number.
 
 ### Mission 10 · The Long Silence (isolation and distance: everything together)
 - **Story:** Mars passes behind the Sun from Earth (solar conjunction). For 14 sols there's no contact and no resupply. The crew stay 200 sols, and things break.
@@ -149,16 +149,16 @@ The build order follows the mission order: 7 (S/M), 8 (L), 9 (M), 10 (M), each w
 1. **Named crew (Mission 8):** do you want the crew as six individuals with roles? It's the biggest change, and it makes the medical, gravity and isolation missions possible. Without it, Missions 8 and 10 stay abstract.
 2. **Order:** Radiation, then people, then breach, then the finale. Or should the breach come before the people?
 3. **Live hazards:** after passing a mission, should its hazard happen occasionally during normal play (with the alerts), or only in Tests?
-4. **Difficulty:** is the 200-sol, three-futures finale right for Year 9, or too punishing? It could be two futures, or a gentler failure rate.
+4. **Difficulty:** is the 200-sol, three-futures finale right for players, or too punishing? It could be two futures, or a gentler failure rate.
 5. **Anything missing** you'd like the campaign to teach, e.g. getting to Mars, EVA safety, or planetary protection?
 
 ---
 
 ## 7. Decisions and build spec (24 Oct)
 
-Decided with the user: named crew, kept simple (a name, a role, fitness and wellbeing). Noise next to bunks counts. Each crew member has one favourite thing. Students name the crew at the start of Mission 8 (defaults offered). Order stays 7 → 8 → 9 → 10. Hazards from passed missions can happen rarely in normal play (a Settings toggle). The finale runs three futures with a gentle failure rate.
+Decided with the user: named crew, kept simple (a name, a role, fitness and wellbeing). Noise next to bunks counts. Each crew member has one favourite thing. Players name the crew at the start of Mission 8 (defaults offered). Order stays 7 → 8 → 9 → 10. Hazards from passed missions can happen rarely in normal play (a Settings toggle). The finale runs three futures with a gentle failure rate.
 
-All Act 2 tuning numbers live in `data/hazards.json`, not the balance workbook, so a teacher can adjust them in one place.
+All Act 2 tuning numbers live in `data/hazards.json`, not the balance workbook, so you can adjust them in one place.
 
 ### Everything is still whole-habitat
 - One **radiation dose** for the crew, one **air pressure**, one temperature, one air. Rooms add *properties* (a shield rating, a section) and *events* (a breach here).
@@ -197,7 +197,7 @@ All Act 2 tuning numbers live in `data/hazards.json`, not the balance workbook, 
 
 ### Mission 10 · The long silence
 - **200 sols**, three futures (seeds). Each has: a 14-sol comms blackout (solar conjunction) from sol 90; one solar particle event; one dust storm; one injury (a different person in each future); and breakdowns.
-- **Breakdowns**: life-critical machines (air recycler, oxygen generator, water reclaimer, thermal control unit) fail on average once every 200 sols each (gentle, for Year 9). A broken machine does nothing until repaired.
+- **Breakdowns**: life-critical machines (air recycler, oxygen generator, water reclaimer, thermal control unit) fail on average once every 200 sols each (gentle, for players). A broken machine does nothing until repaired.
 - **Repair**: one spare part plus 6 hours with the Engineer (12 without). Spare parts are stored in a spares rack (8 each); a running regolith printer makes one every 10 sols.
 - **Checks**: crew safe; fitness and wellbeing above the line; no life-critical *system* (all units of a type broken) down for more than 12 hours; 50% of food grown; research met; dose under the limit. Every future must pass.
 

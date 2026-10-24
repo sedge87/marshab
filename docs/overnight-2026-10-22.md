@@ -50,9 +50,9 @@ All six missions now run start to finish. The rules follow the campaign table in
 - **Mission 4 arrival:** the crew lander opening reuses the free-play opening (dim cabin, open the hatch, step out) rather than a cinematic.
 
 **Not done yet (phase 3):**
-- the classroom layer (predictions and a design log)
-- the teacher report export
-- the teacher unlock-all setting
+- the optional layer (predictions and a design log)
+- the progress report export
+- the organiser unlock-all setting
 - showcase mode
 - the food-amount choice in Mission 6
 

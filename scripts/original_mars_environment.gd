@@ -4,7 +4,7 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 # Sky, lighting and the selected site's generated landscape (MHSiteTerrain).
 # This node owns only scenery, lighting and collision; gameplay systems
-# remain in Mars Habitat.
+# remain in Outpost One: Mars.
 const MODEL_DIRECTORY := "res://assets/original_mars/models/"
 const CELESTIAL_SHADER := """
 shader_type spatial;
@@ -191,7 +191,7 @@ const STORM_FOG := Color("#9A6A48")
 
 func apply_daylight(sunlight: float) -> void:
 	# Keep the art-direction palette, but let the simulated sun visibly set. A
-	# small ambient floor preserves safe readability on low-end school devices.
+	# small ambient floor preserves safe readability on low-end devices.
 	if _palette_values.is_empty() or sun == null or world_environment == null:
 		return
 	var level := clampf(sunlight, 0.0, 1.0)

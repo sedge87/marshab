@@ -79,7 +79,7 @@ const GAME_MODE_NOTES := {
 static var game_mode := "survival"
 ## Showcase mode (scripts/showcase.gd): a save presenting itself. Nothing is saved.
 static var showcase := false
-## Where the student chose to land (site x, z in metres), set on the menu's
+## Where the player chose to land (site x, z in metres), set on the menu's
 ## Land step; INF means "let the game pick" (quick start, loaded games).
 static var landing_target := Vector2.INF
 # Hidden debug cheats (Ctrl+Shift+F12 in a colony); session only, never saved.
@@ -277,7 +277,7 @@ static func formatted_sol_time() -> String:
 	return "%02d:%02d" % [whole_hour, minutes]
 
 # ---------- habitat saves ----------
-# Two separate sets of save slots: Missions keeps a student's mission progress,
+# Two separate sets of save slots: Missions keeps a player's mission progress,
 # and Free play is shared by Survival, Freedom and Creative, so playing or
 # testing in another mode never touches mission saves.
 const SAVE_SETS := {"free_play": "Free play", "missions": "Missions"}
@@ -305,7 +305,7 @@ static func _move_old_saves() -> void:
 			DirAccess.rename_absolute(ProjectSettings.globalize_path(old_path), ProjectSettings.globalize_path(new_path))
 
 static func save_habitat(slot: int, state: Dictionary, save_set := "") -> Error:
-	if showcase: return OK   # a showcase plays a copy and never writes the student's save
+	if showcase: return OK   # a showcase plays a copy and never writes the player's save
 	var absolute_directory := ProjectSettings.globalize_path("%s/%s" % [save_directory, _save_set(save_set)])
 	var directory_error := DirAccess.make_dir_recursive_absolute(absolute_directory)
 	if directory_error != OK:
@@ -504,6 +504,31 @@ static func setting(key: String):
 static func settings() -> Dictionary:
 	if _settings.is_empty(): load_settings()
 	return _settings.duplicate()
+
+## The game used to be called MARS: HABITAT, and kept its saves and settings
+## in Godot's own folder under that name. Now it has its own ("Outpost One",
+## project.godot): on first launch, copy everything across once, leaving the
+## old folder as it was.
+const OLD_USER_DIR := "Godot/app_userdata/MARS- HABITAT"
+const MIGRATED_FLAG := "user://migrated_from_mars_habitat"
+static func migrate_old_saves() -> void:
+	if FileAccess.file_exists(MIGRATED_FLAG): return
+	var old := OS.get_data_dir().path_join(OLD_USER_DIR)
+	if DirAccess.dir_exists_absolute(old):
+		_copy_tree(old, OS.get_user_data_dir())
+		_settings = {}
+	var flag := FileAccess.open(MIGRATED_FLAG, FileAccess.WRITE)
+	if flag != null: flag.store_string("copied from %s" % old)
+
+static func _copy_tree(from: String, to: String) -> void:
+	DirAccess.make_dir_recursive_absolute(to)
+	var dir := DirAccess.open(from)
+	if dir == null: return
+	for file in dir.get_files():
+		if not FileAccess.file_exists(to.path_join(file)): DirAccess.copy_absolute(from.path_join(file), to.path_join(file))
+	for sub in dir.get_directories():
+		if sub.begins_with("."): continue
+		_copy_tree(from.path_join(sub), to.path_join(sub))
 
 static func load_settings() -> void:
 	_settings = defaults()

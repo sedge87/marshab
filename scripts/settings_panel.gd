@@ -79,7 +79,7 @@ func _graphics() -> Control:
 	preset_box.add_child(MHStyle.eyebrow("Quality preset", MHStyle.TEXT_MUTED, 14))
 	var cards := MHStyle.hbox(12)
 	_preset_cards.clear()
-	for preset in [["low", "Low", "Older laptops. No shadows, 75 % scale."], ["medium", "Medium", "School laptops. Sun shadows, dust near you."], ["high", "High", "Gaming PCs. Longer shadows, window glow."]]:
+	for preset in [["low", "Low", "Older laptops. No shadows, 75 % scale."], ["medium", "Medium", "Most laptops. Sun shadows, dust near you."], ["high", "High", "Gaming PCs. Longer shadows, window glow."]]:
 		var card := Button.new()
 		card.custom_minimum_size = Vector2(0, 116)
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL

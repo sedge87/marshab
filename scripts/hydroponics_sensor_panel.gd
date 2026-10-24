@@ -20,7 +20,7 @@ func _ready() -> void:
 func interact(actor: Node = null) -> bool:
 	var climate := _climate()
 	if not climate.is_empty():
-		educational_note = "HYDROPONICS SENSOR PANEL\nAir temperature: %.1f °C\n%s" % [float(climate.temperature), str(climate.context)]
+		info_note = "HYDROPONICS SENSOR PANEL\nAir temperature: %.1f °C\n%s" % [float(climate.temperature), str(climate.context)]
 	return super.interact(actor)
 
 func _climate() -> Dictionary:

@@ -132,9 +132,9 @@ func _show_dossier() -> void:
 	var name_field := LineEdit.new()
 	name_field.max_length = 40
 	name_field.placeholder_text = "Optional"
-	name_field.text = MHMissions.student_name()
+	name_field.text = MHMissions.player_name()
 	name_field.custom_minimum_size = Vector2(260, 40)
-	name_field.text_changed.connect(func(text: String) -> void: MHMissions.set_student_name(text))
+	name_field.text_changed.connect(func(text: String) -> void: MHMissions.set_player_name(text))
 	head.add_child(name_field)
 	var export_all := MHStyle.button("Export whole campaign", "primary", "save")
 	export_all.pressed.connect(func() -> void: _export_dossier([]))
@@ -143,7 +143,7 @@ func _show_dossier() -> void:
 	back.pressed.connect(scrim.queue_free)
 	head.add_child(back)
 	col.add_child(head)
-	_dossier_status = MHStyle.body("Each Test is a version. Exports are web pages in Documents/MARS HABITAT: open one and print it to save a PDF.", 14, MHStyle.TEXT_MUTED)
+	_dossier_status = MHStyle.body("Each Test is a version. Exports are web pages in Documents/Outpost One: open one and print it to save a PDF.", 14, MHStyle.TEXT_MUTED)
 	col.add_child(_dossier_status)
 	var body := MHStyle.hbox(18)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL

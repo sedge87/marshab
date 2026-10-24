@@ -1,7 +1,7 @@
 class_name MHIcons
 extends RefCounted
 
-# Lucide icons (ISC licence, lucide-static 0.460.0) used by the MARS: HABITAT design
+# Lucide icons (ISC licence, lucide-static 0.460.0) used by the Outpost One: Mars design
 # system. Stored as SVG markup so they render crisply at any size, need no import
 # settings and ship inside exported builds. Strokes are white; tint with modulate.
 

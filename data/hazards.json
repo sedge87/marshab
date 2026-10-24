@@ -1,5 +1,5 @@
 {
-  "_comment": "Act 2 (Missions 7-10): the crew as people and the hazards. scripts/habitat_life.gd reads this; docs/missions-7-10-design.md section 7 explains every rule. Teachers can tune the numbers here.",
+  "_comment": "Act 2 (Missions 7-10): the crew as people and the hazards. scripts/habitat_life.gd reads this; docs/missions-7-10-design.md section 7 explains every rule. Tune the game here: every number has a note.",
   "crew": {
     "roles": [
       {"id": "commander", "label": "Commander", "room": "communications"},

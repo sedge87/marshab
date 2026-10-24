@@ -290,10 +290,10 @@ func _apply_light_budget() -> void:
 ## A new game opens in the dim lander cabin with a minimal HUD; opening the
 ## hatch lowers the ramp, and stepping out onto Mars brings the full HUD in.
 ## Saved games restore the lander where it landed. New games land on the
-## student's chosen target: exactly in Freedom and Creative, somewhere in the
+## player's chosen target: exactly in Freedom and Creative, somewhere in the
 ## landing ellipse in Survival. Quick start lets the game pick.
 ## Missions: the landing zone (ellipse and its engine-blast margin) marked on
-## the ground, so students can see where they mustn't build.
+## the ground, so players can see where they mustn't build.
 func _add_landing_zone_marker() -> void:
 	var target := MHMissions.landing_target()
 	if is_inf(target.x): return
@@ -684,7 +684,7 @@ func _spawn_player() -> void:
 	add_child(player)
 	var camera := player.get_node("Head/Camera3D") as Camera3D
 	camera.set_meta("first_person", true)
-	# Dust motes drawn only near the camera (cheap on school laptops).
+	# Dust motes drawn only near the camera (cheap on older laptops).
 	dust = CPUParticles3D.new()
 	dust.name = "NearDust"
 	dust.amount = 140

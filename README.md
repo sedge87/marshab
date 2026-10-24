@@ -1,6 +1,6 @@
-# MARS: HABITAT
+# Outpost One: Mars
 
-An in-progress Year 9 Mars habitat construction project. Students lay out a habitat from above, then switch to first person to explore its enclosed rooms, airlocks, vehicle bays and solar-supported systems.
+A Mars survival-building game, in progress. Lay out a habitat from above, then switch to first person to live in it: its rooms, airlocks, vehicle bays and the systems that keep a crew alive.
 
 ## Requirements
 

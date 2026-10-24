@@ -59,6 +59,7 @@ var _load_started := 0
 var _settings_panel: MHSettingsPanel
 
 func _ready() -> void:
+	MHGame.migrate_old_saves()   # saves from when the game was called MARS: HABITAT
 	MHGame.showcase = false   # back at the menu: whatever loads next is a normal game unless Present is pressed
 	MHGame.set_accent(MHGame.accent_index)
 	theme = MHStyle.theme()
@@ -286,7 +287,7 @@ func _title_screen() -> void:
 	_scrim("right", .6, .88)
 	var head := MHStyle.vbox(22)
 	_place(head, Vector2(120, 140), 820)
-	head.add_child(MHStyle.eyebrow("Year 9 · Mission to Mars", MHStyle.accent, 18))
+	head.add_child(MHStyle.eyebrow("Build it · Live in it · Survive Mars", MHStyle.accent, 18))
 	var mark := MHStyle.wordmark(136)
 	head.add_child(mark)
 	var pitch := MHStyle.body("Design a home for a crew of %s on %s of cargo. Then walk through it." % [MHStyle.count_word(BuildController.CREW_TARGET), MHStyle.kg(MHGame.mission_cargo_budget())], 26)
@@ -646,19 +647,19 @@ func _colony_screen() -> void:
 	var mode_note := "Set up your base step by step, the way NASA would: choose landing zones, send the cargo first, test everything, then land the crew." if MHGame.game_mode == "missions" else str(MHGame.GAME_MODE_NOTES.get(MHGame.game_mode, "")) + cargo_note
 	mode_box.add_child(MHStyle.body(mode_note, 14, MHStyle.TEXT_MUTED))
 	form.add_child(mode_box)
-	# Missions: the student's name, only for the exported mission dossier.
+	# Missions: the player's name, only for the exported mission dossier.
 	if MHGame.game_mode == "missions":
-		var student_box := MHStyle.vbox(6)
-		student_box.add_child(MHStyle.eyebrow("Your name (for your mission dossier)"))
-		var student := LineEdit.new()
-		student.max_length = 40
-		student.placeholder_text = "Optional"
-		student.text = MHMissions.student_name()
-		student.custom_minimum_size.y = 44
-		student.text_changed.connect(func(text: String) -> void: MHMissions.set_student_name(text))
-		student_box.add_child(student)
-		student_box.add_child(MHStyle.body("Only printed on your exported dossier. You can change it when you export.", 14, MHStyle.TEXT_MUTED))
-		form.add_child(student_box)
+		var name_box_player := MHStyle.vbox(6)
+		name_box_player.add_child(MHStyle.eyebrow("Commander's name (for your mission log)"))
+		var commander := LineEdit.new()
+		commander.max_length = 40
+		commander.placeholder_text = "Optional"
+		commander.text = MHMissions.player_name()
+		commander.custom_minimum_size.y = 44
+		commander.text_changed.connect(func(text: String) -> void: MHMissions.set_player_name(text))
+		name_box_player.add_child(commander)
+		name_box_player.add_child(MHStyle.body("Only printed on your exported mission log. You can change it when you export.", 14, MHStyle.TEXT_MUTED))
+		form.add_child(name_box_player)
 	_name_field.text_changed.connect(func(text: String) -> void:
 		MHGame.colony_name = text.strip_edges()
 		counter.text = "%d / 24" % text.length()

@@ -538,7 +538,7 @@ func _show_report(report: Dictionary) -> void:
 				words.add_child(learn)
 		row.add_child(words)
 		column.add_child(row)
-	# The habitat's alerts on the test run: the early warning students would have had.
+	# The habitat's alerts on the test run: the early warning players would have had.
 	var warned: Array = report.get("alerts", [])
 	if not warned.is_empty():
 		column.add_child(MHStyle.eyebrow("What the habitat would have told you", MHStyle.accent, 13))
@@ -572,7 +572,7 @@ func _show_report(report: Dictionary) -> void:
 		hazards.title = "LIVING ON MARS OVER THE TEST"
 		hazards.custom_minimum_size = Vector2(1100, act2.size() * 44 + 30)
 		column.add_child(hazards)
-	# The student's note on this version, for the dossier (optional).
+	# The player's note on this version, for the dossier (optional).
 	var note_row := MHStyle.hbox(12)
 	var note := LineEdit.new()
 	note.max_length = 240
@@ -760,7 +760,7 @@ class TestGraph extends Control:
 
 ## Life support over the test, one strip each: oxygen, carbon dioxide, food,
 ## the habitat temperature and crew health, each with its safe line, so
-## students can see how close it came (and when).
+## players can see how close it came (and when).
 class LifeGraph extends Control:
 	var report: Dictionary
 	const ROW := 44.0

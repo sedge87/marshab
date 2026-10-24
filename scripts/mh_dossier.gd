@@ -6,7 +6,7 @@ extends RefCounted
 ## (a top-down plan and a ¾ view of the base from outside) and writes the
 ## dossier as one self-contained HTML page (pictures and charts embedded)
 ## that opens in any browser and prints to PDF: for the whole campaign or one
-## mission, to Documents/MARS HABITAT.
+## mission, to Documents/Outpost One.
 
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const PLAN_SIZE := Vector2i(800, 560)
@@ -81,7 +81,7 @@ static func export(mission_ids: Array = [], open := true) -> String:
 	if mission_ids.is_empty():
 		for mission in MHMissions.missions():
 			if not MHMissions.versions(str(mission.id)).is_empty(): mission_ids.append(str(mission.id))
-	var directory := OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS).path_join("MARS HABITAT")
+	var directory := OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS).path_join("Outpost One")
 	DirAccess.make_dir_recursive_absolute(directory)
 	var date := Time.get_date_string_from_system()
 	var scope := "Mission %d" % int(MHMissions.get_mission(str(mission_ids[0])).get("number", 0)) if mission_ids.size() == 1 else "Missions dossier"
@@ -106,14 +106,14 @@ static func _e(text: Variant) -> String:
 ## The dossier page.
 static func html(mission_ids: Array) -> String:
 	var accent := MHGame.accent().to_html(false)
-	var student := MHMissions.student_name()
+	var commander := MHMissions.player_name()
 	var parts: PackedStringArray = []
 	parts.append("<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'>")
 	parts.append("<title>%s · Mission dossier</title><style>%s</style></head><body>" % [_e(MHGame.colony_name), _css(accent)])
 	# Cover
-	parts.append("<section class='cover'><p class='eyebrow'>MARS: HABITAT · Mission dossier</p><h1>%s</h1>" % _e(MHGame.colony_name))
+	parts.append("<section class='cover'><p class='eyebrow'>OUTPOST ONE: MARS · Mission log</p><h1>%s</h1>" % _e(MHGame.colony_name))
 	parts.append("<p class='big'>%s</p>" % _e(MHGame.site_name()))
-	if not student.is_empty(): parts.append("<p class='big'>Engineer: <strong>%s</strong></p>" % _e(student))
+	if not commander.is_empty(): parts.append("<p class='big'>Commander: <strong>%s</strong></p>" % _e(commander))
 	parts.append("<p class='muted'>Exported %s · %d mission%s</p>" % [Time.get_date_string_from_system(), mission_ids.size(), "" if mission_ids.size() == 1 else "s"])
 	parts.append("<p class='lead'>Each mission follows the engineering design process: understand the problem, design a base, test it, and improve it. Every test is a version. This dossier shows what was tried, what failed and what fixed it.</p>")
 	parts.append("<h3>Contents</h3><ol class='contents'>")
@@ -124,7 +124,7 @@ static func html(mission_ids: Array) -> String:
 		parts.append("<li><a href='#%s'>Mission %d · %s</a> <span class='%s'>%s</span> <span class='muted'>(%d version%s)</span></li>" % [_e(id), int(m.number), _e(m.title), "ok" if done else "no", "passed" if done else "not passed yet", list.size(), "" if list.size() == 1 else "s"])
 	parts.append("</ol></section>")
 	for id in mission_ids: parts.append(_mission_html(str(id)))
-	parts.append("<footer>Made with MARS: HABITAT. Simplified game-balance estimates, not NASA specifications.</footer></body></html>")
+	parts.append("<footer>Made with Outpost One: Mars. Simplified game-balance estimates, not NASA specifications.</footer></body></html>")
 	return "".join(parts)
 
 static func _mission_html(id: String) -> String:

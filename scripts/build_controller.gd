@@ -287,7 +287,7 @@ func _ready() -> void:
 	add_to_group("habitat_builder")
 	habitat_changed.connect(_refresh_mode_switcher)
 	habitat_changed.connect(func() -> void: _mark_interior_layer.call_deferred())
-	root=Node3D.new(); root.name="StudentHabitat"; world.add_child(root)
+	root=Node3D.new(); root.name="Habitat"; world.add_child(root)
 	preview=Node3D.new(); preview.name="ZonePreview"; world.add_child(preview)
 	furnishing=Node3D.new(); furnishing.name="HabitatEquipment"; world.add_child(furnishing)
 	surface_furnishing=Node3D.new(); surface_furnishing.name="SurfaceEquipment"; world.add_child(surface_furnishing)
@@ -1397,7 +1397,7 @@ func free_interior_visual(id: String, position: Vector3, rotation_y: float) -> N
 					var interactable := MHEquipmentInteractable.new()
 					interactable.display_name = str(entry.get("label", id))
 					interactable.primary_action = str(entry.get("primary_action", "Read"))
-					interactable.educational_note = interaction_note
+					interactable.info_note = interaction_note
 					holder.add_child(interactable)
 					interactable.add_child(model)
 					body.set_meta("interaction_target", interactable)
@@ -1616,7 +1616,7 @@ func _equipment_visual(id: String, cell: Vector2i, facing: Vector2i) -> Node3D:
 					var interactable := MHEquipmentInteractable.new()
 					interactable.display_name = str(entry.get("label", id))
 					interactable.primary_action = str(entry.get("primary_action", "Read"))
-					interactable.educational_note = interaction_note
+					interactable.info_note = interaction_note
 					interactable.position = offset
 					holder.add_child(interactable)
 					interactable.add_child(model)

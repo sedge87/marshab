@@ -4,7 +4,7 @@
 
 This is the handoff brief for the artist building the first interior kit. It describes what to model, where it can be placed, how it should communicate function, and the Godot hooks it will eventually use.
 
-The game is a Year 9 Mars habitat builder, not a generic furniture decorator. Students first build zones that provide **installation capacity**, then furnish those zones to make the habitat operational. The primary six-person mission can expand if a student builds capacity for more crew; that decision raises food, water and life-support requirements.
+The game is a the game's Mars habitat builder, not a generic furniture decorator. Players first build zones that provide **installation capacity**, then furnish those zones to make the habitat operational. The primary six-person mission can expand if a player builds capacity for more crew; that decision raises food, water and life-support requirements.
 
 This brief is intentionally a **vertical-slice plan**, not a request to produce the entire library at once. Start with the eight assets in [First production batch](#first-production-batch).
 
@@ -39,7 +39,7 @@ Practical expedition engineering: *The Martian* first, with the readable functio
 |---|---|
 | File delivery | Supply Blender source (`.blend`), exported `.glb`, and any required texture maps. Use a matching asset ID in the filename. |
 | Units and origin | One Godot unit is one metre. Put the model origin at its floor-centre anchor, `Y = 0`; local forward is `-Z`; local up is `+Y`. |
-| Grid and snapping | Furniture anchors to the 3 m cell grid. Structural elements should also snap at 1.5 m half-cell increments, so students can divide large rooms without visual gaps. |
+| Grid and snapping | Furniture anchors to the 3 m cell grid. Structural elements should also snap at 1.5 m half-cell increments, so players can divide large rooms without visual gaps. |
 | Scale | Do not apply non-uniform scale in Godot. Apply transforms before export. |
 | Collision | Deliver simple named collision meshes or a separate low-poly collision object. Furniture should not block a required doorway, 0.9 m walk route, ladder or airlock threshold. |
 | Materials | Use a compact reusable material set. Name materials and nodes clearly; avoid relying on baked lights. |
@@ -59,7 +59,7 @@ Lights and emissive meshes that should fail when the grid is underpowered must j
 
 ## Structural interior kit
 
-These parts support student creativity. Cosmetic parts do **not** create arbitrary resource penalties. Only future pressure-rated parts may affect compartment isolation, thermal demand or emergency safety.
+These parts support player creativity. Cosmetic parts do **not** create arbitrary resource penalties. Only future pressure-rated parts may affect compartment isolation, thermal demand or emergency safety.
 
 | Asset ID | Asset | Snap / placement | Intended future behaviour |
 |---|---|---|---|
@@ -73,7 +73,7 @@ These parts support student creativity. Cosmetic parts do **not** create arbitra
 | `ceiling_light_strip` | Directional ceiling light | Ceiling, 1.5 m increments | Future `grid_powered_light`; light should go dark with grid failure. |
 | `ceiling_vent` | HVAC vent and grille | Ceiling | Future visual feedback for life-support state. |
 | `floor_finish` / `ceiling_finish` | Replaceable interior finish panels | 3 m cell | Decorative variants only. |
-| `exterior_window_module` | Pressure-rated exterior observation replacement | Exterior wall only; not student-placeable in first release | Future heating/thermal and mass decision; do not let it punch a hole through an existing hull. |
+| `exterior_window_module` | Pressure-rated exterior observation replacement | Exterior wall only; not player-placeable in first release | Future heating/thermal and mass decision; do not let it punch a hole through an existing hull. |
 
 ## Zone equipment catalogue
 
@@ -152,7 +152,7 @@ Each line is an asset family, not necessarily one model. Functional items need a
 | Asset ID / family | Purpose to communicate | Simulation role | Interaction / state |
 |---|---|---|---|
 | `corridor_light_strip` | Low-profile route lighting | Power draw; visual navigation | Grid-controlled on/off. |
-| `wayfinding_panel` | Room direction and emergency route sign | Educational/navigation | Reads room/system labels. |
+| `wayfinding_panel` | Room direction and emergency route sign | Info/navigation | Reads room/system labels. |
 | `fire_safety_station` | Emergency response kit | Future safety/readiness | Inspection only initially. |
 | `utility_conduit` | Cable/pipe run | Decorative, supports engineered appearance | Cosmetic only. |
 
@@ -172,7 +172,7 @@ Each line is an asset family, not necessarily one model. Functional items need a
 | `power_distribution_panel` | Internal breaker and distribution cabinet | Future local grid diagnostics | Shows grid active/fault state. |
 | `battery_bank` | Stored electrical-energy module | Future storage capacity; no generation | Charge state/readout. |
 | `inverter_cabinet` | Converts/conditions power from external generation | Future power stability/efficiency | Fan/readout responds to load. |
-| `reactor_monitor_console` | Remote compact-reactor monitor | Future reactor safety/telemetry | Inspection only; no student reactor control in first release. |
+| `reactor_monitor_console` | Remote compact-reactor monitor | Future reactor safety/telemetry | Inspection only; no player reactor control in first release. |
 | `cable_tray` | Overhead power run | Decorative/structural | Cosmetic only. |
 
 ## First production batch
@@ -227,11 +227,11 @@ The current catalogue has small provisional values for the early framework. The 
 
 ### Build mode (future implementation)
 
-1. Student selects a catalogue item and sees its name, purpose, cargo, inputs, outputs, compatible zones and placement requirement.
+1. Player selects a catalogue item and sees its name, purpose, cargo, inputs, outputs, compatible zones and placement requirement.
 2. A transparent ghost snaps to floor/wall/ceiling anchors. Green means valid; red explains the restriction: wrong zone, collision, missing clearance, occupied footprint or cargo limit.
 3. Rotation follows 90° room-grid increments. Doors and wall assets additionally use 1.5 m structural snaps.
 4. Before confirmation, the UI previews the expected resource change.
-5. After placement, students can select, rotate, move or remove the item.
+5. After placement, players can select, rotate, move or remove the item.
 
 ### First-person exploration (future implementation)
 
@@ -254,7 +254,7 @@ Use the current `E`-key convention. Interaction should feel native to each asset
 - [ ] Named emissive pieces, service panel and `InspectPoint` where relevant.
 - [ ] Named active/inactive/fault visual states for functional machinery.
 - [ ] Door/fan/moving-part animation clips where applicable.
-- [ ] A short educational description: what it does, why a Mars crew needs it, its inputs, outputs and what happens when it stops.
+- [ ] A short short description: what it does, why a Mars crew needs it, its inputs, outputs and what happens when it stops.
 - [ ] Screenshot or turntable preview for review before integration.
 
 ## Staged delivery plan
@@ -264,6 +264,6 @@ Use the current `E`-key convention. Interaction should feel native to each asset
 | A — visual language | One wall, pressure door, window and material palette | Does this look like one believable expedition habitat? |
 | B — functional vertical slice | Bunk, grow tray, recycler, science bench, cargo rack | Are forms readable and interesting at first-person scale? |
 | C — Godot integration | Grow Tray placement, resource preview, first-person inspection and on/off state | Does an unpowered tray visibly stop food production? |
-| D — expand library | Remaining zone families and variants | Do students have meaningful options without a single optimum layout? |
+| D — expand library | Remaining zone families and variants | Do players have meaningful options without a single optimum layout? |
 
 No asset is considered functionally complete until its art, data definition, placement rule, visual state and explorer explanation agree with one another.

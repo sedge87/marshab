@@ -7,10 +7,10 @@ These are proposals: nothing in them is built on `main`. Each section ends with 
 ## Batch 4 · Habitat alerts that teach (item 26)
 
 ### Where it starts from
-`HabitatSim.warnings()` already produces plain-language problems ("CO₂ is 0.8% and rising: there is no air recycler"). They only show as small lines in the systems panel, so students don't notice them until something has already failed.
+`HabitatSim.warnings()` already produces plain-language problems ("CO₂ is 0.8% and rising: there is no air recycler"). They only show as small lines in the systems panel, so players don't notice them until something has already failed.
 
 ### The idea: the habitat speaks up, like Subnautica's PDA
-A calm habitat computer voice tells you about a problem when it **starts**, not after it fails. It tells you the cause and **what it connects to**, so students see the systems link up.
+A calm habitat computer voice tells you about a problem when it **starts**, not after it fails. It tells you the cause and **what it connects to**, so players see the systems link up.
 
 **Three levels, each with its own sound:**
 
@@ -32,7 +32,7 @@ The chain is built from the simulation's real state: which power tier dropped, w
 
 **"What's happening?" card.** The first time each alert type appears, press **I** for a short explainer (3–4 sentences of real science, plus what to build or change). After that it's in the alert log.
 
-**Alert log.** A new **Alerts** tab in Mission Control lists every alert with its time, level, cause and when it was resolved. The **test report** also lists the alerts that would have fired during the test, so students see the early warning they would have had.
+**Alert log.** A new **Alerts** tab in Mission Control lists every alert with its time, level, cause and when it was resolved. The **test report** also lists the alerts that would have fired during the test, so players see the early warning they would have had.
 
 **Wall screens.** In Status mode the wall screen shows the active alerts.
 
@@ -68,7 +68,7 @@ Settings: a **Habitat voice** volume slider (Audio), and a **Habitat advisories*
 Every Test already saves a **version**: its design summary, the result of each check, pass or fail, the time, and what changed since the last test.
 
 ### What the dossier adds
-- **Before a test:** an optional one-line **prediction** ("What do you think will happen?"). Students can skip it.
+- **Before a test:** an optional one-line **prediction** ("What do you think will happen?"). Players can skip it.
 - **After a test:** an optional **note** ("What will you change, and why?").
 - **Per version:**
   - a top-down plan image and a ¾ exterior render (captured automatically when testing);
@@ -82,13 +82,13 @@ Every Test already saves a **version**: its design summary, the result of each c
 
 ### Export (for the portfolio and the showcase)
 **Export dossier** writes one self-contained HTML file to `Documents/MARS HABITAT/` with images and charts embedded. It opens in any browser, and *Print → Save as PDF* gives a clean A4 PDF. It contains:
-- a cover with the student's name, the colony name, the site and the colony accent;
+- a cover with the player's name, the colony name, the site and the colony accent;
 - a contents page;
 - one section per mission: the goal, the NASA step, every version, the final design, what failed and what fixed it, the stretch goals, the predictions and notes;
 - an appendix with the final base's systems summary.
 
 ### Decided (23 Oct)
-1. **Student name:** asked when Missions starts, and editable on the export screen.
+1. **Player name:** asked when Missions starts, and editable on the export screen.
 2. **Prediction and note prompts:** optional, with a Skip button.
 3. **Export:** both. One file for the whole campaign, plus a per-mission export from each mission's dossier page.
 4. **CAT headings:** none needed. Use the plain headings above.
@@ -114,7 +114,7 @@ You'd rather not have cameras in every room. The revised idea is two things.
   - air (O₂ and CO₂ with arrows);
   - water and food (made vs used, sols left);
   - the active alerts from batch 4.
-- **A 24-hour strip** of the last sol for power and battery, so students can watch the day/night cycle play out.
+- **A 24-hour strip** of the last sol for power and battery, so players can watch the day/night cycle play out.
 - **Optional:** a physical "Monitoring Station" console item. Using it opens the same view, so it fits the habitat fiction.
 
 ### 29 · GAR-Y orders
@@ -135,7 +135,7 @@ You'd rather not have cameras in every room. The revised idea is two things.
 ### 31 · Ten missions, built on NASA's five hazards (radiation, isolation, distance, gravity, hostile and closed environments)
 Missions 1–6 stay as they are (with the GAR-Y additions above). There are four new ones, and each one needs a new simulation mechanic:
 
-| # | Mission | Hazard | What students must build or do | New mechanic |
+| # | Mission | Hazard | What players must build or do | New mechanic |
 |---|---|---|---|---|
 | 7 | **Solar Storm Shelter** | Radiation | A shielded shelter (water walls, storage stacked around a small room) big enough for the whole crew. Get everyone in within 15 minutes of the warning. | Radiation dose per room (shielding value per wall from what's around it); a solar particle event in the Test |
 | 8 | **Medical Emergency** | Distance from Earth (no evacuation) | A Medical Bay with an exam cot, a medical cabinet and its own power. Treat an injured crew member while keeping the other systems running. | An injury event; treatment needs medical kit plus power for N hours; recovery affects crew health |
@@ -144,10 +144,10 @@ Missions 1–6 stay as they are (with the GAR-Y additions above). There are four
 
 Water contamination fits into Mission 9 or 10 as a failure event. Gravity (bone and muscle loss) becomes the exercise requirement in Mission 10.
 
-Each new mission is roughly one lesson. Missions 7–10 also put the **alerts** (batch 4) to work, which is why alerts come first.
+Each new mission is roughly one session. Missions 7–10 also put the **alerts** (batch 4) to work, which is why alerts come first.
 
 ### 32 · Showcase mode
-- **Starting it:** Main menu → Showcase. Choose any save; the colony name and student name show on a plaque.
+- **Starting it:** Main menu → Showcase. Choose any save; the colony name and player name show on a plaque.
 - **The camera:**
   - a cinematic orbit of the base;
   - then a slow walkthrough of every room, using the observation cameras where there are any;
@@ -158,8 +158,8 @@ Each new mission is roughly one lesson. Missions 7–10 also put the **alerts** 
 ### Decided (23 Oct)
 1. **Cameras:** none inside rooms. Outside cameras are optional, and there's a habitat **monitoring station** in Mission Control (see 28).
 2. **GAR-Y orders:** hold **G**. Approved.
-3. **Missions 7–10:** parked. We'll work out what each one asks students to do before building any. The four above are only candidates.
-4. **Showcase:** the student's name is optional.
+3. **Missions 7–10:** parked. We'll work out what each one asks players to do before building any. The four above are only candidates.
+4. **Showcase:** the player's name is optional.
 
 ---
 

@@ -10,7 +10,7 @@ size = Vector3(1.07, 1.10, 0.70)
 script = ExtResource("1_script")
 display_name = "Harvest Cart"
 primary_action = "Inspect harvest cart"
-educational_note = "HARVEST CART\nVentilated produce totes and locking castors keep a harvest clean and mobile."
+info_note = "HARVEST CART\nVentilated produce totes and locking castors keep a harvest clean and mobile."
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
 

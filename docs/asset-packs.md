@@ -40,7 +40,7 @@ Toggles are saved with the placed item (`state` names the saved key; `default` i
 
 ## Info cards (key I)
 
-Catalogue fields `system_note` (what it does and why, at Year 9 level) and `system_links` (systems it connects to) appear on the card, followed by the item's catalogue effects.
+Catalogue fields `system_note` (what it does and why, in plain words) and `system_links` (systems it connects to) appear on the card, followed by the item's catalogue effects.
 
 ## Resource values
 

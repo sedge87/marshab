@@ -10,7 +10,7 @@ size = Vector3(0.864, 0.771, 0.153)
 script = ExtResource("1_script")
 display_name = "Hydroponics Sensor Panel"
 primary_action = "Inspect sensor panel"
-educational_note = "HYDROPONICS SENSOR PANEL\nMonitors temperature, humidity, water flow and grow-light conditions for this room."
+info_note = "HYDROPONICS SENSOR PANEL\nMonitors temperature, humidity, water flow and grow-light conditions for this room."
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
 

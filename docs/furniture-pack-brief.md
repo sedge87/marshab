@@ -48,7 +48,7 @@ text: the game shows the oxygen output and water level live.
 
 **Status:** a first version is built in Blender and in the game (`asset_packs/mars_crew_lander_v1/`, from `source/build_lander.py`). A replacement from your pipeline can use the same id (`crew_lander`) and part names to drop straight in.
 
-This is a hero model and the first thing students see. Its only job is to be a
+This is a hero model and the first thing players see. Its only job is to be a
 safe starting place and to make stepping out onto Mars feel special. It must
 look **completely different from the habitat modules**: a real spacecraft that
 flew here, not a box.

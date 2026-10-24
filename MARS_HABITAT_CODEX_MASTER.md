@@ -1,13 +1,15 @@
-# MARS: HABITAT — Codex Master Brief
+# Outpost One: Mars — Codex Master Brief
+
+*(Formerly MARS: HABITAT. The original brief below was written for a  project; the game is now a general release, so read "players" as players.)*
 
 ## Project objective
-Build a **standalone, offline, Windows-friendly 3D habitat construction game** in **Godot 4.x**, using **Blender** for modular assets. It is a Year 9 Mission to Mars school project: students design a Mars habitat for four astronauts, make engineering trade-offs under a fixed cargo mass allowance, furnish and personalise their colony, and save it for a school showcase where visitors can explore it in first person.
+Build a **standalone, offline, Windows-friendly 3D habitat construction game** in **Godot 4.x**, using **Blender** for modular assets. It is a Mars survival-building game: players design a Mars habitat for four astronauts, make engineering trade-offs under a fixed cargo mass allowance, furnish and personalise their colony, and save it for a showcase where visitors can explore it in first person.
 
 **Game feel:** simplified *Subnautica*-inspired modular base construction, **not** a full survival game. Original assets and UI only. Prioritise intuitive building, reliable save/load, predictable snapping and stable performance over photorealism.
 
 ## Scope and principles
 - Start **from scratch** in a new repository/project, not from any demonstration files.
-- Target ordinary school Windows laptops; desktop mouse/keyboard; offline operation. Use Godot's Compatibility renderer initially if hardware is uncertain.
+- Target ordinary  Windows laptops; desktop mouse/keyboard; offline operation. Use Godot's Compatibility renderer initially if hardware is uncertain.
 - All geometry must have correct real-world-ish scale (1 Godot unit = 1 metre), clear pivots, usable collisions and walkable openings.
 - All important catalogue and resource values must be data-driven, not hardcoded into UI.
 - Build **vertical slices** and prove each works before expanding. No premature full asset library.
@@ -20,7 +22,7 @@ Build a **standalone, offline, Windows-friendly 3D habitat construction game** i
 4. Construct a habitat from individual pieces (not pre-made functional rooms), then move through contiguous interiors. Add furnishings/equipment to determine a space's purpose.
 5. Build within a **fixed total delivered cargo mass**. Each structural or functional item has a simplified mass cost. Deleting returns its full cost. Decorative items are free or near-free.
 6. Open Mission Control to see cargo remaining and habitat readiness (crew of four: accommodation, access/airlock, oxygen, power, water, food). These are simple aggregate checks, not continuous survival timers.
-7. Save locally to a portable student project file; reload accurately. Exhibition mode loads a saved habitat in read-only visitor walkthrough, with colony name and short student mission statement.
+7. Save locally to a portable player project file; reload accurately. Exhibition mode loads a saved habitat in read-only visitor walkthrough, with colony name and short player mission statement.
 
 ## Core interaction requirements
 - WASD move, mouse look, Shift sprint optional, Esc unlock mouse / pause. Build menu key B; preview rotation R; left-click place; right-click cancel; remove tool and confirmation/undo as appropriate. On-screen controls/help panel.
@@ -38,23 +40,23 @@ Functional examples: bunk bed, desk/workstation, science bench, microscope/compu
 Decorative examples: mission posters, wall sign, emblem plaque, plant, coloured wall panels, task board, personal storage, interior lights, seat, floor markings. Recolour materials instead of modelling many variants.
 
 ## Resource model (pedagogical, not aerospace-accurate)
-- **One cargo mass budget** (initial design target: **8,000 kg**; TUNE after playtesting). Students spend cargo by placing items; deleting refunds cargo; moving costs nothing. One crew size: **four**.
+- **One cargo mass budget** (initial design target: **8,000 kg**; TUNE after playtesting). Players spend cargo by placing items; deleting refunds cargo; moving costs nothing. One crew size: **four**.
 - Budget applies to building parts, furniture and operational equipment. Small decorative props can have zero mass for creativity. Display mass per item and amount remaining prominently.
 - Simple **static readiness calculations**: connected accessible shelter + airlock; at least four beds; installed power production >= consumption; oxygen production >= crew demand; water provision >= crew demand; food provision >= crew demand.
 - Resource outputs/requirements are *game-balance values*, explicitly labelled as simplified estimates. Do not suggest these figures represent NASA specifications. No time-based depletion, farming growth, mining, crafting or currency.
-- Use the same starting budget and crew for all students. Four zones may offer **small clearly described trade-offs** once everything else works: plains better solar exposure, ridge tighter terrain, crater slight solar penalty/shelter, ice-field access to water with extraction equipment but heating demand. Keep each location viable and avoid creating separate gameplay systems.
+- Use the same starting budget and crew for all players. Four zones may offer **small clearly described trade-offs** once everything else works: plains better solar exposure, ridge tighter terrain, crater slight solar penalty/shelter, ice-field access to water with extraction equipment but heating demand. Keep each location viable and avoid creating separate gameplay systems.
 - **Critically:** build automated balance tests or test fixtures proving at least **three distinct four-person functional habitats** can be constructed within the allowance, including required access, furnishings and life support.
 
-## School showcase mode
-- Offline **save** and **load** to `user://habitats/`, plus a deliberate export/import operation for portable `.json` habitat files (validate schema/version/asset IDs and guard malformed files). Preserve student name/colony name, site, emblem, accent colour, optional mission statement, placed parts, transforms, catalogue IDs and game version.
-- Exhibition mode is read-only: first-person explore, open a mission information terminal, view habitat readiness and student explanation; edit/delete controls disabled.
+## Showcase mode
+- Offline **save** and **load** to `user://habitats/`, plus a deliberate export/import operation for portable `.json` habitat files (validate schema/version/asset IDs and guard malformed files). Preserve player name/colony name, site, emblem, accent colour, optional mission statement, placed parts, transforms, catalogue IDs and game version.
+- Exhibition mode is read-only: first-person explore, open a mission information terminal, view habitat readiness and player explanation; edit/delete controls disabled.
 - Add a simple local exhibition selector (imported habitats) if feasible. Avoid cloud accounts, multiplayer, external servers and online dependencies.
-- Avoid real student names as mandatory fields. Default project title can be anonymous; teacher can control display metadata.
+- Avoid real player names as mandatory fields. Default project title can be anonymous; organiser can control display metadata.
 
 ## Visual and performance target
 - One modest-sized stylised Mars environment, low-poly NASA-inspired orange-red terrain, good light, sky, distant cliffs/rocks, clear contrast and visibly distinct build sites.
 - Visual polish should come mostly from coherent forms/materials, lighting and readable UI. Blender scripts can generate and export GLB modular pieces with named socket markers; use primitive placeholder meshes first.
-- Cap expensive lights, shadows and post-processing; avoid heavy volumetric dust, procedural worlds, complex physics and high-poly assets. Maintain smooth operation on typical school computers; expose a graphics quality setting if necessary.
+- Cap expensive lights, shadows and post-processing; avoid heavy volumetric dust, procedural worlds, complex physics and high-poly assets. Maintain smooth operation on typical  computers; expose a graphics quality setting if necessary.
 
 ## Code and data architecture (suggested; evolve if needed)
 ```
@@ -88,16 +90,16 @@ Add functional items, 10 simple decorations, exterior colour presets, colony nam
 Implement one cargo budget, per-item mass, full refunds and a readable Mission Control dashboard; crew-four operational checks, location bonuses only if simple. Balance test three viable builds; never block project saving for incomplete bases.
 
 ### M5 — Distinct Mars sites and visual coherence
-One map, four distinct zones with recognizable terrain silhouettes and mild trade-offs; improved materials, lighting, dust only if inexpensive; graphics settings for school machines.
+One map, four distinct zones with recognizable terrain silhouettes and mild trade-offs; improved materials, lighting, dust only if inexpensive; graphics settings for  machines.
 
 ### M6 — Exhibition mode and hardening
-Import/export portable projects, read-only showcase mode, simple habitat gallery, student mission statement, QA: missing files, broken connections, long sessions, save migration, control discoverability, Windows export; record performance and bugs.
+Import/export portable projects, read-only showcase mode, simple habitat gallery, player mission statement, QA: missing files, broken connections, long sessions, save migration, control discoverability, Windows export; record performance and bugs.
 
 ## Explicitly out of scope for MVP
 Multiplayer, astronauts/NPC schedules, realistic pressure or fluid physics, agriculture growth cycles, weather simulation, hostile creatures, procedural planet generation, rover mechanics, crafting/mining trees, complex structural simulation, photorealism, cloud saves and subscriptions.
 
 ## Definition of done
-A student with minimal help can select a site, build a unique connected habitat, walk through it, place functional and decorative objects, monitor cargo and mission readiness, save and reopen the design, and export a project that can be loaded into a separate read-only showcase session. All essential interactions work offline on the school's target computers.
+A player with minimal help can select a site, build a unique connected habitat, walk through it, place functional and decorative objects, monitor cargo and mission readiness, save and reopen the design, and export a project that can be loaded into a separate read-only showcase session. All essential interactions work offline on the 's target computers.
 
 ## Rules for Codex on every milestone
 1. Read this brief and the existing repository before coding. Work **only on the requested milestone**.

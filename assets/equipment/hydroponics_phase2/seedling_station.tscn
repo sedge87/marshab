@@ -10,7 +10,7 @@ size = Vector3(1.24, 1.40, 0.69)
 script = ExtResource("1_script")
 display_name = "Seedling Station"
 primary_action = "Inspect seedling station"
-educational_note = "SEEDLING STATION\nA humidity-controlled bench starts young plants before they move into the production trays."
+info_note = "SEEDLING STATION\nA humidity-controlled bench starts young plants before they move into the production trays."
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
 

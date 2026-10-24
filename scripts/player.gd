@@ -135,7 +135,7 @@ func _footsteps(speed: float, delta: float) -> void:
 func _on_deck() -> bool:
 	for i in get_slide_collision_count():
 		var collider := get_slide_collision(i).get_collider() as Node
-		if collider != null and str(collider.get_path()).contains("StudentHabitat"): return true
+		if collider != null and str(collider.get_path()).contains("/Habitat/"): return true
 	return false
 
 func _axis_pressed(action: StringName, fallback_key: Key) -> float:

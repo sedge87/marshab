@@ -3,7 +3,7 @@
 A draft only. Nothing is built yet. Each achievement has a name, its caption (shown when you unlock it), and what triggers it.
 
 ## How they work
-- **Across saves.** Unlocks live in one file (`user://achievements.cfg`) beside the settings, not in a save. A student keeps them however many colonies they start.
+- **Across saves.** Unlocks live in one file (`user://achievements.cfg`) beside the settings, not in a save. A player keeps them however many colonies they start.
 - **Shown as a toast** in the habitat's voice, with a small chime, plus an Achievements page in the pause menu and title screen. Locked ones show their name greyed out. Secret ones show "???" until found.
 - **Built on events, not checks.** Each system announces what happened (a room sealed, a storm ended, GAR-Y finished a job), and one small achievements script listens. When we add a mechanic, its achievements are a few lines with no rework. When we change one, only its own achievements move.
 - **Never for being unkind or breaking things on purpose.** Failure achievements exist, but they are gentle jokes about surviving a mishap, never a reward for causing one.
@@ -16,7 +16,7 @@ A draft only. Nothing is built yet. Each achievement has a name, its caption (sh
 ## First steps
 | Name | Caption | Trigger | Status |
 |---|---|---|---|
-| One Small Step | "That's one small step for a student, one giant leap for Year 9." | Walk on Mars for the first time | Ready |
+| One Small Step | "That's one small step for a commander, one giant leap for the colony." | Walk on Mars for the first time | Ready |
 | Hello, Neighbour | "The view is incredible. The neighbours are very quiet." | Land at any site | Ready |
 | Room With a View | "Prime real estate. 225 million kilometres from the nearest café." | Glaze your first window | Ready |
 | Airtight Alibi | "Sealed, pressurised and absolutely not leaking. Probably." | Seal your first room | Ready |
@@ -94,6 +94,6 @@ A draft only. Nothing is built yet. Each achievement has a name, its caption (sh
 
 ## Questions for you
 1. **Mission mode:** should achievements unlock during a mission (after the Test), or in free play only?
-2. **Teacher view:** would it help to see a class's achievements, or should they stay personal to each student?
-3. **Rewards:** stick to badges only? Or unlock small cosmetics, like new emblem colours or panel fonts? Cosmetics motivate students but add work.
+2. **Shared view:** would it help to see a class's achievements, or should they stay personal to each player?
+3. **Rewards:** stick to badges only? Or unlock small cosmetics, like new emblem colours or panel fonts? Cosmetics motivate players but add work.
 4. **How many:** this is 47. We could trim to about 30 for launch and add more with each new mechanic.

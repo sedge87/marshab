@@ -1,7 +1,7 @@
 class_name MHStyle
 extends RefCounted
 
-# MARS: HABITAT design system for Godot. Colours, type, spacing and the shared
+# Outpost One: Mars design system for Godot. Colours, type, spacing and the shared
 # UI components (Button, Panel, Keycap, Badge, Meter, ReadinessItem, ControlHint,
 # Notice, HologramStatus) are mapped 1:1 from the design-system tokens. All
 # screens are authored at 1920 × 1080; the canvas_items stretch mode scales them.
@@ -278,15 +278,15 @@ static func body(text: String, size := 18, colour := TEXT_SECONDARY) -> Label:
 static func mono(text: String, size := 15, colour := TEXT_PRIMARY, weight := 500) -> Label:
 	return label(text, size, colour, weight, true)
 
-# The wordmark: MARS: HABITAT, colon in the accent colour.
+# The wordmark: OUTPOST ONE: MARS, colon in the accent colour.
 static func wordmark(size := 136, two_lines := true) -> Container:
 	# Line height 0.9 like the design: stack two labels with negative separation.
 	var stack: BoxContainer = vbox(-int(size * 0.36)) if two_lines else hbox(int(size * 0.25))
 	var first := hbox(0)
-	first.add_child(label("MARS", size, TEXT_PRIMARY, 800, false, int(size * 0.04)))
+	first.add_child(label("OUTPOST ONE", size, TEXT_PRIMARY, 800, false, int(size * 0.04)))
 	first.add_child(label(":", size, accent, 800))
 	stack.add_child(first)
-	stack.add_child(label("HABITAT", size, TEXT_PRIMARY, 800, false, int(size * 0.04)))
+	stack.add_child(label("MARS", size, TEXT_PRIMARY, 800, false, int(size * 0.04)))
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return stack
 

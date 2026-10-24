@@ -10,7 +10,7 @@ size = Vector3(1.321, 2.018, 0.724)
 script = ExtResource("1_script")
 display_name = "Grow Tray"
 primary_action = "Inspect grow tray"
-educational_note = "GROW TRAY\nA three-tier hydroponic rack recirculates water and nutrients through its crop channels."
+info_note = "GROW TRAY\nA three-tier hydroponic rack recirculates water and nutrients through its crop channels."
 
 [node name="Model" parent="." instance=ExtResource("2_model")]
 

@@ -298,9 +298,9 @@ func _build_overlay() -> void:
 	var site := MHStyle.eyebrow("%s · Mars" % MHGame.site_name(), MHStyle.accent, 20)
 	site.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card.add_child(site)
-	var student := MHMissions.student_name() if MHGame.game_mode == "missions" else ""
-	if not student.is_empty():
-		var by := MHStyle.body("Designed by %s" % student, 28, MHStyle.TEXT_PRIMARY)
+	var commander := MHMissions.player_name() if MHGame.game_mode == "missions" else ""
+	if not commander.is_empty():
+		var by := MHStyle.body("Designed by %s" % commander, 28, MHStyle.TEXT_PRIMARY)
 		by.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card.add_child(by)
 	if not MHGame.mission_statement.strip_edges().is_empty():
