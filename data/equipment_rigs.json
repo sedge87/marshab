@@ -1866,7 +1866,8 @@
         "label_on": "Push spares tray in",
         "label_off": "Pull out spares tray",
         "state": "tray",
-        "note_on": "Spare parts are precious on Mars: the next delivery from Earth could be two years away, so crews repair things rather than replace them."
+        "note_on": "Spare parts are precious on Mars: the next delivery from Earth could be two years away, so crews repair things rather than replace them.",
+        "tray_depth": 0.332
       },
       {
         "key": "tertiary",
@@ -4810,7 +4811,8 @@
         ],
         "label_on": "Close tool drawer",
         "label_off": "Open tool drawer",
-        "state": "drawer"
+        "state": "drawer",
+        "tray_depth": 0.304
       },
       {
         "key": "secondary",
