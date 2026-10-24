@@ -133,6 +133,7 @@ static func place(builder: Node, kind: String, target: Dictionary) -> bool:
 			if index_at(builder, kind, {"cells": [cell]}) < 0: builder.wall_upgrades.append({"kind": kind, "cell": cell})
 	else:
 		builder.wall_upgrades.append({"kind": kind, "mid": target.mid, "dir": target.dir, "outward": target.outward})
+		if kind == "acoustic": _shift_wall_items(builder, target, PANEL_DEPTH)
 	builder._rebuild()
 	return true
 
@@ -154,8 +155,38 @@ static func remove(builder: Node, index: int) -> void:
 		var cells: Array = zone.get("cells", [record.cell])
 		builder.wall_upgrades = builder.wall_upgrades.filter(func(r): return not (str(r.kind) == "roof" and cells.has(r.cell)))
 	else:
+		if str(record.kind) == "acoustic": _shift_wall_items(builder, record, -PANEL_DEPTH)
 		builder.wall_upgrades.remove_at(index)
 	builder._rebuild()
+
+## How far an insulation panel's face stands out from the wall it's on.
+const PANEL_DEPTH := .135
+
+## Posters, shelves and other wall items on this shared wall (either side)
+## move out onto a new insulation panel's face, or back to the wall when it
+## comes off, with anything resting on them.
+static func _shift_wall_items(builder: Node, wall: Dictionary, by: float) -> void:
+	var mid: Vector2 = wall.mid
+	var out: Vector2 = (wall.outward as Vector2).normalized()
+	var along := Vector2(-out.y, out.x)
+	# [item, the wall face it's on]: things resting on a shelf go with the shelf.
+	var moving: Array = []
+	for item in builder.placed_interior:
+		var normal: Vector3 = item.get("anchor_normal", Vector3.UP)
+		if absf(normal.y) > .5 or absf(Vector2(normal.x, normal.z).dot(out)) < .9: continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		var offset := Vector2(at.x, at.z) - mid
+		if absf(offset.dot(along)) > BuildController.CELL * .5 or absf(offset.dot(out)) > .4: continue
+		moving.append([item, normal])
+		for resting in builder.items_resting_on(item): moving.append([resting, normal])
+	for entry in moving:
+		var item: Dictionary = entry[0]
+		var normal: Vector3 = entry[1]
+		var shift := Vector3(normal.x, 0, normal.z).normalized() * by
+		item.position = (item.position as Vector3) + shift
+		for child in builder.furnishing.get_children():
+			if str(child.get_meta("interior_placement_id", "")) == str(item.get("placement_id", "")):
+				(child as Node3D).global_position += shift
 
 # ---------- what each room gets ----------
 
