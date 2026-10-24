@@ -2873,10 +2873,20 @@
             ],
             "edge": "min_x",
             "angle": 105
+          },
+          {
+            "parts": [
+              "right_door_white_painted",
+              "right_door_seal_rubber_gasket",
+              "right_door_handle_dark_alloy",
+              "right_door_latch_orange"
+            ],
+            "edge": "max_x",
+            "angle": -105
           }
         ],
-        "label_on": "Close locker",
-        "label_off": "Open locker",
+        "label_on": "Close doors",
+        "label_off": "Open doors",
         "state": "door"
       },
       {
