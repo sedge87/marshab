@@ -279,7 +279,8 @@ static func _padding(builder: Node, at: Vector3, basis: Basis, length: float, fa
 	var toward := basis.z * (-1.0 if face > 0.0 else 1.0)
 	# A solid slab standing proud of the wall, so the wall's vents and
 	# fittings are covered rather than showing through it.
-	_box(builder, at + Vector3.UP * 1.3, Vector3(length, 2.0, .1), basis, _material(PADDING, 1.0))
+	# Solid, so posters and shelves hang on its face, not hidden behind it.
+	_box(builder, at + Vector3.UP * 1.3, Vector3(length, 2.0, .1), basis, _material(PADDING, 1.0), true)
 	var seam := _material(PADDING_LINE, 1.0)
 	for step in range(1, 8):
 		_box(builder, at + Vector3.UP * 1.3 + basis.x * (-length * .5 + length * step / 8.0) + toward * .052, Vector3(.012, 2.0, .01), basis, seam)
