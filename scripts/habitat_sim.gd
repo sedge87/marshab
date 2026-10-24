@@ -154,6 +154,7 @@ func _room_key(zone: Dictionary) -> String:
 	if zone.has("angled_mount"):
 		var at: Variant = zone.angled_mount.get("position", zone.angled_mount.get("start", Vector2.ZERO))
 		return "%s@%s" % [str(zone.kind), str(at)]
+	if zone.has("at"): return "%s@%s" % [str(zone.kind), str(Vector2i(((zone.at as Vector2) * 10.0).round()))]
 	var cells: Array = zone.get("cells", [])
 	return "%s@%s" % [str(zone.kind), str(cells[0]) if not cells.is_empty() else "?"]
 
@@ -193,10 +194,8 @@ func inventory() -> Dictionary:
 			for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				var other: int = room_of_cell.get(cell + side, -1)
 				if other >= 0 and other != index and not (rooms[index].next as Array).has(other): rooms[index].next.append(other)
-	# Wall and roof upgrades: shield points for each room, and which
-	# neighbours it's soundproofed from.
-	var upgrade_points := WALL_UPGRADES.room_points(room_of_cell, builder)
-	for index in upgrade_points: rooms[index].shield_upgrades = float(upgrade_points[index])
+	# Wall and roof upgrades: shielding counts for the whole habitat (see
+	# inventory.shield_upgrades); insulation quiets one neighbour.
 	for index in range(rooms.size()):
 		for other in rooms[index].next:
 			if WALL_UPGRADES.insulated_between(builder, rooms[index].zone.get("cells", []), rooms[other].zone.get("cells", [])): rooms[index].quiet_from.append(other)
@@ -235,12 +234,12 @@ func inventory() -> Dictionary:
 		match str(zone.kind):
 			"solar":
 				if builder._power_source_connected(zone):
-					solar.append(Vector2(builder._airlock_side(zone)))
+					solar.append(builder.solar_facing(zone))
 					solar_keys.append(_room_key(zone))
 			"reactor":
 				if builder._power_source_connected(zone) and builder._zone_running(zone): reactors += 1
 			"ice_extractor":
-				if builder._zone_running(zone): drills.append(builder._ice_richness_at(zone.cells[0]))
+				if builder._zone_running(zone): drills.append(builder._ice_richness_at_point(builder.site_point(zone)))
 			"regolith_intake":
 				if builder._zone_running(zone): intakes += 1
 	var isolated := false
@@ -252,7 +251,7 @@ func inventory() -> Dictionary:
 		capacity.kwh += item.stores_kwh; capacity.water += item.stores_water; capacity.o2 += item.stores_o2; capacity.food += item.stores_food
 		capacity.berths += item.berths
 		if item.id == "thermal_control_unit" and item.on: capacity.tcu_kw += item.heat_kw
-	_inventory = {"rooms": rooms, "items": items, "all_items": all_items, "solar": solar, "solar_keys": solar_keys, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
+	_inventory = {"shield_upgrades": WALL_UPGRADES.habitat_points(builder), "rooms": rooms, "items": items, "all_items": all_items, "solar": solar, "solar_keys": solar_keys, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
 		"cells": rooms.reduce(func(total, room): return total + int(room.cells), 0),
 		"zones_ref": builder.zones, "zone_count": builder.zones.size(), "items_ref": builder.placed_interior, "item_count": builder.placed_interior.size()}
 	_take_delivery(capacity)

@@ -44,6 +44,7 @@
   "radiation": {
     "hull_points": 5.0,
     "safe_points": 20.0,
+    "coverage_factor": 1.5,
     "shield_points": {"regolith_shield_block": 8.0, "water_wall_panel": 10.0, "pantry_cabinet": 2.0, "locker": 2.0, "sample_storage_cabinet": 2.0, "storm_shelter_locker": 2.0, "spare_parts_rack": 2.0},
     "crew_per_shelter_cell": 3.0,
     "event_dose_msv": 150.0,

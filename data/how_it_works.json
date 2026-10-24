@@ -321,14 +321,14 @@
       "lines": [
         "Mars has no magnetic field and thin air, so radiation from the Sun reaches the ground.",
         "Sometimes the Sun throws out a burst of radiation called a solar particle event. You get about half an hour's warning.",
-        "The crew hide in a storm shelter: a small room with lots of shielding round it.",
-        "Shield points: the hull gives 5. Regolith walls and water walls add more, shared over the room's floor. Aim for 20."
+        "The crew hide in a storm shelter: a room with a storm shelter locker, inside a well-shielded habitat.",
+        "Shield points: the hull gives 5. Regolith and water panels on the outside walls and roof add more for the whole habitat, shared over all its floor. Aim for 20."
       ],
-      "remember": "A small room with lots of shielding makes a safe shelter.",
+      "remember": "Every shielding panel on the outside protects the whole habitat.",
       "check": {
-        "question": "Why is a small shelter easier to make safe?",
+        "question": "Why does a bigger habitat need more shielding panels?",
         "options": [
-          "The same shielding is shared over less floor",
+          "The same shielding is shared over more floor",
           "Radiation can't fit in small rooms",
           "Small rooms are warmer"
         ],

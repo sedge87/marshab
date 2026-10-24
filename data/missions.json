@@ -639,15 +639,15 @@
         {
           "id": "locker",
           "text": "Make a storm shelter: place a Storm Shelter Locker",
-          "how": "Interior build (Shift+B), in a small room: that room becomes the storm shelter, where the crew wait out a solar particle event.",
+          "how": "Interior build (Shift+B), in any room with space for everyone: that room becomes the storm shelter, where the crew wait out a solar particle event.",
           "check": "item",
           "item": "storm_shelter_locker",
           "learn": "radiation"
         },
         {
           "id": "shield",
-          "text": "Shield the shelter to 20 points",
-          "how": "The hull gives 5 points. Upgrade the shelter's walls and roof: Interior build (Shift+B), Structure tab. Regolith shielding (printed from Mars soil) adds 8 points per outside wall, a water wall 10, and roof shielding 8 per floor square. Points are spread over the floor, so a small room is easier to protect.",
+          "text": "Shield the habitat to 20 points",
+          "how": "The hull gives 5 points. Shielding on the outside protects the whole habitat, wherever it goes: Site plan, Structure tab, or from inside (Shift+B, aim at a wall or ceiling). Regolith shielding (printed from Mars soil) adds 8 points per wall panel, a water wall 10, and roof shielding 8 per floor square. The points are shared over the whole habitat's floor, so a bigger base needs more panels.",
           "check": "shelter",
           "min": 20,
           "learn": "radiation"
@@ -661,7 +661,7 @@
         {
           "id": "pass",
           "text": "Pass the test and complete the mission",
-          "how": "Too much radiation? Add shielding, or make the shelter smaller. It needs a floor square for every 3 crew.",
+          "how": "Too much radiation? Add more shielding panels to the outside. The shelter needs a floor square for every 3 crew.",
           "check": "passed"
         }
       ],
@@ -691,10 +691,10 @@
         }
       ],
       "hints": [
-        "Shield points = 5 (the hull) + the shielding on the room's walls and roof ÷ its floor squares.",
-        "Regolith shielding adds 8 points on each outside wall and is printed from Mars soil, so it costs no cargo from Earth once you're printing. A water wall adds 10. Roof shielding adds 8 for every floor square: most radiation comes from overhead.",
-        "A window can't be shielded. A shelter with windows is harder to protect.",
-        "Lockers, pantry cabinets and sample cabinets inside add a little shielding as well.",
+        "Shield points = 5 (the hull) + 1.5 × all the shielding on the outside ÷ the habitat's floor squares.",
+        "Regolith shielding adds 8 points per wall panel and is printed from Mars soil, so it costs no cargo from Earth once you're printing. A water wall adds 10. Roof shielding adds 8 for every floor square: most radiation comes from overhead.",
+        "A window can't be shielded, but the panels on other walls still protect the whole habitat.",
+        "Lockers, pantry cabinets and sample cabinets in the shelter add a little more there.",
         "The shelter must be warm: the crew stay there a whole day. Check it isn't a cold spot.",
         "Wayfinding panels point the way to the shelter during an event."
       ],

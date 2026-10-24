@@ -171,15 +171,24 @@ func _count(inv: Dictionary, ids: Array) -> int:
 func _has(inv: Dictionary, id: String) -> bool:
 	return (inv.all_items as Array).any(func(i): return str(i.id) == id)
 
-## Shield points for a room: the hull, plus shielding in it spread over its floor.
-func shield_rating(inv: Dictionary, room_index: int) -> float:
+## Shield points for the whole habitat: the hull, plus every shielding panel on
+## its outside walls and roof, shared over all its floor (a bigger base needs
+## more panels). coverage_factor tunes how far a panel goes.
+func habitat_shield(inv: Dictionary) -> float:
 	var hull := float(value("radiation", "hull_points", 5.0))
-	if room_index < 0 or room_index >= (inv.rooms as Array).size(): return hull
+	var squares := 0.0
+	for room in inv.rooms: squares += float(room.cells)
+	return hull + float(inv.get("shield_upgrades", 0.0)) * float(value("radiation", "coverage_factor", 1.5)) / maxf(1.0, squares)
+
+## Shield points in a room: the habitat's, plus what's stored in the room
+## (lockers, cabinets) spread over its floor.
+func shield_rating(inv: Dictionary, room_index: int) -> float:
+	var rating := habitat_shield(inv)
+	if room_index < 0 or room_index >= (inv.rooms as Array).size(): return rating
 	var points: Dictionary = value("radiation", "shield_points", {})
-	# Shielding upgrades on its outside walls and roof, plus what's stored in it.
-	var extra := float(inv.rooms[room_index].get("shield_upgrades", 0.0))
+	var extra := 0.0
 	for id in _ids_in(inv, room_index): extra += float(points.get(id, 0.0))
-	return hull + extra / maxf(1.0, float(inv.rooms[room_index].cells))
+	return rating + extra / maxf(1.0, float(inv.rooms[room_index].cells))
 
 ## The storm shelter: the best-shielded room with a storm shelter locker.
 ## {} when there's none, else {index, key, label, rating, capacity, heated, cold, ok}.
@@ -234,7 +243,7 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 		if _ids_in(inv, index).any(func(id): return (c.noisy_items as Array).has(id)): noisy = true
 	var sleep := minf(1.0, float(bunks) / n) * (.5 if noisy else 1.0)
 	out.append({"id": "sleep", "label": "Sleep and privacy", "score": sleep,
-		"missing": "" if sleep >= .99 else ("Living Quarters is next to a noisy room: add sound insulation to the walls between them" if noisy else "Not everyone has a bunk")})
+		"missing": "" if sleep >= .99 else ("Living Quarters is next to a noisy room: add a sound insulation panel to the wall between them" if noisy else "Not everyone has a bunk")})
 	# 2. Space.
 	var living_cells := 0.0
 	for room in rooms:

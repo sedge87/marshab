@@ -90,11 +90,11 @@ func _initialize() -> void:
 	_item(b, "storm_shelter_locker", c, 2, 2, 1)
 	var m7_weak := _test(b, "Mission 7, locker only")
 	_check(_failed(m7_weak, "shelter") and _failed(m7_weak, "dose"), "a locker without shielding isn't enough")
-	var lab: Dictionary = b._zone_at_point(Vector2(c + Vector2i(2, 2)) * 3.0)
-	WALL_UPGRADES.shield_room(b, lab)
+	# Shielding protects the whole habitat: roofs and outside walls all round.
+	for zone in b.zones.filter(func(z): return b._is_habitat_zone(z)): WALL_UPGRADES.shield_room(b, zone)
 	b._rebuild()
-	var m7 := _test(b, "Mission 7, shielded Science Lab")
-	_check(bool(m7.passed), "a shielded 2-square shelter passes Mission 7:\n    " + _report(m7))
+	var m7 := _test(b, "Mission 7, shielded habitat")
+	_check(bool(m7.passed), "a shielded habitat with a shelter passes Mission 7:\n    " + _report(m7))
 
 	# --- Mission 8: the crew as people ---
 	MHMissions.progress.current = "crew_people"

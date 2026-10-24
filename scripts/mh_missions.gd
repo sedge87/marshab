@@ -551,7 +551,7 @@ static func _judge(requirement: Dictionary, run: Dictionary, sols: int, start_ho
 				result.detail = "The shelter is %s: %d shield points, room for %d." % [str(place.label), roundi(float(place.rating)), int(place.capacity)]
 				if not result.pass:
 					result.detail = "The shelter (%s) isn't ready: %s." % [str(place.label), ", ".join(problems)]
-					if float(place.rating) < safe: result.tip = "Shielding is spread over the room's floor, so a small shelter is easier to protect. Add regolith shield blocks (printed) or water wall panels."
+					if float(place.rating) < safe: result.tip = "Shielding protects the whole habitat, shared over all its floor: add more regolith or water panels to the outside walls, or shield the roofs."
 					else: result.tip = "A shelter needs 1 floor square for every 3 crew, and heating that reaches it."
 		"dose_max":
 			if result.pass: result.detail = "The event dose was %d mSv (limit %d)." % [roundi(float(run.worst_event_msv)), int(requirement.get("max", 50))]

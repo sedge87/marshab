@@ -114,6 +114,9 @@ static func invalid_reason(builder: Node, kind: String, target: Dictionary) -> S
 			_: return "Aim at a wall between two rooms"
 	if place != "roof" and builder._window_index_at(target.mid, target.dir) >= 0: return "There's a window in this wall bay"
 	if place == "roof":
+		var cells: Array = target.cells
+		if builder.zones.any(func(z): return z.get("roof", false) and cells.has(Vector2i(roundi(z.at.x / BuildController.CELL), roundi(z.at.y / BuildController.CELL)))):
+			return "Solar panels are on this roof: take them off first"
 		if (target.cells as Array).all(func(c): return index_at(builder, kind, {"cells": [c]}) >= 0): return "Done: this roof is shielded"
 	else:
 		var existing := index_at(builder, kind, target)
@@ -156,35 +159,24 @@ static func remove(builder: Node, index: int) -> void:
 
 # ---------- what each room gets ----------
 
-## Room index (in the simulation's room list) for each upgrade: walls by the
-## cell just inside them, roofs by their square. Shared walls count for both.
-static func room_points(room_of_cell: Dictionary, builder: Node) -> Dictionary:
-	var points := {}
-	var cell_size: float = BuildController.CELL
-	for record in builder.wall_upgrades:
-		var value := float(spec(str(record.kind)).get("points", 0.0))
-		if value <= 0.0: continue
-		var cell: Vector2i
-		if str(record.kind) == "roof": cell = record.cell
-		else:
-			var inside: Vector2 = (record.mid as Vector2) - (record.outward as Vector2) * .75
-			cell = Vector2i(roundi(inside.x / cell_size), roundi(inside.y / cell_size))
-		var room: int = room_of_cell.get(cell, -1)
-		if room >= 0: points[room] = float(points.get(room, 0.0)) + value
-	return points
+## Radiation shielding protects the whole habitat, wherever it goes: the shield
+## points of every panel on the outside walls and roof, added up.
+static func habitat_points(builder: Node) -> float:
+	var total := 0.0
+	for record in builder.wall_upgrades: total += float(spec(str(record.kind)).get("points", 0.0))
+	return total
 
-## True when every wall between these two sets of cells has sound insulation.
+## True when one panel of sound insulation is on any wall between these two
+## sets of cells: that's enough to quiet the neighbour.
 static func insulated_between(builder: Node, cells_a: Array, cells_b: Array) -> bool:
-	var shared := 0
 	for a in cells_a:
 		for side in SIDES:
 			var b: Vector2i = (a as Vector2i) + side
 			if not cells_b.has(b): continue
-			shared += 1
 			var mid := (Vector2(a) + Vector2(b)) * .5 * BuildController.CELL
 			var dir := BuildController._canonical_wall_dir(Vector2(-side.y, side.x))
-			if index_at(builder, "acoustic", {"mid": mid, "dir": dir}) < 0: return false
-	return shared > 0
+			if index_at(builder, "acoustic", {"mid": mid, "dir": dir}) >= 0: return true
+	return false
 
 # ---------- building them ----------
 
@@ -210,7 +202,7 @@ static func build(builder: Node) -> void:
 			"ladder": _ladder(builder, record, mid, out, basis)
 			"acoustic":
 				for face in [-1.0, 1.0]:
-					_padding(builder, mid + out * (face * .11), basis, cell_size - .6, face)
+					_padding(builder, mid + out * (face * .2), basis, cell_size - .6, face)
 
 static func _still_valid(builder: Node, record: Dictionary) -> bool:
 	match str(spec(str(record.kind)).get("place", "")):
@@ -285,11 +277,13 @@ static func _cladding(builder: Node, mid: Vector3, out: Vector3, basis: Basis, c
 ## with a small accent tag.
 static func _padding(builder: Node, at: Vector3, basis: Basis, length: float, face: float) -> void:
 	var toward := basis.z * (-1.0 if face > 0.0 else 1.0)
-	_box(builder, at + Vector3.UP * 1.3, Vector3(length, 2.0, .03), basis, _material(PADDING, 1.0))
+	# A solid slab standing proud of the wall, so the wall's vents and
+	# fittings are covered rather than showing through it.
+	_box(builder, at + Vector3.UP * 1.3, Vector3(length, 2.0, .1), basis, _material(PADDING, 1.0))
 	var seam := _material(PADDING_LINE, 1.0)
 	for step in range(1, 8):
-		_box(builder, at + Vector3.UP * 1.3 + basis.x * (-length * .5 + length * step / 8.0) + toward * .017, Vector3(.012, 2.0, .01), basis, seam)
-	_box(builder, at + Vector3.UP * 2.15 + basis.x * (length * .5 - .25) + toward * .02, Vector3(.2, .12, .01), basis, MHGame.accent_material())
+		_box(builder, at + Vector3.UP * 1.3 + basis.x * (-length * .5 + length * step / 8.0) + toward * .052, Vector3(.012, 2.0, .01), basis, seam)
+	_box(builder, at + Vector3.UP * 2.15 + basis.x * (length * .5 - .25) + toward * .055, Vector3(.2, .12, .01), basis, MHGame.accent_material())
 
 ## A steel ladder from the ground to the roof edge. Its rails carry on to
 ## handrail height and bend over the edge down onto the roof (a gooseneck),

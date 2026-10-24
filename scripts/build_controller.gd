@@ -32,6 +32,10 @@ const NON_ROOM_KINDS := ["airlock", "corridor", "vehicle_bay", "solar", "reactor
 ## Room shells Mars-made (printed) material can pay for. Airlocks keep
 ## Earth-made seals and mechanisms; outdoor machines are all Earth-made.
 const PRINTABLE_ZONE_EXCLUDES := ["airlock", "solar", "reactor", "ice_extractor", "regolith_intake", "ladder", "shield_water"]
+## Site machines placed freely (not snapped to the grid) and turned to any
+## angle; solar can also go on a room's roof. Footprint radius in metres.
+const FREE_SITE_KINDS := {"solar": 1.25, "reactor": 1.45, "ice_extractor": 1.25, "regolith_intake": 1.35}
+const ROOF_TOP := 2.975
 ## Site plan cards that put a wall upgrade on (scripts/wall_upgrades.gd), not a
 ## zone: card id -> upgrade kind. Shielding goes on from here or from inside.
 const SITE_UPGRADES := {"ladder": "ladder", "shield_regolith": "regolith", "shield_water": "water", "shield_roof": "roof"}
@@ -141,10 +145,10 @@ const ZONE_INFO := {
 	"shield_roof":{"cat":"structure","icon":"house","rule":"Click a room","desc":"Regolith over a room's whole roof: most radiation comes from overhead. You can also add it from inside: Furnish room, aim at the ceiling."},
 	"ladder":{"cat":"structure","icon":"arrow-up","rule":"Click an outside wall","desc":"A ladder up an outside wall to the roof, with a safety rail round the edge. Outside, look at it and press E to climb."},
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
-	"solar":{"cat":"power","icon":"sun","rule":"One cell · R aims","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
-	"reactor":{"cat":"power","icon":"atom","rule":"One cell","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
-	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
-	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"One cell","desc":"Digs Martian soil and feeds it to a regolith printer indoors, which turns it into building material."}
+	"solar":{"cat":"power","icon":"sun","rule":"Anywhere, or on a roof · R turns","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
+	"reactor":{"cat":"power","icon":"atom","rule":"Anywhere · R turns","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
+	"ice_extractor":{"cat":"power","icon":"drill","rule":"On ice · R turns","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
+	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil and feeds it to a regolith printer indoors, which turns it into building material."}
 }
 # Exterior construction deliberately excludes furnishing. Interior equipment is
 # selected only through the first-person construction controller.
@@ -352,7 +356,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			# 1-9 pick a card in the build bar's current tab.
 			for card in catalogue_grid.get_children():
 				if int(card.get_meta("pick_index",0))==int(event.keycode)-int(KEY_0): (card as Button).pressed.emit()
-		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="solar" or kind=="corridor"): _rotate_airlock(); _refresh_catalogue()
+		elif build_mode and event.keycode==KEY_R and equipment_id.is_empty() and kind in FREE_SITE_KINDS: _turn_free_site(-PI/12.0 if event.shift_pressed else PI/12.0); MHAudio.sfx("rotate")
+		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="corridor"): _rotate_airlock(); _refresh_catalogue()
 		elif build_mode and event.keycode==KEY_ESCAPE:
 			# Escape first cancels an in-progress placement; only an idle planner
 			# lets it through to open the pause screen.
@@ -389,6 +394,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if kind in SITE_UPGRADES:
 			if event.pressed and not _pointer_over_ui(): _place_ladder()
+			return
+		if kind in FREE_SITE_KINDS:
+			if event.pressed and not _pointer_over_ui(): _place_free_site()
 			return
 		if event.pressed and not _pointer_over_ui() and kind in ["airlock", "corridor"]:
 			if kind == "corridor" and _begin_angled_corridor_drag(): return
@@ -449,6 +457,7 @@ func _process(delta: float) -> void:
 		pivot.position.x=clampf(pivot.position.x,-site_limit,site_limit); pivot.position.z=clampf(pivot.position.z,-site_limit,site_limit)
 	_update_player_marker()
 	if not kind in SITE_UPGRADES or tool=="remove" or not equipment_id.is_empty(): _hide_ladder_ghost()
+	if not kind in FREE_SITE_KINDS or tool=="remove" or not equipment_id.is_empty(): _hide_free_ghost()
 	if tool=="remove" or _pointer_over_ui():
 		_draw_preview([],false); _update_hologram_ui([],"")
 		return
@@ -483,6 +492,11 @@ func _process(delta: float) -> void:
 				_draw_angled_outline_connector_preview(angled_mount, mount_reason.is_empty())
 				_update_hologram_ui([], mount_reason, angled_mount)
 				return
+	if kind in FREE_SITE_KINDS:
+		_draw_preview([],false)
+		if kind == "ice_extractor" and preview.get_child_count() == 0: _add_ice_heatmap()
+		_update_hologram_ui([], _free_site_preview())
+		return
 	if kind in SITE_UPGRADES:
 		_draw_preview([],false)
 		var ladder_reason := _ladder_preview()
@@ -496,7 +510,11 @@ func _process(delta: float) -> void:
 ## Holding R in the site plan keeps rotating, one 90° step about every third
 ## of a second after a short delay (a tap is still one step).
 func _hold_rotate_plan(delta: float) -> void:
-	if not Input.is_physical_key_pressed(KEY_R) or not (not equipment_id.is_empty() or kind in ["airlock", "vehicle_bay", "solar", "corridor"]):
+	if Input.is_physical_key_pressed(KEY_R) and equipment_id.is_empty() and kind in FREE_SITE_KINDS:
+		_r_held += delta
+		if _r_held >= .4: _turn_free_site(delta * (-1.8 if Input.is_key_pressed(KEY_SHIFT) else 1.8))
+		return
+	if not Input.is_physical_key_pressed(KEY_R) or not (not equipment_id.is_empty() or kind in ["airlock", "vehicle_bay", "corridor"]):
 		_r_held = 0.0
 		return
 	_r_held += delta
@@ -513,6 +531,7 @@ func _pointer_over_ui() -> bool:
 
 func _toggle() -> void:
 	_hide_ladder_ghost()
+	_hide_free_ghost()
 	build_mode=!build_mode; ui.visible=build_mode; grid.visible=build_mode; camera.current=build_mode
 	MHAudio.sfx("mode_build" if build_mode else "mode_explore",0.0,0.0); MHAudio.build_layer(build_mode)
 	world.get_node("Player/Head/Camera3D").current=!build_mode
@@ -1015,13 +1034,13 @@ func _proposed_freeform_base_y(points: PackedVector2Array) -> float:
 
 func _occupied(cell: Vector2i) -> bool:
 	for zone in zones:
-		if zone.has("outline"): continue
+		if zone.has("outline") or zone.get("roof", false): continue
 		if cell in zone.cells: return true
 	return false
 
 func _zone_at(cell: Vector2i) -> Dictionary:
 	for zone in zones:
-		if zone.has("outline"): continue
+		if zone.has("outline") or zone.get("roof", false): continue
 		if cell in zone.cells: return zone
 	return {}
 
@@ -1031,6 +1050,7 @@ func _zone_at_point(point: Vector2) -> Dictionary:
 	return {}
 
 func _point_in_zone(point: Vector2, zone: Dictionary) -> bool:
+	if zone.has("at"): return not zone.get("roof", false) and point.distance_to(zone.at) <= float(FREE_SITE_KINDS.get(str(zone.kind), 1.2))
 	if zone.has("angled_mount"): return _point_in_angled_mount(point, zone.get("angled_mount", {}))
 	if zone.has("outline"): return Geometry2D.is_point_in_polygon(point, zone_outline(zone))
 	return Vector2i(roundi(point.x / CELL), roundi(point.y / CELL)) in zone.get("cells", [])
@@ -1973,6 +1993,9 @@ func _invalid_reason(cells: Array) -> String:
 		if MHMissions.in_blast_zone(Vector2(cell.x * CELL, cell.y * CELL)): return "Inside the landing zone: engine blast would damage it"
 	for cell in cells:
 		if _occupied(cell): return "Overlaps existing habitat"
+		for machine in zones:
+			if machine.has("at") and not machine.get("roof", false) and _cell_reaches(cell, machine.at, float(FREE_SITE_KINDS.get(str(machine.kind), 1.2))):
+				return "Overlaps the %s" % str(ZONE_TYPES[str(machine.kind)].label)
 		for zone in zones:
 			if zone.has("angled_mount") and _cell_overlaps_outline_area(cell, _angled_mount_outline(zone.get("angled_mount", {}))):
 				return "Overlaps an angled airlock or corridor"
@@ -2153,6 +2176,9 @@ func _ice_richness_at_point(point: Vector2) -> float:
 ## Litres of water a sol a drill makes here: the simulation's own figure.
 func _ice_yield(cell: Vector2i) -> int:
 	return roundi(MHResources.setting("ice_drill_l", 120.0) * _ice_richness_at(cell))
+
+func _ice_yield_at_point(point: Vector2) -> int:
+	return roundi(MHResources.setting("ice_drill_l", 120.0) * _ice_richness_at_point(point))
 
 func _draw_preview(cells: Array,valid: bool) -> void:
 	# The ghost only changes when the footprint, validity or facing changes.
@@ -2446,6 +2472,8 @@ func _label3d(text: String,size: int,colour: Color,weight := 800) -> Label3D:
 
 func _rebuild() -> void:
 	_merge_touching_same_type_rooms()
+	# Solar on a roof comes down with the room under it (cargo back).
+	zones = zones.filter(func(z): return not z.get("roof", false) or _roof_under(z.at))
 	_prune_angled_outline_connectors()
 	var attachment_refund := _prune_equipment()
 	_prune_interior_doors()
@@ -3691,6 +3719,140 @@ func _update_plan_legend() -> void:
 	var north := camera.unproject_position(focus + Vector3(0, 0, -5)) - at
 	plan_legend.update(Vector2(0, -1).angle_to(north) if north.length() > 1.0 else 0.0, five)
 
+# ---------- site machines placed freely ----------
+
+var free_yaw := PI
+var _free_yaw_set := false
+var _free_ghost: Node3D
+var _free_ghost_key := ""
+var _free_ghost_label: Label3D
+
+func _turn_free_site(by: float) -> void:
+	free_yaw = wrapf(free_yaw + by, -PI, PI)
+	_free_yaw_set = true
+
+## Where the selected machine would go: {at, roof} ({} off the map). Solar
+## goes on a room's roof when the cursor is over one.
+func _free_site_target() -> Dictionary:
+	if kind == "solar" and not zones.is_empty():
+		var high := _world_point_at_mouse(habitat_base_y + ROOF_TOP)
+		if not is_inf(high.x):
+			var under := _zone_at_point(Vector2(high.x, high.z))
+			if not under.is_empty() and _is_habitat_zone(under): return {"at": Vector2(high.x, high.z), "roof": true}
+	var low := _world_point_at_mouse(0.0)
+	if is_inf(low.x): return {}
+	return {"at": Vector2(low.x, low.z), "roof": false}
+
+func _free_site_reason(target: Dictionary) -> String:
+	if target.is_empty(): return "Point at the ground"
+	var at: Vector2 = target.at
+	var radius := float(FREE_SITE_KINDS[kind])
+	var cell := Vector2i(roundi(at.x / CELL), roundi(at.y / CELL))
+	if not MHMissions.zone_unlocked(kind): return "Not delivered yet: this arrives in a later mission"
+	if kind=="reactor" and MHMissions.active():
+		var allowed:=int(MHMissions.current().get("max_reactors",99))
+		if zones.filter(func(z): return str(z.kind)=="reactor").size()>=allowed: return "This landing brought only %d reactor%s" % [allowed,"" if allowed==1 else "s"]
+	# Its corners, turned with it.
+	var turn := free_yaw if (kind == "solar" or _free_yaw_set) else 0.0
+	var corners: Array = []
+	for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		corners.append(at + (corner * radius * .7).rotated(-turn))
+	for zone in zones:
+		if not zone.has("at") or bool(zone.get("roof", false)) != bool(target.roof): continue
+		if (zone.at as Vector2).distance_to(at) < radius + float(FREE_SITE_KINDS.get(str(zone.kind), 1.2)) - .2: return "Too close to the %s" % str(ZONE_TYPES[str(zone.kind)].label)
+	if target.roof:
+		for corner in corners:
+			var under := _zone_at_point(corner)
+			if under.is_empty() or not _is_habitat_zone(under): return "Hangs over the roof edge"
+		for roof_cell in [cell] + corners.map(func(c): return Vector2i(roundi(c.x / CELL), roundi(c.y / CELL))):
+			if WALL_UPGRADES.index_at(self, "roof", {"cells": [roof_cell]}) >= 0: return "This roof is shielded: solar needs a bare roof"
+		for record in wall_upgrades:
+			if str(record.kind) == "ladder" and (record.mid as Vector2).distance_to(at) < radius + .6: return "Too close to the roof ladder"
+	else:
+		var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
+		if not site_reason.is_empty(): return site_reason
+		if lander != null and lander.keeps_clear(at, radius): return "Too close to the lander"
+		if MHMissions.in_blast_zone(at): return "Inside the landing zone: engine blast would damage it"
+		for point in [at] + corners:
+			var under := _zone_at_point(point)
+			if not under.is_empty() and not under.has("at"): return "Overlaps the habitat"
+		if kind=="ice_extractor" and _ice_richness_at_point(at)<.12: return "No recoverable subsurface ice here"
+		var player := world.get_node_or_null("Player") as Node3D
+		if player != null and Vector2(player.global_position.x, player.global_position.z).distance_to(at) < radius + .5: return "Move clear of the player before building"
+	if _used_cargo()+earth_cost(_zone_cost([cell]), zone_printable(kind))>MHGame.cargo_budget(): return "Not enough cargo left"
+	return ""
+
+## A ghost of the machine at the cursor, turned as it will stand, with its
+## solar output or ice reading over it; returns why it can't go there.
+func _free_site_preview() -> String:
+	var target := _free_site_target()
+	var reason := _free_site_reason(target)
+	_ensure_preview_materials()
+	if _free_ghost == null or not is_instance_valid(_free_ghost) or _free_ghost_key != kind:
+		_hide_free_ghost()
+		if _free_ghost != null and is_instance_valid(_free_ghost): _free_ghost.queue_free()
+		_free_ghost_key = kind
+		_free_ghost = Node3D.new()
+		add_child(_free_ghost)
+		var size: Vector3 = {"solar": Vector3(2.4, 1.6, 1.6), "reactor": Vector3(2.1, 2.25, 2.1), "ice_extractor": Vector3(1.7, 1.6, 1.7), "regolith_intake": Vector3(2.0, 1.2, 2.4)}[kind]
+		var mesh := MeshInstance3D.new()
+		var box := BoxMesh.new(); box.size = size
+		mesh.mesh = box; mesh.position.y = size.y * .5
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_free_ghost.add_child(mesh)
+		# An arrow along the way it faces.
+		var arrow := MeshInstance3D.new()
+		var tip := BoxMesh.new(); tip.size = Vector3(.18, .06, 1.0)
+		arrow.mesh = tip; arrow.position = Vector3(0, .1, -size.z * .5 - .5)
+		_free_ghost.add_child(arrow)
+		_free_ghost_label = _label3d("", 44, MHStyle.TEXT_PRIMARY)
+		_free_ghost_label.position.y = size.y + .7
+		_free_ghost.add_child(_free_ghost_label)
+	_free_ghost.visible = not target.is_empty()
+	if target.is_empty(): return reason
+	var at: Vector2 = target.at
+	var y := habitat_base_y + ROOF_TOP if target.roof else _terrain_height(Vector3(at.x, 0, at.y))
+	_free_ghost.global_transform = Transform3D(Basis(Vector3.UP, free_yaw if (kind == "solar" or _free_yaw_set) else 0.0), Vector3(at.x, y, at.y))
+	for child in _free_ghost.get_children():
+		if child is MeshInstance3D: (child as MeshInstance3D).material_override = _preview_valid_material if reason.is_empty() else _preview_invalid_material
+	match kind:
+		"solar": _free_ghost_label.text = "%sSOLAR %d%% AT NOON" % ["ON THE ROOF · " if target.roof else "", roundi(_solar_efficiency(Vector2(sin(free_yaw), -cos(free_yaw)), Vector2(0, 1)) * 100.0)]
+		"ice_extractor":
+			var ice := _ice_richness_at_point(at)
+			_free_ghost_label.text = "NO DRILLABLE ICE" if ice < .12 else "%d%% ICE · ≈ %d L a sol" % [roundi(ice * 100.0), _ice_yield_at_point(at)]
+		_: _free_ghost_label.text = "R TURNS"
+	return reason
+
+func _place_free_site() -> void:
+	var target := _free_site_target()
+	var reason := _free_site_reason(target)
+	if not reason.is_empty():
+		_flash_notice("invalid", "Can't place here", reason + ".")
+		MHAudio.sfx("invalid")
+		return
+	var at: Vector2 = target.at
+	var cell := Vector2i(roundi(at.x / CELL), roundi(at.y / CELL))
+	if zones.is_empty(): habitat_base_y = _proposed_base_y([cell])
+	var zone := {"kind": kind, "cells": [cell], "at": at, "door_direction": airlock_direction, "cost": _zone_cost([cell])}
+	if kind == "solar" or _free_yaw_set: zone["yaw"] = free_yaw
+	if target.roof: zone["roof"] = true
+	zones.append(zone); _history.append({"type": "zone", "zone": zone}); _learn(kind)
+	_rebuild()
+	MHAudio.sfx("place")
+
+func _roof_under(point: Vector2) -> bool:
+	var under := _zone_at_point(point)
+	return not under.is_empty() and _is_habitat_zone(under)
+
+## True when a machine of this radius at this point reaches into the cell.
+func _cell_reaches(cell: Vector2i, point: Vector2, radius: float) -> bool:
+	var centre := Vector2(cell.x * CELL, cell.y * CELL)
+	var nearest := Vector2(clampf(point.x, centre.x - CELL * .5, centre.x + CELL * .5), clampf(point.y, centre.y - CELL * .5, centre.y + CELL * .5))
+	return nearest.distance_to(point) < radius * .8
+
+func _hide_free_ghost() -> void:
+	if _free_ghost != null and is_instance_valid(_free_ghost): _free_ghost.visible = false
+
 # ---------- roof ladders on the site plan ----------
 
 var _ladder_ghost: Node3D
@@ -4263,9 +4425,8 @@ func _build_vehicle_bay(zone: Dictionary) -> void:
 		bay_door.add_partner(hangar)
 
 func _build_solar(zone: Dictionary) -> void:
-	var cell:Vector2i=zone.cells[0]
-	var position:=Vector3(cell.x*CELL,_terrain_height(Vector3(cell.x*CELL,0,cell.y*CELL)),cell.y*CELL)
-	var asset := _add_showcase(SHOWCASE_SOLAR,position,_direction_yaw(_airlock_side(zone)))
+	var position := _site_ground(zone)
+	var asset := _add_showcase(SHOWCASE_SOLAR,position,site_yaw(zone))
 	# Dust and frost on the cells (weather_wear.gd), and a slab over the panels
 	# to look at and brush clean.
 	var overlay := WEATHER_WEAR.panel_material()
@@ -4288,30 +4449,56 @@ func _build_solar(zone: Dictionary) -> void:
 	# through the mast without giving the solar panel an oversized collider. A
 	# larger pad also makes its ground contact clear on uneven Mars terrain.
 	_add_box(position+Vector3(0,.08,0),Vector3(1.75,.16,1.45),MHStyle.SEAL_DARK,true,"solar_base",true)
-	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["solar"].colour,"solar")
+	_add_site_plan_tile(zone)
 
 func _build_reactor(zone: Dictionary) -> void:
-	var cell: Vector2i = zone.cells[0]
-	var position := Vector3(cell.x * CELL, _terrain_height(Vector3(cell.x * CELL, 0, cell.y * CELL)), cell.y * CELL)
-	_add_site_machine(zone, "surface_reactor", position, Vector3(2.3, 2.1, 1.7))
-	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["reactor"].colour,"reactor")
+	_add_site_machine(zone, "surface_reactor", _site_ground(zone), Vector3(2.3, 2.1, 1.7))
+	_add_site_plan_tile(zone)
 
 func _build_ice_extractor(zone: Dictionary) -> void:
-	var cell: Vector2i = zone.cells[0]
-	var position := Vector3(cell.x * CELL, _terrain_height(Vector3(cell.x * CELL, 0, cell.y * CELL)), cell.y * CELL)
-	_add_site_machine(zone, "ice_drill", position, Vector3(2.2, 2.6, 1.5))
-	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["ice_extractor"].colour,"ice_extractor")
+	_add_site_machine(zone, "ice_drill", _site_ground(zone), Vector3(2.2, 2.6, 1.5))
+	_add_site_plan_tile(zone)
 
 func _build_regolith_intake(zone: Dictionary) -> void:
+	_add_site_machine(zone, "regolith_intake", _site_ground(zone), Vector3(2.0, 1.2, 2.4))
+	_add_site_plan_tile(zone)
+
+## Where a site machine stands: its free position (on the ground, or on a
+## roof), or the centre of its cell in older saves.
+func site_point(zone: Dictionary) -> Vector2:
+	if zone.has("at"): return zone.at
 	var cell: Vector2i = zone.cells[0]
-	var position := Vector3(cell.x * CELL, _terrain_height(Vector3(cell.x * CELL, 0, cell.y * CELL)), cell.y * CELL)
-	_add_site_machine(zone, "regolith_intake", position, Vector3(2.0, 1.2, 2.4))
-	_add_plan_tile(Vector3(cell.x*CELL,0,cell.y*CELL),ZONE_TYPES["regolith_intake"].colour,"regolith_intake")
+	return Vector2(cell.x * CELL, cell.y * CELL)
+
+func _site_ground(zone: Dictionary) -> Vector3:
+	var point := site_point(zone)
+	var y := habitat_base_y + ROOF_TOP if zone.get("roof", false) else _terrain_height(Vector3(point.x, 0, point.y))
+	return Vector3(point.x, y, point.y)
+
+## A site machine's turn: free placements keep any angle; older ones face
+## one of the four grid directions.
+func site_yaw(zone: Dictionary) -> float:
+	return float(zone.yaw) if zone.has("yaw") else _direction_yaw(_airlock_side(zone))
+
+## The way a solar array faces, as a ground direction (for its output).
+func solar_facing(zone: Dictionary) -> Vector2:
+	if not zone.has("yaw"): return Vector2(_airlock_side(zone))
+	return Vector2(sin(float(zone.yaw)), -cos(float(zone.yaw)))
+
+func _add_site_plan_tile(zone: Dictionary) -> void:
+	var point := site_point(zone)
+	var size := float(FREE_SITE_KINDS.get(str(zone.kind), 1.4)) * 1.6 if zone.has("at") else CELL - .28
+	var tile:=MeshInstance3D.new(); var mesh:=BoxMesh.new(); mesh.size=Vector3(size,.045,size); tile.mesh=mesh
+	var material:=StandardMaterial3D.new(); material.albedo_color=(ZONE_TYPES[str(zone.kind)].colour as Color).darkened(PLAN_TILE_SHADE); material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+	tile.material_override=material; tile.position=Vector3(point.x,habitat_base_y+(.2 if zone.get("roof", false) else .025),point.y); tile.rotation.y=site_yaw(zone) if zone.has("yaw") else 0.0
+	tile.name=str(zone.kind)+"PlanTile"; tile.add_to_group("habitat_plan"); tile.visible=build_mode; root.add_child(tile)
 
 ## A reactor or ice extractor model on its cell, with a solid box to walk
 ## around and its interaction rig (switch state saved in the zone).
 func _add_site_machine(zone: Dictionary, model_id: String, position: Vector3, size: Vector3) -> void:
-	if not zone.has("placement_id"): zone["placement_id"] = "zone_%s_%d_%d" % [str(zone.kind), (zone.cells[0] as Vector2i).x, (zone.cells[0] as Vector2i).y]
+	if not zone.has("placement_id"):
+		var spot: Vector2i = Vector2i((site_point(zone) * 10.0).round()) if zone.has("at") else zone.cells[0]
+		zone["placement_id"] = "zone_%s_%d_%d" % [str(zone.kind), spot.x, spot.y]
 	var holder := Node3D.new()
 	holder.name = "SiteMachine_%s" % model_id
 	holder.position = position
@@ -4325,6 +4512,7 @@ func _add_site_machine(zone: Dictionary, model_id: String, position: Vector3, si
 	if count > 0:
 		var towards := centre / count - Vector2(position.x, position.z)
 		if towards.length() > .1: holder.rotation.y = atan2(-towards.x, -towards.y)
+	if zone.has("yaw"): holder.rotation.y = float(zone.yaw)
 	holder.set_meta("zone_placement_id", str(zone.placement_id))
 	root.add_child(holder)
 	var body := StaticBody3D.new()
@@ -4592,11 +4780,15 @@ func _add_zone_label(zone: Dictionary) -> void:
 		var outline := zone_outline(zone)
 		for point in outline: centre += Vector3(point.x, 0, point.y)
 		centre /= outline.size()
+	elif zone.has("at"):
+		var spot := site_point(zone)
+		centre = Vector3(spot.x, ROOF_TOP if zone.get("roof", false) else 0.0, spot.y)
 	else:
 		for cell in cells: centre+=Vector3(cell.x*CELL,0,cell.y*CELL)
 		centre/=cells.size()
 	var label:=_label3d(str(ZONE_TYPES[zone.kind].label).to_upper(),40,MHStyle.INK_100); label.position=centre+Vector3(0,habitat_base_y+.4,0); label.offset=Vector2(0,22); label.visible=build_mode; label.add_to_group("zone_label"); root.add_child(label)
 	var size_text := "%d CELLS" % cells.size() if not zone.has("angled_mount") else "ANGLED · %.1f m" % float(zone.angled_mount.get("length", CELL))
+	if zone.has("at"): size_text = "ON THE ROOF" if zone.get("roof", false) else "%d°" % posmod(roundi(rad_to_deg(site_yaw(zone))), 360)
 	var detail:=_label3d("%s · %s" % [size_text,MHStyle.kg(int(zone.cost))],28,plan_colour(str(zone.kind)).lightened(.35),600); detail.font=MHStyle.font(600,true,1); detail.position=centre+Vector3(0,habitat_base_y+.4,0); detail.offset=Vector2(0,-24); detail.visible=build_mode; detail.add_to_group("zone_label"); root.add_child(detail)
 
 func _set_build_view(show_plan: bool) -> void:
@@ -4687,6 +4879,17 @@ func _remove_at(cell: Vector2i) -> void:
 				var spec: Dictionary = WALL_UPGRADES.spec(str(record.kind))
 				remove_upgrade(index)
 				_flash_notice("valid", "Removed", "%s · +%s cargo returned." % [str(spec.label), MHStyle.kg(int(spec.cargo))])
+				return
+	# Solar on a roof, under the cursor at roof height.
+	var at_roof := _world_point_at_mouse(habitat_base_y + ROOF_TOP)
+	if not is_inf(at_roof.x):
+		for index in range(zones.size() - 1, -1, -1):
+			var roof_zone: Dictionary = zones[index]
+			if roof_zone.get("roof", false) and (roof_zone.at as Vector2).distance_to(Vector2(at_roof.x, at_roof.z)) <= float(FREE_SITE_KINDS.solar):
+				var refund := int(roof_zone.cost)
+				zones.remove_at(index)
+				_rebuild()
+				_flash_notice("valid", "Removed", "Roof solar array · +%s cargo returned." % MHStyle.kg(refund))
 				return
 	# Furniture comes out before the room around it.
 	var item:=remove_equipment_at(cell)
@@ -4873,7 +5076,7 @@ func _systems() -> Dictionary:
 	var research:int=mini(research_capacity,int(equipment.research))
 	var generation:=0.0
 	for zone in zones:
-		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(_airlock_side(zone))*MHGame.solar_irradiance(MHGame.sol_hour)
+		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(solar_facing(zone))*MHGame.solar_irradiance(MHGame.sol_hour)
 		elif str(zone.kind)=="reactor" and _power_source_connected(zone) and _zone_running(zone): generation+=REACTOR_OUTPUT
 	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.hydroponics*5+counts.life_support*3+counts.engineering*4+counts.science*5+counts.vehicle_bay*4+counts.galley*3+counts.hygiene*2+counts.medical*3+counts.waste_management*3+counts.communications*2+counts.ice_extractor*8+int(equipment.power_draw)
 	for zone in zones:
@@ -4905,7 +5108,7 @@ func _systems() -> Dictionary:
 	var water := 0
 	if generation > 0.0 and generation >= draw:
 		for zone in zones:
-			if str(zone.kind)=="ice_extractor" and _zone_running(zone): water += _ice_yield(zone.cells[0])
+			if str(zone.kind)=="ice_extractor" and _zone_running(zone): water += _ice_yield_at_point(site_point(zone))
 	return {"crew":crew,"crew_requirement":crew_requirement,"crew_capacity":crew_capacity,"berths":berths,"food":food,"food_capacity":food_capacity,"life":life_support,"life_capacity":life_capacity,"water":water,"research":research,"research_capacity":research_capacity,"happiness":int(equipment.happiness),"water_draw":int(equipment.water_draw),"generation":roundi(generation),"draw":draw,"heating":heating,"isolated":isolated}
 
 ## The reactor's master isolator / the ice extractor's run switch (saved in
@@ -4944,7 +5147,7 @@ func _apply_grid_power() -> void:
 			material.emission = device.get_meta("grid_emission_on", Color.WHITE) if online else device.get_meta("grid_emission_off", Color("#293034"))
 	update_room_lights()
 
-func _solar_efficiency(direction: Vector2i, sun_heading := Vector2.INF) -> float:
+func _solar_efficiency(direction: Variant, sun_heading := Vector2.INF) -> float:
 	# Panels catch most light facing the sun. It crosses the southern sky, so a
 	# south-facing panel peaks at noon; east and west favour morning and evening.
 	var heading := MHGame.sun_heading(MHGame.sol_hour) if is_inf(sun_heading.x) else sun_heading
@@ -5610,8 +5813,10 @@ func _set_catalogue_open(open: bool) -> void:
 func _select_kind(id: String) -> void:
 	# Solar panels start facing the noon sun (south); R still turns them.
 	if id=="solar" and kind!="solar": airlock_direction=Vector2i(0,1)
+	if id in FREE_SITE_KINDS and kind!=id: free_yaw = PI if id=="solar" else 0.0; _free_yaw_set = id=="solar"
 	kind=id; equipment_id=""; dragging=false; category=str(ZONE_INFO[id].cat); _set_tool("place"); _preview_key=""
 	if not id in SITE_UPGRADES: _hide_ladder_ghost()
+	if not id in FREE_SITE_KINDS: _hide_free_ghost()
 	if not _freeform_mode_available(): _cancel_freeform()
 	_refresh_catalogue()
 

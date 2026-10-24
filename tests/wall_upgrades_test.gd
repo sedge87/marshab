@@ -42,7 +42,7 @@ func _initialize() -> void:
 	sim.invalidate()
 	var living_index := (sim.inventory().rooms as Array).map(func(r): return str(r.kind)).find("living")
 	var rating: float = sim.life.shield_rating(sim.inventory(), living_index)
-	assert(is_equal_approx(rating, 5.0 + (8.0 + 16.0) / 2.0), "5 for the hull + (one wall and the roof) ÷ 2 squares = 17 (%.1f)." % rating)
+	assert(is_equal_approx(rating, 5.0 + 1.5 * (8.0 + 16.0) / 3.0), "Habitat-wide: 5 for the hull + 1.5 × (one wall and a 2-square roof) ÷ all 3 squares = 17 (%.1f)." % rating)
 	# Noise: Engineering next door keeps them awake until the shared wall is insulated.
 	var sleep_need := func() -> Dictionary: return (sim.life.needs(sim.inventory(), {1: true, 2: true, 3: true, 4: true}) as Array).filter(func(n): return str(n.id) == "sleep")[0]
 	assert(str(sleep_need.call().missing).contains("noisy"), "Engineering next door is noisy (%s)." % sleep_need.call().missing)
