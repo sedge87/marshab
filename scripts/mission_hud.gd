@@ -475,32 +475,10 @@ func _best_ice() -> float:
 	for deposit in MHGame.site().get("ice_deposits", []): best = maxf(best, float(deposit.richness))
 	return best
 
-## Test: first an optional prediction (for the dossier), then fast-forward
-## on a copy of the base, then the report.
+## Test: fast-forward on a copy of the base, then the report.
 func _run_test() -> void:
-	var mission := MHMissions.current()
-	var column := _open_overlay()
-	column.add_child(MHStyle.eyebrow("Mission %d · Before you test · Version %d" % [int(mission.number), MHMissions.versions(str(mission.id)).size() + 1], MHStyle.accent, 16))
-	column.add_child(MHStyle.display("What do you think will happen?", 44))
-	column.add_child(_wrapped("Optional. A one-line prediction goes in your mission dossier, so you can compare it with the result. For example: \"The batteries will run flat on the second night.\"", 17, MHStyle.TEXT_SECONDARY, 1000))
-	var field := LineEdit.new()
-	field.max_length = 160
-	field.placeholder_text = "My prediction…"
-	field.custom_minimum_size = Vector2(900, 52)
-	column.add_child(field)
-	var buttons := MHStyle.hbox(12)
-	var go := MHStyle.button("Run the test", "primary", "play")
-	var skip := MHStyle.button("Skip", "secondary", "chevron-right")
-	var start := func(with_prediction: bool) -> void:
-		MHMissions.pending_prediction = field.text.strip_edges() if with_prediction else ""
-		_test_now()
-	go.pressed.connect(start.bind(true))
-	skip.pressed.connect(start.bind(false))
-	field.text_submitted.connect(func(_t: String) -> void: start.call(true))
-	buttons.add_child(go)
-	buttons.add_child(skip)
-	column.add_child(buttons)
-	field.grab_focus.call_deferred()
+	MHMissions.pending_prediction = ""
+	_test_now()
 
 func _test_now() -> void:
 	var mission := MHMissions.current()

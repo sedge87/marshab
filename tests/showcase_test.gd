@@ -75,6 +75,19 @@ func _initialize() -> void:
 	_check(show._index == (at + 1) % show._shots.size(), "→ skips ahead (and loops)")
 	show._input(_key(KEY_LEFT))
 	_check(show._index == at, "← goes back")
+	# F: a free camera to fly round, then back to the tour.
+	show._input(_key(KEY_F))
+	_check(show.free, "F takes the camera")
+	var before: Vector3 = show.camera.global_position
+	show._yaw = 0.0
+	show._pitch = 0.0
+	show.camera.global_position = before
+	show._fly(1.0)
+	_check(show.camera.global_position.y >= world.builder._terrain_height(show.camera.global_position) + .39, "the free camera stays above the ground")
+	show._input(_key(KEY_SPACE))
+	_check(not show.paused, "Space doesn't pause while flying")
+	show._input(_key(KEY_F))
+	_check(not show.free and show._index == at, "F again hands back to the tour where it was")
 
 	# Never saves.
 	var path := ProjectSettings.globalize_path(MHGame._save_path(3, "free_play"))
@@ -83,5 +96,5 @@ func _initialize() -> void:
 	MHGame.showcase = false
 
 	if failures == 0:
-		print("Showcase test passed: shot list, own camera and hidden HUD, room captions, time-lapse, story, keys, never saving.")
+		print("Tour test passed: shot list, own camera and hidden HUD, room captions, time-lapse, story, keys, the free camera, never saving.")
 	quit(1 if failures > 0 else 0)

@@ -1,8 +1,9 @@
 extends Node
 
-## Showcase mode (backlog item 32): a finished base presents itself on a big
-## screen, with nobody at the keyboard. Started from the title screen's
-## Present button beside any save. It plays a copy: nothing is ever saved.
+## Tour mode (was "Showcase"): a finished base presents itself on a big
+## screen, with nobody at the keyboard, or you take the camera and look
+## round freely. Started from the title screen's Tour button beside any
+## save. It plays a copy: nothing is ever saved.
 ##
 ## The loop, then round again:
 ##   1. The base: a slow orbit at golden hour, with a title card (colony,
@@ -14,7 +15,9 @@ extends Node
 ##      fall, the lights go from on to dim.
 ##   5. The story: the dossier's highlights (or what was built).
 ## Live stats run along the bottom throughout. Space pauses the tour,
-## ←/→ skip, Esc returns to the menu.
+## ←/→ skip, Esc returns to the menu. F takes the camera: fly round freely
+## (WASD, mouse to look, Q/E down and up, Shift faster), and F again hands
+## it back to the tour where it left off.
 
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const MONITOR := preload("res://scripts/habitat_monitor.gd")
@@ -41,6 +44,12 @@ var _stats: Label
 var _paused_label: Label
 var _story: Control
 var _clock := 0.0
+## Free camera (F): you fly round; the tour waits.
+var free := false
+var _yaw := 0.0
+var _pitch := 0.0
+const FREE_SPEED := 6.0
+const LOOK := .0025
 
 func setup(target_world: Node) -> void:
 	world = target_world
@@ -140,6 +149,9 @@ func _process(delta: float) -> void:
 	if world == null: return
 	_clock += delta
 	_update_stats()
+	if free:
+		_fly(delta)
+		return
 	if paused: return
 	_t += delta
 	var shot: Dictionary = _shots[_index]
@@ -165,6 +177,40 @@ func _process(delta: float) -> void:
 			_caption.text = "%02d:%02d · %s" % [int(MHGame.sol_hour), int(fmod(MHGame.sol_hour, 1.0) * 60.0), "Day: the panels charge the batteries" if MHGame.sunlight_fraction > .2 else "Night: everything runs on the batteries"]
 		"story": _orbit(_reach * 1.5, _reach * .8, 5.0 + f * .5)
 	if shot.kind != "mast": camera.fov = 55.0
+
+## Take the camera, or hand it back to the tour.
+func set_free(on: bool) -> void:
+	free = on
+	if on:
+		var euler := camera.global_transform.basis.get_euler()
+		_yaw = euler.y
+		_pitch = euler.x
+		camera.fov = 70.0
+		_title_card.modulate.a = 0.0
+		_story.visible = false
+		_label.text = "FREE CAMERA"
+		_caption.text = "WASD move · mouse look · Q/E down and up · Shift faster · F back to the tour"
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	else:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		_begin(_index)
+
+func _fly(delta: float) -> void:
+	var basis := Basis.from_euler(Vector3(_pitch, _yaw, 0.0))
+	var move := Vector3.ZERO
+	if Input.is_physical_key_pressed(KEY_W): move -= basis.z
+	if Input.is_physical_key_pressed(KEY_S): move += basis.z
+	if Input.is_physical_key_pressed(KEY_A): move -= basis.x
+	if Input.is_physical_key_pressed(KEY_D): move += basis.x
+	if Input.is_physical_key_pressed(KEY_E): move += Vector3.UP
+	if Input.is_physical_key_pressed(KEY_Q): move -= Vector3.UP
+	var speed := FREE_SPEED * (3.0 if Input.is_physical_key_pressed(KEY_SHIFT) else 1.0)
+	var at := camera.global_position + move.normalized() * speed * delta
+	# Keep it above the ground and within the site.
+	var ground: float = world.builder._terrain_height(at)
+	at.y = clampf(at.y, ground + .4, ground + 80.0)
+	var flat := Vector2(at.x, at.z).limit_length(140.0)
+	camera.global_transform = Transform3D(basis, Vector3(flat.x, at.y, flat.y))
 
 func _orbit(radius: float, height: float, angle: float) -> void:
 	camera.global_position = _centre + Vector3(sin(angle) * radius, height, cos(angle) * radius)
@@ -269,10 +315,10 @@ func _build_overlay() -> void:
 	row.add_child(_paused_label)
 	bar.add_child(row)
 	root.add_child(bar)
-	var keys := MHStyle.mono("SPACE PAUSE · LEFT/RIGHT SKIP · ESC MENU", 13, Color(1, 1, 1, .55))
+	var keys := MHStyle.mono("SPACE PAUSE · LEFT/RIGHT SKIP · F FREE CAMERA · ESC MENU", 13, Color(1, 1, 1, .55))
 	keys.anchor_left = 1.0
 	keys.anchor_right = 1.0
-	keys.offset_left = -420
+	keys.offset_left = -600
 	keys.offset_right = -40
 	keys.offset_top = 40
 	keys.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -326,7 +372,7 @@ func _update_stats() -> void:
 	_stats.text = "CREW %d   ·   POWER %.1f / %.1f kW   ·   BATTERY %d%%   ·   O₂ %.1f%%   ·   WATER %d L   ·   FOOD %d kg   ·   RESEARCH %.1f   ·   %02d:%02d" % [
 		int(flows.crew), float(snap.generation_kw), float(snap.load_kw), roundi(float(snap.battery_pct)), float(snap.o2_pct), roundi(float(snap.water_l)), roundi(float(snap.food_kg)), float(flows.research),
 		int(MHGame.sol_hour), int(fmod(MHGame.sol_hour, 1.0) * 60.0)]
-	_paused_label.text = "PAUSED" if paused else ""
+	_paused_label.text = "FREE CAMERA" if free else ("PAUSED" if paused else "")
 
 ## The dossier's highlights, or what was built.
 func _fill_story() -> void:
@@ -367,6 +413,10 @@ func _fill_story() -> void:
 func _input(event: InputEvent) -> void:
 	# Showcase owns the keyboard and mouse: nothing reaches the game.
 	if event is InputEventMouseMotion:
+		if free:
+			var motion := event as InputEventMouseMotion
+			_yaw -= motion.relative.x * LOOK
+			_pitch = clampf(_pitch - motion.relative.y * LOOK, -1.4, 1.4)
 		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton:
@@ -377,10 +427,12 @@ func _input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if not key.pressed or key.echo: return
 	match key.keycode:
-		KEY_SPACE: paused = not paused
-		KEY_RIGHT: _begin(_index + 1)
-		KEY_LEFT: _begin(_index - 1)
+		KEY_F: set_free(not free)
+		KEY_SPACE: if not free: paused = not paused
+		KEY_RIGHT: if not free: _begin(_index + 1)
+		KEY_LEFT: if not free: _begin(_index - 1)
 		KEY_ESCAPE:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			_end_shot()
 			MHGame.showcase = false
 			world._return_menu()
