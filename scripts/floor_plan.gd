@@ -101,6 +101,23 @@ static func _strip(parent: Node3D, a: Vector2, b: Vector2, width: float, y: floa
 	return mesh
 
 ## A flat patterned band from a to b, `width` deep, its far edge `out` of the line.
+## A flat polygon (x, z) at height y, with UVs over a square of side
+## uv_size starting at uv_origin (for the pattern shader).
+static func _flat_polygon(parent: Node3D, poly: PackedVector2Array, uv_origin: Vector2, uv_size: float, y: float, material: Material) -> void:
+	var tris := Geometry2D.triangulate_polygon(poly)
+	if tris.is_empty(): return
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in tris:
+		var p: Vector2 = poly[index]
+		st.set_uv((p - uv_origin) / uv_size)
+		st.add_vertex(Vector3(p.x, y, p.y))
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = st.commit()
+	mesh.material_override = material
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mesh)
+
 static func _band(parent: Node3D, a: Vector2, b: Vector2, out: Vector2, offset: float, width: float, y: float, material: ShaderMaterial) -> void:
 	var length := a.distance_to(b)
 	if length < .05: return
@@ -198,8 +215,11 @@ static func _upgrades(builder: Node, layer: Node3D, base_y: float) -> void:
 		var kind := str(record.kind)
 		if kind == "roof":
 			var c: Vector2 = Vector2(record.cell) * cell_size
-			_band(layer, c + Vector2(-cell_size * .5 + .1, 0), c + Vector2(cell_size * .5 - .1, 0), Vector2(0, 1), -(cell_size * .5 - .1), cell_size - .2, base_y + .05,
-				_pattern(Color(1, 1, 1, .5), Color(1, 1, 1, 0), 3, Vector2(cell_size - .2, cell_size - .2)))
+			var hatch := _pattern(Color(1, 1, 1, .5), Color(1, 1, 1, 0), 3, Vector2(cell_size, cell_size))
+			# Clipped to the room's outline, so free-shape and angled rooms
+			# don't show square hatching hanging over their angled walls.
+			for patch in WALL_UPGRADES.roof_patches(builder, record.cell, .1):
+				_flat_polygon(layer, patch, c - Vector2(cell_size, cell_size) * .5, cell_size, base_y + .05, hatch)
 			var zone: Dictionary = builder._zone_at_point(c)
 			if not zone.is_empty(): roofed[builder.zones.find(zone)] = zone
 			continue

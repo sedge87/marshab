@@ -22,6 +22,9 @@ var _valid := false
 var _hold := 0.0
 var _e_was_down := false
 var _hold_target := ""
+## After putting something down with E, E has to come up again before it
+## can pick anything up (or the same press grabbed it straight back).
+var _wait_for_release := false
 
 func setup(target_world: Node) -> void:
 	world = target_world
@@ -74,6 +77,11 @@ func _process(delta: float) -> void:
 		_hold = 0.0
 		_e_was_down = e_down
 		return
+	if _wait_for_release:
+		if not e_down: _wait_for_release = false
+		_hold = 0.0
+		_e_was_down = e_down
+		return
 	# Not carrying: E (or holding E) on a small item picks it up.
 	var target := _looked_at() if e_down else null
 	var placement := pickable_id(target) if target != null else ""
@@ -99,7 +107,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		put_back()
 	elif (key != null and key.pressed and not key.echo and key.keycode == KEY_E) or (click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT):
 		get_viewport().set_input_as_handled()
-		put_down()
+		if put_down(): _wait_for_release = true
 
 # ---------- picking up and putting down ----------
 
@@ -195,6 +203,7 @@ func _place(at: Vector3, yaw: float, normal: Vector3, original := false) -> bool
 	var id := str(carrying.id)
 	var cell := Vector2i(roundi(at.x / BuildController.CELL), roundi(at.z / BuildController.CELL))
 	if original: cell = carrying.get("zone_cell", cell) as Vector2i
+	get_tree().call_group("explore_hud", "hide_equipment_note", "Carrying")
 	var visual: Node3D = builder().free_interior_visual(id, at, yaw)
 	if not builder().place_free_interior_equipment(id, at, yaw, cell, visual, normal):
 		visual.queue_free()

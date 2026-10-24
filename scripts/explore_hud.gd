@@ -176,6 +176,12 @@ func show_equipment_note(title: String, note: String) -> void:
 	_note_time_left = 4.5
 	_note_panel.modulate.a = 1.0
 
+## Clears the note early if its title starts with this (e.g. "Carrying").
+func hide_equipment_note(title_prefix: String) -> void:
+	if _note_title != null and _note_title.text.begins_with(title_prefix.to_upper()):
+		_note_time_left = 0.0
+		_note_panel.modulate.a = 0.0
+
 func _site_telemetry() -> PanelContainer:
 	var site: Dictionary = MHGame.site()
 	var telemetry: Dictionary = site.get("telemetry", {})

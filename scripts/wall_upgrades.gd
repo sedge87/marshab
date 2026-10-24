@@ -221,7 +221,11 @@ static func build(builder: Node) -> void:
 		var kind := str(record.kind)
 		if kind == "roof":
 			var centre := Vector3(record.cell.x * cell_size, base_y + 2.975, record.cell.y * cell_size)
-			_roof(builder, centre, cell_size)
+			var patches := roof_patches(builder, record.cell)
+			if patches.size() == 1 and (patches[0] as PackedVector2Array).size() == 4 and not _roof_clipped(builder, record.cell):
+				_roof(builder, centre, cell_size)
+			else:
+				for patch in patches: _slab(builder, patch, base_y + 2.975, base_y + 3.035, _material(REGOLITH))
 			continue
 		var outward: Vector2 = record.outward
 		var basis: Basis = builder._bay_basis(Vector2(-outward.y, outward.x), outward)
@@ -432,6 +436,76 @@ static func _outer_edges(builder: Node) -> Array:
 					edges.append([a.lerp(b, float(run_start) / pieces), a.lerp(b, float(i) / pieces), out])
 					run_start = -1
 	return edges
+
+## The room a roof square belongs to (the zone whose squares include it).
+static func _roof_zone(builder: Node, cell: Vector2i) -> Dictionary:
+	for zone in builder.zones:
+		if builder._is_habitat_zone(zone) and (zone.get("cells", []) as Array).has(cell): return zone
+	return {}
+
+## The room's outline when it isn't plain grid squares (free-shape or angled).
+static func _roof_outline(builder: Node, zone: Dictionary) -> PackedVector2Array:
+	if zone.has("outline"): return builder.zone_outline(zone)
+	if zone.has("angled_mount"): return builder._angled_mount_outline(zone.get("angled_mount", {}))
+	return PackedVector2Array()
+
+static func _roof_clipped(builder: Node, cell: Vector2i) -> bool:
+	return not _roof_outline(builder, _roof_zone(builder, cell)).is_empty()
+
+## One roof square's shielding, as polygons on the ground plane (x, z): the
+## square, inset from its edges, for a grid room; for a free-shape or angled
+## room, the part of the square under the roof, so it follows angled walls
+## instead of hanging over them as a square.
+static func roof_patches(builder: Node, cell: Vector2i, inset := .175) -> Array:
+	var size: float = BuildController.CELL
+	var c := Vector2(cell) * size
+	var h := size * .5
+	var square := PackedVector2Array([c + Vector2(-h, -h), c + Vector2(h, -h), c + Vector2(h, h), c + Vector2(-h, h)])
+	var outline := _roof_outline(builder, _roof_zone(builder, cell))
+	var pieces: Array = [square] if outline.is_empty() else Geometry2D.intersect_polygons(square, outline)
+	var out: Array = []
+	for piece in pieces:
+		for shrunk in Geometry2D.offset_polygon(piece, -inset):
+			if (shrunk as PackedVector2Array).size() >= 3: out.append(shrunk)
+	return out
+
+## A flat slab over a polygon (x, z) from y0 to y1; solid, so you can walk on it.
+static func _slab(builder: Node, poly: PackedVector2Array, y0: float, y1: float, material: Material) -> void:
+	var tris := Geometry2D.triangulate_polygon(poly)
+	if tris.is_empty(): return
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var add_tri := func(a: Vector3, b: Vector3, c: Vector3, up: Vector3) -> void:
+		if (b - a).cross(c - a).dot(up) < 0.0:
+			var t := b; b = c; c = t
+		for v in [a, b, c]: st.add_vertex(v)
+	for i in range(0, tris.size(), 3):
+		var p := [poly[tris[i]], poly[tris[i + 1]], poly[tris[i + 2]]]
+		add_tri.call(Vector3(p[0].x, y1, p[0].y), Vector3(p[1].x, y1, p[1].y), Vector3(p[2].x, y1, p[2].y), Vector3.UP)
+		add_tri.call(Vector3(p[0].x, y0, p[0].y), Vector3(p[1].x, y0, p[1].y), Vector3(p[2].x, y0, p[2].y), Vector3.DOWN)
+	var middle := Vector2.ZERO
+	for v in poly: middle += v
+	middle /= poly.size()
+	for i in poly.size():
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % poly.size()]
+		var mid := (a + b) * .5
+		var out := Vector3(mid.x - middle.x, 0, mid.y - middle.y)
+		add_tri.call(Vector3(a.x, y0, a.y), Vector3(b.x, y0, b.y), Vector3(b.x, y1, b.y), out)
+		add_tri.call(Vector3(a.x, y0, a.y), Vector3(b.x, y1, b.y), Vector3(a.x, y1, a.y), out)
+	st.generate_normals()
+	var mesh := st.commit()
+	var body := StaticBody3D.new()
+	body.collision_layer = 1
+	body.add_to_group("wall_upgrade")
+	builder.root.add_child(body)
+	var visual := MeshInstance3D.new()
+	visual.mesh = mesh
+	visual.material_override = material
+	body.add_child(visual)
+	var shape := CollisionShape3D.new()
+	shape.shape = mesh.create_trimesh_shape()
+	body.add_child(shape)
 
 ## A thin layer of regolith on one roof square, inset from the edge, with
 ## faint lines; solid, so you can walk on it.
