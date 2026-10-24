@@ -114,9 +114,10 @@ static func invalid_reason(builder: Node, kind: String, target: Dictionary) -> S
 			_: return "Aim at a wall between two rooms"
 	if place != "roof" and builder._window_index_at(target.mid, target.dir) >= 0: return "There's a window in this wall bay"
 	if place == "roof":
-		if (target.cells as Array).all(func(c): return index_at(builder, kind, {"cells": [c]}) >= 0): return "This roof is already shielded"
-	elif index_at(builder, kind, target) >= 0:
-		return "This wall already has an upgrade"
+		if (target.cells as Array).all(func(c): return index_at(builder, kind, {"cells": [c]}) >= 0): return "Done: this roof is shielded"
+	else:
+		var existing := index_at(builder, kind, target)
+		if existing >= 0: return "Done: this wall has %s" % str(spec(str(builder.wall_upgrades[existing].kind)).label).to_lower()
 	var cost := target_cargo(kind, target)
 	if bool(spec(kind).get("printable", false)): cost = maxi(0, cost - builder.mars_made_left())
 	if builder._used_cargo() + cost > MHGame.cargo_budget(): return "Not enough cargo left"

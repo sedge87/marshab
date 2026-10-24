@@ -234,7 +234,17 @@ func _raycast() -> Dictionary:
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + -camera.global_transform.basis.z * BUILD_RANGE)
 	query.exclude = [player.get_rid()]
 	query.collision_mask = 1
-	return camera.get_world_3d().direct_space_state.intersect_ray(query)
+	var space := camera.get_world_3d().direct_space_state
+	var hit := space.intersect_ray(query)
+	# Shielding, insulation and windows go on the walls and ceiling, so the aim
+	# passes through furniture: a room is usually furnished by then.
+	if not (_selected_structure.begins_with("upgrade_") or _selected_structure == "window") or _remove_mode: return hit
+	for i in 8:
+		var body := hit.get("collider") as Node
+		if body == null or builder.furnishing == null or not builder.furnishing.is_ancestor_of(body): return hit
+		query.exclude = query.exclude + [hit.rid]
+		hit = space.intersect_ray(query)
+	return hit
 
 func _refresh_preview(force_rebuild: bool) -> void:
 	_hit = _raycast()
@@ -275,11 +285,11 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		var target: Dictionary = builder.upgrade_target_at(upgrade, point, normal)
 		_upgrade_target = target
 		_valid_reason = builder.upgrade_invalid_reason(upgrade, target) if MHMissions.structure_unlocked(_selected_structure) else "Not delivered yet: this arrives in a later mission"
-		var key := str(target.get("mid", target.get("cells", "")))
+		var key := str(target.get("mid", target.get("cells", ""))) + str(snappedf(point.y, .5))
 		if force_rebuild or preview == null or key != _upgrade_key:
 			_upgrade_key = key
 			if preview != null: preview.queue_free()
-			preview = _upgrade_preview(upgrade, target)
+			preview = _upgrade_preview(upgrade, target, point.y)
 			preview.name = "UpgradePreview"
 			add_child(preview)
 			_set_preview_material(preview, _valid_reason.is_empty())
@@ -511,20 +521,22 @@ func _partition_preview(door: bool) -> Node3D:
 var _upgrade_target := {}
 var _upgrade_key := ""
 
-## A ghost of the upgrade: a slab on the wall, or one per roof square.
-func _upgrade_preview(upgrade: String, target: Dictionary) -> Node3D:
+## A ghost of the upgrade on the inside face you're looking at: a panel over
+## the wall bay, or one under each ceiling square of the room. (The real
+## shielding goes on the outside, where you can't see it from in here.)
+func _upgrade_preview(upgrade: String, target: Dictionary, ceiling_y: float) -> Node3D:
 	var holder := Node3D.new()
 	if target.is_empty(): return holder
 	var cell_size: float = BuildController.CELL
 	var slabs: Array = []
 	if upgrade == "roof":
-		for cell in target.cells: slabs.append([Vector3(cell.x * cell_size, builder.habitat_base_y + 3.2, cell.y * cell_size), Vector3(cell_size - .2, .35, cell_size - .2), Basis.IDENTITY])
+		for cell in target.cells: slabs.append([Vector3(cell.x * cell_size, ceiling_y - .04, cell.y * cell_size), Vector3(cell_size - .1, .04, cell_size - .1), Basis.IDENTITY])
 	else:
 		var outward: Vector2 = target.outward
 		var basis: Basis = builder._bay_basis(Vector2(-outward.y, outward.x), outward)
 		var mid := Vector3(target.mid.x, builder.habitat_base_y + 1.45, target.mid.y)
-		var thick := .14 if upgrade == "acoustic" else .4
-		slabs.append([mid + Vector3(outward.x, 0, outward.y) * (0.0 if upgrade == "acoustic" else .3), Vector3(cell_size - .1, 2.9, thick), basis])
+		var thick := .14 if upgrade == "acoustic" else .04
+		slabs.append([mid - Vector3(outward.x, 0, outward.y) * (0.0 if upgrade == "acoustic" else .16), Vector3(float(target.get("length", cell_size)) - .1, 2.8, thick), basis])
 	for slab in slabs:
 		var mesh := MeshInstance3D.new()
 		var box := BoxMesh.new()
@@ -1080,6 +1092,8 @@ func _update_hud() -> void:
 	elif _remove_mode: _tag_label.text = "AIM AT AN ITEM, DOOR OR WINDOW   ·   LMB REMOVE"
 	elif ok and (_selected_structure == "partition" or _selected_structure == "partition_glass"): _tag_label.text = "FITS HERE   ·   HOLD LMB AND DRAG TO DRAW   ·   R %s" % ("STRAIGHT" if _partition_angled else "45°")
 	elif ok and _selected_structure in ["partition_door", "partition_glass_door"]: _tag_label.text = "FITS HERE   ·   LMB PLACE DOOR   ·   R %s" % ("STRAIGHT" if _partition_angled else "45°")
+	elif ok and _selected_structure == "upgrade_roof": _tag_label.text = "FITS HERE   ·   LMB SHIELD THE WHOLE ROOF (ON THE OUTSIDE)"
+	elif ok and _selected_structure.begins_with("upgrade_"): _tag_label.text = "FITS HERE   ·   LMB ADD TO THIS WALL" + ("" if _selected_structure == "upgrade_acoustic" else " (ON THE OUTSIDE)")
 	elif ok: _tag_label.text = "FITS HERE   ·   LMB PLACE   ·   HOLD R ROTATE"
 	else: _tag_label.text = _valid_reason.to_upper()
 	_tag_label.add_theme_color_override("font_color", tone if not ok or _remove_mode else MHStyle.TEXT_PRIMARY)

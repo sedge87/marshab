@@ -6,6 +6,11 @@ const MOUSE_SENSITIVITY := 0.0025
 # Tunable Martian movement values. 5.3 m/s against 14 m/s² reaches roughly 1 m.
 const GRAVITY := 14.0
 const JUMP_VELOCITY := 5.3
+# Hold Ctrl to crouch: lower eyes, a shorter body, a slow walk.
+const CROUCH_SPEED := 2.4
+const STAND_HEIGHT := 1.8
+const CROUCH_HEIGHT := 1.15
+const STAND_EYES := 1.6
 
 @onready var head: Node3D = $Head
 @onready var flashlight: SpotLight3D = $Head/Camera3D/Flashlight
@@ -16,6 +21,8 @@ var _was_grounded := true
 var _fall_speed := 0.0
 var _step_index := 0
 var _flashlight_enabled := false
+var crouching := false
+@onready var _body_shape: CollisionShape3D = $CollisionShape3D
 
 func _ready() -> void:
 	add_to_group("player")
@@ -69,8 +76,9 @@ func _physics_process(delta: float) -> void:
 		_debug_fly(delta)
 		return
 	var grounded := is_on_floor()
+	_crouch(delta)
 	var jump_pressed := Input.is_action_pressed("jump") or Input.is_key_pressed(KEY_SPACE)
-	if grounded and jump_pressed and not _jump_was_pressed:
+	if grounded and jump_pressed and not _jump_was_pressed and not crouching:
 		velocity.y = JUMP_VELOCITY
 		MHAudio.sfx("jump")
 	elif not grounded:
@@ -86,13 +94,32 @@ func _physics_process(delta: float) -> void:
 	)
 	input_vector = input_vector.limit_length(1.0)
 	var direction := (transform.basis * Vector3(input_vector.x, 0.0, input_vector.y)).normalized()
-	var speed := SPRINT_SPEED if Input.is_action_pressed("sprint") or Input.is_key_pressed(KEY_SHIFT) else WALK_SPEED
+	var speed := CROUCH_SPEED if crouching else SPRINT_SPEED if Input.is_action_pressed("sprint") or Input.is_key_pressed(KEY_SHIFT) else WALK_SPEED
 	velocity.x = direction.x * speed
 	velocity.z = direction.z * speed
 	move_and_slide()
 	if is_on_floor() and global_position.y > -10.0:
 		safe_position = global_position
 	_footsteps(speed, delta)
+
+## Ctrl held: crouch. Letting go stands you up once there's headroom.
+func _crouch(delta: float) -> void:
+	var want := Input.is_key_pressed(KEY_CTRL)
+	if crouching and not want and _headroom_blocked(): want = true
+	crouching = want
+	var capsule := _body_shape.shape as CapsuleShape3D
+	var height := CROUCH_HEIGHT if crouching else STAND_HEIGHT
+	if not is_equal_approx(capsule.height, height):
+		capsule.height = height
+		_body_shape.position.y = height * .5
+	var eyes := STAND_EYES - (STAND_HEIGHT - CROUCH_HEIGHT) if crouching else STAND_EYES
+	head.position.y = move_toward(head.position.y, eyes, delta * 4.0)
+
+func _headroom_blocked() -> bool:
+	var query := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * CROUCH_HEIGHT, global_position + Vector3.UP * (STAND_HEIGHT + .05))
+	query.exclude = [get_rid()]
+	query.collision_mask = collision_mask
+	return not get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
 # Debug fly / noclip: move where the camera looks, Space up, Ctrl down,
 # Shift fast; collisions off so walls and terrain are no obstacle.
