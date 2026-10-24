@@ -534,17 +534,18 @@ static func colony_chip(subtitle: String) -> PanelContainer:
 	return chip
 
 # Rows of keycaps for the Controls sheet.
-static func control_row(keys: Array, action: String) -> HBoxContainer:
-	var row := hbox(14)
-	row.custom_minimum_size.y = 40
-	var keys_box := hbox(6)
-	keys_box.custom_minimum_size.x = 136
+## compact: smaller keys and text, for a sheet with several columns.
+static func control_row(keys: Array, action: String, compact := false) -> HBoxContainer:
+	var row := hbox(10 if compact else 14)
+	row.custom_minimum_size.y = 34 if compact else 40
+	var keys_box := hbox(4 if compact else 6)
+	keys_box.custom_minimum_size.x = 104 if compact else 136
 	for key in keys:
-		var cap := keycap(str(key))
+		var cap := keycap(str(key), compact)
 		cap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		keys_box.add_child(cap)
 	row.add_child(keys_box)
-	var l := label(action, 17, TEXT_SECONDARY, 400)
+	var l := label(action, 15 if compact else 17, TEXT_SECONDARY, 400)
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(l)
 	return row

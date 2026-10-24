@@ -63,7 +63,8 @@ static func for_step(step: Dictionary) -> String:
 static func unlocked() -> Array:
 	if not MHMissions.active(): return cards().map(func(c): return str(c.id))
 	var number := int(MHMissions.current().get("number", 1))
-	var ids: Array = []
+	# Cards you've already seen (a pop-up on first placing something) stay too.
+	var ids: Array = cards().map(func(c): return str(c.id)).filter(func(id): return seen(id))
 	for mission in MHMissions.missions():
 		if int(mission.number) > number: continue
 		for id in for_mission(str(mission.id)):
@@ -100,6 +101,28 @@ static func enabled() -> bool:
 
 # ---------- the Field guide ----------
 
+## The guide's sections, in order. A card missing here goes in the first.
+const SECTIONS := [
+	["Getting started", ["landing", "building", "carrying", "testing"]],
+	["Keeping alive", ["power", "water", "air", "heating", "food", "research"]],
+	["The crew", ["crew", "wellbeing", "fitness", "earth"]],
+	["Hazards", ["storms", "radiation", "shielding", "breach", "breakdowns"]],
+	["Outside", ["gar_y", "rover", "dust"]],
+]
+
+## Unlocked cards by section: [[title, [ids]]], empty sections left out.
+static func sections() -> Array:
+	var open := unlocked()
+	var placed: Array = []
+	var out: Array = []
+	for section in SECTIONS:
+		var ids: Array = (section[1] as Array).filter(func(id): return open.has(id))
+		placed.append_array(section[1])
+		out.append([section[0], ids])
+	var others: Array = open.filter(func(id): return not placed.has(id))
+	if not others.is_empty(): (out[0][1] as Array).append_array(others)
+	return out.filter(func(section): return not (section[1] as Array).is_empty())
+
 ## The Field guide: every card unlocked so far, as a list to open. Shared by
 ## Mission Control, the pause menu and the title screen. Add the returned
 ## scrim to a Control; it frees itself on Back (or call close on it).
@@ -124,20 +147,35 @@ static func guide(tree: SceneTree) -> ColorRect:
 	back.pressed.connect(scrim.queue_free)
 	head.add_child(back)
 	col.add_child(head)
-	var ids: Array = unlocked()
+	# Section tabs, then that section's cards in two columns.
+	var groups := sections()
+	var tabs := MHStyle.hbox(6)
+	col.add_child(tabs)
 	var grid := GridContainer.new()
 	grid.columns = 2
+	grid.custom_minimum_size.y = 196
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
 	col.add_child(grid)
-	for i in range(ids.size()):
-		var c := card(str(ids[i]))
-		var b := MHStyle.button(str(c.get("title", ids[i])), "ghost", str(c.get("icon", "info")), 52)
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.custom_minimum_size.x = 390
-		b.tooltip_text = str(c.get("remember", ""))
-		b.pressed.connect(func() -> void: show(tree, ids.slice(i) + ids.slice(0, i), "Field guide"))
-		grid.add_child(b)
+	var buttons: Array[Button] = []
+	var open_section := func(which: int) -> void:
+		for child in grid.get_children(): child.queue_free()
+		for k in buttons.size(): buttons[k].theme_type_variation = "SelectedButton" if k == which else "Button"
+		var ids: Array = groups[which][1]
+		for i in range(ids.size()):
+			var c := card(str(ids[i]))
+			var b := MHStyle.button(str(c.get("title", ids[i])), "ghost", str(c.get("icon", "info")), 52)
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.custom_minimum_size.x = 390
+			b.tooltip_text = str(c.get("remember", ""))
+			b.pressed.connect(func() -> void: show(tree, ids.slice(i) + ids.slice(0, i), "Field guide · %s" % groups[which][0]))
+			grid.add_child(b)
+	for k in groups.size():
+		var tab := MHStyle.button("%s  %d" % [groups[k][0], (groups[k][1] as Array).size()], "secondary", "", 40)
+		tab.pressed.connect(open_section.bind(k))
+		tabs.add_child(tab)
+		buttons.append(tab)
+	open_section.call(0)
 	col.add_child(MHStyle.body("More cards unlock as the missions go on." if MHMissions.active() else "Every card is here in free play.", 14, MHStyle.TEXT_MUTED))
 	# Pop-up cards on or off, right here (the same switch as in Settings).
 	var row := MHStyle.hbox(14)
@@ -149,6 +187,7 @@ static func guide(tree: SceneTree) -> ColorRect:
 		MHGame.save_settings(values))
 	row.add_child(sw)
 	var text := MHStyle.vbox(2)
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text.add_child(MHStyle.label("Show cards as I play", 17, MHStyle.TEXT_PRIMARY, 600))
 	text.add_child(MHStyle.body("A card pops up the first time you place a key machine or meet GAR-Y. They're always here either way.", 14, MHStyle.TEXT_MUTED))
 	row.add_child(text)
@@ -333,6 +372,12 @@ class Picture extends Control:
 			"wellbeing": _wellbeing()
 			"breach": _breach()
 			"breakdowns": _breakdowns()
+			"building": _building()
+			"carrying": _carrying()
+			"shielding": _shielding()
+			"rover": _rover()
+			"dust": _dust()
+			"earth": _earth()
 
 	func _node(at: Vector2, icon: String, label: String, colour: Color, w := 150.0) -> Rect2:
 		var r := Rect2(at - Vector2(w * .5, 34), Vector2(w, 68))
@@ -480,18 +525,18 @@ class Picture extends Control:
 		draw_texture_rect(MHIcons.texture("sun", 40), Rect2(Vector2(40, 100), Vector2(40, 40)), false, WARM)
 		_text("Solar particle event", Vector2(60, 170), 13, WARM)
 		for k in 3: _arrow(Vector2(100, 90 + k * 30), Vector2(200, 90 + k * 30), Color(WARM, .7))
-		# A big room: little protection.
-		_room_box(Rect2(Vector2(220, 50), Vector2(250, 140)), BAD)
-		_text("Big room", Vector2(345, 40), 13, BAD)
-		_text("5 + 16 ÷ 6 squares = 7 points", Vector2(345, 215), 13, BAD)
-		draw_texture_rect(MHIcons.texture("users", 26), Rect2(Vector2(332, 106), Vector2(26, 26)), false, MHStyle.TEXT_PRIMARY)
-		# The shelter: small, thick shielding.
-		var shelter := Rect2(Vector2(600, 70), Vector2(140, 100))
-		for k in 4: draw_rect(shelter.grow(4 + k * 5), Color(.56, .31, .19, .55 - k * .1), false, 5.0)
-		_room_box(shelter, GOOD)
-		draw_texture_rect(MHIcons.texture("users", 26), Rect2(shelter.get_center() - Vector2(13, 13), Vector2(26, 26)), false, MHStyle.TEXT_PRIMARY)
-		_text("Storm shelter", Vector2(670, 40), 13, GOOD)
-		_text("5 + 30 ÷ 2 squares = 20 points", Vector2(670, 222), 13, GOOD)
+		# The whole habitat, shielded on its outside walls and roof.
+		var base := Rect2(Vector2(250, 60), Vector2(360, 130))
+		for k in 3: draw_rect(base.grow(4 + k * 5), Color(.56, .31, .19, .5 - k * .12), false, 5.0)
+		_room_box(base, GOOD)
+		draw_line(Vector2(430, 60), Vector2(430, 190), Color(GOOD, .5), 2.0)
+		draw_line(Vector2(250, 125), Vector2(430, 125), Color(GOOD, .5), 2.0)
+		draw_texture_rect(MHIcons.texture("users", 26), Rect2(Vector2(327, 80), Vector2(26, 26)), false, MHStyle.TEXT_PRIMARY)
+		draw_texture_rect(MHIcons.texture("shield", 22), Rect2(Vector2(508, 114), Vector2(22, 22)), false, GOOD)
+		_text("Every panel shields the whole base", Vector2(430, 40), 13, GOOD)
+		_text("Shelter: the room with the locker", Vector2(520, 165), 12, GOOD)
+		_text("Points = 5 + 1.5 × panels ÷ floor squares", Vector2(430, 228), 13, MHStyle.TEXT_PRIMARY)
+		_node(Vector2(760, 125), "shield", "Aim for 20", GOOD, 150)
 
 	func _fitness() -> void:
 		_node(Vector2(120, 70), "orbit", "Mars gravity 38%", DIM, 170)
@@ -541,6 +586,75 @@ class Picture extends Control:
 		_arrow(Vector2(390, 75), Vector2(217, 75), COOL, "6 hours")
 		_node(Vector2(760, 130), "rotate-cw", "Printer: more spares", WARM, 200)
 		_arrow(Vector2(660, 115), Vector2(553, 85), WARM)
+
+	func _building() -> void:
+		var steps := [["map-pin", "Site plan (B)", COOL], ["hammer", "Draw rooms", COOL], ["armchair", "Furnish (Shift+B)", WARM], ["circle-check", "Room works", GOOD]]
+		for i in steps.size():
+			var x := 115.0 + i * 220.0
+			_node(Vector2(x, 100), steps[i][0], steps[i][1], steps[i][2], 175)
+			if i < steps.size() - 1: _arrow(Vector2(x + 90, 100), Vector2(x + 128, 100), DIM)
+		_node(Vector2(240, 205), "rocket", "Cargo from Earth", WARM, 190)
+		_text("every room and item has a weight", Vector2(520, 210), 14, MHStyle.TEXT_SECONDARY)
+
+	func _carrying() -> void:
+		_node(Vector2(120, 110), "coffee", "Look and press E", COOL, 170)
+		_arrow(Vector2(207, 110), Vector2(318, 110), COOL)
+		draw_rect(Rect2(Vector2(330, 70), Vector2(150, 80)), Color(GOOD, .12))
+		draw_rect(Rect2(Vector2(330, 70), Vector2(150, 80)), GOOD, false, 2.0)
+		_text("Green ghost: fits", Vector2(405, 115), 14, GOOD)
+		_arrow(Vector2(482, 110), Vector2(588, 110), GOOD, "E or click")
+		_node(Vector2(690, 110), "check", "Put down", GOOD, 170)
+		_node(Vector2(405, 215), "undo-2", "Q: put it back", WARM, 180)
+
+	func _shielding() -> void:
+		var base := Rect2(Vector2(60, 50), Vector2(380, 150))
+		for k in 3: draw_rect(base.grow(4 + k * 5), Color(.56, .31, .19, .5 - k * .12), false, 5.0)
+		_room_box(base, GOOD)
+		for x in [187.0, 313.0]: draw_line(Vector2(x, 50), Vector2(x, 200), Color(GOOD, .5), 2.0)
+		_text("Radiation shielding: outside walls and roofs", Vector2(250, 32), 13, GOOD)
+		_text("protects the whole habitat", Vector2(250, 232), 13, GOOD)
+		# Sound insulation: one panel between a noisy room and the bunks.
+		_room_box(Rect2(Vector2(520, 70), Vector2(150, 110)), BAD, .14)
+		_room_box(Rect2(Vector2(680, 70), Vector2(150, 110)), COOL, .14)
+		draw_rect(Rect2(Vector2(668, 95), Vector2(14, 60)), Color("#E8C468"))
+		draw_texture_rect(MHIcons.texture("zap", 24), Rect2(Vector2(583, 113), Vector2(24, 24)), false, BAD)
+		draw_texture_rect(MHIcons.texture("bed-double", 24), Rect2(Vector2(743, 113), Vector2(24, 24)), false, COOL)
+		_text("Engineering", Vector2(595, 60), 13, BAD)
+		_text("Bunks", Vector2(755, 60), 13, COOL)
+		_text("One insulation panel: quiet", Vector2(675, 215), 13, Color("#E8C468"))
+
+	func _rover() -> void:
+		_room_box(Rect2(Vector2(60, 60), Vector2(200, 130)), COOL, .12)
+		_text("Vehicle bay", Vector2(160, 50), 13, COOL)
+		draw_texture_rect(MHIcons.texture("truck", 40), Rect2(Vector2(140, 105), Vector2(40, 40)), false, MHStyle.TEXT_PRIMARY)
+		_text("charges here", Vector2(160, 180), 12, GOOD)
+		draw_rect(Rect2(Vector2(258, 85), Vector2(8, 80)), WARM)
+		_text("Hangar opens", Vector2(262, 210), 12, WARM)
+		_arrow(Vector2(280, 125), Vector2(520, 125), DIM, "about 4 km a charge")
+		_node(Vector2(640, 125), "map-pin", "Out exploring", WARM, 170)
+		draw_line(Vector2(640, 165), Vector2(640, 215), DIM, 3.0)
+		draw_line(Vector2(640, 215), Vector2(160, 215), DIM, 3.0)
+		_arrow(Vector2(160, 215), Vector2(160, 195), GOOD)
+
+	func _dust() -> void:
+		_node(Vector2(120, 80), "sun", "Clean panel", GOOD, 160)
+		_node(Vector2(120, 190), "sun", "Dusty panel", BAD, 160)
+		_text("full power", Vector2(270, 85), 13, GOOD)
+		_text("less power", Vector2(270, 195), 13, BAD)
+		_node(Vector2(470, 80), "wind", "Dust devil cleans", COOL, 190)
+		_node(Vector2(470, 190), "hammer", "E: brush it off", WARM, 190)
+		_arrow(Vector2(372, 175), Vector2(212, 95), GOOD)
+		_node(Vector2(760, 135), "moon", "Dawn frost melts", COOL, 190)
+
+	func _earth() -> void:
+		_node(Vector2(110, 125), "monitor", "Comms station", COOL, 170)
+		_node(Vector2(330, 125), "satellite", "Mast outside", COOL, 160)
+		_arrow(Vector2(197, 125), Vector2(248, 125), COOL)
+		_arrow(Vector2(412, 115), Vector2(640, 115), WARM, "4 to 24 minutes each way")
+		draw_circle(Vector2(720, 125), 44, Color("#3D7BC8"))
+		draw_arc(Vector2(720, 125), 44, 0, TAU, 48, Color("#9CCBE0"), 2.0)
+		_text("Earth", Vector2(720, 130), 15, MHStyle.TEXT_PRIMARY)
+		_text("Blackout: about two weeks with no contact", Vector2(440, 225), 13, BAD)
 
 	func _research() -> void:
 		_node(Vector2(140, 120), "flask-conical", "Science Lab", COOL, 160)

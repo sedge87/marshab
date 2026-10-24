@@ -42,9 +42,10 @@ const PRESETS := {
 
 # One list of controls feeds the pause sheet and Settings → Controls.
 const CONTROLS := [
-	["Move", [[["W", "A", "S", "D"], "Walk"], [["Mouse"], "Look around"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["E"], "Context action"], [["F"], "Head lamp · no grid power"], [["Z"], "Sleep · at a crew bunk"], [["C"], "Crew screen"], [["Esc"], "Pause · free the mouse"]]],
-	["Build", [[["B"], "Build ⇄ Explore · room or site plan"], [["Shift", "B"], "Site plan ⇄ Interior"],[["LMB"], "Click or drag to place"], [["R"], "Rotate outside face"], [["RMB"], "Cancel placement"], [["X"], "Remove tool · full refund"], [["Ctrl", "Z"], "Undo last placement"]]],
-	["Camera & menus", [[["W", "A", "S", "D"], "Pan (build)"], [["Q", "E"], "Orbit (build)"], [["Wheel"], "Zoom (build)"], [["Tab"], "Catalogue"], [["M"], "Mission Control"]]]
+	["Explore", [[["W", "A", "S", "D"], "Walk"], [["Mouse"], "Look around"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["Ctrl"], "Crouch"], [["E"], "Use"], [["F"], "2nd action · lamp"], [["G"], "3rd · hold: GAR-Y"], [["I"], "What it does"], [["Z"], "Sleep at a bunk"], [["C"], "Crew screen"]]],
+	["Carry & drive", [[["E"], "Pick up · put down"], [["Hold", "E"], "Pick up (some items)"], [["Q"], "Put it back"], [["E"], "Rover: in · out"], [["W", "S"], "Drive · reverse"], [["A", "D"], "Steer"], [["Space"], "Brake"], [["F"], "Rover lights"], [["V"], "Rover view"]]],
+	["Build", [[["B"], "Build ⇄ Explore"], [["Shift", "B"], "Site plan ⇄ Interior"], [["LMB"], "Place · drag"], [["R"], "Rotate · hold"], [["V"], "Room shape"], [["RMB"], "Cancel"], [["X"], "Remove · refund"], [["Ctrl", "Z"], "Undo"], [["L"], "Plan key"]]],
+	["Camera & menus", [[["W", "A", "S", "D"], "Pan (build)"], [["Q", "E"], "Orbit (build)"], [["Wheel"], "Zoom (build)"], [["Tab"], "Catalogue"], [["M"], "Mission Control"], [["Esc"], "Pause"]]]
 ]
 
 # ---------- colony ----------

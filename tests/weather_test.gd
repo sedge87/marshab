@@ -81,9 +81,12 @@ func _initialize() -> void:
 	var pause := MHPauseMenu.new()
 	root.add_child(pause)
 	await process_frame
-	_check(not pause._controls_sheet.visible, "pause opens without the Controls sheet")
-	pause._toggle_controls()
-	_check(pause._controls_sheet.visible, "the Controls button opens it")
+	_check(not pause._panels.controls.visible and not pause._panels.saves.visible, "pause opens with its side panels closed")
+	pause._toggle_panel("controls")
+	_check(pause._panels.controls.visible, "the Controls button opens it")
+	pause._toggle_panel("saves")
+	_check(pause._panels.saves.visible and not pause._panels.controls.visible, "Save & load replaces it: one panel at a time")
+	_check(pause._slots.get_child_count() == MHGame.SAVE_SLOT_COUNT, "a card for every save slot")
 	pause.queue_free()
 	if failures == 0:
 		print("Weather test passed: forecast, storm, haze, effects switch, guitar, plush and the pause menu.")

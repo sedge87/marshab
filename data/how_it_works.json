@@ -321,8 +321,8 @@
       "lines": [
         "Mars has no magnetic field and thin air, so radiation from the Sun reaches the ground.",
         "Sometimes the Sun throws out a burst of radiation called a solar particle event. You get about half an hour's warning.",
-        "The crew hide in a storm shelter: a room with a storm shelter locker, inside a well-shielded habitat.",
-        "Shield points: the hull gives 5. Regolith and water panels on the outside walls and roof add more for the whole habitat, shared over all its floor. Aim for 20."
+        "The crew wait it out in a storm shelter: the room with the storm shelter locker.",
+        "Shield points: the hull gives 5. Shielding panels on the outside add more for the whole habitat, shared over all its floor. Aim for 20."
       ],
       "remember": "Every shielding panel on the outside protects the whole habitat.",
       "check": {
@@ -459,6 +459,167 @@
       ],
       "triggers": [
         "spare_parts_rack"
+      ]
+    },
+    {
+      "id": "building",
+      "title": "Building your base",
+      "icon": "hammer",
+      "picture": "building",
+      "lines": [
+        "Press B for the Site plan: draw rooms, corridors and airlocks on the ground, and place power and machines outside.",
+        "Inside a room, B opens Interior: furnish it in first person with the room's equipment. Shift+B swaps between the two.",
+        "Everything comes from Earth as cargo, so every room and item has a weight. X removes things and gives the cargo back.",
+        "A room only works when it has its equipment and power. The readiness panel says what's still missing."
+      ],
+      "remember": "Plan on the Site plan, then furnish each room from inside.",
+      "check": {
+        "question": "You've drawn a Life Support room. What makes it actually work?",
+        "options": [
+          "Furnishing it with its machines, and power",
+          "Making it bigger",
+          "Giving it a window"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "cargo_power_water"
+      ],
+      "triggers": []
+    },
+    {
+      "id": "carrying",
+      "title": "Carrying things",
+      "icon": "package",
+      "picture": "carrying",
+      "lines": [
+        "Small things like mugs, books, plants and toys can be picked up: look at one and press E (or hold E if it has its own action).",
+        "A ghost shows where it will go. Green fits. Click or press E to put it down, on the floor, a table, a shelf or a bunk.",
+        "Q puts it back where it came from. Saving or opening a build view puts it back too, so nothing gets lost."
+      ],
+      "remember": "E picks up and puts down. Q puts it back.",
+      "check": {
+        "question": "You picked up a plant but changed your mind. What's quickest?",
+        "options": [
+          "Press Q to put it back",
+          "Drop it outside",
+          "Remove it with X"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "cargo_habitat"
+      ],
+      "triggers": []
+    },
+    {
+      "id": "shielding",
+      "title": "Shielding and quiet walls",
+      "icon": "shield",
+      "picture": "shielding",
+      "lines": [
+        "Radiation shielding goes on the outside of the habitat: regolith or water on the walls, and regolith on the roofs.",
+        "Every panel protects the whole habitat, wherever it goes. A bigger base needs more panels for the same protection.",
+        "Add it from the Site plan (Structure tab), or from inside by aiming at a wall or the ceiling.",
+        "Sound insulation is different: one panel on the wall between two rooms stops a noisy room keeping the crew awake."
+      ],
+      "remember": "Shielding protects everyone. Insulation keeps the bunks quiet.",
+      "check": {
+        "question": "You add regolith to the galley's outside wall. Who does it protect?",
+        "options": [
+          "Everyone in the habitat",
+          "Only people in the galley",
+          "Nobody until the roof is done"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "solar_shelter",
+        "crew_people"
+      ],
+      "triggers": []
+    },
+    {
+      "id": "rover",
+      "title": "The crew rover",
+      "icon": "truck",
+      "picture": "rover",
+      "lines": [
+        "Build a vehicle bay and the crew rover is waiting inside, facing the hangar door.",
+        "Look at it and press E to drive. The hangar door opens as you drive up to it, and shuts behind you.",
+        "Its battery lasts about 4 km. Park it back in the bay to charge it.",
+        "W and S drive, A and D steer, Space brakes, F turns on the lights, V changes the view, E gets out."
+      ],
+      "remember": "The rover goes further than you can walk, but it has to come home to charge.",
+      "check": {
+        "question": "The rover's battery is getting low. What should you do?",
+        "options": [
+          "Drive it back into the vehicle bay",
+          "Park it in the sun",
+          "Leave it and walk"
+        ],
+        "answer": 0
+      },
+      "missions": [],
+      "triggers": [
+        "vehicle_bay"
+      ]
+    },
+    {
+      "id": "dust",
+      "title": "Dust, frost and the weather",
+      "icon": "sun",
+      "picture": "dust",
+      "lines": [
+        "Mars dust settles on solar panels, windows and the hull, and dusty panels make less power.",
+        "Look at a solar array and press E to brush it clean. Dust devils and gusts sometimes clean them for free.",
+        "On cold sites, frost covers the panels at dawn and melts away as the Sun climbs.",
+        "Each site has its own weather: canyon cloud, ice fog, dust devils and storms."
+      ],
+      "remember": "Clean panels make more power. Check them after a storm.",
+      "check": {
+        "question": "Your solar power has dropped after a dust storm. Why?",
+        "options": [
+          "Dust is covering the panels",
+          "The batteries are too full",
+          "It's night on Earth"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "storm_season"
+      ],
+      "triggers": []
+    },
+    {
+      "id": "earth",
+      "title": "Contact with Earth",
+      "icon": "satellite",
+      "picture": "earth",
+      "lines": [
+        "Messages from Mission Control and the crew's families keep everyone going. Contact with Earth is one of the crew's needs.",
+        "It needs a communications station in Mission Operations, and the powered communications mast outside.",
+        "Radio takes 4 to 24 minutes to cross from Earth, so every answer arrives a while after the question.",
+        "When the Sun is between Mars and Earth there's no contact at all, for about two weeks: a blackout."
+      ],
+      "remember": "A station inside, a mast outside, and patience for the delay.",
+      "check": {
+        "question": "Why does a message from Earth take minutes to arrive?",
+        "options": [
+          "Radio takes time to cross the distance",
+          "The mast is too small",
+          "Mission Control is busy"
+        ],
+        "answer": 0
+      },
+      "missions": [
+        "crew_land",
+        "crew_people",
+        "long_silence"
+      ],
+      "triggers": [
+        "comms_antenna",
+        "communications_station"
       ]
     }
   ]
