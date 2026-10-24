@@ -4891,5 +4891,440 @@
         ]
       }
     ]
+  },
+  "desk_lamp": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "light",
+        "emitter": [
+          "bulb_lamp"
+        ],
+        "aim": [
+          0,
+          -1,
+          -0.3
+        ],
+        "energy": 3.0,
+        "range": 1.6,
+        "angle": 45,
+        "powered": true,
+        "label_on": "Lamp off",
+        "label_off": "Lamp on",
+        "state": "light",
+        "colour": "#FFC98A"
+      }
+    ]
+  },
+  "herb_pot": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "workout",
+        "seconds": 0.8,
+        "reps": 1,
+        "moves": [
+          {
+            "parts": [
+              "leaves_leaf",
+              "stems_leaf"
+            ],
+            "scale": [
+              1.04,
+              1.06,
+              1.04
+            ],
+            "anchor": [
+              "center",
+              "min",
+              "center"
+            ]
+          }
+        ],
+        "label": "Water the herbs",
+        "note": "Basil and mint grow well under the habitat lights. A few fresh leaves make a ration meal taste like home."
+      }
+    ]
+  },
+  "plant_pot": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "workout",
+        "seconds": 0.8,
+        "reps": 1,
+        "moves": [],
+        "label": "Water the plant",
+        "note": "Looking after something alive helps on a long mission. ISS crews grew zinnias and lettuce, and said tending them was one of the best parts of the day."
+      }
+    ]
+  },
+  "water_bottle": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "workout",
+        "seconds": 0.7,
+        "reps": 1,
+        "moves": [
+          {
+            "parts": [
+              "bottle",
+              "cap",
+              "label",
+              "loop",
+              "water_level_cool"
+            ],
+            "offset": [
+              0,
+              0.06,
+              0
+            ]
+          }
+        ],
+        "label": "Have a drink",
+        "note": "Every drop is recycled: from the air, from washing, even from urine. Each person needs two to three litres a day."
+      }
+    ]
+  },
+  "chess_set": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Make a move",
+        "observations": [
+          [
+            "Your move",
+            "You push a pawn two squares. This game has been going for three sols."
+          ],
+          [
+            "Their move",
+            "Someone has moved a knight since this morning. The crew play one move each, whenever they pass."
+          ],
+          [
+            "Space chess",
+            "In 2008 an ISS astronaut played chess against Mission Control, one move per orbit. On Mars a move to Earth takes up to 20 minutes each way."
+          ]
+        ]
+      }
+    ]
+  },
+  "paper_books": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read a page",
+        "observations": [
+          [
+            "A field guide",
+            "A dog-eared guide to Mars rocks: basalt, sandstone, clay. Someone has pencilled notes about the ridge in the margins."
+          ],
+          [
+            "A paperback from home",
+            "A worn novel from Earth. Every crew member has read it now; the cover is held on with tape."
+          ],
+          [
+            "The habitat manual",
+            "Chapter 4: what to do in a pressure leak. Close the hatches, find the hiss, fix it with the patch kit."
+          ]
+        ]
+      }
+    ]
+  },
+  "photo_frame": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Look at the photo",
+        "observations": [
+          [
+            "Home",
+            "A family on a beach, waving at the camera. From Mars, Earth is a bright blue star in the evening sky."
+          ]
+        ]
+      }
+    ]
+  },
+  "crew_tablet": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read messages",
+        "observations": [
+          [
+            "From Mission Control",
+            "Good work on the ice survey. Weather team says a quiet week ahead. Keep an eye on the dust levels."
+          ],
+          [
+            "From home",
+            "Everyone says hi. The dog still waits by the door. We watched your landing again last night."
+          ],
+          [
+            "Reminder",
+            "Exercise: 2 hours today. Fitness slips quickly in Mars gravity, about a third of Earth's."
+          ]
+        ]
+      }
+    ]
+  },
+  "crew_laptop": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Check the sol report",
+        "observations": [
+          [
+            "Sol report",
+            "Power, air, water and food all in the green. One filter is due for cleaning. Morale: good."
+          ],
+          [
+            "Science log",
+            "Three cores analysed. One has water ice at 40 cm depth. Sent to Earth on the next uplink."
+          ]
+        ]
+      }
+    ]
+  },
+  "sample_jars": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Look at the samples",
+        "observations": [
+          [
+            "Core samples",
+            "Labelled jars of regolith from the survey flags. The red comes from iron oxide: rust, the same as on Earth."
+          ],
+          [
+            "Perchlorate",
+            "Mars soil is laced with perchlorate salts, which are toxic, so dust must stay out of the habitat."
+          ]
+        ]
+      }
+    ]
+  },
+  "toolbox": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Check the tools",
+        "observations": [
+          [
+            "Toolbox",
+            "Torque wrench, hex keys, crimpers, cable ties and tape. Tools are tethered outside so nothing drifts in the wind."
+          ]
+        ]
+      }
+    ]
+  },
+  "ration_packs": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Read the label",
+        "observations": [
+          [
+            "Ration pack",
+            "Rehydratable chicken and rice, 450 kcal. Add 150 ml of hot water and wait five minutes. Best before: three years from launch."
+          ]
+        ]
+      }
+    ]
+  },
+  "crew_mug": {
+    "actions": [
+      {
+        "key": "secondary",
+        "type": "inspect",
+        "label": "Look at the mug",
+        "observations": [
+          [
+            "A crew mug",
+            "Printed with the mission patch. On Mars a mug works fine: the gravity is enough for coffee to stay put."
+          ]
+        ]
+      }
+    ]
+  },
+  "retro_mars_poster": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Look at the poster",
+        "observations": [
+          [
+            "A home beyond Earth",
+            "A retro travel poster of a little base under a starry sky. Someone has drawn a tiny GAR-Y in the corner."
+          ]
+        ]
+      }
+    ]
+  },
+  "iv_drip_stand": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Check the drip",
+        "observations": [
+          [
+            "IV fluids",
+            "Saline, for treating dehydration or an injury. Fluids from the habitat's own water are cleaned to medical grade first."
+          ]
+        ]
+      }
+    ]
+  },
+  "crew_vitals_monitor": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Read the vitals",
+        "observations": [
+          [
+            "Vital signs",
+            "Heart rate, blood pressure, oxygen saturation and temperature. A weekly check catches problems early, when they're easy to treat."
+          ],
+          [
+            "Radiation dose",
+            "Each crew member wears a dosimeter. The dose is logged here after every solar event."
+          ]
+        ]
+      }
+    ]
+  },
+  "surgery_cart": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Check the kit",
+        "observations": [
+          [
+            "Surgical kit",
+            "Sterile instruments, sutures and dressings. With Earth months away, the crew must handle emergencies themselves."
+          ]
+        ]
+      }
+    ]
+  },
+  "recycling_hopper_plastics": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Check the plastics",
+        "observations": [
+          [
+            "Plastics",
+            "Clean packaging is shredded and melted into binder for the regolith printer. On Mars nothing is thrown away."
+          ]
+        ]
+      }
+    ]
+  },
+  "recycling_hopper_metals": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Check the metals",
+        "observations": [
+          [
+            "Metals",
+            "Old cans, broken brackets and offcuts. Sorted and kept for repairs and spare parts."
+          ]
+        ]
+      }
+    ]
+  },
+  "compost_hopper": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Check the compost",
+        "observations": [
+          [
+            "Compost",
+            "Food scraps and inedible plant parts break down into fertiliser for hydroponics, closing the food loop."
+          ]
+        ]
+      }
+    ]
+  },
+  "galley_table_set": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Sit for a meal",
+        "observations": [
+          [
+            "Mealtime",
+            "Eating together is one of the most important parts of the day on a long mission. Crews on Antarctic bases and the ISS say the same."
+          ]
+        ]
+      }
+    ]
+  },
+  "airlock_control_panel": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Read the airlock panel",
+        "observations": [
+          [
+            "Cycling the airlock",
+            "Close one door before the other opens. The pumps take the air out before the outer door opens, and put it back before the inner one does."
+          ],
+          [
+            "Interlock",
+            "The two doors can never be open together, so the habitat never loses its air."
+          ]
+        ]
+      }
+    ]
+  },
+  "suit_service_panel": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Check the suits",
+        "observations": [
+          [
+            "Suit check",
+            "Oxygen full, battery charged, seals tight, visor clean. Check everything before every walk outside."
+          ]
+        ]
+      }
+    ]
+  },
+  "dust_grate": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Look at the grate",
+        "observations": [
+          [
+            "Dust grate",
+            "Stamp your boots here. Mars dust is fine, sharp and gets everywhere, and it wears seals and scratches visors."
+          ]
+        ]
+      }
+    ]
   }
 }
