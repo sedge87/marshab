@@ -1,0 +1,35 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://Outpost_One_Rover/scenes/PressurisedRover.tscn" id="1_rover"]
+
+[sub_resource type="BoxMesh" id="FloorMesh"]
+size = Vector3(80, 0.5, 80)
+
+[sub_resource type="BoxShape3D" id="FloorShape"]
+size = Vector3(80, 0.5, 80)
+
+[sub_resource type="StandardMaterial3D" id="MarsSurface"]
+albedo_color = Color(0.49, 0.275, 0.19, 1)
+roughness = 1.0
+
+[node name="RoverDemo" type="Node3D"]
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-46, -30, 0)
+light_energy = 1.55
+shadow_enabled = true
+
+[node name="Environment" type="WorldEnvironment" parent="."]
+environment = null
+
+[node name="MarsFloor" type="StaticBody3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="MarsFloor"]
+mesh = SubResource("FloorMesh")
+surface_material_override/0 = SubResource("MarsSurface")
+
+[node name="Collision" type="CollisionShape3D" parent="MarsFloor"]
+shape = SubResource("FloorShape")
+
+[node name="EVA6Rover" parent="." instance=ExtResource("1_rover")]
+position = Vector3(0, 0.9, 0)

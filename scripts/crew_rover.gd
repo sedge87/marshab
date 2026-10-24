@@ -1,14 +1,21 @@
 extends CharacterBody3D
 
-## The crew rover: a small pressurised six-wheeler you can drive (model:
-## asset_packs/mars_crew_rover_v1). It lives in the vehicle bay: it appears
+## The crew rover: the EVA-6, a small pressurised six-wheeler you can drive
+## (model: asset_packs/mars_eva6_rover_v1, fitted from the user's design on
+## 25 Oct; the first model is in mars_crew_rover_v1). It lives in the vehicle
+## bay: it appears
 ## there when the base has one, charges while it's parked inside, and opens
 ## the bay's hangar door as you drive up to it (shutting it again once you're
 ## through), through the bay's interlock.
 ##
 ## Look at it and press E to get in. Driving: W/S throttle and reverse,
 ## A/D steer, Space brake, F headlights, V cab or chase view, mouse to look,
-## E to get out (on the driver's side, or wherever there's room).
+## E to get out (on the driver's side, or wherever there's room), R to
+## recover it if it's wedged against something.
+##
+## From the EVA-6 design: the roof solar panel trickle-charges the battery in
+## daylight (so a flat rover is never stranded for good), and the tail lights
+## glow red when braking or reversing.
 ##
 ## Arcade handling on a bicycle model; the body follows the ground with four
 ## rays (pitch, roll and height, like suspension), and its collision box sits
@@ -25,13 +32,14 @@ const BRAKE := 6.5
 const COAST := 0.9
 const STEER_MAX := 0.52         # rad, front wheels; the rear pair steers half as much the other way
 const WHEELBASE := 2.9
-const WHEEL_R := 0.42
-const HALF_TRACK := 0.95
-const HALF_BASE := 1.45
+const WHEEL_R := 0.366
+const HALF_TRACK := 0.99
+const HALF_BASE := 1.29
 const DRAIN_PER_M := 1.0 / 40.0 # battery % per metre driven (about 4 km a charge)
 const CHARGE_PER_S := 1.5       # % a second, parked in the vehicle bay
-const SEAT := Vector3(-0.45, 1.75, -0.5)     # the driver's seat, in the rover's space (front is -Z)
-const CAB_VIEW := Vector3(0.0, 1.95, -1.7)   # V: the view over the nose (the cab itself is closed)
+const SOLAR_PER_S := 0.05       # % a second from the roof panel in full sun (3% a minute)
+const SEAT := Vector3(-0.4, 1.5, -0.7)       # the driver's seat, in the rover's space (front is -Z)
+const CAB_VIEW := Vector3(0.0, 1.45, -1.42)   # V: the view over the nose (the cab itself is closed)
 const CHASE_DISTANCE := 7.5
 const CHASE_HEIGHT := 2.6
 
@@ -58,6 +66,9 @@ var _readout: Label
 var _hangar: Node = null        # the hangar door this rover opened
 var _player_layers := Vector2i.ZERO
 var _was_charging := false
+var _tail_lights: Array[MeshInstance3D] = []
+var _tail_glow: StandardMaterial3D
+var _braking := false
 
 func setup(target_builder: Node) -> void:
 	builder = target_builder
@@ -70,9 +81,9 @@ func _ready() -> void:
 	collision_mask = 1
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(2.3, 1.75, 4.3)
+	box.size = Vector3(2.25, 1.5, 4.05)
 	shape.shape = box
-	shape.position = Vector3(0, 0.55 + box.size.y * .5, 0)
+	shape.position = Vector3(0, 0.45 + box.size.y * .5, 0)
 	add_child(shape)
 	var scene := load(MODEL_PATH) as PackedScene
 	_model = Node3D.new()
@@ -84,6 +95,12 @@ func _ready() -> void:
 		MHPalette.apply(visual)
 		for node in visual.find_children("wheel_*", "Node3D", true, false):
 			_wheels[str(node.name).substr(6, 2)] = node
+		_tail_lights.assign(visual.find_children("tail_light_red*", "MeshInstance3D", true, false))
+		_tail_glow = StandardMaterial3D.new()
+		_tail_glow.albedo_color = Color("#E5484D")
+		_tail_glow.emission_enabled = true
+		_tail_glow.emission = Color("#FF3B30")
+		_tail_glow.emission_energy_multiplier = 2.5
 	_build_lights()
 	_build_dust()
 	_build_motor()
@@ -192,7 +209,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_V:
 				first_person = not first_person
-				_look = Vector2(0.0, -0.05 if first_person else -0.22)
+				_look = Vector2(0.0, -0.2 if first_person else -0.22)
+				get_viewport().set_input_as_handled()
+			KEY_R:
+				_recover()
 				get_viewport().set_input_as_handled()
 			KEY_B:
 				get_viewport().set_input_as_handled()   # no building from the driver's seat
@@ -208,6 +228,7 @@ func _physics_process(delta: float) -> void:
 		steer_in = _axis(KEY_A, "move_left") - _axis(KEY_D, "move_right")
 		braking = Input.is_key_pressed(KEY_SPACE)
 	var top := MAX_SPEED if battery > 0.0 else LIMP_SPEED
+	_set_braking(braking or (throttle < 0.0 and speed < 0.05))
 	if braking:
 		speed = move_toward(speed, 0.0, BRAKE * delta)
 	elif throttle > 0.0:
@@ -296,8 +317,29 @@ func _battery(delta: float, moved: float) -> void:
 	battery = maxf(0.0, battery - moved * DRAIN_PER_M)
 	var charging := _in_bay() and absf(speed) < 0.1
 	if charging: battery = minf(100.0, battery + CHARGE_PER_S * delta)
+	# The roof panel, in daylight, wherever it is outside.
+	elif not _in_bay(): battery = minf(100.0, battery + SOLAR_PER_S * clampf(MHGame.sunlight_fraction, 0.0, 1.0) * delta)
 	if charging and not _was_charging and driving and battery < 99.0: MHAudio.sfx("ui_confirm", -8.0)
 	_was_charging = charging
+
+## Tail lights glow while braking or reversing.
+func _set_braking(on: bool) -> void:
+	if on == _braking: return
+	_braking = on
+	for light in _tail_lights: light.material_override = _tail_glow if on else null
+
+## R: wedged against something? Back it off a couple of metres onto open ground.
+func _recover() -> void:
+	if absf(speed) > 1.0: return
+	var back := Vector3(sin(rotation.y), 0.0, cos(rotation.y))
+	for distance in [2.5, -2.5, 4.0]:
+		var test := global_transform.translated(back * distance)
+		if not test_move(test, Vector3.ZERO):
+			global_position += back * distance
+			speed = 0.0
+			MHAudio.sfx("place", -6.0)
+			return
+	MHAudio.sfx("invalid")
 
 func _in_bay() -> bool:
 	if builder == null: return false
@@ -350,9 +392,10 @@ func _place_camera(delta: float) -> void:
 # ---------- lights, dust, sound ----------
 
 func _build_lights() -> void:
-	for x in [-0.72, 0.72]:
+	# The EVA-6's two forward searchlights, and a roof light over the cab.
+	for x in [-0.66, 0.66]:
 		var lamp := SpotLight3D.new()
-		lamp.position = Vector3(x, 1.2, -2.1)
+		lamp.position = Vector3(x, 0.88, -2.05)
 		lamp.rotation.x = deg_to_rad(-8)
 		lamp.spot_range = 28.0
 		lamp.spot_angle = 32.0
@@ -362,7 +405,7 @@ func _build_lights() -> void:
 		_model.add_child(lamp)
 		_lights.append(lamp)
 	var bar := SpotLight3D.new()
-	bar.position = Vector3(0, 2.28, -1.4)
+	bar.position = Vector3(0, 2.2, -1.0)
 	bar.rotation.x = deg_to_rad(-20)
 	bar.spot_range = 22.0
 	bar.spot_angle = 50.0
@@ -450,12 +493,13 @@ func _show_hud(on: bool) -> void:
 		column.add_child(MHStyle.eyebrow("CREW ROVER"))
 		_readout = MHStyle.mono("", 18)
 		column.add_child(_readout)
-		_hud.add_child(MHStyle.hint_strip([[["W", "S"], "Drive"], [["A", "D"], "Steer"], [["Space"], "Brake"], [["F"], "Lights"], [["V"], "View"], [["E"], "Get out", "accent"]]))
+		_hud.add_child(MHStyle.hint_strip([[["W", "S"], "Drive"], [["A", "D"], "Steer"], [["Space"], "Brake"], [["F"], "Lights"], [["V"], "View"], [["R"], "Recover"], [["E"], "Get out", "accent"]]))
 	if _hud != null: _hud.visible = on
 
 func _update_hud() -> void:
 	if _readout == null: return
-	var state := "charging" if _was_charging else ("FLAT: limping home" if battery <= 0.0 else ("lights on" if lights_on else ""))
+	var solar := not _was_charging and MHGame.sunlight_fraction > 0.1 and battery < 100.0
+	var state := "charging" if _was_charging else ("FLAT: limping home on solar" if battery <= 1.0 else ("solar topping up" if solar and absf(speed) < 0.1 else ("lights on" if lights_on else "")))
 	_readout.text = "%3d km/h   ·   battery %d%%%s" % [roundi(absf(speed) * 3.6), roundi(battery), "   ·   " + state if not state.is_empty() else ""]
 	_readout.modulate = MHStyle.DANGER if battery < 15.0 else MHStyle.TEXT_PRIMARY
 

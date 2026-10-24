@@ -547,8 +547,8 @@
       "lines": [
         "Build a vehicle bay and the crew rover is waiting inside, facing the hangar door.",
         "Look at it and press E to drive. The hangar door opens as you drive up to it, and shuts behind you.",
-        "Its battery lasts about 4 km. Park it back in the bay to charge it.",
-        "W and S drive, A and D steer, Space brakes, F turns on the lights, V changes the view, E gets out."
+        "Its battery lasts about 4 km. Park it back in the bay to charge it. In daylight its roof panel slowly tops it up, so a flat rover is never stuck for good.",
+        "W and S drive, A and D steer, Space brakes, F turns on the lights, V changes the view, R frees it if it's wedged, E gets out."
       ],
       "remember": "The rover goes further than you can walk, but it has to come home to charge.",
       "check": {

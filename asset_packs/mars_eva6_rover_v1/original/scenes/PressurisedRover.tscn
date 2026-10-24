@@ -1,0 +1,144 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://Outpost_One_Rover/scripts/rover_controller.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://Outpost_One_Rover/models/rover_chassis.glb" id="2_body"]
+[ext_resource type="PackedScene" path="res://Outpost_One_Rover/models/rover_wheel.glb" id="3_wheel"]
+
+[sub_resource type="BoxShape3D" id="CollisionShape3D_body"]
+size = Vector3(2.57, 1.56, 5.95)
+
+[sub_resource type="StyleBoxFlat" id="HUDPanel"]
+bg_color = Color(0.035, 0.065, 0.083, 0.82)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_left = 9
+corner_radius_bottom_right = 9
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+
+[node name="PressurisedRover" type="VehicleBody3D"]
+mass = 3200.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, 1.35, 0)
+script = ExtResource("1_script")
+
+[node name="BodyCollision" type="CollisionShape3D" parent="."]
+position = Vector3(0, 2.12, -0.12)
+shape = SubResource("CollisionShape3D_body")
+
+[node name="RoverBody" parent="." instance=ExtResource("2_body")]
+
+[node name="WheelFL" type="VehicleWheel3D" parent="."]
+position = Vector3(-1.57, 1.20, -2.09)
+use_as_steering = true
+use_as_traction = true
+wheel_radius = 0.59
+wheel_rest_length = 0.37
+suspension_travel = 0.28
+suspension_stiffness = 26.0
+suspension_max_force = 12000.0
+damping_compression = 2.5
+damping_relaxation = 2.8
+wheel_friction_slip = 3.5
+
+[node name="Mesh" parent="WheelFL" instance=ExtResource("3_wheel")]
+
+[node name="WheelFR" type="VehicleWheel3D" parent="."]
+position = Vector3(1.57, 1.20, -2.09)
+use_as_steering = true
+use_as_traction = true
+wheel_radius = 0.59
+wheel_rest_length = 0.37
+suspension_travel = 0.28
+suspension_stiffness = 26.0
+suspension_max_force = 12000.0
+damping_compression = 2.5
+damping_relaxation = 2.8
+wheel_friction_slip = 3.5
+
+[node name="Mesh" parent="WheelFR" instance=ExtResource("3_wheel")]
+
+[node name="WheelML" type="VehicleWheel3D" parent="."]
+position = Vector3(-1.57, 1.20, 0)
+use_as_traction = true
+wheel_radius = 0.59
+wheel_rest_length = 0.37
+suspension_travel = 0.28
+suspension_stiffness = 26.0
+suspension_max_force = 12000.0
+damping_compression = 2.5
+damping_relaxation = 2.8
+wheel_friction_slip = 3.5
+
+[node name="Mesh" parent="WheelML" instance=ExtResource("3_wheel")]
+
+[node name="WheelMR" type="VehicleWheel3D" parent="."]
+position = Vector3(1.57, 1.20, 0)
+use_as_traction = true
+wheel_radius = 0.59
+wheel_rest_length = 0.37
+suspension_travel = 0.28
+suspension_stiffness = 26.0
+suspension_max_force = 12000.0
+damping_compression = 2.5
+damping_relaxation = 2.8
+wheel_friction_slip = 3.5
+
+[node name="Mesh" parent="WheelMR" instance=ExtResource("3_wheel")]
+
+[node name="WheelRL" type="VehicleWheel3D" parent="."]
+position = Vector3(-1.57, 1.20, 2.09)
+use_as_traction = true
+wheel_radius = 0.59
+wheel_rest_length = 0.37
+suspension_travel = 0.28
+suspension_stiffness = 26.0
+suspension_max_force = 12000.0
+damping_compression = 2.5
+damping_relaxation = 2.8
+wheel_friction_slip = 3.5
+
+[node name="Mesh" parent="WheelRL" instance=ExtResource("3_wheel")]
+
+[node name="WheelRR" type="VehicleWheel3D" parent="."]
+position = Vector3(1.57, 1.20, 2.09)
+use_as_traction = true
+wheel_radius = 0.59
+wheel_rest_length = 0.37
+suspension_travel = 0.28
+suspension_stiffness = 26.0
+suspension_max_force = 12000.0
+damping_compression = 2.5
+damping_relaxation = 2.8
+wheel_friction_slip = 3.5
+
+[node name="Mesh" parent="WheelRR" instance=ExtResource("3_wheel")]
+
+[node name="ChaseCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.93358, 0.35836, 0, -0.35836, 0.93358, 0, 5.8, 11.5)
+fov = 66.0
+
+[node name="CockpitCamera" type="Camera3D" parent="."]
+position = Vector3(0, 2.73, -1.16)
+fov = 77.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="PanelContainer" parent="HUD"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 565.0
+offset_bottom = 84.0
+theme_override_styles/panel = SubResource("HUDPanel")
+
+[node name="VBox" type="VBoxContainer" parent="HUD/Panel"]
+
+[node name="Speed" type="Label" parent="HUD/Panel/VBox"]
+theme_override_font_sizes/font_size = 23
+text = "00 km/h"
+
+[node name="Info" type="Label" parent="HUD/Panel/VBox"]
+theme_override_font_sizes/font_size = 11
+text = "OUTPOST ONE  |  W A S D  •  SPACE BRAKE  •  C CAMERA"
