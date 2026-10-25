@@ -5037,6 +5037,18 @@ func _undo() -> void:
 			var entry:=EquipmentCatalog.get_entry(str(step.id))
 			_flash_notice("info","Undone","%s removed · +%s cargo returned." % [entry.get("label",step.id),MHStyle.kg(int(entry.get("cargo_cost",0)))])
 			return
+		if step.type=="partition":
+			# Drawn in Interior mode, undone here too, in order.
+			var panel:=partition_index(step.segment)
+			if panel<0: continue
+			if step.has("was_door"):   # a changed panel goes back
+				partitions[panel].door=bool(step.was_door)
+				partitions[panel].glass=bool(step.get("was_glass",false))
+			else: partitions.remove_at(panel)   # a new panel is removed
+			_rebuild()
+			_flash_notice("info","Undone","Partition change undone.")
+			return
+		if not step.has("zone"): continue   # nothing this undo knows how to take back
 		var index:=zones.find(step.zone)
 		if index<0: continue
 		_undo_zone(index)
