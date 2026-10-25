@@ -428,13 +428,14 @@
           "type": "storm",
           "sol": 2,
           "sols": 7,
-          "solar_cut": 0.9
+          "solar_cut": 0.9,
+          "load_kw": 3.0
         }
       ],
       "previous_line": "The crew are settled in",
       "situation": "Dust storm season has arrived, and this one is planet-wide, like the 2018 storm that ended the Opportunity rover's mission. Mission Control forecasts seven sols of dust so thick it blocks nine-tenths of the sunlight: the solar arrays will make almost nothing. Life support must stay on the whole time, even if other things have to switch off.",
       "brief": "A seven-sol, planet-wide dust storm is coming. Solar power will drop to a tenth.",
-      "goal": "Keep life support powered and the habitat warm all the way through the storm, and keep the crew's health above 80%. This landing brings one compact nuclear reactor: it helps, but it can't carry the base on its own.",
+      "goal": "Keep life support powered and the habitat warm all the way through the storm, and keep the crew's health above 80%. This landing brings one compact nuclear reactor: it helps, but in a big storm the dust filters and frozen outside kit need extra power, so it can't carry the base on its own.",
       "unlock_items": [
         "power_distribution_panel"
       ],
@@ -442,7 +443,7 @@
         {
           "id": "reactor",
           "text": "Install the compact reactor",
-          "how": "It arrived on this landing. Site plan, Power tab: 8 kW day and night, storm or not, like NASA's Kilopower. That's less than the base uses, so it can't do it alone: you'll need batteries charged before the storm too.",
+          "how": "It arrived on this landing. Site plan, Power tab: 8 kW day and night, storm or not, like NASA's Kilopower. In the storm the base needs more than that, so it can't do it alone: you'll need batteries charged before the storm too.",
           "check": "zone",
           "kind": "reactor"
         },
@@ -487,6 +488,7 @@
       ],
       "hints": [
         "In a storm, power is shared by priority: life support first, then heating, lights, and last labs and drills.",
+        "A big storm adds work: fine dust clogs the air filters and outside kit needs heating, so life support uses about 3 kW more until it ends.",
         "Work out what life support needs: the power used line during the storm, times five sols. That's how much stored or steady power you need.",
         "A reactor runs day and night, storm or not. It's heavy, but you have this landing's payload.",
         "Batteries only help if there's spare power to charge them before the storm. Dimming empty rooms saves power too.",

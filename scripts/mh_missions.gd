@@ -414,7 +414,7 @@ static func _simulate(builder: Node, mission: Dictionary, future: int, breach_ro
 	var timed: Array = []   # [hours, type, event]
 	for event in mission.get("events", []):
 		match str(event.type):
-			"storm": storms.append({"start": (_pick(event.sol, future) - 1.0) * 24.0, "hours": float(event.sols) * 24.0, "cut": float(event.get("solar_cut", -1.0))})
+			"storm": storms.append({"start": (_pick(event.sol, future) - 1.0) * 24.0, "hours": float(event.sols) * 24.0, "cut": float(event.get("solar_cut", -1.0)), "load_kw": float(event.get("load_kw", 0.0))})
 			_:
 				var at := (_pick(event.get("sol", 1), future) - 1.0) * 24.0 + _pick(event.get("hour", start_hour), future) - start_hour
 				timed.append([maxf(0.0, at), str(event.type), event])
@@ -439,7 +439,7 @@ static func _simulate(builder: Node, mission: Dictionary, future: int, breach_ro
 			if str(event[1]) == "breach": end_hours = minf(end_hours, float(event[0]) + 8.0)
 	while hours < end_hours - .001:
 		for storm in storms:
-			if absf(hours - float(storm.start)) < .001: sim.start_storm(float(storm.hours) / 24.0, float(storm.get("cut", -1.0)))
+			if absf(hours - float(storm.start)) < .001: sim.start_storm(float(storm.hours) / 24.0, float(storm.get("cut", -1.0)), float(storm.get("load_kw", 0.0)))
 		for event in timed:
 			if hours + .0001 < float(event[0]) or hours >= float(event[0]) + step - .0001: continue
 			var spec: Dictionary = event[2]

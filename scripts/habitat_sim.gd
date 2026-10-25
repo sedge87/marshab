@@ -64,6 +64,9 @@ var storm_hours_left := 0.0
 ## How much sunlight this storm blocks (0-1); -1 uses the site's usual storm.
 ## Mission 5's planet-wide storm blocks far more than a regional one.
 var storm_cut := -1.0
+## Extra life-support load during the current storm (kW): fine dust clogs
+## the air filters and outside kit needs heating to keep working.
+var storm_load_kw := 0.0
 ## Hours until a forecast storm arrives (-1: none forecast). Orbiters map
 ## Mars weather every sol, so storms come with a warning.
 var storm_eta_hours := -1.0
@@ -361,10 +364,11 @@ func run_hours(hours: float, start_hour: float, sample_every := 1.0) -> Array:
 			samples.append(snapshot(hour))
 	return samples
 
-func start_storm(sols := -1.0, cut := -1.0) -> void:
+func start_storm(sols := -1.0, cut := -1.0, load_kw := 0.0) -> void:
 	var length := sols if sols > 0.0 else float(MHResources.site(MHGame.site_id).get("storm_sols", 3.0))
 	storm_hours_left = length * 24.0
 	storm_cut = cut
+	storm_load_kw = load_kw
 
 ## The share of sunlight the current storm blocks (0 when there's no storm).
 func solar_cut() -> float:
@@ -423,7 +427,7 @@ func step(dt: float, hour: float) -> void:
 		if item.id == "thermal_control_unit" and item.on: tcu_kw += float(item.heat_kw)
 	var heat := _heat_coverage(rooms, working, people, room_base_kw, room_light_kw, {1: true, 2: true, 3: true, 4: true}, loss, tcu_kw)
 	# --- power ---
-	var tiers := {1: 0.0, 2: heat.electric_kw, 3: 0.0, 4: 0.0}
+	var tiers := {1: storm_load_kw if storm_hours_left > 0.0 else 0.0, 2: heat.electric_kw, 3: 0.0, 4: 0.0}
 	for index in range(rooms.size()):
 		tiers[TIER_LIFE] += room_base_kw[index]
 		tiers[TIER_LIGHT] += room_light_kw[index]

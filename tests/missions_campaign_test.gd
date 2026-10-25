@@ -92,7 +92,8 @@ func _initialize() -> void:
 	b.kind = "reactor"
 	var second_reactor := str(b._invalid_reason([c + Vector2i(-4, 6)]))
 	_check(second_reactor.contains("only 1 reactor"), "Mission 5 allows just the one reactor (%s)" % second_reactor)
-	# The reactor (5 kW) plus storage charged before the storm gets through.
+	# The reactor (8 kW) plus storage charged before the storm gets through,
+	# even with the storm's extra 3 kW of filtering and heating outside kit.
 	_item(b, "battery_bank", c, 0, 1, 8)
 	b._rebuild()
 	b.simulation().invalidate()
@@ -100,7 +101,8 @@ func _initialize() -> void:
 	if verbose or not bool(m5.passed): print("  Mission 5 (with a reactor):\n    " + _report(m5))
 	_check(bool(m5.passed), "a reactor and well-stocked batteries carry the base through Mission 5's storm")
 	# But a reactor alone isn't enough (24 Oct playtest: 4 panels and a reactor
-	# passed): with 4 arrays and one battery bank it fails.
+	# passed; 25 Oct the reactor went to 8 kW and the storm got its extra
+	# load): with 4 arrays and one battery bank it fails.
 	var keep_zones: Array = b.zones.duplicate(true)
 	var keep_items: Array = b.placed_interior.duplicate(true)
 	var thin_solar := [0]   # arrays: lambdas capture plain ints by value
@@ -117,6 +119,9 @@ func _initialize() -> void:
 	b.simulation().invalidate()
 	var m5_thin := MHMissions.run_test(b)
 	if verbose: print("  Mission 5 (reactor, 4 arrays, 1 battery): " + _report(m5_thin))
+	if verbose:
+		var snap: Dictionary = b.simulation().snapshot(12.0)
+		print("  power at noon: made %.1f kW, used %.1f kW, tiers %s" % [float(snap.generation_kw), float(snap.load_kw), snap.get("tier_kw", {})])
 	_check(not bool(m5_thin.passed), "a reactor with only 4 arrays and one battery bank doesn't get through Mission 5's storm")
 	b.zones = keep_zones
 	b.placed_interior = keep_items
