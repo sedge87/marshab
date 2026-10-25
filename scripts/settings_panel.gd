@@ -90,7 +90,7 @@ const GAME_TOGGLES := [
 ]
 const GRAPHICS_SEGMENTS := [
 	["render_scale", "Render scale (FSR upscaling)", ["67 %", "85 %", "100 %"]],
-	["reflections", "Reflections", ["Off", "Rooms", "Rooms + screen"]],
+	["reflections", "Reflections", ["Off", "Rooms", "Full"]],
 	["volumetric_fog", "Volumetric dust", ["Off", "Storms", "Always"]],
 	["light_budget", "Lights at once", ["48", "96", "160", "256"]],
 	["fov", "Field of view", ["70°", "80°", "90°"]],
@@ -109,7 +109,7 @@ func _graphics() -> Control:
 	preset_box.add_child(MHStyle.eyebrow("Quality preset", MHStyle.TEXT_MUTED, 14))
 	var cards := MHStyle.hbox(12)
 	_preset_cards.clear()
-	for preset in [["low", "Low", "Laptops. No shadows, 67 % scale."], ["medium", "Medium", "Good laptops. Shadows, soft corners, room reflections."], ["high", "High", "Graphics cards. Room light shadows, dust in the air."], ["ultra", "Ultra", "Fast graphics cards. Adds bounce light."]]:
+	for preset in [["low", "Low", "Laptops. No shadows, 67 % scale."], ["medium", "Medium", "Shadows and reflections."], ["high", "High", "Room shadows, dust in the air."], ["ultra", "Ultra", "Adds bounce light. Fast cards."]]:
 		var card := Button.new()
 		card.custom_minimum_size = Vector2(0, 116)
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -275,7 +275,7 @@ func _controls() -> Control:
 		columns.add_child(col)
 	return scroll
 
-const REFLECTION_LABELS := {"off": "Off", "probes": "Rooms", "ssr": "Rooms + screen"}
+const REFLECTION_LABELS := {"off": "Off", "probes": "Rooms", "ssr": "Full"}
 const FOG_LABELS := {"off": "Off", "storms": "Storms", "on": "Always"}
 
 func _segment_label(key: String) -> String:

@@ -3,7 +3,7 @@ extends SceneTree
 # Run with: godot --headless --path . --script res://tests/site_cells_lander_test.gd
 # Solar arrays, reactors and ice drills sit one to a cell, turned in quarter
 # turns (the regolith intake still goes anywhere); and the crew lander's legs,
-# footpads and engine pods are solid.
+# footpads and hull are solid.
 
 var failures := 0
 
@@ -46,15 +46,17 @@ func _initialize() -> void:
 	_check(lander != null, "there's a lander")
 	for i in 2: await physics_frame
 	var space := root.get_world_3d().direct_space_state
+	# From outside, low down along each leg's diagonal: the ray stops at the
+	# leg (footpad, then strut), not at the hull behind it.
 	for pad in lander.PAD_OFFSETS:
-		for local in [Vector3(pad.x, .4, pad.y), Vector3(pad.x * .8, .85, pad.y * .7)]:
-			var at: Vector3 = lander.to_global(local)
-			var outward: Vector3 = (at - lander.global_position) * Vector3(1, 0, 1)
-			var query := PhysicsRayQueryParameters3D.create(at + outward.normalized() * 2.0, at)
+		var reach := Vector2(pad).length()
+		for height in [.3, .9]:
+			var dir := Vector3(pad.x, 0, pad.y).normalized()
+			var query := PhysicsRayQueryParameters3D.create(lander.to_global(dir * (reach + 3.0) + Vector3.UP * height), lander.to_global(Vector3.UP * height))
 			var hit := space.intersect_ray(query)
-			_check(not hit.is_empty(), "the lander's leg at %s is solid" % local)
-	var pod: Vector3 = lander.to_global(Vector3(3.3, 1.1, 0))
-	_check(not space.intersect_ray(PhysicsRayQueryParameters3D.create(pod + lander.global_transform.basis.x * 2.0, pod)).is_empty(), "the engine pods are solid")
+			var gap := 99.0 if hit.is_empty() else Vector2(lander.to_local(hit.position).x, lander.to_local(hit.position).z).length()
+			_check(gap > reach - 1.4, "the lander's leg at %s, %.1f m up, is solid (hit %.2f m out)" % [pad, height, gap])
+	_check(not space.intersect_ray(PhysicsRayQueryParameters3D.create(lander.to_global(Vector3(7, 4, 0)), lander.to_global(Vector3(0, 4, 0)))).is_empty(), "the hull is solid")
 
 	if failures == 0:
 		print("Site cells and lander test passed: solar, reactors and drills on cells, quarter turns, one to a cell, the intake free, and solid lander legs.")

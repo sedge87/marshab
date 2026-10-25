@@ -32,23 +32,37 @@ func _initialize() -> void:
 	var world: Node = await _world()
 	var lander: Node3D = world.lander
 	var player: CharacterBody3D = world.player
-	_check(lander != null and lander.rig != null, "the lander model loads with its rig")
+	_check(lander != null and lander.rig != null, "the lander model loads")
 	_check(lander.cabin_contains(player.global_position), "a new game starts inside the lander cabin")
 	_check(str(world._intro_stage) == "inside" and bool(world.explore_hud._minimal), "the HUD stays minimal inside the lander")
 	_check(not lander.hatch_open(), "the hatch starts closed")
 	_check(str(world.builder.climate_at(player.global_position).context) == "Lander cabin", "the cabin is sheltered")
-	var prompt: Dictionary = lander.rig.interaction_prompt()
+	var prompt: Dictionary = lander.interaction_prompt()
 	_check(str(prompt.get("primary", "")) == "Open hatch", "E opens the hatch (%s)" % prompt.get("primary", ""))
-	lander.rig.interact()
-	for i in 60: await process_frame
+	lander.interact()
+	await create_timer(3.0).timeout
 	_check(lander.hatch_open(), "the hatch opens")
 	# The ramp's bottom edge reaches the ground.
 	var ramp_low := 99.0
-	for mesh in lander.rig.find_children("hatch_ramp_white_painted*", "MeshInstance3D", true, false):
+	for mesh in lander.rig.find_child("CrewRampPivot", true, false).find_children("*", "MeshInstance3D", true, false):
 		var box: AABB = (mesh as MeshInstance3D).global_transform * (mesh as MeshInstance3D).get_aabb()
 		ramp_low = minf(ramp_low, box.position.y)
 	_check(ramp_low < lander.global_position.y + .25, "the open ramp reaches the ground (lowest %.2f m)" % (ramp_low - lander.global_position.y))
-	player.global_position = lander.to_global(Vector3(0, 1.0, -5.0))
+	# Walk out: from the airlock, down the ramp, onto the ground.
+	var start_y := player.global_position.y
+	Input.action_press("move_forward")
+	for i in 150: await physics_frame
+	Input.action_release("move_forward")
+	var out_at := lander.to_local(player.global_position)
+	_check(out_at.z < -6.0 and out_at.y < .6, "you can walk out of the airlock and down the ramp (ended at %s)" % out_at.snapped(Vector3.ONE * .01))
+	_check(start_y - player.global_position.y > 1.8, "the walk ends on the ground, not on the deck")
+	# And back up into the airlock.
+	player.rotation.y += PI
+	Input.action_press("move_forward")
+	for i in 300: await physics_frame
+	Input.action_release("move_forward")
+	_check(lander.cabin_contains(player.global_position) or lander.to_local(player.global_position).z > -2.7, "you can walk back up the ramp into the airlock (at %s)" % lander.to_local(player.global_position).snapped(Vector3.ONE * .01))
+	player.global_position = lander.to_global(Vector3(0, 1.0, -7.0))
 	for i in 10: await process_frame
 	_check(str(world._intro_stage) == "done" and not bool(world.explore_hud._minimal), "stepping out brings the full HUD in")
 	# Nothing can be built on the lander.

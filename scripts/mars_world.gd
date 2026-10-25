@@ -408,16 +408,11 @@ func _resupply_spot() -> Dictionary:
 			var clear := true
 			for zone in builder.zones:
 				for cell in zone.get("cells", []):
-					if Vector2(cell.x * 3.0, cell.y * 3.0).distance_to(p) < 7.0: clear = false
+					if Vector2(cell.x * 3.0, cell.y * 3.0).distance_to(p) < 9.0: clear = false
 			for other in taken:
-				if (other as Vector2).distance_to(p) < 9.0: clear = false
+				if (other as Vector2).distance_to(p) < 11.0: clear = false
 			if not clear: continue
-			var probe: Node3D = CARGO_LANDER_SCRIPT.new()
-			add_child(probe)
-			probe.place_at(p, centre)
-			var result := {"position": probe.global_position, "yaw": probe.rotation.y}
-			probe.queue_free()
-			return result
+			return CARGO_LANDER_SCRIPT.spot_at(p, centre)
 	var fallback := centre + Vector2(20, 0)
 	return {"position": Vector3(fallback.x, MHSiteTerrain.height(fallback.x, fallback.y), fallback.y), "yaw": 0.0}
 
@@ -602,7 +597,7 @@ func _update_arrival(delta: float) -> void:
 		cargo.set_burn(false)
 		MHAudio.sfx("land", 0.0, 0.0)
 		get_tree().create_timer(1.2).timeout.connect(func() -> void: if _arrival_dust != null: _arrival_dust.emitting = false)
-	_arrival_camera.look_at(cargo.global_position + Vector3.UP * 2.0, Vector3.UP)
+	_arrival_camera.look_at(cargo.global_position + Vector3.UP * 4.0, Vector3.UP)
 	# A little shake as the engine nears the ground and at touchdown.
 	if fall > .7 and _arrival_t < 7.6:
 		_arrival_camera.rotation += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * .004 * (1.0 - absf(_arrival_t - 7.0))

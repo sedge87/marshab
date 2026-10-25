@@ -190,8 +190,8 @@ func clip_outside() -> void:
 	p.process_mode = Node.PROCESS_MODE_DISABLED
 	var lander: Node3D = world.lander
 	var start: Dictionary = lander.cabin_start()
-	# Standing in the cabin, eyes level, facing the hatch.
-	p.global_position = lander.to_global(Vector3(0, 1.15, .4)); p.rotation.y = lander.rotation.y
+	# Standing in the airlock, eyes level, facing the hatch.
+	p.global_position = start.position; p.rotation.y = lander.rotation.y
 	start["yaw"] = lander.rotation.y
 	(p.get_node("Head") as Node3D).rotation.x = 0.0
 	await _warm()
@@ -199,7 +199,7 @@ func clip_outside() -> void:
 	await _frames(.6)
 	await _show_keys([[["E"], "Open the hatch"]])
 	lander.set_hatch(true, true)
-	await _frames(1.8)
+	await _frames(2.8)
 	await _show_keys([[["W"], "Walk down the ramp"]])
 	var out: Vector3 = lander.to_global(Vector3(0, 0, -8.0))
 	out.y = MHSiteTerrain.height(out.x, out.z) + 1.0

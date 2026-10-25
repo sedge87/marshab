@@ -1,79 +1,60 @@
 extends Node3D
-const MHPalette := preload("res://scripts/mh_palette.gd")
+const LanderModel := preload("res://scripts/lander_model.gd")
 
 ## The crew lander: where every game begins. It stands on level ground near the
 ## build area, hatch facing the site, always in the same spot for a site (so
-## saves line up). The cabin is a safe, warm place; E on the lander opens the
-## hatch, which lowers to become the ramp. It's not part of the habitat.
+## saves line up). You start in its airlock (the crew cabin behind the inner
+## door stays sealed): a safe, warm place. E on the lander opens the outer
+## hatch, which swings down to become the ramp. It's not part of the habitat.
+## Model: assets/vehicles/landers_v2 (26 Oct), 8.6 m tall, hatch facing -Z.
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
-const SCENE := "res://assets/equipment/mars_crew_lander_v1/crew_lander.tscn"
-const FLOOR_HEIGHT := 1.1        # cabin floor above the ground
-const PAD_OFFSETS := [Vector2(3.4, 3.0), Vector2(-3.4, 3.0), Vector2(3.4, -3.0), Vector2(-3.4, -3.0)]
-const CABIN := AABB(Vector3(-2.1, 1.0, -1.4), Vector3(4.2, 2.8, 2.8))  # local space
+const SCENE := "res://assets/vehicles/landers_v2/Crew_Lander.glb"
+const FLOOR_HEIGHT := 2.44       # airlock floor above the ground
+const PAD_OFFSETS := [Vector2(3.03, 2.95), Vector2(-3.03, 2.95), Vector2(3.03, -2.95), Vector2(-3.03, -2.95)]
+const CABIN := AABB(Vector3(-1.0, 2.3, -2.6), Vector3(2.0, 3.4, 1.55))  # the airlock, local space
+const RAMP_OPEN_DEGREES := -132.0
 
-var rig: Node3D
+var rig: Node3D       # the model
+var _ramp: Node3D     # its hinged hatch ramp
+var _open := false
 
 func _ready() -> void:
 	add_to_group("landmark")
 	set_meta("landmark_label", "LANDER")
-	var scene := load(SCENE) as PackedScene
-	if scene == null:
-		push_warning("Crew lander model is missing: %s" % SCENE)
-		return
-	rig = scene.instantiate() as Node3D
-	MHPalette.apply(rig)
-	add_child(rig)
-	# Every collider on the lander points at its interaction rig (the hatch).
-	for body in rig.find_children("*", "StaticBody3D", true, false):
-		body.set_meta("interaction_target", rig)
-		(body as StaticBody3D).collision_layer = 1
-	_add_leg_colliders()
-	# Thin hull walls: cast shadows from both sides so sunlight can't leak in.
-	for mesh in rig.find_children("*", "MeshInstance3D", true, false):
-		(mesh as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_DOUBLE_SIDED
-	# A warm, dim cabin light: the cosy contrast with Mars outside.
+	var parts := LanderModel.build(self, SCENE, "CrewRampPivot", Vector2(1.9, 3.23))
+	if parts.is_empty(): return
+	rig = parts.model
+	_ramp = parts.pivot
+	# A warm, dim airlock light: the cosy contrast with Mars outside.
 	var light := OmniLight3D.new()
-	light.position = Vector3(0, 3.1, 0)
+	light.position = Vector3(0, FLOOR_HEIGHT + 2.3, -1.8)
 	light.light_color = Color("#FFD9A8")
-	light.light_energy = 0.55
-	light.omni_range = 4.2
+	light.light_energy = 0.6
+	light.light_specular = .1   # no hot spot on the shut hatch
+	light.omni_range = 3.2
 	light.shadow_enabled = false
 	add_child(light)
+	# A floodlight over the hatch, down onto the ramp.
 	var door_light := SpotLight3D.new()
-	door_light.position = Vector3(0, 3.2, -1.7)
-	door_light.rotation_degrees = Vector3(-60, 0, 0)
+	door_light.position = Vector3(0, FLOOR_HEIGHT + 3.3, -3.1)
+	door_light.rotation_degrees = Vector3(-62, 0, 0)
 	door_light.light_color = Color("#FFE7C2")
-	door_light.light_energy = 0.8
-	door_light.spot_range = 5.0
-	door_light.spot_angle = 40.0
+	door_light.light_energy = 0.9
+	door_light.spot_range = 7.0
+	door_light.spot_angle = 38.0
 	add_child(door_light)
 
-## The model only has colliders on the cabin and its fittings, so you could
-## walk through its legs: a footpad, a strut up to the hull and the side
-## engine pods, all solid.
-func _add_leg_colliders() -> void:
-	var body := StaticBody3D.new()
-	body.name = "LegColliders"
-	body.collision_layer = 1
-	body.set_meta("interaction_target", rig)
-	add_child(body)
-	for pad in PAD_OFFSETS:
-		var foot := Vector3(pad.x, .45, pad.y)
-		_collider(body, CylinderShape3D.new(), Transform3D(Basis(), foot), {"radius": .5, "height": .9})
-		# The strut, from the pad up and in to the hull's lower corner.
-		var top := Vector3(signf(pad.x) * 2.3, 1.15, signf(pad.y) * 1.6)
-		var along := top - foot
-		var basis := Basis(Quaternion(Vector3.UP, along.normalized()))
-		_collider(body, CapsuleShape3D.new(), Transform3D(basis, (foot + top) * .5), {"radius": .22, "height": along.length() + .44})
-	for side in [-1.0, 1.0]:
-		_collider(body, BoxShape3D.new(), Transform3D(Basis(), Vector3(side * 2.85, 1.13, 0)), {"size": Vector3(1.0, 1.2, 1.0)})
+func interaction_prompt() -> Dictionary:
+	return {"label": "Crew Lander", "primary": "Close hatch" if _open else "Open hatch", "info": "About"}
 
-func _collider(body: StaticBody3D, shape: Shape3D, at: Transform3D, props: Dictionary) -> void:
-	for key in props: shape.set(key, props[key])
-	var collision := CollisionShape3D.new()
-	collision.shape = shape
-	collision.transform = at
-	body.add_child(collision)
+func interact(_actor: Node = null) -> bool:
+	set_hatch(not _open, true)
+	return true
+
+func interact_info(_actor: Node = null) -> bool:
+	var entry := EquipmentCatalog.get_entry("crew_lander")
+	get_tree().call_group("explore_hud", "show_equipment_note", "Crew Lander", str(entry.get("system_note", entry.get("description", ""))))
+	return true
 
 ## A level, buildable spot about 20 m from the site centre, and a yaw that
 ## turns the hatch towards the centre. Deterministic for each site.
@@ -95,7 +76,7 @@ static func find_spot() -> Dictionary:
 				heights.append(MHSiteTerrain.height(at.x, at.y))
 				buildable = buildable and MHSiteTerrain.is_buildable(at)
 			# The ground in front of the ramp must be walkable too.
-			var front := basis * Vector3(0, 0, -4.5)
+			var front := basis * Vector3(0, 0, -5.6)
 			buildable = buildable and MHSiteTerrain.is_buildable(centre + Vector2(front.x, front.z))
 			if not buildable: continue
 			var score: float = heights.max() - heights.min() + radius * .01
@@ -129,13 +110,13 @@ func place_exact(at: Vector3, yaw: float) -> void:
 	global_position = at
 	rotation.y = yaw
 
-## Where a new game starts: standing at the back of the cabin, facing the hatch.
+## Where a new game starts: standing in the airlock, facing the hatch.
 func cabin_start() -> Dictionary:
-	return {"position": to_global(Vector3(0.0, FLOOR_HEIGHT + .95, .55)), "yaw": rotation.y}
+	return {"position": to_global(Vector3(0.0, FLOOR_HEIGHT + .3, -1.65)), "yaw": rotation.y}
 
 ## A spot on the ground beside the ramp (for the rover).
 func beside_ramp() -> Vector3:
-	var at := to_global(Vector3(3.2, 0, -5.2))
+	var at := to_global(Vector3(3.6, 0, -6.4))
 	return Vector3(at.x, MHSiteTerrain.height(at.x, at.z) + .2, at.z)
 
 var present := true
@@ -156,56 +137,22 @@ func cabin_contains(point: Vector3) -> bool:
 func keeps_clear(point: Vector2, margin := 0.0) -> bool:
 	if not present: return false
 	var local := to_local(Vector3(point.x, global_position.y, point.y))
-	return absf(local.x) < 4.2 + margin and local.z > -6.8 - margin and local.z < 3.8 + margin
+	return absf(local.x) < 4.0 + margin and local.z > -6.6 - margin and local.z < 4.0 + margin
 
 ## Descent engines on or off (the Mission 4 touchdown cutscene): four plumes
-## under the cabin, made the same way as the cargo lander's.
+## under the hull, made the same way as the cargo lander's.
 var _plume: Node3D
 
 func set_burn(on: bool) -> void:
-	if _plume == null:
-		_plume = Node3D.new()
-		add_child(_plume)
-		for offset in [Vector2(1.2, 1.0), Vector2(-1.2, 1.0), Vector2(1.2, -1.0), Vector2(-1.2, -1.0)]:
-			var flame := CPUParticles3D.new()
-			flame.position = Vector3(offset.x, FLOOR_HEIGHT - .3, offset.y)
-			flame.amount = 50
-			flame.lifetime = .35
-			flame.direction = Vector3.DOWN
-			flame.spread = 8.0
-			flame.initial_velocity_min = 14.0
-			flame.initial_velocity_max = 20.0
-			flame.gravity = Vector3.ZERO
-			flame.scale_amount_min = .5
-			flame.scale_amount_max = 1.0
-			var quad := QuadMesh.new(); quad.size = Vector2(.5, .5)
-			var glow := StandardMaterial3D.new()
-			glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			glow.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-			glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			glow.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-			glow.albedo_color = Color(1.0, .62, .3, .55)
-			glow.albedo_texture = preload("res://scripts/cargo_lander.gd").soft_puff_texture()
-			quad.material = glow
-			flame.mesh = quad
-			_plume.add_child(flame)
-		var light := OmniLight3D.new()
-		light.light_color = Color("#FFB070")
-		light.light_energy = 6.0
-		light.omni_range = 14.0
-		light.position = Vector3(0, .2, 0)
-		_plume.add_child(light)
-	_plume.visible = on
-	for particles in _plume.find_children("*", "CPUParticles3D", true, false): (particles as CPUParticles3D).emitting = on
+	if _plume == null: _plume = LanderModel.plume(self, [Vector2(1.2, 1.2), Vector2(-1.2, 1.2), Vector2(1.2, -1.2), Vector2(-1.2, -1.2)], .55)
+	LanderModel.set_burn(_plume, on)
 
 func hatch_open() -> bool:
-	return rig != null and bool(rig.call("_state_on", "hatch"))
+	return _open
 
-## Open (or close) without the player pressing E: loaded games start open.
+## Open (or close) the hatch; loaded games start open.
 func set_hatch(open: bool, animate := false) -> void:
-	if rig == null or hatch_open() == open: return
-	if animate:
-		rig.call("interact")
-	else:
-		(rig.get("_state") as Dictionary)["hatch"] = open
-		rig.call("_apply_state", 0, false)
+	if _ramp == null or _open == open: return
+	_open = open
+	LanderModel.swing(_ramp, open, RAMP_OPEN_DEGREES, 2.6 if animate else 0.0)
+	if animate: MHAudio.sfx("mode_build", -6.0)
