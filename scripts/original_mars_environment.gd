@@ -82,12 +82,19 @@ func rebuild_site() -> void:
 	_build_pebbles()
 
 func _build_sky_and_lighting() -> void:
-	# The project targets the Compatibility renderer. Its stable built-in
-	# procedural sky is used for the actual background; the optional Sky3D addon
-	# remains installed for later Forward+/Mobile evaluation, but is not in the
-	# runtime path after it produced a black sky on this renderer.
+	# The built-in procedural sky is the background (the Sky3D addon stays
+	# installed but unused).
 	world_environment = WorldEnvironment.new()
 	add_child(world_environment)
+	# Auto exposure, like eyes adjusting: dim interiors brighten a little,
+	# bright Mars daylight comes down, and the change takes a moment.
+	var attributes := CameraAttributesPractical.new()
+	attributes.auto_exposure_enabled = true
+	attributes.auto_exposure_scale = .32
+	attributes.auto_exposure_speed = .7
+	attributes.auto_exposure_min_sensitivity = 90.0
+	attributes.auto_exposure_max_sensitivity = 220.0
+	world_environment.camera_attributes = attributes
 	sun = DirectionalLight3D.new()
 	sun.name = "OriginalSun"
 	sun.position = Vector3(0.0, 30.0, 0.0)
@@ -152,7 +159,8 @@ func apply_palette(palette: String) -> void:
 var cabin_dim := false
 var interior_fill := false
 var inside_habitat := false
-const INTERIOR_FILL_ENERGY := .2
+const INTERIOR_FILL_ENERGY := .1   # the ceiling lights do the main work now
+const INDOOR_AMBIENT := .55          # share of the outdoor ambient left indoors
 const INTERIOR_DARK_ENERGY := .05   # power off: only what spills from screens and the head lamp
 const INDOOR_SUN := .3              # sunlight that leaks through walls (no shadows on low settings)
 const INTERIOR_FILL_COLOUR := Color("#E9E2D6")
@@ -218,7 +226,9 @@ func apply_daylight(sunlight: float) -> void:
 	# The indoor fill lights only touch the habitat (visual layer 2), so the
 	# world outside keeps its own light: dark at night, seen from a doorway.
 	var eased := smoothstep(0.0, 1.0, _indoor_blend)
-	_update_interior_fills(_indoor_energy * eased)
+	# With bounce light (SDFGI) the rooms light themselves: no flat fills.
+	_update_interior_fills(0.0 if bool(MHGame.setting("sdfgi")) else _indoor_energy * eased)
+	world_environment.environment.ambient_light_energy *= lerpf(1.0, INDOOR_AMBIENT, eased)
 	if _indoor_blend > 0.0: sun.light_energy *= lerpf(1.0, INDOOR_SUN, eased)
 	if _sky_material != null:
 		# Mars has a thin atmosphere, but midnight is still a true, dark sky—not
@@ -234,7 +244,20 @@ func apply_daylight(sunlight: float) -> void:
 	if storm > .001: _apply_storm(level)
 	elif world_environment.environment.fog_mode != Environment.FOG_MODE_EXPONENTIAL: world_environment.environment.fog_mode = Environment.FOG_MODE_EXPONENTIAL
 	MHGame.set_window_glow(float(_palette_values.get("window", .9)) * lerpf(1.75, .9, level))
+	_update_volumetric_fog(eased)
 	_update_celestial_bodies(level)
+
+## Volumetric dust: a light haze outside that thickens into a wall of dust in
+## a storm, and thins indoors. Settings: on, storms only, or off.
+func _update_volumetric_fog(indoors: float) -> void:
+	var env := world_environment.environment
+	var mode := str(MHGame.setting("volumetric_fog"))
+	var on := mode == "on" or (mode == "storms" and storm > .05)
+	if env.volumetric_fog_enabled != on: env.volumetric_fog_enabled = on
+	if not on: return
+	var haze := clampf(storm, 0.0, 1.0)
+	env.volumetric_fog_density = lerpf(.004, .045, haze) * lerpf(1.0, .08, indoors)
+	env.volumetric_fog_albedo = env.fog_light_color
 
 func _apply_storm(level: float) -> void:
 	var haze := clampf(storm, 0.0, 1.0)

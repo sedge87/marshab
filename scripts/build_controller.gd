@@ -2602,6 +2602,8 @@ func _rebuild() -> void:
 	_build_partitions()
 	ROOM_IDENTITY.build(self)   # colour bands, door signs, per-room overhead detail
 	_add_room_fills()
+	_add_reflection_probes()
+	_add_dust_decals()
 	_add_light_panels()
 	_prune_hull_windows()
 	WALL_UPGRADES.build(self)
@@ -2615,11 +2617,14 @@ func _rebuild() -> void:
 
 # ---------- room lighting ----------
 # Each room is on, dim or off (HabitatSim.light_state: the crew's schedule,
-# where you are, and wall-panel overrides). A lit room gets one soft fill
-# light (one per 3x3 cells in big rooms) instead of a light per fixture, so a
-# whole base needs a couple of dozen real lights; fixtures glow to match.
+# where you are, and wall-panel overrides). Every ceiling fixture has its own
+# downlight (Forward+, 26 Oct), so rooms get pools of light and shadow; a
+# soft fill light per room (one per 3x3 cells in big rooms) stands in for
+# light bouncing off the walls. The nearest `light_budget` lights are on at
+# once (MarsWorld), and on High the ceiling lights in the room you're in cast
+# shadows.
 
-const FILL_ON := Color("#FFE7B2")
+const FILL_ON := Color("#FFF0D8")
 const FILL_DIM := Color("#8FA6CF")
 
 func _room_key_at(point: Vector2) -> String:
@@ -2664,9 +2669,103 @@ func _add_room_fills() -> void:
 			light.visible = false
 			light.set_meta("room_key", key)
 			light.set_meta("budget_exempt", true)
-			light.set_meta("full_energy", 1.9 if str(zone.kind) == "hydroponics" else 1.45)
+			# Softer now the ceiling lights do the main work.
+			light.set_meta("full_energy", 1.1 if str(zone.kind) == "hydroponics" else .8)
 			light.add_to_group("room_fill")
 			root.add_child(light)
+
+## Reflections (Medium and up): a probe per room, captured once, so metal,
+## glass and the deck show the room around them instead of the sky.
+func _add_reflection_probes() -> void:
+	if str(MHGame.setting("reflections")) == "off": return
+	for zone in zones:
+		if not _is_habitat_zone(zone) or str(zone.kind) in ["airlock"]: continue
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		if zone.has("outline"):
+			for point in zone_outline(zone):
+				lo = Vector2(minf(lo.x, point.x), minf(lo.y, point.y)); hi = Vector2(maxf(hi.x, point.x), maxf(hi.y, point.y))
+		else:
+			for cell in zone.get("cells", []):
+				var c := Vector2(cell.x, cell.y) * CELL
+				lo = Vector2(minf(lo.x, c.x - HALF_CELL), minf(lo.y, c.y - HALF_CELL)); hi = Vector2(maxf(hi.x, c.x + HALF_CELL), maxf(hi.y, c.y + HALF_CELL))
+		if is_inf(lo.x): continue
+		var probe := ReflectionProbe.new()
+		probe.name = "RoomReflections"
+		probe.update_mode = ReflectionProbe.UPDATE_ONCE
+		probe.interior = true
+		probe.box_projection = true
+		probe.size = Vector3(hi.x - lo.x, ROOM_HEIGHT, hi.y - lo.y)
+		probe.position = Vector3((lo.x + hi.x) * .5, habitat_base_y + ROOM_HEIGHT * .5, (lo.y + hi.y) * .5)
+		probe.max_distance = maxf(probe.size.x, probe.size.z)
+		root.add_child(probe)
+
+## Dust walked in from outside (Medium and up): a scuffed, dusty patch with
+## boot prints on the airlock floor, and churned dust outside its door.
+func _add_dust_decals() -> void:
+	if not bool(MHGame.setting("decals")): return
+	for zone in zones:
+		if str(zone.get("kind", "")) != "airlock" or (zone.get("cells", []) as Array).is_empty(): continue
+		var cell: Vector2i = zone.cells[0]
+		var outward: Vector2i = zone.get("door_direction", Vector2i(0, -1))
+		var inside := Vector3(cell.x * CELL, habitat_base_y, cell.y * CELL)
+		_dust_decal(inside, Vector3(2.4, .8, 2.4), atan2(-outward.x, -outward.y), .75)
+		var out := inside + Vector3(outward.x, 0, outward.y) * CELL * 1.05
+		out.y = _terrain_height(out)
+		_dust_decal(out, Vector3(3.2, 1.6, 3.6), atan2(-outward.x, -outward.y), 1.0)
+
+func _dust_decal(at: Vector3, size: Vector3, yaw: float, strength: float) -> void:
+	var decal := Decal.new()
+	decal.name = "DustDecal"
+	decal.size = size
+	decal.position = at
+	decal.rotation.y = yaw
+	decal.texture_albedo = _dust_texture()
+	decal.modulate = Color(1, 1, 1, strength)
+	decal.albedo_mix = .85
+	decal.upper_fade = .2
+	decal.lower_fade = .2
+	root.add_child(decal)
+
+## A dusty patch with two rows of boot prints, drawn once (procedural, so no
+## art file): reddish dust fading to the edges.
+static var _dust_tex: ImageTexture
+static func _dust_texture() -> ImageTexture:
+	if _dust_tex != null: return _dust_tex
+	var size := 256
+	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var noise := FastNoiseLite.new()
+	noise.seed = 7
+	noise.frequency = .035
+	var dust := Color("#9A6A48")
+	for y in size:
+		for x in size:
+			var u := (float(x) / size - .5) * 2.0
+			var v := (float(y) / size - .5) * 2.0
+			var edge := clampf(1.0 - sqrt(u * u * .8 + v * v), 0.0, 1.0)
+			var grain := noise.get_noise_2d(x, y) * .5 + .5
+			image.set_pixel(x, y, Color(dust.r, dust.g, dust.b, clampf(edge * (.35 + grain * .5), 0.0, .7)))
+	# Scuffed boot prints walking through: soft, faint and a little scattered.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	for i in 9:
+		for side in [-1, 1]:
+			var cx: float = size * .5 + side * 15.0 + rng.randf_range(-6.0, 6.0)
+			var cy: float = size * (.1 + i * .095) + side * 9.0
+			var tilt := rng.randf_range(-.3, .3)
+			for dy in range(-11, 12):
+				for dx in range(-6, 7):
+					var rx := dx * cos(tilt) - dy * sin(tilt)
+					var ry := dx * sin(tilt) + dy * cos(tilt)
+					var d := (rx * rx) / 30.0 + (ry * ry) / 121.0
+					if d > 1.0 or (ry > 2.0 and ry < 4.5): continue
+					var px := int(cx + dx); var py := int(cy + dy)
+					if px < 0 or py < 0 or px >= size or py >= size: continue
+					var base := image.get_pixel(px, py)
+					var strength := (1.0 - d) * .35 * rng.randf_range(.6, 1.0)
+					image.set_pixel(px, py, Color(dust.r * .7, dust.g * .62, dust.b * .55, clampf(base.a + strength, 0.0, .55)))
+	_dust_tex = ImageTexture.create_from_image(image)
+	return _dust_tex
 
 ## One light panel per room, on a solid wall (not a window), preferring the
 ## wall nearest a door so it's by the way in.
@@ -2756,12 +2855,21 @@ func update_room_lights(force := false) -> void:
 		var state := str(states.get(str(light.get_meta("room_key", "")), "off"))
 		# Only lit rooms get a real light: in this renderer every light redraws
 		# what it touches, so dim rooms are just their glowing night strips.
-		var energy := float(light.get_meta("full_energy", 1.45)) if state == "on" else 0.0
+		var energy := float(light.get_meta("full_energy", 1.45)) * (.35 if bool(MHGame.setting("sdfgi")) else 1.0) if state == "on" else 0.0
 		light.light_color = FILL_ON if state == "on" else FILL_DIM
 		if energy > 0.0: light.visible = true
 		var fade := light.create_tween()   # dies with the light if a rebuild removes it
 		fade.tween_property(light, "light_energy", energy, .8 if not force else .01)
 		if energy <= 0.0: fade.tween_callback(func() -> void: light.visible = false)
+	# Each ceiling light's own downlight: full when the room's on, a faint
+	# blue night strip when dim.
+	for node in get_tree().get_nodes_in_group("room_fixture_light"):
+		var spot := node as SpotLight3D
+		var state := str(states.get(str(spot.get_meta("room_key", "")), "off"))
+		spot.light_color = FILL_ON if state == "on" else FILL_DIM
+		var target := float(spot.get_meta("full_energy", 2.4)) if state == "on" else (.12 if state == "dim" else 0.0)
+		var ease_in := spot.create_tween()
+		ease_in.tween_property(spot, "light_energy", target, .8 if not force else .01)
 	for node in get_tree().get_nodes_in_group("room_fixture"):
 		var mesh := node as MeshInstance3D
 		var material := mesh.material_override as StandardMaterial3D
@@ -3489,11 +3597,28 @@ func _add_powered_fixture(position: Vector3, zone_kind: String, basis := Basis.I
 	diffuser_material.emission = Color("#FFE7B2")
 	diffuser_material.emission_energy_multiplier = 1.7
 	diffuser.material_override = diffuser_material
-	# Lit by its room's state (update_room_lights), not by a light of its own:
-	# each room has one soft fill light instead of one light per fixture.
+	# Lit by its room's state (update_room_lights).
 	diffuser.add_to_group("room_fixture")
 	diffuser.set_meta("room_key", _room_key_at(Vector2(position.x, position.z)))
 	fixture.add_child(diffuser)
+	# Its own downlight: a pool of warm light under every fixture.
+	var spot := SpotLight3D.new()
+	spot.name = "FixtureLight"
+	spot.position = Vector3(0, -.12, 0)
+	spot.rotation.x = -PI * .5
+	spot.spot_range = ROOM_HEIGHT + 1.6
+	spot.spot_angle = 64.0
+	spot.spot_angle_attenuation = .7
+	spot.spot_attenuation = .9
+	spot.light_energy = 0.0
+	spot.light_color = FILL_ON
+	spot.shadow_enabled = false
+	spot.shadow_bias = .04
+	spot.light_specular = .35
+	spot.set_meta("full_energy", 4.0 if zone_kind == "hydroponics" else 3.2)
+	spot.set_meta("room_key", _room_key_at(Vector2(position.x, position.z)))
+	spot.add_to_group("room_fixture_light")
+	fixture.add_child(spot)
 
 func _cell_walls(cell: Vector2i,zone: Dictionary) -> void:
 	var zone_kind:=str(zone.kind); var colour:Color=ZONE_TYPES[zone_kind].colour; var centre:=Vector3(cell.x*CELL,0,cell.y*CELL)

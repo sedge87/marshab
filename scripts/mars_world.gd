@@ -74,10 +74,9 @@ var tutorial: CanvasLayer
 var _tutorial_state := {}
 ## One-off things the tutorial watches for: crew_screen, saved.
 var guide_flags := {}
-# The Compatibility renderer draws at most 32 lights in view and silently
-# drops the rest, which made random rooms look unpowered. Only the nearest
-# LIGHT_BUDGET lights stay on (their glowing diffusers always show).
-const LIGHT_BUDGET := 28
+# Only the nearest lights are on at once (the graphics preset's
+# light_budget: 48 on Low up to 256 on Ultra), so a big base stays fast on a
+# laptop; their glowing diffusers always show.
 const LIGHT_RANGE := 40.0
 var _budget_lights: Array = []
 var _budget_dirty := true
@@ -250,6 +249,7 @@ func _open_surface_build(id: String) -> void:
 var _space_check := 0.0
 func _process(delta: float) -> void:
 	_update_lander_intro()
+	_update_dynamic_resolution(delta)
 	_resupply_check -= delta
 	if _resupply_check <= 0.0:
 		_resupply_check = 1.0
@@ -274,6 +274,12 @@ func _process(delta: float) -> void:
 		builder.simulation().player_room = you_in
 		builder.simulation().invalidate()
 	builder.update_room_lights()
+	# High and Ultra: the ceiling lights in the room you're in cast shadows.
+	var room_shadows := bool(MHGame.setting("room_shadows"))
+	for node in get_tree().get_nodes_in_group("room_fixture_light"):
+		var spot := node as SpotLight3D
+		var cast := room_shadows and not you_in.is_empty() and str(spot.get_meta("room_key", "")) == you_in and spot.light_energy > .5
+		if spot.shadow_enabled != cast: spot.shadow_enabled = cast
 	var inside: bool = not builder.build_mode and (builder.is_inside(player.global_position) or bool(lander.cabin_contains(player.global_position)))
 	MHAudio.ambience("inside" if inside else "outside")
 	# Interior fill light only while the habitat's own lights are on (not in
@@ -293,6 +299,9 @@ func _apply_light_budget() -> void:
 		_budget_lights = find_children("*", "Light3D", true, false).filter(func(l): return not (l is DirectionalLight3D) and not player.is_ancestor_of(l) and not bool(l.get_meta("budget_exempt", false)))
 		# Lights at the edge of the budget fade out with distance, not pop.
 		for light in _budget_lights:
+			# Small lamps inside furniture don't feed bounce light (SDFGI would
+			# spread them through thin panels); ceiling lights and the sun do.
+			if not (light as Node).is_in_group("room_fixture_light"): (light as Light3D).light_indirect_energy = 0.0
 			(light as Light3D).distance_fade_enabled = true
 			(light as Light3D).distance_fade_begin = LIGHT_RANGE - 10.0
 			(light as Light3D).distance_fade_length = 8.0
@@ -301,10 +310,15 @@ func _apply_light_budget() -> void:
 	var eye := camera.global_position
 	var live: Array = _budget_lights.filter(func(l): return is_instance_valid(l) and l.is_inside_tree())
 	if live.size() != _budget_lights.size(): _budget_dirty = true
+	# Ceiling lights in dark rooms don't use up the budget.
+	var dark := live.filter(func(l): return l.is_in_group("room_fixture_light") and (l as Light3D).light_energy < .01)
+	for light in dark: (light as Light3D).visible = false
+	live = live.filter(func(l): return not dark.has(l))
 	live.sort_custom(func(a, b): return eye.distance_squared_to(a.global_position) < eye.distance_squared_to(b.global_position))
+	var budget := int(MHGame.setting("light_budget"))
 	for index in range(live.size()):
 		var light: Light3D = live[index]
-		light.visible = index < LIGHT_BUDGET and eye.distance_to(light.global_position) < LIGHT_RANGE and bool(light.get_meta("rig_on", true))
+		light.visible = index < budget and eye.distance_to(light.global_position) < LIGHT_RANGE and bool(light.get_meta("rig_on", true))
 
 ## A new game opens in the dim lander cabin with a minimal HUD; opening the
 ## hatch lowers the ramp, and stepping out onto Mars brings the full HUD in.
@@ -777,6 +791,35 @@ func _build_hud() -> void:
 
 func _apply_settings() -> void:
 	MHGame.apply_settings(get_viewport(), environment.world_environment.environment, environment.sun, [player.get_node("Head/Camera3D")])
+	_dynamic_scale = float(MHGame.setting("render_scale"))
+	# Reflection probes and decals are built with the rooms: rebuild if they changed.
+	var built := "%s|%s" % [MHGame.setting("reflections"), MHGame.setting("decals")]
+	if not _built_graphics.is_empty() and built != _built_graphics and builder != null: builder._rebuild()
+	_built_graphics = built
+	_budget_dirty = true
+
+var _built_graphics := ""
+## Dynamic resolution: below 30 frames a second the picture is drawn a little
+## smaller (upscaled back), and grows back towards the setting when there's
+## room again. Checked once a second; the setting itself isn't changed.
+var _dynamic_scale := 1.0
+var _fps_check := 1.0
+func _update_dynamic_resolution(delta: float) -> void:
+	_fps_check -= delta
+	if _fps_check > 0.0: return
+	_fps_check = 1.0
+	if not bool(MHGame.setting("dynamic_resolution")) or get_tree().paused: return
+	var fps := Engine.get_frames_per_second()
+	var target := float(MHGame.setting("render_scale"))
+	var scale := _dynamic_scale
+	if fps < 30.0 and scale > .5: scale = maxf(.5, scale - .05)
+	elif fps > 48.0 and scale < target: scale = minf(target, scale + .05)
+	if is_equal_approx(scale, _dynamic_scale): return
+	_dynamic_scale = scale
+	var viewport := get_viewport()
+	viewport.scaling_3d_scale = scale
+	if scale < .99 and viewport.scaling_3d_mode == Viewport.SCALING_3D_MODE_BILINEAR:
+		viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2 if bool(MHGame.setting("fsr2")) else Viewport.SCALING_3D_MODE_FSR
 	dust.emitting = bool(MHGame.setting("dust"))
 	dust.visible = dust.emitting
 

@@ -122,7 +122,8 @@ func _initialize() -> void:
 	_check(_step() == "systems", "the bunk, then the oxygen generator and heater, tick (%s)" % _step())
 
 	# 12. The systems panel: Enter when read.
-	_check(GUIDE.find_target(self, "systems") != null, "the systems panel can be found for the highlight")
+	var systems_panel: Control = world.explore_hud._systems_panel
+	_check(GUIDE.find_target(self, "systems") != null, "the systems panel can be found for the highlight (visible %s, in tree %s, minimal %s, size %s)" % [systems_panel.visible, systems_panel.is_visible_in_tree(), world.explore_hud._minimal, systems_panel.get_global_rect().size])
 	_key(KEY_ENTER)
 	await _settle()
 	_check(_step() == "crew", "Enter ticks the read-only step (%s)" % _step())

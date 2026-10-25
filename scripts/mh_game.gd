@@ -16,7 +16,7 @@ const SAVE_SLOT_COUNT := 6   # per save set (Free play, Missions)
 const EMBLEMS := ["rocket", "orbit", "satellite", "mountain-snow", "sun", "atom"]
 
 # Lighting presets from the reference scene (mars-scene.js PAL). sun is the
-# direction towards the sun; energies are tuned for Godot's Compatibility renderer.
+# direction towards the sun.
 const PALETTES := {
 	"day": {"sky_top": Color("#A06C49"), "sky_horizon": Color("#E6B98F"), "glow": Color("#FFF0D8"), "sun": Vector3(.62, .52, .58), "sun_colour": Color("#FFE9CF"), "sun_energy": 0.8, "ambient": Color("#E8C3A0"), "ambient_energy": 0.38, "ground": Color("#996142"), "fog": Color("#D5A07A"), "fog_density": .0024, "exposure": 0.85, "window": .9},
 	# Open Plains (realistic pass): butterscotch sky, thicker haze toward the
@@ -34,11 +34,33 @@ const PALETTES := {
 # Audio levels (0–100) live in the same settings file, under [audio].
 const VOLUME_KEYS := ["vol_master", "vol_music", "vol_ambience", "vol_sfx", "vol_voice"]
 
+## Graphics presets (Forward+, 26 Oct). Every effect that costs frame time is
+## a setting, so a slower computer can turn it off:
+##   render_scale (FSR upscales back to the screen; fsr2 is sharper but costs
+##   more), shadows (the sun), room_shadows (ceiling lights in the room you're
+##   in), ssao (soft contact shadows), reflections (off · probes: one per room
+##   · ssr: plus screen-space), volumetric_fog (off · storms · on), sdfgi
+##   (bounce light, Ultra only), decals (dust and footprints), light_budget
+##   (lights at once), dust, weather and glow.
 const PRESETS := {
-	"low": {"shadows": false, "dust": false, "weather": false, "glow": false, "render_scale": 0.75},
-	"medium": {"shadows": true, "dust": true, "weather": true, "glow": false, "render_scale": 1.0},
-	"high": {"shadows": true, "dust": true, "weather": true, "glow": true, "render_scale": 1.0}
+	"low": {"shadows": false, "dust": false, "weather": false, "glow": false, "render_scale": 0.67, "fsr2": false,
+		"ssao": false, "reflections": "off", "volumetric_fog": "off", "sdfgi": false, "room_shadows": false, "decals": false, "light_budget": 48},
+	"medium": {"shadows": true, "dust": true, "weather": true, "glow": true, "render_scale": 0.85, "fsr2": false,
+		"ssao": true, "reflections": "probes", "volumetric_fog": "storms", "sdfgi": false, "room_shadows": false, "decals": true, "light_budget": 96},
+	"high": {"shadows": true, "dust": true, "weather": true, "glow": true, "render_scale": 1.0, "fsr2": false,
+		"ssao": true, "reflections": "ssr", "volumetric_fog": "on", "sdfgi": false, "room_shadows": true, "decals": true, "light_budget": 160},
+	"ultra": {"shadows": true, "dust": true, "weather": true, "glow": true, "render_scale": 1.0, "fsr2": false,
+		"ssao": true, "reflections": "ssr", "volumetric_fog": "on", "sdfgi": true, "room_shadows": true, "decals": true, "light_budget": 256},
 }
+
+## The preset a first launch starts on: Low on integrated graphics (most
+## laptops), Medium on a separate graphics card.
+static func detected_preset() -> String:
+	var adapter := RenderingServer.get_video_adapter_name().to_lower()
+	if adapter.is_empty(): return "medium"
+	for word in ["intel", "uhd", "iris", "radeon(tm) graphics", "radeon graphics", "vega", "apple", "mali", "adreno"]:
+		if adapter.contains(word) and not adapter.contains("arc(tm) a") and not adapter.contains(" a7") and not adapter.contains(" b5"): return "low"
+	return "medium"
 
 # One list of controls feeds the pause sheet and Settings → Controls.
 const CONTROLS := [
@@ -454,9 +476,8 @@ static func build_environment(palette: Dictionary) -> Environment:
 	sky_material.ground_horizon_color = (palette.sky_horizon as Color).darkened(.12)
 	sky_material.ground_bottom_color = palette.ground
 	sky_material.ground_curve = 0.04
-	# The Compatibility renderer does not reliably draw ProceduralSky's built-in
-	# sun disc in this project. OriginalMarsEnvironment supplies a renderer-safe
-	# corona tied to this same directional light instead.
+	# The sun's disc and glow are OriginalMarsEnvironment's corona, tied to the
+	# same directional light, so the sky's own disc stays off.
 	sky_material.sun_angle_max = 0.0
 	sky_material.sun_curve = 1.0
 	var sky := Sky.new()
@@ -468,8 +489,10 @@ static func build_environment(palette: Dictionary) -> Environment:
 	environment.ambient_light_color = palette.ambient
 	environment.ambient_light_energy = palette.ambient_energy
 	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
-	environment.tonemap_mode = Environment.TONE_MAPPER_ACES
-	environment.tonemap_exposure = palette.exposure
+	# AgX keeps bright Mars daylight and lit windows from blowing out to flat
+	# white; auto exposure (OriginalMarsEnvironment) adjusts between them.
+	environment.tonemap_mode = Environment.TONE_MAPPER_AGX
+	environment.tonemap_exposure = palette.exposure * AGX_EXPOSURE
 	environment.fog_enabled = true
 	environment.fog_light_color = palette.fog
 	environment.fog_density = palette.fog_density
@@ -478,7 +501,31 @@ static func build_environment(palette: Dictionary) -> Environment:
 	environment.glow_intensity = 0.6
 	environment.glow_bloom = 0.05
 	environment.glow_hdr_threshold = 1.1
+	# Forward+ extras, each switched by its setting (apply_settings).
+	environment.ssao_enabled = bool(setting("ssao"))
+	environment.ssao_radius = 1.1
+	environment.ssao_intensity = 1.8
+	environment.ssao_detail = .6
+	environment.ssao_light_affect = .15
+	environment.ssr_enabled = str(setting("reflections")) == "ssr"
+	environment.ssr_max_steps = 48
+	environment.ssr_fade_in = .2
+	environment.volumetric_fog_enabled = str(setting("volumetric_fog")) == "on"
+	environment.volumetric_fog_density = .006
+	environment.volumetric_fog_albedo = palette.fog
+	environment.volumetric_fog_anisotropy = .35
+	environment.volumetric_fog_length = 80.0
+	environment.volumetric_fog_sky_affect = .2
+	environment.sdfgi_enabled = bool(setting("sdfgi"))
+	environment.sdfgi_use_occlusion = true
+	environment.sdfgi_min_cell_size = .1   # finer than the default: thin furniture panels leak light at .25
+	environment.sdfgi_cascades = 4
+	environment.sdfgi_energy = .2   # gentle: more washes Mars daylight out
+	environment.sdfgi_bounce_feedback = .3
 	return environment
+
+## AgX shows the same scene a little darker than ACES did.
+const AGX_EXPOSURE := 1.25
 
 static func configure_sun(sun: DirectionalLight3D, palette: Dictionary) -> void:
 	sun.basis = sun_basis(palette)
@@ -497,8 +544,11 @@ static func configure_sun(sun: DirectionalLight3D, palette: Dictionary) -> void:
 static var _settings := {}
 
 static func defaults() -> Dictionary:
-	var d: Dictionary = PRESETS["medium"].duplicate()
-	d["preset"] = "medium"
+	var preset := detected_preset()
+	var d: Dictionary = PRESETS[preset].duplicate()
+	d["preset"] = preset
+	## Lowers the render scale for a while when the frame rate drops below 30.
+	d["dynamic_resolution"] = true
 	d["fov"] = 70
 	d["gary_autonomy"] = true
 	d["alert_advisories"] = true
@@ -568,12 +618,24 @@ static func matching_preset(values: Dictionary) -> String:
 
 # Applies graphics settings to a running scene.
 static func apply_settings(viewport: Viewport, environment: Environment, sun: DirectionalLight3D, cameras: Array) -> void:
+	var scale := float(setting("render_scale"))
 	if viewport != null:
-		viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
-		viewport.scaling_3d_scale = float(setting("render_scale"))
-	if environment != null: environment.glow_enabled = bool(setting("glow"))
+		# FSR upscales a smaller picture back to the screen: FSR 2 is sharper
+		# (with its own anti-aliasing), FSR 1 is cheaper.
+		if scale >= .99: viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+		else: viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2 if bool(setting("fsr2")) else Viewport.SCALING_3D_MODE_FSR
+		viewport.scaling_3d_scale = scale
+		# Smooth edges: FSR 2 does its own; otherwise cheap FXAA.
+		viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED if scale < .99 and bool(setting("fsr2")) else Viewport.SCREEN_SPACE_AA_FXAA
+	if environment != null:
+		environment.glow_enabled = bool(setting("glow"))
+		environment.ssao_enabled = bool(setting("ssao"))
+		environment.ssr_enabled = str(setting("reflections")) == "ssr"
+		environment.sdfgi_enabled = bool(setting("sdfgi"))
+		# Volumetric fog: always, only in storms (the weather turns it on), or never.
+		environment.volumetric_fog_enabled = str(setting("volumetric_fog")) == "on"
 	if sun != null:
 		sun.shadow_enabled = bool(setting("shadows"))
-		sun.directional_shadow_max_distance = 46.0 if str(setting("preset")) != "high" else 80.0
+		sun.directional_shadow_max_distance = {"low": 30.0, "medium": 46.0, "high": 80.0, "ultra": 120.0}.get(str(setting("preset")), 46.0)
 	for camera in cameras:
 		if camera is Camera3D and camera.has_meta("first_person"): (camera as Camera3D).fov = float(setting("fov"))

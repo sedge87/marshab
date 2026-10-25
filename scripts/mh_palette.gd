@@ -10,8 +10,8 @@ extends RefCounted
 ##   unnamed neutrals move most of the way onto the shared grey ladder;
 ##   natural and story materials (rock, plants, food, books, Mars, water),
 ##     screens and lights, see-through and textured materials are untouched.
-## Materials are shared: each source maps to one house material, two-sided for
-## the Compatibility renderer (thin panels in packs).
+## Materials are shared: each source maps to one house material, two-sided
+## (thin panels in the packs have no back faces).
 
 ## [albedo, metallic, roughness] per role.
 const ROLES := {
@@ -62,6 +62,10 @@ static func apply(root: Node) -> void:
 	if root is MeshInstance3D: meshes.append(root)
 	for node in meshes:
 		var mesh := node as MeshInstance3D
+		# Models are lit by bounce light (SDFGI) but don't feed it: only the
+		# habitat shell and the ground do. Small closed shapes (bunks, lockers)
+		# otherwise leak light through their thin panels and glow.
+		mesh.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 		if mesh.mesh == null or mesh.material_override != null: continue
 		for surface in mesh.mesh.get_surface_count():
 			var source := mesh.get_active_material(surface) as StandardMaterial3D
@@ -75,8 +79,8 @@ static func material(source: StandardMaterial3D) -> StandardMaterial3D:
 	if _cache.has(key): return _cache[key]
 	var out := source.duplicate() as StandardMaterial3D
 	out.cull_mode = BaseMaterial3D.CULL_DISABLED
-	# No indoor reflection probes in Compatibility: very metallic finishes go
-	# black, so keep them brushed.
+	# Keep finishes brushed: on Low (no reflection probes) very metallic
+	# surfaces would go black.
 	out.metallic = minf(out.metallic, .3)
 	var role := role_of(source)
 	# Some packs paint "graphite" pale on purpose (whole bunk frames): those

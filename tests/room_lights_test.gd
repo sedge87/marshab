@@ -36,9 +36,11 @@ func _initialize() -> void:
 
 	var fills: Array = world.get_tree().get_nodes_in_group("room_fill")
 	_check(fills.size() == 2, "one fill light per (3x3) room: %d" % fills.size())
+	# Forward+ (26 Oct): every ceiling fixture has its own downlight.
+	var fixtures: Array = b.root.find_children("CeilingLight*", "", true, false)
 	var fixture_lights := 0
-	for fixture in b.root.find_children("CeilingLight*", "", true, false): fixture_lights += fixture.find_children("*", "Light3D", true, false).size()
-	_check(fixture_lights == 0, "ceiling fixtures glow but carry no light of their own (%d)" % fixture_lights)
+	for fixture in fixtures: fixture_lights += fixture.find_children("*", "SpotLight3D", true, false).size()
+	_check(fixture_lights == fixtures.size() and fixture_lights > 0, "each ceiling fixture has its own downlight (%d of %d)" % [fixture_lights, fixtures.size()])
 	_check(world.get_tree().get_nodes_in_group("room_light_panel").size() == 2, "a light panel in each room")
 
 	# You're in the living quarters (no crew yet): it's on, the galley dims.
@@ -49,7 +51,11 @@ func _initialize() -> void:
 	_check(b.room_light_state(living) == "on" and b.room_light_state(galley) == "dim", "your room is on, the empty one dim")
 	var living_fill: OmniLight3D = fills.filter(func(l): return l.get_meta("room_key") == living)[0]
 	var galley_fill: OmniLight3D = fills.filter(func(l): return l.get_meta("room_key") == galley)[0]
-	_check(living_fill.light_energy > 1.0 and not galley_fill.visible, "only the lit room has a real light (%.2f / %s)" % [living_fill.light_energy, galley_fill.visible])
+	_check(living_fill.light_energy > .5 and not galley_fill.visible, "only the lit room has its fill light (%.2f / %s)" % [living_fill.light_energy, galley_fill.visible])
+	var spots: Array = world.get_tree().get_nodes_in_group("room_fixture_light")
+	var living_spots := spots.filter(func(l): return l.get_meta("room_key") == living)
+	var galley_spots := spots.filter(func(l): return l.get_meta("room_key") == galley)
+	_check(living_spots.all(func(l): return l.light_energy > 2.0) and galley_spots.all(func(l): return l.light_energy < .2), "the lit room's ceiling lights are on, the dim room's are faint night lights")
 
 	# The galley's panel: Auto → On → Dim → Off → Auto.
 	var panel: Node = world.get_tree().get_nodes_in_group("room_light_panel").filter(func(p): return p.room_key == galley)[0]
