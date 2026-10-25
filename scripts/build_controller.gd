@@ -391,6 +391,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if tool=="footprint":
 			if event.pressed and not _pointer_over_ui(): _edit_room_footprint(hover, event.ctrl_pressed)
 			return
+		if tool=="reassign":
+			if event.pressed and not _pointer_over_ui(): reassign_room_at(hover)
+			return
 		if not equipment_id.is_empty():
 			if event.pressed and not _pointer_over_ui(): _place_selected_equipment(hover)
 			return
@@ -469,6 +472,13 @@ func _process(delta: float) -> void:
 	if tool=="footprint":
 		_draw_footprint_preview()
 		_update_hologram_ui([] if hover.x == 999 else [hover], _footprint_hover_reason(hover))
+		return
+	if tool=="reassign":
+		# The whole room under the cursor lights up: green if it can change.
+		var target:=_zone_at(hover)
+		var target_reason:=reassign_reason(target)
+		_draw_preview(target.get("cells", []) if not target.is_empty() else [], target_reason.is_empty())
+		_update_hologram_ui([], target_reason)
 		return
 	if not equipment_id.is_empty():
 		var equipment_reason:=equipment_invalid_reason(equipment_id,hover)
@@ -670,6 +680,54 @@ func _freeform_active() -> bool:
 
 func _is_ordinary_room_kind(zone_kind: String) -> bool:
 	return zone_kind not in NON_ROOM_KINDS
+
+# ---------- reassigning a room ----------
+
+## Why the room here can't become the selected room type ("" if it can).
+func reassign_reason(zone: Dictionary) -> String:
+	if zone.is_empty(): return "Click a room to reassign it to %s" % str(ZONE_TYPES[kind].label)
+	if str(ZONE_INFO[kind].cat) != "rooms": return "Pick the new room type in the Rooms tab first"
+	if str(ZONE_INFO.get(str(zone.kind), {}).get("cat", "")) != "rooms" or str(zone.kind) == "vehicle_bay": return "Only rooms can be reassigned"
+	if str(zone.kind) == kind: return "It's already %s" % str(ZONE_TYPES[kind].label)
+	if not MHMissions.zone_unlocked(kind): return "Not delivered yet: this arrives in a later mission"
+	if _used_cargo() - int(zone.cost) + _reassigned_cost(zone, kind) > MHGame.cargo_budget(): return "Not enough cargo left"
+	return ""
+
+## A room's cargo as another room type (same size).
+func _reassigned_cost(zone: Dictionary, new_kind: String) -> int:
+	var old := cell_cost(str(zone.kind))
+	if old <= 0: return int(zone.cost)
+	return roundi(float(zone.cost) * float(cell_cost(new_kind)) / float(old))
+
+## " · 2 items won't fit and come out (cargo back)", or "".
+func _reassign_losses(zone: Dictionary) -> String:
+	var count := 0
+	for item in placed_interior:
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		if _zone_at_point(Vector2(at.x, at.z)) != zone: continue
+		if not (EquipmentCatalog.get_entry(str(item.get("id", ""))).get("valid_zones", []) as Array).has(kind): count += 1
+	return "" if count == 0 else " · %d item%s won't fit and come out (cargo back)" % [count, "" if count == 1 else "s"]
+
+## Turn the room under the cursor into the selected room type, keeping its
+## shape, doors and fittings; equipment that doesn't belong in the new room
+## comes out with its cargo back. Ctrl+Z turns it back.
+func reassign_room_at(cell: Vector2i) -> bool:
+	var zone := _zone_at(cell)
+	var why := reassign_reason(zone)
+	if not why.is_empty():
+		_flash_notice("invalid", "Can't reassign", why + ".")
+		MHAudio.sfx("invalid")
+		return false
+	var was := str(zone.kind)
+	_history.append({"type": "reassign", "zone": zone, "was": was, "was_cost": int(zone.cost)})
+	zone.cost = _reassigned_cost(zone, kind)
+	zone.kind = kind
+	var refund := _prune_equipment()
+	_rebuild()
+	_learn(kind)
+	MHAudio.sfx("place")
+	_flash_notice("valid", "Room reassigned", "%s is now %s%s." % [str(ZONE_TYPES[was].label), str(ZONE_TYPES[kind].label), (" · items that didn't fit came out (+%s cargo)" % MHStyle.kg(refund)) if refund > 0 else ""])
+	return true
 
 func _try_place_angled_outline_connector() -> bool:
 	var world_point := _world_point_at_mouse(habitat_base_y)
@@ -3988,6 +4046,7 @@ func undo_last_structure() -> bool:
 			if step.has("was_door"):   # a changed panel goes back
 				partitions[index].door = bool(step.was_door)
 				partitions[index].glass = bool(step.get("was_glass", false))
+				partitions[index].half = bool(step.get("was_half", false))
 			else: partitions.remove_at(index)   # a new panel is removed
 			_rebuild()
 			_flash_notice("info", "Undone", "Partition change undone.")
@@ -4054,14 +4113,14 @@ func _partition_room(segment: Dictionary) -> Dictionary:
 		if not is_same(_zone_at_point(end + normal * .2), first): return {}
 	return first
 
-func partition_invalid_reason(segment: Dictionary, door := false, glass := false) -> String:
+func partition_invalid_reason(segment: Dictionary, door := false, glass := false, half := false) -> String:
 	if segment.is_empty(): return "Aim at the floor of a room"
 	var room := _partition_room(segment)
 	if room.is_empty(): return "Partitions go inside a room, not along its outer walls"
 	if not _is_habitat_zone(room) or str(room.kind) in ["corridor", "airlock", "vehicle_bay"]: return "Partitions go in rooms, not corridors, airlocks or the vehicle bay"
 	var index := partition_index(segment)
 	if index >= 0:
-		if bool(partitions[index].door) == door and bool(partitions[index].get("glass", false)) == glass: return "There's already a %s here" % ("door" if door else ("glass panel" if glass else "wall"))
+		if bool(partitions[index].door) == door and bool(partitions[index].get("glass", false)) == glass and bool(partitions[index].get("half", false)) == half: return "There's already a %s here" % ("door" if door else ("glass panel" if glass else ("half-glass panel" if half else "wall")))
 		return ""   # a panel changes type (wall, glass or door)
 	# Floor-standing equipment in the way.
 	for item in placed_interior:
@@ -4078,15 +4137,18 @@ func partition_invalid_reason(segment: Dictionary, door := false, glass := false
 	return ""
 
 ## Add a wall, glass or door segment (or change a panel's type). Undo with Ctrl+Z.
-func place_partition(segment: Dictionary, door := false, glass := false) -> bool:
-	if not partition_invalid_reason(segment, door, glass).is_empty(): return false
+## half: solid to waist height, glass above (not a door).
+func place_partition(segment: Dictionary, door := false, glass := false, half := false) -> bool:
+	half = half and not door and not glass
+	if not partition_invalid_reason(segment, door, glass, half).is_empty(): return false
 	var index := partition_index(segment)
 	if index >= 0:
-		_history.append({"type": "partition", "segment": {"a": segment.a, "b": segment.b}, "was_door": bool(partitions[index].door), "was_glass": bool(partitions[index].get("glass", false))})
+		_history.append({"type": "partition", "segment": {"a": segment.a, "b": segment.b}, "was_door": bool(partitions[index].door), "was_glass": bool(partitions[index].get("glass", false)), "was_half": bool(partitions[index].get("half", false))})
 		partitions[index].door = door
 		partitions[index].glass = glass
+		partitions[index].half = half
 	else:
-		partitions.append({"a": segment.a, "b": segment.b, "door": door, "glass": glass})
+		partitions.append({"a": segment.a, "b": segment.b, "door": door, "glass": glass, "half": half})
 		_history.append({"type": "partition", "segment": {"a": segment.a, "b": segment.b}})
 	_rebuild()
 	habitat_changed.emit()
@@ -4157,6 +4219,18 @@ func _build_partitions() -> void:
 			for rail_y in [.05, 1.0, height - .03]:
 				_partition_box(holder, Vector3(length, .06 if rail_y > .1 else .1, PARTITION_THICKNESS + .02), Vector3(0, rail_y, 0), frame, index, false)
 			_partition_box(holder, Vector3(length - frame_w * 2.0, height - .1, .03), Vector3(0, height * .5, 0), glass_material, index, true)
+		elif bool(segment.get("half", false)) and not bool(segment.door):
+			# Half and half: a solid panel to waist height with a sill, glass
+			# above in the same brushed frame as the glass panel.
+			var frame_w := .06
+			var sill := 1.05
+			_partition_box(holder, Vector3(length, sill, PARTITION_THICKNESS), Vector3(0, sill * .5, 0), panel, index, true)
+			_partition_box(holder, Vector3(length, .12, PARTITION_THICKNESS + .02), Vector3(0, .06, 0), trim, index, false)
+			_partition_box(holder, Vector3(length, .06, PARTITION_THICKNESS + .06), Vector3(0, sill + .03, 0), frame, index, false)
+			for side in [-1.0, 1.0]:
+				_partition_box(holder, Vector3(frame_w, height - sill, PARTITION_THICKNESS + .02), Vector3(side * (length - frame_w) * .5, sill + (height - sill) * .5, 0), frame, index, false)
+			_partition_box(holder, Vector3(length, .06, PARTITION_THICKNESS + .02), Vector3(0, height - .03, 0), frame, index, false)
+			_partition_box(holder, Vector3(length - frame_w * 2.0, height - sill - .1, .03), Vector3(0, sill + (height - sill) * .5, 0), glass_material, index, true)
 		elif not bool(segment.door):
 			_partition_box(holder, Vector3(length, height, PARTITION_THICKNESS), Vector3(0, height * .5, 0), panel, index, true)
 			_partition_box(holder, Vector3(length, .12, PARTITION_THICKNESS + .02), Vector3(0, .06, 0), trim, index, false)
@@ -5037,6 +5111,14 @@ func _undo() -> void:
 			var entry:=EquipmentCatalog.get_entry(str(step.id))
 			_flash_notice("info","Undone","%s removed · +%s cargo returned." % [entry.get("label",step.id),MHStyle.kg(int(entry.get("cargo_cost",0)))])
 			return
+		if step.type=="reassign":
+			if not zones.has(step.zone): continue
+			var was_label:=str(ZONE_TYPES[str(step.zone.kind)].label)
+			step.zone.kind=str(step.was)
+			step.zone.cost=int(step.was_cost)
+			_rebuild()
+			_flash_notice("info","Undone","%s is %s again (anything that didn't fit stays removed)." % [was_label, str(ZONE_TYPES[str(step.was)].label)])
+			return
 		if step.type=="partition":
 			# Drawn in Interior mode, undone here too, in order.
 			var panel:=partition_index(step.segment)
@@ -5044,6 +5126,7 @@ func _undo() -> void:
 			if step.has("was_door"):   # a changed panel goes back
 				partitions[panel].door=bool(step.was_door)
 				partitions[panel].glass=bool(step.get("was_glass",false))
+				partitions[panel].half=bool(step.get("was_half",false))
 			else: partitions.remove_at(panel)   # a new panel is removed
 			_rebuild()
 			_flash_notice("info","Undone","Partition change undone.")
@@ -6179,7 +6262,7 @@ func _build_tool_bar() -> void:
 	var band:=CenterContainer.new(); band.anchor_top=1; band.anchor_bottom=1; band.anchor_right=1; band.offset_top=-436; band.offset_bottom=-340; band.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(band)
 	var bar:=PanelContainer.new(); bar.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.SURFACE_HUD,MHStyle.BORDER_SUBTLE,MHStyle.RADIUS_MD,1,Vector4(8,8,8,8))); band.add_child(bar)
 	var row:=MHStyle.hbox(8); bar.add_child(row)
-	for entry in [["place","box","Place","LMB"],["footprint","git-branch","Footprint","Edit"],["rotate","rotate-cw","Rotate","R"],["remove","trash-2","Remove","X"],["undo","undo-2","Undo","Ctrl Z"]]:
+	for entry in [["place","box","Place","LMB"],["footprint","git-branch","Footprint","Edit"],["reassign","arrow-left-right","Reassign a room: pick the new type, then click the room","Swap"],["rotate","rotate-cw","Rotate","R"],["remove","trash-2","Remove","X"],["undo","undo-2","Undo","Ctrl Z"]]:
 		var item:=MHStyle.vbox(6); item.alignment=BoxContainer.ALIGNMENT_CENTER; row.add_child(item)
 		var b:=Button.new(); b.icon=MHIcons.texture(entry[1],22); b.tooltip_text=str(entry[2]); b.custom_minimum_size=Vector2(52,48); b.icon_alignment=HORIZONTAL_ALIGNMENT_CENTER; b.focus_mode=Control.FOCUS_NONE; b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 		b.theme_type_variation="GhostButton"; item.add_child(b)
@@ -6187,6 +6270,9 @@ func _build_tool_bar() -> void:
 		match str(entry[0]):
 			"place": b.pressed.connect(_set_tool.bind("place"))
 			"footprint": b.pressed.connect(_set_tool.bind("footprint"))
+			"reassign": b.pressed.connect(func() -> void:
+				_set_tool("place" if tool=="reassign" else "reassign")
+				if tool=="reassign" and str(ZONE_INFO[kind].cat)!="rooms": category="rooms"; _refresh_catalogue())
 			"rotate": b.pressed.connect(func() -> void: _rotate_airlock(); _refresh_catalogue())
 			"remove": b.pressed.connect(func() -> void: _set_tool("place" if tool=="remove" else "remove"))
 			"undo": b.pressed.connect(_undo)
@@ -6213,6 +6299,13 @@ func _update_hologram_ui(cells: Array,reason: String, angled_mount: Dictionary =
 	if tool=="remove":
 		state="remove"; message="Click equipment or a zone to remove it · full refund"
 		placing_label.text="Remove tool"; placing_delta.text=""
+	elif tool=="reassign":
+		placing_label.text="Reassign to %s" % str(ZONE_TYPES[kind].label)
+		placing_delta.text=""
+		var target:=_zone_at(hover)
+		var why:=reassign_reason(target)
+		state="valid" if why.is_empty() else ("info" if target.is_empty() else "invalid")
+		message=why if not why.is_empty() else "Click: %s becomes %s%s" % [str(ZONE_TYPES[str(target.kind)].label), str(ZONE_TYPES[kind].label), _reassign_losses(target)]
 	elif tool=="footprint":
 		placing_label.text="Edit room footprint"
 		placing_delta.text=""

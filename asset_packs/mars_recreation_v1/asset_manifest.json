@@ -1,0 +1,319 @@
+{
+  "style": "Recreation: lounge sofa, bean bag, arcade, VR station, table football, telescope, music corner, dartboard, games shelf",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "lounge_sofa",
+      "file": "lounge_sofa.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -1.0,
+          0.0,
+          -0.442
+        ],
+        [
+          1.0,
+          0.82,
+          0.44
+        ]
+      ],
+      "triangles": 3288,
+      "named_components": [
+        "arm_l_white",
+        "arm_r_white",
+        "arm_stripe",
+        "back_0_teal",
+        "back_1_teal",
+        "back_2_teal",
+        "back_white",
+        "base_white",
+        "cup_holder",
+        "cup_ring_satin",
+        "feet_dark",
+        "plinth",
+        "seat_0_teal",
+        "seat_1_teal",
+        "seat_2_teal"
+      ]
+    },
+    {
+      "id": "bean_bag",
+      "file": "bean_bag.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.463,
+          -0.004,
+          -0.463
+        ],
+        [
+          0.463,
+          0.605,
+          0.492
+        ]
+      ],
+      "triangles": 3148,
+      "named_components": [
+        "bag_teal",
+        "base_black",
+        "loop",
+        "seam",
+        "seat_dimple_teal"
+      ]
+    },
+    {
+      "id": "vr_station",
+      "file": "vr_station.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.86,
+          0.0,
+          -0.78
+        ],
+        [
+          0.78,
+          2.05,
+          0.78
+        ]
+      ],
+      "triangles": 2356,
+      "named_components": [
+        "boom_dark",
+        "boundary",
+        "cable_black",
+        "controller_0_white",
+        "controller_1_white",
+        "cradle",
+        "headset_band",
+        "headset_white",
+        "hook_satin",
+        "mast_dark",
+        "mast_foot",
+        "mat_black",
+        "status_light_screen",
+        "strap",
+        "swivel_satin",
+        "visor_dark"
+      ]
+    },
+    {
+      "id": "telescope",
+      "file": "telescope.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.388,
+          -0.015,
+          -0.445
+        ],
+        [
+          0.388,
+          1.494,
+          0.381
+        ]
+      ],
+      "triangles": 1564,
+      "named_components": [
+        "cradle_dark",
+        "dew_shield",
+        "eyepiece_black",
+        "feet_black",
+        "finder_satin",
+        "mount",
+        "tripod_dark",
+        "tube_band",
+        "tube_white"
+      ]
+    },
+    {
+      "id": "music_station",
+      "file": "music_station.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.635,
+          0.0,
+          -0.24
+        ],
+        [
+          0.655,
+          1.04,
+          0.235
+        ]
+      ],
+      "triangles": 8468,
+      "named_components": [
+        "cone_l_76_black",
+        "cone_l_94_black",
+        "cone_r_76_black",
+        "cone_r_94_black",
+        "cone_ring_l_76_dark",
+        "cone_ring_l_94_dark",
+        "cone_ring_r_76_dark",
+        "cone_ring_r_94_dark",
+        "credenza_body_warm",
+        "credenza_cap_white",
+        "credenza_plinth",
+        "credenza_rails",
+        "ear_cups_white",
+        "headphones",
+        "platter_satin",
+        "record_label",
+        "record_shelf",
+        "record_vinyl_black",
+        "records_vinyl_black",
+        "speaker_l",
+        "speaker_r",
+        "status_light_screen",
+        "tonearm_base_dark",
+        "tonearm_satin",
+        "turntable_plinth_slate"
+      ]
+    },
+    {
+      "id": "dartboard",
+      "file": "dartboard.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.26,
+          -0.26,
+          -0.16
+        ],
+        [
+          0.26,
+          0.26,
+          -0.0
+        ]
+      ],
+      "triangles": 2024,
+      "named_components": [
+        "bull",
+        "darts_satin",
+        "flights",
+        "plate",
+        "ring_0_black",
+        "ring_1_white",
+        "ring_2_black",
+        "ring_3_white",
+        "ring_4_black",
+        "ring_5_white",
+        "wires_satin"
+      ]
+    },
+    {
+      "id": "games_shelf",
+      "file": "games_shelf.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.46,
+          -0.33,
+          -0.28
+        ],
+        [
+          0.46,
+          0.3,
+          -0.0
+        ]
+      ],
+      "triangles": 4232,
+      "named_components": [
+        "back_plate",
+        "brackets_102_dark",
+        "brackets_72_dark",
+        "cards_white",
+        "cube_0_button",
+        "cube_1_screen",
+        "cube_2_cool",
+        "cube_3",
+        "dice_white",
+        "game_0_game_box_cool",
+        "game_1_game_box",
+        "game_2_game_box",
+        "shelf_102_white",
+        "shelf_72_white",
+        "standing_0_game_box",
+        "standing_1_white",
+        "standing_2_game_box_cool",
+        "standing_3",
+        "trophy_base",
+        "trophy_cup_satin"
+      ]
+    },
+    {
+      "id": "table_football",
+      "file": "table_football.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.72,
+          0.0,
+          -0.6
+        ],
+        [
+          0.72,
+          0.9,
+          0.6
+        ]
+      ],
+      "triangles": 7628,
+      "named_components": [
+        "body_white",
+        "centre_circle_white",
+        "feet_black",
+        "goal_l",
+        "goal_r",
+        "grips_black",
+        "halfway_line_white",
+        "legs_dark",
+        "pitch_field",
+        "rods_satin",
+        "score_beads",
+        "team",
+        "team_white"
+      ]
+    },
+    {
+      "id": "arcade_cabinet",
+      "file": "arcade_cabinet.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.34,
+          0.0,
+          -0.362
+        ],
+        [
+          0.34,
+          1.88,
+          0.36
+        ]
+      ],
+      "triangles": 5048,
+      "named_components": [
+        "arcade_screen_screen",
+        "back_slate",
+        "button_0_button",
+        "button_1",
+        "button_2_screen",
+        "coin_door_slate",
+        "coin_slots",
+        "control_panel_dark",
+        "joystick_ball",
+        "joystick_satin",
+        "lower_front",
+        "marquee_band",
+        "marquee_marquee",
+        "plinth",
+        "screen_bezel",
+        "side_l_white",
+        "side_r_white",
+        "top_white",
+        "vent_dark"
+      ]
+    }
+  ]
+}

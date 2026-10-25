@@ -17,6 +17,7 @@ const HERE_TAB := "_here"
 const STRUCTURE_TOOLS := [
 	{"id": "partition", "label": "Partition wall", "icon": "brick-wall", "text": "Divide a room into bedrooms or cubicles. Hold the mouse button and drag along the floor to draw 1.5 m panels; R switches to 45° panels. The room stays one space for air and heat."},
 	{"id": "partition_glass", "label": "Glass partition", "icon": "panels-top-left", "text": "A glass panel in a metal frame: it divides the room but keeps it open and light. Drag to draw, or aim at a wall panel to glaze it."},
+	{"id": "partition_half", "label": "Half-glass partition", "icon": "panels-top-left", "text": "Solid to waist height with glass above: private enough for a desk or a bunk, but the room still feels open. Drag to draw, or aim at a wall panel to change it."},
 	{"id": "partition_door", "label": "Partition door", "icon": "door-open", "text": "A door in a partition wall: aim at a wall panel to turn it into a door, or at the floor to add one. Press E to open it: it swings away from you."},
 	{"id": "partition_glass_door", "label": "Glass door", "icon": "door-open", "text": "A glass door in a metal frame, for a partition: light gets through but it still closes off the space. Aim at a wall panel, or at the floor to add one."},
 	{"id": "interior_door", "label": "Room door", "icon": "door-closed", "text": "A doorway in a shared wall, so two sealed rooms connect. For an open corridor end, aim at the floor right by the opening."},
@@ -77,6 +78,11 @@ var _hints: Label
 var _was_minimal := false
 var _partition_target := {}
 var _last_painted := ""
+## A drag draws along the line it started on: the first panel, and the last
+## step along that line painted (so a laggy frame fills the gap, and aiming
+## at a panel just drawn can't start another line).
+var _drag_start := {}
+var _drag_step := 0
 ## Partition tools: R switches between straight and 45° panels.
 var _partition_angled := false
 
@@ -308,7 +314,8 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		if existing >= 0: _partition_target = {"a": builder.partitions[existing].a, "b": builder.partitions[existing].b}
 		var door := _selected_structure in ["partition_door", "partition_glass_door"]
 		var glass := _selected_structure in ["partition_glass", "partition_glass_door"]
-		_valid_reason = builder.partition_invalid_reason(_partition_target, door, glass)
+		var half := _selected_structure == "partition_half"
+		_valid_reason = builder.partition_invalid_reason(_partition_target, door, glass, half)
 		if force_rebuild or preview == null:
 			if preview != null: preview.queue_free()
 			preview = _partition_preview(door)
@@ -322,12 +329,9 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		preview.transform = builder.partition_transform(_partition_target)
 		if not _partition_target.is_empty():
 			preview.scale.x = (_partition_target.a as Vector2).distance_to(_partition_target.b) / BuildController.PARTITION_STEP
-		# Hold the button and drag to keep drawing panels.
-		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not _selector_open and _valid_reason.is_empty():
-			var key := str(_partition_target)
-			if key != _last_painted:
-				_last_painted = key
-				if builder.place_partition(_partition_target, door, glass): MHAudio.sfx("place", -4.0)
+		# Hold the button and drag to keep drawing panels along the first one's line.
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not _selector_open and not door and not _drag_start.is_empty() and absf(normal.y) >= .5:
+			_drag_partitions(Vector2(point.x, point.z), glass, half)
 		_update_hud()
 		return
 	if _selected_structure == "interior_door":
@@ -504,6 +508,26 @@ func _position_interior_door_preview(holder: Node3D, target: Dictionary, hit_nor
 	holder.transform = Transform3D(opening.basis, opening.origin + Vector3.UP * 1.45 + hit_normal * .065)
 
 ## Bay-sized ghost of the glazed band, shown on the wall bay being aimed at.
+## Dragging: the panels along the first panel's line up to where the floor
+## is aimed at, every one in between (a slow frame doesn't leave gaps), one
+## step at a time from the last painted.
+func _drag_partitions(aim: Vector2, glass: bool, half := false) -> void:
+	var a: Vector2 = _drag_start.get("a", Vector2.ZERO)
+	var b: Vector2 = _drag_start.get("b", Vector2.ZERO)
+	var length := a.distance_to(b)
+	if length < .1: return
+	var along := (b - a) / length
+	var step := roundi((aim - (a + b) * .5).dot(along) / length)
+	if step == _drag_step: return
+	var direction := signi(step - _drag_step)
+	while _drag_step != step:
+		_drag_step += direction
+		var shift := along * length * _drag_step
+		var segment := {"a": a + shift, "b": b + shift}
+		if builder.partition_index(segment) >= 0: continue
+		if not builder.partition_invalid_reason(segment, false, glass, half).is_empty(): continue
+		if builder.place_partition(segment, false, glass, half): MHAudio.sfx("place", -4.0)
+
 ## Ghost of a partition panel (or door frame) for the aimed segment.
 func _partition_preview(door: bool) -> Node3D:
 	var holder := Node3D.new()
@@ -583,7 +607,9 @@ func _place_preview() -> void:
 		return
 	if _selected_structure.begins_with("partition"):
 		_last_painted = str(_partition_target)
-		if builder.place_partition(_partition_target, _selected_structure in ["partition_door", "partition_glass_door"], _selected_structure in ["partition_glass", "partition_glass_door"]):
+		_drag_start = _partition_target.duplicate()
+		_drag_step = 0
+		if builder.place_partition(_partition_target, _selected_structure in ["partition_door", "partition_glass_door"], _selected_structure in ["partition_glass", "partition_glass_door"], _selected_structure == "partition_half"):
 			MHAudio.sfx("place")
 			_refresh_preview(true)
 		else:
@@ -1095,7 +1121,7 @@ func _update_hud() -> void:
 		_tag_icon.modulate = tone
 		_tag_label.text = _blocked_note.to_upper()
 	elif _remove_mode: _tag_label.text = "AIM AT AN ITEM, DOOR OR WINDOW   ·   LMB REMOVE"
-	elif ok and (_selected_structure == "partition" or _selected_structure == "partition_glass"): _tag_label.text = "FITS HERE   ·   HOLD LMB AND DRAG TO DRAW   ·   R %s" % ("STRAIGHT" if _partition_angled else "45°")
+	elif ok and _selected_structure in ["partition", "partition_glass", "partition_half"]: _tag_label.text = "FITS HERE   ·   HOLD LMB AND DRAG TO DRAW   ·   R %s" % ("STRAIGHT" if _partition_angled else "45°")
 	elif ok and _selected_structure in ["partition_door", "partition_glass_door"]: _tag_label.text = "FITS HERE   ·   LMB PLACE DOOR   ·   R %s" % ("STRAIGHT" if _partition_angled else "45°")
 	elif ok and _selected_structure == "upgrade_roof": _tag_label.text = "FITS HERE   ·   LMB SHIELD THE WHOLE ROOF (ON THE OUTSIDE)"
 	elif ok and _selected_structure.begins_with("upgrade_"): _tag_label.text = "FITS HERE   ·   LMB ADD TO THIS WALL" + ("" if _selected_structure == "upgrade_acoustic" else " (ON THE OUTSIDE)")

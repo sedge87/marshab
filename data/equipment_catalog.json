@@ -7,6 +7,11 @@
       "icon": "bed-double"
     },
     {
+      "id": "recreation",
+      "label": "Recreation",
+      "icon": "smile"
+    },
+    {
       "id": "science",
       "label": "Science Laboratory",
       "icon": "flask-conical"
@@ -4347,6 +4352,318 @@
         0.535
       ],
       "pack": "mars_living_on_mars_v1"
+    },
+    {
+      "id": "lounge_sofa",
+      "label": "Lounge Sofa",
+      "group": "recreation",
+      "status": "catalogue",
+      "icon": "armchair",
+      "height": 0.82,
+      "description": "A three-seat sofa with soft cushions: somewhere to sprawl after a shift.",
+      "role": "Somewhere to relax",
+      "cargo_cost": 40,
+      "valid_zones": [
+        "living"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 3
+      },
+      "system_note": "Long missions need places to switch off. A soft seat that isn't your bunk or your desk makes a habitat feel like a home.",
+      "system_links": [
+        "Morale"
+      ],
+      "asset_scene": "res://assets/equipment/mars_recreation_v1/lounge_sofa.tscn",
+      "size_m": [
+        2.0,
+        0.82,
+        0.882
+      ],
+      "pack": "mars_recreation_v1"
+    },
+    {
+      "id": "bean_bag",
+      "label": "Bean Bag",
+      "group": "recreation",
+      "status": "catalogue",
+      "icon": "circle-dashed",
+      "height": 0.6,
+      "description": "A big bean bag. In Mars's low gravity you sink in slowly.",
+      "role": "Somewhere to relax",
+      "cargo_cost": 8,
+      "valid_zones": [
+        "living"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 2
+      },
+      "system_note": "In 38% gravity a bean bag holds you gently. Filled with light foam beads, it weighs almost nothing to ship.",
+      "system_links": [
+        "Morale"
+      ],
+      "asset_scene": "res://assets/equipment/mars_recreation_v1/bean_bag.tscn",
+      "size_m": [
+        0.926,
+        0.609,
+        0.955
+      ],
+      "pack": "mars_recreation_v1"
+    },
+    {
+      "id": "arcade_cabinet",
+      "label": "Arcade Cabinet",
+      "group": "recreation",
+      "status": "catalogue",
+      "icon": "gauge",
+      "height": 1.88,
+      "description": "A retro arcade machine loaded with MARS LANDER. Beat the crew's high score.",
+      "role": "Games",
+      "cargo_cost": 60,
+      "valid_zones": [
+        "living",
+        "galley"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 3,
+        "power_draw": 1
+      },
+      "system_note": "Games give the crew something to share and compete over. A high-score table on the wall is good for team spirit.",
+      "system_links": [
+        "Morale",
+        "Power"
+      ],
+      "asset_scene": "res://assets/equipment/mars_recreation_v1/arcade_cabinet.tscn",
+      "size_m": [
+        0.68,
+        1.88,
+        0.722
+      ],
+      "pack": "mars_recreation_v1"
+    },
+    {
+      "id": "vr_station",
+      "label": "VR Station",
+      "group": "recreation",
+      "status": "catalogue",
+      "icon": "presentation",
+      "height": 2.05,
+      "description": "A virtual reality rig: walk a beach, a forest or your home town, then take the headset off back on Mars.",
+      "role": "Games and a trip home",
+      "cargo_cost": 25,
+      "valid_zones": [
+        "living"
+      ],
+      "footprint": [
+        2,
+        2
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 3,
+        "power_draw": 1
+      },
+      "system_note": "Isolated crews in Antarctica and on the space station say views of nature help most. Virtual reality brings them indoors.",
+      "system_links": [
+        "Morale",
+        "Power"
+      ],
+      "asset_scene": "res://assets/equipment/mars_recreation_v1/vr_station.tscn",
+      "size_m": [
+        1.64,
+        2.05,
+        1.56
+      ],
+      "pack": "mars_recreation_v1"
+    },
+    {
+      "id": "table_football",
+      "label": "Table Football",
+      "group": "recreation",
+      "status": "catalogue",
+      "icon": "users",
+      "height": 0.9,
+      "description": "Table football for four. Orange against white.",
+      "role": "Games",
+      "cargo_cost": 45,
+      "valid_zones": [
+        "living",
+        "galley"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 3
+      },
+      "system_note": "Quick team games let a crew let off steam together, and end arguments with a laugh.",
+      "system_links": [
+        "Morale"
+      ],
+      "asset_scene": "res://assets/equipment/mars_recreation_v1/table_football.tscn",
+      "size_m": [
+        1.44,
+        0.9,
+        1.2
+      ],
+      "pack": "mars_recreation_v1"
+    },
+    {
+      "id": "telescope",
+      "label": "Telescope",
+      "group": "recreation",
+      "status": "catalogue",
+      "icon": "orbit",
+      "height": 1.49,
+      "description": "A small telescope for the window: Phobos, Deimos, and Earth as a bright blue evening star.",
+      "role": "Stargazing",
+      "cargo_cost": 12,
+      "valid_zones": [
+        "living",
+        "science",
+        "communications"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 2
+      },
+      "system_note": "From Mars, Earth looks like a bright evening or morning star. Through a small telescope you can see it has phases, like the Moon.",
+      "system_links": [
+        "Morale"
+      ],
+      "asset_scene": "res://assets/equipment/mars_recreation_v1/telescope.tscn",
+      "size_m": [
+        0.776,
+        1.509,
+        0.826
+      ],
+      "pack": "mars_recreation_v1"
+    },
+    {
+      "id": "music_station",
+      "label": "Music Corner",
+      "group": "recreation",
+      "status": "catalogue",
+      "icon": "music",
+      "height": 1.04,
+      "description": "A record player, two speakers and a box of records. The crew take turns choosing.",
+      "role": "Music",
+      "cargo_cost": 30,
+      "valid_zones": [
+        "living",
+        "galley"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 2,
+        "power_draw": 1
+      },
+      "system_note": "Music is one of the things astronauts say they miss most. Many take a playlist from home.",
+      "system_links": [
+        "Morale",
+        "Power"
+      ],
+      "asset_scene": "res://assets/equipment/mars_recreation_v1/music_station.tscn",
+      "size_m": [
+        1.29,
+        1.04,
+        0.475
+      ],
+      "pack": "mars_recreation_v1"
+    },
+    {
+      "id": "dartboard",
+      "label": "Magnetic Dartboard",
+      "group": "recreation",
+      "status": "catalogue",
+      "icon": "crown",
+      "height": 0.52,
+      "mount_height": 1.5,
+      "description": "A magnetic dartboard: no sharp points near the hull.",
+      "role": "Games",
+      "cargo_cost": 3,
+      "valid_zones": [
+        "living",
+        "galley"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "wall",
+      "effects": {
+        "happiness": 1
+      },
+      "system_note": "Nothing sharp gets thrown in a pressurised habitat: these darts have magnetic tips.",
+      "system_links": [
+        "Morale"
+      ],
+      "asset_scene": "res://assets/equipment/mars_recreation_v1/dartboard.tscn",
+      "size_m": [
+        0.52,
+        0.52,
+        0.16
+      ],
+      "pack": "mars_recreation_v1"
+    },
+    {
+      "id": "games_shelf",
+      "label": "Games Shelf",
+      "group": "recreation",
+      "status": "catalogue",
+      "icon": "box",
+      "height": 0.6,
+      "mount_height": 1.4,
+      "description": "A wall shelf of board games, cards, a puzzle cube and the crew's trophy.",
+      "role": "Games",
+      "cargo_cost": 6,
+      "valid_zones": [
+        "living",
+        "galley"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "wall",
+      "effects": {
+        "happiness": 2
+      },
+      "system_note": "Board games need no power and never crash. Games nights are a habit on long expeditions.",
+      "system_links": [
+        "Morale"
+      ],
+      "asset_scene": "res://assets/equipment/mars_recreation_v1/games_shelf.tscn",
+      "size_m": [
+        0.92,
+        0.63,
+        0.28
+      ],
+      "pack": "mars_recreation_v1"
     }
   ]
 }

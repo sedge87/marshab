@@ -5325,5 +5325,196 @@
         ]
       }
     ]
+  },
+  "arcade_cabinet": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Play MARS LANDER",
+        "observations": [
+          [
+            "Crashed",
+            "Too fast. The lander hits the surface at 40 m/s. GAME OVER. The high score is still the Engineer's."
+          ],
+          [
+            "Landed!",
+            "A soft touchdown with 2% fuel left. Your name goes on the high-score table."
+          ],
+          [
+            "Real landers",
+            "Real Mars landers have to slow from about 20,000 km/h to walking pace in seven minutes, with no help from Earth."
+          ]
+        ]
+      }
+    ]
+  },
+  "vr_station": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Take a trip home",
+        "observations": [
+          [
+            "A beach",
+            "Waves, gulls and wet sand. For ten minutes you forget the hull is there."
+          ],
+          [
+            "A forest",
+            "Green everywhere and birdsong. Then you take the headset off: red dust outside the window."
+          ],
+          [
+            "Why it helps",
+            "Crews in Antarctica say views of nature help them most through the long dark months."
+          ]
+        ]
+      }
+    ]
+  },
+  "table_football": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Play a quick game",
+        "observations": [
+          [
+            "Orange win",
+            "3–2 to orange, with a last-second goal from the back."
+          ],
+          [
+            "White win",
+            "White win 5–1. The losers make the tea."
+          ],
+          [
+            "Low gravity",
+            "The ball rolls the same on Mars: the table is level. But a mis-hit flies further."
+          ]
+        ]
+      }
+    ]
+  },
+  "telescope": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Look through it",
+        "observations": [
+          [
+            "Earth",
+            "A bright blue dot, half lit, like a tiny Moon. Everyone you know is on it."
+          ],
+          [
+            "Phobos",
+            "Mars's bigger moon races across the sky twice a day, from west to east."
+          ],
+          [
+            "Deimos",
+            "The small moon looks almost like a star. It takes over two days to cross the sky."
+          ]
+        ]
+      }
+    ]
+  },
+  "music_station": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Choose a record",
+        "observations": [
+          [
+            "Your pick",
+            "The crew's favourite: everyone sings the chorus."
+          ],
+          [
+            "Someone else's pick",
+            "Not your thing, but it's their turn."
+          ],
+          [
+            "Wake-up songs",
+            "Mission Control used to wake astronauts with a different song every morning."
+          ]
+        ]
+      }
+    ]
+  },
+  "dartboard": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Throw three darts",
+        "observations": [
+          [
+            "Bull!",
+            "Right in the middle. Nobody saw it."
+          ],
+          [
+            "Treble twenty",
+            "Sixty points. The Engineer is not impressed."
+          ],
+          [
+            "Missed",
+            "The dart sticks to the plate. At least it's magnetic."
+          ]
+        ]
+      }
+    ]
+  },
+  "games_shelf": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Pick a game",
+        "observations": [
+          [
+            "Board game",
+            "Four players, two hours, one argument about the rules."
+          ],
+          [
+            "Cards",
+            "A quick round before the night shift."
+          ],
+          [
+            "Puzzle cube",
+            "Still not solved. It's been three sols."
+          ]
+        ]
+      }
+    ]
+  },
+  "bean_bag": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Sink in",
+        "observations": [
+          [
+            "Comfy",
+            "You sink in slowly in the low gravity. Getting out takes a while."
+          ]
+        ]
+      }
+    ]
+  },
+  "lounge_sofa": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Sit back",
+        "observations": [
+          [
+            "Feet up",
+            "A proper sofa, at last. Someone has left a blanket on it."
+          ]
+        ]
+      }
+    ]
   }
 }
