@@ -8,7 +8,9 @@ const MHPalette := preload("res://scripts/mh_palette.gd")
 
 ## The model under `owner`, solid all over: legs, hull, the airlock or hold
 ## inside, and the ramp. Every collider points at `owner` for interaction.
-static func build(owner: Node3D, path: String, pivot_name: String, ramp_size: Vector2) -> Dictionary:
+## `cut_out`: model-space box whose triangles are removed (the crew lander's
+## inner airlock door, so the cabin opens off the airlock).
+static func build(owner: Node3D, path: String, pivot_name: String, ramp_size: Vector2, cut_out := AABB()) -> Dictionary:
 	var scene := load(path) as PackedScene
 	if scene == null:
 		push_warning("Lander model is missing: %s" % path)
@@ -16,6 +18,7 @@ static func build(owner: Node3D, path: String, pivot_name: String, ramp_size: Ve
 	var model := scene.instantiate() as Node3D
 	model.name = "Model"
 	model.position.y = -.05   # footpads' undersides on the ground
+	if cut_out.has_volume(): _cut(model, cut_out)
 	MHPalette.apply(model)
 	owner.add_child(model)
 	var pivot := model.find_child(pivot_name, true, false) as Node3D
@@ -62,6 +65,32 @@ static func build(owner: Node3D, path: String, pivot_name: String, ramp_size: Ve
 		collision.position = Vector3(0, length * .5, .05)
 		ramp.add_child(collision)
 	return {"model": model, "pivot": pivot}
+
+## Remove every triangle whose centre is inside `box` (model space; the
+## lander's meshes sit unmoved under the model root).
+static func _cut(model: Node3D, box: AABB) -> void:
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		var instance := node as MeshInstance3D
+		var to_model := _relative(model, instance)
+		var source := instance.mesh
+		var cut := ArrayMesh.new()
+		var removed := 0
+		for surface in source.get_surface_count():
+			var arrays := source.surface_get_arrays(surface)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+			if indices.is_empty():
+				indices.resize(vertices.size())
+				for i in vertices.size(): indices[i] = i
+			var kept := PackedInt32Array()
+			for t in range(0, indices.size(), 3):
+				var centre := to_model * ((vertices[indices[t]] + vertices[indices[t + 1]] + vertices[indices[t + 2]]) / 3.0)
+				if box.has_point(centre): removed += 1
+				else: kept.append_array([indices[t], indices[t + 1], indices[t + 2]])
+			arrays[Mesh.ARRAY_INDEX] = kept
+			cut.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			cut.surface_set_material(cut.get_surface_count() - 1, source.surface_get_material(surface))
+		if removed > 0: instance.mesh = cut
 
 ## A mesh's transform relative to `owner` (works before it is in the scene).
 static func _relative(owner: Node3D, node: Node3D) -> Transform3D:

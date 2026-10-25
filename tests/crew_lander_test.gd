@@ -1,6 +1,6 @@
 extends SceneTree
 
-# The crew lander: new games start inside its cabin with a minimal HUD; E opens
+# The crew lander: new games start inside its furnished cabin with a minimal HUD; E opens
 # the hatch into a ramp; stepping out brings the HUD in; the lander stands on
 # buildable ground, can't be built over, and loaded games start
 # with the hatch open.
@@ -36,6 +36,14 @@ func _initialize() -> void:
 	_check(lander.cabin_contains(player.global_position), "a new game starts inside the lander cabin")
 	_check(str(world._intro_stage) == "inside" and bool(world.explore_hud._minimal), "the HUD stays minimal inside the lander")
 	_check(not lander.hatch_open(), "the hatch starts closed")
+	var fittings := lander.get_children().filter(func(n): return str(n.name).begins_with("Cabin_")).size()
+	_check(fittings == lander.FURNITURE.size(), "the cabin is furnished (%d of %d)" % [fittings, lander.FURNITURE.size()])
+	# The model is open to the outside beside its recessed hatch: the cabin's
+	# front wall closes it.
+	var space := root.get_world_3d().direct_space_state
+	for side in [-1.0, 1.0]:
+		var from: Vector3 = lander.to_global(Vector3(side * 1.5, 4.2, -.3))
+		_check(not space.intersect_ray(PhysicsRayQueryParameters3D.create(from, lander.to_global(Vector3(side * 1.5, 4.2, -4.0)))).is_empty(), "the cabin's front corner is closed (side %d)" % side)
 	_check(str(world.builder.climate_at(player.global_position).context) == "Lander cabin", "the cabin is sheltered")
 	var prompt: Dictionary = lander.interaction_prompt()
 	_check(str(prompt.get("primary", "")) == "Open hatch", "E opens the hatch (%s)" % prompt.get("primary", ""))

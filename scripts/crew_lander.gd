@@ -1,18 +1,44 @@
 extends Node3D
 const LanderModel := preload("res://scripts/lander_model.gd")
+const MHPalette := preload("res://scripts/mh_palette.gd")
 
 ## The crew lander: where every game begins. It stands on level ground near the
 ## build area, hatch facing the site, always in the same spot for a site (so
-## saves line up). You start in its airlock (the crew cabin behind the inner
-## door stays sealed): a safe, warm place. E on the lander opens the outer
-## hatch, which swings down to become the ramp. It's not part of the habitat.
+## saves line up). You start in its cabin, a small round room with seats, a
+## console and supplies, open to the airlock (the model's inner door is cut
+## out): a safe, warm place. E on the lander opens the outer hatch, which
+## swings down to become the ramp. It's not part of the habitat.
 ## Model: assets/vehicles/landers_v2 (26 Oct), 8.6 m tall, hatch facing -Z.
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const SCENE := "res://assets/vehicles/landers_v2/Crew_Lander.glb"
 const FLOOR_HEIGHT := 2.44       # airlock floor above the ground
+const DECK := FLOOR_HEIGHT + .06 # the cabin's deck plate (over the model's floor)
+const CEILING := 5.67            # the cabin's ceiling, level with the airlock's
+const CABIN_RADIUS := 2.32
+const FRONT_WALL := -.87         # the cabin's front face, where the inner door was
 const PAD_OFFSETS := [Vector2(3.03, 2.95), Vector2(-3.03, 2.95), Vector2(3.03, -2.95), Vector2(-3.03, -2.95)]
-const CABIN := AABB(Vector3(-1.0, 2.3, -2.6), Vector3(2.0, 3.4, 1.55))  # the airlock, local space
+const CABIN := AABB(Vector3(-2.35, 2.3, -2.6), Vector3(4.7, 3.5, 4.95))  # cabin and airlock, local space
+## The cabin's fittings: catalogue item, lander-local spot, the direction it
+## faces. Four seats round a console at the back, a shelter locker and water
+## on the side walls, supplies in the front corners beside the airlock.
+const FURNITURE := [
+	["mission_planning_console", Vector3(0, 0, 1.55), Vector2(0, -1)],
+	["crew_chair", Vector3(-.55, 0, .6), Vector2(0, 1)],
+	["crew_chair", Vector3(.55, 0, .6), Vector2(0, 1)],
+	["crew_chair", Vector3(-1.6, 0, .15), Vector2(1, .3)],
+	["crew_chair", Vector3(1.6, 0, .15), Vector2(-1, .3)],
+	["storm_shelter_locker", Vector3(-1.5, 0, 1.3), Vector2(.8, -1)],
+	["potable_water_dispenser", Vector3(1.55, 0, 1.3), Vector2(-.8, -1)],
+	["supply_crate_medium", Vector3(-1.55, 0, -.52), Vector2(0, 1)],
+	["supply_crate_small", Vector3(-1.55, .447, -.52), Vector2(.3, 1)],
+	["supply_crate_medium", Vector3(1.55, 0, -.52), Vector2(0, 1)],
+]
+## Catalogue models face -Z; turn by this to face `direction`.
+const MODEL_FRONT := PI
 const RAMP_OPEN_DEGREES := -132.0
+## The model's inner airlock door (model space), cut out so the airlock opens
+## straight into the cabin.
+const INNER_DOOR := AABB(Vector3(-1.12, 2.52, -1.25), Vector3(2.24, 3.03, .45))
 
 var rig: Node3D       # the model
 var _ramp: Node3D     # its hinged hatch ramp
@@ -21,17 +47,19 @@ var _open := false
 func _ready() -> void:
 	add_to_group("landmark")
 	set_meta("landmark_label", "LANDER")
-	var parts := LanderModel.build(self, SCENE, "CrewRampPivot", Vector2(1.9, 3.23))
+	var parts := LanderModel.build(self, SCENE, "CrewRampPivot", Vector2(1.9, 3.23), INNER_DOOR)
 	if parts.is_empty(): return
 	rig = parts.model
 	_ramp = parts.pivot
+	_build_cabin()
+	call_deferred("_furnish")   # the builder makes the furniture (it's in the tree by then)
 	# A warm, dim airlock light: the cosy contrast with Mars outside.
 	var light := OmniLight3D.new()
 	light.position = Vector3(0, FLOOR_HEIGHT + 2.3, -1.8)
 	light.light_color = Color("#FFD9A8")
-	light.light_energy = 0.6
+	light.light_energy = 0.45
 	light.light_specular = .1   # no hot spot on the shut hatch
-	light.omni_range = 3.2
+	light.omni_range = 2.6
 	light.shadow_enabled = false
 	add_child(light)
 	# A floodlight over the hatch, down onto the ramp.
@@ -43,6 +71,99 @@ func _ready() -> void:
 	door_light.spot_range = 7.0
 	door_light.spot_angle = 38.0
 	add_child(door_light)
+
+## The cabin's deck plate and ceiling (the model's cabin is a bare shell
+## 5 m tall with tank tops through the floor), and its lights.
+func _build_cabin() -> void:
+	var deck_body := StaticBody3D.new()
+	deck_body.name = "CabinDeck"
+	deck_body.collision_layer = 1
+	deck_body.set_meta("interaction_target", self)
+	add_child(deck_body)
+	for part in [["frame_deck", DECK - .04, .08], ["shell_ceiling", CEILING + .05, .1]]:
+		var disc := CylinderMesh.new()
+		disc.top_radius = CABIN_RADIUS + .02; disc.bottom_radius = CABIN_RADIUS + .02
+		disc.height = part[2]; disc.radial_segments = 40
+		var source := StandardMaterial3D.new()
+		source.resource_name = part[0]
+		disc.material = MHPalette.material(source)
+		var mesh := MeshInstance3D.new()
+		mesh.mesh = disc
+		mesh.position.y = part[1]
+		add_child(mesh)
+		var shape := CylinderShape3D.new()
+		shape.radius = CABIN_RADIUS; shape.height = part[2]
+		var collision := CollisionShape3D.new()
+		collision.shape = shape
+		collision.position.y = part[1]
+		deck_body.add_child(collision)
+	# The front wall either side of the airlock: the model is open to the
+	# outside there (slots beside its recessed hatch).
+	for side in [-1.0, 1.0]:
+		var inner := 1.08
+		var outer := sqrt(CABIN_RADIUS * CABIN_RADIUS - FRONT_WALL * FRONT_WALL) + .05
+		var size := Vector3(outer - inner, CEILING - DECK, .08)
+		var at := Vector3(side * (inner + outer) * .5, DECK + size.y * .5, FRONT_WALL)
+		var panel := BoxMesh.new()
+		panel.size = size
+		var source := StandardMaterial3D.new()
+		source.resource_name = "shell_wall"
+		panel.material = MHPalette.material(source)
+		var mesh := MeshInstance3D.new()
+		mesh.mesh = panel
+		mesh.position = at
+		add_child(mesh)
+		var shape := BoxShape3D.new()
+		shape.size = size
+		var collision := CollisionShape3D.new()
+		collision.shape = shape
+		collision.position = at
+		deck_body.add_child(collision)
+	# A round ceiling lamp, a downlight under it and a soft fill.
+	var lamp := MeshInstance3D.new()
+	var lamp_disc := CylinderMesh.new()
+	lamp_disc.top_radius = .38; lamp_disc.bottom_radius = .42; lamp_disc.height = .05
+	var glow := StandardMaterial3D.new()
+	glow.albedo_color = Color("#FFF1DC")
+	glow.emission_enabled = true
+	glow.emission = Color("#FFE2BA")
+	glow.emission_energy_multiplier = .9
+	lamp_disc.material = glow
+	lamp.mesh = lamp_disc
+	lamp.position = Vector3(0, CEILING - .025, .3)
+	add_child(lamp)
+	var down := SpotLight3D.new()
+	down.position = Vector3(0, CEILING - .1, .3)
+	down.rotation.x = -PI * .5
+	down.light_color = Color("#FFE4C0")
+	down.light_energy = 2.2
+	down.light_specular = .3
+	down.spot_range = 4.5
+	down.spot_angle = 68.0
+	down.spot_attenuation = .9
+	add_child(down)
+	var fill := OmniLight3D.new()
+	fill.position = Vector3(0, CEILING - .6, .3)
+	fill.light_color = Color("#FFD9A8")
+	fill.light_energy = .5
+	fill.light_specular = 0.0
+	fill.omni_range = 3.4
+	add_child(fill)
+
+func _furnish() -> void:
+	var builder := get_tree().get_first_node_in_group("habitat_builder")
+	if builder == null: return
+	for index in FURNITURE.size():
+		var item: Array = FURNITURE[index]
+		var facing: Vector2 = item[2]
+		var at: Vector3 = item[1] + Vector3(0, DECK, 0)
+		var holder: Node3D = builder.free_interior_visual(str(item[0]), at, atan2(facing.x, facing.y) + MODEL_FRONT)
+		holder.name = "Cabin_%s_%d" % [item[0], index]
+		# Its own id, so a rigged item's switches don't share a habitat item's.
+		holder.set_meta("interior_placement_id", "lander_cabin_%d" % index)
+		for body in holder.find_children("*", "StaticBody3D", true, false):
+			(body as StaticBody3D).collision_layer = 1 if present else 0
+		add_child(holder)
 
 func interaction_prompt() -> Dictionary:
 	return {"label": "Crew Lander", "primary": "Close hatch" if _open else "Open hatch", "info": "About"}
@@ -110,9 +231,10 @@ func place_exact(at: Vector3, yaw: float) -> void:
 	global_position = at
 	rotation.y = yaw
 
-## Where a new game starts: standing in the airlock, facing the hatch.
+## Where a new game starts: standing in the cabin, facing the hatch through
+## the airlock.
 func cabin_start() -> Dictionary:
-	return {"position": to_global(Vector3(0.0, FLOOR_HEIGHT + .3, -1.65)), "yaw": rotation.y}
+	return {"position": to_global(Vector3(0.0, DECK + .3, -.3)), "yaw": rotation.y}
 
 ## A spot on the ground beside the ramp (for the rover).
 func beside_ramp() -> Vector3:
