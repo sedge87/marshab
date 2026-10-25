@@ -47,7 +47,7 @@ var _open := false
 func _ready() -> void:
 	add_to_group("landmark")
 	set_meta("landmark_label", "LANDER")
-	var parts := LanderModel.build(self, SCENE, "CrewRampPivot", Vector2(1.9, 3.23), INNER_DOOR)
+	var parts := LanderModel.build(self, SCENE, "CrewRampPivot", Vector2(1.9, 3.23), _cut_out)
 	if parts.is_empty(): return
 	rig = parts.model
 	_ramp = parts.pivot
@@ -74,6 +74,13 @@ func _ready() -> void:
 
 ## The cabin's deck plate and ceiling (the model's cabin is a bare shell
 ## 5 m tall with tank tops through the floor), and its lights.
+## What's cut from the model (model space, 5 cm above lander space): the inner
+## door, and the model's floor fittings that stand up through the cabin's deck.
+static func _cut_out(centre: Vector3) -> bool:
+	if INNER_DOOR.has_point(centre): return true
+	var on_floor := centre.y > 2.47 and centre.y < 3.05 and centre.z > FRONT_WALL + .05
+	return on_floor and Vector2(centre.x, centre.z).length() < CABIN_RADIUS - .15
+
 func _build_cabin() -> void:
 	var deck_body := StaticBody3D.new()
 	deck_body.name = "CabinDeck"

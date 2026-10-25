@@ -8,9 +8,10 @@ const MHPalette := preload("res://scripts/mh_palette.gd")
 
 ## The model under `owner`, solid all over: legs, hull, the airlock or hold
 ## inside, and the ramp. Every collider points at `owner` for interaction.
-## `cut_out`: model-space box whose triangles are removed (the crew lander's
-## inner airlock door, so the cabin opens off the airlock).
-static func build(owner: Node3D, path: String, pivot_name: String, ramp_size: Vector2, cut_out := AABB()) -> Dictionary:
+## `cut_out(centre: Vector3) -> bool`: triangles whose model-space centre it
+## accepts are removed (the crew lander's inner airlock door and the clutter
+## on its cabin floor).
+static func build(owner: Node3D, path: String, pivot_name: String, ramp_size: Vector2, cut_out := Callable()) -> Dictionary:
 	var scene := load(path) as PackedScene
 	if scene == null:
 		push_warning("Lander model is missing: %s" % path)
@@ -18,7 +19,19 @@ static func build(owner: Node3D, path: String, pivot_name: String, ramp_size: Ve
 	var model := scene.instantiate() as Node3D
 	model.name = "Model"
 	model.position.y = -.05   # footpads' undersides on the ground
-	if cut_out.has_volume(): _cut(model, cut_out)
+	if cut_out.is_valid(): _cut(model, cut_out)
+	# The painted markings (name plates) import flipped: upside down on the
+	# hull, turned half round on the ramp. Flip them back.
+	for node in model.find_children("*Marking*", "MeshInstance3D", true, false):
+		var marking := node as MeshInstance3D
+		var on_ramp := marking.get_parent().name == pivot_name
+		for surface in marking.mesh.get_surface_count():
+			var source := marking.get_active_material(surface) as StandardMaterial3D
+			if source == null: continue
+			var upright := source.duplicate() as StandardMaterial3D
+			upright.uv1_scale = Vector3(-1, -1, 1) if on_ramp else Vector3(1, -1, 1)
+			upright.uv1_offset = Vector3(1, 1, 0) if on_ramp else Vector3(0, 1, 0)
+			marking.set_surface_override_material(surface, upright)
 	MHPalette.apply(model)
 	owner.add_child(model)
 	var pivot := model.find_child(pivot_name, true, false) as Node3D
@@ -66,9 +79,8 @@ static func build(owner: Node3D, path: String, pivot_name: String, ramp_size: Ve
 		ramp.add_child(collision)
 	return {"model": model, "pivot": pivot}
 
-## Remove every triangle whose centre is inside `box` (model space; the
-## lander's meshes sit unmoved under the model root).
-static func _cut(model: Node3D, box: AABB) -> void:
+## Remove every triangle whose centre (model space) `inside` accepts.
+static func _cut(model: Node3D, inside: Callable) -> void:
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		var instance := node as MeshInstance3D
 		var to_model := _relative(model, instance)
@@ -85,7 +97,7 @@ static func _cut(model: Node3D, box: AABB) -> void:
 			var kept := PackedInt32Array()
 			for t in range(0, indices.size(), 3):
 				var centre := to_model * ((vertices[indices[t]] + vertices[indices[t + 1]] + vertices[indices[t + 2]]) / 3.0)
-				if box.has_point(centre): removed += 1
+				if inside.call(centre): removed += 1
 				else: kept.append_array([indices[t], indices[t + 1], indices[t + 2]])
 			arrays[Mesh.ARRAY_INDEX] = kept
 			cut.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
