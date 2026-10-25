@@ -180,15 +180,18 @@ func habitat_shield(inv: Dictionary) -> float:
 	for room in inv.rooms: squares += float(room.cells)
 	return hull + float(inv.get("shield_upgrades", 0.0)) * float(value("radiation", "coverage_factor", 1.5)) / maxf(1.0, squares)
 
-## Shield points in a room: the habitat's, plus what's stored in the room
-## (lockers, cabinets) spread over its floor.
+## Shield points in a room (the storm shelter's protection): the hull, plus
+## the shielding on its own roof and outside walls and the shield blocks,
+## water walls and storage inside it, spread over its floor. A small shelter
+## is quicker to protect, as in real habitat designs (playtest, 25 Oct).
 func shield_rating(inv: Dictionary, room_index: int) -> float:
-	var rating := habitat_shield(inv)
-	if room_index < 0 or room_index >= (inv.rooms as Array).size(): return rating
+	var hull := float(value("radiation", "hull_points", 5.0))
+	if room_index < 0 or room_index >= (inv.rooms as Array).size(): return hull
 	var points: Dictionary = value("radiation", "shield_points", {})
-	var extra := 0.0
-	for id in _ids_in(inv, room_index): extra += float(points.get(id, 0.0))
-	return rating + extra / maxf(1.0, float(inv.rooms[room_index].cells))
+	var room: Dictionary = inv.rooms[room_index]
+	var shielding := float(room.get("shield_upgrades", 0.0))
+	for id in _ids_in(inv, room_index): shielding += float(points.get(id, 0.0))
+	return hull + shielding * float(value("radiation", "coverage_factor", 1.5)) / maxf(1.0, float(room.cells))
 
 ## The storm shelter: the best-shielded room with a storm shelter locker.
 ## {} when there's none, else {index, key, label, rating, capacity, heated, cold, ok}.
@@ -528,7 +531,8 @@ func post_step(dt: float, inv: Dictionary, tiers: Dictionary, crew_n: int, resea
 	var out := {"harm": 0.0, "causes": []}
 	if crew_n <= 0: return out
 	# Radiation (one crew dose).
-	var background := float(value("radiation", "background_msv_per_sol", .3)) * per_sol
+	# Everyday background radiation, eased by shielding anywhere on the habitat.
+	var background := float(value("radiation", "background_msv_per_sol", .3)) * per_sol * dose_factor(habitat_shield(inv))
 	dose_msv += background
 	if spe_active():
 		var hours := float(value("radiation", "event_hours", 24.0))

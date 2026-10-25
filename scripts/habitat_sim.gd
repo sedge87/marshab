@@ -194,8 +194,20 @@ func inventory() -> Dictionary:
 			for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				var other: int = room_of_cell.get(cell + side, -1)
 				if other >= 0 and other != index and not (rooms[index].next as Array).has(other): rooms[index].next.append(other)
-	# Wall and roof upgrades: shielding counts for the whole habitat (see
-	# inventory.shield_upgrades); insulation quiets one neighbour.
+	# Wall and roof upgrades. Radiation shielding protects the room it's on
+	# (its roof squares, its outside wall bays): that's what shields a storm
+	# shelter. The habitat's total (inventory.shield_upgrades) eases the
+	# everyday background dose. Insulation quiets one neighbour.
+	for record in builder.wall_upgrades:
+		var points := float(WALL_UPGRADES.spec(str(record.kind)).get("points", 0.0))
+		if points <= 0.0: continue
+		var cell: Vector2i
+		if record.has("cell"): cell = record.cell
+		else:
+			var inside: Vector2 = (record.mid as Vector2) - (record.outward as Vector2) * cell_size * .5
+			cell = Vector2i(roundi(inside.x / cell_size), roundi(inside.y / cell_size))
+		var room_index: int = room_of_cell.get(cell, -1)
+		if room_index >= 0: rooms[room_index].shield_upgrades += points
 	for index in range(rooms.size()):
 		for other in rooms[index].next:
 			if WALL_UPGRADES.insulated_between(builder, rooms[index].zone.get("cells", []), rooms[other].zone.get("cells", [])): rooms[index].quiet_from.append(other)

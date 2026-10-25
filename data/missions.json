@@ -654,7 +654,7 @@
         {
           "id": "shield",
           "text": "Shield the habitat to 20 points",
-          "how": "The hull gives 5 points. Shielding on the outside protects the whole habitat, wherever it goes: Site plan, Structure tab, or from inside (Shift+B, aim at a wall or ceiling). Regolith shielding (printed from Mars soil) adds 8 points per wall panel, a water wall 10, and roof shielding 8 per floor square. The points are shared over the whole habitat's floor, so a bigger base needs more panels.",
+          "how": "The hull gives 5 points. Shield the shelter room itself: Site plan, Structure tab, or from inside (Shift+B, aim at a wall or the ceiling). Roof shielding over the whole room adds 12, and each regolith wall panel (printed from Mars soil, 8) or water wall (10) adds its points × 1.5 shared over the room's floor squares, like shield blocks and water wall panels inside it. A small shelter is quicker to protect.",
           "check": "shelter",
           "min": 20,
           "learn": "radiation"
@@ -698,9 +698,9 @@
         }
       ],
       "hints": [
-        "Shield points = 5 (the hull) + 1.5 × all the shielding on the outside ÷ the habitat's floor squares.",
-        "Regolith shielding adds 8 points per wall panel and is printed from Mars soil, so it costs no cargo from Earth once you're printing. A water wall adds 10. Roof shielding adds 8 for every floor square: most radiation comes from overhead.",
-        "A window can't be shielded, but the panels on other walls still protect the whole habitat.",
+        "Shelter shield points = 5 (the hull) + 1.5 × the shelter room's shielding (its roof, its outside walls, blocks and water walls inside) ÷ its floor squares.",
+        "Roof shielding over the whole shelter adds 12: most radiation comes from overhead. Regolith wall panels add 8 each (printed from Mars soil, so no cargo from Earth once you're printing), a water wall 10.",
+        "A window can't be shielded: choose a shelter room without windows, or shield its other walls.",
         "Lockers, pantry cabinets and sample cabinets in the shelter add a little more there.",
         "The shelter must be warm: the crew stay there a whole day. Check it isn't a cold spot.",
         "Wayfinding panels point the way to the shelter during an event."

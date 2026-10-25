@@ -190,7 +190,8 @@ static func _shift_wall_items(builder: Node, wall: Dictionary, by: float) -> voi
 
 # ---------- what each room gets ----------
 
-## Radiation shielding protects the whole habitat, wherever it goes: the shield
+## The habitat's shielding in total (it eases the everyday background dose; a
+## storm shelter is shielded by what's on its own room): the shield
 ## points of every panel on the outside walls and roof, added up.
 static func habitat_points(builder: Node) -> float:
 	var total := 0.0
