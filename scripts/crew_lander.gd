@@ -27,6 +27,7 @@ func _ready() -> void:
 	for body in rig.find_children("*", "StaticBody3D", true, false):
 		body.set_meta("interaction_target", rig)
 		(body as StaticBody3D).collision_layer = 1
+	_add_leg_colliders()
 	# Thin hull walls: cast shadows from both sides so sunlight can't leak in.
 	for mesh in rig.find_children("*", "MeshInstance3D", true, false):
 		(mesh as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_DOUBLE_SIDED
@@ -46,6 +47,33 @@ func _ready() -> void:
 	door_light.spot_range = 5.0
 	door_light.spot_angle = 40.0
 	add_child(door_light)
+
+## The model only has colliders on the cabin and its fittings, so you could
+## walk through its legs: a footpad, a strut up to the hull and the side
+## engine pods, all solid.
+func _add_leg_colliders() -> void:
+	var body := StaticBody3D.new()
+	body.name = "LegColliders"
+	body.collision_layer = 1
+	body.set_meta("interaction_target", rig)
+	add_child(body)
+	for pad in PAD_OFFSETS:
+		var foot := Vector3(pad.x, .45, pad.y)
+		_collider(body, CylinderShape3D.new(), Transform3D(Basis(), foot), {"radius": .5, "height": .9})
+		# The strut, from the pad up and in to the hull's lower corner.
+		var top := Vector3(signf(pad.x) * 2.3, 1.15, signf(pad.y) * 1.6)
+		var along := top - foot
+		var basis := Basis(Quaternion(Vector3.UP, along.normalized()))
+		_collider(body, CapsuleShape3D.new(), Transform3D(basis, (foot + top) * .5), {"radius": .22, "height": along.length() + .44})
+	for side in [-1.0, 1.0]:
+		_collider(body, BoxShape3D.new(), Transform3D(Basis(), Vector3(side * 2.85, 1.13, 0)), {"size": Vector3(1.0, 1.2, 1.0)})
+
+func _collider(body: StaticBody3D, shape: Shape3D, at: Transform3D, props: Dictionary) -> void:
+	for key in props: shape.set(key, props[key])
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.transform = at
+	body.add_child(collision)
 
 ## A level, buildable spot about 20 m from the site centre, and a yaw that
 ## turns the hatch towards the centre. Deterministic for each site.

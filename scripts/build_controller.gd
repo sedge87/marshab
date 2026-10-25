@@ -35,6 +35,9 @@ const PRINTABLE_ZONE_EXCLUDES := ["airlock", "solar", "reactor", "ice_extractor"
 ## Site machines placed freely (not snapped to the grid) and turned to any
 ## angle; solar can also go on a room's roof. Footprint radius in metres.
 const FREE_SITE_KINDS := {"solar": 1.25, "reactor": 1.45, "ice_extractor": 1.25, "regolith_intake": 1.35}
+## These snap to one cell each, turned in quarter turns (playtest feedback,
+## 25 Oct); machines placed freely in older saves stay where they were.
+const CELL_SITE_KINDS := ["solar", "reactor", "ice_extractor"]
 const ROOF_TOP := 2.975
 ## Site plan cards that put a wall upgrade on (scripts/wall_upgrades.gd), not a
 ## zone: card id -> upgrade kind. Shielding goes on from here or from inside.
@@ -145,9 +148,9 @@ const ZONE_INFO := {
 	"shield_roof":{"cat":"structure","icon":"house","rule":"Click a room","desc":"Regolith over a room's whole roof: most radiation comes from overhead. You can also add it from inside: Furnish room, aim at the ceiling."},
 	"ladder":{"cat":"structure","icon":"arrow-up","rule":"Click an outside wall","desc":"A ladder up an outside wall to the roof, with a safety rail round the edge. Outside, look at it and press E to climb."},
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
-	"solar":{"cat":"power","icon":"sun","rule":"Anywhere, or on a roof · R turns","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
-	"reactor":{"cat":"power","icon":"atom","rule":"Anywhere · R turns","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
-	"ice_extractor":{"cat":"power","icon":"drill","rule":"On ice · R turns","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
+	"solar":{"cat":"power","icon":"sun","rule":"One cell, or a roof · R turns","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
+	"reactor":{"cat":"power","icon":"atom","rule":"One cell · R turns","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
+	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell on ice · R turns","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
 	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil and feeds it to a regolith printer indoors, which turns it into building material."}
 }
 # Exterior construction deliberately excludes furnishing. Interior equipment is
@@ -512,7 +515,7 @@ func _process(delta: float) -> void:
 ## Holding R in the site plan keeps rotating, one 90° step about every third
 ## of a second after a short delay (a tap is still one step).
 func _hold_rotate_plan(delta: float) -> void:
-	if Input.is_physical_key_pressed(KEY_R) and equipment_id.is_empty() and kind in FREE_SITE_KINDS:
+	if Input.is_physical_key_pressed(KEY_R) and equipment_id.is_empty() and kind in FREE_SITE_KINDS and not kind in CELL_SITE_KINDS:
 		_r_held += delta
 		if _r_held >= .4: _turn_free_site(delta * (-1.8 if Input.is_key_pressed(KEY_SHIFT) else 1.8))
 		return
@@ -3749,6 +3752,10 @@ var _free_ghost_key := ""
 var _free_ghost_label: Label3D
 
 func _turn_free_site(by: float) -> void:
+	if kind in CELL_SITE_KINDS:
+		free_yaw = wrapf(roundf(free_yaw / (PI * .5)) * PI * .5 + signf(by) * PI * .5, -PI, PI)
+		_free_yaw_set = true
+		return
 	free_yaw = wrapf(free_yaw + by, -PI, PI)
 	_free_yaw_set = true
 
@@ -3759,10 +3766,15 @@ func _free_site_target() -> Dictionary:
 		var high := _world_point_at_mouse(habitat_base_y + ROOF_TOP)
 		if not is_inf(high.x):
 			var under := _zone_at_point(Vector2(high.x, high.z))
-			if not under.is_empty() and _is_habitat_zone(under): return {"at": Vector2(high.x, high.z), "roof": true}
+			if not under.is_empty() and _is_habitat_zone(under): return {"at": _site_spot(Vector2(high.x, high.z)), "roof": true}
 	var low := _world_point_at_mouse(0.0)
 	if is_inf(low.x): return {}
-	return {"at": Vector2(low.x, low.z), "roof": false}
+	return {"at": _site_spot(Vector2(low.x, low.z)), "roof": false}
+
+## Cell machines sit in the middle of the cell under the cursor.
+func _site_spot(point: Vector2) -> Vector2:
+	if not kind in CELL_SITE_KINDS: return point
+	return Vector2(roundi(point.x / CELL), roundi(point.y / CELL)) * CELL
 
 func _free_site_reason(target: Dictionary) -> String:
 	if target.is_empty(): return "Point at the ground"
@@ -3779,6 +3791,7 @@ func _free_site_reason(target: Dictionary) -> String:
 	for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
 		corners.append(at + (corner * radius * .7).rotated(-turn))
 	for zone in zones:
+		if kind in CELL_SITE_KINDS and not bool(target.roof) and not bool(zone.get("roof", false)) and str(zone.kind) in SITE_MACHINES and (zone.get("cells", []) as Array).has(cell): return "This cell already has the %s" % str(ZONE_TYPES[str(zone.kind)].label)
 		if not zone.has("at") or bool(zone.get("roof", false)) != bool(target.roof): continue
 		if (zone.at as Vector2).distance_to(at) < radius + float(FREE_SITE_KINDS.get(str(zone.kind), 1.2)) - .2: return "Too close to the %s" % str(ZONE_TYPES[str(zone.kind)].label)
 	if target.roof:
