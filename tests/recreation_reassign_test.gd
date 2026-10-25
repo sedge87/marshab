@@ -7,7 +7,8 @@ extends SceneTree
 # it back); the half-glass partition (placed, changed, saved); and dragging
 # partitions only draws along the first panel's line, filling any gap.
 
-const RECREATION := ["lounge_sofa", "bean_bag", "arcade_cabinet", "vr_station", "table_football", "telescope", "music_station", "dartboard", "games_shelf"]
+const RECREATION := ["lounge_sofa", "bean_bag", "arcade_cabinet", "vr_station", "table_football", "telescope", "music_station", "dartboard", "games_shelf",
+	"projector_screen", "sectional_sofa", "coffee_bar", "bar_stool", "plant_wall", "floor_rug", "floor_cushions", "window_seat", "table_tennis", "climbing_wall"]
 
 var failures := 0
 
@@ -52,6 +53,17 @@ func _initialize() -> void:
 	var personal_line := hazards_text.substr(hazards_text.find("\"personal_items\""), 600)
 	_check(personal_line.contains("arcade_cabinet") and personal_line.contains("games_shelf"), "games count as personal things for a bit of home")
 
+	# A rug lies under furniture: floor cushions can stand on it.
+	var rug_at := Vector3(20.5, y, 5.0)   # clear of the table football
+	b.place_free_interior_equipment("floor_rug", rug_at, 0.0, Vector2i(6, 1), b.free_interior_visual("floor_rug", rug_at, 0.0))
+	_check(b.free_interior_invalid_reason("floor_cushions", rug_at, Vector3.UP, 0.0).is_empty(), "floor cushions can stand on the rug (%s)" % b.free_interior_invalid_reason("floor_cushions", rug_at, Vector3.UP, 0.0))
+	_check(b.free_interior_invalid_reason("floor_rug", rug_at + Vector3(0.5, 0, 0), Vector3.UP, 0.0).is_empty(), "and a rug can go over another")
+	# The climbing wall keeps the crew fit like an exercise station; the plant
+	# wall counts as plants and the coffee bar as seats.
+	var life = b.simulation().life
+	_check(life.FITNESS_ITEMS.has("climbing_wall"), "the climbing wall counts as exercise")
+	_check(personal_line.length() > 0 and hazards_text.contains("\"grow_tray\", \"plant_wall\"") and hazards_text.contains("\"coffee_bar\": 2"), "the plant wall is a plant and the coffee bar has seats")
+
 	# Reassign: Living Quarters becomes a Galley. The arcade and table football
 	# fit a galley too; the sofa doesn't, so it comes out.
 	b._select_kind("galley")
@@ -94,5 +106,5 @@ func _initialize() -> void:
 	for p in b.partitions: _check(is_equal_approx((p.a as Vector2).x, 12.0) and is_equal_approx((p.b as Vector2).x, 12.0), "every panel is on the first panel's line (%s)" % p)
 
 	if failures == 0:
-		print("Recreation and reassign test passed: nine recreation items, reassigning a room and undo, the half-glass partition, and drag drawing along one line.")
+		print("Recreation and reassign test passed: nineteen recreation and shared-space items (a rug under furniture, the climbing wall as exercise), reassigning a room and undo, the half-glass partition, and drag drawing along one line.")
 	quit(1 if failures > 0 else 0)

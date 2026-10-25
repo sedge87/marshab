@@ -5516,5 +5516,163 @@
         ]
       }
     ]
+  },
+  "projector_screen": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "screen",
+        "screen": [
+          "display_screen_glass"
+        ],
+        "modes": [
+          "mars",
+          "earth",
+          "status",
+          "camera"
+        ],
+        "mode_labels": [
+          "Mars",
+          "Earth",
+          "habitat status",
+          "the outside cameras"
+        ],
+        "state": "screen_mode",
+        "pixels": 640
+      }
+    ]
+  },
+  "coffee_bar": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Make a coffee",
+        "observations": [
+          [
+            "Espresso",
+            "Strong and hot. The machine hisses like an airlock."
+          ],
+          [
+            "Flat white",
+            "Made with powdered milk. Nobody says anything."
+          ],
+          [
+            "Water on Mars",
+            "Every cup comes from ice the drills dug up and the reclaimer cleaned. Don't waste it."
+          ]
+        ]
+      }
+    ]
+  },
+  "sectional_sofa": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Sit back",
+        "observations": [
+          [
+            "Movie night",
+            "Someone always picks a space film. Someone always groans."
+          ]
+        ]
+      }
+    ]
+  },
+  "floor_cushions": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Sit down",
+        "observations": [
+          [
+            "Tea",
+            "A pot of tea and a slow chat about home."
+          ]
+        ]
+      }
+    ]
+  },
+  "window_seat": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Look out",
+        "observations": [
+          [
+            "The view",
+            "Red rocks, a pink sky and the long shadow of the habitat. Still amazing."
+          ]
+        ]
+      }
+    ]
+  },
+  "table_tennis": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Play a rally",
+        "observations": [
+          [
+            "Long rally",
+            "Forty shots! The ball hangs in the air just long enough."
+          ],
+          [
+            "Smash",
+            "Too hard: it bounces off the ceiling. Low gravity, high bounces."
+          ],
+          [
+            "Rematch",
+            "Best of three. The loser cleans the filters."
+          ]
+        ]
+      }
+    ]
+  },
+  "climbing_wall": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Climb",
+        "observations": [
+          [
+            "To the top",
+            "You reach the orange band at the top without trying very hard. A third of your Earth weight helps."
+          ],
+          [
+            "New route",
+            "Someone has made a route on the blue holds only. It's harder than it looks."
+          ],
+          [
+            "Why climb",
+            "Climbing works muscles and bones, which slowly weaken in low gravity."
+          ]
+        ]
+      }
+    ]
+  },
+  "plant_wall": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "inspect",
+        "label": "Look at the plants",
+        "observations": [
+          [
+            "Growing well",
+            "Fresh green leaves, and the faint smell of soil. You can't get that from a screen."
+          ],
+          [
+            "Thirsty",
+            "The drip line keeps them watered from the habitat's water."
+          ]
+        ]
+      }
+    ]
   }
 }

@@ -236,7 +236,7 @@ def games_shelf():
         box(f"standing_{i}_{mat}", x, x + 0.055, 0.04, 0.26, -0.255, -0.0, mat, 0.004)
     box("cards_white_painted", -0.38, -0.29, 0.1, 0.16, 0.045, 0.075, "white_painted", 0.003)
     # A puzzle cube in signal colours, and two dice.
-    for i, mat in enumerate(("button_red", "screen_green", "cool_blue", "amber")):
+    for i, mat in enumerate(("button_red", "bright_green", "cool_blue", "amber")):
         x, y = -0.12 + (i % 2) * 0.026, 0.12 + (i // 2) * 0.026
         box(f"cube_{i}_{mat}", x, x + 0.025, y, y + 0.025, 0.045, 0.07, mat, 0.003)
     join("dice_white_painted", [box("d", x, x + 0.022, 0.12, 0.142, 0.045, 0.067, "white_painted", 0.004) for x in (0.05, 0.09)])
@@ -244,7 +244,188 @@ def games_shelf():
     cyl("trophy_base_graphite", (0.32, 0.15, 0.055), 0.03, 0.02, "graphite", verts=16)
 
 
+# ---------- shared R&R space (25 Oct, second set) ----------
+
+def projector_screen():
+    """Movie night: a big wall screen in a slim frame (the game can show Mars
+    or Earth on it), a sound bar under it and a status light."""
+    box("frame_graphite", -1.05, 1.05, 0.0, 0.04, -0.62, 0.62, "graphite", 0.012)
+    box("bezel_dark_alloy", -1.02, 1.02, 0.04, 0.045, -0.59, 0.59, "dark_alloy", 0.004)
+    box("display_screen_glass_dark_glass", -1.0, 1.0, 0.045, 0.047, -0.57, 0.57, "dark_glass", 0)
+    box("sound_bar_graphite", -0.7, 0.7, 0.0, 0.09, -0.74, -0.65, "graphite", 0.02)
+    vent("sound_bar_grille_dark_alloy", -0.66, 0.66, -0.73, -0.66, 0.092, slats=24)
+    box("status_light_screen_green", 0.9, 0.94, 0.045, 0.05, -0.605, -0.595, "screen_green", 0)
+    box("brand_strip_orange", -0.96, -0.82, 0.045, 0.049, -0.605, -0.597, "orange", 0)
+
+
+def sectional_sofa():
+    """A corner sofa for movie nights: an L of teal cushions on a white
+    shell and graphite plinth, with a chaise end and an orange stripe."""
+    D = 0.86   # seat depth
+    box("plinth_graphite", -1.1 + 0.06, 1.1 - 0.06, -0.4 + 0.06, 0.4 - 0.06, 0.0, 0.1, "graphite", 0.01)
+    box("plinth_chaise_graphite", 0.3 + 0.06, 1.1 - 0.06, 0.4 - 0.06, 0.4 + D - 0.06, 0.0, 0.1, "graphite", 0.01)
+    box("base_white_painted", -1.1, 1.1, -0.4, 0.4, 0.1, 0.4, "white_painted", 0.04)
+    box("base_chaise_white_painted", 0.3, 1.1, 0.4, 0.4 + D, 0.1, 0.4, "white_painted", 0.04)
+    box("back_white_painted", -1.1, 1.1, -0.4, -0.24, 0.4, 0.84, "white_painted", 0.05)
+    box("arm_white_painted", -1.1, -0.94, -0.4, 0.4, 0.4, 0.62, "white_painted", 0.05)
+    box("chaise_arm_white_painted", 0.94, 1.1, -0.24, 0.4 + D, 0.4, 0.62, "white_painted", 0.05)
+    for i, (x0, x1) in enumerate(((-0.93, -0.32), (-0.31, 0.3), (0.31, 0.93))):
+        cushion(f"seat_{i}_teal_soft", x0, x1, -0.24, 0.38, 0.4, 0.53)
+        cushion(f"back_{i}_teal_soft", x0 + 0.01, x1 - 0.01, -0.24, -0.1, 0.5, 0.82)
+    cushion("chaise_seat_teal_soft", 0.31, 0.93, 0.4, 0.4 + D - 0.02, 0.4, 0.53)
+    join("pillows_warm_panel", [cushion("p", x, x + 0.34, -0.1, 0.02, 0.52, 0.78, "warm_panel") for x in (-0.86, 0.5)])
+    box("arm_stripe_orange", -1.1, -0.94, 0.396, 0.402, 0.5, 0.54, "orange", 0.002)
+
+
+def coffee_bar():
+    """A cafe corner: a bar counter with an espresso machine, a grinder, a
+    rack of cups and a snack cupboard underneath."""
+    cabinet("bar", -0.7, 0.7, -0.28, 0.28, 0.0, 1.02)
+    for i, (x0, x1) in enumerate(((-0.68, -0.01), (0.01, 0.68))):
+        box(f"door_{i}_slate_panel", x0 + 0.02, x1 - 0.02, 0.28, 0.292, 0.12, 0.92, "slate_panel", 0.008)
+        handle(f"pull_{i}_satin_steel", (x0 + x1) / 2 - 0.08, (x0 + x1) / 2 + 0.08, 0.84, 0.292)
+    box("counter_overhang_warm_panel", -0.74, 0.74, -0.3, 0.42, 1.02, 1.06, "warm_panel", 0.012)
+    # The espresso machine.
+    box("espresso_body_satin_steel", -0.5, -0.06, -0.24, 0.08, 1.06, 1.42, "satin_steel", 0.02)
+    box("espresso_top_graphite", -0.5, -0.06, -0.24, 0.08, 1.42, 1.45, "graphite", 0.008)
+    box("drip_tray_dark_alloy", -0.44, -0.12, 0.08, 0.2, 1.06, 1.09, "dark_alloy", 0.006)
+    join("group_heads_dark_alloy", [cyl("g", (x, 0.11, 1.24), 0.035, 0.05, "dark_alloy", verts=16) for x in (-0.38, -0.18)])
+    cyl("steam_wand_satin_steel", (-0.08, 0.12, 1.18), 0.006, 0.18, "satin_steel", verts=10)
+    join("knobs_orange", [cyl("k", (x, 0.085, 1.36), 0.018, 0.02, "orange", axis="y", verts=16) for x in (-0.38, -0.18)])
+    box("gauge_screen_cyan", -0.3, -0.24, 0.08, 0.083, 1.33, 1.39, "screen_cyan", 0)
+    # Grinder and cups.
+    cyl("grinder_graphite", (0.12, -0.08, 1.2), 0.07, 0.28, "graphite", verts=24, bevel=0.01)
+    cyl("hopper_iv_clear", (0.12, -0.08, 1.4), 0.06, 0.12, "iv_clear", verts=24, radius2=0.04)
+    join("cups_white_painted", [cyl("c", (x, y, 1.1), 0.035, 0.08, "white_painted", verts=16) for x in (0.32, 0.42, 0.52) for y in (-0.15, 0.02)])
+
+
+def bar_stool():
+    """A bar stool: a round teal seat on a satin pedestal with a foot ring."""
+    cyl("seat_teal_soft", (0, 0, 0.74), 0.19, 0.07, "teal_soft", verts=32, bevel=0.02)
+    cyl("seat_shell_white_painted", (0, 0, 0.69), 0.18, 0.04, "white_painted", verts=32, bevel=0.01)
+    rod("pedestal_satin_steel", (0, 0, 0.05), (0, 0, 0.68), 0.03, "satin_steel")
+    torus("foot_ring_dark_alloy", (0, 0, 0.3), 0.17, 0.012, "dark_alloy")
+    join("spokes_dark_alloy", [rod("s", (0, 0, 0.3), (math.cos(a) * 0.17, math.sin(a) * 0.17, 0.3), 0.008, "dark_alloy", 8) for a in (0.0, math.pi / 2, math.pi, 3 * math.pi / 2)])
+    cyl("base_graphite", (0, 0, 0.02), 0.2, 0.04, "graphite", verts=32, bevel=0.01)
+    torus("seat_band_orange", (0, 0, 0.705), 0.181, 0.006, "orange")
+
+
+def plant_wall():
+    """A living plant wall: rows of planter pockets in a graphite frame, a
+    grow-light bar over them and a drip line."""
+    box("frame_graphite", -0.62, 0.62, 0.0, 0.05, -0.72, 0.72, "graphite", 0.012)
+    box("felt_back_soil", -0.58, 0.58, 0.05, 0.06, -0.66, 0.6, "soil", 0)
+    leaves_dark, leaves_light = [], []
+    for row, z in enumerate((-0.52, -0.24, 0.04, 0.32)):
+        box(f"pocket_row_{row}_white_painted", -0.58, 0.58, 0.06, 0.16, z - 0.05, z, "white_painted", 0.01)
+        for k in range(7):
+            x = -0.5 + k * 0.166 + (0.04 if row % 2 else 0.0)
+            if x > 0.52: continue
+            # A clump of leaves spilling out of each pocket.
+            for j, (dx, dz, r) in enumerate(((0.0, 0.05, 0.055), (-0.045, 0.02, 0.045), (0.05, 0.0, 0.04), (0.02, -0.04, 0.035))):
+                light = (k + row + j) % 2 == 0
+                (leaves_light if light else leaves_dark).append(sphere("l", (x + dx, 0.13 + j * 0.012, z + dz + 0.04), r, "leaf_light" if light else "leaf_green", scale=(1.3, 0.55, 0.8), segments=10))
+    join("leaves_leaf_green", leaves_dark)
+    join("leaves_light_leaf_light", leaves_light)
+    box("grow_light_lamp_white", -0.56, 0.56, 0.12, 0.16, 0.64, 0.67, "lamp_white", 0.006)
+    box("grow_light_housing_dark_alloy", -0.6, 0.6, 0.05, 0.17, 0.67, 0.71, "dark_alloy", 0.008)
+    rod("drip_line_black_rubber", (-0.58, 0.07, 0.56), (0.58, 0.07, 0.56), 0.006, "black_rubber")
+    box("valve_orange", 0.5, 0.56, 0.06, 0.1, -0.7, -0.64, "orange", 0.004)
+
+
+def floor_rug():
+    """A soft woven rug to set a sofa and cushions on: a teal field with a
+    warm border and one orange stripe. Furniture stands on it."""
+    box("rug_teal_soft", -1.2, 1.2, -0.8, 0.8, 0.0, 0.014, "teal_soft", 0.004)
+    join("border_warm_panel", [
+        box("b", -1.2, 1.2, -0.8, -0.7, 0.0, 0.016, "warm_panel", 0.002),
+        box("b", -1.2, 1.2, 0.7, 0.8, 0.0, 0.016, "warm_panel", 0.002),
+        box("b", -1.2, -1.1, -0.7, 0.7, 0.0, 0.016, "warm_panel", 0.002),
+        box("b", 1.1, 1.2, -0.7, 0.7, 0.0, 0.016, "warm_panel", 0.002)])
+    box("stripe_orange", -1.0, 1.0, -0.62, -0.58, 0.0, 0.017, "orange", 0.001)
+
+
+def floor_cushions():
+    """Big floor cushions round a low tea table."""
+    box("table_top_warm_panel", -0.32, 0.32, -0.32, 0.32, 0.3, 0.34, "warm_panel", 0.012)
+    join("table_legs_dark_alloy", [box("l", x - 0.025, x + 0.025, y - 0.025, y + 0.025, 0.0, 0.3, "dark_alloy", 0.006) for x in (-0.27, 0.27) for y in (-0.27, 0.27)])
+    for i, (x, y) in enumerate(((0.0, -0.62), (0.62, 0.0), (0.0, 0.62), (-0.62, 0.0))):
+        cushion(f"cushion_{i}_teal_soft", x - 0.26, x + 0.26, y - 0.26, y + 0.26, 0.0, 0.16)
+        box(f"button_{i}_graphite", x - 0.02, x + 0.02, y - 0.02, y + 0.02, 0.155, 0.165, "graphite", 0.004)
+    join("cups_white_painted", [cyl("c", (x, 0.08, 0.38), 0.035, 0.08, "white_painted", verts=16) for x in (-0.1, 0.06)])
+    cyl("teapot_orange", (0.14, -0.1, 0.4), 0.06, 0.12, "orange", verts=20, bevel=0.01)
+
+
+def window_seat():
+    """A window seat: a long cushioned bench with drawers underneath and
+    bolster cushions at each end. Put it under a window."""
+    cabinet("bench", -0.8, 0.8, -0.27, 0.27, 0.0, 0.42)
+    for i, x0 in enumerate((-0.76, -0.25, 0.26)):
+        box(f"drawer_{i}_slate_panel", x0, x0 + 0.5, 0.27, 0.282, 0.1, 0.36, "slate_panel", 0.008)
+        handle(f"drawer_pull_{i}_satin_steel", x0 + 0.17, x0 + 0.33, 0.32, 0.282)
+    cushion("seat_teal_soft", -0.78, 0.78, -0.25, 0.25, 0.42, 0.52)
+    join("bolsters_warm_panel", [cyl("b", (x, -0.02, 0.6), 0.09, 0.4, "warm_panel", axis="y", verts=24, bevel=0.02) for x in (-0.66, 0.66)])
+    cushion("throw_pillow_orange", -0.2, 0.12, -0.22, -0.1, 0.5, 0.78, "orange")
+
+
+def table_tennis():
+    """Low-gravity table tennis: a compact teal table with white lines, a
+    net, folding legs, two bats and a ball."""
+    L, W, H = 1.15, 0.65, 0.76
+    box("top_field_teal", -L, L, -W, W, H - 0.03, H, "field_teal", 0.006)
+    join("lines_white_painted", [
+        box("l", -L, L, -W, -W + 0.02, H, H + 0.002, "white_painted", 0),
+        box("l", -L, L, W - 0.02, W, H, H + 0.002, "white_painted", 0),
+        box("l", -L, -L + 0.02, -W, W, H, H + 0.002, "white_painted", 0),
+        box("l", L - 0.02, L, -W, W, H, H + 0.002, "white_painted", 0),
+        box("l", -L, L, -0.004, 0.004, H, H + 0.002, "white_painted", 0)])
+    box("net_graphite", -0.006, 0.006, -W - 0.06, W + 0.06, H, H + 0.15, "graphite", 0.002)
+    join("net_posts_satin_steel", [box("p", -0.015, 0.015, y - 0.015, y + 0.015, H - 0.04, H + 0.16, "satin_steel", 0.004) for y in (-W - 0.06, W + 0.06)])
+    box("apron_white_painted", -L + 0.02, L - 0.02, -W + 0.02, W - 0.02, H - 0.1, H - 0.03, "white_painted", 0.01)
+    legs = []
+    for x in (-L + 0.25, L - 0.25):
+        for y in (-W + 0.12, W - 0.12):
+            legs.append(box("l", x - 0.025, x + 0.025, y - 0.025, y + 0.025, 0.0, H - 0.1, "dark_alloy", 0.006))
+        legs.append(box("l", x - 0.02, x + 0.02, -W + 0.12, W - 0.12, 0.18, 0.22, "dark_alloy", 0.006))
+    join("legs_dark_alloy", legs)
+    join("wheels_black_rubber", [cyl("w", (x, y, 0.03), 0.03, 0.03, "black_rubber", axis="y", verts=16) for x in (-L + 0.25, L - 0.25) for y in (-W + 0.12, W - 0.12)])
+    for i, (x, y) in enumerate(((-0.7, 0.3), (0.75, -0.35))):
+        cyl(f"bat_{i}_button_red", (x, y, H + 0.008), 0.075, 0.012, "button_red", verts=24)
+        box(f"bat_handle_{i}_warm_panel", x - 0.02, x + 0.02, y + 0.07, y + 0.17, H + 0.002, H + 0.022, "warm_panel", 0.006)
+    sphere("ball_orange", (0.3, 0.15, H + 0.02), 0.02, "orange", segments=12)
+
+
+def climbing_wall():
+    """A bouldering wall panel: in Mars's low gravity you climb at a third of
+    your weight. Coloured holds on a white board with graphite edging."""
+    box("board_white_painted", -0.7, 0.7, 0.0, 0.05, -1.1, 1.1, "white_painted", 0.012)
+    box("edge_graphite", -0.73, 0.73, 0.0, 0.04, -1.13, 1.13, "graphite", 0.008)
+    holds = {"button_red": [], "bright_green": [], "cool_blue": [], "amber": []}
+    import random
+    rng = random.Random(7)
+    mats = list(holds)
+    for i in range(26):
+        x = rng.uniform(-0.6, 0.6)
+        z = -1.0 + i * 0.08 + rng.uniform(-0.03, 0.03)
+        mat = mats[i % 4]
+        holds[mat].append(sphere("h", (x, 0.06, z), rng.uniform(0.035, 0.06), mat, scale=(1.2, 0.6, 0.8), segments=10))
+    for mat, parts in holds.items():
+        join(f"holds_{mat}", parts)
+    join("bolts_satin_steel", [cyl("b", (x, 0.052, z), 0.008, 0.006, "satin_steel", axis="y", verts=8) for x in (-0.6, -0.2, 0.2, 0.6) for z in (-1.0, -0.5, 0.0, 0.5, 1.0)])
+    box("top_band_orange", -0.7, 0.7, 0.05, 0.054, 1.02, 1.08, "orange", 0.002)
+
+
 MODELS = [
+    ("projector_screen", projector_screen, "wall"),
+    ("sectional_sofa", sectional_sofa, "floor"),
+    ("coffee_bar", coffee_bar, "floor"),
+    ("bar_stool", bar_stool, "floor"),
+    ("plant_wall", plant_wall, "wall"),
+    ("floor_rug", floor_rug, "floor"),
+    ("floor_cushions", floor_cushions, "floor"),
+    ("window_seat", window_seat, "floor"),
+    ("table_tennis", table_tennis, "floor"),
+    ("climbing_wall", climbing_wall, "wall"),
     ("lounge_sofa", lounge_sofa, "floor"),
     ("bean_bag", bean_bag, "floor"),
     ("arcade_cabinet", arcade_cabinet, "floor"),

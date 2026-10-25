@@ -306,9 +306,12 @@ func medical_ready(inv: Dictionary, tiers: Dictionary) -> bool:
 		if ids.has("medical_exam_cot") and ids.has("medical_cabinet") and bool(tiers.get(4, false)): return true
 	return false
 
+## What keeps the crew fit, each about as well as one exercise station.
+const FITNESS_ITEMS := ["exercise_station", "climbing_wall"]
+
 func exercise_stations(inv: Dictionary, tiers: Dictionary) -> int:
 	if not bool(tiers.get(4, false)): return 0
-	return (inv.items as Array).filter(func(i): return str(i.id) == "exercise_station" and not is_broken(i)).size()
+	return (inv.items as Array).filter(func(i): return FITNESS_ITEMS.has(str(i.id)) and not is_broken(i)).size()
 
 # ---------- sections and air pressure ----------
 
@@ -551,7 +554,7 @@ func post_step(dt: float, inv: Dictionary, tiers: Dictionary, crew_n: int, resea
 	_needs_age += dt
 	if _needs_age >= 1.0 or not is_same(_needs_inv, inv) or _needs_cache.is_empty():
 		_needs_cache = needs(inv, tiers)
-		_stations_cache = (inv.items as Array).filter(func(i): return str(i.id) == "exercise_station" and not is_broken(i)).size()
+		_stations_cache = (inv.items as Array).filter(func(i): return FITNESS_ITEMS.has(str(i.id)) and not is_broken(i)).size()
 		_medical_cache = medical_ready(inv, {4: true})
 		_needs_age = 0.0
 		_needs_inv = inv

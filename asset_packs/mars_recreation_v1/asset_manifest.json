@@ -204,46 +204,6 @@
       ]
     },
     {
-      "id": "games_shelf",
-      "file": "games_shelf.glb",
-      "placement": "wall",
-      "bounds_m": [
-        [
-          -0.46,
-          -0.33,
-          -0.28
-        ],
-        [
-          0.46,
-          0.3,
-          -0.0
-        ]
-      ],
-      "triangles": 4232,
-      "named_components": [
-        "back_plate",
-        "brackets_102_dark",
-        "brackets_72_dark",
-        "cards_white",
-        "cube_0_button",
-        "cube_1_screen",
-        "cube_2_cool",
-        "cube_3",
-        "dice_white",
-        "game_0_game_box_cool",
-        "game_1_game_box",
-        "game_2_game_box",
-        "shelf_102_white",
-        "shelf_72_white",
-        "standing_0_game_box",
-        "standing_1_white",
-        "standing_2_game_box_cool",
-        "standing_3",
-        "trophy_base",
-        "trophy_cup_satin"
-      ]
-    },
-    {
       "id": "table_football",
       "file": "table_football.glb",
       "placement": "floor",
@@ -313,6 +273,355 @@
         "side_r_white",
         "top_white",
         "vent_dark"
+      ]
+    },
+    {
+      "id": "projector_screen",
+      "file": "projector_screen.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -1.05,
+          -0.74,
+          -0.112
+        ],
+        [
+          1.05,
+          0.62,
+          -0.0
+        ]
+      ],
+      "triangles": 5300,
+      "named_components": [
+        "bezel_dark",
+        "brand_strip",
+        "display_screen_glass_dark",
+        "frame",
+        "sound_bar",
+        "sound_bar_grille_dark",
+        "status_light_screen"
+      ]
+    },
+    {
+      "id": "sectional_sofa",
+      "file": "sectional_sofa.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -1.1,
+          0.0,
+          -1.26
+        ],
+        [
+          1.1,
+          0.84,
+          0.4
+        ]
+      ],
+      "triangles": 4204,
+      "named_components": [
+        "arm_stripe",
+        "arm_white",
+        "back_0_teal",
+        "back_1_teal",
+        "back_2_teal",
+        "back_white",
+        "base_chaise_white",
+        "base_white",
+        "chaise_arm_white",
+        "chaise_seat_teal",
+        "pillows_warm",
+        "plinth",
+        "plinth_chaise",
+        "seat_0_teal",
+        "seat_1_teal",
+        "seat_2_teal"
+      ]
+    },
+    {
+      "id": "coffee_bar",
+      "file": "coffee_bar.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.74,
+          0.0,
+          -0.42
+        ],
+        [
+          0.74,
+          1.46,
+          0.3
+        ]
+      ],
+      "triangles": 3452,
+      "named_components": [
+        "bar_body_warm",
+        "bar_cap_white",
+        "bar_plinth",
+        "bar_rails",
+        "counter_overhang_warm",
+        "cups_white",
+        "door_0_slate",
+        "door_1_slate",
+        "drip_tray_dark",
+        "espresso_body_satin",
+        "espresso_top",
+        "gauge_screen",
+        "grinder",
+        "group_heads_dark",
+        "hopper_iv",
+        "knobs",
+        "pull_0_satin",
+        "pull_1_satin",
+        "steam_wand_satin"
+      ]
+    },
+    {
+      "id": "bar_stool",
+      "file": "bar_stool.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.2,
+          0.0,
+          -0.2
+        ],
+        [
+          0.2,
+          0.775,
+          0.2
+        ]
+      ],
+      "triangles": 2848,
+      "named_components": [
+        "base",
+        "foot_ring_dark",
+        "pedestal_satin",
+        "seat_band",
+        "seat_shell_white",
+        "seat_teal",
+        "spokes_dark"
+      ]
+    },
+    {
+      "id": "floor_rug",
+      "file": "floor_rug.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -1.2,
+          0.0,
+          -0.8
+        ],
+        [
+          1.2,
+          0.017,
+          0.8
+        ]
+      ],
+      "triangles": 1128,
+      "named_components": [
+        "border_warm",
+        "rug_teal",
+        "stripe"
+      ]
+    },
+    {
+      "id": "floor_cushions",
+      "file": "floor_cushions.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.88,
+          0.0,
+          -0.88
+        ],
+        [
+          0.88,
+          0.46,
+          0.88
+        ]
+      ],
+      "triangles": 3248,
+      "named_components": [
+        "button_0",
+        "button_1",
+        "button_2",
+        "button_3",
+        "cups_white",
+        "cushion_0_teal",
+        "cushion_1_teal",
+        "cushion_2_teal",
+        "cushion_3_teal",
+        "table_legs_dark",
+        "table_top_warm",
+        "teapot"
+      ]
+    },
+    {
+      "id": "window_seat",
+      "file": "window_seat.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.815,
+          0.0,
+          -0.328
+        ],
+        [
+          0.815,
+          0.78,
+          0.285
+        ]
+      ],
+      "triangles": 3212,
+      "named_components": [
+        "bench_body_warm",
+        "bench_cap_white",
+        "bench_plinth",
+        "bench_rails",
+        "bolsters_warm",
+        "drawer_0_slate",
+        "drawer_1_slate",
+        "drawer_2_slate",
+        "drawer_pull_0_satin",
+        "drawer_pull_1_satin",
+        "drawer_pull_2_satin",
+        "seat_teal",
+        "throw_pillow"
+      ]
+    },
+    {
+      "id": "table_tennis",
+      "file": "table_tennis.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -1.15,
+          0.0,
+          -0.725
+        ],
+        [
+          1.15,
+          0.92,
+          0.725
+        ]
+      ],
+      "triangles": 3096,
+      "named_components": [
+        "apron_white",
+        "ball",
+        "bat_0_button",
+        "bat_1_button",
+        "bat_handle_0_warm",
+        "bat_handle_1_warm",
+        "legs_dark",
+        "lines_white",
+        "net",
+        "net_posts_satin",
+        "top_field",
+        "wheels_black"
+      ]
+    },
+    {
+      "id": "plant_wall",
+      "file": "plant_wall.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.62,
+          -0.72,
+          -0.185
+        ],
+        [
+          0.62,
+          0.72,
+          -0.0
+        ]
+      ],
+      "triangles": 16136,
+      "named_components": [
+        "drip_line_black",
+        "felt_back",
+        "frame",
+        "grow_light_housing_dark",
+        "grow_light_lamp",
+        "leaves_leaf",
+        "leaves_light_leaf",
+        "pocket_row_0_white",
+        "pocket_row_1_white",
+        "pocket_row_2_white",
+        "pocket_row_3_white",
+        "valve"
+      ]
+    },
+    {
+      "id": "climbing_wall",
+      "file": "climbing_wall.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.73,
+          -1.13,
+          -0.096
+        ],
+        [
+          0.73,
+          1.13,
+          -0.0
+        ]
+      ],
+      "triangles": 4764,
+      "named_components": [
+        "board_white",
+        "bolts_satin",
+        "edge",
+        "holds",
+        "holds_bright",
+        "holds_button",
+        "holds_cool",
+        "top_band"
+      ]
+    },
+    {
+      "id": "games_shelf",
+      "file": "games_shelf.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.46,
+          -0.33,
+          -0.28
+        ],
+        [
+          0.46,
+          0.3,
+          -0.0
+        ]
+      ],
+      "triangles": 4232,
+      "named_components": [
+        "back_plate",
+        "brackets_102_dark",
+        "brackets_72_dark",
+        "cards_white",
+        "cube_0_button",
+        "cube_1_bright",
+        "cube_2_cool",
+        "cube_3",
+        "dice_white",
+        "game_0_game_box_cool",
+        "game_1_game_box",
+        "game_2_game_box",
+        "shelf_102_white",
+        "shelf_72_white",
+        "standing_0_game_box",
+        "standing_1_white",
+        "standing_2_game_box_cool",
+        "standing_3",
+        "trophy_base",
+        "trophy_cup_satin"
       ]
     }
   ]

@@ -1298,6 +1298,8 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 			var other_position: Vector3 = item.get("position", Vector3.ZERO)
 			var other_rotation := float(item.get("rotation_y", 0.0))
 			if item == support: continue
+			# A rug lies under things: furniture stands on it.
+			if bool(entry.get("underlay", false)) or bool(other_entry.get("underlay", false)): continue
 			# Stacked: one sits on top of the other, so their heights don't meet.
 			if world_position.y >= other_position.y + _occupied_height(other_entry) - .03 or world_position.y + size.y <= other_position.y + .03:
 				continue
