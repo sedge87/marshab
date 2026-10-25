@@ -8,24 +8,32 @@ extends Node
 ## at sunrise and sunset, and now and then when nothing's wrong.
 ##
 ## Every half second (real time) it reads the live simulation and works out
-## each alert's level: advisory (blue, once), warning (amber, repeats every
-## 90 s) or critical (red, repeats every 30 s, red edge pulse). A new or
-## escalated alert shows a banner at the top of the screen with a chime and
-## its cause chain: the linked systems from the cause to what it threatens
-## ("Power: none at night → Oxygen generator: off → O₂ 19.6% ↓ → Crew
-## health"). The first time each kind of alert appears, the banner also
-## says why it matters and stays up longer. When it clears: "back to normal".
-## While alerts are active, small pills stay under the clock. Everything is
+## each alert's level: advisory (blue), warning (amber) or critical (red: its
+## icon pulses, the screen edge glows red, a soft chime each minute). A new or
+## escalated alert doesn't interrupt (playtest feedback, 25 Oct): like
+## Stellaris's notifications, it adds an icon to a row at the top of the
+## screen, coloured by level, with a soft chime. Click one (or press N for
+## the most serious) to open it: ARDEN says what's wrong, and the card shows
+## what to do and its cause chain, the linked systems from the cause to what
+## it threatens ("Power: none at night → Oxygen generator: off → O₂ 19.6% ↓
+## → Crew health"); the first time, why it matters too. Right-click hides an
+## icon until the alert gets worse. Only a new critical alert speaks up by
+## itself (once). When an alert clears, its icon flashes green. Everything is
 ## kept in `history` for Mission Control's alert log. Dust storms stay with
 ## weather.gd, which announces them (with the same voice). Coming in through
 ## an airlock: "Welcome home" ("Welcome aboard" the first time).
 const MHResources := preload("res://scripts/mh_resources.gd")
 
-const REPEAT := {"warning": 90.0, "critical": 30.0}
 const LEVEL_RANK := {"": 0, "advisory": 1, "warning": 2, "critical": 3}
 const LEVEL_COLOUR := {"advisory": Color("#5DC8F9"), "warning": Color("#F5C542"), "critical": Color("#E5484D"), "resolved": Color("#3EE58A")}
 const LEVEL_SOUND := {"advisory": "ui_confirm", "warning": "storm_alert", "critical": "warn", "resolved": "all_clear"}
-const BANNER_SECONDS := 7.0
+## Each alert's icon in the notification row.
+const ICONS := {"life_support_power": "zap", "power": "zap", "battery_sunset": "moon", "o2": "wind", "co2": "recycle",
+	"cold": "flame", "cold_spot": "flame", "water": "droplets", "food": "utensils", "health": "heart-pulse",
+	"radiation": "radiation", "breach": "shield", "repress": "gauge", "breakdown": "wrench", "blackout": "satellite",
+	"injury": "syringe", "fitness": "dumbbell", "wellbeing": "smile"}
+## A critical alert still active chimes (softly, no voice) this often.
+const CRITICAL_CHIME := 60.0
 
 var world: Node
 ## Every alert raised, escalated or cleared: {time, sol_hour, id, level, title, text}.
@@ -34,9 +42,13 @@ var _active: Dictionary = {}     # id -> {level, since, said}
 var _previous: Dictionary = {}   # value readings from the last check, for "rising"/"falling"
 var _check_in := 0.0
 var _layer: CanvasLayer
-var _banner: PanelContainer
-var _banner_left := 0.0
-var _pills: HBoxContainer
+var _detail: PanelContainer        # the open alert card
+var _detail_id := ""
+var _icons: HBoxContainer          # the notification row
+var _dismissed: Dictionary = {}    # id -> the level it was hidden at
+var _mouse_before := -1            # the mouse mode before a card freed the cursor
+var _icons_key := ""               # what the row shows now
+var _shown_words := ""             # what the open card says now
 var _edge: ColorRect
 var _clock := 0.0
 var _explained: Dictionary = {}   # alert ids already explained this session
@@ -60,12 +72,6 @@ func sim() -> RefCounted:
 
 func _process(delta: float) -> void:
 	_clock += delta
-	if _banner != null and is_instance_valid(_banner):
-		_banner_left -= delta
-		if _banner_left <= 0.0:
-			_banner.queue_free()
-			_banner = null
-			_pills.visible = true
 	# Critical: a slow red pulse round the screen edge.
 	var critical := _active.values().any(func(a): return str(a.level) == "critical")
 	_edge.visible = critical
@@ -324,9 +330,8 @@ func _sols(n: float) -> String:
 func _update(alerts: Array) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	var seen := {}
-	# Several at once: the most serious is announced; the rest join the pills.
 	alerts.sort_custom(func(a, b): return LEVEL_RANK[str(a.level)] > LEVEL_RANK[str(b.level)])
-	var announced := false
+	var chimed := false
 	for alert in alerts:
 		var id := str(alert.id)
 		seen[id] = true
@@ -334,42 +339,49 @@ func _update(alerts: Array) -> void:
 		var known: Dictionary = _active.get(id, {})
 		var was := str(known.get("level", ""))
 		if known.is_empty() or LEVEL_RANK[level] > LEVEL_RANK[was]:
-			_active[id] = {"level": level, "since": now, "said": now, "title": alert.title}
-			if not announced: _announce(alert, level)
-			else: _record(alert, level)
-			announced = true
+			_active[id] = {"level": level, "since": now, "said": now, "title": alert.title, "alert": alert, "new": true}
+			# The first time this kind of alert comes up, its card says why it matters.
+			if EXPLAIN.has(id) and not _explained.has(id):
+				_explained[id] = true
+				_active[id]["why"] = true
+			_dismissed.erase(id)   # worse than when it was hidden: it's back
+			_record(alert, level)
+			# One soft chime for the most serious new one; a new critical
+			# alert also speaks up, once.
+			if not chimed:
+				MHAudio.sfx(str(LEVEL_SOUND[level]), -9.0, 0.0)
+				if level == "critical": MHAudio.voice(voice_line(id, level))
+				chimed = true
+			if level != "advisory": preload("res://scripts/feature_hints.gd").first(get_tree(), "alerts")
 		else:
 			known.level = level
 			known.title = alert.title
-			if REPEAT.has(level) and now - float(known.said) >= float(REPEAT[level]) and not announced:
+			known.alert = alert
+			if level == "critical" and now - float(known.said) >= CRITICAL_CHIME and not chimed:
 				known.said = now
-				_announce(alert, level, true)
-				announced = true
+				MHAudio.sfx("warn", -14.0, 0.0)
+				chimed = true
 	for id in _active.keys():
 		if seen.has(id): continue
 		var gone: Dictionary = _active[id]
 		_active.erase(id)
+		_dismissed.erase(id)
 		if LEVEL_RANK[str(gone.level)] >= LEVEL_RANK["warning"]:
-			_announce({"id": id, "title": "%s: back to normal" % str(gone.title).trim_suffix(" falling").trim_suffix(" rising").trim_suffix(" running out").trim_suffix(" running low"), "text": "", "chain": []}, "resolved")
-	_refresh_pills()
+			_record({"id": id, "title": "%s: back to normal" % str(gone.title).trim_suffix(" falling").trim_suffix(" rising").trim_suffix(" running out").trim_suffix(" running low"), "text": "", "chain": []}, "resolved")
+			MHAudio.sfx("all_clear", -12.0, 0.0)
+			_flash_cleared(id)
+		if _detail_id == id: _close_detail()
+	_refresh_icons()
+	# An open card follows its alert as it changes (only when its words do).
+	if not _detail_id.is_empty() and _active.has(_detail_id) and _detail_words(_detail_id) != _shown_words: _fill_detail(_detail_id)
+
+func _detail_words(id: String) -> String:
+	var alert: Dictionary = _active[id].get("alert", {})
+	return "%s|%s|%s|%s" % [_active[id].level, alert.get("title", ""), alert.get("text", ""), alert.get("chain", [])]
 
 func _record(alert: Dictionary, level: String) -> void:
 	var sol := floori(float(sim().hours_run) / 24.0) + 1 if world != null else 1
 	history.append({"time": Time.get_datetime_string_from_system(false, true), "sol": sol, "sol_hour": MHGame.sol_hour, "id": alert.id, "level": level, "title": alert.title, "text": alert.text, "chain": alert.get("chain", [])})
-
-func _announce(alert: Dictionary, level: String, reminder := false) -> void:
-	_record(alert, level)
-	MHAudio.sfx(str(LEVEL_SOUND[level]), -8.0 if reminder else -3.0, 0.0)
-	# Speak it when it starts, escalates or clears; critical alerts again on each reminder.
-	if not reminder or level == "critical": MHAudio.voice(voice_line(str(alert.id), level))
-	var first := level != "resolved" and not _explained.has(str(alert.id)) and EXPLAIN.has(str(alert.id))
-	if first:
-		_explained[str(alert.id)] = true
-		alert = alert.duplicate()
-		alert["why"] = EXPLAIN[str(alert.id)]
-	_show_banner(alert, level, reminder)
-	if first: _banner_left = BANNER_SECONDS * 2.0
-	if level != "resolved" and not reminder: preload("res://scripts/feature_hints.gd").first(get_tree(), "alerts")
 
 # ---------- on screen ----------
 
@@ -391,41 +403,159 @@ func _build_hud() -> void:
 	_edge.material = material
 	_edge.visible = false
 	root.add_child(_edge)
-	_pills = MHStyle.hbox(8)
-	_pills.anchor_left = .5
-	_pills.anchor_right = .5
-	_pills.offset_left = -400
-	_pills.offset_right = 400
-	_pills.offset_top = 150
-	_pills.alignment = BoxContainer.ALIGNMENT_CENTER
-	_pills.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(_pills)
+	# The notification row: top middle, under the compass.
+	_icons = MHStyle.hbox(8)
+	_icons.anchor_left = .5
+	_icons.anchor_right = .5
+	_icons.offset_left = -400
+	_icons.offset_right = 400
+	_icons.offset_top = 112   # under the compass and its landmark labels
+	_icons.alignment = BoxContainer.ALIGNMENT_CENTER
+	_icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_icons)
 
-func _show_banner(alert: Dictionary, level: String, reminder: bool) -> void:
-	if _banner != null and is_instance_valid(_banner): _banner.queue_free()
+## One icon per active alert (not hidden), most serious first. A new one
+## pops in; critical ones pulse.
+func _refresh_icons() -> void:
+	var order := _active.keys().filter(func(id): return not _dismissed.has(id))
+	order.sort_custom(func(a, b): return LEVEL_RANK[str(_active[a].level)] > LEVEL_RANK[str(_active[b].level)])
+	# Rebuilt only when something changed, so hovering and pulses aren't reset.
+	var key := "%s|%s" % [_detail_id, ",".join(order.map(func(id): return "%s:%s:%s" % [id, _active[id].level, _active[id].title]))]
+	if key == _icons_key: return
+	_icons_key = key
+	for child in _icons.get_children():
+		if not child.has_meta("cleared"): child.queue_free()
+	for id in order:
+		var entry: Dictionary = _active[id]
+		var level := str(entry.level)
+		var tone: Color = LEVEL_COLOUR[level]
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(52, 52)
+		button.focus_mode = Control.FOCUS_NONE
+		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		button.tooltip_text = "%s\nClick: what's wrong · Right-click: hide" % str(entry.title)
+		var style := MHStyle.box(MHStyle.SURFACE_HUD_STRONG, tone, 10, 3 if id == _detail_id else 2)
+		for state in ["normal", "pressed", "focus"]: button.add_theme_stylebox_override(state, style)
+		button.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.tint(tone, .25), tone, 10, 3))
+		button.icon = MHIcons.texture(str(ICONS.get(id, "triangle-alert")), 26)
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		for state in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]: button.add_theme_color_override(state, tone)
+		button.gui_input.connect(func(event: InputEvent) -> void:
+			if event is InputEventMouseButton and event.pressed:
+				if event.button_index == MOUSE_BUTTON_RIGHT: dismiss(str(id))
+				elif event.button_index == MOUSE_BUTTON_LEFT: open_alert(str(id)))
+		_icons.add_child(button)
+		if bool(entry.get("new", false)):
+			entry.new = false
+			button.pivot_offset = Vector2(26, 26)
+			button.scale = Vector2(.2, .2)
+			button.create_tween().tween_property(button, "scale", Vector2.ONE, .25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if level == "critical":
+			var pulse := button.create_tween().set_loops()
+			pulse.tween_property(button, "modulate", Color(1.3, 1.1, 1.1), .6)
+			pulse.tween_property(button, "modulate", Color.WHITE, .6)
+
+## A cleared alert: a green tick in the row for a moment.
+func _flash_cleared(id: String) -> void:
+	var tick := PanelContainer.new()
+	tick.set_meta("cleared", true)
+	tick.custom_minimum_size = Vector2(52, 52)
+	tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tick.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, LEVEL_COLOUR.resolved, 10, 2))
+	var icon := MHStyle.icon(str(ICONS.get(id, "circle-check")), 26, LEVEL_COLOUR.resolved)
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tick.add_child(icon)
+	_icons.add_child(tick)
+	var fade := tick.create_tween()
+	fade.tween_interval(2.5)
+	fade.tween_property(tick, "modulate:a", 0.0, .6)
+	fade.tween_callback(tick.queue_free)
+
+## Hide an alert's icon until it gets worse (Mission Control's log keeps it).
+func dismiss(id: String) -> void:
+	if not _active.has(id): return
+	_dismissed[id] = str(_active[id].level)
+	if _detail_id == id: _close_detail()
+	MHAudio.sfx("ui_click", -8.0)
+	_refresh_icons()
+
+## Open an alert: ARDEN says it, and the card shows what to do. Opening the
+## open one closes it.
+func open_alert(id: String) -> void:
+	if not _active.has(id): return
+	if _detail_id == id:
+		_close_detail()
+		return
+	_detail_id = id
+	MHAudio.voice(voice_line(id, str(_active[id].level)))
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		_mouse_before = Input.MOUSE_MODE_CAPTURED
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_fill_detail(id)
+	_refresh_icons()
+
+func _close_detail() -> void:
+	if _detail != null and is_instance_valid(_detail): _detail.queue_free()
+	_detail = null
+	_detail_id = ""
+	if _mouse_before == Input.MOUSE_MODE_CAPTURED and not get_tree().paused: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_mouse_before = -1
+	_refresh_icons()
+
+## N: open the most serious alert showing, or close the open one.
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_N) or event.ctrl_pressed: return
+	if get_tree().paused: return
+	if not _detail_id.is_empty():
+		_close_detail()
+	else:
+		var order := _active.keys().filter(func(id): return not _dismissed.has(id))
+		if order.is_empty(): return
+		order.sort_custom(func(a, b): return LEVEL_RANK[str(_active[a].level)] > LEVEL_RANK[str(_active[b].level)])
+		open_alert(str(order[0]))
+	get_viewport().set_input_as_handled()
+
+## The open alert's card, under the row: what's wrong, why it matters (the
+## first time), what's linked to it, and how to close or hide it.
+func _fill_detail(id: String) -> void:
+	var entry: Dictionary = _active[id]
+	var alert: Dictionary = entry.get("alert", {"title": entry.title, "text": "", "chain": []})
+	var level := str(entry.level)
 	var tone: Color = LEVEL_COLOUR[level]
-	_banner = PanelContainer.new()
-	_banner.anchor_left = .5
-	_banner.anchor_right = .5
-	_banner.offset_left = -380
-	_banner.offset_right = 380
-	_banner.offset_top = 150
-	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_banner.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, tone, 8, 2, Vector4(18, 12, 18, 14)))
+	_shown_words = _detail_words(id)
+	if _detail != null and is_instance_valid(_detail): _detail.queue_free()
+	_detail = PanelContainer.new()
+	_detail.anchor_left = .5
+	_detail.anchor_right = .5
+	_detail.offset_left = -380
+	_detail.offset_right = 380
+	_detail.offset_top = 176
+	_detail.mouse_filter = Control.MOUSE_FILTER_STOP
+	_detail.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, tone, 8, 2, Vector4(18, 12, 18, 14)))
 	var column := MHStyle.vbox(6)
 	var head := MHStyle.hbox(10)
-	head.add_child(MHStyle.icon("circle-check" if level == "resolved" else "triangle-alert", 20, tone))
-	var names := {"advisory": "ADVISORY", "warning": "WARNING", "critical": "CRITICAL", "resolved": "ALL CLEAR"}
-	head.add_child(MHStyle.eyebrow(str(names[level]) + (" · STILL ACTIVE" if reminder else ""), tone, 13))
-	head.add_child(MHStyle.title(str(alert.title), 18))
+	head.add_child(MHStyle.icon(str(ICONS.get(id, "triangle-alert")), 20, tone))
+	var names := {"advisory": "ADVISORY", "warning": "WARNING", "critical": "CRITICAL"}
+	head.add_child(MHStyle.eyebrow("%s · %s" % [str(names.get(level, "")), MHGame.habitat_name], tone, 13))
+	var title := MHStyle.title(str(alert.title), 18)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var close := Button.new()
+	close.flat = true
+	close.focus_mode = Control.FOCUS_NONE
+	close.icon = MHIcons.texture("x", 18)
+	close.tooltip_text = "Close (N)"
+	close.pressed.connect(_close_detail)
+	head.add_child(close)
 	column.add_child(head)
-	if not str(alert.text).is_empty():
+	if not str(alert.get("text", "")).is_empty():
 		var body := MHStyle.body(str(alert.text), 14, MHStyle.TEXT_SECONDARY)
 		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		body.custom_minimum_size.x = 720
 		column.add_child(body)
-	if alert.has("why"):
-		var why := MHStyle.body("Why it matters: " + str(alert.why), 14, MHStyle.TEXT_PRIMARY)
+	if bool(entry.get("why", false)):
+		var why := MHStyle.body("Why it matters: " + str(EXPLAIN[id]), 14, MHStyle.TEXT_PRIMARY)
 		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		why.custom_minimum_size.x = 720
 		column.add_child(why)
@@ -446,23 +576,6 @@ func _show_banner(alert: Dictionary, level: String, reminder: bool) -> void:
 			chip.add_child(inner)
 			row.add_child(chip)
 		column.add_child(row)
-	_banner.add_child(column)
-	_layer.get_child(0).add_child(_banner)
-	_banner_left = BANNER_SECONDS * (.5 if reminder else 1.0)
-	_pills.visible = false
-
-func _refresh_pills() -> void:
-	for child in _pills.get_children(): child.queue_free()
-	var order := _active.keys()
-	order.sort_custom(func(a, b): return LEVEL_RANK[str(_active[a].level)] > LEVEL_RANK[str(_active[b].level)])
-	for id in order:
-		var tone: Color = LEVEL_COLOUR[str(_active[id].level)]
-		var pill := PanelContainer.new()
-		pill.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, tone, 12, 1, Vector4(10, 4, 12, 4)))
-		var row := MHStyle.hbox(6)
-		row.add_child(MHStyle.icon("triangle-alert", 13, tone))
-		var words := MHStyle.body(str(_active[id].title), 12, MHStyle.TEXT_PRIMARY)
-		words.autowrap_mode = TextServer.AUTOWRAP_OFF
-		row.add_child(words)
-		pill.add_child(row)
-		_pills.add_child(pill)
+	column.add_child(MHStyle.mono("N CLOSE  ·  RIGHT-CLICK THE ICON TO HIDE IT  ·  M ALERT LOG", 11, MHStyle.TEXT_MUTED))
+	_detail.add_child(column)
+	_layer.get_child(0).add_child(_detail)

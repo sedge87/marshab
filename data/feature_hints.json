@@ -199,8 +199,14 @@
     },
     "alerts": {
       "title": "When something goes wrong",
-      "text": "ARDEN warns you early. The banner says what's wrong and what to do about it, and the systems panel shows which system it is.",
+      "text": "ARDEN doesn't interrupt: an icon appears at the top of the screen, blue, amber or red. Click it (or press N) to hear what's wrong and what to do. Right-click hides it until it gets worse.",
       "keys": [
+        [
+          [
+            "N"
+          ],
+          "Open the most serious alert"
+        ],
         [
           [
             "M"

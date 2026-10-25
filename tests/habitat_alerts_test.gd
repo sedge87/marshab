@@ -69,6 +69,27 @@ func _initialize() -> void:
 	var logged: int = alerts.history.size()
 	alerts._update(alerts.evaluate())
 	_check(alerts.history.size() == logged, "it isn't raised again straight away")
+
+	# Like Stellaris's notifications: an icon each, no banner; opening one
+	# shows its card; right-click hides it until it gets worse.
+	await process_frame
+	var icons: Array = alerts._icons.get_children().filter(func(c): return c is Button and not c.is_queued_for_deletion())
+	_check(icons.size() == alerts._active.size(), "one icon per active alert (%d icons, %d alerts)" % [icons.size(), alerts._active.size()])
+	_check(alerts._detail == null, "nothing pops up by itself")
+	alerts.open_alert("o2")
+	_check(alerts._detail != null and alerts._detail_id == "o2", "clicking an icon opens its card")
+	var card_text := ""
+	for label in alerts._detail.find_children("*", "Label", true, false): card_text += label.text + " "
+	_check(card_text.contains("Why it matters"), "the first time, the card says why it matters")
+	alerts.open_alert("o2")
+	_check(alerts._detail_id.is_empty(), "clicking it again closes it")
+	alerts.dismiss("co2")
+	await process_frame
+	icons = alerts._icons.get_children().filter(func(c): return c is Button and not c.is_queued_for_deletion())
+	_check(icons.size() == alerts._active.size() - 1, "right-click hides an icon")
+	sim.co2_pct = 0.9   # better: still hidden
+	alerts._update(alerts.evaluate())
+	_check(alerts._dismissed.has("co2"), "it stays hidden while it's no worse")
 	sim.o2_pct = 21.0
 	sim.co2_pct = 0.1
 	alerts._update(alerts.evaluate())
