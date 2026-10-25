@@ -104,28 +104,17 @@ func _build_cabin() -> void:
 		collision.shape = shape
 		collision.position.y = part[1]
 		deck_body.add_child(collision)
-	# The front wall either side of the airlock: the model is open to the
-	# outside there (slots beside its recessed hatch).
+	# The model is open to the outside in slots either side of its recessed
+	# hatch (between the airlock walls and the hull): the cabin's front wall,
+	# and solid fillers in the slots (one between the airlock wall and the
+	# hatch frame post, one behind it flush with the hull), close it.
 	for side in [-1.0, 1.0]:
-		var inner := 1.08
 		var outer := sqrt(CABIN_RADIUS * CABIN_RADIUS - FRONT_WALL * FRONT_WALL) + .05
-		var size := Vector3(outer - inner, CEILING - DECK, .08)
-		var at := Vector3(side * (inner + outer) * .5, DECK + size.y * .5, FRONT_WALL)
-		var panel := BoxMesh.new()
-		panel.size = size
-		var source := StandardMaterial3D.new()
-		source.resource_name = "shell_wall"
-		panel.material = MHPalette.material(source)
-		var mesh := MeshInstance3D.new()
-		mesh.mesh = panel
-		mesh.position = at
-		add_child(mesh)
-		var shape := BoxShape3D.new()
-		shape.size = size
-		var collision := CollisionShape3D.new()
-		collision.shape = shape
-		collision.position = at
-		deck_body.add_child(collision)
+		_wall(deck_body, Vector3(side * 1.08, DECK, FRONT_WALL - .04), Vector3(side * outer, CEILING, FRONT_WALL + .04))
+		_wall(deck_body, Vector3(side * 1.0, 2.3, -2.62), Vector3(side * 1.34, 5.8, FRONT_WALL))
+		_wall(deck_body, Vector3(side * 1.34, 2.3, -1.62), Vector3(side * 1.8, 5.8, FRONT_WALL))
+	# Over the doorway: hides the trimmed edges of the old door's frame.
+	_wall(deck_body, Vector3(-1.08, 5.4, FRONT_WALL + .03), Vector3(1.08, CEILING, FRONT_WALL + .09))
 	# A round ceiling lamp, a downlight under it and a soft fill.
 	var lamp := MeshInstance3D.new()
 	var lamp_disc := CylinderMesh.new()
@@ -156,6 +145,26 @@ func _build_cabin() -> void:
 	fill.light_specular = 0.0
 	fill.omni_range = 3.4
 	add_child(fill)
+
+## A solid wall block between two corners (lander space), in the house shell.
+func _wall(body: StaticBody3D, corner_a: Vector3, corner_b: Vector3) -> void:
+	var lo := corner_a.min(corner_b)
+	var size := corner_a.max(corner_b) - lo
+	var box := BoxMesh.new()
+	box.size = size
+	var source := StandardMaterial3D.new()
+	source.resource_name = "shell_wall"
+	box.material = MHPalette.material(source)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = box
+	mesh.position = lo + size * .5
+	add_child(mesh)
+	var shape := BoxShape3D.new()
+	shape.size = size
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	collision.position = mesh.position
+	body.add_child(collision)
 
 func _furnish() -> void:
 	var builder := get_tree().get_first_node_in_group("habitat_builder")

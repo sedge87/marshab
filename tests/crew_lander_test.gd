@@ -44,6 +44,18 @@ func _initialize() -> void:
 	for side in [-1.0, 1.0]:
 		var from: Vector3 = lander.to_global(Vector3(side * 1.5, 4.2, -.3))
 		_check(not space.intersect_ray(PhysicsRayQueryParameters3D.create(from, lander.to_global(Vector3(side * 1.5, 4.2, -4.0)))).is_empty(), "the cabin's front corner is closed (side %d)" % side)
+	# Sealed with the hatch shut: no ray from the cabin or the airlock gets out.
+	var leaks := 0
+	for origin in [Vector3(0, 0, .3), Vector3(0, 0, -1.4), Vector3(.6, 0, -2.0), Vector3(-.6, 0, -2.0)]:
+		for d in range(0, 360, 8):
+			for e in [-30, 0, 30]:
+				for y in [2.8, 4.4]:
+					var dir := Vector3(sin(deg_to_rad(d)) * cos(deg_to_rad(e)), sin(deg_to_rad(e)), -cos(deg_to_rad(d)) * cos(deg_to_rad(e)))
+					var a: Vector3 = lander.to_global(origin + Vector3(0, y, 0))
+					var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(a, a + lander.global_basis * dir * 8.0))
+					var at: Vector3 = lander.to_local(hit.position) if not hit.is_empty() else Vector3(99, 99, 99)
+					if Vector2(at.x, at.z).length() > 2.75 or at.y > 6.3: leaks += 1
+	_check(leaks == 0, "the cabin and airlock are sealed with the hatch shut (%d rays got out)" % leaks)
 	_check(str(world.builder.climate_at(player.global_position).context) == "Lander cabin", "the cabin is sheltered")
 	var prompt: Dictionary = lander.interaction_prompt()
 	_check(str(prompt.get("primary", "")) == "Open hatch", "E opens the hatch (%s)" % prompt.get("primary", ""))
