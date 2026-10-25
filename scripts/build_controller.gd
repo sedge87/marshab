@@ -2489,6 +2489,9 @@ func _rebuild() -> void:
 		child.queue_free()
 	_hull_bays = []
 	_windows_built = {}
+	_bay_hangars = []
+	_airlock_inner_doors = {}
+	_ensure_bay_doors()
 	for zone in zones:
 		if zone.has("angled_mount"):
 			_build_angled_outline_connector(zone)
@@ -2516,6 +2519,7 @@ func _rebuild() -> void:
 		if door_data.has("outline_grid_cell"):
 			var outline_grid_cell: Vector2i = door_data.get("outline_grid_cell", Vector2i.ZERO)
 			var outline_grid_side: Vector2i = door_data.get("outline_grid_side", Vector2i.ZERO)
+			if str(_zone_at(outline_grid_cell).get("kind", "")) == "vehicle_bay": continue   # the bay builds its own hatch
 			_add_door(Vector3(outline_grid_cell.x * CELL, 0, outline_grid_cell.y * CELL), outline_grid_side, "INTERIOR", true)
 			continue
 		var door_cell: Vector2i = door_data.get("cell", Vector2i.ZERO)
@@ -2529,6 +2533,7 @@ func _rebuild() -> void:
 		# The framed hatch fills the complete 3 m shared wall bay. The unframed
 		# shutter is deliberately narrower and left visible slits at either edge.
 		_add_door(Vector3(door_cell.x * CELL, 0, door_cell.y * CELL), door_side, "INTERIOR", true)
+	_link_bay_airlocks()
 	_build_partitions()
 	ROOM_IDENTITY.build(self)   # colour bands, door signs, per-room overhead detail
 	_add_room_fills()
@@ -2733,6 +2738,17 @@ func _merge_touching_same_type_rooms() -> void:
 
 func _is_grid_corridor(zone: Dictionary) -> bool:
 	return str(zone.get("kind", "")) == "corridor" and not zone.has("angled_mount") and not zone.has("outline")
+
+## The outline doors are found along: a room's own, or a vehicle bay's
+## squares traced as if it were a room (zone_outline leaves bays out).
+func _door_outline(zone: Dictionary) -> PackedVector2Array:
+	if str(zone.get("kind", "")) == "vehicle_bay" and not zone.has("outline"):
+		return zone_outline({"kind": "storage", "cells": zone.get("cells", [])})
+	return zone_outline(zone)
+
+## A room or vehicle bay that gets doors to its neighbours like any room.
+func _doored_space(zone: Dictionary) -> bool:
+	return _mergeable_room(zone) or (str(zone.get("kind", "")) == "vehicle_bay" and not zone.has("angled_mount"))
 
 func _mergeable_room(zone: Dictionary) -> bool:
 	return not zone.has("angled_mount") and _is_ordinary_room_kind(str(zone.get("kind", ""))) and _is_habitat_zone(zone)
@@ -3561,7 +3577,7 @@ func interior_door_invalid_reason(cell: Vector2i, side: Vector2i) -> String:
 		return "Aim at a shared room wall"
 	var first := _zone_at(cell)
 	var outline_attachment := _outline_attachment_for_face(cell, side)
-	if not first.is_empty() and _is_ordinary_room_kind(str(first.kind)) and bool(outline_attachment.get("valid", false)):
+	if not first.is_empty() and (_is_ordinary_room_kind(str(first.kind)) or str(first.kind) == "vehicle_bay") and bool(outline_attachment.get("valid", false)):
 		if _has_interior_door(cell, side): return "Interior door already installed"
 		return ""
 	var neighbour := cell + side
@@ -4236,14 +4252,14 @@ func _add_doors_for_new_room(zone: Dictionary) -> Array:
 	# longest shared wall). Any more doors are the player's choice (the
 	# Interior door tool), as is moving this one (remove it, place another).
 	var joined: Array = []
-	if zones.find(zone) < 0 or not _mergeable_room(zone): return joined
-	var mine := zone_outline(zone)
+	if zones.find(zone) < 0 or not _doored_space(zone): return joined
+	var mine := _door_outline(zone)
 	var best := {}
 	var best_score := -1.0
 	for other in zones:
-		if other == zone or not _mergeable_room(other) or str(other.kind) == str(zone.kind): continue
+		if other == zone or not _doored_space(other) or str(other.kind) == str(zone.kind): continue
 		if _rooms_have_door(zone, other): return joined
-		var theirs := zone_outline(other)
+		var theirs := _door_outline(other)
 		var best_length := 0.0
 		var best_from := Vector2.ZERO
 		var best_to := Vector2.ZERO
@@ -4313,15 +4329,24 @@ func interior_door_from_world_point(point: Vector3, normal: Vector3) -> Dictiona
 	# A rendered wall has thickness, so its two faces return slightly different
 	# hit positions. Use the hit face normal to identify the room-side cell first,
 	# then canonicalise it; this makes aiming from either room target one opening.
-	if absf(normal.x) >= absf(normal.z):
-		var hit_cell := Vector2i(roundi(point.x / CELL), roundi(point.z / CELL))
-		if normal.x > 0.0:
-			return {"cell": hit_cell + Vector2i(-1, 0), "side": Vector2i(1, 0)}
-		return {"cell": hit_cell, "side": Vector2i(1, 0)}
 	var hit_cell := Vector2i(roundi(point.x / CELL), roundi(point.z / CELL))
+	if absf(normal.x) >= absf(normal.z):
+		if normal.x > 0.0:
+			return _grid_face_of({"cell": hit_cell + Vector2i(-1, 0), "side": Vector2i(1, 0)})
+		return _grid_face_of({"cell": hit_cell, "side": Vector2i(1, 0)})
 	if normal.z > 0.0:
-		return {"cell": hit_cell + Vector2i(0, -1), "side": Vector2i(0, 1)}
-	return {"cell": hit_cell, "side": Vector2i(0, 1)}
+		return _grid_face_of({"cell": hit_cell + Vector2i(0, -1), "side": Vector2i(0, 1)})
+	return _grid_face_of({"cell": hit_cell, "side": Vector2i(0, 1)})
+
+## A wall between a free-form room and a grid room (or vehicle bay) is the
+## grid square's face toward the free-form room, whichever side it's on.
+func _grid_face_of(target: Dictionary) -> Dictionary:
+	var cell: Vector2i = target.cell
+	var side: Vector2i = target.side
+	if not _zone_at(cell).is_empty() or _zone_at(cell + side).is_empty(): return target
+	if bool(_outline_attachment_for_face(cell + side, -side).get("valid", false)):
+		return {"cell": cell + side, "side": -side}
+	return target
 
 func _prune_interior_doors() -> void:
 	for index in range(interior_doors.size() - 1, -1, -1):
@@ -4335,7 +4360,7 @@ func _prune_interior_doors() -> void:
 			var grid_side: Vector2i = data.get("outline_grid_side", Vector2i.ZERO)
 			var grid_zone := _zone_at(grid_cell)
 			var attachment := _outline_attachment_for_face(grid_cell, grid_side)
-			if grid_zone.is_empty() or not _is_ordinary_room_kind(str(grid_zone.kind)) or not bool(attachment.get("valid", false)):
+			if grid_zone.is_empty() or not (_is_ordinary_room_kind(str(grid_zone.kind)) or str(grid_zone.kind) == "vehicle_bay") or not bool(attachment.get("valid", false)):
 				interior_doors.remove_at(index)
 			continue
 		var cell: Vector2i = data.get("cell", Vector2i.ZERO)
@@ -4366,6 +4391,7 @@ func _build_airlock_zone(zone: Dictionary) -> void:
 	# compact framed inner hatch; together they form a sealed chamber up to 3 cells long.
 	var outer_door:=_add_door(Vector3(outer_cell.x*CELL,0,outer_cell.y*CELL),outside,"OUTER",true)
 	var inner_door:=_add_door(Vector3(inner_cell.x*CELL,0,inner_cell.y*CELL),-outside,"INNER",false)
+	_airlock_inner_doors[zones.find(zone)] = {"door": inner_door, "into": inner_cell - outside}
 	outer_door.set_partner(inner_door)
 	inner_door.set_partner(outer_door)
 	for cell in cells:
@@ -4379,27 +4405,6 @@ func _build_vehicle_bay(zone: Dictionary) -> void:
 	var cells:Array=zone.cells
 	# Find real zone-to-zone edges first.  Edges between cells in this same bay
 	# are just its interior floorplan, never connections and never doors.
-	var connection_edges:Array=[]
-	for cell in cells:
-		for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
-			if side!=outside and not (cell+side in cells) and _is_habitat_zone(_zone_across(cell,side)):
-				connection_edges.append({"cell":cell,"side":side})
-	# One deliberately placed personnel bulkhead is clearer and safer than a
-	# door on every cell of a shared edge.  Other edges remain solid wall.
-	var explicit_edges: Array = []
-	# A corridor end butting onto the bay is a deliberate route in, so it always
-	# gets its own bulkhead (the corridor has already opened its end wall).
-	var corridor_edges: Array = []
-	var room_edges: Array = []
-	for edge in connection_edges:
-		if _has_interior_door(edge.cell, edge.side):
-			explicit_edges.append(edge)
-		if _corridor_end_connects(edge.cell, edge.side): corridor_edges.append(edge)
-		else: room_edges.append(edge)
-	var access_edge: Dictionary={}
-	# Preserve the original convenient bay hatch for existing saves, but once
-	# players choose an explicit interior door they own exactly which edge opens.
-	if explicit_edges.is_empty() and not room_edges.is_empty(): access_edge=room_edges[room_edges.size()/2]
 	var bay_doors: Array[AirlockDoor] = []
 	for cell in zone.cells:
 		var centre:=Vector3(cell.x*CELL,0,cell.y*CELL)
@@ -4407,15 +4412,18 @@ func _build_vehicle_bay(zone: Dictionary) -> void:
 		for side in [Vector2i(1,0),Vector2i(-1,0),Vector2i(0,1),Vector2i(0,-1)]:
 			if side==outside: continue # The sealed, opening hangar door owns this face.
 			if cell+side in cells: continue
-			if _has_interior_door(cell, side):
+			# An airlock's inner hatch opens straight into the bay.
+			if _is_airlock_inner_doorway(cell, side): continue
+			# Doors into the habitat are sealed personnel hatches, interlocked
+			# with the hangar: a recorded door (placed automatically like any
+			# room's, or by the player), or a corridor end meeting the bay.
+			if _has_interior_door(cell, side) or _corridor_end_connects(cell, side):
 				bay_doors.append(_add_door(centre,side,"BAY",true))
 				continue
-			# A bay never opens directly into the habitat: sealed personnel
-			# bulkheads are the only routes between them.
-			if {"cell":cell,"side":side} in corridor_edges or (not access_edge.is_empty() and cell==access_edge.cell and side==access_edge.side):
-				bay_doors.append(_add_door(centre,side,"BAY",false))
-				continue
-			_add_exterior_wall(centre,side,"vehicle_bay",zone,not _is_habitat_zone(_zone_across(cell,side)))
+			# Shared walls are drawn once, by whichever side owns the edge,
+			# exactly as between two rooms.
+			if _should_build_wall(cell, side):
+				_add_exterior_wall(centre,side,"vehicle_bay",zone,not _is_habitat_zone(_zone_across(cell,side)))
 	var face:=_zone_face(zone,outside)
 	var hangar:=AIRLOCK_DOOR.new(); hangar.position=face.position; hangar.rotation.y=_direction_yaw(outside); root.add_child(hangar)
 	# The wide exterior hatch is interlocked with every internal bay door.
@@ -4423,6 +4431,7 @@ func _build_vehicle_bay(zone: Dictionary) -> void:
 	# the hangar can open to Mars.
 	hangar.setup("HANGAR",true,face.width,2.58); _add_door_plan_marker(hangar,"HANGAR",face.width-.4)
 	_add_bay_ramp(face, outside)
+	_bay_hangars.append({"zone": zone, "hangar": hangar})
 	for bay_door in bay_doors:
 		hangar.add_partner(bay_door)
 		bay_door.add_partner(hangar)
@@ -4572,6 +4581,30 @@ func _airlock_end(cells: Array,direction: Vector2i,outside: bool) -> Vector2i:
 
 func _face_preview_cell(cells: Array,direction: Vector2i) -> Vector2i:
 	return _airlock_end(cells,direction,true)
+
+var _bay_hangars: Array = []          # {zone, hangar} for each vehicle bay this rebuild
+var _airlock_inner_doors: Dictionary = {}   # airlock zone index -> {door, into: the cell it opens into}
+
+## Each vehicle bay gets one door to a neighbour, once, like a newly placed
+## room: new bays, and bays in older saves (which opened through a hatch that
+## wasn't recorded, so the room next door could still build its wall over it).
+## Marked on the zone, so a door the player removes stays removed.
+func _ensure_bay_doors() -> void:
+	for zone in zones:
+		if str(zone.get("kind", "")) != "vehicle_bay" or bool(zone.get("doors_checked", false)): continue
+		zone["doors_checked"] = true
+		_add_doors_for_new_room(zone)
+
+## The bay is an airlock to Mars: every hatch into it, including an airlock's
+## inner hatch, is interlocked with its hangar door.
+func _link_bay_airlocks() -> void:
+	for entry in _bay_hangars:
+		var cells: Array = (entry.zone as Dictionary).get("cells", [])
+		for index in _airlock_inner_doors:
+			var inner: Dictionary = _airlock_inner_doors[index]
+			if not cells.has(inner.into): continue
+			(entry.hangar as AirlockDoor).add_partner(inner.door)
+			(inner.door as AirlockDoor).add_partner(entry.hangar)
 
 ## A plated ramp from the hangar door down to the ground, so the crew rover
 ## (scripts/crew_rover.gd) can drive in and out. Orange edge strips mark it.
