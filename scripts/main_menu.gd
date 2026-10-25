@@ -299,6 +299,7 @@ func _title_screen() -> void:
 	var hero := _hero_button("New colony", "Choose a site · name your colony", "plus")
 	hero.pressed.connect(func() -> void:
 		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
+		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 		_quick_start = false
 		show_screen("site"))
 	menu.add_child(hero)
@@ -314,6 +315,7 @@ func _title_screen() -> void:
 	missions.tooltip_text = "Set up a Mars base step by step, like NASA: landing zones, cargo first, then the crew."
 	missions.pressed.connect(func() -> void:
 		MHGame.game_mode = "missions"
+		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 		MHMissions.reset()
 		show_screen("site"))
 	menu.add_child(missions)
@@ -323,6 +325,7 @@ func _title_screen() -> void:
 		# Straight to choosing where to land (skipping the site and colony steps).
 		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
 		MHGame.landing_target = Vector2.INF
+		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 		_quick_start = true
 		show_screen("landing"))
 	menu.add_child(quick)
@@ -816,6 +819,7 @@ func _landing_screen() -> void:
 	var suggest := MHStyle.button("Use the suggested spot", "ghost", "map-pin")
 	suggest.pressed.connect(picker.use_suggested)
 	col.add_child(suggest)
+	col.add_child(_tutorial_choice())
 	panel.add_child(col)
 	screen.add_child(panel)
 	var bar := _bottom_bar()
@@ -838,6 +842,31 @@ func _landing_screen() -> void:
 	picker.target_changed.connect(show_verdict)
 	show_verdict.call(picker.target, picker.verdict)
 
+const TUTORIAL_CHOICES := {"full": "Full", "hints": "Hints only", "off": "Off"}
+const TUTORIAL_NOTES := {
+	"full": "ARDEN walks you through your first base, step by step, and explains each new thing the first time you meet it.",
+	"hints": "No steps: just a short card the first time you meet something new.",
+	"off": "Nothing pops up. The Field guide in the pause menu still explains everything.",
+}
+
+## Tutorial · Full · Hints only · Off, for this game.
+func _tutorial_choice() -> Control:
+	var box := MHStyle.vbox(6)
+	var head := MHStyle.hbox(8)
+	head.add_child(MHStyle.icon("lightbulb", 16, MHStyle.accent))
+	head.add_child(MHStyle.eyebrow("Tutorial", MHStyle.accent, 12))
+	box.add_child(head)
+	var note := MHStyle.body(str(TUTORIAL_NOTES[MHGame.tutorial_mode]), 13, MHStyle.TEXT_MUTED)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.custom_minimum_size.x = 440
+	var choice := MHWidgets.Segmented.new().setup(TUTORIAL_CHOICES.values(), str(TUTORIAL_CHOICES[MHGame.tutorial_mode]), 40)
+	choice.changed.connect(func(label: String) -> void:
+		MHGame.tutorial_mode = str(TUTORIAL_CHOICES.find_key(label))
+		note.text = str(TUTORIAL_NOTES[MHGame.tutorial_mode]))
+	box.add_child(choice)
+	box.add_child(note)
+	return box
+
 ## Missions: the Land step is Mission 1, Landing Zones. Left-click sets the
 ## landing target, right-click the base site; both checks update live.
 func _mission_one_panel(picker: Control) -> void:
@@ -855,6 +884,7 @@ func _mission_one_panel(picker: Control) -> void:
 	col.add_child(MHStyle.mono("LEFT-CLICK  landing target    RIGHT-CLICK  base site", 12, MHStyle.TEXT_MUTED))
 	var rows := MHStyle.vbox(8)
 	col.add_child(rows)
+	col.add_child(_tutorial_choice())
 	panel.add_child(col)
 	screen.add_child(panel)
 	var bar := _bottom_bar()

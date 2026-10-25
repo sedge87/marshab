@@ -78,6 +78,15 @@ const GAME_MODE_NOTES := {
 	"creative": "No simulation and unlimited cargo: build anything.",
 }
 static var game_mode := "survival"
+## The tutorial chosen for a new game on the Land step: "full" (ARDEN's
+## getting-started steps and first-time hints), "hints" or "off". Saved
+## with the game; older saves have none ("off").
+static var tutorial_mode := "hints"
+
+## What the Land step offers first: Full until the tutorial has been
+## finished once, then Hints only.
+static func default_tutorial_mode() -> String:
+	return "hints" if bool(setting("tutorial_finished")) else "full"
 ## Showcase mode (scripts/showcase.gd): a save presenting itself. Nothing is saved.
 static var showcase := false
 ## Where the player chose to land (site x, z in metres), set on the menu's
@@ -494,6 +503,7 @@ static func defaults() -> Dictionary:
 	d["gary_autonomy"] = true
 	d["alert_advisories"] = true
 	d["tutorial_cards"] = true
+	d["tutorial_finished"] = false
 	d["live_hazards"] = true
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
 	return d

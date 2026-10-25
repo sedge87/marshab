@@ -1,0 +1,145 @@
+{
+  "_comment": "ARDEN's getting-started tutorial (docs/tutorial-design.md). Each step ticks itself off when its check is met. check.type: moved, left_lander, build_mode, interior_mode, zone (kind), inside, items (ids, all needed), read (Enter), flag (world.guide_flags key). keys: [[caps], action] rows shown under the step. highlight: tutorial_target names, the first visible one is outlined. marker: a compass landmark (lander, base, ice, airlock). modes: only in these game modes (Creative has no simulation, so no systems panel). clip: assets/tutorial/clips/<clip>.ogv for P Show me. said: the voice line id (data/voice_lines.json, habitat) ARDEN says when the step is done.",
+  "steps": [
+    {
+      "id": "move",
+      "text": "Look around and move",
+      "how": "Move the mouse to look. Walk with W A S D; hold Shift to go faster.",
+      "keys": [[["Mouse"], "Look"], [["W", "A", "S", "D"], "Walk"], [["Shift"], "Sprint"]],
+      "check": {"type": "moved"},
+      "clip": "move",
+      "said": "tut_move"
+    },
+    {
+      "id": "outside",
+      "text": "Step outside",
+      "how": "Look at the hatch and press E. It lowers into a ramp: walk down it onto Mars.",
+      "keys": [[["E"], "Use"]],
+      "check": {"type": "left_lander"},
+      "marker": "lander",
+      "clip": "outside",
+      "said": "tut_outside"
+    },
+    {
+      "id": "plan",
+      "text": "Open the site plan",
+      "how": "Press B. The site plan is a top-down view of the ground where you lay out your base. W A S D pans, the wheel zooms, Q and E orbit.",
+      "keys": [[["B"], "Site plan"], [["Wheel"], "Zoom"]],
+      "check": {"type": "build_mode"},
+      "clip": "plan",
+      "said": "tut_plan"
+    },
+    {
+      "id": "living",
+      "text": "Lay out Living Quarters",
+      "how": "In the Rooms tab pick Living Quarters, then drag a rectangle on flat ground: 2 by 2 cells is plenty. Right-click cancels.",
+      "keys": [[["LMB"], "Drag a room"], [["RMB"], "Cancel"], [["Ctrl", "Z"], "Undo"]],
+      "check": {"type": "zone", "kind": "living"},
+      "highlight": ["part:living", "tab:rooms"],
+      "marker": "base",
+      "clip": "living",
+      "said": "tut_living"
+    },
+    {
+      "id": "airlock",
+      "text": "Add an airlock",
+      "how": "Structure tab: pick Airlock and place it against an outside wall of your room. R turns it so the outer door faces Mars.",
+      "keys": [[["LMB"], "Place"], [["R"], "Turn"]],
+      "check": {"type": "zone", "kind": "airlock"},
+      "highlight": ["part:airlock", "tab:structure"],
+      "marker": "base",
+      "clip": "airlock",
+      "said": "tut_airlock"
+    },
+    {
+      "id": "solar",
+      "text": "Place a solar array",
+      "how": "Resources tab: pick Solar Array and click a cell near the base. R turns it: the label shows its output, so turn it to the highest.",
+      "keys": [[["LMB"], "Place"], [["R"], "Turn"]],
+      "check": {"type": "zone", "kind": "solar"},
+      "highlight": ["part:solar", "tab:power"],
+      "marker": "base",
+      "clip": "solar",
+      "said": "tut_solar"
+    },
+    {
+      "id": "drill",
+      "text": "Drill for ice",
+      "how": "Pick Ice Extractor: the ground turns blue where there's ice underneath. Place it on bright blue ground. The label shows how much water it will give.",
+      "keys": [[["LMB"], "Place"]],
+      "check": {"type": "zone", "kind": "ice_extractor"},
+      "highlight": ["part:ice_extractor", "tab:power"],
+      "marker": "ice",
+      "clip": "drill",
+      "said": "tut_drill"
+    },
+    {
+      "id": "life_support",
+      "text": "Add a Life Support room",
+      "how": "Rooms tab: drag a Life Support room right next to your Living Quarters so they share a wall. A door is added between them by itself.",
+      "keys": [[["LMB"], "Drag a room"]],
+      "check": {"type": "zone", "kind": "life_support"},
+      "highlight": ["part:life_support", "tab:rooms"],
+      "marker": "base",
+      "clip": "life_support",
+      "said": "tut_life_support"
+    },
+    {
+      "id": "go_in",
+      "text": "Go inside through the airlock",
+      "how": "Press B to leave the plan. Walk to the airlock and press E on the outer door; it cycles, then the inner door opens.",
+      "keys": [[["B"], "Back to walking"], [["E"], "Open a door"]],
+      "check": {"type": "inside"},
+      "marker": "airlock",
+      "clip": "go_in",
+      "said": "tut_go_in"
+    },
+    {
+      "id": "bunk",
+      "text": "Furnish Living Quarters",
+      "how": "Stand in Living Quarters and press B: you furnish the room in first person. Pick a Crew Bunk, aim at the floor by a wall and click.",
+      "keys": [[["B"], "Furnish this room"], [["R"], "Turn"], [["LMB"], "Place"]],
+      "check": {"type": "items", "ids": ["crew_bunk"]},
+      "highlight": ["item:crew_bunk", "group:here", "group:living"],
+      "clip": "bunk",
+      "said": "tut_bunk"
+    },
+    {
+      "id": "air",
+      "text": "Make air and heat",
+      "how": "In Life Support, press B and place an Oxygen Generator and a Thermal Control Unit. They need power and water: that's what the solar array and the drill are for.",
+      "keys": [[["B"], "Furnish this room"], [["LMB"], "Place"]],
+      "check": {"type": "items", "ids": ["oxygen_generator", "thermal_control_unit"]},
+      "highlight": ["item:oxygen_generator", "item:thermal_control_unit", "group:here", "group:life_support"],
+      "clip": "air",
+      "said": "tut_air"
+    },
+    {
+      "id": "systems",
+      "text": "Read the systems panel",
+      "how": "The panel at the side shows power, air, water and heat. Green is fine, amber needs attention, red is urgent. Press Enter when you've had a look.",
+      "keys": [[["Enter"], "Got it"]],
+      "check": {"type": "read"},
+      "modes": ["survival", "freedom"],
+      "highlight": ["systems"],
+      "said": "tut_systems"
+    },
+    {
+      "id": "crew",
+      "text": "Meet the crew",
+      "how": "Press C for the crew screen: who they are, how they feel, and what they need. Z at a bunk sleeps until morning.",
+      "keys": [[["C"], "Crew screen"], [["Z"], "Sleep at a bunk"]],
+      "check": {"type": "flag", "key": "crew_screen"},
+      "clip": "crew",
+      "said": "tut_crew"
+    },
+    {
+      "id": "save",
+      "text": "Save your base",
+      "how": "Press Esc, then Save & load, and pick a slot. The Field guide in the same menu explains every system.",
+      "keys": [[["Esc"], "Pause menu"]],
+      "check": {"type": "flag", "key": "saved"},
+      "said": "tut_done"
+    }
+  ]
+}

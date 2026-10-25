@@ -97,6 +97,7 @@ func enter() -> void:
 	if active or builder == null or player == null:
 		return
 	active = true
+	preload("res://scripts/feature_hints.gd").first(get_tree(), "interior")
 	rotation_offset = 0.0
 	player.set_meta("interior_build_active", true)
 	var explore := get_tree().get_first_node_in_group("explore_hud")
@@ -953,6 +954,8 @@ func _render_selector_tabs() -> void:
 		tab.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, 6, 1, pad))
 		tab.add_theme_stylebox_override("pressed", tab.get_theme_stylebox("normal"))
 		tab.pressed.connect(_select_selector_group.bind(str(tab_id)))
+		tab.set_meta("tutorial_target", "group:" + str(tab_id).trim_prefix("_"))
+		tab.add_to_group("tutorial_target")
 		_selector_tabs.add_child(tab)
 
 ## Does this tab hold anything that fits the room the player is in?
@@ -1031,6 +1034,8 @@ func _card(id: String, index: int) -> Button:
 	var fits := not structure.is_empty() or _fits_here(id)
 	var selected := _is_selected(id) and fits
 	var card := Button.new()
+	card.set_meta("tutorial_target", "item:" + id)
+	card.add_to_group("tutorial_target")
 	card.custom_minimum_size = Vector2(186, 164)
 	card.focus_mode = Control.FOCUS_NONE
 	if not fits:

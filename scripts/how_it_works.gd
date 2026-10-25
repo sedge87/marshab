@@ -97,7 +97,7 @@ static func first_meeting(tree: SceneTree, id: String, eyebrow: String) -> void:
 	show(tree, [id], eyebrow)
 
 static func enabled() -> bool:
-	return DisplayServer.get_name() != "headless" and not MHGame.showcase and bool(MHGame.setting("tutorial_cards"))
+	return DisplayServer.get_name() != "headless" and not MHGame.showcase and bool(MHGame.setting("tutorial_cards")) and MHGame.tutorial_mode != "off"
 
 # ---------- the Field guide ----------
 

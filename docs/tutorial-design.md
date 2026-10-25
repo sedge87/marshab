@@ -10,7 +10,30 @@ proposes two pieces, built in this order:
 2. **First-time hint cards with moving pictures**, which pop up the first
    time a player opens a feature, showing *how* to do the thing.
 
-Nothing here is built yet.
+**Built 25 Oct.** Where it lives:
+
+- `data/tutorial.json` holds the 14 steps; `scripts/tutorial.gd` is the
+  tracker (Survival, Freedom and Creative; Creative skips the systems-panel
+  step).
+- `scripts/guide_overlay.gd` holds the highlights, key caps and Show me, and
+  works out each step's extras.
+- `scripts/mission_hud.gd` puts the same guidance on mission steps, and
+  `data/missions.json` gets a tutorial-only "look" step.
+- `data/feature_hints.json` and `scripts/feature_hints.gd` are the
+  first-time hint cards.
+- The clips are made by `tools/capture_hint_clips.gd` and
+  `tools/record_hint_clips.sh`, and saved to `assets/tutorial/clips/*.ogv`.
+- The Land step has the Tutorial choice, and Pause → Settings has
+  "Tutorial (this game)".
+- Tests: `tests/tutorial_test.gd`.
+
+Changes from the plan:
+
+- There are 14 steps, because oxygen equipment needs a Life Support room.
+- Advancing works by checking game state four times a second, not by
+  signals.
+- There are no clips yet for the Test (T) or GAR-Y orders; those steps just
+  have no Show me button.
 
 ---
 
@@ -204,13 +227,23 @@ This gets its own short design pass when we get there.
 
 ---
 
-## Questions for you
+## Decisions (25 Oct)
 
-1. **Advisor**: ARDEN (the habitat's computer, recommended) or GAR-Y?
-2. **Missions mode**: only the first five control steps (recommended), the
-   full tutorial, or none?
-3. **Clips**: real gameplay clips (recommended), or animated diagrams?
-4. **Steps**: anything to add, cut or reorder? For example, should
-   **carrying** cargo from the cargo lander be a step?
-5. **Weakest PC**: what's the weakest computer the game must run on? This
-   decides whether Forward+ is safe or we need a Low setting.
+1. **Advisor: ARDEN.**
+2. **Missions mode gets guidance too.** Missions already have a step tracker
+   with "how" text, so ARDEN adds to it rather than running a second list:
+   a short controls track (look, move, use) before Mission 2's first step,
+   and on every mission step the same extras as the tutorial (key caps,
+   highlights, a world marker, P to Show me).
+3. **Clips: real gameplay** wherever possible, recorded by
+   `tools/capture_hint_clips.gd` and converted to `.ogv` (ffmpeg has
+   libtheora).
+4. **No carrying step.** In this game "carrying" means picking up small
+   things (mugs, books, plants); cargo is a weight budget, not boxes. Instead,
+   picking something up for the first time gets a hint card.
+5. **Laptops: Dell i5s with integrated graphics** (probably Intel Iris Xe).
+   Forward+ runs there, but bounce light (SDFGI) is too heavy, so the
+   renderer pass needs quality presets with Low as the laptop default, and a
+   test build to try on one of them.
+
+**Show me** is P (the only free letter that reads well).

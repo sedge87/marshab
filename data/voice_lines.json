@@ -301,6 +301,48 @@
     "wake_normal": [
       "You're awake. Here's what happened while you slept.",
       "Welcome back. Here's what you missed."
+    ],
+    "tut_move": [
+      "Good. Mars is cold, thin and very quiet. For now, this lander is home."
+    ],
+    "tut_outside": [
+      "You're on Mars. Let's build somewhere better to live than a lander."
+    ],
+    "tut_plan": [
+      "This is the site plan. Blue ground has ice underneath. Keep well clear of the landing zone."
+    ],
+    "tut_living": [
+      "That's your first room. Everything comes from Earth as cargo, so every room has a weight. X removes things and gives the cargo back."
+    ],
+    "tut_airlock": [
+      "An airlock keeps the air in: one of its doors is always shut."
+    ],
+    "tut_solar": [
+      "Solar works by day only. Later you'll want batteries, or a reactor, for the night."
+    ],
+    "tut_drill": [
+      "Water. For drinking, for growing food, and for splitting into oxygen."
+    ],
+    "tut_life_support": [
+      "Rooms that share a wall get a door between them on their own."
+    ],
+    "tut_go_in": [
+      "Welcome inside. Doors in here open as you walk up. Only airlock doors interlock."
+    ],
+    "tut_bunk": [
+      "A room works once it has its equipment. Tab opens the catalogue: it says what everything does."
+    ],
+    "tut_air": [
+      "Air and heat. I'll keep an eye on both and warn you if anything slips."
+    ],
+    "tut_systems": [
+      "Green is fine. Amber needs attention. Red is urgent. I'll speak up before it gets that far."
+    ],
+    "tut_crew": [
+      "They need sleep, food, exercise and something to do. Look after them and they'll look after the base."
+    ],
+    "tut_done": [
+      "That's the basics. The Field guide in the pause menu explains every system. Good luck out here."
     ]
   },
   "mission_control": {

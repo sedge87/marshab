@@ -9,6 +9,14 @@ const MHDossier := preload("res://scripts/mh_dossier.gd")
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
 const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
+## ARDEN's pointers on each step: its keys, an outline round the button it
+## needs (Tutorial: Full) and P to Show me a clip of it being done.
+const GUIDE := preload("res://scripts/guide_overlay.gd")
+var guide: CanvasLayer
+var _walked := 0.0
+var _turned := 0.0
+var _last_position := Vector3.INF
+var _last_yaw := 0.0
 
 var world: Node
 var _panel: PanelContainer
@@ -50,9 +58,11 @@ func _ready() -> void:
 	_panel_body = MHStyle.vbox(8)
 	_panel.add_child(_panel_body)
 	add_child(_panel)
+	guide = GUIDE.new()
+	add_child(guide)
 	# While building (the panel is hidden), a small pill keeps the next step in view.
 	_next_pill = MHStyle.hud_panel(12, false, true)
-	_next_pill.position = Vector2(48, 250)
+	_next_pill.position = Vector2(740, 128)   # top middle, clear of the plan key
 	_next_pill.custom_minimum_size = Vector2(440, 0)
 	_next_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_next_pill.theme = MHStyle.theme()
@@ -82,6 +92,7 @@ func _process(delta: float) -> void:
 	var builder: Node = world.builder
 	_panel.visible = _overlay == null and not bool(builder.build_mode) and not bool(world.explore_hud._minimal)
 	_next_pill.visible = _overlay == null and not _panel.visible and not _next_label.text.is_empty()
+	_track_movement()
 	_steps_in -= delta
 	if _steps_in <= 0.0:
 		_steps_in = .4
@@ -109,9 +120,24 @@ func _update_steps() -> bool:
 	if not ticked.is_empty() or not MHMissions.last_unticked.is_empty(): world.save_mission_progress()
 	var step := MHMissions.current_step()
 	_next_label.text = "" if step.is_empty() else str(step.text)
-	_next_how.text = str(step.get("how", ""))
+	var extras := GUIDE.step_extras(step)
+	_next_how.text = str(step.get("how", "")) + ("
+P  SHOW ME" if GUIDE.has_clip(str(extras.clip)) else "")
 	_set_marker(str(step.get("marker", "")))
+	guide.set_highlight(extras.highlight if MHGame.tutorial_mode == "full" and not step.is_empty() else [])
 	return not ticked.is_empty() or not MHMissions.last_unticked.is_empty()
+
+## ARDEN's "look around and move" step: walked a few metres and turned.
+func _track_movement() -> void:
+	var player: Node3D = world.player
+	if player == null or bool(world.mission_flags.get("moved", false)): return
+	if not is_inf(_last_position.x):
+		var moved := Vector2(player.global_position.x - _last_position.x, player.global_position.z - _last_position.z).length()
+		if moved < 2.0: _walked += moved
+		_turned += absf(wrapf(player.rotation.y - _last_yaw, -PI, PI))
+	_last_position = player.global_position
+	_last_yaw = player.rotation.y
+	if _walked >= 3.0 and _turned >= 1.2: world.mission_flags["moved"] = true
 
 ## A compass landmark for the current step: the base site or the best ice.
 func _set_marker(kind: String) -> void:
@@ -178,7 +204,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 	if get_tree().paused: return
-	if event.keycode == KEY_T:
+	if event.keycode == KEY_P:
+		var step := MHMissions.current_step()
+		var extras := GUIDE.step_extras(step)
+		if GUIDE.has_clip(str(extras.clip)):
+			guide.show_clip(str(extras.clip), str(step.text), extras.keys)
+			get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_T:
 		if _next_mission_waiting(): _open_brief()   # start it first
 		else: _run_test()
 		get_viewport().set_input_as_handled()
@@ -215,7 +247,7 @@ func _refresh_panel() -> void:
 	var budget := MHMissions.cargo_budget()
 	var used: int = world.builder.used_cargo()
 	_panel_body.add_child(MHStyle.mono("PAYLOAD  %s of %s used" % [MHStyle.kg(used), MHStyle.kg(budget)], 12, MHStyle.TEXT_SECONDARY if used <= budget else MHStyle.DANGER))
-	var steps: Array = mission.get("steps", [])
+	var steps: Array = MHMissions.steps_of(mission)
 	if _compact:
 		# Collapsed: just the current step, but all of it.
 		var next_step := MHMissions.current_step()
@@ -266,6 +298,9 @@ func _step_words(step: Dictionary, current: bool) -> VBoxContainer:
 	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	how.custom_minimum_size.x = 340
 	words.add_child(how)
+	var extras := GUIDE.step_extras(step)
+	if not (extras.keys as Array).is_empty(): words.add_child(GUIDE.keys_box(extras.keys))
+	if GUIDE.has_clip(str(extras.clip)): words.add_child(MHStyle.mono("P  SHOW ME", 11, MHStyle.accent))
 	var progress := MHMissions.step_progress(step, world.builder)
 	if not progress.is_empty():
 		var now := MHStyle.body("Now: " + progress, 13, MHStyle.accent)

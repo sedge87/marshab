@@ -543,6 +543,7 @@ func _toggle() -> void:
 	var explore_hud:=world.get_node_or_null("ExploreHUD") as CanvasLayer
 	if explore_hud!=null: explore_hud.visible=not build_mode
 	if not build_mode: _set_tool("place"); _update_hologram_ui([],""); _preview_key=""; _draw_preview([],false)
+	elif not display_only: preload("res://scripts/feature_hints.gd").first(get_tree(), "site_plan")
 	_set_build_view(build_mode)
 	_update_player_marker()
 	_refresh_mode_switcher()
@@ -5894,6 +5895,7 @@ func _build_catalogue() -> void:
 		var tab:=Button.new(); tab.text="  "+str(entry[1]); tab.set_meta("label",tab.text); tab.icon=MHIcons.texture(entry[2],18); tab.custom_minimum_size=Vector2(0,40); tab.focus_mode=Control.FOCUS_NONE
 		tab.add_theme_font_size_override("font_size",15); tab.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 		tab.pressed.connect(func() -> void: category=str(entry[0]); MHAudio.sfx("ui_click",-6.0); _refresh_catalogue())
+		tab.set_meta("tutorial_target","tab:"+str(entry[0])); tab.add_to_group("tutorial_target")
 		head.add_child(tab); category_buttons[entry[0]]=tab
 	head.add_child(MHStyle.spacer())
 	catalogue_count=MHStyle.mono("",12,MHStyle.TEXT_MUTED); catalogue_count.size_flags_vertical=Control.SIZE_SHRINK_CENTER; head.add_child(catalogue_count)
@@ -5924,6 +5926,7 @@ func _select_kind(id: String) -> void:
 	if id=="solar" and kind!="solar": airlock_direction=Vector2i(0,1)
 	if id in FREE_SITE_KINDS and kind!=id: free_yaw = PI if id=="solar" else 0.0; _free_yaw_set = id=="solar"
 	kind=id; equipment_id=""; dragging=false; category=str(ZONE_INFO[id].cat); _set_tool("place"); _preview_key=""
+	if id.begins_with("shield") and build_mode: preload("res://scripts/feature_hints.gd").first(get_tree(), "shielding")
 	if not id in SITE_UPGRADES: _hide_ladder_ghost()
 	if not id in FREE_SITE_KINDS: _hide_free_ghost()
 	if not _freeform_mode_available(): _cancel_freeform()
@@ -6069,6 +6072,7 @@ func _facing_name() -> String:
 
 func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
 	var card:=_bar_card(selected)
+	card.set_meta("tutorial_target","part:"+id); card.add_to_group("tutorial_target")
 	card.pressed.connect(func() -> void: MHAudio.sfx("ui_click",-6.0); _select_kind(id))
 	var column:=card.get_meta("column") as VBoxContainer
 	column.add_child(_part_picture(id))

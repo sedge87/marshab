@@ -118,6 +118,7 @@ func pick_up(placement_id: String) -> bool:
 	if record.is_empty(): return false
 	builder().remove_free_interior_equipment(placement_id)
 	carrying = record
+	preload("res://scripts/feature_hints.gd").first(get_tree(), "carrying")
 	_hold = 0.0
 	_e_was_down = true   # this press doesn't also put it down
 	var label := str(EquipmentCatalog.get_entry(str(record.id)).get("label", record.id))

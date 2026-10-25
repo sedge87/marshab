@@ -1,0 +1,215 @@
+{
+  "_comment": "First-time hint cards (scripts/feature_hints.gd): shown once per player the first time a feature opens, with a looping clip of it being done (assets/tutorial/clips/<clip>.ogv) and its keys. guide: the Field guide card for more.",
+  "hints": {
+    "site_plan": {
+      "title": "The site plan",
+      "text": "A top-down view of your site. Pick a part from the bar at the bottom, then drag on the ground to lay out rooms, or click to place machines.",
+      "keys": [
+        [
+          [
+            "LMB"
+          ],
+          "Place · drag"
+        ],
+        [
+          [
+            "R"
+          ],
+          "Turn"
+        ],
+        [
+          [
+            "RMB"
+          ],
+          "Cancel"
+        ],
+        [
+          [
+            "X"
+          ],
+          "Remove · refund"
+        ],
+        [
+          [
+            "Ctrl",
+            "Z"
+          ],
+          "Undo"
+        ],
+        [
+          [
+            "B"
+          ],
+          "Back to walking"
+        ]
+      ],
+      "clip": "plan",
+      "guide": "building"
+    },
+    "interior": {
+      "title": "Furnishing a room",
+      "text": "You furnish the room you're standing in, in first person. The bar shows what fits this room; aim where it should go and click.",
+      "keys": [
+        [
+          [
+            "LMB"
+          ],
+          "Place"
+        ],
+        [
+          [
+            "R"
+          ],
+          "Turn"
+        ],
+        [
+          [
+            "X"
+          ],
+          "Remove · refund"
+        ],
+        [
+          [
+            "Shift",
+            "B"
+          ],
+          "Site plan"
+        ],
+        [
+          [
+            "B"
+          ],
+          "Back to walking"
+        ]
+      ],
+      "clip": "bunk",
+      "guide": "building"
+    },
+    "carrying": {
+      "title": "Carrying things",
+      "text": "A ghost shows where it will go: green fits. Put it on the floor, a table, a shelf or a bunk.",
+      "keys": [
+        [
+          [
+            "E"
+          ],
+          "Put down"
+        ],
+        [
+          [
+            "Q"
+          ],
+          "Put it back"
+        ]
+      ],
+      "clip": "carry",
+      "guide": "carrying"
+    },
+    "rover": {
+      "title": "Driving the rover",
+      "text": "The hangar door opens as you drive up. Watch the battery: a reserve gets you home, and the rover charger in the bay can call it back.",
+      "keys": [
+        [
+          [
+            "W",
+            "S"
+          ],
+          "Drive · reverse"
+        ],
+        [
+          [
+            "A",
+            "D"
+          ],
+          "Steer"
+        ],
+        [
+          [
+            "Space"
+          ],
+          "Brake"
+        ],
+        [
+          [
+            "F"
+          ],
+          "Lights"
+        ],
+        [
+          [
+            "V"
+          ],
+          "View"
+        ],
+        [
+          [
+            "E"
+          ],
+          "Get out"
+        ]
+      ],
+      "clip": "rover",
+      "guide": "rover"
+    },
+    "mission_control": {
+      "title": "Mission Control",
+      "text": "Messages from Earth, your crew, the alert log and the Field guide, which explains every system.",
+      "keys": [
+        [
+          [
+            "M"
+          ],
+          "Mission Control"
+        ],
+        [
+          [
+            "C"
+          ],
+          "Crew screen"
+        ],
+        [
+          [
+            "Esc"
+          ],
+          "Close"
+        ]
+      ],
+      "clip": "",
+      "guide": ""
+    },
+    "shielding": {
+      "title": "Shielding",
+      "text": "Radiation shielding goes on the outside walls and roofs, and protects the whole habitat. Insulation goes on inside walls, and quietens the room.",
+      "keys": [
+        [
+          [
+            "LMB"
+          ],
+          "Place on a wall"
+        ],
+        [
+          [
+            "X"
+          ],
+          "Remove"
+        ]
+      ],
+      "clip": "shielding",
+      "guide": "shielding"
+    },
+    "alerts": {
+      "title": "When something goes wrong",
+      "text": "ARDEN warns you early. The banner says what's wrong and what to do about it, and the systems panel shows which system it is.",
+      "keys": [
+        [
+          [
+            "M"
+          ],
+          "Alert log (Mission Control)"
+        ]
+      ],
+      "clip": "",
+      "guide": "power"
+    }
+  }
+}

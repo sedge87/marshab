@@ -151,6 +151,7 @@ func _get_in(player: CharacterBody3D) -> void:
 	var world := get_tree().get_first_node_in_group("habitat_world")
 	if world != null and world.get("carry") != null: world.carry.put_back()
 	driving = true
+	preload("res://scripts/feature_hints.gd").first(get_tree(), "rover")
 	player.set_meta("driving", true)
 	player.visible = false
 	_player_layers = Vector2i(player.collision_layer, player.collision_mask)

@@ -54,6 +54,13 @@
       "goal": "Build a power system and ice drills that keep running, unattended, for 5 sols, through every night and a dust storm.",
       "steps": [
         {
+          "id": "look",
+          "text": "Look around and move",
+          "how": "Move the mouse to look. W A S D moves; hold Shift to go faster.",
+          "check": "moved",
+          "tutorial_only": true
+        },
+        {
           "id": "roll_out",
           "text": "Roll out of the cargo lander",
           "how": "Look at the ramp door and press E to lower it, then drive down.",

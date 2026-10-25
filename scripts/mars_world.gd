@@ -68,6 +68,12 @@ var _start_in_lander := false
 var _intro_stage := "done"
 var _landing_miss := 0.0   # metres between the chosen target and the touchdown
 var mission_hud: CanvasLayer
+## ARDEN's getting-started tutorial (scripts/tutorial.gd), when chosen.
+const TUTORIAL_SCRIPT := preload("res://scripts/tutorial.gd")
+var tutorial: CanvasLayer
+var _tutorial_state := {}
+## One-off things the tutorial watches for: crew_screen, saved.
+var guide_flags := {}
 # The Compatibility renderer draws at most 32 lights in view and silently
 # drops the rest, which made random rooms look unpowered. Only the nearest
 # LIGHT_BUDGET lights stay on (their glowing diffusers always show).
@@ -182,6 +188,10 @@ func _ready() -> void:
 		mission_hud = MISSION_HUD_SCRIPT.new()
 		mission_hud.setup(self)
 		add_child(mission_hud)
+	elif str(_tutorial_state.get("mode", "off")) == "full" and not MHGame.showcase:
+		tutorial = TUTORIAL_SCRIPT.new()
+		tutorial.setup(self, _tutorial_state)
+		add_child(tutorial)
 	_apply_settings()
 	if arrival_pending: _start_arrival()
 	else: _play_intro()
@@ -222,7 +232,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C and not event.ctrl_pressed and not bool(player.get_meta("build_mode_active", false)):
 		# C: straight to the Crew screen (in Mission Control).
 		_open_mission_control()
-		if mission_control != null: mission_control.call_deferred("_show_crew")
+		if mission_control != null:
+			mission_control.call_deferred("_show_crew")
+			guide_flags["crew_screen"] = true
 
 func _open_interior_build() -> void:
 	if pause_menu != null or mission_control != null or interior_builder == null:
@@ -776,6 +788,7 @@ func _open_mission_control() -> void:
 	get_tree().paused = true
 	MHAudio.muffle(true)
 	mission_control = MHMissionControl.new().setup(builder)
+	preload("res://scripts/feature_hints.gd").first(get_tree(), "mission_control")
 	# The mission panel and its toasts sit on a higher layer: hide them while
 	# Mission Control is open.
 	if mission_hud != null: mission_hud.visible = false
@@ -881,8 +894,24 @@ func current_state() -> Dictionary:
 		"resupply": {"kg": MHGame.resupply_kg, "count": MHGame.resupply_count, "landers": resupply_landers.duplicate(true)},
 		"mission_control": earth_link.export_state() if earth_link != null else {},
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
-		"crew_rover": crew_rover.export_state() if crew_rover != null else {}
+		"crew_rover": crew_rover.export_state() if crew_rover != null else {},
+		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
 	}
+
+## From Settings: turn this game's tutorial to Full, Hints only or Off.
+## Full again picks up from the step it was on.
+func set_tutorial_mode(mode: String) -> void:
+	MHGame.tutorial_mode = mode
+	if tutorial != null: _tutorial_state = tutorial.export_state()
+	_tutorial_state["mode"] = mode
+	if mode == "full" and tutorial == null and not MHMissions.active():
+		tutorial = TUTORIAL_SCRIPT.new()
+		tutorial.setup(self, _tutorial_state)
+		add_child(tutorial)
+	elif mode != "full" and tutorial != null:
+		tutorial.queue_free()
+		tutorial = null
+	if mission_hud != null: mission_hud._update_steps()
 
 ## Missions autosave: the campaign base and its progress (slot 1 of the
 ## Missions save set).
@@ -896,6 +925,7 @@ func _save_habitat(slot: int) -> void:
 	# Saving happens from the pause screen, so report the result there (the
 	# build HUD is hidden in Explore mode and frozen while paused).
 	var saved := MHGame.save_habitat(slot, state) == OK
+	if saved: guide_flags["saved"] = true
 	MHAudio.sfx("ui_confirm" if saved else "invalid", 0.0, 0.0)
 	if pause_menu != null:
 		if saved: pause_menu.show_save_status("valid", "Saved %s to slot %d." % [MHGame.colony_name, slot])
@@ -909,6 +939,7 @@ func _load_habitat(slot: int) -> void:
 
 func _restore_pending_habitat() -> void:
 	if MHGame.pending_save_state.is_empty():
+		_tutorial_state = {"mode": MHGame.tutorial_mode}
 		MHGame.resupply_kg = 0
 		MHGame.resupply_count = 0
 		return
@@ -920,6 +951,9 @@ func _restore_pending_habitat() -> void:
 		resupply_landers.append(saved)
 	var state := MHGame.pending_save_state
 	MHGame.pending_save_state = {}
+	# Older saves have no tutorial: first-time hints as before.
+	_tutorial_state = state.get("tutorial", {"mode": "hints"}) as Dictionary
+	MHGame.tutorial_mode = str(_tutorial_state.get("mode", "hints"))
 	builder.restore_habitat_state(state.get("builder", {}) as Dictionary)
 	_earth_link_state = state.get("mission_control", {}) as Dictionary
 	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)

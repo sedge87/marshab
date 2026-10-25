@@ -212,6 +212,8 @@ func _site_telemetry() -> PanelContainer:
 
 func _build_systems_panel() -> PanelContainer:
 	_systems_panel = MHStyle.hud_panel(12, false, true)
+	_systems_panel.set_meta("tutorial_target", "systems")
+	_systems_panel.add_to_group("tutorial_target")
 	_systems_panel.position = Vector2(104, 372)
 	_systems_panel.custom_minimum_size = Vector2(300, 0)
 	_systems_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -117,6 +117,17 @@ func _graphics() -> Control:
 		toggles.add_child(row)
 		_switches[toggle[0]] = sw
 	form.add_child(toggles)
+	# In a game: its tutorial, changed straight away (Full, Hints only, Off).
+	var game := get_tree().get_first_node_in_group("habitat_world") if is_inside_tree() else null
+	if game != null and game.has_method("set_tutorial_mode"):
+		var tutorial_box := MHStyle.vbox(10)
+		tutorial_box.add_child(MHStyle.eyebrow("Tutorial (this game)", MHStyle.TEXT_MUTED, 14))
+		var choices := {"full": "Full", "hints": "Hints only", "off": "Off"}
+		var tutorial_choice := MHWidgets.Segmented.new().setup(choices.values(), str(choices.get(MHGame.tutorial_mode, "Hints only")))
+		tutorial_choice.changed.connect(func(label: String) -> void: game.set_tutorial_mode(str(choices.find_key(label))))
+		tutorial_box.add_child(tutorial_choice)
+		tutorial_box.add_child(MHStyle.body("Full: ARDEN's step-by-step guide and first-time hints. Hints only: just a card the first time you meet something new.", 15, MHStyle.TEXT_MUTED))
+		form.add_child(tutorial_box)
 	var segs := MHStyle.hbox(24)
 	_segments.clear()
 	for seg in [["render_scale", "Render scale", ["75 %", "100 %"]], ["fov", "Field of view", ["70°", "80°", "90°"]]]:

@@ -137,7 +137,7 @@ static func update_steps(builder: Node, flags: Dictionary) -> Array:
 	var done := steps_done(str(mission.id))
 	var ticked: Array = []
 	last_unticked = []
-	for step in mission.get("steps", []):
+	for step in steps_of(mission):
 		if done.has(str(step.id)):
 			# Build steps stay live: remove what one needed and it un-ticks
 			# (stepping out, opening the plan and testing are one-offs).
@@ -149,6 +149,11 @@ static func update_steps(builder: Node, flags: Dictionary) -> Array:
 			done.append(str(step.id))
 			ticked.append(step)
 	return ticked
+
+## A mission's steps. Steps marked tutorial_only (ARDEN's "look around and
+## move") are there only when this game has Tutorial: Full.
+static func steps_of(mission: Dictionary) -> Array:
+	return (mission.get("steps", []) as Array).filter(func(step): return not bool(step.get("tutorial_only", false)) or MHGame.tutorial_mode == "full")
 
 ## Steps that need what's built now (zones, items), re-checked as you build.
 const LIVE_STEPS := ["zone", "item", "item_any", "food_share", "shelter", "needs", "sections", "redundant", "contact"]
@@ -231,13 +236,13 @@ static func set_crew_names(names: Array) -> void:
 static func current_step() -> Dictionary:
 	var mission := current()
 	var done := steps_done(str(mission.id))
-	for step in mission.get("steps", []):
+	for step in steps_of(mission):
 		if not done.has(str(step.id)): return step
 	return {}
 
 static func _step_met(step: Dictionary, builder: Node, flags: Dictionary, mission_id: String) -> bool:
 	match str(step.get("check", "")):
-		"left_lander", "opened_plan", "inside": return bool(flags.get(str(step.check), false))
+		"left_lander", "opened_plan", "inside", "moved": return bool(flags.get(str(step.check), false))
 		"zone": return builder.zones.any(func(z): return str(z.kind) == str(step.kind))
 		"item": return builder.placed_interior.filter(func(i): return str(i.get("id", "")) == str(step.item)).size() >= int(step.get("count", 1))
 		"item_any": return builder.placed_interior.any(func(i): return (step.get("items", []) as Array).has(str(i.get("id", ""))))

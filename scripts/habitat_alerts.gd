@@ -369,6 +369,7 @@ func _announce(alert: Dictionary, level: String, reminder := false) -> void:
 		alert["why"] = EXPLAIN[str(alert.id)]
 	_show_banner(alert, level, reminder)
 	if first: _banner_left = BANNER_SECONDS * 2.0
+	if level != "resolved" and not reminder: preload("res://scripts/feature_hints.gd").first(get_tree(), "alerts")
 
 # ---------- on screen ----------
 
