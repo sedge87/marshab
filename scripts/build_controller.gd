@@ -2665,6 +2665,9 @@ func _room_walls(zone: Dictionary) -> Array:
 	for cell in zone.get("cells", []):
 		for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			if not _should_build_wall(cell, side): continue
+			# Openings aren't walls: a bay's hangar face and any doorway.
+			if str(zone.get("kind", "")) == "vehicle_bay" and side == zone.get("door_direction", Vector2i(0, -1)): continue
+			if _has_interior_door(cell, side) or _is_airlock_inner_doorway(cell, side) or _corridor_end_connects(cell, side): continue
 			var mid := Vector2(cell.x, cell.y) * CELL + Vector2(side) * CELL * .5
 			if _window_index_at(mid, Vector2(side)) >= 0: continue
 			walls.append({"mid": mid, "inward": -Vector2(side)})

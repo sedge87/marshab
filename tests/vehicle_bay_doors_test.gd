@@ -60,6 +60,28 @@ func _doors_between(first: Dictionary, second: Dictionary) -> int:
 func _bay_doors_near(point: Vector2) -> Array:
 	return get_nodes_in_group("airlock_door").filter(func(d): return str(d.door_label()) == "BAY" and Vector2(d.global_position.x, d.global_position.z).distance_to(point) < 1.0)
 
+## Every room's light switch is on a wall: something solid that isn't a door
+## (or a hangar) within 0.35 m behind it.
+func _switches_on_walls(where: String) -> void:
+	for i in 2: await physics_frame
+	var space := root.get_world_3d().direct_space_state
+	for panel in get_nodes_in_group("room_light_panel"):
+		var at: Vector3 = panel.global_position
+		var on_wall := false
+		for dir in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK]:
+			var query := PhysicsRayQueryParameters3D.create(at, at + dir * .35)
+			query.exclude = [panel.get_rid()]
+			query.hit_from_inside = true   # it sits in the wall's thickness
+			var hit := space.intersect_ray(query)
+			if hit.is_empty(): continue
+			var node: Node = hit.collider
+			var in_door := false
+			while node != null:
+				if node.is_in_group("airlock_door"): in_door = true
+				node = node.get_parent()
+			if not in_door: on_wall = true
+		_check(on_wall, "%s: the %s light switch is on a wall (at %s)" % [where, str(panel.get("room_label")), at])
+
 func _initialize() -> void:
 	MHGame.site_id = "plains"; MHGame.save_directory = "user://test_habitats"; MHGame.game_mode = "creative"
 	MHGame.pending_save_state = {"site_id": "plains", "builder": {}}
@@ -80,6 +102,7 @@ func _initialize() -> void:
 	_check(_bay_doors_near(Vector2(4.5, 0)).size() + _bay_doors_near(Vector2(4.5, 3)).size() == 1, "room then bay: one sealed BAY hatch on the shared wall")
 	var door_row := 0.0 if not _bay_doors_near(Vector2(4.5, 0)).is_empty() else 3.0
 	_check(await _through(Vector2(3.0, door_row), Vector2(6.5, door_row)), "room then bay: the doorway is open, no wall left in it")
+	await _switches_on_walls("room then bay")
 
 	# 2. A vehicle bay first, then a room beside it (west).
 	await _reset()
@@ -91,6 +114,7 @@ func _initialize() -> void:
 	door_row = 0.0 if not _bay_doors_near(Vector2(4.5, 0)).is_empty() else 3.0
 	_check(not (_bay_doors_near(Vector2(4.5, door_row)).is_empty()), "bay then room: a BAY hatch on the shared wall")
 	_check(await _through(Vector2(3.0, door_row), Vector2(6.5, door_row)), "bay then room: the doorway is open")
+	await _switches_on_walls("bay then room")
 
 	# 3. An airlock onto the bay's side (west of the bay, outer end west).
 	await _reset()
@@ -101,6 +125,7 @@ func _initialize() -> void:
 	_check(airlock_reason.is_empty(), "an airlock may join a vehicle bay (%s)" % airlock_reason)
 	_place(_room("airlock", [Vector2i(1, 0)], Vector2i(-1, 0)))
 	_check(await _through(Vector2(3.0, 0.0), Vector2(6.5, 0.0)), "airlock into the bay: its inner hatch isn't walled over")
+	await _switches_on_walls("airlock into the bay")
 	var hangar: Node = get_nodes_in_group("airlock_door").filter(func(d): return str(d.door_label()) == "HANGAR")[0]
 	var inner: Node = get_nodes_in_group("airlock_door").filter(func(d): return str(d.door_label()) == "INNER")[0]
 	_check(hangar.get("_partners") == null or (hangar.get("_partners") as Array).has(inner) or hangar.call("_habitat_inner_doors_closed") != null, "the airlock's inner hatch is interlocked with the hangar")
@@ -120,6 +145,7 @@ func _initialize() -> void:
 	_place(_room("corridor", [Vector2i(0, 0), Vector2i(1, 0)]))
 	_check(not _bay_doors_near(Vector2(4.5, 0)).is_empty(), "a corridor end meeting the bay gets a BAY hatch")
 	_check(await _through(Vector2(1.0, 0.0), Vector2(6.5, 0.0)), "corridor into the bay: open through")
+	await _switches_on_walls("corridor into the bay")
 
 	# 5. A bay between two rooms: joined to at least one, and each joined room
 	# has an open doorway.
@@ -164,6 +190,7 @@ func _initialize() -> void:
 	_check(b.interior_doors.size() == 1, "a free-form room beside a bay gets a door (%d)" % b.interior_doors.size())
 	var free_row := 0.0 if not _bay_doors_near(Vector2(1.5, 0)).is_empty() else 3.0
 	_check(await _through(Vector2(-1.5, free_row), Vector2(4.5, free_row)), "free-form room into the bay: open")
+	await _switches_on_walls("free-form room into the bay")
 
 	# 9. A bay south of a room (a horizontal shared wall), hangar facing east.
 	await _reset()
@@ -175,6 +202,7 @@ func _initialize() -> void:
 	var col := 0.0 if not _bay_doors_near(Vector2(0, 1.5)).is_empty() else 3.0
 	_check(not _bay_doors_near(Vector2(col, 1.5)).is_empty(), "bay south of a room: a BAY hatch on the shared wall")
 	_check(await _through(Vector2(col, 0.0), Vector2(col, 3.5)), "bay south of a room: the doorway is open")
+	await _switches_on_walls("bay south of a room")
 
 	if failures == 0:
 		print("Vehicle bay doors test passed: room then bay, bay then room, an airlock into the bay and its interlock, a corridor end, a bay between rooms, removed doors, older saves, a free-form room and a bay south of a room.")
