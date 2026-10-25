@@ -374,6 +374,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif build_mode and event.keycode==KEY_X: _set_tool("place" if tool=="remove" else "remove")
 		elif build_mode and event.keycode==KEY_Z and event.ctrl_pressed: _undo()
 		elif build_mode and event.keycode==KEY_TAB: _set_catalogue_open(not catalogue.visible); get_viewport().set_input_as_handled()
+		elif build_mode and event.keycode==KEY_F and not event.ctrl_pressed: _set_tool("place" if tool=="footprint" else "footprint"); get_viewport().set_input_as_handled()
 		elif build_mode and event.keycode==KEY_L and plan_legend!=null: plan_legend.visible=not plan_legend.visible; get_viewport().set_input_as_handled()
 	if not build_mode or not event is InputEventMouseButton: return
 	# Wheel notches arrive as a press and a release; zoom once per notch.
@@ -4036,11 +4037,25 @@ func remove_window(index: int) -> void:
 	hull_windows.remove_at(index)
 	_rebuild()
 
-## Undo the most recent interior structure change (Ctrl+Z in Interior mode),
-## leaving rooms alone.
+## Take back a piece of furniture placed in Interior mode (if it's still there).
+func _undo_interior(step: Dictionary) -> bool:
+	var id := ""
+	for item in placed_interior:
+		if str(item.get("placement_id", "")) == str(step.placement_id): id = str(item.get("id", ""))
+	if id.is_empty(): return false
+	remove_free_interior_equipment(str(step.placement_id))
+	_flash_notice("info", "Undone", "%s removed · +%s cargo returned." % [str(EquipmentCatalog.get_entry(id).get("label", id)), MHStyle.kg(int(EquipmentCatalog.get_entry(id).get("cargo_cost", 0)))])
+	return true
+
+## Undo the most recent Interior change (Ctrl+Z in Interior mode): furniture,
+## partitions and windows, leaving rooms alone.
 func undo_last_structure() -> bool:
 	for step_index in range(_history.size() - 1, -1, -1):
 		var step: Dictionary = _history[step_index]
+		if str(step.get("type", "")) == "interior":
+			_history.remove_at(step_index)
+			if _undo_interior(step): return true
+			continue
 		if str(step.get("type", "")) == "partition":
 			_history.remove_at(step_index)
 			var index := partition_index(step.segment)
@@ -5113,6 +5128,9 @@ func _undo() -> void:
 			var entry:=EquipmentCatalog.get_entry(str(step.id))
 			_flash_notice("info","Undone","%s removed · +%s cargo returned." % [entry.get("label",step.id),MHStyle.kg(int(entry.get("cargo_cost",0)))])
 			return
+		if step.type=="interior":
+			if _undo_interior(step): return
+			continue
 		if step.type=="reassign":
 			if not zones.has(step.zone): continue
 			var was_label:=str(ZONE_TYPES[str(step.zone.kind)].label)
@@ -5953,7 +5971,7 @@ func _add_unbuildable_overlay(grid_limit: int) -> void:
 func _ui() -> void:
 	hud_layer=CanvasLayer.new(); hud_layer.name="BuildHUD"; hud_layer.layer=5; add_child(hud_layer)
 	ui=Control.new(); ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); ui.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.theme=MHStyle.theme(); ui.visible=false; hud_layer.add_child(ui)
-	ui.add_child(MHStyle.hint_strip([[["LMB"],"Place · drag","accent"],[["V"],"Room shape"],[["R"],"Rotate"],[["RMB"],"Cancel"],[["X"],"Remove"],[["Q","E"],"Orbit"],[["Wheel"],"Zoom"],[["Tab"],"Catalogue"],[["M"],"Mission Control"],[["B"],"Explore"]]))
+	ui.add_child(MHStyle.hint_strip([[["LMB"],"Place · drag","accent"],[["R"],"Rotate"],[["RMB"],"Cancel"],[["X"],"Remove"],[["Ctrl","Z"],"Undo"],[["F"],"Footprint"],[["V"],"Room shape"],[["Q","E"],"Orbit"],[["Wheel"],"Zoom"],[["Tab"],"Catalogue"],[["B"],"Explore"]]))
 	# Top-left: colony + cargo
 	var left:=MHStyle.vbox(12); left.position=Vector2(32,32); left.size=Vector2(440,0); left.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(left)
 	left.add_child(MHStyle.colony_chip(MHGame.site_name()))
@@ -6264,11 +6282,13 @@ func _build_tool_bar() -> void:
 	var band:=CenterContainer.new(); band.anchor_top=1; band.anchor_bottom=1; band.anchor_right=1; band.offset_top=-436; band.offset_bottom=-340; band.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(band)
 	var bar:=PanelContainer.new(); bar.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.SURFACE_HUD,MHStyle.BORDER_SUBTLE,MHStyle.RADIUS_MD,1,Vector4(8,8,8,8))); band.add_child(bar)
 	var row:=MHStyle.hbox(8); bar.add_child(row)
-	for entry in [["place","box","Place","LMB"],["footprint","git-branch","Footprint","Edit"],["reassign","arrow-left-right","Reassign a room: pick the new type, then click the room","Swap"],["rotate","rotate-cw","Rotate","R"],["remove","trash-2","Remove","X"],["undo","undo-2","Undo","Ctrl Z"]]:
+	for entry in [["place","box","Place","LMB"],["footprint","git-branch","Footprint: click a room, then add or remove squares (F)","F"],["reassign","arrow-left-right","Reassign a room: pick the new type, then click the room","~SWAP"],["rotate","rotate-cw","Rotate","R"],["remove","trash-2","Remove","X"],["undo","undo-2","Undo","Ctrl Z"]]:
 		var item:=MHStyle.vbox(6); item.alignment=BoxContainer.ALIGNMENT_CENTER; row.add_child(item)
 		var b:=Button.new(); b.icon=MHIcons.texture(entry[1],22); b.tooltip_text=str(entry[2]); b.custom_minimum_size=Vector2(52,48); b.icon_alignment=HORIZONTAL_ALIGNMENT_CENTER; b.focus_mode=Control.FOCUS_NONE; b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 		b.theme_type_variation="GhostButton"; item.add_child(b)
-		var cap:=MHStyle.keycap(str(entry[3]),true); cap.size_flags_horizontal=Control.SIZE_SHRINK_CENTER; item.add_child(cap)
+		# A key cap only for a real key; a tool with no key gets its name.
+		var cap: Control = MHStyle.mono(str(entry[3]).trim_prefix("~"),11,MHStyle.TEXT_MUTED,600) if str(entry[3]).begins_with("~") else MHStyle.keycap(str(entry[3]),true)
+		cap.size_flags_horizontal=Control.SIZE_SHRINK_CENTER; item.add_child(cap)
 		match str(entry[0]):
 			"place": b.pressed.connect(_set_tool.bind("place"))
 			"footprint": b.pressed.connect(_set_tool.bind("footprint"))

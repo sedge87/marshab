@@ -15,9 +15,14 @@ const MHMissions := preload("res://scripts/mh_missions.gd")
 ## - Outdoors by day it roams near you (or near the airlock if you've gone
 ##   in) and now and then surveys: it scans the ground, plants a flag where
 ##   there's buried ice, or scoops a regolith sample.
-## - Indoors it also potters about. Very rarely it picks up one of your odds and
-##   ends from the floor and puts it down somewhere else in the room, nudges
-##   the plush to make it squeak, or worries out loud when the grid is down.
+## - Indoors it also potters about. Every few minutes it tidies: one of your
+##   odds and ends from the floor onto a free table, desk or shelf (now and
+##   then it rearranges one from surface to surface instead). It nudges the
+##   plush to make it squeak, and worries out loud when the grid is down.
+## - It reacts to the habitat (playtest, 25 Oct): when an alert goes up it
+##   goes to look at the trouble (the battery for power, life support for the
+##   air, the shelter in a solar storm), chirps happily when it clears, and
+##   comes over to look at new things you place nearby.
 ## - At night it heads for its dock if the habitat has one (or naps where it
 ##   is); during a dust storm outside it frets.
 ## - Its eyes show its mood, its lamp only comes on in the dark, and E pings
@@ -49,7 +54,9 @@ const MOODS := {
 const POSES := {"stow": Vector3(0, 150, 30), "reach": Vector3(110, 40, 30), "carry": Vector3(40, 60, -10), "scoop": Vector3(108, 42, 70)}
 ## How often things happen (real seconds), so the autonomy stays rare.
 const SURVEY_EVERY := Vector2(150.0, 300.0)
-const MISCHIEF_EVERY := Vector2(1200.0, 1800.0)
+const MISCHIEF_EVERY := Vector2(150.0, 300.0)   # tidying (it used to wait 20-30 minutes and rarely found anything)
+## How often a tidy-up rearranges a surface instead (when the floor is clear).
+const REARRANGE_CHANCE := .3
 const PLUSH_EVERY := Vector2(500.0, 900.0)
 const WORRY_EVERY := Vector2(240.0, 420.0)
 const NAP_AFTER := 25.0
@@ -305,10 +312,14 @@ func _think(delta: float) -> void:
 			if habitat != null and not habitat.grid_power_online():
 				_say("worried")
 				_toast("GAR-Y looks worried", "The habitat's power grid is offline.", MHStyle.WARN)
+		_look_check -= delta
+		if _look_check <= 0.0:
+			_look_check = 1.5
+			if _look_at_new_thing(): return
 		if _plush_timer <= 0.0:
 			_plush_timer = randf_range(PLUSH_EVERY.x, PLUSH_EVERY.y)
-			start_plush()
-		elif _mischief_timer <= 0.0:
+			if start_plush(): return
+		if _mischief_timer <= 0.0:
 			_mischief_timer = randf_range(MISCHIEF_EVERY.x, MISCHIEF_EVERY.y)
 			start_fetch()
 	elif not storm and not dark:
@@ -347,6 +358,8 @@ func _arrived() -> void:
 		"fetch": _pick_up()
 		"deliver": _deliver()
 		"plush": _nudge_plush()
+		"inspect": _inspect_here()
+		"look": _look_here()
 		"charge": _dock()
 		"goto":
 			staying = true
@@ -543,13 +556,21 @@ func _clutter_candidates() -> Array:
 		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
 		var at: Vector3 = item.get("position", Vector3.ZERO)
 		if str(entry.get("group", "")) != "odds_and_ends" or not bool(entry.get("stackable", false)): continue
-		if at.y > habitat.habitat_base_y + .2 or not habitat.items_resting_on(item).is_empty(): continue
-		if habitat._zone_at_point(Vector2(at.x, at.z)) != room or at.distance_to(global_position) > 9.0: continue
+		if not habitat.items_resting_on(item).is_empty(): continue
+		if habitat._zone_at_point(Vector2(at.x, at.z)) != room or at.distance_to(global_position) > 12.0: continue
 		found.append(item)
 	return found
 
+func _on_floor(item: Dictionary) -> bool:
+	return (item.get("position", Vector3.ZERO) as Vector3).y <= habitat.habitat_base_y + .2
+
+## A tidy-up: something off the floor first; otherwise, now and then, it
+## rearranges a surface.
 func start_fetch() -> bool:
 	var choices := _clutter_candidates()
+	var on_floor := choices.filter(_on_floor)
+	if not on_floor.is_empty(): choices = on_floor
+	elif randf() > REARRANGE_CHANCE: return false
 	if choices.is_empty(): return false
 	var item: Dictionary = choices.pick_random()
 	var at: Vector3 = item.position
@@ -572,13 +593,43 @@ func _pick_up() -> void:
 	visual.reparent(_grip, true)
 	visual.position = Vector3.ZERO
 	await _arm_move("carry", .7)
-	var spot := _spot_by_player(str(task_data.placement_id)) if bool(task_data.get("to_player", false)) else _new_spot(str(task_data.placement_id), task_data.from as Vector3)
+	var spot := _spot_by_player(str(task_data.placement_id)) if bool(task_data.get("to_player", false)) else _tidy_spot(str(task_data.placement_id), task_data.from as Vector3)
 	task_data.to = spot.position
 	task_data.to_yaw = spot.yaw
 	task = "deliver"
 	task_goal = (spot.position as Vector3) + (global_position - (spot.position as Vector3)).normalized() * .5
 	_task_age = 0.0
 	_busy = false
+
+## Where a tidy-up puts something: on a free table, desk, counter or shelf in
+## the same room (another one if it's already on a surface), else a free
+## floor spot.
+func _tidy_spot(placement_id: String, from: Vector3) -> Dictionary:
+	var room: Dictionary = habitat._zone_at_point(Vector2(from.x, from.z))
+	var surfaces: Array = []
+	for item in habitat.placed_interior:
+		if str(item.get("placement_id", "")) == placement_id: continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		if habitat._zone_at_point(Vector2(at.x, at.z)) != room: continue
+		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
+		if habitat.surface_tops(entry).is_empty(): continue
+		# Not back onto the one it came off.
+		if Vector2(at.x - from.x, at.z - from.z).length() < .9 and from.y > habitat.habitat_base_y + .2: continue
+		surfaces.append(item)
+	surfaces.shuffle()
+	for item in surfaces:
+		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		var size: Vector2 = habitat._surface_size(entry)
+		var basis := Basis(Vector3.UP, float(item.get("rotation_y", 0.0)))
+		for top in habitat.surface_tops(entry):
+			for attempt in 10:
+				var offset := basis * Vector3(randf_range(-.4, .4) * size.x, 0, randf_range(-.4, .4) * size.y)
+				var spot := at + offset + Vector3.UP * float(top)
+				var yaw := randf() * TAU
+				if habitat.free_interior_move_reason(placement_id, spot, yaw).is_empty():
+					return {"position": spot, "yaw": yaw}
+	return _new_spot(placement_id, from)
 
 ## A fresh legal floor spot in the same room (or where it came from).
 func _new_spot(placement_id: String, from: Vector3) -> Dictionary:
@@ -606,7 +657,10 @@ func _deliver() -> void:
 		_toast("GAR-Y brought you the %s" % str(EquipmentCatalog.get_entry(str(task_data.id)).get("label", "item")).to_lower(), "Delivered.", MHStyle.VALID)
 	elif moved and (task_data.to as Vector3).distance_to(task_data.from as Vector3) > .5:
 		_say("tada")
-		_toast("GAR-Y moved your %s" % str(EquipmentCatalog.get_entry(str(task_data.id)).get("label", "things")).to_lower(), "It's somewhere else in the room now. GAR-Y seems very pleased with itself.", MHStyle.INFO)
+		var label := str(EquipmentCatalog.get_entry(str(task_data.id)).get("label", "things")).to_lower()
+		var tidied: bool = (task_data.from as Vector3).y <= habitat.habitat_base_y + .2 and (task_data.to as Vector3).y > habitat.habitat_base_y + .2
+		if tidied: _toast("GAR-Y tidied up", "It picked your %s up off the floor and put it away." % label, MHStyle.INFO)
+		else: _toast("GAR-Y moved your %s" % label, "It's somewhere else in the room now. GAR-Y seems very pleased with itself.", MHStyle.INFO)
 	_end_task()
 
 ## Sets a carried item down (and records it there); back where it was if that fails.
@@ -629,6 +683,92 @@ func _item_visual(placement_id: String) -> Node3D:
 	for child in habitat.furnishing.get_children():
 		if str(child.get_meta("interior_placement_id", "")) == placement_id: return child as Node3D
 	return null
+
+# ---- reacting to the habitat ----
+
+## Where to look for each alert's trouble: the equipment first, else a room.
+const TROUBLE := {
+	"power": [["battery_bank"], "engineering", "batteries"], "life_support_power": [["battery_bank"], "engineering", "batteries"],
+	"battery_sunset": [["battery_bank"], "engineering", "batteries"],
+	"o2": [["oxygen_generator"], "life_support", "oxygen generator"], "co2": [["air_recycler"], "life_support", "air recycler"],
+	"cold": [["thermal_control_unit"], "life_support", "heating"], "cold_spot": [["thermal_control_unit"], "life_support", "heating"],
+	"water": [["water_reclaimer"], "life_support", "water"], "food": [["galley_kitchenette", "galley_oven"], "galley", "food"],
+	"health": [["medical_exam_cot"], "medical", "medical bay"], "injury": [["medical_exam_cot"], "medical", "medical bay"],
+	"radiation": [["storm_shelter_locker"], "", "storm shelter"], "breakdown": [["spare_parts_rack"], "engineering", "spare parts"],
+	"breach": [["hull_patch_kit"], "", "hull breach"],
+}
+var _look_check := 2.0
+var _seen_items := -1
+var _inspected := {}   # alert id -> when it last went to look (msec)
+
+## An alert went up (habitat_alerts.gd): look worried and go and check on it.
+func on_habitat_alert(id: String, level: String) -> void:
+	if habitat == null or level == "advisory": return
+	_say("worried")
+	if not bool(MHGame.setting("gary_autonomy")) or staying or _ordered or _escorting() or _busy or _carried != null: return
+	if task in ["deliver", "core_deliver", "charge"]: return
+	if Time.get_ticks_msec() - int(_inspected.get(id, -999999)) < 120000: return
+	var goal := _trouble_spot(id)
+	if is_inf(goal.x) or not _self_indoors(): return
+	_inspected[id] = Time.get_ticks_msec()
+	if not task.is_empty(): _end_task(true)
+	napping = false
+	_start("inspect", goal + (global_position - goal).normalized() * .9, {"alert": id, "at": goal, "what": str((TROUBLE.get(id, [[], "", "trouble"]) as Array)[2])})
+
+## The alert cleared: a happy chirp.
+func on_alert_cleared(_id: String) -> void:
+	if habitat != null: _say("happy")
+
+func _trouble_spot(id: String) -> Vector3:
+	var trouble: Array = TROUBLE.get(id, [[], "", ""])
+	var best := Vector3.INF
+	for item in habitat.placed_interior:
+		if not (trouble[0] as Array).has(str(item.get("id", ""))): continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		if is_inf(best.x) or at.distance_to(global_position) < best.distance_to(global_position): best = at
+	if not is_inf(best.x) or str(trouble[1]).is_empty(): return best
+	for zone in habitat.zones:
+		if str(zone.get("kind", "")) != str(trouble[1]): continue
+		var cells: Array = zone.get("cells", [])
+		if cells.is_empty(): continue
+		var cell: Vector2i = cells[cells.size() / 2]
+		return Vector3(cell.x * 3.0, habitat.habitat_base_y, cell.y * 3.0)
+	return Vector3.INF
+
+func _inspect_here() -> void:
+	_busy = true
+	_face(task_data.at as Vector3)
+	await _arm_move("reach", .7)
+	if task != "inspect": return
+	await get_tree().create_timer(1.2).timeout
+	await _arm_move("stow", .6)
+	_say("worried")
+	_toast("GAR-Y is checking the %s" % str(task_data.what), "It's found where the trouble is. Press N to see the alert.", MHStyle.WARN)
+	_end_task()
+
+## Something new placed nearby: go and have a look.
+func _look_at_new_thing() -> bool:
+	var count: int = habitat.placed_interior.size()
+	var was := _seen_items
+	_seen_items = count
+	if was < 0 or count <= was: return false
+	var item: Dictionary = habitat.placed_interior.back()
+	var at: Vector3 = item.get("position", Vector3.ZERO)
+	if at.distance_to(global_position) > 10.0 or not habitat.is_inside(at): return false
+	if str(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("group", "")) == "odds_and_ends": return false
+	_start("look", at + (global_position - at).normalized() * 1.1, {"id": str(item.get("id", "")), "at": at})
+	return true
+
+func _look_here() -> void:
+	_busy = true
+	_face(task_data.at as Vector3)
+	_say("curious")
+	if _visual != null:
+		var tilt := create_tween().set_trans(Tween.TRANS_SINE)
+		for angle in [.2, -.2, .12, 0.0]: tilt.tween_property(_visual, "rotation:z", angle, .25)
+		await tilt.finished
+	_say("happy")
+	_end_task()
 
 # ---- the plush ----
 
@@ -924,6 +1064,8 @@ func status_text() -> String:
 		"fetch": return "eyeing your %s" % str(EquipmentCatalog.get_entry(str(task_data.get("id", ""))).get("label", "things")).to_lower()
 		"deliver": return "carrying your %s" % str(EquipmentCatalog.get_entry(str(task_data.get("id", ""))).get("label", "things")).to_lower()
 		"plush": return "up to something"
+		"inspect": return "checking the %s" % str(task_data.get("what", "trouble"))
+		"look": return "looking at your new %s" % str(EquipmentCatalog.get_entry(str(task_data.get("id", ""))).get("label", "thing")).to_lower()
 		"goto": return "on its way"
 		"core": return "taking a core sample"
 		"core_deliver": return "taking a core sample to the lab"

@@ -368,7 +368,7 @@ func _show_caption(who: String, text: String, note: String, seconds: float) -> v
 	_caption.anchor_right = .5
 	_caption.anchor_top = 1.0
 	_caption.anchor_bottom = 1.0
-	_caption.offset_bottom = -132
+	_caption.offset_bottom = _caption_bottom()
 	_caption.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_caption.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	var col := MHStyle.vbox(2)
@@ -384,8 +384,16 @@ func _show_caption(who: String, text: String, note: String, seconds: float) -> v
 	_caption_layer.add_child(_caption)
 	_caption_left = seconds + 2.0
 
+## Above the build bars while building, so a caption doesn't sit on their cards.
+func _caption_bottom() -> float:
+	var world := get_tree().get_first_node_in_group("habitat_world") if is_inside_tree() else null
+	if world != null and world.get("builder") != null and (bool(world.builder.build_mode) or (world.get("interior_builder") != null and bool(world.interior_builder.active))):
+		return -300.0
+	return -132.0
+
 func _process_caption(delta: float) -> void:
 	if _caption == null or not is_instance_valid(_caption): return
+	_caption.offset_bottom = _caption_bottom()
 	_caption_left -= delta
 	_caption.modulate.a = clampf(_caption_left / .5, 0.0, 1.0)
 	if _caption_left <= 0.0:

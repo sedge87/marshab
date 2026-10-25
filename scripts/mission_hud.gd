@@ -179,7 +179,7 @@ func _show_toast(text: String, warning := false) -> void:
 	_toast.anchor_right = .5
 	_toast.offset_left = -260
 	_toast.offset_right = 260
-	_toast.offset_top = 150
+	_toast.offset_top = 222   # under the alert row
 	var row := MHStyle.hbox(10)
 	var tone := MHStyle.WARN if warning else MHStyle.VALID
 	row.add_child(MHStyle.icon("triangle-alert" if warning else "circle-check", 22, tone))

@@ -353,6 +353,8 @@ func _update(alerts: Array) -> void:
 				if level == "critical": MHAudio.voice(voice_line(id, level))
 				chimed = true
 			if level != "advisory": preload("res://scripts/feature_hints.gd").first(get_tree(), "alerts")
+			# GAR-Y goes to look at the trouble.
+			get_tree().call_group("gar_y", "on_habitat_alert", id, level)
 		else:
 			known.level = level
 			known.title = alert.title
@@ -370,6 +372,7 @@ func _update(alerts: Array) -> void:
 			_record({"id": id, "title": "%s: back to normal" % str(gone.title).trim_suffix(" falling").trim_suffix(" rising").trim_suffix(" running out").trim_suffix(" running low"), "text": "", "chain": []}, "resolved")
 			MHAudio.sfx("all_clear", -12.0, 0.0)
 			_flash_cleared(id)
+			get_tree().call_group("gar_y", "on_alert_cleared", id)
 		if _detail_id == id: _close_detail()
 	_refresh_icons()
 	# An open card follows its alert as it changes (only when its words do).
@@ -409,7 +412,7 @@ func _build_hud() -> void:
 	_icons.anchor_right = .5
 	_icons.offset_left = -400
 	_icons.offset_right = 400
-	_icons.offset_top = 112   # under the compass and its landmark labels
+	_icons.offset_top = 150   # under the compass, its landmark labels and the sol clock
 	_icons.alignment = BoxContainer.ALIGNMENT_CENTER
 	_icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_icons)
@@ -530,7 +533,7 @@ func _fill_detail(id: String) -> void:
 	_detail.anchor_right = .5
 	_detail.offset_left = -380
 	_detail.offset_right = 380
-	_detail.offset_top = 176
+	_detail.offset_top = 212
 	_detail.mouse_filter = Control.MOUSE_FILTER_STOP
 	_detail.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, tone, 8, 2, Vector4(18, 12, 18, 14)))
 	var column := MHStyle.vbox(6)

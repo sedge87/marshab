@@ -442,7 +442,7 @@
         {
           "id": "reactor",
           "text": "Install the compact reactor",
-          "how": "It arrived on this landing. Site plan, Power tab: 5 kW day and night, storm or not, like NASA's Kilopower. That's less than the base uses, so it can't do it alone: you'll need batteries charged before the storm too.",
+          "how": "It arrived on this landing. Site plan, Power tab: 8 kW day and night, storm or not, like NASA's Kilopower. That's less than the base uses, so it can't do it alone: you'll need batteries charged before the storm too.",
           "check": "zone",
           "kind": "reactor"
         },

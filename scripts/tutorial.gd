@@ -223,7 +223,7 @@ func _show_toast(text: String) -> void:
 	_toast.anchor_right = .5
 	_toast.offset_left = -260
 	_toast.offset_right = 260
-	_toast.offset_top = 150
+	_toast.offset_top = 222   # under the alert row
 	var row := MHStyle.hbox(10)
 	row.add_child(MHStyle.icon("circle-check", 22, MHStyle.VALID))
 	var words := MHStyle.vbox(2)

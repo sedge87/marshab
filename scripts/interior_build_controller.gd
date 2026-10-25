@@ -126,6 +126,8 @@ func exit() -> void:
 		return
 	active = false
 	player.set_meta("interior_build_active", false)
+	_key_strip_state = ""
+	get_tree().call_group("explore_hud", "set_key_strip", [])
 	var explore := get_tree().get_first_node_in_group("explore_hud")
 	if explore != null and not _was_minimal: explore.call("set_minimal", false)
 	if preview != null:
@@ -360,6 +362,8 @@ func _refresh_preview(force_rebuild: bool) -> void:
 	if not beside.is_empty():
 		point = beside.point
 		_snap_yaw = float(beside.yaw)
+	elif on_top == Vector3.INF and snapping():
+		point = _grid_point(point, normal)
 	_valid_reason = builder.free_interior_invalid_reason(selected_id, point, normal, _placement_yaw(normal))
 	if force_rebuild or preview == null:
 		if preview != null: preview.queue_free()
@@ -437,6 +441,24 @@ func _side_by_side(point: Vector3) -> Dictionary:
 				best = {"point": spot, "yaw": yaw}
 	return best
 
+## Hold Shift to snap (playtest request, 25 Oct): items sit on a 25 cm grid
+## (wall items along the wall and up it) and floor items turn in right
+## angles, square to the room, so rows and corners line up.
+const SNAP_STEP := .25
+func snapping() -> bool:
+	return Input.is_key_pressed(KEY_SHIFT)
+
+func _grid_point(point: Vector3, normal: Vector3) -> Vector3:
+	var snapped := point
+	if absf(normal.y) > .7:   # the floor: across it
+		snapped.x = snappedf(point.x, SNAP_STEP)
+		snapped.z = snappedf(point.z, SNAP_STEP)
+	else:                      # a wall: along it and up it, not into it
+		snapped.y = snappedf(point.y, SNAP_STEP)
+		if absf(normal.x) > absf(normal.z): snapped.z = snappedf(point.z, SNAP_STEP)
+		else: snapped.x = snappedf(point.x, SNAP_STEP)
+	return snapped
+
 func _placement_yaw(normal: Vector3) -> float:
 	if not is_nan(_snap_yaw): return _snap_yaw
 	# Floor equipment follows the viewer's heading. Future wall entries face out
@@ -445,7 +467,8 @@ func _placement_yaw(normal: Vector3) -> float:
 	if str(entry.get("placement", "floor")) == "wall":
 		return atan2(-normal.x, -normal.z) + rotation_offset
 	# Models face -Z; turn them half round so the front faces the player.
-	return player.rotation.y + PI + float(entry.get("model_rotation_y", 0.0)) + rotation_offset
+	var yaw := player.rotation.y + PI + float(entry.get("model_rotation_y", 0.0)) + rotation_offset
+	return snappedf(yaw, PI * .5) if snapping() else yaw
 
 ## A hologram is only a shape: no interaction rig (its lamps, glow materials
 ## and cupboard interiors) and no inspect wrapper running on it.
@@ -627,6 +650,8 @@ func _place_preview() -> void:
 	var final_visual := builder.free_interior_visual(selected_id, point, preview.rotation.y)
 	var normal: Vector3 = _hit.get("normal", Vector3.UP) as Vector3
 	if builder.place_free_interior_equipment(selected_id, point, preview.rotation.y, cell, final_visual, normal.normalized()):
+		# Ctrl+Z takes it back, like rooms and walls.
+		builder._history.append({"type": "interior", "placement_id": str(builder.placed_interior.back().get("placement_id", ""))})
 		MHAudio.sfx("place")
 		_refresh_preview(true)
 	else:
@@ -1120,17 +1145,18 @@ func _update_hud() -> void:
 		_tag_icon.texture = MHIcons.texture("map-pin", 18)
 		_tag_icon.modulate = tone
 		_tag_label.text = _blocked_note.to_upper()
-	elif _remove_mode: _tag_label.text = "AIM AT AN ITEM, DOOR OR WINDOW   ·   LMB REMOVE"
+	elif _remove_mode: _tag_label.text = "AIM AT AN ITEM, DOOR OR WINDOW   ·   LMB REMOVE   ·   X BACK TO PLACING"
 	elif ok and _selected_structure in ["partition", "partition_glass", "partition_half"]: _tag_label.text = "FITS HERE   ·   HOLD LMB AND DRAG TO DRAW   ·   R %s" % ("STRAIGHT" if _partition_angled else "45°")
 	elif ok and _selected_structure in ["partition_door", "partition_glass_door"]: _tag_label.text = "FITS HERE   ·   LMB PLACE DOOR   ·   R %s" % ("STRAIGHT" if _partition_angled else "45°")
 	elif ok and _selected_structure == "upgrade_roof": _tag_label.text = "FITS HERE   ·   LMB SHIELD THE WHOLE ROOF (ON THE OUTSIDE)"
 	elif ok and _selected_structure.begins_with("upgrade_"): _tag_label.text = "FITS HERE   ·   LMB ADD TO THIS WALL" + ("" if _selected_structure == "upgrade_acoustic" else " (ON THE OUTSIDE)")
-	elif ok: _tag_label.text = "FITS HERE   ·   LMB PLACE   ·   HOLD R ROTATE"
+	elif ok: _tag_label.text = "FITS HERE   ·   LMB PLACE   ·   R TURN   ·   " + ("SNAPPING" if snapping() else "HOLD SHIFT TO SNAP")
 	else: _tag_label.text = _valid_reason.to_upper()
 	_tag_label.add_theme_color_override("font_color", tone if not ok or _remove_mode else MHStyle.TEXT_PRIMARY)
 	_tag.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, tone, 20, 1, Vector4(14, 6, 16, 6)))
 	if _hints != null:
 		_hints.text = "Q / E  TABS    1-9  PICK    " + ("CLICK A CARD" if _selector_open else "TAB  CURSOR")
+	_show_key_strip()
 	# Details panel.
 	if not structure.is_empty():
 		_preview_stage.visible = false
@@ -1153,6 +1179,21 @@ func _update_hud() -> void:
 	_details_title.text = str(entry.get("label", selected_id))
 	_details_text.text = str(entry.get("description", entry.get("system_note", "")))
 	_set_chips(_stat_chips(selected_id))
+
+## The keys along the bottom of the screen for what you're doing now
+## (placing, removing, drawing partitions), in place of the walking keys.
+var _key_strip_state := ""
+func _show_key_strip() -> void:
+	var state := "remove" if _remove_mode else ("partition" if _selected_structure.begins_with("partition") else ("structure" if not _selected_structure.is_empty() else "place"))
+	if state == _key_strip_state: return
+	_key_strip_state = state
+	var rows: Array
+	match state:
+		"remove": rows = [[["LMB"], "Remove · refund", "danger"], [["X"], "Back to placing"], [["Ctrl", "Z"], "Undo"], [["Tab"], "Cursor"], [["B"], "Done"], [["Shift", "B"], "Site plan"]]
+		"partition": rows = [[["LMB"], "Hold and drag to draw", "accent"], [["R"], "Straight · 45°"], [["X"], "Remove"], [["Ctrl", "Z"], "Undo"], [["Q", "E"], "Tabs"], [["1-9"], "Pick"], [["B"], "Done"], [["Shift", "B"], "Site plan"]]
+		"structure": rows = [[["LMB"], "Place", "accent"], [["X"], "Remove"], [["Ctrl", "Z"], "Undo"], [["Q", "E"], "Tabs"], [["1-9"], "Pick"], [["Tab"], "Cursor"], [["B"], "Done"], [["Shift", "B"], "Site plan"]]
+		_: rows = [[["LMB"], "Place", "accent"], [["R"], "Turn"], [["Shift"], "Hold: snap"], [["X"], "Remove"], [["Ctrl", "Z"], "Undo"], [["Q", "E"], "Tabs"], [["1-9"], "Pick"], [["Tab"], "Cursor"], [["B"], "Done"], [["Shift", "B"], "Site plan"]]
+	get_tree().call_group("explore_hud", "set_key_strip", rows)
 
 func _set_chips(chips: Array) -> void:
 	for child in _details_chips.get_children(): child.queue_free()

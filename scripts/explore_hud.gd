@@ -360,6 +360,15 @@ func _process(delta: float) -> void:
 
 # The B hint names the build view it will actually open from where the player
 # stands, and offers Shift+B for the Site plan while inside.
+## Another mode's keys along the bottom (Interior furnishing), or [] for the
+## walking keys again.
+var _key_rows: Array = []
+func set_key_strip(rows: Array) -> void:
+	_key_rows = rows.duplicate()
+	if _hint_strip != null: _hint_strip.queue_free()
+	_hint_strip = null
+	_refresh_hint_strip()
+
 func _refresh_hint_strip() -> void:
 	var inside := builder != null and builder.player_can_furnish()
 	if _hint_strip != null and inside == _hint_inside:
@@ -367,6 +376,11 @@ func _refresh_hint_strip() -> void:
 	_hint_inside = inside
 	if _hint_strip != null:
 		_hint_strip.queue_free()
+	if not _key_rows.is_empty():
+		_hint_strip = MHStyle.hint_strip(_key_rows)
+		_root.add_child(_hint_strip)
+		_root.move_child(_hint_strip, 1)
+		return
 	var build_hints: Array = [[["B"], "Furnish room"], [["Shift", "B"], "Site plan"]] if inside else [[["B"], "Site plan"]]
 	var gary: Array = [[["G"], "Hold: GAR-Y"]] if get_tree().get_first_node_in_group("gar_y") != null else []
 	_hint_strip = MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["Ctrl"], "Crouch"], [["E"], "Interact", "accent"], [["F"], "Light"]] + gary + build_hints + [[["M"], "Mission Control"], [["Esc"], "Pause"]])

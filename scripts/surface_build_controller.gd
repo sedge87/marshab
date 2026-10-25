@@ -36,6 +36,7 @@ func enter(id: String) -> void:
 	rotation_offset = 0.0
 	player.set_meta("surface_build_active", true)
 	_build_hud()
+	get_tree().call_group("explore_hud", "set_key_strip", [[["LMB"], "Place", "accent"], [["R"], "Turn"], [["Shift"], "Hold: snap"], [["X"], "Remove what you aim at"], [["B"], "Done"]])
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	MHAudio.sfx("mode_build", -2.0, 0.0)
 	MHAudio.build_layer(true)
@@ -46,6 +47,7 @@ func exit() -> void:
 		return
 	active = false
 	player.set_meta("surface_build_active", false)
+	get_tree().call_group("explore_hud", "set_key_strip", [])
 	if preview != null:
 		preview.queue_free()
 		preview = null
@@ -116,10 +118,14 @@ func _refresh_preview(force_rebuild: bool) -> void:
 	var point: Vector3 = _hit.position
 	var on_top := _stack_point()
 	if on_top != Vector3.INF: point = on_top
+	elif Input.is_key_pressed(KEY_SHIFT):
+		# Hold Shift: a 25 cm grid and right angles, so rows line up.
+		point.x = snappedf(point.x, .25)
+		point.z = snappedf(point.z, .25)
 	_valid_reason = builder.surface_invalid_reason(selected_id, point)
 	if force_rebuild or preview == null:
 		if preview != null: preview.queue_free()
-		preview = builder.surface_visual(selected_id, point, player.rotation.y + rotation_offset)
+		preview = builder.surface_visual(selected_id, point, _yaw())
 		preview.name = "SurfaceBuildPreview"
 		# A hologram is only a shape: no interaction rig running on it.
 		for child in preview.find_children("*", "", true, false):
@@ -133,7 +139,7 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		_valid_visual = _valid_reason.is_empty()
 	else:
 		preview.global_position = point + Vector3.UP * .01
-		preview.rotation.y = player.rotation.y + rotation_offset
+		preview.rotation.y = _yaw()
 		if _valid_visual != _valid_reason.is_empty():
 			_set_preview(preview, _valid_reason.is_empty())
 			_valid_visual = _valid_reason.is_empty()
@@ -161,6 +167,10 @@ func _stack_point() -> Vector3:
 		var height := (item.get("position", Vector3.ZERO) as Vector3).y + float(entry.top)
 		return camera.global_position + direction * ((height - camera.global_position.y) / direction.y)
 	return Vector3.INF
+
+func _yaw() -> float:
+	var yaw := player.rotation.y + rotation_offset
+	return snappedf(yaw, PI * .5) if Input.is_key_pressed(KEY_SHIFT) else yaw
 
 func _set_preview(node: Node, valid: bool) -> void:
 	MHPlacementGhost.apply(node, valid)
@@ -201,7 +211,7 @@ func _build_hud() -> void:
 	column.add_child(_selection)
 	_status = MHStyle.body("", 13, MHStyle.TEXT_SECONDARY)
 	column.add_child(_status)
-	column.add_child(MHStyle.mono("LMB Place · R / wheel Rotate · X Remove · B Exit", 11, MHStyle.TEXT_MUTED))
+	column.add_child(MHStyle.mono("Wheel also turns · keys below", 11, MHStyle.TEXT_MUTED))
 
 func _update_hud() -> void:
 	if _selection == null: return

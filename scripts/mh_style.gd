@@ -396,7 +396,7 @@ static func badge(text: String, tone := "neutral", dot := false) -> PanelContain
 static func control_hint(keys: Array, text: String, tone := "") -> HBoxContainer:
 	var row := hbox(6)
 	for key in keys: row.add_child(keycap(str(key)))
-	var l := label(text, 15, accent if tone == "accent" else TEXT_SECONDARY, 500)
+	var l := label(text, 15, accent if tone == "accent" else (DANGER if tone == "danger" else TEXT_SECONDARY), 500)
 	l.add_theme_constant_override("outline_size", 0)
 	row.add_child(MHStyle.spacer(false))
 	row.get_child(row.get_child_count() - 1).custom_minimum_size.x = 2
