@@ -54,7 +54,7 @@ func _initialize() -> void:
 					var a: Vector3 = lander.to_global(origin + Vector3(0, y, 0))
 					var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(a, a + lander.global_basis * dir * 8.0))
 					var at: Vector3 = lander.to_local(hit.position) if not hit.is_empty() else Vector3(99, 99, 99)
-					if Vector2(at.x, at.z).length() > 2.75 or at.y > 6.3: leaks += 1
+					if Vector2(at.x, at.z).length() > 3.2 or at.y > 6.3: leaks += 1   # the hatch frame reaches ~3 m out
 	_check(leaks == 0, "the cabin and airlock are sealed with the hatch shut (%d rays got out)" % leaks)
 	_check(str(world.builder.climate_at(player.global_position).context) == "Lander cabin", "the cabin is sheltered")
 	var prompt: Dictionary = lander.interaction_prompt()
