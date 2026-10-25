@@ -2563,6 +2563,35 @@
       "pack": "mars_crew_lander_v1"
     },
     {
+      "id": "landing_seat",
+      "label": "Landing Seat",
+      "group": "lander",
+      "status": "catalogue",
+      "icon": "armchair",
+      "description": "A crew couch bolted to the lander's deck, with a five-point harness and a shock-absorbing pedestal.",
+      "role": "Riding out the landing",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 0,
+      "footprint": [
+        1,
+        1
+      ],
+      "height": 1.22,
+      "system_note": "Touchdown on Mars can mean several g of deceleration and a hard jolt at the end. Each crew member rides it out strapped into a fixed, reclined couch: the pedestal's shock absorber takes the bump, and nothing in the cabin is loose.",
+      "system_links": [
+        "Crew Lander"
+      ],
+      "asset_scene": "res://assets/equipment/mars_lander_cabin_v1/landing_seat.tscn",
+      "size_m": [
+        0.76,
+        1.215,
+        0.96
+      ],
+      "pack": "mars_lander_cabin_v1"
+    },
+    {
       "id": "galley_kitchenette",
       "label": "Galley Kitchenette",
       "group": "galley",

@@ -1,0 +1,62 @@
+{
+  "style": "Lander cabin: a landing seat bolted to the deck",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "landing_seat",
+      "file": "landing_seat.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.38,
+          0.0,
+          -0.46
+        ],
+        [
+          0.38,
+          1.215,
+          0.5
+        ]
+      ],
+      "triangles": 7344,
+      "named_components": [
+        "arm_post_l_dark",
+        "arm_post_r_dark",
+        "armrest_l",
+        "armrest_r",
+        "back_cushion_teal",
+        "back_shell_white",
+        "back_wing_l_white",
+        "back_wing_r_white",
+        "base_plate",
+        "bolts_satin",
+        "buckle",
+        "control_pad_screen",
+        "crotch_strap_black",
+        "damper_body",
+        "damper_rod_satin",
+        "damper_spring_satin",
+        "foot_stay_l_dark",
+        "foot_stay_r_dark",
+        "footrest_satin",
+        "head_cushion_teal",
+        "head_wing_l_white",
+        "head_wing_r_white",
+        "lap_belt_l_black",
+        "lap_belt_r_black",
+        "rail_l_dark",
+        "rail_r_dark",
+        "seat_bolster_l_white",
+        "seat_bolster_r_white",
+        "seat_cushion_teal",
+        "seat_frame_dark",
+        "seat_shell_white",
+        "shoulder_strap_l_black",
+        "shoulder_strap_r_black",
+        "status_light_amber",
+        "strut_l_dark",
+        "strut_r_dark"
+      ]
+    }
+  ]
+}

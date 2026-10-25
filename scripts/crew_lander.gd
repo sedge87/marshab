@@ -19,14 +19,15 @@ const FRONT_WALL := -.87         # the cabin's front face, where the inner door 
 const PAD_OFFSETS := [Vector2(3.03, 2.95), Vector2(-3.03, 2.95), Vector2(3.03, -2.95), Vector2(-3.03, -2.95)]
 const CABIN := AABB(Vector3(-2.35, 2.3, -2.6), Vector3(4.7, 3.5, 4.95))  # cabin and airlock, local space
 ## The cabin's fittings: catalogue item, lander-local spot, the direction it
-## faces. Four seats round a console at the back, a shelter locker and water
-## on the side walls, supplies in the front corners beside the airlock.
+## faces. Four landing seats (crew couches bolted to the deck, harnessed for
+## touchdown) round a console at the back, a shelter locker and water either
+## side of it, supplies against the front wall beside the airlock.
 const FURNITURE := [
 	["mission_planning_console", Vector3(0, 0, 1.55), Vector2(0, -1)],
-	["crew_chair", Vector3(-.55, 0, .6), Vector2(0, 1)],
-	["crew_chair", Vector3(.55, 0, .6), Vector2(0, 1)],
-	["crew_chair", Vector3(-1.6, 0, .15), Vector2(1, .3)],
-	["crew_chair", Vector3(1.6, 0, .15), Vector2(-1, .3)],
+	["landing_seat", Vector3(-.55, 0, .42), Vector2(0, 1)],
+	["landing_seat", Vector3(.55, 0, .42), Vector2(0, 1)],
+	["landing_seat", Vector3(-1.62, 0, .12), Vector2(1, .3)],
+	["landing_seat", Vector3(1.62, 0, .12), Vector2(-1, .3)],
 	["storm_shelter_locker", Vector3(-1.5, 0, 1.3), Vector2(.8, -1)],
 	["potable_water_dispenser", Vector3(1.55, 0, 1.3), Vector2(-.8, -1)],
 	["supply_crate_medium", Vector3(-1.55, 0, -.52), Vector2(0, 1)],
