@@ -4,25 +4,25 @@ extends Control
 # Pause screen: a short action list on the left; Save & load and Controls
 # open in the panel on the right (one at a time), over the last frame blurred
 # and dimmed. The Field guide opens over everything. The tree is paused
-# while it is open. (Reorganised 25 Oct: the save buttons moved off the main
-# list into slot cards that say what's in each slot.)
+# while it is open. (27 Oct: saves are named files, scripts/saves.gd: Save
+# updates this base's file, Save a copy makes another, and recent saves load.)
 
 signal resumed
 signal mission_control
 signal settings
 signal exit_to_menu
-signal save_requested(slot: int)
-signal load_requested(slot: int)
-signal export_requested(habitat_name: String)
+signal save_requested
+signal save_copy_requested(copy_name: String)
+signal load_requested(path: String)
 
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
+const MHSaves := preload("res://scripts/saves.gd")
 
 var _panels := {}                  # name -> Control (the right-hand panel)
 var _panel_buttons := {}           # name -> Button
 var _slots: VBoxContainer
 var _save_status: Label
-# Slot awaiting a second click to confirm overwriting an existing save.
-var _confirm_slot := 0
+var _current_label: Label
 var _guide: Control
 
 func _ready() -> void:
@@ -117,74 +117,80 @@ func _sheet_head(col: VBoxContainer, title: String, note: String) -> void:
 
 func _build_saves() -> Control:
 	var sheet := _sheet()
-	var col := MHStyle.vbox(18)
+	var col := MHStyle.vbox(16)
 	sheet.add_child(col)
-	_sheet_head(col, "Save & load", "%s saves" % MHGame.SAVE_SETS[MHGame.save_set_for_mode(MHGame.game_mode)])
-	_slots = MHStyle.vbox(8)
-	col.add_child(_slots)
-	_save_status = MHStyle.body("", 15, MHStyle.TEXT_MUTED)
-	col.add_child(_save_status)
-	col.add_child(MHStyle.body("Saving over a slot asks you to click again first. Loading replaces the base you're in now.", 14, MHStyle.TEXT_MUTED))
-	# The habitat library (scripts/habitat_library.gd): any number of named
-	# bases, kept apart from the slots. Browse them from the title screen.
-	col.add_child(MHStyle.eyebrow("Habitat library", MHStyle.accent, 13))
-	var export_row := MHStyle.hbox(10)
+	_sheet_head(col, "Save & load", "Documents/Outpost One/Saves")
+	# This base: Save updates its file (the first save makes it).
+	var this_base := PanelContainer.new()
+	this_base.add_theme_stylebox_override("panel", MHStyle.control_box(14))
+	col.add_child(this_base)
+	var row := MHStyle.hbox(16)
+	this_base.add_child(row)
+	var text := MHStyle.vbox(2)
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.add_child(MHStyle.eyebrow("This base", MHStyle.accent, 12))
+	_current_label = MHStyle.label("", 20, MHStyle.TEXT_PRIMARY, 700)
+	text.add_child(_current_label)
+	row.add_child(text)
+	var save := MHStyle.button("Save", "primary", "save", 48)
+	save.tooltip_text = "Save this base (Ctrl+S). The last five saves are kept as backups."
+	save.custom_minimum_size.x = 170
+	save.pressed.connect(func() -> void: save_requested.emit())
+	row.add_child(save)
+	var cap := MHStyle.keycap("Ctrl+S", true)
+	cap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(cap)
+	# Save a copy: a separate named save (a checkpoint).
+	var copy_row := MHStyle.hbox(10)
 	var name_box := LineEdit.new()
-	name_box.text = MHGame.colony_name
-	name_box.placeholder_text = "Name this habitat"
+	name_box.placeholder_text = "Name for a copy, e.g. \"%s, sol 20\"" % MHGame.colony_name
 	name_box.max_length = 60
 	name_box.custom_minimum_size = Vector2(0, 44)
 	name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	export_row.add_child(name_box)
-	var export := MHStyle.button("Export to library", "secondary", "package", 44)
-	export.tooltip_text = "Keep a copy of this base in your habitat library, under this name"
-	export.pressed.connect(func() -> void: export_requested.emit(name_box.text))
-	name_box.text_submitted.connect(func(text: String) -> void: export_requested.emit(text))
-	export_row.add_child(export)
-	col.add_child(export_row)
-	col.add_child(MHStyle.body("Saved as a file in Documents/Outpost One/Habitats. Open them from Habitat library on the title screen, or send the file to another computer.", 14, MHStyle.TEXT_MUTED))
+	copy_row.add_child(name_box)
+	var copy := MHStyle.button("Save a copy", "secondary", "package", 44)
+	copy.tooltip_text = "Keep a separate save under this name; you carry on with this one"
+	copy.pressed.connect(func() -> void: save_copy_requested.emit(name_box.text))
+	name_box.text_submitted.connect(func(value: String) -> void: save_copy_requested.emit(value))
+	copy_row.add_child(copy)
+	col.add_child(copy_row)
+	_save_status = MHStyle.body("", 15, MHStyle.TEXT_MUTED)
+	col.add_child(_save_status)
+	col.add_child(MHStyle.eyebrow("Recent saves", MHStyle.TEXT_MUTED, 12))
+	_slots = MHStyle.vbox(8)
+	col.add_child(_slots)
+	col.add_child(MHStyle.body("Loading replaces the base you're in now. Every save is on the title screen under Load, with pictures, search and Tour.", 14, MHStyle.TEXT_MUTED))
 	return sheet
 
-# A card per slot: what's in it and when it was saved, with Save and Load.
-# Rebuilt after every save so a new Load button appears straight away.
+## This base's name, and the newest saves to load (rebuilt after a save).
 func _build_slots() -> void:
 	if _slots == null: return
+	var current := MHSaves.read_header(MHSaves.current_path)
+	_current_label.text = "%s · saved %s" % [str(current.get("name", "")), _when(str(current.get("saved_at", "")))] if not current.is_empty() else "%s · not saved yet" % MHGame.colony_name
 	for child in _slots.get_children():
 		_slots.remove_child(child)
 		child.queue_free()
-	for slot in range(1, MHGame.SAVE_SLOT_COUNT + 1):
-		var info := MHGame.save_slot_summary(slot)
-		var exists := bool(info.get("exists", false))
+	var saves: Array = MHSaves.entries()
+	if saves.is_empty():
+		_slots.add_child(MHStyle.body("No saves yet.", 15, MHStyle.TEXT_MUTED))
+	for info in saves.slice(0, 5):
 		var card := PanelContainer.new()
 		card.add_theme_stylebox_override("panel", MHStyle.control_box(10))
 		_slots.add_child(card)
 		var row := MHStyle.hbox(18)
 		card.add_child(row)
-		var number := MHStyle.display(str(slot), 32)
-		number.custom_minimum_size.x = 44
-		number.add_theme_color_override("font_color", MHStyle.accent if exists else MHStyle.TEXT_MUTED)
-		row.add_child(number)
 		var text := MHStyle.vbox(2)
 		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		if exists:
-			text.add_child(MHStyle.label(str(info.get("colony_name", "Habitat")), 19, MHStyle.TEXT_PRIMARY, 700))
-			text.add_child(MHStyle.body("%s · %s · saved %s" % [info.get("site_name", "Mars"), info.get("mode", ""), _when(str(info.get("saved_at", "")))], 14, MHStyle.TEXT_MUTED))
-		else:
-			text.add_child(MHStyle.label("Empty slot", 19, MHStyle.TEXT_MUTED, 600))
+		var here := str(info.path) == MHSaves.current_path
+		text.add_child(MHStyle.label(str(info.get("name", "Habitat")) + ("  ·  this base" if here else ""), 18, MHStyle.accent if here else MHStyle.TEXT_PRIMARY, 700))
+		text.add_child(MHStyle.body("%s · %s · saved %s" % [info.get("site_name", "Mars"), MHSaves.mode_label(info), _when(str(info.get("saved_at", "")))], 14, MHStyle.TEXT_MUTED))
 		row.add_child(text)
-		var confirming := slot == _confirm_slot
-		var save := MHStyle.button("Overwrite?" if confirming else "Save here", "danger" if confirming else "secondary", "save", 44)
-		save.tooltip_text = "Click again to replace slot %d" % slot if confirming else "Save this habitat to slot %d" % slot
-		save.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		save.pressed.connect(_on_save_pressed.bind(slot, exists))
-		row.add_child(save)
-		if exists:
-			var load := MHStyle.button("Load", "ghost", "rotate-ccw", 44)
-			load.tooltip_text = "Load the habitat in slot %d" % slot
-			load.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			load.pressed.connect(load_requested.emit.bind(slot))
-			row.add_child(load)
+		var load := MHStyle.button("Load", "ghost", "rotate-cw", 42)
+		load.tooltip_text = "Load this save (the base you're in now is replaced)"
+		load.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		load.pressed.connect(load_requested.emit.bind(str(info.path)))
+		row.add_child(load)
 
 ## "2026-10-25T09:14:03" -> "25 Oct, 09:14".
 static func _when(stamp: String) -> String:
@@ -192,16 +198,6 @@ static func _when(stamp: String) -> String:
 	var months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 	var month := clampi(int(stamp.substr(5, 2)), 1, 12)
 	return "%d %s, %s" % [int(stamp.substr(8, 2)), months[month - 1], stamp.substr(11, 5)]
-
-func _on_save_pressed(slot: int, exists: bool) -> void:
-	# An existing save needs a second click, so a stray click can't lose work.
-	if exists and _confirm_slot != slot:
-		_confirm_slot = slot
-		show_save_status("warn", "Slot %d already has a save. Click Overwrite to replace it." % slot)
-		_build_slots()
-		return
-	_confirm_slot = 0
-	save_requested.emit(slot)
 
 ## Called by the world after a save attempt; tone is "valid", "warn" or "invalid".
 func show_save_status(tone: String, text: String) -> void:

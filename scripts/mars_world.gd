@@ -1,5 +1,5 @@
 extends Node3D
-const MHHabitatLibrary := preload("res://scripts/habitat_library.gd")   # the habitat library
+const MHSaves := preload("res://scripts/saves.gd")   # named saves, one file per base
 
 const WEATHER_SCRIPT := preload("res://scripts/weather.gd")
 const SITE_WEATHER := preload("res://scripts/site_weather.gd")
@@ -224,6 +224,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if monitor != null or showcase != null: return   # those handle their own keys
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_S and event.ctrl_pressed:
+		save_now()
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_cancel"):
 		if pause_menu == null: _show_pause()
 		else: _resume()
@@ -248,8 +252,16 @@ func _open_surface_build(id: String) -> void:
 
 # Wind outside, life-support hum once the player is inside a habitat zone.
 var _space_check := 0.0
+var _autosave_in := AUTOSAVE_SECONDS
+const AUTOSAVE_SECONDS := 600.0   # free play: every 10 minutes, once the base has a save
+
 func _process(delta: float) -> void:
 	_update_lander_intro()
+	if not MHMissions.active() and not MHGame.showcase and not MHSaves.current_path.is_empty() and not get_tree().paused:
+		_autosave_in -= delta
+		if _autosave_in <= 0.0:
+			_autosave_in = AUTOSAVE_SECONDS
+			MHSaves.save_current(current_state(), null, save_details())
 	_update_dynamic_resolution(delta)
 	_resupply_check -= delta
 	if _resupply_check <= 0.0:
@@ -877,9 +889,9 @@ func _show_pause() -> void:
 	pause_menu.resumed.connect(_resume)
 	pause_menu.mission_control.connect(_open_mission_control)
 	pause_menu.settings.connect(_open_settings)
-	pause_menu.save_requested.connect(_save_habitat)
-	pause_menu.load_requested.connect(_load_habitat)
-	pause_menu.export_requested.connect(_export_to_library)
+	pause_menu.save_requested.connect(save_now)
+	pause_menu.save_copy_requested.connect(save_copy)
+	pause_menu.load_requested.connect(_load_save)
 	pause_menu.exit_to_menu.connect(_return_menu)
 	overlay_layer.add_child(pause_menu)
 
@@ -903,10 +915,25 @@ func _unpause() -> void:
 	var needs_cursor := builder.build_mode or (interior_builder != null and interior_builder.wants_cursor())
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if needs_cursor else Input.MOUSE_MODE_CAPTURED
 
-## Pause screen → Export to library: a copy of this base, with a picture of
-## it taken with the menus and HUD briefly hidden (scripts/habitat_library.gd).
-func _export_to_library(habitat_name: String) -> void:
-	if builder == null: return
+# ---------- saving (scripts/saves.gd) ----------
+
+## Who made this base: kept from the save it was loaded from, so a base
+## carried to another computer still says who built it.
+var made_by := {}
+
+## The extra things a save card shows: crew, sols, cargo, the mission.
+func save_details() -> Dictionary:
+	var sim: RefCounted = builder.simulation()
+	var details := {"crew": int(sim.crew_count()), "sols": int(float(sim.hours_run) / 24.0) + 1, "cargo_kg": int(builder._used_cargo())}
+	if MHMissions.active():
+		var all: Array = MHMissions.missions()
+		var finished := all.all(func(m): return MHMissions.is_complete(str(m.id)))
+		details["mission"] = "Campaign complete" if finished else "Mission %d of %d" % [int(MHMissions.current().get("number", 1)), all.size()]
+	return details
+
+## A picture of the base for its save card, with the menus and HUD hidden
+## for a moment.
+func capture_picture() -> Image:
 	var hidden: Array[CanvasLayer] = []
 	for layer in get_tree().root.find_children("*", "CanvasLayer", true, false):
 		if (layer as CanvasLayer).visible:
@@ -916,11 +943,36 @@ func _export_to_library(habitat_name: String) -> void:
 	var picture := get_viewport().get_texture().get_image()
 	for layer in hidden:
 		if is_instance_valid(layer): layer.visible = true
-	var path: String = MHHabitatLibrary.export_habitat(habitat_name if not habitat_name.strip_edges().is_empty() else MHGame.colony_name, current_state(), picture)
+	return picture
+
+## Save (pause screen or Ctrl+S): updates this base's file, or makes it.
+func save_now() -> void:
+	if builder == null or MHGame.showcase: return
+	var picture: Image = await capture_picture()
+	var path: String = MHSaves.save_current(current_state(), picture, save_details())
+	if not path.is_empty(): guide_flags["saved"] = true
+	MHAudio.sfx("ui_confirm" if not path.is_empty() else "invalid", 0.0, 0.0)
+	var name := str(MHSaves.read_header(path).get("name", MHGame.colony_name))
+	if pause_menu != null:
+		if path.is_empty(): pause_menu.show_save_status("invalid", "Couldn't save: is the Documents folder available?")
+		else: pause_menu.show_save_status("valid", "Saved \"%s\"." % name)
+	elif weather != null:
+		weather.toast("Saved", name if not path.is_empty() else "Couldn't save: is the Documents folder available?")
+
+## Save a copy: a separate named save; you carry on with this one.
+func save_copy(copy_name: String) -> void:
+	if builder == null or MHGame.showcase: return
+	var picture: Image = await capture_picture()
+	var path: String = MHSaves.save_copy(copy_name if not copy_name.strip_edges().is_empty() else MHGame.colony_name + " copy", current_state(), picture, save_details())
 	MHAudio.sfx("ui_confirm" if not path.is_empty() else "invalid", 0.0, 0.0)
 	if pause_menu != null:
-		if path.is_empty(): pause_menu.show_save_status("invalid", "Couldn't export: is the Documents folder available?")
-		else: pause_menu.show_save_status("valid", "Exported to your habitat library as \"%s\"." % path.get_file().get_basename())
+		if path.is_empty(): pause_menu.show_save_status("invalid", "Couldn't save a copy: is the Documents folder available?")
+		else: pause_menu.show_save_status("valid", "Saved a copy as \"%s\". You're still playing the original." % str(MHSaves.read_header(path).get("name", copy_name)))
+
+func _load_save(path: String) -> void:
+	if not MHSaves.prepare_load(path): return
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 func _return_menu() -> void:
 	get_tree().paused = false
@@ -954,6 +1006,7 @@ func current_state() -> Dictionary:
 		"mission_control": earth_link.export_state() if earth_link != null else {},
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
 		"crew_rover": crew_rover.export_state() if crew_rover != null else {},
+		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
 		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
 	}
 
@@ -972,10 +1025,10 @@ func set_tutorial_mode(mode: String) -> void:
 		tutorial = null
 	if mission_hud != null: mission_hud._update_steps()
 
-## Missions autosave: the campaign base and its progress (slot 1 of the
-## Missions save set).
+## Missions autosave: the campaign base and its progress, saved to the
+## campaign's own file whenever a step or test changes.
 func save_mission_progress() -> void:
-	if MHMissions.active(): MHGame.save_habitat(1, current_state(), "missions")
+	if MHMissions.active() and not MHGame.showcase: MHSaves.save_current(current_state(), null, save_details())
 
 func _save_habitat(slot: int) -> void:
 	if builder == null or player == null:
@@ -1017,6 +1070,7 @@ func _restore_pending_habitat() -> void:
 	_earth_link_state = state.get("mission_control", {}) as Dictionary
 	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
 	_crew_rover_state = state.get("crew_rover", {}) as Dictionary
+	made_by = (state.get("made_by", {}) as Dictionary).duplicate()
 	player.global_position = state.get("player_position", player.global_position) as Vector3
 	player.rotation.y = float(state.get("player_rotation_y", player.rotation.y))
 	player.safe_position = player.global_position

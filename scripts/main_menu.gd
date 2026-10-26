@@ -1,5 +1,5 @@
 extends Control
-const MHHabitatLibrary := preload("res://scripts/habitat_library.gd")   # the habitat library
+const MHSaves := preload("res://scripts/saves.gd")   # named saves, one file per base
 const LANDING_PICKER_SCRIPT := preload("res://scripts/landing_picker.gd")
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
@@ -61,6 +61,8 @@ var _settings_panel: MHSettingsPanel
 
 func _ready() -> void:
 	MHGame.migrate_old_saves()   # saves from when the game was called MARS: HABITAT
+	MHSaves.migrate_once()   # the old numbered slots and habitat library become named saves
+	MHSaves.playlist = []    # back at the menu: any Showcase has ended
 	MHGame.showcase = false   # back at the menu: whatever loads next is a normal game unless Tour is pressed
 	MHGame.set_accent(MHGame.accent_index)
 	theme = MHStyle.theme()
@@ -70,8 +72,7 @@ func _ready() -> void:
 	ui_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(ui_root)
 	show_screen("title")
-	# Drop .habitat files (or a game's slot_N.save) on the window to add them
-	# to the habitat library.
+	# Drop save files (from another computer) on the window to add them.
 	get_window().files_dropped.connect(_on_files_dropped)
 	MHAudio.music("menu")
 	MHAudio.ambience("menu")
@@ -233,8 +234,8 @@ func show_screen(id: String) -> void:
 			environment.apply_palette(MHGame.palette_name()); _set_camera("hero"); _landing_screen()
 		"loading":
 			environment.apply_palette("golden"); _set_camera("loading", false); _loading_screen()
-		"library":
-			environment.apply_palette("dusk"); _set_camera("title", false); _library_screen()
+		"saves":
+			environment.apply_palette("dusk"); _set_camera("title", false); _saves_screen()
 	MHGame.apply_settings(get_viewport(), environment.world_environment.environment, environment.sun, [])
 	# Menus slide in (360 ms), fades only — no bounce.
 	screen.modulate.a = 0.0
@@ -300,99 +301,60 @@ func _title_screen() -> void:
 	pitch.custom_minimum_size.x = 600
 	pitch.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	head.add_child(pitch)
+	var newest := MHSaves.latest()
+	var save_count := MHSaves.entries().size()
 	var menu := MHStyle.vbox(12)
-	_place(menu, Vector2(120, 620), 480)
-	var hero := _hero_button("New colony", "Choose a site · name your colony", "plus")
+	_place(menu, Vector2(120, 560 if not newest.is_empty() else 620), 480)
+	# Continue: the newest save, in one click.
+	if not newest.is_empty():
+		var go_on := _hero_button("Continue", "%s · %s" % [str(newest.get("name", "Habitat")), MHSaves.mode_label(newest)], "play")
+		go_on.tooltip_text = "%s · saved %s" % [str(newest.get("site_name", "Mars")), MHPauseMenu._when(str(newest.get("saved_at", "")))]
+		go_on.pressed.connect(_open_save.bind(str(newest.path)))
+		menu.add_child(go_on)
+	var hero: Button = _hero_button("New colony", "Choose a site · name your colony", "plus") if newest.is_empty() else MHStyle.button("New colony", "secondary", "plus")
+	hero.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	hero.pressed.connect(func() -> void:
 		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
 		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
+		MHSaves.current_path = ""
 		_quick_start = false
 		show_screen("site"))
 	menu.add_child(hero)
-	# Missions: the NASA-style campaign, with its own saves.
-	var campaign := MHGame.save_slot_summary(1, "missions")
-	if bool(campaign.get("exists", false)):
-		var resume := MHStyle.button("Continue missions · %s" % str(campaign.get("colony_name", "")), "secondary", "rocket")
+	# Load: every save, with pictures, search, Tour and Showcase.
+	if save_count > 0:
+		var load := MHStyle.button("Load · %d save%s" % [save_count, "" if save_count == 1 else "s"], "secondary", "save")
+		load.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		load.tooltip_text = "Every saved base: play, tour, duplicate or showcase them"
+		load.pressed.connect(func() -> void: show_screen("saves"))
+		menu.add_child(load)
+	# Missions: the NASA-style campaign; its newest save continues it.
+	var campaign := MHSaves.latest("missions")
+	if not campaign.is_empty():
+		var resume := MHStyle.button("Continue missions · %s" % str(campaign.get("name", "")), "secondary", "rocket")
 		resume.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		resume.pressed.connect(_load_slot.bind(1, "missions"))
+		resume.pressed.connect(_open_save.bind(str(campaign.path)))
 		menu.add_child(resume)
-	var missions := MHStyle.button("New missions campaign" if bool(campaign.get("exists", false)) else "Missions campaign", "ghost" if bool(campaign.get("exists", false)) else "secondary", "clipboard-check")
+	var missions := MHStyle.button("New missions campaign" if not campaign.is_empty() else "Missions campaign", "ghost" if not campaign.is_empty() else "secondary", "clipboard-check")
 	missions.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	missions.tooltip_text = "Set up a Mars base step by step, like NASA: landing zones, cargo first, then the crew."
 	missions.pressed.connect(func() -> void:
 		MHGame.game_mode = "missions"
 		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 		MHMissions.reset()
+		MHSaves.current_path = ""
 		show_screen("site"))
 	menu.add_child(missions)
-	var quick := MHStyle.button("Quick start · %s" % MHGame.site_name(), "secondary", "rocket")
+	var quick := MHStyle.button("Quick start · %s" % MHGame.site_name(), "ghost" if not newest.is_empty() else "secondary", "rocket")
 	quick.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	quick.pressed.connect(func() -> void:
 		# Straight to choosing where to land (skipping the site and colony steps).
 		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
 		MHGame.landing_target = Vector2.INF
 		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
+		MHSaves.current_path = ""
 		_quick_start = true
 		show_screen("landing"))
 	menu.add_child(quick)
-	var library_count: int = MHHabitatLibrary.entries().size()
-	var library := MHStyle.button("Habitat library%s" % (" · %d" % library_count if library_count > 0 else ""), "secondary", "house")
-	library.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	library.tooltip_text = "Your collection of exported habitats: play, tour or copy any of them"
-	library.pressed.connect(func() -> void: show_screen("library"))
-	menu.add_child(library)
-	# Saves sit in their own scrolling panel beside the menu, so a long list
-	# never pushes the menu off the bottom of the screen. Mission saves and
-	# free-play saves are kept apart (MHGame.SAVE_SETS).
-	var saves := MHStyle.vbox(8)
-	for save_set in ["missions", "free_play"]:
-		var heading_added := false
-		for slot in range(1, MHGame.SAVE_SLOT_COUNT + 1):
-			var summary := MHGame.save_slot_summary(slot, save_set)
-			if not bool(summary.get("exists", false)):
-				continue
-			if not heading_added:
-				saves.add_child(MHStyle.eyebrow("%s saves" % MHGame.SAVE_SETS[save_set], MHStyle.TEXT_MUTED, 11))
-				heading_added = true
-			var save_row := MHStyle.hbox(6)
-			var load := MHStyle.button("Load %d · %s" % [slot, str(summary.get("colony_name", "Habitat"))], "ghost", "save", 44)
-			load.alignment = HORIZONTAL_ALIGNMENT_LEFT
-			load.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-			load.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			load.tooltip_text = "%s · saved at %s on %s" % [str(summary.get("mode", "")), str(summary.get("site_name", "Mars")), str(summary.get("saved_at", ""))]
-			load.pressed.connect(_load_slot.bind(slot, save_set))
-			save_row.add_child(load)
-			# Tour: this base presents itself, or you fly round it (never saved).
-			var present := MHStyle.button("", "ghost", "presentation", 44)
-			present.tooltip_text = "Tour: watch this base present itself, or press F to fly round it freely"
-			present.pressed.connect(func() -> void:
-				MHGame.showcase = true
-				_load_slot(slot, save_set))
-			save_row.add_child(present)
-			# Delete: a second click confirms.
-			var delete := MHStyle.button("", "ghost", "trash-2", 44)
-			delete.tooltip_text = "Delete this save"
-			delete.pressed.connect(func() -> void:
-				if delete.text.is_empty():
-					delete.text = "Delete?"
-					delete.theme_type_variation = "DangerButton"
-					return
-				MHGame.delete_habitat(slot, save_set)
-				show_screen(screen_id))
-			save_row.add_child(delete)
-			saves.add_child(save_row)
-	if saves.get_child_count() > 0:
-		var saves_panel := PanelContainer.new()
-		saves_panel.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD, MHStyle.BORDER_SUBTLE, 8, 1, Vector4(16, 14, 16, 14)))
-		saves_panel.position = Vector2(640, 620)
-		saves_panel.custom_minimum_size = Vector2(380, 0)
-		screen.add_child(saves_panel)
-		var scroll := ScrollContainer.new()
-		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-		scroll.custom_minimum_size = Vector2(348, minf(saves.get_combined_minimum_size().y, 330.0))
-		saves_panel.add_child(scroll)
-		saves.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		scroll.add_child(saves)
 	var row := MHStyle.hbox(12)
 	var settings := MHStyle.button("Settings", "ghost", "settings")
 	settings.pressed.connect(_open_settings)
@@ -414,153 +376,218 @@ func _title_screen() -> void:
 		var h := MHStyle.control_hint(hint[0], hint[1])
 		h.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		bar.add_child(h)
-	hero.grab_focus.call_deferred()
+	(menu.get_child(0) as Control).grab_focus.call_deferred()
 
-# ---------- the habitat library (scripts/habitat_library.gd) ----------
+# ---------- the Saves screen (scripts/saves.gd) ----------
 
-var _library_query := ""
-var _library_sort := 0          # newest, name, site, biggest
-var _library_note := ""
-var _library_grid: GridContainer
-const LIBRARY_SORTS := ["Newest first", "Name", "Site", "Biggest"]
+var _saves_query := ""
+var _saves_sort := 0            # see SAVES_SORTS
+var _saves_filter := 0          # all, free play, missions
+var _saves_note := ""
+var _saves_grid: GridContainer
+var _renaming := ""             # path of the card being renamed
+const SAVES_SORTS := ["Newest first", "Name", "Builder", "Site", "Biggest", "Longest on Mars"]
+const SAVES_FILTERS := ["All modes", "Free play", "Missions"]
 
-func _library_screen() -> void:
+func _saves_screen() -> void:
 	_scrim("right", 1.0, .9)
 	var head := MHStyle.vbox(10)
-	_place(head, Vector2(120, 80), 1680)
-	head.add_child(MHStyle.eyebrow("Your collection", MHStyle.accent, 16))
+	_place(head, Vector2(120, 70), 1680)
+	head.add_child(MHStyle.eyebrow("Every base, one file each", MHStyle.accent, 16))
 	var title_row := MHStyle.hbox(16)
 	head.add_child(title_row)
-	title_row.add_child(MHStyle.display("Habitat library", 56))
+	title_row.add_child(MHStyle.display("Saves", 56))
 	title_row.add_child(MHStyle.spacer())
-	var tools := MHStyle.hbox(12)
-	tools.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	title_row.add_child(tools)
-	var search := LineEdit.new()
-	search.placeholder_text = "Search names and sites"
-	search.text = _library_query
-	search.clear_button_enabled = true
-	search.custom_minimum_size = Vector2(320, 48)
-	search.text_changed.connect(func(text: String) -> void:
-		_library_query = text
-		_fill_library())
-	tools.add_child(search)
-	var sort := OptionButton.new()
-	for label in LIBRARY_SORTS: sort.add_item(label)
-	sort.selected = _library_sort
-	sort.custom_minimum_size = Vector2(190, 48)
-	sort.item_selected.connect(func(index: int) -> void:
-		_library_sort = index
-		_fill_library())
-	tools.add_child(sort)
+	var showcase := MHStyle.button("Showcase", "primary", "presentation", 48)
+	showcase.tooltip_text = "Tour every base shown here in turn, unattended, until a key is pressed (nothing is saved)"
+	showcase.pressed.connect(_start_showcase)
+	showcase.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	title_row.add_child(showcase)
 	var folder := MHStyle.button("Open folder", "ghost", "package", 48)
-	folder.tooltip_text = MHHabitatLibrary.directory()
-	folder.pressed.connect(func() -> void: OS.shell_open(MHHabitatLibrary.directory()))
-	tools.add_child(folder)
+	folder.tooltip_text = MHSaves.directory()
+	folder.pressed.connect(func() -> void: OS.shell_open(MHSaves.directory()))
+	folder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	title_row.add_child(folder)
 	var back := MHStyle.button("Back", "ghost", "chevron-left", 48)
 	back.pressed.connect(func() -> void: show_screen("title"))
-	tools.add_child(back)
-	var note := MHStyle.body(_library_note if not _library_note.is_empty() else "Export a base from the pause screen (Save & load), or drop .habitat files on this window. Files live in Documents/Outpost One/Habitats.", 16, MHStyle.TEXT_MUTED)
-	if not _library_note.is_empty(): note.add_theme_color_override("font_color", MHStyle.VALID)
-	_library_note = ""
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	title_row.add_child(back)
+	var tools := MHStyle.hbox(12)
+	head.add_child(tools)
+	var search := LineEdit.new()
+	search.placeholder_text = "Search names, builders, groups and sites"
+	search.text = _saves_query
+	search.clear_button_enabled = true
+	search.custom_minimum_size = Vector2(460, 46)
+	search.text_changed.connect(func(text: String) -> void:
+		_saves_query = text
+		_fill_saves())
+	tools.add_child(search)
+	var filter := OptionButton.new()
+	for label in SAVES_FILTERS: filter.add_item(label)
+	filter.selected = _saves_filter
+	filter.custom_minimum_size = Vector2(180, 46)
+	filter.item_selected.connect(func(index: int) -> void:
+		_saves_filter = index
+		_fill_saves())
+	tools.add_child(filter)
+	var sort := OptionButton.new()
+	for label in SAVES_SORTS: sort.add_item(label)
+	sort.selected = _saves_sort
+	sort.custom_minimum_size = Vector2(200, 46)
+	sort.item_selected.connect(func(index: int) -> void:
+		_saves_sort = index
+		_fill_saves())
+	tools.add_child(sort)
+	var note := MHStyle.body(_saves_note if not _saves_note.is_empty() else "Saved in Documents/Outpost One/Saves. To bring bases from other computers, copy their files into that folder, or drop them on this window.", 15, MHStyle.TEXT_MUTED)
+	if not _saves_note.is_empty(): note.add_theme_color_override("font_color", MHStyle.VALID)
+	_saves_note = ""
 	head.add_child(note)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.position = Vector2(120, 270)
-	scroll.size = Vector2(1680, 700)
+	scroll.position = Vector2(120, 300)
+	scroll.size = Vector2(1700, 690)
 	screen.add_child(scroll)
-	_library_grid = GridContainer.new()
-	_library_grid.columns = 4
-	_library_grid.add_theme_constant_override("h_separation", 20)
-	_library_grid.add_theme_constant_override("v_separation", 20)
-	scroll.add_child(_library_grid)
-	_fill_library()
+	_saves_grid = GridContainer.new()
+	_saves_grid.columns = 3
+	_saves_grid.add_theme_constant_override("h_separation", 20)
+	_saves_grid.add_theme_constant_override("v_separation", 20)
+	scroll.add_child(_saves_grid)
+	_fill_saves()
 	search.grab_focus.call_deferred()
 
-func _fill_library() -> void:
-	if _library_grid == null or not is_instance_valid(_library_grid): return
-	for child in _library_grid.get_children(): child.queue_free()
-	var query := _library_query.strip_edges().to_lower()
-	var habitats: Array = MHHabitatLibrary.entries().filter(func(h): return query.is_empty() or (str(h.get("name", "")) + " " + str(h.get("site_name", "")) + " " + str(h.get("colony_name", ""))).to_lower().contains(query))
-	match _library_sort:
-		0: habitats.sort_custom(func(a, b): return int(a.modified) > int(b.modified))
-		1: habitats.sort_custom(func(a, b): return str(a.name).naturalnocasecmp_to(str(b.name)) < 0)
-		2: habitats.sort_custom(func(a, b): return str(a.site_name) + str(a.name) < str(b.site_name) + str(b.name))
-		3: habitats.sort_custom(func(a, b): return int(a.get("rooms", 0)) > int(b.get("rooms", 0)))
-	if habitats.is_empty():
-		var empty := MHStyle.body("No habitats yet." if query.is_empty() else "No habitats match \"%s\"." % _library_query, 20, MHStyle.TEXT_SECONDARY)
-		_library_grid.add_child(empty)
-		return
-	for habitat in habitats: _library_grid.add_child(_library_card(habitat))
+## The saves shown, after search, the mode filter and the sort.
+func _shown_saves() -> Array:
+	var query := _saves_query.strip_edges().to_lower()
+	var saves: Array = MHSaves.entries().filter(func(h):
+		var group := MHGame.save_set_for_mode(str(h.get("game_mode", "")))
+		if _saves_filter == 1 and group != "free_play": return false
+		if _saves_filter == 2 and group != "missions": return false
+		var words := " ".join([h.get("name", ""), h.get("builder", ""), h.get("group", ""), h.get("site_name", ""), h.get("colony_name", "")]).to_lower()
+		return query.is_empty() or words.contains(query))
+	match _saves_sort:
+		1: saves.sort_custom(func(a, b): return str(a.name).naturalnocasecmp_to(str(b.name)) < 0)
+		2: saves.sort_custom(func(a, b): return (str(a.get("builder", "")) + str(a.name)).naturalnocasecmp_to(str(b.get("builder", "")) + str(b.name)) < 0)
+		3: saves.sort_custom(func(a, b): return str(a.site_name) + str(a.name) < str(b.site_name) + str(b.name))
+		4: saves.sort_custom(func(a, b): return int(a.get("rooms", 0)) > int(b.get("rooms", 0)))
+		5: saves.sort_custom(func(a, b): return int(a.get("sols", 0)) > int(b.get("sols", 0)))
+	return saves
 
-func _library_card(habitat: Dictionary) -> Control:
+func _fill_saves() -> void:
+	if _saves_grid == null or not is_instance_valid(_saves_grid): return
+	for child in _saves_grid.get_children(): child.queue_free()
+	var saves := _shown_saves()
+	if saves.is_empty():
+		_saves_grid.add_child(MHStyle.body("No saves yet." if _saves_query.strip_edges().is_empty() and _saves_filter == 0 else "No saves match.", 20, MHStyle.TEXT_SECONDARY))
+		return
+	for save in saves: _saves_grid.add_child(_save_card(save))
+
+func _save_card(save: Dictionary) -> Control:
+	var path := str(save.path)
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD, MHStyle.BORDER_SUBTLE, 10, 1, Vector4(12, 12, 12, 14)))
-	card.custom_minimum_size = Vector2(400, 0)
-	var col := MHStyle.vbox(8)
+	card.custom_minimum_size = Vector2(540, 0)
+	var col := MHStyle.vbox(6)
 	card.add_child(col)
-	var texture := MHHabitatLibrary.thumbnail(habitat)
+	var texture := MHSaves.thumbnail(save)
 	if texture != null:
 		var picture := TextureRect.new()
-		picture.custom_minimum_size = Vector2(376, 211)
+		picture.custom_minimum_size = Vector2(516, 290)
 		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		picture.texture = texture
 		col.add_child(picture)
 	else:
 		var blank := PanelContainer.new()
-		blank.custom_minimum_size = Vector2(376, 211)
+		blank.custom_minimum_size = Vector2(516, 290)
 		blank.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.INK_950, MHStyle.BORDER_SUBTLE, 6))
 		var glyph := MHStyle.icon("house", 48, MHStyle.TEXT_MUTED)
 		glyph.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		glyph.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		blank.add_child(glyph)
 		col.add_child(blank)
-	var name_label := MHStyle.label(str(habitat.get("name", "Habitat")), 20, MHStyle.TEXT_PRIMARY, 700)
-	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	name_label.custom_minimum_size.x = 376
-	col.add_child(name_label)
-	var mode := str(MHGame.GAME_MODES.get(MHGame.normalise_mode(str(habitat.get("game_mode", "survival"))), "Missions"))
-	col.add_child(MHStyle.body("%s · %s · %d rooms · %d items" % [habitat.get("site_name", "Mars"), mode, int(habitat.get("rooms", 0)), int(habitat.get("items", 0))], 14, MHStyle.TEXT_MUTED))
-	col.add_child(MHStyle.mono("Exported %s" % MHPauseMenu._when(str(habitat.get("saved_at", ""))), 12, MHStyle.TEXT_MUTED))
+	if _renaming == path:
+		var rename_box := LineEdit.new()
+		rename_box.text = str(save.get("name", ""))
+		rename_box.max_length = 60
+		rename_box.custom_minimum_size = Vector2(516, 40)
+		rename_box.text_submitted.connect(func(value: String) -> void:
+			_renaming = ""
+			if not value.strip_edges().is_empty(): MHSaves.rename(path, value)
+			show_screen("saves"))
+		col.add_child(rename_box)
+		rename_box.grab_focus.call_deferred()
+		rename_box.select_all.call_deferred()
+	else:
+		var name_label := MHStyle.label(str(save.get("name", "Habitat")), 20, MHStyle.TEXT_PRIMARY, 700)
+		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		name_label.custom_minimum_size.x = 516
+		col.add_child(name_label)
+	var maker := str(save.get("builder", ""))
+	if not str(save.get("group", "")).is_empty(): maker = (maker + " · " if not maker.is_empty() else "") + str(save.group)
+	col.add_child(MHStyle.body("by " + maker if not maker.is_empty() else "Builder not named", 15, MHStyle.accent if not maker.is_empty() else MHStyle.TEXT_MUTED))
+	col.add_child(MHStyle.body("%s · %s" % [MHSaves.mode_label(save), save.get("site_name", "Mars")], 14, MHStyle.TEXT_SECONDARY))
+	var size_line := "%d rooms · %d items" % [int(save.get("rooms", 0)), int(save.get("items", 0))]
+	if save.has("crew"): size_line = "%d crew · %s" % [int(save.crew), size_line]
+	if save.has("sols"): size_line += " · sol %d" % int(save.sols)
+	col.add_child(MHStyle.body(size_line, 14, MHStyle.TEXT_MUTED))
+	col.add_child(MHStyle.mono("Saved %s" % MHPauseMenu._when(str(save.get("saved_at", ""))), 12, MHStyle.TEXT_MUTED))
 	var buttons := MHStyle.hbox(6)
 	col.add_child(buttons)
-	var path := str(habitat.path)
 	var play := MHStyle.button("Play", "primary", "play", 40)
-	play.tooltip_text = "Open it as a free-play game (your save slots aren't touched)"
-	play.pressed.connect(func() -> void:
-		if MHHabitatLibrary.prepare_play(path): show_screen("loading"))
+	play.tooltip_text = "Carry on with this base (saving updates this save)"
+	play.pressed.connect(_open_save.bind(path))
 	buttons.add_child(play)
 	var tour := MHStyle.button("", "ghost", "presentation", 40)
 	tour.tooltip_text = "Tour: watch it present itself, or press F to fly round it (never saved)"
 	tour.pressed.connect(func() -> void:
-		if MHHabitatLibrary.prepare_play(path, true): show_screen("loading"))
+		MHSaves.playlist = []
+		if MHSaves.prepare_load(path, true): show_screen("loading"))
 	buttons.add_child(tour)
-	var to_slot := MHStyle.button("", "ghost", "save", 40)
-	to_slot.tooltip_text = "Copy it to the first empty free-play save slot"
-	to_slot.pressed.connect(func() -> void:
-		var slot := MHHabitatLibrary.copy_to_slot(path)
-		_library_note = ("Copied to free-play slot %d." % slot) if slot > 0 else "All six free-play slots are full: delete one on the title screen first."
-		show_screen("library"))
-	buttons.add_child(to_slot)
+	var copy := MHStyle.button("", "ghost", "package", 40)
+	copy.tooltip_text = "Duplicate: a separate copy of this save"
+	copy.pressed.connect(func() -> void:
+		var made := MHSaves.duplicate_save(path)
+		_saves_note = ("Duplicated as \"%s\"." % str(MHSaves.read_header(made).get("name", ""))) if not made.is_empty() else "Couldn't duplicate it."
+		show_screen("saves"))
+	buttons.add_child(copy)
+	var rename := MHStyle.button("", "ghost", "pencil", 40)
+	rename.tooltip_text = "Rename (type the new name, then Enter)"
+	rename.pressed.connect(func() -> void:
+		_renaming = path
+		show_screen("saves"))
+	buttons.add_child(rename)
 	buttons.add_child(MHStyle.spacer())
 	var remove := MHStyle.button("", "ghost", "trash-2", 40)
-	remove.tooltip_text = "Remove it from the library"
+	remove.tooltip_text = "Delete this save (its last few backups stay in Saves/Backups)"
 	remove.pressed.connect(func() -> void:
 		if remove.text.is_empty():
-			remove.text = "Remove?"
+			remove.text = "Delete?"
 			remove.theme_type_variation = "DangerButton"
 			return
-		MHHabitatLibrary.remove(path)
-		show_screen("library"))
+		MHSaves.remove(path)
+		show_screen("saves"))
 	buttons.add_child(remove)
 	return card
 
+## Showcase: tour every save shown, one after another (scripts/showcase.gd
+## moves on to the next when a base's tour has played through).
+func _start_showcase() -> void:
+	var paths: Array = _shown_saves().map(func(h): return str(h.path))
+	if paths.is_empty(): return
+	MHSaves.playlist = paths
+	MHSaves.playlist_index = 0
+	if MHSaves.prepare_load(str(paths[0]), true): show_screen("loading")
+
 func _on_files_dropped(files: PackedStringArray) -> void:
 	if screen_id == "loading": return
-	var added := MHHabitatLibrary.import_files(files)
-	_library_note = ("Added %d habitat%s to the library." % [added, "" if added == 1 else "s"]) if added > 0 else "Nothing added: drop .habitat files, or a game's slot_N.save."
-	show_screen("library")
+	var added := MHSaves.import_files(files)
+	_saves_note = ("Added %d save%s." % [added, "" if added == 1 else "s"]) if added > 0 else "Nothing added: drop Outpost One save files (.save) or older .habitat files."
+	show_screen("saves")
+
+## Play a save (Continue, Continue missions, a card's Play).
+func _open_save(path: String) -> void:
+	if MHSaves.prepare_load(path): show_screen("loading")
 
 func _load_slot(slot: int, save_set := "") -> void:
 	if MHGame.prepare_habitat_load(slot, save_set):
@@ -808,19 +835,34 @@ func _colony_screen() -> void:
 	var mode_note := "Set up your base step by step, the way NASA would: choose landing zones, send the cargo first, test everything, then land the crew." if MHGame.game_mode == "missions" else str(MHGame.GAME_MODE_NOTES.get(MHGame.game_mode, "")) + cargo_note
 	mode_box.add_child(MHStyle.body(mode_note, 14, MHStyle.TEXT_MUTED))
 	form.add_child(mode_box)
-	# Missions: the player's name, only for the exported mission dossier.
-	if MHGame.game_mode == "missions":
-		var name_box_player := MHStyle.vbox(6)
-		name_box_player.add_child(MHStyle.eyebrow("Commander's name (for your mission log)"))
-		var commander := LineEdit.new()
-		commander.max_length = 40
-		commander.placeholder_text = "Optional"
-		commander.text = MHMissions.player_name()
-		commander.custom_minimum_size.y = 44
-		commander.text_changed.connect(func(text: String) -> void: MHMissions.set_player_name(text))
-		name_box_player.add_child(commander)
-		name_box_player.add_child(MHStyle.body("Only printed on your exported mission log. You can change it when you export.", 14, MHStyle.TEXT_MUTED))
-		form.add_child(name_box_player)
+	# Who's building: on every save's card, in Tour ("Designed by") and on a
+	# Missions dossier. Remembered for next time.
+	var maker := MHGame.maker()
+	var maker_box := MHStyle.vbox(6)
+	maker_box.add_child(MHStyle.eyebrow("Your name · class or group"))
+	var maker_row := MHStyle.hbox(10)
+	var player_box := LineEdit.new()
+	player_box.max_length = 40
+	player_box.placeholder_text = "Your name (optional)"
+	player_box.text = str(maker.name) if not str(maker.name).is_empty() else MHMissions.player_name()
+	player_box.custom_minimum_size.y = 44
+	player_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	maker_row.add_child(player_box)
+	var group_box := LineEdit.new()
+	group_box.max_length = 40
+	group_box.placeholder_text = "Class or group (optional)"
+	group_box.text = str(maker.group)
+	group_box.custom_minimum_size.y = 44
+	group_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	maker_row.add_child(group_box)
+	var keep_maker := func(_text := "") -> void:
+		MHGame.set_maker(player_box.text, group_box.text)
+		MHMissions.set_player_name(player_box.text)
+	player_box.text_changed.connect(keep_maker)
+	group_box.text_changed.connect(keep_maker)
+	maker_box.add_child(maker_row)
+	maker_box.add_child(MHStyle.body("Shown on your saves and in Tour, so a showcase can say who built each base.", 14, MHStyle.TEXT_MUTED))
+	form.add_child(maker_box)
 	_name_field.text_changed.connect(func(text: String) -> void:
 		MHGame.colony_name = text.strip_edges()
 		counter.text = "%d / 24" % text.length()

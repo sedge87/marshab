@@ -14,12 +14,15 @@ extends Node
 ##   4. A sol in 60 seconds: the sun crosses, solar and batteries rise and
 ##      fall, the lights go from on to dim.
 ##   5. The story: the dossier's highlights (or what was built).
-## Live stats run along the bottom throughout. Space pauses the tour,
+## Live stats run along the bottom throughout. Started from the Saves screen's
+## Showcase, it tours every base shown there in turn: when one has played
+## through, the next loads (N skips to it), and it loops until Esc. Space pauses the tour,
 ## ←/→ skip, Esc returns to the menu. F takes the camera: fly round freely
 ## (WASD, mouse to look, Q/E down and up, Shift faster), and F again hands
 ## it back to the tour where it left off.
 
 const MHMissions := preload("res://scripts/mh_missions.gd")
+const MHSaves := preload("res://scripts/saves.gd")   # the Showcase playlist
 const MONITOR := preload("res://scripts/habitat_monitor.gd")
 const ORBIT_SECONDS := 26.0
 const MAST_SECONDS := 9.0
@@ -156,6 +159,10 @@ func _process(delta: float) -> void:
 	_t += delta
 	var shot: Dictionary = _shots[_index]
 	if _t >= float(shot.seconds):
+		# The end of this base's tour: in a Showcase, on to the next base.
+		if _index == _shots.size() - 1 and MHSaves.playlist.size() > 1:
+			_next_base()
+			return
 		_begin(_index + 1)
 		return
 	var f := _t / float(shot.seconds)
@@ -315,7 +322,7 @@ func _build_overlay() -> void:
 	row.add_child(_paused_label)
 	bar.add_child(row)
 	root.add_child(bar)
-	var keys := MHStyle.mono("SPACE PAUSE · LEFT/RIGHT SKIP · F FREE CAMERA · ESC MENU", 13, Color(1, 1, 1, .55))
+	var keys := MHStyle.mono(("SPACE PAUSE · LEFT/RIGHT SKIP · N NEXT BASE (%d/%d) · F FREE CAMERA · ESC MENU" % [MHSaves.playlist_index + 1, MHSaves.playlist.size()]) if MHSaves.playlist.size() > 1 else "SPACE PAUSE · LEFT/RIGHT SKIP · F FREE CAMERA · ESC MENU", 13, Color(1, 1, 1, .55))
 	keys.anchor_left = 1.0
 	keys.anchor_right = 1.0
 	keys.offset_left = -600
@@ -344,11 +351,19 @@ func _build_overlay() -> void:
 	var site := MHStyle.eyebrow("%s · Mars" % MHGame.site_name(), MHStyle.accent, 20)
 	site.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card.add_child(site)
-	var commander := MHMissions.player_name() if MHGame.game_mode == "missions" else ""
-	if not commander.is_empty():
-		var by := MHStyle.body("Designed by %s" % commander, 28, MHStyle.TEXT_PRIMARY)
+	# Who built it and with whom, saved with the base (scripts/saves.gd).
+	var made_by: Dictionary = world.made_by if not (world.made_by as Dictionary).is_empty() else MHGame.maker()
+	var commander := str(made_by.get("name", ""))
+	if commander.is_empty() and MHGame.game_mode == "missions": commander = MHMissions.player_name()
+	if not commander.is_empty() or not str(made_by.get("group", "")).is_empty():
+		var by_text := "Designed by %s" % commander if not commander.is_empty() else ""
+		if not str(made_by.get("group", "")).is_empty(): by_text = (by_text + " · " if not by_text.is_empty() else "") + str(made_by.group)
+		var by := MHStyle.body(by_text, 28, MHStyle.TEXT_PRIMARY)
 		by.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card.add_child(by)
+	var mode := MHStyle.mono(str(MHGame.GAME_MODES.get(MHGame.game_mode, "Missions")).to_upper(), 15, MHStyle.TEXT_SECONDARY)
+	mode.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	card.add_child(mode)
 	if not MHGame.mission_statement.strip_edges().is_empty():
 		var statement := MHStyle.body("“%s”" % MHGame.mission_statement.strip_edges(), 20, MHStyle.TEXT_SECONDARY)
 		statement.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -431,8 +446,21 @@ func _input(event: InputEvent) -> void:
 		KEY_SPACE: if not free: paused = not paused
 		KEY_RIGHT: if not free: _begin(_index + 1)
 		KEY_LEFT: if not free: _begin(_index - 1)
+		KEY_N: if MHSaves.playlist.size() > 1: _next_base()
 		KEY_ESCAPE:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 			_end_shot()
 			MHGame.showcase = false
+			MHSaves.playlist = []
 			world._return_menu()
+
+## Showcase: load the next base in the playlist (looping), still as a Tour.
+func _next_base() -> void:
+	if MHSaves.playlist.is_empty(): return
+	_end_shot()
+	for step in MHSaves.playlist.size():
+		MHSaves.playlist_index = (MHSaves.playlist_index + 1) % MHSaves.playlist.size()
+		if MHSaves.prepare_load(str(MHSaves.playlist[MHSaves.playlist_index]), true):
+			get_tree().paused = false
+			get_tree().reload_current_scene()
+			return

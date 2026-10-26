@@ -378,8 +378,8 @@ static func prepare_habitat_load(slot: int, save_set := "") -> bool:
 	var payload := load_habitat(slot, save_set)
 	return prepare_state_load(payload.get("state", {}))
 
-## Gets the game ready to open a saved state (from a slot or the habitat
-## library, scripts/habitat_library.gd).
+## Gets the game ready to open a saved state (a save file, scripts/saves.gd,
+## or an old numbered slot).
 static func prepare_state_load(state: Dictionary) -> bool:
 	if state.is_empty():
 		return false
@@ -559,6 +559,9 @@ static func defaults() -> Dictionary:
 	d["tutorial_cards"] = true
 	d["tutorial_finished"] = false
 	d["live_hazards"] = true
+	## Who's playing: shown on their saves and in Tour ("Designed by").
+	d["commander"] = ""
+	d["group"] = ""
 	## Missions offer only each mission's kit unless this is on.
 	d["mission_full_catalogue"] = false
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
@@ -603,6 +606,17 @@ static func load_settings() -> void:
 	if file.load(SETTINGS_PATH) != OK: return
 	for key in _settings.keys():
 		_settings[key] = file.get_value(_section(key), key, _settings[key])
+
+## Who made a base: the player's name and class or group (title screen),
+## saved with every base so its card and Tour can say "Designed by".
+static func maker() -> Dictionary:
+	return {"name": str(setting("commander")), "group": str(setting("group"))}
+
+static func set_maker(player: String, group: String) -> void:
+	var values := settings()
+	values["commander"] = player.strip_edges().left(40)
+	values["group"] = group.strip_edges().left(40)
+	save_settings(values)
 
 static func save_settings(values: Dictionary) -> void:
 	_settings = values.duplicate()

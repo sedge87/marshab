@@ -1,4 +1,5 @@
 extends CanvasLayer
+const MHSaves := preload("res://scripts/saves.gd")   # named saves
 const MHDossier := preload("res://scripts/mh_dossier.gd")
 
 ## Missions mode on screen: the mission panel (top right) with the step
@@ -655,56 +656,33 @@ func _complete_mission() -> void:
 ## The next mission starts from the saved base, so its arrival plays.
 func _start_next_mission() -> void:
 	world.save_mission_progress()
-	if MHGame.prepare_habitat_load(1, "missions"):
+	if MHSaves.prepare_load(MHSaves.current_path):
 		get_tree().paused = false
 		get_tree().reload_current_scene()
 
-var _carry_slot := -1   # a full Free play slot chosen to replace
-
 ## After the final mission: what they achieved, then carry a copy of the base
-## into free play. The finished campaign stays in the Missions saves.
+## into free play as a new save. The finished campaign stays as it is.
 func _campaign_wrap_up(column: VBoxContainer) -> void:
 	var tested := 0
 	for mission in MHMissions.missions(): tested += MHMissions.versions(str(mission.id)).size()
 	column.add_child(_wrapped("That was the final mission: the campaign is complete. Across all %d missions you tested %d designs. Your base kept six people alive, fit and well for 200 sols on their own, through breakdowns, radiation and a blackout, in three different futures." % [MHMissions.missions().size(), tested], 20, MHStyle.TEXT_PRIMARY, 1100))
 	column.add_child(MHStyle.eyebrow("Carry on with your base", MHStyle.accent, 13))
-	column.add_child(_wrapped("A copy goes into your Free play saves. The finished campaign stays in the Missions saves, untouched.", 16, MHStyle.TEXT_SECONDARY, 1100))
-	var slot := _carry_slot
-	for candidate in range(1, MHGame.SAVE_SLOT_COUNT + 1):
-		if slot < 0 and not bool(MHGame.save_slot_summary(candidate, "free_play").get("exists", false)): slot = candidate
-	if slot < 0:
-		# Every Free play slot is used (Missions saves are separate):
-		# choose one to replace, right here.
-		column.add_child(_wrapped("All %d of your Free play save slots are in use (your Missions save is kept separately). Choose one to replace:" % MHGame.SAVE_SLOT_COUNT, 16, MHStyle.WARN, 1100))
-		var slots := GridContainer.new()
-		slots.columns = 2
-		slots.add_theme_constant_override("h_separation", 12)
-		slots.add_theme_constant_override("v_separation", 10)
-		for candidate in range(1, MHGame.SAVE_SLOT_COUNT + 1):
-			var summary := MHGame.save_slot_summary(candidate, "free_play")
-			var replace := MHStyle.button("Replace slot %d · %s · %s" % [candidate, str(summary.get("colony_name", "Habitat")), str(summary.get("saved_at", "")).get_slice(" ", 0)], "secondary", "save")
-			replace.pressed.connect(func() -> void:
-				_carry_slot = candidate
-				for child in column.get_children(): child.queue_free()
-				_campaign_wrap_up(column))
-			slots.add_child(replace)
-		column.add_child(slots)
-		return
-	if _carry_slot > 0: column.add_child(_wrapped("Your base will replace Free play slot %d." % _carry_slot, 16, MHStyle.TEXT_SECONDARY, 1100))
+	column.add_child(_wrapped("A copy becomes a new free-play save. The finished campaign stays in its own save, untouched.", 16, MHStyle.TEXT_SECONDARY, 1100))
 	var buttons := MHStyle.hbox(12)
 	for mode in [["survival", "Survival", "Keep living there for real."], ["freedom", "Freedom", "Keep expanding without risk."], ["creative", "Creative", "Unlimited cargo: build your dream base."]]:
 		var button := MHStyle.button("%s · %s" % [mode[1], mode[2]], "primary" if mode[0] == "survival" else "secondary", "rocket")
-		button.pressed.connect(_carry_on.bind(str(mode[0]), slot))
+		button.pressed.connect(_carry_on.bind(str(mode[0])))
 		buttons.add_child(button)
 	column.add_child(buttons)
 
-func _carry_on(mode: String, slot: int) -> void:
+func _carry_on(mode: String) -> void:
 	var state: Dictionary = world.current_state()
 	state["game_mode"] = mode
 	state["missions_progress"] = {}
 	state["campaign_record"] = MHMissions.save_state()
-	if MHGame.save_habitat(slot, state, "free_play") != OK: return
-	if MHGame.prepare_habitat_load(slot, "free_play"):
+	var path := MHSaves.save_copy("%s (%s)" % [MHGame.colony_name, str(MHGame.GAME_MODES.get(mode, mode))], state, null, world.save_details())
+	if path.is_empty(): return
+	if MHSaves.prepare_load(path):
 		get_tree().paused = false
 		get_tree().reload_current_scene()
 
