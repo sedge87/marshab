@@ -1,4 +1,5 @@
 extends Node3D
+const MHHabitatLibrary := preload("res://scripts/habitat_library.gd")   # the habitat library
 
 const WEATHER_SCRIPT := preload("res://scripts/weather.gd")
 const SITE_WEATHER := preload("res://scripts/site_weather.gd")
@@ -878,6 +879,7 @@ func _show_pause() -> void:
 	pause_menu.settings.connect(_open_settings)
 	pause_menu.save_requested.connect(_save_habitat)
 	pause_menu.load_requested.connect(_load_habitat)
+	pause_menu.export_requested.connect(_export_to_library)
 	pause_menu.exit_to_menu.connect(_return_menu)
 	overlay_layer.add_child(pause_menu)
 
@@ -900,6 +902,25 @@ func _unpause() -> void:
 	MHAudio.muffle(false)
 	var needs_cursor := builder.build_mode or (interior_builder != null and interior_builder.wants_cursor())
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if needs_cursor else Input.MOUSE_MODE_CAPTURED
+
+## Pause screen → Export to library: a copy of this base, with a picture of
+## it taken with the menus and HUD briefly hidden (scripts/habitat_library.gd).
+func _export_to_library(habitat_name: String) -> void:
+	if builder == null: return
+	var hidden: Array[CanvasLayer] = []
+	for layer in get_tree().root.find_children("*", "CanvasLayer", true, false):
+		if (layer as CanvasLayer).visible:
+			(layer as CanvasLayer).visible = false
+			hidden.append(layer)
+	for i in 2: await RenderingServer.frame_post_draw
+	var picture := get_viewport().get_texture().get_image()
+	for layer in hidden:
+		if is_instance_valid(layer): layer.visible = true
+	var path: String = MHHabitatLibrary.export_habitat(habitat_name if not habitat_name.strip_edges().is_empty() else MHGame.colony_name, current_state(), picture)
+	MHAudio.sfx("ui_confirm" if not path.is_empty() else "invalid", 0.0, 0.0)
+	if pause_menu != null:
+		if path.is_empty(): pause_menu.show_save_status("invalid", "Couldn't export: is the Documents folder available?")
+		else: pause_menu.show_save_status("valid", "Exported to your habitat library as \"%s\"." % path.get_file().get_basename())
 
 func _return_menu() -> void:
 	get_tree().paused = false

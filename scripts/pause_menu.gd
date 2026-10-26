@@ -13,6 +13,7 @@ signal settings
 signal exit_to_menu
 signal save_requested(slot: int)
 signal load_requested(slot: int)
+signal export_requested(habitat_name: String)
 
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
 
@@ -124,6 +125,24 @@ func _build_saves() -> Control:
 	_save_status = MHStyle.body("", 15, MHStyle.TEXT_MUTED)
 	col.add_child(_save_status)
 	col.add_child(MHStyle.body("Saving over a slot asks you to click again first. Loading replaces the base you're in now.", 14, MHStyle.TEXT_MUTED))
+	# The habitat library (scripts/habitat_library.gd): any number of named
+	# bases, kept apart from the slots. Browse them from the title screen.
+	col.add_child(MHStyle.eyebrow("Habitat library", MHStyle.accent, 13))
+	var export_row := MHStyle.hbox(10)
+	var name_box := LineEdit.new()
+	name_box.text = MHGame.colony_name
+	name_box.placeholder_text = "Name this habitat"
+	name_box.max_length = 60
+	name_box.custom_minimum_size = Vector2(0, 44)
+	name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	export_row.add_child(name_box)
+	var export := MHStyle.button("Export to library", "secondary", "package", 44)
+	export.tooltip_text = "Keep a copy of this base in your habitat library, under this name"
+	export.pressed.connect(func() -> void: export_requested.emit(name_box.text))
+	name_box.text_submitted.connect(func(text: String) -> void: export_requested.emit(text))
+	export_row.add_child(export)
+	col.add_child(export_row)
+	col.add_child(MHStyle.body("Saved as a file in Documents/Outpost One/Habitats. Open them from Habitat library on the title screen, or send the file to another computer.", 14, MHStyle.TEXT_MUTED))
 	return sheet
 
 # A card per slot: what's in it and when it was saved, with Save and Load.

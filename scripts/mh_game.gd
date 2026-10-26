@@ -376,7 +376,11 @@ static func save_slot_summary(slot: int, save_set := "") -> Dictionary:
 
 static func prepare_habitat_load(slot: int, save_set := "") -> bool:
 	var payload := load_habitat(slot, save_set)
-	var state: Dictionary = payload.get("state", {})
+	return prepare_state_load(payload.get("state", {}))
+
+## Gets the game ready to open a saved state (from a slot or the habitat
+## library, scripts/habitat_library.gd).
+static func prepare_state_load(state: Dictionary) -> bool:
 	if state.is_empty():
 		return false
 	pending_save_state = state
