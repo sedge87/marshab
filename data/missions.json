@@ -312,18 +312,6 @@
       "situation": "The habitat passed its checks, so the crew launched. Months later, their lander touches down inside your landing ellipse. Four people now depend on everything you built. Make the habitat a place they can live: beds, food, water and hygiene.",
       "brief": "You're one of four crew inside the lander. Outside is the base your robots built.",
       "goal": "Keep four crew safe for their first 10 sols: oxygen, carbon dioxide, water, food and temperature all in the safe range.",
-      "unlock_groups": [
-        "living",
-        "galley",
-        "hygiene",
-        "medical",
-        "general",
-        "storage",
-        "corridor",
-        "airlock",
-        "waste_management",
-        "communications"
-      ],
       "unlock_zones": [
         "waste_management",
         "communications"
@@ -409,6 +397,25 @@
         "Press T to test. You can walk around the base too: it's yours now."
       ],
       "unlock_items": [
+        "crew_bunk",
+        "locker",
+        "task_light",
+        "common_table",
+        "galley_kitchenette",
+        "galley_table_set",
+        "potable_water_dispenser",
+        "pantry_cabinet",
+        "hygiene_toilet",
+        "hygiene_shower",
+        "medical_cabinet",
+        "medical_exam_cot",
+        "first_aid_kit",
+        "waste_sorting_unit",
+        "communications_station",
+        "airlock_control_panel",
+        "suit_service_panel",
+        "corridor_light_strip",
+        "cargo_rack",
         "camera_mast",
         "comms_antenna"
       ]
@@ -519,10 +526,6 @@
         "science",
         "regolith_intake"
       ],
-      "unlock_groups": [
-        "hydroponics",
-        "science"
-      ],
       "steps": [
         {
           "id": "bunks",
@@ -617,6 +620,12 @@
       "step_hours": 0.5,
       "food_delivery_sols": 60,
       "unlock_items": [
+        "grow_tray",
+        "seedling_station",
+        "nutrient_mixer",
+        "science_workbench",
+        "microscope_station",
+        "sample_storage_cabinet",
         "regolith_printer"
       ]
     },
@@ -847,11 +856,21 @@
         "Everyone has a job, and a room to do it in. Someone without their work room loses heart.",
         "Injured crew can't work. The others cover, so work slows down until they recover."
       ],
-      "unlock_groups": [
-        "odds_and_ends"
-      ],
       "unlock_structures": [
         "upgrade_acoustic"
+      ],
+      "unlock_items": [
+        "exercise_station",
+        "lounge_sofa",
+        "table_football",
+        "games_shelf",
+        "music_station",
+        "plant_pot",
+        "paper_books",
+        "photo_frame",
+        "chess_set",
+        "guitar",
+        "herb_pot"
       ]
     },
     {

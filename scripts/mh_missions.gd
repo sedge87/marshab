@@ -100,6 +100,9 @@ static func zone_unlocked(kind: String) -> bool:
 
 static func item_unlocked(id: String) -> bool:
 	if not active(): return true
+	# Each mission delivers a small kit (data/missions.json "unlock_items"), so
+	# the build bars stay short; this setting opens the whole catalogue.
+	if bool(MHGame.setting("mission_full_catalogue")): return true
 	var group := str(EquipmentCatalog.get_entry(id).get("group", ""))
 	# An item a mission delivers by name arrives only with that mission, even
 	# if an earlier mission unlocked the rest of its group.
@@ -108,6 +111,53 @@ static func item_unlocked(id: String) -> bool:
 		if (mission.get("unlock_items", []) as Array).has(id): return true
 		if not named_later and (mission.get("unlock_groups", []) as Array).has(group): return true
 	return false
+
+## What meets each requirement, by its check: [rooms and site parts, items].
+## The build bars mark these NEEDED in the mission that asks for them.
+const CHECK_KIT := {
+	"always_powered": [["solar", "reactor"], ["battery_bank", "power_distribution_panel"]],
+	"life_support_powered": [["solar", "reactor"], ["battery_bank", "power_distribution_panel"]],
+	"water_per_sol": [["ice_extractor"], []],
+	"min_temp": [[], ["wall_cabin_heater", "portable_utility_heater", "thermal_control_unit"]],
+	"breathable": [["life_support"], ["oxygen_generator", "air_recycler", "oxygen_reserve_tank"]],
+	"crew_aboard": [["living"], ["crew_bunk"]],
+	"crew_safe": [["life_support", "galley"], ["oxygen_generator", "air_recycler", "water_reclaimer", "potable_water_dispenser", "wall_cabin_heater"]],
+	"crew_health_min": [["medical"], ["medical_cabinet"]],
+	"food_grown": [["hydroponics"], ["grow_tray", "seedling_station", "nutrient_mixer"]],
+	"research": [["science"], ["science_workbench", "microscope_station"]],
+	"research_total": [["science"], ["science_workbench", "microscope_station"]],
+	"shelter_ready": [[], ["storm_shelter_locker", "wall_cabin_heater"]],
+	"dose_max": [[], ["storm_shelter_locker"]],
+	"fitness_min": [[], ["exercise_station"]],
+	"wellbeing_min": [[], ["lounge_sofa", "table_football", "games_shelf", "music_station", "paper_books", "photo_frame", "guitar", "plant_pot"]],
+	"patient_recovered": [["medical"], ["medical_exam_cot", "medical_cabinet"]],
+	"pressure_min": [[], ["air_reserve_rack", "hull_patch_kit"]],
+	"breach_patched": [[], ["hull_patch_kit"]],
+	"breach_restored": [[], ["air_reserve_rack"]],
+	"systems_up": [[], ["spare_parts_rack"]],
+}
+
+## "needed" (it meets one of this mission's requirements), "new" (this
+## mission delivered it) or "": the build bars' badges. Missions only.
+static func item_badge(id: String) -> String:
+	return _badge(id, 1, "unlock_items")
+
+static func zone_badge(kind: String) -> String:
+	return _badge(kind, 0, "unlock_zones")
+
+static func _badge(id: String, slot: int, delivered_key: String) -> String:
+	if not active(): return ""
+	var mission := current()
+	for requirement in mission.get("requirements", []):
+		if (CHECK_KIT.get(str(requirement.get("check", "")), [[], []])[slot] as Array).has(id): return "needed"
+	if (mission.get(delivered_key, []) as Array).has(id): return "new"
+	return ""
+
+## Needed first, then new, then the rest (each keeping its order).
+static func badge_order(ids: Array, zones := false) -> Array:
+	var ranked := {"needed": [], "new": [], "": []}
+	for id in ids: (ranked[zone_badge(str(id)) if zones else item_badge(str(id))] as Array).append(id)
+	return ranked["needed"] + ranked["new"] + ranked[""]
 
 ## A Structure tool (wall and roof upgrades) delivered by a mission
 ## ("unlock_structures"); tools no mission names are always there.

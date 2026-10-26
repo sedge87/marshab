@@ -1046,9 +1046,10 @@ func _render_selector_cards() -> void:
 func _visible_ids() -> Array:
 	if _selector_group == STRUCTURE_TAB:
 		return STRUCTURE_TOOLS.map(func(tool): return str(tool.id))
+	# Missions: what this mission needs first, then what it just delivered.
 	if _selector_group == HERE_TAB:
-		return _selector_items.duplicate()
-	return _catalog_items.filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == _selector_group)
+		return MHMissions.badge_order(_selector_items)
+	return MHMissions.badge_order(_catalog_items.filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == _selector_group))
 
 func _structure_tool(id: String) -> Dictionary:
 	for tool in STRUCTURE_TOOLS:
@@ -1127,6 +1128,7 @@ func _card(id: String, index: int) -> Button:
 	var sub := MHStyle.mono(("%d  ·  %s" % [index, (MHStyle.kg(int(entry.get("cargo_cost", 0))) if fits else "NOT FOR THIS ROOM")]) if structure.is_empty() else "%d" % index, 11, MHStyle.TEXT_MUTED)
 	column.add_child(sub)
 	card.add_child(column)
+	if structure.is_empty(): BuildController.add_mission_badge(card, MHMissions.item_badge(id), selected)
 	card.pressed.connect(_pick_card.bind(id))
 	return card
 

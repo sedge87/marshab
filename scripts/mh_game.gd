@@ -555,6 +555,8 @@ static func defaults() -> Dictionary:
 	d["tutorial_cards"] = true
 	d["tutorial_finished"] = false
 	d["live_hazards"] = true
+	## Missions offer only each mission's kit unless this is on.
+	d["mission_full_catalogue"] = false
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
 	return d
 

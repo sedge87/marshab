@@ -6222,6 +6222,7 @@ func _refresh_catalogue() -> void:
 		# Rooms in alphabetical order; the other tabs keep their own order.
 		var ids:=ZONE_TYPES.keys()
 		if category=="rooms": ids.sort_custom(func(a,b): return str(ZONE_TYPES[a].label).naturalnocasecmp_to(str(ZONE_TYPES[b].label))<0)
+		ids=MHMissions.badge_order(ids,true)   # Missions: what's needed first, then what's new
 		for id in ids:
 			if str(ZONE_INFO[id].cat)!=category: continue
 			if not MHMissions.zone_unlocked(id): continue   # Missions: only this payload's parts
@@ -6319,7 +6320,19 @@ func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
 	var name_label:=MHStyle.label(str(ZONE_TYPES[id].label),14,MHStyle.TEXT_PRIMARY,600); name_label.clip_text=true; name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS; column.add_child(name_label)
 	var mass:=MHStyle.mono(("%s / cell" % MHStyle.kg(cell_cost(id))) if str(ZONE_INFO[id].cat)!="power" and (not id in SITE_UPGRADES or id=="shield_roof") else MHStyle.kg(cell_cost(id)),11,MHStyle.DANGER if unaffordable else MHStyle.TEXT_MUTED); column.add_child(mass)
 	card.set_meta("number_label",mass)
+	add_mission_badge(card,MHMissions.zone_badge(id),selected)
 	return card
+
+## Missions: a NEEDED (accent, outlined) or NEW tag in a build-bar card's
+## top-left corner.
+static func add_mission_badge(card: Button, badge: String, selected := false) -> void:
+	if badge.is_empty(): return
+	var tag:=MHStyle.badge("Needed" if badge=="needed" else "New","accent" if badge=="needed" else "info",badge=="needed")
+	tag.position=Vector2(10,10)
+	tag.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	card.add_child(tag)
+	if badge=="needed" and not selected:
+		card.add_theme_stylebox_override("normal",MHStyle.box(MHStyle.SURFACE_CONTROL,MHStyle.accent.darkened(.15),8,2,Vector4(8,8,8,8)))
 
 ## A card in the build bar: picture on top, then name and numbers.
 func _bar_card(selected: bool) -> Button:

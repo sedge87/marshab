@@ -503,7 +503,10 @@ func _unlocks_text(mission: Dictionary) -> String:
 		names.append(str(BuildController.ZONE_TYPES.get(kind, {}).get("label", kind)))
 	for id in mission.get("unlock_items", []):
 		names.append(str(EquipmentCatalog.get_entry(id).get("label", id)))
-	return ", ".join(names) if not names.is_empty() else "nothing new"
+	if names.is_empty(): return "nothing new"
+	# A crew delivery is a long list: the first few, then how many more.
+	if names.size() > 8: return "%s and %d more" % [", ".join(names.slice(0, 6)), names.size() - 6]
+	return ", ".join(names)
 
 func _best_ice() -> float:
 	var best := 0.0

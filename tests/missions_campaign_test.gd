@@ -70,7 +70,14 @@ func _initialize() -> void:
 	# --- Mission 4: four crew land ---
 	MHMissions.progress.current = "crew_land"
 	b.simulation().crew_cap = MHMissions.crew_cap()
-	_check(MHMissions.item_unlocked("crew_bunk") and MHMissions.item_unlocked("galley_rehydration_station") and not MHMissions.zone_unlocked("hydroponics"), "Mission 4 delivers the crew's furniture, not Hydroponics")
+	_check(MHMissions.item_unlocked("crew_bunk") and MHMissions.item_unlocked("galley_kitchenette") and not MHMissions.zone_unlocked("hydroponics"), "Mission 4 delivers the crew's furniture, not Hydroponics")
+	# Just the mission's kit: no office chairs or sofas yet, and what's needed is marked.
+	_check(not MHMissions.item_unlocked("crew_chair") and not MHMissions.item_unlocked("lounge_sofa"), "Mission 4 offers its kit, not the whole catalogue")
+	_check(MHMissions.item_badge("crew_bunk") == "needed" and MHMissions.item_badge("waste_sorting_unit") == "new" and MHMissions.item_badge("battery_bank") == "", "bunks are marked needed, the rest of the delivery new")
+	_check(MHMissions.badge_order(["locker", "battery_bank", "crew_bunk"]) == ["crew_bunk", "locker", "battery_bank"], "needed items come first in the build bar")
+	MHGame._settings["mission_full_catalogue"] = true
+	_check(MHMissions.item_unlocked("crew_chair"), "the Every item in Missions setting opens the whole catalogue")
+	MHGame._settings["mission_full_catalogue"] = false
 	b.zones.append(_room("galley", c, 6, 0, 2, 2))
 	b.zones.append(_room("hygiene", c, 4, 2, 2, 1))
 	b._rebuild()
