@@ -24,6 +24,10 @@ extends Node
 ## an airlock: "Welcome home" ("Welcome aboard" the first time).
 const MHResources := preload("res://scripts/mh_resources.gd")
 
+## The notification row's top and right edge: level with the readiness
+## panel's top, just left of it (explore_hud.gd: 104 down, 524 in).
+const ROW_TOP := 104
+const ROW_RIGHT := 540
 const LEVEL_RANK := {"": 0, "advisory": 1, "warning": 2, "critical": 3}
 const LEVEL_COLOUR := {"advisory": Color("#5DC8F9"), "warning": Color("#F5C542"), "critical": Color("#E5484D"), "resolved": Color("#3EE58A")}
 const LEVEL_SOUND := {"advisory": "ui_confirm", "warning": "storm_alert", "critical": "warn", "resolved": "all_clear"}
@@ -406,14 +410,16 @@ func _build_hud() -> void:
 	_edge.material = material
 	_edge.visible = false
 	root.add_child(_edge)
-	# The notification row: top middle, under the compass.
+	# The notification row: top right, lined up beside the readiness panel
+	# (like buffs beside a minimap), clear of the compass and the sol clock.
 	_icons = MHStyle.hbox(8)
-	_icons.anchor_left = .5
-	_icons.anchor_right = .5
-	_icons.offset_left = -400
-	_icons.offset_right = 400
-	_icons.offset_top = 150   # under the compass, its landmark labels and the sol clock
-	_icons.alignment = BoxContainer.ALIGNMENT_CENTER
+	_icons.anchor_left = 1
+	_icons.anchor_right = 1
+	_icons.offset_left = -ROW_RIGHT - 640
+	_icons.offset_right = -ROW_RIGHT
+	_icons.offset_top = ROW_TOP
+	_icons.alignment = BoxContainer.ALIGNMENT_END
+	_icons.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_icons)
 
@@ -529,11 +535,12 @@ func _fill_detail(id: String) -> void:
 	_shown_words = _detail_words(id)
 	if _detail != null and is_instance_valid(_detail): _detail.queue_free()
 	_detail = PanelContainer.new()
-	_detail.anchor_left = .5
-	_detail.anchor_right = .5
-	_detail.offset_left = -380
-	_detail.offset_right = 380
-	_detail.offset_top = 212
+	_detail.anchor_left = 1
+	_detail.anchor_right = 1
+	_detail.offset_left = -ROW_RIGHT - 700
+	_detail.offset_right = -ROW_RIGHT
+	_detail.offset_top = ROW_TOP + 64
+	_detail.grow_horizontal = Control.GROW_DIRECTION_BEGIN   # wider text grows left, away from the panel
 	_detail.mouse_filter = Control.MOUSE_FILTER_STOP
 	_detail.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, tone, 8, 2, Vector4(18, 12, 18, 14)))
 	var column := MHStyle.vbox(6)
