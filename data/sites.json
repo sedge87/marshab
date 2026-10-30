@@ -256,6 +256,106 @@
         "noon_altitude": 34,
         "horizon": 0
       }
+    },
+    {
+      "id": "region_plains",
+      "name": "Test Region · Plains",
+      "based_on": "Elysium Planitia",
+      "coordinates": "3.0° N, 154.7° E",
+      "terrain_profile": "elysium",
+      "blurb": "Prototype 6 km region: open plains among mesas. The crater is a drive away.",
+      "palette": "plains",
+      "icon": "sun",
+      "telemetry": {
+        "temperature": "−25 °C",
+        "outside_temp_c": -25,
+        "elevation": "−1.5 km",
+        "radiation": "High"
+      },
+      "day_cycle": {
+        "daylight_minutes": 15,
+        "night_minutes": 5,
+        "dawn_hour": 4,
+        "sunrise_hour": 5,
+        "sunset_hour": 19,
+        "dusk_hour": 20,
+        "day_temp_c": -25,
+        "night_temp_c": -68
+      },
+      "ice_deposits": [
+        {
+          "x": 45,
+          "z": -42,
+          "radius": 13,
+          "richness": 0.32
+        }
+      ],
+      "terrain": {
+        "shape": "region",
+        "region": "test_region",
+        "zone": "plains",
+        "pad_half": 60.0,
+        "ground": "#9A735C",
+        "rock_count": 200,
+        "rock_scale": 1.0
+      },
+      "sun": {
+        "noon_altitude": 62,
+        "horizon": 0
+      }
+    },
+    {
+      "id": "region_crater",
+      "name": "Test Region · Crater",
+      "based_on": "Gale Crater lowlands",
+      "coordinates": "5.4° S, 137.8° E",
+      "terrain_profile": "gale",
+      "blurb": "Prototype 6 km region: a crater floor by a layered mound. The plains are a drive away.",
+      "palette": "gale",
+      "icon": "orbit",
+      "telemetry": {
+        "temperature": "−10 °C",
+        "outside_temp_c": -10,
+        "elevation": "−1.8 km",
+        "radiation": "High"
+      },
+      "day_cycle": {
+        "daylight_minutes": 16,
+        "night_minutes": 4,
+        "dawn_hour": 4,
+        "sunrise_hour": 5,
+        "sunset_hour": 19.5,
+        "dusk_hour": 20.5,
+        "day_temp_c": -10,
+        "night_temp_c": -55
+      },
+      "ice_deposits": [
+        {
+          "x": 24,
+          "z": 20,
+          "radius": 14,
+          "richness": 0.5
+        },
+        {
+          "x": -30,
+          "z": 16,
+          "radius": 11,
+          "richness": 0.42
+        }
+      ],
+      "terrain": {
+        "shape": "region",
+        "region": "test_region",
+        "zone": "crater",
+        "pad_half": 60.0,
+        "ground": "#9A7059",
+        "rock_count": 200,
+        "rock_scale": 1.0
+      },
+      "sun": {
+        "noon_altitude": 58,
+        "horizon": 20
+      }
     }
   ]
 }

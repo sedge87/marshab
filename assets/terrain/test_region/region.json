@@ -1,0 +1,45 @@
+{
+  "id": "test_region",
+  "size": 3072,
+  "spacing": 2.0,
+  "half": 3072.0,
+  "height_min": -181.88526649714072,
+  "height_max": 485.97467185506906,
+  "zones": {
+    "plains": {
+      "centre": [
+        -1400.0,
+        1000.0
+      ],
+      "flat_radius": 95.0,
+      "height": -45.296775557418925,
+      "label": "The plains"
+    },
+    "crater": {
+      "centre": [
+        1580.0,
+        -320.0
+      ],
+      "flat_radius": 85.0,
+      "height": -97.57603829865393,
+      "label": "The crater floor"
+    }
+  },
+  "crater": {
+    "centre": [
+      1100.0,
+      -700.0
+    ],
+    "radius": 1100.0,
+    "depth": 95.0,
+    "rim": 62.0
+  },
+  "mound": {
+    "centre": [
+      920.0,
+      -580.0
+    ],
+    "radius": 330.0,
+    "height": 135.0
+  }
+}

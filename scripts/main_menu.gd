@@ -638,8 +638,15 @@ func _site_screen() -> void:
 	_scrim("right", .52, .9, .3)
 	_stepper(0)
 	_place(MHStyle.display("Choose a build site", 64), Vector2(120, 120))
+	# The sites scroll when there are more than fit (the test regions).
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(676, 720)
+	scroll.size = scroll.custom_minimum_size
+	_place(scroll, Vector2(120, 232))
 	var list := MHStyle.vbox(14)
-	_place(list, Vector2(120, 232), 660)
+	list.custom_minimum_size.x = 660
+	scroll.add_child(list)
 	_site_buttons.clear()
 	var first: Button
 	for entry in MHGame.sites():
@@ -746,6 +753,9 @@ func _choose_site(id: String, move_camera := true) -> void:
 		MHGame.site_id = id
 		environment.rebuild_site()
 		_site_preview_built = true
+	if _site_buttons.has(id) and is_instance_valid(_site_buttons[id]):
+		var holder := (_site_buttons[id] as Control).get_parent().get_parent() as ScrollContainer
+		if holder != null: holder.ensure_control_visible.call_deferred(_site_buttons[id])
 	for site_key in _site_buttons:
 		var card: Button = _site_buttons[site_key]
 		var style := MHStyle.selected_box(0) if site_key == id else MHStyle.control_box(0)

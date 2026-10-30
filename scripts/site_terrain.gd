@@ -13,6 +13,7 @@ extends RefCounted
 # Shape parameters live in data/sites.json under "terrain".
 
 const GROUND_SHADER := preload("res://shaders/mars_ground.gdshader")
+const RegionTerrain := preload("res://scripts/region_terrain.gd")
 const INNER_EXTENT := 168.0 # walkable mesh with collision, ±m
 const INNER_STEP := 3.0
 const INNER_STEP_PLAINS := 2.0   # finer ground for the realistic Open Plains (craters, ledges)
@@ -95,10 +96,24 @@ static func _mound_distance(point: Vector2) -> float:
 static func height(x: float, z: float) -> float:
 	var p := Vector2(x, z)
 	match shape():
+		"region": return _region_height(p)
 		"canyon": return _canyon_height(p)
 		"crater": return _crater_height(p)
 		"ice": return _ice_height(p)
 	return _plains_height(p)
+
+## A region's landing zone (gameplay loop prototype): the shared heightmap,
+## centred on the zone, with its pad at 0 (scripts/region_terrain.gd).
+static func _region_height(p: Vector2) -> float:
+	var zone := region_zone()
+	if zone.is_empty(): return 0.0
+	return RegionTerrain.height(p.x + float(zone.centre[0]), p.y + float(zone.centre[1])) - float(zone.height)
+
+## The site's landing zone in its region ({} when it isn't a region site).
+static func region_zone() -> Dictionary:
+	var s := settings()
+	if str(s.get("shape", "")) != "region" or not RegionTerrain.use(str(s.get("region", ""))): return {}
+	return RegionTerrain.zone(str(s.get("zone", "")))
 
 static func _noise(p: Vector2, scale: float) -> float:
 	# Cheap smooth value noise from layered sines: deterministic, no resources.

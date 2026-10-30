@@ -3,7 +3,7 @@ extends SceneTree
 ## Frame-rate benchmark for the graphics presets (26 Oct): a furnished base,
 ## measured inside a room and outside, for each preset, with a screenshot of
 ## each. Settings are changed in memory only (never saved).
-##   godot --path . --script res://tools/graphics_bench.gd -- [out_dir] [presets...]
+##   godot --path . --script res://tools/graphics_bench.gd -- [out_dir] [presets...] [site=<id>]
 ## Run windowed at the size to test (override.cfg for 1920×1080).
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
@@ -36,10 +36,14 @@ func _measure(seconds: float) -> Dictionary:
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if not args.is_empty(): out_dir = args[0].trim_suffix("/") + "/"
-	var presets: Array = args.slice(1) if args.size() > 1 else ["low", "medium", "high", "ultra"]
+	var site := "plains"
+	for arg in args.slice(1):
+		if str(arg).begins_with("site="): site = str(arg).trim_prefix("site=")
+	var presets: Array = Array(args.slice(1)).filter(func(a): return not str(a).begins_with("site="))
+	if presets.is_empty(): presets = ["low", "medium", "high", "ultra"]
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
-	MHGame.site_id = "plains"; MHGame.game_mode = "creative"; MHGame.pending_save_state = {"site_id": "plains", "builder": {}}
+	MHGame.site_id = site; MHGame.game_mode = "creative"; MHGame.pending_save_state = {"site_id": site, "builder": {}}
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
@@ -70,6 +74,8 @@ func _initialize() -> void:
 		"inside": [Vector3(13.0, y + .2, -2.4), deg_to_rad(-30), -6.0],
 		"outside": [Vector3(30.0, MHSiteTerrain.height(30, 22) + 1.0, 22.0), deg_to_rad(32), -4.0],
 		"airlock": [Vector3(24.0, y + .2, 4.6), PI, -50.0],
+		# Looking out across the land to the horizon (kilometres, on regions).
+		"distance": [Vector3(-30.0, MHSiteTerrain.height(-30, 40) + 1.7, 40.0), deg_to_rad(110), 2.0],
 	}
 	var report := []
 	for preset in presets:

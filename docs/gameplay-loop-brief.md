@@ -250,3 +250,35 @@ This replaces the flat cargo top-up that resupplies give today in Survival.
 5. **Ice cores, instruments and caches.**
 6. **Directives.**
 7. **Fatigue and sleep.**
+
+## 12. Region prototype (built 31 Oct)
+
+The first step of §11 is in place on this branch.
+
+- **Terrain3D 1.1.0** is installed in `addons/terrain_3d` (Windows and Linux 64-bit builds only; the other platforms' builds were left out to save 31 MB). Its editor plugin is enabled, so the region can be sculpted and painted in the editor later.
+- **The test region** is a 6 × 6 km composite made by `tools/generate_region.py` into `assets/terrain/test_region/`:
+  - open plains with five mesas;
+  - a 2.2 km crater with a terraced central mound;
+  - a 170 m canyon scarp along the north edge;
+  - a dune field and polygon-cracked ice fields;
+  - about 900 small craters;
+  - ragged hills framing the edge.
+
+  Run the script again to change it (about 25 seconds); `preview.png` shows the layout from above.
+- **Two prototype sites,** Test Region · Plains and Test Region · Crater, land on the same terrain. `scripts/region_terrain.gd` answers the game's height questions from the heightmap, and Terrain3D draws the same heightmap with full collision, so building, the lander, GAR-Y and the rover all work on it unchanged. Each pad is exactly level.
+- **Looks:** the ground is textured by slope (dust on the flat, rock on the steep), with about 36,000 rocks scattered by Terrain3D across the region. Haze is thinner on regions, so far landforms read as silhouettes.
+- **Performance** (Intel Arc 130V, 1920 × 1080, today's plains outside → region outside):
+
+  | Preset | Plains | Region |
+  |---|---|---|
+  | Low | 141 fps | 113 fps |
+  | Medium | 91 fps | 68 fps |
+  | High | 63 fps | 58 fps |
+
+  Loading takes about 3 s longer than a normal site.
+- **Not done yet:**
+  - the far rocks have no collision (the rover drives through them);
+  - the region textures are generated placeholders;
+  - the site screen's backdrop still uses the old sites' camera framing;
+  - there's no map of the region;
+  - the landing picker still works within the zone, not across the region.

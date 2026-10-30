@@ -238,7 +238,10 @@ func apply_daylight(sunlight: float) -> void:
 		_sky_material.ground_horizon_color = (Color("#0D0A0C") as Color).lerp((_palette_values.get("sky_horizon", Color("#E6B98F")) as Color).darkened(.12), level)
 		_sky_material.ground_bottom_color = (Color("#070609") as Color).lerp(_palette_values.get("ground", Color("#996142")) as Color, level)
 		world_environment.environment.fog_light_color = (Color("#100D16") as Color).lerp(_palette_values.get("fog", Color("#D5A07A")) as Color, level)
-		world_environment.environment.fog_density = lerpf(.0008, float(_palette_values.get("fog_density", .0024)), level)
+		# Regions are kilometres across: thinner haze, so far landforms read as
+		# silhouettes instead of vanishing (storms still thicken it).
+		var fog_scale := .3 if MHSiteTerrain.shape() == "region" else 1.0
+		world_environment.environment.fog_density = lerpf(.0008, float(_palette_values.get("fog_density", .0024)), level) * fog_scale
 	# When the base grid is online its window strips are deliberately brighter at
 	# night, providing a clear warm navigational cue without lifting the sky.
 	if storm > .001: _apply_storm(level)
@@ -345,10 +348,99 @@ func _build_terrain() -> void:
 	_terrain_body.collision_layer = 1
 	_terrain_body.collision_mask = 0
 	_site_root.add_child(_terrain_body)
+	if MHSiteTerrain.shape() == "region":
+		_build_region_terrain()
+		return
 	MHSiteTerrain.build_ground(_terrain_body)
 	_site_root.add_child(MHSiteTerrain.build_horizon())
 
+## A region (gameplay loop prototype): Terrain3D draws the shared heightmap,
+## kilometres of it, with distance detail and full collision, textured by
+## slope: dust on the flat, rock on the steep.
+func _build_region_terrain() -> void:
+	var zone := MHSiteTerrain.region_zone()
+	if zone.is_empty(): return
+	var region_id := str(MHSiteTerrain.settings().get("region", ""))
+	var terrain := Terrain3D.new()
+	terrain.name = "RegionTerrain3D"
+	terrain.vertex_spacing = float(MHSiteTerrain.RegionTerrain.meta().spacing)
+	terrain.collision_mode = Terrain3DCollision.FULL_GAME   # GAR-Y and the rover roam far from the camera
+	terrain.collision_layer = 1
+	terrain.free_editor_textures = false
+	# Its material and assets are set before it enters the scene (the
+	# landscape is built before the world is); the heightmap goes in once
+	# it's ready, when its data exists.
+	var material := Terrain3DMaterial.new()
+	material.world_background = Terrain3DMaterial.NONE
+	material.auto_shader_enabled = true
+	material.set_shader_param("auto_slope", 4.0)
+	material.set_shader_param("blend_sharpness", .9)
+	terrain.material = material
+	var assets := Terrain3DAssets.new()
+	var folder := MHSiteTerrain.RegionTerrain.DIRECTORY + region_id + "/"
+	assets.set_texture_asset(0, _region_texture("Dust", folder + "ground_dust", .22))
+	assets.set_texture_asset(1, _region_texture("Rock", folder + "ground_rock", .12))
+	for index in MHSiteTerrain.ROCK_MODELS.size():
+		var rock := Terrain3DMeshAsset.new()
+		rock.name = str(MHSiteTerrain.ROCK_MODELS[index])
+		rock.scene_file = load(MODEL_DIRECTORY + rock.name + ".glb")
+		rock.material_override = _rock_material()
+		rock.lod0_range = 260.0
+		rock.fade_margin = 30.0
+		assets.set_mesh_asset(index, rock)
+	terrain.assets = assets
+	var origin := Vector2(float(zone.centre[0]), float(zone.centre[1]))
+	var place: Dictionary = MHSiteTerrain.RegionTerrain.import_placement(origin, float(zone.height))
+	terrain.ready.connect(func() -> void:
+		terrain.region_size = Terrain3D.SIZE_1024   # 2 km regions: about 16 for the whole map (set once it's ready)
+		terrain.data.import_images([MHSiteTerrain.RegionTerrain.import_image(), null, null], place.corner, float(place.offset), float(place.scale))
+		_scatter_region_rocks(terrain, MHSiteTerrain.RegionTerrain.world_bounds(origin).grow(-500.0)), CONNECT_ONE_SHOT)
+	_site_root.add_child(terrain)
+
+## Rocks across the whole region (the base's own boulders, with collision,
+## come from _build_decor): thicker on slopes, crater rims and mesa feet,
+## sparse on the open flats, none on the build pad. Drawn by Terrain3D's
+## instancer, which fades them out with distance.
+func _scatter_region_rocks(terrain: Terrain3D, area: Rect2) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	var by_mesh: Array = []
+	for index in MHSiteTerrain.ROCK_MODELS.size(): by_mesh.append([] as Array[Transform3D])
+	var pad := float(MHSiteTerrain.settings().get("pad_half", 60.0)) + 40.0
+	for attempt in 60000:
+		var x := rng.randf_range(area.position.x, area.end.x)
+		var z := rng.randf_range(area.position.y, area.end.y)
+		if absf(x) < pad and absf(z) < pad: continue
+		var y := MHSiteTerrain.height(x, z)
+		var slope := Vector2(MHSiteTerrain.height(x + 2.0, z) - y, MHSiteTerrain.height(x, z + 2.0) - y).length() / 2.0
+		if rng.randf() > .12 + clampf(slope * 2.5, 0.0, .8): continue
+		var size := rng.randf_range(.35, 1.3) * (2.4 if rng.randf() < .06 else 1.0)
+		var basis := Basis.from_euler(Vector3(rng.randf_range(-.25, .25), rng.randf() * TAU, rng.randf_range(-.25, .25))).scaled(Vector3.ONE * size)
+		(by_mesh[rng.randi() % by_mesh.size()] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y - .15 * size, z)))
+	for index in by_mesh.size():
+		terrain.instancer.add_transforms(index, by_mesh[index])
+
+func _region_texture(texture_name: String, path: String, uv_scale: float) -> Terrain3DTextureAsset:
+	var asset := Terrain3DTextureAsset.new()
+	asset.name = texture_name
+	asset.albedo_texture = _mipmapped(path + "_albedo_height.png")
+	asset.normal_texture = _mipmapped(path + "_normal_roughness.png")
+	asset.uv_scale = uv_scale
+	asset.detiling_rotation = .3
+	asset.detiling_shift = .3
+	return asset
+
+func _mipmapped(path: String) -> ImageTexture:
+	var image := (load(path) as Texture2D).get_image()
+	if image.is_compressed(): image.decompress()
+	image.convert(Image.FORMAT_RGBA8)
+	image.generate_mipmaps()
+	return ImageTexture.create_from_image(image)
+
 func _build_boundary() -> void:
+	if MHSiteTerrain.shape() == "region":
+		_build_region_boundary()
+		return
 	# Original invisible safety ring, just inside its visible boundary hills.
 	var radius := 126.0
 	var segments := 40
@@ -367,6 +459,26 @@ func _build_boundary() -> void:
 		shape.shape = box
 		shape.position = Vector3(cos(angle) * radius, height * 0.5 - 20.0, sin(angle) * radius)
 		shape.rotation.y = -angle + PI * 0.5
+		boundary.add_child(shape)
+
+## A region's edge: four invisible walls in the framing hills.
+func _build_region_boundary() -> void:
+	var zone := MHSiteTerrain.region_zone()
+	if zone.is_empty(): return
+	var bounds: Rect2 = MHSiteTerrain.RegionTerrain.world_bounds(Vector2(float(zone.centre[0]), float(zone.centre[1]))).grow(-420.0)
+	var boundary := StaticBody3D.new()
+	boundary.name = "RegionBoundary"
+	boundary.collision_layer = 1
+	boundary.collision_mask = 0
+	add_child(boundary)
+	var centre := bounds.get_center()
+	for wall in [[Vector3(centre.x, 0, bounds.position.y), Vector3(bounds.size.x, 2000, 4)], [Vector3(centre.x, 0, bounds.end.y), Vector3(bounds.size.x, 2000, 4)],
+			[Vector3(bounds.position.x, 0, centre.y), Vector3(4, 2000, bounds.size.y)], [Vector3(bounds.end.x, 0, centre.y), Vector3(4, 2000, bounds.size.y)]]:
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = wall[1]
+		shape.shape = box
+		shape.position = wall[0]
 		boundary.add_child(shape)
 
 func _build_decor() -> void:

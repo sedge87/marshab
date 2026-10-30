@@ -62,3 +62,7 @@ jump={
 
 renderer/rendering_method.mobile="gl_compatibility"
 limits/opengl/max_lights_per_object=16
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/terrain_3d/plugin.cfg")
