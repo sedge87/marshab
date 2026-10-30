@@ -1,6 +1,6 @@
 # Gameplay loop brief: live, work, survive
 
-*Draft for discussion, 31 Oct 2026, on the `implementing-gameplay-loop` branch. Nothing here is built yet. Survival mode only; Missions get revamped later, once this gameplay exists. A story comes later too, so this leaves hooks for one but doesn't write it.*
+*Draft for discussion, 31 Oct 2026 (updated the same day: GAR-Y's rescue, one region with four landing zones, Terrain3D), on the `implementing-gameplay-loop` branch. Nothing here is built yet. Survival mode only; Missions get revamped later, once this gameplay exists. A story comes later too, so this leaves hooks for one but doesn't write it.*
 
 ## 1. The problem
 
@@ -58,33 +58,66 @@ Plus one condition: **suit integrity.** A fall or a sharp rock can damage the su
   - **urgent repairs** before the morning;
   - **getting home** after a long drive.
 
-### 4.3 Passing out
-When oxygen, battery heat or your health runs out, you pass out, like Subnautica:
+### 4.3 Passing out: GAR-Y brings you home
+When oxygen, battery heat or your health runs out, you pass out. **GAR-Y comes and drags you home,** like the Palicoes in *Monster Hunter*:
 
-- you wake in the **crew lander's cabin** (later, a Medical Bay could take over once you've built one). The crew or GAR-Y brought you back;
-- **6 hours have passed;**
+- a short scene: the view fades, then GAR-Y trundles up, hooks onto your suit's drag handle and hauls you back across the ground, complaining over the radio;
+- you wake **inside the base:** in the airlock, or the Medical Bay once you've built one (the lander's cabin before there's a habitat);
+- **time passes** with the distance GAR-Y had to drag you: a few hours from close by, most of a sol from far out;
 - **samples you were carrying are dropped where you fell,** marked on the map, so you can go back for them;
 - **the suit is damaged** and needs a repair before a long trip;
 - **the rover stays where you left it,** so you go and fetch it (or GAR-Y slowly tows it home);
-- **a health knock** that the Medical Bay helps you recover from.
+- **a health knock** that the Medical Bay helps you recover from;
+- **GAR-Y remembers it:** a rescue count on its card, and the occasional remark ("That's three times this month, Commander.").
+
+GAR-Y is already the base's companion, so this makes it the hero of your worst trips.
 
 **One life (new game option):** passing out ends the run with a summary of what you achieved (the dossier).
 
 ## 5. Outside
 
-### 5.1 The region
-A much larger area than today's site, travelled by rover: the scale of *The Martian*'s journeys, compressed.
+### 5.1 One region, four landing zones
+Today the game has four separate sites, each based on a real place: Open Plains (Elysium Planitia), Canyon Ridge (the Valles Marineris floor), Crater Basin (Gale Crater) and Ice Fields (Utopia Planitia). They become **one region** that contains all four kinds of ground, and **where you land is your starting point.**
 
-- **Size:** about 12 × 12 km around the base (today's playable site is about 350 m across).
-- **Zones** with their own ground, samples and hazards:
-  - **the home basin:** the base, gentle ground, common basalt;
-  - **ice fields:** buried ice under polygon-patterned ground, the best water;
-  - **a crater rim and floor:** layered rock, steep slopes, shaded frost;
-  - **dune fields:** soft sand where the rover can get stuck, and wind;
-  - **layered cliffs:** ancient lake sediments, the best science, a hard climb;
-  - **a lava tube entrance:** sheltered from radiation, dark, a natural landmark for later;
-  - **an old landing site:** a decades-old probe with its parachute, worth recovering parts from (a nod to real missions, not a copy of Pathfinder).
-- **Tech note:** this needs a new world: terrain built in chunks that stream in, with simple distant terrain and careful settings for integrated graphics. It's the biggest engineering job here, so it should be prototyped first.
+- **Size:** about 12 × 12 km (today's playable site is about 350 m across).
+- **The four landing zones** keep today's trade-offs, now as places on one map:
+
+  | Landing zone | Trade-off |
+  |---|---|
+  | **The plains** | flat and sunny, easy building and driving, but water is far away |
+  | **The canyon floor** | towering cliffs, shaded mornings, ice at the cliff foot, the best layered rock |
+  | **The crater floor** | a sheltering rim, mild nights, a layered mound to climb |
+  | **The ice fields** | buried ice under your feet, but bitter nights cost heating power |
+
+  The other three zones are then destinations you drive to: ice for the plains base, sunlight for the ice base, cliffs for everyone.
+- **More places between them:**
+  - dune fields: soft sand where the rover can get stuck;
+  - a lava tube entrance: shelter from radiation, dark, a landmark for later;
+  - an old landing site: a decades-old probe and its parachute, worth recovering parts from (a nod to real missions, not a copy).
+- **Choosing where to land:** the landing picker that exists today (Survival lands inside an ellipse around your target) moves onto the region map. You pick a landing zone, then a spot.
+- **One sun and climate** for the whole region, with local differences: cliffs and the crater rim cast shade, the ice fields lose heat faster at night, the crater floor is sheltered.
+- **What changes for existing games:** each saved base keeps its site as it is today, so old saves still load. The region is how new Survival games start. Missions keep their current site until they're revamped.
+
+### 5.1a Building the region: Terrain3D
+[Terrain3D](https://github.com/TokisanGames/Terrain3D) is a free, open-source (MIT) terrain plugin for Godot 4. Version 1.1.0 (30 Oct 2026) supports Godot 4.5–4.8, so it covers our 4.7.2.
+
+- It draws large terrain efficiently: detail drops with distance (up to 10 levels), and terrains can be up to 65 km across, so 12 km is comfortable.
+- **Painting:** up to 32 ground textures, painted by hand or from code, with texture detiling, plus colour and wetness painting (dust, frost).
+- **Sculpting** and **holes** (for the lava tube entrance).
+- **Scattering:** its own rock and boulder scattering, with distance detail and collision near the player.
+- **Heightmaps:** it imports terrain made in other tools, or any heightmap, and it can be read from GDScript (heights for building, landing and GAR-Y).
+
+**Where the shape comes from**, two options:
+
+1. **A composite region we design:** shape it in a terrain tool (or by script) to fit the game: the four zones exactly where we want them, and drives that are fun. The most control.
+2. **Real Mars elevation data underneath:** public elevation models from orbit (for example from the CTX camera, about 20 m per pixel over large areas) give the big shapes of a real place; we add detail and rocks on top. The most authentic, but real places rarely have all four zones within 12 km, so we'd still adjust it. The data's terms of use need checking before we commit.
+
+I'd suggest option 1, with real places as reference for each zone's look.
+
+**Risks to check in a prototype:**
+- performance on the Dell laptops' integrated graphics (Terrain3D has settings to limit what it draws);
+- moving the base-building grid, landing and GAR-Y's ground checks from today's hand-written terrain code onto Terrain3D;
+- precision at 12 km from the centre (should be fine at this size).
 
 ### 5.2 Getting around
 - **On foot:** close to the base and around a parked rover. Walking speed should drop to a suit pace (about 2.5 m/s; today it's 5 m/s), with a short, oxygen-costly sprint.
@@ -205,13 +238,13 @@ This replaces the flat cargo top-up that resupplies give today in Survival.
 2. **Walking speed:** drop to a suit pace (about 2.5 m/s), or keep today's 5 m/s?
 3. **Travel time across the region:** faster rover, auto-drive to a waypoint with time sped up, or both?
 4. **Region size:** about 12 × 12 km, or smaller to start (say 6 × 6 km) and grow later?
-5. **Waking up after passing out:** always the lander, or a Medical Bay once one exists?
+5. **The region's shape:** a composite we design, or real Mars elevation data underneath (§5.1a)?
 6. **The lab procedures:** quick (a few seconds per sample) or a small hands-on routine each time?
 7. **Sample carrying limits:** how many in the suit, how many in the rover?
 
 ## 11. What to build first (a suggestion)
-1. **Region prototype:** chunked terrain at about 6 km across, with the rover, to prove travel works and runs well on the target laptops.
-2. **Suit systems and passing out:** oxygen, battery, warnings, the airlock top-up, waking in the lander.
+1. **Region prototype with Terrain3D:** a 6 km test region with two landing zones, the rover and the base grid, to prove travel works and runs well on the target laptops.
+2. **Suit systems and passing out:** oxygen, battery, warnings, the airlock top-up, and GAR-Y's rescue.
 3. **Samples and the lab:** rock samples, regolith scoops, analysis and science.
 4. **Requisition and resupply choices.**
 5. **Ice cores, instruments and caches.**
