@@ -49,7 +49,7 @@ func _initialize() -> void:
 	var spots := {"crew_bunk": Vector3(-3, 0, -4), "locker": Vector3(3, 0, -4), "common_table": Vector3(0, 0, 0), "task_light": Vector3(-7.42, 1.5, 0), "privacy_divider": Vector3(-3, 0, 4), "exercise_station": Vector3(3, 0, 4)}
 	for id in ITEMS:
 		var entry := EquipmentCatalog.get_entry(id)
-		_check(str(entry.get("asset_scene", "")).contains("mars_living_quarters"), "%s uses the new pack scene" % id)
+		_check(str(entry.get("asset_scene", "")).contains("mars_living_quarters") or (id == "crew_bunk" and str(entry.get("asset_scene", "")).contains("mars_hq_v1")), "%s uses the new pack scene" % id)
 		_check(not str(entry.get("system_note", "")).is_empty(), "%s has an info card" % id)
 		var at: Vector3 = spots[id] + Vector3(0, builder.habitat_base_y, 0)
 		# The lamp hangs on the west wall, facing into the room (as the Interior tool places it).

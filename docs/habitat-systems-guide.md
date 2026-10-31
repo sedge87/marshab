@@ -29,8 +29,8 @@ For example, Hydroponics without grow trays produces no food; Living Quarters wi
 
 | Build or place | It creates / supplies | It depends on |
 |---|---|---|
-| Living Quarters zone | Maximum number of crew that can be accommodated | Crew Bunks to provide actual berths; power for inhabited rooms |
-| Crew Bunk | One usable berth and a small wellbeing benefit | Space in Living Quarters; power |
+| Living Quarters zone | Maximum number of crew that can be accommodated | Sleep Stations to provide actual berths; power for inhabited rooms |
+| Sleep Station (crew_bunk) | One usable berth and a small wellbeing benefit | Space in Living Quarters; power |
 | Locker / Common Table / Task Light | Storage and crew wellbeing | A suitable interior room; task lights need power |
 | Hydroponics zone | Maximum food-growing capacity | Grow Trays to produce food; power and water |
 | Grow Tray | Food, plus a small wellbeing benefit | Hydroponics or Glass Greenhouse capacity; water and power |
@@ -55,7 +55,7 @@ This rewards compact, efficient early habitats while giving players a meaningful
 ## Example planning loop
 
 1. Build enough Living Quarters to make room for six crew.
-2. Add six Crew Bunks. The room capacity now becomes usable berths.
+2. Add six Sleep Stations. The room capacity now becomes usable berths.
 3. Build Hydroponics and add Grow Trays until their food output reaches the crew requirement.
 4. Build Life Support and add Air Recyclers to match the same crew requirement.
 5. Survey the blue ice heatmap, place an Ice Extractor where ice is recoverable, and provide enough water.

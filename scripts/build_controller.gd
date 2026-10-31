@@ -5823,7 +5823,7 @@ func suggestion() -> String:
 			"shelter":
 				if item.status=="unmet": return "Add an Airlock beside a room. Its inner end must touch the room and its outer end must face Mars. You have %s left." % left
 				return "Some rooms aren't connected to an airlock. Join them with a Corridor. You have %s left." % left
-			"beds": return "Build enough Sleeping Quarters (or a General Module, for two), then add Crew Bunks from the Interior tab. You have %s left." % left
+			"beds": return "Build enough Sleeping Quarters (or a General Module, for two), then add Sleep Stations from the Interior tab. You have %s left." % left
 			"food": return "Build Hydroponics, then add Grow Trays from the Interior tab to produce food. You have %s left." % left
 			"water": return "Choose Ice Extractor in Resources, then place it over a blue subsurface-ice survey area. You have %s left." % left
 			"life": return "Build Life Support, then add an Air Recycler from the Interior tab. You have %s left." % left

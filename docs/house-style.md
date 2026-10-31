@@ -53,6 +53,29 @@ New models use the furnishings pack's helpers. Load them with `exec`, as `asset_
 - **Name each part component_material** (for example `oven_door_slate_panel`). The interaction rig finds parts by component, and the house materials by material.
 - **Screens:** name the glass `display_screen_glass_*` so the game can draw live content on it (see `scripts/info_screen.gd`).
 
+## 3. The HQ pass (Forward+, from 31 Oct)
+
+The packs above were made for the Compatibility renderer: plain colours that the house materials flatten further, so in Forward+ they look flat and washed out. New and rebuilt models use the **HQ kit**, `asset_packs/mars_hq_v1/source/hq_kit.py`. It has the same helpers and rules as above, and adds:
+
+- **Real surfaces:**
+  - varied roughness, worn edges and light grime;
+  - fabric weave on soft goods (Nomex beige, slate and teal);
+  - brushed metal.
+- **More detail:**
+  - printed labels as geometry;
+  - quilted pads, pleated curtains, handrails, cable runs with ties, panel seams;
+  - status lights.
+- **A bake per model** (Cycles) into one 2048 atlas:
+  - base colour with ambient occlusion;
+  - a normal map;
+  - an occlusion, roughness and metal map.
+
+  The house palette leaves textured materials alone. It caps their metal at 0.75, not 0.3. Accent (orange), glass, screens and lights stay plain materials on their own parts, so the accent still follows the colony colour and screens still glow.
+
+Build with `blender --background --python source/build_hq.py -- <pack folder> [ids]`. Each model takes about 10 to 20 minutes on the CPU.
+
+To import, zip the **whole** pack folder and run `tools/import_asset_pack.py`. Since 31 Oct the importer merges the zip into `asset_packs/<pack>/` rather than wiping that folder first.
+
 ## What changed on 22–23 Oct
 
 - **House materials** apply to all 105 catalogue models (their accents follow the colony accent you pick), GAR-Y and the crew lander. The cargo lander's hull and frame now use the same white and graphite.

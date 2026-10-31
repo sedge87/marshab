@@ -90,20 +90,20 @@
   "equipment": [
     {
       "id": "crew_bunk",
-      "label": "Crew Bunk",
+      "label": "Sleep Station",
       "group": "living",
       "status": "catalogue",
       "batch": true,
       "icon": "bed-double",
-      "height": 1.84,
-      "surface_height": 0.9,
+      "height": 2.03,
+      "surface_height": 0.6,
       "surface_size": [
-        1.8,
-        0.66
+        1.9,
+        0.85
       ],
-      "description": "Personal berth with reading lamp, privacy curtain and shelf.",
+      "description": "A crew-quarters pod: a padded bunk behind a privacy curtain, with a reading light, its own air vent, a personal panel and three drawers.",
       "role": "One berth; lamp off on grid failure",
-      "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/crew_bunk.tscn",
+      "asset_scene": "res://assets/equipment/mars_hq_v1/crew_bunk.tscn",
       "cargo_cost": 100,
       "valid_zones": [
         "living",
@@ -120,11 +120,11 @@
         "power_draw": 1
       },
       "size_m": [
-        2.28,
-        1.959,
-        1.129
+        2.356,
+        2.026,
+        1.176
       ],
-      "pack": "mars_living_quarters_martian_hailmary_v1",
+      "pack": "mars_hq_v1",
       "system_note": "Crew need about eight hours of sleep every sol. Each bunk gives one person a bed, so a habitat needs a bunk for every crew member. The reading light runs on the habitat's electricity: switch it off when you're done, because at night the solar panels make nothing. The curtain gives privacy, which matters on a mission that lasts years.",
       "system_links": [
         "Crew berths",
@@ -1550,14 +1550,14 @@
     },
     {
       "id": "waste_sorting_unit",
-      "label": "Waste Sorting Unit",
+      "label": "Trash Compactor",
       "group": "waste_management",
       "status": "catalogue",
       "icon": "recycle",
-      "height": 1.7,
-      "description": "Three colour-coded chutes over a compactor: sort, squash and seal waste.",
+      "height": 1.12,
+      "description": "Presses and heats waste into sealed plastic tiles; plastics and metals go straight to recycling through the lids on top.",
       "role": "Future closed-loop processing",
-      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/waste_sorting_unit.tscn",
+      "asset_scene": "res://assets/equipment/mars_hq_v1/waste_sorting_unit.tscn",
       "cargo_cost": 170,
       "valid_zones": [
         "storage"
@@ -1572,10 +1572,15 @@
       },
       "size_m": [
         1.63,
-        1.17,
-        0.776
+        1.118,
+        0.901
       ],
-      "pack": "mars_habitat_furnishings_v1"
+      "pack": "mars_hq_v1",
+      "system_note": "On a long mission rubbish is a resource. NASA's heat-melt compactor squeezes waste into hard plastic tiles, recovering its water and leaving tiles that could even shield the crew from radiation.",
+      "system_links": [
+        "Water",
+        "Power"
+      ]
     },
     {
       "id": "communications_station",
@@ -5064,6 +5069,113 @@
         0.096
       ],
       "pack": "mars_recreation_v1"
+    },
+    {
+      "id": "treadmill",
+      "label": "Treadmill with Harness",
+      "group": "living",
+      "status": "catalogue",
+      "icon": "users",
+      "height": 2.04,
+      "description": "A slatted-belt treadmill on vibration isolators, with a harness gantry and a console.",
+      "role": "Exercise: keeps the crew's bones and muscles strong",
+      "asset_scene": "res://assets/equipment/mars_hq_v1/treadmill.tscn",
+      "cargo_cost": 120,
+      "valid_zones": [
+        "galley",
+        "general",
+        "medical"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "power_draw": 1
+      },
+      "system_note": "Running loads the bones like nothing else. On the space station the treadmill's harness holds runners down; at Mars's 38% gravity it can take weight off a sore knee instead.",
+      "system_links": [
+        "Crew health",
+        "Morale",
+        "Power"
+      ],
+      "size_m": [
+        2.0,
+        2.04,
+        0.94
+      ],
+      "pack": "mars_hq_v1"
+    },
+    {
+      "id": "cycle_ergometer",
+      "label": "Exercise Bike",
+      "group": "living",
+      "status": "catalogue",
+      "icon": "users",
+      "height": 1.22,
+      "description": "A cycle ergometer with a shrouded flywheel, a seat and a console that logs every ride.",
+      "role": "Exercise: heart and lungs",
+      "asset_scene": "res://assets/equipment/mars_hq_v1/cycle_ergometer.tscn",
+      "cargo_cost": 70,
+      "valid_zones": [
+        "galley",
+        "general",
+        "medical"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "system_note": "An ergometer measures the work you do. Doctors on Earth use the rides to watch each astronaut's heart and lungs stay fit for the trip home.",
+      "system_links": [
+        "Crew health",
+        "Morale"
+      ],
+      "size_m": [
+        1.1,
+        1.22,
+        0.6
+      ],
+      "pack": "mars_hq_v1"
+    },
+    {
+      "id": "general_module_rack",
+      "label": "Utility Rack",
+      "group": "living",
+      "status": "catalogue",
+      "icon": "box",
+      "height": 2.08,
+      "description": "Everything for the first sols in one wall unit: a fold-out toilet cubicle, a pull-out galley shelf under a rehydration nozzle, and the water panel.",
+      "role": "Basic hygiene, meals and water in one rack",
+      "asset_scene": "res://assets/equipment/mars_hq_v1/general_module_rack.tscn",
+      "cargo_cost": 150,
+      "valid_zones": [
+        "general"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor_wall",
+      "effects": {
+        "power_draw": 1,
+        "water_draw": 1
+      },
+      "system_note": "The first module on a new outpost does every job at once, so its kit folds away. It works, but nobody wants to eat beside the toilet for long.",
+      "system_links": [
+        "Water",
+        "Food",
+        "Morale"
+      ],
+      "size_m": [
+        2.02,
+        2.08,
+        0.686
+      ],
+      "pack": "mars_hq_v1"
     }
   ]
 }

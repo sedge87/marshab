@@ -370,6 +370,8 @@
       ],
       "triggers": [
         "exercise_station",
+        "treadmill",
+        "cycle_ergometer",
         "medical_exam_cot"
       ]
     },

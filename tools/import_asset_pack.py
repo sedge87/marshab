@@ -205,9 +205,9 @@ def main() -> int:
         reference.mkdir(exist_ok=True)
         (reference / ".gdignore").touch()
         keep = reference / slug
-        if keep.exists():
-            shutil.rmtree(keep)
-        shutil.copytree(pack_root, keep, ignore=lambda folder, names: [n for n in names if n in SKIP_IN_REFERENCE])
+        # Merged in, never wiped first: a zip of the models alone must not
+        # delete the pack's Blender source kept here.
+        shutil.copytree(pack_root, keep, ignore=lambda folder, names: [n for n in names if n in SKIP_IN_REFERENCE], dirs_exist_ok=True)
 
         catalog["equipment"] = [e for e in catalog["equipment"] if e["id"] not in dropped]
         CATALOG.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

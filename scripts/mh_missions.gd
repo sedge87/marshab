@@ -130,7 +130,7 @@ const CHECK_KIT := {
 	"research_total": [["science"], ["science_workbench", "microscope_station"]],
 	"shelter_ready": [[], ["storm_shelter_locker", "wall_cabin_heater"]],
 	"dose_max": [[], ["storm_shelter_locker"]],
-	"fitness_min": [[], ["exercise_station"]],
+	"fitness_min": [[], ["exercise_station", "treadmill", "cycle_ergometer"]],
 	"wellbeing_min": [[], ["lounge_sofa", "table_football", "games_shelf", "music_station", "paper_books", "photo_frame", "guitar", "plant_pot"]],
 	"patient_recovered": [["medical"], ["medical_exam_cot", "medical_cabinet"]],
 	"pressure_min": [[], ["air_reserve_rack", "hull_patch_kit"]],

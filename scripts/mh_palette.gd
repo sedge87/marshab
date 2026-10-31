@@ -80,8 +80,9 @@ static func material(source: StandardMaterial3D) -> StandardMaterial3D:
 	var out := source.duplicate() as StandardMaterial3D
 	out.cull_mode = BaseMaterial3D.CULL_DISABLED
 	# Keep finishes brushed: on Low (no reflection probes) very metallic
-	# surfaces would go black.
-	out.metallic = minf(out.metallic, .3)
+	# surfaces would go black. Baked (textured) models keep more of their
+	# metal: their map already holds it to the metal parts.
+	out.metallic = minf(out.metallic, .75 if source.albedo_texture != null else .3)
 	var role := role_of(source)
 	# Some packs paint "graphite" pale on purpose (whole bunk frames): those
 	# become the mid frame grey, not near-black, so big surfaces stay light.

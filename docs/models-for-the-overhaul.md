@@ -14,19 +14,17 @@ Every new or rebuilt model follows `docs/house-style.md`:
 |---|---|
 | **Roof fittings:** `roof_sleeping_quarters` (quiet air intake with a silencer), `roof_day_room` (kitchen extract stack and heat-recovery fins), `roof_storage_recycling` (roof cargo hatch and davit) | the rooms' new jobs, seen from outside (`asset_packs/mars_roof_fittings_v2`). The General Module took the old Living Quarters comms mast. |
 | **Room overhead kits** (code, `room_identity.gd`) | General Module: a bit of everything crammed in; Sleeping Quarters: privacy curtains and a quiet duct; Day Room: a warm light bar over the tables; Storage & Recycling: the waste sorter's duct and drain. |
+| **HQ pass** (`asset_packs/mars_hq_v1`, `docs/house-style.md` §3): `crew_bunk` as a **sleep station**, `waste_sorting_unit` as a **heat-melt compactor**, and the new **`treadmill`**, **`cycle_ergometer`** and **`general_module_rack`** | the first models made for Forward+: baked textures, worn edges, fabric, labels. The treadmill and bike count for fitness, like the exercise station. The rack goes only in a General Module. |
 
-## Rebuild for the new rooms (step 3, next)
+## Rebuild for the new rooms (step 3, still to do)
 
-The rules work with today's models. These would make the rooms read as their new selves.
+The rules work with today's models. These would make the rooms read as their new selves. New ones use the HQ kit.
 
 | Model | Now | Rebuild as | Why |
 |---|---|---|---|
-| `crew_bunk` | an open bunk (Hail Mary living pack) | a **sleep station**: a bunk in a closable pod with a curtain or door, a reading light and a vent (as in the ISS crew quarters) | Sleeping Quarters are about privacy and quiet |
-| `waste_sorting_unit` | a sorting cabinet | a **trash compactor** that presses waste into plastic tiles (NASA's Heat Melt Compactor) | Storage & Recycling's job. The tiles can feed the printer, and later shielding, which fits round 3. |
-| `exercise_station` | a generic station | a **treadmill with harness** and a **cycle ergometer**, as two items (the ISS's T2 and CEVIS) | the Day Room's exercise corner; reads instantly |
+| `exercise_station` | a generic station | now joined by the treadmill and bike (done). Retire it, or rebuild it in the HQ style as a resistance trainer (the ISS's ARED)? | the Day Room's exercise corner |
 | `tool_bench` | a storage-pack bench | a **workshop bench** with a vice, a pegboard and a parts tray | the Workshop's identity; the commissioning bench comes later |
 | `integrated_mess_booth`, `common_table` | from older packs | one **Day Room dining set** in the house style | the shared table is the heart of the Day Room |
-| **new:** `general_module_rack` | – | a **fold-down utility rack**: a pull-out galley shelf, a stowed toilet cubicle and a water panel in one wall unit | the General Module's "everything in one" look, as in Subnautica's multipurpose room |
 
 ## New for later steps
 
@@ -90,11 +88,5 @@ The rules work with today's models. These would make the rooms read as their new
 
 ## Suggested order
 
-1. **Now, with step 3:**
-   - the sleep station;
-   - the trash compactor;
-   - the General Module rack;
-   - the treadmill and ergometer.
-
-   Together, these make the new rooms look right.
+1. **With step 3:** the sleep station, compactor, rack, treadmill and bike are done (31 Oct). Next in the same style: the workshop bench and the Day Room dining set. After that, the shower and other flat-looking older models.
 2. **Each later step makes its own models,** as above. Nothing is made before its mechanic exists.

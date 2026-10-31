@@ -8,8 +8,8 @@
         "parts": [
           "Privacy_Curtain"
         ],
-        "width_scale": 8.2,
-        "rolled": 0.08,
+        "width_scale": 1.0,
+        "rolled": 0.06,
         "label_on": "Raise curtain",
         "label_off": "Lower curtain",
         "state": "curtain"
@@ -5677,6 +5677,132 @@
             "The drip line keeps them watered from the habitat's water."
           ]
         ]
+      }
+    ]
+  },
+  "treadmill": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "workout",
+        "seconds": 4.0,
+        "reps": 6,
+        "moves": [
+          {
+            "parts": [
+              "Harness"
+            ],
+            "offset": [
+              0,
+              -0.035,
+              0
+            ]
+          },
+          {
+            "parts": [
+              "Belt_Slats"
+            ],
+            "offset": [
+              -0.064,
+              0,
+              0
+            ]
+          }
+        ],
+        "label": "Go for a run"
+      },
+      {
+        "key": "secondary",
+        "type": "machine",
+        "state": "belt",
+        "default": false,
+        "spin": [
+          {
+            "parts": [
+              "Belt_Roller_f"
+            ],
+            "axis": "z",
+            "speed": -8.0
+          },
+          {
+            "parts": [
+              "Belt_Roller_b"
+            ],
+            "axis": "z",
+            "speed": -8.0
+          }
+        ],
+        "glow": [
+          "console_screen"
+        ],
+        "label_on": "Stop the belt",
+        "label_off": "Start the belt"
+      }
+    ]
+  },
+  "cycle_ergometer": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "riding",
+        "default": false,
+        "spin": [
+          {
+            "parts": [
+              "Crank"
+            ],
+            "axis": "z",
+            "speed": -5.0
+          },
+          {
+            "parts": [
+              "Flywheel"
+            ],
+            "axis": "z",
+            "speed": -14.0
+          }
+        ],
+        "glow": [
+          "console_screen"
+        ],
+        "label_on": "Stop pedalling",
+        "label_off": "Go for a ride"
+      }
+    ]
+  },
+  "general_module_rack": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "Cubicle_Door"
+            ],
+            "edge": "min_x",
+            "angle": 100
+          }
+        ],
+        "label_on": "Fold the toilet cubicle away",
+        "label_off": "Open the toilet cubicle",
+        "state": "cubicle"
+      },
+      {
+        "key": "secondary",
+        "type": "slide",
+        "parts": [
+          "Galley_Shelf"
+        ],
+        "offset": [
+          0,
+          0,
+          -0.3
+        ],
+        "label_on": "Push the galley shelf in",
+        "label_off": "Pull out the galley shelf",
+        "state": "shelf"
       }
     ]
   }

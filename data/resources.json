@@ -708,6 +708,25 @@
     "spare_parts_rack": {
       "room": "storage",
       "cargo_kg": 300.0
+    },
+    "treadmill": {
+      "room": "galley",
+      "cargo_kg": 140.0,
+      "power_kw": 0.6,
+      "hours_per_sol": 1.5
+    },
+    "cycle_ergometer": {
+      "room": "galley",
+      "cargo_kg": 60.0,
+      "power_kw": 0.05,
+      "hours_per_sol": 1.5
+    },
+    "general_module_rack": {
+      "room": "general",
+      "cargo_kg": 90.0,
+      "power_kw": 0.1,
+      "hours_per_sol": 24.0,
+      "stores_water_l": 20.0
     }
   },
   "sites": {

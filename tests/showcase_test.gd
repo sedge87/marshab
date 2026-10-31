@@ -58,7 +58,7 @@ func _initialize() -> void:
 	# Rooms: captions and the (invisible) player standing in them.
 	var living: int = kinds.find("room")
 	show._begin(living)
-	_check(show._caption.text.contains("°C") and show._caption.text.contains("Crew Bunk"), "room captions say what's there (%s)" % show._caption.text)
+	_check(show._caption.text.contains("°C") and show._caption.text.contains("Sleep Station"), "room captions say what's there (%s)" % show._caption.text)
 	_check(b.is_inside(world.player.global_position), "the player stands in the room, so its lights come on")
 	# The time-lapse runs the clock at 20x, and only for that shot.
 	show._begin(kinds.find("timelapse"))

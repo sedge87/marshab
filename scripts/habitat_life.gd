@@ -336,7 +336,7 @@ func medical_ready(inv: Dictionary, tiers: Dictionary) -> bool:
 	return false
 
 ## What keeps the crew fit, each about as well as one exercise station.
-const FITNESS_ITEMS := ["exercise_station", "climbing_wall"]
+const FITNESS_ITEMS := ["exercise_station", "treadmill", "cycle_ergometer", "climbing_wall"]
 
 func exercise_stations(inv: Dictionary, tiers: Dictionary) -> int:
 	if not bool(tiers.get(4, false)): return 0

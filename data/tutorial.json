@@ -97,7 +97,7 @@
     {
       "id": "bunk",
       "text": "Furnish your General Module",
-      "how": "Stand in the General Module and press B: you furnish the room in first person. Pick a Crew Bunk, aim at the floor by a wall and click.",
+      "how": "Stand in the General Module and press B: you furnish the room in first person. Pick a Sleep Station, aim at the floor by a wall and click.",
       "keys": [[["B"], "Furnish this room"], [["R"], "Turn"], [["LMB"], "Place"]],
       "check": {"type": "items", "ids": ["crew_bunk"]},
       "highlight": ["item:crew_bunk", "group:here", "group:living"],
