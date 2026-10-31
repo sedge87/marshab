@@ -1647,6 +1647,8 @@ func _prune_equipment() -> int:
 		# can fall outside an angled room even though the item is inside.
 		var item_position: Vector3 = item.get("position", Vector3(cell.x * CELL, 0, cell.y * CELL))
 		var zone := _zone_at_point(Vector2(item_position.x, item_position.z))
+		# Dropped outside when you blacked out (scripts/carry.gd): it waits there.
+		if bool(item.get("dropped_outside", false)) and zone.is_empty(): continue
 		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
 		var valid_zones: Array = entry.get("valid_zones", [])
 		var wall_lost := false

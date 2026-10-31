@@ -6,7 +6,8 @@ extends SceneTree
 # batteries, and from the rover's tank and battery; the vehicle bay refills
 # the rover from the habitat; you black out with no oxygen in Survival and
 # come round in the airlock, never in Freedom; Creative doesn't run it; and
-# it's saved.
+# it's saved. Blacking out, GAR-Y drags you home: hours pass, what you
+# carried lies where you fell, and the suit leaks until it's repaired.
 # Run with: godot --headless --path . --script res://tests/suit_test.gd
 var failures := 0
 
@@ -119,25 +120,56 @@ func _initialize() -> void:
 	await process_frame
 	_check(suit.where == "rover", "in the cab you're breathing the rover's air (%s, driving %s)" % [suit.where, world.player.get_meta("driving", false)])
 	rover._get_out()
-	# No oxygen in Survival: you black out and come round in the airlock.
+	# No oxygen in Survival: you black out, carrying a jar of samples, and
+	# GAR-Y drags you home while the hours pass.
+	var gary = world.scout_rover
+	_check(gary != null, "GAR-Y is here to come for you")
+	b.placed_interior.append({"placement_id": "suit_jar", "id": "sample_jars", "position": Vector3(1.5, y, 1.0), "zone_cell": Vector2i(0, 0), "state": {}})
+	b._rebuild()
 	await _put(world, Vector3(-30, MHSiteTerrain_height(-30, -30) + 1.0, -30))
-	await process_frame
+	_check(world.carry.pick_up("suit_jar"), "you pick up a jar of samples")
+	world.day_night.frozen = false
+	var hour_before: float = world.day_night.hour
 	suit.o2 = 0.0
 	for i in 30: await process_frame
 	_check(suit.passed_out, "with no oxygen you black out")
-	await create_timer(5.0).timeout
+	var rescue = suit.get_node_or_null("Rescue")
+	_check(rescue != null and rescue.hours >= 1.5, "GAR-Y comes for you, and it'll take a while (%.1f h)" % (rescue.hours if rescue != null else 0.0))
+	var saw_gary_close := false
+	while suit.passed_out:
+		await process_frame
+		if rescue != null and is_instance_valid(rescue) and rescue.phase == "drag":
+			saw_gary_close = saw_gary_close or gary.global_position.distance_to(world.player.global_position) < 2.5
+	world.day_night.frozen = true
 	var cell := Vector2i(roundi(world.player.global_position.x / 3.0), roundi(world.player.global_position.z / 3.0))
-	_check(not suit.passed_out and cell == Vector2i(0, -1), "and come round in the airlock (%s)" % cell)
+	_check(saw_gary_close, "GAR-Y drags you along")
+	_check(cell == Vector2i(0, -1), "you come round in the airlock (%s)" % cell)
+	_check(wrapf(world.day_night.hour - hour_before, 0.0, 24.0) >= 1.4, "hours went by (%.2f)" % wrapf(world.day_night.hour - hour_before, 0.0, 24.0))
+	_check(gary.rescues == 1 and not gary.rescuing and gary.global_position.distance_to(world.player.global_position) < 3.0, "GAR-Y is beside you and remembers it (%d)" % gary.rescues)
+	_check(suit.dropped.size() == 1 and Vector2(suit.dropped[0].position.x + 30.0, suit.dropped[0].position.z + 30.0).length() < 2.0, "the jar lies where you fell (%s)" % str(suit.dropped))
+	_check(b.placed_interior.any(func(item): return str(item.id) == "sample_jars" and (item.position as Vector3).distance_to(Vector3(-30, item.position.y, -30)) < 2.0), "it's really there on the ground")
+	_check(suit.leak, "the suit's seals leak")
+	suit.o2 = 1.0
+	suit.step(.5)
+	_check(absf(suit.o2 - (1.0 - .5 * 1.5 / 2.0)) < .01, "so oxygen goes faster (%.3f)" % suit.o2)
+	var dropped_state: Dictionary = suit.export_state()
+	b.placed_interior.append({"placement_id": "suit_panel", "id": "suit_service_panel", "position": Vector3(0, y + 1.2, -3.0), "zone_cell": Vector2i(0, -1), "state": {}})
+	suit.refill_at_panel()
+	_check(not suit.leak, "a suit service panel repairs the seal")
 	# Saving (in a room, where nothing tops the suit up).
 	await _put(world, Vector3(1.5, y + .3, 0))
 	await process_frame
 	suit.o2 = .42
 	var saved: Dictionary = world.current_state()
+	suit.leak = true
+	suit.dropped = (dropped_state.dropped as Array).map(func(d): return {"placement_id": str(d.placement_id), "label": str(d.label), "position": Vector3(d.position[0], d.position[1], d.position[2])})
+	saved = world.current_state()
 	_check(is_equal_approx(float(saved.suit.o2), .42) and saved.crew_rover.has("o2"), "the suit and the rover's tank are saved")
 	world.queue_free()
 	await process_frame
 	world = await _world("survival", saved)
-	_check(is_equal_approx(world.suit.o2, .42), "and load back (%.2f)" % world.suit.o2)
+	_check(is_equal_approx(world.suit.o2, .42) and world.suit.leak and world.suit.dropped.size() == 1, "and load back, leak and dropped jar too (%.2f %s %s jar %s)" % [world.suit.o2, world.suit.leak, world.suit.dropped, world.builder.placed_interior.filter(func(i): return str(i.id) == "sample_jars")])
+	_check(world.scout_rover.rescues == 1, "GAR-Y's rescue count is saved")
 	# Freedom: warnings, never blacking out.
 	MHGame.game_mode = "freedom"
 	await _put(world, Vector3(-30, MHSiteTerrain_height(-30, -30) + 1.0, -30))
@@ -153,7 +185,7 @@ func _initialize() -> void:
 	world.queue_free()
 	await process_frame
 	if failures == 0:
-		print("Suit test passed: drain outside, sprinting and night, airlock and panel refills from the habitat, rover top-up and bay refill, the sealed cab, blacking out, Freedom and Creative, saving.")
+		print("Suit test passed: drain outside, sprinting and night, airlock and panel refills from the habitat, rover top-up and bay refill, the sealed cab, blacking out and GAR-Y dragging you home (hours, the dropped jar, the leak and its repair), Freedom and Creative, saving.")
 	quit(1 if failures > 0 else 0)
 
 func MHSiteTerrain_height(x: float, z: float) -> float:

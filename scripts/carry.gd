@@ -200,6 +200,17 @@ func put_back() -> bool:
 	var placed := _place(carrying.get("position", Vector3.ZERO) as Vector3, float(carrying.get("rotation_y", 0.0)), Vector3.UP, true)
 	return placed
 
+## Let go of it here, on the ground (blacking out). Returns its new record, or
+## {} if it couldn't stay there and went back where it came from.
+func drop_at(at: Vector3) -> Dictionary:
+	if carrying.is_empty(): return {}
+	if _place(at, randf() * TAU, Vector3.UP):
+		var record: Dictionary = builder().placed_interior[builder().placed_interior.size() - 1]
+		record["dropped_outside"] = true   # rebuilding the rooms leaves it be
+		return record
+	put_back()
+	return {}
+
 func _place(at: Vector3, yaw: float, normal: Vector3, original := false) -> bool:
 	var id := str(carrying.id)
 	var cell := Vector2i(roundi(at.x / BuildController.CELL), roundi(at.z / BuildController.CELL))

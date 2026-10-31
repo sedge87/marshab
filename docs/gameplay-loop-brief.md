@@ -71,7 +71,7 @@ A **basic suit** to begin with: very little life support of its own, so the firs
 - **In the lander cabin:** it fills from the lander's own tanks. These are unlimited for now; it's where you start.
 - **In the rover's cab, or with G beside the rover:** it fills from the rover's own O₂ tank and battery (§5.2).
 
-**Blacking out (Survival).** When your oxygen runs out, the screen fades and you come round in the first airlock, or the lander cabin before there's a habitat. Anything you were carrying goes back where it came from. GAR-Y's drag-home (§4.3) replaces this in phase 3.
+**Blacking out (Survival).** When your oxygen runs out, GAR-Y drags you home (§4.3, built 31 Oct). Without GAR-Y (some Missions), you come round in the first airlock, or the lander cabin, and anything you were carrying goes back where it came from.
 
 **Modes:**
 - **Freedom:** warns, but you never black out.
@@ -124,6 +124,22 @@ When oxygen, battery heat or your health runs out, you pass out. **GAR-Y comes a
 - **GAR-Y remembers it:** a rescue count on its card, and the occasional remark ("That's three times this month, Commander.").
 
 GAR-Y is already the base's companion, so this makes it the hero of your worst trips.
+
+**Built 31 Oct** (`scripts/gar_y_rescue.gd`, `tests/suit_test.gd`):
+- **The scene** (about 14 seconds):
+  - your view sinks to the ground and tunnels in;
+  - from dark, GAR-Y trundles up out of the dust toward you, eyes worried, and locks its gripper onto your drag handle (a clunk);
+  - it reverses toward home dragging you on your back, beeping, the ground scraping by;
+  - captions translate the radio ("‹frantic beeping›", "‹a long, reproachful whistle›");
+  - the HUD is hidden, and suit lines still waiting are dropped.
+- **Time:** the clock then runs (as in sleep, with the habitat living through it) for 45 minutes to find you, plus GAR-Y's trip out at 1.5 km/h, plus dragging you home at 0.4 km/h. That's 1.5 to 20 hours, and the screen shows the distance left.
+- **Where you wake:** beside a medical exam cot if you have one, else in the airlock facing in (the lander cabin before there's a habitat), with GAR-Y beside you.
+- **The cost:**
+  - what you were carrying is dropped where you fell; it survives room rebuilds and is marked "Dropped" on the region map until you pick it up;
+  - the suit's seals leak (oxygen goes 1.5× faster; the wrist flashes SEAL LEAK) until a suit service panel repairs it, or, if the base has none, an hour somewhere sealed patches it by hand;
+  - the rover stays where it was;
+  - GAR-Y's card counts the rescues, and its beeps get more pointed ("Twice now, Commander.").
+- **Not yet:** the health knock and Medical Bay recovery (there is no crew-health system for you yet), suit damage beyond the leak, GAR-Y towing the rover home, and One life.
 
 **One life (new game option):** passing out ends the run with a summary of what you achieved (the dossier).
 

@@ -130,6 +130,10 @@ func _draw_markers() -> void:
 	if world.lander != null and world.lander.visible: _marker(world.lander.global_position, "Lander", Color("#F2C35A"), "square")
 	for rover in world.get_tree().get_nodes_in_group("crew_rover"): _marker((rover as Node3D).global_position, "Rover", Color("#8CC3CB"), "circle")
 	for gary in world.get_tree().get_nodes_in_group("gar_y"): _marker((gary as Node3D).global_position, "GAR-Y", Color("#8CC3CB"), "circle")
+	# What you dropped when you blacked out (scripts/suit.gd).
+	var suit: Node = world.get("suit")
+	if suit != null:
+		for item in suit.dropped: _marker(item.position, "Dropped: %s" % item.label, MHStyle.WARN, "square")
 	# You: an arrow pointing the way you face.
 	var player: Node3D = world.player
 	var at := _world_to_map(player.global_position)

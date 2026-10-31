@@ -1,13 +1,14 @@
 extends Node3D
 
-## The suit's wrist pad (scripts/suit.gd): your left forearm with a small
-## computer on the cuff. Hold T to raise it into view; let go and it drops
+## The suit's wrist pad (scripts/suit.gd): your gloved left forearm with a
+## small computer strapped on (the model: asset_packs/mars_suit_wrist_v1). Hold T to raise it into view; let go and it drops
 ## away. Its screen is a live info screen (info_screen.gd, "suit" mode):
 ## oxygen time, power, the scrubber, the turn-back time and the way to the
 ## nearest refill. It runs on the suit's own battery, not the habitat grid.
 ## A child of the first-person camera, so it moves with your view.
 
 const INFO_SCREEN := preload("res://scripts/info_screen.gd")
+const ARM_MODEL := preload("res://assets/models/suit/wrist_arm.glb")
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const RAISED := Vector3(-.03, -.1, -.33)     # the pad, raised, in the camera's space
 const DROP := Vector3(-.05, -.42, .06)
@@ -42,40 +43,29 @@ func _ready() -> void:
 	_build_arm()
 	visible = false
 
-func _part(mesh: Mesh, material_name: String, colour: Color, at: Vector3, rotation_deg := Vector3.ZERO) -> MeshInstance3D:
-	var part := MeshInstance3D.new()
-	part.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.resource_name = material_name
-	material.albedo_color = colour
-	mesh.surface_set_material(0, material)
-	part.position = at
-	part.rotation_degrees = rotation_deg
-	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	part.layers = LAYER
-	_arm.add_child(part)
-	return part
-
 func _build_arm() -> void:
-	# The sleeve, along the arm's X (the wrist is at +X).
-	var sleeve := CylinderMesh.new()
-	sleeve.top_radius = .043; sleeve.bottom_radius = .05; sleeve.height = .36
-	_part(sleeve, "suit_fabric_white", Color.WHITE, Vector3(-.17, -.045, 0), Vector3(0, 0, 90))
-	var cuff := CylinderMesh.new()
-	cuff.top_radius = .047; cuff.bottom_radius = .047; cuff.height = .03
-	_part(cuff, "cuff_orange", Color("#E98A45"), Vector3(.02, -.045, 0), Vector3(0, 0, 90))
-	var glove := CapsuleMesh.new()
-	glove.radius = .04; glove.height = .13
-	_part(glove, "glove_rubber", Color("#323B40"), Vector3(.075, -.048, 0), Vector3(0, 0, 90))
-	# The pad: a dark case strapped on top of the forearm.
-	var case := BoxMesh.new()
-	case.size = Vector3(.135, .018, .094)
-	_part(case, "pad_graphite", Color("#4C5A61"), Vector3(-.08, .0, 0))
-	for x in [-.135, -.025]:
-		var strap := BoxMesh.new()
-		strap.size = Vector3(.018, .1, .104)
-		_part(strap, "strap_rubber", Color("#323B40"), Vector3(x, -.045, 0))
-	MHPalette.apply(_arm)
+	# The forearm, glove and pad case (asset_packs/mars_suit_wrist_v1), in
+	# house materials, on the pad's own layer, casting no shadows.
+	var model := (ARM_MODEL.instantiate() as Node3D)
+	_arm.add_child(model)
+	MHPalette.apply(model)
+	var weave := _weave()
+	for part in model.find_children("*", "MeshInstance3D", true, false):
+		var mesh := part as MeshInstance3D
+		mesh.layers = LAYER
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# The suit's fabric gets a fine weave, so it doesn't look like plastic.
+		if mesh.name.contains("fabric"):
+			for i in mesh.mesh.get_surface_count():
+				var source := mesh.get_active_material(i) as StandardMaterial3D
+				if source == null or source.resource_name.contains("rubber"): continue
+				var cloth := source.duplicate() as StandardMaterial3D
+				cloth.normal_enabled = true
+				cloth.normal_texture = weave
+				cloth.normal_scale = .35
+				cloth.uv1_triplanar = true
+				cloth.uv1_scale = Vector3.ONE * 90.0
+				mesh.set_surface_override_material(i, cloth)
 	# Its screen.
 	_view = SubViewport.new()
 	_view.size = Vector2i(480, 320)
@@ -109,6 +99,20 @@ func _build_arm() -> void:
 	glow.light_cull_mask = LAYER
 	glow.set_meta("budget_exempt", true)
 	_arm.add_child(glow)
+
+## A fine fabric weave, as a normal map.
+static func _weave() -> NoiseTexture2D:
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+	noise.frequency = .08
+	var texture := NoiseTexture2D.new()
+	texture.width = 128
+	texture.height = 128
+	texture.seamless = true
+	texture.as_normal_map = true
+	texture.bump_strength = 4.0
+	texture.noise = noise
+	return texture
 
 func wanted() -> bool:
 	if held: return true

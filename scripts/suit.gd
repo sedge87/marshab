@@ -17,11 +17,16 @@ extends Node
 ## visor (green, amber, red), the suit's voice and your breathing. A flat
 ## battery frosts the visor's edge.
 ##
-## Out of oxygen in Survival you black out and come round in the airlock (the
-## lander cabin before there's a habitat). Freedom warns but never lets you
-## pass out; Creative and Missions don't run the suit.
+## Out of oxygen in Survival you black out and GAR-Y drags you home
+## (scripts/gar_y_rescue.gd): hours pass, what you carried lies where you
+## fell, and the suit's seals leak until you repair them at a suit service
+## panel (or patch them by hand in a sealed space, if the base has no panel).
+## Freedom warns but never lets you pass out; Creative and Missions don't run
+## the suit.
 
 const WRIST_PAD := preload("res://scripts/wrist_pad.gd")
+const RESCUE := preload("res://scripts/gar_y_rescue.gd")
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const O2_HOURS := 2.0            # game hours of oxygen at a walk
 const POWER_HOURS := 3.0         # by day; the heater doubles the draw at night
 const SCRUBBER_HOURS := 4.0
@@ -36,6 +41,8 @@ const FILL_PER_S := 0.5          # share of a full suit an umbilical fills each 
 const WALK := 5.0                # m/s, for the walk back
 const MARGIN := 1.25             # the walk back, with a little to spare
 const LOW := 0.25
+const LEAK := 1.5                # a damaged seal: oxygen goes this much faster
+const PATCH_HOURS := 1.0         # patching a seal by hand, with no service panel
 
 var world: Node
 ## Each store as a share of a full suit (0 to 1).
@@ -45,6 +52,11 @@ var scrubber := 1.0
 ## Where you are: "outside", "habitat", "lander" or "rover".
 var where := "habitat"
 var passed_out := false
+var leak := false                # the seals took a knock (saved)
+## Things you dropped when you blacked out: {placement_id, label, position}.
+var dropped: Array = []
+var _patching := 0.0
+var _has_panel := false
 var pad: Node3D
 var _last_hour := -1.0
 var _said := {}                  # warnings given this trip outside
@@ -95,14 +107,20 @@ func _process(delta: float) -> void:
 	if _check <= 0.0:
 		_check = .25
 		where = _where()
+		_has_panel = world.builder != null and (world.builder.placed_interior as Array).any(func(item): return str(item.get("id", "")) == "suit_service_panel")
+		_prune_dropped()
 	if not active():
 		o2 = 1.0; power = 1.0; scrubber = 1.0
 		_set_visor_visible(false)
 		return
-	if where == "outside": step(hours)
-	else: _top_up(delta)
-	_warnings()
-	_breathing(delta)
+	if where == "outside":
+		if not passed_out: step(hours)
+	else:
+		_top_up(delta)
+		_patch_by_hand(hours)
+	if not passed_out:
+		_warnings()
+		_breathing(delta)
 	_blink += delta
 	_set_visor_visible(where == "outside" and not bool(world.player.get_meta("build_mode_active", false)))
 	_visor.queue_redraw()
@@ -124,7 +142,7 @@ func _where() -> String:
 ## A stretch of time outside, in game hours.
 func step(hours: float) -> void:
 	if hours <= 0.0: return
-	o2 = maxf(0.0, o2 - hours * breathing_rate() / O2_HOURS)
+	o2 = maxf(0.0, o2 - hours * breathing_rate() * (LEAK if leak else 1.0) / O2_HOURS)
 	power = maxf(0.0, power - hours * (NIGHT_POWER if MHGame.sunlight_fraction < .1 else 1.0) / POWER_HOURS)
 	scrubber = maxf(0.0, scrubber - hours / SCRUBBER_HOURS)
 
@@ -180,10 +198,17 @@ func fill(share: float, source: String) -> bool:
 	if got_power > 0.0 or want_power <= 0.0: scrubber = minf(1.0, scrubber + share)
 	return got_o2 > 0.0 or got_power > 0.0 or (want_o2 <= 0.0 and want_power <= 0.0)
 
-## A suit service panel or suit rack: a full refill from the habitat, now.
+## A suit service panel or suit rack: a full refill from the habitat, now,
+## and a leaking seal repaired.
 func refill_at_panel() -> void:
 	if not active():
 		get_tree().call_group("explore_hud", "show_equipment_note", "Suit", "Suit life support only runs in Survival and Freedom.")
+		return
+	if leak:
+		leak = false
+		MHAudio.sfx("suit_clamp", -8.0)
+		fill(1.0, "habitat")
+		_say("suit_seal_repaired")
 		return
 	if full():
 		_say("suit_full")
@@ -212,9 +237,27 @@ func _in_airlock() -> bool:
 
 # ---------- what the suit tells you ----------
 
+## No service panel in the base: a leak gets patched by hand, given an hour
+## somewhere sealed.
+func _patch_by_hand(hours: float) -> void:
+	if not leak or _has_panel or passed_out: return
+	_patching += hours
+	if _patching < PATCH_HOURS: return
+	leak = false
+	_patching = 0.0
+	_say("suit_seal_repaired")
+	get_tree().call_group("explore_hud", "show_equipment_note", "Suit seal patched", "With no suit service panel in the base, you patched the leaking seal by hand from the repair kit.")
+
+## Forget dropped things once they've been picked up.
+func _prune_dropped() -> void:
+	if dropped.is_empty() or world.builder == null: return
+	var here := {}
+	for item in world.builder.placed_interior: here[str(item.get("placement_id", ""))] = true
+	dropped = dropped.filter(func(d): return here.has(str(d.placement_id)))
+
 ## Game hours of oxygen left at the current rate.
 func o2_hours_left() -> float:
-	return o2 * O2_HOURS / breathing_rate()
+	return o2 * O2_HOURS / (breathing_rate() * (LEAK if leak else 1.0))
 
 ## Game hours left before you must turn back for the nearest refill, with a
 ## margin (negative: you're already past it).
@@ -261,7 +304,7 @@ func readout() -> Dictionary:
 		bearing = wrapf(atan2(-to.x, -to.z) - player.rotation.y, -PI, PI)
 	return {"o2": o2, "power": power, "scrubber": scrubber, "where": where, "active": active(), "filling": _filling,
 		"o2_hours": o2_hours_left(), "turn_back": turn_back_hours(), "refill": refill, "bearing": bearing,
-		"night": MHGame.sunlight_fraction < .1}
+		"night": MHGame.sunlight_fraction < .1, "leak": leak}
 
 func _say(id: String) -> void:
 	MHAudio.suit(id)
@@ -272,6 +315,7 @@ func _warnings() -> void:
 		return
 	var lines := [
 		["suit_sealed", true],
+		["suit_leak", leak],
 		["suit_turn_back", turn_back_hours() <= 0.0 and o2 < .9],
 		["suit_o2_half", o2 <= .5],
 		["suit_o2_quarter", o2 <= LOW],
@@ -337,61 +381,82 @@ func _draw_visor() -> void:
 
 # ---------- blacking out ----------
 
-## Out of oxygen: the screen goes dark and you come round in the airlock (or
-## the lander cabin), with what you were carrying put back.
+## Out of oxygen: you black out and GAR-Y drags you home (or, with no GAR-Y,
+## you come round inside).
 func pass_out() -> void:
 	passed_out = true
-	var player: CharacterBody3D = world.player
-	if bool(player.get_meta("driving", false)) and world.get("crew_rover") != null: world.crew_rover._get_out()
-	if world.get("carry") != null: world.carry.put_back()
-	player.set_meta("ui_freeze", true)
-	var dark := ColorRect.new()
-	dark.color = Color(0, 0, 0, 0)
-	dark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var layer := CanvasLayer.new()
-	layer.layer = 45
-	add_child(layer)
-	layer.add_child(dark)
-	var fade := create_tween()
-	fade.tween_property(dark, "color:a", 1.0, 1.6)
-	fade.tween_callback(func() -> void:
-		var spot := wake_spot()
-		player.global_position = spot.position
-		player.rotation.y = float(spot.yaw)
-		player.safe_position = player.global_position
-		player.velocity = Vector3.ZERO
-		o2 = .1
-		where = _where()
-		_said.clear())
-	fade.tween_interval(1.4)
-	fade.tween_property(dark, "color:a", 0.0, 1.2)
-	fade.tween_callback(func() -> void:
-		player.set_meta("ui_freeze", false)
-		passed_out = false
-		layer.queue_free()
-		get_tree().call_group("explore_hud", "show_equipment_note", "You blacked out", "Your suit ran out of oxygen and you came round in the %s, groggy. Watch the turn-back time on your wrist (hold T)." % ("airlock" if _has_airlock() else "lander cabin")))
+	if bool(world.player.get_meta("driving", false)) and world.get("crew_rover") != null: world.crew_rover._get_out()
+	var rescue := RESCUE.new()
+	rescue.name = "Rescue"
+	add_child(rescue)
+	rescue.finished.connect(_come_round)
+	rescue.start(world, self)
+
+func _come_round(summary: Dictionary) -> void:
+	passed_out = false
+	o2 = maxf(o2, .1)
+	where = _where()
+	_said.clear()
+	var place := "the lander cabin" if not _has_airlock() else ("the medical bay" if _medical_cot() != null else "the airlock")
+	if not bool(summary.rescued):
+		get_tree().call_group("explore_hud", "show_equipment_note", "You blacked out", "Your suit ran out of oxygen and you came round in %s, groggy. Watch the turn-back time on your wrist (hold T)." % place)
+		return
+	leak = true
+	_patching = 0.0
+	var item: Dictionary = summary.dropped
+	if not item.is_empty(): dropped.append(item)
+	var hours := float(summary.hours)
+	var metres := float(summary.distance)
+	var lines := ["Your suit ran out of oxygen %s from home. GAR-Y found you, locked onto your suit's drag handle and hauled you back to %s: %d h %02d min went by." % [
+		("%.1f km" % (metres / 1000.0)) if metres >= 1000.0 else "%d m" % roundi(metres), place, int(hours), int(fmod(hours, 1.0) * 60.0)]]
+	if not item.is_empty():
+		lines.append("You dropped the %s where you fell%s." % [str(item.label).to_lower(), " (it's on the region map, Tab)" if MHSiteTerrain.shape() == "region" else ""])
+	lines.append("The suit's seals took a knock: it leaks, so oxygen runs out faster, until you repair it at a suit service panel." if _has_panel else "The suit's seals took a knock: it leaks, so oxygen runs out faster, until you've patched it (an hour somewhere sealed).")
+	if world.get("crew_rover") != null and world.crew_rover.global_position.distance_to(world.player.global_position) > 30.0:
+		lines.append("The rover is still where you left it.")
+	var count := int(summary.rescues)
+	var remark := "\"Please don't do that again.\"" if count <= 1 else ("\"Twice now, Commander.\"" if count == 2 else "\"That's %d times now, Commander.\"" % count)
+	lines.append("GAR-Y's beeps, roughly: " + remark)
+	get_tree().call_group("explore_hud", "show_equipment_note", "GAR-Y brought you home", " ".join(lines))
 
 func _has_airlock() -> bool:
 	return world.builder != null and world.builder.zones.any(func(z): return str(z.get("kind", "")) == "airlock")
 
-## Where you come round: the first airlock, else the lander cabin.
+func _medical_cot() -> Variant:
+	if world.builder == null: return null
+	for item in world.builder.placed_interior:
+		if str(item.get("id", "")) == "medical_exam_cot": return item
+	return null
+
+## Where you come round: beside a medical cot, else the first airlock, else
+## the lander cabin.
 func wake_spot() -> Dictionary:
+	var cot: Variant = _medical_cot()
+	if cot != null and _has_airlock():
+		var at: Vector3 = cot.position
+		var yaw := float(cot.get("rotation_y", 0.0))
+		var side := Vector3(1.1, 0, 0).rotated(Vector3.UP, yaw)
+		return {"position": Vector3(at.x + side.x, world.builder.habitat_base_y + .1, at.z + side.z), "yaw": yaw}
 	if _has_airlock():
 		for zone in world.builder.zones:
 			if str(zone.get("kind", "")) != "airlock": continue
 			var centre := Vector2.ZERO
 			for cell in zone.cells: centre += Vector2(cell) * BuildController.CELL
 			centre /= float((zone.cells as Array).size())
-			return {"position": Vector3(centre.x, world.builder.habitat_base_y + .1, centre.y), "yaw": world.player.rotation.y}
+			# Facing in, away from the outer door.
+			var out := Vector2(zone.get("door_direction", Vector2i(0, -1)))
+			return {"position": Vector3(centre.x, world.builder.habitat_base_y + .1, centre.y), "yaw": atan2(out.x, out.y)}
 	return world.lander.cabin_start()
 
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"o2": o2, "power": power, "scrubber": scrubber}
+	return {"o2": o2, "power": power, "scrubber": scrubber, "leak": leak,
+		"dropped": dropped.map(func(d): return {"placement_id": d.placement_id, "label": d.label, "position": [d.position.x, d.position.y, d.position.z]})}
 
 func restore_state(state: Dictionary) -> void:
 	o2 = float(state.get("o2", 1.0))
 	power = float(state.get("power", 1.0))
 	scrubber = float(state.get("scrubber", 1.0))
+	leak = bool(state.get("leak", false))
+	dropped = (state.get("dropped", []) as Array).map(func(d): return {"placement_id": str(d.placement_id), "label": str(d.label), "position": Vector3(float(d.position[0]), float(d.position[1]), float(d.position[2]))})

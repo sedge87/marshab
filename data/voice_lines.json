@@ -389,6 +389,14 @@
     "suit_no_supply": [
       "No supply here. The tanks are empty.",
       "Nothing to draw on here."
+    ],
+    "suit_leak": [
+      "Seal leak. Oxygen use increased.",
+      "Suit pressure dropping slowly. Seal leak."
+    ],
+    "suit_seal_repaired": [
+      "Seal repaired. Suit integrity good.",
+      "Seal good."
     ]
   },
   "mission_control": {

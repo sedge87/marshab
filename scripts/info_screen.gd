@@ -125,6 +125,8 @@ func _draw_suit() -> void:
 		_text("(Creative)", Vector2(22, 140) * u, int(18 * u), MHStyle.TEXT_MUTED, 500)
 		return
 	var o2: float = r.o2
+	if bool(r.get("leak", false)) and fmod(Time.get_ticks_msec() / 1000.0, 1.2) < .85:
+		_text("SEAL LEAK · REPAIR", Vector2(0, 33 * u), int(17 * u), MHStyle.DANGER, 800, HORIZONTAL_ALIGNMENT_CENTER, size.x)
 	# Oxygen: time left at this rate, big.
 	_text("OXYGEN", Vector2(22, 72) * u, int(18 * u), MHStyle.TEXT_SECONDARY)
 	_text(_clock(float(r.o2_hours)), Vector2(22, 128) * u, int(60 * u), tone.call(o2), 800)

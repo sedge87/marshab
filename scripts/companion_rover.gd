@@ -106,6 +106,8 @@ var flags: Array = []          # flag positions (Vector3), saved
 var staying := false           # "Stay": waits here until told otherwise
 var has_core := false          # carrying a core sample for the Science Lab (saved)
 var surveys_ordered := 0
+var rescues := 0               # times it has dragged you home (saved)
+var rescuing := false          # scripts/gar_y_rescue.gd is moving it
 var _stay_point := Vector3.INF
 var _ordered := false          # the current errand was an order: more time, always reports back
 var _core_check := 0.0
@@ -210,7 +212,7 @@ func _ready() -> void:
 # ---------- each physics frame ----------
 
 func _physics_process(delta: float) -> void:
-	if target == null:
+	if target == null or rescuing:
 		return
 	# Build mode uses an isometric construction camera; keep the rover out of it.
 	var building := bool(target.get_meta("build_mode_active", false))
@@ -859,6 +861,30 @@ func _wake() -> void:
 	docked = false
 	_idle_time = 0.0
 
+# ---------- dragging you home (scripts/gar_y_rescue.gd) ----------
+
+## Drops whatever it was doing; the rescue moves it from here on.
+func begin_rescue() -> void:
+	if not task.is_empty(): _end_task(true)
+	_wake()
+	staying = false
+	_route.clear()
+	velocity = Vector3.ZERO
+	_idle_time = 2.0   # so it looks at you
+	rescuing = true
+	visible = true
+
+## One frame of being moved by the rescue: its wheels turn, its eyes and lamp
+## keep going.
+func rescue_frame(before: Vector3, delta: float) -> void:
+	_animate(before, delta)
+
+func end_rescue() -> void:
+	rescuing = false
+	rescues += 1
+	_set_pose("stow")
+	_escort_until = Time.get_ticks_msec() + ESCORT_MS   # it sticks close for a bit
+
 # ---------- orders (backlog 29) ----------
 
 ## The orders the menu offers right now (they depend on where GAR-Y is).
@@ -1099,6 +1125,7 @@ func interact(_actor: Node = null) -> bool:
 
 func interact_info(_actor: Node = null) -> bool:
 	var tally := "\nIce deposits flagged: %d · Regolith samples: %d" % [ice_found, samples]
+	if rescues > 0: tally += "\nTimes it has dragged you home: %d" % rescues
 	if not rocks.is_empty():
 		tally += "\nRock collection (%d of %d): %s" % [rocks.size(), ROCKS.size(), ", ".join(rocks.map(func(i): return str(ROCKS[int(i)][0])))]
 	get_tree().call_group("explore_hud", "show_equipment_note", "%s — %s" % [NAME, FULL_NAME], ABOUT + tally)
@@ -1107,7 +1134,7 @@ func interact_info(_actor: Node = null) -> bool:
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"flags": flags.duplicate(), "ice_found": ice_found, "samples": samples, "has_core": has_core, "rocks": rocks.duplicate(), "ice_samples": ice_samples.duplicate()}
+	return {"flags": flags.duplicate(), "ice_found": ice_found, "samples": samples, "has_core": has_core, "rocks": rocks.duplicate(), "ice_samples": ice_samples.duplicate(), "rescues": rescues}
 
 func restore_state(state: Dictionary) -> void:
 	flags = (state.get("flags", []) as Array).duplicate()
@@ -1116,6 +1143,7 @@ func restore_state(state: Dictionary) -> void:
 	has_core = bool(state.get("has_core", false))
 	rocks = (state.get("rocks", []) as Array).map(func(i): return int(i))
 	ice_samples = (state.get("ice_samples", []) as Array).duplicate()
+	rescues = int(state.get("rescues", 0))
 	_rebuild_rocks()
 	if not flags.is_empty(): _rebuild_flags()
 

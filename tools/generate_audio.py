@@ -637,12 +637,30 @@ def suit_fill():
     return hiss(length, 0.6, 3800) * envelope(length, 0.05, 0.5)
 
 
+def suit_drag():
+    """Being dragged over regolith on your back: a gritty scrape that surges
+    with each tug."""
+    length = 2.4
+    t = seconds(length)
+    tugs = 0.55 + 0.45 * np.abs(np.sin(np.pi * t / 0.8)) ** 0.7
+    grit = bandpass(noise(length), 1400, 1100) * (0.6 + 0.4 * (rng.random(len(t)) > 0.92))
+    rumble = lowpass(noise(length), 160) * 1.4
+    return (grit + rumble) * tugs * envelope(length, 0.08, 0.3)
+
+
+def suit_clamp():
+    """GAR-Y's gripper locking onto your suit's drag handle."""
+    return mix(thunk(140, 70, 0.3, 0.06), metal_ring((880, 1990, 3120), 0.4, 0.07, 0.18))
+
+
 def main_suit():
     write("sfx/suit_breath_in", breath(True), -6)
     write("sfx/suit_breath_out", breath(False), -6)
     write("sfx/suit_beep", suit_beep(), -4)
     write("sfx/suit_alarm", suit_alarm(), -3)
     write("sfx/suit_fill", suit_fill(), -4)
+    write("sfx/suit_drag", suit_drag(), -5)
+    write("sfx/suit_clamp", suit_clamp(), -3)
 
 
 def main():
