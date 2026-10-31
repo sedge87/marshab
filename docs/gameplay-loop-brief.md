@@ -84,7 +84,7 @@ A **basic suit** to begin with: very little life support of its own, so the firs
 - **Empty tank:** the cab is no shelter any more, so your suit runs down as if you were outside.
 - **The driving readout** shows O₂ %, and the rover's E prompt label shows it too. A real in-cab dashboard screen is still to come.
 
-### 4.1b Why kit grows: commissioning and flight rules (phase 4, design)
+### 4.1b Why kit grows: commissioning and flight rules (phase 4, design: `docs/commissioning-and-flight-rules.md`)
 Real missions plan everything, so there's no frankenstein crafting. Three real things limit how far a new crew may go:
 - **Kit lands packed.** Spare O₂ bottles, suit battery packs, rover battery modules and a pressurised trailer arrive in cargo crates. Each must be unpacked, assembled and pressure or electrically tested (at the EVA tool station or vehicle bay) before it's fitted. It's a short hands-on procedure that teaches the system.
 - **The walkback limit.** Apollo 15–17 crews couldn't drive further from the lunar module than they could walk back on their suit's reserve if the rover failed. Mission Control sets the same rule:
