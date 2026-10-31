@@ -96,11 +96,11 @@
       "light_kw_per_cell": 0.05,
       "target_c": 12.0
     },
-    "waste_management": {
+    "general": {
       "cargo_kg_per_cell": 800.0,
       "always_kw_per_cell": 0.03,
       "light_kw_per_cell": 0.05,
-      "target_c": 16.0
+      "target_c": 20.0
     },
     "communications": {
       "cargo_kg_per_cell": 800.0,

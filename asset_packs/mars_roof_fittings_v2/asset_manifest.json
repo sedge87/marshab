@@ -1,0 +1,117 @@
+{
+  "style": "Roof fittings for the room changes (31 Oct), same materials as the furnishings pack",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "roof_sleeping_quarters",
+      "file": "roof_sleeping_quarters.glb",
+      "placement": "roof",
+      "bounds_m": [
+        [
+          -1.18,
+          0.0,
+          -1.18
+        ],
+        [
+          1.18,
+          0.6,
+          1.18
+        ]
+      ],
+      "triangles": 5428,
+      "named_components": [
+        "intake_band",
+        "intake_bands_dark",
+        "intake_bolts_satin",
+        "intake_box_body_white",
+        "intake_box_cap_white",
+        "intake_box_plinth",
+        "intake_box_rails",
+        "intake_duct",
+        "intake_hood_warm",
+        "intake_inlet",
+        "intake_plate_warm",
+        "intake_rim_dark",
+        "intake_saddles",
+        "intake_seam",
+        "intake_silencer_satin",
+        "intake_status"
+      ]
+    },
+    {
+      "id": "roof_day_room",
+      "file": "roof_day_room.glb",
+      "placement": "roof",
+      "bounds_m": [
+        [
+          -1.18,
+          0.0,
+          -1.18
+        ],
+        [
+          1.18,
+          1.59,
+          1.18
+        ]
+      ],
+      "triangles": 7488,
+      "named_components": [
+        "extract_band",
+        "extract_bolts_satin",
+        "extract_collar_dark",
+        "extract_cowl_dark",
+        "extract_filter",
+        "extract_filter_body_white",
+        "extract_filter_cap_white",
+        "extract_filter_plinth",
+        "extract_filter_rails",
+        "extract_filter_seam",
+        "extract_fin_frame",
+        "extract_fins_dark",
+        "extract_plate_warm",
+        "extract_return_pipe",
+        "extract_rim_dark",
+        "extract_stack_satin",
+        "extract_status",
+        "extract_struts"
+      ]
+    },
+    {
+      "id": "roof_storage_recycling",
+      "file": "roof_storage_recycling.glb",
+      "placement": "roof",
+      "bounds_m": [
+        [
+          -1.18,
+          0.0,
+          -1.18
+        ],
+        [
+          1.18,
+          1.36,
+          1.18
+        ]
+      ],
+      "triangles": 3632,
+      "named_components": [
+        "davit_arm_satin",
+        "davit_base_dark",
+        "davit_brace",
+        "davit_cable_dark",
+        "davit_hook_block",
+        "davit_post_satin",
+        "hatch_bolts_satin",
+        "hatch_coaming",
+        "hatch_dogs_satin",
+        "hatch_grab_bar_satin",
+        "hatch_grab_posts_satin",
+        "hatch_lid_panel_warm",
+        "hatch_lid_white",
+        "hatch_plate_warm",
+        "hatch_rim_dark",
+        "hatch_seam_black",
+        "hatch_status"
+      ]
+    }
+  ]
+}

@@ -6,7 +6,7 @@ A design written on 31 Oct 2026, following `docs/core-loop.md` rounds 2 and 3:
 - the small rooms merged;
 - a workshop and operations.
 
-Changed on 31 Oct: **waste management goes into storage, not life support.** Nothing here is built yet. The decisions are in §9.
+Changed on 31 Oct: **waste management goes into storage, not life support.** Built on 31 Oct; the decisions are in §9, and §10 says where the build differs.
 
 ## 1. The idea in one paragraph
 
@@ -49,6 +49,7 @@ You start with one or two **general modules**, where everything basic can go, as
   - a tool bench;
   - the communications station;
   - first aid;
+  - the exercise station (exercise is a day-one need: ISS crews do two hours a day);
   - a cargo rack and crates;
   - one grow tray;
   - desks and personal things.
@@ -147,3 +148,16 @@ With only a General Module, everyone has somewhere to work, at 75 %.
 4. **The Vehicle Bay is noisy.**
 5. **Names:** General Module, Sleeping Quarters, Day Room, Storage & Recycling, Workshop, Mission Operations.
 6. **Old kit** that's no longer allowed stays where it is.
+
+## 10. As built (31 Oct)
+
+- **The General Module also takes the exercise station.** Exercise is a day-one need.
+- **Old kit:** only kit already standing in a room when an older save loads is kept (it's marked `legacy`). Reassigning a Day Room to Sleeping Quarters still clears the sofas.
+- **Roof fittings:**
+  - the General Module took the comms mast;
+  - Sleeping Quarters, the Day Room and Storage & Recycling got new ones (`asset_packs/mars_roof_fittings_v2`);
+  - roof fittings now use the house materials.
+- **Overhead kits** (`room_identity.gd`) for the General Module, Sleeping Quarters, the Day Room and Storage & Recycling.
+- **Power:** a General Module draws like a Day Room (3 per cell).
+- **The balance spreadsheet:** the Rooms sheet has the new names and a General Module row (in place of Waste Management). The Equipment sheet's "room" column for the waste items still says `waste_management`. It's informational, and the file was locked when this was written.
+- **Not done:** the tutorial's hint clips still show Living Quarters. The models to rebuild are listed in `docs/models-for-the-overhaul.md`.

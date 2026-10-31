@@ -92,6 +92,8 @@ static func cargo_budget() -> int:
 	return total
 
 static func zone_unlocked(kind: String) -> bool:
+	if kind == "waste_management": return false   # merged into Storage & Recycling (31 Oct)
+	if kind == "general": return not active()   # free play only: Missions build the NASA way
 	if not active() or kind == "ladder": return true   # a roof ladder isn't a delivery
 	if kind.begins_with("shield_"): return structure_unlocked("upgrade_" + kind.trim_prefix("shield_"))
 	for mission in _so_far():
@@ -566,7 +568,7 @@ static func _judge(requirement: Dictionary, run: Dictionary, sols: int, start_ho
 			if result.pass: result.detail = "Crew health stayed above %d%%." % int(requirement.get("min", 80))
 		"crew_aboard":
 			result.pass = crew >= int(requirement.get("min", 1))
-			result.detail = "Bunks for %d of %d crew." % [crew, int(requirement.get("min", 1))] + ("" if result.pass else " Add crew bunks in Living Quarters.")
+			result.detail = "Bunks for %d of %d crew." % [crew, int(requirement.get("min", 1))] + ("" if result.pass else " Add crew bunks in Sleeping Quarters.")
 		"food_grown":
 			var eaten: float = float(crew) * MHResources.setting("food_per_person", 1.8) * sols
 			var share := float(run.food_in) / maxf(.001, eaten)

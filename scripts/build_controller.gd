@@ -79,8 +79,14 @@ const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
 const TRENCHES := preload("res://scripts/trenches.gd")
 const FLOOR_PLAN := preload("res://scripts/floor_plan.gd")
 var plan_legend: Control
+# What each room shows on its roof. 31 Oct (room changes): the General Module
+# takes the comms mast; Sleeping Quarters, the Day Room and Storage &
+# Recycling got their own (asset_packs/mars_roof_fittings_v2).
 const ROOF_ACCESSORY_SCENES := {
-	"living": preload("res://assets/structural_kit/roof_living_comms_mast.glb"),
+	"general": preload("res://assets/structural_kit/roof_living_comms_mast.glb"),
+	"living": preload("res://assets/structural_kit/roof_sleeping_quarters.glb"),
+	"galley": preload("res://assets/structural_kit/roof_day_room.glb"),
+	"storage": preload("res://assets/structural_kit/roof_storage_recycling.glb"),
 	"science": preload("res://assets/structural_kit/roof_science_dish.glb"),
 	"hydroponics": preload("res://assets/structural_kit/roof_hydroponics_vent_bank.glb"),
 	"life_support": preload("res://assets/structural_kit/roof_life_support_exhaust.glb"),
@@ -103,16 +109,20 @@ const REACTOR_OUTPUT := 360
 const CREW_TARGET := 6
 const RESEARCH_TARGET := 6
 const ZONE_TYPES := {
-	"living":{"label":"Living Quarters","colour":Color(.22,.48,.78),"cost":CELL_COST},
+	# Room changes (docs/room-changes.md, 31 Oct): the ids stay so saves and
+	# Missions keep working; living is Sleeping Quarters, galley the Day Room,
+	# engineering the Workshop. Waste Management merged into Storage.
+	"general":{"label":"General Module","colour":Color(.47,.53,.58),"cost":CELL_COST},
+	"living":{"label":"Sleeping Quarters","colour":Color(.22,.48,.78),"cost":CELL_COST},
 	"science":{"label":"Science Lab","colour":Color(.55,.26,.74),"cost":CELL_COST},
-	"storage":{"label":"Storage","colour":Color(.62,.46,.18),"cost":CELL_COST},
+	"storage":{"label":"Storage & Recycling","colour":Color(.62,.46,.18),"cost":CELL_COST},
 	"hydroponics":{"label":"Hydroponics","colour":Color(.18,.62,.31),"cost":CELL_COST},
 	"life_support":{"label":"Life Support","colour":Color(.12,.63,.67),"cost":CELL_COST},
-	"engineering":{"label":"Power & Engineering","colour":Color(.88,.30,.16),"cost":CELL_COST},
-	"galley":{"label":"Galley","colour":Color(.90,.53,.16),"cost":CELL_COST},
+	"engineering":{"label":"Workshop","colour":Color(.88,.30,.16),"cost":CELL_COST},
+	"galley":{"label":"Day Room","colour":Color(.90,.53,.16),"cost":CELL_COST},
 	"hygiene":{"label":"Hygiene","colour":Color(.18,.56,.75),"cost":CELL_COST},
 	"medical":{"label":"Medical Bay","colour":Color(.78,.26,.34),"cost":CELL_COST},
-	"waste_management":{"label":"Waste Management","colour":Color(.38,.45,.27),"cost":CELL_COST},
+	"waste_management":{"label":"Storage & Recycling","colour":Color(.38,.45,.27),"cost":CELL_COST},
 	"communications":{"label":"Mission Operations","colour":Color(.25,.45,.80),"cost":CELL_COST},
 	"corridor":{"label":"Corridor","colour":Color(.76,.30,.08),"plan_colour":Color("#8FA3AD"),"cost":CELL_COST},
 	"airlock":{"label":"Airlock","colour":Color(.95,.43,.08),"cost":CELL_COST},
@@ -132,16 +142,17 @@ const ZONE_TYPES := {
 
 # Catalogue metadata for the build HUD. Gameplay values stay in ZONE_TYPES.
 const ZONE_INFO := {
-	"living":{"cat":"rooms","icon":"bed-double","rule":"Drag an area","desc":"Makes space for bunks, lockers and personal areas. Furnish it to house crew."},
+	"general":{"cat":"rooms","icon":"box","rule":"Drag an area","desc":"Takes the basics of everything: bunks, a kitchenette, a toilet, life support, a tool bench, the comms station. Cramped and noisy: sleep is poor and work slower. Advanced kit needs its own room."},
+	"living":{"cat":"rooms","icon":"bed-double","rule":"Drag an area","desc":"Bunks, lockers and personal things. Keep it away from noisy rooms (or insulate the wall) for a good night's sleep."},
 	"science":{"cat":"rooms","icon":"flask-conical","rule":"Drag an area","desc":"Makes space for benches and instruments. Furnish it to conduct research."},
-	"storage":{"cat":"rooms","icon":"package","rule":"Drag an area","desc":"Racks for spares, tools and supplies."},
+	"storage":{"cat":"rooms","icon":"package","rule":"Drag an area","desc":"Racks for spares, tools and supplies, and the waste sorter and recycling hoppers that turn rubbish into feedstock and compost."},
 	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Makes space for grow equipment. Furnish it to produce food."},
 	"life_support":{"cat":"rooms","icon":"wind","rule":"Drag an area","desc":"Makes space for air and water recyclers. Furnish it to support crew."},
-	"engineering":{"cat":"rooms","icon":"zap","rule":"Drag an area","desc":"A dedicated engineering room for electrical distribution, batteries and thermal hardware."},
-	"galley":{"cat":"rooms","icon":"utensils","rule":"Drag an area","desc":"A compact food-preparation and crew-meal space."},
+	"engineering":{"cat":"rooms","icon":"wrench","rule":"Drag an area","desc":"Repairs at full speed, the tool bench, batteries and power panels, and the regolith printer. Noisy: keep it away from Sleeping Quarters."},
+	"galley":{"cat":"rooms","icon":"utensils","rule":"Drag an area","desc":"The shared room: the kitchen and tables, sofas, games and the exercise station. Lively but not noisy, so it can sit next to Sleeping Quarters."},
 	"hygiene":{"cat":"rooms","icon":"droplets","rule":"Drag an area","desc":"A private washroom for hygiene and daily routines."},
 	"medical":{"cat":"rooms","icon":"heart-pulse","rule":"Drag an area","desc":"A small clinical bay for examination and medical supplies."},
-	"waste_management":{"cat":"rooms","icon":"recycle","rule":"Drag an area","desc":"A dedicated room for sorting and processing habitat waste."},
+	"waste_management":{"cat":"rooms","icon":"recycle","rule":"Merged into Storage & Recycling","desc":"Merged into Storage & Recycling (31 Oct); older saves convert on load."},
 	"communications":{"cat":"rooms","icon":"radio","rule":"Drag an area","desc":"Plan missions, map the site and keep in touch with Earth and the rovers."},
 	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates · click 45° wall","desc":"Creates a sealed passage. Click an exact 45° free-form wall for a rotated connector."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates · click 45° wall","desc":"The way in and out. Click an exact 45° free-form wall for a rotated airlock; otherwise the inner end must touch a room."},
@@ -1268,6 +1279,8 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 	var zone := _zone_at_point(Vector2(world_position.x, world_position.z))
 	var valid_zones: Array = entry.get("valid_zones", [])
 	if not valid_zones.has(str(zone.get("kind", ""))): return "Fits in %s" % _zone_list_text(valid_zones)
+	if id == "crew_bunk" and str(zone.get("kind", "")) == "general" and _bunks_in(zone) >= GENERAL_MODULE_BUNKS:
+		return "A General Module takes %d bunks: build Sleeping Quarters for more" % GENERAL_MODULE_BUNKS
 	var placement := str(entry.get("placement", "floor"))
 	if placement == "floor" and surface_normal.dot(Vector3.UP) < .82: return "Place this on the floor"
 	if placement == "wall" and absf(surface_normal.dot(Vector3.UP)) > .28: return "Mount this on an interior wall"
@@ -1627,8 +1640,7 @@ func _prune_equipment() -> int:
 		var item: Dictionary = placed_equipment[index]
 		var cell: Vector2i = item.get("cell", Vector2i(9999, 9999))
 		var zone := _zone_at_point(Vector2(cell.x * CELL, cell.y * CELL))
-		var valid_zones: Array = EquipmentCatalog.get_entry(str(item.get("id", ""))).get("valid_zones", [])
-		if zone.is_empty() or not valid_zones.has(str(zone.kind)):
+		if zone.is_empty() or not still_fits(str(item.get("id", "")), str(zone.kind), bool(item.get("legacy", false))):
 			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
 			placed_equipment.remove_at(index)
 			if _equipment_visuals.has(cell):
@@ -1644,7 +1656,6 @@ func _prune_equipment() -> int:
 		# Dropped outside when you blacked out (scripts/carry.gd): it waits there.
 		if bool(item.get("dropped_outside", false)) and zone.is_empty(): continue
 		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
-		var valid_zones: Array = entry.get("valid_zones", [])
 		var wall_lost := false
 		if str(entry.get("placement", "floor")) == "wall" and item.has("anchor_normal"):
 			# A wall mount remains valid while a physical wall occupies its boundary.
@@ -1657,10 +1668,35 @@ func _prune_equipment() -> int:
 			else:
 				var other_cell := cell + outward
 				wall_lost = not (_should_build_wall(cell, outward) or _should_build_wall(other_cell, -outward))
-		if zone.is_empty() or not valid_zones.has(str(zone.kind)) or wall_lost:
+		if zone.is_empty() or not still_fits(str(item.get("id", "")), str(zone.kind), bool(item.get("legacy", false))) or wall_lost:
 			refund += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
 			remove_free_interior_equipment(str(item.get("placement_id", "")))
 	return refund
+
+## A General Module sleeps this many at most (docs/room-changes.md).
+const GENERAL_MODULE_BUNKS := 2
+
+func _bunks_in(zone: Dictionary) -> int:
+	var count := 0
+	for item in placed_interior:
+		if str(item.get("id", "")) != "crew_bunk": continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		if is_same(_zone_at_point(Vector2(at.x, at.z)), zone): count += 1
+	return count
+
+## Kit a room type used to take before the room changes (31 Oct): already
+## placed, it stays and keeps working, but no more can be placed there.
+const LEGACY_ROOM_ITEMS := {
+	"living": ["lounge_sofa", "bean_bag", "arcade_cabinet", "vr_station", "table_football", "telescope", "music_station", "dartboard", "games_shelf",
+		"projector_screen", "sectional_sofa", "coffee_bar", "bar_stool", "table_tennis", "climbing_wall", "exercise_station", "common_table",
+		"galley_table_set", "integrated_mess_booth", "floor_cushions"],
+}
+
+## Whether placed kit may stay in a room: allowed there now, or loaded from
+## an older save that put it there when it was allowed.
+static func still_fits(id: String, zone_kind: String, legacy := false) -> bool:
+	if (EquipmentCatalog.get_entry(id).get("valid_zones", []) as Array).has(zone_kind): return true
+	return legacy and (LEGACY_ROOM_ITEMS.get(zone_kind, []) as Array).has(id)
 
 # Footprint in metres from the catalogue's 1.5 m half-cell footprint.
 func _equipment_size(entry: Dictionary) -> Vector3:
@@ -3438,6 +3474,7 @@ func _add_zone_roof_accessory(zone: Dictionary) -> void:
 		root.add_child(accessory)
 		var model: Node3D = (ROOF_ACCESSORY_SCENES[zone_kind] as PackedScene).instantiate()
 		model.name = "%sRoofFitting" % zone_kind.capitalize()
+		MHPalette.apply(model)   # house materials (docs/house-style.md)
 		accessory.add_child(model)
 		_seat_roof_accessory_on_roof(model)
 
@@ -5425,7 +5462,7 @@ func _systems() -> Dictionary:
 	for zone in zones:
 		if str(zone.kind)=="solar" and _power_source_connected(zone): generation+=SOLAR_OUTPUT*_solar_efficiency(solar_facing(zone))*MHGame.solar_irradiance(MHGame.sol_hour)
 		elif str(zone.kind)=="reactor" and _power_source_connected(zone) and _zone_running(zone): generation+=REACTOR_OUTPUT
-	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.hydroponics*5+counts.life_support*3+counts.engineering*4+counts.science*5+counts.vehicle_bay*4+counts.galley*3+counts.hygiene*2+counts.medical*3+counts.waste_management*3+counts.communications*2+counts.ice_extractor*8+int(equipment.power_draw)
+	var draw:int=counts.living+counts.storage+counts.corridor+counts.airlock*2+counts.hydroponics*5+counts.life_support*3+counts.engineering*4+counts.science*5+counts.vehicle_bay*4+counts.galley*3+counts.hygiene*2+counts.medical*3+counts.waste_management*3+counts.general*3+counts.communications*2+counts.ice_extractor*8+int(equipment.power_draw)
 	for zone in zones:
 		if str(zone.kind)=="ice_extractor" and not _zone_running(zone): draw -= 8 # a stopped drill draws nothing
 	var heated_cells := 0
@@ -5638,6 +5675,10 @@ func restore_habitat_state(state: Dictionary) -> void:
 		# turning older saves into sealed Hydroponics instead of dropping cells.
 		if str(saved_zone.get("kind", "")) == "glass_room":
 			saved_zone["kind"] = "hydroponics"
+		# Waste Management merged into Storage & Recycling (31 Oct); all its
+		# kit is allowed there.
+		if str(saved_zone.get("kind", "")) == "waste_management":
+			saved_zone["kind"] = "storage"
 		if not saved_zone.has("door_direction"):
 			saved_zone["door_direction"] = Vector2i(0, -1)
 		_recompute_zone_cost(saved_zone)
@@ -5665,7 +5706,13 @@ func restore_habitat_state(state: Dictionary) -> void:
 		visual.set_meta("equipment_id", item_id)
 		visual.set_meta("interior_placement_id", str(item.get("placement_id", "")))
 		# Record first, so an interaction rig can read its saved state on _ready.
-		placed_interior.append(item.duplicate(true))
+		var record := item.duplicate(true)
+		# Kit an older save put where it's no longer allowed (room changes,
+		# 31 Oct) stays, marked, so a later reassign can't carry more in.
+		var standing_in := str(_zone_at_point(Vector2(position.x, position.z)).get("kind", ""))
+		if not (EquipmentCatalog.get_entry(item_id).get("valid_zones", []) as Array).has(standing_in) and (LEGACY_ROOM_ITEMS.get(standing_in, []) as Array).has(item_id):
+			record["legacy"] = true
+		placed_interior.append(record)
 		furnishing.add_child(visual)
 	for raw_item in state.get("placed_surface", []) as Array:
 		var surface_item: Dictionary = raw_item as Dictionary
@@ -5776,7 +5823,7 @@ func suggestion() -> String:
 			"shelter":
 				if item.status=="unmet": return "Add an Airlock beside a room. Its inner end must touch the room and its outer end must face Mars. You have %s left." % left
 				return "Some rooms aren't connected to an airlock. Join them with a Corridor. You have %s left." % left
-			"beds": return "Build enough Living Quarters, then add Crew Bunks from the Interior tab. You have %s left." % left
+			"beds": return "Build enough Sleeping Quarters (or a General Module, for two), then add Crew Bunks from the Interior tab. You have %s left." % left
 			"food": return "Build Hydroponics, then add Grow Trays from the Interior tab to produce food. You have %s left." % left
 			"water": return "Choose Ice Extractor in Resources, then place it over a blue subsurface-ice survey area. You have %s left." % left
 			"life": return "Build Life Support, then add an Air Recycler from the Interior tab. You have %s left." % left

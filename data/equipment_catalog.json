@@ -3,7 +3,7 @@
   "groups": [
     {
       "id": "living",
-      "label": "Living Quarters",
+      "label": "Sleeping Quarters",
       "icon": "bed-double"
     },
     {
@@ -23,7 +23,7 @@
     },
     {
       "id": "galley",
-      "label": "Galley",
+      "label": "Day Room",
       "icon": "utensils"
     },
     {
@@ -38,7 +38,7 @@
     },
     {
       "id": "waste_management",
-      "label": "Waste Management",
+      "label": "Recycling",
       "icon": "recycle"
     },
     {
@@ -53,7 +53,7 @@
     },
     {
       "id": "storage",
-      "label": "Storage",
+      "label": "Storage & Recycling",
       "icon": "package"
     },
     {
@@ -73,7 +73,7 @@
     },
     {
       "id": "power",
-      "label": "Power & Engineering",
+      "label": "Workshop & Power",
       "icon": "zap"
     },
     {
@@ -106,7 +106,8 @@
       "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/crew_bunk.tscn",
       "cargo_cost": 100,
       "valid_zones": [
-        "living"
+        "living",
+        "general"
       ],
       "footprint": [
         2,
@@ -148,7 +149,8 @@
         "hygiene",
         "medical",
         "storage",
-        "airlock"
+        "airlock",
+        "general"
       ],
       "footprint": [
         1,
@@ -184,11 +186,11 @@
       "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/common_table.tscn",
       "cargo_cost": 70,
       "valid_zones": [
-        "living",
         "science",
         "galley",
         "communications",
-        "medical"
+        "medical",
+        "general"
       ],
       "footprint": [
         2,
@@ -237,8 +239,8 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
-        "communications"
+        "communications",
+        "general"
       ],
       "footprint": [
         1,
@@ -275,7 +277,8 @@
       "valid_zones": [
         "living",
         "medical",
-        "hygiene"
+        "hygiene",
+        "general"
       ],
       "footprint": [
         2,
@@ -308,8 +311,9 @@
       "asset_scene": "res://assets/equipment/mars_living_quarters_martian_hailmary_v1/exercise_station.tscn",
       "cargo_cost": 90,
       "valid_zones": [
-        "living",
-        "medical"
+        "medical",
+        "galley",
+        "general"
       ],
       "footprint": [
         1,
@@ -450,7 +454,8 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/grow_tray.tscn",
       "cargo_cost": 120,
       "valid_zones": [
-        "hydroponics"
+        "hydroponics",
+        "general"
       ],
       "footprint": [
         2,
@@ -625,7 +630,8 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/air_recycler.tscn",
       "cargo_cost": 160,
       "valid_zones": [
-        "life_support"
+        "life_support",
+        "general"
       ],
       "footprint": [
         2,
@@ -661,7 +667,8 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/water_reclaimer.tscn",
       "cargo_cost": 170,
       "valid_zones": [
-        "life_support"
+        "life_support",
+        "general"
       ],
       "footprint": [
         2,
@@ -699,7 +706,8 @@
         "airlock",
         "engineering",
         "storage",
-        "medical"
+        "medical",
+        "general"
       ],
       "footprint": [
         1,
@@ -732,7 +740,8 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/thermal_control_unit.tscn",
       "cargo_cost": 150,
       "valid_zones": [
-        "life_support"
+        "life_support",
+        "general"
       ],
       "footprint": [
         2,
@@ -770,7 +779,8 @@
         "vehicle_bay",
         "engineering",
         "galley",
-        "hydroponics"
+        "hydroponics",
+        "general"
       ],
       "footprint": [
         2,
@@ -807,7 +817,8 @@
         "storage",
         "vehicle_bay",
         "engineering",
-        "life_support"
+        "life_support",
+        "general"
       ],
       "footprint": [
         2,
@@ -984,11 +995,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -1025,11 +1036,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -1068,7 +1079,8 @@
         "engineering",
         "hydroponics",
         "vehicle_bay",
-        "airlock"
+        "airlock",
+        "general"
       ],
       "footprint": [
         2,
@@ -1192,11 +1204,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -1235,7 +1247,8 @@
         "storage",
         "corridor",
         "life_support",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -1271,7 +1284,8 @@
         "engineering",
         "storage",
         "life_support",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         2,
@@ -1341,7 +1355,8 @@
       "cargo_cost": 90,
       "valid_zones": [
         "galley",
-        "storage"
+        "storage",
+        "general"
       ],
       "footprint": [
         1,
@@ -1376,7 +1391,8 @@
         "galley",
         "living",
         "medical",
-        "science"
+        "science",
+        "general"
       ],
       "footprint": [
         1,
@@ -1444,7 +1460,8 @@
       "asset_scene": "res://assets/equipment/mars_crew_hygiene_repack/hygiene_toilet.tscn",
       "cargo_cost": 115,
       "valid_zones": [
-        "hygiene"
+        "hygiene",
+        "general"
       ],
       "footprint": [
         1,
@@ -1543,7 +1560,7 @@
       "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/waste_sorting_unit.tscn",
       "cargo_cost": 170,
       "valid_zones": [
-        "waste_management"
+        "storage"
       ],
       "footprint": [
         2,
@@ -1572,7 +1589,8 @@
       "asset_scene": "res://assets/equipment/mars_mission_operations_repack/communications_station.tscn",
       "cargo_cost": 145,
       "valid_zones": [
-        "communications"
+        "communications",
+        "general"
       ],
       "footprint": [
         2,
@@ -1606,8 +1624,8 @@
       "asset_scene": "res://assets/equipment/mars_galley_dining_repack/integrated_mess_booth.tscn",
       "cargo_cost": 160,
       "valid_zones": [
-        "living",
-        "galley"
+        "galley",
+        "general"
       ],
       "footprint": [
         2,
@@ -1654,11 +1672,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "placement": "floor",
       "icon": "plus",
@@ -1699,11 +1717,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "placement": "wall",
       "icon": "plus",
@@ -1749,11 +1767,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "placement": "floor",
       "icon": "lightbulb",
@@ -1793,11 +1811,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "placement": "floor",
       "icon": "package",
@@ -1841,11 +1859,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "placement": "floor",
       "icon": "package",
@@ -1889,11 +1907,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "placement": "floor",
       "icon": "package",
@@ -2007,11 +2025,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -2063,11 +2081,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -2512,7 +2530,8 @@
       "role": "Makes breathable oxygen",
       "cargo_cost": 300,
       "valid_zones": [
-        "life_support"
+        "life_support",
+        "general"
       ],
       "footprint": [
         2,
@@ -2602,7 +2621,8 @@
       "role": "Food preparation",
       "cargo_cost": 200,
       "valid_zones": [
-        "galley"
+        "galley",
+        "general"
       ],
       "footprint": [
         2,
@@ -2676,7 +2696,6 @@
       "cargo_cost": 70,
       "valid_zones": [
         "galley",
-        "living",
         "communications"
       ],
       "footprint": [
@@ -2816,7 +2835,6 @@
       "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/recycling_hopper_plastics.tscn",
       "cargo_cost": 55,
       "valid_zones": [
-        "waste_management",
         "storage"
       ],
       "footprint": [
@@ -2849,7 +2867,6 @@
       "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/recycling_hopper_metals.tscn",
       "cargo_cost": 55,
       "valid_zones": [
-        "waste_management",
         "storage",
         "engineering"
       ],
@@ -2883,8 +2900,8 @@
       "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/compost_hopper.tscn",
       "cargo_cost": 55,
       "valid_zones": [
-        "waste_management",
-        "hydroponics"
+        "hydroponics",
+        "storage"
       ],
       "footprint": [
         1,
@@ -3054,11 +3071,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3099,11 +3116,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3145,8 +3162,8 @@
         "storage",
         "galley",
         "hydroponics",
-        "waste_management",
-        "life_support"
+        "life_support",
+        "general"
       ],
       "footprint": [
         1,
@@ -3186,8 +3203,8 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
-        "communications"
+        "communications",
+        "general"
       ],
       "footprint": [
         1,
@@ -3238,9 +3255,9 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
-        "corridor"
+        "corridor",
+        "general"
       ],
       "footprint": [
         1,
@@ -3283,7 +3300,8 @@
         "storage",
         "galley",
         "hydroponics",
-        "life_support"
+        "life_support",
+        "general"
       ],
       "footprint": [
         1,
@@ -3324,11 +3342,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3370,11 +3388,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3480,11 +3498,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3523,11 +3541,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3566,11 +3584,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3609,11 +3627,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3656,11 +3674,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3703,11 +3721,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3751,11 +3769,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3798,11 +3816,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3845,11 +3863,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3888,11 +3906,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3931,11 +3949,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -3974,11 +3992,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -4017,11 +4035,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -4060,11 +4078,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -4106,11 +4124,11 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
         "airlock",
-        "vehicle_bay"
+        "vehicle_bay",
+        "general"
       ],
       "footprint": [
         1,
@@ -4154,9 +4172,9 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
-        "corridor"
+        "corridor",
+        "general"
       ],
       "footprint": [
         1,
@@ -4200,9 +4218,9 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
-        "corridor"
+        "corridor",
+        "general"
       ],
       "footprint": [
         1,
@@ -4243,9 +4261,9 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
-        "corridor"
+        "corridor",
+        "general"
       ],
       "footprint": [
         1,
@@ -4286,10 +4304,10 @@
         "galley",
         "hygiene",
         "medical",
-        "waste_management",
         "communications",
         "corridor",
-        "airlock"
+        "airlock",
+        "general"
       ],
       "footprint": [
         1,
@@ -4325,7 +4343,8 @@
         "engineering",
         "storage",
         "airlock",
-        "corridor"
+        "corridor",
+        "general"
       ],
       "footprint": [
         2,
@@ -4360,7 +4379,8 @@
         "storage",
         "engineering",
         "life_support",
-        "corridor"
+        "corridor",
+        "general"
       ],
       "footprint": [
         1,
@@ -4393,7 +4413,7 @@
       "role": "Somewhere to relax",
       "cargo_cost": 40,
       "valid_zones": [
-        "living"
+        "galley"
       ],
       "footprint": [
         2,
@@ -4426,7 +4446,7 @@
       "role": "Somewhere to relax",
       "cargo_cost": 8,
       "valid_zones": [
-        "living"
+        "galley"
       ],
       "footprint": [
         1,
@@ -4459,7 +4479,6 @@
       "role": "Games",
       "cargo_cost": 60,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -4495,7 +4514,7 @@
       "role": "Games and a trip home",
       "cargo_cost": 25,
       "valid_zones": [
-        "living"
+        "galley"
       ],
       "footprint": [
         2,
@@ -4530,7 +4549,6 @@
       "role": "Games",
       "cargo_cost": 45,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -4564,9 +4582,9 @@
       "role": "Stargazing",
       "cargo_cost": 12,
       "valid_zones": [
-        "living",
         "science",
-        "communications"
+        "communications",
+        "galley"
       ],
       "footprint": [
         1,
@@ -4599,7 +4617,6 @@
       "role": "Music",
       "cargo_cost": 30,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -4636,7 +4653,6 @@
       "role": "Games",
       "cargo_cost": 3,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -4671,7 +4687,6 @@
       "role": "Games",
       "cargo_cost": 6,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -4706,7 +4721,6 @@
       "role": "Movie night",
       "cargo_cost": 22,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -4742,7 +4756,6 @@
       "role": "Somewhere to relax together",
       "cargo_cost": 55,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -4777,7 +4790,6 @@
       "role": "Cafe corner",
       "cargo_cost": 40,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -4815,7 +4827,6 @@
       "role": "Seating",
       "cargo_cost": 5,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -4926,7 +4937,6 @@
       "role": "Somewhere to relax together",
       "cargo_cost": 12,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -4997,7 +5007,6 @@
       "role": "Active games",
       "cargo_cost": 50,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [
@@ -5033,7 +5042,6 @@
       "role": "Exercise",
       "cargo_cost": 35,
       "valid_zones": [
-        "living",
         "galley"
       ],
       "footprint": [

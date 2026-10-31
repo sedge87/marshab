@@ -82,8 +82,8 @@
         },
         {
           "id": "engineering",
-          "text": "Build a Power & Engineering room",
-          "how": "Rooms tab: drag out a Power & Engineering room. It's where the batteries live.",
+          "text": "Build a Workshop",
+          "how": "Rooms tab: drag out a Workshop. It's where the batteries live.",
           "check": "zone",
           "kind": "engineering",
           "marker": "base"
@@ -166,7 +166,7 @@
       ],
       "hints": [
         "Press B to open the site plan. Power is under Resources.",
-        "A Power & Engineering room holds the batteries. Give it an airlock, walk in and press B to furnish it.",
+        "A Workshop holds the batteries. Give it an airlock, walk in and press B to furnish it.",
         "Solar arrays only work by day. Batteries carry the drills through the night.",
         "Pale blue ground has the most ice. Hold G near GAR-Y and choose Survey there: it flags rich ice for your drills.",
         "Press T to test your design: it fast-forwards 5 sols, including the storm."
@@ -218,7 +218,7 @@
         {
           "id": "life_support",
           "text": "Build a Life Support room",
-          "how": "Site plan, Rooms tab: drag out Life Support next to your Power & Engineering room, so they share a wall.",
+          "how": "Site plan, Rooms tab: drag out Life Support next to your Workshop, so they share a wall.",
           "check": "zone",
           "kind": "life_support",
           "marker": "base"
@@ -246,7 +246,7 @@
         },
         {
           "id": "living",
-          "text": "Build a Living Quarters room",
+          "text": "Build Sleeping Quarters",
           "how": "Where the crew will sleep. It has to stay warm too, so join it to the habitat.",
           "check": "zone",
           "kind": "living"
@@ -291,7 +291,7 @@
         }
       ],
       "hints": [
-        "Life Support holds the machines that keep everyone alive. Put it next to Power & Engineering.",
+        "Life Support holds the machines that keep everyone alive. Put it next to the Workshop.",
         "Rooms lose heat through their outside walls and windows. Compact bases stay warmer.",
         "The thermal control unit heats every connected room. A wall heater can top up a cold one.",
         "Press T to test: 10 sols, every night included."
@@ -313,7 +313,6 @@
       "brief": "You're one of four crew inside the lander. Outside is the base your robots built.",
       "goal": "Keep four crew safe for their first 10 sols: oxygen, carbon dioxide, water, food and temperature all in the safe range.",
       "unlock_zones": [
-        "waste_management",
         "communications"
       ],
       "steps": [
@@ -333,7 +332,7 @@
         {
           "id": "bunks",
           "text": "Place four crew bunks",
-          "how": "In Living Quarters, press B. Every crew member needs a berth.",
+          "how": "In Sleeping Quarters, press B. Every crew member needs a berth.",
           "check": "item",
           "item": "crew_bunk",
           "count": 4
@@ -341,7 +340,7 @@
         {
           "id": "food",
           "text": "Set up the galley",
-          "how": "Build a Galley and add the kitchenette: its rehydration tap brings freeze-dried food back to life.",
+          "how": "Build a Day Room and add the kitchenette: its rehydration tap brings freeze-dried food back to life.",
           "check": "item_any",
           "items": [
             "galley_kitchenette",
@@ -530,7 +529,7 @@
         {
           "id": "bunks",
           "text": "Bunks for six crew",
-          "how": "Two more people are coming. Add bunks in Living Quarters.",
+          "how": "Two more people are coming. Add bunks in Sleeping Quarters.",
           "check": "item",
           "item": "crew_bunk",
           "count": 6
@@ -852,7 +851,7 @@
       "hints": [
         "Fitness falls a little every sol in Mars gravity. Powered exercise stations bring it back up.",
         "Each person has a favourite thing (it's on the Crew screen). Having it in the base cheers them up.",
-        "Noise matters: bunks next to Power & Engineering or Life Support sleep badly.",
+        "Noise matters: bunks next to a Workshop or Life Support sleep badly.",
         "Everyone has a job, and a room to do it in. Someone without their work room loses heart.",
         "Injured crew can't work. The others cover, so work slows down until they recover."
       ],
@@ -926,7 +925,7 @@
         {
           "id": "test",
           "text": "Test your design",
-          "how": "Press T. A breach hits Living Quarters on sol 3 at 02:00. The Test runs 4 sols.",
+          "how": "Press T. A breach hits Sleeping Quarters on sol 3 at 02:00. The Test runs 4 sols.",
           "check": "tested"
         },
         {

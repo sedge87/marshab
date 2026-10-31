@@ -80,20 +80,20 @@ func _initialize() -> void:
 	await _settle()
 	_check(_step() == "plan", "stepping outside ticks it (%s)" % _step())
 
-	# 3. The site plan; then the highlight finds the Living Quarters card.
+	# 3. The site plan; then the highlight finds the General Module card.
 	b._toggle()
 	await _settle()
 	_check(_step() == "living", "opening the site plan ticks it (%s)" % _step())
 	b.category = "rooms"; b._refresh_catalogue()
 	for i in 3: await process_frame
-	_check(GUIDE.find_target(self, "part:living") != null, "the Living Quarters card can be found for the highlight")
+	_check(GUIDE.find_target(self, "part:general") != null, "the General Module card can be found for the highlight")
 	_check(GUIDE.find_target(self, "tab:structure") != null, "and the Structure tab")
 
 	# 4–8. Building: each step ticks; the Life Support room built ahead of
 	# the solar array is skipped when it comes up.
-	b.zones = [_room("living", 4, 0, 2, 2)]; b._rebuild()
+	b.zones = [_room("general", 4, 0, 2, 2)]; b._rebuild()
 	await _settle()
-	_check(_step() == "airlock", "a Living Quarters room ticks it (%s)" % _step())
+	_check(_step() == "airlock", "a General Module ticks it (%s)" % _step())
 	b.zones.append(_room("life_support", 6, 0, 2, 2))
 	b.zones.append({"kind": "airlock", "cells": [Vector2i(5, 2)], "door_direction": Vector2i(0, 1), "cost": 0})
 	b._rebuild()

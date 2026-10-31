@@ -32,17 +32,18 @@ func _initialize() -> void:
 	if world._arrival_t >= 0.0: world._finish_arrival()
 	var b = world.builder
 	world.player.global_position = Vector3(-40, 5, -40)
-	var living := _room("living", 4, 0, 4, 3)   # x 10.5..22.5, z -1.5..7.5
+	var living := _room("galley", 4, 0, 4, 3)   # the Day Room; x 10.5..22.5, z -1.5..7.5
 	b.zones = [living]
 	b._history = [{"type": "zone", "zone": living}]
 	b._rebuild()
 	var y: float = b.habitat_base_y
 
-	# Recreation: every item has a scene that loads, and fits Living Quarters.
+	# Recreation: every item has a scene that loads, and fits the Day Room
+	# (Living Quarters until the room changes, 31 Oct).
 	for id in RECREATION:
 		var entry := EquipmentCatalog.get_entry(id)
 		_check(not entry.is_empty() and ResourceLoader.exists(str(entry.get("asset_scene", ""))), "%s is in the catalogue with a scene" % id)
-		_check((entry.get("valid_zones", []) as Array).has("living"), "%s goes in Living Quarters" % id)
+		_check((entry.get("valid_zones", []) as Array).has("galley"), "%s goes in the Day Room" % id)
 	var spots := {"lounge_sofa": Vector3(13.5, y, 0.4), "arcade_cabinet": Vector3(20.5, y, 0.0), "table_football": Vector3(16.5, y, 4.0)}
 	for id in spots:
 		var reason: String = b.free_interior_invalid_reason(id, spots[id], Vector3.UP, 0.0)
@@ -64,16 +65,16 @@ func _initialize() -> void:
 	_check(life.FITNESS_ITEMS.has("climbing_wall"), "the climbing wall counts as exercise")
 	_check(personal_line.length() > 0 and hazards_text.contains("\"grow_tray\", \"plant_wall\"") and hazards_text.contains("\"coffee_bar\": 2"), "the plant wall is a plant and the coffee bar has seats")
 
-	# Reassign: Living Quarters becomes a Galley. The arcade and table football
-	# fit a galley too; the sofa doesn't, so it comes out.
-	b._select_kind("galley")
+	# Reassign: the Day Room becomes Sleeping Quarters. The rug fits there
+	# too; the sofa doesn't, so it comes out.
+	b._select_kind("living")
 	_check(b.reassign_reason(living).is_empty(), "a room can be reassigned (%s)" % b.reassign_reason(living))
 	_check(b.reassign_room_at(Vector2i(5, 1)), "reassigning works")
-	_check(str(living.kind) == "galley", "the room is now a galley")
+	_check(str(living.kind) == "living", "the room is now Sleeping Quarters")
 	var ids: Array = b.placed_interior.map(func(i): return str(i.id))
-	_check(not ids.has("lounge_sofa") and ids.has("arcade_cabinet"), "what doesn't fit comes out; what fits stays (%s)" % [ids])
+	_check(not ids.has("lounge_sofa") and ids.has("floor_rug"), "what doesn't fit comes out; what fits stays (%s)" % [ids])
 	b._undo()
-	_check(str(living.kind) == "living", "Ctrl+Z turns it back into Living Quarters")
+	_check(str(living.kind) == "galley", "Ctrl+Z turns it back into the Day Room")
 	b._select_kind("solar")
 	_check(not b.reassign_reason(living).is_empty(), "only a room type can be chosen")
 

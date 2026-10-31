@@ -15,7 +15,7 @@ const TIPS := [
 	"A room only counts as shelter when a path of open cells connects it to an airlock.",
 	"Airlocks need their inner end touching a room and their outer end facing Mars.",
 	"Solar Arrays must be within 12 m of the habitat. Aim them north for full output.",
-	"Every three cells of Living Quarters house two crew.",
+	"Every three cells of Sleeping Quarters house two crew.",
 	"Removing a zone refunds its full cargo mass, so experiment freely.",
 	"Open Mission Control with M to see what your crew still needs."
 ]

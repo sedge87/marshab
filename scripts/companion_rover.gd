@@ -921,7 +921,7 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 		"home":
 			staying = false
 			if indoors:
-				if not _start_charge(): return "There's no GAR-Y Dock inside yet. Build one in the Vehicle Bay, Storage or Power & Engineering."
+				if not _start_charge(): return "There's no GAR-Y Dock inside yet. Build one in the Vehicle Bay, Storage & Recycling or the Workshop."
 			else:
 				var wait := _airlock_waiting_spot()
 				if wait == Vector3.INF: return "There's no airlock to wait at."

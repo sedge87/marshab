@@ -41,6 +41,9 @@ var live_scale := 1.0
 ## live hazards (a breach) can injure someone. Missions keep both on.
 var radiation_on := true
 var live_injuries := false
+## Role -> work speed from where they work (needs() keeps it current): 1 in
+## their own room, the General Module's speed when that's all there is.
+var room_speed := {}
 var rng := RandomNumberGenerator.new()
 
 # ---- state (saved) ----
@@ -140,7 +143,9 @@ func injured() -> Array:
 func work_speed(p: Dictionary) -> float:
 	if float(p.injured_h) > 0.0: return 0.0
 	var full := float(value("work", "full_speed_at", 70.0))
-	return clampf(minf(float(p.fitness), float(p.wellbeing)) / full, float(value("work", "slowest", .4)), 1.0)
+	var speed := clampf(minf(float(p.fitness), float(p.wellbeing)) / full, float(value("work", "slowest", .4)), 1.0)
+	# Working out of a General Module instead of their own room: slower.
+	return speed * float(room_speed.get(str(p.get("role", "")), 1.0))
 
 ## The team's work speed (research): 1 when the crew system is off.
 func team_speed() -> float:
@@ -170,6 +175,9 @@ func average_wellbeing() -> float:
 
 func _ids_in(inv: Dictionary, room_index: int) -> Array:
 	return (inv.all_items as Array).filter(func(i): return int(i.room) == room_index).map(func(i): return str(i.id))
+
+func _count_in(inv: Dictionary, room_index: int, id: String) -> int:
+	return _ids_in(inv, room_index).count(id)
 
 func _count(inv: Dictionary, ids: Array) -> int:
 	return (inv.all_items as Array).filter(func(i): return ids.has(str(i.id))).size()
@@ -240,8 +248,11 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 	# 1. Sleep: a bunk each, and quiet.
 	var bunks := int(inv.capacity.berths)
 	var noisy := false
+	var cramped := false   # bunks in a General Module always sleep poorly
 	for index in range(rooms.size()):
-		if str(rooms[index].kind) != "living": continue
+		var sleeping_kind := str(rooms[index].kind)
+		if sleeping_kind == "general" and _count_in(inv, index, "crew_bunk") > 0: cramped = true
+		if sleeping_kind != "living": continue
 		for other in rooms[index].next:
 			# Sound insulation on every shared wall keeps a noisy neighbour out.
 			if (rooms[index].get("quiet_from", []) as Array).has(other): continue
@@ -250,13 +261,16 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 				noisy = true
 		# A noisy machine in the room itself: insulation can't help.
 		if _ids_in(inv, index).any(func(id): return (c.noisy_items as Array).has(id)): noisy = true
-	var sleep := minf(1.0, float(bunks) / n) * (.5 if noisy else 1.0)
-	out.append({"id": "sleep", "label": "Sleep and privacy", "score": sleep,
-		"missing": "" if sleep >= .99 else ("Living Quarters is next to a noisy room: add a sound insulation panel to the wall between them" if noisy else "Not everyone has a bunk")})
+	var poor := float(c.get("general_sleep", .5))
+	var sleep := minf(1.0, float(bunks) / n) * (poor if noisy or cramped else 1.0)
+	var why_sleep := "Not everyone has a bunk"
+	if cramped: why_sleep = "Bunks in the General Module: build Sleeping Quarters for a proper night's sleep"
+	elif noisy: why_sleep = "Sleeping Quarters is next to a noisy room: add a sound insulation panel to the wall between them, or put a corridor between"
+	out.append({"id": "sleep", "label": "Sleep and privacy", "score": sleep, "missing": "" if sleep >= .99 else why_sleep})
 	# 2. Space.
 	var living_cells := 0.0
 	for room in rooms:
-		if not str(room.kind) in ["corridor", "airlock", "storage", "vehicle_bay"]: living_cells += float(room.cells)
+		if not str(room.kind) in ["corridor", "airlock", "storage", "vehicle_bay"]: living_cells += float(room.cells) * (float(c.get("general_space_share", .5)) if str(room.kind) == "general" else 1.0)
 	var space := minf(1.0, living_cells / (n * float(c.living_cells_per_person)))
 	out.append({"id": "space", "label": "Space", "score": space, "missing": "" if space >= .99 else "Crowded: about %d more floor squares of rooms needed" % ceili(n * float(c.living_cells_per_person) - living_cells)})
 	# 3. Together.
@@ -279,9 +293,15 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 	# 5. Meaningful work.
 	var have_room := 0
 	var no_room: Array = []
+	var general := rooms.any(func(room): return str(room.kind) == "general")
+	room_speed.clear()
 	for i in range(n):
 		var r := role(str(crew[i].role)) if i < crew.size() else (data().crew.roles[i] as Dictionary)
 		if rooms.any(func(room): return str(room.kind) == str(r.room)): have_room += 1
+		elif general:
+			# The General Module gives everyone somewhere to work, slower.
+			have_room += 1
+			room_speed[str(r.id)] = float(c.get("general_work_speed", .75))
 		else: no_room.append("%s (%s)" % [str(r.label), str(BuildController.ZONE_TYPES.get(str(r.room), {}).get("label", r.room))])
 	var work := float(have_room) / n
 	out.append({"id": "work", "label": "Meaningful work", "score": work, "missing": "" if no_room.is_empty() else "No work room for: " + ", ".join(no_room)})
@@ -373,7 +393,7 @@ func start_breach(inv: Dictionary, room_key: String) -> bool:
 			return true
 	return false
 
-## Where a breach would hit by default: Living Quarters, else the biggest room.
+## Where a breach would hit by default: Sleeping Quarters, else the biggest room.
 static func default_breach_room(inv: Dictionary) -> String:
 	var best := {}
 	for room in inv.rooms:

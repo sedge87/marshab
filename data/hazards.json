@@ -15,7 +15,10 @@
     "plant_items": ["plant_pot", "herb_pot", "greenhouse_planter", "grow_tray", "plant_wall"],
     "table_items": {"common_table": 4, "galley_table_set": 4, "galley_bench_unit": 2, "coffee_bar": 2, "floor_cushions": 4},
     "galley_items": ["galley_oven", "galley_kitchenette"],
-    "noisy_rooms": ["engineering", "life_support"],
+    "noisy_rooms": ["engineering", "life_support", "general", "vehicle_bay"],
+    "general_sleep": 0.5,
+    "general_space_share": 0.5,
+    "general_work_speed": 0.75,
     "noisy_items": ["regolith_printer"],
     "living_cells_per_person": 2.0
   },

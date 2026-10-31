@@ -31,11 +31,11 @@
     },
     {
       "id": "living",
-      "text": "Lay out Living Quarters",
-      "how": "In the Rooms tab pick Living Quarters, then drag a rectangle on flat ground: 2 by 2 cells is plenty. Right-click cancels.",
+      "text": "Lay out a General Module",
+      "how": "In the Rooms tab pick General Module, then drag a rectangle on flat ground: 2 by 2 cells is plenty. It takes the basics of everything to start with. Right-click cancels.",
       "keys": [[["LMB"], "Drag a room"], [["RMB"], "Cancel"], [["Ctrl", "Z"], "Undo"]],
-      "check": {"type": "zone", "kind": "living"},
-      "highlight": ["part:living", "tab:rooms"],
+      "check": {"type": "zone", "kind": "general"},
+      "highlight": ["part:general", "tab:rooms"],
       "marker": "base",
       "clip": "living",
       "said": "tut_living"
@@ -76,7 +76,7 @@
     {
       "id": "life_support",
       "text": "Add a Life Support room",
-      "how": "Rooms tab: drag a Life Support room right next to your Living Quarters so they share a wall. A door is added between them by itself.",
+      "how": "Rooms tab: drag a Life Support room right next to your General Module so they share a wall. A door is added between them by itself.",
       "keys": [[["LMB"], "Drag a room"]],
       "check": {"type": "zone", "kind": "life_support"},
       "highlight": ["part:life_support", "tab:rooms"],
@@ -96,8 +96,8 @@
     },
     {
       "id": "bunk",
-      "text": "Furnish Living Quarters",
-      "how": "Stand in Living Quarters and press B: you furnish the room in first person. Pick a Crew Bunk, aim at the floor by a wall and click.",
+      "text": "Furnish your General Module",
+      "how": "Stand in the General Module and press B: you furnish the room in first person. Pick a Crew Bunk, aim at the floor by a wall and click.",
       "keys": [[["B"], "Furnish this room"], [["R"], "Turn"], [["LMB"], "Place"]],
       "check": {"type": "items", "ids": ["crew_bunk"]},
       "highlight": ["item:crew_bunk", "group:here", "group:living"],

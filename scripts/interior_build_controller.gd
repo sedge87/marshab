@@ -951,7 +951,7 @@ func _refresh_contextual_selector(force := false) -> void:
 		if zone_kind.is_empty(): _selector_context.text = "WALK INTO A ROOM TO FURNISH IT   "
 		else: _selector_context.text = "%s · %d FIT HERE   " % [str(BuildController.ZONE_TYPES.get(zone_kind, {}).get("label", "room")).to_upper(), _selector_items.size()]
 
-## The equipment tab named after a room type (Power & Engineering uses Power).
+## The equipment tab named after a room type (the Workshop uses Power).
 func _room_group(zone_kind: String) -> String:
 	return "power" if zone_kind == "engineering" else zone_kind
 

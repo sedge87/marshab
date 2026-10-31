@@ -26,7 +26,8 @@ func _initialize() -> void:
 	await process_frame
 	MHGame.outside_temperature_c = -40.0
 
-	# The pack replaced the room: six items, nothing else offered for Living Quarters.
+	# The pack replaced the room. Since the room changes (31 Oct) it's Sleeping
+	# Quarters: the table and exercise station moved to the Day Room.
 	var living: Array = []
 	for id in EquipmentCatalog.entries():
 		if str(EquipmentCatalog.get_entry(id).get("group", "")) == "general": continue # shared items go anywhere
@@ -34,12 +35,15 @@ func _initialize() -> void:
 	living.sort()
 	var expected := ITEMS.duplicate()
 	expected.sort()
-	_check(expected.all(func(id): return living.has(id)), "Living Quarters offers all six pack items (and shared items too): %s" % [living])
+	var sleeping := expected.filter(func(id): return not id in ["common_table", "exercise_station"])
+	_check(sleeping.all(func(id): return living.has(id)), "Sleeping Quarters offers the pack's sleeping items: %s" % [living])
+	_check(["common_table", "exercise_station"].all(func(id): return (EquipmentCatalog.get_entry(id).get("valid_zones", []) as Array).has("galley")), "the table and exercise station go in the Day Room")
 
 	var room := []
 	for x in range(-2, 3):
 		for z in range(-2, 3): room.append(Vector2i(x, z))
-	builder.zones = [{"kind": "living", "cells": room, "door_direction": Vector2i(0, -1), "cost": 1250}]
+	# A General Module takes all six (Sleeping Quarters only the sleeping ones).
+	builder.zones = [{"kind": "general", "cells": room, "door_direction": Vector2i(0, -1), "cost": 1250}]
 	builder._rebuild()
 	var placed := {}
 	var spots := {"crew_bunk": Vector3(-3, 0, -4), "locker": Vector3(3, 0, -4), "common_table": Vector3(0, 0, 0), "task_light": Vector3(-7.42, 1.5, 0), "privacy_divider": Vector3(-3, 0, 4), "exercise_station": Vector3(3, 0, 4)}
