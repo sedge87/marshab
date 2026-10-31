@@ -32,7 +32,7 @@ Enough to stand up one working base, and no more:
 | Life support | basic life support (the General Module rack's air and water), 1 CO₂ scrubber |
 | Living | 2 sleep stations, the low-water shower, the trash compactor, the exercise bike |
 | Work | 1 tool bench, the fabricator (§4), the comms station |
-| Outside | GAR-Y, the suit and its bench, the crew rover |
+| Outside | GAR-Y, the suit and its bench (the crew rover comes with a later lander, Q2) |
 | Stores | water, oxygen and food (§3), fabricator feedstock and Earth parts (§4) |
 
 Everything else comes from the fabricator, the regolith printer or a later lander.
@@ -141,3 +141,14 @@ A save from before step 4 loads **as already supplied:** every plan known, no cr
 6. **Where the fabricator goes:** the Workshop and the General Module (as in §4), or the Workshop only, to make the Workshop worth building early?
 7. **Finding ice before the lab:** the wrist scan at an orbital hint (§6), good enough as a stand-in until step 5?
 8. **Freedom:** all plans known from the start (§7), or the same plans as Survival with more stores?
+
+### Answers (1 Nov 2026)
+
+1. **Replace it.** In Survival the tonnes budget goes; crates, the fabricator and printed material take its place.
+2. **The list is right, but the crew rover comes later,** with a later lander. The first trip to the ice hint is on foot.
+3. **The soft net:** the contingency reserve and the emergency lander. No game over from the stores.
+4. **90 sols in Survival, 150 in Freedom.**
+5. **Two inputs:** feedstock and Earth parts.
+6. **The Workshop and the General Module,** with the General Module at 75 %.
+7. **Not the wrist scan.** Open: an alternative is still to be decided.
+8. **All plans known in Freedom.**
