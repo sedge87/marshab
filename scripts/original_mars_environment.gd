@@ -363,6 +363,7 @@ func _build_region_terrain() -> void:
 	var region_id := str(MHSiteTerrain.settings().get("region", ""))
 	var terrain := Terrain3D.new()
 	terrain.name = "RegionTerrain3D"
+	terrain.add_to_group("region_terrain")   # trenches cut holes in it (scripts/trenches.gd)
 	terrain.vertex_spacing = float(MHSiteTerrain.RegionTerrain.meta().spacing)
 	terrain.collision_mode = Terrain3DCollision.FULL_GAME   # GAR-Y and the rover roam far from the camera
 	terrain.collision_layer = 1

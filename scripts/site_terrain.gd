@@ -93,14 +93,37 @@ static func _mound_distance(point: Vector2) -> float:
 
 # ---------- height ----------
 
+## Trenches dug on a region's pad (scripts/trenches.gd sets these): each
+## {floor: Rect2, ramp: Rect2, dir: Vector2i, depth}. The pad is level at 0.
+static var trench_areas: Array = []
+
 static func height(x: float, z: float) -> float:
 	var p := Vector2(x, z)
+	if not trench_areas.is_empty():
+		var dug := _trench_height(p)
+		if not is_nan(dug): return dug
 	match shape():
 		"region": return _region_height(p)
 		"canyon": return _canyon_height(p)
 		"crater": return _crater_height(p)
 		"ice": return _ice_height(p)
 	return _plains_height(p)
+
+## The ground in a trench or on its ramp (NAN elsewhere).
+static func _trench_height(p: Vector2) -> float:
+	for area in trench_areas:
+		var depth := float(area.depth)
+		if (area.floor as Rect2).has_point(p): return -depth
+		var ramp: Rect2 = area.ramp
+		if not ramp.has_point(p): continue
+		var t := 0.0
+		match area.dir:
+			Vector2i(0, 1): t = (p.y - ramp.position.y) / ramp.size.y
+			Vector2i(0, -1): t = (ramp.end.y - p.y) / ramp.size.y
+			Vector2i(1, 0): t = (p.x - ramp.position.x) / ramp.size.x
+			_: t = (ramp.end.x - p.x) / ramp.size.x
+		return -depth * (1.0 - clampf(t, 0.0, 1.0))
+	return NAN
 
 ## A region's landing zone (gameplay loop prototype): the shared heightmap,
 ## centred on the zone, with its pad at 0 (scripts/region_terrain.gd).

@@ -8,6 +8,7 @@ extends RefCounted
 ## explains the rules.
 const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
 const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
+const TRENCHES := preload("res://scripts/trenches.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
 
@@ -211,6 +212,17 @@ func inventory() -> Dictionary:
 			cell = Vector2i(roundi(inside.x / cell_size), roundi(inside.y / cell_size))
 		var room_index: int = room_of_cell.get(cell, -1)
 		if room_index >= 0: rooms[room_index].shield_upgrades += points
+	# Rooms in a trench: earth behind an outside wall shields like a regolith
+	# panel on that bay (scripts/trenches.gd).
+	var earth_total := 0.0
+	var trenches: Array = builder.get("trenches") if builder.get("trenches") != null else []
+	if not trenches.is_empty():
+		var earth := float(WALL_UPGRADES.spec("regolith").get("points", 8.0))
+		for index in range(rooms.size()):
+			for cell in rooms[index].zone.get("cells", []):
+				var points := earth * TRENCHES.earth_sides(trenches, cell)
+				rooms[index].shield_upgrades += points
+				earth_total += points
 	for index in range(rooms.size()):
 		for other in rooms[index].next:
 			if WALL_UPGRADES.insulated_between(builder, rooms[index].zone.get("cells", []), rooms[other].zone.get("cells", [])): rooms[index].quiet_from.append(other)
@@ -266,7 +278,7 @@ func inventory() -> Dictionary:
 		capacity.kwh += item.stores_kwh; capacity.water += item.stores_water; capacity.o2 += item.stores_o2; capacity.food += item.stores_food
 		capacity.berths += item.berths
 		if item.id == "thermal_control_unit" and item.on: capacity.tcu_kw += item.heat_kw
-	_inventory = {"shield_upgrades": WALL_UPGRADES.habitat_points(builder), "rooms": rooms, "items": items, "all_items": all_items, "solar": solar, "solar_keys": solar_keys, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
+	_inventory = {"shield_upgrades": WALL_UPGRADES.habitat_points(builder) + earth_total, "rooms": rooms, "items": items, "all_items": all_items, "solar": solar, "solar_keys": solar_keys, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
 		"cells": rooms.reduce(func(total, room): return total + int(room.cells), 0),
 		"zones_ref": builder.zones, "zone_count": builder.zones.size(), "items_ref": builder.placed_interior, "item_count": builder.placed_interior.size()}
 	_take_delivery(capacity)

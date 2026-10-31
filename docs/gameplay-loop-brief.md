@@ -249,6 +249,16 @@ Real siting studies want flat, firm ground for landing and the first habitat (ou
 
 **Suggested order:** trenches, then cliff shielding, then split levels, then storeys.
 
+**Trenches: first version built (31 Oct).** On region sites, the Structure tab has a Trench tool:
+- **dig:** drag out 2 × 2 to 10 × 10 cells on the pad; R turns the ramp. It's 3.4 m deep (a room's roof ends level with the ground), with grey retaining walls, a 9 m ramp up one side, an apron of graded ground round the top and a caution stripe along the drop;
+- **the ground:** the region's terrain is sunk under the trench (not cut with holes: Godot's default physics can't handle Terrain3D's hole markers), and the game's height checks see the trench, ramp and floor, so you, GAR-Y and the rover can use it;
+- **rooms:** the first room in a trench puts the base floor on the trench floor, and the base stays on one level (a room up top is refused while the base is in the trench, and the other way round); nothing can be built on the ramp;
+- **shielding:** each outside wall bay of a trench room with earth behind it counts as a regolith panel (8 points), for the room and the whole base; Roof Shielding buries the roof;
+- **fill it in:** X on an empty trench fills it back in and the ground comes back; Ctrl+Z too. It's saved with the base;
+- **tested:** `tests/trench_test.gd`.
+
+Not yet: digging takes no time or power, windows aren't stopped on walls that face earth, and buried walls don't yet keep more heat in.
+
 ## 10. To decide
 1. **Suit duration:** about 8 game hours of oxygen (8–9 real minutes by day), or longer or shorter?
 2. **Walking speed:** drop to a suit pace (about 2.5 m/s), or keep today's 5 m/s?

@@ -77,6 +77,7 @@ const SHOWCASE_SOLAR := preload("res://assets/showcase_modules/mh_solar_array.gl
 const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
 const SOLAR_ARRAY_INTERACTABLE := preload("res://scripts/solar_array_interactable.gd")
 const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
+const TRENCHES := preload("res://scripts/trenches.gd")
 const FLOOR_PLAN := preload("res://scripts/floor_plan.gd")
 var plan_legend: Control
 const ROOF_ACCESSORY_SCENES := {
@@ -125,7 +126,9 @@ const ZONE_TYPES := {
 	"ladder":{"label":"Roof Ladder","colour":Color(.85,.58,.30),"cost":60},
 	"shield_regolith":{"label":"Regolith Shielding","colour":Color(.60,.42,.30),"cost":900},
 	"shield_water":{"label":"Water Wall","colour":Color(.25,.51,.72),"cost":260},
-	"shield_roof":{"label":"Roof Shielding","colour":Color(.55,.45,.38),"cost":900}
+	"shield_roof":{"label":"Roof Shielding","colour":Color(.55,.45,.38),"cost":900},
+	# Not a zone: a trench dug for the base to stand in (scripts/trenches.gd).
+	"trench":{"label":"Trench","colour":Color(.52,.38,.30),"cost":0}
 }
 
 # Catalogue metadata for the build HUD. Gameplay values stay in ZONE_TYPES.
@@ -146,6 +149,7 @@ const ZONE_INFO := {
 	"shield_regolith":{"cat":"structure","icon":"shield","rule":"Click an outside wall","desc":"Bags of Mars soil against an outside wall, against radiation. Printed by the regolith printer. You can also add it from inside: Furnish room, aim at the wall."},
 	"shield_water":{"cat":"structure","icon":"droplets","rule":"Click an outside wall","desc":"A water tank panel on an outside wall: water is one of the best radiation shields. You can also add it from inside: Furnish room, aim at the wall."},
 	"shield_roof":{"cat":"structure","icon":"house","rule":"Click a room","desc":"Regolith over a room's whole roof: most radiation comes from overhead. You can also add it from inside: Furnish room, aim at the ceiling."},
+	"trench":{"cat":"structure","icon":"shovel","rule":"Drag an area · R turns the ramp","desc":"Dig the base into the ground: a trench a room deep, with retaining walls and a ramp. Rooms built in it have earth against their outside walls, a free radiation shield; add Roof Shielding to bury them completely. The whole base goes in, or stays on top. Region sites only, for now."},
 	"ladder":{"cat":"structure","icon":"arrow-up","rule":"Click an outside wall","desc":"A ladder up an outside wall to the roof, with a safety rail round the edge. Outside, look at it and press E to climb."},
 	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
 	"solar":{"cat":"power","icon":"sun","rule":"One cell, or a roof · R turns","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
@@ -287,6 +291,8 @@ var _mode_switcher: Dictionary = {}
 var hull_windows: Array = []
 ## Wall and roof upgrades (scripts/wall_upgrades.gd): shielding and insulation.
 var wall_upgrades: Array = []
+## Trenches dug on the pad: {cells, ramp} (scripts/trenches.gd).
+var trenches: Array = []
 ## Every Mars-facing wall bay built this rebuild, where a window may go:
 ## {mid, dir, tangent, outward, length, zone_kind}.
 var _hull_bays: Array = []
@@ -362,7 +368,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			for card in catalogue_grid.get_children():
 				if int(card.get_meta("pick_index",0))==int(event.keycode)-int(KEY_0): (card as Button).pressed.emit()
 		elif build_mode and event.keycode==KEY_R and equipment_id.is_empty() and kind in FREE_SITE_KINDS: _turn_free_site(-PI/12.0 if event.shift_pressed else PI/12.0); MHAudio.sfx("rotate")
-		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="corridor"): _rotate_airlock(); _refresh_catalogue()
+		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="corridor" or kind=="trench"): _rotate_airlock(); _refresh_catalogue()
 		elif build_mode and event.keycode==KEY_ESCAPE:
 			# Escape first cancels an in-progress placement; only an idle planner
 			# lets it through to open the pause screen.
@@ -418,7 +424,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			dragging=false
 			var cells := _cells(drag_start,hover)
 			var reason := _invalid_reason(cells)
-			if reason.is_empty():
+			if reason.is_empty() and kind=="trench":
+				var trench := {"cells":cells,"ramp":airlock_direction}
+				trenches.append(trench); _history.append({"type":"trench","trench":trench}); _learn("trench")
+				_rebuild()
+				MHAudio.sfx("place")
+				_flash_notice("valid","Trench dug","Build rooms in it: earth against their walls shields them. Roof Shielding buries them.")
+			elif reason.is_empty():
 				if zones.is_empty(): habitat_base_y=_proposed_base_y(cells)
 				var zone := {"kind":kind,"cells":cells,"door_direction":airlock_direction,"cost":_zone_cost(cells)}
 				zones.append(zone); _history.append({"type":"zone","zone":zone}); _learn(str(zone.kind))
@@ -2044,6 +2056,10 @@ func _refresh_footprint_selection_overlay() -> void:
 # Empty when the cells can be placed; otherwise a short reason for the
 # hologram status ("Can't place here · Overlaps a room").
 func _invalid_reason(cells: Array) -> String:
+	if kind=="trench": return TRENCHES.invalid_reason(self, cells, airlock_direction)
+	for trench in trenches:
+		for cell in cells:
+			if TRENCHES.ramp_cells(trench).has(cell): return "On the trench's ramp"
 	if cells.is_empty():
 		if kind=="airlock": return "Airlocks are 1–3 cells in a straight line"
 		if kind=="corridor": return "Corridors run in straight lines"
@@ -2088,8 +2104,9 @@ func _invalid_reason(cells: Array) -> String:
 			# The habitat deck is deliberately raised above the initial survey point.
 			# Permit shallow undulations beneath its skirt; only reject a terrain
 			# ridge that would visibly break through the finished floor.
-			if terrain > habitat_base_y + .12: return "Ground is too high here"
-			if terrain < habitat_base_y - 1.85: return "Ground drops away too far"
+			# A trench keeps the base on one level: all in it, or all on top.
+			if terrain > habitat_base_y + .12: return "The base is in a trench: build in the trench too" if habitat_base_y < -1.0 else "Ground is too high here"
+			if terrain < habitat_base_y - 1.85: return "That's in a trench: the base is up on the surface" if TRENCHES.in_trench(trenches, cell) else "Ground drops away too far"
 	return ""
 
 # A cell sharing only an edge with an outline is adjacent, not overlapping.
@@ -2248,6 +2265,8 @@ func _ice_yield_at_point(point: Vector2) -> int:
 	return roundi(MHResources.setting("ice_drill_l", 120.0) * _ice_richness_at_point(point))
 
 func _draw_preview(cells: Array,valid: bool) -> void:
+	# A trench shows its ramp too.
+	if kind=="trench" and not cells.is_empty(): cells=cells+TRENCHES.ramp_cells({"cells":cells,"ramp":airlock_direction})
 	# The ghost only changes when the footprint, validity or facing changes.
 	var key:="%s|%s|%s|%s" % [str(cells),valid,airlock_direction,kind]
 	if key==_preview_key: return
@@ -2538,6 +2557,7 @@ func _label3d(text: String,size: int,colour: Color,weight := 800) -> Label3D:
 	return label
 
 func _rebuild() -> void:
+	MHSiteTerrain.trench_areas = TRENCHES.areas(trenches)   # before anything reads the ground
 	_merge_touching_same_type_rooms()
 	# Solar on a roof comes down with the room under it (cargo back).
 	zones = zones.filter(func(z): return not z.get("roof", false) or _roof_under(z.at))
@@ -2607,6 +2627,7 @@ func _rebuild() -> void:
 	_add_light_panels()
 	_prune_hull_windows()
 	WALL_UPGRADES.build(self)
+	TRENCHES.build(self, root)   # trench walls, ramps, rims, and the cut in the ground
 	FLOOR_PLAN.build(self)   # walls and symbols on the Site plan
 	_build_foundation_supports()
 	if grid!=null: grid.position.y=habitat_base_y+.09
@@ -5142,6 +5163,8 @@ func _proposed_base_y(cells: Array) -> float:
 	# point, then later validate additions against that datum.
 	if not is_inside_tree():
 		return .35
+	# A first room in a trench stands on its floor.
+	if cells.all(func(c): return TRENCHES.in_trench(trenches, c)): return -TRENCHES.DEPTH + .35
 	var highest := -.50
 	for cell in cells:
 		highest=maxf(highest,_cell_highest_terrain(cell))
@@ -5234,11 +5257,29 @@ func _remove_at(cell: Vector2i) -> void:
 			_rebuild()
 			_flash_notice("valid","Removed","+%s cargo returned." % MHStyle.kg(refund))
 			return
+	# An empty trench (or its ramp) is filled back in.
+	for index in range(trenches.size() - 1, -1, -1):
+		var trench: Dictionary = trenches[index]
+		if not ((trench.cells as Array).has(cell) or TRENCHES.ramp_cells(trench).has(cell)): continue
+		if zones.any(func(z): return (z.get("cells", []) as Array).any(func(c): return (trench.cells as Array).has(c))):
+			_flash_notice("invalid", "Can't fill it in", "Remove the rooms in the trench first.")
+			return
+		trenches.remove_at(index)
+		_rebuild()
+		_flash_notice("valid", "Trench filled in", "The ground is back as it was.")
+		return
 
 func _undo() -> void:
 	# Walk back through placements, skipping any already removed by hand.
 	while not _history.is_empty():
 		var step:Dictionary=_history.pop_back()
+		if step.type=="trench":
+			if not trenches.has(step.trench): continue
+			if zones.any(func(z): return (z.get("cells", []) as Array).any(func(c): return (step.trench.cells as Array).has(c))): continue
+			trenches.erase(step.trench)
+			_rebuild()
+			_flash_notice("info","Undone","Trench filled in.")
+			return
 		if step.type=="window":
 			var window_index:=_window_index_at(step.window.mid,step.window.dir)
 			if window_index<0: continue
@@ -5304,6 +5345,7 @@ func _zone_cost(cells: Array) -> int: return cell_cost(kind)*cells.size()
 ## Landed cargo (kg) for one 3 x 3 m cell of a room type, or one solar array,
 ## reactor or ice extractor, from the balance spreadsheet.
 func cell_cost(zone_kind: String) -> int:
+	if zone_kind == "trench": return 0   # dug on site, nothing from Earth
 	if zone_kind in SITE_UPGRADES: return int(WALL_UPGRADES.spec(str(SITE_UPGRADES[zone_kind])).cargo)
 	var site_item: String = {"solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake"}.get(zone_kind, "")
 	if not site_item.is_empty(): return int(MHResources.item_value(site_item, "cargo_kg", 300.0))
@@ -5617,6 +5659,7 @@ func export_habitat_state() -> Dictionary:
 		"interior_doors": interior_doors.duplicate(true),
 		"hull_windows": hull_windows.duplicate(true),
 		"wall_upgrades": wall_upgrades.duplicate(true),
+		"trenches": trenches.duplicate(true),
 		"partitions": partitions.duplicate(true),
 		"placed_surface": placed_surface.duplicate(true),
 		"simulation": simulation().save(),
@@ -5648,6 +5691,8 @@ func restore_habitat_state(state: Dictionary) -> void:
 	interior_doors = (state.get("interior_doors", []) as Array).duplicate(true)
 	hull_windows = (state.get("hull_windows", []) as Array).duplicate(true)
 	wall_upgrades = (state.get("wall_upgrades", []) as Array).duplicate(true)
+	trenches = (state.get("trenches", []) as Array).duplicate(true)
+	MHSiteTerrain.trench_areas = TRENCHES.areas(trenches)
 	partitions = (state.get("partitions", []) as Array).duplicate(true)
 	# Older saves may contain the retired room_shape_modifiers key. It is
 	# deliberately ignored so those saves load as ordinary modular rooms.
@@ -6318,7 +6363,7 @@ func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
 	var column:=card.get_meta("column") as VBoxContainer
 	column.add_child(_part_picture(id))
 	var name_label:=MHStyle.label(str(ZONE_TYPES[id].label),14,MHStyle.TEXT_PRIMARY,600); name_label.clip_text=true; name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS; column.add_child(name_label)
-	var mass:=MHStyle.mono(("%s / cell" % MHStyle.kg(cell_cost(id))) if str(ZONE_INFO[id].cat)!="power" and (not id in SITE_UPGRADES or id=="shield_roof") else MHStyle.kg(cell_cost(id)),11,MHStyle.DANGER if unaffordable else MHStyle.TEXT_MUTED); column.add_child(mass)
+	var mass:=MHStyle.mono("No cargo" if id=="trench" else ("%s / cell" % MHStyle.kg(cell_cost(id))) if str(ZONE_INFO[id].cat)!="power" and (not id in SITE_UPGRADES or id=="shield_roof") else MHStyle.kg(cell_cost(id)),11,MHStyle.DANGER if unaffordable else MHStyle.TEXT_MUTED); column.add_child(mass)
 	card.set_meta("number_label",mass)
 	add_mission_badge(card,MHMissions.zone_badge(id),selected)
 	return card
@@ -6392,6 +6437,12 @@ func _part_chips(id: String) -> Array:
 		"regolith_intake":
 			chips.append(["feeds the regolith printer",MHStyle.VALID])
 			chips.append(["-%s kW" % str(MHResources.item_value("regolith_intake","power_kw",1.5)),MHStyle.WARN])
+	if id=="trench":
+		chips[0]=["No cargo: dug on site",MHStyle.VALID]
+		chips.append(["%.1f m deep" % TRENCHES.DEPTH,MHStyle.TEXT_SECONDARY])
+		chips.append(["earth shields outside walls",MHStyle.VALID])
+		chips.append(["Ramp facing %s" % _facing_name(),MHStyle.TEXT_SECONDARY])
+		return chips
 	if zone_printable(id) and str(ZONE_INFO[id].cat)!="power": chips.append(["can be printed",MHStyle.VALID])
 	if id in ["airlock","vehicle_bay"]: chips.append(["unheated",MHStyle.INFO])
 	if id in ["airlock","vehicle_bay","solar","corridor"]: chips.append(["Facing %s" % _facing_name(),MHStyle.TEXT_SECONDARY])
