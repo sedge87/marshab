@@ -19,8 +19,8 @@ extends Node
 ##
 ## Out of oxygen in Survival you black out and GAR-Y drags you home
 ## (scripts/gar_y_rescue.gd): hours pass, what you carried lies where you
-## fell, and the suit's seals leak until you repair them at a suit service
-## panel (or patch them by hand in a sealed space, if the base has no panel).
+## fell, the rover drives itself home if it can, and the suit's seals leak
+## until you repair them at a suit service panel (or patch them by hand in a sealed space, if the base has no panel).
 ## Freedom warns but never lets you pass out; Creative and Missions don't run
 ## the suit.
 
@@ -106,7 +106,10 @@ func _process(delta: float) -> void:
 	_check -= delta
 	if _check <= 0.0:
 		_check = .25
-		where = _where()
+		# The site plan is a camera over the base: your body stays where it
+		# was (and the rooms being edited aren't a fair test of "inside"), so
+		# you keep breathing whatever you were breathing.
+		if world.builder == null or not world.builder.build_mode: where = _where()
 		_has_panel = world.builder != null and (world.builder.placed_interior as Array).any(func(item): return str(item.get("id", "")) == "suit_service_panel")
 		_prune_dropped()
 	if not active():
@@ -420,7 +423,8 @@ func _come_round(summary: Dictionary) -> void:
 		lines.append("You dropped the %s where you fell%s." % [str(item.label).to_lower(), " (it's on the region map, Tab)" if MHSiteTerrain.shape() == "region" else ""])
 	lines.append("The suit's seals took a knock: it leaks, so oxygen runs out faster, until you repair it at a suit service panel." if _has_panel else "The suit's seals took a knock: it leaks, so oxygen runs out faster, until you've patched it (an hour somewhere sealed).")
 	if world.get("crew_rover") != null and world.crew_rover.global_position.distance_to(world.player.global_position) > 30.0:
-		lines.append("The rover is still where you left it.")
+		var rover_line: String = world.crew_rover.come_home_after_rescue()
+		if rover_line != "": lines.append(rover_line)
 	var count := int(summary.rescues)
 	var remark := "\"Please don't do that again.\"" if count <= 1 else ("\"Twice now, Commander.\"" if count == 2 else "\"That's %d times now, Commander.\"" % count)
 	lines.append("GAR-Y's beeps, roughly: " + remark)

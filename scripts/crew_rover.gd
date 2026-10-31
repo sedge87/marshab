@@ -561,7 +561,7 @@ func _ground_under(at: Vector3, near_y: float) -> float:
 	return float((hit.position as Vector3).y) if not hit.is_empty() else INF
 
 ## Debug: straight home, parked in the bay facing out, charged and full of air.
-func park_at_home() -> bool:
+func park_at_home(refilled := true) -> bool:
 	var home := _home()
 	if home.is_empty() or driving: return false
 	var out: Vector2 = home.out
@@ -569,8 +569,31 @@ func park_at_home() -> bool:
 	rotation.y = atan2(-out.x, -out.y)
 	speed = 0.0
 	recalling = false
-	refill()
+	if refilled: refill()
 	return true
+
+## After GAR-Y has dragged you home: while you were out, it called the rover
+## home too. With the charge for the trip (a fifth more than the straight
+## line, from its battery, then its reserve) it drove itself back to the bay
+## and is parked there. Without, it's making its own way back on the
+## autopilot: what charge it has, then crawling on its roof solar by day and
+## waiting out the night. Returns a line for the wake-up note.
+func come_home_after_rescue() -> String:
+	var home := _home()
+	if home.is_empty(): return "The rover is still where you left it: there's no vehicle bay for it to come home to."
+	if _in_bay() or driving: return ""
+	var metres := Vector2(global_position.x, global_position.z).distance_to(home.centre) * 1.2
+	var on_battery := minf(metres, battery / DRAIN_PER_M)
+	var on_reserve := minf(metres - on_battery, reserve / RESERVE_DRAIN_PER_M)
+	if on_battery + on_reserve >= metres - 1.0:
+		battery = maxf(0.0, battery - on_battery * DRAIN_PER_M)
+		reserve = maxf(0.0, reserve - on_reserve * RESERVE_DRAIN_PER_M)
+		park_at_home(false)
+		return "GAR-Y called the rover home as well: it drove itself back to the vehicle bay while you were out%s." % (" on its reserve" if on_reserve > 0.0 else "")
+	recalling = true
+	_recall_stage = "approach"
+	_stuck = 0.0
+	return "GAR-Y called the rover home too. Its battery is low, so it's making its own way back, crawling on its roof solar by day; it's %.1f km out." % (metres / 1.2 / 1000.0)
 
 ## Debug: full battery, reserve and oxygen tank.
 func refill() -> void:

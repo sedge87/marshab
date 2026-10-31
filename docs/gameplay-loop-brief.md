@@ -119,7 +119,7 @@ When oxygen, battery heat or your health runs out, you pass out. **GAR-Y comes a
 - **time passes** with the distance GAR-Y had to drag you: a few hours from close by, most of a sol from far out;
 - **samples you were carrying are dropped where you fell,** marked on the map, so you can go back for them;
 - **the suit is damaged** and needs a repair before a long trip;
-- **the rover stays where you left it,** so you go and fetch it (or GAR-Y slowly tows it home);
+- **the rover comes home on its own:** GAR-Y calls it home, and it drives itself back to the vehicle bay on its battery, or, if that's too low, crawls back on its roof solar by day;
 - **a health knock** that the Medical Bay helps you recover from;
 - **GAR-Y remembers it:** a rescue count on its card, and the occasional remark ("That's three times this month, Commander.").
 
@@ -137,9 +137,9 @@ GAR-Y is already the base's companion, so this makes it the hero of your worst t
 - **The cost:**
   - what you were carrying is dropped where you fell; it survives room rebuilds and is marked "Dropped" on the region map until you pick it up;
   - the suit's seals leak (oxygen goes 1.5× faster; the wrist flashes SEAL LEAK) until a suit service panel repairs it, or, if the base has none, an hour somewhere sealed patches it by hand;
-  - the rover stays where it was;
+  - the rover is called home: with the charge for the trip it's parked in the vehicle bay when you wake (the drive paid from its battery); without, it makes its own way back on the autopilot, crawling on solar by day and waiting out the night;
   - GAR-Y's card counts the rescues, and its beeps get more pointed ("Twice now, Commander.").
-- **Not yet:** the health knock and Medical Bay recovery (there is no crew-health system for you yet), suit damage beyond the leak, GAR-Y towing the rover home, and One life.
+- **Not yet:** the health knock and Medical Bay recovery (there is no crew-health system for you yet), suit damage beyond the leak, and One life.
 
 **One life (new game option):** passing out ends the run with a summary of what you achieved (the dossier).
 

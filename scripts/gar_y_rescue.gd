@@ -17,7 +17,8 @@ extends Node
 ##   region map, so you can go back for it;
 ## - the suit's seals take a knock: a leak until you repair it at a suit
 ##   service panel;
-## - the rover stays where you left it;
+## - the rover is called home: it drives itself back to the bay if it has
+##   the charge, or makes its own way, crawling on its roof solar by day;
 ## - GAR-Y remembers: a count on its card.
 ##
 ## Without GAR-Y (some Missions) you just come round inside.

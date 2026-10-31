@@ -156,9 +156,29 @@ func _initialize() -> void:
 	b.placed_interior.append({"placement_id": "suit_panel", "id": "suit_service_panel", "position": Vector3(0, y + 1.2, -3.0), "zone_cell": Vector2i(0, -1), "state": {}})
 	suit.refill_at_panel()
 	_check(not suit.leak, "a suit service panel repairs the seal")
+	# The rover left out there: GAR-Y calls it home. With the charge, it's
+	# parked in the bay, the drive paid for; without, it makes its own way.
+	var rover_out := Vector3(200, MHSiteTerrain_height(200, 200) + .2, 200)
+	rover.global_position = rover_out
+	rover.battery = 100.0; rover.reserve = 100.0
+	rover.come_home_after_rescue()
+	_check(rover._in_bay() and rover.battery < 100.0 and rover.battery > 50.0, "a charged rover drives itself home (battery %.0f%%)" % rover.battery)
+	rover.global_position = rover_out
+	rover.battery = 0.0; rover.reserve = 0.0
+	var line: String = rover.come_home_after_rescue()
+	_check(not rover._in_bay() and rover.recalling and line.contains("own way"), "a flat one makes its own way back on solar (%s)" % line)
+	rover.recalling = false
+	rover.park_at_home()
 	# Saving (in a room, where nothing tops the suit up).
 	await _put(world, Vector3(1.5, y + .3, 0))
 	await process_frame
+	# The site plan from inside: you're still inside, nothing drains.
+	b.build_mode = true
+	world.suit._check = 0.0
+	await process_frame
+	await process_frame
+	_check(suit.where == "habitat", "in the site plan you're still where you were (%s)" % suit.where)
+	b.build_mode = false
 	suit.o2 = .42
 	var saved: Dictionary = world.current_state()
 	suit.leak = true
