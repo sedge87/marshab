@@ -2,7 +2,8 @@ extends CanvasLayer
 
 # Hidden testing tools, opened in a colony with Ctrl+Shift+F12 (and closed the
 # same way). Cheats last for this session only and are never saved. Once the
-# panel has been opened, N toggles fly/noclip and T teleports to where you look.
+# panel has been opened, N toggles fly/noclip, and while flying T teleports to
+# where you look (T alone raises the wrist pad).
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const SPEEDS := {"×1": 1.0, "×10": 10.0, "×60": 60.0}
@@ -15,6 +16,7 @@ var _fly_button: Button
 var _cargo_button: Button
 var _power_button: Button
 var _freeze_button: Button
+var _suit_button: Button
 
 func setup(target_world) -> void:
 	world = target_world
@@ -41,9 +43,19 @@ func _ready() -> void:
 	col.add_child(MHStyle.body("For testing only. Nothing here is saved.", 13, MHStyle.TEXT_MUTED))
 
 	col.add_child(MHStyle.eyebrow("Cheats", MHStyle.accent))
-	_fly_button = _toggle_row(col, "Fly / noclip  [N]", _set_fly)
+	_fly_button = _toggle_row(col, "Fly / noclip  [N; T flies you where you look]", _set_fly)
 	_cargo_button = _toggle_row(col, "Unlimited cargo", func(on: bool) -> void: MHGame.debug_unlimited_cargo = on; _refresh_builder())
 	_power_button = _toggle_row(col, "Free power (grid always online)", func(on: bool) -> void: MHGame.debug_free_power = on; world.builder.refresh_power_grid())
+
+	col.add_child(MHStyle.eyebrow("Stuck? Get home safe", MHStyle.accent))
+	_suit_button = _toggle_row(col, "Suit never runs out", func(on: bool) -> void: MHGame.debug_suit_never_runs_out = on)
+	var safe := _flow()
+	for spec in [["Refill suit", _refill_suit], ["To the airlock", _teleport_to_airlock], ["To the lander", _teleport_to_lander],
+			["Rover to me", _rover_to_me], ["Rover home (refilled)", _rover_home], ["Refill rover", _refill_rover]]:
+		var b := _small_button(spec[0])
+		b.pressed.connect(spec[1])
+		safe.add_child(b)
+	col.add_child(safe)
 
 	col.add_child(MHStyle.eyebrow("Time", MHStyle.accent))
 	_hour = MHStyle.mono("", 14)
@@ -127,7 +139,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_set_fly(not bool(world.player.get_meta("debug_fly", false)))
 		_sync_buttons()
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_T and not world.builder.build_mode:
+	elif event.keycode == KEY_T and not world.builder.build_mode and bool(world.player.get_meta("debug_fly", false)):
 		_teleport_to_look()
 		get_viewport().set_input_as_handled()
 
@@ -194,6 +206,78 @@ func _teleport_to_habitat() -> void:
 		middle = builder._outline_centroid(outline)
 	_teleport(Vector3(middle.x, builder.habitat_base_y + .3, middle.y))
 
+## The first airlock, facing in (where the suit tops up), else the habitat.
+func _teleport_to_airlock() -> void:
+	if not world.builder.zones.any(func(z): return str(z.get("kind", "")) == "airlock"):
+		_info.text = "No airlock yet: sent to the lander cabin instead."
+		_teleport_to_lander()
+		return
+	_out_of_rover()
+	for zone in world.builder.zones:
+		if str(zone.get("kind", "")) != "airlock": continue
+		var centre := Vector2.ZERO
+		for cell in zone.cells: centre += Vector2(cell) * BuildController.CELL
+		centre /= float((zone.cells as Array).size())
+		var out := Vector2(zone.get("door_direction", Vector2i(0, -1)))
+		_teleport(Vector3(centre.x, world.builder.habitat_base_y + .3, centre.y))
+		world.player.rotation.y = atan2(out.x, out.y)   # facing in, away from the outer door
+		return
+
+func _teleport_to_lander() -> void:
+	if world.lander == null or not world.lander.present:
+		_info.text = "There's no lander on site."
+		return
+	_out_of_rover()
+	var spot: Dictionary = world.lander.cabin_start()
+	_teleport(spot.position)
+	world.player.rotation.y = float(spot.yaw)
+
+func _refill_suit() -> void:
+	var suit: Node = world.get("suit")
+	if suit == null: return
+	suit.debug_refill()
+	_info.text = "Suit full: oxygen, battery and scrubber, seals mended."
+
+func _rover() -> Node:
+	var rover: Node = world.get("crew_rover")
+	if rover == null: _info.text = "There's no crew rover yet: it comes with a vehicle bay."
+	return rover
+
+## Get out of the rover first, so a teleport doesn't leave you seated in it.
+func _out_of_rover() -> void:
+	var rover: Node = world.get("crew_rover")
+	if rover != null and bool(rover.driving): rover._get_out()
+
+func _rover_to_me() -> void:
+	var rover: Node = _rover()
+	if rover == null: return
+	if bool(rover.driving):
+		_info.text = "You're driving it."
+		return
+	var player: Node3D = world.player
+	var forward := -player.global_transform.basis.z
+	forward.y = 0.0
+	forward = forward.normalized() if forward.length() > .01 else Vector3.FORWARD
+	for distance in [6.0, 9.0, 13.0]:
+		for turn in [0.0, .6, -.6, 1.2, -1.2, PI]:
+			var at: Vector3 = player.global_position + forward.rotated(Vector3.UP, turn) * distance
+			if rover.set_down_at(at, player.rotation.y):
+				_info.text = "Rover parked %d m from you." % roundi(distance)
+				return
+	_info.text = "No open ground near you for the rover. Try somewhere flatter."
+
+func _rover_home() -> void:
+	var rover: Node = _rover()
+	if rover == null: return
+	_out_of_rover()
+	_info.text = "Rover parked in the vehicle bay, charged and full of oxygen." if rover.park_at_home() else "No vehicle bay to park it in."
+
+func _refill_rover() -> void:
+	var rover: Node = _rover()
+	if rover == null: return
+	rover.refill()
+	_info.text = "Rover battery, reserve and oxygen tank full."
+
 func _teleport_to_spawn() -> void:
 	_teleport(Vector3(6.0, MHSiteTerrain.height(6.0, 10.0) + 1.2, 10.0))
 
@@ -237,7 +321,7 @@ func _toggle_row(parent: Control, text: String, on_change: Callable) -> Button:
 	return b
 
 func _sync_buttons() -> void:
-	for pair in [[_fly_button, bool(world.player.get_meta("debug_fly", false))], [_cargo_button, MHGame.debug_unlimited_cargo], [_power_button, MHGame.debug_free_power], [_freeze_button, world.day_night.frozen]]:
+	for pair in [[_fly_button, bool(world.player.get_meta("debug_fly", false))], [_cargo_button, MHGame.debug_unlimited_cargo], [_power_button, MHGame.debug_free_power], [_freeze_button, world.day_night.frozen], [_suit_button, MHGame.debug_suit_never_runs_out]]:
 		var b: Button = pair[0]
 		b.set_pressed_no_signal(pair[1])
 		b.theme_type_variation = "SelectedButton" if pair[1] else "GhostButton"

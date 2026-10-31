@@ -117,6 +117,7 @@ static var landing_target := Vector2.INF
 # Hidden debug cheats (Ctrl+Shift+F12 in a colony); session only, never saved.
 static var debug_unlimited_cargo := false
 static var debug_free_power := false
+static var debug_suit_never_runs_out := false
 
 static func cargo_unlimited() -> bool:
 	return game_mode == "creative" or debug_unlimited_cargo

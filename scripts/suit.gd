@@ -141,7 +141,7 @@ func _where() -> String:
 
 ## A stretch of time outside, in game hours.
 func step(hours: float) -> void:
-	if hours <= 0.0: return
+	if hours <= 0.0 or MHGame.debug_suit_never_runs_out: return
 	o2 = maxf(0.0, o2 - hours * breathing_rate() * (LEAK if leak else 1.0) / O2_HOURS)
 	power = maxf(0.0, power - hours * (NIGHT_POWER if MHGame.sunlight_fraction < .1 else 1.0) / POWER_HOURS)
 	scrubber = maxf(0.0, scrubber - hours / SCRUBBER_HOURS)
@@ -218,6 +218,13 @@ func refill_at_panel() -> void:
 		_say("suit_full" if full() else "suit_no_supply")
 	else:
 		_say("suit_no_supply")
+
+## Debug: full, and the seals mended.
+func debug_refill() -> void:
+	o2 = 1.0; power = 1.0; scrubber = 1.0
+	leak = false
+	_patching = 0.0
+	_said.clear()
 
 ## G beside the rover: as much as the rover can give.
 func top_up_from_rover() -> String:

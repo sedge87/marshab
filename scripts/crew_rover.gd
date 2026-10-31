@@ -176,7 +176,7 @@ func supply_suit(o2_hours: float, power_share: float) -> Vector2:
 
 func interact_info(_actor: Node = null) -> bool:
 	get_tree().call_group("explore_hud", "show_equipment_note", "Crew rover",
-		"The EVA-6: a pressurised rover with a rear docking hatch and a roof solar panel. About 2.5 km to a charge, then a reserve for about 400 m; it charges in the vehicle bay, and the roof panel tops it up by day (never at night). Its oxygen tank (about 12 hours for one) keeps the cab sealed and tops up your suit (G beside it, or automatically in the cab, which also uses battery); the bay refills it from the habitat. The rover charger in the bay can recall it home. W/S drive, A/D steer, Space brake, F lights, V view, R free it, E get out.")
+		"The EVA-6: a pressurised rover with a rear docking hatch and a roof solar panel. About 2.5 km to a charge, then a reserve for about 400 m; it charges in the vehicle bay, and the roof panel tops it up by day (never at night). Its oxygen tank (about 12 hours for one) keeps the cab sealed and tops up your suit (G beside it, or automatically in the cab, which also uses battery); the bay refills it from the habitat. The rover charger in the bay can recall it home. W/S drive, A/D steer, Space brake, F lights, V view, R free it if it's stuck (in the cab or standing beside it), E get out.")
 	return true
 
 # ---------- getting in and out ----------
@@ -245,6 +245,14 @@ func _set_explore_hud(on: bool) -> void:
 # ---------- input while driving ----------
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not driving and not get_tree().paused and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
+		# Standing beside it: R frees it too.
+		var world := get_tree().get_first_node_in_group("habitat_world")
+		var walker: Node3D = world.player if world != null else null
+		if walker != null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not (world.builder != null and world.builder.build_mode) 				and walker.global_position.distance_to(global_position) < 6.0:
+			_recover()
+			get_viewport().set_input_as_handled()
+		return
 	if not driving or get_tree().paused: return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_look.x = wrapf(_look.x - event.relative.x * 0.0025, -PI, PI)
@@ -502,18 +510,73 @@ func _set_braking(on: bool) -> void:
 	_braking = on
 	for light in _tail_lights: light.material_override = _tail_glow if on else null
 
-## R: wedged against something? Back it off a couple of metres onto open ground.
-func _recover() -> void:
-	if absf(speed) > 1.0: return
+## R (in the cab, or standing beside it): stuck on a bump, wedged against a
+## rock or nosed into a slope it can't climb? It's set down on the nearest
+## open, fairly level ground: behind first, then ahead, then to the sides,
+## further out each time. Returns whether it found somewhere.
+func _recover() -> bool:
 	var back := Vector3(sin(rotation.y), 0.0, cos(rotation.y))
-	for distance in [2.5, -2.5, 4.0]:
-		var test := global_transform.translated(back * distance)
-		if not test_move(test, Vector3.ZERO):
-			global_position += back * distance
-			speed = 0.0
-			MHAudio.sfx("place", -6.0)
-			return
+	var side := Vector3(back.z, 0.0, -back.x)
+	for distance in [3.0, 5.0, 8.0, 12.0]:
+		for direction in [back, -back, side, -side, (back + side).normalized(), (back - side).normalized()]:
+			var at: Vector3 = global_position + direction * distance
+			if set_down_at(at): return true
 	MHAudio.sfx("invalid")
+	_flash("Can't free the rover", "No open ground nearby. Recall it from the GAR-Y dock in the vehicle bay, or walk home.")
+	return false
+
+## Puts the rover down on the ground at `at` if there's room for it and the
+## ground is level enough to drive off. Returns whether it did.
+func set_down_at(at: Vector3, yaw := INF) -> bool:
+	var corners := []
+	for local in [Vector3(-HALF_TRACK, 0, -HALF_BASE), Vector3(HALF_TRACK, 0, -HALF_BASE), Vector3(-HALF_TRACK, 0, HALF_BASE), Vector3(HALF_TRACK, 0, HALF_BASE)]:
+		var corner: Vector3 = at + Basis(Vector3.UP, rotation.y if is_inf(yaw) else yaw) * local
+		var ground := _ground_under(corner, at.y)
+		if is_inf(ground): return false
+		corners.append(ground)
+	if (corners.max() as float) - (corners.min() as float) > 1.2: return false   # steeper than about 20 degrees
+	var floor_y: float = (corners[0] + corners[1] + corners[2] + corners[3]) * .25
+	var test := Transform3D(Basis(Vector3.UP, rotation.y if is_inf(yaw) else yaw), Vector3(at.x, floor_y + .35, at.z))
+	_hull.rotation = Vector3.ZERO
+	_hull.position = HULL_CENTRE
+	if test_move(test, Vector3.ZERO): return false
+	global_transform = test
+	speed = 0.0
+	steer = 0.0
+	_pitch = 0.0
+	_roll = 0.0
+	recalling = false
+	MHAudio.sfx("place", -6.0)
+	return true
+
+## The ground at a point, looking down from well above `near_y` (the rover's
+## own height): INF if there's none.
+func _ground_under(at: Vector3, near_y: float) -> float:
+	var from := Vector3(at.x, near_y + 25.0, at.z)
+	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3(.02, -60.0, .015))
+	query.exclude = [get_rid()]
+	var world := get_tree().get_first_node_in_group("habitat_world")
+	if world != null and world.player != null: query.exclude.append(world.player.get_rid())
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	return float((hit.position as Vector3).y) if not hit.is_empty() else INF
+
+## Debug: straight home, parked in the bay facing out, charged and full of air.
+func park_at_home() -> bool:
+	var home := _home()
+	if home.is_empty() or driving: return false
+	var out: Vector2 = home.out
+	global_position = Vector3(home.centre.x, builder.habitat_base_y, home.centre.y)
+	rotation.y = atan2(-out.x, -out.y)
+	speed = 0.0
+	recalling = false
+	refill()
+	return true
+
+## Debug: full battery, reserve and oxygen tank.
+func refill() -> void:
+	battery = 100.0
+	reserve = 100.0
+	o2 = 100.0
 
 func _in_bay() -> bool:
 	if builder == null: return false
