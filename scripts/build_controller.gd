@@ -2060,6 +2060,10 @@ func _invalid_reason(cells: Array) -> String:
 	for trench in trenches:
 		for cell in cells:
 			if TRENCHES.ramp_cells(trench).has(cell): return "On the trench's ramp"
+	# All of it in a trench or none of it (the first room sets the base's level).
+	if not trenches.is_empty() and not cells.is_empty():
+		var dug := cells.filter(func(c): return TRENCHES.in_trench(trenches, c)).size()
+		if dug > 0 and dug < cells.size(): return "Partly in a trench: build it all in the trench, or all on top"
 	if cells.is_empty():
 		if kind=="airlock": return "Airlocks are 1–3 cells in a straight line"
 		if kind=="corridor": return "Corridors run in straight lines"

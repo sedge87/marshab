@@ -33,7 +33,7 @@ const MAX_SPEED := 6.5          # m/s (about 23 km/h)
 const REVERSE_SPEED := 2.5
 const LIMP_SPEED := 1.0         # both batteries flat: crawling on roof solar (daylight only)
 const RESERVE_SPEED := 3.0      # m/s on the reserve battery
-const RESERVE_DRAIN_PER_M := 1.0 / 6.0   # reserve % per metre (about 600 m)
+const RESERVE_DRAIN_PER_M := 1.0 / 4.0   # reserve % per metre (about 400 m)
 const DAYLIGHT := 0.1           # sunlight above this powers the solar crawl
 const ACCEL := 2.3
 const BRAKE := 6.5
@@ -43,7 +43,7 @@ const WHEELBASE := 2.9
 const WHEEL_R := 0.366
 const HALF_TRACK := 0.99
 const HALF_BASE := 1.29
-const DRAIN_PER_M := 1.0 / 40.0 # battery % per metre driven (about 4 km a charge)
+const DRAIN_PER_M := 1.0 / 25.0 # battery % per metre driven (about 2.5 km a charge: range is the limit out in the region)
 const CHARGE_PER_S := 1.5       # % a second, parked in the vehicle bay
 const SOLAR_PER_S := 0.05       # % a second from the roof panel in full sun (3% a minute)
 const SEAT := Vector3(-0.4, 1.5, -0.7)       # the driver's seat, in the rover's space (front is -Z)
@@ -141,7 +141,7 @@ func interact_secondary(_actor: Node = null) -> bool:
 
 func interact_info(_actor: Node = null) -> bool:
 	get_tree().call_group("explore_hud", "show_equipment_note", "Crew rover",
-		"The EVA-6: a pressurised rover with a rear docking hatch and a roof solar panel. About 4 km to a charge, then a reserve for about 600 m; it charges in the vehicle bay, and the roof panel tops it up by day (never at night). The rover charger in the bay can recall it home. W/S drive, A/D steer, Space brake, F lights, V view, R free it, E get out.")
+		"The EVA-6: a pressurised rover with a rear docking hatch and a roof solar panel. About 2.5 km to a charge, then a reserve for about 400 m; it charges in the vehicle bay, and the roof panel tops it up by day (never at night). The rover charger in the bay can recall it home. W/S drive, A/D steer, Space brake, F lights, V view, R free it, E get out.")
 	return true
 
 # ---------- getting in and out ----------
@@ -521,7 +521,11 @@ func _build_lights() -> void:
 
 func _set_lights(on: bool) -> void:
 	lights_on = on
-	for lamp in _lights: lamp.visible = on
+	# The marker tells MarsWorld's light budget the lamps are switched off, so
+	# it doesn't light them again.
+	for lamp in _lights:
+		lamp.visible = on
+		lamp.set_meta("rig_on", on)
 	if is_inside_tree(): MHAudio.sfx("ui_click", -10.0)
 
 func _build_dust() -> void:

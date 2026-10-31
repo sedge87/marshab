@@ -43,7 +43,7 @@ Four things run down outside, shown on a compact suit HUD (wrist display style):
 
 Plus one condition: **suit integrity.** A fall or a sharp rock can damage the suit, so it leaks oxygen faster until it's patched. A patch kit on the belt does a quick field fix; a proper repair happens at the suit service panel.
 
-**Topping up:** at the airlock's suit service panel, in the rover's cabin, and at any supply cache you've set up (§5.5).
+**Topping up:** at the airlock's suit service panel, in the rover's cabin, and at any supply cache you've set up (§5.5). Topping up from the rover draws on the rover's own battery and air, so a long trip has to budget both (playtest, 31 Oct).
 
 **Warnings:** calm, staged voice lines from the suit (and ARDEN): 50%, 25%, then "turn back now" based on how far you are from the nearest top-up. A "point of no return" marker on the suit HUD makes the risk readable.
 
@@ -123,7 +123,7 @@ I'd suggest option 1, with real places as reference for each zone's look.
 - **On foot:** close to the base and around a parked rover. Walking speed should drop to a suit pace (about 2.5 m/s; today it's 5 m/s), with a short, oxygen-costly sprint.
 - **The rover as a mobile base:**
   - a pressurised cabin: take your helmet off, top up the suit, eat, sleep on long trips;
-  - **battery range** is the limit (today about 4 km a charge). Upgrades extend it: extra batteries, a solar panel trailer, a heater (*The Martian* rover rebuild, without copying it);
+  - **battery range** is the limit (about 2.5 km a charge since 31 Oct, then a 400 m reserve). Upgrades extend it: extra batteries, a solar panel trailer, a heater (*The Martian* rover rebuild, without copying it);
   - it can **get stuck** in sand or tip on a slope, so careful driving matters;
   - the cabin's screen shows the map, range left and the way home.
 - **Travel time:** a sol is 20 real minutes, so a 6 km drive at today's top speed takes about 15 real minutes. Options: a faster rover, a **"drive to waypoint" auto-drive** that speeds up time, or both. To decide (§10).
@@ -258,6 +258,15 @@ Real siting studies want flat, firm ground for landing and the first habitat (ou
 - **tested:** `tests/trench_test.gd`.
 
 Not yet: digging takes no time or power, windows aren't stopped on walls that face earth, and buried walls don't yet keep more heat in.
+
+**Trenches need a rework (playtest, 31 Oct).** The first version doesn't feel right:
+- **hard to read:** it isn't clear how to build in a trench once it's dug (the first room has to go entirely in the trench; there's no prompt or highlight that says so);
+- **too big:** the 9 m ramp and 4.6 m apron take a lot of the pad for a small trench;
+- **odd to build:** you dig a hole first and fill it with rooms, rather than placing rooms and choosing to sink them.
+
+Ideas for the rework: dig by placing rooms in "sunken" mode (the trench follows the rooms' footprint, plus one access ramp), a narrower stair instead of a ramp for crew-only trenches, a shorter apron, and a highlight on the trench floor while you build. Until then it stays as is.
+
+**Cliff shielding (31 Oct).** Each outside wall bay of a room gains shielding from ground that rises steeply beyond it: the game finds the steepest skyline in that direction within 80 m, giving nothing at 15° and a regolith panel's 8 points at 45° or more (`HabitatSim.cliff_cover`). Rooms near the riverbed's cliffs get about 20–60% of that; Canyon Ridge's canyon floor, 60–100%; the open plains, none. Trench walls with earth behind them are counted once, as earth.
 
 ## 10. To decide
 1. **Suit duration:** about 8 game hours of oxygen (8–9 real minutes by day), or longer or shorter?

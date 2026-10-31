@@ -336,6 +336,8 @@ func _apply_light_budget() -> void:
 	var budget := int(MHGame.setting("light_budget"))
 	for index in range(live.size()):
 		var light: Light3D = live[index]
+		# Never relight a lamp its owner switched off ("rig_on": a lamp's switch,
+		# the rover's headlights, an equipment light).
 		light.visible = index < budget and eye.distance_to(light.global_position) < LIGHT_RANGE and bool(light.get_meta("rig_on", true))
 
 ## A new game opens in the dim lander cabin with a minimal HUD; opening the

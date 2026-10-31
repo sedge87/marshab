@@ -83,7 +83,7 @@ def river_course():
 
 RIVER_POINTS, RIVER_T = river_course()
 _wide = int(round(RIVER_WIDE_AT * 360))
-ZONES["riverbed"] = {"centre": (float(RIVER_POINTS[_wide][0]), float(RIVER_POINTS[_wide][1])), "flat_radius": 75.0, "blend": 1.25, "label": "The old riverbed"}
+ZONES["riverbed"] = {"centre": (float(RIVER_POINTS[_wide][0]), float(RIVER_POINTS[_wide][1])), "flat_radius": 50.0, "blend": 1.15, "label": "The old riverbed"}
 FEATURES += [("Ancient river", tuple(float(v) for v in RIVER_POINTS[110])), ("Delta", tuple(float(v) for v in RIVER_POINTS[-12]))]
 
 MESAS = [(-760.0, 420.0, 170.0, 48.0), (-2050.0, 1650.0, 240.0, 62.0), (300.0, 1500.0, 140.0, 40.0), (-1950.0, 380.0, 110.0, 34.0), (2100.0, 1700.0, 260.0, 70.0)]
@@ -301,7 +301,7 @@ def carve_river(h, x, z, masks, medium, lobes_field):
             floor[i] = min(floor[i], floor[i - 1] - 0.02)
     floor_at = np.interp(t, RIVER_T, floor)
     depth_at = np.interp(t, RIVER_T, depth)
-    half_width = 32.0 + 72.0 * np.exp(-((t - RIVER_WIDE_AT) / 0.07) ** 2) + 6.0 * medium
+    half_width = 32.0 + 22.0 * np.exp(-((t - RIVER_WIDE_AT) / 0.07) ** 2) + 3.0 * medium   # about 55 m each side at the zone: cliffs close by
     half_width = np.where(t > 1.0, half_width * (1.0 + (t - 1.0) * 3.0), half_width)
     wall_run = 18.0 + 6.0 * medium
     s = np.maximum(0.0, dist_to - half_width)

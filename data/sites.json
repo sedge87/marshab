@@ -400,7 +400,7 @@
         "shape": "region",
         "region": "test_region",
         "zone": "riverbed",
-        "pad_half": 45.0,
+        "pad_half": 35.0,
         "ground": "#9C6F58",
         "rock_count": 200,
         "rock_scale": 1.1

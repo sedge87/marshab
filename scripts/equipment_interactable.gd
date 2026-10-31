@@ -92,5 +92,6 @@ func _set_light_enabled(enabled: bool) -> void:
 	_light_enabled = enabled
 	if _equipment_light != null:
 		_equipment_light.visible = enabled
+		_equipment_light.set_meta("rig_on", enabled)   # the light budget keeps it off
 	if _emissive_mesh != null:
 		_emissive_mesh.material_override = _lit_emissive_material if enabled else _dark_emissive_material

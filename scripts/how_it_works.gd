@@ -630,7 +630,7 @@ class Picture extends Control:
 		_text("charges here", Vector2(160, 180), 12, GOOD)
 		draw_rect(Rect2(Vector2(258, 85), Vector2(8, 80)), WARM)
 		_text("Hangar opens", Vector2(262, 210), 12, WARM)
-		_arrow(Vector2(280, 125), Vector2(520, 125), DIM, "about 4 km a charge")
+		_arrow(Vector2(280, 125), Vector2(520, 125), DIM, "about 2.5 km a charge")
 		_node(Vector2(640, 125), "map-pin", "Out exploring", WARM, 170)
 		draw_line(Vector2(640, 165), Vector2(640, 215), DIM, 3.0)
 		draw_line(Vector2(640, 215), Vector2(160, 215), DIM, 3.0)

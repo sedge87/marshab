@@ -9,6 +9,7 @@ extends RefCounted
 const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
 const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
 const TRENCHES := preload("res://scripts/trenches.gd")
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
 
@@ -100,6 +101,16 @@ func light_state(room: Dictionary, occupants: float) -> String:
 	var forced := str(light_overrides.get(room.key, ""))
 	if not forced.is_empty(): return forced
 	return "on" if occupants > .25 or str(room.key) == player_room else "dim"
+
+## How much of the sky a cliff hides beyond an outside wall (0..1): the
+## steepest rise of the ground in that direction within 80 m, from no cover at
+## a 15° skyline to full cover at 45°.
+static func cliff_cover(wall: Vector2, outward: Vector2, eye_y: float) -> float:
+	var steepest := 0.0
+	for distance in [4.0, 8.0, 12.0, 18.0, 25.0, 35.0, 45.0, 60.0, 80.0]:
+		var at: Vector2 = wall + outward * float(distance)
+		steepest = maxf(steepest, atan2(MHSiteTerrain.height(at.x, at.y) - eye_y, float(distance)))
+	return clampf((rad_to_deg(steepest) - 15.0) / 30.0, 0.0, 1.0)
 
 ## Every room's light state right now: {room key: "on" | "dim" | "off"}.
 func room_light_states(hour: float) -> Dictionary:
@@ -221,6 +232,22 @@ func inventory() -> Dictionary:
 		for index in range(rooms.size()):
 			for cell in rooms[index].zone.get("cells", []):
 				var points := earth * TRENCHES.earth_sides(trenches, cell)
+				rooms[index].shield_upgrades += points
+				earth_total += points
+	# Cliffs and valley walls: ground rising steeply beside a room blocks part
+	# of the sky, where most radiation comes from. Each outside wall bay facing
+	# it gains up to a regolith panel's worth.
+	var all_cells := {}
+	for room in rooms:
+		for cell in room.zone.get("cells", []): all_cells[cell] = true
+	var full := float(WALL_UPGRADES.spec("regolith").get("points", 8.0))
+	var eye_y := float(builder.get("habitat_base_y")) + 1.45 if builder.get("habitat_base_y") != null else 1.8
+	for index in range(rooms.size()):
+		for cell in rooms[index].zone.get("cells", []):
+			for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				if all_cells.has(cell + side): continue
+				if TRENCHES.in_trench(trenches, cell) and not TRENCHES.in_trench(trenches, cell + side): continue   # earth, counted above
+				var points := full * cliff_cover(Vector2(cell) * cell_size + Vector2(side) * cell_size * .5, Vector2(side), eye_y)
 				rooms[index].shield_upgrades += points
 				earth_total += points
 	for index in range(rooms.size()):

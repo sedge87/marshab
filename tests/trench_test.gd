@@ -62,6 +62,7 @@ func _initialize() -> void:
 	p.global_position = Vector3(40, 1, -30)
 	# Rooms: the first in the trench sets the floor; one up top is refused.
 	b.kind = "living"
+	_check("Partly in a trench" in b._invalid_reason([Vector2i(-9, 2), Vector2i(-8, 2)]), "a first room can't straddle the trench's edge")
 	var room := [Vector2i(-8, 2), Vector2i(-7, 2), Vector2i(-8, 3), Vector2i(-7, 3)]
 	_check(b._invalid_reason(room) == "", "a room fits in the trench (%s)" % b._invalid_reason(room))
 	b.habitat_base_y = b._proposed_base_y(room)
@@ -71,7 +72,9 @@ func _initialize() -> void:
 	_check("trench" in b._invalid_reason([Vector2i(-12, 2)]), "a room up top is refused while the base is in the trench")
 	_check("ramp" in b._invalid_reason([Vector2i(-6, 6)]), "nothing can be built on the ramp")
 	var rooms: Array = b.simulation().inventory().rooms
-	_check(not rooms.is_empty() and is_equal_approx(float(rooms[0].shield_upgrades), 32.0), "earth shields the room's four outside wall bays (%s)" % (rooms[0].shield_upgrades if not rooms.is_empty() else "none"))
+	# 8 points for each of the four bays with earth behind them, plus a little
+	# cliff cover from the trench walls across its open sides.
+	_check(not rooms.is_empty() and float(rooms[0].shield_upgrades) >= 32.0 and float(rooms[0].shield_upgrades) < 40.0, "earth shields the room's four outside wall bays (%s)" % (rooms[0].shield_upgrades if not rooms.is_empty() else "none"))
 	# A trench with rooms in it can't be filled in; saving keeps it.
 	b._remove_at(Vector2i(-5, 4))
 	_check(b.trenches.size() == 1, "a trench with rooms in it stays")
