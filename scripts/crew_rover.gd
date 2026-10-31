@@ -87,6 +87,9 @@ var _backing := 0.0
 func setup(target_builder: Node) -> void:
 	builder = target_builder
 
+var _hull: CollisionShape3D
+const HULL_CENTRE := Vector3(0, 0.45 + 0.75, 0)   # the collision box's centre, upright
+
 func _ready() -> void:
 	add_to_group("crew_rover")
 	set_meta("interaction_target", self)
@@ -99,6 +102,7 @@ func _ready() -> void:
 	shape.shape = box
 	shape.position = Vector3(0, 0.45 + box.size.y * .5, 0)
 	add_child(shape)
+	_hull = shape
 	var scene := load(MODEL_PATH) as PackedScene
 	_model = Node3D.new()
 	_model.name = "Body"
@@ -297,7 +301,13 @@ func _follow_ground(delta: float) -> void:
 	if is_inf(fr): fr = mean
 	if is_inf(rl): rl = mean
 	if is_inf(rr): rr = mean
-	var target := maxf(mean, maxf(maxf(fl, fr), maxf(rl, rr)) - 0.25)
+	# Sit on the plane through the four wheels (the tilt follows it), lifted
+	# only for a bump that sticks up out of that plane. Lifting to the highest
+	# wheel instead left the downhill wheels in the air on slopes.
+	var along := ((fl + fr) - (rl + rr)) * .25
+	var across := ((fl + rl) - (fr + rr)) * .25
+	var bump := maxf(maxf(fl - (mean + along + across), fr - (mean + along - across)), maxf(rl - (mean - along + across), rr - (mean - along - across)))
+	var target := mean + maxf(0.0, bump - 0.1)
 	var rate := 10.0 if target > global_position.y else 6.0
 	global_position.y = lerpf(global_position.y, target, minf(1.0, delta * rate))
 	var pitch := atan2(((fl + fr) - (rl + rr)) * 0.5, HALF_BASE * 2.0)
@@ -305,6 +315,11 @@ func _follow_ground(delta: float) -> void:
 	_pitch = lerpf(_pitch, pitch, minf(1.0, delta * 8.0))
 	_roll = lerpf(_roll, roll, minf(1.0, delta * 8.0))
 	_model.rotation = Vector3(_pitch, 0.0, -_roll)
+	# The collision box tilts with the body: upright, its uphill end dug into
+	# a slope and pushed the whole rover up off the ground.
+	if _hull != null:
+		_hull.rotation = _model.rotation
+		_hull.position = Basis.from_euler(_model.rotation) * HULL_CENTRE
 	# Each wheel finds its own ground (a hint of suspension travel).
 	for key in _wheels:
 		var wheel: Node3D = _wheels[key]
@@ -315,8 +330,10 @@ func _follow_ground(delta: float) -> void:
 
 ## The ground (or floor, or ramp) under a point; INF if there's none.
 func _ground_at(at: Vector3) -> float:
-	var from := Vector3(at.x, global_position.y + 1.4, at.z)
-	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 5.0)
+	var from := Vector3(at.x, global_position.y + 1.6, at.z)   # under the vehicle bay roof, above the uphill wheels on most slopes
+	# Tilted a hair: Godot's default physics misses some perfectly vertical
+	# rays against Terrain3D's ground (its docs warn of it).
+	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3(.02, -7.0, .015))
 	query.exclude = [get_rid()]
 	if _player != null: query.exclude.append(_player.get_rid())
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)

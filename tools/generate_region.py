@@ -222,9 +222,11 @@ def build_heights():
 
     # Mesas: flat-topped buttes with steep, crumbling sides.
     skirts = np.zeros_like(h)
+    masks["mesa_body"] = np.zeros_like(h)
     for mx, mz, mr, mh in MESAS:
         md = dist(x, z, (mx, mz)) / (mr * (1.0 + 0.12 * medium)) + edge_warp(int(mx) % 997, 0.22, 0.06)
         skirts = np.maximum(skirts, np.exp(-((md - 1.25) / 0.3) ** 2))
+        masks["mesa_body"] = np.maximum(masks["mesa_body"], 1.0 - smoothstep(1.0, 1.15, md))
         h += mh * (1.0 - smoothstep(0.82, 1.08, md)) + mh * 0.25 * np.exp(-((md - 1.1) / 0.18) ** 2)
 
     masks["skirts"] = skirts
@@ -346,7 +348,7 @@ def save_heights(h):
 
 # ---------- ground textures ----------
 # Terrain3D texture slots (the control map refers to these numbers).
-DUST, BEDROCK, SAND, FROST, CLAY, GRAVEL = range(6)
+DUST, BEDROCK, SAND, FROST, CLAY, GRAVEL, STRATA = range(7)
 MATERIALS = [
     # name, base colour, dark colour, roughness, features
     ("dust", (178, 126, 96), (150, 102, 78), 0.93, {"ripples": (7, 0.05), "pebbles": (500, 2, 5)}),
@@ -355,6 +357,8 @@ MATERIALS = [
     ("frost", (226, 210, 200), (190, 164, 150), 0.55, {"cracks": (34, 0.02, 0.5), "crack_colour": (150, 104, 82)}),
     ("clay", (198, 152, 118), (172, 126, 96), 0.88, {"cracks": (130, 0.007, 0.28)}),
     ("gravel", (152, 108, 86), (116, 82, 68), 0.9, {"pebbles": (2600, 3, 13)}),
+    # Pale layered sediment, like Mount Sharp's: the mound.
+    ("strata", (206, 162, 126), (176, 132, 102), 0.86, {"strata": (9, 0.22), "cracks": (40, 0.006, 0.18)}),
 ]
 
 
@@ -456,14 +460,13 @@ def write_control(h, masks):
     base[(masks["crater_d"] < 0.7 + dither * 0.3) & (masks["mound"] < 0.5)] = CLAY
     base[masks["dunes"] + dither > 0.5] = SAND
     base[masks["ice"] + dither > 0.5] = FROST
-    base[masks["mound"] > 0.5] = BEDROCK
+    base[masks["mound"] > 0.5] = STRATA
     base[masks["river_floor"] > 0.5] = GRAVEL   # rounded river pebbles
     base[masks["delta"] > 0.5] = CLAY           # fine layered sediment
     gz, gx = np.gradient(h, SPACING)
     slope = np.sqrt(gx * gx + gz * gz)
     blend = np.clip(smoothstep(0.22, 0.6, slope) * 255.0, 0, 255).astype(np.uint32)
     masks["_base"] = base.astype(np.int64)
-    blend[base == BEDROCK] = 255
     blend[(base == SAND) | (base == FROST)] = 0   # dunes and ice stay sand and frost on their slopes
     control = (base << np.uint32(27)) | (np.uint32(BEDROCK) << np.uint32(22)) | (blend << np.uint32(14))
     data = gzip.compress(control.astype("<u4").tobytes(), compresslevel=9)
@@ -474,7 +477,7 @@ def write_map(h, masks):
     """The region map: shaded relief coloured by ground type, 1024 px."""
     step = N // 1024
     hs = h[::step, ::step]
-    colours = np.array([(196, 140, 104), (150, 106, 84), (104, 80, 70), (228, 216, 206), (214, 168, 128), (166, 120, 96)], dtype=float) / 255.0
+    colours = np.array([(196, 140, 104), (150, 106, 84), (104, 80, 70), (228, 216, 206), (214, 168, 128), (166, 120, 96), (222, 182, 146)], dtype=float) / 255.0
     control_base = masks["_base"][::step, ::step]
     rgb = colours[control_base]
     gz, gx = np.gradient(hs, SPACING * step)
@@ -484,7 +487,7 @@ def write_map(h, masks):
     write_file(os.path.join(OUT, "map.png"), Image.fromarray((img * 255).astype("uint8"), "RGB").save)
 
 
-def write_colour(masks):
+def write_colour(masks, h=None):
     """Terrain3D colour map at half resolution (the game scales it up):
     gentle large-scale darkening and hue shifts, like Mars's albedo patches.
     White is no change; alpha 0.5 leaves roughness alone."""
@@ -493,6 +496,14 @@ def write_colour(masks):
     red = np.clip(v * (1.0 + 0.02 * large), 0, 1)
     green = np.clip(v * (0.98 - 0.015 * medium), 0, 1)
     blue = np.clip(v * (0.96 - 0.02 * large), 0, 1)
+    # Layers you can see from afar: light and dark bands by height on the
+    # mound and the mesas (each band about 5 m of rock).
+    if h is not None:
+        hs = h[::2, ::2]
+        layered = np.clip(masks["mound"][::2, ::2] + masks["mesa_body"][::2, ::2], 0, 1)
+        bands = 0.5 + 0.5 * np.sin(hs / 5.2 * math.pi + 0.8 * masks["medium"][::2, ::2])
+        shade = 1.0 - layered * (0.06 + 0.12 * bands)
+        red *= shade; green *= shade * 0.99; blue *= shade * 0.97
     dunes = masks["dunes"][::2, ::2]
     red *= 1.0 - 0.08 * dunes; green *= 1.0 - 0.06 * dunes; blue *= 1.0 - 0.04 * dunes
     alpha = np.full(red.shape, 0.5)
@@ -505,7 +516,7 @@ def main():
     h, masks = build_heights()
     lo, hi = save_heights(h)
     write_control(h, masks)
-    write_colour(masks)
+    write_colour(masks, h)
     write_map(h, masks)
     for index, (name, base, dark, rough, features) in enumerate(MATERIALS):
         material_texture(name, base, dark, rough, dict(features), SEED + 20 + index)

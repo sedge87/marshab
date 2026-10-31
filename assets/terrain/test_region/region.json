@@ -57,7 +57,8 @@
     "sand",
     "frost",
     "clay",
-    "gravel"
+    "gravel",
+    "strata"
   ],
   "features": [
     {

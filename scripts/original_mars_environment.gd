@@ -315,28 +315,44 @@ func _update_celestial_bodies(sunlight: float) -> void:
 	# two actual Martian moons appear only in low-light conditions.
 	var hour := MHGame.sol_hour
 	var toward_sun := _martian_sun_vector(sunlight)
-	_sun_corona.position = toward_sun * 760.0
-	var active_camera := get_viewport().get_camera_3d()
-	if active_camera != null:
-		_sun_corona.look_at(active_camera.global_position, Vector3.UP, true)
+	_sky_directions[_sun_corona] = toward_sun
 	_sun_corona.visible = sunlight > .015
 	# Actual orbital periods: Phobos 7 h 39 m, Deimos ~30 h 18 m. Phobos moves
 	# west-to-east as seen from Mars; Deimos follows the slower opposite drift.
 	var phobos_angle := -PI * .45 + TAU * hour / 7.653
 	var deimos_angle := PI * .22 - TAU * hour / 30.30
-	_place_celestial(_phobos, sin(phobos_angle) * PI * .48, phobos_angle * .35, 680.0)
-	_place_celestial(_deimos, sin(deimos_angle) * PI * .40, deimos_angle * .22 + .65, 720.0)
-	_phobos.visible = sunlight < .18 and _phobos.position.y > 4.0
-	_deimos.visible = sunlight < .18 and _deimos.position.y > 4.0
+	_place_celestial(_phobos, sin(phobos_angle) * PI * .48, phobos_angle * .35)
+	_place_celestial(_deimos, sin(deimos_angle) * PI * .40, deimos_angle * .22 + .65)
+	_phobos.visible = sunlight < .18 and (_sky_directions[_phobos] as Vector3).y > .006
+	_deimos.visible = sunlight < .18 and (_sky_directions[_deimos] as Vector3).y > .006
+	_follow_camera()
 
-func _place_celestial(body: MeshInstance3D, altitude: float, azimuth: float, radius: float) -> void:
+func _place_celestial(body: MeshInstance3D, altitude: float, azimuth: float) -> void:
 	if body == null:
 		return
 	var horizontal := cos(altitude)
-	body.position = Vector3(sin(azimuth) * horizontal, sin(altitude), -cos(azimuth) * horizontal) * radius
-	var active_camera := get_viewport().get_camera_3d()
-	if active_camera != null:
-		body.look_at(active_camera.global_position, Vector3.UP, true)
+	_sky_directions[body] = Vector3(sin(azimuth) * horizontal, sin(altitude), -cos(azimuth) * horizontal)
+
+## The sun and moons sit in their direction from the camera, just inside how
+## far it sees, and scaled to match: so a hill between you and the sun hides it
+## (they used to sit 760 m from the site's centre, nearer than a region's
+## far hills, which then showed the sun through them).
+var _sky_directions: Dictionary = {}   # body -> unit direction
+const SKY_BASE_DISTANCE := 760.0       # the distance the bodies' sizes were made for
+
+func _process(_delta: float) -> void:
+	_follow_camera()
+
+func _follow_camera() -> void:
+	var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
+	if camera == null: return
+	var distance := camera.far * .92
+	for body in _sky_directions:
+		if not is_instance_valid(body): continue
+		var mesh := body as MeshInstance3D
+		mesh.global_position = camera.global_position + (_sky_directions[body] as Vector3) * distance
+		mesh.scale = Vector3.ONE * distance / SKY_BASE_DISTANCE
+		mesh.look_at(camera.global_position, Vector3.UP, true)
 
 func _build_terrain() -> void:
 	_terrain_body = StaticBody3D.new()
@@ -365,7 +381,6 @@ func _build_region_terrain() -> void:
 	terrain.name = "RegionTerrain3D"
 	terrain.add_to_group("region_terrain")   # trenches cut holes in it (scripts/trenches.gd)
 	terrain.vertex_spacing = float(MHSiteTerrain.RegionTerrain.meta().spacing)
-	terrain.collision_mode = Terrain3DCollision.FULL_GAME   # GAR-Y and the rover roam far from the camera
 	terrain.collision_layer = 1
 	terrain.free_editor_textures = false
 	# Its material and assets are set before it enters the scene (the
@@ -397,6 +412,11 @@ func _build_region_terrain() -> void:
 	terrain.ready.connect(func() -> void:
 		terrain.region_size = Terrain3D.SIZE_1024   # 2 km regions: about 16 for the whole map (set once it's ready)
 		terrain.data.import_images([MHSiteTerrain.RegionTerrain.import_image(), MHSiteTerrain.RegionTerrain.control_image(), MHSiteTerrain.RegionTerrain.colour_image()], place.corner, float(place.offset), float(place.scale))
+		# Collision over the whole region, not just round the camera: GAR-Y and
+		# the rover roam out of view, and the rover's ground rays need it ahead
+		# of a fast drive. Switched on after the import (set earlier it reverts
+		# to dynamic, or is built from the flat ground before the heights).
+		terrain.collision_mode = Terrain3DCollision.FULL_GAME
 		_scatter_region_rocks(terrain, MHSiteTerrain.RegionTerrain.world_bounds(origin).grow(-500.0)), CONNECT_ONE_SHOT)
 	_site_root.add_child(terrain)
 
