@@ -1,6 +1,6 @@
 # New-game options (core-loop build order, step 2)
 
-A design for the challenge options, written 31 Oct 2026. It follows `docs/core-loop.md` round 6: you choose fatigue, radiation, injuries and surprises when you start a game; later you can switch one on, never off. Nothing here is built yet. The questions in §8 come first.
+A design for the challenge options, written 31 Oct 2026. It follows `docs/core-loop.md` round 6: you choose fatigue, radiation, injuries and surprises when you start a game; later you can switch one on, never off. Nothing here is built yet. The decisions are in §8.
 
 ## 1. What the player sees
 
@@ -77,11 +77,11 @@ Every event keeps its warning (storms forecast 10 h ahead, solar events 30 min a
 - New kinds of surprise (with machine wear in step 7, and later).
 - Achievements for hardcore runs (on hold).
 
-## 8. Questions for you
+## 8. Decided (31 Oct)
 
-1. **Surprises on Off:** does Off also stop random dust storms (only forecast or scripted ones would come), or are storms weather that always happens? *Recommended: storms always happen; Off stops only the other surprises* (as §3 is written).
-2. **Surprise level after the start:** up only (Rare → Usual → Often), as written, or free both ways because it's a "how often" setting? *Recommended: up only, in keeping with the rule.*
-3. **Options that do nothing yet** (fatigue now; your own radiation and injuries until step 10): hide them until they work, or show them with "Coming later"? *Recommended: hide fatigue; show radiation and injuries, since they already affect the crew.*
-4. **Defaults:** surprises Rare and the rest off, as in §5? *Recommended: yes.*
-5. **Presets** (Gentle, Standard, Hardcore) above the four rows, or just the rows? *Recommended: just the rows, since four is few enough.*
-6. **Old saves:** map them as in §5 (radiation and injuries on, because crew harm already happened)? *Recommended: yes.*
+1. **Surprises on Off:** dust storms still come; they're weather. Off stops only solar events, breaches and breakdowns. More realistic weather, both looks and mechanics, is welcome (backlog).
+2. **The surprise level** can go up after the start, never down.
+3. **Options that do nothing yet:** fatigue is hidden until step 10; radiation and injuries show, since they already affect the crew.
+4. **Defaults:** surprises on Rare; fatigue, radiation and injuries off.
+5. **No presets:** just the four rows.
+6. **Old saves** load as they played (§5).
