@@ -356,6 +356,59 @@
         "noon_altitude": 58,
         "horizon": 20
       }
+    },
+    {
+      "id": "region_riverbed",
+      "name": "Test Region · Riverbed",
+      "based_on": "Valles Marineris floor",
+      "coordinates": "10.5° S, 68.0° W",
+      "terrain_profile": "valles",
+      "blurb": "Prototype 6 km region: an ancient river valley between cliffs. Its delta is downstream.",
+      "palette": "canyon",
+      "icon": "mountain-snow",
+      "telemetry": {
+        "temperature": "−22 °C",
+        "outside_temp_c": -22,
+        "elevation": "−4.8 km",
+        "radiation": "High"
+      },
+      "day_cycle": {
+        "daylight_minutes": 14,
+        "night_minutes": 6,
+        "dawn_hour": 4.5,
+        "sunrise_hour": 5.5,
+        "sunset_hour": 18.5,
+        "dusk_hour": 19.5,
+        "day_temp_c": -22,
+        "night_temp_c": -62
+      },
+      "ice_deposits": [
+        {
+          "x": -16,
+          "z": 28,
+          "radius": 11,
+          "richness": 0.82
+        },
+        {
+          "x": 16,
+          "z": -34,
+          "radius": 11,
+          "richness": 0.74
+        }
+      ],
+      "terrain": {
+        "shape": "region",
+        "region": "test_region",
+        "zone": "riverbed",
+        "pad_half": 45.0,
+        "ground": "#9C6F58",
+        "rock_count": 200,
+        "rock_scale": 1.1
+      },
+      "sun": {
+        "noon_altitude": 58,
+        "horizon": 30
+      }
     }
   ]
 }

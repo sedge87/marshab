@@ -51,6 +51,41 @@ FEATURES = [
     ("Crater", (1100.0, -1500.0)), ("Layered mound", (920.0, -580.0)), ("Canyon", (0.0, -2600.0)),
     ("Dune field", (-650.0, -1640.0)), ("Ice fields", (-1500.0, -1100.0)), ("Mesas", (-1400.0, 1700.0)),
 ]
+# The ancient river: from the southern hills it meanders north, widens into
+# a cliff-walled valley (the riverbed landing zone), breaches the crater's
+# south-west rim and spreads a delta over the crater floor, like Jezero.
+RIVER_SOURCE = (900.0, 2750.0)
+RIVER_MOUTH_ANGLE = (-0.33, 0.944)   # where it breaks through the rim, from the crater's centre
+RIVER_WIDE_AT = 0.42                 # how far along the valley widens (0 source, 1 rim)
+
+
+def river_course():
+    """The river's centreline: points from the source to the delta's apex,
+    each with how far along it is (0..1 at the rim, more inside the crater)."""
+    cx, cz = CRATER["centre"]
+    rim = np.array([cx + RIVER_MOUTH_ANGLE[0] * CRATER["radius"], cz + RIVER_MOUTH_ANGLE[1] * CRATER["radius"]])
+    apex = np.array([cx, cz]) + (rim - np.array([cx, cz])) * 0.66
+    start = np.array(RIVER_SOURCE)
+    along = rim - start
+    perp = np.array([-along[1], along[0]]) / np.linalg.norm(along)
+    points, params = [], []
+    for i in range(361):
+        t = i / 360.0
+        swing = 230.0 * math.sin(math.tau * 3.3 * t + 0.6) + 60.0 * math.sin(math.tau * 8.1 * t + 1.7)
+        points.append(start + along * t + perp * swing * math.sin(math.pi * t) ** 0.6)
+        params.append(t)
+    for i in range(1, 41):
+        t = i / 40.0
+        points.append(rim + (apex - rim) * t)
+        params.append(1.0 + 0.25 * t)
+    return np.array(points), np.array(params)
+
+
+RIVER_POINTS, RIVER_T = river_course()
+_wide = int(round(RIVER_WIDE_AT * 360))
+ZONES["riverbed"] = {"centre": (float(RIVER_POINTS[_wide][0]), float(RIVER_POINTS[_wide][1])), "flat_radius": 75.0, "blend": 1.25, "label": "The old riverbed"}
+FEATURES += [("Ancient river", tuple(float(v) for v in RIVER_POINTS[110])), ("Delta", tuple(float(v) for v in RIVER_POINTS[-12]))]
+
 MESAS = [(-760.0, 420.0, 170.0, 48.0), (-2050.0, 1650.0, 240.0, 62.0), (300.0, 1500.0, 140.0, 40.0), (-1950.0, 380.0, 110.0, 34.0), (2100.0, 1700.0, 260.0, 70.0)]
 
 
@@ -201,6 +236,8 @@ def build_heights():
     ring = np.maximum(np.abs(x), np.abs(z)) + 160.0 * large
     h += (240.0 + 80.0 * large) * smoothstep(HALF - 650.0, HALF - 80.0, ring)
 
+    carve_river(h, x, z, masks, medium, lobes_field)
+
     # Small craters everywhere except the landing zones, the mound and the canyon.
     keep = [(ZONES[k]["centre"][0], ZONES[k]["centre"][1], ZONES[k]["flat_radius"] * 2.2) for k in ZONES]
     keep.append((MOUND["centre"][0], MOUND["centre"][1], MOUND["radius"]))
@@ -213,10 +250,85 @@ def build_heights():
         r = zone["flat_radius"]
         j = int((zone["centre"][1] + HALF) / SPACING); i = int((zone["centre"][0] + HALF) / SPACING)
         level = float(h[j - 20:j + 20, i - 20:i + 20].mean())
-        blend = smoothstep(r, r * 3.2, zd)
+        blend = smoothstep(r, r * zone.get("blend", 3.2), zd)
         h = level + (h - level) * blend   # exactly level inside the flat radius
         zone["height"] = level
     return h, masks
+
+
+def river_field():
+    """Distance to the river's centreline and how far along it the nearest
+    point is, worked out at half resolution and scaled up (fast without SciPy)."""
+    n = N // 2
+    coords = np.arange(n) * SPACING * 2.0 - HALF
+    gx, gz = np.meshgrid(coords, coords)
+    a = RIVER_POINTS[:-1]; b = RIVER_POINTS[1:]
+    ta = RIVER_T[:-1]; tb = RIVER_T[1:]
+    seg = b - a
+    seg_len2 = (seg ** 2).sum(axis=1)
+    best = np.full((n, n), np.inf, dtype=np.float32)
+    best_t = np.zeros((n, n), dtype=np.float32)
+    flat_x = gx.ravel(); flat_z = gz.ravel()
+    out_d = best.ravel(); out_t = best_t.ravel()
+    for start in range(0, flat_x.size, 65536):
+        px = flat_x[start:start + 65536, None]; pz = flat_z[start:start + 65536, None]
+        u = np.clip(((px - a[:, 0]) * seg[:, 0] + (pz - a[:, 1]) * seg[:, 1]) / seg_len2, 0.0, 1.0)
+        dx = px - (a[:, 0] + u * seg[:, 0]); dz = pz - (a[:, 1] + u * seg[:, 1])
+        d2 = dx * dx + dz * dz
+        k = np.argmin(d2, axis=1)
+        rows = np.arange(k.size)
+        out_d[start:start + 65536] = np.sqrt(d2[rows, k])
+        out_t[start:start + 65536] = ta[k] + u[rows, k] * (tb[k] - ta[k])
+
+    def grow(field):
+        return np.asarray(Image.fromarray(field.astype(np.float32), "F").resize((N, N), Image.BILINEAR))
+    return grow(best), grow(best_t)
+
+
+def carve_river(h, x, z, masks, medium, lobes_field):
+    """Cut the river's valley (its floor always running downhill, through the
+    crater rim) and lay its delta on the crater floor."""
+    dist_to, t = river_field()
+    # The floor along the course: below the ground by the valley's depth,
+    # never rising downstream.
+    depth = 16.0 + 10.0 * np.exp(-((RIVER_T - RIVER_WIDE_AT) / 0.08) ** 2)
+    depth = np.where(RIVER_T > 1.0, np.maximum(2.0, depth * (1.25 - RIVER_T) * 4.0), depth)
+    floor = np.empty(RIVER_T.size)
+    for i, (px, pz) in enumerate(RIVER_POINTS):
+        j = int(np.clip((pz + HALF) / SPACING, 0, N - 1)); k = int(np.clip((px + HALF) / SPACING, 0, N - 1))
+        floor[i] = h[j, k] - depth[i]
+        if i > 0:
+            floor[i] = min(floor[i], floor[i - 1] - 0.02)
+    floor_at = np.interp(t, RIVER_T, floor)
+    depth_at = np.interp(t, RIVER_T, depth)
+    half_width = 32.0 + 72.0 * np.exp(-((t - RIVER_WIDE_AT) / 0.07) ** 2) + 6.0 * medium
+    half_width = np.where(t > 1.0, half_width * (1.0 + (t - 1.0) * 3.0), half_width)
+    wall_run = 18.0 + 6.0 * medium
+    s = np.maximum(0.0, dist_to - half_width)
+    # Walls with a bench half way up, then on up at a steep slope wherever the
+    # cut runs deeper than the valley (through the rim).
+    rise = np.where(s < wall_run, depth_at * (0.55 * smoothstep(0.0, 0.45, s / wall_run) + 0.45 * smoothstep(0.6, 1.0, s / wall_run)),
+                    depth_at + (s - wall_run) * 1.6)
+    target = floor_at + rise + 0.5 * np.abs(medium) * (s > 0)
+    # Cut only as far as the breach in the rim: inside the crater the river
+    # dropped its load instead (the delta, below).
+    river = (t < 1.02) & (dist_to < half_width + wall_run + 400.0)
+    h[river] = np.minimum(h[river], target[river])
+    masks["river_floor"] = ((dist_to < half_width + 2.0) & (t < 1.02)).astype(float)
+    # The delta: a flat-topped fan of layered sediment on the crater floor,
+    # with a steep front, lobes and old distributary channels.
+    rim = RIVER_POINTS[360]; apex = RIVER_POINTS[-1]
+    inward = (apex - rim) / np.linalg.norm(apex - rim)
+    rx = x - rim[0]; rz = z - rim[1]
+    r = np.sqrt(rx * rx + rz * rz)
+    ang = np.arctan2(rx * inward[1] - rz * inward[0], rx * inward[0] + rz * inward[1])
+    reach = 640.0 * (1.0 + 0.12 * np.sin(ang * 7.0 + 0.9) + 0.06 * np.sin(ang * 17.0)) * (1.0 + 0.08 * lobes_field)
+    fan = (1.0 - smoothstep(0.86, 1.0, r / reach)) * (1.0 - smoothstep(0.7, 1.0, np.abs(ang) / 0.95)) * smoothstep(0.1, 0.3, r / reach)
+    inside = masks["crater_d"] < 0.95
+    channels = 1.6 * smoothstep(0.82, 0.98, np.abs(np.sin(ang * 9.0 + 1.5 * medium)))
+    lift = np.where(inside, fan * (12.0 - channels), 0.0)
+    h += lift
+    masks["delta"] = (lift > 3.0).astype(float)
 
 
 def save_heights(h):
@@ -345,6 +457,8 @@ def write_control(h, masks):
     base[masks["dunes"] + dither > 0.5] = SAND
     base[masks["ice"] + dither > 0.5] = FROST
     base[masks["mound"] > 0.5] = BEDROCK
+    base[masks["river_floor"] > 0.5] = GRAVEL   # rounded river pebbles
+    base[masks["delta"] > 0.5] = CLAY           # fine layered sediment
     gz, gx = np.gradient(h, SPACING)
     slope = np.sqrt(gx * gx + gz * gz)
     blend = np.clip(smoothstep(0.22, 0.6, slope) * 255.0, 0, 255).astype(np.uint32)

@@ -307,6 +307,7 @@ The first step of §11 is in place on this branch.
   - **a terraced mound** with benches and buttes, and the dune field moved clear of the crater rim;
   - **solid rocks:** the instancer's rocks have no collision of their own, so a pool of colliders follows the player, the crew rover and GAR-Y (`scripts/region_rock_collision.gd`); about 30,000 rocks are big enough to block you;
   - **the region map** (Tab while exploring a region site, `scripts/region_map.gd`): shaded relief by ground type, named places, landing zones, you, the lander, the base, the rover, GAR-Y and the distance home.
+- **An ancient river (31 Oct, later):** from the southern hills a river valley meanders north, its floor always running downhill, with layered walls and a bench half way up. It widens into a broad cliff-walled stretch, the third landing zone (**Test Region · Riverbed**, a 90 m pad on the old valley floor 29 m below the plains). It cuts through the crater's south-west rim and spreads a delta of fine layered sediment over the crater floor (about 10 m high, with lobes and old branch channels), like Jezero, where Perseverance landed. River pebbles (gravel) line the valley floor; the delta is clay. The zones (ice fields, dunes, mesas, crater floor) have organic, ragged outlines.
 - **Not done yet:**
   - the site screen's backdrop still uses the old sites' camera framing;
   - the landing picker still works within the zone, not across the region.

@@ -4,7 +4,7 @@
   "spacing": 2.0,
   "half": 3072.0,
   "height_min": -181.88526649714072,
-  "height_max": 485.97467185506906,
+  "height_max": 485.974671855069,
   "zones": {
     "plains": {
       "centre": [
@@ -12,7 +12,7 @@
         1000.0
       ],
       "flat_radius": 95.0,
-      "height": -45.296775557418925,
+      "height": -45.296775557418954,
       "label": "The plains"
     },
     "crater": {
@@ -21,8 +21,17 @@
         -320.0
       ],
       "flat_radius": 85.0,
-      "height": -97.57603829865393,
+      "height": -97.57603829865394,
       "label": "The crater floor"
+    },
+    "riverbed": {
+      "centre": [
+        809.2141172483946,
+        1739.9829044339674
+      ],
+      "flat_radius": 75.0,
+      "height": -28.96077981196092,
+      "label": "The old riverbed"
     }
   },
   "crater": {
@@ -91,6 +100,20 @@
       "position": [
         -1400.0,
         1700.0
+      ]
+    },
+    {
+      "name": "Ancient river",
+      "position": [
+        920.6967333701814,
+        2008.3569738000563
+      ]
+    },
+    {
+      "name": "Delta",
+      "position": [
+        826.4794999999999,
+        82.43439999999993
       ]
     }
   ]
