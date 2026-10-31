@@ -21,6 +21,7 @@ import json
 import math
 import os
 import sys
+import time
 
 import numpy as np
 from PIL import Image
@@ -41,13 +42,29 @@ ZONES = {
 }
 CRATER = {"centre": (1100.0, -700.0), "radius": 1100.0, "depth": 95.0, "rim": 62.0}
 MOUND = {"centre": (920.0, -580.0), "radius": 330.0, "height": 135.0}
-DUNES = (-380.0, -1720.0)   # the dune field's centre, clear of the crater rim
+DUNES = (-650.0, -1640.0)   # the dune field's centre, clear of the crater rim
+DUNES_RADIUS = 500.0         # across the wind; it runs 1.8 times longer along it
+DUNE_WIND = (0.97, -0.24)    # along the canyon, away from the crater
+ICE_PATCHES = [(-1500.0, -1100.0, 600.0), (-1870.0, -640.0, 380.0), (-1120.0, -1480.0, 330.0), (-1950.0, -1350.0, 260.0)]
 # Named places for the region map (region metres).
 FEATURES = [
     ("Crater", (1100.0, -1500.0)), ("Layered mound", (920.0, -580.0)), ("Canyon", (0.0, -2600.0)),
-    ("Dune field", (-380.0, -1720.0)), ("Ice fields", (-1500.0, -1100.0)), ("Mesas", (-1400.0, 1700.0)),
+    ("Dune field", (-650.0, -1640.0)), ("Ice fields", (-1500.0, -1100.0)), ("Mesas", (-1400.0, 1700.0)),
 ]
 MESAS = [(-760.0, 420.0, 170.0, 48.0), (-2050.0, 1650.0, 240.0, 62.0), (300.0, 1500.0, 140.0, 40.0), (-1950.0, 380.0, 110.0, 34.0), (2100.0, 1700.0, 260.0, 70.0)]
+
+
+def write_file(path, writer):
+    """Write a file, retrying for a few seconds: on Windows the Godot editor
+    can hold a file briefly while it re-imports the folder."""
+    for attempt in range(20):
+        try:
+            writer(path)
+            return
+        except OSError:
+            if attempt == 19:
+                raise
+            time.sleep(0.5)
 
 
 def grid():
@@ -110,6 +127,12 @@ def build_heights():
     medium = spectral_noise(3.0, SEED + 1, k_low=0.006, k_high=0.06)
     small = spectral_noise(2.2, SEED + 2, k_low=0.05)
     h = 34.0 * large + 2.6 * medium + 0.22 * small
+    lobes_field = spectral_noise(3.8, SEED + 30, k_high=0.008)
+    ragged_field = spectral_noise(3.0, SEED + 31, k_low=0.006, k_high=0.035)
+
+    def edge_warp(shift, lobes=0.35, ragged=0.13):
+        """How far a zone's edge is pushed in or out here (in zone radii)."""
+        return lobes * np.roll(lobes_field, (shift, shift * 2), (0, 1)) + ragged * np.roll(ragged_field, (shift * 3, shift), (0, 1))
 
     # The canyon: a 170 m scarp along the north edge with gullies, floor below.
     edge = -2050.0 + 90.0 * spectral_noise(3.4, SEED + 3, k_high=0.01)[0:1, :]   # wobble along x
@@ -129,7 +152,8 @@ def build_heights():
     crater = np.where(d < 1.0, wall, outside)
     calm = 1.0 - 0.75 * (1.0 - smoothstep(0.6, 0.85, d))           # quieter floor
     h = h * calm + crater
-    masks = {"crater_d": d, "canyon_floor": 1.0 - smoothstep(edge - 120.0, edge - 40.0, z)}
+    # The crater floor's clay and the ejecta blanket get ragged edges of their own.
+    masks = {"crater_d": d + edge_warp(170, 0.12, 0.05), "canyon_floor": 1.0 - smoothstep(edge - 120.0, edge - 40.0, z)}
 
     # The mound: layered, terraced, like a small Mount Sharp.
     mangle = np.arctan2(z - MOUND["centre"][1], x - MOUND["centre"][0])
@@ -141,15 +165,20 @@ def build_heights():
     h += 0.35 * rise + 0.65 * (terraces + 4.0 * smoothstep(0.55, 1.0, (rise % 11.0) / 11.0))   # benches and steps
 
     # Dunes between the plains and the canyon.
-    dd = dist(x, z, DUNES)
-    dune_mask = 1.0 - smoothstep(380.0, 680.0, dd)
+    # Stretched along the wind, with lobes and fingers.
+    wind = np.array(DUNE_WIND)
+    along = ((x - DUNES[0]) * wind[0] + (z - DUNES[1]) * wind[1]) / (DUNES_RADIUS * 1.8)
+    across = (-(x - DUNES[0]) * wind[1] + (z - DUNES[1]) * wind[0]) / DUNES_RADIUS
+    dd = np.sqrt(along * along + across * across) + edge_warp(410, 0.18, 0.09) + 0.08 * np.sin(across * 9.0 + 3.0 * lobes_field)
+    dune_mask = 1.0 - smoothstep(0.75, 1.05, dd)
     masks["dunes"] = dune_mask
-    phase = (x * 0.8 + z * 0.6) / 52.0 + 2.5 * medium
+    phase = (x * DUNE_WIND[0] + z * DUNE_WIND[1]) / 52.0 + 2.5 * medium   # crests across the wind
     h += dune_mask * 7.0 * np.abs(np.sin(phase)) ** 1.6
 
     # Ice fields to the north-east: lower, smooth, cracked into polygons.
-    idist = dist(x, z, (-1500.0, -1100.0))
-    ice_mask = 1.0 - smoothstep(500.0, 900.0, idist)
+    # Several patches run together, with a ragged edge.
+    idist = np.min(np.stack([dist(x, z, (bx, bz)) / br for bx, bz, br in ICE_PATCHES]), axis=0) + edge_warp(820, 0.3, 0.14)
+    ice_mask = 1.0 - smoothstep(0.78, 1.08, idist)
     masks["ice"] = ice_mask
     warp = 6.0 * medium
     poly = np.minimum(np.abs(np.sin((x + warp) / 9.0)), np.abs(np.sin((z - warp) / 9.0)))
@@ -159,7 +188,7 @@ def build_heights():
     # Mesas: flat-topped buttes with steep, crumbling sides.
     skirts = np.zeros_like(h)
     for mx, mz, mr, mh in MESAS:
-        md = dist(x, z, (mx, mz)) / (mr * (1.0 + 0.12 * medium))
+        md = dist(x, z, (mx, mz)) / (mr * (1.0 + 0.12 * medium)) + edge_warp(int(mx) % 997, 0.22, 0.06)
         skirts = np.maximum(skirts, np.exp(-((md - 1.25) / 0.3) ** 2))
         h += mh * (1.0 - smoothstep(0.82, 1.08, md)) + mh * 0.25 * np.exp(-((md - 1.1) / 0.18) ** 2)
 
@@ -193,8 +222,8 @@ def build_heights():
 def save_heights(h):
     lo, hi = float(h.min()) - 1.0, float(h.max()) + 1.0
     q = np.clip(np.round((h - lo) / (hi - lo) * 65535.0), 0, 65535).astype("<u2")
-    with open(os.path.join(OUT, "height.r16.gz"), "wb") as f:
-        f.write(gzip.compress(q.tobytes(), compresslevel=9))
+    data = gzip.compress(q.tobytes(), compresslevel=9)
+    write_file(os.path.join(OUT, "height.r16.gz"), lambda path: open(path, "wb").write(data))
     # Each zone's level as stored (after rounding to 16 bits), so its pad reads
     # exactly 0 in the game.
     for zone in ZONES.values():
@@ -290,14 +319,14 @@ def material_texture(name, base, dark, rough, features, seed, n=1024):
         c = crack[..., None]
         rgb = rgb * (1 - c) + np.array(features["crack_colour"]) / 255.0 * c
     alb = np.dstack([np.clip(rgb, 0, 1), height])
-    Image.fromarray((alb * 255).astype("uint8"), "RGBA").save(os.path.join(OUT, f"ground_{name}_albedo_height.png"))
+    write_file(os.path.join(OUT, f"ground_{name}_albedo_height.png"), Image.fromarray((alb * 255).astype("uint8"), "RGBA").save)
     gx = (np.roll(height, -1, 1) - np.roll(height, 1, 1)) * 7.0
     gz = (np.roll(height, -1, 0) - np.roll(height, 1, 0)) * 7.0
     nrm = np.dstack([-gx, gz, np.ones_like(gx)])
     nrm /= np.linalg.norm(nrm, axis=2, keepdims=True)
     rgh = np.clip(rough + 0.05 * grain, 0, 1)
     img = np.dstack([nrm * 0.5 + 0.5, rgh])
-    Image.fromarray((img * 255).astype("uint8"), "RGBA").save(os.path.join(OUT, f"ground_{name}_normal_roughness.png"))
+    write_file(os.path.join(OUT, f"ground_{name}_normal_roughness.png"), Image.fromarray((img * 255).astype("uint8"), "RGBA").save)
 
 
 # ---------- control and colour maps ----------
@@ -323,8 +352,8 @@ def write_control(h, masks):
     blend[base == BEDROCK] = 255
     blend[(base == SAND) | (base == FROST)] = 0   # dunes and ice stay sand and frost on their slopes
     control = (base << np.uint32(27)) | (np.uint32(BEDROCK) << np.uint32(22)) | (blend << np.uint32(14))
-    with open(os.path.join(OUT, "control.u32.gz"), "wb") as f:
-        f.write(gzip.compress(control.astype("<u4").tobytes(), compresslevel=9))
+    data = gzip.compress(control.astype("<u4").tobytes(), compresslevel=9)
+    write_file(os.path.join(OUT, "control.u32.gz"), lambda path: open(path, "wb").write(data))
 
 
 def write_map(h, masks):
@@ -338,7 +367,7 @@ def write_map(h, masks):
     shade = np.clip(0.82 - (gx + gz) * 1.4, 0.35, 1.25)[..., None]
     lift = (0.92 + 0.16 * (hs - hs.min()) / (hs.max() - hs.min()))[..., None]
     img = np.clip(rgb * shade * lift, 0, 1)
-    Image.fromarray((img * 255).astype("uint8"), "RGB").save(os.path.join(OUT, "map.png"))
+    write_file(os.path.join(OUT, "map.png"), Image.fromarray((img * 255).astype("uint8"), "RGB").save)
 
 
 def write_colour(masks):
@@ -354,7 +383,7 @@ def write_colour(masks):
     red *= 1.0 - 0.08 * dunes; green *= 1.0 - 0.06 * dunes; blue *= 1.0 - 0.04 * dunes
     alpha = np.full(red.shape, 0.5)
     img = np.dstack([red, green, blue, alpha])
-    Image.fromarray((img * 255).astype("uint8"), "RGBA").save(os.path.join(OUT, "colour.png"))
+    write_file(os.path.join(OUT, "colour.png"), Image.fromarray((img * 255).astype("uint8"), "RGBA").save)
 
 
 def main():
@@ -386,7 +415,7 @@ def main():
     gy, gx = np.gradient(small)
     light = np.clip(0.6 + (gx - gy) * 0.08, 0, 1)
     img = (np.dstack([shade * 0.6 + light * 0.4] * 3) * np.array([1.0, 0.78, 0.62]) * 255).astype("uint8")
-    Image.fromarray(img).save(os.path.join(OUT, "preview.png"))
+    write_file(os.path.join(OUT, "preview.png"), Image.fromarray(img).save)
 
 
 if __name__ == "__main__":
