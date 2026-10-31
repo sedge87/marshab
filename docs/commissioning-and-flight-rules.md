@@ -1,5 +1,7 @@
 # Commissioning and flight rules: how your kit grows (phase 4)
 
+> **31 Oct: `docs/core-loop.md` now decides the core loop and wins where this doc disagrees** (for example: open-ended chapters instead of a tour, walkback shown but never punished, a general module first).
+
 *Design for discussion, 31 Oct 2026, on the `implementing-gameplay-loop` branch. Nothing here is built yet. It expands §4.1b of `docs/gameplay-loop-brief.md` and builds on what was built on 31 Oct: the suit (`scripts/suit.gd`), the rover's air (`scripts/crew_rover.gd`) and GAR-Y's rescue (`scripts/gar_y_rescue.gd`). Survival only, like the rest of the brief; Freedom runs it without consequences; Creative and Missions don't run it.*
 
 ## 1. The idea in one paragraph

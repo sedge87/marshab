@@ -1,5 +1,7 @@
 # The four Mars goals: what a tour of duty is for
 
+> **31 Oct: `docs/core-loop.md` now decides the core loop and wins where this doc disagrees** (for example: open-ended chapters instead of a tour, walkback shown but never punished, a general module first).
+
 *Design for discussion, 31 Oct 2026, on the `implementing-gameplay-loop` branch. Nothing here is built yet. It gives the gameplay loop brief (`docs/gameplay-loop-brief.md`) its direction: §6.2 (the lab), §7 (progression) and §8 (goals) are built around it. It fits with phase 4's commissioning and flight rules (`docs/commissioning-and-flight-rules.md`). Survival only for now; Missions may adopt it later (open question 8).*
 
 **Decided with you (31 Oct):**

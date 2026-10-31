@@ -1,5 +1,7 @@
 # Gameplay loop brief: live, work, survive
 
+> **31 Oct: `docs/core-loop.md` now decides the core loop and wins where this doc disagrees** (for example: open-ended chapters instead of a tour, walkback shown but never punished, a general module first).
+
 *Draft for discussion, 31 Oct 2026 (updated the same day: GAR-Y's rescue, one region with four landing zones, Terrain3D), on the `implementing-gameplay-loop` branch. Nothing here is built yet. Survival mode only; Missions get revamped later, once this gameplay exists. A story comes later too, so this leaves hooks for one but doesn't write it.*
 
 ## 1. The problem
