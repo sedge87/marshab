@@ -6,7 +6,7 @@ A design written on 31 Oct 2026, following `docs/core-loop.md` rounds 2 and 3:
 - the small rooms merged;
 - a workshop and operations.
 
-Changed on 31 Oct: **waste management goes into storage, not life support.** Nothing here is built yet. The questions in §9 come first.
+Changed on 31 Oct: **waste management goes into storage, not life support.** Nothing here is built yet. The decisions are in §9.
 
 ## 1. The idea in one paragraph
 
@@ -64,7 +64,7 @@ You start with one or two **general modules**, where everything basic can go, as
   - **noisy:** it's a noisy room to its neighbours, and a bunk inside one always sleeps poorly (half the sleep score, as next to a noisy room today);
   - **slower:** a crew member whose work room is only a general module works at 75 % speed;
   - **cramped:** its floor counts at half towards the crew's Space need.
-- **Size:** at most 12 squares (108 m², e.g. 4 × 3). Beyond that you build specialised rooms (§9 Q1).
+- **Size:** no cap, and any number; its downsides are what make specialised rooms worth building (§9 Q1).
 
 ## 4. Noise and sleep
 
@@ -116,7 +116,7 @@ With only a General Module, everyone has somewhere to work, at 75 %.
 
 ## 8. How it's built
 
-- **`build_controller.gd`:** a new `general` kind (label, colour, description, a roof part) and the renamed labels and descriptions. `waste_management` comes off the build menu and old rooms are converted on load. There's a size cap for `general`.
+- **`build_controller.gd`:** a new `general` kind (label, colour, description, a roof part) and the renamed labels and descriptions. `waste_management` comes off the build menu and old rooms are converted on load.
 - **`data/equipment_catalog.json`:**
   - `valid_zones` gains `general` for the basic kit;
   - the lounge, games and exercise items move from `living` to `galley`;
@@ -133,17 +133,17 @@ With only a General Module, everyone has somewhere to work, at 75 %.
 - **`data/missions.json`** and **`data/tutorial.json`:** as §7.
 - **Plan legend, Field guide and alerts:** the new names. The sleep alert reads "Sleeping Quarters is next to a noisy room…".
 - **Tests:** a new `tests/room_changes_test.gd` covering:
-  - the general module's kit, its size cap, noise, 75 % work and half space;
+  - the general module's kit, noise, 75 % work and half space;
   - waste rooms converting on load;
   - old kit staying put.
 
   The existing wellbeing, missions and room tests are updated for the names.
 
-## 9. Questions for you
+## 9. Decided (31 Oct)
 
-1. **The general module's size:** capped at 12 squares, uncapped (its downsides are enough), or limited to one or two per base? *Recommended: a 12-square cap, any number.*
-2. **How bad mixing is:** work at 75 %, sleep at half and space at half. Too harsh, too soft or right? *Recommended: as written; all three are tunable in `hazards.json`.*
-3. **Hygiene:** stay a room of its own, or merge into Sleeping Quarters (a washroom per bunk room)? *Recommended: stay its own room, with a toilet allowed in the general module.*
-4. **The Vehicle Bay counting as noisy:** yes, or keep it quiet? *Recommended: yes; the airlock and chargers are loud.*
-5. **Names:** "General Module", "Sleeping Quarters", "Day Room", "Storage & Recycling", "Workshop" and "Mission Operations"? *Recommended: yes.*
-6. **Old kit that's no longer allowed:** stays where it is, or is packed back to cargo on load? *Recommended: stays.*
+1. **General module size:** no cap, any number.
+2. **Mixing penalties:** 75 % work, half sleep, half space, tunable in `hazards.json`.
+3. **Hygiene** stays its own room; a toilet is allowed in the general module.
+4. **The Vehicle Bay is noisy.**
+5. **Names:** General Module, Sleeping Quarters, Day Room, Storage & Recycling, Workshop, Mission Operations.
+6. **Old kit** that's no longer allowed stays where it is.
