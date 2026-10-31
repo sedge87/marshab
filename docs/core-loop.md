@@ -166,7 +166,7 @@
 ## Build order that follows
 
 1. **Playtest fixes:** the vehicle bay's heat, automatic lights instead of switches, windows on inner walls, Ctrl+Z.
-2. **New-game options:** fatigue, radiation, injuries and surprises, each switch-on-only once a game is running.
+2. **New-game options:** fatigue, radiation, injuries and surprises, each switch-on-only once a game is running. Designed in `docs/new-game-options.md`.
 3. **Rooms:** the general module, sleeping quarters (with noise), the merges (galley into the day room, waste into life support), the workshop and operations.
 4. **The start and chapter one:** the precursor cargo, stores that run down gently, the fabricator with plans, and the self-sufficiency steps.
 5. **Samples, the lab, the terminal and the journal.**
