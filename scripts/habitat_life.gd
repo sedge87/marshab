@@ -35,6 +35,12 @@ var breakdowns_on := false
 var breakdown_scale := 1.0
 ## Hazards that can happen on their own in normal play: "spe", "breach", "breakdowns".
 var live_kinds: Array = []
+## Surprises level (docs/new-game-options.md): scales the live hazard rates.
+var live_scale := 1.0
+## Challenge options: whether solar events give the crew a dose, and whether
+## live hazards (a breach) can injure someone. Missions keep both on.
+var radiation_on := true
+var live_injuries := false
 var rng := RandomNumberGenerator.new()
 
 # ---- state (saved) ----
@@ -422,7 +428,7 @@ func _breakdown_step(dt: float, inv: Dictionary) -> void:
 	var b: Dictionary = data().breakdowns
 	var machines: Array = b.machines
 	if breakdowns_on or live_kinds.has("breakdowns"):
-		var scale := breakdown_scale if breakdowns_on else float(value("live", "breakdown_scale", .3))
+		var scale := breakdown_scale if breakdowns_on else float(value("live", "breakdown_scale", .3)) * live_scale
 		var chance := dt / (float(b.mean_sols_between) * 24.0) * scale
 		for item in inv.items:
 			if not machines.has(str(item.id)) or is_broken(item) or str(item.get("pid", "")).is_empty(): continue
@@ -517,10 +523,13 @@ func pre_step(dt: float, _hour: float, inv: Dictionary) -> void:
 			spe_hours_left = float(value("radiation", "event_hours", 24.0))
 			event_dose_msv = 0.0
 	if not live_kinds.is_empty() and sim.crew_count() > 0:
-		if live_kinds.has("spe") and spe_eta < 0.0 and not spe_active() and rng.randf() < float(value("live", "spe_per_100_sols", 1.0)) / 100.0 / 24.0 * dt: forecast_spe()
-		if live_kinds.has("breach") and breach.is_empty() and rng.randf() < float(value("live", "breach_per_100_sols", .5)) / 100.0 / 24.0 * dt:
+		if live_kinds.has("spe") and spe_eta < 0.0 and not spe_active() and rng.randf() < float(value("live", "spe_per_100_sols", 1.0)) * live_scale / 100.0 / 24.0 * dt: forecast_spe()
+		if live_kinds.has("breach") and breach.is_empty() and rng.randf() < float(value("live", "breach_per_100_sols", .5)) * live_scale / 100.0 / 24.0 * dt:
 			var candidates: Array = (inv.rooms as Array).filter(func(r): return not str(r.kind) in ["airlock", "vehicle_bay"])
-			if not candidates.is_empty(): start_breach(inv, str(candidates[rng.randi() % candidates.size()].key))
+			if not candidates.is_empty() and start_breach(inv, str(candidates[rng.randi() % candidates.size()].key)) and live_injuries and crew_on:
+				# Injuries on: the sudden loss of pressure hurts someone.
+				var able := crew.filter(func(p): return float(p.injured_h) <= 0.0)
+				if not able.is_empty(): injure(str(able[rng.randi() % able.size()].role))
 	_breach_step(dt, inv)
 	_breakdown_step(dt, inv)
 
@@ -533,8 +542,10 @@ func post_step(dt: float, inv: Dictionary, tiers: Dictionary, crew_n: int, resea
 	# Radiation (one crew dose).
 	# Everyday background radiation, eased by shielding anywhere on the habitat.
 	var background := float(value("radiation", "background_msv_per_sol", .3)) * per_sol * dose_factor(habitat_shield(inv))
-	dose_msv += background
-	if spe_active():
+	if radiation_on: dose_msv += background
+	if spe_active() and not radiation_on:
+		spe_hours_left = maxf(0.0, spe_hours_left - dt)   # the event runs its course; no dose is counted
+	elif spe_active():
 		var hours := float(value("radiation", "event_hours", 24.0))
 		var event := float(value("radiation", "event_dose_msv", 150.0)) * minf(dt, spe_hours_left) / hours
 		var place := shelter(inv)

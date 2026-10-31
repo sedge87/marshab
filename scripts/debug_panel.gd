@@ -57,6 +57,19 @@ func _ready() -> void:
 		safe.add_child(b)
 	col.add_child(safe)
 
+	# Challenge options, either way (the save is marked "debug").
+	col.add_child(MHStyle.eyebrow("Challenge (either way; marks the save)", MHStyle.accent))
+	var challenge := _flow()
+	for level in MHGame.SURPRISE_LEVELS:
+		var b := _small_button("Surprises %s" % str(MHGame.SURPRISE_LABELS[level]))
+		b.pressed.connect(func() -> void: MHGame.debug_set_challenge("surprises", level); world.configure_life())
+		challenge.add_child(b)
+	for option in MHGame.CHALLENGE_SWITCHES:
+		var b := _small_button("Flip %s" % str(MHGame.CHALLENGE_LABELS[option]).to_lower())
+		b.pressed.connect(func() -> void: MHGame.debug_set_challenge(option, not bool(MHGame.challenge.get(option, false))); world.configure_life())
+		challenge.add_child(b)
+	col.add_child(challenge)
+
 	col.add_child(MHStyle.eyebrow("Time", MHStyle.accent))
 	_hour = MHStyle.mono("", 14)
 	col.add_child(_hour)

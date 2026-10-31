@@ -109,6 +109,107 @@ static var tutorial_mode := "hints"
 ## finished once, then Hints only.
 static func default_tutorial_mode() -> String:
 	return "hints" if bool(setting("tutorial_finished")) else "full"
+# ---------- challenge options (docs/new-game-options.md) ----------
+# Chosen on the Colony step; during a game one can be switched on from the
+# pause menu but never off, and surprises only go up a level.
+const SURPRISE_LEVELS := ["off", "rare", "usual", "often"]
+const SURPRISE_LABELS := {"off": "Off", "rare": "Rare", "usual": "Usual", "often": "Often"}
+const SURPRISE_SCALE := {"off": 0.0, "rare": 0.5, "usual": 1.0, "often": 2.0}
+## The body options. Fatigue stays out of the menus until it's built (step 10).
+const CHALLENGE_SWITCHES := ["radiation", "injuries"]
+const CHALLENGE_LABELS := {"fatigue": "Fatigue", "radiation": "Radiation", "injuries": "Injuries", "surprises": "Surprises"}
+const CHALLENGE_NOTES := {
+	"fatigue": "Long days slow you down. Sleep clears it. Never locks you out.",
+	"radiation": "Solar storms add up to a dose for the crew. Shelter and shielding keep it down.",
+	"injuries": "Hazards can hurt the crew, and the medical bay treats them.",
+	"surprises": "How often something unexpected goes wrong: solar storms, breaches, breakdowns. Always with time to respond. Dust storms come whatever you choose.",
+}
+static var challenge := default_challenge()
+## Set when the debug panel changes an option; saved, so bug reports show it.
+static var challenge_debugged := false
+
+static func default_challenge() -> Dictionary:
+	return {"fatigue": false, "radiation": false, "injuries": false, "surprises": "rare"}
+
+## Whether a body option is on. Only Survival can hurt anyone, so Freedom,
+## Creative and Missions (which set their own hazards) never count it.
+static func challenge_on(option: String) -> bool:
+	if game_mode == "missions": return true
+	return game_mode == "survival" and bool(challenge.get(option, false))
+
+## How often random hazards come, against today's rates (0 = none).
+static func surprise_scale() -> float:
+	if game_mode == "creative": return 0.0
+	return float(SURPRISE_SCALE.get(str(challenge.get("surprises", "rare")), 0.5))
+
+## Which options this mode offers: Survival all, Freedom surprises only.
+static func challenge_options() -> Array:
+	if game_mode == "survival": return ["surprises"] + CHALLENGE_SWITCHES
+	if game_mode == "freedom": return ["surprises"]
+	return []
+
+## During a game: turns an option on, or raises the surprise level. Refuses
+## anything that would turn one off or lower it.
+static func raise_challenge(option: String, value: Variant) -> bool:
+	if not challenge_options().has(option): return false
+	if option == "surprises":
+		var now := SURPRISE_LEVELS.find(str(challenge.get("surprises", "rare")))
+		var to := SURPRISE_LEVELS.find(str(value))
+		if to <= now: return false
+		challenge.surprises = str(value)
+		return true
+	if bool(challenge.get(option, false)) or not bool(value): return false
+	challenge[option] = true
+	return true
+
+## The debug panel's way round the one-way rule; the save is marked.
+static func debug_set_challenge(option: String, value: Variant) -> void:
+	challenge[option] = value
+	challenge_debugged = true
+
+## A new game starts with what you chose last time (or the defaults).
+static func start_new_challenge() -> void:
+	challenge = default_challenge()
+	challenge_debugged = false
+	var last = setting("last_challenge")
+	if last is Dictionary:
+		for key in challenge: challenge[key] = (last as Dictionary).get(key, challenge[key])
+	if not SURPRISE_LEVELS.has(str(challenge.surprises)): challenge.surprises = "rare"
+
+static func remember_challenge() -> void:
+	var values := settings()
+	values["last_challenge"] = challenge.duplicate()
+	save_settings(values)
+
+static func export_challenge() -> Dictionary:
+	var out := challenge.duplicate()
+	if challenge_debugged: out["debug"] = true
+	return out
+
+## A save's options; older saves (none recorded) load as they played: crew
+## harm and the hazards setting as they were then, fatigue off.
+static func challenge_from_state(state: Dictionary) -> Dictionary:
+	var saved = state.get("challenge", null)
+	var out := default_challenge()
+	if saved is Dictionary:
+		for key in out: out[key] = (saved as Dictionary).get(key, out[key])
+		if not SURPRISE_LEVELS.has(str(out.surprises)): out.surprises = "rare"
+		return out
+	var mode := normalise_mode(str(state.get("game_mode", "survival")))
+	out.radiation = mode == "survival"
+	out.injuries = mode == "survival"
+	out.surprises = "usual" if mode == "freedom" or bool(setting("live_hazards")) else "off"
+	return out
+
+## "Rare surprises · Radiation · Injuries" for save cards.
+static func challenge_summary(saved: Dictionary, mode: String) -> String:
+	if mode != "survival" and mode != "freedom": return ""
+	var parts := ["%s surprises" % str(SURPRISE_LABELS.get(str(saved.get("surprises", "rare")), "Rare"))]
+	if mode == "survival":
+		for option in ["fatigue"] + CHALLENGE_SWITCHES:
+			if bool(saved.get(option, false)): parts.append(str(CHALLENGE_LABELS[option]))
+	return " · ".join(parts)
+
 ## Showcase mode (scripts/showcase.gd): a save presenting itself. Nothing is saved.
 static var showcase := false
 ## Where the player chose to land (site x, z in metres), set on the menu's
@@ -392,6 +493,8 @@ static func prepare_state_load(state: Dictionary) -> bool:
 	habitat_name = str(state.get("habitat_name", "ARDEN"))
 	set_accent(int(state.get("accent_index", accent_index)))
 	game_mode = normalise_mode(str(state.get("game_mode", "survival")))
+	challenge = challenge_from_state(state)
+	challenge_debugged = bool((state.get("challenge", {}) as Dictionary).get("debug", false)) if state.get("challenge", null) is Dictionary else false
 	return true
 
 static func accent() -> Color: return MHStyle.COLONY_ACCENTS[accent_index].colour
@@ -560,6 +663,8 @@ static func defaults() -> Dictionary:
 	d["tutorial_cards"] = true
 	d["tutorial_finished"] = false
 	d["live_hazards"] = true
+	## The challenge options chosen last time, offered again on the Colony step.
+	d["last_challenge"] = {}
 	## Who's playing: shown on their saves and in Tour ("Designed by").
 	d["commander"] = ""
 	d["group"] = ""
@@ -608,7 +713,7 @@ static func load_settings() -> void:
 	for key in _settings.keys():
 		_settings[key] = file.get_value(_section(key), key, _settings[key])
 
-## Who made a base: the player's name and class or group (title screen),
+## Who made a base: the player's name and team or group (title screen),
 ## saved with every base so its card and Tour can say "Designed by".
 static func maker() -> Dictionary:
 	return {"name": str(setting("commander")), "group": str(setting("group"))}

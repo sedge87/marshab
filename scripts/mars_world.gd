@@ -473,7 +473,8 @@ func _spawn_cargo_landers() -> void:
 ## already down: the best of several tries, at least 16 m from the others
 ## where the ellipse allows.
 ## Act 2 in live play: named crew (Mission 8 on, and free play) and, with
-## the Settings toggle, rare hazards from missions already passed.
+## the Settings toggle, rare hazards from missions already passed; in free
+## play, the game's challenge options.
 func configure_life() -> void:
 	var sim: RefCounted = builder.simulation()
 	var life: RefCounted = sim.life
@@ -488,8 +489,12 @@ func configure_life() -> void:
 			life.ensure_crew(sim.crew_count(), MHMissions.progress.get("crew_names", []))
 			life.set_names(MHMissions.progress.get("crew_names", []))
 	else:
+		# Survival and Freedom: the challenge options (docs/new-game-options.md).
 		life.crew_on = MHGame.simulation_on()
-		if MHGame.game_mode == "survival" and bool(MHGame.setting("live_hazards")): kinds = ["spe", "breach", "breakdowns"]
+		if MHGame.surprise_scale() > 0.0 and MHGame.simulation_on(): kinds = ["spe", "breach", "breakdowns"]
+		life.live_scale = MHGame.surprise_scale()
+		life.radiation_on = MHGame.challenge_on("radiation")
+		life.live_injuries = MHGame.challenge_on("injuries")
 	life.live_kinds = kinds
 
 func _clear_touchdown(target: Vector2, rng: RandomNumberGenerator, avoid_lander := true) -> Vector2:
@@ -1009,6 +1014,7 @@ func current_state() -> Dictionary:
 		"habitat_name": MHGame.habitat_name,
 		"accent_index": MHGame.accent_index,
 		"game_mode": MHGame.game_mode,
+		"challenge": MHGame.export_challenge(),
 		"builder": builder.export_habitat_state(),
 		"lander": {"position": lander.global_position, "yaw": lander.rotation.y},
 		"missions_progress": MHMissions.save_state() if MHMissions.active() else {},

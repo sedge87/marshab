@@ -31,6 +31,7 @@ const CAMERAS := {
 }
 
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
+const CHALLENGE_UI := preload("res://scripts/challenge_options_ui.gd")
 var backdrop: Node3D
 var environment
 var display_builder: BuildController
@@ -316,6 +317,7 @@ func _title_screen() -> void:
 	hero.pressed.connect(func() -> void:
 		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
 		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
+		MHGame.start_new_challenge()
 		MHSaves.current_path = ""
 		_quick_start = false
 		show_screen("site"))
@@ -340,6 +342,7 @@ func _title_screen() -> void:
 	missions.pressed.connect(func() -> void:
 		MHGame.game_mode = "missions"
 		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
+		MHGame.start_new_challenge()
 		MHMissions.reset()
 		MHSaves.current_path = ""
 		show_screen("site"))
@@ -351,6 +354,7 @@ func _title_screen() -> void:
 		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
 		MHGame.landing_target = Vector2.INF
 		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
+		MHGame.start_new_challenge()
 		MHSaves.current_path = ""
 		_quick_start = true
 		show_screen("landing"))
@@ -845,11 +849,22 @@ func _colony_screen() -> void:
 	var mode_note := "Set up your base step by step, the way NASA would: choose landing zones, send the cargo first, test everything, then land the crew." if MHGame.game_mode == "missions" else str(MHGame.GAME_MODE_NOTES.get(MHGame.game_mode, "")) + cargo_note
 	mode_box.add_child(MHStyle.body(mode_note, 14, MHStyle.TEXT_MUTED))
 	form.add_child(mode_box)
+	# Challenge options (docs/new-game-options.md): Survival all, Freedom
+	# surprises only. In the game, each can only be switched on.
+	var challenge := CHALLENGE_UI.build(false, MHGame.remember_challenge)
+	if challenge != null:
+		var challenge_box := MHStyle.vbox(10)
+		var challenge_head := MHStyle.hbox(12)
+		challenge_head.add_child(MHStyle.eyebrow("Challenge"))
+		challenge_head.add_child(MHStyle.mono("Can be switched on later, never off", 13, MHStyle.TEXT_MUTED))
+		challenge_box.add_child(challenge_head)
+		challenge_box.add_child(challenge)
+		form.add_child(challenge_box)
 	# Who's building: on every save's card, in Tour ("Designed by") and on a
 	# Missions dossier. Remembered for next time.
 	var maker := MHGame.maker()
 	var maker_box := MHStyle.vbox(6)
-	maker_box.add_child(MHStyle.eyebrow("Your name · class or group"))
+	maker_box.add_child(MHStyle.eyebrow("Your name · team or group"))
 	var maker_row := MHStyle.hbox(10)
 	var player_box := LineEdit.new()
 	player_box.max_length = 40

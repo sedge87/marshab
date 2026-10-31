@@ -1,8 +1,8 @@
 class_name MHPauseMenu
 extends Control
 
-# Pause screen: a short action list on the left; Save & load and Controls
-# open in the panel on the right (one at a time), over the last frame blurred
+# Pause screen: a short action list on the left; Save & load, Controls and
+# Challenge open in the panel on the right (one at a time), over the last frame blurred
 # and dimmed. The Field guide opens over everything. The tree is paused
 # while it is open. (27 Oct: saves are named files, scripts/saves.gd: Save
 # updates this base's file, Save a copy makes another, and recent saves load.)
@@ -17,6 +17,7 @@ signal load_requested(path: String)
 
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
 const MHSaves := preload("res://scripts/saves.gd")
+const CHALLENGE_UI := preload("res://scripts/challenge_options_ui.gd")
 
 var _panels := {}                  # name -> Control (the right-hand panel)
 var _panel_buttons := {}           # name -> Button
@@ -54,6 +55,10 @@ func _ready() -> void:
 		add_child(_guide))
 	_panel_buttons["controls"] = _row(list, "Controls", "secondary", "keyboard")
 	_panel_buttons.controls.pressed.connect(_toggle_panel.bind("controls"))
+	if not MHGame.challenge_options().is_empty() and not MHGame.showcase:
+		_panel_buttons["challenge"] = _row(list, "Challenge", "secondary", "gauge")
+		_panel_buttons.challenge.tooltip_text = "This game's challenge options: switch one on, never off"
+		_panel_buttons.challenge.pressed.connect(_toggle_panel.bind("challenge"))
 	_row(list, "Settings", "secondary", "settings").pressed.connect(func() -> void: settings.emit())
 	_row(list, "Mission Control", "secondary", "clipboard-check", "M").pressed.connect(func() -> void: mission_control.emit())
 	var gap := Control.new()
@@ -66,6 +71,7 @@ func _ready() -> void:
 	list.add_child(footer)
 	_panels["saves"] = _build_saves()
 	_panels["controls"] = _build_controls()
+	if _panel_buttons.has("challenge"): _panels["challenge"] = _build_challenge()
 	for panel in _panels.values():
 		panel.visible = false
 		add_child(panel)
@@ -112,6 +118,21 @@ func _sheet_head(col: VBoxContainer, title: String, note: String) -> void:
 	kind.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(kind)
 	col.add_child(head)
+
+# ---------- challenge (docs/new-game-options.md) ----------
+
+func _build_challenge() -> Control:
+	var sheet := _sheet()
+	var col := MHStyle.vbox(16)
+	sheet.add_child(col)
+	_sheet_head(col, "Challenge", "On only, never off")
+	var note := MHStyle.body("Chosen when this game started. You can switch an option on, or raise surprises, but not take it back.", 14, MHStyle.TEXT_MUTED)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(note)
+	col.add_child(CHALLENGE_UI.build(true, func() -> void:
+		var world := get_tree().current_scene
+		if world != null and world.has_method("configure_life"): world.configure_life()))
+	return sheet
 
 # ---------- save & load ----------
 

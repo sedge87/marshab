@@ -88,6 +88,7 @@ static func make_header(name: String, state: Dictionary, id: String, extra := {}
 		"builder": str(made_by.get("name", "")), "group": str(made_by.get("group", "")),
 		"site_id": str(state.get("site_id", "")), "site_name": str(state.get("site_name", "Mars")),
 		"game_mode": str(state.get("game_mode", "survival")), "rooms": rooms,
+		"challenge": MHGame.challenge_from_state(state),
 		"items": (builder.get("placed_interior", []) as Array).size()}
 	header.merge(extra, true)
 	return header
@@ -194,6 +195,9 @@ static func mode_label(header: Dictionary) -> String:
 	var mode := MHGame.normalise_mode(str(header.get("game_mode", "survival")))
 	var label := str(MHGame.GAME_MODES.get(mode, "Missions"))
 	if mode == "missions" and not str(header.get("mission", "")).is_empty(): label += " · " + str(header.mission)
+	if header.get("challenge", null) is Dictionary:
+		var options := MHGame.challenge_summary(header.challenge as Dictionary, mode)
+		if not options.is_empty(): label += " · " + options
 	return label
 
 # ---------- the Saves screen's actions ----------

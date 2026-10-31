@@ -86,7 +86,7 @@ const GAME_TOGGLES := [
 	["gary_autonomy", "GAR-Y autonomy", "GAR-Y goes off surveying, naps at night, tidies up and checks on trouble."],
 	["alert_advisories", "Habitat advisories", "Early heads-ups (like low batteries before sunset). Warnings and critical alerts always show."],
 	["tutorial_cards", "How it works cards", "Short cards the first time you meet something new. They're always in the Field guide."],
-	["live_hazards", "Hazards in play", "Rare solar storms, hull breaches and breakdowns in normal play, once their mission is passed (and in Survival)."],
+	["live_hazards", "Hazards in Missions", "Rare solar storms, hull breaches and breakdowns in normal play, once their mission is passed. Survival and Freedom set theirs when you start a game."],
 	["mission_full_catalogue", "Every item in Missions", "Missions offer just the kit each mission delivers, with what's needed marked. Turn on to choose from the whole catalogue."],
 ]
 const GRAPHICS_SEGMENTS := [

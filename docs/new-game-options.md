@@ -1,6 +1,6 @@
 # New-game options (core-loop build order, step 2)
 
-A design for the challenge options, written 31 Oct 2026. It follows `docs/core-loop.md` round 6: you choose fatigue, radiation, injuries and surprises when you start a game; later you can switch one on, never off. Nothing here is built yet. The decisions are in §8.
+A design for the challenge options, written 31 Oct 2026. It follows `docs/core-loop.md` round 6: you choose fatigue, radiation, injuries and surprises when you start a game; later you can switch one on, never off. Built on 31 Oct; the decisions are in §8, and §9 says where the build differs from the plan.
 
 ## 1. What the player sees
 
@@ -38,7 +38,7 @@ What exists now is wired up in step 2. The rest is built in step 10 ("Your body"
 | **Injuries** | crew injuries from hazards and the medical bay's recovery (exists) | your injuries from falls and GAR-Y's rescue (the health knock in the backlog) |
 | **Surprises** | solar particle events, breaches, breakdowns and random dust storms, at the chosen rate (exists, now behind the global `live_hazards` setting) | later surprise kinds (core-loop round 6) join the same dial |
 
-**Surprise levels** multiply the base rates in `data/hazards.json` (`live`) and, from Rare up, the site's `dust_storms_per_100_sols`:
+**Surprise levels** multiply the base rates in `data/hazards.json` (`live`). Dust storms are weather and keep the site's own rate at every level:
 - **Off:** no solar events, breaches or breakdowns. Dust storms are weather, so they still come at the site's usual rate (§8 Q1);
 - **Rare:** ×0.5;
 - **Usual:** ×1 (today's rates);
@@ -85,3 +85,13 @@ Every event keeps its warning (storms forecast 10 h ahead, solar events 30 min a
 4. **Defaults:** surprises on Rare; fatigue, radiation and injuries off.
 5. **No presets:** just the four rows.
 6. **Old saves** load as they played (§5).
+
+## 9. As built (31 Oct)
+
+- **Storms aren't scaled at all.** They're weather, so every surprise level gets the site's usual rate (it would be odd for Off to bring more storms than Rare).
+- **Injuries in Survival:** crew injuries had only come from Missions. With Injuries on, a hull breach in free play now hurts one of the crew, who then needs the medical bay.
+- **Radiation off:** solar events still come (as surprises) and still warn you; the crew just take no dose. Background dose isn't counted either.
+- **The `live_hazards` setting stays, for Missions only** (relabelled "Hazards in Missions"), because passed missions still use it. In Survival and Freedom it now only decides how old saves load.
+- **Save cards** show the options as text after the mode ("Survival · Rare surprises · Radiation"), not icons.
+- **Where:** `MHGame` (the state, the rule, saving and the old-save mapping), `scripts/challenge_options_ui.gd` (the rows, shared by the Colony step and Pause → Challenge), `mars_world.configure_life()`, `habitat_life.gd` (`live_scale`, `radiation_on`, `live_injuries`) and the debug panel's Challenge buttons. Test: `tests/challenge_options_test.gd`.
+- The Colony step's "Your name · class or group" now reads "team or group".
