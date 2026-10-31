@@ -1415,14 +1415,14 @@
     },
     {
       "id": "hygiene_shower",
-      "label": "Low-Water Wash Station",
+      "label": "Low-Water Shower",
       "group": "hygiene",
       "status": "catalogue",
       "icon": "shower-head",
-      "height": 2.1,
-      "description": "A basin, metered tap and hand sprayer that use as little water as possible.",
+      "height": 2.09,
+      "description": "A shower stall with a mist head and a hand sprayer, beside a wash basin with metered taps; used water goes back for recycling.",
       "role": "Future hygiene feedback",
-      "asset_scene": "res://assets/equipment/mars_crew_hygiene_repack/hygiene_shower.tscn",
+      "asset_scene": "res://assets/equipment/mars_hq_v1/hygiene_shower.tscn",
       "cargo_cost": 140,
       "valid_zones": [
         "hygiene"
@@ -1438,10 +1438,10 @@
       },
       "size_m": [
         1.42,
-        2.08,
-        0.822
+        2.09,
+        0.876
       ],
-      "pack": "mars_crew_hygiene_repack",
+      "pack": "mars_hq_v1",
       "system_note": "Washing keeps the crew healthy, but water is precious. This station uses short metered bursts and sends the used water back to be recycled.",
       "system_links": [
         "Water",

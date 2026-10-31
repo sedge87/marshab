@@ -6,8 +6,9 @@ read flat and washed out. This kit keeps the house look (ISS and The Martian:
 off-white composite shells, graphite frames, satin metal, Nomex soft goods,
 one orange accent) and adds what Forward+ can show:
 
-  - surface detail: seams, fasteners, stitched soft goods, printed labels,
-    cable runs, handrails, slim LED strips;
+  - surface detail: seams, fasteners, stitched soft goods, ID plates,
+    cable runs, handrails, slim LED strips. No lettering anywhere: text
+    belongs only on working displays, which the game draws live;
   - physically based materials: real metal, roughness that varies, edge wear,
     fabric weave, light grime in the corners;
   - all of it baked (Cycles) into one texture atlas per model: base colour
@@ -36,6 +37,7 @@ contents, so a zip of the models alone would delete the source.
 import json
 import math
 import os
+import time
 
 import bpy
 import bmesh
@@ -235,7 +237,6 @@ def hq_materials():
     pbr("fabric_slate", srgb("#55697A"), .9, weave=.2, weave_scale=160, grime=.1)      # sleeping bag, cushions
     pbr("fabric_teal", srgb("#5E8C8F"), .9, weave=.2, weave_scale=160, grime=.1)
     pbr("label_white", srgb("#F3F3EF"), .35, grime=.03, bump=0)
-    pbr("ink_black", srgb("#1A1D20"), .45, bump=0)
     pbr("ink_red", srgb("#B3322A"), .45, bump=0)
     pbr("velcro_hook", srgb("#D8CFB6"), .95, weave=.3, weave_scale=300)
     pbr("tile_melted", srgb("#8C7A5C"), .55, grime=.2, bump=.35, bump_scale=40)      # compacted waste tiles
@@ -247,7 +248,9 @@ def hq_materials():
     pbr("warm_shell", srgb("#DEDAD0"), .5, wear=.3, grime=.12, bump=.05)
     pbr("white_painted", srgb("#ECECE7"), .45, wear=.3, grime=.08, bump=.04)
     pbr("teal_soft", srgb("#5E8C8F"), .9, weave=.3, weave_scale=480, grime=.1)
+    pbr("mirror", srgb("#D5DADD"), .05, metal=1.0, rough_var=.02, grime=.03, bump=0)
     plain("accent_orange", srgb("#E98A45"), .45)
+    plain("frosted_glass", srgb("#C9D6DC"), .3, alpha=.22)
     plain("dark_glass", srgb("#1E2A30"), .06, alpha=.55)
     plain("screen_cyan", srgb("#3FD6EA"), .3, emission=2.2)
     plain("screen_amber", srgb("#F2B54A"), .3, emission=2.0)
@@ -258,33 +261,12 @@ def hq_materials():
 
 # ---------- extra geometry ----------
 
-def label(name, text, centre, size, face="front", mat="ink_black", depth=0.0006):
-    """Printed lettering as thin geometry, facing out of a face."""
-    bpy.ops.object.text_add(location=(0, 0, 0))
-    obj = bpy.context.active_object
-    obj.data.body = text
-    obj.data.size = size
-    obj.data.align_x = "CENTER"
-    obj.data.align_y = "CENTER"
-    obj.data.extrude = depth
-    bpy.ops.object.convert(target="MESH")
-    obj = bpy.context.active_object
-    # Text lies in XY facing +Z; these turn it to face out of each side, reading upright.
-    rot = {"front": (math.pi / 2, 0, math.pi), "top": (0, 0, math.pi), "right": (math.pi / 2, 0, math.pi / 2), "left": (math.pi / 2, 0, -math.pi / 2), "back": (math.pi / 2, 0, 0)}[face]
-    obj.rotation_euler = rot
-    obj.location = centre
-    bpy.ops.object.transform_apply(location=True, rotation=True)
-    return _finish(obj, name, mat)
-
-
-def plate_label(prefix, text, x, y, z, w, h, face="front", text_size=None):
-    """A white label plate with black lettering, on a front-facing surface at y."""
+def plate(prefix, x, y, z, w, h, face="front"):
+    """A small blank ID plate, raised a few millimetres. Never lettering:
+    text goes only on working displays (the game draws those live)."""
     if face == "front":
-        box(f"{prefix}_plate_label_white", x - w / 2, x + w / 2, y, y + 0.003, z - h / 2, z + h / 2, "label_white", 0.0015)
-        label(f"{prefix}_text_ink_black", text, (x, y + 0.0035, z), text_size or h * 0.55)
-    elif face == "top":
-        box(f"{prefix}_plate_label_white", x - w / 2, x + w / 2, y - h / 2, y + h / 2, z, z + 0.003, "label_white", 0.0015)
-        label(f"{prefix}_text_ink_black", text, (x, y, z + 0.0035), text_size or h * 0.55, face="top")
+        return box(f"{prefix}_plate_panel_cool", x - w / 2, x + w / 2, y, y + 0.003, z - h / 2, z + h / 2, "panel_cool", 0.0015)
+    return box(f"{prefix}_plate_panel_cool", x - w / 2, x + w / 2, y - h / 2, y + h / 2, z, z + 0.003, "panel_cool", 0.0015)
 
 
 def pleated(name, x0, x1, z0, z1, y, pleats, depth, mat, thickness=0.004):
@@ -410,6 +392,16 @@ def _set_target(mats, img):
         nodes.active = node
 
 
+def _soften(img, radius):
+    """A separable box blur (numpy), radius in pixels."""
+    k = 2 * radius + 1
+    pad = np.pad(img, radius, mode="edge")
+    rows = np.cumsum(np.pad(pad, ((0, 0), (1, 0))), axis=1)
+    pad = (rows[:, k:] - rows[:, :-k]) / k
+    cols = np.cumsum(np.pad(pad, ((1, 0), (0, 0))), axis=0)
+    return (cols[k:, :] - cols[:-k, :]) / k
+
+
 def _bake_emitted(mats, img, source, samples=8):
     """Bake what source(material, nodes) gives (a socket or a number) as light."""
     bpy.context.scene.cycles.samples = samples
@@ -460,7 +452,7 @@ def bake_model(item_id, out_dir, size=BAKE_SIZE):
     images = {}
     # Colour (lighting-free), roughness, tangent normals, occlusion.
     images["base"] = _new_image(f"{item_id}_base", size)
-    _bake_emitted(mats, images["base"], lambda m, nodes: nodes["hq_colour"].outputs[0])
+    _bake_emitted(mats, images["base"], lambda m, nodes: nodes["hq_colour"].outputs[0], samples=16)
     scene.cycles.samples = BAKE_SAMPLES
     images["rough"] = _new_image(f"{item_id}_rough", size, non_colour=True)
     _set_target(mats, images["rough"])
@@ -470,7 +462,7 @@ def bake_model(item_id, out_dir, size=BAKE_SIZE):
     bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT", use_clear=True)
     images["ao"] = _new_image(f"{item_id}_ao", size, non_colour=True)
     _set_target(mats, images["ao"])
-    scene.cycles.samples = 32
+    scene.cycles.samples = 64
     bpy.ops.object.bake(type="AO", use_clear=True)
     # Metal: each material's value, emitted.
     images["metal"] = _new_image(f"{item_id}_metal", size, non_colour=True)
@@ -478,6 +470,9 @@ def bake_model(item_id, out_dir, size=BAKE_SIZE):
     # Combine: occlusion into the colour (softly), and an ORM map.
     px = lambda img: np.array(img.pixels[:], dtype=np.float32).reshape(size, size, 4)
     base, ao, rough, metal = px(images["base"]), px(images["ao"]), px(images["rough"]), px(images["metal"])
+    # Occlusion is noisy at bake samples; a small blur smooths it (the bake
+    # margin pads each island, so it stays inside its part).
+    ao[..., 0] = _soften(ao[..., 0], 3)
     occl = ao[..., :1]
     base[..., :3] *= (0.55 + 0.45 * occl)
     tex_dir = os.path.join(out_dir, "textures")
@@ -537,8 +532,18 @@ def run():
         bpy.ops.object.select_all(action="DESELECT")
         for obj in PARTS: obj.select_set(True)
         os.makedirs(os.path.join(OUT, "models"), exist_ok=True)
-        bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, "models", item_id + ".glb"), export_format="GLB",
+        # Export beside the old file, then swap it in: Windows sometimes holds
+        # a just-written GLB (a scanner reading it), which fails a long run.
+        final = os.path.join(OUT, "models", item_id + ".glb")
+        temp = os.path.join(OUT, "models", item_id + ".new.glb")
+        bpy.ops.export_scene.gltf(filepath=temp, export_format="GLB",
                                   use_selection=True, export_apply=True, export_image_format="AUTO")
+        for attempt in range(30):
+            try:
+                os.replace(temp, final)
+                break
+            except OSError:
+                time.sleep(2)
         lo = Vector((1e9, 1e9, 1e9)); hi = Vector((-1e9, -1e9, -1e9))
         tris = 0
         for obj in PARTS:

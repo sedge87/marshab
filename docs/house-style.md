@@ -62,9 +62,10 @@ The packs above were made for the Compatibility renderer: plain colours that the
   - fabric weave on soft goods (Nomex beige, slate and teal);
   - brushed metal.
 - **More detail:**
-  - printed labels as geometry;
+  - blank ID plates;
   - quilted pads, pleated curtains, handrails, cable runs with ties, panel seams;
   - status lights.
+- **No lettering on models** (decided 1 Nov): no printed labels, stencils, name plates or baked screen readouts. Text belongs only on working displays (the wrist display, a screen or terminal that opens), which the game draws live. Screens on models are plain glowing panels. The room signs over doorways stay: they're wayfinding, drawn by the game (`room_identity.gd`).
 - **A bake per model** (Cycles) into one 2048 atlas:
   - base colour with ambient occlusion;
   - a normal map;
