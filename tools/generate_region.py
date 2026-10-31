@@ -481,7 +481,9 @@ def write_map(h, masks):
     control_base = masks["_base"][::step, ::step]
     rgb = colours[control_base]
     gz, gx = np.gradient(hs, SPACING * step)
-    shade = np.clip(0.82 - (gx + gz) * 1.4, 0.35, 1.25)[..., None]
+    # Lit from the north-west (top left), as maps are: lit from anywhere
+    # below, the eye reads craters as hills and hills as craters.
+    shade = np.clip(0.82 + (gx + gz) * 1.4, 0.35, 1.25)[..., None]
     lift = (0.92 + 0.16 * (hs - hs.min()) / (hs.max() - hs.min()))[..., None]
     img = np.clip(rgb * shade * lift, 0, 1)
     write_file(os.path.join(OUT, "map.png"), Image.fromarray((img * 255).astype("uint8"), "RGB").save)
