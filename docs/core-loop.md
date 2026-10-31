@@ -62,7 +62,7 @@
   Together the steps are the first chapter, "self-sufficient".
 - **The room changes:**
   - **sleeping quarters** are added; bunks move out of living quarters, which become the **day room**;
-  - **the small rooms merge:** the galley goes into the day room, and waste management into life support;
+  - **the small rooms merge:** the galley goes into the day room, and waste management into storage (changed from life support on 31 Oct; see `docs/room-changes.md`);
   - **engineering becomes the workshop:** the fabricator, repairs and the commissioning bench;
   - **communications becomes operations:** the Mission Control terminal (discoveries, requests) and the map table;
   - **the general module** is new;
@@ -167,7 +167,7 @@
 
 1. **Playtest fixes:** the vehicle bay's heat, automatic lights instead of switches, windows on inner walls, Ctrl+Z.
 2. **New-game options:** fatigue, radiation, injuries and surprises, each switch-on-only once a game is running. Designed in `docs/new-game-options.md`.
-3. **Rooms:** the general module, sleeping quarters (with noise), the merges (galley into the day room, waste into life support), the workshop and operations.
+3. **Rooms:** the general module, sleeping quarters (with noise), the merges (galley into the day room, waste into storage), the workshop and operations. Designed in `docs/room-changes.md`.
 4. **The start and chapter one:** the precursor cargo, stores that run down gently, the fabricator with plans, and the self-sufficiency steps.
 5. **Samples, the lab, the terminal and the journal.**
 6. **Finding things:** orbital hints, GAR-Y's surveys, requests and leads.
