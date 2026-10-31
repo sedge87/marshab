@@ -804,14 +804,14 @@
     },
     {
       "id": "tool_bench",
-      "label": "Tool Bench",
+      "label": "Workshop Bench",
       "group": "storage",
       "status": "future",
       "icon": "hammer",
-      "height": 1.0,
-      "description": "Repair and EVA prep bench with pegboard and vice.",
+      "height": 2.06,
+      "description": "A steel-topped bench with a vice, a pegboard of tools, parts bins, a task lamp, tool cupboards and a spares tray.",
       "role": "Three working drawers; future maintenance efficiency",
-      "asset_scene": "res://assets/equipment/mars_storage_maintenance_martian_hailmary_v1/tool_bench.tscn",
+      "asset_scene": "res://assets/equipment/mars_hq_v1/tool_bench.tscn",
       "cargo_cost": 90,
       "valid_zones": [
         "storage",
@@ -827,17 +827,17 @@
       "placement": "floor",
       "effects": {},
       "size_m": [
-        1.48,
-        2.068,
-        0.887
+        1.5,
+        2.06,
+        0.929
       ],
-      "pack": "mars_storage_maintenance_martian_hailmary_v1",
+      "pack": "mars_hq_v1",
       "system_note": "With Earth months away, the crew has to fix things themselves. The tool bench, vise and spare parts let them repair anything from a fan to a suit part.",
       "system_links": [
         "Maintenance",
         "Every system"
       ],
-      "surface_height": 0.93
+      "surface_height": 0.88
     },
     {
       "id": "rover_charger",
@@ -1651,7 +1651,9 @@
       "system_links": [
         "Morale",
         "Food"
-      ]
+      ],
+      "retired": true,
+      "retired_note": "Replaced by the Day Room's dining table"
     },
     {
       "id": "first_aid_kit",
@@ -2690,14 +2692,14 @@
     },
     {
       "id": "galley_table_set",
-      "label": "Galley Table Set",
+      "label": "Dining Table",
       "group": "galley",
       "status": "catalogue",
       "icon": "utensils",
-      "height": 1.0,
-      "description": "A table for four with chairs: somewhere to sit down and eat together.",
+      "height": 0.98,
+      "description": "A table for four on one pedestal, with stools and a built-in status screen: somewhere to sit down and eat together.",
       "role": "Dining",
-      "asset_scene": "res://assets/equipment/mars_habitat_furnishings_v1/galley_table_set.tscn",
+      "asset_scene": "res://assets/equipment/mars_hq_v1/galley_table_set.tscn",
       "cargo_cost": 70,
       "valid_zones": [
         "galley",
@@ -2717,16 +2719,16 @@
         "Food"
       ],
       "size_m": [
-        1.6,
-        0.86,
-        1.87
+        1.62,
+        0.975,
+        1.24
       ],
-      "pack": "mars_habitat_furnishings_v1",
+      "pack": "mars_hq_v1",
       "printable": true,
-      "surface_height": 0.74,
+      "surface_height": 0.77,
       "surface_size": [
-        0.7,
-        1.0
+        0.8,
+        1.24
       ]
     },
     {

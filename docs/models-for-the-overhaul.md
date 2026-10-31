@@ -14,7 +14,7 @@ Every new or rebuilt model follows `docs/house-style.md`:
 |---|---|
 | **Roof fittings:** `roof_sleeping_quarters` (quiet air intake with a silencer), `roof_day_room` (kitchen extract stack and heat-recovery fins), `roof_storage_recycling` (roof cargo hatch and davit) | the rooms' new jobs, seen from outside (`asset_packs/mars_roof_fittings_v2`). The General Module took the old Living Quarters comms mast. |
 | **Room overhead kits** (code, `room_identity.gd`) | General Module: a bit of everything crammed in; Sleeping Quarters: privacy curtains and a quiet duct; Day Room: a warm light bar over the tables; Storage & Recycling: the waste sorter's duct and drain. |
-| **HQ pass** (`asset_packs/mars_hq_v1`, `docs/house-style.md` §3): `crew_bunk` as a **sleep station**, `waste_sorting_unit` as a **heat-melt compactor**, `hygiene_shower` as a **low-water shower** (1 Nov), and the new **`treadmill`**, **`cycle_ergometer`** and **`general_module_rack`** | the first models made for Forward+: baked textures, worn edges, fabric. No lettering (1 Nov). The treadmill and bike count for fitness, like the exercise station. The rack goes only in a General Module. |
+| **HQ pass** (`asset_packs/mars_hq_v1`, `docs/house-style.md` §3): `crew_bunk` as a **sleep station**, `waste_sorting_unit` as a **heat-melt compactor**, `hygiene_shower` as a **low-water shower** (1 Nov), `tool_bench` as a **workshop bench** and `galley_table_set` as a four-seat **dining table** (1 Nov), and the new **`treadmill`**, **`cycle_ergometer`** and **`general_module_rack`** | the first models made for Forward+: baked textures, worn edges, fabric. No lettering (1 Nov). The treadmill and bike count for fitness, like the exercise station. The rack goes only in a General Module. The mess booth is retired (it gave no seats); placed ones stay. |
 
 ## Rebuild for the new rooms (step 3, still to do)
 
@@ -23,8 +23,7 @@ The rules work with today's models. These would make the rooms read as their new
 | Model | Now | Rebuild as | Why |
 |---|---|---|---|
 | `exercise_station` | a generic station | now joined by the treadmill and bike (done). Retire it, or rebuild it in the HQ style as a resistance trainer (the ISS's ARED)? | the Day Room's exercise corner |
-| `tool_bench` | a storage-pack bench | a **workshop bench** with a vice, a pegboard and a parts tray | the Workshop's identity; the commissioning bench comes later |
-| `integrated_mess_booth`, `common_table` | from older packs | one **Day Room dining set** in the house style | the shared table is the heart of the Day Room |
+| `common_table` | from an older pack | rebuild in the HQ style to match the dining table, or retire it | the General Module's only table |
 
 ## New for later steps
 
@@ -88,6 +87,6 @@ The rules work with today's models. These would make the rooms read as their new
 
 ## Suggested order
 
-1. **With step 3:** the sleep station, compactor, rack, treadmill and bike are done (31 Oct). The shower followed on 1 Nov. Next in the same style: the workshop bench, the Day Room dining set and other flat-looking older models.
+1. **With step 3:** the sleep station, compactor, rack, treadmill and bike are done (31 Oct). The shower, workshop bench and dining table followed on 1 Nov. Next in the same style: other flat-looking older models.
 2. **Lettering on older models:** some older packs bake text into their models: the Living Quarters pack's label stickers and screen readouts (locker, task light, exercise station and others). Each rebuild drops it.
 3. **Each later step makes its own models,** as above. Nothing is made before its mechanic exists.

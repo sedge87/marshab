@@ -201,16 +201,21 @@ def main() -> int:
             entry.pop("model_rotation_y", None)
             print(f"  {item_id}: {entry['asset_scene']}")
 
+        catalog["equipment"] = [e for e in catalog["equipment"] if e["id"] not in dropped]
+        CATALOG.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
         reference = PROJECT / "asset_packs"
         reference.mkdir(exist_ok=True)
         (reference / ".gdignore").touch()
         keep = reference / slug
         # Merged in, never wiped first: a zip of the models alone must not
-        # delete the pack's Blender source kept here.
-        shutil.copytree(pack_root, keep, ignore=lambda folder, names: [n for n in names if n in SKIP_IN_REFERENCE], dirs_exist_ok=True)
-
-        catalog["equipment"] = [e for e in catalog["equipment"] if e["id"] not in dropped]
-        CATALOG.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        # delete the pack's Blender source kept here. Windows can hold a
+        # reference file open (a scanner, a preview); that's only a warning.
+        try:
+            shutil.copytree(pack_root, keep, ignore=lambda folder, names: [n for n in names if n in SKIP_IN_REFERENCE], dirs_exist_ok=True)
+        except shutil.Error as error:
+            locked = [Path(dst).name for _src, dst, _why in error.args[0]]
+            print(f"  warning: {len(locked)} reference file(s) in use, not refreshed: {', '.join(locked[:6])}{' …' if len(locked) > 6 else ''}")
         print(f"Catalogue updated. Reference files kept in asset_packs/{slug}/. Backups in {backup_root.relative_to(PROJECT)}.")
         print("Next: run Godot once so the GLBs import, and add interactions to data/equipment_rigs.json.")
     return 0

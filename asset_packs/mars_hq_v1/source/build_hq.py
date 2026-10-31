@@ -404,6 +404,138 @@ def hygiene_shower():
     join("supply_pipe_clamps_frame_graphite", [box("c", 0.13, 0.2, Y0 + 0.04, Y0 + 0.09, z - 0.01, z + 0.01, "frame_graphite", 0.003) for z in (0.4, 1.0, 1.6)])
 
 
+# ---------- the workshop bench (tool_bench) ----------
+
+def tool_bench():
+    """A workshop bench: a brushed steel top with an anti-static mat, a vice
+    with an orange handle, a pegboard of tools, parts bins on a shelf, a task
+    lamp on an arm, and below, the spares tray and two tool cupboards."""
+    X0, X1, Y0, Y1 = -0.74, 0.74, -0.44, 0.44
+    # Base: plinth, carcass, side posts.
+    box("plinth_deep_graphite", X0 + 0.04, X1 - 0.04, Y0 + 0.04, Y1 - 0.07, 0.0, 0.08, "deep_graphite", 0.008)
+    box("carcass_shell_white", X0 + 0.02, X1 - 0.02, Y0 + 0.02, Y1 - 0.04, 0.07, 0.84, "shell_white", 0.015)
+    for x in (X0, X1 - 0.04):
+        box(f"post_{'l' if x < 0 else 'r'}_frame_graphite", x, x + 0.04, Y0, Y0 + 0.08, 0.0, 2.04, "frame_graphite", 0.01)
+        box(f"leg_{'l' if x < 0 else 'r'}_frame_graphite", x, x + 0.04, Y1 - 0.08, Y1, 0.0, 0.84, "frame_graphite", 0.01)
+    # Cupboards (hinged on their outer edges) and the spares tray above them.
+    for side, xa, xb in (("Left", X0 + 0.04, -0.01), ("Right", 0.01, X1 - 0.04)):
+        box(f"Tool_Cupboard_{side}_panel_warm", xa, xb, Y1 - 0.045, Y1 - 0.01, 0.1, 0.6, "panel_warm", 0.014)
+        seam_grid(f"Tool_Cupboard_{side}_seams_deep_graphite", xa + 0.03, xb - 0.03, 0.13, 0.57, Y1 - 0.01, 1, 2)
+        hx = xb - 0.06 if side == "Left" else xa + 0.06
+        rod(f"Tool_Cupboard_{side}_handle_satin_alloy", (hx, Y1 + 0.01, 0.42), (hx, Y1 + 0.01, 0.56), 0.009, "satin_alloy", verts=12)
+        vent(f"Tool_Cupboard_{side}_vent_dark_alloy", xa + 0.08, xb - 0.08, 0.14, 0.24, Y1 - 0.01, slats=4)
+    box("Spares_Tray_front_panel_warm", X0 + 0.04, X1 - 0.04, Y1 - 0.045, Y1 - 0.01, 0.62, 0.82, "panel_warm", 0.014)
+    handle("Spares_Tray_handle_satin_alloy", -0.2, 0.2, 0.76, Y1 - 0.01, mat="satin_alloy")
+    box("Spares_Tray_tray_satin_alloy", X0 + 0.08, X1 - 0.08, Y1 - 0.38, Y1 - 0.045, 0.64, 0.66, "satin_alloy", 0.004)
+    join("Spares_Tray_dividers_frame_graphite", [box("d", x - 0.005, x + 0.005, Y1 - 0.38, Y1 - 0.045, 0.66, 0.74, "frame_graphite", 0.002)
+                                                 for x in (-0.33, 0.0, 0.33)])
+    join("Spares_Tray_parts_dark_alloy", [cyl("p", (x, Y1 - 0.2 + 0.05 * (k % 3), 0.67), 0.018, 0.02, "dark_alloy", verts=6)
+                                          for k, x in enumerate((-0.6, -0.55, -0.5, -0.2, -0.15, 0.1, 0.16, 0.45, 0.52))])
+    join("Spares_Tray_seals_black_rubber", [torus("s", (x, Y1 - 0.15, 0.665), 0.03, 0.006, "black_rubber") for x in (-0.12, 0.2, 0.55)])
+    status_leds("Spares_Tray_led", 0.5, Y1 - 0.01, 0.79, colours=("led_green",))
+    # Worktop: brushed steel with a dark anti-static mat and a graphite nosing.
+    box("worktop_satin_alloy", X0 - 0.01, X1 + 0.01, Y0, Y1 + 0.01, 0.84, 0.88, "satin_alloy", 0.008)
+    box("worktop_nosing_frame_graphite", X0 - 0.01, X1 + 0.01, Y1 - 0.01, Y1 + 0.025, 0.83, 0.885, "frame_graphite", 0.008)
+    box("esd_mat_black_rubber", -0.62, 0.3, Y0 + 0.12, Y1 - 0.06, 0.88, 0.884, "black_rubber", 0.003)
+    cable("esd_lead_black_rubber", [(-0.6, Y0 + 0.14, 0.885), (-0.66, Y0 + 0.1, 0.9), (-0.7, Y0 + 0.08, 1.05)], radius=0.004, ties=False)
+    # The vice, front right: body, jaws, screw, orange tommy bar.
+    box("vice_base_dark_alloy", 0.42, 0.66, Y1 - 0.2, Y1 - 0.02, 0.88, 0.92, "dark_alloy", 0.01)
+    box("vice_body_dark_alloy", 0.47, 0.61, Y1 - 0.2, Y1 - 0.06, 0.92, 1.0, "dark_alloy", 0.012)
+    box("vice_jaw_back_satin_alloy", 0.45, 0.63, Y1 - 0.2, Y1 - 0.17, 1.0, 1.06, "satin_alloy", 0.004)
+    box("vice_jaw_front_satin_alloy", 0.45, 0.63, Y1 - 0.12, Y1 - 0.09, 0.96, 1.06, "satin_alloy", 0.004)
+    rod("vice_screw_satin_alloy", (0.54, Y1 - 0.09, 0.98), (0.54, Y1 + 0.03, 0.98), 0.01, "satin_alloy", verts=12)
+    rod("vice_handle_accent_orange", (0.46, Y1 + 0.03, 0.98), (0.62, Y1 + 0.03, 0.98), 0.009, "accent_orange", verts=12)
+    # Parts tray and a meter on the top.
+    box("parts_tray_frame_graphite", -0.5, -0.24, Y0 + 0.16, Y0 + 0.34, 0.884, 0.92, "frame_graphite", 0.006)
+    join("parts_tray_screws_satin_alloy", [cyl("s", (-0.47 + 0.035 * (k % 7), Y0 + 0.2 + 0.05 * (k // 7), 0.905), 0.006, 0.012, "satin_alloy", verts=6)
+                                           for k in range(14)])
+    box("meter_body_fabric_slate", -0.08, 0.06, Y0 + 0.2, Y0 + 0.28, 0.884, 0.93, "fabric_slate", 0.01)
+    box("meter_screen_cyan", -0.06, 0.04, Y0 + 0.28, Y0 + 0.282, 0.9, 0.925, "screen_cyan", 0)
+    cable("meter_lead_ink_red", [(0.0, Y0 + 0.28, 0.89), (0.08, Y0 + 0.36, 0.885), (0.16, Y0 + 0.3, 0.886)], radius=0.003, mat="ink_red", ties=False)
+    # Back: pegboard with tools, a power strip, the shelf of parts bins.
+    box("pegboard_panel_cool", X0 + 0.04, X1 - 0.04, Y0 + 0.02, Y0 + 0.04, 0.9, 1.72, "panel_cool", 0.006)
+    join("pegboard_holes_deep_graphite", [box("h", x - 0.005, x + 0.005, Y0 + 0.04, Y0 + 0.041, z - 0.005, z + 0.005, "deep_graphite", 0)
+                                         for x in [X0 + 0.1 + i * 0.06 for i in range(22)] for z in [1.0 + j * 0.06 for j in range(12)]])
+    join("pegboard_hooks_satin_alloy", [rod("k", (x, Y0 + 0.04, z), (x, Y0 + 0.09, z + 0.02), 0.004, "satin_alloy", verts=6)
+                                        for x, z in ((-0.58, 1.6), (-0.5, 1.6), (-0.42, 1.6), (-0.3, 1.36), (-0.22, 1.36), (-0.14, 1.36), (0.12, 1.6), (0.3, 1.5), (0.5, 1.6))])
+    for k, (x, ln) in enumerate(((-0.58, 0.22), (-0.5, 0.19), (-0.42, 0.16))):
+        rod(f"spanner_{k}_satin_alloy", (x, Y0 + 0.08, 1.6), (x, Y0 + 0.08, 1.6 - ln), 0.008, "satin_alloy", verts=8)
+        torus(f"spanner_ring_{k}_satin_alloy", (x, Y0 + 0.08, 1.6 - ln), 0.016, 0.005, "satin_alloy", axis="y")
+    for k, x in enumerate((-0.3, -0.22, -0.14)):
+        cyl(f"driver_grip_{k}_black_rubber", (x, Y0 + 0.08, 1.31), 0.014, 0.09, "black_rubber", verts=12)
+        rod(f"driver_shaft_{k}_satin_alloy", (x, Y0 + 0.08, 1.26), (x, Y0 + 0.08, 1.12), 0.004, "satin_alloy", verts=6)
+    box("drill_body_fabric_slate", 0.06, 0.24, Y0 + 0.05, Y0 + 0.13, 1.5, 1.58, "fabric_slate", 0.02)
+    box("drill_grip_black_rubber", 0.16, 0.22, Y0 + 0.06, Y0 + 0.12, 1.36, 1.5, "black_rubber", 0.015)
+    box("drill_battery_deep_graphite", 0.14, 0.24, Y0 + 0.05, Y0 + 0.13, 1.32, 1.37, "deep_graphite", 0.01)
+    cyl("drill_chuck_satin_alloy", (0.03, Y0 + 0.09, 1.54), 0.02, 0.06, "satin_alloy", axis="x", verts=12)
+    torus("tape_coil_frame_graphite", (0.3, Y0 + 0.08, 1.43), 0.05, 0.016, "frame_graphite", axis="y")
+    torus("cable_coil_black_rubber", (0.5, Y0 + 0.08, 1.48), 0.08, 0.008, "black_rubber", axis="y")
+    torus("cable_coil_2_black_rubber", (0.505, Y0 + 0.085, 1.475), 0.075, 0.008, "black_rubber", axis="y")
+    box("power_strip_frame_graphite", -0.4, 0.4, Y0 + 0.04, Y0 + 0.08, 0.94, 0.99, "frame_graphite", 0.008)
+    join("power_strip_sockets_deep_graphite", [box("s", x - 0.025, x + 0.025, Y0 + 0.08, Y0 + 0.083, 0.948, 0.982, "deep_graphite", 0.003)
+                                               for x in (-0.3, -0.15, 0.0, 0.15, 0.3)])
+    status_leds("power_strip_led", 0.36, Y0 + 0.08, 0.965, colours=("led_green",))
+    box("shelf_frame_graphite", X0 + 0.04, X1 - 0.04, Y0 + 0.02, Y0 + 0.3, 1.74, 1.77, "frame_graphite", 0.006)
+    for k in range(6):
+        x = X0 + 0.1 + k * 0.22
+        mat = ("panel_warm", "fabric_teal", "panel_warm", "label_white", "fabric_teal", "panel_warm")[k]
+        hollow(f"bin_{k}", x, x + 0.19, Y0 + 0.06, Y0 + 0.28, 1.77, 1.9, 0.008, mat, "deep_graphite")
+        box(f"bin_{k}_lip_{mat}", x, x + 0.19, Y0 + 0.25, Y0 + 0.28, 1.77, 1.86, mat, 0.006)
+    # Cap with a light strip; cable run up the right post.
+    box("cap_panel_cool", X0 - 0.01, X1 + 0.01, Y0 - 0.01, Y0 + 0.36, 1.98, 2.06, "panel_cool", 0.02)
+    box("cap_light_led_warm", X0 + 0.06, X1 - 0.06, Y0 + 0.3, Y0 + 0.34, 1.97, 1.98, "led_warm", 0)
+    cable("post_cable_black_rubber", [(X1 - 0.02, Y0 + 0.09, 0.9), (X1 - 0.02, Y0 + 0.09, 1.5), (X1 - 0.03, Y0 + 0.09, 1.97)], radius=0.008)
+    # The task lamp: a jointed arm from the left post, the head over the mat.
+    cyl("lamp_mount_frame_graphite", (X0 + 0.08, Y0 + 0.12, 1.3), 0.025, 0.06, "frame_graphite", verts=16)
+    rod("lamp_arm_lower_satin_alloy", (X0 + 0.08, Y0 + 0.12, 1.3), (-0.42, Y0 + 0.3, 1.52), 0.01, "satin_alloy", verts=10)
+    cyl("lamp_joint_frame_graphite", (-0.42, Y0 + 0.3, 1.52), 0.018, 0.03, "frame_graphite", axis="y", verts=12)
+    rod("lamp_arm_upper_satin_alloy", (-0.42, Y0 + 0.3, 1.52), (-0.22, Y0 + 0.5, 1.38), 0.009, "satin_alloy", verts=10)
+    cyl("lamp_head_shell_white", (-0.22, Y0 + 0.5, 1.36), 0.07, 0.05, "shell_white", verts=28, bevel=0.008, radius2=0.05)
+    cyl("lamp_face_led_warm", (-0.22, Y0 + 0.5, 1.334), 0.05, 0.004, "led_warm", verts=24)
+    plate("bench_tag", 0.0, Y1 - 0.01, 0.07, 0.14, 0.02)
+
+
+# ---------- the Day Room dining set (galley_table_set) ----------
+
+def galley_table_set():
+    """A dining table for four: a rounded white top on one pedestal with a
+    recessed dark edge and a built-in status screen, and four stools with
+    teal seats and foot rings."""
+    TX, TY = 0.4, 0.62                              # half sizes of the top
+    # Pedestal: floor plate, column, collar with the orange band.
+    cyl("pedestal_base_frame_graphite", (0, 0, 0.015), 0.32, 0.03, "frame_graphite", verts=48, bevel=0.01)
+    join("pedestal_bolts_satin_alloy", [cyl("b", (0.26 * math.cos(a), 0.26 * math.sin(a), 0.032), 0.012, 0.008, "satin_alloy", verts=6)
+                                        for a in [k * math.pi / 3 for k in range(6)]])
+    cyl("pedestal_column_satin_alloy", (0, 0, 0.36), 0.07, 0.66, "satin_alloy", verts=32)
+    cyl("pedestal_collar_frame_graphite", (0, 0, 0.67), 0.1, 0.04, "frame_graphite", verts=32, bevel=0.006)
+    cyl("pedestal_band_accent_orange", (0, 0, 0.6), 0.072, 0.02, "accent_orange", verts=32)
+    box("top_support_dark_alloy", -TX + 0.12, TX - 0.12, -TY + 0.15, TY - 0.15, 0.68, 0.71, "dark_alloy", 0.006)
+    # The top: a recessed graphite edge under a white surface.
+    box("top_edge_deep_graphite", -TX + 0.02, TX - 0.02, -TY + 0.02, TY - 0.02, 0.71, 0.74, "deep_graphite", 0.06)
+    box("top_surface_shell_white", -TX, TX, -TY, TY, 0.74, 0.77, "shell_white", 0.08)
+    # Built-in screen, flush in the middle, and a cable grommet.
+    box("display_frame_frame_graphite", -0.13, 0.13, -0.09, 0.09, 0.765, 0.772, "frame_graphite", 0.006)
+    box("display_screen_glass_cyan", -0.12, 0.12, -0.08, 0.08, 0.772, 0.774, "screen_cyan", 0)
+    cyl("grommet_black_rubber", (0, 0.42, 0.77), 0.03, 0.006, "black_rubber", verts=20)
+    # A meal set out: two trays with pouches, a bottle.
+    for k, y in enumerate((-0.36, 0.36)):
+        box(f"meal_tray_{k}_panel_cool", -0.22, 0.02, y - 0.12, y + 0.12, 0.77, 0.785, "panel_cool", 0.01)
+        cushion(f"meal_pouch_{k}_label_white", -0.19, -0.07, y - 0.09, y + 0.05, 0.785, 0.81, "label_white")
+        cushion(f"meal_pouch_{k}_b_fabric_teal", -0.05, 0.0, y - 0.08, y + 0.02, 0.785, 0.8, "fabric_teal")
+        rod(f"meal_spoon_{k}_satin_alloy", (-0.18, y + 0.08, 0.788), (-0.02, y + 0.08, 0.788), 0.004, "satin_alloy", verts=6)
+    cyl("bottle_body_frosted_glass", (0.22, 0.1, 0.86), 0.035, 0.18, "frosted_glass", verts=24)
+    cyl("bottle_cap_frame_graphite", (0.22, 0.1, 0.96), 0.024, 0.03, "frame_graphite", verts=16)
+    # Four stools, two along each long side.
+    for k, (x, y) in enumerate(((-0.62, -0.3), (-0.62, 0.3), (0.62, -0.3), (0.62, 0.3))):
+        cyl(f"stool_{k}_base_frame_graphite", (x, y, 0.012), 0.19, 0.024, "frame_graphite", verts=40, bevel=0.008)
+        cyl(f"stool_{k}_stem_satin_alloy", (x, y, 0.24), 0.03, 0.44, "satin_alloy", verts=20)
+        torus(f"stool_{k}_footring_satin_alloy", (x, y, 0.2), 0.15, 0.01, "satin_alloy")
+        join(f"stool_{k}_spokes_satin_alloy", [rod("s", (x, y, 0.2), (x + 0.15 * math.cos(a), y + 0.15 * math.sin(a), 0.2), 0.007, "satin_alloy", verts=8)
+                                               for a in (0.4, 0.4 + 2.1, 0.4 + 4.2)])
+        cyl(f"stool_{k}_pan_dark_alloy", (x, y, 0.47), 0.17, 0.03, "dark_alloy", verts=40, bevel=0.006)
+        cyl(f"stool_{k}_seat_fabric_teal", (x, y, 0.505), 0.19, 0.05, "fabric_teal", verts=48, bevel=0.02)
+
+
 MODELS = [
     ("crew_bunk", crew_bunk, "floor_wall"),
     ("waste_sorting_unit", waste_sorting_unit, "floor"),
@@ -411,6 +543,8 @@ MODELS = [
     ("cycle_ergometer", cycle_ergometer, "floor"),
     ("general_module_rack", general_module_rack, "floor_wall"),
     ("hygiene_shower", hygiene_shower, "floor"),
+    ("tool_bench", tool_bench, "floor"),
+    ("galley_table_set", galley_table_set, "floor"),
 ]
 
 run()
