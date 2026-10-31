@@ -33,6 +33,8 @@ func _initialize() -> void:
 	_check(b.zones.has(room), "and leaves the room")
 	b._undo()
 	_check(not b.zones.has(room), "the next Ctrl+Z takes the room back")
+	var rooms_left: int = b.zones.size()
 	b._undo()   # nothing left: no crash
-	if failures == 0: print("Undo steps test passed: partitions, odd steps skipped, rooms, and an empty history.")
+	_check(b.zones.size() == rooms_left, "with nothing left to undo, Ctrl+Z leaves the starting rooms alone")
+	if failures == 0: print("Undo steps test passed: partitions, odd steps skipped, rooms, and an empty history that removes nothing.")
 	quit(1 if failures > 0 else 0)

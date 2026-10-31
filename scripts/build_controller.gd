@@ -12,7 +12,6 @@ const HABITAT_SIM := preload("res://scripts/habitat_sim.gd")
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const ModelThumbnails := preload("res://scripts/model_thumbnails.gd")
 const PARTITION_DOOR_SCRIPT := preload("res://scripts/partition_door.gd")
-const ROOM_LIGHT_PANEL := preload("res://scripts/room_light_panel.gd")
 const ICE_SURVEY_SHADER := preload("res://shaders/ice_survey.gdshader")
 const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
 const ROOM_IDENTITY := preload("res://scripts/room_identity.gd")
@@ -296,6 +295,10 @@ var trenches: Array = []
 ## Every Mars-facing wall bay built this rebuild, where a window may go:
 ## {mid, dir, tangent, outward, length, zone_kind}.
 var _hull_bays: Array = []
+## Shared walls between two rooms that can take an inner window: same records
+## as _hull_bays plus inner = true. Kept apart, as everything outward-facing
+## (shielding, emblems) reads _hull_bays.
+var _inner_bays: Array = []
 var _windows_built: Dictionary = {}
 @onready var world := get_parent()
 
@@ -1323,16 +1326,7 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 				return "Too close to existing equipment"
 		if _partition_crossing(world_position, size, rotation_y) >= 0:
 			return "Blocked by a partition wall"
-	if _covers_light_panel(world_position, _free_interior_size(entry)): return "Keep the room's light panel clear"
 	return ""
-
-## Would something here cover a room's light panel (on the wall at 1.3 m)?
-func _covers_light_panel(at: Vector3, size: Vector3) -> bool:
-	for panel in get_tree().get_nodes_in_group("room_light_panel"):
-		var spot: Vector3 = (panel as Node3D).global_position
-		var reach := maxf(size.x, size.z) * .5 + .2
-		if Vector2(at.x - spot.x, at.z - spot.z).length() < reach and at.y < spot.y + .2 and at.y + maxf(size.y, .3) > spot.y - .2: return true
-	return false
 
 ## How high an item fills: up to its working top for tables, desks and
 ## crates (things stand on that), otherwise its full height. Shelving fills
@@ -2579,6 +2573,7 @@ func _rebuild() -> void:
 		root.remove_child(child)
 		child.queue_free()
 	_hull_bays = []
+	_inner_bays = []
 	_windows_built = {}
 	_bay_hangars = []
 	_airlock_inner_doors = {}
@@ -2630,7 +2625,6 @@ func _rebuild() -> void:
 	_add_room_fills()
 	_add_reflection_probes()
 	_add_dust_decals()
-	_add_light_panels()
 	_prune_hull_windows()
 	WALL_UPGRADES.build(self)
 	TRENCHES.build(self, root)   # trench walls, ramps, rims, and the cut in the ground
@@ -2794,76 +2788,6 @@ static func _dust_texture() -> ImageTexture:
 	_dust_tex = ImageTexture.create_from_image(image)
 	return _dust_tex
 
-## One light panel per room, on a solid wall (not a window), preferring the
-## wall nearest a door so it's by the way in.
-func _add_light_panels() -> void:
-	var doors: Array = get_tree().get_nodes_in_group("airlock_door").map(func(d): return Vector2((d as Node3D).global_position.x, (d as Node3D).global_position.z))
-	for zone in zones:
-		if not _is_habitat_zone(zone): continue
-		var best := {}
-		var best_score := INF
-		for wall in _room_walls(zone):
-			var mid: Vector2 = wall.mid
-			# Not behind furniture that's already there.
-			if placed_interior.any(func(i): return Vector2((i.position as Vector3).x, (i.position as Vector3).z).distance_to(mid) < .9): continue
-			var score := 999.0
-			for door in doors: score = minf(score, mid.distance_to(door))
-			if score < 1.0: continue   # the doorway itself
-			if score < best_score:
-				best_score = score
-				best = wall
-		if best.is_empty(): continue
-		var inward: Vector2 = best.inward
-		var at: Vector2 = best.mid + inward * .1
-		var panel := StaticBody3D.new()
-		panel.set_script(ROOM_LIGHT_PANEL)
-		panel.name = "LightPanel"
-		panel.collision_layer = 1
-		panel.position = Vector3(at.x, habitat_base_y + 1.3, at.y)
-		panel.rotation.y = atan2(-inward.x, -inward.y) + PI
-		var plate := MeshInstance3D.new(); var plate_mesh := BoxMesh.new(); plate_mesh.size = Vector3(.16, .24, .04); plate.mesh = plate_mesh
-		var plate_material := StandardMaterial3D.new(); plate_material.albedo_color = MHStyle.SEAL_DARK.lightened(.1); plate.material_override = plate_material
-		panel.add_child(plate)
-		var lamp := MeshInstance3D.new(); var lamp_mesh := BoxMesh.new(); lamp_mesh.size = Vector3(.1, .03, .01); lamp.mesh = lamp_mesh
-		lamp.position = Vector3(0, .06, -.025)
-		var lamp_material := StandardMaterial3D.new(); lamp_material.emission_enabled = true; lamp_material.emission_energy_multiplier = 1.2
-		lamp.material_override = lamp_material
-		panel.add_child(lamp)
-		var key_plate := MeshInstance3D.new(); var key_mesh := BoxMesh.new(); key_mesh.size = Vector3(.08, .08, .015); key_plate.mesh = key_mesh
-		key_plate.position = Vector3(0, -.04, -.025)
-		var key_material := StandardMaterial3D.new(); key_material.albedo_color = Color("#D8DDDF"); key_plate.material_override = key_material
-		panel.add_child(key_plate)
-		var shape := CollisionShape3D.new(); var box := BoxShape3D.new(); box.size = Vector3(.2, .28, .08); shape.shape = box
-		panel.add_child(shape)
-		root.add_child(panel)
-		panel.call("setup", self, simulation()._room_key(zone), str(ZONE_TYPES.get(str(zone.kind), {}).get("label", zone.kind)), lamp_material)
-
-## A room's solid walls: [{mid: Vector2, inward: Vector2}].
-func _room_walls(zone: Dictionary) -> Array:
-	var walls: Array = []
-	if zone.has("outline"):
-		var outline := zone_outline(zone)
-		var middle := _outline_centroid(outline)
-		for index in range(outline.size()):
-			var a: Vector2 = outline[index]
-			var b: Vector2 = outline[(index + 1) % outline.size()]
-			if a.distance_to(b) < 1.5: continue
-			var mid := (a + b) * .5
-			var inward := (b - a).orthogonal().normalized()
-			if inward.dot(middle - mid) < 0.0: inward = -inward
-			walls.append({"mid": mid, "inward": inward})
-		return walls
-	for cell in zone.get("cells", []):
-		for side in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			if not _should_build_wall(cell, side): continue
-			# Openings aren't walls: a bay's hangar face and any doorway.
-			if str(zone.get("kind", "")) == "vehicle_bay" and side == zone.get("door_direction", Vector2i(0, -1)): continue
-			if _has_interior_door(cell, side) or _is_airlock_inner_doorway(cell, side) or _corridor_end_connects(cell, side): continue
-			var mid := Vector2(cell.x, cell.y) * CELL + Vector2(side) * CELL * .5
-			if _window_index_at(mid, Vector2(side)) >= 0: continue
-			walls.append({"mid": mid, "inward": -Vector2(side)})
-	return walls
-
 ## The light state of a room right now ("on", "dim" or "off").
 func room_light_state(key: String) -> String:
 	if not grid_power_online(): return "off"
@@ -2906,7 +2830,6 @@ func update_room_lights(force := false) -> void:
 		material.albedo_color = Color("#F3E4C6") if state == "on" else (Color("#A9B6CC") if state == "dim" else Color("#293034"))
 		material.emission = Color("#FFE7B2") if state == "on" else Color("#5E7FB8")
 		material.emission_energy_multiplier = 1.7 if state == "on" else .45
-	for node in get_tree().get_nodes_in_group("room_light_panel"): node.refresh()
 
 var _last_light_states := {}
 var _last_lights_online := false
@@ -3825,6 +3748,22 @@ func _hull_bay_can_glaze(zone_kind: String) -> bool:
 	# Rooms and corridors take windows; airlocks and vehicle bays stay solid.
 	return zone_kind not in ["airlock", "vehicle_bay"] + SITE_MACHINES
 
+## Inner windows (31 Oct): on a wall shared by two rooms (or a room and a
+## corridor), never an airlock's or the vehicle bay's. They look into the next
+## room, so they lose no heat and don't count as a view of Mars.
+func _inner_bay_can_glaze(kind: String, other: String) -> bool:
+	return _hull_bay_can_glaze(kind) and _hull_bay_can_glaze(other) and not other.is_empty()
+
+func _register_inner_bay(mid: Vector2, tangent: Vector2, across: Vector2, length: float) -> bool:
+	var dir := _canonical_wall_dir(tangent)
+	_inner_bays.append({"mid": mid, "dir": dir, "tangent": tangent.normalized(), "outward": across.normalized(), "length": length, "inner": true})
+	var index := _window_index_at(mid, dir)
+	if index < 0: return false
+	_windows_built[index] = true
+	hull_windows[index].inner = true   # a room built against an outside window keeps it, now looking into that room
+	_add_window_bay(mid, tangent.normalized(), across.normalized(), length)
+	return true
+
 ## Same direction for a wall whichever way it was walked.
 static func _canonical_wall_dir(tangent: Vector2) -> Vector2:
 	var t := tangent.normalized()
@@ -3844,6 +3783,7 @@ func _register_hull_bay(mid: Vector2, tangent: Vector2, outward: Vector2, length
 	var index := _window_index_at(mid, dir)
 	if index < 0: return false
 	_windows_built[index] = true
+	(hull_windows[index] as Dictionary).erase("inner")   # the room beyond it went: it faces Mars again
 	_add_window_bay(mid, tangent.normalized(), outward.normalized(), length)
 	return true
 
@@ -3910,17 +3850,18 @@ func _prune_hull_windows() -> void:
 		_flash_notice("info", "Windows removed", "+%s cargo returned · their wall no longer faces Mars." % MHStyle.kg(refund), false)
 
 ## The Mars-facing wall bay a first-person aim point is on; {} if none.
-func window_target_at(point: Vector3) -> Dictionary:
+## With `inner`, a wall shared by two rooms counts too (windows only).
+func window_target_at(point: Vector3, inner := false) -> Dictionary:
 	if point.y < habitat_base_y or point.y > habitat_base_y + ROOM_HEIGHT: return {}
 	var flat := Vector2(point.x, point.z)
-	for bay in _hull_bays:
+	for bay in (_hull_bays + _inner_bays if inner else _hull_bays):
 		var half_length: float = float(bay.length) * .5
 		var relative: Vector2 = flat - (bay.mid as Vector2)
 		if absf(relative.dot(bay.tangent)) <= half_length and absf(relative.dot(bay.outward)) < .45: return bay
 	return {}
 
 func window_invalid_reason(target: Dictionary) -> String:
-	if target.is_empty(): return "Aim at an outside wall of a room or corridor"
+	if target.is_empty(): return "Aim at a wall of a room or corridor"
 	if _window_index_at(target.mid, target.dir) >= 0: return "This wall bay already has a window"
 	if WALL_UPGRADES.index_at(self, "regolith", target) >= 0: return "This wall bay is shielded"
 	if _used_cargo() + window_cargo() > MHGame.cargo_budget(): return "Not enough cargo left"
@@ -3933,6 +3874,7 @@ func window_target_transform(target: Dictionary) -> Transform3D:
 func place_window(target: Dictionary) -> bool:
 	if not window_invalid_reason(target).is_empty(): return false
 	var data := {"mid": target.mid, "dir": target.dir}
+	if bool(target.get("inner", false)): data.inner = true
 	hull_windows.append(data)
 	_history.append({"type": "window", "window": data})
 	_rebuild()
@@ -4181,7 +4123,7 @@ func _hide_ladder_ghost() -> void:
 
 ## Index of the window an aim point is on; -1 if none.
 func window_index_near(point: Vector3) -> int:
-	var bay := window_target_at(point)
+	var bay := window_target_at(point, true)
 	return -1 if bay.is_empty() else _window_index_at(bay.mid, bay.dir)
 
 func remove_window(index: int) -> void:
@@ -4228,6 +4170,7 @@ func undo_last_structure() -> bool:
 		_rebuild()
 		_flash_notice("info", "Undone", "Window removed · +%s cargo returned." % MHStyle.kg(window_cargo()))
 		return true
+	_flash_notice("info", "Nothing to undo", "Ctrl+Z takes back furniture, partitions and windows placed since loading.")
 	return false
 
 # ---------- interior partition walls ----------
@@ -4937,6 +4880,10 @@ func _add_exterior_wall(centre: Vector3,side: Vector2i,zone_kind: String,zone: D
 		if _register_hull_bay(mid, Vector2(-side.y, side.x), Vector2(side.x, side.y), CELL, zone_kind):
 			_add_exterior_safety_light(centre, side)
 			return
+	if not facing_mars and _inner_bay_can_glaze(zone_kind, str(_zone_across(Vector2i(roundi(centre.x / CELL), roundi(centre.z / CELL)), side).get("kind", ""))):
+		var mid := Vector2(centre.x + side.x * HALF_CELL, centre.z + side.y * HALF_CELL)
+		if _register_inner_bay(mid, Vector2(-side.y, side.x), Vector2(side.x, side.y), CELL):
+			return
 	var wall_position:=centre+Vector3(side.x*CELL*.5,habitat_base_y+1.45,side.y*CELL*.5)
 	var wall_size:=Vector3(.16,2.9,CELL) if side.x!=0 else Vector3(CELL,2.9,.16)
 	# The collision box is centred at half wall height, while the Blender wall
@@ -5328,7 +5275,9 @@ func _undo() -> void:
 		if index<0: continue
 		_undo_zone(index)
 		return
-	if not zones.is_empty(): _undo_zone(zones.size()-1)
+	# Only what you built since loading is undone; never rooms you didn't just
+	# place (it used to take the last room, starting rooms and saved ones too).
+	_flash_notice("info","Nothing to undo","Ctrl+Z takes back what you've built since loading. Use Remove (X) for older rooms.")
 
 func _undo_zone(index: int) -> void:
 	var zone:Dictionary=zones[index]
@@ -5485,7 +5434,8 @@ func _systems() -> Dictionary:
 		if zone.has("angled_mount"): heated_cells += _angled_corridor_bays(float(zone.angled_mount.get("length", CELL))) if str(zone.kind) == "corridor" else 1
 		else: heated_cells += (zone.cells as Array).size()
 	# Each window leaks heat like WINDOW_HEAT_LOSS_CELLS cells of hull.
-	var heating := roundi((float(heated_cells) + hull_windows.size() * WINDOW_HEAT_LOSS_CELLS) * maxf(0.0, HABITAT_TEMPERATURE_C - MHGame.outside_temperature_c) * HEATING_PER_CELL_DEGREE)
+	var outer_windows := hull_windows.filter(func(w): return not bool(w.get("inner", false))).size()
+	var heating := roundi((float(heated_cells) + outer_windows * WINDOW_HEAT_LOSS_CELLS) * maxf(0.0, HABITAT_TEMPERATURE_C - MHGame.outside_temperature_c) * HEATING_PER_CELL_DEGREE)
 	draw += heating
 	# A distribution cabinet's main isolator switched off cuts the habitat off
 	# from its generators: nothing reaches the grid until it is switched back on.
@@ -6450,7 +6400,7 @@ func _part_chips(id: String) -> Array:
 		chips.append(["Ramp facing %s" % _facing_name(),MHStyle.TEXT_SECONDARY])
 		return chips
 	if zone_printable(id) and str(ZONE_INFO[id].cat)!="power": chips.append(["can be printed",MHStyle.VALID])
-	if id in ["airlock","vehicle_bay"]: chips.append(["unheated",MHStyle.INFO])
+	if id == "airlock": chips.append(["unheated",MHStyle.INFO])
 	if id in ["airlock","vehicle_bay","solar","corridor"]: chips.append(["Facing %s" % _facing_name(),MHStyle.TEXT_SECONDARY])
 	return chips
 

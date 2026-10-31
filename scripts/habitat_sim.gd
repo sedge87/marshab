@@ -44,13 +44,14 @@ var o2_pct := 21.0
 var co2_pct := 0.04
 ## One temperature for the whole habitat (merged from per-room, 23 Oct): like
 ## Subnautica, everything you monitor is base-wide. room_temp still gives each
-## room a reading: heated rooms share habitat_temp; airlocks and the vehicle
-## bay are unheated by design and sit between it and outside.
+## room a reading: heated rooms share habitat_temp; airlocks are unheated by
+## design and sit between it and outside. (The vehicle bay was too, until
+## 31 Oct: it's a room you work in, so it's heated like the rest.)
 var habitat_temp := 20.0
 ## Heated rooms the heating can't keep up with (see _heat_coverage).
 var cold_spots: Array = []
 var room_temp := {}           # room key -> degrees C (derived, see _sync_room_temps)
-const UNHEATED := ["airlock", "vehicle_bay"]
+const UNHEATED := ["airlock"]
 var crew_health := 100.0
 ## Why crew health is falling right now (plain words), for the HUD.
 var health_causes: Array = []
@@ -158,7 +159,9 @@ func load(state: Dictionary) -> void:
 	printed_kg = float(state.get("printed_kg", 0.0))
 	panel_dust = (state.get("panel_dust", {}) as Dictionary).duplicate()
 	hull_dust = float(state.get("hull_dust", 0.0))
-	light_overrides = (state.get("light_overrides", {}) as Dictionary).duplicate()
+	# Rooms light themselves (the wall light panels went on 31 Oct): a room an
+	# older save switched off would otherwise stay dark for good.
+	light_overrides = {}
 	research_boost_hours = float(state.get("research_boost_hours", 0.0))
 	life.load(state.get("life", {}))
 	invalidate()
@@ -254,6 +257,7 @@ func inventory() -> Dictionary:
 		for other in rooms[index].next:
 			if WALL_UPGRADES.insulated_between(builder, rooms[index].zone.get("cells", []), rooms[other].zone.get("cells", [])): rooms[index].quiet_from.append(other)
 	for window in builder.hull_windows:
+		if bool(window.get("inner", false)): continue   # looks into the next room: no heat lost, no view of Mars
 		var inside: Vector2 = Vector2(window.mid) - Vector2(window.dir) * .75
 		var cell := Vector2i(roundi(inside.x / cell_size), roundi(inside.y / cell_size))
 		if room_of_cell.has(cell): rooms[room_of_cell[cell]].windows += 1
@@ -613,8 +617,8 @@ static func habitat_target() -> float:
 static func _heated(room: Dictionary) -> bool:
 	return not str(room.kind) in UNHEATED
 
-## Each room's reading: the habitat temperature, or (airlocks and the vehicle
-## bay, unheated by design) halfway between it and outside.
+## Each room's reading: the habitat temperature, or (airlocks, unheated by
+## design) halfway between it and outside.
 func _sync_room_temps(rooms: Array, outside: float) -> void:
 	room_temp = {}
 	for room in rooms:

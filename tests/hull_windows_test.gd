@@ -68,8 +68,6 @@ func _initialize() -> void:
 	builder.restore_habitat_state(saved)
 	_check(builder.hull_windows.size() == 1 and _glass_count() == 1, "a saved window comes back on load")
 
-	# A room built against that wall: the bay no longer faces Mars, so the
-	# window is removed and refunded.
 	var window_bay := builder.window_target_at(_aim(builder._hull_bays[0]))
 	var cargo_with_window := builder._used_cargo()
 	var glazed: Dictionary = builder.hull_windows[0]
@@ -78,8 +76,24 @@ func _initialize() -> void:
 		if (bay.mid as Vector2).distance_to(glazed.mid) < .1: beyond = (bay.mid as Vector2) + (bay.outward as Vector2) * 1.5
 	builder.zones.append({"kind": "storage", "cells": [Vector2i(roundi(beyond.x / 3.0), roundi(beyond.y / 3.0))], "door_direction": Vector2i(0, -1), "cost": 50})
 	builder._rebuild()
-	_check(builder.hull_windows.is_empty(), "a window on a wall that now faces another room is removed")
-	_check(builder._used_cargo() == cargo_with_window + 50 - BuildController.window_cargo(), "its cargo is refunded")
+	# A room built against that wall: the window stays, now an inner window
+	# looking into the new room (31 Oct), so it no longer loses heat.
+	_check(builder.hull_windows.size() == 1 and bool(builder.hull_windows[0].get("inner", false)), "a window on a wall that now faces another room becomes an inner window")
+	_check(builder._used_cargo() == cargo_with_window + 50, "and is kept, not refunded")
+	_check(builder.simulation().inventory().rooms.all(func(r): return int(r.windows) == 0), "an inner window loses no heat")
+	# Inner walls take windows of their own.
+	_check(not builder._inner_bays.is_empty(), "the shared wall offers inner window bays")
+	var inner_target := builder.window_target_at(_aim(builder._inner_bays[0]), true)
+	_check(not bool(builder.window_target_at(_aim(builder._inner_bays[0])).get("inner", false)), "outside aiming never picks an inner bay")
+	if not inner_target.is_empty() and builder.window_invalid_reason(inner_target) == "": builder.place_window(inner_target)
+	var heating_inner := int(builder._systems().heating)
+	builder.hull_windows = builder.hull_windows.filter(func(w): return not bool(w.get("inner", false)))
+	builder._rebuild()
+	_check(int(builder._systems().heating) == heating_inner, "inner windows add no heating draw")
+	builder.zones = [room]
+	builder.hull_windows = [glazed]
+	(glazed as Dictionary).erase("inner")
+	builder._rebuild()
 
 	# Airlock walls stay solid.
 	builder.zones = [room, {"kind": "airlock", "cells": [Vector2i(0, -1)], "door_direction": Vector2i(0, -1), "cost": 50}]

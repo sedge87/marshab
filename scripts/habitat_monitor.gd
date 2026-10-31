@@ -184,7 +184,7 @@ func _fill_room() -> void:
 	var reading := room_reading(selected)
 	var tone: Color = STATE_COLOURS[reading.state]
 	_room_panel.add_child(MHStyle.eyebrow(str(room.label), tone, 14))
-	_room_panel.add_child(_line("Lights %s · %d crew here%s" % [str(reading.lights), int(reading.crew), " · unheated, %d °C" % roundi(float(reading.temp)) if str(room.kind) in ["airlock", "vehicle_bay"] else ""], MHStyle.TEXT_PRIMARY, 15))
+	_room_panel.add_child(_line("Lights %s · %d crew here%s" % [str(reading.lights), int(reading.crew), " · unheated, %d °C" % roundi(float(reading.temp)) if str(room.kind) == "airlock" else ""], MHStyle.TEXT_PRIMARY, 15))
 	for problem in reading.problems: _room_panel.add_child(_line("⚠ " + str(problem), tone))
 	var tiers: Dictionary = sim().last.get("tiers", {})
 	var online: bool = builder().grid_power_online()

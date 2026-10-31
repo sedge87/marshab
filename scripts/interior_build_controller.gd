@@ -21,7 +21,7 @@ const STRUCTURE_TOOLS := [
 	{"id": "partition_door", "label": "Partition door", "icon": "door-open", "text": "A door in a partition wall: aim at a wall panel to turn it into a door, or at the floor to add one. Press E to open it: it swings away from you."},
 	{"id": "partition_glass_door", "label": "Glass door", "icon": "door-open", "text": "A glass door in a metal frame, for a partition: light gets through but it still closes off the space. Aim at a wall panel, or at the floor to add one."},
 	{"id": "interior_door", "label": "Room door", "icon": "door-closed", "text": "A doorway in a shared wall, so two sealed rooms connect. For an open corridor end, aim at the floor right by the opening."},
-	{"id": "window", "label": "Window", "icon": "sun", "text": "Glazes one outside wall bay. A view of Mars, but glass loses heat faster than the hull."},
+	{"id": "window", "label": "Window", "icon": "sun", "text": "Glazes one wall bay. On an outside wall, a view of Mars, but glass loses heat faster than the hull. On a wall between two rooms, a window into the next room that loses no heat."},
 	{"id": "upgrade_regolith", "label": "Regolith shielding", "icon": "shield", "text": "Bags of Mars soil stacked against an outside wall, against radiation. Printed by the regolith printer, so it costs no cargo once you're printing. Aim at an outside wall."},
 	{"id": "upgrade_water", "label": "Water wall", "icon": "droplets", "text": "A water tank panel on an outside wall. Water is one of the best radiation shields. Aim at an outside wall."},
 	{"id": "upgrade_roof", "label": "Roof shielding", "icon": "house", "text": "Regolith piled on the whole roof of a room: most radiation comes from overhead. Aim at the ceiling."},
@@ -272,7 +272,7 @@ func _refresh_preview(force_rebuild: bool) -> void:
 	var point: Vector3 = _hit.position
 	var normal: Vector3 = _hit.normal.normalized()
 	if _selected_structure == "window":
-		_window_target = builder.window_target_at(point)
+		_window_target = builder.window_target_at(point, true)
 		_valid_reason = builder.window_invalid_reason(_window_target)
 		if force_rebuild or preview == null:
 			if preview != null: preview.queue_free()

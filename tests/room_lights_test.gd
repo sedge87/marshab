@@ -3,7 +3,7 @@ extends SceneTree
 const MHResources := preload("res://scripts/mh_resources.gd")
 
 # Room lighting: one fill light per room (no light per fixture), on where you
-# are (and where the crew are), dim elsewhere, wall-panel overrides that save,
+# are (and where the crew are), dim elsewhere, no switches on the walls,
 # lighting power that follows the states, and everything off without power.
 # Run with: godot --headless --path . --script res://tests/room_lights_test.gd
 var failures := 0
@@ -41,7 +41,6 @@ func _initialize() -> void:
 	var fixture_lights := 0
 	for fixture in fixtures: fixture_lights += fixture.find_children("*", "SpotLight3D", true, false).size()
 	_check(fixture_lights == fixtures.size() and fixture_lights > 0, "each ceiling fixture has its own downlight (%d of %d)" % [fixture_lights, fixtures.size()])
-	_check(world.get_tree().get_nodes_in_group("room_light_panel").size() == 2, "a light panel in each room")
 
 	# You're in the living quarters (no crew yet): it's on, the galley dims.
 	sim.player_room = living
@@ -57,16 +56,8 @@ func _initialize() -> void:
 	var galley_spots := spots.filter(func(l): return l.get_meta("room_key") == galley)
 	_check(living_spots.all(func(l): return l.light_energy > 2.0) and galley_spots.all(func(l): return l.light_energy < .2), "the lit room's ceiling lights are on, the dim room's are faint night lights")
 
-	# The galley's panel: Auto → On → Dim → Off → Auto.
-	var panel: Node = world.get_tree().get_nodes_in_group("room_light_panel").filter(func(p): return p.room_key == galley)[0]
-	panel.interact()
-	_check(b.room_light_state(galley) == "on", "panel: On")
-	panel.interact(); panel.interact()
-	_check(b.room_light_state(galley) == "off", "panel: Off")
-	var saved: Dictionary = sim.save()
-	_check(str((saved.light_overrides as Dictionary).get(galley, "")) == "off", "overrides are saved")
-	panel.interact()
-	_check(not sim.light_overrides.has(galley) and b.room_light_state(galley) == "dim", "panel: back to Auto")
+	# No wall light panels any more (31 Oct): rooms light themselves.
+	_check(world.get_tree().get_nodes_in_group("room_light_panel").is_empty(), "no light switches on the walls")
 
 	# Power: at night, all-on costs more than auto (dim where nobody is).
 	var night := 23.0
@@ -90,5 +81,5 @@ func _initialize() -> void:
 	if not b.grid_power_online():
 		_check(b.room_light_state(living) == "off", "no power: lights off")
 	if failures == 0:
-		print("Room lights test passed: a fill light per room, on where you are, dim elsewhere, panels, saving and power.")
+		print("Room lights test passed: a fill light per room, on where you are, dim elsewhere, no wall switches, and power.")
 	quit(1 if failures > 0 else 0)
