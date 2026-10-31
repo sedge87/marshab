@@ -84,7 +84,7 @@ Each step is a discovery, then a plan, then a fabricator job, then fitting.
 
 | Step | Discovery | Plan | Then |
 |---|---|---|---|
-| 1. Ice | Survey an orbital "possible ice" hint and confirm it (§6) | Ice Extractor (`ice_drill`) | Place it on the ice; water flows |
+| 1. Ice | GAR-Y surveys an orbital zone; you take a good core (§6) | Ice Extractor (`ice_drill`) | Place it on the ice; water flows |
 | 2. Water | Water from the extractor tests clean | Water processing (into life support) | Water is self-sufficient |
 | 3. Oxygen | Enough water to split | Oxygen Generator (`oxygen_generator`), electrolysis | Oxygen is self-sufficient |
 | 4. Food | Regolith washed of perchlorate | Treated soil, then the greenhouse planters and grow racks | Food is self-sufficient |
@@ -93,13 +93,13 @@ When all four are running and cover the crew's needs, **chapter one ends**: Miss
 
 ## 6. How ice is found before the lab exists
 
-Samples and the lab are step 5. Step 4 needs a simple way to find ice that step 5 can replace:
+Finding ice is a gameplay element in its own right, done with GAR-Y (decided 1 Nov, Q7). The suit and wrist only handle life support.
 
-- Mission Control marks **one or two orbital hints** on the map ("possible ice", about 500 to 800 m out).
-- Walk or drive there and **scan with the wrist** (hold E on the frosty ground). A short progress ring, then "water ice confirmed".
-- That's the discovery. Step 5 turns it into a sample you carry back and test in the lab.
-
-GAR-Y's surveys (step 6) will find hints of their own later.
+- **Orbit gives broad zones only.** Mission Control marks a few large, fuzzy "possible ice" zones on the map, and some of them are false.
+- **GAR-Y surveys a zone.** Its "Find ice" order becomes **"Survey zone"**: GAR-Y drives transects with its radar for a few game hours. Its readings fill in a coarse grid of signal strengths on the comms station and terminal map, with some noise. GAR-Y gathers the readings and you interpret them; it doesn't pick the spot. Auto-find can come back later as an upgrade.
+- **You take a core.** A **hand corer** (a tool-bench item, in the crates) is used at the cell you choose. The core shows depth and purity: shallow, clean ice makes the extractor run faster and deep ice makes it slower, and some cores come up dry.
+- **Your first good core is the discovery,** and it earns the Ice Extractor plan.
+- **Step 5:** cores go back to the lab for full analysis.
 
 ## 7. The game modes
 
@@ -120,6 +120,7 @@ A save from before step 4 loads **as already supplied:** every plan known, no cr
 - **Models:**
   - the fabricator (new, HQ kit);
   - precursor crates in three sizes (rebuild of the existing cargo crates, without lettering);
+  - the hand corer (new, HQ kit);
   - the cargo lander is reused.
 - **Data:** the manifest (`data/precursor_manifest.json`), plans (`data/plans.json`: id, source, cost, time), the stores settings in the balance sheet.
 - **Code:**
@@ -127,7 +128,7 @@ A save from before step 4 loads **as already supplied:** every plan known, no cr
   - plans gating through `item_unlocked`;
   - the fabricator's screen and jobs (a new script, saved with the game);
   - stores as sols left;
-  - the ice hint and wrist scan;
+  - ice zones, GAR-Y's "Survey zone" grid, the hand corer and core results (depth, purity) feeding the extractor rate;
   - the chapter-one report.
 - **Tests:** `tests/start_and_chapter_one_test.gd`: unpacking, plan gating, a fabricator job, the four steps, Freedom and Creative, old saves.
 
@@ -150,5 +151,5 @@ A save from before step 4 loads **as already supplied:** every plan known, no cr
 4. **90 sols in Survival, 150 in Freedom.**
 5. **Two inputs:** feedstock and Earth parts.
 6. **The Workshop and the General Module,** with the General Module at 75 %.
-7. **Not the wrist scan.** Open: an alternative is still to be decided.
+7. **Not the wrist scan:** GAR-Y surveys a zone, and you read the grid and take a core with a hand corer (§6).
 8. **All plans known in Freedom.**
