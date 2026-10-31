@@ -25,6 +25,10 @@ window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/terrain_3d/plugin.cfg")
+
 [input]
 
 move_forward={
@@ -62,7 +66,3 @@ jump={
 
 renderer/rendering_method.mobile="gl_compatibility"
 limits/opengl/max_lights_per_object=16
-
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/terrain_3d/plugin.cfg")
