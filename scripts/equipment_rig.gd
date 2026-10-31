@@ -85,7 +85,7 @@ func _action_label(action: Dictionary) -> String:
 			var level := _level(action)
 			var now := str(names[level]).to_upper() + (" (NO POWER)" if level > 0 and not _grid_powered else "")
 			return "%s %s → %s" % [str(action.get("label", "Setting")), now, str(names[(level + 1) % names.size()]).to_upper()]
-		"workout", "inspect", "play", "sign_edit", "monitor", "camera", "sleep", "recall_rover":
+		"workout", "inspect", "play", "sign_edit", "monitor", "camera", "sleep", "recall_rover", "suit_refill":
 			return str(action.get("label", "Use"))
 		"screen":
 			var labels: Array = action.get("mode_labels", action.get("modes", []))
@@ -144,6 +144,10 @@ func _run(key: String, _actor: Node) -> bool:
 				return true
 			"monitor":
 				get_tree().call_group("habitat_world", "open_monitor")
+				return true
+			"suit_refill":
+				# A full suit refill from the habitat's oxygen and batteries (scripts/suit.gd).
+				get_tree().call_group("suit", "refill_at_panel")
 				return true
 			"camera":
 				get_tree().call_group("habitat_world", "open_cameras", self)

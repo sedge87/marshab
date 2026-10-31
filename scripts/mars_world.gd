@@ -8,6 +8,7 @@ const MISSION_CONTROL_LINK := preload("res://scripts/mission_control_link.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const SLEEP := preload("res://scripts/sleep.gd")
 const CARRY := preload("res://scripts/carry.gd")
+const SUIT := preload("res://scripts/suit.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
 const SHOWCASE_SCRIPT := preload("res://scripts/showcase.gd")
@@ -49,6 +50,8 @@ var _earth_link_state := {}
 var campaign_record := {}
 var sleep: Node   # scripts/sleep.gd: sleep at a bunk to pass the time
 var carry: Node   # scripts/carry.gd: pick up small things and put them elsewhere
+var suit: Node    # scripts/suit.gd: your suit's oxygen, power and scrubber (hold T for the wrist pad)
+var _suit_state := {}
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
@@ -184,6 +187,10 @@ func _ready() -> void:
 	carry = CARRY.new()
 	add_child(carry)
 	carry.setup(self)
+	suit = SUIT.new()
+	add_child(suit)
+	suit.setup(self)
+	suit.restore_state(_suit_state)
 	gar_y_orders = GAR_Y_ORDERS.new()
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)
@@ -1013,6 +1020,7 @@ func current_state() -> Dictionary:
 		"mission_control": earth_link.export_state() if earth_link != null else {},
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
 		"crew_rover": crew_rover.export_state() if crew_rover != null else {},
+		"suit": suit.export_state() if suit != null else {},
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
 		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
 	}
@@ -1077,6 +1085,7 @@ func _restore_pending_habitat() -> void:
 	_earth_link_state = state.get("mission_control", {}) as Dictionary
 	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
 	_crew_rover_state = state.get("crew_rover", {}) as Dictionary
+	_suit_state = state.get("suit", {}) as Dictionary
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()
 	player.global_position = state.get("player_position", player.global_position) as Vector3
 	player.rotation.y = float(state.get("player_rotation_y", player.rotation.y))

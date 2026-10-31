@@ -33,19 +33,72 @@ Together they make one cycle:
 
 ## 4. Your body
 
-### 4.1 The suit
-Four things run down outside, shown on a compact suit HUD (wrist display style):
+### 4.1 The suit (built 31 Oct: scripts/suit.gd, wrist_pad.gd)
+A **basic suit** to begin with: very little life support of its own, so the first walks are short and you gear up to go further (§4.1b).
 
-- **Oxygen:** about 8 game hours from full, which is roughly 8–9 real minutes by day. Sprinting and heavy work (drilling, carrying) use it faster.
-- **Battery:** powers the suit's heating, radio, lights and fans. At night the cold doubles the drain, so a night trip is shorter.
-- **CO₂ scrubber:** lasts longer than the oxygen in normal use. It only becomes a worry on long trips without a top-up, or when it's damaged.
-- **Radiation dose:** builds slowly outside, quickly during a solar event. It's a career limit, not a countdown, and it shows on the Crew screen.
+| Store | Basic suit | Faster when |
+|---|---|---|
+| **Oxygen** | 2 game hours (about 2 real minutes by day) | sprinting ×1.6, carrying ×1.3, a cold suit ×1.25, a spent scrubber ×1.5 |
+| **Battery** (heater, fans, radio) | 3 game hours by day | night ×2 (the heater) |
+| **CO₂ scrubber** | 4 game hours | — |
 
-Plus one condition: **suit integrity.** A fall or a sharp rock can damage the suit, so it leaks oxygen faster until it's patched. A patch kit on the belt does a quick field fix; a proper repair happens at the suit service panel.
+- **Nothing drains in a sealed space:** the habitat (while its air is fit to breathe, O₂ ≥ 17%), the lander cabin and the rover's cab.
+- **Radiation dose** and **suit integrity** (leaks, patch kits) are still to come.
 
-**Topping up:** at the airlock's suit service panel, in the rover's cabin, and at any supply cache you've set up (§5.5). Topping up from the rover draws on the rover's own battery and air, so a long trip has to budget both (playtest, 31 Oct).
+**No HUD bars.** You learn about your suit from the suit itself:
+- **The wrist pad.** Hold **T** to raise your left forearm. Its screen runs on the suit battery, not the grid, and shows:
+  - oxygen time left at your current rate;
+  - power (and HEATER at night) and the scrubber;
+  - **TURN BACK IN h:mm**: oxygen left minus the walk to the nearest refill at 5 m/s, plus 25% to spare;
+  - an arrow and distance to that refill (airlock, lander or rover).
+- **Two visor LEDs.** Soft out-of-focus glows at the top corners of the visor, shown only outside:
+  - left is oxygen, right is power;
+  - green, then amber at 25%, then red and blinking at 10%.
+- **Frost.** A flat battery frosts the visor's edges.
+- **The suit's voice.** A calm voice (Microsoft Zira) in your helmet with a soft chime, captioned "Suit". It says each warning once per trip outside:
+  - sealed;
+  - oxygen at half, a quarter, then critical;
+  - turn back;
+  - power low, then out;
+  - scrubber spent;
+  - topping up, full, or no supply.
+  Urgent lines come with an alarm tone, the others with a beep.
+- **Breathing.** You hear your own breathing outside. It quickens when you sprint or carry, and again when oxygen is low.
 
-**Warnings:** calm, staged voice lines from the suit (and ARDEN): 50%, 25%, then "turn back now" based on how far you are from the nearest top-up. A "point of no return" marker on the suit HUD makes the risk readable.
+**Topping up.** Nothing comes from nowhere:
+- **In a habitat airlock:** the suit fills on its own from the habitat. Oxygen comes from the reserve tanks first, then from the cabin air down to just above the safe minimum. Power comes from the batteries, or from the grid when it's making more than it uses.
+- **At a suit service panel:** E gives a full refill at once, from the same stores.
+- **In the lander cabin:** it fills from the lander's own tanks. These are unlimited for now; it's where you start.
+- **In the rover's cab, or with G beside the rover:** it fills from the rover's own O₂ tank and battery (§5.2).
+
+**Blacking out (Survival).** When your oxygen runs out, the screen fades and you come round in the first airlock, or the lander cabin before there's a habitat. Anything you were carrying goes back where it came from. GAR-Y's drag-home (§4.3) replaces this in phase 3.
+
+**Modes:**
+- **Freedom:** warns, but you never black out.
+- **Creative and Missions:** the suit isn't simulated.
+
+### 4.1a The rover's air (built 31 Oct)
+- **Oxygen tank:** about 12 suit-hours. It keeps the cab sealed while you drive, at one suit-hour per game hour.
+- **Suit top-ups:** your suit tops up from the rover in the cab, or with G beside it. It costs rover O₂, plus battery: about 8% for a flat suit.
+- **Refilling the tank:** the vehicle bay refills it from the habitat's oxygen, a full tank in about 30 s.
+- **Empty tank:** the cab is no shelter any more, so your suit runs down as if you were outside.
+- **The driving readout** shows O₂ %, and the rover's E prompt label shows it too. A real in-cab dashboard screen is still to come.
+
+### 4.1b Why kit grows: commissioning and flight rules (phase 4, design)
+Real missions plan everything, so there's no frankenstein crafting. Three real things limit how far a new crew may go:
+- **Kit lands packed.** Spare O₂ bottles, suit battery packs, rover battery modules and a pressurised trailer arrive in cargo crates. Each must be unpacked, assembled and pressure or electrically tested (at the EVA tool station or vehicle bay) before it's fitted. It's a short hands-on procedure that teaches the system.
+- **The walkback limit.** Apollo 15–17 crews couldn't drive further from the lunar module than they could walk back on their suit's reserve if the rover failed. Mission Control sets the same rule:
+  - the wrist's turn-back time is that limit;
+  - fitting spare bottles, or proving the rover, extends it;
+  - breaking it is possible, but logged, and Mission Control notices.
+- **Phased cargo.** Long-range kit comes on later landers by the mission plan. Science-for-requisition (§7) chooses what comes first.
+
+| Step | Suit | Rover |
+|---|---|---|
+| Start | 2 h basic | 2.5 km, 12 suit-hours of O₂ |
+| Spare bottle and battery pack commissioned | 4 h | — |
+| Second battery module | — | 5 km |
+| Pressurised trailer | — | 24 suit-hours, sleep aboard on long trips |
 
 ### 4.2 Sleep and fatigue
 - **Fatigue** builds while you're awake and is cleared by sleeping in a bunk, the lander, or the rover's cabin on a long trip.

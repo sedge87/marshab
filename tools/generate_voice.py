@@ -1,6 +1,6 @@
 """Generates every spoken line as 16-bit mono WAV files.
 
-Two speakers, both from data/voice_lines.json:
+Three speakers, all from data/voice_lines.json:
   - The habitat (named by the player, "ARDEN" by default) talks in the first
     person, warm and a little dry, and says what to do, not just what's wrong.
     Voice "Microsoft Hazel" (en-GB), close and in the room: gentle EQ, a touch
@@ -10,6 +10,10 @@ Two speakers, both from data/voice_lines.json:
     David" (en-US) through a narrow radio band, soft static, and the
     two-tone "Quindar" beeps NASA used on Apollo at the start and end of
     each transmission.
+
+  - Your suit talks in your helmet: voice "Microsoft Zira" (en-US), calm
+    and a little quick, slightly band-limited and close, with the helmet's
+    tiny reflections and a soft two-note chime before each line.
 
 Each line has a few variants so it doesn't repeat: <id>_<n>.wav for the
 habitat, mc_<id>_<n>.wav for Mission Control. The game picks one at random
@@ -38,6 +42,7 @@ ROOT = Path(__file__).resolve().parent.parent
 LINES = json.loads((ROOT / "data" / "voice_lines.json").read_text(encoding="utf-8"))
 HABITAT_VOICE = "Microsoft Hazel Desktop"
 CONTROL_VOICE = "Microsoft David Desktop"
+SUIT_VOICE = "Microsoft Zira Desktop"
 RATE = ga.RATE
 
 
@@ -77,6 +82,16 @@ def habitat(signal):
     return ga.reverb(voiced, length=.45, mix=.1, brightness=6000)
 
 
+def suit(signal):
+    """Inside the helmet: a touch band-limited, very close, a soft chime first."""
+    voiced = ga.highpass(ga.lowpass(trim(signal), 6500, 3), 220, 2)
+    voiced = np.tanh(voiced * 1.4) / np.tanh(1.4)
+    voiced = ga.reverb(voiced, length=.12, mix=.12, brightness=5000)
+    t = np.arange(int(.12 * RATE)) / RATE
+    chime = np.concatenate([np.sin(2 * np.pi * f * t) * np.exp(-t / .05) * .22 for f in (1568, 2093)])
+    return np.concatenate([chime, np.zeros(int(.06 * RATE)), voiced])
+
+
 def quindar(freq):
     """One Apollo-style Quindar tone: 250 ms of a pure sine."""
     t = np.arange(int(.25 * RATE)) / RATE
@@ -104,6 +119,8 @@ def main():
     jobs = []
     for line_id, variants in LINES["habitat"].items():
         for n, text in enumerate(variants): jobs.append((f"{line_id}_{n}", text, HABITAT_VOICE, 0, habitat))
+    for line_id, variants in LINES.get("suit", {}).items():
+        for n, text in enumerate(variants): jobs.append((f"{line_id}_{n}", text, SUIT_VOICE, 1, suit))
     for line_id, variants in LINES["mission_control"].items():
         for n, text in enumerate(variants): jobs.append((f"mc_{line_id}_{n}", text, CONTROL_VOICE, 1, radio))
     with tempfile.TemporaryDirectory() as scratch:

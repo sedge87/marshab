@@ -92,6 +92,12 @@ static func voice(id: String) -> void:
 	var d := director()
 	if d != null: d._run("_queue_voice", ["habitat", id, ""])
 
+# The suit's own voice in your helmet (scripts/suit.gd): calm, short, after a
+# soft chime; voice/<id>_<n>.wav like the habitat's, captioned "Suit".
+static func suit(id: String) -> void:
+	var d := director()
+	if d != null: d._run("_queue_voice", ["suit", id, ""])
+
 # Mission Control on the radio from Earth (mc_<id>_<n>.wav), with a note under
 # the caption (how long ago it was sent).
 static func radio(id: String, note := "") -> void:
@@ -343,9 +349,9 @@ func _play_line(line: Dictionary) -> void:
 	var stream := _stream(file)
 	if stream == null: return
 	_voice.stream = stream
-	_voice.volume_db = -2.0 if speaker == "habitat" else -5.0
+	_voice.volume_db = -5.0 if speaker == "mission_control" else -2.0
 	_voice.play()
-	var who := "Mission Control" if speaker == "mission_control" else MHGame.habitat_name
+	var who := "Mission Control" if speaker == "mission_control" else ("Suit" if speaker == "suit" else MHGame.habitat_name)
 	_show_caption(who, str(variants[n]), str(line.get("note", "")), stream.get_length())
 
 func _next_voice() -> void:

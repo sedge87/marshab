@@ -5300,6 +5300,11 @@
     "actions": [
       {
         "key": "primary",
+        "type": "suit_refill",
+        "label": "Refill suit"
+      },
+      {
+        "key": "secondary",
         "type": "inspect",
         "label": "Check the suits",
         "observations": [

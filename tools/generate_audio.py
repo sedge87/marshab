@@ -606,6 +606,45 @@ def main_gary():
     write("sfx/gary_tada", phrase([(660, 660, 0.06), (880, 880, 0.06), (1320, 1760, 0.22, 0.02)], gap=0.02), -3)
 
 
+def breath(inhale):
+    """A breath inside the helmet: soft filtered air, rising in, falling out."""
+    length = 1.25 if inhale else 1.6
+    t = seconds(length)
+    shape = np.sin(np.pi * np.clip(t / length, 0, 1)) ** (1.4 if inhale else 1.1)
+    air = bandpass(noise(length), 900 if inhale else 650, 500) + lowpass(noise(length), 380) * .5
+    return air * shape * (1.0 if inhale else .85)
+
+
+def suit_beep():
+    """The suit's notification: two short soft tones."""
+    t = seconds(0.07)
+    tone = lambda f: np.sin(2 * np.pi * f * t) * envelope(0.07, 0.004, 0.03)
+    return np.concatenate([tone(1760), np.zeros(int(0.05 * RATE)), tone(1760)])
+
+
+def suit_alarm():
+    """Urgent: three rising tones."""
+    parts = []
+    for f in (1320, 1568, 1976):
+        t = seconds(0.11)
+        parts += [np.sin(2 * np.pi * f * t) * envelope(0.11, 0.004, 0.04), np.zeros(int(0.04 * RATE))]
+    return np.concatenate(parts)
+
+
+def suit_fill():
+    """Gas through the umbilical: a hiss that settles."""
+    length = 1.4
+    return hiss(length, 0.6, 3800) * envelope(length, 0.05, 0.5)
+
+
+def main_suit():
+    write("sfx/suit_breath_in", breath(True), -6)
+    write("sfx/suit_breath_out", breath(False), -6)
+    write("sfx/suit_beep", suit_beep(), -4)
+    write("sfx/suit_alarm", suit_alarm(), -3)
+    write("sfx/suit_fill", suit_fill(), -4)
+
+
 def main():
     global OUTPUT
     if len(sys.argv) < 2:
@@ -636,6 +675,7 @@ def main():
         write(f"sfx/step_metal_{i}", step_metal(), -2)
     main_weather()
     main_gary()
+    main_suit()
     total = 0
     for name, length in WRITTEN:
         total += length

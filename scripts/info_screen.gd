@@ -11,12 +11,16 @@ extends Control
 ##   sign       · the player's own text
 ##   camera     · the outside camera masts, a new picture each second (cycles
 ##                masts every 8 s when there are several)
+##   suit       · the wrist pad (wrist_pad.gd): the suit's oxygen, power and
+##                scrubber, the turn-back time and the way to the nearest
+##                refill. It runs on the suit's battery, so no grid needed.
 ## The viewport only re-renders when this redraws (about once a second).
 
 const MHResources := preload("res://scripts/mh_resources.gd")
 
 var mode := "status"
 var sign_text := ""
+var suit: Node   # scripts/suit.gd, for the wrist pad
 ## The rig (a Node3D on the wall): where the screen is and which way it faces.
 var mount: Node3D
 var viewport: SubViewport
@@ -53,6 +57,9 @@ func _text(text: String, at: Vector2, font_size: int, colour: Color, weight := 6
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("#0C1316"))
+	if mode == "suit":
+		_draw_suit()
+		return
 	var builder := _builder()
 	if builder != null and not builder.grid_power_online():
 		return    # no power: the screen is dark
@@ -95,6 +102,68 @@ func _draw_status() -> void:
 		_text(str(row[0]).to_upper(), at + Vector2(22 * u, 0), int(18 * u), MHStyle.TEXT_SECONDARY, 600)
 		_text(str(row[1]), at + Vector2(22 * u, 40 * u), int(38 * u), MHStyle.TEXT_PRIMARY if row[3] else MHStyle.DANGER, 700)
 	if bool(snap.storm): _text("DUST STORM · SOLAR POWER REDUCED", Vector2(24, size.y / u - 18) * u, int(15 * u), Color(1, .7, .45), 700)
+
+# ---------- the wrist pad ----------
+
+func _clock(hours: float) -> String:
+	var minutes := maxi(0, floori(hours * 60.0))
+	return "%d:%02d" % [minutes / 60, minutes % 60]
+
+func _bar(at: Vector2, width: float, share: float, colour: Color, u: float) -> void:
+	draw_rect(Rect2(at, Vector2(width, 10 * u)), Color(1, 1, 1, .08))
+	draw_rect(Rect2(at, Vector2(width * clampf(share, 0.0, 1.0), 10 * u)), colour)
+
+func _draw_suit() -> void:
+	var u := size.y / 320.0
+	if suit == null: return
+	var r: Dictionary = suit.readout()
+	var tone := func(share: float) -> Color: return MHStyle.DANGER if share <= .1 else (MHStyle.WARN if share <= .25 else MHStyle.VALID)
+	_text("SUIT", Vector2(22, 34) * u, int(20 * u), MHStyle.accent, 700)
+	_text("%02d:%02d" % [int(MHGame.sol_hour), int(fmod(MHGame.sol_hour, 1.0) * 60.0)], Vector2(size.x - 22 * u, 34 * u), int(18 * u), MHStyle.TEXT_SECONDARY, 500, HORIZONTAL_ALIGNMENT_RIGHT, -1)
+	if not bool(r.active):
+		_text("Life support not simulated", Vector2(22, 110) * u, int(22 * u), MHStyle.TEXT_MUTED)
+		_text("(Creative)", Vector2(22, 140) * u, int(18 * u), MHStyle.TEXT_MUTED, 500)
+		return
+	var o2: float = r.o2
+	# Oxygen: time left at this rate, big.
+	_text("OXYGEN", Vector2(22, 72) * u, int(18 * u), MHStyle.TEXT_SECONDARY)
+	_text(_clock(float(r.o2_hours)), Vector2(22, 128) * u, int(60 * u), tone.call(o2), 800)
+	_bar(Vector2(22, 138) * u, 200 * u, o2, tone.call(o2), u)
+	# Power and scrubber, smaller, on the right.
+	var x := 252 * u
+	_text("POWER%s" % ("  · HEATER" if bool(r.night) else ""), Vector2(x, 72 * u), int(18 * u), MHStyle.TEXT_SECONDARY)
+	_text("%d%%" % roundi(float(r.power) * 100.0), Vector2(x, 104 * u), int(30 * u), tone.call(float(r.power)), 700)
+	_bar(Vector2(x, 112 * u), 200 * u, float(r.power), tone.call(float(r.power)), u)
+	_text("CO2 SCRUBBER", Vector2(x, 146 * u), int(18 * u), MHStyle.TEXT_SECONDARY)
+	_bar(Vector2(x, 154 * u), 200 * u, float(r.scrubber), tone.call(float(r.scrubber)), u)
+	# The line that matters most: when to turn back, or what's happening.
+	var line := ""
+	var colour := MHStyle.TEXT_PRIMARY
+	match str(r.where):
+		"outside":
+			var left := float(r.turn_back)
+			if o2 <= 0.0: line = "NO OXYGEN"; colour = MHStyle.DANGER
+			elif left <= 0.0: line = "TURN BACK NOW"; colour = MHStyle.DANGER
+			else:
+				line = "TURN BACK IN %s" % _clock(left)
+				colour = MHStyle.WARN if left < .5 else MHStyle.TEXT_PRIMARY
+		"rover": line = "ROVER CAB · TOPPING UP" if bool(r.filling) else "ROVER CAB · SEALED"
+		"lander": line = "LANDER CABIN · TOPPING UP" if bool(r.filling) else "LANDER CABIN · SEALED"
+		_: line = "AIRLOCK · TOPPING UP" if bool(r.filling) else "INSIDE · SEALED"
+	draw_rect(Rect2(Vector2(14, 190) * u, Vector2(size.x - 28 * u, 52 * u)), Color(colour, .12))
+	_text(line, Vector2(26, 228) * u, int(30 * u), colour, 800)
+	# The way to the nearest refill, with an arrow from where you face.
+	var refill: Dictionary = r.refill
+	if refill.is_empty():
+		_text("NO REFILL NEARBY", Vector2(26, 292) * u, int(20 * u), MHStyle.TEXT_MUTED, 600)
+		return
+	var centre := Vector2(44, 282) * u
+	var bearing := float(r.bearing)
+	var dir := Vector2(sin(-bearing), -cos(-bearing))
+	var side := Vector2(-dir.y, dir.x)
+	draw_colored_polygon(PackedVector2Array([centre + dir * 18 * u, centre - dir * 12 * u + side * 12 * u, centre - dir * 5 * u, centre - dir * 12 * u - side * 12 * u]), MHStyle.accent)
+	var metres := float(refill.distance)
+	_text("%s  %s" % [str(refill.label), ("%.1f km" % (metres / 1000.0)) if metres >= 1000.0 else ("%d m" % roundi(metres))], Vector2(76, 294) * u, int(28 * u), MHStyle.TEXT_PRIMARY, 700)
 
 # ---------- planets ----------
 

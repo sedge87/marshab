@@ -824,6 +824,29 @@ func crewed_rooms() -> Array:
 func room_temperature(zone: Dictionary) -> float:
 	return float(room_temp.get(_room_key(zone), 20.0))
 
+## Oxygen for a suit or the rover's tank (scripts/suit.gd, crew_rover.gd):
+## from the reserve tanks, then from the cabin air down to a little above the
+## safe minimum (the oxygen generator makes it back). Returns the kg given.
+func take_oxygen(kg: float) -> float:
+	var given := clampf(kg, 0.0, o2_reserve_kg)
+	o2_reserve_kg -= given
+	var cells := int(inventory().cells)
+	if given < kg and cells > 0:
+		var moles := float(cells) * CELL_VOLUME * AIR_DENSITY / 29.0
+		var spare := maxf(0.0, (o2_pct - MHResources.setting("o2_min_pct", 19.5) - .3) / 100.0 * moles * 32.0)
+		var from_air := minf(kg - given, spare)
+		o2_pct -= from_air / 32.0 / moles * 100.0
+		given += from_air
+	return given
+
+## Charge for a suit from the batteries, or straight from the grid when it's
+## making more than it uses. Returns the kWh given.
+func take_energy(kwh: float) -> float:
+	var given := clampf(kwh, 0.0, battery_kwh)
+	battery_kwh -= given
+	if given < kwh and float(last.get("generation_kw", 0.0)) > float(last.get("load_kw", 0.0)) + .5: given = kwh
+	return given
+
 ## Tests start with the heating already having warmed every room (like
 ## full batteries): what's tested is whether it keeps them warm.
 func prewarm_rooms() -> void:

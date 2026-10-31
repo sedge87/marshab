@@ -1,5 +1,5 @@
 {
-  "_about": "Everything the habitat and Mission Control say. tools/generate_voice.py speaks each variant to assets/audio/voice/<id>_<n>.wav (Mission Control as mc_<id>_<n>.wav); the game plays a random variant and shows its text as a caption. The habitat speaks in the first person, warm and a little dry, and says what to do, not just what's wrong. Keep lines short: the numbers are on screen.",
+  "_about": "Everything the habitat, your suit and Mission Control say. tools/generate_voice.py speaks each variant to assets/audio/voice/<id>_<n>.wav (Mission Control as mc_<id>_<n>.wav); the game plays a random variant and shows its text as a caption. The habitat speaks in the first person, warm and a little dry, and says what to do, not just what's wrong. Keep lines short: the numbers are on screen. The suit (suit_<id>_<n>.wav) is calm and brief, in your helmet.",
   "habitat": {
     "life_support_power_critical": [
       "Life support has no power. I can't keep the air clean without it.",
@@ -343,6 +343,52 @@
     ],
     "tut_done": [
       "That's the basics. The Field guide in the pause menu explains every system. Good luck out here."
+    ]
+  },
+  "suit": {
+    "suit_sealed": [
+      "Suit sealed. Life support running.",
+      "Seals good. Life support running."
+    ],
+    "suit_o2_half": [
+      "Oxygen at half. Plan your way back.",
+      "Half your oxygen is gone."
+    ],
+    "suit_o2_quarter": [
+      "Oxygen at a quarter. Head back now.",
+      "A quarter of your oxygen left."
+    ],
+    "suit_o2_critical": [
+      "Oxygen critical. Get inside.",
+      "Oxygen critical."
+    ],
+    "suit_turn_back": [
+      "Turn back now to make it home.",
+      "Turn-back time. Head for the nearest refill."
+    ],
+    "suit_power_low": [
+      "Suit power low. Heater reduced.",
+      "Battery low. Saving power for the heater."
+    ],
+    "suit_power_out": [
+      "Suit power gone. Heater off.",
+      "Battery flat. You'll feel the cold."
+    ],
+    "suit_scrubber": [
+      "Scrubber cartridge spent. Breathing will get harder.",
+      "Carbon dioxide scrubber spent."
+    ],
+    "suit_topping_up": [
+      "Topping up.",
+      "Connected. Topping up."
+    ],
+    "suit_full": [
+      "Suit full.",
+      "Oxygen and power full."
+    ],
+    "suit_no_supply": [
+      "No supply here. The tanks are empty.",
+      "Nothing to draw on here."
     ]
   },
   "mission_control": {

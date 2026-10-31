@@ -22,6 +22,13 @@ extends CharacterBody3D
 ## it waits for sunrise. The rover charger in the bay can recall it: it drives
 ## itself home on whatever it has (never on solar at night).
 ##
+## Air (Survival and Freedom, scripts/suit.gd): an oxygen tank of about 12
+## suit-hours keeps the sealed cab breathable while you drive, and your suit
+## tops up from it in the cab (or with G beside the rover), which also costs
+## battery (about 8% for a full suit). The tank refills in the vehicle bay
+## from the habitat's oxygen. With the tank empty the cab is no shelter: your
+## suit runs down as if you were outside.
+##
 ## Arcade handling on a bicycle model; the body follows the ground with four
 ## rays (pitch, roll and height, like suspension), and its collision box sits
 ## above the wheels so small rocks don't stop it, but walls and machines do.
@@ -46,6 +53,10 @@ const HALF_BASE := 1.29
 const DRAIN_PER_M := 1.0 / 25.0 # battery % per metre driven (about 2.5 km a charge: range is the limit out in the region)
 const CHARGE_PER_S := 1.5       # % a second, parked in the vehicle bay
 const SOLAR_PER_S := 0.05       # % a second from the roof panel in full sun (3% a minute)
+const SUIT := preload("res://scripts/suit.gd")
+const TANK_SUIT_HOURS := 12.0   # the oxygen tank, in hours of one person breathing
+const SUIT_POWER_COST := 8.0    # battery % to charge a flat suit
+const O2_FILL_PER_S := 100.0 / 30.0   # tank % a second, parked in the bay
 const SEAT := Vector3(-0.4, 1.5, -0.7)       # the driver's seat, in the rover's space (front is -Z)
 const CAB_VIEW := Vector3(0.0, 1.45, -1.42)   # V: the view over the nose (the cab itself is closed)
 const CHASE_DISTANCE := 7.5
@@ -56,6 +67,8 @@ var speed := 0.0
 var steer := 0.0
 var battery := 100.0
 var reserve := 100.0
+var o2 := 100.0                 # the oxygen tank, %
+var _last_hour := -1.0
 ## Driving itself home after a recall from the rover charger.
 var recalling := false
 var lights_on := false
@@ -131,6 +144,8 @@ func _ready() -> void:
 # ---------- interaction ----------
 
 func interaction_prompt() -> Dictionary:
+	if SUIT.active():
+		return {"label": "Crew rover · battery %d%% · O2 %d%%" % [roundi(battery), roundi(o2)], "primary": "Drive", "secondary": "Headlights off" if lights_on else "Headlights on", "tertiary": "Top up suit", "info": "About"}
 	return {"label": "Crew rover · battery %d%%" % roundi(battery), "primary": "Drive", "secondary": "Headlights off" if lights_on else "Headlights on", "info": "About"}
 
 func interact(_actor: Node = null) -> bool:
@@ -143,9 +158,25 @@ func interact_secondary(_actor: Node = null) -> bool:
 	_set_lights(not lights_on)
 	return true
 
+## G beside it: top your suit up from the rover's tank and battery.
+func interact_tertiary(_actor: Node = null) -> bool:
+	var suit := get_tree().get_first_node_in_group("suit")
+	if suit == null or driving: return false
+	get_tree().call_group("explore_hud", "show_equipment_note", "Crew rover", str(suit.top_up_from_rover()))
+	return true
+
+## Up to `o2_hours` of suit oxygen and `power_share` of a suit battery, from
+## the tank and the main battery. Returns what it gave (hours, share).
+func supply_suit(o2_hours: float, power_share: float) -> Vector2:
+	var give_o2 := clampf(o2_hours, 0.0, o2 / 100.0 * TANK_SUIT_HOURS)
+	o2 -= give_o2 / TANK_SUIT_HOURS * 100.0
+	var give_power := clampf(power_share, 0.0, battery / SUIT_POWER_COST)
+	battery -= give_power * SUIT_POWER_COST
+	return Vector2(give_o2, give_power)
+
 func interact_info(_actor: Node = null) -> bool:
 	get_tree().call_group("explore_hud", "show_equipment_note", "Crew rover",
-		"The EVA-6: a pressurised rover with a rear docking hatch and a roof solar panel. About 2.5 km to a charge, then a reserve for about 400 m; it charges in the vehicle bay, and the roof panel tops it up by day (never at night). The rover charger in the bay can recall it home. W/S drive, A/D steer, Space brake, F lights, V view, R free it, E get out.")
+		"The EVA-6: a pressurised rover with a rear docking hatch and a roof solar panel. About 2.5 km to a charge, then a reserve for about 400 m; it charges in the vehicle bay, and the roof panel tops it up by day (never at night). Its oxygen tank (about 12 hours for one) keeps the cab sealed and tops up your suit (G beside it, or automatically in the cab, which also uses battery); the bay refills it from the habitat. The rover charger in the bay can recall it home. W/S drive, A/D steer, Space brake, F lights, V view, R free it, E get out.")
 	return true
 
 # ---------- getting in and out ----------
@@ -364,6 +395,7 @@ func _battery(delta: float, moved: float) -> void:
 		if was > 99.9 and driving: _flash("Main battery flat", "Running on the reserve: about 600 m. Head home to the vehicle bay.")
 		if was > 0.0 and reserve <= 0.0 and driving: _flash("Reserve flat", "Crawling on solar by day only. At night it can't move until sunrise.")
 	var charging := _in_bay() and absf(speed) < 0.1
+	_air(delta, charging)
 	if charging:
 		battery = minf(100.0, battery + CHARGE_PER_S * delta)
 		reserve = minf(100.0, reserve + CHARGE_PER_S * delta)
@@ -371,6 +403,28 @@ func _battery(delta: float, moved: float) -> void:
 	elif not _in_bay(): battery = minf(100.0, battery + SOLAR_PER_S * clampf(MHGame.sunlight_fraction, 0.0, 1.0) * delta)
 	if charging and not _was_charging and driving and battery < 99.0: MHAudio.sfx("ui_confirm", -8.0)
 	_was_charging = charging
+
+## The cab breathes from the tank while you drive; the bay refills it from
+## the habitat's oxygen.
+func _air(delta: float, charging: bool) -> void:
+	var hour := MHGame.sol_hour
+	var hours := wrapf(hour - _last_hour, 0.0, 24.0) if _last_hour >= 0.0 else 0.0
+	_last_hour = hour
+	if not SUIT.active():
+		o2 = 100.0
+		return
+	if driving and hours < .5:   # more is a clock jump, not time driven
+		var was := o2
+		o2 = maxf(0.0, o2 - hours * 100.0 / TANK_SUIT_HOURS)
+		if was > 20.0 and o2 <= 20.0: _flash("Rover oxygen low", "The cab's tank is at 20%. The vehicle bay refills it from the habitat.")
+		if was > 0.0 and o2 <= 0.0: _flash("Rover oxygen empty", "The cab is no longer sealed air: your suit is on its own. Head home.")
+	if charging and o2 < 100.0:
+		var add := minf(100.0 - o2, O2_FILL_PER_S * delta)
+		var sim = builder.simulation() if builder != null else null
+		if sim != null and MHGame.simulation_on():
+			var kg := add / 100.0 * TANK_SUIT_HOURS * SUIT.O2_KG_PER_HOUR
+			add *= sim.take_oxygen(kg) / kg
+		o2 = minf(100.0, o2 + add)
 
 func _flash(title: String, text: String) -> void:
 	get_tree().call_group("explore_hud", "show_equipment_note", title, text)
@@ -630,7 +684,8 @@ func _update_hud() -> void:
 	elif battery <= 0.0: state = _home_marker() + ("" if reserve > 0.0 else ("   ·   solar crawl" if top_speed() > 0.0 else "   ·   dark: wait for sunrise"))
 	elif solar and absf(speed) < 0.1: state = "solar topping up"
 	elif lights_on: state = "lights on"
-	_readout.text = "%3d km/h   ·   %s%s" % [roundi(absf(speed) * 3.6), power, "   ·   " + state if not state.is_empty() else ""]
+	var air := "   ·   O2 %d%%" % roundi(o2) if SUIT.active() else ""
+	_readout.text = "%3d km/h   ·   %s%s%s" % [roundi(absf(speed) * 3.6), power, air, "   ·   " + state if not state.is_empty() else ""]
 	_readout.modulate = MHStyle.DANGER if battery < 15.0 else MHStyle.TEXT_PRIMARY
 
 ## "home 240 m" with an arrow: the way back to the vehicle bay, from where
@@ -647,13 +702,14 @@ func _home_marker() -> String:
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"position": global_position, "yaw": rotation.y, "battery": battery, "reserve": reserve, "lights": lights_on, "recalling": recalling}
+	return {"position": global_position, "yaw": rotation.y, "battery": battery, "reserve": reserve, "o2": o2, "lights": lights_on, "recalling": recalling}
 
 func restore_state(state: Dictionary) -> void:
 	if state.has("position"): global_position = state.position as Vector3
 	rotation.y = float(state.get("yaw", rotation.y))
 	battery = float(state.get("battery", battery))
 	reserve = float(state.get("reserve", reserve))
+	o2 = float(state.get("o2", o2))
 	if bool(state.get("recalling", false)):
 		recalling = true
 		_recall_stage = "approach"

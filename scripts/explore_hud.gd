@@ -206,7 +206,7 @@ func _site_telemetry() -> PanelContainer:
 	_telemetry_sunlight = _telemetry_metric("SOLAR", "—", MHStyle.VALID)
 	second_row.add_child(_telemetry_sunlight.get_parent())
 	column.add_child(second_row)
-	column.add_child(MHStyle.body("Shift estimates · suit required outside", 10, MHStyle.TEXT_MUTED))
+	column.add_child(MHStyle.body("Shift estimates · hold T for your suit", 10, MHStyle.TEXT_MUTED) if preload("res://scripts/suit.gd").active() else MHStyle.body("Shift estimates · suit required outside", 10, MHStyle.TEXT_MUTED))
 	panel.add_child(column)
 	return panel
 
@@ -383,7 +383,7 @@ func _refresh_hint_strip() -> void:
 		return
 	var build_hints: Array = [[["B"], "Furnish room"], [["Shift", "B"], "Site plan"]] if inside else [[["B"], "Site plan"]]
 	var gary: Array = [[["G"], "Hold: GAR-Y"]] if get_tree().get_first_node_in_group("gar_y") != null else []
-	_hint_strip = MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["Ctrl"], "Crouch"], [["E"], "Interact", "accent"], [["F"], "Light"]] + gary + build_hints + ([[["Tab"], "Map"]] if MHGame.site().get("terrain", {}).get("shape", "") == "region" else []) + [[["M"], "Mission Control"], [["Esc"], "Pause"]])
+	_hint_strip = MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["Ctrl"], "Crouch"], [["E"], "Interact", "accent"], [["F"], "Light"]] + gary + build_hints + ([[["Tab"], "Map"]] if MHGame.site().get("terrain", {}).get("shape", "") == "region" else []) + ([[["T"], "Wrist"]] if preload("res://scripts/suit.gd").active() else []) + [[["M"], "Mission Control"], [["Esc"], "Pause"]])
 	_root.add_child(_hint_strip)
 	# Keep the strip under the other HUD layers, where it was originally built.
 	_root.move_child(_hint_strip, 1)
