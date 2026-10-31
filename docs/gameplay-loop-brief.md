@@ -232,7 +232,7 @@ Each activity is a short, physical procedure, not a single button press.
 ### 6.1 Coming home
 The airlock is a procedure: cycle in, brush the dust off at the grate, suit off. Hang the suit on the rack to recharge, and drop samples in the lab's pass-through or carry them in. It's the moment of relief after a trip.
 
-### 6.2 The lab: where samples become science
+### 6.2 The lab: where samples become science (built around the four Mars goals: `docs/mars-science-goals.md`)
 - **Analysis** is a short procedure at the workbench and microscope: prepare the sample, run it, read the result. It's quick for common rocks and longer for rare ones.
 - **Each sample gives science** (rare and well-chosen samples give more) and sometimes a **discovery**:
   - about the region: "rich ice 600 m north-east of the crater";
@@ -258,7 +258,7 @@ The 24 Oct doc's best ideas become the rounds between trips, and they connect to
 ### 6.5 Resting
 Sleep in a bunk to clear fatigue and skip the night. The crew's sim keeps running while you're out or asleep, so the base has to cope without you, and you come home to its state.
 
-## 7. Progression: science pays for supplies
+## 7. Progression: science pays for supplies (now per goal, by four science teams: `docs/mars-science-goals.md` §4)
 - **Science** comes from analysed samples and from deployed instruments' daily data.
 - **At each uplink,** science adds to **requisition**: Mission Control's willingness to send things.
 - **Each resupply,** you spend requisition choosing what comes:
@@ -271,7 +271,7 @@ Sleep in a bunk to clear fatigue and skip the night. The crew's sim keeps runnin
 
 This replaces the flat cargo top-up that resupplies give today in Survival.
 
-## 8. Goals without a story (yet)
+## 8. Goals without a story (yet) (a tour of duty around the four Mars goals: `docs/mars-science-goals.md` §5)
 - **Directives:** Mission Control posts two or three at a time, shown in a small panel (like the readiness panel). For example:
   - "Core the north ice field to 2 m";
   - "Deploy a weather station on the crater rim";
