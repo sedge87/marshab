@@ -54,6 +54,10 @@ const DRAIN_PER_M := 1.0 / 25.0 # battery % per metre driven (about 2.5 km a cha
 const CHARGE_PER_S := 1.5       # % a second, parked in the vehicle bay
 const SOLAR_PER_S := 0.05       # % a second from the roof panel in full sun (3% a minute)
 const SUIT := preload("res://scripts/suit.gd")
+const ROVER_ROUTE := preload("res://scripts/rover_route.gd")
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
+const GHOST_DISTANCE := 150.0   # m from you: past this a recalled rover drives home without physics
+const HOP_AFTER := 20.0         # s without getting closer to its next waypoint: lifted on to it
 const TANK_SUIT_HOURS := 12.0   # the oxygen tank, in hours of one person breathing
 const SUIT_POWER_COST := 8.0    # battery % to charge a flat suit
 const O2_FILL_PER_S := 100.0 / 30.0   # tank % a second, parked in the bay
@@ -94,6 +98,10 @@ var _tail_lights: Array[MeshInstance3D] = []
 var _tail_glow: StandardMaterial3D
 var _braking := false
 var _recall_stage := ""         # "approach" (outside the hangar), then "enter"
+var _route := PackedVector2Array()   # the way home (scripts/rover_route.gd); the last point is outside the hangar
+var _route_i := 0
+var _best := INF                # closest it has got to the waypoint it's heading for
+var _since_better := 0.0
 var _stuck := 0.0
 var _backing := 0.0
 
@@ -286,6 +294,9 @@ func _physics_process(delta: float) -> void:
 		steer_in = _axis(KEY_A, "move_left") - _axis(KEY_D, "move_right")
 		braking = Input.is_key_pressed(KEY_SPACE)
 	elif recalling and not get_tree().paused:
+		if _far_from_you():
+			_ghost_drive(delta)
+			return
 		var drive := _autopilot(delta)
 		throttle = drive.x
 		steer_in = drive.y
@@ -319,6 +330,7 @@ func _physics_process(delta: float) -> void:
 	_update_effects()
 	if driving:
 		_player.global_position = global_transform * SEAT - Vector3.UP * 1.6
+		_player.rotation.y = rotation.y   # you face where it's going (the region map's arrow)
 		_place_camera(delta)
 		_update_hud()
 
@@ -462,24 +474,24 @@ func recall() -> String:
 	if driving: return "Someone's driving it."
 	if _in_bay(): return "The rover's already here in the bay."
 	if top_speed() <= 0.0: return "Its battery and reserve are flat and it's dark: it can't move until sunrise, when its roof panel can crawl it home."
-	recalling = true
-	_recall_stage = "approach"
-	_stuck = 0.0
+	_start_recall()
 	var how := "on its battery" if battery > 0.0 else ("on its reserve" if reserve > 0.0 else "slowly, on its roof solar")
 	return "Recalled: the rover is driving home %s, %d m away." % [how, roundi(Vector2(global_position.x, global_position.z).distance_to(home.centre))]
 
-## Steering for the drive home: [throttle, steer]. Out to a point in front of
-## the hangar, then straight in to the middle of the bay. If it stops making
-## progress it backs off and tries again.
+## Steering for the drive home: [throttle, steer]. Along its route
+## (scripts/rover_route.gd) to a point in front of the hangar, then straight
+## in to the middle of the bay. If it stops making progress it backs off and
+## tries again, and after HOP_AFTER seconds it's lifted on to its next
+## waypoint. More than GHOST_DISTANCE from you it skips the physics
+## (_ghost_drive).
 func _autopilot(delta: float) -> Vector2:
 	var home := _home()
 	if home.is_empty():
 		recalling = false
 		return Vector2.ZERO
 	var at := Vector2(global_position.x, global_position.z)
-	var approach: Vector2 = home.door + home.out * 7.0
-	var target: Vector2 = approach if _recall_stage == "approach" else home.centre
-	if _recall_stage == "approach" and at.distance_to(approach) < 2.5: _recall_stage = "enter"
+	var target := _next_target(home, at)
+	if _recall_stage == "approach" and top_speed() > 0.0 and _no_progress(at.distance_to(target), delta): _hop()
 	if _recall_stage == "enter" and at.distance_to(home.centre) < 1.2:
 		recalling = false
 		speed = 0.0
@@ -503,6 +515,94 @@ func _autopilot(delta: float) -> Vector2:
 	var error := wrapf(wanted - rotation.y, -PI, PI)
 	var near := clampf(at.distance_to(target) / 6.0, 0.35, 1.0)
 	return Vector2(near if absf(error) < 1.4 else 0.4, clampf(error * 1.6, -1.0, 1.0))
+
+## Recalled: plan the way home over the ground and set off.
+func _start_recall() -> void:
+	recalling = true
+	_recall_stage = "approach"
+	_stuck = 0.0
+	_best = INF
+	_since_better = 0.0
+	var home := _home()
+	if home.is_empty(): return
+	var approach: Vector2 = home.door + home.out * 7.0
+	var from := Vector2(global_position.x, global_position.z)
+	var rocks: Array = []
+	var field := get_tree().get_first_node_in_group("region_rocks")
+	if field != null: rocks = field.rocks_in(Rect2(from, Vector2.ZERO).expand(approach).grow(ROVER_ROUTE.MARGIN))
+	var rooms := func(p: Vector2) -> bool:
+		for offset in [Vector2.ZERO, Vector2(4, 0), Vector2(-4, 0), Vector2(0, 4), Vector2(0, -4)]:
+			if not builder._zone_at_point(p + offset).is_empty(): return true
+		return false
+	_route = ROVER_ROUTE.plan(from, approach, rooms, rocks)
+	if _route.is_empty(): _route = PackedVector2Array([approach])   # no way through on the map: it'll hop where it must
+	_route_i = 0
+
+## Where it's heading: the next waypoint home, then into the bay. Moves on
+## to the next waypoint once it's close.
+func _next_target(home: Dictionary, at: Vector2) -> Vector2:
+	if _recall_stage != "approach": return home.centre
+	if _route.is_empty(): _start_recall()
+	while _route_i < _route.size() - 1 and at.distance_to(_route[_route_i]) < 6.0: _advance()
+	if _route_i >= _route.size() - 1 and at.distance_to(_route[_route.size() - 1]) < 2.5:
+		_recall_stage = "enter"
+		return home.centre
+	return _route[mini(_route_i, _route.size() - 1)]
+
+func _advance() -> void:
+	_route_i += 1
+	_best = INF
+	_since_better = 0.0
+
+## True when it's gone HOP_AFTER seconds without getting closer.
+func _no_progress(distance: float, delta: float) -> bool:
+	if distance < _best - 1.0:
+		_best = distance
+		_since_better = 0.0
+		return false
+	_since_better += delta
+	return _since_better > HOP_AFTER
+
+## Stuck on the way home (a boulder, a gully the map didn't know): it's
+## lifted on to its next waypoint, or the one after, and carries on.
+func _hop() -> void:
+	_since_better = 0.0
+	_best = INF
+	for index in range(_route_i, mini(_route_i + 3, _route.size())):
+		var point := _route[index]
+		if set_down_at(Vector3(point.x, MHSiteTerrain.height(point.x, point.y), point.y), atan2(-(point.x - global_position.x), -(point.y - global_position.z))):
+			recalling = true   # set_down_at stops a recall; this one carries on
+			_route_i = index
+			return
+	_route_i = mini(_route_i + 1, _route.size() - 1)
+
+## Far from you, nobody sees it: rather than risk the physics out there, it
+## runs along its route at its speed, on the ground, paying for every metre
+## (and charging from its roof panel, and stopping at night when it's flat).
+func _far_from_you() -> bool:
+	var world := get_tree().get_first_node_in_group("habitat_world")
+	return world != null and world.player != null and (world.player as Node3D).global_position.distance_to(global_position) > GHOST_DISTANCE
+
+func _ghost_drive(delta: float) -> void:
+	speed = 0.0
+	var home := _home()
+	if home.is_empty():
+		recalling = false
+		return
+	var at := Vector2(global_position.x, global_position.z)
+	var target := _next_target(home, at)
+	if _recall_stage == "enter":   # at the hangar with nobody about: straight in
+		park_at_home(false)
+		return
+	var step := top_speed() * delta
+	var to := target - at
+	var moved := minf(step, to.length())
+	if moved > 0.0:
+		var next := at + to.normalized() * moved
+		rotation.y = atan2(-to.x, -to.y)
+		global_position = Vector3(next.x, MHSiteTerrain.height(next.x, next.y), next.y)
+		_follow_ground(1.0)
+	_battery(delta, moved)
 
 ## Tail lights glow while braking or reversing.
 func _set_braking(on: bool) -> void:
@@ -590,9 +690,7 @@ func come_home_after_rescue() -> String:
 		reserve = maxf(0.0, reserve - on_reserve * RESERVE_DRAIN_PER_M)
 		park_at_home(false)
 		return "GAR-Y called the rover home as well: it drove itself back to the vehicle bay while you were out%s." % (" on its reserve" if on_reserve > 0.0 else "")
-	recalling = true
-	_recall_stage = "approach"
-	_stuck = 0.0
+	_start_recall()
 	return "GAR-Y called the rover home too. Its battery is low, so it's making its own way back, crawling on its roof solar by day; it's %.1f km out." % (metres / 1.2 / 1000.0)
 
 ## Debug: full battery, reserve and oxygen tank.
@@ -797,6 +895,5 @@ func restore_state(state: Dictionary) -> void:
 	reserve = float(state.get("reserve", reserve))
 	o2 = float(state.get("o2", o2))
 	if bool(state.get("recalling", false)):
-		recalling = true
-		_recall_stage = "approach"
+		_start_recall.call_deferred()
 	_set_lights(bool(state.get("lights", false)))

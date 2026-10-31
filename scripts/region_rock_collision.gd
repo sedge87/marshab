@@ -19,6 +19,7 @@ var _timer := 0.0
 ## rocks: Array of Vector4(x, centre y, z, radius), world space.
 func setup(rocks: Array) -> void:
 	name = "RegionRockCollision"
+	add_to_group("region_rocks")
 	for rock in rocks:
 		var key := Vector2i(floori(rock.x / CELL), floori(rock.z / CELL))
 		if not _grid.has(key): _grid[key] = []
@@ -34,6 +35,14 @@ func setup(rocks: Array) -> void:
 		add_child(body)
 		_bodies.append(body)
 		_shapes.append(shape)
+
+## Every rock in an area (for planning the rover's way home).
+func rocks_in(area: Rect2) -> Array:
+	var found: Array = []
+	for gx in range(floori(area.position.x / CELL), floori(area.end.x / CELL) + 1):
+		for gz in range(floori(area.position.y / CELL), floori(area.end.y / CELL) + 1):
+			found.append_array(_grid.get(Vector2i(gx, gz), []))
+	return found
 
 func _physics_process(delta: float) -> void:
 	_timer -= delta

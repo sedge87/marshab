@@ -83,6 +83,7 @@ A **basic suit** to begin with: very little life support of its own, so the firs
 - **Refilling the tank:** the vehicle bay refills it from the habitat's oxygen, a full tank in about 30 s.
 - **Empty tank:** the cab is no shelter any more, so your suit runs down as if you were outside.
 - **The driving readout** shows O₂ %, and the rover's E prompt label shows it too. A real in-cab dashboard screen is still to come.
+- **Coming home on its own** (the GAR-Y dock's recall, or after a rescue): it plans a route over the ground (`scripts/rover_route.gd`, A* on a 10 m grid that keeps to gentle slopes and avoids cliffs, big rocks and the habitat) and follows it. If it's stuck for 20 s it's lifted on to its next waypoint. More than 150 m from you it runs along the route without physics, still paying for the drive and waiting out the night when flat.
 
 ### 4.1b Why kit grows: commissioning and flight rules (phase 4, design: `docs/commissioning-and-flight-rules.md`)
 Real missions plan everything, so there's no frankenstein crafting. Three real things limit how far a new crew may go:
