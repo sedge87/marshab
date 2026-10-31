@@ -85,7 +85,7 @@ static func make_header(name: String, state: Dictionary, id: String, extra := {}
 		"saved_at": Time.get_datetime_string_from_system(false), "saved_unix": Time.get_unix_time_from_system(),
 		"colony_name": str(state.get("colony_name", "Habitat")), "emblem": str(state.get("emblem", "")),
 		"statement": str(state.get("mission_statement", "")),
-		"builder": str(made_by.get("name", "")), "group": str(made_by.get("group", "")),
+		"builder": str(made_by.get("name", "")),
 		"site_id": str(state.get("site_id", "")), "site_name": str(state.get("site_name", "Mars")),
 		"game_mode": str(state.get("game_mode", "survival")), "rooms": rooms,
 		"challenge": MHGame.challenge_from_state(state),

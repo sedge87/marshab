@@ -419,7 +419,7 @@ func _saves_screen() -> void:
 	var tools := MHStyle.hbox(12)
 	head.add_child(tools)
 	var search := LineEdit.new()
-	search.placeholder_text = "Search names, builders, groups and sites"
+	search.placeholder_text = "Search names, builders and sites"
 	search.text = _saves_query
 	search.clear_button_enabled = true
 	search.custom_minimum_size = Vector2(460, 46)
@@ -467,7 +467,7 @@ func _shown_saves() -> Array:
 		var group := MHGame.save_set_for_mode(str(h.get("game_mode", "")))
 		if _saves_filter == 1 and group != "free_play": return false
 		if _saves_filter == 2 and group != "missions": return false
-		var words := " ".join([h.get("name", ""), h.get("builder", ""), h.get("group", ""), h.get("site_name", ""), h.get("colony_name", "")]).to_lower()
+		var words := " ".join([h.get("name", ""), h.get("builder", ""), h.get("site_name", ""), h.get("colony_name", "")]).to_lower()
 		return query.is_empty() or words.contains(query))
 	match _saves_sort:
 		1: saves.sort_custom(func(a, b): return str(a.name).naturalnocasecmp_to(str(b.name)) < 0)
@@ -528,7 +528,6 @@ func _save_card(save: Dictionary) -> Control:
 		name_label.custom_minimum_size.x = 516
 		col.add_child(name_label)
 	var maker := str(save.get("builder", ""))
-	if not str(save.get("group", "")).is_empty(): maker = (maker + " · " if not maker.is_empty() else "") + str(save.group)
 	col.add_child(MHStyle.body("by " + maker if not maker.is_empty() else "Builder not named", 15, MHStyle.accent if not maker.is_empty() else MHStyle.TEXT_MUTED))
 	col.add_child(MHStyle.body("%s · %s" % [MHSaves.mode_label(save), save.get("site_name", "Mars")], 14, MHStyle.TEXT_SECONDARY))
 	var size_line := "%d rooms · %d items" % [int(save.get("rooms", 0)), int(save.get("items", 0))]
@@ -864,7 +863,7 @@ func _colony_screen() -> void:
 	# Missions dossier. Remembered for next time.
 	var maker := MHGame.maker()
 	var maker_box := MHStyle.vbox(6)
-	maker_box.add_child(MHStyle.eyebrow("Your name · team or group"))
+	maker_box.add_child(MHStyle.eyebrow("Your name"))
 	var maker_row := MHStyle.hbox(10)
 	var player_box := LineEdit.new()
 	player_box.max_length = 40
@@ -873,18 +872,10 @@ func _colony_screen() -> void:
 	player_box.custom_minimum_size.y = 44
 	player_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	maker_row.add_child(player_box)
-	var group_box := LineEdit.new()
-	group_box.max_length = 40
-	group_box.placeholder_text = "Class or group (optional)"
-	group_box.text = str(maker.group)
-	group_box.custom_minimum_size.y = 44
-	group_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	maker_row.add_child(group_box)
 	var keep_maker := func(_text := "") -> void:
-		MHGame.set_maker(player_box.text, group_box.text)
+		MHGame.set_maker(player_box.text)
 		MHMissions.set_player_name(player_box.text)
 	player_box.text_changed.connect(keep_maker)
-	group_box.text_changed.connect(keep_maker)
 	maker_box.add_child(maker_row)
 	maker_box.add_child(MHStyle.body("Shown on your saves and in Tour, so a showcase can say who built each base.", 14, MHStyle.TEXT_MUTED))
 	form.add_child(maker_box)

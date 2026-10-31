@@ -64,15 +64,14 @@ NASA's plans for Mars send the cargo separately from the crew, and first. Uncrew
 arrive one launch window earlier, about 26 months, which is the gap between good Mars launch windows.
 Robots set up power, water and the habitat, and everything is checked from Earth
 before the crew leave. The campaign follows those steps on **one site the player
-chose in class**. The site choice, the transit to Mars and EDL (entry, descent and
-landing) are covered in class before the game, so the game starts on the
-surface and builds on that work. Each mission is the next cargo landing, so the base grows from mission
+chooses**. The game starts on the surface, after the transit to Mars and EDL
+(entry, descent and landing). Each mission is the next cargo landing, so the base grows from mission
 to mission. An early decision has to be lived with, or worked around, later on,
 just like real engineering.
 
 | # | Mission | NASA step | Crew | Payload | New this mission | It passes when… |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | **Landing Zones** | Site selection is already done in class; this is landing planning (building on their EDL work) | — | — | Pick the site chosen in class; choose the **landing target** for the landers; see the **landing ellipse** they could touch down anywhere inside | The whole landing ellipse is on flat, safe ground, and far enough from the planned base that engine blast can't damage it. *Optional:* a short note links back to their site choice and EDL work. |
+| 1 | **Landing Zones** | Landing planning | — | — | Pick the site; choose the **landing target** for the landers; see the **landing ellipse** they could touch down anywhere inside | The whole landing ellipse is on flat, safe ground, and far enough from the planned base that engine blast can't damage it. |
 | 2 | **Cargo Landing 1: Power and Water** | Pre-deploying power and ice mining | None (robots) | 12 t | Site plan only (no walking yet); solar facing, batteries, reactor option, ice survey, drills | Power runs unattended through every night and a dust storm; the drills stockpile at least 1,500 L of water before the crew come |
 | 3 | **Cargo Landing 2: The Habitat** | Checking out the habitat before the crew launch | None (robots) | 20 t | Rooms, airlock, Life Support (air recycler, oxygen generator, thermal control, water reclaimer) | The empty habitat stays above 15 °C with breathable air for 10 sols, powered by the Mission 2 system |
 | 4 | **The Crew Land** | Crew arrival | 4 | 10 t + the crew | **The lander opening**, walking around, bunks, galley, hygiene, medical | The first 10 sols with people aboard: CO₂, oxygen, water, food and temperature all stay safe |

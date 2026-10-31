@@ -94,6 +94,6 @@ A draft only. Nothing is built yet. Each achievement has a name, its caption (sh
 
 ## Questions for you
 1. **Mission mode:** should achievements unlock during a mission (after the Test), or in free play only?
-2. **Shared view:** would it help to see a class's achievements, or should they stay personal to each player?
+2. **Shared view:** would it help to see other players' achievements, or should they stay personal to each player?
 3. **Rewards:** stick to badges only? Or unlock small cosmetics, like new emblem colours or panel fonts? Cosmetics motivate players but add work.
 4. **How many:** this is 47. We could trim to about 30 for launch and add more with each new mechanic.

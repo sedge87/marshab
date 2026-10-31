@@ -22,7 +22,7 @@ Chosen on the colony screen and saved with the colony (`MHGame.game_mode`):
 
 - **Mission**: 8,000 kg of cargo (`BuildController.CARGO_BUDGET`).
 - **Sandbox**: unlimited cargo (`MHGame.cargo_budget()`); everything else as Mission.
-- **Education**: planned for when the models and mechanics are in.
+- **Field guide**: planned for when the models and mechanics are in.
 
 ## Tests and saves
 

@@ -19,7 +19,7 @@ func _initialize() -> void:
 	MHGame.game_mode = "creative"
 	MHGame.pending_save_state = {"site_id": "plains", "builder": {}}
 	MHGame.colony_name = "Ridge Outpost"
-	MHGame.set_maker("Sam", "Year 10 Blue")
+	MHGame.set_maker("Sam")
 	SAVES.current_path = ""
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
@@ -37,7 +37,7 @@ func _initialize() -> void:
 	assert(not path.is_empty() and SAVES.current_path == path, "The first save makes this base's file.")
 	assert(path.get_file().begins_with("Ridge Outpost · ") and path.get_file().ends_with(".save"), "Named after the colony, with a tag (%s)." % path.get_file())
 	var header: Dictionary = SAVES.read_header(path)
-	assert(str(header.builder) == "Sam" and str(header.group) == "Year 10 Blue", "Who built it (%s)." % header)
+	assert(str(header.builder) == "Sam" and not header.has("group"), "Who built it (%s)." % header)
 	assert(int(header.rooms) == 2 and header.has("crew") and int(header.sols) >= 1 and SAVES.thumbnail(header) != null, "The card's details and picture.")
 	# Saving again updates the same file and backs up the old one.
 	b.zones.append({"kind": "hydroponics", "cells": [Vector2i(3, 0)], "door_direction": Vector2i(0, -1), "cost": 0})
@@ -93,7 +93,7 @@ func _initialize() -> void:
 	assert(SAVES.playlist_index == 0 and SAVES.prepare_load(str(SAVES.playlist[0]), true), "The playlist loops back to the first base.")
 	MHGame.showcase = false
 	SAVES.playlist = []
-	MHGame.set_maker("", "")
+	MHGame.set_maker("")
 	print("Saves test passed: one file per base, saving in place with five backups, Save a copy, who built it and the card details, Continue and Continue missions, Tour never saving, duplicate, rename, delete, files from another computer, old slots moving across, and the Showcase playlist.")
 	quit(0)
 

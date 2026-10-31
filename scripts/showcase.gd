@@ -351,14 +351,12 @@ func _build_overlay() -> void:
 	var site := MHStyle.eyebrow("%s · Mars" % MHGame.site_name(), MHStyle.accent, 20)
 	site.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card.add_child(site)
-	# Who built it and with whom, saved with the base (scripts/saves.gd).
+	# Who built it, saved with the base (scripts/saves.gd).
 	var made_by: Dictionary = world.made_by if not (world.made_by as Dictionary).is_empty() else MHGame.maker()
 	var commander := str(made_by.get("name", ""))
 	if commander.is_empty() and MHGame.game_mode == "missions": commander = MHMissions.player_name()
-	if not commander.is_empty() or not str(made_by.get("group", "")).is_empty():
-		var by_text := "Designed by %s" % commander if not commander.is_empty() else ""
-		if not str(made_by.get("group", "")).is_empty(): by_text = (by_text + " · " if not by_text.is_empty() else "") + str(made_by.group)
-		var by := MHStyle.body(by_text, 28, MHStyle.TEXT_PRIMARY)
+	if not commander.is_empty():
+		var by := MHStyle.body("Designed by %s" % commander, 28, MHStyle.TEXT_PRIMARY)
 		by.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card.add_child(by)
 	var mode := MHStyle.mono(str(MHGame.GAME_MODES.get(MHGame.game_mode, "Missions")).to_upper(), 15, MHStyle.TEXT_SECONDARY)

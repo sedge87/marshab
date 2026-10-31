@@ -667,7 +667,6 @@ static func defaults() -> Dictionary:
 	d["last_challenge"] = {}
 	## Who's playing: shown on their saves and in Tour ("Designed by").
 	d["commander"] = ""
-	d["group"] = ""
 	## Missions offer only each mission's kit unless this is on.
 	d["mission_full_catalogue"] = false
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
@@ -713,15 +712,14 @@ static func load_settings() -> void:
 	for key in _settings.keys():
 		_settings[key] = file.get_value(_section(key), key, _settings[key])
 
-## Who made a base: the player's name and team or group (title screen),
+## Who made a base: the player's name (title screen),
 ## saved with every base so its card and Tour can say "Designed by".
 static func maker() -> Dictionary:
-	return {"name": str(setting("commander")), "group": str(setting("group"))}
+	return {"name": str(setting("commander"))}
 
-static func set_maker(player: String, group: String) -> void:
+static func set_maker(player: String) -> void:
 	var values := settings()
 	values["commander"] = player.strip_edges().left(40)
-	values["group"] = group.strip_edges().left(40)
 	save_settings(values)
 
 static func save_settings(values: Dictionary) -> void:
