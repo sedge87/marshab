@@ -41,5 +41,57 @@
     ],
     "radius": 330.0,
     "height": 135.0
-  }
+  },
+  "textures": [
+    "dust",
+    "bedrock",
+    "sand",
+    "frost",
+    "clay",
+    "gravel"
+  ],
+  "features": [
+    {
+      "name": "Crater",
+      "position": [
+        1100.0,
+        -1500.0
+      ]
+    },
+    {
+      "name": "Layered mound",
+      "position": [
+        920.0,
+        -580.0
+      ]
+    },
+    {
+      "name": "Canyon",
+      "position": [
+        0.0,
+        -2600.0
+      ]
+    },
+    {
+      "name": "Dune field",
+      "position": [
+        -380.0,
+        -1720.0
+      ]
+    },
+    {
+      "name": "Ice fields",
+      "position": [
+        -1500.0,
+        -1100.0
+      ]
+    },
+    {
+      "name": "Mesas",
+      "position": [
+        -1400.0,
+        1700.0
+      ]
+    }
+  ]
 }

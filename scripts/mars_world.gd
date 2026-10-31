@@ -106,6 +106,11 @@ func _ready() -> void:
 	add_to_group("habitat_world")
 	MHGame.set_accent(MHGame.accent_index)
 	_build_landscape()
+	# Region sites (gameplay loop prototype): Tab shows the region map.
+	if MHSiteTerrain.shape() == "region":
+		var region_map := preload("res://scripts/region_map.gd").new()
+		region_map.setup(self, MHSiteTerrain.region_zone())
+		add_child(region_map)
 	if MHMissions.active() and MHGame.pending_save_state.has("missions_progress"):
 		MHMissions.load_state(MHGame.pending_save_state.get("missions_progress", {}) as Dictionary)
 	elif not (MHGame.pending_save_state.get("campaign_record", {}) as Dictionary).is_empty():

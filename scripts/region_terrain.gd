@@ -70,6 +70,27 @@ static func import_image() -> Image:
 	copy.convert(Image.FORMAT_RF)
 	return copy
 
+## Terrain3D's control map: which ground texture is where (packed bits in a
+## float image, as Terrain3D stores it; see tools/generate_region.py).
+static func control_image() -> Image:
+	var packed := FileAccess.get_file_as_bytes(DIRECTORY + _id + "/control.u32.gz")
+	if packed.is_empty(): return null
+	return Image.create_from_data(_size, _size, false, Image.FORMAT_RF, packed.decompress(_size * _size * 4, FileAccess.COMPRESSION_GZIP))
+
+## Terrain3D's colour map: a gentle large-scale tint, stored at half size.
+static func colour_image() -> Image:
+	var texture := load(DIRECTORY + _id + "/colour.png") as Texture2D
+	if texture == null: return null
+	var image := texture.get_image()
+	if image.is_compressed(): image.decompress()
+	image.convert(Image.FORMAT_RGBA8)
+	image.resize(_size, _size, Image.INTERPOLATE_BILINEAR)
+	return image
+
+## The ground textures, in Terrain3D slot order.
+static func texture_names() -> Array:
+	return _meta.get("textures", ["dust", "bedrock"])
+
 ## Terrain3D import values for a world centred on (origin, level): the
 ## heightmap's corner, and the offset and scale that make heights metres.
 static func import_placement(origin: Vector2, level: float) -> Dictionary:

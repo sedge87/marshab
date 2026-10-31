@@ -356,7 +356,7 @@ func _build_terrain() -> void:
 
 ## A region (gameplay loop prototype): Terrain3D draws the shared heightmap,
 ## kilometres of it, with distance detail and full collision, textured by
-## slope: dust on the flat, rock on the steep.
+## zone and slope (its control map) and gently tinted (its colour map).
 func _build_region_terrain() -> void:
 	var zone := MHSiteTerrain.region_zone()
 	if zone.is_empty(): return
@@ -372,14 +372,16 @@ func _build_region_terrain() -> void:
 	# it's ready, when its data exists.
 	var material := Terrain3DMaterial.new()
 	material.world_background = Terrain3DMaterial.NONE
-	material.auto_shader_enabled = true
-	material.set_shader_param("auto_slope", 4.0)
-	material.set_shader_param("blend_sharpness", .9)
+	material.set_shader_param("blend_sharpness", .85)
 	terrain.material = material
+	# Ground textures by zone (dust, bedrock on slopes, dune sand, frost,
+	# crater clay, gravel), painted by the region's control map.
 	var assets := Terrain3DAssets.new()
 	var folder := MHSiteTerrain.RegionTerrain.DIRECTORY + region_id + "/"
-	assets.set_texture_asset(0, _region_texture("Dust", folder + "ground_dust", .22))
-	assets.set_texture_asset(1, _region_texture("Rock", folder + "ground_rock", .12))
+	var names: Array = MHSiteTerrain.RegionTerrain.texture_names()
+	for index in names.size():
+		var texture_name := str(names[index])
+		assets.set_texture_asset(index, _region_texture(texture_name.capitalize(), folder + "ground_" + texture_name, .14 if texture_name == "bedrock" else .22))
 	for index in MHSiteTerrain.ROCK_MODELS.size():
 		var rock := Terrain3DMeshAsset.new()
 		rock.name = str(MHSiteTerrain.ROCK_MODELS[index])
@@ -393,20 +395,28 @@ func _build_region_terrain() -> void:
 	var place: Dictionary = MHSiteTerrain.RegionTerrain.import_placement(origin, float(zone.height))
 	terrain.ready.connect(func() -> void:
 		terrain.region_size = Terrain3D.SIZE_1024   # 2 km regions: about 16 for the whole map (set once it's ready)
-		terrain.data.import_images([MHSiteTerrain.RegionTerrain.import_image(), null, null], place.corner, float(place.offset), float(place.scale))
+		terrain.data.import_images([MHSiteTerrain.RegionTerrain.import_image(), MHSiteTerrain.RegionTerrain.control_image(), MHSiteTerrain.RegionTerrain.colour_image()], place.corner, float(place.offset), float(place.scale))
 		_scatter_region_rocks(terrain, MHSiteTerrain.RegionTerrain.world_bounds(origin).grow(-500.0)), CONNECT_ONE_SHOT)
 	_site_root.add_child(terrain)
 
 ## Rocks across the whole region (the base's own boulders, with collision,
 ## come from _build_decor): thicker on slopes, crater rims and mesa feet,
 ## sparse on the open flats, none on the build pad. Drawn by Terrain3D's
-## instancer, which fades them out with distance.
+## instancer, which fades them out with distance; the bigger ones are solid
+## near the player, the rover and GAR-Y (region_rock_collision.gd).
 func _scatter_region_rocks(terrain: Terrain3D, area: Rect2) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
 	var by_mesh: Array = []
 	for index in MHSiteTerrain.ROCK_MODELS.size(): by_mesh.append([] as Array[Transform3D])
 	var pad := float(MHSiteTerrain.settings().get("pad_half", 60.0)) + 40.0
+	# Each model's footprint, for the rocks' collision (bigger rocks only).
+	var reach: Array = []
+	for model_name in MHSiteTerrain.ROCK_MODELS:
+		var mesh := _load_model_mesh(str(model_name))
+		var bounds := mesh.get_aabb() if mesh != null else AABB(Vector3.ZERO, Vector3.ONE)
+		reach.append(Vector2(maxf(bounds.size.x, bounds.size.z) * .42, bounds.size.y * .45))
+	var solid: Array = []
 	for attempt in 60000:
 		var x := rng.randf_range(area.position.x, area.end.x)
 		var z := rng.randf_range(area.position.y, area.end.y)
@@ -416,9 +426,15 @@ func _scatter_region_rocks(terrain: Terrain3D, area: Rect2) -> void:
 		if rng.randf() > .12 + clampf(slope * 2.5, 0.0, .8): continue
 		var size := rng.randf_range(.35, 1.3) * (2.4 if rng.randf() < .06 else 1.0)
 		var basis := Basis.from_euler(Vector3(rng.randf_range(-.25, .25), rng.randf() * TAU, rng.randf_range(-.25, .25))).scaled(Vector3.ONE * size)
-		(by_mesh[rng.randi() % by_mesh.size()] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y - .15 * size, z)))
+		var mesh_index := rng.randi() % by_mesh.size()
+		(by_mesh[mesh_index] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y - .15 * size, z)))
+		var radius: float = (reach[mesh_index] as Vector2).x * size
+		if radius > .3: solid.append(Vector4(x, y - .15 * size + (reach[mesh_index] as Vector2).y * size, z, radius))
 	for index in by_mesh.size():
 		terrain.instancer.add_transforms(index, by_mesh[index])
+	var collision := preload("res://scripts/region_rock_collision.gd").new()
+	collision.setup(solid)
+	_site_root.add_child.call_deferred(collision)   # the landscape is still being set up
 
 func _region_texture(texture_name: String, path: String, uv_scale: float) -> Terrain3DTextureAsset:
 	var asset := Terrain3DTextureAsset.new()

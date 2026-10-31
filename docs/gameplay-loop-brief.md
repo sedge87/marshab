@@ -233,6 +233,22 @@ This replaces the flat cargo top-up that resupplies give today in Survival.
 5. Drive home racing the storm front, topping up at the cache.
 6. Back at base with the storm an hour behind you: the best haul yet.
 
+## 9a. Verticality: trenches, terraces and storeys (design, not built)
+
+Real siting studies want flat, firm ground for landing and the first habitat (our level landing pads). But established base designs use height on purpose, mostly for **radiation shielding** and **steady temperatures**. That gives the game grounded ways to build down and up:
+
+1. **Trenches (cut and cover), first.** Dig a trench, set rooms in it, then bury them:
+   - **digging:** the regolith intake (or a rover blade, later) cuts a trench a room deep; Terrain3D can change the ground while you play, so the trench is real terrain;
+   - **building in it:** rooms sit on the trench floor at a lower level; a ramp or stairs corridor leads down from ground level;
+   - **burying:** backfill over the roof gives strong shielding, which plugs into today's shield points and the Mission 7 shelter rules: a buried storm shelter is the best kind;
+   - **trade-offs:** digging takes time and power, buried rooms get no windows, and trenches can't be dug in bedrock (ice fields and dust only).
+2. **Building against a cliff or crater wall:** the rock blocks half the sky, so rooms beside a cliff get a shielding bonus on that side. The canyon and crater landing zones make this a real choice.
+3. **Split levels (terraces):** each room can sit at its own floor height, joined by stair or ramp corridors, so a base can follow sloping ground. It needs the builder to drop its one-floor-height rule; a big change, after trenches.
+4. **Two-storey modules:** stacked rooms with a ladder or stairwell, like many concept habitats. Later still.
+5. **Lava tubes:** a natural roof of rock, the ultimate shelter; a destination now, a base site later.
+
+**Suggested order:** trenches, then cliff shielding, then split levels, then storeys.
+
 ## 10. To decide
 1. **Suit duration:** about 8 game hours of oxygen (8–9 real minutes by day), or longer or shorter?
 2. **Walking speed:** drop to a suit pace (about 2.5 m/s), or keep today's 5 m/s?
@@ -276,9 +292,11 @@ The first step of §11 is in place on this branch.
   | High | 63 fps | 58 fps |
 
   Loading takes about 3 s longer than a normal site.
+- **Polish (31 Oct, later):**
+  - **ground textures by zone:** a control map paints dust, dark dune sand, frost polygons on the ice fields, mud-cracked clay on the crater floor, gravel on mesa skirts and crater ejecta, and bedrock on slopes and the mound; a colour map adds gentle large-scale tint;
+  - **a terraced mound** with benches and buttes, and the dune field moved clear of the crater rim;
+  - **solid rocks:** the instancer's rocks have no collision of their own, so a pool of colliders follows the player, the crew rover and GAR-Y (`scripts/region_rock_collision.gd`); about 30,000 rocks are big enough to block you;
+  - **the region map** (Tab while exploring a region site, `scripts/region_map.gd`): shaded relief by ground type, named places, landing zones, you, the lander, the base, the rover, GAR-Y and the distance home.
 - **Not done yet:**
-  - the far rocks have no collision (the rover drives through them);
-  - the region textures are generated placeholders;
   - the site screen's backdrop still uses the old sites' camera framing;
-  - there's no map of the region;
   - the landing picker still works within the zone, not across the region.

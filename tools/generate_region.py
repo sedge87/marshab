@@ -10,6 +10,8 @@ Writes assets/terrain/<id>/:
   height.r16.gz   heights, 16-bit unsigned little-endian, rows = +Z, gzip; point (i, j)
                   is at x = -half + i * spacing, z = -half + j * spacing
   region.json     size, spacing, height range, landing zones
+  control.u32.gz  Terrain3D control map: base texture by zone, bedrock on slopes
+  colour.png      Terrain3D colour map (half resolution): large-scale tint
   ground_*.png    Terrain3D textures: albedo + height (alpha), normal + roughness (alpha)
 
 Usage: python tools/generate_region.py [region_id]
@@ -39,6 +41,12 @@ ZONES = {
 }
 CRATER = {"centre": (1100.0, -700.0), "radius": 1100.0, "depth": 95.0, "rim": 62.0}
 MOUND = {"centre": (920.0, -580.0), "radius": 330.0, "height": 135.0}
+DUNES = (-380.0, -1720.0)   # the dune field's centre, clear of the crater rim
+# Named places for the region map (region metres).
+FEATURES = [
+    ("Crater", (1100.0, -1500.0)), ("Layered mound", (920.0, -580.0)), ("Canyon", (0.0, -2600.0)),
+    ("Dune field", (-380.0, -1720.0)), ("Ice fields", (-1500.0, -1100.0)), ("Mesas", (-1400.0, 1700.0)),
+]
 MESAS = [(-760.0, 420.0, 170.0, 48.0), (-2050.0, 1650.0, 240.0, 62.0), (300.0, 1500.0, 140.0, 40.0), (-1950.0, 380.0, 110.0, 34.0), (2100.0, 1700.0, 260.0, 70.0)]
 
 
@@ -121,31 +129,44 @@ def build_heights():
     crater = np.where(d < 1.0, wall, outside)
     calm = 1.0 - 0.75 * (1.0 - smoothstep(0.6, 0.85, d))           # quieter floor
     h = h * calm + crater
+    masks = {"crater_d": d, "canyon_floor": 1.0 - smoothstep(edge - 120.0, edge - 40.0, z)}
 
     # The mound: layered, terraced, like a small Mount Sharp.
-    md = dist(x, z, MOUND["centre"]) / MOUND["radius"]
-    rise = MOUND["height"] * np.clip(1.0 - md, 0.0, 1.0) ** 1.4
+    mangle = np.arctan2(z - MOUND["centre"][1], x - MOUND["centre"][0])
+    lobes = 1.0 + 0.16 * np.sin(mangle * 3.0 + 0.7) + 0.09 * np.sin(mangle * 7.0 + 2.1) + 0.08 * medium
+    md = dist(x, z, MOUND["centre"]) / (MOUND["radius"] * lobes)
+    rise = MOUND["height"] * np.clip(1.0 - md, 0.0, 1.0) ** 1.15 * (1.0 + 0.06 * medium)
+    masks["mound"] = (md < 1.0).astype(float)
     terraces = np.floor(rise / 11.0) * 11.0
-    h += 0.55 * rise + 0.45 * (terraces + 3.0 * smoothstep(0.0, 1.0, (rise % 11.0) / 11.0))
+    h += 0.35 * rise + 0.65 * (terraces + 4.0 * smoothstep(0.55, 1.0, (rise % 11.0) / 11.0))   # benches and steps
 
     # Dunes between the plains and the canyon.
-    dd = dist(x, z, (-150.0, -1350.0))
-    dune_mask = 1.0 - smoothstep(450.0, 800.0, dd)
+    dd = dist(x, z, DUNES)
+    dune_mask = 1.0 - smoothstep(380.0, 680.0, dd)
+    masks["dunes"] = dune_mask
     phase = (x * 0.8 + z * 0.6) / 52.0 + 2.5 * medium
     h += dune_mask * 7.0 * np.abs(np.sin(phase)) ** 1.6
 
     # Ice fields to the north-east: lower, smooth, cracked into polygons.
     idist = dist(x, z, (-1500.0, -1100.0))
     ice_mask = 1.0 - smoothstep(500.0, 900.0, idist)
+    masks["ice"] = ice_mask
     warp = 6.0 * medium
     poly = np.minimum(np.abs(np.sin((x + warp) / 9.0)), np.abs(np.sin((z - warp) / 9.0)))
     h = h * (1.0 - 0.6 * ice_mask)                                    # smoother ground
     h += ice_mask * (-18.0 - 0.45 * (1.0 - smoothstep(0.0, 0.25, poly)))
 
     # Mesas: flat-topped buttes with steep, crumbling sides.
+    skirts = np.zeros_like(h)
     for mx, mz, mr, mh in MESAS:
         md = dist(x, z, (mx, mz)) / (mr * (1.0 + 0.12 * medium))
+        skirts = np.maximum(skirts, np.exp(-((md - 1.25) / 0.3) ** 2))
         h += mh * (1.0 - smoothstep(0.82, 1.08, md)) + mh * 0.25 * np.exp(-((md - 1.1) / 0.18) ** 2)
+
+    masks["skirts"] = skirts
+    masks["noise"] = small
+    masks["large"] = large
+    masks["medium"] = medium
 
     # Hills framing the edge of the region, ragged rather than square.
     ring = np.maximum(np.abs(x), np.abs(z)) + 160.0 * large
@@ -166,7 +187,7 @@ def build_heights():
         blend = smoothstep(r, r * 3.2, zd)
         h = level + (h - level) * blend   # exactly level inside the flat radius
         zone["height"] = level
-    return h
+    return h, masks
 
 
 def save_heights(h):
@@ -182,10 +203,23 @@ def save_heights(h):
     return lo, hi
 
 
-def texture(name, base, dark, seed, ripple, layers, rough):
-    """A seamless 1024 px ground texture for Terrain3D: albedo with height in
-    alpha, and an OpenGL normal map with roughness in alpha."""
-    n = 1024
+# ---------- ground textures ----------
+# Terrain3D texture slots (the control map refers to these numbers).
+DUST, BEDROCK, SAND, FROST, CLAY, GRAVEL = range(6)
+MATERIALS = [
+    # name, base colour, dark colour, roughness, features
+    ("dust", (178, 126, 96), (150, 102, 78), 0.93, {"ripples": (7, 0.05), "pebbles": (500, 2, 5)}),
+    ("bedrock", (156, 112, 88), (118, 84, 68), 0.82, {"strata": (6, 0.2), "cracks": (55, 0.012, 0.35)}),
+    ("sand", (110, 84, 74), (82, 63, 58), 0.9, {"ripples": (13, 0.2)}),
+    ("frost", (226, 210, 200), (190, 164, 150), 0.55, {"cracks": (34, 0.02, 0.5), "crack_colour": (150, 104, 82)}),
+    ("clay", (198, 152, 118), (172, 126, 96), 0.88, {"cracks": (130, 0.007, 0.28)}),
+    ("gravel", (152, 108, 86), (116, 82, 68), 0.9, {"pebbles": (2600, 3, 13)}),
+]
+
+
+def material_texture(name, base, dark, rough, features, seed, n=1024):
+    """A seamless ground texture for Terrain3D: albedo with height in alpha,
+    and an OpenGL normal map with roughness in alpha."""
     rng = np.random.default_rng(seed)
     f = np.fft.fftfreq(n)
     kx, kz = np.meshgrid(f, f)
@@ -200,22 +234,65 @@ def texture(name, base, dark, seed, ripple, layers, rough):
 
     coarse = noise(3.2)
     grain = noise(1.6, 0.08)
-    height = 0.5 + 0.18 * coarse + 0.08 * grain
+    height = 0.5 + 0.12 * coarse + 0.07 * grain
+    tint = np.zeros((n, n))
+    crack = None
     u = np.arange(n) / n
     uu, vv = np.meshgrid(u, u)
-    if ripple:
-        height += 0.12 * np.sin((uu * 2 + vv) * math.tau * 6 + 1.5 * coarse)
-    if layers:
-        height += 0.16 * np.abs(np.sin(vv * math.tau * 5 + 0.8 * coarse)) - 0.1 * (np.abs(noise(2.6)) > 1.6)
+    if "ripples" in features:
+        freq, amount = features["ripples"]
+        wave = np.sin((uu * 2 + vv) * math.tau * freq + 1.4 * coarse)
+        height += amount * np.sign(wave) * np.abs(wave) ** 0.6
+    if "strata" in features:
+        bands, amount = features["strata"]
+        layer = np.sin(vv * math.tau * bands + 0.6 * coarse)
+        height += amount * np.abs(layer)
+        tint += 0.08 * layer
+    if "cracks" in features:
+        # Polygon cracks: the edges of a seamless Voronoi pattern.
+        cells, width, depth = features["cracks"]
+        seeds = rng.random((cells, 2))
+        edge = np.empty((n, n), dtype=np.float32)
+        warp_u = uu + 0.015 * coarse
+        warp_v = vv + 0.015 * coarse
+        for r0 in range(0, n, 64):
+            pu = warp_u[r0:r0 + 64, :, None]; pv = warp_v[r0:r0 + 64, :, None]
+            du = np.abs(pu - seeds[None, None, :, 0]); du = np.minimum(du, 1 - du)
+            dv = np.abs(pv - seeds[None, None, :, 1]); dv = np.minimum(dv, 1 - dv)
+            dd = np.sqrt(du * du + dv * dv).astype(np.float32)
+            part = np.partition(dd, 1, axis=2)
+            edge[r0:r0 + 64] = part[:, :, 1] - part[:, :, 0]
+        crack = 1.0 - smoothstep(0.0, width, edge)
+        height -= depth * crack
+        tint -= 0.25 * crack
+    if "pebbles" in features:
+        count, rmin, rmax = features["pebbles"]
+        for _ in range(count):
+            r = rng.uniform(rmin, rmax)
+            cx, cy = rng.uniform(0, n, 2)
+            lift = rng.uniform(0.15, 0.35)
+            shade = rng.uniform(-0.08, 0.22)
+            reach = int(r) + 2
+            ys = np.arange(int(cy) - reach, int(cy) + reach + 1) % n
+            xs = np.arange(int(cx) - reach, int(cx) + reach + 1) % n
+            gy, gx = np.meshgrid(np.arange(-reach, reach + 1) + (int(cy) - cy), np.arange(-reach, reach + 1) + (int(cx) - cx), indexing="ij")
+            d2 = (gx * gx + gy * gy) / (r * r)
+            bump = np.clip(1.0 - d2, 0.0, 1.0) ** 0.5
+            block = np.ix_(ys, xs)
+            height[block] = np.maximum(height[block], 0.55 + lift * bump * (bump > 0))
+            tint[block] += shade * (bump > 0) * 0.8
     height = np.clip((height - height.min()) / (height.max() - height.min()), 0, 1)
-    shade = 0.82 + 0.3 * (height - 0.5) + 0.05 * grain
+    shade = 0.84 + 0.26 * (height - 0.5) + 0.04 * grain + tint
     base = np.array(base) / 255.0; dark = np.array(dark) / 255.0
     mix = np.clip(0.5 + 0.35 * coarse, 0, 1)[..., None]
     rgb = (base * (1 - mix) + dark * mix) * shade[..., None]
+    if crack is not None and "crack_colour" in features:
+        c = crack[..., None]
+        rgb = rgb * (1 - c) + np.array(features["crack_colour"]) / 255.0 * c
     alb = np.dstack([np.clip(rgb, 0, 1), height])
     Image.fromarray((alb * 255).astype("uint8"), "RGBA").save(os.path.join(OUT, f"ground_{name}_albedo_height.png"))
-    gx = (np.roll(height, -1, 1) - np.roll(height, 1, 1)) * 6.0
-    gz = (np.roll(height, -1, 0) - np.roll(height, 1, 0)) * 6.0
+    gx = (np.roll(height, -1, 1) - np.roll(height, 1, 1)) * 7.0
+    gz = (np.roll(height, -1, 0) - np.roll(height, 1, 0)) * 7.0
     nrm = np.dstack([-gx, gz, np.ones_like(gx)])
     nrm /= np.linalg.norm(nrm, axis=2, keepdims=True)
     rgh = np.clip(rough + 0.05 * grain, 0, 1)
@@ -223,18 +300,80 @@ def texture(name, base, dark, seed, ripple, layers, rough):
     Image.fromarray((img * 255).astype("uint8"), "RGBA").save(os.path.join(OUT, f"ground_{name}_normal_roughness.png"))
 
 
+# ---------- control and colour maps ----------
+
+def write_control(h, masks):
+    """Terrain3D control map: per point a base texture (by zone), bedrock
+    as the overlay, and a blend that follows the slope. Packed as uint32
+    (base << 27 | overlay << 22 | blend << 14), stored raw little-endian."""
+    dither = 0.12 * masks["noise"]
+    base = np.full(h.shape, DUST, dtype=np.uint32)
+    base[masks["skirts"] + dither > 0.45] = GRAVEL
+    ejecta = (masks["crater_d"] > 1.0) & (masks["crater_d"] < 1.45 + dither)
+    base[ejecta] = GRAVEL
+    base[masks["canyon_floor"] + dither > 0.5] = GRAVEL
+    base[(masks["crater_d"] < 0.7 + dither * 0.3) & (masks["mound"] < 0.5)] = CLAY
+    base[masks["dunes"] + dither > 0.5] = SAND
+    base[masks["ice"] + dither > 0.5] = FROST
+    base[masks["mound"] > 0.5] = BEDROCK
+    gz, gx = np.gradient(h, SPACING)
+    slope = np.sqrt(gx * gx + gz * gz)
+    blend = np.clip(smoothstep(0.22, 0.6, slope) * 255.0, 0, 255).astype(np.uint32)
+    masks["_base"] = base.astype(np.int64)
+    blend[base == BEDROCK] = 255
+    blend[(base == SAND) | (base == FROST)] = 0   # dunes and ice stay sand and frost on their slopes
+    control = (base << np.uint32(27)) | (np.uint32(BEDROCK) << np.uint32(22)) | (blend << np.uint32(14))
+    with open(os.path.join(OUT, "control.u32.gz"), "wb") as f:
+        f.write(gzip.compress(control.astype("<u4").tobytes(), compresslevel=9))
+
+
+def write_map(h, masks):
+    """The region map: shaded relief coloured by ground type, 1024 px."""
+    step = N // 1024
+    hs = h[::step, ::step]
+    colours = np.array([(196, 140, 104), (150, 106, 84), (104, 80, 70), (228, 216, 206), (214, 168, 128), (166, 120, 96)], dtype=float) / 255.0
+    control_base = masks["_base"][::step, ::step]
+    rgb = colours[control_base]
+    gz, gx = np.gradient(hs, SPACING * step)
+    shade = np.clip(0.82 - (gx + gz) * 1.4, 0.35, 1.25)[..., None]
+    lift = (0.92 + 0.16 * (hs - hs.min()) / (hs.max() - hs.min()))[..., None]
+    img = np.clip(rgb * shade * lift, 0, 1)
+    Image.fromarray((img * 255).astype("uint8"), "RGB").save(os.path.join(OUT, "map.png"))
+
+
+def write_colour(masks):
+    """Terrain3D colour map at half resolution (the game scales it up):
+    gentle large-scale darkening and hue shifts, like Mars's albedo patches.
+    White is no change; alpha 0.5 leaves roughness alone."""
+    large = masks["large"][::2, ::2]; medium = masks["medium"][::2, ::2]
+    v = np.clip(0.93 + 0.05 * large + 0.025 * medium, 0.8, 1.0)
+    red = np.clip(v * (1.0 + 0.02 * large), 0, 1)
+    green = np.clip(v * (0.98 - 0.015 * medium), 0, 1)
+    blue = np.clip(v * (0.96 - 0.02 * large), 0, 1)
+    dunes = masks["dunes"][::2, ::2]
+    red *= 1.0 - 0.08 * dunes; green *= 1.0 - 0.06 * dunes; blue *= 1.0 - 0.04 * dunes
+    alpha = np.full(red.shape, 0.5)
+    img = np.dstack([red, green, blue, alpha])
+    Image.fromarray((img * 255).astype("uint8"), "RGBA").save(os.path.join(OUT, "colour.png"))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
-    h = build_heights()
+    h, masks = build_heights()
     lo, hi = save_heights(h)
-    texture("dust", (170, 120, 92), (140, 94, 70), SEED + 20, ripple=True, layers=False, rough=0.92)
-    texture("rock", (122, 84, 66), (88, 62, 52), SEED + 21, ripple=False, layers=True, rough=0.8)
+    write_control(h, masks)
+    write_colour(masks)
+    write_map(h, masks)
+    for index, (name, base, dark, rough, features) in enumerate(MATERIALS):
+        material_texture(name, base, dark, rough, dict(features), SEED + 20 + index)
     meta = {
         "id": REGION_ID,
         "size": N, "spacing": SPACING, "half": HALF,
         "height_min": lo, "height_max": hi,
         "zones": {k: {"centre": list(v["centre"]), "flat_radius": v["flat_radius"], "height": v["height"], "label": v["label"]} for k, v in ZONES.items()},
         "crater": CRATER, "mound": MOUND,
+        "textures": [m[0] for m in MATERIALS],
+        "features": [{"name": n, "position": list(p)} for n, p in FEATURES],
     }
     with open(os.path.join(OUT, "region.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
