@@ -1,6 +1,6 @@
 # Samples, the lab, the terminal and the journal (core-loop step 5)
 
-Design, 1 Nov 2026. Builds on `docs/core-loop.md` (rounds 1, 2 and 4) and `docs/start-and-chapter-one.md` (step 4, built). Nothing here is built yet; §11 lists the questions to answer first.
+Design, 1 Nov 2026. Builds on `docs/core-loop.md` (rounds 1, 2 and 4) and `docs/start-and-chapter-one.md` (step 4, built). Nothing here is built yet. §12 has the answers to §11's questions, and they win where the text above disagrees.
 
 ## 1. What this step is for
 
@@ -12,7 +12,7 @@ The loop in one line: **go out → collect a few samples → carry them home →
 
 | Exists | What happens to it |
 |---|---|
-| **Research points:** lab equipment adds a passive "research" rate (`habitat_sim.gd`), shown on Mission Control. | Under chapter rules, **analysing samples replaces it.** Lab equipment sets how fast and how deep the analysis goes. Missions mode keeps research points. |
+| **Research points:** lab equipment adds a passive "research" rate (`habitat_sim.gd`), shown on Mission Control. | Under chapter rules, **analysing samples replaces it.** Lab equipment sets how fast the analysis goes. (Missions mode is being removed, so nothing needs to keep research points.) |
 | **GAR-Y's core order:** GAR-Y drills a core, carries it in, and gives research +20 % for 10 sols. | GAR-Y's core becomes a **sample** like yours, analysed in the lab. The boost goes. |
 | **GAR-Y's rock collection:** named rocks (Gerald the basalt, Blueberry the hematite…), found on its surveys. | Each rock GAR-Y brings in becomes a sample. The names stay as GAR-Y's labels; they're its charm. |
 | **The hand corer** (step 4): cores on surveyed ground, giving depth and purity. | A core can be **kept** as an ice-core sample (in the case) as well as reporting ice. |
@@ -56,7 +56,8 @@ No inventory screen (decided in step 4).
 - **E on the Science Workbench** opens the lab screen: samples in store on the left, the one you pick on the right, with **Analyse**. It runs on the clock and on power, one job at a time per bench.
 - **How long:** regolith 3 h, rock 4 h, ice core 6 h of game time. A Microscope Station in the same room makes rock and regolith 40 % faster. A second workbench runs a second job.
 - **What comes out:** each finished analysis gives its **findings** (the rock type, perchlorate yes/no, the core's age band and so on), written on the sample's record. A finding seen for the first time is a **discovery**.
-- **Before there's a Science Lab:** the Workshop Bench can do a **field test** (half the findings, twice as long). It's enough for chapter one's food step and for "is this ice", but rock types need the lab. This gives the Science Lab a reason to be built, without blocking anyone.
+- **Before there's a Science Lab:** samples wait in the store. Analysis is lab-only (Q3): a workshop bench would contaminate a sample, and analysis uses part of it up. The bench keeps its practical jobs, such as washing soil for the food step. The good core that finds ice is a field result, not a lab analysis, so chapter one never waits on the lab.
+- **Evidence builds to a discovery** (Q3): the first matching result is a **lead** on the terminal ("Possible perchlorate in the soil"). It's **confirmed** after more matching samples from **different spots** (at least 20 m apart): common finds need 3, uncommon 2, rare 1. Each sample is also partly used up by its analysis.
 - **The Sample Storage Cabinet** holds analysed samples (the archive). Its shelves fill visibly, one jar per sample up to its slots: core-loop round 2's "your story on show".
 
 **The discoveries table** (`data/discoveries.json`), about 20 to start, each with its section and what it unlocks:
@@ -100,7 +101,7 @@ Nothing new except: the case's six pips at the visor's bottom edge (outside only
 
 - **Survival and Freedom** (chapter rules): all of this. Freedom analyses twice as fast.
 - **Creative:** no samples; the terminal shows nothing to discover.
-- **Missions:** keeps research points and GAR-Y's core boost (its missions are built on them).
+- **Missions:** being removed (user, 1 Nov), so step 5 doesn't design around it.
 - **Older saves** (`older_rules`): as now. A step-4 save picks this up: chapter one's finished steps are logged as discoveries on load, and the journal starts on the sol you load it.
 
 ## 10. Build plan
@@ -123,3 +124,16 @@ Nothing new except: the case's six pips at the visor's bottom edge (outside only
 6. **Opening the journal:** J anywhere but mid-EVA, plus the notebook on your bunk; or only the notebook? *Recommended: both.*
 7. **The terminal:** a Discoveries tab on Mission Control (M) and the comms station, or a separate terminal you have to walk to? *Recommended: the tab.*
 8. **Sample case size:** six slots, with dropping to free one? *Recommended.*
+
+## 12. Answers (1 Nov 2026)
+
+1. **Sample kinds:** regolith, rock and ice core now; frost and filters in step 6.
+2. **Rocks:** any visible rock.
+3. **The lab:** no science on the workshop bench (it would contaminate the sample and could waste it). Analysis is lab-only. A first result is a lead; a discovery is confirmed by matching results from different spots (common 3, uncommon 2, rare 1). Chapter one's ice and food steps are field results, so they don't need the lab.
+4. **Research points:** replaced by sample analysis.
+5. **Sketches:** a pencil-shader snapshot of the moment.
+6. **Journal:** J anywhere except mid-EVA, plus the notebook on your bunk.
+7. **Terminal:** a Discoveries tab on Mission Control (M) for now. *Follow-up (user):* clean up the M page later, deciding what it really needs to show and what can move into the world to be more immersive.
+8. **Case size:** not asked yet; six slots assumed.
+
+Also noted: **Missions mode will be removed** (it belonged to the old version), so nothing in this step keeps it working.
