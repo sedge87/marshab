@@ -275,6 +275,13 @@ What changed from §3 once it was built:
 - **The ground over a cave.** Terrain3D's ground can't open into a cave without crossing the tunnel somewhere, so the game (`scripts/caves.gd`, `MHCaves`) sinks Terrain3D's ground under the **whole** cave, 3 m below its floor, and lays a copy of it back over the top. The copy is built from Terrain3D's own vertices, read before the sinking, so its edges meet the ground exactly. It's drawn with Terrain3D's own texture arrays, control map and colour map (`shaders/cave_ground.gdshader`) and kept at least 0.9 m over the roof. It reaches two cells past the sunk ground, because Terrain3D shades each point from the heights beside it. Everything has collision (one `ConcavePolygonShape3D`).
 - **The portal is generated, not a Blender model.** It's a rough rock face from the tunnel's arch out to the ground round the mouth and up to the ground over it. Each mouth is a different size and shape, so a fixed model wouldn't fit. There's an apron on the floor in front.
 - **Skylights.** The generator cuts each pit down to just over the roof. The game opens a hole in the pit's floor, cuts the tunnel's roof under it and joins the two with a collar and a flat rim. Light comes in by being outside the cave's darkness (no spotlights yet).
+- **Shape and surface.** No two cross-sections are alike:
+  - **Width and height:** each cave widens into chambers and narrows (±30 %), and its roof rises and falls (±20 %).
+  - **Walls:** they bulge into alcoves and sag at three scales of 3D noise. The small caves pinch in less than they bulge, so they stay walkable.
+  - **Roof:** each kind has its own shape. The tube is flat and slabby, with a bench at the old flow line. The canyon cave has hard beds standing out as ledges. The ice cave has scallops.
+  - **Floor:** swells, rises against the walls, and has breakdown piles along the way, with rubble on them and loose blocks spread about.
+  - **Rock:** `shaders/cave_rock.gdshader` bump-maps it with lumps, pits and cracks, and ropy lava on the tube's floor. It adds dust where the surface faces up, occasional pale mineral crusts, and dirty ice in the ice cave.
+  - **Sunk ground:** it reaches 3.5 m past the walls, so Terrain3D's slope back up never shows through an alcove.
 - **Darkness.** `MHCaves.darkness(position)` rises from 0 at a mouth to 1 about 12 m in, and drops again under a skylight. The environment fades the sky's ambient light to 3 % and the sun to nothing with it. The suit lamp (F) is the light.
 - **Where:**
   - **The lava tube:** 726 m from (-1190, 1280) to (-912, 1948), 18 m wide and 12 m tall, its floor 4 m or more under the land. The ramp pit runs 130 m at about 11° (route-checked from all three zones). There are four skylights.

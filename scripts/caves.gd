@@ -14,11 +14,12 @@ extends Node3D
 ## Everything has collision. Region metres in the file; site metres here.
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
-const FLOOR_POINTS := 10      # across a cross-section's floor
-const ARCH_POINTS := 18       # round its arch
+const FLOOR_POINTS := 16      # across a cross-section's floor
+const ARCH_POINTS := 28       # round its walls and roof
 const SINK := 3.0             # Terrain3D's ground goes this far under a cave's floor
 const LID_GAP := .9           # the ground over a cave stays this far over its roof
-const MARGIN := 1.5           # ground sunk this far past a cave's walls
+const MARGIN := 3.5           # ground sunk this far past a cave's walls (more than a vertex past
+                              # the alcoves, so the ground's slope back up never shows through)
 
 static var _caves: Array = []
 static var _key := ""
@@ -26,6 +27,7 @@ static var _key := ""
 ## The caves of this site, in site metres: each {id, name, kind, points
 ## (x, floor, z), half (half width at each point), height (at each point),
 ## skylights [{centre, radius, mound (centre), mound_radius, mound_height}],
+## piles (breakdown along the floor: {mound, mound_radius, mound_height}),
 ## finds, bounds, length, noise}. Empty off region sites.
 static func caves() -> Array:
 	var zone := MHSiteTerrain.region_zone()
@@ -46,15 +48,16 @@ static func caves() -> Array:
 		var lava := str(data.kind) == "lava_tube"
 		for k in points.size():
 			var ease_in := smoothstep(0.0, 6.0, float(k))   # the mouth keeps its size, for the portal
-			half.append(float(data.half_width) * (1.0 + (.14 if lava else .2) * noise.get_noise_1d(k * 3.0) * ease_in))
-			heights.append(float(data.height) * (1.0 + .1 * noise.get_noise_1d(k * 3.0 + 500.0) * ease_in))
+			# Wider chambers and narrows along the way, the roof rising and falling.
+			half.append(float(data.half_width) * (1.0 + (.3 if lava else .35) * noise.get_noise_1d(k * 2.2) * ease_in))
+			heights.append(float(data.height) * (1.0 + .2 * noise.get_noise_1d(k * 2.2 + 500.0) * ease_in))
 		var bounds := Rect2(Vector2(points[0].x, points[0].z), Vector2.ZERO)
 		for p in points: bounds = bounds.expand(Vector2(p.x, p.z))
 		var cave := {"id": str(data.id), "name": str(data.name), "kind": str(data.kind), "points": points,
 			"half": half, "height": heights, "finds": data.get("finds", []), "noise": noise,
 			"bounds": bounds.grow(float(data.half_width) * 1.4 + MARGIN + 4.0),
 			"length": (points.size() - 1) * Vector2(points[1].x - points[0].x, points[1].z - points[0].z).length() if points.size() > 1 else 0.0,
-			"skylights": []}
+			"skylights": [], "piles": []}
 		for sky in data.get("skylights", []):
 			var centre := Vector2(float(sky.position[0]) - origin.x, float(sky.position[1]) - origin.z)
 			var radius := float(sky.radius)
@@ -64,6 +67,22 @@ static func caves() -> Array:
 			cave.skylights.append({"centre": centre, "radius": radius,
 				"mound": centre + normal * float(sky.rubble_side) * float(data.half_width) * .38,
 				"mound_radius": radius * 1.15, "mound_height": radius * .42})
+		# Breakdown: blocks fallen from the roof here and there, off to one side
+		# (in the tube, leaving the rover a lane).
+		var rng := RandomNumberGenerator.new()
+		rng.seed = int(data.get("seed", 1)) + 7
+		var step := float(cave.length) / maxf(points.size() - 1, 1)
+		var piles: Array = []
+		var along := 22.0 if lava else 9.0
+		while along < float(cave.length) - 6.0:
+			var k := int(along / step)
+			if rng.randf() < .75:
+				var side := 1.0 if rng.randf() < .5 else -1.0
+				var radius := rng.randf_range(2.5, 4.5) if lava else rng.randf_range(1.0, 1.8)
+				piles.append({"mound": Vector2(points[k].x, points[k].z) + _normal(cave, k) * side * half[k] * rng.randf_range(.4, .62),
+					"mound_radius": radius, "mound_height": radius * rng.randf_range(.25, .45)})
+			along += (38.0 if lava else 14.0) * rng.randf_range(.6, 1.4)
+		cave.piles = piles
 		_caves.append(cave)
 	return _caves
 
@@ -142,13 +161,32 @@ static func _floor(cave: Dictionary, p: Vector2, at: Dictionary) -> float:
 	var points: PackedVector3Array = cave.points
 	var k := clampf(float(at.k), 0.0, points.size() - 1.001)
 	var y := lerpf(points[int(k)].y, points[int(k) + 1].y, k - int(k))
-	return y + _mound(cave, p)
+	return y + _relief(cave, p, float(at.lateral) / maxf(float(cave.half[int(k)]), .1))
+
+## The floor's shape over its centreline height at p (side: -1 at the left
+## wall, 1 at the right): broad swells, the floor rising where it meets the
+## walls, and the rubble under the skylights and the breakdown piles.
+static func _relief(cave: Dictionary, p: Vector2, side: float) -> float:
+	var noise: FastNoiseLite = cave.noise
+	var edge := smoothstep(.55, .98, absf(side))
+	var rise := _mound(cave, p)
+	match str(cave.kind):
+		"lava_tube":
+			# The last flow's crust: low swells and a raised lip along each wall.
+			rise += .45 * noise.get_noise_2d(p.x * .7, p.y * .7) + .12 * noise.get_noise_2d(p.x * 3.0, p.y * 3.0) + .8 * edge
+		"cave":
+			# Silt and fallen flakes, banked against the walls.
+			rise += .3 * noise.get_noise_2d(p.x * 1.4, p.y * 1.4) + .1 * noise.get_noise_2d(p.x * 5.0, p.y * 5.0) + .6 * edge
+		_:
+			# Ice: smoother, pooled flat in the hollows.
+			rise += maxf(.25 * noise.get_noise_2d(p.x * 1.2, p.y * 1.2), -.05) + .4 * edge
+	return rise
 
 static func _mound(cave: Dictionary, p: Vector2) -> float:
 	var rise := 0.0
-	for sky in cave.skylights:
-		var d := p.distance_to(sky.mound) / float(sky.mound_radius)
-		if d < 1.0: rise += float(sky.mound_height) * pow(1.0 - d * d, 1.5)
+	for heap in cave.skylights + cave.piles:
+		var d := p.distance_to(heap.mound) / float(heap.mound_radius)
+		if d < 1.0: rise += float(heap.mound_height) * pow(1.0 - d * d, 1.5)
 	return rise
 
 ## The roof's height over a point of the centreline (the ground over a cave
@@ -211,7 +249,13 @@ func _add_mesh(surface: SurfaceTool, material: Material, shadows := true) -> voi
 	add_child(instance)
 
 ## One cross-section of the tunnel at point k: the floor across (left to
-## right), then the arch from the right wall over to the left, roughened.
+## right), then the walls and roof from the right over to the left. Each
+## kind has its own shape (a lava tube's flat roof and steep walls with a
+## bench at the old flow line, the canyon cave's tall fissure with its
+## layers standing out as ledges, the ice cave's scalloped dome), the roof's
+## high point wanders from side to side, and noise at three scales bulges
+## the walls into alcoves, pinches them and hangs slabs from the roof. It
+## stays inside the sunk ground and under the ground laid over the top.
 func _ring(cave: Dictionary, k: int) -> PackedVector3Array:
 	var points: PackedVector3Array = cave.points
 	var centre := points[k]
@@ -219,23 +263,63 @@ func _ring(cave: Dictionary, k: int) -> PackedVector3Array:
 	var half := float(cave.half[k])
 	var tall := float(cave.height[k])
 	var noise: FastNoiseLite = cave.noise
-	var rough := .55 if cave.kind == "lava_tube" else .3
+	var kind := str(cave.kind)
+	var along := float(k) * 2.0
 	var ring := PackedVector3Array()
 	for j in FLOOR_POINTS + 1:
-		var lateral := lerpf(-half, half, float(j) / FLOOR_POINTS) * .97
-		var p := Vector2(centre.x, centre.z) + normal * lateral
-		ring.append(Vector3(p.x, centre.y + _mound(cave, p) + .06 * noise.get_noise_2d(p.x * 4.0, p.y * 4.0), p.y))
+		var side := lerpf(-1.0, 1.0, float(j) / FLOOR_POINTS) * .97
+		var p := Vector2(centre.x, centre.z) + normal * side * half
+		ring.append(Vector3(p.x, centre.y + _relief(cave, p, side), p.y))
+	var roof_shape: float = {"lava_tube": .36, "cave": .55, "ice_cave": .7}.get(kind, .5)
+	var big: float = {"lava_tube": 2.6, "cave": 1.0, "ice_cave": .8}.get(kind, .5)
+	var crown := (.28 if kind == "lava_tube" else .45) * noise.get_noise_1d(along * .5 + 900.0)
+	var ledge_shift := noise.get_noise_1d(along * .3 + 300.0) * 2.0
 	for j in range(1, ARCH_POINTS):
 		var angle := PI * j / ARCH_POINTS
-		var lateral := half * cos(angle)
-		var up := tall * pow(sin(angle), .55)
-		# A lava tube's walls step in at the old flow line: a low bench each side.
-		if cave.kind == "lava_tube" and up < 1.6: lateral *= .9
-		var out := Vector2(lateral, up - tall * .35).normalized()
+		var lateral := half * cos(angle) + crown * half * pow(sin(angle), 2.0)
+		var up := tall * pow(sin(angle), roof_shape)
 		var p := Vector2(centre.x, centre.z) + normal * lateral
-		var bump := rough * noise.get_noise_3d(p.x, centre.y + up, p.y) * smoothstep(0.0, .6, up)
-		ring.append(Vector3(p.x + normal.x * out.x * bump, centre.y + up + out.y * bump, p.y + normal.y * out.x * bump))
+		var y := centre.y + up
+		# Lumps: big (alcoves and pinches), middling, small.
+		var bump := big * noise.get_noise_3d(p.x * .55, y * .55, p.y * .55) + big * .4 * noise.get_noise_3d(p.x * 1.9 + 50.0, y * 1.9, p.y * 1.9) + .15 * noise.get_noise_3d(p.x * 6.0, y * 6.0, p.y * 6.0)
+		match kind:
+			"lava_tube":
+				# A bench at the old flow line, about a metre and a half up.
+				if up > .5 and up < 1.9: bump -= .55 * smoothstep(.5, .8, up) * (1.0 - smoothstep(1.6, 1.9, up))
+				# A roof of slabs: some sag, some have fallen.
+				if sin(angle) > .8: bump += .5 * minf(noise.get_noise_2d(p.x * .9 + 70.0, p.y * .9), 0.0) * 2.0
+			"cave":
+				# The canyon's layers: hard beds stand out, soft ones are scooped back.
+				bump += .35 * smoothstep(-.25, .25, sin(y * 4.4 + ledge_shift + noise.get_noise_2d(p.x * .5, p.y * .5) * 2.0)) - .17
+			"ice_cave":
+				# Scallops melted into the ice.
+				bump -= .3 * absf(noise.get_noise_3d(p.x * 3.5 + 20.0, y * 3.5, p.y * 3.5))
+		bump *= smoothstep(0.0, .5, up)   # the wall meets the floor where the floor is
+		# The small caves pinch less than they bulge: still a passage to walk.
+		if kind != "lava_tube" and bump < 0.0: bump *= .45
+		var out := Vector2(lateral, up - tall * .35).normalized()
+		lateral = clampf(lateral + out.x * bump, -half - 1.3, half + 1.3)
+		up = clampf(up + out.y * bump, .2, tall + LID_GAP - .35)
+		p = Vector2(centre.x, centre.z) + normal * lateral
+		ring.append(Vector3(p.x, centre.y + up, p.y))
 	return ring
+
+## The roof's height over a point beside the centreline at point k, from
+## that cross-section (for the skylights' collars).
+func _roof_at(cave: Dictionary, k: int, lateral: float) -> float:
+	var ring := _ring(cave, k)
+	var points: PackedVector3Array = cave.points
+	var normal := _normal(cave, k)
+	var origin := Vector2(points[k].x, points[k].z)
+	var best := -INF
+	for j in range(FLOOR_POINTS, ring.size()):
+		var a := ring[j]
+		var b := ring[(j + 1) % ring.size()]
+		var la := (Vector2(a.x, a.z) - origin).dot(normal)
+		var lb := (Vector2(b.x, b.z) - origin).dot(normal)
+		if (lateral - la) * (lateral - lb) <= 0.0 and absf(lb - la) > .001:
+			best = maxf(best, lerpf(a.y, b.y, (lateral - la) / (lb - la)))
+	return best if best > -INF else points[k].y + float(cave.height[k]) * .8
 
 func _tunnel(cave: Dictionary) -> SurfaceTool:
 	var points: PackedVector3Array = cave.points
@@ -270,9 +354,7 @@ func _tunnel(cave: Dictionary) -> SurfaceTool:
 			var p: Vector2 = sky.centre + Vector2(cos(angle), sin(angle)) * float(sky.radius)
 			var at := _locate(cave, p)
 			var k := clampi(roundi(float(at.k)), 0, points.size() - 1)
-			var half := float(cave.half[k])
-			var floor_y := _floor(cave, p, at) - _mound(cave, p)
-			var bottom := floor_y + float(cave.height[k]) * pow(sin(acos(clampf(float(at.lateral) / half, -1.0, 1.0))), .55) - .5
+			var bottom := _roof_at(cave, k, float(at.lateral)) - .5
 			# Up to the pit's floor, then a flat rim over the hole's ragged edge.
 			var shelf := maxf(_ground(p), _roof(cave, k)) + .05
 			var rim: Vector2 = sky.centre + Vector2(cos(angle), sin(angle)) * (float(sky.radius) + 3.0)
@@ -426,17 +508,20 @@ func _add_rubble(cave: Dictionary, environment: Node) -> void:
 	var placed: Array = []
 	for i in meshes.size(): placed.append([])
 	var points: PackedVector3Array = cave.points
-	for sky in cave.skylights:
-		for i in 14:
-			var p: Vector2 = sky.mound + Vector2.from_angle(rng.randf() * TAU) * float(sky.mound_radius) * sqrt(rng.randf()) * .9
-			var at := _locate(cave, p)
-			placed[rng.randi() % meshes.size()].append(Transform3D(Basis.from_euler(Vector3(rng.randf_range(-.4, .4), rng.randf() * TAU, rng.randf_range(-.4, .4))).scaled(Vector3.ONE * rng.randf_range(.6, 1.8)), Vector3(p.x, _floor(cave, p, at) - .2, p.y)))
-	for k in range(3, points.size() - 1, 3):
-		if rng.randf() > .55: continue
-		var side := 1.0 if rng.randf() < .5 else -1.0
-		var p := Vector2(points[k].x, points[k].z) + _normal(cave, k) * side * float(cave.half[k]) * rng.randf_range(.72, .9)
-		var size := rng.randf_range(.25, .7) * (1.6 if cave.kind == "lava_tube" else 1.0)
-		placed[rng.randi() % meshes.size()].append(Transform3D(Basis.from_euler(Vector3(rng.randf_range(-.4, .4), rng.randf() * TAU, 0)).scaled(Vector3.ONE * size), Vector3(p.x, points[k].y - .1, p.y)))
+	var scale := 1.0 if cave.kind == "lava_tube" else .55
+	for heap in cave.skylights + cave.piles:
+		for i in roundi(float(heap.mound_radius) * 3.5):
+			var p: Vector2 = heap.mound + Vector2.from_angle(rng.randf() * TAU) * float(heap.mound_radius) * sqrt(rng.randf()) * 1.05
+			var size := rng.randf_range(.4, 1.6) * scale * (1.6 if rng.randf() < .12 else 1.0)
+			placed[rng.randi() % meshes.size()].append(_rock_at(cave, p, size, rng))
+	# Loose blocks over the floor, thicker against the walls.
+	for k in range(1, points.size() - 1):
+		for i in 3:
+			if rng.randf() > .5: continue
+			var side := rng.randf_range(-1.0, 1.0)
+			side = signf(side) * pow(absf(side), .5) * .9
+			var p := Vector2(points[k].x, points[k].z) + _normal(cave, k) * side * float(cave.half[k])
+			placed[rng.randi() % meshes.size()].append(_rock_at(cave, p, rng.randf_range(.12, .45) * scale * (1.0 + absf(side)), rng))
 	var material: Material = environment.call("_rock_material")
 	for i in meshes.size():
 		if (placed[i] as Array).is_empty(): continue
@@ -449,6 +534,10 @@ func _add_rubble(cave: Dictionary, environment: Node) -> void:
 		instance.multimesh = multimesh
 		instance.material_override = material
 		add_child(instance)
+
+func _rock_at(cave: Dictionary, p: Vector2, size: float, rng: RandomNumberGenerator) -> Transform3D:
+	var basis := Basis.from_euler(Vector3(rng.randf_range(-.5, .5), rng.randf() * TAU, rng.randf_range(-.5, .5))).scaled(Vector3(1.0, rng.randf_range(.55, 1.0), 1.0) * size)
+	return Transform3D(basis, Vector3(p.x, _floor(cave, p, _locate(cave, p)) - .2 * size, p.y))
 
 ## Terrain3D's look on a plain mesh: its texture arrays, the region's control
 ## and colour maps (cropped to the caves), the same projection.
