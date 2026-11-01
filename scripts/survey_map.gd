@@ -54,6 +54,10 @@ func _draw_site() -> void:
 		var dot := _world_to_map(Vector2(sample.x, sample.y))
 		var rich := float(sample.z)
 		draw_circle(dot, 3.0 + 5.0 * rich, Color("#3F82B8").lerp(Color("#8FD8FF"), 1.0 - rich) if rich >= ICE_KNOWLEDGE.WORTH_DRILLING else Color(.7, .55, .45, .8))
+	# Your cores (chapter one): a square each, white where it found good ice.
+	for core in MHChapterOne.cores:
+		var at := _world_to_map(Vector2(float(core.x), float(core.z)))
+		draw_rect(Rect2(at - Vector2(4, 4), Vector2(8, 8)), Color.WHITE if bool(core.get("good", false)) else Color(.7, .55, .45, .9), false, 2.0)
 	# Rooms, in their site-plan colours.
 	var builder := get_tree().get_first_node_in_group("habitat_builder") as BuildController
 	if builder != null:

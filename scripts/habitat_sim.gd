@@ -84,6 +84,10 @@ var hull_dust := 0.0
 var research_boost_hours := 0.0
 var _known_capacity := {"kwh": 0.0, "water": 0.0, "o2": 0.0}
 var _food_delivered := false
+## Chapter one (scripts/chapter_one.gd): the landed store tanks, and what the
+## contingency reserve and emergency landers have added to them since.
+var extra_store_l := 0.0
+var extra_store_o2 := 0.0
 
 # ---- latest step (for the HUD, not saved) ----
 var last := {}
@@ -140,7 +144,7 @@ func invalidate() -> void:
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
 		"habitat_temp": habitat_temp, "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
-		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust}
+		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "extra_store_l": extra_store_l, "extra_store_o2": extra_store_o2, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -156,6 +160,7 @@ func load(state: Dictionary) -> void:
 	storm_hours_left = float(state.get("storm_hours_left", 0.0)); storm_eta_hours = float(state.get("storm_eta_hours", -1.0)); hours_run = float(state.get("hours_run", 0.0))
 	_known_capacity = (state.get("known_capacity", _known_capacity) as Dictionary).duplicate()
 	_food_delivered = bool(state.get("food_delivered", false))
+	extra_store_l = float(state.get("extra_store_l", 0.0)); extra_store_o2 = float(state.get("extra_store_o2", 0.0))
 	printed_kg = float(state.get("printed_kg", 0.0))
 	panel_dust = (state.get("panel_dust", {}) as Dictionary).duplicate()
 	hull_dust = float(state.get("hull_dust", 0.0))
@@ -309,6 +314,10 @@ func inventory() -> Dictionary:
 		capacity.kwh += item.stores_kwh; capacity.water += item.stores_water; capacity.o2 += item.stores_o2; capacity.food += item.stores_food
 		capacity.berths += item.berths
 		if item.id == "thermal_control_unit" and item.on: capacity.tcu_kw += item.heat_kw
+	if MHChapterOne.on() and MHChapterOne.stores_landed:
+		# The landed store tanks (and anything the soft net added) hold the stores.
+		var landed := MHChapterOne.stores_for(MHChapterOne.store_sols())
+		capacity.water += float(landed.water_l) + extra_store_l; capacity.o2 += float(landed.o2_kg) + extra_store_o2
 	_inventory = {"shield_upgrades": WALL_UPGRADES.habitat_points(builder) + earth_total, "rooms": rooms, "items": items, "all_items": all_items, "solar": solar, "solar_keys": solar_keys, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
 		"cells": rooms.reduce(func(total, room): return total + int(room.cells), 0),
 		"zones_ref": builder.zones, "zone_count": builder.zones.size(), "items_ref": builder.placed_interior, "item_count": builder.placed_interior.size()}
@@ -346,7 +355,12 @@ func _item_record(id: String, balance: Dictionary, state: Dictionary, room: int)
 	return record
 
 ## New batteries, water tanks and oxygen tanks arrive full from Earth.
+## Under chapter-one rules only the landed stores arrive full: a tank made
+## on Mars starts empty, so the fabricator can't make oxygen out of nothing.
 func _take_delivery(capacity: Dictionary) -> void:
+	if MHChapterOne.on():
+		_take_landed_stores(capacity)
+		return
 	for key in ["kwh", "water", "o2"]:
 		var grown := float(capacity[key]) - float(_known_capacity.get(key, 0.0))
 		if grown > 0.0:
@@ -360,6 +374,18 @@ func _take_delivery(capacity: Dictionary) -> void:
 		# The lander brings food for the crew when they move in.
 		_food_delivered = true
 		food_kg += crew_count_for(capacity) * MHResources.setting("food_per_person", 1.8) * MHResources.setting("start_food_sols", 60.0)
+
+func _take_landed_stores(capacity: Dictionary) -> void:
+	if not MHChapterOne.stores_landed and crew_count_for(capacity) > 0:
+		MHChapterOne.stores_landed = true
+		var landed := MHChapterOne.stores_for(MHChapterOne.store_sols())
+		water_l += float(landed.water_l); o2_reserve_kg += float(landed.o2_kg); food_kg += float(landed.food_kg)
+		_food_delivered = true
+		capacity.water += float(landed.water_l); capacity.o2 += float(landed.o2_kg)
+	var kwh := float(capacity.kwh) - float(_known_capacity.get("kwh", 0.0))
+	if kwh > 0.0: battery_kwh += kwh
+	for key in ["kwh", "water", "o2"]: _known_capacity[key] = float(capacity[key])
+	battery_kwh = minf(battery_kwh, float(capacity.kwh)); water_l = minf(water_l, float(capacity.water)); o2_reserve_kg = minf(o2_reserve_kg, float(capacity.o2))
 
 ## Crew live in the habitat once there are bunks for them (the rest wait on the lander).
 func crew_count_for(capacity: Dictionary) -> int:

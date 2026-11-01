@@ -153,3 +153,25 @@ A save from before step 4 loads **as already supplied:** every plan known, no cr
 6. **The Workshop and the General Module,** with the General Module at 75 %.
 7. **Not the wrist scan:** GAR-Y surveys a zone, and you read the grid and take a core with a hand corer (§6).
 8. **All plans known in Freedom.**
+
+## 11. Built (1 Nov 2026)
+
+- **The rules:** `scripts/chapter_one.gd` (`MHChapterOne`). On for new Survival and Freedom games, off for Creative, Missions and saves from before step 4 (their cards say "older rules").
+- **Crates:** two cargo landers stand beside the crew lander, with seven crates in front of their ramps (`data/precursor_manifest.json`, `scripts/precursor_crate.gd`). E unpacks a crate, I shows its manifest. Equipment and the non-printable site parts (airlock, solar, ice extractor, regolith intake, reactor) come from stock, not cargo: removing one puts it back. The Earth budget is only the shells crate's hull kit (12 t), which printable shells, windows and partitions use after any printed material. The cargo panel reads HULL KIT LEFT, with unpacked items, feedstock and Earth parts underneath.
+- **Plans and the fabricator:** `data/plans.json`, `scripts/fabricator.gd` (a stand-in model in house roles until the HQ model is made) and `scripts/fabricator_screen.gd`. The build bars show NO PLAN or FABRICATE, with how to get it as the tooltip; the furnishing bar has an Unpacked tab.
+- **Stores:** 90 sols (Survival) or 150 (Freedom) for two crew, in landed store tanks (balance sheet: `chapter_store_*`). Tanks made on Mars start empty. The systems panel shows sols left. Mission Control mentions them at half and a quarter; the soft net is the 10-sol reserve, then emergency landers (30 sols, 3 sols away).
+- **Ice:** GAR-Y's order is now "Survey zone". Under these rules it takes noisy readings in a 3 by 3 grid and plants no flags, and two false zones join the orbital ones. The hand corer (`scripts/hand_corer.gd`): hold E outside, away from the base. Cores show on the survey map.
+- **Steps:** a good core gives ice (and the crew rover's lander); 12 h of extractor water gives the Water Reclaimer plan; water self-sufficient gives the oxygen plan; 24 h of a regolith intake with water gives the food plans; all four end chapter one with Mission Control's report.
+- **Tutorial:** under these rules it adds Unpack the crates, Place the fabricator and Start a fabricator job, and leaves out the drill, Life Support and air steps.
+- **Tests:** `tests/start_and_chapter_one_test.gd`; `tests/tutorial_test.gd` follows the new steps.
+- **Still to do:** the HQ Blender models (the fabricator, the hand corer, crates in three sizes; the crates use the old cargo crate model scaled for now); Mission Control voice lines (the news is shown as notices for now).
+
+## 12. Decided after the build (1 Nov 2026)
+
+- **The food step is hands-on** (replacing "a regolith intake runs for a day"): scoop regolith into a sample bag outside (hold E, a bag from the tool bench), carry it in, wash it at the Workshop Bench (E, about 20 L of water), then test-grow it in a pot in the General Module. A seedling after a sol is the discovery, and it gives the food plans. *Built 1 Nov, simplified:* any core taken after the oxygen step bags its top layer (no separate bag); E at the Workshop Bench washes it (20 L), then E again plants the test seed there; the seedling comes up after 24 h.
+- **No inventory screen** (docs/moment-to-moment-gameplay.md: no new screens if a diegetic one will do). Proposed for step 5, samples and the lab:
+  - your hands carry one thing (the carry system);
+  - a **sample case** with six slots, carried out on EVA. Look down at it to see which slots are full; I gives a short card ("3 regolith, 1 ice core, 2 empty"). A full case means a trip home, so carrying is limited without extra rules;
+  - GAR-Y's core shows as a tube in its rack; the crew rover gets a sample drawer with visible slots;
+  - back at base, the lab bench (or the terminal until there's a lab) and the journal keep the record;
+  - the suit rack shows the EVA kit hanging on it (corer, bags, case): you take what you need before going out.

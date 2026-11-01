@@ -22,6 +22,13 @@ const DAY_NIGHT_SCRIPT := preload("res://scripts/site_day_night.gd")
 const DEBUG_PANEL_SCRIPT := preload("res://scripts/debug_panel.gd")
 const CREW_LANDER_SCRIPT := preload("res://scripts/crew_lander.gd")
 const CARGO_LANDER_SCRIPT := preload("res://scripts/cargo_lander.gd")
+## Chapter one (scripts/chapter_one.gd): the crates, the hand corer and the fabricator's screen.
+const PRECURSOR_CRATE := preload("res://scripts/precursor_crate.gd")
+const HAND_CORER := preload("res://scripts/hand_corer.gd")
+const FABRICATOR_SCREEN := preload("res://scripts/fabricator_screen.gd")
+var hand_corer: Node
+var _chapter_check := 0.0
+var _chapter_hours := -1.0
 const LANDING_PICKER_SCRIPT := preload("res://scripts/landing_picker.gd")
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
@@ -159,6 +166,7 @@ func _ready() -> void:
 	add_child(day_night)
 	day_night.setup(environment, builder)
 	_restore_pending_habitat()
+	_land_precursor_cargo()
 	_sync_crew_rover()
 	if MHMissions.active(): MHMissions.deliver_mission_food(builder.simulation())
 	configure_life()
@@ -195,6 +203,9 @@ func _ready() -> void:
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)
 	_begin_lander_intro()
+	if MHChapterOne.on():
+		hand_corer = HAND_CORER.new().setup(self)
+		add_child(hand_corer)
 	if MHMissions.active() and not MHGame.showcase:
 		if str(MHMissions.current().get("player", "crew")) == "robot": explore_hud.chip_prefix = "ROBOT · "
 		mission_hud = MISSION_HUD_SCRIPT.new()
@@ -279,6 +290,10 @@ func _process(delta: float) -> void:
 	if _resupply_check <= 0.0:
 		_resupply_check = 1.0
 		_check_resupply()
+	_chapter_check -= delta
+	if _chapter_check <= 0.0:
+		_chapter_check = .5
+		_tick_chapter_one()
 	if _arrival_t >= 0.0: _update_arrival(delta)
 	if MHMissions.active():
 		if builder.build_mode: mission_flags.opened_plan = true
@@ -793,6 +808,7 @@ func _sync_crew_rover() -> void:
 	for zone in builder.zones:
 		if str(zone.get("kind", "")) == "vehicle_bay": bay = zone
 	if bay.is_empty() and _crew_rover_state.is_empty(): return
+	if _crew_rover_state.is_empty() and not MHChapterOne.rover_landed(): return   # chapter one: it comes with a later lander
 	crew_rover = CREW_ROVER_SCRIPT.new()
 	crew_rover.setup(builder)
 	add_child(crew_rover)
@@ -806,6 +822,57 @@ func _sync_crew_rover() -> void:
 	var outside: Vector2i = bay.get("door_direction", Vector2i(0, -1))
 	crew_rover.global_position = Vector3(centre.x, builder.habitat_base_y + 0.05, centre.y)
 	crew_rover.rotation.y = builder._direction_yaw(outside)
+
+# ---------- chapter one (docs/start-and-chapter-one.md) ----------
+
+## Two cargo landers beside the crew lander, with the crates not yet unpacked
+## in front of their ramps.
+func _land_precursor_cargo() -> void:
+	if not MHChapterOne.on() or MHMissions.active(): return
+	if MHChapterOne.lander_spots.is_empty():
+		var centre := Vector2(lander.global_position.x, lander.global_position.z)
+		var basis := Basis(Vector3.UP, lander.rotation.y)
+		for offset in [Vector3(-16, 0, 9), Vector3(16, 0, 9)]:
+			var at: Vector3 = lander.global_position + basis * offset
+			var spot := CARGO_LANDER_SCRIPT.spot_at(Vector2(at.x, at.z), centre)
+			MHChapterOne.lander_spots.append({"position": spot.position, "yaw": float(spot.yaw)})
+	for index in MHChapterOne.lander_spots.size():
+		var saved: Dictionary = MHChapterOne.lander_spots[index]
+		var cargo := _add_cargo_lander(index + 1)
+		cargo.global_position = saved.position as Vector3
+		cargo.rotation.y = float(saved.yaw)
+		cargo.set_ramp(true)
+		var row: Array = MHChapterOne.crates().filter(func(c): return int(c.get("lander", 1)) == index + 1)
+		for slot in row.size():
+			if MHChapterOne.unpacked.has(str(row[slot].id)): continue
+			var crate: Node3D = PRECURSOR_CRATE.new().setup(str(row[slot].id))
+			add_child(crate)
+			var local := Vector3((slot - (row.size() - 1) * .5) * 3.0, 0, -8.5)
+			var at: Vector3 = cargo.to_global(local)
+			at.y = MHSiteTerrain.height(at.x, at.z)
+			crate.global_position = at
+			crate.rotation.y = cargo.rotation.y
+
+## Chapter one's clock: the fabricator, recycling, plans, the steps and the stores.
+func _tick_chapter_one() -> void:
+	if not MHChapterOne.on() or builder == null or get_tree().paused: return
+	var now := float(builder.simulation().hours_run)
+	if _chapter_hours < 0.0: _chapter_hours = now
+	var hours := now - _chapter_hours
+	_chapter_hours = now
+	var messages := MHChapterOne.tick(hours, builder)
+	if not builder.is_inside(player.global_position) and not bool(lander.cabin_contains(player.global_position)):
+		for learned in MHChapterOne.learn_after("first_walk"): messages.append(MHChapterOne._plan_message(learned))
+	show_chapter_messages(messages)
+
+## Toasts (and a Mission Control radio line) for chapter-one news.
+func show_chapter_messages(messages: Array) -> void:
+	for message in messages:
+		builder._flash_notice(str(message.get("tone", "info")), str(message.title), str(message.text))
+	if not messages.is_empty(): builder._update_budget()
+
+func open_fabricator() -> void:
+	_open_live_view(FABRICATOR_SCREEN.new().setup(self))
 
 func _build_hud() -> void:
 	explore_hud = MHExploreHUD.new()
@@ -1022,6 +1089,7 @@ func current_state() -> Dictionary:
 		"player_position": player.global_position,
 		"player_rotation_y": player.rotation.y,
 		"day_night": day_night.export_state() if day_night != null else {},
+		"chapter_one": MHChapterOne.export_state(),
 		"resupply": {"kg": MHGame.resupply_kg, "count": MHGame.resupply_count, "landers": resupply_landers.duplicate(true)},
 		"mission_control": earth_link.export_state() if earth_link != null else {},
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
@@ -1084,6 +1152,7 @@ func _restore_pending_habitat() -> void:
 		resupply_landers.append(saved)
 	var state := MHGame.pending_save_state
 	MHGame.pending_save_state = {}
+	MHChapterOne.load_state(state.get("chapter_one", {}) as Dictionary, state.has("chapter_one"))
 	# Older saves have no tutorial: first-time hints as before.
 	_tutorial_state = state.get("tutorial", {"mode": "hints"}) as Dictionary
 	MHGame.tutorial_mode = str(_tutorial_state.get("mode", "hints"))

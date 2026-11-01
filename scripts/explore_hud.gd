@@ -285,7 +285,15 @@ func _update_systems_panel() -> void:
 	var co2 := float(sim.co2_pct)
 	var o2 := float(sim.o2_pct)
 	var air_tone := MHStyle.DANGER if co2 > 1.0 or o2 < 19.5 else (MHStyle.WARN if co2 > .5 or o2 < 20.0 else MHStyle.VALID)
-	_set_system_row("air", "O₂ %.1f%% · CO₂ %.2f%%" % [o2, co2], clampf(1.0 - co2 / 1.0, 0.0, 1.0), air_tone)
+	var air_text := "O₂ %.1f%% · CO₂ %.2f%%" % [o2, co2]
+	# Chapter one: the landed stores as sols left, first.
+	if MHChapterOne.on():
+		var left := MHChapterOne.sols_left(sim)
+		water_text = "%s left · %d L" % [MHChapterOne.sols_text(float(left.water)), roundi(sim.water_l)]
+		_set_system_row("water", water_text, float(sim.water_l) / maxf(1.0, water_cap), MHStyle.VALID if float(left.water) < 0.0 or float(left.water) > 20.0 else (MHStyle.WARN if float(left.water) > 5.0 else MHStyle.DANGER))
+		_set_system_row("food", "%s left · %d kg" % [MHChapterOne.sols_text(float(left.food)), roundi(sim.food_kg)], minf(1.0, food_sols / 60.0), MHStyle.VALID if food_sols > 20.0 else (MHStyle.WARN if food_sols > 5.0 else MHStyle.DANGER))
+		air_text = "O₂ stores %s left · CO₂ %.2f%%" % [MHChapterOne.sols_text(float(left.oxygen)), co2]
+	_set_system_row("air", air_text, clampf(1.0 - co2 / 1.0, 0.0, 1.0), air_tone)
 	var health := float(sim.crew_health)
 	# Why it's changing: what's harming the crew (CO2, oxygen, cold, water,
 	# food), or that it's recovering because everything is safe again.
@@ -456,6 +464,9 @@ func _update_prompt() -> void:
 	if show:
 		if target.has_method("interaction_prompt"):
 			var prompt: Dictionary = target.call("interaction_prompt")
+			for claimer in get_tree().get_nodes_in_group("interaction_claims"):
+				var claimed: String = claimer.call("claim_label", target)
+				if not claimed.is_empty(): prompt = prompt.duplicate(); prompt["primary"] = claimed
 			var actions: Array[String] = []
 			for action in [["E", "primary"], ["F", "secondary"], ["G", "tertiary"], ["Z", "sleep"], ["I", "info"]]:
 				var action_name := str(prompt.get(str(action[1]), ""))
@@ -470,6 +481,14 @@ func _update_prompt() -> void:
 			_prompt_keys.text = "E"
 			_prompt_verb.text = str(target.call("prompt_verb"))
 			_prompt_state.text = "· " + str(target.call("state_text"))
+	# Chapter one: outside with the hand corer and nothing in view.
+	if not show:
+		var corer := get_tree().get_first_node_in_group("hand_corer")
+		if corer != null and not str(corer.call("prompt")).is_empty():
+			show = true
+			_prompt_keys.text = "E"
+			_prompt_verb.text = "Hold to take a core"
+			_prompt_state.text = ""
 	# 120 ms fade
 	_prompt.modulate.a = move_toward(_prompt.modulate.a, 1.0 if show else 0.0, get_process_delta_time() / 0.12)
 

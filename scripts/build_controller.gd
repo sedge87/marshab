@@ -21,6 +21,7 @@ const PARTITION_STEP := 1.5
 const PARTITION_THICKNESS := .1
 var partitions: Array = []
 var mars_made_label: Label   # [{"a": Vector2, "b": Vector2, "door": bool}]
+var chapter_label: Label   # chapter one: unpacked items, feedstock and Earth parts
 const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
 ## Site-plan parts that have a real model (for thumbnails and the 3D preview).
 const PART_MODELS := {"reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake"}
@@ -717,6 +718,7 @@ func reassign_reason(zone: Dictionary) -> String:
 	if str(ZONE_INFO.get(str(zone.kind), {}).get("cat", "")) != "rooms" or str(zone.kind) == "vehicle_bay": return "Only rooms can be reassigned"
 	if str(zone.kind) == kind: return "It's already %s" % str(ZONE_TYPES[kind].label)
 	if not MHMissions.zone_unlocked(kind): return "Not delivered yet: this arrives in a later mission"
+	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
 	if _used_cargo() - int(zone.cost) + _reassigned_cost(zone, kind) > MHGame.cargo_budget(): return "Not enough cargo left"
 	return ""
 
@@ -1274,6 +1276,8 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 	if entry.is_empty(): return "Unknown interior item"
 	if bool(entry.get("retired", false)): return str(entry.get("retired_note", "No longer made"))
 	if not MHMissions.item_unlocked(id): return "Not delivered yet: this arrives in a later mission"
+	var stock_reason := MHChapterOne.item_reason(id, self)
+	if not stock_reason.is_empty(): return stock_reason
 	var sample := world_position + Vector3.UP * .35
 	if not is_inside(sample): return "Must be placed inside a completed habitat room"
 	var zone := _zone_at_point(Vector2(world_position.x, world_position.z))
@@ -1573,6 +1577,8 @@ func equipment_invalid_reason(id: String, cell: Vector2i) -> String:
 	var valid_zones: Array = entry.get("valid_zones", [])
 	if not valid_zones.has(str(zone.kind)): return "Fits in %s" % _zone_list_text(valid_zones)
 	if not equipment_at(cell).is_empty(): return "This cell is already furnished"
+	var stock_reason := MHChapterOne.item_reason(id, self)
+	if not stock_reason.is_empty(): return stock_reason
 	if _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	return ""
 
@@ -2104,6 +2110,7 @@ func _invalid_reason(cells: Array) -> String:
 		var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
 		if not site_reason.is_empty(): return site_reason
 	if not MHMissions.zone_unlocked(kind): return "Not delivered yet: this arrives in a later mission"
+	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
 	if kind=="reactor" and MHMissions.active():
 		var allowed:=int(MHMissions.current().get("max_reactors",99))
 		if zones.filter(func(z): return str(z.kind)=="reactor").size()>=allowed: return "This landing brought only %d reactor%s" % [allowed,"" if allowed==1 else "s"]
@@ -3975,6 +3982,7 @@ func _free_site_reason(target: Dictionary) -> String:
 	var radius := float(FREE_SITE_KINDS[kind])
 	var cell := Vector2i(roundi(at.x / CELL), roundi(at.y / CELL))
 	if not MHMissions.zone_unlocked(kind): return "Not delivered yet: this arrives in a later mission"
+	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
 	if kind=="reactor" and MHMissions.active():
 		var allowed:=int(MHMissions.current().get("max_reactors",99))
 		if zones.filter(func(z): return str(z.kind)=="reactor").size()>=allowed: return "This landing brought only %d reactor%s" % [allowed,"" if allowed==1 else "s"]
@@ -5383,6 +5391,7 @@ func mars_made_left() -> int: return mars_made_total() - mars_made_used()
 
 ## How much Earth cargo a new thing costing `cost` would take.
 func earth_cost(cost: int, printable: bool) -> int:
+	if not printable and MHChapterOne.on(): return 0   # stock, not cargo (scripts/chapter_one.gd)
 	return maxi(0, cost - mars_made_left()) if printable else cost
 
 func zone_printable(zone_kind: String) -> bool: return not zone_kind in PRINTABLE_ZONE_EXCLUDES
@@ -5390,11 +5399,14 @@ func item_printable(id: String) -> bool: return bool(EquipmentCatalog.get_entry(
 
 func _total_cargo() -> int:
 	var total:=0
-	for zone in zones: total+=int(zone.cost)
+	# Chapter one: equipment and site parts come from stock, not Earth cargo.
+	var stock_rules := MHChapterOne.on()
+	for zone in zones:
+		if not (stock_rules and not zone_printable(str(zone.kind))): total+=int(zone.cost)
 	for item in placed_equipment:
-		total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
+		if not (stock_rules and not item_printable(str(item.get("id", "")))): total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
 	for item in placed_interior:
-		total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
+		if not (stock_rules and not item_printable(str(item.get("id", "")))): total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
 	total += hull_windows.size() * window_cargo()
 	total += partitions.size() * partition_cargo()
 	total += WALL_UPGRADES.cargo(self)
@@ -5421,8 +5433,14 @@ func _update_budget() -> void:
 		cargo_meter.tone="info"
 		return
 	var remaining:=MHGame.cargo_budget()-_used_cargo()
-	cargo_meter.max_value=MHGame.cargo_budget()
+	cargo_meter.max_value=maxi(1, MHGame.cargo_budget())
 	cargo_meter.value_label=""
+	cargo_meter.label_text="HULL KIT LEFT" if MHChapterOne.on() else "CARGO REMAINING"
+	if chapter_label != null:
+		chapter_label.visible = MHChapterOne.on()
+		if chapter_label.visible:
+			var ready: int = MHChapterOne.ready_to_place(self).values().reduce(func(a, b): return a + b, 0)
+			chapter_label.text = "UNPACKED %d · FEEDSTOCK %s · EARTH PARTS %d" % [ready, MHStyle.kg(roundi(MHChapterOne.feedstock_kg)), MHChapterOne.earth_parts]
 	cargo_meter.value=remaining
 	cargo_meter.tone="accent" if remaining>MHGame.cargo_budget()*.1 else "warn"
 	if mars_made_label != null:
@@ -6152,6 +6170,7 @@ func _ui() -> void:
 	var cargo_box:=MHStyle.vbox(12); cargo_panel.add_child(cargo_box)
 	cargo_meter=MHWidgets.Meter.new().setup("Cargo remaining",MHGame.mission_cargo_budget(),MHGame.mission_cargo_budget(),"kg","accent",true); cargo_box.add_child(cargo_meter)
 	mars_made_label=MHStyle.mono("",13,Color("#E0A070"),600); mars_made_label.visible=false; cargo_box.add_child(mars_made_label)
+	chapter_label=MHStyle.mono("",13,MHStyle.TEXT_SECONDARY,600); chapter_label.visible=false; chapter_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; cargo_box.add_child(chapter_label)
 	var placing_row:=MHStyle.hbox(8); cargo_box.add_child(placing_row)
 	placing_label=MHStyle.mono("",14,MHStyle.TEXT_MUTED); placing_label.size_flags_horizontal=Control.SIZE_EXPAND_FILL; placing_label.clip_text=true; placing_row.add_child(placing_label)
 	placing_delta=MHStyle.mono("",14,MHStyle.accent,600); placing_row.add_child(placing_delta)
@@ -6275,7 +6294,7 @@ func _refresh_catalogue() -> void:
 			if str(ZONE_INFO[id].cat)!=category: continue
 			if not MHMissions.zone_unlocked(id): continue   # Missions: only this payload's parts
 			shown+=1
-			var card:=_part_card(id,id==kind and equipment_id.is_empty(),remaining<cell_cost(id))
+			var card:=_part_card(id,id==kind and equipment_id.is_empty(),remaining<earth_cost(cell_cost(id),zone_printable(id)))
 			card.set_meta("pick_index",shown)
 			(card.get_meta("number_label") as Label).text="%d  ·  %s" % [shown,str((card.get_meta("number_label") as Label).text)]
 			catalogue_grid.add_child(card)
@@ -6367,6 +6386,12 @@ func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
 	column.add_child(_part_picture(id))
 	var name_label:=MHStyle.label(str(ZONE_TYPES[id].label),14,MHStyle.TEXT_PRIMARY,600); name_label.clip_text=true; name_label.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS; column.add_child(name_label)
 	var mass:=MHStyle.mono("No cargo" if id=="trench" else ("%s / cell" % MHStyle.kg(cell_cost(id))) if str(ZONE_INFO[id].cat)!="power" and (not id in SITE_UPGRADES or id=="shield_roof") else MHStyle.kg(cell_cost(id)),11,MHStyle.DANGER if unaffordable else MHStyle.TEXT_MUTED); column.add_child(mass)
+	# Chapter one: site parts from stock show how many are ready, or what they need.
+	if MHChapterOne.ZONE_STOCK.has(id) and MHChapterOne.on():
+		mass.text = MHChapterOne.card_line(str(MHChapterOne.ZONE_STOCK[id]), self)
+		if not MHChapterOne.zone_reason(id, self).is_empty():
+			card.tooltip_text = MHChapterOne.zone_reason(id, self)
+			mass.add_theme_color_override("font_color", MHStyle.TEXT_MUTED)
 	card.set_meta("number_label",mass)
 	add_mission_badge(card,MHMissions.zone_badge(id),selected)
 	return card

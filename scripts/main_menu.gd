@@ -298,7 +298,7 @@ func _title_screen() -> void:
 	head.add_child(MHStyle.eyebrow("Build it · Live in it · Survive Mars", MHStyle.accent, 18))
 	var mark := MHStyle.wordmark(136)
 	head.add_child(mark)
-	var pitch := MHStyle.body("Design a home for a crew of %s on %s of cargo. Then walk through it." % [MHStyle.count_word(BuildController.CREW_TARGET), MHStyle.kg(MHGame.mission_cargo_budget())], 26)
+	var pitch := MHStyle.body("Land with the crates sent ahead. Build a home for a crew of %s, live in it, and make it last." % MHStyle.count_word(BuildController.CREW_TARGET), 26)
 	pitch.custom_minimum_size.x = 600
 	pitch.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	head.add_child(pitch)
@@ -795,6 +795,20 @@ func _colony_screen() -> void:
 	_place(MHStyle.display("Name your colony", 64), Vector2(120, 120))
 	var form := MHStyle.vbox(28)
 	_place(form, Vector2(120, 240), 640)
+	# The right column: the live plaque, then the emblem, accent and statement.
+	var side := MHStyle.vbox(28)
+	side.anchor_left = 1
+	side.anchor_right = 1
+	side.offset_left = -580
+	side.offset_right = -120
+	side.offset_top = 140
+	screen.add_child(side)
+	_plaque_slot = MHStyle.vbox(0)
+	side.add_child(_plaque_slot)
+	var picks_panel := MHStyle.hud_panel(24, false, true)
+	var picks := MHStyle.vbox(22)
+	picks_panel.add_child(picks)
+	side.add_child(picks_panel)
 	# Colony name
 	var name_box := MHStyle.vbox(8)
 	name_box.add_child(MHStyle.eyebrow("Colony name"))
@@ -845,6 +859,7 @@ func _colony_screen() -> void:
 			show_screen("colony"))
 		mode_box.add_child(modes)
 	var cargo_note := " Land with %s of cargo." % MHStyle.kg(MHGame.mission_cargo_budget()) if not MHGame.cargo_unlimited() else ""
+	if _crates_mode(): cargo_note = " Land with %d crates of precursor cargo and stores for %d sols." % [MHChapterOne.crates().size(), roundi(MHChapterOne.store_sols())]
 	var mode_note := "Set up your base step by step, the way NASA would: choose landing zones, send the cargo first, test everything, then land the crew." if MHGame.game_mode == "missions" else str(MHGame.GAME_MODE_NOTES.get(MHGame.game_mode, "")) + cargo_note
 	mode_box.add_child(MHStyle.body(mode_note, 14, MHStyle.TEXT_MUTED))
 	form.add_child(mode_box)
@@ -892,10 +907,10 @@ func _colony_screen() -> void:
 	emblems.add_theme_constant_override("h_separation", 12)
 	for emblem in MHGame.EMBLEMS:
 		var tile := Button.new()
-		tile.custom_minimum_size = Vector2(96, 92)
-		tile.icon = MHIcons.texture(emblem, 40)
+		tile.custom_minimum_size = Vector2(64, 64)
+		tile.icon = MHIcons.texture(emblem, 32)
 		tile.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		tile.add_theme_constant_override("icon_max_width", 40)
+		tile.add_theme_constant_override("icon_max_width", 32)
 		tile.focus_mode = Control.FOCUS_NONE
 		tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		tile.tooltip_text = str(emblem).capitalize()
@@ -906,7 +921,7 @@ func _colony_screen() -> void:
 		tile.pressed.connect(func() -> void: MHGame.emblem = emblem; show_screen("colony"))
 		emblems.add_child(tile)
 	emblem_box.add_child(emblems)
-	form.add_child(emblem_box)
+	picks.add_child(emblem_box)
 	# Accent
 	var accent_box := MHStyle.vbox(12)
 	var accent_head := MHStyle.hbox(12)
@@ -933,7 +948,7 @@ func _colony_screen() -> void:
 			show_screen("colony"))
 		swatches.add_child(swatch)
 	accent_box.add_child(swatches)
-	form.add_child(accent_box)
+	picks.add_child(accent_box)
 	# Mission statement
 	var statement_box := MHStyle.vbox(8)
 	statement_box.add_child(MHStyle.eyebrow("Mission statement (optional)"))
@@ -941,7 +956,7 @@ func _colony_screen() -> void:
 	_statement_field.text = MHGame.mission_statement
 	_statement_field.placeholder_text = "Two modules, one airlock, and enough sunlight for everyone."
 	_statement_field.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	_statement_field.custom_minimum_size.y = 112
+	_statement_field.custom_minimum_size.y = 88
 	_statement_field.add_theme_font_size_override("font_size", 19)
 	statement_box.add_child(_statement_field)
 	var statement_counter := MHStyle.mono("%d / 140" % _statement_field.text.length(), 13, MHStyle.TEXT_MUTED)
@@ -954,15 +969,7 @@ func _colony_screen() -> void:
 		MHGame.mission_statement = _statement_field.text
 		statement_counter.text = "%d / 140" % _statement_field.text.length()
 		_refresh_plaque())
-	form.add_child(statement_box)
-	# Live plaque
-	_plaque_slot = MHStyle.vbox(0)
-	_plaque_slot.anchor_left = 1
-	_plaque_slot.anchor_right = 1
-	_plaque_slot.offset_left = -540
-	_plaque_slot.offset_right = -120
-	_plaque_slot.offset_top = 140
-	screen.add_child(_plaque_slot)
+	picks.add_child(statement_box)
 	var bar := _bottom_bar()
 	bar.alignment = BoxContainer.ALIGNMENT_END
 	var back := MHStyle.button("Back", "ghost", "chevron-left")
@@ -976,6 +983,10 @@ func _colony_screen() -> void:
 	_refresh_plaque()
 	_name_field.grab_focus.call_deferred()
 	_name_field.caret_column = _name_field.text.length()
+
+## A new Survival or Freedom game lands precursor crates (chapter one).
+func _crates_mode() -> bool:
+	return MHGame.game_mode in ["survival", "freedom"]
 
 func _refresh_plaque() -> void:
 	if _land_button != null: _land_button.disabled = MHGame.colony_name.length() < 2
@@ -1048,6 +1059,7 @@ func _landing_screen() -> void:
 	land.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	land.pressed.connect(func() -> void:
 		MHGame.landing_target = picker.target
+		MHChapterOne.reset()   # a new free-play game starts with the crates packed (chapter one)
 		show_screen("loading"))
 	bar.add_child(land)
 	var show_verdict := func(_target: Vector2, verdict: Dictionary) -> void:
@@ -1178,6 +1190,7 @@ func _loading_screen() -> void:
 	title.add_child(MHStyle.eyebrow("Touchdown · " + MHGame.site_name(), MHStyle.accent, 18))
 	title.add_child(MHStyle.display(MHGame.colony_name, 104))
 	var cargo_line := "%s cargo delivered" % MHStyle.kg(MHGame.mission_cargo_budget()) if not MHGame.cargo_unlimited() else "Creative · unlimited cargo"
+	if _crates_mode(): cargo_line = "%d crates of precursor cargo" % MHChapterOne.crates().size()
 	title.add_child(MHStyle.mono("Crew of %d · %s" % [BuildController.CREW_TARGET, cargo_line], 18, MHStyle.TEXT_SECONDARY))
 	var lower := MHStyle.hbox(80)
 	lower.anchor_top = 1

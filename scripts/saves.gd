@@ -86,6 +86,8 @@ static func make_header(name: String, state: Dictionary, id: String, extra := {}
 		"colony_name": str(state.get("colony_name", "Habitat")), "emblem": str(state.get("emblem", "")),
 		"statement": str(state.get("mission_statement", "")),
 		"builder": str(made_by.get("name", "")),
+		# Survival or Freedom from before chapter one (docs/start-and-chapter-one.md §8).
+		"older_rules": str(state.get("game_mode", "")) in ["survival", "freedom"] and bool((state.get("chapter_one", {"older_rules": true}) as Dictionary).get("older_rules", false)),
 		"site_id": str(state.get("site_id", "")), "site_name": str(state.get("site_name", "Mars")),
 		"game_mode": str(state.get("game_mode", "survival")), "rooms": rooms,
 		"challenge": MHGame.challenge_from_state(state),
@@ -198,6 +200,7 @@ static func mode_label(header: Dictionary) -> String:
 	if header.get("challenge", null) is Dictionary:
 		var options := MHGame.challenge_summary(header.challenge as Dictionary, mode)
 		if not options.is_empty(): label += " · " + options
+	if bool(header.get("older_rules", false)): label += " · older rules"
 	return label
 
 # ---------- the Saves screen's actions ----------

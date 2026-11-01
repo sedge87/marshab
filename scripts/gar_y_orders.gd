@@ -178,5 +178,5 @@ func _hint(kind: String) -> String:
 		"patrol": return "Checks every room, then reports any alerts."
 		"survey": return "Drives where you're aiming and scans for buried ice." if _aim != Vector3.INF else "Aim at the ground first."
 		"core": return "Drills a core sample where you're aiming, for the Science Lab." if _aim != Vector3.INF else "Aim at the ground first."
-		"find_ice": return "Plans its own survey across the nearest likely ice zone, flags what it finds and reports the best spot."
+		"find_ice": return "Takes radar readings in a grid across the nearest likely ice zone, for you to read and core." if MHChapterOne.on() else "Plans its own survey across the nearest likely ice zone, flags what it finds and reports the best spot."
 	return ""

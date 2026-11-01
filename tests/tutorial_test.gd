@@ -49,6 +49,7 @@ func _initialize() -> void:
 	MHGame.pending_save_state = {}
 	MHGame.landing_target = Vector2.INF
 	MHGame.tutorial_mode = "full"
+	MHChapterOne.reset()   # as the menu does for a new game
 	world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
@@ -78,7 +79,14 @@ func _initialize() -> void:
 	world.lander.set_hatch(true)
 	player.global_position = world.lander.to_global(Vector3(0, 1, -9.0))
 	await _settle()
-	_check(_step() == "plan", "stepping outside ticks it (%s)" % _step())
+	_check(_step() == "unpack", "stepping outside ticks it (%s)" % _step())
+
+	# 3. Chapter one: the precursor crates by the two cargo landers, unpacked with E.
+	var crates: Array = world.get_children().filter(func(n): return str(n.name).begins_with("Crate_"))
+	_check(MHChapterOne.on() and world.cargo_landers.size() == 2 and crates.size() == MHChapterOne.crates().size(), "a new Survival game lands two cargo landers and %d crates (%d)" % [MHChapterOne.crates().size(), crates.size()])
+	for crate in crates: crate.interact(player)
+	await _settle()
+	_check(_step() == "plan", "unpacking every crate ticks it (%s)" % _step())
 
 	# 3. The site plan; then the highlight finds the General Module card.
 	b._toggle()
@@ -89,21 +97,18 @@ func _initialize() -> void:
 	_check(GUIDE.find_target(self, "part:general") != null, "the General Module card can be found for the highlight")
 	_check(GUIDE.find_target(self, "tab:structure") != null, "and the Structure tab")
 
-	# 4–8. Building: each step ticks; the Life Support room built ahead of
-	# the solar array is skipped when it comes up.
-	b.zones = [_room("general", 4, 0, 2, 2)]; b._rebuild()
+	# 4–7. Building: each step ticks; the solar array built ahead with the
+	# airlock is skipped when it comes up. No drill or Life Support yet under
+	# chapter-one rules: the ice extractor's plan is earned.
+	_check(not TUTORIAL.steps().any(func(s): return str(s.id) in ["drill", "life_support", "air"]), "chapter one leaves out the drill, Life Support and air steps")
+	b.zones = [_room("general", 4, 0, 3, 3)]; b._rebuild()
 	await _settle()
 	_check(_step() == "airlock", "a General Module ticks it (%s)" % _step())
-	b.zones.append(_room("life_support", 6, 0, 2, 2))
-	b.zones.append({"kind": "airlock", "cells": [Vector2i(5, 2)], "door_direction": Vector2i(0, 1), "cost": 0})
+	b.zones.append({"kind": "airlock", "cells": [Vector2i(5, 3)], "door_direction": Vector2i(0, 1), "cost": 0})
+	b.zones.append({"kind": "solar", "cells": [Vector2i(2, 5)], "door_direction": Vector2i(0, 1), "cost": 0})
 	b._rebuild()
 	await _settle()
-	_check(_step() == "solar", "the airlock ticks it; Life Support waits its turn (%s)" % _step())
-	b.zones.append({"kind": "solar", "cells": [Vector2i(2, 4)], "door_direction": Vector2i(0, 1), "cost": 0})
-	b.zones.append({"kind": "ice_extractor", "cells": [Vector2i(-6, 8)], "door_direction": Vector2i(0, 1), "cost": 0})
-	b._rebuild()
-	await _settle()
-	_check(_step() == "go_in", "solar and the drill tick, and Life Support (built ahead) is skipped (%s)" % _step())
+	_check(_step() == "go_in", "the airlock ticks it, and the solar array (built ahead) is skipped (%s)" % _step())
 
 	# 9. Inside (not while building).
 	player.global_position = Vector3(13.5, b.habitat_base_y + .2, 1.5)
@@ -113,15 +118,20 @@ func _initialize() -> void:
 	await _settle()
 	_check(_step() == "bunk", "walking into the habitat ticks it (%s)" % _step())
 
-	# 10–11. Furnishing.
+	# 9–11. Furnishing from the Unpacked tab: a bunk, the fabricator, one job.
 	var y: float = b.habitat_base_y
-	for item in [["crew_bunk", Vector3(13.0, y, 1.0)], ["oxygen_generator", Vector3(19.0, y, 1.0)], ["thermal_control_unit", Vector3(20.5, y, 3.5)]]:
+	for item in [["crew_bunk", Vector3(13.0, y, 1.0)], ["fabricator", Vector3(17.0, y, 5.0)]]:
+		_check(b.free_interior_invalid_reason(item[0], item[1], Vector3.UP).is_empty(), "%s can be placed from the crates (%s)" % [item[0], b.free_interior_invalid_reason(item[0], item[1], Vector3.UP)])
 		var visual: Node3D = b.free_interior_visual(item[0], item[1], 0.0)
 		b.place_free_interior_equipment(item[0], item[1], 0.0, Vector2i(roundi(item[1].x / 3), roundi(item[1].z / 3)), visual, Vector3.UP)
 	await _settle()
-	_check(_step() == "systems", "the bunk, then the oxygen generator and heater, tick (%s)" % _step())
+	_check(_step() == "fab_job", "the bunk, then the fabricator, tick (%s)" % _step())
+	_check(MHChapterOne.start_job("crew_bunk", b).is_empty(), "a fabricator job starts")
+	await _settle()
+	_check(_step() == "systems", "starting a job ticks it (%s)" % _step())
 
 	# 12. The systems panel: Enter when read.
+	world.explore_hud._update_systems_panel()   # it refreshes every 0.5 s; the test runs faster
 	var systems_panel: Control = world.explore_hud._systems_panel
 	_check(GUIDE.find_target(self, "systems") != null, "the systems panel can be found for the highlight (visible %s, in tree %s, minimal %s, size %s)" % [systems_panel.visible, systems_panel.is_visible_in_tree(), world.explore_hud._minimal, systems_panel.get_global_rect().size])
 	_key(KEY_ENTER)
@@ -173,5 +183,5 @@ func _initialize() -> void:
 	for clip in unique: _check(GUIDE.has_clip(clip), "the %s clip exists" % clip)
 
 	if failures == 0:
-		print("Tutorial test passed: all 14 steps tick from play, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
+		print("Tutorial test passed: all 14 chapter-one steps tick from play, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
 	quit(1 if failures > 0 else 0)

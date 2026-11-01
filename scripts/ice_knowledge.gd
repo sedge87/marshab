@@ -16,6 +16,8 @@ const ZONE_SHIFT := .45
 const SAMPLE_REACH := 5.0
 ## Worth flagging and drilling.
 const WORTH_DRILLING := .25
+## False zones from orbit under chapter-one rules.
+const DECOYS := 2
 
 ## The likely zones from orbit: [{centre: Vector2, radius: float}], the same
 ## every time for a site.
@@ -30,7 +32,35 @@ static func likely_zones(site := {}) -> Array:
 		var radius := float(deposit.get("radius", 10.0))
 		var shift := Vector2.from_angle(rng.randf() * TAU) * radius * rng.randf_range(ZONE_SHIFT * .5, ZONE_SHIFT)
 		zones.append({"centre": Vector2(float(deposit.get("x", 0.0)), float(deposit.get("z", 0.0))) + shift, "radius": radius * ZONE_GROWTH})
+	# Chapter one: orbital radar is fooled now and then (some zones are false).
+	if MHChapterOne.on() and not deposits.is_empty():
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash("%s/decoys" % str(site.get("id", "site")))
+		for index in range(DECOYS):
+			for attempt in 20:
+				var spot := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(45.0, 110.0)
+				if zones.all(func(z): return (z.centre as Vector2).distance_to(spot) > float(z.radius) * 2.0 + 12.0):
+					zones.append({"centre": spot, "radius": rng.randf_range(14.0, 22.0), "decoy": true})
+					break
 	return zones
+
+## Chapter one: survey stops in a coarse grid across a zone (3 by 3), in an
+## order that makes a short drive from `from`.
+static func survey_grid(zone: Dictionary, from: Vector2) -> Array:
+	var points: Array = []
+	var step := float(zone.radius) * .55
+	for gx in [-1, 0, 1]:
+		for gz in [-1, 0, 1]: points.append((zone.centre as Vector2) + Vector2(gx, gz) * step)
+	var ordered: Array = []
+	var at := from
+	while not points.is_empty():
+		var next: Vector2 = points[0]
+		for p in points:
+			if (p as Vector2).distance_to(at) < next.distance_to(at): next = p
+		points.erase(next)
+		ordered.append(next)
+		at = next
+	return ordered
 
 ## Every spot GAR-Y has surveyed: [Vector3(x, z, richness)].
 static func samples(tree: SceneTree) -> Array:

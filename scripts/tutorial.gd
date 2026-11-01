@@ -43,7 +43,14 @@ var finished := false
 static func steps() -> Array:
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(STEPS_PATH))
 	var all: Array = (parsed as Dictionary).get("steps", []) if parsed is Dictionary else []
-	return all.filter(func(step): return not step.has("modes") or (step.modes as Array).has(MHGame.game_mode))
+	return all.filter(func(step): return (not step.has("modes") or (step.modes as Array).has(MHGame.game_mode)) and _rules_fit(step))
+
+## Chapter-one steps (unpacking, the fabricator) or the older ones (drill, Life Support).
+static func _rules_fit(step: Dictionary) -> bool:
+	match str(step.get("rules", "")):
+		"chapter": return MHChapterOne.on()
+		"classic": return not MHChapterOne.on()
+	return true
 
 func setup(target_world: Node, state: Dictionary) -> void:
 	world = target_world
@@ -143,6 +150,8 @@ func _met(step: Dictionary) -> bool:
 				if not builder.placed_interior.any(func(i): return str(i.get("id", "")) == str(id)): return false
 			return true
 		"read": return _read_pressed
+		"unpacked": return MHChapterOne.crates_left() == 0
+		"fab_job": return not MHChapterOne.job.is_empty() or MHChapterOne.known.has("spare_parts_rack")
 		"flag": return bool((world.guide_flags as Dictionary).get(str(check.key), false))
 	return false
 

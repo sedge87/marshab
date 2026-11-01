@@ -206,6 +206,9 @@ func _use_looked_at_interactable(method_name: String) -> bool:
 	while node != null:
 		if node.has_meta("interaction_target"):
 			var target := node.get_meta("interaction_target") as Node
+			# Something you're carrying can take E over (chapter one's soil sample).
+			for claimer in get_tree().get_nodes_in_group("interaction_claims"):
+				if bool(claimer.call("claim", target, method_name)): return true
 			if target != null and target.has_method(method_name):
 				return bool(target.call(method_name, self))
 		if node.has_method(method_name):

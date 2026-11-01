@@ -1,0 +1,229 @@
+{
+  "style": "HQ pass for Forward+: baked PBR atlases (base colour with AO, normal, ORM), house look",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "fabricator",
+      "file": "fabricator.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.784,
+          0.0,
+          -0.472
+        ],
+        [
+          0.784,
+          1.46,
+          0.456
+        ]
+      ],
+      "triangles": 6608,
+      "named_components": [
+        "Output_Drawer_front_panel",
+        "Output_Drawer_gasket_black",
+        "Output_Drawer_handle_satin",
+        "build_part_panel",
+        "build_plate_satin",
+        "cap_panel",
+        "carcass_seams_deep",
+        "carcass_shell",
+        "chamber_frame_frame",
+        "chamber_lamp_led",
+        "chamber_shell",
+        "chamber_window_dark",
+        "chamber_window_gasket_black",
+        "display_frame_frame",
+        "display_screen_glass",
+        "fabricator_tag_plate_panel",
+        "gantry_rod_b_satin",
+        "gantry_rod_f_satin",
+        "hopper_band_accent",
+        "hopper_body_satin",
+        "hopper_cradle_frame",
+        "hopper_feed_satin",
+        "hopper_knob_frame",
+        "hopper_lid_shell",
+        "plinth_deep",
+        "power_cable_black",
+        "print_head_frame",
+        "print_nozzle_dark",
+        "service_door_bolts_satin",
+        "service_door_gasket_black",
+        "service_door_panel",
+        "service_door_vent_dark",
+        "side_rail_l_satin",
+        "side_rail_r_satin",
+        "status_led_0_led",
+        "status_led_1_led",
+        "status_led_2_led"
+      ]
+    },
+    {
+      "id": "precursor_crate_small",
+      "file": "precursor_crate_small.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.652,
+          0.0,
+          -0.513
+        ],
+        [
+          0.652,
+          0.952,
+          0.505
+        ]
+      ],
+      "triangles": 6240,
+      "named_components": [
+        "base_frame",
+        "body_shell",
+        "crate_tag_plate_panel",
+        "end_handle_l_satin",
+        "end_handle_r_satin",
+        "front_seams_deep",
+        "latch_0_body_satin",
+        "latch_0_lever_accent",
+        "latch_1_body_satin",
+        "latch_1_lever_frame",
+        "lid_panel",
+        "lid_seam_black",
+        "lug_lb_satin",
+        "lug_lf_satin",
+        "lug_rb_satin",
+        "lug_rf_satin",
+        "post_lb_frame",
+        "post_lf_frame",
+        "post_rb_frame",
+        "post_rf_frame",
+        "rail_b_frame",
+        "rail_f_frame",
+        "skid_l_deep",
+        "skid_r_deep"
+      ]
+    },
+    {
+      "id": "precursor_crate_long",
+      "file": "precursor_crate_long.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -1.352,
+          0.0,
+          -0.613
+        ],
+        [
+          1.352,
+          1.152,
+          0.605
+        ]
+      ],
+      "triangles": 6488,
+      "named_components": [
+        "base_frame",
+        "body_shell",
+        "crate_tag_plate_panel",
+        "end_handle_l_satin",
+        "end_handle_r_satin",
+        "front_seams_deep",
+        "latch_0_body_satin",
+        "latch_0_lever_accent",
+        "latch_1_body_satin",
+        "latch_1_lever_frame",
+        "latch_2_body_satin",
+        "latch_2_lever_frame",
+        "lid_panel",
+        "lid_seam_black",
+        "lug_lb_satin",
+        "lug_lf_satin",
+        "lug_rb_satin",
+        "lug_rf_satin",
+        "post_lb_frame",
+        "post_lf_frame",
+        "post_rb_frame",
+        "post_rf_frame",
+        "rail_b_frame",
+        "rail_f_frame",
+        "skid_l_deep",
+        "skid_r_deep"
+      ]
+    },
+    {
+      "id": "precursor_crate_tall",
+      "file": "precursor_crate_tall.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.702,
+          0.0,
+          -0.663
+        ],
+        [
+          0.702,
+          2.452,
+          0.655
+        ]
+      ],
+      "triangles": 6240,
+      "named_components": [
+        "base_frame",
+        "body_shell",
+        "crate_tag_plate_panel",
+        "end_handle_l_satin",
+        "end_handle_r_satin",
+        "front_seams_deep",
+        "latch_0_body_satin",
+        "latch_0_lever_accent",
+        "latch_1_body_satin",
+        "latch_1_lever_frame",
+        "lid_panel",
+        "lid_seam_black",
+        "lug_lb_satin",
+        "lug_lf_satin",
+        "lug_rb_satin",
+        "lug_rf_satin",
+        "post_lb_frame",
+        "post_lf_frame",
+        "post_rb_frame",
+        "post_rf_frame",
+        "rail_b_frame",
+        "rail_f_frame",
+        "skid_l_deep",
+        "skid_r_deep"
+      ]
+    },
+    {
+      "id": "hand_corer",
+      "file": "hand_corer.glb",
+      "placement": "floor",
+      "bounds_m": [
+        [
+          -0.22,
+          -0.002,
+          -0.034
+        ],
+        [
+          0.22,
+          1.065,
+          0.034
+        ]
+      ],
+      "triangles": 6392,
+      "named_components": [
+        "collar_accent",
+        "crown_dark",
+        "crown_teeth_dark",
+        "depth_rings_deep",
+        "end_cap_frame",
+        "grip_l_black",
+        "grip_r_black",
+        "head_frame",
+        "sight_slot_deep",
+        "strap_nomex",
+        "t_bar_satin",
+        "tube_satin"
+      ]
+    }
+  ]
+}

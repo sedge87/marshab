@@ -30,23 +30,20 @@ func _ready() -> void:
 	add_child(scrim)
 	var page := MarginContainer.new()
 	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	page.add_theme_constant_override("margin_left", 120)
-	page.add_theme_constant_override("margin_right", 120)
+	page.add_theme_constant_override("margin_left", 64)
+	page.add_theme_constant_override("margin_right", 64)
 	page.add_theme_constant_override("margin_top", 72)
 	page.add_theme_constant_override("margin_bottom", 64)
 	add_child(page)
 	var column := MHStyle.vbox(32)
 	page.add_child(column)
 	# Header
-	var header := MHStyle.hbox(16)
+	var header := MHStyle.hbox(10)
 	var titles := MHStyle.vbox(8)
 	titles.add_child(MHStyle.eyebrow("%s · %s" % [MHGame.colony_name, MHGame.site_name()], MHStyle.accent, 16))
-	titles.add_child(MHStyle.display("Mission Control", 64))
+	titles.add_child(MHStyle.display("Mission Control", 52))
 	header.add_child(titles)
 	header.add_child(MHStyle.spacer())
-	var esc := MHStyle.keycap("Esc")
-	esc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	header.add_child(esc)
 	var guide := MHStyle.button("Field guide", "secondary", "book-open")
 	guide.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	guide.tooltip_text = "How the habitat's systems work"
@@ -81,6 +78,7 @@ func _ready() -> void:
 	log_button.pressed.connect(_show_alert_log)
 	header.add_child(log_button)
 	var close := MHStyle.button("Close", "secondary", "x")
+	close.tooltip_text = "Esc"
 	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	close.pressed.connect(_close)
 	header.add_child(close)

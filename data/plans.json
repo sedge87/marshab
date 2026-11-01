@@ -1,0 +1,23 @@
+{
+  "_comment": "Plans for the fabricator (docs/start-and-chapter-one.md §4). Every piece of equipment that isn't printable needs a plan, except the free groups. Anything not listed is brought from Earth (known from the start). Sources: brought, sent (Mission Control sends it when 'after' happens), discovered (a self-sufficiency step, 'after' names it). Cost defaults from the item's cargo mass: feedstock = mass x feedstock_per_kg, Earth parts = mass / kg_per_part, hours = mass / kg_per_hour (clamped); any of them can be set per plan.",
+  "free_groups": ["odds_and_ends", "exterior", "lander"],
+  "defaults": {"feedstock_per_kg": 0.6, "kg_per_part": 50, "kg_per_hour": 25, "min_hours": 1, "max_hours": 20},
+  "plans": {
+    "ice_drill": {"source": "discovered", "after": "ice", "feedstock_kg": 200, "earth_parts": 10, "hours": 12, "cargo_kg": 450},
+    "water_reclaimer": {"source": "discovered", "after": "water", "feedstock_kg": 150, "earth_parts": 8, "hours": 10},
+    "oxygen_generator": {"source": "discovered", "after": "oxygen", "feedstock_kg": 150, "earth_parts": 10, "hours": 10},
+    "grow_tray": {"source": "discovered", "after": "food", "feedstock_kg": 60, "earth_parts": 3, "hours": 4},
+    "greenhouse_planter": {"source": "discovered", "after": "food", "feedstock_kg": 50, "earth_parts": 2, "hours": 4},
+    "seedling_station": {"source": "discovered", "after": "food"},
+    "nutrient_mixer": {"source": "discovered", "after": "food"},
+    "regolith_printer": {"feedstock_kg": 400, "earth_parts": 12, "hours": 18},
+    "regolith_intake": {"feedstock_kg": 250, "earth_parts": 8, "hours": 12, "cargo_kg": 900},
+    "solar_array": {"feedstock_kg": 120, "earth_parts": 6, "hours": 8, "cargo_kg": 300},
+    "airlock": {"feedstock_kg": 500, "earth_parts": 10, "hours": 20, "cargo_kg": 1500},
+    "fabricator": {"feedstock_kg": 300, "earth_parts": 20, "hours": 20},
+    "surface_reactor": {"source": "sent", "after": "sol_30", "feedstock_kg": 600, "earth_parts": 40, "hours": 20, "cargo_kg": 1200},
+    "eva_tool_station": {"source": "sent", "after": "first_walk"},
+    "medical_cabinet": {"source": "sent", "after": "sol_10"},
+    "spare_parts_rack": {"source": "sent", "after": "first_job"}
+  }
+}

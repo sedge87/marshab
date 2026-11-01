@@ -241,6 +241,8 @@ static func normalise_mode(mode: String) -> String:
 ## landing bonus (low sites have thicker air for parachutes).
 static func mission_cargo_budget() -> int:
 	if game_mode == "missions": return preload("res://scripts/mh_missions.gd").cargo_budget()
+	# Chapter one: no tonnes from Earth, only the hull kit the crates brought.
+	if MHChapterOne.on(): return MHChapterOne.shell_kg
 	var start := MHResources.setting("freedom_cargo_budget_kg", 140000.0) if game_mode == "freedom" else MHResources.setting("cargo_budget_kg", 100000.0)
 	return roundi(start * (1.0 + float(MHResources.site(site_id).get("cargo_bonus", 0.0)))) + resupply_kg
 

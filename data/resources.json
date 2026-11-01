@@ -39,6 +39,9 @@
     "print_recycle_bonus": 0.25,
     "resupply_enabled": 0.0,
     "storm_warning_hours": 10.0,
+    "chapter_store_sols": 90.0,
+    "chapter_store_sols_freedom": 150.0,
+    "chapter_store_crew": 2.0,
     "window_cargo_kg": 150.0
   },
   "rooms": {
@@ -727,6 +730,12 @@
       "power_kw": 0.1,
       "hours_per_sol": 24.0,
       "stores_water_l": 20.0
+    },
+    "fabricator": {
+      "room": "engineering",
+      "cargo_kg": 400.0,
+      "power_kw": 1.2,
+      "hours_per_sol": 8.0
     }
   },
   "sites": {

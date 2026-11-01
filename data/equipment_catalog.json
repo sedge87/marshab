@@ -3457,6 +3457,43 @@
       "pack": "mars_fabrication_v1"
     },
     {
+      "id": "fabricator",
+      "label": "Fabricator",
+      "group": "storage",
+      "pack": "mars_fabrication_v1",
+      "status": "catalogue",
+      "icon": "wrench",
+      "height": 1.46,
+      "description": "A bench-sized machine that makes equipment from plans, in layers of polymer and metal powder, with the electronics and seals brought from Earth.",
+      "role": "Makes equipment from plans (feedstock and Earth parts)",
+      "asset_scene": "res://assets/equipment/mars_fabrication_v1/fabricator.tscn",
+      "cargo_cost": 400,
+      "valid_zones": [
+        "engineering",
+        "general"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "power_draw": 1.2
+      },
+      "size_m": [
+        1.57,
+        1.46,
+        0.93
+      ],
+      "pack": "mars_fabrication_v1",
+      "system_note": "Shipping every spare from Earth takes months. A fabricator turns a plan, some feedstock and a few Earth-made parts into equipment here; recycling tops the feedstock up. It works best in the Workshop (75 % speed in the General Module).",
+      "system_links": [
+        "Plans",
+        "Recycling",
+        "Power"
+      ]
+    },
+    {
       "id": "regolith_intake",
       "label": "Regolith Intake",
       "group": "exterior",

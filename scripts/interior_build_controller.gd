@@ -14,6 +14,8 @@ const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
 ## The build bar's last tab: doors, windows and removing things.
 const STRUCTURE_TAB := "_structure"
 const HERE_TAB := "_here"
+## Chapter one: what's been unpacked or made and not placed yet.
+const UNPACKED_TAB := "_unpacked"
 const STRUCTURE_TOOLS := [
 	{"id": "partition", "label": "Partition wall", "icon": "brick-wall", "text": "Divide a room into bedrooms or cubicles. Hold the mouse button and drag along the floor to draw 1.5 m panels; R switches to 45° panels. The room stays one space for air and heat."},
 	{"id": "partition_glass", "label": "Glass partition", "icon": "panels-top-left", "text": "A glass panel in a metal frame: it divides the room but keeps it open and light. Drag to draw, or aim at a wall panel to glaze it."},
@@ -971,6 +973,7 @@ func _fits_in(id: String) -> String:
 ## Fixed tabs: This room, every equipment tab with something unlocked, Structure.
 func _tab_ids() -> Array:
 	var tabs: Array = [HERE_TAB]
+	if MHChapterOne.on(): tabs.append(UNPACKED_TAB)
 	for group in EquipmentCatalog.groups():
 		var group_id := str(group.id)
 		for id in _catalog_items:
@@ -985,7 +988,7 @@ func _tab_ids() -> Array:
 func _render_selector_tabs() -> void:
 	for child in _selector_tabs.get_children():
 		child.queue_free()
-	var labels := {HERE_TAB: ["This room", "map-pin"], STRUCTURE_TAB: ["Structure", "door-closed"]}
+	var labels := {HERE_TAB: ["This room", "map-pin"], UNPACKED_TAB: ["Unpacked", "package"], STRUCTURE_TAB: ["Structure", "door-closed"]}
 	for group in EquipmentCatalog.groups():
 		labels[str(group.id)] = [str(group.get("label", "")), str(group.get("icon", "package"))]
 	for tab_id in _tab_ids():
@@ -1013,6 +1016,7 @@ func _render_selector_tabs() -> void:
 func _tab_useful(tab_id: String) -> bool:
 	if tab_id == STRUCTURE_TAB: return true
 	if tab_id == HERE_TAB: return not _selector_items.is_empty()
+	if tab_id == UNPACKED_TAB: return not _unpacked_ids().is_empty()
 	return _selector_items.any(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == tab_id)
 
 func _select_selector_group(group_id: String) -> void:
@@ -1049,7 +1053,13 @@ func _visible_ids() -> Array:
 	# Missions: what this mission needs first, then what it just delivered.
 	if _selector_group == HERE_TAB:
 		return MHMissions.badge_order(_selector_items)
+	if _selector_group == UNPACKED_TAB: return _unpacked_ids()
 	return MHMissions.badge_order(_catalog_items.filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == _selector_group))
+
+## Interior items ready to place (unpacked or made), in catalogue order.
+func _unpacked_ids() -> Array:
+	var ready := MHChapterOne.ready_to_place(builder)
+	return _catalog_items.filter(func(id): return ready.has(id))
 
 func _structure_tool(id: String) -> Dictionary:
 	for tool in STRUCTURE_TOOLS:
@@ -1125,7 +1135,13 @@ func _card(id: String, index: int) -> Button:
 	name.clip_text = true
 	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	column.add_child(name)
-	var sub := MHStyle.mono(("%d  ·  %s" % [index, (MHStyle.kg(int(entry.get("cargo_cost", 0))) if fits else "NOT FOR THIS ROOM")]) if structure.is_empty() else "%d" % index, 11, MHStyle.TEXT_MUTED)
+	# Chapter one: how many are ready, or what it needs, instead of its mass.
+	var stock_line := MHChapterOne.card_line(id, builder) if structure.is_empty() else ""
+	var cost_text := stock_line if not stock_line.is_empty() else MHStyle.kg(int(entry.get("cargo_cost", 0)))
+	var sub := MHStyle.mono(("%d  ·  %s" % [index, (cost_text if fits else "NOT FOR THIS ROOM")]) if structure.is_empty() else "%d" % index, 11, MHStyle.TEXT_MUTED)
+	if structure.is_empty() and fits and not MHChapterOne.item_reason(id, builder).is_empty():
+		card.tooltip_text = MHChapterOne.item_reason(id, builder)
+		card.modulate = Color(1, 1, 1, .55)
 	column.add_child(sub)
 	card.add_child(column)
 	if structure.is_empty(): BuildController.add_mission_badge(card, MHMissions.item_badge(id), selected)

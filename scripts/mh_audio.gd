@@ -390,11 +390,12 @@ func _show_caption(who: String, text: String, note: String, seconds: float) -> v
 	_caption_layer.add_child(_caption)
 	_caption_left = seconds + 2.0
 
-## Above the build bars while building, so a caption doesn't sit on their cards.
+## Above the build bars and their tool strip while building, so a caption
+## doesn't sit on them (or on a hint card just above the bar).
 func _caption_bottom() -> float:
 	var world := get_tree().get_first_node_in_group("habitat_world") if is_inside_tree() else null
 	if world != null and world.get("builder") != null and (bool(world.builder.build_mode) or (world.get("interior_builder") != null and bool(world.interior_builder.active))):
-		return -300.0
+		return -470.0
 	return -132.0
 
 func _process_caption(delta: float) -> void:
