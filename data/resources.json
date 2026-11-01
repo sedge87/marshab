@@ -739,6 +739,12 @@
     }
   },
   "sites": {
+    "region": {
+      "dust_storms_per_100_sols": 6.0,
+      "storm_solar_cut": 0.7,
+      "storm_sols": 2.0,
+      "cargo_bonus": 0.0
+    },
     "plains": {
       "dust_storms_per_100_sols": 6.0,
       "storm_solar_cut": 0.7,

@@ -108,7 +108,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.keycode == KEY_UP: _choose_site(ids[(index - 1 + ids.size()) % ids.size()])
 	if event.is_action_pressed("ui_cancel"):
 		if screen_id == "site": show_screen("title")
-		elif screen_id == "colony": show_screen("site")
+		elif screen_id == "colony": show_screen("site" if MHGame.game_mode == "missions" else "title")
 		elif screen_id == "landing": show_screen("title" if _quick_start else "colony")
 
 # ---------- backdrop ----------
@@ -278,8 +278,13 @@ func _bottom_bar(height := 120.0) -> HBoxContainer:
 func _stepper(active: int) -> void:
 	var row := MHStyle.hbox(32)
 	row.position = Vector2(120, 64)
-	for i in 3:
-		var text := "%02d %s" % [i + 1, ["Site", "Colony", "Land"][i]]
+	# Free play has no site step: the Land step picks the spot on the region.
+	var steps := ["Site", "Colony", "Land"]
+	if MHGame.game_mode != "missions":
+		steps.pop_front()
+		active -= 1
+	for i in steps.size():
+		var text := "%02d %s" % [i + 1, steps[i]]
 		var step := MHStyle.eyebrow(text, MHStyle.accent if i == active else MHStyle.TEXT_MUTED, 16)
 		if i == active:
 			step.draw.connect(func() -> void: step.draw_rect(Rect2(0, step.size.y + 6, step.size.x, 2), MHStyle.accent))
@@ -319,7 +324,7 @@ func _title_screen() -> void:
 		go_on.tooltip_text = "%s · saved %s" % [str(newest.get("site_name", "Mars")), MHPauseMenu._when(str(newest.get("saved_at", "")))]
 		go_on.pressed.connect(_open_save.bind(str(newest.path)))
 		menu.add_child(go_on)
-	var hero: Button = _hero_button("New colony", "Choose a site · name your colony", "plus") if newest.is_empty() else MHStyle.button("New colony", "secondary", "plus")
+	var hero: Button = _hero_button("New colony", "Name your colony · choose where to land", "plus") if newest.is_empty() else MHStyle.button("New colony", "secondary", "plus")
 	hero.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	hero.pressed.connect(func() -> void:
 		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
@@ -327,7 +332,10 @@ func _title_screen() -> void:
 		MHGame.start_new_challenge()
 		MHSaves.current_path = ""
 		_quick_start = false
-		show_screen("site"))
+		# Free play lands anywhere on the region: name the colony, then choose
+		# where on the map (no site cards).
+		_use_region_site()
+		show_screen("colony"))
 	menu.add_child(hero)
 	# Load: every save, with pictures, search, Tour and Showcase.
 	if save_count > 0:
@@ -354,7 +362,7 @@ func _title_screen() -> void:
 		MHSaves.current_path = ""
 		show_screen("site"))
 	menu.add_child(missions)
-	var quick := MHStyle.button("Quick start · %s" % MHGame.site_name(), "ghost" if not newest.is_empty() else "secondary", "rocket")
+	var quick := MHStyle.button("Quick start · %s" % str(MHGame.picker_sites()[0].get("name", "Mars")), "ghost" if not newest.is_empty() else "secondary", "rocket")
 	quick.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	quick.pressed.connect(func() -> void:
 		# Straight to choosing where to land (skipping the site and colony steps).
@@ -364,6 +372,7 @@ func _title_screen() -> void:
 		MHGame.start_new_challenge()
 		MHSaves.current_path = ""
 		_quick_start = true
+		_use_region_site()
 		show_screen("landing"))
 	menu.add_child(quick)
 	var row := MHStyle.hbox(12)
@@ -639,6 +648,14 @@ func _open_settings() -> void:
 	add_child(_settings_panel)
 
 # 1b ---------------------------------------------------------------
+## A new free-play colony is on the region (the first site a colony can
+## choose), whatever site the last game was on.
+func _use_region_site() -> void:
+	MHGame.base_site = {}
+	if _site_ids().has(MHGame.site_id): return
+	MHGame.site_id = str(_site_ids()[0])
+	environment.rebuild_site()   # the backdrop: the region
+
 func _site_ids() -> Array:
 	var ids: Array = []
 	for entry in MHGame.picker_sites(): ids.append(str(entry.id))
@@ -988,7 +1005,7 @@ func _colony_screen() -> void:
 	bar.alignment = BoxContainer.ALIGNMENT_END
 	var back := MHStyle.button("Back", "ghost", "chevron-left")
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	back.pressed.connect(show_screen.bind("site"))
+	back.pressed.connect(func() -> void: show_screen("site" if MHGame.game_mode == "missions" else "title"))
 	bar.add_child(back)
 	_land_button = MHStyle.button("Choose where to land", "primary", "map-pin")
 	_land_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -1108,12 +1125,15 @@ func _region_landing_screen() -> void:
 	var col := MHStyle.vbox(14)
 	col.add_child(MHStyle.eyebrow("%s · %s" % [MHGame.site_name(), str(MHGame.GAME_MODES.get(MHGame.game_mode, ""))], MHStyle.accent))
 	col.add_child(MHStyle.title("The landing oval", 28))
-	var how := MHStyle.body("Your lander can reach anywhere inside the oval on the way down, and your base is founded where it touches down. The two cargo landers came down at its centre months ago. Green dots are level, open ground for a base. Click or drag on the map.", 17)
+	var how := MHStyle.body("Your lander can reach anywhere inside the oval on the way down, and your base is founded where it touches down. The two cargo landers came down at its centre months ago. Green dots are level, open ground for a base. Each spot trades water, sun, shelter, dust and room: the orbital report says how. Click or drag on the map.", 17)
 	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(how)
 	var status := MHStyle.body("", 17)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(status)
+	# The orbital report: what living at the touchdown spot would be like.
+	var report := MHStyle.vbox(6)
+	col.add_child(report)
 	col.add_child(_tutorial_choice())
 	if MHGame.game_mode != "creative":
 		var skip := CheckBox.new()
@@ -1144,8 +1164,27 @@ func _region_landing_screen() -> void:
 		var level := str(verdict.get("level", "red"))
 		status.add_theme_color_override("font_color", MHStyle.VALID if level == "green" else (MHStyle.WARN if level == "orange" else MHStyle.DANGER))
 		land.disabled = level == "red"
+		_show_report(report, REGION_LANDING_PICKER_SCRIPT.report(picker.touchdown()) if level != "red" else [])
 	picker.area_changed.connect(show_verdict)
 	show_verdict.call(picker.centre, picker.verdict)
+
+## The orbital report's rows (region_landing_picker.gd report) in box.
+func _show_report(box: VBoxContainer, rows: Array) -> void:
+	for child in box.get_children(): child.queue_free()
+	if rows.is_empty(): return
+	box.add_child(MHStyle.eyebrow("Orbital report · where you'd touch down", MHStyle.accent, 12))
+	for row in rows:
+		var colour: Color = {"green": MHStyle.VALID, "orange": MHStyle.WARN, "red": MHStyle.DANGER}.get(str(row[3]), MHStyle.TEXT_PRIMARY)
+		var line := MHStyle.hbox(10)
+		line.add_child(MHStyle.icon(str(row[0]), 16, colour))
+		var what := MHStyle.mono(str(row[1]), 13, MHStyle.TEXT_MUTED)
+		what.custom_minimum_size.x = 56
+		line.add_child(what)
+		var text := MHStyle.body(str(row[2]), 14, MHStyle.TEXT_PRIMARY)
+		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		text.custom_minimum_size.x = 380
+		line.add_child(text)
+		box.add_child(line)
 
 var _landing_area := Vector2.INF   # the landing oval's centre (region metres)
 

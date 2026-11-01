@@ -1,5 +1,5 @@
 {
-  "_comment": "Build sites shown on the Site select screen. Each familiar game name is inspired by the named real Martian location in the supplied Ares Transit tool. Values and terrain are simplified for learning, not NASA specifications or a scale map. palette picks the lighting preset in MHGame.PALETTES. terrain picks the generated map (scripts/site_terrain.gd); sun sets the noon height and the angle hidden by surrounding terrain; site-card badges and meters are computed from these values. \"legacy\": true marks the old single-site maps: off the Site select screen, still loaded for old saves and tests.",
+  "_comment": "Build sites shown on the Site select screen. Each familiar game name is inspired by the named real Martian location in the supplied Ares Transit tool. Values and terrain are simplified for learning, not NASA specifications or a scale map. palette picks the lighting preset in MHGame.PALETTES. terrain picks the generated map (scripts/site_terrain.gd); sun sets the noon height and the angle hidden by surrounding terrain; site-card badges and meters are computed from these values. \"legacy\": true marks the old single-site maps and the region's first three fixed landing zones (region_plains, region_crater, region_riverbed): off the Site select screen, still loaded for old saves and tests.",
   "sites": [
     {
       "id": "plains",
@@ -262,6 +262,54 @@
       }
     },
     {
+      "id": "region",
+      "name": "Aeolis Reach",
+      "based_on": "Gale Crater and its lowlands",
+      "coordinates": "5.4° S, 137.8° E",
+      "terrain_profile": "elysium",
+      "blurb": "Six kilometres of open plains, a crater with a layered mound, an old river valley, dunes, buried ice and caves. Land anywhere: each spot trades sun, water, shelter and room.",
+      "palette": "plains",
+      "icon": "sun",
+      "telemetry": {
+        "temperature": "−22 °C",
+        "outside_temp_c": -22,
+        "elevation": "−1.6 km",
+        "radiation": "High"
+      },
+      "day_cycle": {
+        "daylight_minutes": 15,
+        "night_minutes": 5,
+        "dawn_hour": 4,
+        "sunrise_hour": 5,
+        "sunset_hour": 19,
+        "dusk_hour": 20,
+        "day_temp_c": -22,
+        "night_temp_c": -68
+      },
+      "ice_deposits": [
+        {
+          "x": 45,
+          "z": -42,
+          "radius": 13,
+          "richness": 0.32
+        }
+      ],
+      "terrain": {
+        "shape": "region",
+        "region": "test_region",
+        "zone": "plains",
+        "pad_half": 60.0,
+        "ground": "#9A735C",
+        "rock_count": 200,
+        "rock_scale": 1.0
+      },
+      "sun": {
+        "noon_altitude": 62,
+        "horizon": 0
+      },
+      "landing": "anywhere"
+    },
+    {
       "id": "region_plains",
       "name": "Test Region · Plains",
       "based_on": "Elysium Planitia",
@@ -306,7 +354,8 @@
       "sun": {
         "noon_altitude": 62,
         "horizon": 0
-      }
+      },
+      "legacy": true
     },
     {
       "id": "region_crater",
@@ -359,7 +408,8 @@
       "sun": {
         "noon_altitude": 58,
         "horizon": 20
-      }
+      },
+      "legacy": true
     },
     {
       "id": "region_riverbed",
@@ -412,7 +462,8 @@
       "sun": {
         "noon_altitude": 58,
         "horizon": 30
-      }
+      },
+      "legacy": true
     }
   ]
 }

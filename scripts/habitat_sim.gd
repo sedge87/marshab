@@ -619,7 +619,7 @@ func solar_wear(hour: float) -> Dictionary:
 func _wear(dt: float) -> void:
 	var sols := dt / 24.0
 	var storm := storm_hours_left > 0.0
-	var rate := WEATHER_WEAR.STORM_DUST_PER_SOL if storm else float(WEATHER_WEAR.DUST_PER_SOL.get(MHGame.site_id, .02))
+	var rate := WEATHER_WEAR.STORM_DUST_PER_SOL if storm else WEATHER_WEAR.dust_per_sol(MHGame.site_id)
 	for key in inventory().get("solar_keys", []):
 		var dust := minf(WEATHER_WEAR.MAX_DUST, float(panel_dust.get(key, 0.0)) + rate * sols)
 		if not storm and _rng.randf() < WEATHER_WEAR.GUST_CLEAN_PER_SOL * sols: dust *= WEATHER_WEAR.GUST_LEAVES

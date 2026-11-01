@@ -73,6 +73,52 @@ static func evaluate(at: Vector2) -> Dictionary:
 		return {"level": "green", "spots": spots, "best": spots[0], "text": "Plenty of ground for a base: %d%% of the oval is level and open." % roundi(share * 100.0)}
 	return {"level": "orange", "spots": spots, "best": spots[0], "text": "Some ground for a base (%d%% of the oval). You'll steer for it on the way down." % roundi(share * 100.0)}
 
+## Mission Control's orbital report on a base at spot (region metres):
+## what the ground there means for living on it (MHBaseSite.conditions).
+## Rows of [icon, what, text, level (green, orange or red)].
+static func report(spot: Vector2) -> Array:
+	if is_inf(spot.x): return []
+	var local := MHBaseSite.conditions(spot.x, spot.y)
+	var rows: Array = []
+	# Water: the richest buried ice within reach.
+	var best := {}
+	for deposit in MHBaseSite.ice_deposits(spot.x, spot.y):
+		if best.is_empty() or float(deposit.richness) > float(best.richness): best = deposit
+	var far := Vector2(float(best.x), float(best.z)).length()
+	var where := "right by the pad" if far < 40.0 else "%d m away" % roundi(far)
+	var rich := float(best.richness)
+	if rich >= .6: rows.append(["droplets", "Water", "Rich buried ice %s." % where, "green"])
+	elif rich >= .4: rows.append(["droplets", "Water", "Some buried ice %s." % where, "orange"])
+	else: rows.append(["droplets", "Water", "Only a thin layer of ground ice: water comes slowly at first.", "red"])
+	# Sun: how much the skyline hides; frost on the panels at dawn.
+	var sun := MHBaseSite.sunshine(local.horizon)
+	var share := float(sun.share)
+	var frost := " Heavy dawn frost on the panels." if float(local.frost_peak) >= .5 else ""
+	var hidden := "Hills hide the low sun for %s a sol: %d%% less solar power." % [_hours(float(sun.hidden_hours)), roundi((1.0 - share) * 100.0)]
+	if share >= .97: rows.append(["sun", "Sun", "Open sky: full sun all day." + frost, "green" if frost.is_empty() else "orange"])
+	elif share >= .93: rows.append(["sun", "Sun", hidden + frost, "orange"])
+	else: rows.append(["sun", "Sun", hidden.replace("Hills", "High walls") + frost, "red"])
+	# Nights: walls give back the day's heat.
+	var warmer := roundi(float(local.shelter_c))
+	if warmer >= 4: rows.append(["moon", "Nights", "Sheltered by the walls: nights about %d °C warmer." % warmer, "green"])
+	elif warmer >= 2: rows.append(["moon", "Nights", "A little shelter: nights about %d °C warmer." % warmer, "orange"])
+	else: rows.append(["moon", "Nights", "Exposed: the coldest nights in the region.", "orange"])
+	# Dust: dunes upwind, and open ground.
+	var dust := float(local.dust_per_sol)
+	if dust <= .015: rows.append(["wind", "Dust", "Little dust settles on the panels.", "green"])
+	elif dust <= .021: rows.append(["wind", "Dust", "Some dust: brush the panels now and then.", "orange"])
+	else: rows.append(["wind", "Dust", "Dunes upwind: the panels dust over fast.", "red"])
+	# Room: open, gentle ground round the pad.
+	var room := float(local.room)
+	if room >= .9: rows.append(["house", "Room", "Open ground all round: room to grow.", "green"])
+	elif room >= .78: rows.append(["house", "Room", "Some room: steep or sandy ground nearby.", "orange"])
+	else: rows.append(["house", "Room", "Cramped: little level ground round the pad.", "red"])
+	return rows
+
+static func _hours(hours: float) -> String:
+	if hours < .75: return "%d min" % maxi(10, roundi(hours * 6.0) * 10)
+	return "about %s h" % (str(roundi(hours)) if absf(hours - roundi(hours)) < .25 else "%.1f" % hours)
+
 ## The best spot for the base: where the autopilot sets down when the
 ## descent is skipped (the nearest valid ground to the centre).
 func touchdown() -> Vector2:

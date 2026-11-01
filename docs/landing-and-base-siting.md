@@ -178,3 +178,22 @@ They stay as `core-loop.md` round 5 plans them (chapter three), using the same p
 - Whether the pad's 3 m cut-and-fill limit feels too strict on the rolling plains; loosen if too many spots fail.
 - The lander's look on the descent (the existing crew lander model, seen from outside).
 - How the other session's site rename and faster site switching present the suggested zones.
+
+## 10. What the landing spot trades (built 1 Nov 2026)
+
+The user asked whether the landing choice was a real choice. Before this, it changed only the ice nearby, the ground and how far away the cargo was. The three site cards (Plains, Crater, Riverbed) also claimed three different real places and climates, but on one shared map. So:
+
+- **One region, no site cards.** Free play goes New colony → name it → the Land step on the whole region map. The region is one site, `region` ("Aeolis Reach", based on Gale Crater and its lowlands), with one climate. `region_plains`, `region_crater` and `region_riverbed` are `legacy`: still loaded for old saves and tests. The suggested zones stay on the map as Mission Control's tips. The Site step is now only for the Missions campaign, which is being removed. The 4th "ice fields" site isn't needed, because the ice fields are on the map.
+- **Each spot has its own conditions**, worked out from the ground when the base is founded (`MHBaseSite.conditions`, kept in `base_site.conditions` and merged into `MHGame.site()`):
+
+| Trade-off | Worked out from | What it does in play |
+|---|---|---|
+| **Water** | `MHBaseSite.ice_deposits`: rich (.45–.92) in the ice mantle, some (.34–.55) in lakebed, delta and valley sediments, else one thin deposit (.25) | The corer and ice extractor's yield |
+| **Sun** | The skyline in 16 directions out to 2 km (`horizon`) | `MHGame.solar_irradiance` hides the sun below the skyline in its direction: up to about 10 % less power and 2–3 h less sun on the deepest floors |
+| **Frost** | Ice mantle nearby, and shade | `weather_wear.frost_peak`: heavy dawn frost on the ice fields cuts morning power |
+| **Nights** | The skyline: walls give back the day's heat (.45 °C per degree, up to 8 °C) | `day_cycle.night_temp_c`: less heating at night |
+| **Dust** | Dune sand within 800 m, and open ground | `weather_wear.dust_per_sol` (.012–.026 a sol on valid ground): panels need brushing more often |
+| **Room** | The share of gentle, sand-free ground within 200 m | Shown only, for now (how far the base can spread) |
+
+- **The orbital report** on the Land screen (`region_landing_picker.gd` `report`) gives one line for each of water, sun, nights, dust and room, at the spot the autopilot would pick. Each line is green, orange or red. No spot wins on everything: the ice fields are wet but frosty and exposed, crater and canyon floors are sheltered but shaded and cramped, and the open plains are sunny and roomy but dry.
+- **Still to come:** a **science** line once step 5 types rocks by the region's geology (what discoveries are within reach). Room could also limit how far the base can be built out.

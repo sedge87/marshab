@@ -302,12 +302,24 @@ static func site() -> Dictionary:
 	for entry in sites():
 		if str(entry.get("id", "")) != site_id: continue
 		# A base founded where the lander came down has its own ice round it
-		# (MHBaseSite.ice_deposits); the rest of the site is unchanged.
+		# (MHBaseSite.ice_deposits) and its own conditions from the ground
+		# (MHBaseSite.conditions): the skyline that hides a low sun, warmer
+		# nights between walls, its dust and frost. The rest is the site's.
 		if not base_site.has("ice_deposits"): return entry
 		if not is_same(_founded_from, base_site):
 			_founded_from = base_site
-			_founded_site = entry.duplicate()
+			_founded_site = entry.duplicate(true)
 			_founded_site["ice_deposits"] = base_site.ice_deposits
+			if not base_site.has("conditions"):   # founded before conditions were kept
+				base_site["conditions"] = MHBaseSite.conditions(float(base_site.centre[0]), float(base_site.centre[1]))
+			var local: Dictionary = base_site.conditions
+			var sun: Dictionary = _founded_site.get("sun", {})
+			sun["horizon_profile"] = local.horizon
+			_founded_site["sun"] = sun
+			var cycle: Dictionary = _founded_site.get("day_cycle", {})
+			cycle["night_temp_c"] = float(cycle.get("night_temp_c", -60.0)) + float(local.shelter_c)
+			_founded_site["day_cycle"] = cycle
+			_founded_site["weather"] = {"dust_per_sol": local.dust_per_sol, "frost_peak": local.frost_peak}
 		return _founded_site
 	return {"id": "plains", "name": "Open Plains", "palette": "day", "icon": "sun"}
 
@@ -352,9 +364,17 @@ static func sun_heading(hour: float) -> Vector2:
 static func solar_irradiance(hour: float) -> float:
 	var altitude := sun_altitude(hour)
 	if altitude <= 0.0: return 0.0
-	var horizon := deg_to_rad(float(site().get("sun", {}).get("horizon", 0.0)))
+	var horizon := deg_to_rad(horizon_at(sun_heading(hour)))
 	var visible := smoothstep(horizon, horizon + deg_to_rad(6.0), altitude)
 	return visible * sin(altitude) / sin(deg_to_rad(62.0))
+
+## The skyline's height in degrees towards heading (x east, y = +Z south): a
+## founded base's measured skyline (MHBaseSite.conditions), else the site's
+## one angle all round.
+static func horizon_at(heading: Vector2) -> float:
+	var sun: Dictionary = site().get("sun", {})
+	var profile: Array = sun.get("horizon_profile", [])
+	return float(sun.get("horizon", 0.0)) if profile.is_empty() else MHBaseSite.skyline_towards(profile, heading)
 
 ## Average solar output over a whole sol in real play time, 0–1, used for the
 ## site cards. Night counts, so long nights lower it.

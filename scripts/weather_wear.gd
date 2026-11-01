@@ -50,11 +50,25 @@ static func enabled() -> bool:
 ## dawn, sublimates through the morning (the same timing the Ice Fields'
 ## ground frost uses).
 static func frost(site_id: String, hour: float) -> float:
-	var peak := float(FROST_PEAK.get(site_id, .12))
+	var peak := frost_peak(site_id)
 	var cover := 0.0
 	if hour >= 20.0 or hour < 5.5: cover = clampf(fposmod(hour - 20.0, 24.0) / 9.0, 0.0, 1.0)
 	elif hour < 10.5: cover = 1.0 - smoothstep(5.5, 10.5, hour)
 	return cover * peak
+
+## A site's calm-weather dust per sol, and its peak frost. A base founded
+## where the lander came down has its own, from the ground round it
+## (MHBaseSite.conditions, merged into MHGame.site() as "weather").
+static func dust_per_sol(site_id: String) -> float:
+	var local := _local(site_id)
+	return float(local.dust_per_sol) if local.has("dust_per_sol") else float(DUST_PER_SOL.get(site_id, .02))
+
+static func frost_peak(site_id: String) -> float:
+	var local := _local(site_id)
+	return float(local.frost_peak) if local.has("frost_peak") else float(FROST_PEAK.get(site_id, .12))
+
+static func _local(site_id: String) -> Dictionary:
+	return MHGame.site().get("weather", {}) if site_id == MHGame.site_id else {}
 
 # ---------- how the marks look ----------
 
