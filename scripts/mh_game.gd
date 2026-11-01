@@ -283,6 +283,11 @@ static func sites() -> Array:
 		if parsed is Dictionary: _sites = parsed.get("sites", [])
 	return _sites
 
+## The sites a new colony can choose: the region's landing zones. The old
+## single-site maps ("legacy" in data/sites.json) still load for old saves.
+static func picker_sites() -> Array:
+	return sites().filter(func(entry): return not bool(entry.get("legacy", false)))
+
 static func site() -> Dictionary:
 	for entry in sites():
 		if str(entry.get("id", "")) == site_id: return entry

@@ -5,6 +5,7 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 # Sky, lighting and the selected site's generated landscape (MHSiteTerrain).
 # This node owns only scenery, lighting and collision; gameplay systems
 # remain in Outpost One: Mars.
+const PREVIEW_ROCKS := 500.0   # metres round the pad that the menu's backdrop scatters rocks
 const MODEL_DIRECTORY := "res://assets/original_mars/models/"
 const CELESTIAL_SHADER := """
 shader_type spatial;
@@ -55,6 +56,9 @@ var _sun_corona: MeshInstance3D
 var _phobos: MeshInstance3D
 var _deimos: MeshInstance3D
 var _show_celestials := true
+## The main menu's backdrop: a region site is drawn without caves, collision
+## or the far rocks, so switching sites there doesn't stall.
+var preview := false
 
 func build(palette := "") -> void:
 	name = "OriginalMarsEnvironment"
@@ -422,7 +426,10 @@ func _build_region_terrain() -> void:
 	var place: Dictionary = MHSiteTerrain.RegionTerrain.import_placement(origin, float(zone.height))
 	terrain.ready.connect(func() -> void:
 		terrain.region_size = Terrain3D.SIZE_1024   # 2 km regions: about 16 for the whole map (set once it's ready)
-		terrain.data.import_images([MHSiteTerrain.RegionTerrain.import_image(), MHSiteTerrain.RegionTerrain.control_image(), MHSiteTerrain.RegionTerrain.colour_image()], place.corner, float(place.offset), float(place.scale))
+		terrain.data.import_images(_region_images(region_id), place.corner, float(place.offset), float(place.scale))
+		if preview:
+			_scatter_region_rocks(terrain, Rect2(-PREVIEW_ROCKS, -PREVIEW_ROCKS, PREVIEW_ROCKS * 2.0, PREVIEW_ROCKS * 2.0))
+			return
 		# Caves and the lava tube: built over the imported ground, which they
 		# sink beneath them (before its collision is built).
 		if not MHCaves.caves().is_empty():
@@ -436,6 +443,17 @@ func _build_region_terrain() -> void:
 		terrain.collision_mode = Terrain3DCollision.FULL_GAME
 		_scatter_region_rocks(terrain, MHSiteTerrain.RegionTerrain.world_bounds(origin).grow(-500.0)), CONNECT_ONE_SHOT)
 	_site_root.add_child(terrain)
+
+## The heightmap, control map and colour map for Terrain3D. The menu's
+## backdrop keeps them while sites are switched; the game reads them once.
+static var _preview_images := {}
+
+func _region_images(region_id: String) -> Array:
+	if _preview_images.has(region_id): return _preview_images[region_id]
+	var images := [MHSiteTerrain.RegionTerrain.import_image(), MHSiteTerrain.RegionTerrain.control_image(), MHSiteTerrain.RegionTerrain.colour_image()]
+	_preview_images.clear()
+	if preview: _preview_images[region_id] = images
+	return images
 
 ## Rocks across the whole region (the base's own boulders, with collision,
 ## come from _build_decor), placed by the region's rock map: thick under
@@ -458,7 +476,8 @@ func _scatter_region_rocks(terrain: Terrain3D, area: Rect2) -> void:
 	var solid: Array = []
 	var zone := MHSiteTerrain.region_zone()
 	var origin := Vector2(float(zone.centre[0]), float(zone.centre[1]))
-	for attempt in 120000:
+	# About 4500 tries a square kilometre (120,000 over the whole region).
+	for attempt in roundi(area.get_area() * .0045):
 		var x := rng.randf_range(area.position.x, area.end.x)
 		var z := rng.randf_range(area.position.y, area.end.y)
 		if absf(x) < pad and absf(z) < pad: continue
@@ -474,6 +493,7 @@ func _scatter_region_rocks(terrain: Terrain3D, area: Rect2) -> void:
 		if radius > .3: solid.append(Vector4(x, y - .15 * size + (reach[mesh_index] as Vector2).y * size, z, radius))
 	for index in by_mesh.size():
 		terrain.instancer.add_transforms(index, by_mesh[index])
+	if preview: return
 	var collision := preload("res://scripts/region_rock_collision.gd").new()
 	collision.setup(solid)
 	_site_root.add_child.call_deferred(collision)   # the landscape is still being set up
@@ -488,12 +508,18 @@ func _region_texture(texture_name: String, path: String, uv_scale: float) -> Ter
 	asset.detiling_shift = .3
 	return asset
 
+## Kept once made (the region's ground textures take seconds to mipmap, and
+## every region site and the menu's backdrop use the same ones).
+static var _mipmapped_cache := {}
+
 func _mipmapped(path: String) -> ImageTexture:
+	if _mipmapped_cache.has(path): return _mipmapped_cache[path]
 	var image := (load(path) as Texture2D).get_image()
 	if image.is_compressed(): image.decompress()
 	image.convert(Image.FORMAT_RGBA8)
 	image.generate_mipmaps()
-	return ImageTexture.create_from_image(image)
+	_mipmapped_cache[path] = ImageTexture.create_from_image(image)
+	return _mipmapped_cache[path]
 
 func _build_boundary() -> void:
 	if MHSiteTerrain.shape() == "region":

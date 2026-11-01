@@ -1,8 +1,9 @@
 {
-  "_comment": "Build sites shown on the Site select screen. Each familiar game name is inspired by the named real Martian location in the supplied Ares Transit tool. Values and terrain are simplified for learning, not NASA specifications or a scale map. palette picks the lighting preset in MHGame.PALETTES. terrain picks the generated map (scripts/site_terrain.gd); sun sets the noon height and the angle hidden by surrounding terrain; site-card badges and meters are computed from these values.",
+  "_comment": "Build sites shown on the Site select screen. Each familiar game name is inspired by the named real Martian location in the supplied Ares Transit tool. Values and terrain are simplified for learning, not NASA specifications or a scale map. palette picks the lighting preset in MHGame.PALETTES. terrain picks the generated map (scripts/site_terrain.gd); sun sets the noon height and the angle hidden by surrounding terrain; site-card badges and meters are computed from these values. \"legacy\": true marks the old single-site maps: off the Site select screen, still loaded for old saves and tests.",
   "sites": [
     {
       "id": "plains",
+      "legacy": true,
       "name": "Open Plains",
       "based_on": "Elysium Planitia",
       "coordinates": "3.0° N, 154.7° E",
@@ -86,6 +87,7 @@
     },
     {
       "id": "ridge",
+      "legacy": true,
       "name": "Canyon Ridge",
       "based_on": "Valles Marineris floor",
       "coordinates": "10.5° S, 68.0° W",
@@ -140,6 +142,7 @@
     },
     {
       "id": "crater",
+      "legacy": true,
       "name": "Crater Basin",
       "based_on": "Gale Crater lowlands",
       "coordinates": "5.4° S, 137.8° E",
@@ -201,6 +204,7 @@
     },
     {
       "id": "ice",
+      "legacy": true,
       "name": "Ice Fields",
       "based_on": "Utopia Basin South",
       "coordinates": "44.0° N, 112.0° E",

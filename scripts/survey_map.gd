@@ -145,7 +145,7 @@ func _draw_mars() -> void:
 	for lon in range(-180, 181, 60):
 		var x := area.position.x + area.size.x * (lon + 180.0) / 360.0
 		draw_line(Vector2(x, area.position.y), Vector2(x, area.end.y), Color(1, 1, 1, .2), 1.0)
-	for entry in MHGame.sites():
+	for entry in MHGame.picker_sites():
 		var at := _site_point(str(entry.get("coordinates", "")), area)
 		if at.x < 0: continue
 		var current := str(entry.get("id", "")) == MHGame.site_id

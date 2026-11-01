@@ -38,6 +38,7 @@ var display_builder: BuildController
 var camera: Camera3D
 var marker: Node3D
 var _site_preview_built := false
+var _rebuild_wanted := 0   # counts site changes, so only the last one rebuilds the landscape
 var _landing_label: Label
 ## Quick start goes straight to the landing map; Back returns to the title.
 var _quick_start := false
@@ -114,6 +115,7 @@ func _build_backdrop() -> void:
 	backdrop.name = "Backdrop"
 	add_child(backdrop)
 	environment = ORIGINAL_ENVIRONMENT_SCRIPT.new()
+	environment.preview = true
 	environment.build("dusk")
 	backdrop.add_child(environment)
 	camera = Camera3D.new()
@@ -191,10 +193,8 @@ func _landing_marker() -> Node3D:
 
 func _safe(point: Vector3) -> Vector3:
 	# Keep low cameras above the terrain.
-	var query := PhysicsRayQueryParameters3D.create(point + Vector3.UP * 200.0, point + Vector3.DOWN * 200.0, 1)
-	var hit := get_viewport().world_3d.direct_space_state.intersect_ray(query)
-	if hit.is_empty(): return point
-	return Vector3(point.x, maxf(point.y, float(hit.position.y) + 1.4), point.z)
+	# (From the heights: the backdrop's ground has no collision.)
+	return Vector3(point.x, maxf(point.y, MHSiteTerrain.height(point.x, point.z) + 1.4), point.z)
 
 func _set_camera(key: String, animate := true) -> void:
 	_camera_key = key
@@ -637,14 +637,14 @@ func _open_settings() -> void:
 # 1b ---------------------------------------------------------------
 func _site_ids() -> Array:
 	var ids: Array = []
-	for entry in MHGame.sites(): ids.append(str(entry.id))
+	for entry in MHGame.picker_sites(): ids.append(str(entry.id))
 	return ids
 
 func _site_screen() -> void:
 	_scrim("right", .52, .9, .3)
 	_stepper(0)
 	_place(MHStyle.display("Choose a build site", 64), Vector2(120, 120))
-	# The sites scroll when there are more than fit (the test regions).
+	# The sites scroll when there are more than fit.
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(676, 720)
@@ -655,7 +655,7 @@ func _site_screen() -> void:
 	scroll.add_child(list)
 	_site_buttons.clear()
 	var first: Button
-	for entry in MHGame.sites():
+	for entry in MHGame.picker_sites():
 		var card := _site_card(entry)
 		list.add_child(card)
 		_site_buttons[str(entry.id)] = card
@@ -700,7 +700,8 @@ func _site_screen() -> void:
 	next.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	next.pressed.connect(show_screen.bind("colony"))
 	bar.add_child(next)
-	_choose_site(MHGame.site_id, false)
+	# An old save's site (or a hidden one) isn't on the list: start on the first.
+	_choose_site(MHGame.site_id if _site_ids().has(MHGame.site_id) else str(_site_ids()[0]), false)
 	next.grab_focus.call_deferred()
 
 func _site_card(entry: Dictionary) -> Button:
@@ -753,12 +754,18 @@ func _palette_thumb(palette_name: String, icon_name: String) -> Control:
 	thumb.add_child(centre)
 	return thumb
 
+func _rebuild_site_if_last(wanted: int) -> void:
+	if wanted == _rebuild_wanted: environment.rebuild_site()
+
 func _choose_site(id: String, move_camera := true) -> void:
 	# Preview the chosen site's own generated landscape behind the menu.
+	# The landscape follows once the choice rests (holding an arrow key
+	# through the list rebuilds it once, not at every card).
 	if MHGame.site_id != id or not _site_preview_built:
 		MHGame.site_id = id
-		environment.rebuild_site()
 		_site_preview_built = true
+		_rebuild_wanted += 1
+		get_tree().create_timer(.15).timeout.connect(_rebuild_site_if_last.bind(_rebuild_wanted))
 	if _site_buttons.has(id) and is_instance_valid(_site_buttons[id]):
 		var holder := (_site_buttons[id] as Control).get_parent().get_parent() as ScrollContainer
 		if holder != null: holder.ensure_control_visible.call_deferred(_site_buttons[id])
