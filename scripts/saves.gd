@@ -79,7 +79,7 @@ static func make_header(name: String, state: Dictionary, id: String, extra := {}
 	var builder: Dictionary = state.get("builder", {})
 	var rooms := 0
 	for zone in builder.get("zones", []):
-		if not str((zone as Dictionary).get("kind", "")) in ["solar", "reactor", "ice_extractor", "regolith_intake", "corridor", "airlock"]: rooms += 1
+		if not str((zone as Dictionary).get("kind", "")) in ["solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor", "corridor", "airlock"]: rooms += 1
 	var made_by: Dictionary = state.get("made_by", {})
 	var header := {"format": FORMAT, "version": VERSION, "id": id, "name": name,
 		"saved_at": Time.get_datetime_string_from_system(false), "saved_unix": Time.get_unix_time_from_system(),

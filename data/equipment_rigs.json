@@ -5805,5 +5805,128 @@
         "state": "shelf"
       }
     ]
+  },
+  "sabatier_reactor": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "running",
+        "default": true,
+        "spin": [
+          {
+            "parts": [
+              "pump_rotor"
+            ],
+            "axis": "x",
+            "speed": 10.0
+          }
+        ],
+        "glow": [
+          "indicator_lamps"
+        ],
+        "label_on": "Stop the Sabatier reactor",
+        "label_off": "Start the Sabatier reactor",
+        "note_off": "Stopped. The hydrogen is vented and the kept carbon dioxide waits.",
+        "note_on": "Running. Carbon dioxide and hydrogen are turning into water and methane.",
+        "powered": "all"
+      }
+    ]
+  },
+  "methane_tank": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "outlet_valve_wheel"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": 270
+          }
+        ],
+        "label_on": "Close the outlet valve",
+        "label_off": "Open the outlet valve",
+        "state": "outlet"
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "isolation_lever"
+            ],
+            "edge": "min_y",
+            "axis": "x",
+            "angle": -70
+          }
+        ],
+        "label_on": "Isolate tanks",
+        "label_off": "Connect tanks",
+        "state": "isolation"
+      },
+      {
+        "key": "tertiary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "regulator_knob"
+            ],
+            "edge": "center",
+            "axis": "z",
+            "angle": 120
+          }
+        ],
+        "label_on": "Lower regulator",
+        "label_off": "Raise regulator",
+        "state": "regulator"
+      }
+    ]
+  },
+  "atmosphere_processor": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "intake",
+        "default": true,
+        "label_on": "Stop the processor",
+        "label_off": "Start the processor",
+        "switch": {
+          "parts": [
+            "physical_switches"
+          ],
+          "axis": "x",
+          "angle": 40
+        },
+        "glow": [
+          "state_light"
+        ],
+        "spin": [
+          {
+            "parts": [
+              "scoop_wheel",
+              "scoop_hub"
+            ],
+            "axis": "x",
+            "speed": 2
+          },
+          {
+            "parts": [
+              "sieve_drum"
+            ],
+            "axis": "x",
+            "speed": 3
+          }
+        ],
+        "note_on": "Running. Mars air goes in, oxygen comes out to the habitat.",
+        "note_off": "Stopped. No oxygen from the air until it runs again."
+      }
+    ]
   }
 }

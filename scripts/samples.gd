@@ -296,8 +296,8 @@ static func _bound_water(record: Dictionary) -> bool:
 	var by_site: Array = (data().get("site_regolith", {}) as Dictionary).get(str(record.get("site", "")), [])
 	return by_unit.has("soil_water") or by_site.has("soil_water")
 
-## The suit logs its readings at a cave's reading spot (cave_climate): one by
-## day and one by night confirm it. Returns messages.
+## The suit logs its readings at a cave's reading spot (cave_climate), or out
+## in the open air (mars_air): one by day and one by night confirm it. Returns messages.
 static func log_reading(id: String, daylight: bool, hours: float) -> Array:
 	if found.has(id) or discovery(id).is_empty(): return []
 	var seen: Dictionary = readings.get(id, {})
@@ -308,7 +308,8 @@ static func log_reading(id: String, daylight: bool, hours: float) -> Array:
 	var entry := discovery(id)
 	if seen.size() >= int(entry.get("need", 2)): return discover(id, hours)
 	leads[id] = hours
-	return [{"id": "lead", "title": "Lead: %s" % str(entry.get("lead", entry.label)), "text": "The suit logged the temperature and radiation here. Come back at %s to compare." % ("night" if daylight else "midday"), "tone": "info"}]
+	var text := str(entry.get("reading_text", "The suit logged the temperature and radiation here. Come back at %s to compare."))
+	return [{"id": "lead", "title": "Lead: %s" % str(entry.get("lead", entry.label)), "text": text % ("night" if daylight else "midday"), "tone": "info"}]
 
 ## A finished analysis: findings onto the record, then evidence. Messages.
 static func finish_analysis(record: Dictionary, hours: float) -> Array:

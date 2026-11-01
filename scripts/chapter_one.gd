@@ -20,8 +20,8 @@ const MHResources := preload("res://scripts/mh_resources.gd")
 const MANIFEST_PATH := "res://data/precursor_manifest.json"
 const PLANS_PATH := "res://data/plans.json"
 ## Site parts that need stock, by zone kind.
-const ZONE_STOCK := {"airlock": "airlock", "solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake"}
-const ZONE_STOCK_LABELS := {"airlock": "Airlock", "solar_array": "Solar Array", "surface_reactor": "Compact Reactor", "ice_drill": "Ice Extractor", "regolith_intake": "Regolith Intake"}
+const ZONE_STOCK := {"airlock": "airlock", "solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake", "atmosphere_processor": "atmosphere_processor"}
+const ZONE_STOCK_LABELS := {"airlock": "Airlock", "solar_array": "Solar Array", "surface_reactor": "Compact Reactor", "ice_drill": "Ice Extractor", "regolith_intake": "Regolith Intake", "atmosphere_processor": "Atmosphere Processor"}
 const STEPS := ["ice", "water", "oxygen", "food"]
 const STEP_LABELS := {"ice": "Ice found", "water": "Water self-sufficient", "oxygen": "Oxygen self-sufficient", "food": "Food self-sufficient"}
 ## Feedstock a working recycler returns a sol (kg), while anyone lives aboard.

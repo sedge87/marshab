@@ -24,17 +24,17 @@ var mars_made_label: Label   # [{"a": Vector2, "b": Vector2, "door": bool}]
 var chapter_label: Label   # chapter one: unpacked items, feedstock and Earth parts
 const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
 ## Site-plan parts that have a real model (for thumbnails and the 3D preview).
-const PART_MODELS := {"reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake"}
+const PART_MODELS := {"reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake", "atmosphere_processor": "atmosphere_processor"}
 ## Single-cell outdoor machines (not rooms): power sources, drills, intakes.
-const SITE_MACHINES := ["solar", "reactor", "ice_extractor", "regolith_intake"]
+const SITE_MACHINES := ["solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor"]
 ## Not ordinary rooms: connectors, the bay, and the outdoor machines.
-const NON_ROOM_KINDS := ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor", "regolith_intake"]
+const NON_ROOM_KINDS := ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor"]
 ## Room shells Mars-made (printed) material can pay for. Airlocks keep
 ## Earth-made seals and mechanisms; outdoor machines are all Earth-made.
-const PRINTABLE_ZONE_EXCLUDES := ["airlock", "solar", "reactor", "ice_extractor", "regolith_intake", "ladder", "shield_water"]
+const PRINTABLE_ZONE_EXCLUDES := ["airlock", "solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor", "ladder", "shield_water"]
 ## Site machines placed freely (not snapped to the grid) and turned to any
 ## angle; solar can also go on a room's roof. Footprint radius in metres.
-const FREE_SITE_KINDS := {"solar": 1.25, "reactor": 1.45, "ice_extractor": 1.25, "regolith_intake": 1.35}
+const FREE_SITE_KINDS := {"solar": 1.25, "reactor": 1.45, "ice_extractor": 1.25, "regolith_intake": 1.35, "atmosphere_processor": 1.35}
 ## These snap to one cell each, turned in quarter turns (playtest feedback,
 ## 25 Oct); machines placed freely in older saves stay where they were.
 const CELL_SITE_KINDS := ["solar", "reactor", "ice_extractor"]
@@ -132,6 +132,7 @@ const ZONE_TYPES := {
 	"reactor":{"label":"Compact Reactor","colour":Color(.88,.30,.16),"cost":1200},
 	"ice_extractor":{"label":"Ice Extractor","colour":Color(.20,.82,.92),"cost":450},
 	"regolith_intake":{"label":"Regolith Intake","colour":Color(.78,.48,.28),"cost":900},
+	"atmosphere_processor":{"label":"Atmosphere Processor","colour":Color(.62,.80,.92),"cost":600},
 	# Not a zone: a ladder up an outside wall (a wall upgrade, scripts/wall_upgrades.gd).
 	"ladder":{"label":"Roof Ladder","colour":Color(.85,.58,.30),"cost":60},
 	"shield_regolith":{"label":"Regolith Shielding","colour":Color(.60,.42,.30),"cost":900},
@@ -166,7 +167,8 @@ const ZONE_INFO := {
 	"solar":{"cat":"power","icon":"sun","rule":"One cell, or a roof · R turns","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
 	"reactor":{"cat":"power","icon":"atom","rule":"One cell · R turns","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
 	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell on ice · R turns","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
-	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil and feeds it to a regolith printer indoors, which turns it into building material."}
+	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil and feeds it to a regolith printer indoors, which turns it into building material."},
+	"atmosphere_processor":{"cat":"power","icon":"wind","rule":"Anywhere · R turns","desc":"Splits oxygen out of the Mars air, like NASA's MOXIE scaled up. No water needed, but 2.5 kW."}
 }
 # Exterior construction deliberately excludes furnishing. Interior equipment is
 # selected only through the first-person construction controller.
@@ -2332,7 +2334,7 @@ func _draw_preview(cells: Array,valid: bool) -> void:
 	if kind=="solar": volume_size=Vector3(2.4,height,1.6)
 	if kind=="reactor": volume_size=Vector3(2.1,height,2.1)
 	if kind=="ice_extractor": volume_size=Vector3(1.7,height,1.7)
-	if kind=="regolith_intake": volume_size=Vector3(2.0,1.2,2.4)
+	if kind=="regolith_intake" or kind=="atmosphere_processor": volume_size=Vector3(2.0,1.2,2.4)
 	var ghost:=MeshInstance3D.new(); var box:=BoxMesh.new(); box.size=volume_size; ghost.mesh=box; ghost.material_override=fill; ghost.position=volume_centre; ghost.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(ghost)
 	preview.add_child(_box_edges(volume_centre,volume_size,edge))
 	if kind=="airlock": _airlock_arrow(_airlock_end(cells,airlock_direction,true),"OUTSIDE")
@@ -2638,6 +2640,7 @@ func _rebuild() -> void:
 		elif str(zone.kind)=="reactor": _build_reactor(zone)
 		elif str(zone.kind)=="ice_extractor": _build_ice_extractor(zone)
 		elif str(zone.kind)=="regolith_intake": _build_regolith_intake(zone)
+		elif str(zone.kind)=="atmosphere_processor": _build_atmosphere_processor(zone)
 		else:
 			for cell in zone.cells: _cell_walls(cell,zone)
 	for door_data in interior_doors:
@@ -4029,7 +4032,7 @@ func _free_site_preview() -> String:
 		_free_ghost_key = kind
 		_free_ghost = Node3D.new()
 		add_child(_free_ghost)
-		var size: Vector3 = {"solar": Vector3(2.4, 1.6, 1.6), "reactor": Vector3(2.1, 2.25, 2.1), "ice_extractor": Vector3(1.7, 1.6, 1.7), "regolith_intake": Vector3(2.0, 1.2, 2.4)}[kind]
+		var size: Vector3 = {"solar": Vector3(2.4, 1.6, 1.6), "reactor": Vector3(2.1, 2.25, 2.1), "ice_extractor": Vector3(1.7, 1.6, 1.7), "regolith_intake": Vector3(2.0, 1.2, 2.4), "atmosphere_processor": Vector3(2.0, 1.2, 2.4)}[kind]
 		var mesh := MeshInstance3D.new()
 		var box := BoxMesh.new(); box.size = size
 		mesh.mesh = box; mesh.position.y = size.y * .5
@@ -4723,6 +4726,12 @@ func _build_regolith_intake(zone: Dictionary) -> void:
 	_add_site_machine(zone, "regolith_intake", _site_ground(zone), Vector3(2.0, 1.2, 2.4))
 	_add_site_plan_tile(zone)
 
+## Its model is the regolith intake's until the air batch is modelled
+## (docs/survival-systems.md §9).
+func _build_atmosphere_processor(zone: Dictionary) -> void:
+	_add_site_machine(zone, "atmosphere_processor", _site_ground(zone), Vector3(2.0, 1.2, 2.4))
+	_add_site_plan_tile(zone)
+
 ## Where a site machine stands: its free position (on the ground, or on a
 ## roof), or the centre of its cell in older saves.
 func site_point(zone: Dictionary) -> Vector2:
@@ -5347,7 +5356,7 @@ func _zone_cost(cells: Array) -> int: return cell_cost(kind)*cells.size()
 func cell_cost(zone_kind: String) -> int:
 	if zone_kind == "trench": return 0   # dug on site, nothing from Earth
 	if zone_kind in SITE_UPGRADES: return int(WALL_UPGRADES.spec(str(SITE_UPGRADES[zone_kind])).cargo)
-	var site_item: String = {"solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake"}.get(zone_kind, "")
+	var site_item: String = {"solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake", "atmosphere_processor": "atmosphere_processor"}.get(zone_kind, "")
 	if not site_item.is_empty(): return int(MHResources.item_value(site_item, "cargo_kg", 300.0))
 	return int(MHResources.room(zone_kind).get("cargo_kg_per_cell", 800.0))
 
@@ -5517,7 +5526,7 @@ func _systems() -> Dictionary:
 ## The reactor's master isolator / the ice extractor's run switch (saved in
 ## the zone's state; both start on).
 func _zone_running(zone: Dictionary) -> bool:
-	var key: String = {"reactor": "isolator", "regolith_intake": "intake"}.get(str(zone.get("kind", "")), "drill")
+	var key: String = {"reactor": "isolator", "regolith_intake": "intake", "atmosphere_processor": "intake"}.get(str(zone.get("kind", "")), "drill")
 	return bool((zone.get("state", {}) as Dictionary).get(key, true))
 
 func grid_power_online() -> bool:
@@ -6469,6 +6478,9 @@ func _part_chips(id: String) -> Array:
 		"regolith_intake":
 			chips.append(["feeds the regolith printer",MHStyle.VALID])
 			chips.append(["-%s kW" % str(MHResources.item_value("regolith_intake","power_kw",1.5)),MHStyle.WARN])
+		"atmosphere_processor":
+			chips.append(["+%s kg oxygen a sol" % str(MHResources.item_value("atmosphere_processor","o2_kg",1.2)),MHStyle.VALID])
+			chips.append(["-%s kW" % str(MHResources.item_value("atmosphere_processor","power_kw",2.5)),MHStyle.WARN])
 	if id=="trench":
 		chips[0]=["No cargo: dug on site",MHStyle.VALID]
 		chips.append(["%.1f m deep" % TRENCHES.DEPTH,MHStyle.TEXT_SECONDARY])

@@ -3485,7 +3485,6 @@
         1.46,
         0.93
       ],
-      "pack": "mars_fabrication_v1",
       "system_note": "Shipping every spare from Earth takes months. A fabricator turns a plan, some feedstock and a few Earth-made parts into equipment here; recycling tops the feedstock up. It works best in the Workshop (75 % speed in the General Module).",
       "system_links": [
         "Plans",
@@ -5215,6 +5214,112 @@
         0.686
       ],
       "pack": "mars_hq_v1"
+    },
+    {
+      "id": "sabatier_reactor",
+      "label": "Sabatier Reactor",
+      "group": "life_support",
+      "status": "catalogue",
+      "icon": "atom",
+      "height": 2.0,
+      "description": "Turns kept carbon dioxide and hydrogen back into water and methane.",
+      "role": "Gets water back from the air",
+      "primary_action": "Read reclaimer",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/water_reclaimer.tscn",
+      "cargo_cost": 250,
+      "valid_zones": [
+        "life_support",
+        "general"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        1.415,
+        1.875,
+        1.307
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "Closes the air loop, as NASA's ISS Sabatier did: the carbon dioxide the scrubber keeps and the oxygen generator's hydrogen react over a hot catalyst into water and methane. About half the water the oxygen generator splits comes back. The methane goes to a methane tank, and is the fuel for the trip home.",
+      "system_links": [
+        "Air",
+        "Water",
+        "Fuel"
+      ],
+      "stand_in_model": true
+    },
+    {
+      "id": "methane_tank",
+      "label": "Methane Tank",
+      "group": "life_support",
+      "status": "catalogue",
+      "icon": "flame",
+      "height": 1.8,
+      "description": "Stores the Sabatier reactor's methane.",
+      "role": "Keeps fuel for the trip home",
+      "primary_action": "Read oxygen reserve",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/oxygen_reserve_tank.tscn",
+      "cargo_cost": 150,
+      "valid_zones": [
+        "life_support",
+        "airlock",
+        "engineering",
+        "storage",
+        "medical",
+        "general"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        1.449,
+        1.865,
+        1.004
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "Methane from the Sabatier reactor, kept under pressure. NASA's Mars plans burn methane with Mars-made oxygen to fly the crew home; here it fills towards that. Without a tank, the reactor can hold only a little and vents the rest.",
+      "system_links": [
+        "Fuel",
+        "Air"
+      ],
+      "stand_in_model": true
+    },
+    {
+      "id": "atmosphere_processor",
+      "label": "Atmosphere Processor",
+      "group": "exterior",
+      "status": "catalogue",
+      "icon": "wind",
+      "height": 1.0,
+      "description": "Splits oxygen out of the Mars air. Needs no water, but a lot of power.",
+      "valid_zones": [],
+      "placement": "floor",
+      "effects": {},
+      "cargo_cost": 600,
+      "footprint": [
+        1,
+        1
+      ],
+      "asset_scene": "res://assets/equipment/mars_fabrication_v1/regolith_intake.tscn",
+      "system_note": "A scaled-up MOXIE, the experiment on NASA's Perseverance rover that made breathable oxygen from Mars air between 2021 and 2023. It draws in the carbon dioxide air, heats it to about 800 °C and splits off oxygen. It needs no ice, which makes it the dry base's oxygen, but 2.5 kW for about one person's oxygen a sol.",
+      "system_links": [
+        "Air",
+        "Power"
+      ],
+      "size_m": [
+        2.0,
+        1.185,
+        2.67
+      ],
+      "pack": "mars_fabrication_v1",
+      "role": "Makes oxygen from Mars air",
+      "stand_in_model": true
     }
   ]
 }

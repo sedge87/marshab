@@ -119,6 +119,10 @@ func _initialize() -> void:
 	_check(MHSamples.findings_for({"id": 902, "kind": "rock", "rock": "sandstone", "unit": "canyon_layers"}).has("layered_sediments"), "canyon sandstone is evidence for the layers")
 	_check(_ids(MHSamples.log_reading("cave_climate", true, 50.0)).has("lead") and MHSamples.log_reading("cave_climate", true, 51.0).is_empty(), "one daytime reading is a lead")
 	_check(_ids(MHSamples.log_reading("cave_climate", false, 60.0)).has("discovery"), "a night reading confirms the cave's climate")
+	var air_lead: Array = MHSamples.log_reading("mars_air", false, 62.0)
+	_check(_ids(air_lead).has("lead") and str(air_lead[0].text).contains("midday"), "a night reading of the open air is a lead, asking for midday")
+	MHSamples.log_reading("mars_air", true, 70.0)
+	_check(MHSamples.found.has("mars_air") and (MHChapterOne.known.has("atmosphere_processor") or MHChapterOne.learn_after("discovery:mars_air").has("atmosphere_processor")), "day and night air readings bring the atmosphere processor's plan (with Earth's reply)")
 
 	# ---- saving ----
 	var saved := MHSamples.export_state()

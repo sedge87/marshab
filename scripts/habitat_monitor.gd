@@ -230,6 +230,10 @@ func _fill_flows() -> void:
 	var venting := float((s.last.get("vented", {}) as Dictionary).get("grey_l", 0.0)) > .5
 	_flows_panel.add_child(_line("Grey water: %d of %d L · urine %d L · CO₂ kept %.1f kg%s" % [roundi(float(s.stores.grey_l)), roundi(float(caps.grey_l)), roundi(float(s.stores.urine_l)), float(s.stores.co2_kg),
 		" · venting" if venting else ""], MHStyle.WARN if venting else MHStyle.TEXT_SECONDARY, 15))
+	if float(s.last.get("ch4_in", 0.0)) > 0.0 or float(s.stores.ch4_kg) > 0.0:
+		var ch4_venting := float((s.last.get("vented", {}) as Dictionary).get("ch4_kg", 0.0)) > 0.0
+		_flows_panel.add_child(_line("Sabatier: %.1f L water back a sol · methane %.1f of %d kg%s" % [float(s.last.get("sabatier_water", 0.0)), float(s.stores.ch4_kg), roundi(float(s.last.get("methane_cap", 0.0))),
+			" · venting: add a methane tank" if ch4_venting else ""], MHStyle.WARN if ch4_venting else MHStyle.TEXT_SECONDARY, 15))
 	var food_net := float(flows.food_grown) - float(flows.food_eaten)
 	_flows_panel.add_child(_line("Food: %d kg · grows %.1f, eats %.1f kg a sol%s" % [roundi(float(snap.food_kg)), float(flows.food_grown), float(flows.food_eaten),
 		" · %s left" % _sols(float(snap.food_kg) / -food_net) if food_net < 0.0 and crew > 0 else ""], MHStyle.TEXT_PRIMARY, 15))
@@ -328,7 +332,7 @@ class MonitorMap extends Control:
 				var r := Rect2(_origin + (Vector2(cell) - Vector2(.5, .5)) * _unit, Vector2(_unit, _unit)).grow(-2)
 				draw_rect(r, Color(MHStyle.BEACON_YELLOW if kind == "solar" else MHStyle.INFO, .25 if running else .08))
 			var first: Vector2i = (zone.get("cells", [Vector2i.ZERO]) as Array)[0]
-			var label: String = {"solar": "SOLAR", "ice_extractor": "DRILL", "reactor": "REACTOR", "regolith_intake": "INTAKE"}.get(kind, kind.to_upper())
+			var label: String = {"solar": "SOLAR", "ice_extractor": "DRILL", "reactor": "REACTOR", "regolith_intake": "INTAKE", "atmosphere_processor": "AIR O₂"}.get(kind, kind.to_upper())
 			draw_string(small, _origin + (Vector2(first) + Vector2(-.42, .1)) * _unit, label + ("" if running else " · OFF"), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, MHStyle.TEXT_MUTED)
 		# Rooms, tinted by state.
 		for index in range(rooms.size()):

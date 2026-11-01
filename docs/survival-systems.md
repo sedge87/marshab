@@ -136,6 +136,24 @@ Three kinds instead of one: **rations** (from Earth, dehydrated, they keep), **p
 
    Old saves load with everything in the main store.
 2. **Air:** the scrubber's condensate, the Sabatier, the methane tank, the atmosphere processor.
+
+   *Phases 1 and 2 built 1 Nov 2026.*
+   - **Stores:**
+     - the clean tank stays `water_l`; the new chain stores are in `stores`;
+     - full grey water and urine tanks vent, with an alert.
+   - **Condensate** goes to grey water while an air recycler runs.
+   - **The Sabatier reactor** (plan after the oxygen step): kept CO₂ + H₂ → water to grey, plus methane, held in the reactor (5 kg) or a methane tank (300 kg); beyond that it vents.
+   - **The atmosphere processor:**
+     - an outdoor site machine, 2.5 kW on life support, 1.2 kg O₂ a sol;
+     - its plan comes with Earth's reply to the new Climate reading **The air outside**, logged by day and by night more than 150 m from the lander.
+   - **Stand-in models** until the air batch:
+     - the Sabatier uses the water reclaimer's;
+     - the methane tank uses the oxygen reserve tank's;
+     - the processor uses the regolith intake's.
+   - **Not built yet:**
+     - the processor's carbon monoxide filter and dust intake jobs (step 7's wear);
+     - its share to the ascent tank.
+   - **The spreadsheet still needs** the new items and settings.
 3. **Water:** the processor and urine processor, hygiene use, the chapter one ice step needing treatment.
 4. **Food:** crops, harvest, seedlings, nutrients, spoilage and the freezer, the galley's meals, variety.
 5. **Waste:** the sorter, recycling into feedstock, compost.

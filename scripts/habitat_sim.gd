@@ -324,6 +324,7 @@ func inventory() -> Dictionary:
 	var reactors := 0
 	var drills: Array = []
 	var intakes := 0
+	var processors := 0
 	for zone in builder.zones:
 		match str(zone.kind):
 			"solar":
@@ -336,6 +337,8 @@ func inventory() -> Dictionary:
 				if builder._zone_running(zone): drills.append(builder._ice_richness_at_point(builder.site_point(zone)))
 			"regolith_intake":
 				if builder._zone_running(zone): intakes += 1
+			"atmosphere_processor":
+				if builder._zone_running(zone): processors += 1
 	var isolated := false
 	for placed in builder.placed_interior:
 		var isolator := EquipmentCatalog.grid_isolator_key(str(placed.get("id", "")))
@@ -349,7 +352,7 @@ func inventory() -> Dictionary:
 		# The landed store tanks (and anything the soft net added) hold the stores.
 		var landed := MHChapterOne.stores_for(MHChapterOne.store_sols())
 		capacity.water += float(landed.water_l) + extra_store_l; capacity.o2 += float(landed.o2_kg) + extra_store_o2
-	_inventory = {"shield_upgrades": WALL_UPGRADES.habitat_points(builder) + earth_total, "rooms": rooms, "items": items, "all_items": all_items, "solar": solar, "solar_keys": solar_keys, "reactors": reactors, "drills": drills, "intakes": intakes, "isolated": isolated, "capacity": capacity,
+	_inventory = {"shield_upgrades": WALL_UPGRADES.habitat_points(builder) + earth_total, "rooms": rooms, "items": items, "all_items": all_items, "solar": solar, "solar_keys": solar_keys, "reactors": reactors, "drills": drills, "intakes": intakes, "processors": processors, "isolated": isolated, "capacity": capacity,
 		"cells": rooms.reduce(func(total, room): return total + int(room.cells), 0),
 		"zones_ref": builder.zones, "zone_count": builder.zones.size(), "items_ref": builder.placed_interior, "item_count": builder.placed_interior.size()}
 	_take_delivery(capacity)
@@ -536,6 +539,7 @@ func step(dt: float, hour: float) -> void:
 	for richness in inv.drills: drill_kw += MHResources.item_value("ice_drill", "power_kw", 3.0)
 	tiers[TIER_OTHER] += drill_kw
 	tiers[TIER_OTHER] += int(inv.intakes) * MHResources.item_value("regolith_intake", "power_kw", 1.5)
+	tiers[TIER_LIFE] += int(inv.processors) * MHResources.item_value("atmosphere_processor", "power_kw", 2.5)
 	var generation := 0.0
 	var storm_factor := 1.0 - solar_cut()
 	generation += _solar_kw(inv.solar, hour, inv.get("solar_keys", [])) * storm_factor
@@ -572,6 +576,9 @@ func step(dt: float, hour: float) -> void:
 	var water_used := crew * MHResources.setting("water_per_person", 10.0) * per_sol
 	var reclaim_capacity := 0.0
 	var electrolysis_o2 := 0.0
+	var scrubbing := false
+	var sabatier_h2 := 0.0
+	var methane_cap := MHResources.setting("sabatier_holds_ch4_kg", 5.0)
 	var food_grown := 0.0
 	var research := 0.0
 	for item in working:
@@ -584,13 +591,23 @@ func step(dt: float, hour: float) -> void:
 		else: water_used += -item.water * per_sol
 		food_grown += item.food * per_sol * MHSamples.bonus("food")   # discoveries (step 5)
 		if item.id == "water_reclaimer" and item.on: reclaim_capacity += 70.0 * per_sol
+		if item.id == "air_recycler" and item.on: scrubbing = true
+		if item.id == "sabatier_reactor" and item.on: sabatier_h2 += MHResources.setting("sabatier_h2_kg", .5) * per_sol
+	for item in inv.items:
+		if item.id == "methane_tank": methane_cap += MHResources.setting("methane_tank_kg", 300.0)
+	# The atmosphere processor (outside): oxygen from Mars air, no water (§3, §11).
+	if powered.tiers[TIER_LIFE]: o2_made += int(inv.processors) * MHResources.item_value("atmosphere_processor", "o2_kg", 1.2) * per_sol
 	# Used water goes to the grey tank and urine to its own; the reclaimer
 	# cleans from them. A full tank vents (§12.1: a missing part leaks).
 	vented = {}
 	var caps := store_caps(inv.capacity)
 	var crew_water := crew * MHResources.setting("water_per_person", 10.0) * per_sol
 	var urine := minf(crew_water, crew * MHResources.setting("urine_per_person", 1.5) * per_sol)
-	_keep("grey_l", crew_water - urine, caps.grey_l, per_sol)
+	# Breath and sweat: the air recycler condenses it back (to the grey tank);
+	# without one it's lost to the cabin walls and the airlock.
+	var vapour := minf(crew_water - urine, crew * MHResources.setting("vapour_per_person", 1.5) * per_sol)
+	var condensate := _keep("grey_l", vapour, caps.grey_l, per_sol) if scrubbing else 0.0
+	_keep("grey_l", crew_water - urine - vapour, caps.grey_l, per_sol)
 	_keep("urine_l", urine, caps.urine_l, per_sol)
 	var from_grey := minf(reclaim_capacity, float(stores.grey_l))
 	var from_urine := minf(reclaim_capacity - from_grey, float(stores.urine_l))
@@ -598,6 +615,13 @@ func step(dt: float, hour: float) -> void:
 	stores.urine_l = float(stores.urine_l) - from_urine
 	var water_recovered := (from_grey + from_urine) * MHResources.setting("reclaim_fraction", .93)
 	_keep("h2_kg", electrolysis_o2 * H2_PER_O2, caps.h2_kg, per_sol)
+	# The Sabatier reactor: CO2 + 4 H2 -> CH4 + 2 H2O. Per kg of hydrogen:
+	# 5.5 kg CO2 in, 2 kg methane and 4.5 L water out (to the grey tank).
+	var h2_used := minf(sabatier_h2, minf(float(stores.h2_kg), float(stores.co2_kg) / 5.5))
+	stores.h2_kg = float(stores.h2_kg) - h2_used
+	stores.co2_kg = float(stores.co2_kg) - h2_used * 5.5
+	var sabatier_water := _keep("grey_l", h2_used * 4.5, caps.grey_l, per_sol)
+	_keep("ch4_kg", h2_used * 2.0, methane_cap, per_sol)
 	var drill_water := 0.0
 	if powered.tiers[TIER_OTHER]:
 		for richness in inv.drills: drill_water += MHResources.setting("ice_drill_l", 120.0) * float(richness) * per_sol
@@ -634,7 +658,8 @@ func step(dt: float, hour: float) -> void:
 		"tiers": powered.tiers, "tier_kw": tiers, "battery_rate_kw": powered.battery_kw, "heat_pump_kw": heat.electric_kw, "outside_c": outside, "heat_wasted_kw": heat.wasted,
 		"storm": storm_hours_left > 0.0, "storm_hours_left": storm_hours_left, "storm_eta": storm_eta_hours, "crew": crew, "people": people, "water_in": (water_made + water_recovered + drill_water) / per_sol,
 		"water_out": water_used / per_sol, "food_in": food_grown / per_sol, "o2_in": o2_made / per_sol, "co2_out": co2_removed / per_sol,
-		"heat_capacity_short": heat.short, "night": night, "free_power": MHGame.debug_free_power, "vented": vented.duplicate(), "reclaimers": reclaim_capacity > 0.0}
+		"heat_capacity_short": heat.short, "night": night, "free_power": MHGame.debug_free_power, "vented": vented.duplicate(), "reclaimers": reclaim_capacity > 0.0,
+		"condensate": condensate / per_sol, "sabatier_water": sabatier_water / per_sol, "ch4_in": h2_used * 2.0 / per_sol, "methane_cap": methane_cap}
 
 ## Solar output at an hour: each array catches most light facing the sun
 ## (same rule as the build view's "SOLAR % AT NOON" label).
@@ -862,6 +887,7 @@ func step_power_only(hour: float) -> void:
 	for item in inv.items: tiers[item.tier] += item.power
 	for richness in inv.drills: tiers[4] += MHResources.item_value("ice_drill", "power_kw", 3.0)
 	tiers[4] += int(inv.get("intakes", 0)) * MHResources.item_value("regolith_intake", "power_kw", 1.5)
+	tiers[1] += int(inv.get("processors", 0)) * MHResources.item_value("atmosphere_processor", "power_kw", 2.5)
 	var generation := 0.0
 	generation += _solar_kw(inv.solar, hour, inv.get("solar_keys", [])) * (1.0 - solar_cut())
 	generation += inv.reactors * MHResources.setting("reactor_kw", 10.0)
@@ -898,6 +924,7 @@ func daily_flows(planned := true) -> Dictionary:
 		if not MHSamples.on(): out.research += MHResources.item_value(item.id, "research")
 	out.water_made += minf(reclaimers * 70.0, crew * MHResources.setting("water_per_person", 10.0)) * MHResources.setting("reclaim_fraction", .93)
 	for richness in inv.drills: out.water_made += MHResources.setting("ice_drill_l", 120.0) * float(richness)
+	out.o2_made += int(inv.get("processors", 0)) * MHResources.item_value("atmosphere_processor", "o2_kg", 1.2)
 	if research_boost_hours > 0.0: out.research *= 1.2
 	out["printed"] = print_rate(inv)
 	return out

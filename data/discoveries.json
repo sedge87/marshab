@@ -171,6 +171,11 @@
     {"id": "cave_climate", "label": "A steady climate underground", "section": "humans", "kind": "reading", "need": 2,
      "lead": "The deep cave may stay at one temperature",
      "text": "Deep in the lava tube the suit's readings barely change between day and night, and the rock overhead blocks most of the radiation.",
-     "reply": "Steady temperature, a metres-thick roof. The Humans team has started a file called 'A place to live'."}
+     "reply": "Steady temperature, a metres-thick roof. The Humans team has started a file called 'A place to live'."},
+    {"id": "mars_air", "label": "The air outside", "section": "climate", "kind": "reading", "need": 2, "hint": "Something in the air?",
+     "lead": "The thin air changes with the sun",
+     "reading_text": "The suit logged the air out here: pressure, temperature and what it's made of. Log it again at %s, away from the base, to compare.",
+     "text": "Away from the base the suit logged the air by day and by night: 95 % carbon dioxide at under 1 % of Earth's pressure, rising and falling with the temperature. Thin, but it's everywhere.",
+     "reply": "Good readings. MOXIE showed oxygen can be split from that air, so the Humans team has sent the plan for an atmosphere processor."}
   ]
 }

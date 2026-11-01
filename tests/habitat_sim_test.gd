@@ -92,6 +92,21 @@ func _initialize() -> void:
 	_check(is_equal_approx(float(dry.simulation().stores.grey_l), float(caps.grey_l)) and float((dry.simulation().last.vented as Dictionary).get("grey_l", 0.0)) > 0.0, "with no reclaimer the grey tank fills, then vents")
 	_check(not (dry.simulation().warnings() as Array).filter(func(w): return str(w.text).contains("Grey water venting: no water reclaimer")).is_empty(), "the venting warning names the missing reclaimer")
 
+	# Phase 2, air: condensate, the Sabatier and methane, the atmosphere processor.
+	_check(float(sim.last.condensate) > 5.0, "the air recycler condenses the crew's breath back (%.1f L a sol)" % sim.last.condensate)
+	var sab_kit := _full_kit(); sab_kit["sabatier_reactor"] = ["life_support", 1]
+	var sab := _habitat("plains", 6, sab_kit)
+	sab.simulation().random_storms = false
+	sab.simulation().run_hours(48.0, 8.0)
+	_check(float(sab.simulation().last.sabatier_water) > .5 and float(sab.simulation().stores.ch4_kg) > 0.0, "the Sabatier turns CO2 and hydrogen into water (%.1f L a sol) and methane (%.2f kg)" % [sab.simulation().last.sabatier_water, sab.simulation().stores.ch4_kg])
+	_check(float(sab.simulation().stores.h2_kg) < float(sim.stores.h2_kg), "and uses up the kept hydrogen")
+	var air_kit := _full_kit(); air_kit.erase("oxygen_generator")
+	var dry_air := _habitat("plains", 6, air_kit)
+	var o2_before := float(dry_air.simulation().daily_flows(false).o2_made)
+	dry_air.zones.append({"kind": "atmosphere_processor", "at": Vector2(-12, 6), "cells": [], "door_direction": Vector2i(0, 1), "cost": 0, "state": {}})
+	dry_air.simulation().invalidate()
+	_check(is_equal_approx(float(dry_air.simulation().daily_flows(false).o2_made) - o2_before, 1.2), "an atmosphere processor makes 1.2 kg of oxygen a sol with no water")
+
 	# A dust storm: solar drops, loads are shed, and life support goes last.
 	sim.start_storm(3.0)
 	var storm: Array = sim.run_hours(48.0, 8.0, 1.0)

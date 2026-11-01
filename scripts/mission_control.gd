@@ -355,7 +355,7 @@ func _discovery_card(entry: Dictionary) -> Control:
 	var words := MHStyle.vbox(4)
 	card.add_child(words)
 	if not known and not lead:
-		var hint := "A first for the crew" if entry.has("field") else str(UNKNOWN_HINTS.get(str(entry.get("kind", "rock")), "Something out there?"))
+		var hint := "A first for the crew" if entry.has("field") else str(entry.get("hint", UNKNOWN_HINTS.get(str(entry.get("kind", "rock")), "Something out there?")))
 		words.add_child(MHStyle.label(hint, 15, MHStyle.TEXT_MUTED, 500))
 		return card
 	if lead:

@@ -32,6 +32,7 @@ var _ring: Control
 var _pips: Control
 var _rocks: Array = []
 var _reading_check := 0.0
+const AIR_READING_M := 150.0
 
 func setup(target_world: Node) -> Node:
 	world = target_world
@@ -144,8 +145,12 @@ func _process(delta: float) -> void:
 	_reading_check -= delta
 	if _reading_check <= 0.0 and MHSamples.on() and world.player != null:
 		_reading_check = 1.0
+		var daylight := MHGame.sun_altitude(MHGame.sol_hour) > 0.0
 		if MHSamples.find_near(world.player.global_position) == "cave_climate":
-			world.call("show_chapter_messages", MHSamples.log_reading("cave_climate", MHGame.sun_altitude(MHGame.sol_hour) > 0.0, _now()))
+			world.call("show_chapter_messages", MHSamples.log_reading("cave_climate", daylight, _now()))
+		# The air (mars_air): logged by day and by night, away from the base's own exhaust.
+		elif _pips.visible and world.player.global_position.distance_to(world.lander.global_position) > AIR_READING_M:
+			world.call("show_chapter_messages", MHSamples.log_reading("mars_air", daylight, _now()))
 	# I: the case's line; hold I: leave the last sample behind.
 	var info := captured and _pips.visible and Input.is_physical_key_pressed(KEY_I) and world.explore_hud.call("_looked_at_interactable") == null
 	if info:

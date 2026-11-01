@@ -736,6 +736,23 @@
       "cargo_kg": 400.0,
       "power_kw": 1.2,
       "hours_per_sol": 8.0
+    },
+    "sabatier_reactor": {
+      "room": "life_support",
+      "cargo_kg": 250.0,
+      "power_kw": 0.6,
+      "hours_per_sol": 24.0
+    },
+    "methane_tank": {
+      "room": "life_support",
+      "cargo_kg": 150.0
+    },
+    "atmosphere_processor": {
+      "room": "",
+      "cargo_kg": 600.0,
+      "power_kw": 2.5,
+      "hours_per_sol": 24.0,
+      "o2_kg": 1.2
     }
   },
   "sites": {
