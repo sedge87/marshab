@@ -87,7 +87,7 @@ RIVER_POINTS, RIVER_T = river_course()
 _wide = int(round(RIVER_WIDE_AT * 360))
 ZONES["riverbed"] = {"centre": (float(RIVER_POINTS[_wide][0]), float(RIVER_POINTS[_wide][1])), "flat_radius": 50.0, "blend": 1.15, "label": "The old riverbed"}
 FEATURES += [("Ancient river", tuple(float(v) for v in RIVER_POINTS[110])), ("Delta", tuple(float(v) for v in RIVER_POINTS[-12]))]
-FEATURES += [("Wrinkle ridge", (-1650.0, 1900.0)), ("Wrinkle ridge", (-600.0, 1900.0)), ("Side canyon", (-250.0, -1800.0))]
+FEATURES += [("Wrinkle ridge", (-1650.0, 1900.0)), ("Wrinkle ridge", (-600.0, 1900.0)), ("Side canyon", (-2050.0, -1700.0))]
 
 MESAS = [(-760.0, 420.0, 170.0, 48.0), (-2050.0, 1650.0, 240.0, 62.0), (300.0, 1500.0, 140.0, 40.0), (-1950.0, 380.0, 110.0, 34.0), (2100.0, 1700.0, 260.0, 70.0)]
 
@@ -97,10 +97,10 @@ MESA_RAMPS = {1: 0.0, 4: math.pi}
 # The big crater's breaches: (direction from its centre, angular width, how much of the rim is gone).
 CRATER_BREACHES = [(-1.2, 0.34, 0.6), (0.25, 0.26, 0.72)]
 CANYON_DEPTH = 170.0
-CANYON_FAR_EDGE = -2640.0   # the canyon's far (north) wall
+CANYON_FAR_EDGE = -2820.0   # the canyon's far (north) wall
 # Side canyons biting back into the plateau: (x, length, half width, ramp up from the floor?).
 SIDE_RAMP_LENGTH = 700.0
-SIDE_CANYONS = [(-2150.0, 420.0, 75.0, False), (-250.0, SIDE_RAMP_LENGTH, 85.0, True), (2050.0, 500.0, 70.0, False), (-1500.0, 230.0, 45.0, False)]
+SIDE_CANYONS = [(-250.0, 420.0, 75.0, False), (-2050.0, SIDE_RAMP_LENGTH, 85.0, True), (2050.0, 500.0, 70.0, False), (-1450.0, 230.0, 45.0, False)]
 CANYON_LANDSLIDES = [(-950.0, 420.0, 260.0), (1250.0, 380.0, 220.0)]   # x, run-out, half width
 # Wrinkle ridges on the plains: control points, and where along them (0..1) the passes are.
 WRINKLE_RIDGES = [
@@ -390,7 +390,7 @@ def add_canyon(h, x, z, masks, medium):
     the plateau (one with a ramp up from the floor, the rover's way), and
     landslide tongues on the floor."""
     row = x[0]
-    base_edge = -2030.0 + 90.0 * spectral_noise(3.4, SEED + 3, k_high=0.01)[0]
+    base_edge = -2030.0 + 60.0 * spectral_noise(3.4, SEED + 3, k_high=0.01)[0]
     spurs = spectral_noise(3.0, SEED + 4, k_low=0.008, k_high=0.03)
     edge = base_edge[None, :] + 45.0 * spurs   # spurs and alcoves
     plateau = z > edge
@@ -398,7 +398,7 @@ def add_canyon(h, x, z, masks, medium):
     ramp_bay = np.zeros(h.shape, dtype=bool)
     for sx, length, width, is_ramp in SIDE_CANYONS:
         q = np.clip((z - base_edge[None, :]) / length, 0.0, 1.0)
-        bay = (np.abs(x - sx + bay_wobble) < width * (1.0 - 0.45 * q)) & (z < base_edge[None, :] + length + 30.0 * spurs)
+        bay = (np.abs(x - sx + bay_wobble) < width * (1.0 - (0.15 if is_ramp else 0.45) * q)) & (z < base_edge[None, :] + length + 30.0 * spurs)
         plateau &= ~bay
         if is_ramp:
             ramp_bay |= bay
@@ -410,9 +410,11 @@ def add_canyon(h, x, z, masks, medium):
                        0.45 * np.clip((u + 240.0) / 150.0, 0.0, 1.0) ** 1.6)
     profile = np.where(u >= 0.0, 1.0, profile)
     # The ramp canyon: its floor climbs steadily from the canyon floor to the plateau.
-    into = np.clip((z - base_edge[None, :] + 240.0) / (SIDE_RAMP_LENGTH + 240.0), 0.0, 1.0)
-    in_bay = smoothstep(4.0, 30.0, box_blur(distance_field(~ramp_bay), 6))
-    profile = np.maximum(profile, in_bay * into)
+    into = np.clip((z - base_edge[None, :] + 240.0) / (SIDE_RAMP_LENGTH + 120.0), 0.0, 1.0)   # level with the plateau 120 m before the head
+    bay_depth = box_blur(signed_distance(ramp_bay), 6)   # metres into the bay (negative outside)
+    in_bay = smoothstep(4.0, 30.0, bay_depth)
+    profile = profile * (1.0 - in_bay) + into * in_bay   # the bay's floor is the ramp
+    profile = np.maximum(profile, into * smoothstep(-70.0, 0.0, bay_depth))   # and no step where it meets the plateau
     # The far wall: the same layers, rising north to the region's edge.
     far = (CANYON_FAR_EDGE + 40.0 * spectral_noise(3.4, SEED + 6, k_high=0.01)[0][None, :] + 30.0 * spurs) - z
     v2 = np.clip((far + 90.0) / 90.0, 0.0, 1.0) * 3.0 + 0.15 * medium
@@ -421,7 +423,7 @@ def add_canyon(h, x, z, masks, medium):
     profile = np.maximum(profile, far_profile * (z < base_edge[None, :] - 150.0))
     h += -CANYON_DEPTH * (1.0 - profile)
     floor = (1.0 - smoothstep(-260.0, -200.0, u)) * (1.0 - smoothstep(-200.0, -150.0, far))
-    h += 5.0 * medium * floor   # rough floor
+    h += 1.8 * medium * floor   # a rough floor, but drivable
     # Landslide tongues: lobes of debris run out across the floor.
     landslide = np.zeros(h.shape, dtype=np.float32)
     for lx, length, width in CANYON_LANDSLIDES:
@@ -476,10 +478,12 @@ def add_mesas(h, x, z, masks, medium, edge_warp):
         md = np.sqrt(dx * dx + dz * dz) / (mr * shape) + edge_warp(seed, 0.12, 0.05)[win]
         lift = mesa_profile(md, mh, medium[win])
         if r_angle is not None:
-            wb = 1.0 - smoothstep(0.12, 0.24, np.abs(np.angle(np.exp(1j * (ang - r_angle)))))
-            run = mh / (0.2 * mr)   # about 11 degrees, in mesa radii
-            ramp = mh * np.clip(1.0 - (md - 0.78) / run, 0.0, 1.0)
-            lift = np.maximum(lift, ramp * wb)
+            wb = 1.0 - smoothstep(0.16, 0.3, np.abs(np.angle(np.exp(1j * (ang - r_angle)))))
+            run = mh / (0.15 * mr)   # about 9 degrees, in mesa radii
+            plain = np.sqrt(dx * dx + dz * dz) / mr   # the ramp ignores the outline's wobble
+            ramp = mh * np.clip(1.0 - (plain - 0.78) / run, 0.0, 1.0)
+            # The fallen wall replaces the cliff there: flat top, then the ramp down.
+            lift = lift * (1.0 - wb) + np.maximum(ramp, np.where(plain < 0.78, mh, 0.0)) * wb
         h[win] += lift
         masks["mesa_body"][win] = np.maximum(masks["mesa_body"][win], 1.0 - smoothstep(0.88, 0.96, md))
         masks["talus"][win] = np.maximum(masks["talus"][win], smoothstep(0.9, 0.96, md) * (1.0 - smoothstep(1.2, 1.65, md)))
@@ -868,6 +872,125 @@ def carve_river(h, x, z, masks, medium, lobes_field):
     return floor
 
 
+# ---------- rover routes ----------
+
+ROUTE_CELL = 10.0     # metres, as scripts/rover_route.gd
+ROUTE_MAX_GRADE = 0.4  # rise over run, about 22 degrees: steeper than rover_route.gd's "dear" (0.36), well short of its cliff (0.8)
+
+
+def route_targets():
+    """Every major destination: (name, x, z, radius)."""
+    targets = [(k, z["centre"][0], z["centre"][1], 40.0) for k, z in ZONES.items()]
+    wind = np.array(DUNE_WIND)
+    edge = np.array(DUNES) - wind * DUNES_RADIUS * 1.8 * 0.9
+    targets += [("dune field", float(edge[0]), float(edge[1]), 60.0), ("ice fields", -1500.0, -1000.0, 60.0),
+                ("layered mound", 1242.0, -452.0, 50.0), ("canyon floor", -1200.0, -2400.0, 60.0),
+                ("west mesa top", MESAS[1][0], MESAS[1][1], 60.0), ("east mesa top", MESAS[4][0], MESAS[4][1], 60.0)]
+    targets += [(name, x, z, r) for name, x, z, r in EXTRA_ROUTE_TARGETS]
+    return targets
+
+
+EXTRA_ROUTE_TARGETS = []   # caves and the lava tube add their entrances (stage 5)
+
+
+def route_grid(h, masks):
+    """Heights every ROUTE_CELL and where a rover can go: no steeper than
+    ROUTE_MAX_GRADE to any neighbour, not in the dunes."""
+    step = int(ROUTE_CELL / SPACING)
+    g = h[::step, ::step]
+    grade = np.zeros_like(g)
+    grade[:, :-1] = np.maximum(grade[:, :-1], np.abs(np.diff(g, axis=1)) / ROUTE_CELL)
+    grade[:, 1:] = np.maximum(grade[:, 1:], np.abs(np.diff(g, axis=1)) / ROUTE_CELL)
+    grade[:-1, :] = np.maximum(grade[:-1, :], np.abs(np.diff(g, axis=0)) / ROUTE_CELL)
+    grade[1:, :] = np.maximum(grade[1:, :], np.abs(np.diff(g, axis=0)) / ROUTE_CELL)
+    ok = (grade <= ROUTE_MAX_GRADE) & (masks["dunes"][::step, ::step] < 0.5)
+    return ok, step
+
+
+def flood(ok, seeds):
+    """Every cell reachable from the seed cells through ok cells (8-way)."""
+    reach = seeds & ok
+    while True:
+        grow = reach.copy()
+        grow[1:, :] |= reach[:-1, :]; grow[:-1, :] |= reach[1:, :]
+        grow[:, 1:] |= reach[:, :-1]; grow[:, :-1] |= reach[:, 1:]
+        grow[1:, 1:] |= reach[:-1, :-1]; grow[:-1, :-1] |= reach[1:, 1:]
+        grow[1:, :-1] |= reach[:-1, 1:]; grow[:-1, 1:] |= reach[1:, :-1]
+        grow &= ok
+        if (grow == reach).all():
+            return reach
+        reach = grow
+
+
+def disc_cells(shape, step, x, z, r):
+    n = shape[0]
+    coords = np.arange(n) * SPACING * step - HALF
+    return ((coords[None, :] - x) ** 2 + (coords[:, None] - z) ** 2) <= r * r
+
+
+def carve_ramp(h, a, b, width=14.0):
+    """A graded track from a to b: the ground eased to a straight grade
+    between them (cut and fill), blended into the sides."""
+    ha = sample(h, a[0], a[1]); hb = sample(h, b[0], b[1])
+    line = np.array([a, b], dtype=float)
+    d, t, _ = polyline_field(line, width * 3.0, step=1)
+    near = d < width * 3.0
+    track = ha + (hb - ha) * np.clip(t[near], 0.0, 1.0)
+    w = 1.0 - smoothstep(width * 0.5, width * 3.0, d[near])
+    h[near] = h[near] * (1.0 - w) + track * w
+
+
+def check_routes(h, masks):
+    """Every landing zone must reach every destination by rover. Where one
+    can't, the nearest gap between what it can reach and the destination is
+    bridged with a graded track, and the check runs again. Returns a report."""
+    report = []
+    for attempt in range(4):
+        ok, step = route_grid(h, masks)
+        report = []
+        fixed = False
+        tried = set()
+        targets = route_targets()
+        for zone_name, zone in ZONES.items():
+            reach = flood(ok, disc_cells(ok.shape, step, zone["centre"][0], zone["centre"][1], 40.0))
+            for name, x, z, r in targets:
+                if name == zone_name:
+                    continue
+                goal = disc_cells(ok.shape, step, x, z, r)
+                good = bool((reach & goal).any())
+                if not good and attempt < 3 and name not in tried:
+                    tried.add(name)
+                    # Bridge the closest gap between where it can get and where it must.
+                    pa = None
+                    there = flood(ok | goal, goal)
+                    ai = np.argwhere(reach); bi = np.argwhere(there)
+                    if len(ai) and len(bi):
+                        bi = bi[:: max(1, len(bi) // 4000)]
+                        best = None
+                        for chunk in range(0, len(ai), 4000):
+                            part = ai[chunk:chunk + 4000]
+                            dd = ((part[:, None, :] - bi[None, :, :]) ** 2).sum(axis=2)
+                            k = np.unravel_index(np.argmin(dd), dd.shape)
+                            if best is None or dd[k] < best[0]:
+                                best = (dd[k], part[k[0]], bi[k[1]])
+                        pa = (best[1][1] * SPACING * step - HALF, best[1][0] * SPACING * step - HALF)
+                        pb = (best[2][1] * SPACING * step - HALF, best[2][0] * SPACING * step - HALF)
+                        rise = abs(sample(h, pb[0], pb[1]) - sample(h, pa[0], pa[1])) / max(math.hypot(pb[0] - pa[0], pb[1] - pa[1]), 1.0)
+                        if rise > 0.3:
+                            print(f"  route {zone_name} -> {name}: no graded track can bridge the gap at ({pa[0]:.0f}, {pa[1]:.0f})")
+                            pa = None
+                    if pa is not None:
+                        print(f"  route {zone_name} -> {name}: bridging {math.hypot(pb[0] - pa[0], pb[1] - pa[1]):.0f} m at ({pa[0]:.0f}, {pa[1]:.0f})")
+                        carve_ramp(h, pa, pb)
+                        fixed = True
+                report.append({"from": zone_name, "to": name, "ok": good})
+        if not fixed:
+            break
+    bad = [f"{r['from']} -> {r['to']}" for r in report if not r["ok"]]
+    print(f"  routes: {len(report) - len(bad)} of {len(report)} drivable" + (f"; NOT: {', '.join(bad)}" if bad else ""))
+    return report
+
+
 def save_heights(h):
     lo, hi = float(h.min()) - 1.0, float(h.max()) + 1.0
     q = np.clip(np.round((h - lo) / (hi - lo) * 65535.0), 0, 65535).astype("<u2")
@@ -1197,6 +1320,7 @@ def write_geology(h, masks):
 def main():
     os.makedirs(OUT, exist_ok=True)
     h, masks = build_heights()
+    routes = check_routes(h, masks)
     lo, hi = save_heights(h)
     write_control(h, masks)
     write_colour(masks, h)
@@ -1214,6 +1338,7 @@ def main():
         "textures": [m[0] for m in MATERIALS],
         "features": [{"name": n, "position": list(p)} for n, p in FEATURES],
         "geology": GEOLOGY,
+        "routes": routes,
         "boulder_fields": [list(b) for b in BOULDER_FIELDS],
     }
     with open(os.path.join(OUT, "region.json"), "w", encoding="utf-8") as f:

@@ -3,7 +3,7 @@
   "size": 3072,
   "spacing": 2.0,
   "half": 3072.0,
-  "height_min": -205.89915137954063,
+  "height_min": -212.74795327242043,
   "height_max": 513.9262925883024,
   "zones": {
     "plains": {
@@ -12,7 +12,7 @@
         1000.0
       ],
       "flat_radius": 95.0,
-      "height": -28.169762368421857,
+      "height": -28.1714751065916,
       "label": "The plains"
     },
     "crater": {
@@ -21,7 +21,7 @@
         -320.0
       ],
       "flat_radius": 85.0,
-      "height": -98.05988672895265,
+      "height": -98.06127096621067,
       "label": "The crater floor"
     },
     "riverbed": {
@@ -30,7 +30,7 @@
         1739.9829044339674
       ],
       "flat_radius": 50.0,
-      "height": -4.697312932864037,
+      "height": -4.6974630750489155,
       "label": "The old riverbed"
     }
   },
@@ -136,8 +136,8 @@
     {
       "name": "Side canyon",
       "position": [
-        -250.0,
-        -1800.0
+        -2050.0,
+        -1700.0
       ]
     }
   ],
@@ -153,6 +153,128 @@
     "mesa_caprock",
     "talus_debris",
     "delta_clays"
+  ],
+  "routes": [
+    {
+      "from": "plains",
+      "to": "crater",
+      "ok": true
+    },
+    {
+      "from": "plains",
+      "to": "riverbed",
+      "ok": true
+    },
+    {
+      "from": "plains",
+      "to": "dune field",
+      "ok": true
+    },
+    {
+      "from": "plains",
+      "to": "ice fields",
+      "ok": true
+    },
+    {
+      "from": "plains",
+      "to": "layered mound",
+      "ok": true
+    },
+    {
+      "from": "plains",
+      "to": "canyon floor",
+      "ok": true
+    },
+    {
+      "from": "plains",
+      "to": "west mesa top",
+      "ok": true
+    },
+    {
+      "from": "plains",
+      "to": "east mesa top",
+      "ok": true
+    },
+    {
+      "from": "crater",
+      "to": "plains",
+      "ok": true
+    },
+    {
+      "from": "crater",
+      "to": "riverbed",
+      "ok": true
+    },
+    {
+      "from": "crater",
+      "to": "dune field",
+      "ok": true
+    },
+    {
+      "from": "crater",
+      "to": "ice fields",
+      "ok": true
+    },
+    {
+      "from": "crater",
+      "to": "layered mound",
+      "ok": true
+    },
+    {
+      "from": "crater",
+      "to": "canyon floor",
+      "ok": true
+    },
+    {
+      "from": "crater",
+      "to": "west mesa top",
+      "ok": true
+    },
+    {
+      "from": "crater",
+      "to": "east mesa top",
+      "ok": true
+    },
+    {
+      "from": "riverbed",
+      "to": "plains",
+      "ok": true
+    },
+    {
+      "from": "riverbed",
+      "to": "crater",
+      "ok": true
+    },
+    {
+      "from": "riverbed",
+      "to": "dune field",
+      "ok": true
+    },
+    {
+      "from": "riverbed",
+      "to": "ice fields",
+      "ok": true
+    },
+    {
+      "from": "riverbed",
+      "to": "layered mound",
+      "ok": true
+    },
+    {
+      "from": "riverbed",
+      "to": "canyon floor",
+      "ok": true
+    },
+    {
+      "from": "riverbed",
+      "to": "west mesa top",
+      "ok": true
+    },
+    {
+      "from": "riverbed",
+      "to": "east mesa top",
+      "ok": true
+    }
   ],
   "boulder_fields": [
     [
