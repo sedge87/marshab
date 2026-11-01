@@ -18,6 +18,8 @@
     "surface_reactor": {"source": "sent", "after": "sol_30", "feedstock_kg": 600, "earth_parts": 40, "hours": 20, "cargo_kg": 1200},
     "eva_tool_station": {"source": "sent", "after": "first_walk"},
     "medical_cabinet": {"source": "sent", "after": "sol_10"},
+    "regolith_shield_block": {"source": "discovered", "after": "discovery:basalt"},
+    "water_wall_panel": {"source": "discovered", "after": "discovery:soil_water"},
     "spare_parts_rack": {"source": "sent", "after": "first_job"}
   }
 }

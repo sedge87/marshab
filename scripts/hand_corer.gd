@@ -102,6 +102,7 @@ func _take_core(at: Vector3) -> void:
 		var now := float(world.builder.simulation().hours_run)
 		world.call("show_chapter_messages", MHChapterOne.ice_found(now))
 	world.call("show_chapter_messages", MHChapterOne.bag_soil())
+	if world.get("sample_tools") != null: world.call("show_chapter_messages", world.sample_tools.call("keep_core", core))
 
 # ---------- the food step at the Workshop Bench ----------
 

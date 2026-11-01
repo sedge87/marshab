@@ -230,7 +230,9 @@ func _fill_flows() -> void:
 	_flows_panel.add_child(_line("Food: %d kg · grows %.1f, eats %.1f kg a sol%s" % [roundi(float(snap.food_kg)), float(flows.food_grown), float(flows.food_eaten),
 		" · %s left" % _sols(float(snap.food_kg) / -food_net) if food_net < 0.0 and crew > 0 else ""], MHStyle.TEXT_PRIMARY, 15))
 	_flows_panel.add_child(_line("Crew: %d aboard of %d bunks · health %d%%" % [crew, int(inv.capacity.berths), roundi(float(snap.crew_health))], MHStyle.TEXT_PRIMARY, 15))
-	if float(flows.research) > 0.0 or float(s.research_boost_hours) > 0.0:
+	if MHSamples.on():
+		_flows_panel.add_child(_line("Science: %d discoveries · %d samples waiting · %d leads" % [MHSamples.found.size(), MHSamples.waiting().size(), MHSamples.leads.size()], MHStyle.TEXT_PRIMARY, 15))
+	elif float(flows.research) > 0.0 or float(s.research_boost_hours) > 0.0:
 		_flows_panel.add_child(_line("Research: %.1f a sol%s" % [float(flows.research), " (core sample +20%%, %s left)" % _hours(float(s.research_boost_hours)) if float(s.research_boost_hours) > 0.0 else ""], MHStyle.TEXT_PRIMARY, 15))
 	if float(s.storm_hours_left) > 0.0: _flows_panel.add_child(_line("Dust storm: solar cut for %s" % _hours(float(s.storm_hours_left)), MHStyle.WARN, 15))
 	# Act 2: air pressure, radiation, the crew as people, repairs.

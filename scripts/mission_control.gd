@@ -73,6 +73,12 @@ func _ready() -> void:
 		dossier_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		dossier_button.pressed.connect(_show_dossier)
 		header.add_child(dossier_button)
+	if MHSamples.on():
+		var science := MHStyle.button("Discoveries (%d)" % MHSamples.found.size(), "secondary", "flask-conical")
+		science.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		science.tooltip_text = "The terminal: what your samples have shown, by section"
+		science.pressed.connect(_show_discoveries)
+		header.add_child(science)
 	var log_button := MHStyle.button("Alert log (%d)" % count, "secondary", "triangle-alert")
 	log_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	log_button.pressed.connect(_show_alert_log)
@@ -294,6 +300,83 @@ func _dossier_version(id: String, mission: Dictionary, entry: Dictionary, list: 
 
 ## Every alert the habitat has raised, newest first: when, how serious, what
 ## and the cause chain it gave. Click anywhere outside to close.
+# ---------- the terminal: discoveries (step 5) ----------
+
+## What each kind of sample hints at while a discovery is still unknown.
+const UNKNOWN_HINTS := {"rock": "Something in the rocks?", "regolith": "Something in the soil?", "ice_core": "Something in the ice?", "reading": "Something underground?"}
+
+## Mission Control's record (docs/samples-lab-journal.md §6): the four
+## sections, each discovery a card (what, where and when, what it unlocked),
+## leads in progress, and outlines for what's still to find.
+func _show_discoveries() -> void:
+	var scrim := ColorRect.new()
+	scrim.color = Color(0, 0, 0, .55)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(scrim)
+	var centre := CenterContainer.new()
+	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(centre)
+	var panel := _sheet(1400)
+	centre.add_child(panel)
+	var col := MHStyle.vbox(12)
+	panel.add_child(col)
+	var head := MHStyle.hbox(8)
+	head.add_child(MHStyle.eyebrow("Discoveries · %d of %d" % [MHSamples.found.size(), MHSamples.discoveries().size()], MHStyle.accent))
+	head.add_child(MHStyle.spacer())
+	var back := MHStyle.button("Back", "secondary", "chevron-left")
+	back.pressed.connect(scrim.queue_free)
+	head.add_child(back)
+	col.add_child(head)
+	var row := MHStyle.hbox(16)
+	col.add_child(row)
+	var counts := MHSamples.section_counts()
+	for section in ["life", "climate", "geology", "humans"]:
+		var scroll := ScrollContainer.new()
+		scroll.custom_minimum_size = Vector2(320, 600)
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		row.add_child(scroll)
+		var list := MHStyle.vbox(10)
+		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(list)
+		var tally: Array = counts.get(section, [0, 0])
+		var title := MHStyle.hbox(8)
+		title.add_child(MHStyle.icon(str((MHSamples.data().get("sections", {}) as Dictionary).get(section, {}).get("icon", "flask-conical")), 18, MHStyle.accent))
+		title.add_child(MHStyle.label("%s  %d / %d" % [MHSamples.section_label(section), int(tally[0]), int(tally[1])], 18, MHStyle.TEXT_PRIMARY, 600))
+		list.add_child(title)
+		for entry in MHSamples.discoveries():
+			if str(entry.section) == section: list.add_child(_discovery_card(entry))
+
+func _discovery_card(entry: Dictionary) -> Control:
+	var id := str(entry.id)
+	var known := MHSamples.found.has(id)
+	var lead := MHSamples.leads.has(id)
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_CONTROL if known else Color(0, 0, 0, 0), MHStyle.accent if lead else MHStyle.BORDER_SUBTLE, 8, 1, Vector4(12, 10, 12, 10)))
+	var words := MHStyle.vbox(4)
+	card.add_child(words)
+	if not known and not lead:
+		var hint := "A first for the crew" if entry.has("field") else str(UNKNOWN_HINTS.get(str(entry.get("kind", "rock")), "Something out there?"))
+		words.add_child(MHStyle.label(hint, 15, MHStyle.TEXT_MUTED, 500))
+		return card
+	if lead:
+		var have := (MHSamples.evidence.get(id, []) as Array).size()
+		words.add_child(MHStyle.eyebrow("LEAD", MHStyle.accent, 11))
+		words.add_child(_wrap(str(entry.get("lead", entry.label)), 15, MHStyle.TEXT_PRIMARY))
+		if str(entry.get("kind", "")) != "reading":
+			words.add_child(MHStyle.mono("%d of %d samples from different spots" % [have, int(entry.get("need", 1))], 12, MHStyle.TEXT_MUTED))
+		return card
+	var record: Dictionary = MHSamples.found[id]
+	words.add_child(MHStyle.label(str(entry.label), 16, MHStyle.TEXT_PRIMARY, 600))
+	words.add_child(_wrap(str(entry.get("text", "")), 13))
+	var sample := MHSamples.sample(int(record.get("sample", -1)))
+	words.add_child(MHStyle.mono(MHSamples.where_line(sample) if not sample.is_empty() else "Sol %d" % int(record.get("sol", 1)), 12, MHStyle.TEXT_MUTED))
+	if bool(record.get("replied", false)):
+		words.add_child(_wrap("Earth: " + str(entry.get("reply", "")), 13, MHStyle.INFO))
+		if entry.has("unlock_text"): words.add_child(MHStyle.mono("Unlocked: %s" % str(entry.unlock_text), 12, MHStyle.VALID))
+	else:
+		words.add_child(MHStyle.mono("Sent to Earth · reply on its way", 12, MHStyle.TEXT_MUTED))
+	return card
+
 func _show_alert_log() -> void:
 	var alerts := get_tree().get_first_node_in_group("habitat_alerts")
 	var history: Array = (alerts.history as Array).duplicate() if alerts != null else []

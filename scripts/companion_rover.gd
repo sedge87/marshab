@@ -105,6 +105,9 @@ var flags: Array = []          # flag positions (Vector3), saved
 ## Orders (hold G, or the Mission Control map): see order().
 var staying := false           # "Stay": waits here until told otherwise
 var has_core := false          # carrying a core sample for the Science Lab (saved)
+var _core_spot := Vector2.INF   # where it was drilled (step 5's sample record)
+## Step 5: each of GAR-Y's named rocks as a sample's rock type (data/discoveries.json).
+const ROCK_TYPES := ["basalt", "hematite", "olivine", "gypsum", "vesicular", "conglomerate", "mudstone", "sulfur", "clay", "meteorite", "dusty", "perchlorate_crust"]
 var surveys_ordered := 0
 var rescues := 0               # times it has dragged you home (saved)
 var rescuing := false          # scripts/gar_y_rescue.gd is moving it
@@ -424,6 +427,7 @@ func _survey_here() -> void:
 		if rock >= 0:
 			_say("tada")
 			var found: Array = ROCKS[rock]
+			if MHSamples.on(): MHSamples.add_to_store("rock", Vector2(global_position.x, global_position.z), float(habitat.simulation().hours_run), {"rock": ROCK_TYPES[rock], "name": str(found[0])})
 			_toast("GAR-Y found a special rock. It has named it %s." % found[0], "%s: %s It's keeping %s by its charger (%d of %d)." % [found[1], found[2], found[0], rocks.size(), ROCKS.size()], MHStyle.VALID)
 	if hunting: _hunt_next(at, richness)
 	else: _end_task()
@@ -1067,6 +1071,7 @@ func _core_here() -> void:
 	if task != "core": return
 	await _arm_move("carry", .8)
 	has_core = true
+	_core_spot = Vector2(global_position.x, global_position.z)
 	_say("tada")
 	_toast("GAR-Y took a core sample", "A tube of layered regolith from below the surface. Bring GAR-Y inside (ping it so it follows you through the airlock) and it'll take the core to the Science Lab.", MHStyle.INFO)
 	_end_task()
@@ -1087,6 +1092,19 @@ func _core_delivered() -> void:
 	await _arm_move("reach", .8)
 	if task != "core_deliver": return
 	has_core = false
+	if MHSamples.on():
+		# Step 5: the core is a sample like yours, waiting in the lab's store.
+		var spot := _core_spot if _core_spot != Vector2.INF else Vector2(global_position.x, global_position.z)
+		var core := MHChapterOne.core_at(spot, float(habitat._ice_richness_at_point(spot)))
+		var now := float(habitat.simulation().hours_run)
+		if bool(core.dry): MHSamples.add_to_store("regolith", spot, now)
+		else: MHSamples.add_to_store("ice_core", spot, now, {"depth_m": float(core.depth_m), "purity": float(core.purity)})
+		_core_spot = Vector2.INF
+		await _arm_move("stow", .6)
+		_say("tada")
+		_toast("Core sample delivered", "GAR-Y left its core in the lab's store. Analyse it at a Science Workbench.", MHStyle.VALID)
+		_end_task()
+		return
 	habitat.simulation().research_boost_hours = 240.0
 	MHMissions.bump("core_sample")
 	await _arm_move("stow", .6)

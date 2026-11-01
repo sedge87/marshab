@@ -78,6 +78,7 @@ static func reset() -> void:
 	known = {}; job = {}; has_corer = false; cores = []; steps = {}; finished_at = -1.0
 	stores_landed = false; reserve_used = false; emergency_eta = -1.0; said = {}
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
+	MHSamples.reset()   # step 5's samples start with the chapter
 
 static func export_state() -> Dictionary:
 	return {"older_rules": older_rules, "unpacked": unpacked.duplicate(), "stock": stock.duplicate(), "shell_kg": shell_kg,
@@ -139,7 +140,7 @@ static func manifest_lines(crate_id: String) -> Array:
 			"_shell_kg": lines.append("Hull kit · %s" % MHStyle.kg(int(contents[key])))
 			"_feedstock_kg": lines.append("Feedstock · %s" % MHStyle.kg(int(contents[key])))
 			"_earth_parts": lines.append("Earth parts · %d" % int(contents[key]))
-			"_hand_corer": lines.append("Hand corer")
+			"_hand_corer": lines.append("Sampling kit (corer, scoop, sample case)")
 			_: lines.append("%s%s" % [label(str(key)), " ×%d" % int(contents[key]) if int(contents[key]) > 1 else ""])
 	return lines
 

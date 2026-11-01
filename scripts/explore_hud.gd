@@ -516,6 +516,15 @@ func _update_prompt() -> void:
 			_prompt_keys.text = "E"
 			_prompt_verb.text = "Hold to take a core"
 			_prompt_state.text = ""
+	# Step 5: a rock to chip, or the ground at your feet to scoop.
+	if not show:
+		var tools := get_tree().get_first_node_in_group("sample_tools")
+		var text: String = tools.call("prompt_text") if tools != null else ""
+		if not text.is_empty():
+			show = true
+			_prompt_keys.text = "" if text == "Already sampled" else "E"
+			_prompt_verb.text = text
+			_prompt_state.text = ""
 	# 120 ms fade
 	_prompt.modulate.a = move_toward(_prompt.modulate.a, 1.0 if show else 0.0, get_process_delta_time() / 0.12)
 

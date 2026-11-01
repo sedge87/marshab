@@ -5789,7 +5789,11 @@ func readiness() -> Array:
 	var habitat_c := float(sim.habitat_temp)
 	var warm := not rooms.is_empty() and habitat_c >= 18.0
 	items.append({"id": "heat", "label": "Heating", "detail": ("Habitat %d °C (comfortable 18–24 °C)" % roundi(habitat_c)) if MHGame.simulation_on() else "Off in Creative", "status": "met" if warm else ("partial" if habitat_c >= MHResources.setting("cold_c", 12.0) else "unmet"), "icon": "sun"})
-	items.append(_fitted_target_item("research","Research capability",int(systems.research),int(systems.research_capacity),RESEARCH_TARGET,"flask-conical"))
+	if MHSamples.on():
+		# Chapter rules: science is samples analysed at a Science Workbench (step 5).
+		var benches := MHSamples.benches(self).size()
+		items.append({"id": "research", "label": "Science", "detail": ("%d discoveries · %d bench%s" % [MHSamples.found.size(), benches, "" if benches == 1 else "es"]) if benches > 0 else "Build a Science Lab with a Science Workbench to analyse samples", "status": "met" if benches > 0 else "partial", "icon": "flask-conical"})
+	else: items.append(_fitted_target_item("research","Research capability",int(systems.research),int(systems.research_capacity),RESEARCH_TARGET,"flask-conical"))
 	var power_status := "met"
 	var power_detail := "Unlimited in Creative"
 	if MHGame.simulation_on():

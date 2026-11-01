@@ -447,7 +447,7 @@ func solar_cut() -> float:
 
 ## Forecasts a storm to arrive in this many hours (the HUD warns until then).
 func forecast_storm(hours := -1.0) -> void:
-	storm_eta_hours = hours if hours >= 0.0 else MHResources.setting("storm_warning_hours", 10.0)
+	storm_eta_hours = hours if hours >= 0.0 else MHResources.setting("storm_warning_hours", 10.0) * MHSamples.bonus("storm_warning")
 
 # ---------- one step ----------
 
@@ -544,12 +544,12 @@ func step(dt: float, hour: float) -> void:
 	var research := 0.0
 	for item in working:
 		if not powered.tiers[item.tier] and item.power > 0.0: continue
-		research += MHResources.item_value(item.id, "research")
+		if not MHSamples.on(): research += MHResources.item_value(item.id, "research")   # chapter rules: samples instead (step 5)
 		o2_made += item.o2 * per_sol
 		co2_removed += -minf(0.0, item.co2) * per_sol
 		if item.water > 0.0: water_made += item.water * per_sol
 		else: water_used += -item.water * per_sol
-		food_grown += item.food * per_sol
+		food_grown += item.food * per_sol * MHSamples.bonus("food")   # discoveries (step 5)
 		if item.id == "water_reclaimer" and item.on: reclaim_capacity += 70.0 * per_sol
 	var water_recovered := minf(reclaim_capacity, crew * MHResources.setting("water_per_person", 10.0) * per_sol) * MHResources.setting("reclaim_fraction", .93)
 	var drill_water := 0.0
@@ -619,7 +619,7 @@ func solar_wear(hour: float) -> Dictionary:
 func _wear(dt: float) -> void:
 	var sols := dt / 24.0
 	var storm := storm_hours_left > 0.0
-	var rate := WEATHER_WEAR.STORM_DUST_PER_SOL if storm else WEATHER_WEAR.dust_per_sol(MHGame.site_id)
+	var rate := (WEATHER_WEAR.STORM_DUST_PER_SOL if storm else WEATHER_WEAR.dust_per_sol(MHGame.site_id)) * MHSamples.bonus("dust")
 	for key in inventory().get("solar_keys", []):
 		var dust := minf(WEATHER_WEAR.MAX_DUST, float(panel_dust.get(key, 0.0)) + rate * sols)
 		if not storm and _rng.randf() < WEATHER_WEAR.GUST_CLEAN_PER_SOL * sols: dust *= WEATHER_WEAR.GUST_LEAVES
@@ -826,7 +826,7 @@ func print_rate(inv: Dictionary) -> float:
 	var printers := (inv.items as Array).filter(func(i): return i.id == "regolith_printer" and i.on).size()
 	if printers == 0: return 0.0
 	var recycling := (inv.items as Array).any(func(i): return i.id == "recycling_hopper_plastics")
-	return printers * MHResources.setting("print_kg_per_sol", 2500.0) * (1.0 + (MHResources.setting("print_recycle_bonus", .25) if recycling else 0.0))
+	return printers * MHResources.setting("print_kg_per_sol", 2500.0) * (1.0 + (MHResources.setting("print_recycle_bonus", .25) if recycling else 0.0)) * MHSamples.bonus("print")
 
 ## numbers behind the readiness checklist and the systems panel.
 ## planned: for the full mission crew (readiness); otherwise for the crew on board now.
@@ -844,7 +844,7 @@ func daily_flows(planned := true) -> Dictionary:
 		if item.water > 0.0: out.water_made += item.water
 		else: out.water_used += -item.water
 		if item.id == "water_reclaimer": reclaimers += 1
-		out.research += MHResources.item_value(item.id, "research")
+		if not MHSamples.on(): out.research += MHResources.item_value(item.id, "research")
 	out.water_made += minf(reclaimers * 70.0, crew * MHResources.setting("water_per_person", 10.0)) * MHResources.setting("reclaim_fraction", .93)
 	for richness in inv.drills: out.water_made += MHResources.setting("ice_drill_l", 120.0) * float(richness)
 	if research_boost_hours > 0.0: out.research *= 1.2
