@@ -2,6 +2,7 @@ extends Control
 const MHSaves := preload("res://scripts/saves.gd")   # named saves, one file per base
 const LANDING_PICKER_SCRIPT := preload("res://scripts/landing_picker.gd")
 const REGION_LANDING_PICKER_SCRIPT := preload("res://scripts/region_landing_picker.gd")
+const DESCENT_SCRIPT := preload("res://scripts/descent.gd")
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
@@ -224,7 +225,7 @@ func show_screen(id: String) -> void:
 	screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui_root.add_child(screen)
 	marker.visible = id == "site"
-	display_builder.root.visible = id != "site"
+	display_builder.root.visible = id != "site" and id != "descent"
 	match id:
 		"title":
 			environment.apply_palette("dusk"); _set_camera("title", false); _title_screen()
@@ -236,6 +237,8 @@ func show_screen(id: String) -> void:
 			environment.apply_palette(MHGame.palette_name()); _set_camera("hero"); _landing_screen()
 		"loading":
 			environment.apply_palette("golden"); _set_camera("loading", false); _loading_screen()
+		"descent":
+			environment.apply_palette(MHGame.palette_name()); _camera_key = "descent"; _descent_screen()
 		"saves":
 			environment.apply_palette("dusk"); _set_camera("title", false); _saves_screen()
 	MHGame.apply_settings(get_viewport(), environment.world_environment.environment, environment.sun, [])
@@ -1112,6 +1115,15 @@ func _region_landing_screen() -> void:
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(status)
 	col.add_child(_tutorial_choice())
+	if MHGame.game_mode != "creative":
+		var skip := CheckBox.new()
+		skip.text = "Skip the descent (the autopilot picks the spot)"
+		skip.button_pressed = bool(MHGame.setting("skip_descent"))
+		skip.toggled.connect(func(on: bool) -> void:
+			var values := MHGame.settings()
+			values["skip_descent"] = on
+			MHGame.save_settings(values))
+		col.add_child(skip)
 	panel.add_child(col)
 	screen.add_child(panel)
 	var bar := _bottom_bar()
@@ -1123,13 +1135,9 @@ func _region_landing_screen() -> void:
 	var land := MHStyle.button("Land", "primary", "rocket")
 	land.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	land.pressed.connect(func() -> void:
-		var spot: Vector2 = picker.touchdown()
-		if is_inf(spot.x): return
-		MHGame.base_site = MHBaseSite.make(spot.x, spot.y, MHGame.colony_name)
-		MHGame.cargo_at = picker.centre - spot   # site metres from the base
-		MHGame.landing_target = Vector2.INF       # the lander sets down on the pad's centre
-		MHChapterOne.reset()
-		show_screen("loading"))
+		_landing_area = picker.centre
+		if bool(MHGame.setting("skip_descent")) or MHGame.game_mode == "creative": _found_base(picker.touchdown())
+		else: show_screen("descent"))
 	bar.add_child(land)
 	var show_verdict := func(_centre: Vector2, verdict: Dictionary) -> void:
 		status.text = str(verdict.get("text", ""))
@@ -1138,6 +1146,33 @@ func _region_landing_screen() -> void:
 		land.disabled = level == "red"
 	picker.area_changed.connect(show_verdict)
 	show_verdict.call(picker.centre, picker.verdict)
+
+var _landing_area := Vector2.INF   # the landing oval's centre (region metres)
+
+## The descent into the landing oval, in the backdrop (scripts/descent.gd).
+func _descent_screen() -> void:
+	var descent := DESCENT_SCRIPT.new()
+	descent.setup(camera, environment, _landing_area)
+	descent.finished.connect(func(touchdown: Vector2) -> void:
+		descent.queue_free()
+		# Flown once: later landings skip it (the Land step's box turns it back on).
+		if not bool(MHGame.setting("descent_flown")):
+			var values := MHGame.settings()
+			values["descent_flown"] = true
+			values["skip_descent"] = true
+			MHGame.save_settings(values)
+		_found_base(touchdown))
+	backdrop.add_child(descent)
+
+## Found the base where the lander touched down (region metres) and load the world there.
+func _found_base(touchdown: Vector2) -> void:
+	if is_inf(touchdown.x): return
+	MHGame.base_site = MHBaseSite.make(touchdown.x, touchdown.y, MHGame.colony_name)
+	MHGame.cargo_at = _landing_area - touchdown   # site metres from the base
+	MHGame.landing_target = Vector2.INF            # the lander sets down on the pad's centre
+	MHChapterOne.reset()
+	environment.rebuild_site()   # the backdrop behind the loading screen: the new base
+	show_screen("loading")
 
 const TUTORIAL_CHOICES := {"full": "Full", "hints": "Hints only", "off": "Off"}
 const TUTORIAL_NOTES := {

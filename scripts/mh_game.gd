@@ -688,6 +688,10 @@ static func defaults() -> Dictionary:
 	d["alert_advisories"] = true
 	d["tutorial_cards"] = true
 	d["tutorial_finished"] = false
+	## The descent on a region site's Land step: skipped (the autopilot picks
+	## the spot) once you've flown it, unless you turn that off.
+	d["skip_descent"] = false
+	d["descent_flown"] = false
 	d["live_hazards"] = true
 	## The challenge options chosen last time, offered again on the Colony step.
 	d["last_challenge"] = {}

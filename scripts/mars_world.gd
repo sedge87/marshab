@@ -730,6 +730,14 @@ func _update_lander_intro() -> void:
 			explore_hud.show_equipment_note("Mission %d · %s" % [int(MHMissions.current().number), str(MHMissions.current().title)], "You're on Mars. The base your robots built is waiting: follow BASE SITE on your compass to the airlock.")
 			return
 		var landing := "You touched down %d m from your target: that's the landing ellipse at work. " % roundi(_landing_miss) if _landing_miss >= 1.0 else ""
+		# A base founded away from the cargo (the landing oval's centre): the walk to it.
+		if not cargo_landers.is_empty():
+			var middle := Vector3.ZERO
+			for cargo in cargo_landers: middle += cargo.global_position / cargo_landers.size()
+			var to := Vector2(middle.x - lander.global_position.x, middle.z - lander.global_position.z)
+			if to.length() > 60.0:
+				var sector := wrapi(roundi(fposmod(rad_to_deg(atan2(to.x, -to.y)), 360.0) / 45.0), 0, 8)
+				landing += "The cargo is %d m %s. " % [roundi(to.length()), ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"][sector]]
 		explore_hud.show_equipment_note(MHGame.site_name(), landing + "Welcome to Mars. Press B to open the site plan and design your habitat. The lander is always on your compass if you need shelter.")
 
 func _build_landscape() -> void:

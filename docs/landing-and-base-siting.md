@@ -162,6 +162,16 @@ They stay as `core-loop.md` round 5 plans them (chapter three), using the same p
 5. **Tutorial lines, ARDEN's calls, the skip option.**
 6. **Later, in chapter three:** outpost pads by mid-game edits.
 
+**As built (1 Nov):**
+- **Stages 1–2:** 1288251.
+- **Stage 3:** 5ab1076. `scripts/region_landing_picker.gd` opens zoomed to 2.4 km round the oval; the mouse wheel shows the whole region. Green dots are where a base can go. The Rover ground tint was dropped: it turned the whole map green and took 3 s to draw.
+- **Stages 4–5:** `scripts/descent.gd`, played in the main menu's backdrop, rebuilt round the oval with thinner haze. Things still open:
+  - only WASD and the arrow keys move the marker, not the mouse;
+  - the hazard view is the green, yellow and red grade patch, without the dune, ice, skylight and boulder symbols;
+  - there's no dust at touchdown.
+
+  The skip box sits on the Land step. It's saved as a setting and turns on after the first descent. Creative always skips.
+
 ## 9. Open details (settle while building)
 
 - The exact oval size and fuel budget: tune so a typical oval offers two or three different good spots.
