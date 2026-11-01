@@ -239,7 +239,7 @@ func expected_event_dose(inv: Dictionary) -> float:
 
 # ---------- wellbeing needs ----------
 
-## The six needs, each {id, label, score 0-1, missing (plain words)}.
+## The seven needs, each {id, label, score 0-1, missing (plain words)}.
 func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 	var c: Dictionary = data().crew
 	var n := maxi(1, crew.size() if not crew.is_empty() else sim.crew_count())
@@ -316,6 +316,15 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 	if not antenna: why = "No powered Communications Mast outside"
 	elif not station: why = "No communications station in Mission Operations"
 	out.append({"id": "contact", "label": "Contact with Earth", "score": contact, "missing": "" if contact > 0.0 else why})
+	# 7. Washing and the toilet (docs/survival-systems.md §4): a toilet, and a
+	# shower with water in the tank. Without one the crew make do, unhappily.
+	var toilet := _has(inv, "hygiene_toilet")
+	var shower := _has(inv, "hygiene_shower") and float(sim.water_l) > 0.0
+	var hygiene := (.5 if toilet else 0.0) + (.5 if shower else 0.0)
+	var why_wash := "No toilet or shower: build them in a Hygiene room"
+	if toilet and not shower: why_wash = "No shower: the crew make do with sponge baths" if not _has(inv, "hygiene_shower") else "The shower has no water"
+	elif shower and not toilet: why_wash = "No toilet"
+	out.append({"id": "hygiene", "label": "Washing and the toilet", "score": hygiene, "missing": "" if hygiene >= .99 else why_wash})
 	return out
 
 func wellbeing_target(need_list: Array, p: Dictionary, inv: Dictionary) -> float:

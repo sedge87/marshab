@@ -91,7 +91,7 @@
         "Mars has ice buried under the ground. An ice extractor drills it out and melts it into water.",
         "Pale blue ground has more ice, so drills make more water there. GAR-Y can survey to find it.",
         "Drills need power to work, including at night.",
-        "Later, a water reclaimer cleans used water so it can be used again."
+        "Later, a water processor cleans meltwater and used water so it can be used again."
       ],
       "remember": "Put drills on rich ice and keep them powered.",
       "check": {

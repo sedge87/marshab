@@ -155,6 +155,12 @@ Three kinds instead of one: **rations** (from Earth, dehydrated, they keep), **p
      - its share to the ascent tank.
    - **The spreadsheet still needs** the new items and settings.
 3. **Water:** the processor and urine processor, hygiene use, the chapter one ice step needing treatment.
+
+   *Built 1 Nov 2026.*
+   - **Ice water:** the ice drill's water goes to a raw meltwater tank (200 L). The **Water Processor** (the reclaimer, renamed; 150 L a sol) cleans meltwater first (95 %), then grey water (93 %). Meltwater spills when its tank is full.
+   - **Urine:** it no longer goes through the water processor. The **Urine Processor** (new; plan after the water step; stand-in model: the thermal control unit's) gives back 85 % and collects brine. The brine bag has no limit until step 7's rounds.
+   - **Washing:** a shower uses 5 L a person each sol; without one, sponge baths use 2 L. A seventh wellbeing need, **Washing and the toilet**, scores the toilet and a shower with water in the tank.
+   - **Chapter one:** the ice step tests the meltwater, then sends the Water Processor's plan.
 4. **Food:** crops, harvest, seedlings, nutrients, spoilage and the freezer, the galley's meals, variety.
 5. **Waste:** the sorter, recycling into feedstock, compost.
 6. **Radiation:** the background dose, your own dose outside, the career limit, the dosimeter, shielding insulating.

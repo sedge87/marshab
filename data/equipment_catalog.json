@@ -656,14 +656,14 @@
     },
     {
       "id": "water_reclaimer",
-      "label": "Water Reclaimer",
+      "label": "Water Processor",
       "group": "life_support",
       "status": "future",
       "icon": "droplets",
       "height": 2.0,
       "description": "Grey-water recovery and filtration columns.",
       "role": "Future: reduces water demand",
-      "primary_action": "Read reclaimer",
+      "primary_action": "Read processor",
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/water_reclaimer.tscn",
       "cargo_cost": 170,
       "valid_zones": [
@@ -1408,7 +1408,7 @@
         0.774
       ],
       "pack": "mars_galley_dining_repack",
-      "system_note": "Clean drinking water from the Water Reclaimer. Watching this tap is a good reminder that the habitat's water goes round in a loop.",
+      "system_note": "Clean drinking water from the Water Processor. Watching this tap is a good reminder that the habitat's water goes round in a loop.",
       "system_links": [
         "Water"
       ]
@@ -5224,7 +5224,7 @@
       "height": 2.0,
       "description": "Turns kept carbon dioxide and hydrogen back into water and methane.",
       "role": "Gets water back from the air",
-      "primary_action": "Read reclaimer",
+      "primary_action": "Read processor",
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/water_reclaimer.tscn",
       "cargo_cost": 250,
       "valid_zones": [
@@ -5319,6 +5319,40 @@
       ],
       "pack": "mars_fabrication_v1",
       "role": "Makes oxygen from Mars air",
+      "stand_in_model": true
+    },
+    {
+      "id": "urine_processor",
+      "label": "Urine Processor",
+      "group": "life_support",
+      "status": "catalogue",
+      "icon": "droplets",
+      "height": 1.6,
+      "description": "Distils urine back into clean water, leaving a little brine.",
+      "role": "Gets water back from urine",
+      "primary_action": "Read thermal unit",
+      "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/thermal_control_unit.tscn",
+      "cargo_cost": 200,
+      "valid_zones": [
+        "life_support",
+        "general"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        1.488,
+        1.901,
+        1.213
+      ],
+      "pack": "mars_habitat_martian_hailmary_room_refresh_v2",
+      "system_note": "Like the ISS's Urine Processor Assembly: it boils urine at low pressure in a spinning drum and condenses the vapour, giving back about 85 % as clean water. What's left is a salty brine that collects in a bag to swap. Without one, urine is stored, then vented.",
+      "system_links": [
+        "Water"
+      ],
       "stand_in_model": true
     }
   ]

@@ -147,10 +147,18 @@ static func _empty_stores() -> Dictionary:
 	for key in STORE_KEYS: out[key] = 0.0
 	return out
 
+## Water each person uses a sol: drinking and food, the toilet, and washing.
+## Without a shower the crew make do with a sponge bath: less water, but
+## their wellbeing suffers (habitat_life.gd's hygiene need).
+func crew_water_per_person(inv: Dictionary) -> float:
+	var shower := (inv.items as Array).any(func(i): return str(i.id) == "hygiene_shower" and bool(i.on))
+	var washing := MHResources.setting("shower_l", 5.0) if shower else MHResources.setting("sponge_bath_l", 2.0)
+	return MHResources.setting("water_per_person", 10.0) - MHResources.setting("shower_l", 5.0) + washing
+
 ## Grey water and urine tank sizes (the tank models come with phase 3).
 func store_caps(capacity: Dictionary) -> Dictionary:
 	return {"grey_l": maxf(MHResources.setting("grey_tank_min_l", 60.0), float(capacity.water) * MHResources.setting("grey_tank_share", .25)),
-		"urine_l": MHResources.setting("urine_tank_l", 30.0), "co2_kg": MHResources.setting("co2_store_kg", 20.0), "h2_kg": MHResources.setting("h2_store_kg", 5.0)}
+		"urine_l": MHResources.setting("urine_tank_l", 30.0), "raw_l": MHResources.setting("raw_tank_l", 200.0), "co2_kg": MHResources.setting("co2_store_kg", 20.0), "h2_kg": MHResources.setting("h2_store_kg", 5.0)}
 
 ## Put `amount` in a store up to its cap; the rest vents. Returns what was kept.
 func _keep(key: String, amount: float, cap: float, per_sol: float) -> float:
@@ -573,8 +581,10 @@ func step(dt: float, hour: float) -> void:
 	var o2_made := 0.0
 	var co2_removed := 0.0
 	var water_made := 0.0
-	var water_used := crew * MHResources.setting("water_per_person", 10.0) * per_sol
+	var crew_water := crew * crew_water_per_person(inv) * per_sol
+	var water_used := crew_water
 	var reclaim_capacity := 0.0
+	var urine_capacity := 0.0
 	var electrolysis_o2 := 0.0
 	var scrubbing := false
 	var sabatier_h2 := 0.0
@@ -590,18 +600,19 @@ func step(dt: float, hour: float) -> void:
 		if item.water > 0.0: water_made += item.water * per_sol
 		else: water_used += -item.water * per_sol
 		food_grown += item.food * per_sol * MHSamples.bonus("food")   # discoveries (step 5)
-		if item.id == "water_reclaimer" and item.on: reclaim_capacity += 70.0 * per_sol
+		if item.id == "water_reclaimer" and item.on: reclaim_capacity += MHResources.setting("water_processor_l", 150.0) * per_sol
+		if item.id == "urine_processor" and item.on: urine_capacity += MHResources.setting("urine_processor_l", 15.0) * per_sol
 		if item.id == "air_recycler" and item.on: scrubbing = true
 		if item.id == "sabatier_reactor" and item.on: sabatier_h2 += MHResources.setting("sabatier_h2_kg", .5) * per_sol
 	for item in inv.items:
 		if item.id == "methane_tank": methane_cap += MHResources.setting("methane_tank_kg", 300.0)
 	# The atmosphere processor (outside): oxygen from Mars air, no water (§3, §11).
 	if powered.tiers[TIER_LIFE]: o2_made += int(inv.processors) * MHResources.item_value("atmosphere_processor", "o2_kg", 1.2) * per_sol
-	# Used water goes to the grey tank and urine to its own; the reclaimer
-	# cleans from them. A full tank vents (§12.1: a missing part leaks).
+	# Used water goes to the grey tank and urine to its own; the water
+	# processor cleans meltwater and grey water, the urine processor urine.
+	# A full tank vents (§12.1: a missing part leaks).
 	vented = {}
 	var caps := store_caps(inv.capacity)
-	var crew_water := crew * MHResources.setting("water_per_person", 10.0) * per_sol
 	var urine := minf(crew_water, crew * MHResources.setting("urine_per_person", 1.5) * per_sol)
 	# Breath and sweat: the air recycler condenses it back (to the grey tank);
 	# without one it's lost to the cabin walls and the airlock.
@@ -609,11 +620,20 @@ func step(dt: float, hour: float) -> void:
 	var condensate := _keep("grey_l", vapour, caps.grey_l, per_sol) if scrubbing else 0.0
 	_keep("grey_l", crew_water - urine - vapour, caps.grey_l, per_sol)
 	_keep("urine_l", urine, caps.urine_l, per_sol)
-	var from_grey := minf(reclaim_capacity, float(stores.grey_l))
-	var from_urine := minf(reclaim_capacity - from_grey, float(stores.urine_l))
+	# Ice comes up as raw meltwater, with dust and perchlorate in it (§4).
+	var drill_water := 0.0
+	if powered.tiers[TIER_OTHER]:
+		for richness in inv.drills: drill_water += MHResources.setting("ice_drill_l", 120.0) * float(richness) * per_sol
+	_keep("raw_l", drill_water, caps.raw_l, per_sol)
+	var from_raw := minf(reclaim_capacity, float(stores.raw_l))
+	var from_grey := minf(reclaim_capacity - from_raw, float(stores.grey_l))
+	var from_urine := minf(urine_capacity, float(stores.urine_l))
+	stores.raw_l = float(stores.raw_l) - from_raw
 	stores.grey_l = float(stores.grey_l) - from_grey
 	stores.urine_l = float(stores.urine_l) - from_urine
-	var water_recovered := (from_grey + from_urine) * MHResources.setting("reclaim_fraction", .93)
+	var urine_back := from_urine * MHResources.setting("urine_fraction", .85)
+	stores.brine_l = float(stores.brine_l) + from_urine - urine_back   # the brine bag (swapped in step 7's rounds)
+	var water_recovered := from_raw * MHResources.setting("raw_fraction", .95) + from_grey * MHResources.setting("reclaim_fraction", .93) + urine_back
 	_keep("h2_kg", electrolysis_o2 * H2_PER_O2, caps.h2_kg, per_sol)
 	# The Sabatier reactor: CO2 + 4 H2 -> CH4 + 2 H2O. Per kg of hydrogen:
 	# 5.5 kg CO2 in, 2 kg methane and 4.5 L water out (to the grey tank).
@@ -622,10 +642,7 @@ func step(dt: float, hour: float) -> void:
 	stores.co2_kg = float(stores.co2_kg) - h2_used * 5.5
 	var sabatier_water := _keep("grey_l", h2_used * 4.5, caps.grey_l, per_sol)
 	_keep("ch4_kg", h2_used * 2.0, methane_cap, per_sol)
-	var drill_water := 0.0
-	if powered.tiers[TIER_OTHER]:
-		for richness in inv.drills: drill_water += MHResources.setting("ice_drill_l", 120.0) * float(richness) * per_sol
-	water_l = clampf(water_l + water_made + water_recovered + drill_water - water_used, 0.0, float(inv.capacity.water))
+	water_l = clampf(water_l + water_made + water_recovered - water_used, 0.0, float(inv.capacity.water))
 	food_grown *= life.food_speed()
 	# Fresh produce is eaten first, then the rations.
 	var eaten := crew * MHResources.setting("food_per_person", 1.8) * per_sol
@@ -656,7 +673,7 @@ func step(dt: float, hour: float) -> void:
 	_crew_condition(dt, crew, rooms, people, effects)
 	last = {"hour": hour, "generation_kw": generation, "load_kw": powered.load_kw, "demand_kw": tiers[1] + tiers[2] + tiers[3] + tiers[4],
 		"tiers": powered.tiers, "tier_kw": tiers, "battery_rate_kw": powered.battery_kw, "heat_pump_kw": heat.electric_kw, "outside_c": outside, "heat_wasted_kw": heat.wasted,
-		"storm": storm_hours_left > 0.0, "storm_hours_left": storm_hours_left, "storm_eta": storm_eta_hours, "crew": crew, "people": people, "water_in": (water_made + water_recovered + drill_water) / per_sol,
+		"storm": storm_hours_left > 0.0, "storm_hours_left": storm_hours_left, "storm_eta": storm_eta_hours, "crew": crew, "people": people, "water_in": (water_made + water_recovered) / per_sol, "raw_in": drill_water / per_sol,
 		"water_out": water_used / per_sol, "food_in": food_grown / per_sol, "o2_in": o2_made / per_sol, "co2_out": co2_removed / per_sol,
 		"heat_capacity_short": heat.short, "night": night, "free_power": MHGame.debug_free_power, "vented": vented.duplicate(), "reclaimers": reclaim_capacity > 0.0,
 		"condensate": condensate / per_sol, "sabatier_water": sabatier_water / per_sol, "ch4_in": h2_used * 2.0 / per_sol, "methane_cap": methane_cap}
@@ -910,9 +927,11 @@ func print_rate(inv: Dictionary) -> float:
 func daily_flows(planned := true) -> Dictionary:
 	var inv := inventory()
 	var crew := float(MHResources.setting("crew", 6.0)) if planned else float(crew_count_for(inv.capacity))
-	var out := {"crew": crew, "berths": int(inv.capacity.berths), "o2_made": 0.0, "co2_removed": 0.0, "food_grown": 0.0, "water_made": 0.0, "water_used": crew * MHResources.setting("water_per_person", 10.0),
+	var crew_water := crew * crew_water_per_person(inv)
+	var out := {"crew": crew, "berths": int(inv.capacity.berths), "o2_made": 0.0, "co2_removed": 0.0, "food_grown": 0.0, "water_made": 0.0, "water_used": crew_water,
 		"o2_need": crew * MHResources.setting("o2_per_person", .84), "co2_made": crew * MHResources.setting("co2_per_person", 1.0), "food_eaten": crew * MHResources.setting("food_per_person", 1.8), "research": 0.0}
 	var reclaimers := 0
+	var urine_processors := 0
 	for item in inv.items:
 		if not item.on: continue
 		out.o2_made += item.o2
@@ -921,9 +940,16 @@ func daily_flows(planned := true) -> Dictionary:
 		if item.water > 0.0: out.water_made += item.water
 		else: out.water_used += -item.water
 		if item.id == "water_reclaimer": reclaimers += 1
+		if item.id == "urine_processor": urine_processors += 1
 		if not MHSamples.on(): out.research += MHResources.item_value(item.id, "research")
-	out.water_made += minf(reclaimers * 70.0, crew * MHResources.setting("water_per_person", 10.0)) * MHResources.setting("reclaim_fraction", .93)
-	for richness in inv.drills: out.water_made += MHResources.setting("ice_drill_l", 120.0) * float(richness)
+	# What the processors can clean of what comes in: meltwater first, then grey water.
+	var urine := minf(crew_water, crew * MHResources.setting("urine_per_person", 1.5))
+	var raw := 0.0
+	for richness in inv.drills: raw += MHResources.setting("ice_drill_l", 120.0) * float(richness)
+	var capacity := reclaimers * MHResources.setting("water_processor_l", 150.0)
+	var raw_cleaned := minf(capacity, raw)
+	out.water_made += raw_cleaned * MHResources.setting("raw_fraction", .95) + minf(capacity - raw_cleaned, crew_water - urine) * MHResources.setting("reclaim_fraction", .93)
+	out.water_made += minf(urine_processors * MHResources.setting("urine_processor_l", 15.0), urine) * MHResources.setting("urine_fraction", .85)
 	out.o2_made += int(inv.get("processors", 0)) * MHResources.item_value("atmosphere_processor", "o2_kg", 1.2)
 	if research_boost_hours > 0.0: out.research *= 1.2
 	out["printed"] = print_rate(inv)
@@ -1014,9 +1040,14 @@ func warnings() -> Array:
 	var water_per_sol := float(last.get("water_out", 0.0)) - float(last.get("water_in", 0.0))
 	if crew > 0 and water_per_sol > 0.0 and water_l / water_per_sol < 3.0:
 		out.append({"level": "danger" if water_l <= 0.0 else "warn", "text": "Water runs out in %.1f sols: using %d L more than is made each sol." % [water_l / water_per_sol, roundi(water_per_sol)]})
-	var grey_vent := float((last.get("vented", {}) as Dictionary).get("grey_l", 0.0)) + float((last.get("vented", {}) as Dictionary).get("urine_l", 0.0))
-	if crew > 0 and grey_vent > .5:
-		out.append({"level": "warn", "text": "Grey water venting: %s, so %d L a sol is lost overboard." % ["the water reclaimer can't keep up" if bool(last.get("reclaimers", false)) else "no water reclaimer", roundi(grey_vent)]})
+	var lost: Dictionary = last.get("vented", {})
+	var processing := bool(last.get("reclaimers", false))
+	if crew > 0 and float(lost.get("grey_l", 0.0)) > .5:
+		out.append({"level": "warn", "text": "Grey water venting: %s, so %d L a sol is lost overboard." % ["the water processor can't keep up" if processing else "no water processor", roundi(float(lost.grey_l))]})
+	if crew > 0 and float(lost.get("urine_l", 0.0)) > .5:
+		out.append({"level": "info", "text": "Urine venting: no urine processor, so %d L a sol of water is lost." % roundi(float(lost.urine_l))})
+	if float(lost.get("raw_l", 0.0)) > .5:
+		out.append({"level": "warn", "text": "Meltwater spilling: %s, so the ice drill's water is wasted." % ("the water processor can't keep up" if processing else "no water processor to clean it")})
 	var food_per_sol := crew * MHResources.setting("food_per_person", 1.8) - float(last.get("food_in", 0.0))
 	if crew > 0 and food_per_sol > 0.0 and food_kg / food_per_sol < 10.0:
 		out.append({"level": "danger" if food_kg <= 0.0 else "warn", "text": "Food runs out in %d sols." % floori(food_kg / food_per_sol)})

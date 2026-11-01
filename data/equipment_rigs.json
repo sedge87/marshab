@@ -886,10 +886,10 @@
         "glow": [
           "indicator_lamps"
         ],
-        "label_on": "Stop reclaimer",
-        "label_off": "Start reclaimer",
-        "note_off": "Water reclaimer stopped. Used water is no longer being cleaned for reuse.",
-        "note_on": "Water reclaimer running. Used water is filtered back to drinking quality."
+        "label_on": "Stop the water processor",
+        "label_off": "Start the water processor",
+        "note_off": "Water processor stopped. Meltwater and used water wait in their tanks.",
+        "note_on": "Water processor running. Meltwater, used water and condensate are filtered to drinking quality."
       },
       {
         "key": "secondary",
@@ -2126,7 +2126,7 @@
           }
         ],
         "label": "Flush",
-        "note": "Flushed. Air flow, not water, pulls waste away: it saves water, and works whatever the gravity. Liquid waste goes to the Water Reclaimer to be cleaned and reused."
+        "note": "Flushed. Air flow, not water, pulls waste away: it saves water, and works whatever the gravity. Urine goes to the Urine Processor to be distilled back into water."
       },
       {
         "key": "tertiary",
@@ -2167,7 +2167,7 @@
           }
         ],
         "label": "Wash hands",
-        "note": "A metered tap gives a short burst of water. Used (grey) water drains to the Water Reclaimer, where it's cleaned and used again."
+        "note": "A metered tap gives a short burst of water. Used (grey) water drains to the Water Processor, where it's cleaned and used again."
       },
       {
         "key": "secondary",
@@ -2431,7 +2431,7 @@
           }
         ],
         "label": "Fill a cup",
-        "note": "Fresh drinking water, recycled and cleaned by the Water Reclaimer. Each person needs about 2–3 litres a day to drink."
+        "note": "Fresh drinking water, recycled and cleaned by the Water Processor. Each person needs about 2–3 litres a day to drink."
       },
       {
         "key": "secondary",
@@ -4150,7 +4150,7 @@
           ],
           [
             "A thirsty machine",
-            "Making oxygen uses water, so more crew means more water from the ice drills or the reclaimer."
+            "Making oxygen uses water, so more crew means more water from the ice drills or the water processor."
           ],
           [
             "Power hungry",
@@ -5564,7 +5564,7 @@
           ],
           [
             "Water on Mars",
-            "Every cup comes from ice the drills dug up and the reclaimer cleaned. Don't waste it."
+            "Every cup comes from ice the drills dug up and the water processor cleaned. Don't waste it."
           ]
         ]
       }
@@ -5926,6 +5926,33 @@
         ],
         "note_on": "Running. Mars air goes in, oxygen comes out to the habitat.",
         "note_off": "Stopped. No oxygen from the air until it runs again."
+      }
+    ]
+  },
+  "urine_processor": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "machine",
+        "state": "running",
+        "default": true,
+        "spin": [
+          {
+            "parts": [
+              "pump_rotor"
+            ],
+            "axis": "z",
+            "speed": 8.0
+          }
+        ],
+        "glow": [
+          "status_lamps_on"
+        ],
+        "label_on": "Stop the urine processor",
+        "label_off": "Start the urine processor",
+        "note_off": "Stopped. Urine is stored in its tank until it runs again.",
+        "note_on": "Running. Urine is distilled back into clean water; the brine collects in its bag.",
+        "powered": "all"
       }
     ]
   }

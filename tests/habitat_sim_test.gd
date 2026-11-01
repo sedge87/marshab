@@ -77,7 +77,7 @@ func _initialize() -> void:
 	_check(is_equal_approx(float(copy.simulation().battery_kwh), float(sim.battery_kwh)) and is_equal_approx(float(copy.simulation().food_kg), float(sim.food_kg)), "stores survive save and load")
 
 	# The chain stores (docs/survival-systems.md §9 phase 1).
-	_check(float(sim.stores.grey_l) < 20.0 and (sim.last.vented as Dictionary).is_empty(), "with a water reclaimer grey water is cleaned as it's made (%.0f L, nothing vented)" % sim.stores.grey_l)
+	_check(float(sim.stores.grey_l) < 20.0 and not (sim.last.vented as Dictionary).has("grey_l"), "with a water processor grey water is cleaned as it's made (%.0f L, no grey water vented)" % sim.stores.grey_l)
 	_check(float(sim.stores.co2_kg) > 0.0 and float(sim.stores.h2_kg) > 0.0, "scrubbed CO2 and the oxygen generator's hydrogen are kept (%.1f, %.2f kg)" % [sim.stores.co2_kg, sim.stores.h2_kg])
 	_check(is_equal_approx(float(copy.simulation().stores.co2_kg), float(sim.stores.co2_kg)), "the chain stores survive save and load")
 	var old_save := saved.duplicate(); old_save.erase("stores")
@@ -89,8 +89,8 @@ func _initialize() -> void:
 	dry.simulation().random_storms = false
 	dry.simulation().run_hours(48.0, 8.0)
 	var caps: Dictionary = dry.simulation().store_caps(dry.simulation().inventory().capacity)
-	_check(is_equal_approx(float(dry.simulation().stores.grey_l), float(caps.grey_l)) and float((dry.simulation().last.vented as Dictionary).get("grey_l", 0.0)) > 0.0, "with no reclaimer the grey tank fills, then vents")
-	_check(not (dry.simulation().warnings() as Array).filter(func(w): return str(w.text).contains("Grey water venting: no water reclaimer")).is_empty(), "the venting warning names the missing reclaimer")
+	_check(is_equal_approx(float(dry.simulation().stores.grey_l), float(caps.grey_l)) and float((dry.simulation().last.vented as Dictionary).get("grey_l", 0.0)) > 0.0, "with no water processor the grey tank fills, then vents")
+	_check(not (dry.simulation().warnings() as Array).filter(func(w): return str(w.text).contains("Grey water venting: no water processor")).is_empty(), "the venting warning names the missing water processor")
 
 	# Phase 2, air: condensate, the Sabatier and methane, the atmosphere processor.
 	_check(float(sim.last.condensate) > 5.0, "the air recycler condenses the crew's breath back (%.1f L a sol)" % sim.last.condensate)
@@ -106,6 +106,25 @@ func _initialize() -> void:
 	dry_air.zones.append({"kind": "atmosphere_processor", "at": Vector2(-12, 6), "cells": [], "door_direction": Vector2i(0, 1), "cost": 0, "state": {}})
 	dry_air.simulation().invalidate()
 	_check(is_equal_approx(float(dry_air.simulation().daily_flows(false).o2_made) - o2_before, 1.2), "an atmosphere processor makes 1.2 kg of oxygen a sol with no water")
+
+	# Phase 3, water: meltwater needs the processor, urine its own, washing.
+	sim.run_hours(24.0, 8.0)   # a fourth sol: the urine tank (30 L) is full by now
+	_check(float((sim.last.vented as Dictionary).get("urine_l", 0.0)) > 0.0 and not (sim.warnings() as Array).filter(func(w): return str(w.text).contains("no urine processor")).is_empty(), "without a urine processor, urine is stored then vented, and the warning says so")
+	var wet_kit := _full_kit(); wet_kit["urine_processor"] = ["life_support", 1]; wet_kit["hygiene_shower"] = ["hygiene", 1]; wet_kit["hygiene_toilet"] = ["hygiene", 1]
+	var wet := _habitat("plains", 6, wet_kit)
+	wet.simulation().random_storms = false
+	wet.simulation().run_hours(72.0, 8.0)
+	_check(float(wet.simulation().stores.brine_l) > 0.0 and not (wet.simulation().last.vented as Dictionary).has("urine_l"), "the urine processor turns urine into water and brine (%.1f L brine)" % wet.simulation().stores.brine_l)
+	_check(is_equal_approx(float(wet.simulation().crew_water_per_person(wet.simulation().inventory())) - float(sim.crew_water_per_person(sim.inventory())), 3.0), "a shower uses 3 L more a person than sponge baths")
+	var hygiene_need := func(b: BuildController) -> float: return float((b.simulation().life.needs(b.simulation().inventory(), {4: true}) as Array).filter(func(n): return str(n.id) == "hygiene")[0].score)
+	_check(float(hygiene_need.call(wet)) > .99 and float(hygiene_need.call(good)) < .01, "the toilet and shower meet the washing need")
+	var drill_kit := _full_kit(); drill_kit.erase("water_reclaimer")
+	var drilling := _habitat("plains", 6, drill_kit)
+	drilling.simulation().random_storms = false
+	(drilling.simulation().inventory().drills as Array).append(.8)   # a drill on ice (the test plains have none)
+	var water_start := float(drilling.simulation().water_l)
+	drilling.simulation().run_hours(72.0, 8.0)
+	_check(float(drilling.simulation().stores.raw_l) > 0.0 and float(drilling.simulation().water_l) < water_start, "without a water processor the drill's meltwater can't be drunk (raw %.0f L)" % drilling.simulation().stores.raw_l)
 
 	# A dust storm: solar drops, loads are shed, and life support goes last.
 	sim.start_storm(3.0)

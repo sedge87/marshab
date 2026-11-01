@@ -111,9 +111,9 @@ func _initialize() -> void:
 	_check(MHChapterOne.plan_known("ice_drill") and MHChapterOne.rover_landed(), "a good core earns the Ice Extractor plan, and the rover comes")
 	MHChapterOne.stock["ice_drill"] = 1
 	b.zones.append({"kind": "ice_extractor", "cells": [Vector2i(10, 10)], "cost": 450})
-	sim.last = {"crew": 2, "water_in": 30.0, "water_out": 20.0, "o2_in": 0.0, "food_in": 0.0, "generation_kw": 5.0}
+	sim.last = {"crew": 2, "water_in": 30.0, "raw_in": 30.0, "water_out": 20.0, "o2_in": 0.0, "food_in": 0.0, "generation_kw": 5.0}
 	MHChapterOne.tick(MHChapterOne.WATER_TEST_HOURS + 1.0, b)
-	_check(MHChapterOne.plan_known("water_reclaimer"), "the extractor's water tests clean: Water Reclaimer plan")
+	_check(MHChapterOne.plan_known("water_reclaimer"), "the extractor's meltwater is tested: Water Processor plan")
 	MHChapterOne.stock["water_reclaimer"] = 1
 	_add(b, "water_reclaimer")
 	MHChapterOne.tick(.5, b)

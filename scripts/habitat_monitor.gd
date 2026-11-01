@@ -227,9 +227,10 @@ func _fill_flows() -> void:
 	_flows_panel.add_child(_line("Water: %d L · makes %d, uses %d L a sol%s" % [roundi(float(snap.water_l)), roundi(float(flows.water_made)), roundi(float(flows.water_used)),
 		" · %s left" % _sols(float(snap.water_l) / -water_net) if water_net < 0.0 and crew > 0 else ""], MHStyle.TEXT_PRIMARY, 15))
 	var caps: Dictionary = s.store_caps(inv.capacity)
-	var venting := float((s.last.get("vented", {}) as Dictionary).get("grey_l", 0.0)) > .5
-	_flows_panel.add_child(_line("Grey water: %d of %d L · urine %d L · CO₂ kept %.1f kg%s" % [roundi(float(s.stores.grey_l)), roundi(float(caps.grey_l)), roundi(float(s.stores.urine_l)), float(s.stores.co2_kg),
-		" · venting" if venting else ""], MHStyle.WARN if venting else MHStyle.TEXT_SECONDARY, 15))
+	var lost: Dictionary = s.last.get("vented", {})
+	var venting := float(lost.get("grey_l", 0.0)) + float(lost.get("raw_l", 0.0)) + float(lost.get("urine_l", 0.0)) > .5
+	_flows_panel.add_child(_line("Tanks: meltwater %d · grey %d of %d · urine %d · brine %.1f L · CO₂ kept %.1f kg%s" % [roundi(float(s.stores.raw_l)), roundi(float(s.stores.grey_l)), roundi(float(caps.grey_l)),
+		roundi(float(s.stores.urine_l)), float(s.stores.brine_l), float(s.stores.co2_kg), " · venting" if venting else ""], MHStyle.WARN if venting else MHStyle.TEXT_SECONDARY, 15))
 	if float(s.last.get("ch4_in", 0.0)) > 0.0 or float(s.stores.ch4_kg) > 0.0:
 		var ch4_venting := float((s.last.get("vented", {}) as Dictionary).get("ch4_kg", 0.0)) > 0.0
 		_flows_panel.add_child(_line("Sabatier: %.1f L water back a sol · methane %.1f of %d kg%s" % [float(s.last.get("sabatier_water", 0.0)), float(s.stores.ch4_kg), roundi(float(s.last.get("methane_cap", 0.0))),

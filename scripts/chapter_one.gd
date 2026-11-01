@@ -424,16 +424,16 @@ static func _count(builder: Object, kind: String) -> int:
 static func _check_steps(builder: Object, sim: Object, last: Dictionary, hours: float, now: float) -> Array:
 	var out: Array = []
 	var crew := float(last.get("crew", 0))
-	# 2. Water: the extractor's water tests clean once it has run a while.
-	if steps.has("ice") and not known.has("water_reclaimer") and _count(builder, "ice_extractor") > 0 and float(last.get("water_in", 0.0)) > 0.0:
+	# 2. Water: the extractor's meltwater is tested once it has run a while.
+	if steps.has("ice") and not known.has("water_reclaimer") and _count(builder, "ice_extractor") > 0 and float(last.get("raw_in", 0.0)) > 0.0:
 		water_hours += hours
 		if water_hours >= WATER_TEST_HOURS:
 			learn_after("water")
-			out.append({"id": "water_clean", "title": "The ice water tests clean", "text": "No brines worth worrying about. Plan: Water Reclaimer, so the water goes round again.", "tone": "valid"})
+			out.append({"id": "water_clean", "title": "The meltwater is tested", "text": "Dust and a little perchlorate: nothing a filter can't take out. Plan: Water Processor, to clean the meltwater and send used water round again.", "tone": "valid"})
 	var water_steady := crew > 0.0 and float(last.get("water_in", 0.0)) >= float(last.get("water_out", 0.0)) - .01
 	if known.has("water_reclaimer") and not steps.has("water") and water_steady and placed_count("water_reclaimer", builder) > 0:
 		steps["water"] = now
-		out.append({"id": "step", "title": "Water self-sufficient", "text": "The extractor and reclaimer cover the crew's water. Next: split some into oxygen.", "tone": "valid"})
+		out.append({"id": "step", "title": "Water self-sufficient", "text": "The extractor and water processor cover the crew's water. Next: split some into oxygen.", "tone": "valid"})
 	# 3. Oxygen: enough water to split.
 	if steps.has("water") and not known.has("oxygen_generator"):
 		learn_after("oxygen")

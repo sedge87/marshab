@@ -214,11 +214,16 @@ func evaluate(test_sim: RefCounted = null, test_hour := -1.0) -> Array:
 			"chain": [["droplets", "Made %d L a sol" % roundi(float(s.last.get("water_in", 0.0))), false], ["droplets", "Used %d L a sol" % roundi(float(s.last.get("water_out", 0.0))), true], ["heart-pulse", "Crew", true]]})
 	# A full grey water or urine tank vents overboard (§12.1: a missing part leaks).
 	var vented: Dictionary = s.last.get("vented", {})
-	var lost := float(vented.get("grey_l", 0.0)) + float(vented.get("urine_l", 0.0))
+	var lost := float(vented.get("grey_l", 0.0))
 	if crew > 0 and lost > .5:
-		var why := "Water reclaimer can't keep up" if bool(s.last.get("reclaimers", false)) else "No water reclaimer"
-		out.append({"id": "grey_vent", "level": "warning", "title": "Grey water venting", "text": "The grey water tank is full, so %d L a sol of used water is lost overboard. A water reclaimer cleans it back into drinking water." % roundi(lost),
+		var why := "Water processor can't keep up" if bool(s.last.get("reclaimers", false)) else "No water processor"
+		out.append({"id": "grey_vent", "level": "warning", "title": "Grey water venting", "text": "The grey water tank is full, so %d L a sol of used water is lost overboard. A water processor cleans it back into drinking water." % roundi(lost),
 			"chain": [["droplets", why, false], ["droplets", "Lost %d L a sol" % roundi(lost), false], ["droplets", "Clean water", true]]})
+	var spilt := float(vented.get("raw_l", 0.0))
+	if spilt > .5:
+		var why := "Water processor can't keep up" if bool(s.last.get("reclaimers", false)) else "No water processor"
+		out.append({"id": "raw_spill", "level": "warning", "title": "Meltwater spilling", "text": "The ice drill's meltwater has dust and perchlorate in it, so it must be cleaned before anyone drinks it. Its tank is full: %d L a sol is wasted." % roundi(spilt),
+			"chain": [["drill", "Ice drill", false], ["droplets", why, false], ["droplets", "Clean water", true]]})
 	var food_net := crew * MHResources.setting("food_per_person", 1.8) - float(s.last.get("food_in", 0.0))
 	if crew > 0 and food_net > 0.0 and float(snap.food_kg) / food_net < 10.0:
 		out.append({"id": "food", "level": "critical" if float(snap.food_kg) <= 0.0 else "warning", "title": "Food running low",
@@ -301,7 +306,7 @@ const EXPLAIN := {
 	"co2": "Each crew member breathes out about 1 kg of CO₂ a day. Above 1% it causes headaches and poor thinking. Air recyclers scrub it out.",
 	"cold": "The habitat loses heat to Mars all the time, faster through windows and outside walls. Heaters need power to keep up, especially at night.",
 	"cold_spot": "A spot heater warms the room it's in and the rooms next door, nothing further. A thermal control unit is ducted to every room, and gives about three times the heat for the same power.",
-	"water": "Water is drunk, washed with, fed to plants and split into oxygen. Ice drills mine it, and the water reclaimer recycles most of what's used.",
+	"water": "Water is drunk, washed with, fed to plants and split into oxygen. Ice drills mine it, the water processor cleans the meltwater and recycles most of what's used, and the urine processor gets most of the rest back.",
 	"food": "Six people eat about 11 kg of food a sol. Supply landers bring freeze-dried food; growing your own makes the base last.",
 	"health": "Crew health falls when the air, warmth, water or food go wrong, and recovers once they're fixed.",
 	"radiation": "Mars has no magnetic field and thin air, so radiation from solar flares reaches the ground. A small, well-shielded storm shelter protects the crew for the day it lasts.",

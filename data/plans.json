@@ -21,6 +21,7 @@
     "regolith_shield_block": {"source": "discovered", "after": "discovery:basalt"},
     "water_wall_panel": {"source": "discovered", "after": "discovery:soil_water"},
     "spare_parts_rack": {"source": "sent", "after": "first_job"},
+    "urine_processor": {"source": "discovered", "after": "water", "feedstock_kg": 100, "earth_parts": 6, "hours": 8},
     "sabatier_reactor": {"source": "discovered", "after": "oxygen", "feedstock_kg": 120, "earth_parts": 8, "hours": 8},
     "methane_tank": {"source": "discovered", "after": "oxygen", "feedstock_kg": 80, "earth_parts": 2, "hours": 4},
     "atmosphere_processor": {"source": "discovered", "after": "discovery:mars_air", "feedstock_kg": 300, "earth_parts": 16, "hours": 16}
