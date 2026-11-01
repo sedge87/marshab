@@ -180,3 +180,48 @@ Three kinds instead of one: **rations** (from Earth, dehydrated, they keep), **p
 6. **Spoilage:** produce keeps 10 sols, 60 in a freezer; rations keep.
 7. **Hygiene** is a need: the toilet and shower use water and keep wellbeing up.
 8. **Display:** a Chains view on the Monitor and a readout on each machine. This is the first step of the M page clean-up.
+
+## 12. Three more decisions (1 Nov 2026)
+
+### 12.1 A chain with missing parts leaks; it doesn't stop
+
+*Overrides anything above that says a chain stops without a part.* Like rain that never evaporates: the water doesn't vanish, it pools somewhere you can see.
+
+- **One core part per chain does the whole job by itself, wastefully.**
+  - **Water:** the ice extractor alone gives clean water. Used water goes to the grey tank, and when that's full it is **vented outside and lost**.
+  - **Air:** the oxygen maker alone keeps the crew breathing, using stored water and dumping carbon dioxide outside.
+  - **Food:** rations alone keep the crew fed.
+- **Each extra part closes some of the leak.**
+  - **Water:** the water processor recovers most grey water, and the urine processor most of the rest, so less ice is needed each sol.
+  - **Every chain** shows a **closure %** on the Chains view. The ISS's water loop reaches about 98 % with every part fitted.
+- **A missing part always shows as a store filling or emptying, with a named alert** ("Grey water venting: no water processor"). It also offers a stopgap: a job done by hand, or Earth's stores to fall back on.
+- **Only a missing core part is an emergency,** with warning before it bites.
+
+One part means you get by on reserves and a lot of ice; every part means you could live there indefinitely.
+
+### 12.2 Getting ready for more crew
+
+- **Load per person:** each person adds a fixed daily load to every chain. Machines have a top rate, so a base sized for one won't carry six; that needs second units or bigger models.
+- **Ready for N:** the Chains view gives each chain's crew capacity ("Water: enough for 2"). The base is ready for as many crew as its weakest chain can support. That number is the goal for the next-crew chapter (core loop round 1).
+- **A test run:** before the next lander, Mission Control asks you to run the base at the larger crew's load for a few sols. It's simulated, so weak links show before people depend on them.
+- **The arrival checklist:**
+  - beds;
+  - a landing pad;
+  - stores to cover the trip.
+
+  The new crew bring jobs you can hand out. The two-person rule for EVAs returns (core loop round 6, item 10).
+
+### 12.3 Whose goals: NASA's, on purpose
+
+- **Discoveries:** the four sections (Life, Climate, Geology, Humans) are the four science goals of NASA's Mars Exploration Program, as set by its science advisory group (MEPAG).
+- **The Humans goal** ("prepare for human exploration") is mostly this rework:
+  - oxygen and water from Mars;
+  - power;
+  - radiation;
+  - crew health.
+- **NASA's Moon-to-Mars objectives:** several are already in the plan:
+  - local resources;
+  - storing ascent fuel (the Sabatier ascent tank);
+  - crew health;
+  - more crew later.
+- **Left out:** the transport engineering (launch and landing systems), which doesn't make gameplay.
