@@ -1056,9 +1056,9 @@ func _visible_ids() -> Array:
 	if _selector_group == UNPACKED_TAB: return _unpacked_ids()
 	return MHMissions.badge_order(_catalog_items.filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == _selector_group))
 
-## Interior items ready to place (unpacked or made), in catalogue order.
+## Interior items on the Unpacked tab (crate copies, or made at the fabricator), in catalogue order.
 func _unpacked_ids() -> Array:
-	var ready := MHChapterOne.ready_to_place(builder)
+	var ready := MHChapterOne.on_build_bar(builder)
 	return _catalog_items.filter(func(id): return ready.has(id))
 
 func _structure_tool(id: String) -> Dictionary:

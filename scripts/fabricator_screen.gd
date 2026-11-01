@@ -2,8 +2,9 @@ extends Control
 
 ## The fabricator's screen (E on a fabricator; docs/start-and-chapter-one.md §4).
 ## Pick a known plan, see its feedstock, Earth parts, time and power, and
-## start it. One job at a time; the item goes onto the build bar's Unpacked
-## tab when it's done. The game keeps running while this is open.
+## start it. One job at a time. The first job makes the plan: the item goes
+## onto the build bar's Unpacked tab for good, and later copies are paid for
+## from the stores as they're placed. The game keeps running while this is open.
 
 signal closed
 
@@ -127,9 +128,10 @@ func _render_detail() -> void:
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail.add_child(about)
 	_detail.add_child(MHStyle.mono("Feedstock %s · Earth parts %d · %d game hours · 1.2 kW while it runs" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), int(cost.earth_parts), roundi(float(cost.hours))], 14, MHStyle.TEXT_SECONDARY))
-	_detail.add_child(MHStyle.mono("Ready to place: %d" % MHChapterOne.available(_selected, _builder()), 14, MHStyle.TEXT_MUTED))
+	var on_bar := "On the build bar: each extra one takes this feedstock and these parts as you place it" if MHChapterOne.made.has(_selected) else "Not made yet: the first job puts it on the build bar for good"
+	_detail.add_child(MHStyle.mono(on_bar, 14, MHStyle.TEXT_MUTED))
 	var reason := MHChapterOne.job_reason(_selected, _builder())
-	var start := MHStyle.button("Start job" if reason.is_empty() else reason, "primary" if reason.is_empty() else "secondary", "play", 48)
+	var start := MHStyle.button("Make first one" if reason.is_empty() else reason, "primary" if reason.is_empty() else "secondary", "play", 48)
 	start.disabled = not reason.is_empty()
 	start.pressed.connect(func() -> void:
 		if MHChapterOne.start_job(_selected, _builder()).is_empty():

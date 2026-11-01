@@ -49,7 +49,7 @@ func _initialize() -> void:
 	# ---- unpacking ----
 	var b := _builder()
 	b.zones.append({"kind": "general", "cells": _block(0, 0, 3, 3), "door_direction": Vector2i(0, -1), "cost": 0})
-	_check(MHChapterOne.item_reason("crew_bunk", b) == "Make it at the fabricator first", "a bunk needs stock before the crates are unpacked (%s)" % MHChapterOne.item_reason("crew_bunk", b))
+	_check(MHChapterOne.item_reason("crew_bunk", b) == "Make the first one at the fabricator", "a bunk needs stock before the crates are unpacked (%s)" % MHChapterOne.item_reason("crew_bunk", b))
 	for crate in MHChapterOne.crates(): _check(MHChapterOne.unpack(str(crate.id)), "unpacks %s" % crate.id)
 	_check(not MHChapterOne.unpack("shells"), "a crate unpacks once")
 	_check(MHChapterOne.crates_left() == 0, "all crates unpacked")
@@ -59,7 +59,7 @@ func _initialize() -> void:
 	_check(MHChapterOne.item_reason("crew_bunk", b).is_empty(), "an unpacked bunk can be placed")
 	_check(b.earth_cost(100, false) == 0 and b.earth_cost(100, true) == 100, "equipment costs no Earth cargo; printable things still do")
 	_add(b, "crew_bunk"); _add(b, "crew_bunk")
-	_check(MHChapterOne.available("crew_bunk", b) == 0 and MHChapterOne.item_reason("crew_bunk", b) == "All placed: make another at the fabricator", "both bunks placed")
+	_check(MHChapterOne.available("crew_bunk", b) == 0 and MHChapterOne.item_reason("crew_bunk", b) == "Make the first one at the fabricator", "both bunks placed: crate copies don't make the plan")
 	_check(MHChapterOne.ready_to_place(b).has("fabricator") and not MHChapterOne.ready_to_place(b).has("crew_bunk"), "the Unpacked list follows what's placed")
 	_check(MHChapterOne.zone_reason("airlock", b).is_empty() and MHChapterOne.zone_reason("ice_extractor", b).begins_with("Plan:"), "an airlock is unpacked; the ice extractor needs its plan")
 
@@ -80,6 +80,30 @@ func _initialize() -> void:
 	MHChapterOne.tick(float(cost.hours) / .75 + .1, b)
 	_check(MHChapterOne.job.is_empty() and MHChapterOne.available("crew_bunk", b) == 1, "the bunk is made and ready to place")
 	_check(MHChapterOne.known.has("spare_parts_rack"), "the first job brings a sent plan")
+	_check(MHChapterOne.made.has("crew_bunk") and MHChapterOne.job_reason("crew_bunk", b) == "Already made: place it from the build bar", "the first job makes the plan; no second job")
+	_check(MHChapterOne.on_build_bar(b).has("crew_bunk"), "a made item stays on the Unpacked tab")
+
+	# ---- copies after the first: paid as they're placed ----
+	_add(b, "crew_bunk")
+	var before := MHChapterOne.feedstock_kg
+	var parts_before := MHChapterOne.earth_parts
+	_check(MHChapterOne.available("crew_bunk", b) == 0 and MHChapterOne.item_reason("crew_bunk", b).is_empty(), "with the first one placed, another can still go down")
+	_check(is_equal_approx(MHChapterOne.feedstock_kg, before), "placing the free copy costs nothing")
+	_check(MHChapterOne.on_build_bar(b).has("crew_bunk") and MHChapterOne.card_line("crew_bunk", b).contains("part"), "the card shows the per-copy cost (%s)" % MHChapterOne.card_line("crew_bunk", b))
+	_add(b, "crew_bunk")
+	MHChapterOne.settle(b)
+	_check(is_equal_approx(MHChapterOne.feedstock_kg, before - float(cost.feedstock_kg)) and MHChapterOne.earth_parts == parts_before - int(cost.earth_parts), "an extra copy takes its feedstock and Earth parts")
+	b.placed_interior.pop_back()
+	MHChapterOne.settle(b)
+	_check(is_equal_approx(MHChapterOne.feedstock_kg, before) and MHChapterOne.earth_parts == parts_before, "removing it gives them back")
+	var keep_feed := MHChapterOne.feedstock_kg
+	MHChapterOne.feedstock_kg = 1.0
+	_check(MHChapterOne.item_reason("crew_bunk", b).begins_with("Needs"), "short of feedstock, it says what's missing (%s)" % MHChapterOne.item_reason("crew_bunk", b))
+	MHChapterOne.feedstock_kg = keep_feed
+	var old_save := MHChapterOne.export_state()
+	old_save.erase("made")
+	MHChapterOne.load_state(old_save, true)
+	_check(MHChapterOne.made.has("crew_bunk") and not MHChapterOne.made.has("fabricator"), "an older save counts what the fabricator made, not crate copies")
 
 	# ---- stores ----
 	var sim: RefCounted = b.simulation()

@@ -11,8 +11,11 @@ extends RefCounted
 ##
 ## How the cargo maths stays one system: non-printable equipment (and the
 ## non-printable site parts, ZONE_STOCK) costs no Earth cargo under these
-## rules; it's limited by stock instead (unpacked or made, less what's
-## placed, so removing something puts it back). The Earth budget is only the
+## rules. Crate copies are free to place (stock, less what's placed, so
+## removing something puts it back). The fabricator makes the plan: its first
+## job makes one copy and puts the item on the build bar for good; after that
+## each extra copy takes its feedstock and Earth parts as it's placed, and
+## gives them back when it's removed (settle()). The Earth budget is only the
 ## hull kit from the shells crate, which printable shells, windows and
 ## partitions use after any printed material.
 
@@ -51,6 +54,8 @@ static var feedstock_kg := 0.0
 static var earth_parts := 0
 static var known: Dictionary = {}        # plan id -> how it came ("sent", "discovered")
 static var job: Dictionary = {}          # {id, hours_left, hours}
+static var made: Dictionary = {}         # id -> true once the fabricator has made one
+static var paid: Dictionary = {}         # id -> copies placed beyond stock, paid for from the stores
 static var has_corer := false
 static var cores: Array = []             # [{x, z, depth_m, purity}]
 static var steps: Dictionary = {}        # step -> sim hours it was met
@@ -75,7 +80,7 @@ static func on() -> bool:
 static func reset() -> void:
 	older_rules = false
 	unpacked = {}; stock = {}; shell_kg = 0; feedstock_kg = 0.0; earth_parts = 0
-	known = {}; job = {}; has_corer = false; cores = []; steps = {}; finished_at = -1.0
+	known = {}; job = {}; made = {}; paid = {}; has_corer = false; cores = []; steps = {}; finished_at = -1.0
 	stores_landed = false; reserve_used = false; emergency_eta = -1.0; said = {}
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
 	MHSamples.reset()   # step 5's samples and journal start with the chapter
@@ -84,6 +89,7 @@ static func reset() -> void:
 static func export_state() -> Dictionary:
 	return {"older_rules": older_rules, "unpacked": unpacked.duplicate(), "stock": stock.duplicate(), "shell_kg": shell_kg,
 		"feedstock_kg": feedstock_kg, "earth_parts": earth_parts, "known": known.duplicate(), "job": job.duplicate(),
+		"made": made.duplicate(), "paid": paid.duplicate(),
 		"has_corer": has_corer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
 		"stores_landed": stores_landed, "reserve_used": reserve_used, "emergency_eta": emergency_eta, "said": said.duplicate(),
 		"water_hours": water_hours, "soil": soil, "soil_potted_at": soil_potted_at, "lander_spots": lander_spots.duplicate(true)}
@@ -103,6 +109,14 @@ static func load_state(state: Dictionary, has_section: bool) -> void:
 	earth_parts = int(state.get("earth_parts", 0))
 	known = (state.get("known", {}) as Dictionary).duplicate()
 	job = (state.get("job", {}) as Dictionary).duplicate()
+	for key in (state.get("paid", {}) as Dictionary): paid[str(key)] = int(state.paid[key])
+	if state.has("made"):
+		for key in (state.made as Dictionary): made[str(key)] = true
+	else:
+		# Saved before plans: anything with more stock than its crates gave was made.
+		var from_crates := crate_counts()
+		for id in stock:
+			if int(stock[id]) > int(from_crates.get(id, 0)): made[str(id)] = true
 	has_corer = bool(state.get("has_corer", false))
 	cores = (state.get("cores", []) as Array).duplicate(true)
 	steps = (state.get("steps", {}) as Dictionary).duplicate()
@@ -158,6 +172,15 @@ static func unpack(crate_id: String) -> bool:
 			_: stock[str(key)] = int(stock.get(str(key), 0)) + int(contents[key])
 	return true
 
+## Copies the unpacked crates gave: {id: count}.
+static func crate_counts() -> Dictionary:
+	var out := {}
+	for crate_id in unpacked:
+		var contents: Dictionary = crate(str(crate_id)).get("contents", {})
+		for key in contents:
+			if not str(key).begins_with("_"): out[str(key)] = int(out.get(str(key), 0)) + int(contents[key])
+	return out
+
 static func crates_left() -> int:
 	return crates().filter(func(c): return not unpacked.has(str(c.id))).size()
 
@@ -191,10 +214,11 @@ static func placed_count(id: String, builder: Object) -> int:
 			if str(item.get("id", "")) == id: count += 1
 	return count
 
+## Free copies (from crates, or the fabricator's first) not yet placed.
 static func available(id: String, builder: Object) -> int:
 	return maxi(0, int(stock.get(id, 0)) - placed_count(id, builder))
 
-## Everything ready to place, for the Unpacked tab: {id: count}.
+## Free copies ready to place: {id: count}.
 static func ready_to_place(builder: Object) -> Dictionary:
 	var out := {}
 	for id in stock:
@@ -202,24 +226,57 @@ static func ready_to_place(builder: Object) -> Dictionary:
 		if left > 0: out[str(id)] = left
 	return out
 
+## Everything on the Unpacked tab: free copies and anything the fabricator has made.
+static func on_build_bar(builder: Object) -> Array:
+	var out: Array = ready_to_place(builder).keys()
+	for id in made:
+		if not out.has(id): out.append(id)
+	return out
+
+## Copies placed beyond the free ones take their feedstock and Earth parts;
+## removing one gives them back. Worked out from what's placed, so every way
+## of placing, removing or undoing is covered.
+static func settle(builder: Object) -> void:
+	if not on() or builder == null: return
+	var ids: Array = made.keys()
+	for id in paid:
+		if not ids.has(id): ids.append(id)
+	for id in ids:
+		var want := maxi(0, placed_count(str(id), builder) - int(stock.get(id, 0)))
+		var diff := want - int(paid.get(id, 0))
+		if diff == 0: continue
+		var cost := plan_cost(str(id))
+		feedstock_kg = maxf(0.0, feedstock_kg - float(cost.feedstock_kg) * diff)
+		earth_parts = maxi(0, earth_parts - int(cost.earth_parts) * diff)
+		if want > 0: paid[id] = want
+		else: paid.erase(id)
+
 ## Empty when this can be placed; otherwise what to do about it.
 static func item_reason(id: String, builder: Object) -> String:
-	if not needs_stock(id) or available(id, builder) > 0: return ""
+	if not needs_stock(id): return ""
+	settle(builder)
+	if available(id, builder) > 0: return ""
 	if not plan_known(id): return plan_hint(id)
-	if int(stock.get(id, 0)) > 0: return "All placed: make another at the fabricator"
-	return "Make it at the fabricator first"
+	if not made.has(id): return "Make the first one at the fabricator"
+	var cost := plan_cost(id)
+	if feedstock_kg < float(cost.feedstock_kg) - .001: return "Needs %s feedstock (you have %s)" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), MHStyle.kg(floori(feedstock_kg))]
+	if earth_parts < int(cost.earth_parts): return "Needs %d Earth part%s (you have %d)" % [int(cost.earth_parts), "" if int(cost.earth_parts) == 1 else "s", earth_parts]
+	return ""
 
 static func zone_reason(kind: String, builder: Object) -> String:
 	if not on() or not ZONE_STOCK.has(kind): return ""
 	return item_reason(str(ZONE_STOCK[kind]), builder)
 
-## Build-bar card line: "×2 unpacked", "Plan: find ice", "Fabricator".
+## Build-bar card line: "×2 ready", "30 kg · 1 part", "MAKE FIRST", "NO PLAN".
 static func card_line(id: String, builder: Object) -> String:
 	if not needs_stock(id): return ""
 	var left := available(id, builder)
 	if left > 0: return "×%d ready" % left
+	if made.has(id):
+		var cost := plan_cost(id)
+		return "%s · %d part%s" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), int(cost.earth_parts), "" if int(cost.earth_parts) == 1 else "s"]
 	if not plan_known(id): return "NO PLAN"
-	return "FABRICATE"
+	return "MAKE FIRST"
 
 # ---------- plans ----------
 
@@ -297,6 +354,7 @@ static func fabricator_speed(builder: Object) -> float:
 
 static func job_reason(id: String, builder: Object) -> String:
 	if fabricators(builder).is_empty(): return "Place the fabricator first"
+	if made.has(id): return "Already made: place it from the build bar"
 	if not job.is_empty(): return "The fabricator is busy"
 	if not plan_known(id): return plan_hint(id)
 	var cost := plan_cost(id)
@@ -386,6 +444,7 @@ static func sols_text(sols: float) -> String:
 static func tick(hours: float, builder: Object) -> Array:
 	var out: Array = []
 	if not on() or builder == null or hours <= 0.0: return out
+	settle(builder)
 	var sim: Object = builder.call("simulation")
 	var last: Dictionary = sim.get("last")
 	var crew := int(last.get("crew", 0))
@@ -399,8 +458,9 @@ static func tick(hours: float, builder: Object) -> Array:
 			if float(job.hours_left) <= 0.0:
 				var id := str(job.id)
 				stock[id] = int(stock.get(id, 0)) + 1
+				made[id] = true
 				job = {}
-				out.append({"id": "made", "title": "Fabricator: %s ready" % label(id), "text": "It's on the build bar's Unpacked tab.", "tone": "valid"})
+				out.append({"id": "made", "title": "Fabricator: %s made" % label(id), "text": "It's on the build bar's Unpacked tab now: place as many as your stores allow.", "tone": "valid"})
 				for learned in learn_after("first_job"): out.append(_plan_message(learned))
 	# Recycling tops the feedstock up.
 	if crew > 0:
@@ -416,7 +476,7 @@ static func tick(hours: float, builder: Object) -> Array:
 	return out
 
 static func _plan_message(id: String) -> Dictionary:
-	return {"id": "plan", "title": "New plan: %s" % label(id), "text": "Mission Control sent the plan. Make it at the fabricator.", "tone": "info"}
+	return {"id": "plan", "title": "New plan: %s" % label(id), "text": "Mission Control sent the plan. Make the first one at the fabricator.", "tone": "info"}
 
 static func _count(builder: Object, kind: String) -> int:
 	return (builder.get("zones") as Array).filter(func(z): return str(z.get("kind", "")) == kind).size()

@@ -66,6 +66,7 @@ So in Survival a new room costs printed material, and new equipment costs a plan
   - see the cost in feedstock and Earth parts, the time and the power draw;
   - start it. Jobs take game hours, so most run overnight;
   - when it's done, the item goes onto the build bar's Unpacked tab.
+- **The fabricator makes the plan, once** (playtest, 1 Nov). The first job makes one copy and puts the item on the Unpacked tab for good. Each extra copy takes its feedstock and Earth parts as it's placed, with no wait, and gives them back when it's removed. Crate copies are free and go first. Example: the first heater is a 6-hour job; the second, placed later in the lab, just takes 30 kg of feedstock and a part.
 - **One job at a time** per fabricator. A second fabricator is itself a plan.
 
 ### Plans
@@ -106,7 +107,7 @@ Finding ice is a gameplay element in its own right, done with GAR-Y (decided 1 N
 | Mode | What step 4 changes |
 |---|---|
 | Survival | Everything above |
-| Freedom | Precursor crates, with **all plans known**; the fabricator still makes them. Stores last longer (about 150 sols) |
+| Freedom | Precursor crates, with **all plans known**; the fabricator still makes the first of each. Stores last longer (about 150 sols) |
 | Creative | Nothing: everything available, no stores |
 | Missions | Nothing: each mission keeps its own payload and unlocks |
 | Tutorial | Starts from the precursor crates; teaches unpacking and one fabricator job |
@@ -158,7 +159,7 @@ A save from before step 4 loads **as already supplied:** every plan known, no cr
 
 - **The rules:** `scripts/chapter_one.gd` (`MHChapterOne`). On for new Survival and Freedom games, off for Creative, Missions and saves from before step 4 (their cards say "older rules").
 - **Crates:** two cargo landers stand beside the crew lander, with seven crates in front of their ramps (`data/precursor_manifest.json`, `scripts/precursor_crate.gd`). E unpacks a crate, I shows its manifest. Equipment and the non-printable site parts (airlock, solar, ice extractor, regolith intake, reactor) come from stock, not cargo: removing one puts it back. The Earth budget is only the shells crate's hull kit (12 t), which printable shells, windows and partitions use after any printed material. The cargo panel reads HULL KIT LEFT, with unpacked items, feedstock and Earth parts underneath.
-- **Plans and the fabricator:** `data/plans.json`, `scripts/fabricator.gd` (a stand-in model in house roles until the HQ model is made) and `scripts/fabricator_screen.gd`. The build bars show NO PLAN or FABRICATE, with how to get it as the tooltip; the furnishing bar has an Unpacked tab.
+- **Plans and the fabricator:** `data/plans.json`, `scripts/fabricator.gd` (a stand-in model in house roles until the HQ model is made) and `scripts/fabricator_screen.gd`. The build bars show NO PLAN, MAKE FIRST, or once it's made the per-copy cost, with what's missing as the tooltip; the furnishing bar's Unpacked tab holds crate copies and made items. Per-copy charges are worked out from what's placed (`MHChapterOne.settle()`), so undo and removal refund them.
 - **Stores:** 90 sols (Survival) or 150 (Freedom) for two crew, in landed store tanks (balance sheet: `chapter_store_*`). Tanks made on Mars start empty. The systems panel shows sols left. Mission Control mentions them at half and a quarter; the soft net is the 10-sol reserve, then emergency landers (30 sols, 3 sols away).
 - **Ice:** GAR-Y's order is now "Survey zone". Under these rules it takes noisy readings in a 3 by 3 grid and plants no flags, and two false zones join the orbital ones. The hand corer (`scripts/hand_corer.gd`): hold E outside, away from the base. Cores show on the survey map. *Decided 1 Nov after the playthrough:* you can only core within 7 m of a GAR-Y reading, because there should be no hole in Mars without a scientific reason, just as NASA wouldn't core for the sake of it. Elsewhere there is no prompt, and holding E does nothing. A good core is half the site's best ice, capped at 25 %, so the plains (peak 32 %) can be found.
 - **Steps:** a good core gives ice (and the crew rover's lander); 12 h of extractor water gives the Water Reclaimer plan; water self-sufficient gives the oxygen plan; 24 h of a regolith intake with water gives the food plans; all four end chapter one with Mission Control's report.
