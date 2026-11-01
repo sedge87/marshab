@@ -226,6 +226,10 @@ func _fill_flows() -> void:
 	var water_net := float(flows.water_made) - float(flows.water_used)
 	_flows_panel.add_child(_line("Water: %d L · makes %d, uses %d L a sol%s" % [roundi(float(snap.water_l)), roundi(float(flows.water_made)), roundi(float(flows.water_used)),
 		" · %s left" % _sols(float(snap.water_l) / -water_net) if water_net < 0.0 and crew > 0 else ""], MHStyle.TEXT_PRIMARY, 15))
+	var caps: Dictionary = s.store_caps(inv.capacity)
+	var venting := float((s.last.get("vented", {}) as Dictionary).get("grey_l", 0.0)) > .5
+	_flows_panel.add_child(_line("Grey water: %d of %d L · urine %d L · CO₂ kept %.1f kg%s" % [roundi(float(s.stores.grey_l)), roundi(float(caps.grey_l)), roundi(float(s.stores.urine_l)), float(s.stores.co2_kg),
+		" · venting" if venting else ""], MHStyle.WARN if venting else MHStyle.TEXT_SECONDARY, 15))
 	var food_net := float(flows.food_grown) - float(flows.food_eaten)
 	_flows_panel.add_child(_line("Food: %d kg · grows %.1f, eats %.1f kg a sol%s" % [roundi(float(snap.food_kg)), float(flows.food_grown), float(flows.food_eaten),
 		" · %s left" % _sols(float(snap.food_kg) / -food_net) if food_net < 0.0 and crew > 0 else ""], MHStyle.TEXT_PRIMARY, 15))

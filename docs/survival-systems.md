@@ -243,3 +243,27 @@ One part means you get by on reserves and a lot of ice; every part means you cou
   - crew health;
   - more crew later.
 - **Left out:** the transport engineering (launch and landing systems), which doesn't make gameplay.
+
+### 12.4 Stakes after self-sufficiency: spares never close
+
+*User, 1 Nov:* once one person can survive, the stakes mustn't drop to nothing.
+- **No chain reaches 100 %.** Water tops out at 98 %, so ice is always needed and the extractor keeps wearing.
+- **Consumables are made, not stored for ever.** Filter beds, brine bags, auger bits and the carbon monoxide filter come from the fabricator's feedstock. Feedstock comes from recycled packaging and regolith, and Earth's packaging runs out. So the waste loop (phase 5) is part of staying alive. A **spares** store holds what's made.
+- **The other pressures:**
+  - Wear and rounds (core loop step 7) grow with the number of parts.
+  - Surprises grow by chapter.
+  - Radiation adds up whatever you do.
+  - Expeditions leave the base running without you (§12.5).
+- **Staying small is the easy path.** Accepting more crew is how you raise the stakes: mission readiness (§12.2) is the difficulty dial.
+
+### 12.5 The base while you're away
+
+*User, 1 Nov:* the base keeps running while you explore, so you can come home to trouble. That should be trouble you could see coming, not a punishment.
+- **The runway at the airlock.** The airlock panel shows how long the base can run without you, and which link fails first: "Safe for about 3 sols. The air filter runs out first." It comes from each store's sols left plus wear.
+- **News reaches you outside.** Suit pings on the wrist display (diegetic, per the suit rules), plus relays from Mission Control. The rover's terminal shows the base status.
+- **Remote control: switching only** (user's choice). From the rover terminal or the comms link you can switch machines on or off and shed load. Repairs, swaps and refills need you there.
+- **Slow failures.** Away from you, a chain degrades over hours or sols, never minutes, and buffers outlast a normal outing. At worst the crew retreat to the lander, and you come home to a repair job: restore power, swap the filter, bring the air back.
+- **Handing over as you grow.** GAR-Y does routine rounds from chapter three. With more crew, someone stays behind, which is one more reason to grow.
+- **When it's built:**
+  - the runway and the pings come with phase 7 (the Chains view and readouts);
+  - remote switching comes with the rover terminal work.

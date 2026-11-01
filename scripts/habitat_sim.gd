@@ -40,6 +40,13 @@ var battery_kwh := 0.0
 var water_l := 0.0
 var food_kg := 0.0
 var o2_reserve_kg := 0.0
+# The chains' own stores (docs/survival-systems.md §9 phase 1, §12.1): water_l
+# is the clean tank and food_kg all the food, produce_kg the grown part of it.
+# A store that's full vents overboard (lost), noted per sol in `vented`.
+const STORE_KEYS := ["grey_l", "urine_l", "raw_l", "brine_l", "co2_kg", "h2_kg", "ch4_kg", "produce_kg", "compost_kg", "nutrients_kg", "spares"]
+const H2_PER_O2 := 0.126       # kg hydrogen per kg oxygen split from water
+var stores := {}
+var vented := {}
 var o2_pct := 21.0
 var co2_pct := 0.04
 ## One temperature for the whole habitat (merged from per-room, 23 Oct): like
@@ -133,6 +140,24 @@ func _init(owner: Node = null) -> void:
 	builder = owner
 	_rng.randomize()
 	life = HABITAT_LIFE.new(self)
+	stores = _empty_stores()
+
+static func _empty_stores() -> Dictionary:
+	var out := {}
+	for key in STORE_KEYS: out[key] = 0.0
+	return out
+
+## Grey water and urine tank sizes (the tank models come with phase 3).
+func store_caps(capacity: Dictionary) -> Dictionary:
+	return {"grey_l": maxf(MHResources.setting("grey_tank_min_l", 60.0), float(capacity.water) * MHResources.setting("grey_tank_share", .25)),
+		"urine_l": MHResources.setting("urine_tank_l", 30.0), "co2_kg": MHResources.setting("co2_store_kg", 20.0), "h2_kg": MHResources.setting("h2_store_kg", 5.0)}
+
+## Put `amount` in a store up to its cap; the rest vents. Returns what was kept.
+func _keep(key: String, amount: float, cap: float, per_sol: float) -> float:
+	var kept := clampf(amount, 0.0, maxf(0.0, cap - float(stores[key])))
+	stores[key] = float(stores[key]) + kept
+	if amount - kept > 0.0: vented[key] = float(vented.get(key, 0.0)) + (amount - kept) / maxf(.0001, per_sol)
+	return kept
 
 ## Call whenever the layout or an item's switch changes.
 func invalidate() -> void:
@@ -144,7 +169,7 @@ func invalidate() -> void:
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
 		"habitat_temp": habitat_temp, "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
-		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "extra_store_l": extra_store_l, "extra_store_o2": extra_store_o2, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust}
+		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "extra_store_l": extra_store_l, "extra_store_o2": extra_store_o2, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust, "stores": stores.duplicate()}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -164,6 +189,12 @@ func load(state: Dictionary) -> void:
 	printed_kg = float(state.get("printed_kg", 0.0))
 	panel_dust = (state.get("panel_dust", {}) as Dictionary).duplicate()
 	hull_dust = float(state.get("hull_dust", 0.0))
+	# Older saves have no chain stores: everything is in the main stores.
+	stores = _empty_stores()
+	var saved: Dictionary = state.get("stores", {})
+	for key in saved:
+		if stores.has(key): stores[key] = float(saved[key])
+	vented = {}
 	# Rooms light themselves (the wall light panels went on 31 Oct): a room an
 	# older save switched off would otherwise stay dark for good.
 	light_overrides = {}
@@ -540,24 +571,43 @@ func step(dt: float, hour: float) -> void:
 	var water_made := 0.0
 	var water_used := crew * MHResources.setting("water_per_person", 10.0) * per_sol
 	var reclaim_capacity := 0.0
+	var electrolysis_o2 := 0.0
 	var food_grown := 0.0
 	var research := 0.0
 	for item in working:
 		if not powered.tiers[item.tier] and item.power > 0.0: continue
 		if not MHSamples.on(): research += MHResources.item_value(item.id, "research")   # chapter rules: samples instead (step 5)
 		o2_made += item.o2 * per_sol
+		if item.o2 > 0.0 and item.water < 0.0: electrolysis_o2 += item.o2 * per_sol
 		co2_removed += -minf(0.0, item.co2) * per_sol
 		if item.water > 0.0: water_made += item.water * per_sol
 		else: water_used += -item.water * per_sol
 		food_grown += item.food * per_sol * MHSamples.bonus("food")   # discoveries (step 5)
 		if item.id == "water_reclaimer" and item.on: reclaim_capacity += 70.0 * per_sol
-	var water_recovered := minf(reclaim_capacity, crew * MHResources.setting("water_per_person", 10.0) * per_sol) * MHResources.setting("reclaim_fraction", .93)
+	# Used water goes to the grey tank and urine to its own; the reclaimer
+	# cleans from them. A full tank vents (§12.1: a missing part leaks).
+	vented = {}
+	var caps := store_caps(inv.capacity)
+	var crew_water := crew * MHResources.setting("water_per_person", 10.0) * per_sol
+	var urine := minf(crew_water, crew * MHResources.setting("urine_per_person", 1.5) * per_sol)
+	_keep("grey_l", crew_water - urine, caps.grey_l, per_sol)
+	_keep("urine_l", urine, caps.urine_l, per_sol)
+	var from_grey := minf(reclaim_capacity, float(stores.grey_l))
+	var from_urine := minf(reclaim_capacity - from_grey, float(stores.urine_l))
+	stores.grey_l = float(stores.grey_l) - from_grey
+	stores.urine_l = float(stores.urine_l) - from_urine
+	var water_recovered := (from_grey + from_urine) * MHResources.setting("reclaim_fraction", .93)
+	_keep("h2_kg", electrolysis_o2 * H2_PER_O2, caps.h2_kg, per_sol)
 	var drill_water := 0.0
 	if powered.tiers[TIER_OTHER]:
 		for richness in inv.drills: drill_water += MHResources.setting("ice_drill_l", 120.0) * float(richness) * per_sol
 	water_l = clampf(water_l + water_made + water_recovered + drill_water - water_used, 0.0, float(inv.capacity.water))
 	food_grown *= life.food_speed()
-	food_kg = maxf(0.0, food_kg + food_grown - crew * MHResources.setting("food_per_person", 1.8) * per_sol)
+	# Fresh produce is eaten first, then the rations.
+	var eaten := crew * MHResources.setting("food_per_person", 1.8) * per_sol
+	stores.produce_kg = maxf(0.0, float(stores.produce_kg) + food_grown - eaten)
+	food_kg = maxf(0.0, food_kg + food_grown - eaten)
+	stores.produce_kg = minf(float(stores.produce_kg), food_kg)
 	# Printing: running printers make material while tier 4 has power and an intake feeds them.
 	if powered.tiers[TIER_OTHER]: printed_kg += print_rate(inv) * per_sol
 	if inv.cells > 0:
@@ -568,6 +618,7 @@ func step(dt: float, hour: float) -> void:
 		var co2_kg_now := co2_pct / 100.0 * (air_kg / 29.0) * 44.0
 		co2_removed = minf(co2_removed, maxf(0.0, co2_kg_now + co2_out - 0.0004 * (air_kg / 29.0) * 44.0))
 		co2_pct = maxf(0.0, co2_pct + (co2_out - co2_removed) / 44.0 / (air_kg / 29.0) * 100.0)
+		_keep("co2_kg", co2_removed, caps.co2_kg, per_sol)   # kept for the Sabatier (phase 2); the rest vents
 		# Reserve tanks top the air up when oxygen falls.
 		if o2_pct < 20.5 and o2_reserve_kg > 0.0:
 			var needed := (20.9 - o2_pct) / 100.0 * (air_kg / 29.0) * 32.0
@@ -583,7 +634,7 @@ func step(dt: float, hour: float) -> void:
 		"tiers": powered.tiers, "tier_kw": tiers, "battery_rate_kw": powered.battery_kw, "heat_pump_kw": heat.electric_kw, "outside_c": outside, "heat_wasted_kw": heat.wasted,
 		"storm": storm_hours_left > 0.0, "storm_hours_left": storm_hours_left, "storm_eta": storm_eta_hours, "crew": crew, "people": people, "water_in": (water_made + water_recovered + drill_water) / per_sol,
 		"water_out": water_used / per_sol, "food_in": food_grown / per_sol, "o2_in": o2_made / per_sol, "co2_out": co2_removed / per_sol,
-		"heat_capacity_short": heat.short, "night": night, "free_power": MHGame.debug_free_power}
+		"heat_capacity_short": heat.short, "night": night, "free_power": MHGame.debug_free_power, "vented": vented.duplicate(), "reclaimers": reclaim_capacity > 0.0}
 
 ## Solar output at an hour: each array catches most light facing the sun
 ## (same rule as the build view's "SOLAR % AT NOON" label).
@@ -896,7 +947,7 @@ func snapshot(hour: float) -> Dictionary:
 		"battery_kwh": battery_kwh, "generation_kw": float(last.get("generation_kw", 0.0)), "load_kw": float(last.get("load_kw", 0.0)),
 		"water_l": water_l, "food_kg": food_kg, "o2_pct": o2_pct, "co2_pct": co2_pct, "coldest_c": coldest if coldest < 98.0 else 0.0,
 		"crew_health": crew_health, "storm": storm_hours_left > 0.0, "all_powered": bool((last.get("tiers", {}) as Dictionary).get(4, false)),
-		"life_support": bool((last.get("tiers", {}) as Dictionary).get(1, true))}.merged(life.sample(inv))
+		"life_support": bool((last.get("tiers", {}) as Dictionary).get(1, true))}.merged(stores).merged(life.sample(inv))
 
 ## Plain-language problems, most serious first: [{level, text}].
 func warnings() -> Array:
@@ -936,6 +987,9 @@ func warnings() -> Array:
 	var water_per_sol := float(last.get("water_out", 0.0)) - float(last.get("water_in", 0.0))
 	if crew > 0 and water_per_sol > 0.0 and water_l / water_per_sol < 3.0:
 		out.append({"level": "danger" if water_l <= 0.0 else "warn", "text": "Water runs out in %.1f sols: using %d L more than is made each sol." % [water_l / water_per_sol, roundi(water_per_sol)]})
+	var grey_vent := float((last.get("vented", {}) as Dictionary).get("grey_l", 0.0)) + float((last.get("vented", {}) as Dictionary).get("urine_l", 0.0))
+	if crew > 0 and grey_vent > .5:
+		out.append({"level": "warn", "text": "Grey water venting: %s, so %d L a sol is lost overboard." % ["the water reclaimer can't keep up" if bool(last.get("reclaimers", false)) else "no water reclaimer", roundi(grey_vent)]})
 	var food_per_sol := crew * MHResources.setting("food_per_person", 1.8) - float(last.get("food_in", 0.0))
 	if crew > 0 and food_per_sol > 0.0 and food_kg / food_per_sol < 10.0:
 		out.append({"level": "danger" if food_kg <= 0.0 else "warn", "text": "Food runs out in %d sols." % floori(food_kg / food_per_sol)})

@@ -76,6 +76,22 @@ func _initialize() -> void:
 	copy.simulation().load(saved)
 	_check(is_equal_approx(float(copy.simulation().battery_kwh), float(sim.battery_kwh)) and is_equal_approx(float(copy.simulation().food_kg), float(sim.food_kg)), "stores survive save and load")
 
+	# The chain stores (docs/survival-systems.md §9 phase 1).
+	_check(float(sim.stores.grey_l) < 20.0 and (sim.last.vented as Dictionary).is_empty(), "with a water reclaimer grey water is cleaned as it's made (%.0f L, nothing vented)" % sim.stores.grey_l)
+	_check(float(sim.stores.co2_kg) > 0.0 and float(sim.stores.h2_kg) > 0.0, "scrubbed CO2 and the oxygen generator's hydrogen are kept (%.1f, %.2f kg)" % [sim.stores.co2_kg, sim.stores.h2_kg])
+	_check(is_equal_approx(float(copy.simulation().stores.co2_kg), float(sim.stores.co2_kg)), "the chain stores survive save and load")
+	var old_save := saved.duplicate(); old_save.erase("stores")
+	var older := _habitat("plains", 6, _full_kit())
+	older.simulation().load(old_save)
+	_check(float(older.simulation().stores.grey_l) == 0.0 and is_equal_approx(float(older.simulation().water_l), float(sim.water_l)), "an older save loads with empty chain stores")
+	var dry_kit := _full_kit(); dry_kit.erase("water_reclaimer")
+	var dry := _habitat("plains", 6, dry_kit)
+	dry.simulation().random_storms = false
+	dry.simulation().run_hours(48.0, 8.0)
+	var caps: Dictionary = dry.simulation().store_caps(dry.simulation().inventory().capacity)
+	_check(is_equal_approx(float(dry.simulation().stores.grey_l), float(caps.grey_l)) and float((dry.simulation().last.vented as Dictionary).get("grey_l", 0.0)) > 0.0, "with no reclaimer the grey tank fills, then vents")
+	_check(not (dry.simulation().warnings() as Array).filter(func(w): return str(w.text).contains("Grey water venting: no water reclaimer")).is_empty(), "the venting warning names the missing reclaimer")
+
 	# A dust storm: solar drops, loads are shed, and life support goes last.
 	sim.start_storm(3.0)
 	var storm: Array = sim.run_hours(48.0, 8.0, 1.0)

@@ -212,6 +212,13 @@ func evaluate(test_sim: RefCounted = null, test_hour := -1.0) -> Array:
 		out.append({"id": "water", "level": "critical" if float(snap.water_l) <= 0.0 else "warning", "title": "Water running out",
 			"text": "Using %d L more than is made each sol: %s left." % [roundi(water_net), _sols(float(snap.water_l) / water_net)],
 			"chain": [["droplets", "Made %d L a sol" % roundi(float(s.last.get("water_in", 0.0))), false], ["droplets", "Used %d L a sol" % roundi(float(s.last.get("water_out", 0.0))), true], ["heart-pulse", "Crew", true]]})
+	# A full grey water or urine tank vents overboard (§12.1: a missing part leaks).
+	var vented: Dictionary = s.last.get("vented", {})
+	var lost := float(vented.get("grey_l", 0.0)) + float(vented.get("urine_l", 0.0))
+	if crew > 0 and lost > .5:
+		var why := "Water reclaimer can't keep up" if bool(s.last.get("reclaimers", false)) else "No water reclaimer"
+		out.append({"id": "grey_vent", "level": "warning", "title": "Grey water venting", "text": "The grey water tank is full, so %d L a sol of used water is lost overboard. A water reclaimer cleans it back into drinking water." % roundi(lost),
+			"chain": [["droplets", why, false], ["droplets", "Lost %d L a sol" % roundi(lost), false], ["droplets", "Clean water", true]]})
 	var food_net := crew * MHResources.setting("food_per_person", 1.8) - float(s.last.get("food_in", 0.0))
 	if crew > 0 and food_net > 0.0 and float(snap.food_kg) / food_net < 10.0:
 		out.append({"id": "food", "level": "critical" if float(snap.food_kg) <= 0.0 else "warning", "title": "Food running low",
