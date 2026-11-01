@@ -24,6 +24,7 @@ The user asked for food, water, heat and radiation to be reworked, along with "h
 5. **Real numbers, rounded,** from ISS and NASA Mars planning, like the rest of the sim. The balance spreadsheet stays the source (`docs/MarsHabitat_Balance.xlsx` → `data/resources.json`).
 6. **Every machine has one hands-on job** (a filter, a brine bag, harvesting a tray). That's the groundwork for step 7's wear and daily rounds, and it tells the models where the service hatch goes.
 7. **Failure is gentle and named.** When a link is missing or full, the alert names it: "Grey water tank full: no water processor", not just "Water low".
+8. **Near-future tech only.** A machine is allowed when NASA or another space agency has demonstrated it, or plans it from a demonstration (MOXIE, the ISS water loop, Sabatier, Kilopower). The game may scale these up; it doesn't invent new physics (no terraforming, no fusion, no artificial gravity).
 
 ## 3. Air
 
@@ -172,7 +173,13 @@ Three kinds instead of one: **rations** (from Earth, dehydrated, they keep), **p
 1. **Depth:** three to five steps a chain, no pipes.
 2. **Crops:** greens and potatoes now, more from discoveries; variety counts.
 3. **Sabatier and methane:** methane goes with Mars oxygen into an **ascent propellant tank** that fills towards "go home". The rover stays on batteries, as in NASA's Mars studies, where crew rovers are electric. A methane–oxygen **fuel-cell range extender** may come later as a long-range upgrade (core loop step 9), not in this rework.
-4. **The atmosphere processor:** unlocked by a discovery; **still to discuss** (user) whether its oxygen is breathed or is ascent propellant only.
+4. **The atmosphere processor:** unlocked by a discovery, and **its oxygen is breathable** (user, 1 Nov, after NASA's MOXIE write-up).
+   - **What NASA proved:** MOXIE made breathable-grade oxygen on Mars, and a scaled-up version is NASA's plan.
+   - **What stays future tech:** the game's version is that scale-up, "a little future tech".
+   - **The costs that keep it honest:**
+     - **Power:** 2.5 kW for about 1.2 kg a sol, roughly one person's need. Electrolysis on ice is far cheaper, so a wet base still prefers ice.
+     - **A carbon monoxide filter** between it and the air supply, swapped by hand. This joins its dust intake as its hands-on jobs.
+     - **Its output goes to the ascent tank too,** so breathing and the trip home compete for it.
    - **Background:** MOXIE on Perseverance made about 122 g of oxygen in 2021–23 at over 98 % purity. A scaled-up version is NASA's plan for ascent oxygen.
    - **Radiation:** the gas isn't made radioactive (oxygen-16 is stable).
    - **Purity:** the real concern is the carbon monoxide the process also makes.
