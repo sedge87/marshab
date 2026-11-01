@@ -239,7 +239,7 @@ func expected_event_dose(inv: Dictionary) -> float:
 
 # ---------- wellbeing needs ----------
 
-## The seven needs, each {id, label, score 0-1, missing (plain words)}.
+## The eight needs, each {id, label, score 0-1, missing (plain words)}.
 func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 	var c: Dictionary = data().crew
 	var n := maxi(1, crew.size() if not crew.is_empty() else sim.crew_count())
@@ -325,6 +325,10 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 	if toilet and not shower: why_wash = "No shower: the crew make do with sponge baths" if not _has(inv, "hygiene_shower") else "The shower has no water"
 	elif shower and not toilet: why_wash = "No toilet"
 	out.append({"id": "hygiene", "label": "Washing and the toilet", "score": hygiene, "missing": "" if hygiene >= .99 else why_wash})
+	# 8. Fresh food (§5): weeks of only rations wear the crew down ("menu fatigue").
+	var share: float = sim.food.fresh_share if sim.get("food") != null else 1.0
+	var fresh := minf(1.0, share / sim.food.FRESH_TARGET) if sim.get("food") != null else 1.0
+	out.append({"id": "fresh", "label": "Fresh food", "score": fresh, "missing": "" if fresh >= .99 else "Mostly rations lately (%d%% fresh): grow and harvest greens or potatoes" % roundi(share * 100.0)})
 	return out
 
 func wellbeing_target(need_list: Array, p: Dictionary, inv: Dictionary) -> float:

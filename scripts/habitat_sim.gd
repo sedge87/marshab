@@ -12,6 +12,7 @@ const TRENCHES := preload("res://scripts/trenches.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
+const HABITAT_FOOD := preload("res://scripts/habitat_food.gd")
 
 const STEP_HOURS := 0.1
 ## Shedding order when power runs short: 1 survives longest.
@@ -34,6 +35,7 @@ const THERMAL_MASS_KWH_PER_C := 0.07  # per cell: air, structure and contents
 var builder: Node
 ## Act 2: the crew as people and the hazards (radiation, breaches, breakdowns).
 var life: RefCounted
+var food: RefCounted   # crops, harvests, produce and the diet (habitat_food.gd)
 
 # ---- stores (saved) ----
 var battery_kwh := 0.0
@@ -140,6 +142,7 @@ func _init(owner: Node = null) -> void:
 	builder = owner
 	_rng.randomize()
 	life = HABITAT_LIFE.new(self)
+	food = HABITAT_FOOD.new(self)
 	stores = _empty_stores()
 
 static func _empty_stores() -> Dictionary:
@@ -177,7 +180,7 @@ func invalidate() -> void:
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
 		"habitat_temp": habitat_temp, "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
-		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "extra_store_l": extra_store_l, "extra_store_o2": extra_store_o2, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust, "stores": stores.duplicate()}
+		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "extra_store_l": extra_store_l, "extra_store_o2": extra_store_o2, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "food": food.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust, "stores": stores.duplicate()}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -208,6 +211,7 @@ func load(state: Dictionary) -> void:
 	light_overrides = {}
 	research_boost_hours = float(state.get("research_boost_hours", 0.0))
 	life.load(state.get("life", {}))
+	food.load(state.get("food", {}))
 	invalidate()
 
 # ---------- what is in the habitat ----------
@@ -599,7 +603,6 @@ func step(dt: float, hour: float) -> void:
 		co2_removed += -minf(0.0, item.co2) * per_sol
 		if item.water > 0.0: water_made += item.water * per_sol
 		else: water_used += -item.water * per_sol
-		food_grown += item.food * per_sol * MHSamples.bonus("food")   # discoveries (step 5)
 		if item.id == "water_reclaimer" and item.on: reclaim_capacity += MHResources.setting("water_processor_l", 150.0) * per_sol
 		if item.id == "urine_processor" and item.on: urine_capacity += MHResources.setting("urine_processor_l", 15.0) * per_sol
 		if item.id == "air_recycler" and item.on: scrubbing = true
@@ -643,12 +646,10 @@ func step(dt: float, hour: float) -> void:
 	var sabatier_water := _keep("grey_l", h2_used * 4.5, caps.grey_l, per_sol)
 	_keep("ch4_kg", h2_used * 2.0, methane_cap, per_sol)
 	water_l = clampf(water_l + water_made + water_recovered - water_used, 0.0, float(inv.capacity.water))
-	food_grown *= life.food_speed()
-	# Fresh produce is eaten first, then the rations.
-	var eaten := crew * MHResources.setting("food_per_person", 1.8) * per_sol
-	stores.produce_kg = maxf(0.0, float(stores.produce_kg) + food_grown - eaten)
-	food_kg = maxf(0.0, food_kg + food_grown - eaten)
-	stores.produce_kg = minf(float(stores.produce_kg), food_kg)
+	# Crops grow over sols and are harvested in batches; the crew eat fresh
+	# produce first (habitat_food.gd). food_in is the trays' average.
+	food.step(dt, inv, powered.tiers, crew)
+	food_grown = food.rate(inv, powered.tiers) * per_sol
 	# Printing: running printers make material while tier 4 has power and an intake feeds them.
 	if powered.tiers[TIER_OTHER]: printed_kg += print_rate(inv) * per_sol
 	if inv.cells > 0:
@@ -936,7 +937,6 @@ func daily_flows(planned := true) -> Dictionary:
 		if not item.on: continue
 		out.o2_made += item.o2
 		out.co2_removed += -minf(0.0, item.co2)
-		out.food_grown += item.food
 		if item.water > 0.0: out.water_made += item.water
 		else: out.water_used += -item.water
 		if item.id == "water_reclaimer": reclaimers += 1
@@ -951,6 +951,7 @@ func daily_flows(planned := true) -> Dictionary:
 	out.water_made += raw_cleaned * MHResources.setting("raw_fraction", .95) + minf(capacity - raw_cleaned, crew_water - urine) * MHResources.setting("reclaim_fraction", .93)
 	out.water_made += minf(urine_processors * MHResources.setting("urine_processor_l", 15.0), urine) * MHResources.setting("urine_fraction", .85)
 	out.o2_made += int(inv.get("processors", 0)) * MHResources.item_value("atmosphere_processor", "o2_kg", 1.2)
+	out.food_grown = food.rate(inv, {}, true)
 	if research_boost_hours > 0.0: out.research *= 1.2
 	out["printed"] = print_rate(inv)
 	return out
@@ -1048,6 +1049,9 @@ func warnings() -> Array:
 		out.append({"level": "info", "text": "Urine venting: no urine processor, so %d L a sol of water is lost." % roundi(float(lost.urine_l))})
 	if float(lost.get("raw_l", 0.0)) > .5:
 		out.append({"level": "warn", "text": "Meltwater spilling: %s, so the ice drill's water is wasted." % ("the water processor can't keep up" if processing else "no water processor to clean it")})
+	var crops: Dictionary = food.summary(inv)
+	if int(crops.ripe) > 0:
+		out.append({"level": "info", "text": "%d %s ripe: harvest %s (E) within %d sols, or a harvest cart in the room does it." % [int(crops.ripe), "trays are" if int(crops.ripe) > 1 else "tray is", "them" if int(crops.ripe) > 1 else "it", roundi(food.RIPE_SOLS)]})
 	var food_per_sol := crew * MHResources.setting("food_per_person", 1.8) - float(last.get("food_in", 0.0))
 	if crew > 0 and food_per_sol > 0.0 and food_kg / food_per_sol < 10.0:
 		out.append({"level": "danger" if food_kg <= 0.0 else "warn", "text": "Food runs out in %d sols." % floori(food_kg / food_per_sol)})

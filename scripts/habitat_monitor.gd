@@ -238,6 +238,10 @@ func _fill_flows() -> void:
 	var food_net := float(flows.food_grown) - float(flows.food_eaten)
 	_flows_panel.add_child(_line("Food: %d kg · grows %.1f, eats %.1f kg a sol%s" % [roundi(float(snap.food_kg)), float(flows.food_grown), float(flows.food_eaten),
 		" · %s left" % _sols(float(snap.food_kg) / -food_net) if food_net < 0.0 and crew > 0 else ""], MHStyle.TEXT_PRIMARY, 15))
+	var crops: Dictionary = s.food.summary(inv)
+	if int(crops.growing) + int(crops.ripe) > 0:
+		_flows_panel.add_child(_line("Crops: %d growing, %d ripe · fresh %.1f kg · nutrients %.1f kg · %d%% of meals fresh" % [int(crops.growing), int(crops.ripe), float(crops.fresh_kg), float(crops.nutrients_kg), roundi(float(crops.fresh_share) * 100.0)],
+			MHStyle.WARN if int(crops.ripe) > 0 else MHStyle.TEXT_SECONDARY, 15))
 	_flows_panel.add_child(_line("Crew: %d aboard of %d bunks · health %d%%" % [crew, int(inv.capacity.berths), roundi(float(snap.crew_health))], MHStyle.TEXT_PRIMARY, 15))
 	if MHSamples.on():
 		_flows_panel.add_child(_line("Science: %d discoveries · %d samples waiting · %d leads" % [MHSamples.found.size(), MHSamples.waiting().size(), MHSamples.leads.size()], MHStyle.TEXT_PRIMARY, 15))

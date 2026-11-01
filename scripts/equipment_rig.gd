@@ -71,6 +71,8 @@ func _level(action: Dictionary) -> int:
 func _action_label(action: Dictionary) -> String:
 	match str(action.get("type", "")):
 		"harvest":
+			var crops := _crops()
+			if crops != null: return str(crops.status(_placement_id()))
 			var index := _actions.find(action)
 			if _regrowing.has(index):
 				var left := maxi(0, ceili((float(_regrowing[index]) - Time.get_ticks_msec()) / 1000.0))
@@ -85,6 +87,9 @@ func _action_label(action: Dictionary) -> String:
 			var level := _level(action)
 			var now := str(names[level]).to_upper() + (" (NO POWER)" if level > 0 and not _grid_powered else "")
 			return "%s %s → %s" % [str(action.get("label", "Setting")), now, str(names[(level + 1) % names.size()]).to_upper()]
+		"crop":
+			var crops := _crops()
+			return str(crops.next_label(_placement_id())) if crops != null else "Next crop"
 		"workout", "inspect", "play", "sign_edit", "monitor", "camera", "sleep", "recall_rover", "suit_refill":
 			return str(action.get("label", "Use"))
 		"screen":
@@ -124,6 +129,12 @@ func _run(key: String, _actor: Node) -> bool:
 				_inspect(action)
 			"harvest":
 				_harvest(index, action)
+				return true
+			"crop":
+				var crops := _crops()
+				if crops != null:
+					var next := str(crops.cycle_next(_placement_id()))
+					get_tree().call_group("explore_hud", "show_equipment_note", "Next crop: %s" % next, "Planted at the next harvest. Greens are quick (8 sols) and lift the crew's spirits; potatoes take 20 sols but feed them.")
 				return true
 			"play":
 				_play(action)
@@ -715,9 +726,27 @@ func _process(delta: float) -> void:
 				_grid_powered = powered
 				_apply_state(index, false)
 
-## Pick the crops: they drop to stubble and grow back over regrow_seconds.
-## Not saved: a reloaded tray is fully grown.
+## The habitat's crops (habitat_food.gd), when this is a tray in a base.
+func _crops() -> RefCounted:
+	var builder := _builder()
+	if builder == null or _placement_id().is_empty() or not GROWERS.has(equipment_id): return null
+	return builder.simulation().get("food")
+
+const GROWERS := ["grow_tray", "greenhouse_planter"]
+
+## Pick the crops: they drop to stubble and grow back over regrow_seconds
+## (the look only: a tray's crop grows over sols in habitat_food.gd).
 func _harvest(index: int, action: Dictionary) -> void:
+	var crops := _crops()
+	if crops != null:
+		var picked: Dictionary = crops.harvest(_placement_id())
+		if picked.is_empty():
+			get_tree().call_group("explore_hud", "show_equipment_note", str(crops.status(_placement_id())), "Not ripe yet. It grows under the lights, using water, nutrients and power.")
+			return
+		_regrowing.erase(index)
+		action = action.duplicate()
+		action["note"] = str(picked.text)
+		action["label_done"] = str(picked.title)
 	if _regrowing.has(index): return
 	var seconds := float(action.get("regrow_seconds", 90.0))
 	_regrowing[index] = Time.get_ticks_msec() + int(seconds * 1000.0)
@@ -730,7 +759,7 @@ func _harvest(index: int, action: Dictionary) -> void:
 	tween.chain().tween_callback(func() -> void: _regrowing.erase(index))
 	MHAudio.sfx("place", -8.0)
 	var entry_data := EquipmentCatalog.get_entry(equipment_id)
-	get_tree().call_group("explore_hud", "show_equipment_note", "Harvested · %s" % str(entry_data.get("label", equipment_id)), str(action.get("note", "Fresh food for the crew. The plants grow back under the lights, using water, nutrients and power.")))
+	get_tree().call_group("explore_hud", "show_equipment_note", str(action.get("label_done", "Harvested · %s" % str(entry_data.get("label", equipment_id)))), str(action.get("note", "Fresh food for the crew. The plants grow back under the lights, using water, nutrients and power.")))
 
 func _vec(values: Array) -> Vector3:
 	return Vector3(float(values[0]), float(values[1]), float(values[2])) if values.size() == 3 else Vector3.ZERO

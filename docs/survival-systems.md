@@ -162,6 +162,17 @@ Three kinds instead of one: **rations** (from Earth, dehydrated, they keep), **p
    - **Washing:** a shower uses 5 L a person each sol; without one, sponge baths use 2 L. A seventh wellbeing need, **Washing and the toilet**, scores the toilet and a shower with water in the tank.
    - **Chapter one:** the ice step tests the meltwater, then sends the Water Processor's plan.
 4. **Food:** crops, harvest, seedlings, nutrients, spoilage and the freezer, the galley's meals, variety.
+
+   *Built 1 Nov 2026 (scripts/habitat_food.gd). User's choices: harvest with E plus the cart; the crop is chosen on the tray; cooking is automatic.*
+   - **Crops:** each grow tray or planter grows one crop: greens (8 sols, 2.4 kg a tray) or potatoes (20 sols, 9 kg). A planter yields 1.5 times as much.
+   - **Ripe crops:** they wait for E. A harvest cart in the same room picks them for you. Left 3 sols, they go over, to the compost, and are replanted.
+   - **Choosing the crop:** G on the tray picks the next crop (F stays the grow lights). On the planter, G replaces the service hatch until step 7.
+   - **Seedlings:** with a seedling station anywhere, a replanted tray starts a quarter grown.
+   - **Nutrients:** 20 kg from Earth arrive with the first trays, used at 0.02 kg per kg grown. When they run out, trays grow at half speed, unless a nutrient mixer runs (it makes 0.25 kg a sol).
+   - **Produce:** it keeps 10 sols, or 60 with a powered galley freezer, and is eaten before rations. Spoiled produce goes to the compost.
+   - **Fresh food:** an eighth wellbeing need, met when about a quarter of the last ~10 sols' food was fresh.
+   - **Meals:** cooking is automatic, through the existing "Meals together" need (a galley oven or kitchenette). Rehydration water is already in the 10 L a person.
+   - **The look:** the tray's crop graphic still regrows over a couple of minutes; growth stages come with the food model batch.
 5. **Waste:** the sorter, recycling into feedstock, compost.
 6. **Radiation:** the background dose, your own dose outside, the career limit, the dosimeter, shielding insulating.
 7. **The Chains view,** machine readouts and Field guide cards. Rebalance in the spreadsheet; the chapter one and samples tests extended.

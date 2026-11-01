@@ -421,6 +421,11 @@
         "label_off": "Switch grow lights on",
         "note_off": "Grow lights off. The plants stop growing, so this tray no longer adds food (and saves its power).",
         "note_on": "Grow lights on. Light, water and nutrients keep the crops growing."
+      },
+      {
+        "key": "tertiary",
+        "type": "crop",
+        "label": "Next crop"
       }
     ]
   },
@@ -777,20 +782,8 @@
       },
       {
         "key": "tertiary",
-        "type": "hinge",
-        "doors": [
-          {
-            "parts": [
-              "Service_Hatch"
-            ],
-            "edge": "max_y",
-            "axis": "x",
-            "angle": 80
-          }
-        ],
-        "label_on": "Close service hatch",
-        "label_off": "Open service hatch",
-        "state": "hatch"
+        "type": "crop",
+        "label": "Next crop"
       }
     ]
   },

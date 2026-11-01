@@ -126,6 +126,36 @@ func _initialize() -> void:
 	drilling.simulation().run_hours(72.0, 8.0)
 	_check(float(drilling.simulation().stores.raw_l) > 0.0 and float(drilling.simulation().water_l) < water_start, "without a water processor the drill's meltwater can't be drunk (raw %.0f L)" % drilling.simulation().stores.raw_l)
 
+	# Phase 4, food: crops over sols, harvests, the cart, spoilage, the diet.
+	var first_tray := str((good.simulation().inventory().items as Array).filter(func(i): return str(i.id) == "grow_tray")[0].pid)
+	_check(float(sim.food.tray(first_tray).growth) > .3 and float(sim.food.tray(first_tray).growth) < .6 and float(sim.stores.nutrients_kg) > 0.0, "trays grow greens over sols, fed by Earth's nutrients (%.2f grown)" % sim.food.tray(first_tray).growth)
+	_check(float(sim.food.fresh_share) < .3, "a few sols of rations only and the crew notice (fresh %.2f)" % sim.food.fresh_share)
+	var farm := _habitat("plains", 6, _full_kit())
+	farm.simulation().random_storms = false
+	farm.simulation().run_hours(9.0 * 24.0, 8.0)
+	var farm_sim: RefCounted = farm.simulation()
+	var tray_id := str((farm_sim.inventory().items as Array).filter(func(i): return str(i.id) == "grow_tray")[0].pid)
+	_check(int(farm_sim.food.summary(farm_sim.inventory()).ripe) == 6 and not (farm_sim.warnings() as Array).filter(func(w): return str(w.text).contains("ripe")).is_empty(), "after 8 sols the greens are ripe and waiting")
+	var before_kg := float(farm_sim.food_kg)
+	var picked: Dictionary = farm_sim.food.harvest(tray_id)
+	_check(not picked.is_empty() and is_equal_approx(float(farm_sim.food_kg) - before_kg, 2.4) and float(farm_sim.stores.produce_kg) >= 2.4, "E harvests a tray: 2.4 kg of fresh greens")
+	_check(str(farm_sim.food.cycle_next(tray_id)) == "potatoes" and str(farm_sim.food.tray(tray_id).crop) == "potatoes", "G on a just-harvested tray plants potatoes")
+	farm_sim.run_hours(4.0 * 24.0, 8.0)
+	_check(int(farm_sim.food.summary(farm_sim.inventory()).ripe) == 0 and float(farm_sim.stores.compost_kg) > 0.0, "ripe crops left 3 sols go over, to the compost")
+	(farm_sim.food.batches as Array).append({"crop": "greens", "kg": 1.0, "at": float(farm_sim.hours_run) - 11.0 * 24.0})
+	var compost_before := float(farm_sim.stores.compost_kg)
+	farm_sim.run_hours(1.0, 8.0)
+	_check(float(farm_sim.stores.compost_kg) > compost_before, "produce older than 10 sols spoils")
+	var cart_kit := _full_kit(); cart_kit["harvest_cart"] = ["hydroponics", 1]
+	var carted := _habitat("plains", 6, cart_kit)
+	carted.simulation().random_storms = false
+	carted.simulation().run_hours(9.0 * 24.0, 8.0)
+	_check(int(carted.simulation().food.summary(carted.simulation().inventory()).ripe) == 0 and float(carted.simulation().food.fresh_share) > float(sim.food.fresh_share), "a harvest cart picks ripe trays, and the crew eat fresh")
+	var food_save: Dictionary = farm_sim.save()
+	var food_copy := _habitat("plains", 6, _full_kit())
+	food_copy.simulation().load(food_save)
+	_check(str(food_copy.simulation().food.tray(tray_id).next) == "potatoes", "crops survive save and load")
+
 	# A dust storm: solar drops, loads are shed, and life support goes last.
 	sim.start_storm(3.0)
 	var storm: Array = sim.run_hours(48.0, 8.0, 1.0)

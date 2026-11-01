@@ -127,7 +127,7 @@ func _initialize() -> void:
 	fsim.run_hours(30.0 * 24.0, 8.0, 24.0)
 	_check(fsim.life.lowest_fitness() >= 70.0, "two exercise stations keep six crew fit (%.0f)" % fsim.life.lowest_fitness())
 	var bare_needs: Array = lsim.life.needs(lsim.inventory(), {4: true})
-	_check(bare_needs.size() == 7, "seven needs (washing and the toilet is the seventh)")
+	_check(bare_needs.size() == 8, "eight needs (washing and the toilet, and fresh food)")
 	_add(fit, "common_table", "living", 2)
 	_add(fit, "galley_oven", "galley")
 	_add(fit, "plant_pot", "living")
