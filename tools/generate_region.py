@@ -108,6 +108,8 @@ WRINKLE_RIDGES = [
     ([(-650.0, 2500.0), (-560.0, 2050.0), (-700.0, 1600.0), (-620.0, 1150.0), (-450.0, 800.0)], [0.45]),
 ]
 # Scarps in the ice fields where clean ice shows: from, to, drop (m).
+# Boulder fields (x, z, radius), each crossed by a few clear corridors.
+BOULDER_FIELDS = [(2150.0, -1450.0, 240.0), (-2350.0, 1950.0, 200.0), (1500.0, 2150.0, 220.0)]
 ICE_SCARPS = [((-1760.0, -1240.0), (-1380.0, -1330.0), 10.0), ((-1990.0, -700.0), (-1760.0, -610.0), 8.0)]
 
 
@@ -421,14 +423,17 @@ def add_canyon(h, x, z, masks, medium):
     floor = (1.0 - smoothstep(-260.0, -200.0, u)) * (1.0 - smoothstep(-200.0, -150.0, far))
     h += 5.0 * medium * floor   # rough floor
     # Landslide tongues: lobes of debris run out across the floor.
+    landslide = np.zeros(h.shape, dtype=np.float32)
     for lx, length, width in CANYON_LANDSLIDES:
         foot = float(np.interp(lx, row, base_edge)) - 200.0
         along = (foot - z) / length   # northward from the talus foot
         across = (x - lx) / width
         tongue = np.clip(1.0 - along, 0.0, 1.0) ** 0.6 * np.exp(-across * across * (1.0 + np.clip(along, -0.3, 1.0))) * (along > -0.3)
         h += 13.0 * tongue * (1.0 + 0.3 * medium) * smoothstep(-0.3, 0.0, along)
+        landslide = np.maximum(landslide, tongue * smoothstep(-0.3, 0.0, along))
     masks["canyon_u"] = u
     masks["canyon_floor"] = floor
+    masks["landslide"] = landslide
     masks["ramp_canyon"] = in_bay * (u < 0.0)
 
 
@@ -878,17 +883,21 @@ def save_heights(h):
 
 # ---------- ground textures ----------
 # Terrain3D texture slots (the control map refers to these numbers).
-DUST, BEDROCK, SAND, FROST, CLAY, GRAVEL, STRATA = range(7)
+DUST, BEDROCK, SAND, FROST, CLAY, GRAVEL, STRATA, TALUS, ICE = range(9)
 MATERIALS = [
-    # name, base colour, dark colour, roughness, features
-    ("dust", (178, 126, 96), (150, 102, 78), 0.93, {"ripples": (7, 0.05), "pebbles": (500, 2, 5)}),
-    ("bedrock", (156, 112, 88), (118, 84, 68), 0.82, {"strata": (6, 0.2), "cracks": (55, 0.012, 0.35)}),
-    ("sand", (110, 84, 74), (82, 63, 58), 0.9, {"ripples": (13, 0.2)}),
-    ("frost", (226, 210, 200), (190, 164, 150), 0.55, {"cracks": (34, 0.02, 0.5), "crack_colour": (150, 104, 82)}),
-    ("clay", (198, 152, 118), (172, 126, 96), 0.88, {"cracks": (130, 0.007, 0.28)}),
-    ("gravel", (152, 108, 86), (116, 82, 68), 0.9, {"pebbles": (2600, 3, 13)}),
-    # Pale layered sediment, like Mount Sharp's: the mound.
-    ("strata", (206, 162, 126), (176, 132, 102), 0.86, {"strata": (9, 0.22), "cracks": (40, 0.006, 0.18)}),
+    # name, base colour, dark colour, roughness, features, colour on the region map
+    ("dust", (178, 126, 96), (150, 102, 78), 0.93, {"ripples": (7, 0.05), "pebbles": (500, 2, 5)}, (196, 140, 104)),
+    ("bedrock", (156, 112, 88), (118, 84, 68), 0.82, {"strata": (6, 0.2), "cracks": (55, 0.012, 0.35)}, (150, 106, 84)),
+    ("sand", (110, 84, 74), (82, 63, 58), 0.9, {"ripples": (13, 0.2)}, (104, 80, 70)),
+    ("frost", (226, 210, 200), (190, 164, 150), 0.55, {"cracks": (34, 0.02, 0.5), "crack_colour": (150, 104, 82)}, (228, 216, 206)),
+    ("clay", (198, 152, 118), (172, 126, 96), 0.88, {"cracks": (130, 0.007, 0.28)}, (214, 168, 128)),
+    ("gravel", (152, 108, 86), (116, 82, 68), 0.9, {"pebbles": (2600, 3, 13)}, (166, 120, 96)),
+    # Pale layered sediment, like Mount Sharp's: the mound, mesa sides, canyon walls.
+    ("strata", (206, 162, 126), (176, 132, 102), 0.86, {"strata": (9, 0.22), "cracks": (40, 0.006, 0.18)}, (222, 182, 146)),
+    # Angular broken rock fallen from cliffs.
+    ("talus", (140, 100, 82), (104, 74, 62), 0.88, {"cracks": (420, 0.006, 0.35), "blocks": 0.35, "pebbles": (500, 2, 6)}, (132, 96, 80)),
+    # Ice-rich ground: pale, fine, cracked.
+    ("ice", (196, 166, 146), (170, 140, 122), 0.8, {"cracks": (60, 0.01, 0.3), "ripples": (5, 0.03)}, (190, 160, 138)),
 ]
 
 
@@ -928,6 +937,7 @@ def material_texture(name, base, dark, rough, features, seed, n=1024):
         cells, width, depth = features["cracks"]
         seeds = rng.random((cells, 2))
         edge = np.empty((n, n), dtype=np.float32)
+        nearest = np.zeros((n, n), dtype=np.int64)
         warp_u = uu + 0.015 * coarse
         warp_v = vv + 0.015 * coarse
         for r0 in range(0, n, 64):
@@ -937,8 +947,16 @@ def material_texture(name, base, dark, rough, features, seed, n=1024):
             dd = np.sqrt(du * du + dv * dv).astype(np.float32)
             part = np.partition(dd, 1, axis=2)
             edge[r0:r0 + 64] = part[:, :, 1] - part[:, :, 0]
+            if "blocks" in features:
+                nearest[r0:r0 + 64] = np.argmin(dd, axis=2)
         crack = 1.0 - smoothstep(0.0, width, edge)
         height -= depth * crack
+        if "blocks" in features:
+            # Angular blocks: each cell a broken stone, raised and shaded on its own.
+            lift = rng.uniform(0.0, features["blocks"], cells)
+            shade_k = rng.uniform(-0.12, 0.12, cells)
+            height += lift[nearest] * smoothstep(0.0, width * 2.5, edge)
+            tint += shade_k[nearest]
         tint -= 0.25 * crack
     if "pebbles" in features:
         count, rmin, rmax = features["pebbles"]
@@ -977,28 +995,86 @@ def material_texture(name, base, dark, rough, features, seed, n=1024):
 
 # ---------- control and colour maps ----------
 
+def ground_shape(h):
+    """Slope (rise over run), curvature (+ in hollows and at the foot of
+    slopes, - on crests) and how much cliff there is nearby, from the heights."""
+    gz, gx = np.gradient(h, SPACING)
+    slope = np.sqrt(gx * gx + gz * gz)
+    soft = box_blur(h, 3)
+    curvature = (np.roll(soft, 4, 0) + np.roll(soft, -4, 0) + np.roll(soft, 4, 1) + np.roll(soft, -4, 1) - 4.0 * soft) / (8.0 * SPACING) ** 2
+    cliff_near = box_blur((slope > 0.9).astype(np.float32), 10)   # within about 20 m
+    return slope, curvature, cliff_near, gz
+
+
+def small_crater_marks(h, masks):
+    """Rasters from the small craters: fresh ejecta (rocky, gravel) and dark
+    wind streaks trailing downwind of them."""
+    fresh = np.zeros(h.shape, dtype=np.float32)
+    streaks = np.zeros(h.shape, dtype=np.float32)
+    wind = np.array(DUNE_WIND)
+    for cx, cz, r, age in masks["craters"]:
+        if r < 6.0:
+            continue
+        reach = r * (2.6 if age < 0.35 else 0) + (r * 8.0 if r > 14.0 and age < 0.7 else 0)
+        if reach <= 0:
+            continue
+        i0 = max(0, int((cx - reach + HALF) / SPACING)); i1 = min(N, int((cx + reach + HALF) / SPACING) + 1)
+        j0 = max(0, int((cz - reach + HALF) / SPACING)); j1 = min(N, int((cz + reach + HALF) / SPACING) + 1)
+        if i1 <= i0 or j1 <= j0:
+            continue
+        win = (slice(j0, j1), slice(i0, i1))
+        dx = (np.arange(i0, i1) * SPACING - HALF - cx)[None, :]; dz = (np.arange(j0, j1) * SPACING - HALF - cz)[:, None]
+        d = np.sqrt(dx * dx + dz * dz) / r
+        if age < 0.35:
+            fresh[win] = np.maximum(fresh[win], (1.0 - age / 0.35) * np.clip(1.0 - (d - 1.0) / 1.4, 0.0, 1.0) * (d > 0.85))
+        if r > 14.0 and age < 0.7:
+            along = (dx * wind[0] + dz * wind[1]) / r
+            across = (-dx * wind[1] + dz * wind[0]) / r
+            tail = np.clip(1.0 - (along - 1.0) / 7.0, 0.0, 1.0) * np.exp(-(across / (0.9 + 0.08 * along)) ** 2) * (along > 0.8)
+            streaks[win] = np.maximum(streaks[win], tail)
+    return fresh, streaks
+
+
 def write_control(h, masks):
-    """Terrain3D control map: per point a base texture (by zone), bedrock
-    as the overlay, and a blend that follows the slope. Packed as uint32
+    """Terrain3D control map: per point a base texture chosen by the geology
+    there, then by its shape (sand banks in hollows, talus at the foot of
+    cliffs, frost on pole-facing slopes), an overlay of bedrock (or layered
+    rock where the ground is layered) and a blend that follows the slope,
+    with rock showing through on crests. Packed as uint32
     (base << 27 | overlay << 22 | blend << 14), stored raw little-endian."""
+    slope, curvature, cliff_near, gz = ground_shape(h)
+    fresh, streaks = small_crater_marks(h, masks)
+    masks["_slope"] = slope; masks["_curvature"] = curvature; masks["_cliff_near"] = cliff_near
+    masks["_fresh"] = fresh; masks["_streaks"] = streaks
     dither = 0.12 * masks["noise"]
+    hollow = curvature > 0.012 + 0.006 * masks["noise"]
     base = np.full(h.shape, DUST, dtype=np.uint32)
-    base[masks["skirts"] + dither > 0.45] = GRAVEL
-    ejecta = (masks["crater_d"] > 1.0) & (masks["crater_d"] < 1.45 + dither)
-    base[ejecta] = GRAVEL
+    base[(masks["ejecta"] > 0.3 + dither) | (fresh > 0.4 + dither)] = GRAVEL
     base[masks["canyon_floor"] + dither > 0.5] = GRAVEL
-    base[(masks["crater_d"] < 0.7 + dither * 0.3) & (masks["mound"] < 0.5)] = CLAY
+    base[(masks["canyon_floor"] > 0.5) & hollow] = SAND          # dark sand drifts on the canyon floor
+    base[masks["landslide"] + dither > 0.35] = TALUS
+    crater_floor = (masks["crater_d"] < 0.6 + dither * 0.3) & (masks["mound"] < 0.5)
+    base[crater_floor] = CLAY
+    downwind = np.cos(masks["crater_angle"] - math.atan2(DUNE_WIND[1], DUNE_WIND[0])) > 0.55
+    base[crater_floor & downwind & (masks["crater_d"] > 0.4 + dither * 0.2)] = SAND   # sand banked against the downwind wall
+    base[masks["channels"] > 0.5] = GRAVEL
     base[masks["dunes"] + dither > 0.5] = SAND
-    base[masks["ice"] + dither > 0.5] = FROST
+    base[(masks["talus"] > 0.4 + dither) | ((cliff_near > 0.08) & (slope < 0.9) & (curvature > 0.0))] = TALUS
+    ice = masks["ice"] + dither > 0.5
+    base[ice] = ICE
+    base[ice & ((masks["polygons"] > 0.85) | (gz > 0.16 + 0.05 * masks["noise"]))] = FROST   # in the troughs, and on slopes facing the pole
+    base[masks["ice_scarp"] > 0.5] = FROST
     base[masks["mound"] > 0.5] = STRATA
     base[masks["river_floor"] > 0.5] = GRAVEL   # rounded river pebbles
     base[masks["delta"] > 0.5] = CLAY           # fine layered sediment
-    gz, gx = np.gradient(h, SPACING)
-    slope = np.sqrt(gx * gx + gz * gz)
-    blend = np.clip(smoothstep(0.22, 0.6, slope) * 255.0, 0, 255).astype(np.uint32)
+    layered = (masks["mound"] > 0.5) | (masks["mesa_body"] > 0.5) | ((masks["canyon_u"] > -110.0) & (masks["canyon_u"] < 5.0))
+    overlay = np.where(layered, STRATA, BEDROCK).astype(np.uint32)
+    crest = smoothstep(0.004, 0.02, -curvature) * 0.45   # rock through the dust on crests and rims
+    blend = np.clip((smoothstep(0.45, 0.95, slope) + crest * (slope > 0.12)) * 255.0, 0, 255).astype(np.uint32)
+    soft = (base == SAND) | (base == FROST) | (base == ICE)
+    blend[soft & (slope < 1.1)] = 0   # dunes and ice stay sand and frost unless it's a real scarp
     masks["_base"] = base.astype(np.int64)
-    blend[(base == SAND) | (base == FROST)] = 0   # dunes and ice stay sand and frost on their slopes
-    control = (base << np.uint32(27)) | (np.uint32(BEDROCK) << np.uint32(22)) | (blend << np.uint32(14))
+    control = (base << np.uint32(27)) | (overlay << np.uint32(22)) | (blend << np.uint32(14))
     data = gzip.compress(control.astype("<u4").tobytes(), compresslevel=9)
     write_file(os.path.join(OUT, "control.u32.gz"), lambda path: open(path, "wb").write(data))
 
@@ -1007,7 +1083,7 @@ def write_map(h, masks):
     """The region map: shaded relief coloured by ground type, 1024 px."""
     step = N // 1024
     hs = h[::step, ::step]
-    colours = np.array([(196, 140, 104), (150, 106, 84), (104, 80, 70), (228, 216, 206), (214, 168, 128), (166, 120, 96), (222, 182, 146)], dtype=float) / 255.0
+    colours = np.array([m[5] for m in MATERIALS], dtype=float) / 255.0
     control_base = masks["_base"][::step, ::step]
     rgb = colours[control_base]
     gz, gx = np.gradient(hs, SPACING * step)
@@ -1021,7 +1097,8 @@ def write_map(h, masks):
 
 def write_colour(masks, h=None):
     """Terrain3D colour map at half resolution (the game scales it up):
-    gentle large-scale darkening and hue shifts, like Mars's albedo patches.
+    gentle large-scale darkening and hue shifts, like Mars's albedo patches,
+    dark wind streaks behind craters, pale dust on high ground.
     White is no change; alpha 0.5 leaves roughness alone."""
     large = masks["large"][::2, ::2]; medium = masks["medium"][::2, ::2]
     v = np.clip(0.93 + 0.05 * large + 0.025 * medium, 0.8, 1.0)
@@ -1029,18 +1106,92 @@ def write_colour(masks, h=None):
     green = np.clip(v * (0.98 - 0.015 * medium), 0, 1)
     blue = np.clip(v * (0.96 - 0.02 * large), 0, 1)
     # Layers you can see from afar: light and dark bands by height on the
-    # mound and the mesas (each band about 5 m of rock).
+    # mound, the mesas and the canyon walls (each band about 5 m of rock).
     if h is not None:
         hs = h[::2, ::2]
-        layered = np.clip(masks["mound"][::2, ::2] + masks["mesa_body"][::2, ::2], 0, 1)
+        canyon_wall = smoothstep(-130.0, -90.0, masks["canyon_u"][::2, ::2]) * (1.0 - smoothstep(-5.0, 5.0, masks["canyon_u"][::2, ::2]))
+        layered = np.clip(masks["mound"][::2, ::2] + masks["mesa_body"][::2, ::2] + canyon_wall, 0, 1)
         bands = 0.5 + 0.5 * np.sin(hs / 5.2 * math.pi + 0.8 * masks["medium"][::2, ::2])
         shade = 1.0 - layered * (0.06 + 0.12 * bands)
         red *= shade; green *= shade * 0.99; blue *= shade * 0.97
+        # Pale dust settles on the high ground.
+        pale = 0.06 * smoothstep(np.percentile(hs, 70), np.percentile(hs, 97), hs)
+        red += pale * (1 - red); green += pale * (1 - green) * 0.9; blue += pale * (1 - blue) * 0.8
+    streaks = masks["_streaks"][::2, ::2]
+    red *= 1.0 - 0.13 * streaks; green *= 1.0 - 0.12 * streaks; blue *= 1.0 - 0.1 * streaks
     dunes = masks["dunes"][::2, ::2]
     red *= 1.0 - 0.08 * dunes; green *= 1.0 - 0.06 * dunes; blue *= 1.0 - 0.04 * dunes
     alpha = np.full(red.shape, 0.5)
-    img = np.dstack([red, green, blue, alpha])
+    img = np.dstack([np.clip(red, 0, 1), np.clip(green, 0, 1), np.clip(blue, 0, 1), alpha])
     write_file(os.path.join(OUT, "colour.png"), Image.fromarray((img * 255).astype("uint8"), "RGBA").save)
+
+
+# ---------- rocks and geology ----------
+
+def write_rocks(h, masks):
+    """The rock map (1024 px): red is how thickly rocks lie (Terrain3D's
+    scatter samples it), green how big they run. Thick under cliffs, on
+    fresh ejecta and in boulder fields (each crossed by a few clear
+    corridors a rover can drive), sparse on dusty plains, none on dunes."""
+    slope = masks["_slope"]; curvature = masks["_curvature"]; cliff_near = masks["_cliff_near"]
+    density = np.full(h.shape, 0.07, dtype=np.float32)
+    size = np.full(h.shape, 0.15, dtype=np.float32)
+    density += 0.18 * smoothstep(-0.02, -0.004, -curvature) * (slope > 0.1)       # crests and rims
+    eject = np.clip(masks["ejecta"] * 1.6, 0, 1)
+    density = np.maximum(density, 0.55 * eject); size = np.maximum(size, 0.6 * eject)
+    density = np.maximum(density, 0.75 * masks["_fresh"]); size = np.maximum(size, 0.7 * masks["_fresh"])
+    talus = np.clip(np.maximum(masks["talus"], cliff_near * 4.0) * (slope < 1.0), 0, 1)
+    density = np.maximum(density, 0.85 * talus); size = np.maximum(size, 0.9 * talus)
+    density = np.maximum(density, 0.6 * smoothstep(0.2, 0.5, masks["landslide"]))
+    density = np.maximum(density, 0.3 * masks["channels"])   # cobbles on the valley floors
+    density = np.where(masks["ice"] > 0.5, np.maximum(density, 0.22), density)   # a rock-strewn polygon plain
+    # Boulder fields with corridors.
+    x, z = grid()
+    rng = np.random.default_rng(SEED + 100)
+    for bx, bz, br in BOULDER_FIELDS:
+        field = np.clip(1.0 - (dist(x, z, (bx, bz)) / br + 0.25 * masks["medium"]), 0.0, 1.0)
+        field = smoothstep(0.0, 0.3, field)
+        lanes = np.full(h.shape, 1.0, dtype=np.float32)
+        for _ in range(3):
+            a = rng.uniform(0, math.tau)
+            start = (bx - math.cos(a) * br * 1.3, bz - math.sin(a) * br * 1.3)
+            line = wander(start, a, br * 2.6, rng, step=15.0, turn=0.12)
+            d, _, _ = polyline_field(line, 20.0, step=1)
+            lanes = np.minimum(lanes, smoothstep(3.0, 7.0, d))
+        density = np.maximum(density, 0.95 * field * lanes) * np.where(field > 0, lanes, 1.0)
+        size = np.maximum(size, 0.8 * field)
+        masks.setdefault("boulder_fields", []).append((bx, bz, br))
+    density *= np.where(slope > 1.3, 0.25, 1.0)   # rocks don't sit on cliffs
+    density *= 1.0 - smoothstep(0.2, 0.5, masks["dunes"])
+    density *= np.where((curvature > 0.01) & (masks["ice"] < 0.5), 0.5, 1.0)   # dust fills the hollows
+    for zone in ZONES.values():
+        density *= smoothstep(zone["flat_radius"] * 1.1, zone["flat_radius"] * 1.6, dist(x, z, zone["centre"]))
+    step = N // 1024
+    img = np.dstack([density[::step, ::step], size[::step, ::step], np.zeros((1024, 1024))])
+    write_file(os.path.join(OUT, "rocks.png"), Image.fromarray((np.clip(img, 0, 1) * 255).astype("uint8"), "RGB").save)
+    print(f"  rocks: mean density {float(density.mean()):.3f}")
+
+
+# Geology units for samples (step 5): the rock and soil you'd find there.
+GEOLOGY = ["plains_basalt", "ejecta_breccia", "crater_lakebed", "mound_sulfates", "canyon_layers",
+           "valley_conglomerate", "dune_sand", "ice_mantle", "mesa_caprock", "talus_debris", "delta_clays"]
+
+
+def write_geology(h, masks):
+    """The geology map (512 px, one unit per pixel as its index in GEOLOGY)."""
+    unit = np.zeros(h.shape, dtype=np.uint8)
+    unit[masks["ejecta"] > 0.2] = 1
+    unit[(masks["crater_d"] < 0.95) & (masks["mound"] < 0.5)] = 2
+    unit[(masks["canyon_u"] < 5.0) & (masks["canyon_u"] > -160.0)] = 4
+    unit[masks["mesa_body"] > 0.5] = 8
+    unit[(masks["talus"] > 0.4) | (masks["landslide"] > 0.3) | (masks["_cliff_near"] > 0.1)] = 9
+    unit[masks["mound"] > 0.5] = 3
+    unit[(masks["channels"] > 0.5) | (masks["river_floor"] > 0.5)] = 5
+    unit[masks["delta"] > 0.5] = 10
+    unit[masks["dunes"] > 0.5] = 6
+    unit[masks["ice"] > 0.5] = 7
+    step = N // 512
+    write_file(os.path.join(OUT, "geology.png"), Image.fromarray(unit[::step, ::step], "L").save)
 
 
 def main():
@@ -1050,7 +1201,9 @@ def main():
     write_control(h, masks)
     write_colour(masks, h)
     write_map(h, masks)
-    for index, (name, base, dark, rough, features) in enumerate(MATERIALS if not QUICK else []):
+    write_rocks(h, masks)
+    write_geology(h, masks)
+    for index, (name, base, dark, rough, features, _) in enumerate(MATERIALS if not QUICK else []):
         material_texture(name, base, dark, rough, dict(features), SEED + 20 + index)
     meta = {
         "id": REGION_ID,
@@ -1060,6 +1213,8 @@ def main():
         "crater": CRATER, "mound": MOUND,
         "textures": [m[0] for m in MATERIALS],
         "features": [{"name": n, "position": list(p)} for n, p in FEATURES],
+        "geology": GEOLOGY,
+        "boulder_fields": [list(b) for b in BOULDER_FIELDS],
     }
     with open(os.path.join(OUT, "region.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)

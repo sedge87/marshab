@@ -20,6 +20,8 @@ static var _spacing := 2.0
 static var _half := 0.0
 static var _low := 0.0
 static var _range := 1.0
+static var _rocks: Image         # rocks.png: red how thickly rocks lie, green how big
+static var _geology: Image       # geology.png: a unit index per pixel (meta "geology")
 
 ## Load a region (once; later calls for the same id are free).
 static func use(id: String) -> bool:
@@ -38,6 +40,8 @@ static func use(id: String) -> bool:
 	var packed := FileAccess.get_file_as_bytes(folder + "height.r16.gz")
 	var raw := packed.decompress(_size * _size * 2, FileAccess.COMPRESSION_GZIP)
 	_heights = Image.create_from_data(_size, _size, false, Image.FORMAT_R16, raw)
+	_rocks = _image(folder + "rocks.png")
+	_geology = _image(folder + "geology.png")
 	_id = id
 	return true
 
@@ -69,6 +73,32 @@ static func import_image() -> Image:
 	var copy := _heights.duplicate() as Image
 	copy.convert(Image.FORMAT_RF)
 	return copy
+
+## How thickly rocks lie here (x, 0..1) and how big they run (y, 0..1),
+## from the generator's rock map: thick under cliffs, on fresh ejecta and in
+## boulder fields, sparse on dusty plains, none on dunes.
+static func rock_density(rx: float, rz: float) -> Vector2:
+	if _rocks == null: return Vector2(.1, .2)
+	var c := _rocks.get_pixel(_map_pixel(rx, _rocks.get_width()), _map_pixel(rz, _rocks.get_height()))
+	return Vector2(c.r, c.g)
+
+## The geology unit here (one of meta "geology", e.g. "plains_basalt",
+## "canyon_layers"): what rock and soil you'd find, for samples.
+static func geology(rx: float, rz: float) -> String:
+	var units: Array = _meta.get("geology", [])
+	if _geology == null or units.is_empty(): return ""
+	var index := roundi(_geology.get_pixel(_map_pixel(rx, _geology.get_width()), _map_pixel(rz, _geology.get_height())).r * 255.0)
+	return str(units[clampi(index, 0, units.size() - 1)])
+
+static func _map_pixel(r: float, pixels: int) -> int:
+	return clampi(int((r + _half) / (_half * 2.0) * pixels), 0, pixels - 1)
+
+static func _image(path: String) -> Image:
+	var texture := load(path) as Texture2D
+	if texture == null: return null
+	var image := texture.get_image()
+	if image.is_compressed(): image.decompress()
+	return image
 
 ## Terrain3D's control map: which ground texture is where (packed bits in a
 ## float image, as Terrain3D stores it; see tools/generate_region.py).

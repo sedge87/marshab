@@ -397,7 +397,7 @@ func _build_region_terrain() -> void:
 	var names: Array = MHSiteTerrain.RegionTerrain.texture_names()
 	for index in names.size():
 		var texture_name := str(names[index])
-		assets.set_texture_asset(index, _region_texture(texture_name.capitalize(), folder + "ground_" + texture_name, .14 if texture_name == "bedrock" else .22))
+		assets.set_texture_asset(index, _region_texture(texture_name.capitalize(), folder + "ground_" + texture_name, {"bedrock": .14, "talus": .18}.get(texture_name, .22)))
 	for index in MHSiteTerrain.ROCK_MODELS.size():
 		var rock := Terrain3DMeshAsset.new()
 		rock.name = str(MHSiteTerrain.ROCK_MODELS[index])
@@ -421,8 +421,9 @@ func _build_region_terrain() -> void:
 	_site_root.add_child(terrain)
 
 ## Rocks across the whole region (the base's own boulders, with collision,
-## come from _build_decor): thicker on slopes, crater rims and mesa feet,
-## sparse on the open flats, none on the build pad. Drawn by Terrain3D's
+## come from _build_decor), placed by the region's rock map: thick under
+## cliffs, on fresh ejecta and in boulder fields (with corridors through),
+## sparse on the dusty plains, none on dunes or the build pad. Drawn by Terrain3D's
 ## instancer, which fades them out with distance; the bigger ones are solid
 ## near the player, the rover and GAR-Y (region_rock_collision.gd).
 func _scatter_region_rocks(terrain: Terrain3D, area: Rect2) -> void:
@@ -438,14 +439,17 @@ func _scatter_region_rocks(terrain: Terrain3D, area: Rect2) -> void:
 		var bounds := mesh.get_aabb() if mesh != null else AABB(Vector3.ZERO, Vector3.ONE)
 		reach.append(Vector2(maxf(bounds.size.x, bounds.size.z) * .42, bounds.size.y * .45))
 	var solid: Array = []
-	for attempt in 60000:
+	var zone := MHSiteTerrain.region_zone()
+	var origin := Vector2(float(zone.centre[0]), float(zone.centre[1]))
+	for attempt in 120000:
 		var x := rng.randf_range(area.position.x, area.end.x)
 		var z := rng.randf_range(area.position.y, area.end.y)
 		if absf(x) < pad and absf(z) < pad: continue
+		var here := MHSiteTerrain.RegionTerrain.rock_density(x + origin.x, z + origin.y)
+		if rng.randf() > here.x: continue
 		var y := MHSiteTerrain.height(x, z)
-		var slope := Vector2(MHSiteTerrain.height(x + 2.0, z) - y, MHSiteTerrain.height(x, z + 2.0) - y).length() / 2.0
-		if rng.randf() > .12 + clampf(slope * 2.5, 0.0, .8): continue
-		var size := rng.randf_range(.35, 1.3) * (2.4 if rng.randf() < .06 else 1.0)
+		# Many small rocks, few big ones; bigger where they've fallen from cliffs or been thrown out by impacts.
+		var size := rng.randf_range(.35, 1.1) * (1.0 + 1.2 * here.y * rng.randf()) * (2.2 if rng.randf() < .03 + .08 * here.y else 1.0)
 		var basis := Basis.from_euler(Vector3(rng.randf_range(-.25, .25), rng.randf() * TAU, rng.randf_range(-.25, .25))).scaled(Vector3.ONE * size)
 		var mesh_index := rng.randi() % by_mesh.size()
 		(by_mesh[mesh_index] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y - .15 * size, z)))

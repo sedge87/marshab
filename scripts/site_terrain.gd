@@ -132,6 +132,13 @@ static func _region_height(p: Vector2) -> float:
 	if zone.is_empty(): return 0.0
 	return RegionTerrain.height(p.x + float(zone.centre[0]), p.y + float(zone.centre[1])) - float(zone.height)
 
+## The geology unit under a point (site metres) on a region site, e.g.
+## "plains_basalt" or "canyon_layers"; empty elsewhere. For samples (step 5).
+static func geology_unit(x: float, z: float) -> String:
+	var zone := region_zone()
+	if zone.is_empty(): return ""
+	return RegionTerrain.geology(x + float(zone.centre[0]), z + float(zone.centre[1]))
+
 ## The site's landing zone in its region ({} when it isn't a region site).
 static func region_zone() -> Dictionary:
 	var s := settings()

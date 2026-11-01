@@ -58,7 +58,9 @@
     "frost",
     "clay",
     "gravel",
-    "strata"
+    "strata",
+    "talus",
+    "ice"
   ],
   "features": [
     {
@@ -138,5 +140,35 @@
         -1800.0
       ]
     }
+  ],
+  "geology": [
+    "plains_basalt",
+    "ejecta_breccia",
+    "crater_lakebed",
+    "mound_sulfates",
+    "canyon_layers",
+    "valley_conglomerate",
+    "dune_sand",
+    "ice_mantle",
+    "mesa_caprock",
+    "talus_debris",
+    "delta_clays"
+  ],
+  "boulder_fields": [
+    [
+      2150.0,
+      -1450.0,
+      240.0
+    ],
+    [
+      -2350.0,
+      1950.0,
+      200.0
+    ],
+    [
+      1500.0,
+      2150.0,
+      220.0
+    ]
   ]
 }
