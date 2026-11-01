@@ -206,17 +206,24 @@ Three kinds instead of one: **rations** (from Earth, dehydrated, they keep), **p
 
 One part means you get by on reserves and a lot of ice; every part means you could live there indefinitely.
 
-### 12.2 Getting ready for more crew
+### 12.2 Getting ready for more crew: steps you call in
+
+*Overrides core loop round 1's single jump to six: the crew grows in steps of **1 → 2 → 4 → 6**, then open-ended. Going home stays the other choice.*
 
 - **Load per person:** each person adds a fixed daily load to every chain. Machines have a top rate, so a base sized for one won't carry six; that needs second units or bigger models.
-- **Ready for N:** the Chains view gives each chain's crew capacity ("Water: enough for 2"). The base is ready for as many crew as its weakest chain can support. That number is the goal for the next-crew chapter (core loop round 1).
-- **A test run:** before the next lander, Mission Control asks you to run the base at the larger crew's load for a few sols. It's simulated, so weak links show before people depend on them.
-- **The arrival checklist:**
-  - beds;
-  - a landing pad;
-  - stores to cover the trip.
-
-  The new crew bring jobs you can hand out. The two-person rule for EVAs returns (core loop round 6, item 10).
+- **Always visible:** the Chains view gives each chain's crew capacity ("Water: enough for 2"). The base is **ready for** as many as its weakest chain can support. Before anyone is coming, it's just information.
+- **Earth offers; you accept.** Mission Control offers the next step at a milestone: the base is self-sufficient for its current crew. ("We can send two more on the next lander.")
+  - Saying yes raises the target.
+  - It's never forced: you can stay small, or go home instead.
+- **The countdown:** saying yes launches the lander, which arrives after a fixed number of sols. That's the time to get ready.
+  - The real trip takes about 7 months, with launch windows 26 months apart, so the game compresses both. The exact sols are still to set.
+  - **The test run:** inside the countdown, Mission Control asks you to run the base at the larger crew's load for a few sols. It's simulated, so weak links show before people depend on them.
+- **The arrival checklist:** beds, life support for the new number, and stores to cover the trip. From the four-crew step on, a landing pad too.
+- **Short when they land:** they still land, and nobody dies on arrival. The weak chain leaks faster (§12.1), and Mission Control flags it.
+- **Why grow:** each step brings something.
+  - New crew bring jobs you can hand out: rounds, lab work and EVAs.
+  - The two-person EVA rule returns at two crew (core loop round 6, item 10).
+  - More crew means more science per sol.
 
 ### 12.3 Whose goals: NASA's, on purpose
 
