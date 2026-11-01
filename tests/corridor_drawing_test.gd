@@ -1,0 +1,100 @@
+extends SceneTree
+
+# Corridors drawn click to click (1 Nov): start on a room, an L to the
+# cursor, R flips the bend, each click places a leg of one corridor, a room
+# ends it with a hatch, a corridor's side makes a T, and undo takes back one
+# leg at a time.
+# Run with: godot --headless --path . --script res://tests/corridor_drawing_test.gd
+var builder: BuildController
+var failures := 0
+
+func _check(ok: bool, what: String) -> void:
+	if not ok:
+		failures += 1
+		print("FAIL ", what)
+
+func _room(kind: String, cells: Array) -> Dictionary:
+	var zone := {"kind": kind, "cells": cells, "door_direction": Vector2i(0, -1), "cost": 50 * cells.size()}
+	builder.zones.append(zone)
+	builder._rebuild()
+	return zone
+
+func _click(cell: Vector2i) -> void:
+	builder.hover = cell
+	builder._corridor_click()
+
+func _corridors() -> Array:
+	return builder.zones.filter(func(z): return str(z.kind) == "corridor")
+
+func _initialize() -> void:
+	var world := Node3D.new()
+	root.add_child(world)
+	builder = BuildController.new()
+	builder.display_only = true
+	world.add_child(builder)
+	await process_frame
+	MHGame.debug_free_power = true
+	builder.kind = "corridor"
+
+	# ---- room to room, with a bend ----
+	var living := _room("living", [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)])
+	var storage := _room("storage", [Vector2i(8, 4), Vector2i(9, 4), Vector2i(8, 5), Vector2i(9, 5)])
+	_click(Vector2i(0, 0))
+	_check(builder.corridor_drawing and _corridors().is_empty(), "the first click starts drawing, inside a room")
+	var leg := builder._corridor_leg(Vector2i(5, 4))
+	_check((leg.cells as Array).size() == 8 and leg.cells[0] == Vector2i(2, 0) and leg.cells.back() == Vector2i(5, 4), "the ghost leaves the room and bends to the cursor (%s)" % [leg.cells])
+	builder.corridor_flip = true
+	var flipped := builder._corridor_leg(Vector2i(5, 4))
+	_check(flipped.cells[0] == Vector2i(0, 2) and flipped.cells.back() == Vector2i(5, 4), "R flips the bend to the other corner (%s)" % [flipped.cells])
+	builder.corridor_flip = false
+	_click(Vector2i(5, 4))
+	_check(_corridors().size() == 1 and builder.corridor_drawing, "a click places the leg and keeps drawing")
+	_check(builder.interior_doors.size() == 1 and builder._has_interior_door(Vector2i(2, 0), Vector2i(-1, 0)), "a hatch where it leaves Living Quarters")
+	_click(Vector2i(8, 4))
+	var corridor: Dictionary = _corridors()[0]
+	_check(_corridors().size() == 1 and (corridor.cells as Array).size() == 10, "the next leg grows the same corridor (%d cells)" % (corridor.cells as Array).size())
+	_check(not builder.corridor_drawing, "reaching a room finishes it")
+	_check(builder.interior_doors.size() == 2 and builder._has_interior_door(Vector2i(7, 4), Vector2i(1, 0)), "and fits a hatch there too")
+	_check(builder._should_build_wall(Vector2i(5, 0), Vector2i(1, 0)) and not builder._should_build_wall(Vector2i(5, 0), Vector2i(0, 1)), "the bend is walled on its outside and open along the path")
+	_check(builder._should_build_wall(Vector2i(3, 0), Vector2i(0, 1)) and builder._should_build_wall(Vector2i(3, 0), Vector2i(0, -1)), "its sides are solid")
+	var inv: Dictionary = builder.simulation().inventory()
+	var map: Dictionary = builder.simulation().life.sections(inv)
+	var rooms: Array = inv.rooms
+	var index_of := func(zone: Dictionary) -> int:
+		for i in range(rooms.size()):
+			if rooms[i].zone == zone: return i
+		return -1
+	_check(map[index_of.call(living)] != map[index_of.call(storage)], "the hatches keep the two rooms' air apart (%s)" % [map])
+
+	# ---- undo, a leg at a time ----
+	builder._undo()
+	_check(_corridors().size() == 1 and (_corridors()[0].cells as Array).size() == 8 and builder.interior_doors.size() == 1, "undo takes back the last leg and its hatch")
+	builder._undo()
+	_check(_corridors().is_empty() and builder.interior_doors.is_empty(), "and then the first")
+
+	# ---- a T off a corridor's side, and a sealed end ----
+	_click(Vector2i(0, 0)); _click(Vector2i(5, 0)); builder._end_corridor_drawing()
+	_check(_corridors().size() == 1 and not builder.corridor_drawing, "right-click (or Esc) ends a corridor anywhere")
+	_click(Vector2i(4, 0)); _click(Vector2i(4, -3)); builder._end_corridor_drawing()
+	_check(_corridors().size() == 2, "a corridor started on another's side is its own corridor")
+	_check(builder._corridor_end_connects(Vector2i(4, -1), Vector2i(0, 1)) and not builder._should_build_wall(Vector2i(4, -1), Vector2i(0, 1)), "its end opens into the first corridor's side: a T")
+	_check(builder._should_build_wall(Vector2i(4, -3), Vector2i(0, -1)), "the far end is sealed")
+
+	# ---- two legs side by side keep their wall ----
+	_click(Vector2i(0, 10)); _click(Vector2i(1, 10)); _click(Vector2i(1, 11)); _click(Vector2i(0, 11)); builder._end_corridor_drawing()
+	var hook: Dictionary = _corridors().back()
+	_check((hook.cells as Array).size() == 4 and builder._should_build_wall(Vector2i(0, 10), Vector2i(0, 1)), "a U-turn keeps a wall between its legs")
+	_click(Vector2i(0, 13)); _click(Vector2i(3, 13)); _click(Vector2i(3, 14)); _click(Vector2i(1, 14)); _click(Vector2i(1, 12))
+	_check(builder.corridor_drawing and (_corridors().back().cells as Array).size() == 7, "a leg that would cross the corridor itself isn't placed")
+	builder._end_corridor_drawing()
+
+	# ---- an older straight corridor still opens both ends ----
+	var old := {"kind": "corridor", "cells": [Vector2i(20, 0), Vector2i(21, 0)], "door_direction": Vector2i(0, -1), "cost": 1200}
+	_room("galley", [Vector2i(22, 0)])
+	builder.zones.append(old)
+	builder._rebuild()
+	_check(builder._corridor_end_connects(Vector2i(21, 0), Vector2i(1, 0)) and builder._should_build_wall(Vector2i(20, 0), Vector2i(0, 1)), "a saved straight corridor connects as it did")
+
+	if failures == 0:
+		print("Corridor drawing test passed: room to room with a bend, R flips it, hatches, walls, air, undo by leg, T's, sealed ends, U-turns, no self-crossing, older saves.")
+	quit(1 if failures > 0 else 0)

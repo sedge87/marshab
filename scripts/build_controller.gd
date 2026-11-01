@@ -156,7 +156,7 @@ const ZONE_INFO := {
 	"medical":{"cat":"rooms","icon":"heart-pulse","rule":"Drag an area","desc":"A small clinical bay for examination and medical supplies."},
 	"waste_management":{"cat":"rooms","icon":"recycle","rule":"Merged into Storage & Recycling","desc":"Merged into Storage & Recycling (31 Oct); older saves convert on load."},
 	"communications":{"cat":"rooms","icon":"radio","rule":"Drag an area","desc":"Plan missions, map the site and keep in touch with Earth and the rovers."},
-	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Straight runs · R rotates · click 45° wall","desc":"Creates a sealed passage. Click an exact 45° free-form wall for a rotated connector."},
+	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Click to start · click each bend · R flips","desc":"A sealed passage. Click to start (on a room to leave from it), click to place each leg, and click a room to finish: it gets a hatch there. Right-click ends it anywhere. Click an exact 45° free-form wall for a rotated connector."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates · click 45° wall","desc":"The way in and out. Click an exact 45° free-form wall for a rotated airlock; otherwise the inner end must touch a room."},
 	"shield_regolith":{"cat":"structure","icon":"shield","rule":"Click an outside wall","desc":"Bags of Mars soil against an outside wall, against radiation. Printed by the regolith printer. You can also add it from inside: Furnish room, aim at the wall."},
 	"shield_water":{"cat":"structure","icon":"droplets","rule":"Click an outside wall","desc":"A water tank panel on an outside wall: water is one of the best radiation shields. You can also add it from inside: Furnish room, aim at the wall."},
@@ -254,6 +254,13 @@ var dragging := false
 var drag_start := Vector2i.ZERO
 var hover := Vector2i.ZERO
 var angled_corridor_mount: Dictionary = {}
+## Drawing a corridor, click to click: where it started, the corridor being
+## grown (empty before its first leg), and which way the next leg bends.
+var corridor_drawing := false
+var corridor_anchor := Vector2i.ZERO
+var corridor_zone: Dictionary = {}
+var corridor_flip := false
+var _corridor_last_leg: Dictionary = {}
 ## Free-form rooms are intentionally a second, isolated placement path.  They
 ## have their own outline and never participate in the old cell-wall logic.
 var room_draw_mode := "rectangle"
@@ -385,12 +392,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			for card in catalogue_grid.get_children():
 				if int(card.get_meta("pick_index",0))==int(event.keycode)-int(KEY_0): (card as Button).pressed.emit()
 		elif build_mode and event.keycode==KEY_R and equipment_id.is_empty() and kind in FREE_SITE_KINDS: _turn_free_site(-PI/12.0 if event.shift_pressed else PI/12.0); MHAudio.sfx("rotate")
+		elif build_mode and event.keycode==KEY_R and equipment_id.is_empty() and kind=="corridor" and corridor_drawing: corridor_flip=not corridor_flip; _preview_key=""; MHAudio.sfx("rotate")
 		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="corridor" or kind=="trench"): _rotate_airlock(); _refresh_catalogue()
 		elif build_mode and event.keycode==KEY_ESCAPE:
 			# Escape first cancels an in-progress placement; only an idle planner
 			# lets it through to open the pause screen.
 			if _freeform_active() and not freeform_points.is_empty():
 				_cancel_freeform(); get_viewport().set_input_as_handled()
+			elif corridor_drawing:
+				_end_corridor_drawing(); get_viewport().set_input_as_handled()
 			elif dragging or not angled_corridor_mount.is_empty():
 				dragging=false; angled_corridor_mount={}; _draw_preview([],false); get_viewport().set_input_as_handled()
 		elif build_mode and event.keycode==KEY_DELETE: _remove_at(hover)
@@ -407,6 +417,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed: zoom=minf(90.0,zoom+4.0); _zoom()
 	elif event.button_index==MOUSE_BUTTON_RIGHT and event.pressed:
 		if _freeform_active(): _cancel_freeform()
+		elif corridor_drawing: _end_corridor_drawing()
 		else: dragging=false; angled_corridor_mount={}; _set_tool("place"); _draw_preview([],false)
 	elif event.button_index==MOUSE_BUTTON_LEFT:
 		if tool=="remove":
@@ -430,11 +441,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if kind in FREE_SITE_KINDS:
 			if event.pressed and not _pointer_over_ui(): _place_free_site()
 			return
-		if event.pressed and not _pointer_over_ui() and kind in ["airlock", "corridor"]:
+		if event.pressed and not _pointer_over_ui() and kind in ["airlock", "corridor"] and not corridor_drawing:
 			if kind == "corridor" and _begin_angled_corridor_drag(): return
 			if _try_place_angled_outline_connector(): return
 		if not event.pressed and not angled_corridor_mount.is_empty():
 			_finish_angled_corridor_drag()
+			return
+		if kind == "corridor":
+			if event.pressed and not _pointer_over_ui(): _corridor_click()
 			return
 		if event.pressed: dragging=true; drag_start=hover
 		elif dragging:
@@ -466,7 +480,10 @@ var _r_repeat := 0.0
 var _budget_refresh := 0.0
 
 func _process(delta: float) -> void:
-	if not build_mode: return
+	if not build_mode:
+		corridor_drawing = false
+		return
+	if corridor_drawing and (kind != "corridor" or tool != "place" or not equipment_id.is_empty()): _end_corridor_drawing()
 	# Printing and resupplies change the cargo over time, not only on edits.
 	_budget_refresh -= delta
 	if _budget_refresh <= 0.0:
@@ -521,7 +538,7 @@ func _process(delta: float) -> void:
 		_draw_freeform_preview(cursor_point, freeform_reason)
 		_update_hologram_ui([], freeform_reason)
 		return
-	if kind in ["airlock", "corridor"]:
+	if kind in ["airlock", "corridor"] and not corridor_drawing:
 		var mouse_point := _world_point_at_mouse(habitat_base_y)
 		if not is_inf(mouse_point.x):
 			if kind == "corridor" and not angled_corridor_mount.is_empty():
@@ -547,6 +564,9 @@ func _process(delta: float) -> void:
 		var ladder_reason := _ladder_preview()
 		_update_hologram_ui([], ladder_reason)
 		return
+	if kind == "corridor":
+		_corridor_preview()
+		return
 	var cells:=_cells(drag_start if dragging else hover,hover)
 	var reason:=_invalid_reason(cells)
 	_draw_preview(cells,reason.is_empty())
@@ -559,7 +579,7 @@ func _hold_rotate_plan(delta: float) -> void:
 		_r_held += delta
 		if _r_held >= .4: _turn_free_site(delta * (-1.8 if Input.is_key_pressed(KEY_SHIFT) else 1.8))
 		return
-	if not Input.is_physical_key_pressed(KEY_R) or not (not equipment_id.is_empty() or kind in ["airlock", "vehicle_bay", "corridor"]):
+	if not Input.is_physical_key_pressed(KEY_R) or (kind == "corridor" and corridor_drawing) or not (not equipment_id.is_empty() or kind in ["airlock", "vehicle_bay", "corridor"]):
 		_r_held = 0.0
 		return
 	_r_held += delta
@@ -701,6 +721,148 @@ func _cells(a: Vector2i,b: Vector2i) -> Array:
 	for x in range(mini(a.x,b.x),maxi(a.x,b.x)+1):
 		for z in range(mini(a.y,b.y),maxi(a.y,b.y)+1): out.append(Vector2i(x,z))
 	return out
+
+# ---------- corridors, click to click ----------
+
+## The L from a to b: along one axis to the bend, then along the other.
+func _corridor_route(a: Vector2i, b: Vector2i, x_first: bool) -> Array:
+	var out: Array = [a]
+	var at := a
+	for axis in ([0, 1] if x_first else [1, 0]):
+		var target: int = b.x if axis == 0 else b.y
+		while (at.x if axis == 0 else at.y) != target:
+			if axis == 0: at.x += signi(target - at.x)
+			else: at.y += signi(target - at.y)
+			out.append(at)
+	return out
+
+## The next leg towards `target`: {cells, into, direction, reason}. A start
+## inside a room leaves it where the route crosses its wall; a route that
+## reaches a room or corridor stops against it (`into`).
+func _corridor_leg(target: Vector2i) -> Dictionary:
+	var leg := {"cells": [], "into": {}, "direction": Vector2i.ZERO, "reason": ""}
+	if target.x == 999: leg.reason = "Point at the ground"; return leg
+	var growing := not corridor_zone.is_empty()
+	var from: Vector2i = (corridor_zone.cells as Array).back() if growing else corridor_anchor
+	var delta := target - from
+	var x_first := absi(delta.x) >= absi(delta.y)
+	if corridor_flip: x_first = not x_first
+	var route := _corridor_route(from, target, x_first)
+	if growing: route.remove_at(0)
+	else:
+		while not route.is_empty() and _occupied(route[0]):
+			var left: Vector2i = route.pop_front()
+			if not route.is_empty(): leg.direction = route[0] - left
+	for index in range(route.size()):
+		if _occupied(route[index]):
+			leg.into = _zone_at(route[index])
+			route = route.slice(0, index)
+			break
+	leg.cells = route
+	if growing and leg.into == corridor_zone: leg.reason = "A corridor can't cross itself"
+	return leg
+
+func _corridor_click() -> void:
+	if not corridor_drawing:
+		if hover.x == 999: return
+		corridor_drawing = true; corridor_anchor = hover; corridor_zone = {}; corridor_flip = false; _preview_key = ""
+		MHAudio.sfx("ui_click", -6.0)
+		return
+	var leg := _corridor_leg(hover)
+	var cells: Array = leg.cells
+	if cells.is_empty():
+		# Clicking where it already ends (or the room beside that end) finishes it.
+		if leg.reason.is_empty(): _end_corridor_drawing()
+		else: _flash_notice("invalid", "Can't place here", str(leg.reason) + ".")
+		return
+	var reason := str(leg.reason)
+	if reason.is_empty(): reason = _invalid_reason(cells)
+	if not reason.is_empty():
+		_flash_notice("invalid", "Can't place here", reason + ".")
+		return
+	if zones.is_empty(): habitat_base_y = _proposed_base_y(cells)
+	if corridor_zone.is_empty():
+		var facing: Vector2i = leg.direction
+		if facing == Vector2i.ZERO: facing = cells[1] - cells[0] if cells.size() > 1 else airlock_direction
+		corridor_zone = {"kind": "corridor", "cells": cells, "door_direction": facing, "cost": _zone_cost(cells)}
+		zones.append(corridor_zone); _history.append({"type": "zone", "zone": corridor_zone}); _learn("corridor")
+	else:
+		var index := zones.find(corridor_zone)
+		if index < 0: _end_corridor_drawing(); return
+		# Each leg undoes on its own: the grown corridor remembers the shorter one.
+		var grown := corridor_zone.duplicate(true)
+		grown["cells"] = (corridor_zone.cells as Array) + cells
+		grown["cost"] = _zone_cost(grown.cells)
+		grown["undo_restore"] = corridor_zone
+		zones[index] = grown
+		_history.append({"type": "zone", "zone": grown})
+		corridor_zone = grown
+	var hatched := _hatch_corridor_ends(corridor_zone)
+	_rebuild()
+	MHAudio.sfx("place")
+	if not hatched.is_empty(): _flash_notice("info", "Hatch fitted", "Where it meets the %s. Remove it in Interior mode (X) to leave that end open." % ", ".join(hatched), false)
+	if not (leg.into as Dictionary).is_empty(): _end_corridor_drawing()
+	corridor_flip = false
+	_preview_key = ""
+
+func _end_corridor_drawing() -> void:
+	corridor_drawing = false
+	corridor_zone = {}
+	_corridor_last_leg = {}
+	_preview_key = ""
+	if preview != null: _draw_preview([], false)
+
+func _corridor_preview() -> void:
+	if not corridor_drawing:
+		_corridor_last_leg = {}
+		var start: Array = [] if hover.x == 999 else [hover]
+		var start_reason := "" if start.is_empty() or _occupied(hover) else _invalid_reason(start)
+		_draw_preview(start, start_reason.is_empty())
+		_update_hologram_ui([], start_reason)
+		return
+	var leg := _corridor_leg(hover)
+	_corridor_last_leg = leg
+	var reason := str(leg.reason)
+	if reason.is_empty() and not (leg.cells as Array).is_empty(): reason = _invalid_reason(leg.cells)
+	_draw_preview(leg.cells, reason.is_empty())
+	_update_hologram_ui(leg.cells, reason)
+
+## What each open end of the corridor being drawn will do, on the ghost.
+func _corridor_end_tags(cells: Array) -> void:
+	if not corridor_drawing or cells.is_empty(): return
+	var path: Array = ((corridor_zone.get("cells", []) as Array) + cells) if not corridor_zone.is_empty() else cells
+	var facing: Vector2i = corridor_zone.get("door_direction", _corridor_last_leg.get("direction", Vector2i.ZERO))
+	if facing == Vector2i.ZERO: facing = path[1] - path[0] if path.size() > 1 else airlock_direction
+	var draft := {"kind": "corridor", "cells": path, "door_direction": facing}
+	for end in _corridor_ends(draft):
+		var cell: Vector2i = end[0]
+		# The start of a corridor already placed is settled; tag only what this leg changes.
+		if not corridor_zone.is_empty() and not cells.has(cell): continue
+		var other := _zone_across(cell, end[1])
+		var text := "SEALED END"
+		if _mergeable_room(other): text = "HATCH · %s" % str(ZONE_TYPES[str(other.kind)].label).to_upper()
+		elif _is_habitat_zone(other): text = "OPEN · %s" % str(ZONE_TYPES[str(other.kind)].label).to_upper()
+		_airlock_arrow(cell, text, end[1])
+
+## A hatch wherever a corridor's end meets a room, so the rooms keep their own
+## air. Corridor and airlock ends stay open, and a vehicle bay has its own
+## door. Only for `target` (the corridor or room just placed), so a hatch the
+## player took out stays out.
+func _hatch_corridor_ends(target: Dictionary) -> Array:
+	var joined: Array = []
+	for zone in zones:
+		if not _is_grid_corridor(zone): continue
+		for end in _corridor_ends(zone):
+			var cell: Vector2i = end[0]
+			var side: Vector2i = end[1]
+			var other := _zone_across(cell, side)
+			if other.is_empty() or not (zone == target or other == target): continue
+			if not _mergeable_room(other) or _has_interior_door(cell, side): continue
+			if interior_door_invalid_reason(cell, side).is_empty():
+				_store_interior_door({"cell": cell, "side": side})
+				var label := str(ZONE_TYPES[str(other.kind)].label)
+				if not joined.has(label): joined.append(label)
+	return joined
 
 func _freeform_mode_available() -> bool:
 	return equipment_id.is_empty() and category == "rooms" and _is_ordinary_room_kind(kind)
@@ -2313,7 +2475,7 @@ func _draw_preview(cells: Array,valid: bool) -> void:
 	# A trench shows its ramp too.
 	if kind=="trench" and not cells.is_empty(): cells=cells+TRENCHES.ramp_cells({"cells":cells,"ramp":airlock_direction})
 	# The ghost only changes when the footprint, validity or facing changes.
-	var key:="%s|%s|%s|%s" % [str(cells),valid,airlock_direction,kind]
+	var key:="%s|%s|%s|%s|%s|%d" % [str(cells),valid,airlock_direction,kind,corridor_drawing,(corridor_zone.get("cells", []) as Array).size()]
 	if key==_preview_key: return
 	_preview_key=key
 	for child in preview.get_children(): child.queue_free()
@@ -2335,11 +2497,18 @@ func _draw_preview(cells: Array,valid: bool) -> void:
 	if kind=="reactor": volume_size=Vector3(2.1,height,2.1)
 	if kind=="ice_extractor": volume_size=Vector3(1.7,height,1.7)
 	if kind=="regolith_intake" or kind=="atmosphere_processor": volume_size=Vector3(2.0,1.2,2.4)
-	var ghost:=MeshInstance3D.new(); var box:=BoxMesh.new(); box.size=volume_size; ghost.mesh=box; ghost.material_override=fill; ghost.position=volume_centre; ghost.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(ghost)
-	preview.add_child(_box_edges(volume_centre,volume_size,edge))
+	if kind=="corridor":
+		# A bent corridor's ghost follows its cells, not their bounding box.
+		for cell in cells:
+			var cell_centre:=Vector3(cell.x*CELL,base_y+height*.5,cell.y*CELL); var cell_size:=Vector3(CELL-.1,height,CELL-.1)
+			var cell_ghost:=MeshInstance3D.new(); var cell_box:=BoxMesh.new(); cell_box.size=cell_size; cell_ghost.mesh=cell_box; cell_ghost.material_override=fill; cell_ghost.position=cell_centre; cell_ghost.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(cell_ghost)
+			preview.add_child(_box_edges(cell_centre,cell_size,edge))
+	else:
+		var ghost:=MeshInstance3D.new(); var box:=BoxMesh.new(); box.size=volume_size; ghost.mesh=box; ghost.material_override=fill; ghost.position=volume_centre; ghost.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(ghost)
+		preview.add_child(_box_edges(volume_centre,volume_size,edge))
 	if kind=="airlock": _airlock_arrow(_airlock_end(cells,airlock_direction,true),"OUTSIDE")
 	if kind=="vehicle_bay": _airlock_arrow(_face_preview_cell(cells,airlock_direction),"HANGAR")
-	if kind=="corridor" and cells.size()==1: _airlock_arrow(cells[0],"OPEN ENDS")
+	if kind=="corridor": _corridor_end_tags(cells)
 	if kind=="solar": _airlock_arrow(cells[0],"SOLAR %d%% AT NOON" % roundi(_solar_efficiency(airlock_direction, Vector2(0, 1))*100.0))
 	if kind=="ice_extractor":
 		var ice_here := _ice_richness_at(cells[0])
@@ -2564,13 +2733,14 @@ func _box_edges(centre: Vector3,size: Vector3,material: Material) -> MeshInstanc
 	var lines:=MeshInstance3D.new(); lines.mesh=mesh; lines.position=centre; lines.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return lines
 
-func _airlock_arrow(cell: Vector2i,label_text := "OUTSIDE") -> void:
+func _airlock_arrow(cell: Vector2i,label_text := "OUTSIDE",facing := Vector2i.ZERO) -> void:
 	var arrow:=MeshInstance3D.new(); var mesh:=ImmediateMesh.new(); var material:=StandardMaterial3D.new()
 	material.albedo_color=MHStyle.accent; material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED; material.cull_mode=BaseMaterial3D.CULL_DISABLED
 	var y:=(habitat_base_y if not zones.is_empty() else .35)+.12
 	# Draw directly in world X/Z. The old rotated local triangle used a different
 	# sign convention from the label on east/west sides, so the two disagreed.
-	var direction := Vector2(float(airlock_direction.x), float(airlock_direction.y))
+	var pointing := facing if facing != Vector2i.ZERO else airlock_direction
+	var direction := Vector2(float(pointing.x), float(pointing.y))
 	var sideways := Vector2(-direction.y, direction.x)
 	var centre := Vector2(cell.x * CELL, cell.y * CELL)
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES,material)
@@ -2891,10 +3061,11 @@ func _merge_touching_same_type_rooms() -> void:
 		for first_index in range(zones.size()):
 			if merged_any: break
 			var first: Dictionary = zones[first_index]
-			if not _mergeable_room(first) and not _is_grid_corridor(first): continue
+			# Corridors don't merge: one drawing is already one corridor, bends and all.
+			if not _mergeable_room(first): continue
 			for second_index in range(first_index + 1, zones.size()):
 				var second: Dictionary = zones[second_index]
-				if str(first.kind) != str(second.kind) or not (_mergeable_room(second) or _is_grid_corridor(second)): continue
+				if str(first.kind) != str(second.kind) or not _mergeable_room(second): continue
 				var combined := _merged_room(first, second)
 				if combined.is_empty(): continue
 				# Undo of the later placement restores the earlier room as it was.
@@ -2928,26 +3099,6 @@ func _mergeable_room(zone: Dictionary) -> bool:
 ## The single room two same-kind rooms become, or {} if they do not share a
 ## wall (or would enclose a courtyard, which one outline cannot describe).
 func _merged_room(first: Dictionary, second: Dictionary) -> Dictionary:
-	if _is_grid_corridor(first):
-		# Corridor pieces laid end to end in one line become one corridor; side
-		# by side or at an angle they stay separate (a T or a bend).
-		var run: Array = (first.cells as Array).duplicate()
-		for cell in second.cells:
-			if cell not in run: run.append(cell)
-		var same_x := true
-		var same_z := true
-		for cell in run:
-			same_x = same_x and cell.x == run[0].x
-			same_z = same_z and cell.y == run[0].y
-		if not (same_x or same_z): return {}
-		run.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x + a.y < b.x + b.y)
-		for index in range(1, run.size()):
-			if absi(run[index].x - run[index - 1].x) + absi(run[index].y - run[index - 1].y) != 1: return {}
-		var corridor := first.duplicate(true)
-		corridor.erase("undo_restore")
-		corridor["cells"] = run
-		corridor["cost"] = int(first.cost) + int(second.cost)
-		return corridor
 	if not first.has("outline") and not second.has("outline"):
 		if not _zones_touch(first, second): return {}
 		var cells: Array = (first.get("cells", []) as Array).duplicate()
@@ -3027,6 +3178,8 @@ func _zone_surfaces(zone: Dictionary) -> void:
 			var local_centre:=Vector3(cell.x*CELL,0,cell.y*CELL)
 			_add_box(local_centre+Vector3(0,habitat_base_y-.1,0),Vector3(CELL,.2,CELL),colour.darkened(.48),true,"habitat_floor")
 			_add_box(local_centre+Vector3(0,habitat_base_y+2.9,0),Vector3(CELL,.15,CELL),MHStyle.STRUCTURAL_WHITE.darkened(.08),true,"habitat_roof")
+		if zone_kind=="corridor":
+			_add_corridor_understructure(cells)
 	_add_zone_lighting(zone)
 	_add_zone_roof_accessory(zone)
 
@@ -3643,12 +3796,15 @@ func _should_build_wall(cell: Vector2i,side: Vector2i) -> bool:
 	if _has_interior_door(cell, side): return false
 	# A corridor is a sealed tube until an end reaches another habitat space.
 	# When that happens, remove the wall on both sides of that one end only;
-	# its two long sides always remain solid.
+	# every other face of it stays solid.
 	if _corridor_end_connects(cell, side): return false
 	var current_zone := _zone_at(cell)
 	var neighbour_zone := _zone_across(cell, side)
 	if not _is_habitat_zone(neighbour_zone):
 		return true
+	# A corridor's cells join only along its path, so two legs side by side keep their wall.
+	if current_zone == neighbour_zone and not _corridor_cells_join(current_zone, cell, cell + side):
+		return _is_canonical_shared_edge(cell, side)
 	# A free-form room never builds wall bays along a face that a grid zone
 	# owns, so the grid side always draws this shared wall.
 	if neighbour_zone.has("outline"):
@@ -3663,13 +3819,20 @@ func _should_build_wall(cell: Vector2i,side: Vector2i) -> bool:
 func _corridor_end_connects(cell: Vector2i, side: Vector2i) -> bool:
 	var current_zone := _zone_at(cell)
 	var neighbour_zone := _zone_across(cell, side)
-	if not current_zone.is_empty() and str(current_zone.get("kind", "")) == "corridor":
-		if not _is_corridor_side(current_zone, side) and _is_habitat_zone(neighbour_zone) and neighbour_zone != current_zone:
+	if _is_grid_corridor(current_zone):
+		if side in _corridor_end_faces(current_zone, cell) and _is_habitat_zone(neighbour_zone) and neighbour_zone != current_zone:
 			return true
-	if not neighbour_zone.is_empty() and str(neighbour_zone.get("kind", "")) == "corridor":
-		if not _is_corridor_side(neighbour_zone, -side) and not current_zone.is_empty() and current_zone != neighbour_zone:
+	if _is_grid_corridor(neighbour_zone):
+		if -side in _corridor_end_faces(neighbour_zone, cell + side) and not current_zone.is_empty() and current_zone != neighbour_zone:
 			return true
 	return false
+
+## Whether two cells of one zone are open to each other: always in a room; in
+## a corridor only when they're next to each other along its path.
+func _corridor_cells_join(zone: Dictionary, a: Vector2i, b: Vector2i) -> bool:
+	if not _is_grid_corridor(zone) or not _corridor_in_path_order(zone): return true
+	var cells: Array = zone.cells
+	return absi(cells.find(a) - cells.find(b)) == 1
 
 func _is_canonical_shared_edge(cell: Vector2i, side: Vector2i) -> bool:
 	var neighbour := cell + side
@@ -4526,9 +4689,8 @@ func _add_doors_for_new_room(zone: Dictionary) -> Array:
 		if best_length < CELL - .01: continue
 		var target := _door_target_on_wall(best_from, best_to)
 		if target.is_empty(): continue
-		var score := best_length + (100.0 if str(other.kind) == "corridor" else 0.0)
-		if score > best_score:
-			best_score = score
+		if best_length > best_score:
+			best_score = best_length
 			best = {"target": target, "label": str(ZONE_TYPES[str(other.kind)].label)}
 	if not best.is_empty():
 		_store_interior_door(best.target)
@@ -4558,7 +4720,10 @@ func _door_target_on_wall(from: Vector2, to: Vector2) -> Dictionary:
 ## Placement follow-up: join the newest room to different neighbours.
 func _after_room_placed() -> void:
 	if _history.is_empty(): return
-	var joined := _add_doors_for_new_room(_history.back().get("zone", {}))
+	var placed: Dictionary = _history.back().get("zone", {})
+	var joined := _hatch_corridor_ends(placed)
+	for label in _add_doors_for_new_room(placed):
+		if not joined.has(label): joined.append(label)
 	if joined.is_empty(): return
 	_rebuild()
 	_flash_notice("info", "Door added", "Joined to %s. Remove it in Interior mode (X) if you want this wall sealed." % ", ".join(joined), false)
@@ -5021,11 +5186,43 @@ func _corridor_axis(zone: Dictionary) -> Vector2i:
 	var direction: Vector2i = zone.get("door_direction", Vector2i(0,-1))
 	return Vector2i(1,0) if direction.x != 0 else Vector2i(0,1)
 
-func _is_corridor_side(zone: Dictionary,side: Vector2i) -> bool:
-	# The sides perpendicular to the corridor axis are solid; its two ends are
-	# deliberately open, allowing a one-cell corridor to join facing rooms.
-	var axis := _corridor_axis(zone)
-	return side.x * axis.x + side.y * axis.y == 0
+## A corridor's cells are kept in path order (an older save's straight run
+## already is), so its ends are its first and last cells.
+func _corridor_in_path_order(zone: Dictionary) -> bool:
+	var cells: Array = zone.get("cells", [])
+	for index in range(1, cells.size()):
+		var step: Vector2i = cells[index] - cells[index - 1]
+		if absi(step.x) + absi(step.y) != 1: return false
+	return true
+
+## The faces of this cell that are a corridor end: the far face of an end
+## cell, along the path. A one-cell corridor opens both ways along its facing.
+func _corridor_end_faces(zone: Dictionary, cell: Vector2i) -> Array:
+	var cells: Array = zone.get("cells", [])
+	var index := cells.find(cell)
+	if index < 0: return []
+	if cells.size() == 1 or not _corridor_in_path_order(zone):
+		# Older pieces out of path order keep the old rule: open along the run.
+		var axis := _corridor_axis(zone)
+		return [axis, -axis]
+	var faces: Array = []
+	if index == 0: faces.append(cells[0] - cells[1])
+	if index == cells.size() - 1: faces.append(cells[index] - cells[index - 1])
+	return faces
+
+## Both ends of a corridor: [[cell, side], ...].
+func _corridor_ends(zone: Dictionary) -> Array:
+	var out: Array = []
+	var cells: Array = zone.get("cells", [])
+	if cells.is_empty(): return out
+	for cell in ([cells[0]] if cells.size() == 1 else [cells[0], cells.back()]):
+		for side in _corridor_end_faces(zone, cell): out.append([cell, side])
+	return out
+
+## Whether the wall on this face is open: a corridor end, a door or an
+## airlock's inner doorway (the site plan's floor plan leaves these undrawn).
+func face_is_open(cell: Vector2i, side: Vector2i) -> bool:
+	return _corridor_end_connects(cell, side) or _has_interior_door(cell, side) or _is_airlock_inner_doorway(cell, side)
 
 func _corridor_touches_airlock(cells: Array) -> bool:
 	for cell in cells:
@@ -6616,6 +6813,11 @@ func _update_hologram_ui(cells: Array,reason: String, angled_mount: Dictionary =
 		placing_delta.text=("−%s → %s" % [MHStyle.kg(earth),MHStyle.kg(after)] + ("  (%s printed)" % MHStyle.kg(cost - earth) if earth < cost else "")) if not cells.is_empty() else ""
 		placing_delta.add_theme_color_override("font_color",MHStyle.DANGER if after<0 else (MHStyle.WARN if after<MHGame.cargo_budget()*.1 else MHStyle.accent))
 		if not reason.is_empty(): state="invalid"; message=reason
+		elif kind=="corridor":
+			state="valid"
+			if not corridor_drawing: message="Click to start · start on a room to leave from it"; placing_delta.text=""
+			elif cells.is_empty(): message="Click here to finish · right-click ends it"
+			else: message="%d m · click to place this leg · R flips the bend · right-click ends" % (cells.size()*int(CELL))
 		elif not cells.is_empty():
 			var bounds:=_cell_bounds(cells)
 			state="valid"; message="%d %s · %d × %d m" % [cells.size(),"cell" if cells.size()==1 else "cells",bounds.size.x*int(CELL),bounds.size.y*int(CELL)]

@@ -182,10 +182,18 @@ static func _walls(builder: Node, layer: Node3D, base_y: float) -> void:
 			for cell in zone.get("cells", []):
 				var c := Vector2(cell) * BuildController.CELL
 				var corners := [c + Vector2(-half, -half), c + Vector2(half, -half), c + Vector2(half, half), c + Vector2(-half, half)]
-				for i in 4: sides.append([corners[i], corners[(i + 1) % 4]])
+				var faces := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+				for i in 4: sides.append([corners[i], corners[(i + 1) % 4], cell, faces[i]])
 		for side in sides:
 			var a: Vector2 = side[0]
 			var b: Vector2 = side[1]
+			# Open corridor ends, doors and airlock doorways get no wall line;
+			# two legs of one corridor side by side do.
+			var own_wall := false
+			if side.size() > 2:
+				if builder.face_is_open(side[2], side[3]): continue
+				var next: Dictionary = builder._zone_at(side[2] + side[3])
+				own_wall = next == zone and not builder._corridor_cells_join(zone, side[2], side[2] + side[3]) and builder._is_canonical_shared_edge(side[2], side[3])
 			var length := a.distance_to(b)
 			if length < .2: continue
 			var normal := (b - a).normalized().orthogonal()
@@ -197,7 +205,7 @@ static func _walls(builder: Node, layer: Node3D, base_y: float) -> void:
 				var kind := ""
 				if i < pieces:
 					var beyond: Dictionary = builder._zone_at_point(a.lerp(b, (i + .5) / pieces) + out * .3)
-					if beyond == zone: kind = ""
+					if beyond == zone: kind = "shared" if own_wall else ""
 					elif not builder._is_habitat_zone(beyond): kind = "outer"
 					elif builder.zones.find(beyond) > zone_index: kind = "shared"
 				if kind != run:

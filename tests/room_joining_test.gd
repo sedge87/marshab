@@ -75,7 +75,7 @@ func _initialize() -> void:
 	_check(builder.interior_doors.size() == 1, "grid room + angled room of different purpose get one door (%d)" % builder.interior_doors.size())
 	_check(builder._rooms_have_door(builder.zones[0], builder.zones[1]), "the door joins those two rooms")
 	var marker_found := false
-	for node in builder.root.find_children("DoorPlanMarker*", "MeshInstance3D", true, false):
+	for node in builder.root.find_children("DoorPlanMarker*", "Node3D", true, false):
 		if not node.is_queued_for_deletion(): marker_found = true
 	_check(marker_found, "the door shows on the site plan")
 	# Removing it seals the wall, and it is not added back by later rebuilds.
@@ -106,23 +106,21 @@ func _initialize() -> void:
 	_place(_angled("medical", east_angled))
 	_check(builder.interior_doors.size() == 1 and builder.interior_doors[0].has("wall_a"), "angled rooms of different purposes get one door")
 
-	# Corridors keep their own open-end rule (no extra door).
+	# A corridor end meeting a room gets a hatch (removable), not an open end.
 	_reset()
 	_place(_grid("living", square))
 	_place(_grid("corridor", [Vector2i(2, 0), Vector2i(3, 0)]))
-	_check(builder.interior_doors.is_empty(), "corridors connect by their open end, not an added door")
+	_check(builder.interior_doors.size() == 1 and builder._has_interior_door(Vector2i(2, 0), Vector2i(-1, 0)), "a corridor end at a room gets a hatch")
+	# And a room placed later at a corridor's end gets one too.
+	_place(_grid("galley", [Vector2i(4, 0)]))
+	_check(builder._has_interior_door(Vector2i(3, 0), Vector2i(1, 0)), "a room built at a corridor's end gets a hatch")
 
-	# Corridor pieces laid end to end become one corridor; undo splits them.
+	# Corridors don't merge: each drawing is its own corridor (bends come from drawing).
 	_reset()
 	_place(_grid("corridor", [Vector2i(0, 0)]))
 	_place(_grid("corridor", [Vector2i(1, 0), Vector2i(2, 0)]))
-	_check(_count("corridor") == 1 and (builder.zones[0].cells as Array).size() == 3, "in-line corridor pieces merge into one corridor")
-	builder._undo()
-	_check(_count("corridor") == 1 and (builder.zones[0].cells as Array).size() == 1, "undo splits the corridor back")
-	_place(_grid("corridor", [Vector2i(0, 1)]))
-	_check(_count("corridor") == 1 and (builder.zones[0].cells as Array).size() == 2, "a piece continuing the line merges")
-	_place(_grid("corridor", [Vector2i(1, 1)]))
-	_check(_count("corridor") == 2, "a piece beside the line (a bend) stays separate")
+	_check(_count("corridor") == 2, "corridor pieces stay separate corridors")
+	_check(builder._corridor_end_connects(Vector2i(1, 0), Vector2i(-1, 0)), "but open into each other end to end")
 
 	# Corridor near an angled room's corner: grid placement is not taken over
 	# by the 45° wall tool unless the cursor is right at that wall.
