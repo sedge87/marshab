@@ -127,6 +127,26 @@ func _initialize() -> void:
 	MHSamples.load_state(JSON.parse_string(JSON.stringify(saved)))
 	_check(MHSamples.found.size() == found_before and MHSamples.readings.has("cave_climate") and MHSamples.archive().size() == saved.store.size() - MHSamples.waiting().size(), "samples, discoveries and readings save and load")
 
+	# ---- the journal ----
+	MHJournal.reset()
+	MHJournal.write("landed", 1, {"where": "the basalt plains"})
+	MHJournal.write("landed", 1, {"where": "the basalt plains"})
+	MHJournal.from_messages([MHSamples.take("rock", Vector2(5.0, 5.0), 30.0, {"rock": "basalt"})], 2)
+	MHJournal.from_messages([{"id": "discovery", "title": "Discovery: Basalt bedrock"}, {"id": "lead", "title": "Lead: The bedrock looks volcanic"}], 2)
+	_check(MHJournal.entries.size() == 2 and (MHJournal.entries[0].lines as Array).size() == 1, "a once-a-sol line is written once (%s)" % [MHJournal.entries])
+	_check((MHJournal.entries[1].lines as Array).size() == 3 and str(MHJournal.entries[1].lines[0]).contains("basalt plains"), "samples, a discovery and a lead are the next sol's lines (%s)" % [MHJournal.entries[1].lines])
+	_check(not MHJournal.wants_sketch.is_empty(), "new ground asks for a sketch")
+	MHJournal.add_sketch(2, "user://journal/test/none.png", "The basalt plains")
+	var journal: Dictionary = JSON.parse_string(JSON.stringify(MHJournal.export_state()))
+	MHJournal.reset()
+	MHJournal.load_state(journal)
+	_check(MHJournal.entries.size() == 2 and (MHJournal.entries[1].sketches as Array).size() == 1, "the journal saves and loads")
+	var book: Control = load("res://scripts/journal_book.gd").new()
+	root.add_child(book)
+	await process_frame
+	_check(book.page == 1 and book._turn.text.contains("Sol 2"), "the book opens on the newest sol (%s)" % book._turn.text)
+	book.queue_free()
+
 	# ---- Creative has no samples ----
 	MHGame.game_mode = "creative"
 	MHChapterOne.reset()

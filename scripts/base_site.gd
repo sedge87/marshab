@@ -70,6 +70,36 @@ static func conditions(rx: float, rz: float) -> Dictionary:
 	return {"horizon": horizon, "skyline": snappedf(skyline, .1), "shelter_c": snappedf(minf(SHELTER_MAX, skyline * SHELTER_PER_DEGREE), .1),
 		"dunes": snappedf(dunes, .01), "dust_per_sol": snappedf(dust, .001), "ice": snappedf(ice, .01), "frost_peak": snappedf(frost, .01), "room": snappedf(room, .01)}
 
+const SCIENCE_REACH := 800.0   # metres round the base its rocks are counted (a walk)
+const CAVE_REACH := 1500.0     # metres to a cave mouth that counts as nearby (a drive)
+
+## What there is to study round a base at (rx, rz) (step 5): the kinds of
+## rock within SCIENCE_REACH, from the geology units there and
+## data/discoveries.json's unit_rocks, and the nearest cave mouth.
+## {rocks: [rock types], units: [units], cave: name, cave_m: metres (INF if none)}
+static func science(rx: float, rz: float) -> Dictionary:
+	var RT = MHSiteTerrain.RegionTerrain
+	var by_unit: Dictionary = MHSamples.data().get("unit_rocks", {})
+	var units := {}
+	var rocks := {}
+	var step := 60.0
+	for i in range(-roundi(SCIENCE_REACH / step), roundi(SCIENCE_REACH / step) + 1):
+		for j in range(-roundi(SCIENCE_REACH / step), roundi(SCIENCE_REACH / step) + 1):
+			if Vector2(i, j).length() * step > SCIENCE_REACH: continue
+			var unit: String = RT.geology(rx + i * step, rz + j * step)
+			if unit.is_empty() or units.has(unit): continue
+			units[unit] = true
+			var weights: Dictionary = by_unit.get(unit, {})
+			for rock in weights:
+				if float(weights[rock]) >= 1.0: rocks[rock] = true
+	var cave := ""
+	var cave_m := INF
+	for entry in RT.meta().get("caves", []):
+		var mouth: Array = entry.points[0]
+		var gap := Vector2(float(mouth[0]) - rx, float(mouth[1]) - rz).length()
+		if gap < cave_m: cave_m = gap; cave = str(entry.get("name", "a cave"))
+	return {"rocks": rocks.keys(), "units": units.keys(), "cave": cave, "cave_m": cave_m}
+
 ## The skyline's height (degrees) towards heading, from a conditions horizon.
 static func skyline_towards(horizon: Array, heading: Vector2) -> float:
 	var at := fposmod(heading.angle(), TAU) / TAU * horizon.size()

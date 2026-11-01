@@ -1,6 +1,6 @@
 # Samples, the lab, the terminal and the journal (core-loop step 5)
 
-> **Paused 1 Nov 2026 (user):** step 5 waits for the terrain overhaul (`docs/terrain-overhaul.md`), because samples, rocks, caves and lava tubes depend on the new ground, so this design gets revisited after it. Work started on the build (`MHSamples`, the sample tools, GAR-Y's samples, sim bonuses, `data/discoveries.json`) is kept in `git stash` as "Step 5 WIP… paused until the terrain overhaul". It is not in the working tree.
+> **Built 1 Nov 2026** after the terrain overhaul and the landing work. §13 says what changed from the design and what is still to do.
 
 Design, 1 Nov 2026. Builds on `docs/core-loop.md` (rounds 1, 2 and 4) and `docs/start-and-chapter-one.md` (step 4, built). Nothing here is built yet. §12 has the answers to §11's questions, and they win where the text above disagrees.
 
@@ -136,6 +136,31 @@ Nothing new except: the case's six pips at the visor's bottom edge (outside only
 5. **Sketches:** a pencil-shader snapshot of the moment.
 6. **Journal:** J anywhere except mid-EVA, plus the notebook on your bunk.
 7. **Terminal:** a Discoveries tab on Mission Control (M) for now. *Follow-up (user):* clean up the M page later, deciding what it really needs to show and what can move into the world to be more immersive.
-8. **Case size:** not asked yet; six slots assumed.
+8. **Case size:** six slots, with dropping one to free a slot (user, 1 Nov).
 
 Also noted: **Missions mode will be removed** (it belonged to the old version), so nothing in this step keeps it working.
+
+## 13. As built (1 Nov 2026)
+
+The new terrain and founding the base anywhere changed some of the design:
+
+- **Rocks and soil come from the ground, not the site.** `data/discoveries.json` `unit_rocks` weights rock types by the region geology unit under a rock (`MHSiteTerrain.geology_unit`), or by the cave it's in (`lava_tube`, `cave`, `ice_cave`). `unit_regolith` says which ground holds bound water: the ice fields, the delta, the crater's lakebed, the sulfate mound and the ice cave. The old maps keep `site_rocks`.
+- **Records** keep their region position (`rx`, `rz`), their ground (`unit`) and `in_cave`. The lab and the terminal give each sample a place line: "Sol 3 · the delta · 420 m north-east of the base".
+- **Five cave finds** (the terrain session's spots in region.json `caves[].finds`):
+  - **Cave ice:** cut from the ice cave's walls or the lava tube's far end. Two spots confirm it.
+  - **Mineral crust:** found in the lava tube and the canyon cave; two spots confirm it.
+  - **Unweathered basalt:** found in the lava tube; one sample confirms it.
+  - **Layered sediments:** found in the canyon cave. Sandstone or mudstone from the canyon walls also counts.
+  - **A steady climate underground:** the suit logs readings at the lava tube's spot by itself, and a day reading plus a night reading confirm it.
+
+  In a cave you chip the wall (one chip per 3 m) instead of rock props. A discovery can now match samples in more than one way (`match`).
+- **Discoveries** is a sheet opened from a button on Mission Control (M), not a tab, like the alert log. It has four columns, each card showing the discovery, a lead with its progress, or an outline ("Something in the rocks?"). The comms station doesn't open it yet.
+- **Research points** are gone under chapter rules: the sim's research rate, the monitor line and the readiness item now show science (discoveries, benches, samples waiting).
+- **The journal** (`MHJournal`, `data/journal.json`): lines come from the messages the game already shows. A sample from ground you haven't sampled before, a discovery, or the end of chapter one asks for a sketch. It's taken at the next quiet moment outside, at most two a sol: a 480 × 270 render from your eyes without the HUD, drawn in pencil by `shaders/pencil_sketch.gdshader`. Sketches are saved as PNGs in `user://journal/<id>/` rather than next to the save file. J opens the book anywhere except outside in the suit. E on a crew bunk opens it too: the bunk is the notebook for now, until there's a notebook model.
+- **The landing report** gains a Science line: the kinds of rock within 800 m (how many were laid down by water), and a cave within 1.5 km (`MHBaseSite.science`).
+
+**Still to do:**
+- the models (sample case, scoop, the cabinet's jars filling one per analysed sample, the notebook, a chip-scar decal);
+- the comms station opening the terminal;
+- a step 5 pass in the chapter one playthrough script;
+- a full-page sketch for the chapter's end once step 11's reports exist.

@@ -57,6 +57,10 @@ func _initialize() -> void:
 	assert(float(walled.conditions.shelter_c) > float(open.conditions.shelter_c) + 3.0, "Walls make warmer nights.")
 	assert(float(MHBaseSite.sunshine(walled.conditions.horizon).share) < float(MHBaseSite.sunshine(open.conditions.horizon).share) - .05, "Walls hide the low sun.")
 	assert(float(icy.ice_deposits[0].richness) >= .6 and float(icy.conditions.frost_peak) > .5, "The ice fields: rich ice, heavy frost.")
+	var crater := MHBaseSite.science(1580.0, -320.0)
+	var plains := MHBaseSite.science(-1400.0, 1000.0)
+	assert((crater.rocks as Array).size() > (plains.rocks as Array).size(), "The crater has more to study than the plains.")
+	assert(float(plains.cave_m) < MHBaseSite.CAVE_REACH and str(plains.cave) == "Lava tube", "The lava tube is a drive from the plains zone.")
 	var night := float(MHGame.site().day_cycle.night_temp_c)
 	MHGame.base_site = walled
 	assert(is_equal_approx(float(MHGame.site().day_cycle.night_temp_c), night + float(walled.conditions.shelter_c)), "The founded site's nights are the base's own.")

@@ -12,6 +12,8 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const CLOSE := 2400.0                 # metres across, zoomed in
 const OVAL := Vector2(400.0, 250.0)   # half axes, metres: long east-west (the approach)
 const SAMPLE := 70.0                  # metres between the points checked for base ground
+## Rocks that formed in or were changed by water (data/discoveries.json rock types).
+const WATER_ROCKS := ["hematite", "gypsum", "conglomerate", "sandstone", "mudstone", "clay", "sulfur", "perchlorate_crust"]
 ## Mission Control's word on each suggested zone, from orbit.
 const HINTS := {"plains": "Open ground, strong sun", "crater": "Layered outcrop nearby", "riverbed": "Old river deposits"}
 
@@ -113,6 +115,15 @@ static func report(spot: Vector2) -> Array:
 	if room >= .9: rows.append(["house", "Room", "Open ground all round: room to grow.", "green"])
 	elif room >= .78: rows.append(["house", "Room", "Some room: steep or sandy ground nearby.", "orange"])
 	else: rows.append(["house", "Room", "Cramped: little level ground round the pad.", "red"])
+	# Science: the kinds of rock within a walk, and a cave within a drive.
+	var study := MHBaseSite.science(spot.x, spot.y)
+	var kinds := (study.rocks as Array).size()
+	# Rocks laid down or changed by water are what the science teams want most.
+	var watery := (study.rocks as Array).filter(func(rock): return WATER_ROCKS.has(rock)).size()
+	var cave := ", and the %s %s away" % [str(study.cave).to_lower(), MHSamples._distance(float(study.cave_m))] if float(study.cave_m) < MHBaseSite.CAVE_REACH else ""
+	var level := "green" if watery >= 4 or (watery >= 2 and not cave.is_empty()) else ("orange" if watery >= 1 or not cave.is_empty() else "red")
+	var words: String = {"green": "Rich ground for science", "orange": "Some science nearby", "red": "Little to study: mostly volcanic rock"}[level]
+	rows.append(["flask-conical", "Science", "%s: %d kinds of rock within a walk, %d laid down by water%s." % [words, kinds, watery, cave], level])
 	return rows
 
 static func _hours(hours: float) -> String:

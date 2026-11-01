@@ -1,0 +1,18 @@
+{
+  "_about": "The crew journal's phrases (docs/samples-lab-journal.md §7), first person and short. Each event has a few variants; the game picks one by the sol, so the same day reads the same. {title} {what} {where} {count} are filled in. once: an event written once a sol at most.",
+  "events": {
+    "landed": {"once": true, "lines": ["We're down. The lander's quiet now, and outside it's nothing but {where} in every direction.", "Touchdown. I keep looking out of the port at {where}: it's ours now.", "Landed. The cargo's out there waiting, and the ground is the colour of rust."]},
+    "first_walk": {"once": true, "lines": ["First walk outside. The suit's heavy, the sky's butterscotch, and the silence is total.", "Stepped out for the first time today. My footprints are the only ones for a very long way.", "Out of the airlock at last. I stood there for a minute just looking."]},
+    "made": {"lines": ["The fabricator finished the {what}.", "One more thing made here, not shipped: the {what}.", "Printed the {what} today. It still smells of warm polymer."]},
+    "step": {"lines": ["{title}. A good day.", "{title}. One less thing Earth has to send us.", "{title}. I wrote it twice to be sure."]},
+    "chapter_one": {"once": true, "lines": ["We're self-sufficient: water, air and food, all made here. Mission Control went quiet for a while, then cheered."]},
+    "soil": {"lines": ["{title}.", "Worked on the soil: {title}."]},
+    "emergency_landed": {"once": true, "lines": ["The emergency lander came down. I'm grateful, and a little embarrassed."]},
+    "samples": {"once": true, "lines": ["Out collecting today: {what} from {where}.", "Spent the afternoon sampling {where}. Bagged {what}.", "The case is filling up: {what}, from {where}."]},
+    "cave_sample": {"lines": ["Took a sample inside {where}. The lamp makes everything look like the inside of a mine.", "Sampled {where} by lamplight. No wind in here, no dust, nothing moving."]},
+    "lead": {"lines": ["A lead in the lab: {title}. I'll need more samples from other spots.", "The lab thinks it's seeing something: {title}. Not proof yet."]},
+    "discovery": {"lines": ["Confirmed today: {what}. Sent it to Earth.", "We found something: {what}. I keep rereading the result.", "A real discovery: {what}. Logged it for Mission Control."]},
+    "reply": {"lines": ["Earth wrote back: {title}.", "A reply from home ({title}). It's good to know someone's reading."]},
+    "plan": {"lines": ["{title}, from Mission Control.", "Earth sent a new plan today: {what}."]}
+  }
+}

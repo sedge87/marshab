@@ -78,7 +78,8 @@ static func reset() -> void:
 	known = {}; job = {}; has_corer = false; cores = []; steps = {}; finished_at = -1.0
 	stores_landed = false; reserve_used = false; emergency_eta = -1.0; said = {}
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
-	MHSamples.reset()   # step 5's samples start with the chapter
+	MHSamples.reset()   # step 5's samples and journal start with the chapter
+	MHJournal.reset()
 
 static func export_state() -> Dictionary:
 	return {"older_rules": older_rules, "unpacked": unpacked.duplicate(), "stock": stock.duplicate(), "shell_kg": shell_kg,

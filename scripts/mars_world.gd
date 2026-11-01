@@ -26,10 +26,12 @@ const CARGO_LANDER_SCRIPT := preload("res://scripts/cargo_lander.gd")
 const PRECURSOR_CRATE := preload("res://scripts/precursor_crate.gd")
 const HAND_CORER := preload("res://scripts/hand_corer.gd")
 const SAMPLE_TOOLS := preload("res://scripts/sample_tools.gd")
+const JOURNAL_KEEPER := preload("res://scripts/journal_keeper.gd")
 const LAB_SCREEN := preload("res://scripts/lab_screen.gd")
 const FABRICATOR_SCREEN := preload("res://scripts/fabricator_screen.gd")
 var hand_corer: Node
 var sample_tools: Node   # step 5: scoop, rock chips, the sample case
+var journal_keeper: Node   # step 5: J, the bunk's notebook, sketches
 var _chapter_check := 0.0
 var _chapter_hours := -1.0
 const LANDING_PICKER_SCRIPT := preload("res://scripts/landing_picker.gd")
@@ -211,6 +213,8 @@ func _ready() -> void:
 		add_child(hand_corer)
 		sample_tools = SAMPLE_TOOLS.new().setup(self)
 		add_child(sample_tools)
+		journal_keeper = JOURNAL_KEEPER.new().setup(self)
+		add_child(journal_keeper)
 	if MHMissions.active() and not MHGame.showcase:
 		if str(MHMissions.current().get("player", "crew")) == "robot": explore_hud.chip_prefix = "ROBOT · "
 		mission_hud = MISSION_HUD_SCRIPT.new()
@@ -891,12 +895,16 @@ func _tick_chapter_one() -> void:
 	_chapter_hours = now
 	var messages := MHChapterOne.tick(hours, builder)
 	messages.append_array(MHSamples.tick(hours, builder))
+	var sol := floori(now / 24.0) + 1
+	if now < 24.0: MHJournal.write("landed", sol, {"where": MHSamples.unit_label(MHSiteTerrain.geology_unit(0.0, 0.0)) if not MHSiteTerrain.geology_unit(0.0, 0.0).is_empty() else "red rock and dust"})
 	if not builder.is_inside(player.global_position) and not bool(lander.cabin_contains(player.global_position)):
+		MHJournal.write("first_walk", sol)
 		for learned in MHChapterOne.learn_after("first_walk"): messages.append(MHChapterOne._plan_message(learned))
 	show_chapter_messages(messages)
 
 ## Toasts (and a Mission Control radio line) for chapter-one news.
 func show_chapter_messages(messages: Array) -> void:
+	if not messages.is_empty() and builder != null: MHJournal.from_messages(messages, floori(float(builder.simulation().hours_run) / 24.0) + 1)
 	for message in messages:
 		builder._flash_notice(str(message.get("tone", "info")), str(message.title), str(message.text))
 	if not messages.is_empty(): builder._update_budget()
@@ -1126,6 +1134,7 @@ func current_state() -> Dictionary:
 		"day_night": day_night.export_state() if day_night != null else {},
 		"chapter_one": MHChapterOne.export_state(),
 		"samples": MHSamples.export_state(),
+		"journal": MHJournal.export_state(),
 		"resupply": {"kg": MHGame.resupply_kg, "count": MHGame.resupply_count, "landers": resupply_landers.duplicate(true)},
 		"mission_control": earth_link.export_state() if earth_link != null else {},
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
@@ -1190,6 +1199,7 @@ func _restore_pending_habitat() -> void:
 	MHGame.pending_save_state = {}
 	MHChapterOne.load_state(state.get("chapter_one", {}) as Dictionary, state.has("chapter_one"))
 	MHSamples.load_state(state.get("samples", {}) as Dictionary)
+	MHJournal.load_state(state.get("journal", {}) as Dictionary)
 	# Older saves have no tutorial: first-time hints as before.
 	_tutorial_state = state.get("tutorial", {"mode": "hints"}) as Dictionary
 	MHGame.tutorial_mode = str(_tutorial_state.get("mode", "hints"))
