@@ -13,6 +13,7 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
 const HABITAT_FOOD := preload("res://scripts/habitat_food.gd")
+const HABITAT_WASTE := preload("res://scripts/habitat_waste.gd")
 
 const STEP_HOURS := 0.1
 ## Shedding order when power runs short: 1 survives longest.
@@ -36,6 +37,7 @@ var builder: Node
 ## Act 2: the crew as people and the hazards (radiation, breaches, breakdowns).
 var life: RefCounted
 var food: RefCounted   # crops, harvests, produce and the diet (habitat_food.gd)
+var waste: RefCounted  # rubbish, recycling and compost (habitat_waste.gd)
 
 # ---- stores (saved) ----
 var battery_kwh := 0.0
@@ -45,7 +47,7 @@ var o2_reserve_kg := 0.0
 # The chains' own stores (docs/survival-systems.md §9 phase 1, §12.1): water_l
 # is the clean tank and food_kg all the food, produce_kg the grown part of it.
 # A store that's full vents overboard (lost), noted per sol in `vented`.
-const STORE_KEYS := ["grey_l", "urine_l", "raw_l", "brine_l", "co2_kg", "h2_kg", "ch4_kg", "produce_kg", "compost_kg", "nutrients_kg", "spares"]
+const STORE_KEYS := ["grey_l", "urine_l", "raw_l", "brine_l", "co2_kg", "h2_kg", "ch4_kg", "produce_kg", "compost_kg", "nutrients_kg", "spares", "waste_kg", "plastics_kg", "metals_kg", "organics_kg"]
 const H2_PER_O2 := 0.126       # kg hydrogen per kg oxygen split from water
 var stores := {}
 var vented := {}
@@ -143,6 +145,7 @@ func _init(owner: Node = null) -> void:
 	_rng.randomize()
 	life = HABITAT_LIFE.new(self)
 	food = HABITAT_FOOD.new(self)
+	waste = HABITAT_WASTE.new(self)
 	stores = _empty_stores()
 
 static func _empty_stores() -> Dictionary:
@@ -180,7 +183,7 @@ func invalidate() -> void:
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
 		"habitat_temp": habitat_temp, "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
-		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "extra_store_l": extra_store_l, "extra_store_o2": extra_store_o2, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "food": food.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust, "stores": stores.duplicate()}
+		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "extra_store_l": extra_store_l, "extra_store_o2": extra_store_o2, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "food": food.save(), "waste": waste.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust, "stores": stores.duplicate()}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -212,6 +215,7 @@ func load(state: Dictionary) -> void:
 	research_boost_hours = float(state.get("research_boost_hours", 0.0))
 	life.load(state.get("life", {}))
 	food.load(state.get("food", {}))
+	waste.load(state.get("waste", {}))
 	invalidate()
 
 # ---------- what is in the habitat ----------
@@ -648,7 +652,8 @@ func step(dt: float, hour: float) -> void:
 	water_l = clampf(water_l + water_made + water_recovered - water_used, 0.0, float(inv.capacity.water))
 	# Crops grow over sols and are harvested in batches; the crew eat fresh
 	# produce first (habitat_food.gd). food_in is the trays' average.
-	food.step(dt, inv, powered.tiers, crew)
+	var fed: Dictionary = food.step(dt, inv, powered.tiers, crew)
+	waste.step(dt, inv, powered.tiers, crew, float(fed.eaten) - float(fed.eaten_fresh))
 	food_grown = food.rate(inv, powered.tiers) * per_sol
 	# Printing: running printers make material while tier 4 has power and an intake feeds them.
 	if powered.tiers[TIER_OTHER]: printed_kg += print_rate(inv) * per_sol
@@ -1049,6 +1054,8 @@ func warnings() -> Array:
 		out.append({"level": "info", "text": "Urine venting: no urine processor, so %d L a sol of water is lost." % roundi(float(lost.urine_l))})
 	if float(lost.get("raw_l", 0.0)) > .5:
 		out.append({"level": "warn", "text": "Meltwater spilling: %s, so the ice drill's water is wasted." % ("the water processor can't keep up" if processing else "no water processor to clean it")})
+	if float(stores.waste_kg) >= waste.PILE_ALERT_KG:
+		out.append({"level": "info", "text": "Rubbish piling up (%d kg): a waste sorter sorts it, so recycling hoppers can turn the packaging into fabricator feedstock." % roundi(float(stores.waste_kg))})
 	var crops: Dictionary = food.summary(inv)
 	if int(crops.ripe) > 0:
 		out.append({"level": "info", "text": "%d %s ripe: harvest %s (E) within %d sols, or a harvest cart in the room does it." % [int(crops.ripe), "trays are" if int(crops.ripe) > 1 else "tray is", "them" if int(crops.ripe) > 1 else "it", roundi(food.RIPE_SOLS)]})

@@ -10,8 +10,8 @@ extends RefCounted
 ##   (E, or a harvest cart in the same room does it), and goes over if left
 ##   RIPE_SOLS. G on the tray picks the next crop.
 ## - A seedling station anywhere gives each replanting a head start.
-## - Earth's nutrients run down as crops grow; with none left (and no nutrient
-##   mixer) trays grow at half speed.
+## - Earth's nutrients run down as crops grow; with none left trays grow at
+##   half speed. The nutrient mixer makes more from compost (habitat_waste.gd).
 ## - Produce keeps SHELF_SOLS, or FREEZER_SOLS with a powered galley freezer.
 ## - Eating mostly rations wears on the crew: fresh_share feeds the
 ##   "Fresh food" wellbeing need (habitat_life.gd).
@@ -28,7 +28,8 @@ const SHELF_SOLS := 10.0
 const FREEZER_SOLS := 60.0
 const SEEDLING_START := .25      # a transplanted seedling is a quarter grown
 const NUTRIENT_PER_KG := .02     # kg of nutrients per kg of crop grown
-const MIXER_KG := .25            # nutrients a powered mixer makes a sol
+const MIXER_KG := .25            # nutrients a powered mixer makes a sol, from twice that in compost
+const INEDIBLE := {"greens": .25, "potatoes": .6}   # stems, roots and vines, per kg harvested: to the compost
 const START_NUTRIENTS_KG := 20.0
 const FRESH_TARGET := .25        # a quarter of what's eaten fresh keeps menu fatigue away
 const DIET_SOLS := 10.0          # how far back the crew's diet is remembered
@@ -67,8 +68,7 @@ func _has(inv: Dictionary, id: String, powered: Dictionary = {}) -> bool:
 
 ## Growth speed before the crew's work: nutrients, then discoveries.
 func speed(inv: Dictionary, powered: Dictionary) -> float:
-	var fed := float(sim.stores.nutrients_kg) > 0.0 or _has(inv, "nutrient_mixer", powered)
-	return (1.0 if fed else .5) * MHSamples.bonus("food")
+	return (1.0 if float(sim.stores.nutrients_kg) > 0.0 else .5) * MHSamples.bonus("food")
 
 ## Food the trays make on average, kg a sol (the readiness and the HUD).
 func rate(inv: Dictionary, powered: Dictionary = {}, all_on := false) -> float:
@@ -81,14 +81,17 @@ func rate(inv: Dictionary, powered: Dictionary = {}, all_on := false) -> float:
 	return total
 
 ## One step: crops grow, ripe ones are picked by a cart or go over, produce
-## spoils, and the crew eat (fresh first). Returns {eaten_fresh, harvested_kg}.
+## spoils, and the crew eat (fresh first). Returns {eaten, eaten_fresh, harvested_kg}.
 func step(dt: float, inv: Dictionary, powered: Dictionary, crew: int) -> Dictionary:
 	var per_sol := dt / 24.0
 	var growers := _growers(inv)
 	if not nutrients_delivered and not growers.is_empty():
 		nutrients_delivered = true   # the trays come with Earth's nutrients
 		sim.stores.nutrients_kg = float(sim.stores.nutrients_kg) + START_NUTRIENTS_KG
-	if _has(inv, "nutrient_mixer", powered): sim.stores.nutrients_kg = float(sim.stores.nutrients_kg) + MIXER_KG * per_sol
+	if _has(inv, "nutrient_mixer", powered):
+		var compost := minf(float(sim.stores.compost_kg), MIXER_KG * 2.0 * per_sol)
+		sim.stores.compost_kg = float(sim.stores.compost_kg) - compost
+		sim.stores.nutrients_kg = float(sim.stores.nutrients_kg) + compost * .5
 	var pace: float = speed(inv, powered) * sim.life.food_speed()
 	var carts := {}
 	for item in inv.items:
@@ -103,8 +106,8 @@ func step(dt: float, inv: Dictionary, powered: Dictionary, crew: int) -> Diction
 				continue
 			t.ripe_h = float(t.ripe_h) + dt
 			if float(t.ripe_h) >= RIPE_SOLS * 24.0:
-				# Gone over: to the compost (phase 5), and replanted.
-				sim.stores.compost_kg = float(sim.stores.compost_kg) + float(crop.kg) * float(GROWERS[str(item.id)])
+				# Gone over: to the compost hopper (habitat_waste.gd), and replanted.
+				sim.stores.organics_kg = float(sim.stores.organics_kg) + float(crop.kg) * float(GROWERS[str(item.id)])
 				_replant(t, inv)
 			continue
 		if not (bool(item.on) and bool(powered.get(int(item.tier), true))): continue
@@ -131,7 +134,7 @@ func step(dt: float, inv: Dictionary, powered: Dictionary, crew: int) -> Diction
 	sim.food_kg = maxf(0.0, float(sim.food_kg) - eaten)
 	_sync_produce()
 	if want > 0.0: fresh_share += (fresh / want - fresh_share) * minf(1.0, per_sol / DIET_SOLS)
-	return {"eaten_fresh": fresh, "harvested_kg": picked}
+	return {"eaten": eaten, "eaten_fresh": fresh, "harvested_kg": picked}
 
 func _replant(t: Dictionary, inv: Dictionary) -> void:
 	t.crop = str(t.get("next", t.crop))
@@ -143,6 +146,7 @@ func _pick(pid: String, scale: float) -> float:
 	var kg := float(CROPS[str(t.crop)].kg) * scale
 	batches.append({"crop": str(t.crop), "kg": kg, "at": float(sim.hours_run)})
 	harvested[str(t.crop)] = float(harvested.get(str(t.crop), 0.0)) + kg
+	sim.stores.organics_kg = float(sim.stores.organics_kg) + kg * float(INEDIBLE.get(str(t.crop), .3))
 	sim.food_kg = float(sim.food_kg) + kg
 	_sync_produce()
 	_replant(t, sim.inventory())
@@ -154,7 +158,7 @@ func _spoil(inv: Dictionary, powered: Dictionary) -> void:
 		if float(sim.hours_run) - float(batch.at) <= keeps: continue
 		batches.erase(batch)
 		sim.food_kg = maxf(0.0, float(sim.food_kg) - float(batch.kg))
-		sim.stores.compost_kg = float(sim.stores.compost_kg) + float(batch.kg)
+		sim.stores.organics_kg = float(sim.stores.organics_kg) + float(batch.kg)
 
 func _sync_produce() -> void:
 	var total := 0.0

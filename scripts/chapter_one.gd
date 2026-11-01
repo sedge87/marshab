@@ -27,8 +27,6 @@ const ZONE_STOCK := {"airlock": "airlock", "solar": "solar_array", "reactor": "s
 const ZONE_STOCK_LABELS := {"airlock": "Airlock", "solar_array": "Solar Array", "surface_reactor": "Compact Reactor", "ice_drill": "Ice Extractor", "regolith_intake": "Regolith Intake", "atmosphere_processor": "Atmosphere Processor"}
 const STEPS := ["ice", "water", "oxygen", "food"]
 const STEP_LABELS := {"ice": "Ice found", "water": "Water self-sufficient", "oxygen": "Oxygen self-sufficient", "food": "Food self-sufficient"}
-## Feedstock a working recycler returns a sol (kg), while anyone lives aboard.
-const RECYCLE_KG := {"waste_sorting_unit": 3.0, "recycling_hopper_plastics": 1.5, "recycling_hopper_metals": 1.5}
 ## A core this rich is a find (the same line GAR-Y flags at).
 const GOOD_CORE := .25
 ## Under this a core comes up dry (the extractor's own limit).
@@ -462,10 +460,7 @@ static func tick(hours: float, builder: Object) -> Array:
 				job = {}
 				out.append({"id": "made", "title": "Fabricator: %s made" % label(id), "text": "It's on the build bar's Unpacked tab now: place as many as your stores allow.", "tone": "valid"})
 				for learned in learn_after("first_job"): out.append(_plan_message(learned))
-	# Recycling tops the feedstock up.
-	if crew > 0:
-		for item in builder.get("placed_interior"):
-			feedstock_kg += float(RECYCLE_KG.get(str(item.get("id", "")), 0.0)) * hours / 24.0
+	# Recycling tops the feedstock up from what the crew throw away (habitat_waste.gd).
 	# Plans Mission Control sends on a given sol.
 	var sol := floori(now / 24.0) + 1
 	for event in ["sol_10", "sol_30"]:

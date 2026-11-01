@@ -141,11 +141,11 @@ func _initialize() -> void:
 	_check(not picked.is_empty() and is_equal_approx(float(farm_sim.food_kg) - before_kg, 2.4) and float(farm_sim.stores.produce_kg) >= 2.4, "E harvests a tray: 2.4 kg of fresh greens")
 	_check(str(farm_sim.food.cycle_next(tray_id)) == "potatoes" and str(farm_sim.food.tray(tray_id).crop) == "potatoes", "G on a just-harvested tray plants potatoes")
 	farm_sim.run_hours(4.0 * 24.0, 8.0)
-	_check(int(farm_sim.food.summary(farm_sim.inventory()).ripe) == 0 and float(farm_sim.stores.compost_kg) > 0.0, "ripe crops left 3 sols go over, to the compost")
+	_check(int(farm_sim.food.summary(farm_sim.inventory()).ripe) == 0 and float(farm_sim.stores.organics_kg) > 12.0, "ripe crops left 3 sols go over, to the compost pile")
 	(farm_sim.food.batches as Array).append({"crop": "greens", "kg": 1.0, "at": float(farm_sim.hours_run) - 11.0 * 24.0})
-	var compost_before := float(farm_sim.stores.compost_kg)
+	var compost_before := float(farm_sim.stores.organics_kg)
 	farm_sim.run_hours(1.0, 8.0)
-	_check(float(farm_sim.stores.compost_kg) > compost_before, "produce older than 10 sols spoils")
+	_check(float(farm_sim.stores.organics_kg) > compost_before + .9, "produce older than 10 sols spoils")
 	var cart_kit := _full_kit(); cart_kit["harvest_cart"] = ["hydroponics", 1]
 	var carted := _habitat("plains", 6, cart_kit)
 	carted.simulation().random_storms = false
@@ -155,6 +155,24 @@ func _initialize() -> void:
 	var food_copy := _habitat("plains", 6, _full_kit())
 	food_copy.simulation().load(food_save)
 	_check(str(food_copy.simulation().food.tray(tray_id).next) == "potatoes", "crops survive save and load")
+
+	# Phase 5, waste: packaging and trash pile up unsorted; sorted, they're
+	# recycled into feedstock or composted for the nutrient mixer.
+	_check(float(farm_sim.stores.waste_kg) > 10.0 and not (farm_sim.warnings() as Array).filter(func(w): return str(w.text).contains("Rubbish piling up")).is_empty(), "without a sorter the rubbish piles up (%.0f kg)" % farm_sim.stores.waste_kg)
+	var bin_kit := _full_kit()
+	for id in ["waste_sorting_unit", "recycling_hopper_plastics", "recycling_hopper_metals"]: bin_kit[id] = ["engineering", 1]
+	bin_kit["compost_hopper"] = ["hydroponics", 1]; bin_kit["nutrient_mixer"] = ["hydroponics", 1]
+	var bins := _habitat("plains", 6, bin_kit)
+	bins.simulation().random_storms = false
+	bins.simulation().food.trays = {}
+	bins.simulation().stores.organics_kg = 20.0
+	bins.simulation().run_hours(4.0 * 24.0, 8.0)
+	var bin_sim: RefCounted = bins.simulation()
+	_check(float(bin_sim.waste.recycled_kg) > 5.0 and float(bin_sim.stores.waste_kg) < 1.0, "sorted, the packaging becomes feedstock (%.1f kg in 4 sols)" % bin_sim.waste.recycled_kg)
+	_check(float(bin_sim.stores.organics_kg) < 20.0 and float(bin_sim.stores.nutrients_kg) > 20.0 - 4.0 * 6.0 * .02 * 2.4, "the compost hopper and mixer turn organics into nutrients")
+	var bin_copy := _habitat("plains", 6, bin_kit)
+	bin_copy.simulation().load(bin_sim.save())
+	_check(is_equal_approx(float(bin_copy.simulation().waste.recycled_kg), float(bin_sim.waste.recycled_kg)), "waste survives save and load")
 
 	# A dust storm: solar drops, loads are shed, and life support goes last.
 	sim.start_storm(3.0)

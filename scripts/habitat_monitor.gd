@@ -238,6 +238,9 @@ func _fill_flows() -> void:
 	var food_net := float(flows.food_grown) - float(flows.food_eaten)
 	_flows_panel.add_child(_line("Food: %d kg · grows %.1f, eats %.1f kg a sol%s" % [roundi(float(snap.food_kg)), float(flows.food_grown), float(flows.food_eaten),
 		" · %s left" % _sols(float(snap.food_kg) / -food_net) if food_net < 0.0 and crew > 0 else ""], MHStyle.TEXT_PRIMARY, 15))
+	if float(s.stores.waste_kg) + float(s.stores.plastics_kg) + float(s.stores.organics_kg) + float(s.stores.compost_kg) > .5:
+		_flows_panel.add_child(_line("Waste: %d kg unsorted · plastics %d · metals %d · organics %d · compost %.1f kg · %.1f kg feedstock recycled" % [roundi(float(s.stores.waste_kg)), roundi(float(s.stores.plastics_kg)), roundi(float(s.stores.metals_kg)),
+			roundi(float(s.stores.organics_kg)), float(s.stores.compost_kg), float(s.waste.recycled_kg)], MHStyle.WARN if float(s.stores.waste_kg) >= s.waste.PILE_ALERT_KG else MHStyle.TEXT_SECONDARY, 15))
 	var crops: Dictionary = s.food.summary(inv)
 	if int(crops.growing) + int(crops.ripe) > 0:
 		_flows_panel.add_child(_line("Crops: %d growing, %d ripe · fresh %.1f kg · nutrients %.1f kg · %d%% of meals fresh" % [int(crops.growing), int(crops.ripe), float(crops.fresh_kg), float(crops.nutrients_kg), roundi(float(crops.fresh_share) * 100.0)],
