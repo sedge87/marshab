@@ -116,6 +116,33 @@ func _initialize() -> void:
 	var bay := builder.window_target_at(Vector3(3.0 * BuildController.CELL, builder.habitat_base_y + 1.4, -6.0 * BuildController.CELL - BuildController.HALF_CELL + .1))
 	_check(not bay.is_empty() and builder.window_invalid_reason(bay).is_empty(), "a corridor's outside wall takes a window")
 
+	# ---- 45° legs ----
+	builder.zones = []; builder.interior_doors = []; builder._history = []
+	var quarters := _room("living", [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)])
+	var stores := _room("storage", [Vector2i(8, 7), Vector2i(9, 7)])
+	_click(Vector2i(0, 0))
+	builder.corridor_diagonal = true
+	_check(not str(builder._corridor_diagonal_leg(Vector2i(4, 4)).reason).is_empty(), "a 45° leg can't leave a room directly")
+	builder.corridor_diagonal = false
+	_click(Vector2i(4, 0))
+	builder.corridor_diagonal = true
+	_check(str(builder._corridor_diagonal_leg(Vector2i(2, 3)).reason).begins_with("Too sharp"), "a 45° leg can't double back")
+	var diagonal := builder._corridor_diagonal_leg(Vector2i(8, 3))
+	_check(str(diagonal.reason).is_empty() and diagonal.tip == Vector2i(8, 3) and (diagonal.outline as PackedVector2Array).size() == 6, "a 45° leg runs from the next square on to the cursor (%s · %s)" % [diagonal.reason, diagonal.outline])
+	_click(Vector2i(8, 3))
+	_check(_corridors().size() == 2 and _corridors().back().has("outline") and not builder.corridor_diagonal, "it's placed as a 45° piece; the next leg is straight again")
+	_check(builder._corridor_end_connects(Vector2i(4, 0), Vector2i(1, 0)), "the straight leg opens into the 45° piece")
+	_check(not str(builder._corridor_leg(Vector2i(5, 3)).reason).is_empty(), "out of a 45° leg the corridor carries straight on")
+	_click(Vector2i(8, 7))
+	_check(_corridors().size() == 3 and not builder.corridor_drawing, "straight on into the stores, which ends it")
+	_check(builder._corridor_end_connects(Vector2i(8, 4), Vector2i(0, -1)) and builder._has_interior_door(Vector2i(8, 6), Vector2i(0, 1)), "joined to the 45° piece, with a hatch at the stores")
+	inv = builder.simulation().inventory()
+	map = builder.simulation().life.sections(inv)
+	rooms = inv.rooms
+	var corridor_sections: Array = _corridors().map(func(z): return map[index_of.call(rooms, z)])
+	_check(corridor_sections[0] == corridor_sections[1] and corridor_sections[1] == corridor_sections[2], "the three legs share one air (%s)" % [map])
+	_check(map[index_of.call(rooms, quarters)] != corridor_sections[0] and map[index_of.call(rooms, stores)] != corridor_sections[0], "the hatches keep both rooms apart")
+
 	if failures == 0:
-		print("Corridor drawing test passed: room to room with a bend, R flips it, hatches, walls, air, undo by leg, T's, sealed ends, U-turns, no self-crossing, older saves, side doors, open walls, windows.")
+		print("Corridor drawing test passed: 45° legs, room to room with a bend, R flips it, hatches, walls, air, undo by leg, T's, sealed ends, U-turns, no self-crossing, older saves, side doors, open walls, windows.")
 	quit(1 if failures > 0 else 0)

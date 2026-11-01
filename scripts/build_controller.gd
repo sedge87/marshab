@@ -156,7 +156,7 @@ const ZONE_INFO := {
 	"medical":{"cat":"rooms","icon":"heart-pulse","rule":"Drag an area","desc":"A small clinical bay for examination and medical supplies."},
 	"waste_management":{"cat":"rooms","icon":"recycle","rule":"Merged into Storage & Recycling","desc":"Merged into Storage & Recycling (31 Oct); older saves convert on load."},
 	"communications":{"cat":"rooms","icon":"radio","rule":"Drag an area","desc":"Plan missions, map the site and keep in touch with Earth and the rovers."},
-	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Click to start · click each bend · R flips","desc":"A sealed passage. Click to start (on a room to leave from it), click to place each leg, and click a room to finish: it gets a hatch there. Right-click ends it anywhere. Click an exact 45° free-form wall for a rotated connector."},
+	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Click to start · click each bend · R flips · T 45°","desc":"A sealed passage. Click to start (on a room to leave from it), click to place each leg, and click a room to finish: it gets a hatch there. T while drawing makes the next leg 45°. Right-click ends it anywhere. Click an exact 45° free-form wall for a rotated connector."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates · click 45° wall","desc":"The way in and out. Click an exact 45° free-form wall for a rotated airlock; otherwise the inner end must touch a room."},
 	"shield_regolith":{"cat":"structure","icon":"shield","rule":"Click an outside wall","desc":"Bags of Mars soil against an outside wall, against radiation. Printed by the regolith printer. You can also add it from inside: Furnish room, aim at the wall."},
 	"shield_water":{"cat":"structure","icon":"droplets","rule":"Click an outside wall","desc":"A water tank panel on an outside wall: water is one of the best radiation shields. You can also add it from inside: Furnish room, aim at the wall."},
@@ -261,6 +261,12 @@ var corridor_anchor := Vector2i.ZERO
 var corridor_zone: Dictionary = {}
 var corridor_flip := false
 var _corridor_last_leg: Dictionary = {}
+## T while drawing: the next leg runs at 45°. A 45° leg is its own free-form
+## corridor piece, so `corridor_tip` (its far square) and `corridor_tip_diagonal`
+## (its direction) say where the next straight leg leaves from.
+var corridor_diagonal := false
+var corridor_tip := Vector2i.ZERO
+var corridor_tip_diagonal := Vector2i.ZERO
 ## Free-form rooms are intentionally a second, isolated placement path.  They
 ## have their own outline and never participate in the old cell-wall logic.
 var room_draw_mode := "rectangle"
@@ -393,6 +399,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				if int(card.get_meta("pick_index",0))==int(event.keycode)-int(KEY_0): (card as Button).pressed.emit()
 		elif build_mode and event.keycode==KEY_R and equipment_id.is_empty() and kind in FREE_SITE_KINDS: _turn_free_site(-PI/12.0 if event.shift_pressed else PI/12.0); MHAudio.sfx("rotate")
 		elif build_mode and event.keycode==KEY_R and equipment_id.is_empty() and kind=="corridor" and corridor_drawing: corridor_flip=not corridor_flip; _preview_key=""; MHAudio.sfx("rotate")
+		elif build_mode and event.keycode==KEY_T and equipment_id.is_empty() and kind=="corridor" and corridor_drawing: corridor_diagonal=not corridor_diagonal; _preview_key=""; MHAudio.sfx("rotate")
 		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="corridor" or kind=="trench"): _rotate_airlock(); _refresh_catalogue()
 		elif build_mode and event.keycode==KEY_ESCAPE:
 			# Escape first cancels an in-progress placement; only an idle planner
@@ -742,14 +749,21 @@ func _corridor_route(a: Vector2i, b: Vector2i, x_first: bool) -> Array:
 func _corridor_leg(target: Vector2i) -> Dictionary:
 	var leg := {"cells": [], "into": {}, "direction": Vector2i.ZERO, "reason": ""}
 	if target.x == 999: leg.reason = "Point at the ground"; return leg
-	var growing := not corridor_zone.is_empty()
-	var from: Vector2i = (corridor_zone.cells as Array).back() if growing else corridor_anchor
+	var after_diagonal := corridor_zone.has("outline")
+	var growing := not corridor_zone.is_empty() and not after_diagonal
+	var from: Vector2i = corridor_tip if after_diagonal else ((corridor_zone.cells as Array).back() if growing else corridor_anchor)
 	var delta := target - from
 	var x_first := absi(delta.x) >= absi(delta.y)
 	if corridor_flip: x_first = not x_first
 	var route := _corridor_route(from, target, x_first)
-	if growing: route.remove_at(0)
-	else:
+	if growing or after_diagonal: route.remove_at(0)
+	if after_diagonal and not route.is_empty():
+		# Out of a 45° leg's far square, straight on along one of its two directions.
+		var first_step: Vector2i = route[0] - from
+		leg.direction = first_step
+		if first_step != Vector2i(corridor_tip_diagonal.x, 0) and first_step != Vector2i(0, corridor_tip_diagonal.y):
+			leg.reason = "Carry straight on out of the 45° leg (R flips the bend)"
+	elif not growing:
 		while not route.is_empty() and _occupied(route[0]):
 			var left: Vector2i = route.pop_front()
 			if not route.is_empty(): leg.direction = route[0] - left
@@ -762,11 +776,54 @@ func _corridor_leg(target: Vector2i) -> Dictionary:
 	if growing and leg.into == corridor_zone: leg.reason = "A corridor can't cross itself"
 	return leg
 
+## The square of one cell, as an outline.
+func _cell_square(cell: Vector2i) -> PackedVector2Array:
+	return _freeform_cell_polygon(cell)
+
+## The next 45° leg towards `target`: {outline, cells, tip, diagonal, reason}.
+## It starts one cell straight on from the corridor's end (so it meets it on a
+## whole cell face) and runs diagonally; its outline is the hull of its two end
+## squares, so its long walls run at 45° along the cell corners and its ends
+## are square, ready for the next straight leg.
+func _corridor_diagonal_leg(target: Vector2i) -> Dictionary:
+	var leg := {"outline": PackedVector2Array(), "cells": [], "tip": Vector2i.ZERO, "diagonal": Vector2i.ZERO, "reason": ""}
+	if target.x == 999: leg.reason = "Point at the ground"; return leg
+	var start := corridor_anchor
+	var travel := Vector2i.ZERO
+	if corridor_zone.has("outline"):
+		leg.reason = "Add a straight leg between two 45° legs"; return leg
+	if corridor_zone.is_empty():
+		if _occupied(corridor_anchor) or not _zone_at_point(Vector2(corridor_anchor) * CELL).is_empty():
+			leg.reason = "Leave the room with a straight leg, then turn 45° (T)"; return leg
+	else:
+		var cells: Array = corridor_zone.cells
+		travel = cells.back() - cells[cells.size() - 2] if cells.size() > 1 else corridor_zone.get("door_direction", Vector2i(0, -1))
+		start = cells.back() + travel
+	var delta := target - start
+	var direction := Vector2i(signi(delta.x), signi(delta.y))
+	var steps := mini(absi(delta.x), absi(delta.y))
+	if steps == 0: leg.reason = "Move the cursor off to one side for a 45° leg"; return leg
+	if travel != Vector2i.ZERO and travel != Vector2i(direction.x, 0) and travel != Vector2i(0, direction.y):
+		leg.reason = "Too sharp: a 45° leg bends off the way the corridor is going"; return leg
+	var finish := start + direction * steps
+	var corners := _cell_square(start) + _cell_square(finish)
+	var hull := Geometry2D.convex_hull(corners)
+	if hull.size() > 1 and hull[0].is_equal_approx(hull[hull.size() - 1]): hull.remove_at(hull.size() - 1)
+	leg.outline = hull
+	leg.cells = _freeform_cells(hull)
+	leg.tip = finish
+	leg.diagonal = direction
+	leg.reason = freeform_invalid_reason(hull)
+	return leg
+
 func _corridor_click() -> void:
 	if not corridor_drawing:
 		if hover.x == 999: return
 		corridor_drawing = true; corridor_anchor = hover; corridor_zone = {}; corridor_flip = false; _preview_key = ""
 		MHAudio.sfx("ui_click", -6.0)
+		return
+	if corridor_diagonal:
+		_corridor_click_diagonal()
 		return
 	var leg := _corridor_leg(hover)
 	var cells: Array = leg.cells
@@ -781,7 +838,7 @@ func _corridor_click() -> void:
 		_flash_notice("invalid", "Can't place here", reason + ".")
 		return
 	if zones.is_empty(): habitat_base_y = _proposed_base_y(cells)
-	if corridor_zone.is_empty():
+	if corridor_zone.is_empty() or corridor_zone.has("outline"):
 		var facing: Vector2i = leg.direction
 		if facing == Vector2i.ZERO: facing = cells[1] - cells[0] if cells.size() > 1 else airlock_direction
 		corridor_zone = {"kind": "corridor", "cells": cells, "door_direction": facing, "cost": _zone_cost(cells)}
@@ -805,8 +862,26 @@ func _corridor_click() -> void:
 	corridor_flip = false
 	_preview_key = ""
 
+func _corridor_click_diagonal() -> void:
+	var leg := _corridor_diagonal_leg(hover)
+	if not str(leg.reason).is_empty():
+		_flash_notice("invalid", "Can't place here", str(leg.reason) + ".")
+		return
+	var outline: PackedVector2Array = leg.outline
+	if zones.is_empty(): habitat_base_y = _proposed_freeform_base_y(outline)
+	var zone := {"kind": "corridor", "cells": leg.cells, "outline": outline, "door_direction": leg.diagonal, "cost": _freeform_cost(outline)}
+	zones.append(zone); _history.append({"type": "zone", "zone": zone}); _learn("corridor")
+	corridor_zone = zone
+	corridor_tip = leg.tip
+	corridor_tip_diagonal = leg.diagonal
+	corridor_diagonal = false   # the next leg is straight again; T for another 45°
+	_rebuild()
+	MHAudio.sfx("place")
+	_preview_key = ""
+
 func _end_corridor_drawing() -> void:
 	corridor_drawing = false
+	corridor_diagonal = false
 	corridor_zone = {}
 	_corridor_last_leg = {}
 	_preview_key = ""
@@ -820,6 +895,12 @@ func _corridor_preview() -> void:
 		_draw_preview(start, start_reason.is_empty())
 		_update_hologram_ui([], start_reason)
 		return
+	if corridor_diagonal:
+		var diagonal := _corridor_diagonal_leg(hover)
+		_corridor_last_leg = {}
+		_draw_corridor_diagonal_preview(diagonal.outline, str(diagonal.reason).is_empty())
+		_update_hologram_ui([], str(diagonal.reason))
+		return
 	var leg := _corridor_leg(hover)
 	_corridor_last_leg = leg
 	var reason := str(leg.reason)
@@ -827,17 +908,35 @@ func _corridor_preview() -> void:
 	_draw_preview(leg.cells, reason.is_empty())
 	_update_hologram_ui(leg.cells, reason)
 
+## The ghost of a 45° leg: its outline, filled, and an arrow out of its far end.
+func _draw_corridor_diagonal_preview(outline: PackedVector2Array, valid: bool) -> void:
+	var key := "diagonal|%s|%s" % [outline, valid]
+	if key == _preview_key: return
+	_preview_key = key
+	for child in preview.get_children(): child.queue_free()
+	if outline.size() < 3: return
+	_ensure_preview_materials()
+	var fill := _preview_valid_material if valid else _preview_invalid_material
+	var edge := _freeform_marker_material(MHStyle.HOLO_VALID if valid else MHStyle.HOLO_INVALID)
+	var base_y := habitat_base_y if not zones.is_empty() else _proposed_freeform_base_y(outline)
+	for index in range(outline.size()):
+		_add_freeform_preview_strip(outline[index], outline[(index + 1) % outline.size()], base_y, edge)
+	var fill_mesh := ImmediateMesh.new(); fill_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, fill)
+	for index in Geometry2D.triangulate_polygon(outline): fill_mesh.surface_add_vertex(Vector3(outline[index].x, base_y + .045, outline[index].y))
+	fill_mesh.surface_end()
+	var polygon := MeshInstance3D.new(); polygon.mesh = fill_mesh; polygon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; preview.add_child(polygon)
+
 ## What each open end of the corridor being drawn will do, on the ghost.
 func _corridor_end_tags(cells: Array) -> void:
 	if not corridor_drawing or cells.is_empty(): return
-	var path: Array = ((corridor_zone.get("cells", []) as Array) + cells) if not corridor_zone.is_empty() else cells
+	var path: Array = ((corridor_zone.get("cells", []) as Array) + cells) if not corridor_zone.is_empty() and not corridor_zone.has("outline") else cells
 	var facing: Vector2i = corridor_zone.get("door_direction", _corridor_last_leg.get("direction", Vector2i.ZERO))
 	if facing == Vector2i.ZERO: facing = path[1] - path[0] if path.size() > 1 else airlock_direction
 	var draft := {"kind": "corridor", "cells": path, "door_direction": facing}
 	for end in _corridor_ends(draft):
 		var cell: Vector2i = end[0]
 		# The start of a corridor already placed is settled; tag only what this leg changes.
-		if not corridor_zone.is_empty() and not cells.has(cell): continue
+		if not corridor_zone.is_empty() and not corridor_zone.has("outline") and not cells.has(cell): continue
 		var other := _zone_across(cell, end[1])
 		var text := "SEALED END"
 		if _mergeable_room(other): text = "HATCH · %s" % str(ZONE_TYPES[str(other.kind)].label).to_upper()
@@ -6858,11 +6957,14 @@ func _update_hologram_ui(cells: Array,reason: String, angled_mount: Dictionary =
 		placing_delta.text=("−%s → %s" % [MHStyle.kg(earth),MHStyle.kg(after)] + ("  (%s printed)" % MHStyle.kg(cost - earth) if earth < cost else "")) if not cells.is_empty() else ""
 		placing_delta.add_theme_color_override("font_color",MHStyle.DANGER if after<0 else (MHStyle.WARN if after<MHGame.cargo_budget()*.1 else MHStyle.accent))
 		if not reason.is_empty(): state="invalid"; message=reason
+		elif kind=="corridor" and corridor_diagonal:
+			state="valid"; message="45° leg · click to place · T back to straight"
 		elif kind=="corridor":
 			state="valid"
 			if not corridor_drawing: message="Click to start · start on a room to leave from it"; placing_delta.text=""
+			elif corridor_diagonal: message="45° leg · click to place · T back to straight" if reason.is_empty() else reason
 			elif cells.is_empty(): message="Click here to finish · right-click ends it"
-			else: message="%d m · click to place this leg · R flips the bend · right-click ends" % (cells.size()*int(CELL))
+			else: message="%d m · click to place this leg · R flips the bend · T for 45° · right-click ends" % (cells.size()*int(CELL))
 		elif not cells.is_empty():
 			var bounds:=_cell_bounds(cells)
 			state="valid"; message="%d %s · %d × %d m" % [cells.size(),"cell" if cells.size()==1 else "cells",bounds.size.x*int(CELL),bounds.size.y*int(CELL)]
