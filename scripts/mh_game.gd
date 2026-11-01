@@ -117,19 +117,29 @@ const SURPRISE_LABELS := {"off": "Off", "rare": "Rare", "usual": "Usual", "often
 const SURPRISE_SCALE := {"off": 0.0, "rare": 0.5, "usual": 1.0, "often": 2.0}
 ## The body options. Fatigue stays out of the menus until it's built (step 10).
 const CHALLENGE_SWITCHES := ["radiation", "injuries"]
-const CHALLENGE_LABELS := {"fatigue": "Fatigue", "radiation": "Radiation", "injuries": "Injuries", "surprises": "Surprises"}
+const CHALLENGE_LABELS := {"fatigue": "Fatigue", "radiation": "Radiation", "injuries": "Injuries", "surprises": "Surprises", "wear": "Wear"}
+## The Wear pace slider (habitat_wear.gd): how fast machines need servicing, x the usual.
+const WEAR_MIN := .5
+const WEAR_MAX := 2.0
+const WEAR_STEP := .25
 const CHALLENGE_NOTES := {
 	"fatigue": "Long days slow you down. Sleep clears it. Never locks you out.",
 	"radiation": "Solar storms add up to a dose for the crew. Shelter and shielding keep it down.",
 	"injuries": "Hazards can hurt the crew, and the medical bay treats them.",
 	"surprises": "How often something unexpected goes wrong: solar storms, breaches, breakdowns. Always with time to respond. Dust storms come whatever you choose.",
+	"wear": "How fast filters clog and machines wear, so how often each needs servicing with a spares kit. Usual is every few sols.",
 }
+
+## "Usual (every few sols)", "×1.5 (faster)", for the slider and save cards.
+static func wear_label(pace: float) -> String:
+	if is_equal_approx(pace, 1.0): return "Usual"
+	return "×%s (%s)" % [str(snappedf(pace, .01)), "faster" if pace > 1.0 else "slower"]
 static var challenge := default_challenge()
 ## Set when the debug panel changes an option; saved, so bug reports show it.
 static var challenge_debugged := false
 
 static func default_challenge() -> Dictionary:
-	return {"fatigue": false, "radiation": false, "injuries": false, "surprises": "rare"}
+	return {"fatigue": false, "radiation": false, "injuries": false, "surprises": "rare", "wear": 1.0}
 
 ## Whether a body option is on. Only Survival can hurt anyone, so Freedom,
 ## Creative and Missions (which set their own hazards) never count it.
@@ -144,8 +154,8 @@ static func surprise_scale() -> float:
 
 ## Which options this mode offers: Survival all, Freedom surprises only.
 static func challenge_options() -> Array:
-	if game_mode == "survival": return ["surprises"] + CHALLENGE_SWITCHES
-	if game_mode == "freedom": return ["surprises"]
+	if game_mode == "survival": return ["surprises", "wear"] + CHALLENGE_SWITCHES
+	if game_mode == "freedom": return ["surprises", "wear"]
 	return []
 
 ## During a game: turns an option on, or raises the surprise level. Refuses
@@ -157,6 +167,11 @@ static func raise_challenge(option: String, value: Variant) -> bool:
 		var to := SURPRISE_LEVELS.find(str(value))
 		if to <= now: return false
 		challenge.surprises = str(value)
+		return true
+	if option == "wear":
+		var pace := clampf(float(value), WEAR_MIN, WEAR_MAX)
+		if pace <= float(challenge.get("wear", 1.0)) + .001: return false
+		challenge.wear = pace
 		return true
 	if bool(challenge.get(option, false)) or not bool(value): return false
 	challenge[option] = true
@@ -175,6 +190,7 @@ static func start_new_challenge() -> void:
 	if last is Dictionary:
 		for key in challenge: challenge[key] = (last as Dictionary).get(key, challenge[key])
 	if not SURPRISE_LEVELS.has(str(challenge.surprises)): challenge.surprises = "rare"
+	challenge.wear = clampf(float(challenge.wear), WEAR_MIN, WEAR_MAX)
 
 static func remember_challenge() -> void:
 	var values := settings()
@@ -194,6 +210,7 @@ static func challenge_from_state(state: Dictionary) -> Dictionary:
 	if saved is Dictionary:
 		for key in out: out[key] = (saved as Dictionary).get(key, out[key])
 		if not SURPRISE_LEVELS.has(str(out.surprises)): out.surprises = "rare"
+		out.wear = clampf(float(out.wear), WEAR_MIN, WEAR_MAX)
 		return out
 	var mode := normalise_mode(str(state.get("game_mode", "survival")))
 	out.radiation = mode == "survival"
@@ -205,6 +222,7 @@ static func challenge_from_state(state: Dictionary) -> Dictionary:
 static func challenge_summary(saved: Dictionary, mode: String) -> String:
 	if mode != "survival" and mode != "freedom": return ""
 	var parts := ["%s surprises" % str(SURPRISE_LABELS.get(str(saved.get("surprises", "rare")), "Rare"))]
+	if not is_equal_approx(float(saved.get("wear", 1.0)), 1.0): parts.append("Wear %s" % wear_label(float(saved.get("wear", 1.0))))
 	if mode == "survival":
 		for option in ["fatigue"] + CHALLENGE_SWITCHES:
 			if bool(saved.get(option, false)): parts.append(str(CHALLENGE_LABELS[option]))

@@ -37,6 +37,8 @@ const CHAINS := {
 		{"id": "compost_hopper", "gives": "turns food scraps into compost for the nutrient mixer"}]},
 }
 const ORDER := ["air", "water", "food", "waste"]
+## Which chain each wearing machine belongs to.
+const CHAIN_OF := {"air_recycler": "air", "oxygen_generator": "air", "sabatier_reactor": "air", "water_reclaimer": "water", "urine_processor": "water", "waste_sorting_unit": "waste"}
 
 static func label(link: Dictionary) -> String:
 	if link.has("label"): return str(link.label)
@@ -107,6 +109,11 @@ static func chain(sim: RefCounted, id: String) -> Dictionary:
 			closure = _share(float(flow.get("recycled", 0.0)) + float(flow.get("composted", 0.0)), float(flow.get("made", 0.0)))
 			stores = "unsorted %d kg · plastics %d · metals %d · organics %d · compost %.1f kg · %.1f kg feedstock made" % [roundi(float(s.waste_kg)), roundi(float(s.plastics_kg)), roundi(float(s.metals_kg)), roundi(float(s.organics_kg)), float(s.compost_kg), float(sim.waste.recycled_kg)]
 			if float(s.waste_kg) >= sim.waste.PILE_ALERT_KG: weak = "Rubbish piling up (%d kg): %s." % [roundi(float(s.waste_kg)), "the sorter can't keep up" if count(inv, CHAINS.waste.links[0]) > 0 else "a waste sorter sorts it"]
+	# Wear (habitat_wear.gd): a broken or badly worn part is the weak link.
+	for due in sim.wear.rounds(inv):
+		if str(CHAIN_OF.get(str(due.id), "")) != id: continue
+		if bool(due.broken): weak = "%s broken: the crew repair it with a spares kit." % str(due.label); level = "bad"; break
+		if float(due.wear) >= sim.wear.ALERT_FROM and weak.is_empty(): weak = "%s %d%% worn: %s (a spares kit)." % [str(due.label), roundi(float(due.wear) * 100.0), str(due.job).to_lower()]
 	if crew <= 0: closure = -1.0
 	if not missing_core.is_empty() and id != "waste":
 		weak = "No %s: this is the part the chain can't do without." % missing_core
@@ -126,30 +133,40 @@ static func chains(sim: RefCounted) -> Array:
 static func runway(sim: RefCounted) -> Dictionary:
 	var last: Dictionary = sim.last
 	var crew := int(last.get("crew", 0))
-	var limits: Array = []   # [sols, what]
+	var limits: Array = []   # [sols, what, what happens]
 	if crew > 0:
 		var water_net := float(last.get("water_in", 0.0)) - float(last.get("water_out", 0.0))
-		if water_net < -.01: limits.append([float(sim.water_l) / -water_net, "the water"])
+		if water_net < -.01: limits.append([float(sim.water_l) / -water_net, "the water", "runs out"])
 		var food_net := float(last.get("food_in", 0.0)) - crew * MHResources.setting("food_per_person", 1.8)
-		if food_net < -.01: limits.append([float(sim.food_kg) / -food_net, "the food"])
+		if food_net < -.01: limits.append([float(sim.food_kg) / -food_net, "the food", "runs out"])
 		var o2_net := float(last.get("o2_in", 0.0)) - crew * MHResources.setting("o2_per_person", .84)
-		if o2_net < -.01: limits.append([float(sim.o2_reserve_kg) / -o2_net + .3, "the oxygen"])
+		if o2_net < -.01: limits.append([float(sim.o2_reserve_kg) / -o2_net + .3, "the oxygen", "runs out"])
 		var co2_net := crew * MHResources.setting("co2_per_person", 1.0) - float(last.get("co2_out", 0.0))
 		var cells := int(sim.inventory().cells)
 		if co2_net > .05 and cells > 0:
 			var air_kg: float = cells * float(sim.CELL_VOLUME) * float(sim.AIR_DENSITY)
 			var room: float = maxf(0.0, MHResources.setting("co2_danger_pct", 1.0) - float(sim.co2_pct)) / 100.0 * (air_kg / 29.0) * 44.0
-			limits.append([room / co2_net, "the air (carbon dioxide)"])
+			limits.append([room / co2_net, "the air (carbon dioxide)", "runs out"])
+	# Wear: the first machine to break if nobody services it.
+	var failure: Array = sim.wear.first_failure(sim.inventory())
+	if crew > 0 and not failure.is_empty(): limits.append([float(failure[0]), "the %s" % str(failure[1]), "breaks down"])
 	if limits.is_empty(): return {"sols": INF, "first": "", "text": "Safe: nothing is running down." if crew > 0 else "Nobody aboard."}
 	limits.sort_custom(func(a, b): return float(a[0]) < float(b[0]))
 	var sols := float(limits[0][0])
 	var when := "a month or more" if sols >= 30.0 else ("about %d sols" % roundi(sols) if sols >= 1.5 else ("about a sol" if sols >= .75 else "about %d hours" % maxi(1, roundi(sols * 24.0))))
-	return {"sols": sols, "first": str(limits[0][1]), "text": "Safe for %s. %s runs out first." % [when, str(limits[0][1]).capitalize()]}
+	var what := str(limits[0][1])
+	return {"sols": sols, "first": what, "text": "Safe for %s. %s %s first." % [when, what.substr(0, 1).to_upper() + what.substr(1), str(limits[0][2])]}
 
 # ---------- machine readouts (§8) ----------
 
 ## One line for a machine's own screen and its look-at prompt, or "".
-static func readout(sim: RefCounted, id: String) -> String:
+static func readout(sim: RefCounted, id: String, pid := "") -> String:
+	var line := _readout(sim, id)
+	if pid.is_empty() or not sim.wear.MACHINES.has(id) or not sim.wear.on(): return line
+	var wear := "BROKEN" if sim.life.broken.has(pid) else "wear %d%%" % roundi(sim.wear.level(pid) * 100.0)
+	return wear if line.is_empty() else "%s · %s" % [line, wear]
+
+static func _readout(sim: RefCounted, id: String) -> String:
 	var last: Dictionary = sim.last
 	var s: Dictionary = sim.stores
 	var inv: Dictionary = sim.inventory()

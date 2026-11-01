@@ -204,6 +204,45 @@ func _initialize() -> void:
 	var runway: Dictionary = CHAINS.runway(bin_sim)
 	_check(str(runway.text).begins_with("Safe"), "the runway says how long the base runs alone (%s)" % runway.text)
 	_check(CHAINS.readout(bin_sim, "water_reclaimer").contains("L/h") and CHAINS.readout(bin_sim, "crew_bunk") == "", "machines have a readout; furniture doesn't")
+
+	# Wear and spares kits (core-loop step 7): chapter rules only.
+	_check(is_equal_approx(bin_sim.wear.level(str(bin_sim.inventory().items[0].get("pid", ""))), 0.0), "older rules: nothing wears")
+	MHChapterOne.older_rules = false
+	var worn_sim: RefCounted = _habitat("plains", 6, _full_kit()).simulation()
+	worn_sim.random_storms = false
+	worn_sim.run_hours(1.0, 8.0)
+	_check(int(worn_sim.life.spares) == worn_sim.wear.START_KITS, "the precursor cargo lands %d spares kits (%d)" % [worn_sim.wear.START_KITS, worn_sim.life.spares])
+	var scrubber: Dictionary = (worn_sim.inventory().items as Array).filter(func(i): return str(i.id) == "air_recycler")[0]
+	var scrub_pid := str(scrubber.pid)
+	worn_sim.run_hours(5.0 * 24.0, 8.0)
+	var scrub_wear: float = worn_sim.wear.level(scrub_pid)
+	_check(scrub_wear > .8 and scrub_wear < .9, "an air recycler wears out over about 6 sols (%d%% after 5)" % roundi(scrub_wear * 100.0))
+	_check(worn_sim.wear.factor(scrubber) < 1.0 and worn_sim.wear.factor(scrubber) > .5, "past 70%% it gives less (%.2f)" % worn_sim.wear.factor(scrubber))
+	_check(CHAINS.readout(worn_sim, "air_recycler", scrub_pid).contains("wear %d%%" % roundi(scrub_wear * 100.0)) and (worn_sim.wear.rounds(worn_sim.inventory()) as Array).any(func(r): return str(r.pid) == scrub_pid), "its readout and today's rounds show the wear")
+	worn_sim.wear.service(scrub_pid, "air_recycler")
+	_check(is_zero_approx(worn_sim.wear.level(scrub_pid)) and int(worn_sim.life.spares) == worn_sim.wear.START_KITS - 1, "servicing takes a spares kit and makes it as new")
+	_check(str(worn_sim.wear.service(scrub_pid, "air_recycler").title).contains("no need yet") and int(worn_sim.life.spares) == worn_sim.wear.START_KITS - 1, "a machine that's barely worn isn't serviced")
+	var kits_before := int(worn_sim.life.spares)
+	var saw_broken := false
+	for sol in 10:
+		worn_sim.run_hours(24.0, 8.0)
+		if not (worn_sim.life.broken as Dictionary).is_empty(): saw_broken = true
+	_check(saw_broken and int(worn_sim.life.spares) < kits_before, "left fully worn, machines break and the crew repair them with kits (%d left)" % worn_sim.life.spares)
+	# The Wear pace: a sol at ×2 wears twice as much.
+	worn_sim.life.broken.erase(scrub_pid)
+	var paced := []
+	for pace in [1.0, 2.0]:
+		MHGame.challenge.wear = pace
+		worn_sim.wear.wear[scrub_pid] = 0.0
+		worn_sim.wear.step(24.0, worn_sim.inventory(), {})
+		paced.append(worn_sim.wear.level(scrub_pid))
+	MHGame.challenge.wear = 1.0
+	_check(absf(float(paced[1]) - 2.0 * float(paced[0])) < .01, "the Wear pace option speeds it up (%.2f → %.2f a sol)" % [paced[0], paced[1]])
+	var worn_copy: RefCounted = _habitat("plains", 6, _full_kit()).simulation()
+	worn_copy.load(worn_sim.save())
+	_check(worn_copy.wear.save().hash() == worn_sim.wear.save().hash(), "wear survives save and load")
+	_check(MHChapterOne.fabricable().has(MHChapterOne.SPARES_KIT) and float(MHChapterOne.plan_cost(MHChapterOne.SPARES_KIT).feedstock_kg) > 0.0, "the fabricator makes spares kits from feedstock")
+	MHChapterOne.older_rules = true
 	_check(is_equal_approx(rad_sim.life.risk_pct(600.0), 3.0) and rad_sim.life.dose_text(60.0).contains("60 of 600"), "the career limit: 3 % added risk at 600 mSv")
 
 	# A dust storm: solar drops, loads are shed, and life support goes last.

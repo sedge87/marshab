@@ -19,7 +19,7 @@ func _initialize() -> void:
 	MHGame.challenge = MHGame.default_challenge()
 	_check(str(MHGame.challenge.surprises) == "rare" and not MHGame.challenge.radiation and not MHGame.challenge.injuries and not MHGame.challenge.fatigue, "a new game starts on Rare surprises, the rest off")
 	_check(MHGame.surprise_scale() == 0.5, "Rare halves today's rates")
-	_check(MHGame.challenge_options() == ["surprises", "radiation", "injuries"], "Survival offers surprises, radiation and injuries (fatigue hidden until built)")
+	_check(MHGame.challenge_options() == ["surprises", "wear", "radiation", "injuries"], "Survival offers surprises, wear, radiation and injuries (fatigue hidden until built)")
 
 	# The one-way rule.
 	_check(MHGame.raise_challenge("radiation", true) and MHGame.challenge_on("radiation"), "radiation can be switched on")
@@ -30,7 +30,9 @@ func _initialize() -> void:
 
 	# Modes.
 	MHGame.game_mode = "freedom"
-	_check(MHGame.challenge_options() == ["surprises"], "Freedom offers surprises only")
+	_check(MHGame.challenge_options() == ["surprises", "wear"], "Freedom offers surprises and wear")
+	_check(MHGame.raise_challenge("wear", 1.5) and not MHGame.raise_challenge("wear", 1.0) and is_equal_approx(float(MHGame.challenge.wear), 1.5), "in a game, wear can go faster but not slower")
+	MHGame.challenge.wear = 1.0
 	_check(not MHGame.challenge_on("radiation"), "nothing hurts in Freedom, whatever was set")
 	MHGame.game_mode = "creative"
 	_check(MHGame.challenge_options().is_empty() and MHGame.surprise_scale() == 0.0, "Creative has no options and no surprises")
@@ -39,7 +41,7 @@ func _initialize() -> void:
 	_check(CHALLENGE_UI.build(true) == null, "and show no Challenge rows")
 	MHGame.game_mode = "survival"
 	var rows := CHALLENGE_UI.build(true)
-	_check(rows != null and rows.get_child_count() == 3, "Survival's pause sheet shows three rows")
+	_check(rows != null and rows.get_child_count() == 4, "Survival's pause sheet shows four rows")
 	rows.free()
 
 	# Saving, loading and the debug mark.

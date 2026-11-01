@@ -13,6 +13,7 @@ const MHPalette := preload("res://scripts/mh_palette.gd")
 const SURVEY_MAP := preload("res://scripts/survey_map.gd")
 const INFO_SCREEN := preload("res://scripts/info_screen.gd")
 const HABITAT_CHAINS := preload("res://scripts/habitat_chains.gd")
+const HABITAT_WEAR := preload("res://scripts/habitat_wear.gd")
 
 @export var equipment_id := ""
 var _maps: Dictionary = {}  # action index -> survey map Control
@@ -53,7 +54,7 @@ func interaction_prompt() -> Dictionary:
 	# The machine's readout (habitat_chains.gd): what goes in and out now.
 	var builder := _builder()
 	if builder != null and MHGame.simulation_on():
-		var line := HABITAT_CHAINS.readout(builder.simulation(), equipment_id)
+		var line := HABITAT_CHAINS.readout(builder.simulation(), equipment_id, _placement_id())
 		if not line.is_empty(): prompt.label = "%s · %s" % [prompt.label, line]
 	for action in _actions:
 		prompt[str(action.get("key", "primary"))] = _action_label(action)
@@ -75,6 +76,12 @@ func _level(action: Dictionary) -> int:
 	return clampi(int(_state.get(str(action.get("state", "")), 0)), 0, (action.get("levels", ["Off", "On"]) as Array).size() - 1)
 
 func _action_label(action: Dictionary) -> String:
+	var wear := _wear()
+	if wear != null and (str(action.get("type", "")) == "service" or bool(action.get("service", false))):
+		var w: float = wear.level(_placement_id())
+		var job := str(wear.MACHINES.get(equipment_id, {}).get("job", "Service"))
+		if str(action.get("type", "")) == "service": return "%s · wear %d%%" % [job, roundi(w * 100.0)]
+		if w >= wear.SERVICE_FROM: return "%s · wear %d%%" % [job, roundi(w * 100.0)]
 	match str(action.get("type", "")):
 		"harvest":
 			var crops := _crops()
@@ -124,6 +131,13 @@ func _run(key: String, _actor: Node) -> bool:
 	for index in range(_actions.size()):
 		var action: Dictionary = _actions[index]
 		if str(action.get("key", "primary")) != key: continue
+		# Servicing (habitat_wear.gd): a "service" action, or a filter or hatch
+		# marked service, takes a spares kit when the machine is worn.
+		var wear := _wear()
+		if wear != null and (str(action.get("type", "")) == "service" or (bool(action.get("service", false)) and wear.level(_placement_id()) >= wear.SERVICE_FROM)):
+			var note: Dictionary = wear.service(_placement_id(), equipment_id)
+			if not note.is_empty(): get_tree().call_group("explore_hud", "show_equipment_note", str(note.title), str(note.text))
+			if str(action.get("type", "")) == "service": return true
 		match str(action.get("type", "")):
 			"cycle_slide":
 				var groups: Array = action.get("groups", [])
@@ -986,6 +1000,12 @@ func _inspect(action: Dictionary) -> void:
 	get_tree().call_group("explore_hud", "show_equipment_note", "Habitat status · %s" % MHGame.formatted_sol_time(), "\n".join(lines))
 
 # ---------- helpers ----------
+
+## The habitat's wear (habitat_wear.gd) if this machine wears, else null.
+func _wear() -> RefCounted:
+	if not HABITAT_WEAR.MACHINES.has(equipment_id) or not HABITAT_WEAR.on() or _placement_id().is_empty(): return null
+	var builder := _builder()
+	return builder.simulation().wear if builder != null and MHGame.simulation_on() else null
 
 func _builder() -> BuildController:
 	return get_tree().get_first_node_in_group("habitat_builder") as BuildController if is_inside_tree() else null

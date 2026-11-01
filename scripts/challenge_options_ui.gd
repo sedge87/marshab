@@ -66,6 +66,50 @@ static func _row(option: String, running: bool, changed: Callable) -> Control:
 			ask.visible = false
 			choice.select(str(MHGame.SURPRISE_LABELS[str(MHGame.challenge.surprises)])))
 		return row
+	if option == "wear":
+		# A slider: slower to faster. In a game it can only go faster.
+		var value := MHStyle.mono(MHGame.wear_label(float(MHGame.challenge.get("wear", 1.0))), 14, MHStyle.TEXT_SECONDARY)
+		head.add_child(value)
+		var slider := HSlider.new()
+		slider.min_value = MHGame.WEAR_MIN
+		slider.max_value = MHGame.WEAR_MAX
+		slider.step = MHGame.WEAR_STEP
+		slider.tick_count = roundi((MHGame.WEAR_MAX - MHGame.WEAR_MIN) / MHGame.WEAR_STEP) + 1
+		slider.ticks_on_borders = true
+		slider.value = float(MHGame.challenge.get("wear", 1.0))
+		slider.custom_minimum_size.y = 32
+		slider.focus_mode = Control.FOCUS_NONE
+		row.add_child(slider)
+		var pending := [1.0]
+		slider.value_changed.connect(func(v: float) -> void:
+			value.text = MHGame.wear_label(v)
+			if not running:
+				MHGame.challenge.wear = v
+				if changed.is_valid(): changed.call()
+				return
+			var now := float(MHGame.challenge.get("wear", 1.0))
+			if v <= now + .001:
+				slider.set_value_no_signal(now)
+				value.text = MHGame.wear_label(now)
+				ask.visible = true
+				yes.visible = false
+				no.text = "OK"
+				ask_text.text = "Wear can go faster during a game, never slower."
+				return
+			pending[0] = v
+			ask.visible = true
+			yes.visible = true
+			yes.text = "Speed up"
+			no.text = "Cancel"
+			ask_text.text = "Speed wear up to %s? You can't slow it again in this game." % MHGame.wear_label(v))
+		yes.pressed.connect(func() -> void:
+			if MHGame.raise_challenge("wear", pending[0]) and changed.is_valid(): changed.call()
+			ask.visible = false)
+		no.pressed.connect(func() -> void:
+			ask.visible = false
+			slider.set_value_no_signal(float(MHGame.challenge.get("wear", 1.0)))
+			value.text = MHGame.wear_label(float(MHGame.challenge.get("wear", 1.0))))
+		return row
 	var sw := MHWidgets.Switch.new()
 	sw.button_pressed = bool(MHGame.challenge.get(option, false))
 	head.add_child(sw)

@@ -246,8 +246,13 @@ func _fill_flows() -> void:
 		_flows_panel.add_child(_line("Crew: lowest fitness %d%% · wellbeing %d%%%s" % [roundi(life.lowest_fitness()), roundi(life.average_wellbeing()), " · %d injured" % (life.injured() as Array).size() if not (life.injured() as Array).is_empty() else ""],
 			MHStyle.TEXT_PRIMARY if life.lowest_fitness() >= 75.0 and life.average_wellbeing() >= 65.0 else MHStyle.WARN, 15))
 	if not (life.broken as Dictionary).is_empty() or int(life.spares) > 0:
-		_flows_panel.add_child(_line("Repairs: %s · %d spare parts" % ["%s broken" % ", ".join(life.broken_labels()) if not (life.broken as Dictionary).is_empty() else "nothing broken", int(life.spares)],
-			MHStyle.WARN if not (life.broken as Dictionary).is_empty() else MHStyle.TEXT_PRIMARY, 15))
+		_flows_panel.add_child(_line("Repairs: %s · %d spares kits" % ["%s broken" % ", ".join(life.broken_labels()) if not (life.broken as Dictionary).is_empty() else "nothing broken", int(life.spares)],
+			MHStyle.WARN if not (life.broken as Dictionary).is_empty() or int(life.spares) == 0 else MHStyle.TEXT_PRIMARY, 15))
+	# Today's rounds (habitat_wear.gd): the machines due a service, most worn first.
+	var rounds: Array = s.wear.rounds(inv)
+	if not rounds.is_empty():
+		var jobs: Array = rounds.slice(0, 5).map(func(r): return "%s (%s)" % [str(r.label), "broken" if bool(r.broken) else "%d%%" % roundi(float(r.wear) * 100.0)])
+		_flows_panel.add_child(_line("Today's rounds: %s" % ", ".join(jobs), MHStyle.WARN if float(rounds[0].wear) >= s.wear.ALERT_FROM or bool(rounds[0].broken) else MHStyle.TEXT_PRIMARY, 15))
 	if float(life.blackout_hours_left) > 0.0: _flows_panel.add_child(_line("No contact with Earth for %s" % _sols(float(life.blackout_hours_left) / 24.0), MHStyle.WARN, 15))
 	var alerts = world.alerts
 	_flows_panel.add_child(MHStyle.eyebrow("Alerts", MHStyle.accent, 13))

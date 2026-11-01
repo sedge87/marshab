@@ -14,6 +14,7 @@ const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
 const HABITAT_FOOD := preload("res://scripts/habitat_food.gd")
 const HABITAT_WASTE := preload("res://scripts/habitat_waste.gd")
+const HABITAT_WEAR := preload("res://scripts/habitat_wear.gd")
 
 const STEP_HOURS := 0.1
 ## Shedding order when power runs short: 1 survives longest.
@@ -38,6 +39,7 @@ var builder: Node
 var life: RefCounted
 var food: RefCounted   # crops, harvests, produce and the diet (habitat_food.gd)
 var waste: RefCounted  # rubbish, recycling and compost (habitat_waste.gd)
+var wear: RefCounted   # machine wear and the daily rounds (habitat_wear.gd)
 
 # ---- stores (saved) ----
 var battery_kwh := 0.0
@@ -146,6 +148,7 @@ func _init(owner: Node = null) -> void:
 	life = HABITAT_LIFE.new(self)
 	food = HABITAT_FOOD.new(self)
 	waste = HABITAT_WASTE.new(self)
+	wear = HABITAT_WEAR.new(self)
 	stores = _empty_stores()
 
 static func _empty_stores() -> Dictionary:
@@ -183,7 +186,7 @@ func invalidate() -> void:
 func save() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "water_l": water_l, "food_kg": food_kg, "o2_reserve_kg": o2_reserve_kg, "o2_pct": o2_pct, "co2_pct": co2_pct,
 		"habitat_temp": habitat_temp, "crew_health": crew_health, "crew_evacuated": crew_evacuated, "storm_hours_left": storm_hours_left, "storm_eta_hours": storm_eta_hours,
-		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "extra_store_l": extra_store_l, "extra_store_o2": extra_store_o2, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "food": food.save(), "waste": waste.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust, "stores": stores.duplicate()}
+		"hours_run": hours_run, "known_capacity": _known_capacity.duplicate(), "food_delivered": _food_delivered, "extra_store_l": extra_store_l, "extra_store_o2": extra_store_o2, "printed_kg": printed_kg, "light_overrides": light_overrides.duplicate(), "research_boost_hours": research_boost_hours, "life": life.save(), "food": food.save(), "waste": waste.save(), "wear": wear.save(), "panel_dust": panel_dust.duplicate(), "hull_dust": hull_dust, "stores": stores.duplicate()}
 
 func load(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -216,6 +219,7 @@ func load(state: Dictionary) -> void:
 	life.load(state.get("life", {}))
 	food.load(state.get("food", {}))
 	waste.load(state.get("waste", {}))
+	wear.load(state.get("wear", {}))
 	invalidate()
 
 # ---------- what is in the habitat ----------
@@ -602,15 +606,16 @@ func step(dt: float, hour: float) -> void:
 	for item in working:
 		if not powered.tiers[item.tier] and item.power > 0.0: continue
 		if not MHSamples.on(): research += MHResources.item_value(item.id, "research")   # chapter rules: samples instead (step 5)
-		o2_made += item.o2 * per_sol
-		if item.o2 > 0.0 and item.water < 0.0: electrolysis_o2 += item.o2 * per_sol
-		co2_removed += -minf(0.0, item.co2) * per_sol
-		if item.water > 0.0: water_made += item.water * per_sol
+		var worn: float = wear.factor(item)   # a worn machine gives less (habitat_wear.gd)
+		o2_made += item.o2 * per_sol * worn
+		if item.o2 > 0.0 and item.water < 0.0: electrolysis_o2 += item.o2 * per_sol * worn
+		co2_removed += -minf(0.0, item.co2) * per_sol * worn
+		if item.water > 0.0: water_made += item.water * per_sol * worn
 		else: water_used += -item.water * per_sol
-		if item.id == "water_reclaimer" and item.on: reclaim_capacity += MHResources.setting("water_processor_l", 150.0) * per_sol
-		if item.id == "urine_processor" and item.on: urine_capacity += MHResources.setting("urine_processor_l", 15.0) * per_sol
+		if item.id == "water_reclaimer" and item.on: reclaim_capacity += MHResources.setting("water_processor_l", 150.0) * per_sol * worn
+		if item.id == "urine_processor" and item.on: urine_capacity += MHResources.setting("urine_processor_l", 15.0) * per_sol * worn
 		if item.id == "air_recycler" and item.on: scrubbing = true
-		if item.id == "sabatier_reactor" and item.on: sabatier_h2 += MHResources.setting("sabatier_h2_kg", .5) * per_sol
+		if item.id == "sabatier_reactor" and item.on: sabatier_h2 += MHResources.setting("sabatier_h2_kg", .5) * per_sol * worn
 	for item in inv.items:
 		if item.id == "methane_tank": methane_cap += MHResources.setting("methane_tank_kg", 300.0)
 	# The atmosphere processor (outside): oxygen from Mars air, no water (§3, §11).
@@ -652,6 +657,7 @@ func step(dt: float, hour: float) -> void:
 	water_l = clampf(water_l + water_made + water_recovered - water_used, 0.0, float(inv.capacity.water))
 	# Crops grow over sols and are harvested in batches; the crew eat fresh
 	# produce first (habitat_food.gd). food_in is the trays' average.
+	wear.step(dt, inv, powered.tiers)
 	var fed: Dictionary = food.step(dt, inv, powered.tiers, crew)
 	waste.step(dt, inv, powered.tiers, crew, float(fed.eaten) - float(fed.eaten_fresh))
 	food_grown = food.rate(inv, powered.tiers) * per_sol

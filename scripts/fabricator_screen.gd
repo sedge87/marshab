@@ -121,6 +121,10 @@ func _render_detail() -> void:
 		_detail.add_child(MHStyle.body("No plans yet.", 16))
 		return
 	var entry := EquipmentCatalog.get_entry(_selected)
+	if _selected == MHChapterOne.SPARES_KIT:
+		var builder := _builder()
+		var have := int(builder.simulation().life.spares) if builder != null else 0
+		entry = {"description": "Filter beds, brine bags, seals and fittings, made from feedstock. One kit services a worn machine or repairs a broken one. You have %d." % have}
 	var cost := MHChapterOne.plan_cost(_selected)
 	_detail.add_child(MHStyle.eyebrow({"brought": "PLAN · BROUGHT FROM EARTH", "sent": "PLAN · SENT BY MISSION CONTROL", "discovered": "PLAN · FROM A DISCOVERY"}.get(MHChapterOne.plan_source(_selected), "PLAN")))
 	_detail.add_child(MHStyle.title(MHChapterOne.label(_selected), 26))
@@ -129,9 +133,10 @@ func _render_detail() -> void:
 	_detail.add_child(about)
 	_detail.add_child(MHStyle.mono("Feedstock %s · Earth parts %d · %d game hours · 1.2 kW while it runs" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), int(cost.earth_parts), roundi(float(cost.hours))], 14, MHStyle.TEXT_SECONDARY))
 	var on_bar := "On the build bar: each extra one takes this feedstock and these parts as you place it" if MHChapterOne.made.has(_selected) else "Not made yet: the first job puts it on the build bar for good"
+	if _selected == MHChapterOne.SPARES_KIT: on_bar = "Make them as you need them: worn machines lose output, then break"
 	_detail.add_child(MHStyle.mono(on_bar, 14, MHStyle.TEXT_MUTED))
 	var reason := MHChapterOne.job_reason(_selected, _builder())
-	var start := MHStyle.button("Make first one" if reason.is_empty() else reason, "primary" if reason.is_empty() else "secondary", "play", 48)
+	var start := MHStyle.button(("Make %d" % MHChapterOne.KITS_PER_JOB if _selected == MHChapterOne.SPARES_KIT else "Make first one") if reason.is_empty() else reason, "primary" if reason.is_empty() else "secondary", "play", 48)
 	start.disabled = not reason.is_empty()
 	start.pressed.connect(func() -> void:
 		if MHChapterOne.start_job(_selected, _builder()).is_empty():

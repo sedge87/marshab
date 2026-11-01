@@ -339,6 +339,36 @@ One part means you get by on reserves and a lot of ice; every part means you cou
   - Radiation adds up whatever you do.
   - Expeditions leave the base running without you (§12.5).
 - **Staying small is the easy path.** Accepting more crew is how you raise the stakes: mission readiness (§12.2) is the difficulty dial.
+- **Built (2 Nov): wear and spares kits** (core loop step 7), in scripts/habitat_wear.gd, under chapter rules only.
+  - **User's choices:**
+    - a service every few sols, with a **Wear** pace slider on the new-game screen (×0.5 to ×2; in a game it can only go faster);
+    - machines degrade, then fail;
+    - one generic **spares kit**, not a part per machine.
+  - **What wears, sols to fully worn at the usual pace, and the job:**
+    - air recycler, 6, swap the filter;
+    - water processor, 6, swap the filter bed;
+    - urine processor, 8, swap the brine bag;
+    - waste sorter, 10;
+    - oxygen generator, 12, the cell stack;
+    - Sabatier, 30, the catalyst.
+    - A machine wears only while it runs.
+  - **How wear bites:** past 70 % its output falls, to half when fully worn. Left fully worn for 2 sols, it breaks.
+    - Then the existing repair runs: the crew take a kit and 6 hours (12 with no engineer), and the machine comes back as new.
+  - **Servicing:** E on the machine takes one kit and makes it as new.
+    - The air recycler's and water processor's filter slide, and the oxygen generator's hatch, do it.
+    - The urine processor, Sabatier and sorter have a new F action.
+    - Below 25 % wear it refuses, so you don't waste a kit.
+  - **Kits:** 8 land with the precursor cargo. The fabricator's standing job makes 2 kits for 12 kg of feedstock in 2 hours, so the waste loop keeps you supplied.
+    - Under chapter rules the regolith printer no longer makes spares, and kits aren't capped by the racks.
+  - **Where it shows:**
+    - each machine's readout ("wear 64 %", "BROKEN");
+    - the Chains view's weak link;
+    - a "worn" alert from 85 %;
+    - "Today's rounds" on the Monitor;
+    - the runway ("The Air Recycler breaks down first").
+  - **Not yet:**
+    - the outdoor machines (ice extractor auger bit, atmosphere processor CO filter) need an outdoor service action;
+    - GAR-Y's servicing rounds (chapter three).
 
 ### 12.5 The base while you're away
 

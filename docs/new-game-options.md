@@ -95,3 +95,9 @@ Every event keeps its warning (storms forecast 10 h ahead, solar events 30 min a
 - **Save cards** show the options as text after the mode ("Survival · Rare surprises · Radiation"), not icons.
 - **Where:** `MHGame` (the state, the rule, saving and the old-save mapping), `scripts/challenge_options_ui.gd` (the rows, shared by the Colony step and Pause → Challenge), `mars_world.configure_life()`, `habitat_life.gd` (`live_scale`, `radiation_on`, `live_injuries`) and the debug panel's Challenge buttons. Test: `tests/challenge_options_test.gd`.
 - The Colony step's "Your name · class or group" now just asks for your name (the group field went on 1 Nov).
+
+## 10. Wear pace (2 Nov)
+
+- **Wear** is a slider from ×0.5 to ×2, with Usual at a service every few sols. It sets how fast machines wear and need a spares kit (scripts/habitat_wear.gd, docs/survival-systems.md §12.4).
+- It is in Survival and Freedom, saved as `challenge.wear`. Older saves load at Usual.
+- The one-way rule applies: in a game it can only go faster.

@@ -26,6 +26,11 @@ const PLANS_PATH := "res://data/plans.json"
 const ZONE_STOCK := {"airlock": "airlock", "solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake", "atmosphere_processor": "atmosphere_processor"}
 const ZONE_STOCK_LABELS := {"airlock": "Airlock", "solar_array": "Solar Array", "surface_reactor": "Compact Reactor", "ice_drill": "Ice Extractor", "regolith_intake": "Regolith Intake", "atmosphere_processor": "Atmosphere Processor"}
 const STEPS := ["ice", "water", "oxygen", "food"]
+## The fabricator's one standing job: spares kits for servicing and repairs
+## (habitat_wear.gd). Always known; each job makes KITS_PER_JOB.
+const SPARES_KIT := "spares_kit"
+const KITS_PER_JOB := 2
+const KIT_COST := {"feedstock_kg": 12.0, "earth_parts": 0, "hours": 2.0}
 const STEP_LABELS := {"ice": "Ice found", "water": "Water self-sufficient", "oxygen": "Oxygen self-sufficient", "food": "Food self-sufficient"}
 ## A core this rich is a find (the same line GAR-Y flags at).
 const GOOD_CORE := .25
@@ -185,6 +190,7 @@ static func crates_left() -> int:
 # ---------- stock ----------
 
 static func label(id: String) -> String:
+	if id == SPARES_KIT: return "Spares kits (%d)" % KITS_PER_JOB
 	if ZONE_STOCK_LABELS.has(id): return str(ZONE_STOCK_LABELS[id])
 	return str(EquipmentCatalog.get_entry(id).get("label", id.capitalize()))
 
@@ -318,6 +324,7 @@ static func learn_after(event: String) -> Array:
 
 ## {feedstock_kg, earth_parts, hours} for one job.
 static func plan_cost(id: String) -> Dictionary:
+	if id == SPARES_KIT: return KIT_COST.duplicate()
 	var p := plan(id)
 	var d: Dictionary = plans_data().get("defaults", {})
 	var mass := float(p.get("cargo_kg", EquipmentCatalog.get_entry(id).get("cargo_cost", 50)))
@@ -327,7 +334,7 @@ static func plan_cost(id: String) -> Dictionary:
 
 ## Everything the fabricator could make now (known plans), in catalogue order.
 static func fabricable() -> Array:
-	var out: Array = []
+	var out: Array = [SPARES_KIT]
 	for id in ZONE_STOCK_LABELS:
 		if plan_known(id): out.append(id)
 	for id in EquipmentCatalog.entries():
@@ -352,9 +359,9 @@ static func fabricator_speed(builder: Object) -> float:
 
 static func job_reason(id: String, builder: Object) -> String:
 	if fabricators(builder).is_empty(): return "Place the fabricator first"
-	if made.has(id): return "Already made: place it from the build bar"
+	if made.has(id) and id != SPARES_KIT: return "Already made: place it from the build bar"
 	if not job.is_empty(): return "The fabricator is busy"
-	if not plan_known(id): return plan_hint(id)
+	if not plan_known(id) and id != SPARES_KIT: return plan_hint(id)
 	var cost := plan_cost(id)
 	if feedstock_kg < float(cost.feedstock_kg): return "Not enough feedstock"
 	if earth_parts < int(cost.earth_parts): return "Not enough Earth parts"
@@ -455,10 +462,15 @@ static func tick(hours: float, builder: Object) -> Array:
 			job.hours_left = float(job.hours_left) - hours * speed
 			if float(job.hours_left) <= 0.0:
 				var id := str(job.id)
-				stock[id] = int(stock.get(id, 0)) + 1
-				made[id] = true
 				job = {}
-				out.append({"id": "made", "title": "Fabricator: %s made" % label(id), "text": "It's on the build bar's Unpacked tab now: place as many as your stores allow.", "tone": "valid"})
+				if id == SPARES_KIT:
+					var life: Object = sim.get("life")
+					life.set("spares", int(life.get("spares")) + KITS_PER_JOB)
+					out.append({"id": "made", "title": "Fabricator: %d spares kits made" % KITS_PER_JOB, "text": "%d on the shelf. Each one services a worn machine or repairs a broken one." % int(life.get("spares")), "tone": "valid"})
+				else:
+					stock[id] = int(stock.get(id, 0)) + 1
+					made[id] = true
+					out.append({"id": "made", "title": "Fabricator: %s made" % label(id), "text": "It's on the build bar's Unpacked tab now: place as many as your stores allow.", "tone": "valid"})
 				for learned in learn_after("first_job"): out.append(_plan_message(learned))
 	# Recycling tops the feedstock up from what the crew throw away (habitat_waste.gd).
 	# Plans Mission Control sends on a given sol.

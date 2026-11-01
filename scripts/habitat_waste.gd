@@ -55,7 +55,10 @@ func step(dt: float, inv: Dictionary, powered: Dictionary, crew: int, rations_kg
 	var stores: Dictionary = sim.stores
 	# The sorter takes the pile in proportion.
 	var total := pile()
-	var sortable := minf(total, _count(inv, "waste_sorting_unit", powered) * SORTER_KG * per_sol)
+	var sorters := 0.0   # worn sorters sort less (habitat_wear.gd)
+	for item in inv.items:
+		if str(item.id) == "waste_sorting_unit" and bool(item.on) and (float(item.power) <= 0.0 or bool(powered.get(int(item.tier), true))) and not sim.life.is_broken(item): sorters += sim.wear.factor(item)
+	var sortable := minf(total, sorters * SORTER_KG * per_sol)
 	if sortable > 0.0 and total > 0.0:
 		var share := sortable / total
 		stores.plastics_kg = float(stores.plastics_kg) + float(unsorted.plastic) * share

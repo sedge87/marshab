@@ -526,6 +526,7 @@ func _breakdown_step(dt: float, inv: Dictionary) -> void:
 		repair_left -= dt
 		if repair_left <= 0.0:
 			broken.erase(repairing)
+			if sim != null and sim.get("wear") != null: sim.wear.repaired(repairing)
 			repairing = ""
 	_print_spares(dt, inv)
 	# Systems down: every unit of a life-critical machine broken.
@@ -539,6 +540,7 @@ func _breakdown_step(dt: float, inv: Dictionary) -> void:
 
 ## A running regolith printer slowly makes spare parts.
 func _print_spares(dt: float, inv: Dictionary) -> void:
+	if MHChapterOne.on(): return   # chapter rules: the fabricator makes spares kits instead
 	if int(inv.get("intakes", 0)) <= 0 or sim.print_rate(inv) <= 0.0: return
 	spare_progress += dt / (float(data().breakdowns.printer_sols_per_spare) * 24.0)
 	if spare_progress >= 1.0:
@@ -558,7 +560,7 @@ func take_delivery(inv: Dictionary) -> void:
 	if spare_cap > int(_known.get("spares", 0)): spares += spare_cap - int(_known.get("spares", 0))
 	_known = {"air": air, "spares": spare_cap}
 	air_reserve_kg = minf(air_reserve_kg, air)
-	spares = mini(spares, spare_cap + 4)
+	if not MHChapterOne.on(): spares = mini(spares, spare_cap + 4)   # chapter rules: spares kits, from the fabricator
 
 func broken_labels() -> Array:
 	var out: Array = []
