@@ -305,7 +305,10 @@ func _title_screen() -> void:
 	var newest := MHSaves.latest()
 	var save_count := MHSaves.entries().size()
 	var menu := MHStyle.vbox(12)
-	_place(menu, Vector2(120, 560 if not newest.is_empty() else 620), 480)
+	var menu_y := 560.0 if not newest.is_empty() else 620.0
+	_place(menu, Vector2(120, menu_y), 480)
+	# Below the heading however many lines the wordmark and pitch wrap to.
+	head.resized.connect(func() -> void: menu.position.y = maxf(menu_y, head.position.y + head.size.y + 36.0))
 	# Continue: the newest save, in one click.
 	if not newest.is_empty():
 		var go_on := _hero_button("Continue", "%s · %s" % [str(newest.get("name", "Habitat")), MHSaves.mode_label(newest)], "play")
