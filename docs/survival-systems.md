@@ -174,6 +174,22 @@ Three kinds instead of one: **rations** (from Earth, dehydrated, they keep), **p
    - **Meals:** cooking is automatic, through the existing "Meals together" need (a galley oven or kitchenette). Rehydration water is already in the 10 L a person.
    - **The look:** the tray's crop graphic still regrows over a couple of minutes; growth stages come with the food model batch.
 5. **Waste:** the sorter, recycling into feedstock, compost.
+
+   *Built 1 Nov 2026 (scripts/habitat_waste.gd).*
+   - **What's thrown away:**
+     - ration packaging, 0.25 kg per kg of rations eaten, so it runs down as the crew eat what they grow;
+     - everyday trash, 0.3 kg a person each sol;
+     - the toilet's solids, 0.12 kg.
+     Unsorted, it piles up, with an alert at 40 kg.
+   - **The waste sorter** (12 kg a sol) splits it into plastics, metals and organics.
+   - **Recycling:** the plastics hopper (2.5 kg a sol, 90 %) and the metals hopper (1 kg, 95 %) make fabricator feedstock.
+     - This replaces chapter one's flat 6 kg a sol from the recyclers. Crate feedstock (1,500 kg) still carries the economy.
+     - The regolith printer's recycling bonus is unchanged.
+   - **Compost:**
+     - Inedible stems, spoiled and gone-over food and organic trash go to the organics pile.
+     - The compost hopper (1.5 kg a sol) turns organics into compost, 40 % of its mass.
+     - The nutrient mixer turns 0.5 kg of compost a sol into 0.25 kg of nutrients. With no compost it makes none.
+   - **Not yet:** spares made from feedstock (§12.4) come with step 7's wear.
 6. **Radiation:** the background dose, your own dose outside, the career limit, the dosimeter, shielding insulating.
 7. **The Chains view,** machine readouts and Field guide cards. Rebalance in the spreadsheet; the chapter one and samples tests extended.
 
