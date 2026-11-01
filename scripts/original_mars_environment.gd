@@ -159,6 +159,9 @@ func apply_palette(palette: String) -> void:
 var cabin_dim := false
 var interior_fill := false
 var inside_habitat := false
+## How far underground you are in a cave, 0 to 1 (MHCaves.darkness): the
+## sky's light fades out. Set by the world each tick.
+var cave_dark := 0.0
 const INTERIOR_FILL_ENERGY := .1   # the ceiling lights do the main work now
 const INDOOR_AMBIENT := .55          # share of the outdoor ambient left indoors
 const INTERIOR_DARK_ENERGY := .05   # power off: only what spills from screens and the head lamp
@@ -230,6 +233,11 @@ func apply_daylight(sunlight: float) -> void:
 	_update_interior_fills(0.0 if bool(MHGame.setting("sdfgi")) else _indoor_energy * eased)
 	world_environment.environment.ambient_light_energy *= lerpf(1.0, INDOOR_AMBIENT, eased)
 	if _indoor_blend > 0.0: sun.light_energy *= lerpf(1.0, INDOOR_SUN, eased)
+	# In a cave the sky's light fades with the way in behind you. (Shadows
+	# can't be trusted to keep the sun out under metres of ground.)
+	if cave_dark > 0.0:
+		world_environment.environment.ambient_light_energy *= lerpf(1.0, .03, cave_dark)
+		sun.light_energy *= 1.0 - cave_dark
 	if _sky_material != null:
 		# Mars has a thin atmosphere, but midnight is still a true, dark sky—not
 		# the washed-out daytime procedural sky from the initial implementation.
@@ -389,6 +397,9 @@ func _build_region_terrain() -> void:
 	var material := Terrain3DMaterial.new()
 	material.world_background = Terrain3DMaterial.NONE
 	material.set_shader_param("blend_sharpness", .85)
+	# Steep ground (cliffs, the mound's terrace risers) takes its textures
+	# from the side, not stretched down from above.
+	material.projection_enabled = true
 	terrain.material = material
 	# Ground textures by zone (dust, bedrock on slopes, dune sand, frost,
 	# crater clay, gravel), painted by the region's control map.
@@ -412,6 +423,12 @@ func _build_region_terrain() -> void:
 	terrain.ready.connect(func() -> void:
 		terrain.region_size = Terrain3D.SIZE_1024   # 2 km regions: about 16 for the whole map (set once it's ready)
 		terrain.data.import_images([MHSiteTerrain.RegionTerrain.import_image(), MHSiteTerrain.RegionTerrain.control_image(), MHSiteTerrain.RegionTerrain.colour_image()], place.corner, float(place.offset), float(place.scale))
+		# Caves and the lava tube: built over the imported ground, which they
+		# sink beneath them (before its collision is built).
+		if not MHCaves.caves().is_empty():
+			var caves := MHCaves.new()
+			caves.build(terrain, self)
+			_site_root.add_child.call_deferred(caves)
 		# Collision over the whole region, not just round the camera: GAR-Y and
 		# the rover roam out of view, and the rover's ground rays need it ahead
 		# of a fast drive. Switched on after the import (set earlier it reverts

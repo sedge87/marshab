@@ -327,6 +327,7 @@ func _process(delta: float) -> void:
 	var fill := not builder.build_mode and builder.is_inside(player.global_position) and builder.room_light_state(you_in) == "on"
 	var in_cabin: bool = lander.cabin_contains(player.global_position) or cargo_landers.any(func(c): return c.hold_contains(player.global_position))
 	var in_habitat: bool = not builder.build_mode and builder.is_inside(player.global_position)
+	environment.cave_dark = MHCaves.darkness(player.global_position)
 	if environment.interior_fill != fill or environment.cabin_dim != in_cabin or environment.inside_habitat != in_habitat:
 		environment.interior_fill = fill
 		environment.cabin_dim = in_cabin

@@ -467,7 +467,7 @@ def add_mesas(h, x, z, masks, medium, edge_warp):
                 continue
             bodies.append((bx, bz, br, mh * rng.uniform(0.65, 0.9), None))
     for mx, mz, mr, mh, r_angle in bodies:
-        reach = mr * 2.4
+        reach = mr * (2.4 if r_angle is None else max(2.4, 0.9 + mh / (0.15 * mr)))   # a ramp runs out past the talus
         i0 = max(0, int((mx - reach + HALF) / SPACING)); i1 = min(N, int((mx + reach + HALF) / SPACING) + 1)
         j0 = max(0, int((mz - reach + HALF) / SPACING)); j1 = min(N, int((mz + reach + HALF) / SPACING) + 1)
         win = (slice(j0, j1), slice(i0, i1))
@@ -878,6 +878,161 @@ ROUTE_CELL = 10.0     # metres, as scripts/rover_route.gd
 ROUTE_MAX_GRADE = 0.4  # rise over run, about 22 degrees: steeper than rover_route.gd's "dear" (0.36), well short of its cliff (0.8)
 
 
+# ---------- caves and the lava tube (stage 5) ----------
+# A heightmap can't open into a cave, so here the generator only shapes the
+# ground round each way in (the lava tube's ramp pit and skylights, a notch
+# at a cave's mouth) and writes each cave's centreline to region.json
+# "caves". The game (scripts/caves.gd) builds the tunnels, sinks the
+# ground under them and lays a copy of it back over the top.
+LAVA_TUBE = {
+    "id": "lava_tube", "name": "Lava tube", "kind": "lava_tube",
+    "course": [(-1190.0, 1280.0), (-1148.0, 1392.0), (-1100.0, 1500.0), (-1066.0, 1612.0), (-1012.0, 1722.0),
+               (-962.0, 1832.0), (-912.0, 1948.0)],
+    "half_width": 9.0, "height": 12.0,
+    "depth": 18.0,    # its floor this far under the (smoothed) land
+    "ramp": 130.0,    # the ramp pit's length, from the land down to the mouth
+    # Skylights: how far along, radius, which side of the passage the fallen roof lies.
+    "skylights": [(0.3, 6.5, 1.0), (0.52, 5.5, -1.0), (0.7, 7.0, 1.0), (0.88, 6.0, -1.0)],
+}
+# Natural caves, found on foot: where you walk up from, the way in, and size.
+NATURAL_CAVES = [
+    {"id": "canyon_cave", "name": "Canyon wall cave", "kind": "cave", "approach": (-1200.0, -2318.0),
+     "heading": (0.0, 1.0), "length": 55.0, "half_width": 2.4, "height": 4.0, "grade": 0.05},
+    {"id": "ice_cave", "name": "Ice cave", "kind": "ice_cave", "approach": (-1572.0, -1300.0),
+     "heading": (0.23, 0.97), "length": 42.0, "half_width": 2.0, "height": 3.4, "grade": -0.04},
+]
+CAVE_COVER = 4.0   # ground kept at least this far over a cave's roof
+CAVE_STEP = 2.0    # centreline points
+
+
+def resample(points, step):
+    pts = np.array(points, dtype=float)
+    s = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(pts, axis=0).T))])
+    t = np.linspace(0.0, s[-1], int(s[-1] / step) + 1)
+    return np.stack([np.interp(t, s, pts[:, 0]), np.interp(t, s, pts[:, 1])], 1)
+
+
+def run_filter(a, k, fn):
+    return np.array([fn(a[max(0, i - k):i + k + 1]) for i in range(len(a))])
+
+
+def line_frames(p):
+    t = np.gradient(p, axis=0)
+    t /= np.linalg.norm(t, axis=1)[:, None]
+    return t, np.stack([-t[:, 1], t[:, 0]], 1)
+
+
+def ground_across(h, p, n, half):
+    """The lowest and mean ground across a line, half each side."""
+    offs = np.arange(-half, half + 0.01, 1.5)
+    vals = np.array([[sample(h, q[0] + o * m[0], q[1] + o * m[1]) for o in offs] for q, m in zip(p, n)])
+    return vals.min(axis=1), vals.mean(axis=1)
+
+
+def local_frame(x, z, origin, axis, reach):
+    """A window round origin, and each point's distance along axis (u) and to the side of it (v)."""
+    i0 = max(0, int((origin[0] - reach + HALF) / SPACING)); i1 = min(N, int((origin[0] + reach + HALF) / SPACING) + 1)
+    j0 = max(0, int((origin[1] - reach + HALF) / SPACING)); j1 = min(N, int((origin[1] + reach + HALF) / SPACING) + 1)
+    win = (slice(j0, j1), slice(i0, i1))
+    dx = x[win] - origin[0]; dz = z[win] - origin[1]
+    return win, dx * axis[0] + dz * axis[1], np.abs(-dx * axis[1] + dz * axis[0])
+
+
+def add_lava_tube(h, x, z, masks):
+    """The tube's course and floor (level-ish, CAVE_COVER under the land at
+    least), the ramp pit down to its mouth and the skylights over it."""
+    c = LAVA_TUBE
+    p = resample(c["course"], CAVE_STEP)
+    for _ in range(3):   # ease the corners, keeping the ends
+        p[1:-1] = (p[:-2] + 2.0 * p[1:-1] + p[2:]) / 4.0
+    t, n = line_frames(p)
+    hw, ht = c["half_width"], c["height"]
+    low, mean = ground_across(h, p, n, hw + 2.0)
+    limit = low - ht - CAVE_COVER
+    floor = np.minimum(run_filter(mean, 40, np.mean) - c["depth"], limit)
+    floor = run_filter(run_filter(floor, 12, np.min), 12, np.mean)
+    floor = np.minimum(run_filter(np.minimum(floor, limit), 3, np.mean), limit)
+    grade = float(np.abs(np.diff(floor)).max() / CAVE_STEP)
+    # The ramp pit: fallen roof, a straight ramp from the land down to the
+    # mouth, level for its last stretch and wide at the bottom; the land past
+    # the mouth is the tube's roof and isn't touched.
+    mouth, axis = p[0], t[0]
+    top = sample(h, *(mouth - axis * c["ramp"]))
+    win, u, v = local_frame(x, z, mouth, axis, c["ramp"] + 80.0)
+    run = np.clip((-u - 14.0) / (c["ramp"] - 14.0), 0.0, 1.0)
+    half = 14.0 - 2.0 * run   # wide enough for the route planner's 10 m cells
+    cut = floor[0] + (top - floor[0]) * run + np.maximum(-u - c["ramp"], 0.0) * 0.9 + np.maximum(v - half, 0.0) * 0.9
+    cut += 0.25 * masks["noise"][win] + np.maximum(u, 0.0) * 2.5   # past the mouth, a steep end wall
+    h[win] = np.minimum(h[win], cut)
+    masks["cave_clear"][win] = np.maximum(masks["cave_clear"][win], ((u <= 12.0) & (u > -c["ramp"] - 10.0) & (v < half + 4.0)).astype(float))
+    ramp_grade = (top - floor[0]) / (c["ramp"] - 14.0)
+    # Skylights: a sag where the roof has settled and a sheer pit down to the
+    # roof's top (the game opens the hole in its floor and the tunnel under it).
+    skylights = []
+    for along, r, side in c["skylights"]:
+        k = int(along * (len(p) - 1))
+        win, u, v = local_frame(x, z, p[k], t[k], r * 4.0)
+        d = np.hypot(u, v)
+        shelf = floor[k] + ht * 1.12 + 1.1   # over the game's roof, however it's roughened
+        sag = h[win] - 1.8 * (1.0 - smoothstep(r, r * 2.8, d))
+        h[win] = np.where(h[win] > shelf, np.maximum(sag, shelf), sag)   # never below the roof
+        h[win] = np.minimum(h[win], shelf + np.maximum(d - r - 2.5, 0.0) * 3.5)
+        masks["cave_clear"][win] = np.maximum(masks["cave_clear"][win], (d < r * 2.8).astype(float))
+        skylights.append({"position": [round(float(p[k][0]), 2), round(float(p[k][1]), 2)], "radius": r,
+                          "floor": round(float(floor[k]), 2), "rubble_side": side})
+    print(f"  lava tube: {len(p) * CAVE_STEP:.0f} m, floor {floor.min():.1f}..{floor.max():.1f} m (worst grade {grade:.3f}), "
+          f"ramp grade {ramp_grade:.2f}, cover at least {float((low - floor - ht).min()):.1f} m")
+    k_mid = len(p) // 2
+    return {"id": c["id"], "name": c["name"], "kind": c["kind"], "half_width": hw, "height": ht, "seed": SEED + 300,
+            "points": [[round(float(q[0]), 2), round(float(q[1]), 2), round(float(f), 2)] for q, f in zip(p, floor)],
+            "mouth": [round(float(mouth[0]), 2), round(float(mouth[1]), 2)],
+            "ramp_top": [round(float(v_), 2) for v_ in mouth - axis * c["ramp"]],
+            "skylights": skylights,
+            "finds": [{"id": "fresh_basalt", "point": k_mid // 2}, {"id": "cave_climate", "point": int(len(p) * 0.6)},
+                      {"id": "mineral_crust", "point": int(len(p) * 0.8)}, {"id": "cave_ice", "point": len(p) - 4}]}
+
+
+def add_natural_cave(h, x, z, masks, c, index):
+    """A small cave on foot: a notch cut level from where you walk up to the
+    point where the land stands well over the roof (the mouth), then the
+    cave runs on under it."""
+    a = np.array(c["heading"], dtype=float); a /= np.linalg.norm(a)
+    side = np.array([-a[1], a[0]])
+    hw, ht = c["half_width"], c["height"]
+    start = np.array(c["approach"], dtype=float)
+    f0 = sample(h, *start)
+    reach = 0.0
+    while reach < 150.0:
+        q = start + a * reach
+        if min(sample(h, *(q + side * o)) for o in np.arange(-hw - 1.5, hw + 1.6, 1.5)) >= f0 + ht + 2.0:
+            break
+        reach += 1.0
+    mouth = start + a * reach
+    win, u, v = local_frame(x, z, mouth, a, reach + 40.0)
+    cut = f0 + np.maximum(-u - reach, 0.0) * 0.5 + np.maximum(v - (hw + 2.5), 0.0) * 1.4
+    h[win] = np.minimum(h[win], np.where(u <= 0.0, cut, np.inf))
+    masks["cave_clear"][win] = np.maximum(masks["cave_clear"][win], ((u <= 0.0) & (u > -reach - 4.0) & (v < hw + 4.0)).astype(float))
+    s = np.arange(0.0, c["length"] + 0.01, CAVE_STEP)
+    p = mouth[None, :] + a[None, :] * s[:, None] + side[None, :] * (1.6 * np.sin(s / 9.0 + index * 2.0) * smoothstep(0.0, 12.0, s))[:, None]
+    floor = f0 + c["grade"] * s
+    _, n = line_frames(p)
+    low, _ = ground_across(h, p, n, hw + 1.5)
+    cover = low - floor - ht
+    print(f"  {c['id']}: notch {reach:.0f} m, floor {f0:.1f} m, cover past the mouth at least {float(cover[3:].min()):.1f} m")
+    return {"id": c["id"], "name": c["name"], "kind": c["kind"], "half_width": hw, "height": ht, "seed": SEED + 310 + index,
+            "points": [[round(float(q[0]), 2), round(float(q[1]), 2), round(float(f), 2)] for q, f in zip(p, floor)],
+            "mouth": [round(float(mouth[0]), 2), round(float(mouth[1]), 2)], "skylights": [],
+            "finds": ([{"id": "layered_sediments", "point": len(p) // 3}, {"id": "mineral_crust", "point": len(p) - 3}]
+                      if c["kind"] == "cave" else [{"id": "cave_ice", "point": len(p) - 2}])}
+
+
+def add_caves(h, x, z, masks):
+    masks["cave_clear"] = np.zeros_like(h)
+    caves = [add_lava_tube(h, x, z, masks)]
+    caves += [add_natural_cave(h, x, z, masks, c, i) for i, c in enumerate(NATURAL_CAVES)]
+    return caves
+
+
 def route_targets():
     """Every major destination: (name, x, z, radius)."""
     targets = [(k, z["centre"][0], z["centre"][1], 40.0) for k, z in ZONES.items()]
@@ -890,7 +1045,7 @@ def route_targets():
     return targets
 
 
-EXTRA_ROUTE_TARGETS = []   # caves and the lava tube add their entrances (stage 5)
+EXTRA_ROUTE_TARGETS = [("lava tube", -1199.0, 1256.0, 15.0)]   # the foot of the tube's ramp pit (caves are on foot)
 
 
 def route_grid(h, masks):
@@ -1305,6 +1460,7 @@ def write_rocks(h, masks):
         masks.setdefault("boulder_fields", []).append((bx, bz, br))
     density *= np.where(slope > 1.3, 0.25, 1.0)   # rocks don't sit on cliffs
     density *= 1.0 - smoothstep(0.2, 0.5, masks["dunes"])
+    density *= 1.0 - masks["cave_clear"]   # the ramp pit and the caves' notches are cleared
     density *= np.where((curvature > 0.01) & (masks["ice"] < 0.5), 0.5, 1.0)   # dust fills the hollows
     for zone in ZONES.values():
         density *= smoothstep(zone["flat_radius"] * 1.1, zone["flat_radius"] * 1.6, dist(x, z, zone["centre"]))
@@ -1339,6 +1495,7 @@ def write_geology(h, masks):
 def main():
     os.makedirs(OUT, exist_ok=True)
     h, masks = build_heights()
+    caves = add_caves(h, *grid(), masks)
     routes = check_routes(h, masks)
     lo, hi = save_heights(h)
     write_control(h, masks)
@@ -1355,9 +1512,11 @@ def main():
         "zones": {k: {"centre": list(v["centre"]), "flat_radius": v["flat_radius"], "height": v["height"], "label": v["label"]} for k, v in ZONES.items()},
         "crater": CRATER, "mound": MOUND,
         "textures": [m[0] for m in MATERIALS],
-        "features": [{"name": n, "position": list(p)} for n, p in FEATURES],
+        "features": [{"name": n, "position": list(p)} for n, p in FEATURES]
+        + [{"name": "Pit chain", "position": caves[0]["skylights"][1]["position"]}],
         "geology": GEOLOGY,
         "routes": routes,
+        "caves": caves,
         "boulder_fields": [list(b) for b in BOULDER_FIELDS],
     }
     with open(os.path.join(OUT, "region.json"), "w", encoding="utf-8") as f:

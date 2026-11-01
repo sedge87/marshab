@@ -21,6 +21,18 @@ const VIEWS := {
 	"ice": [-1500.0, -1000.0, 20.0, -10.0, 2.0],
 	"valleys": [900.0, 1300.0, 160.0, -12.0, 6.0],
 	"boulders": [-2150.0, 1950.0, 90.0, -8.0, 2.0],
+	"mound": [1180.0, -260.0, -39.0, 6.0, 2.0],
+	# Caves (stage 5); "cave" stands on a cave's floor, with the suit lamp on.
+	"tube_mouth": [-1200.5, 1252.0, 160.0, -4.0, 1.8],
+	"tube_inside": [-1178.0, 1312.0, 160.0, 0.0, 1.7, "cave"],
+	"skylight_below": [-1113.0, 1469.0, 160.0, 28.0, 1.7, "cave"],
+	"skylight_above": [-1132.0, 1470.0, 112.0, -30.0, 1.8],
+	"tube_across": [-1085.0, 1555.0, 70.0, -22.0, 1.8],
+	"tube_top": [-1150.0, 1470.0, 90.0, -60.0, 45.0],
+	"tube_ground": [-1075.0, 1560.0, 160.0, -12.0, 2.0],
+	"canyon_cave": [-1200.0, -2309.0, 180.0, 2.0, 1.7],
+	"canyon_inside": [-1200.0, -2282.0, 180.0, 0.0, 1.7, "cave"],
+	"ice_cave": [-1571.3, -1297.0, 167.0, 2.0, 1.7],
 }
 
 func _initialize() -> void:
@@ -53,7 +65,14 @@ func _initialize() -> void:
 		var v: Array = VIEWS[view]
 		var x := float(v[0]) - origin.x
 		var z := float(v[1]) - origin.y
-		p.global_position = Vector3(x, MHSiteTerrain.height(x, z) + float(v[4]), z)
+		var ground := MHSiteTerrain.height(x, z)
+		var in_cave: bool = v.size() > 5 and v[5] == "cave"
+		if in_cave:
+			for cave in MHCaves.caves():
+				var at := MHCaves._locate(cave, Vector2(x, z))
+				if absf(at.lateral) < float(cave.half[0]) and at.along >= 0.0: ground = MHCaves._floor(cave, Vector2(x, z), at)
+		p.global_position = Vector3(x, ground + float(v[4]), z)
+		p.set_flashlight_enabled(in_cave)
 		p.rotation.y = deg_to_rad(-float(v[2]))
 		(p.get_node("Head") as Node3D).rotation.x = deg_to_rad(float(v[3]))
 		for i in 90: await process_frame   # let the terrain and rocks round the new spot load

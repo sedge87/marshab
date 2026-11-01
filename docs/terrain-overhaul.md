@@ -164,7 +164,7 @@ Mars has both. **Lava tubes** are drained channels under old lava flows, much bi
 - A heightmap can't overhang, and Terrain3D's holes don't work with Godot's default physics (we found that with trenches). So **caves aren't holes in the terrain.**
 - Each entrance is a **pit or alcove carved into the heightmap:** a collapse pit with a talus ramp, or a notch at a cliff foot. Its floor sits below the land around it.
 - The **cave itself is a separate mesh** that runs on from the pit's wall, *under* the untouched ground. A short **portal arch** (a Blender model, house style) hides the seam where the tunnel meets the pit wall.
-- **Interiors are generated in Godot** from the caves file the generator writes (`caves.json`): each cave is a centreline of points with radius and floor width at each point. A script sweeps an irregular cross-section along it:
+- **Interiors are generated in Godot** from the caves the generator writes into `region.json` (`"caves"`): each cave is a centreline of points with radius and floor width at each point. A script sweeps an irregular cross-section along it:
   - lava tubes: flat floor, arched roof, a lava "bench" along the walls;
   - fissure caves: tall and narrow.
   
@@ -216,7 +216,7 @@ Each stage is committed on its own, with the region regenerated and tested.
 2. **Textures and rocks:** the new control map (geology plus slope, curvature and height), two new textures, the colour streaks, the rock-density map, the geology map for step 5.
 3. **Routes:** the generator's route check and ramp carving; the route test.
 4. **Debug and maps:** "Rover ground" in the debug panel and on the map; the hillshaded, contoured region map with the zoomed site map.
-5. **Caves and lava tube:** the pits and alcoves in the generator, `caves.json`, the interior builder, lighting, the portal model, `floor_at`, and handing the finds to step 5.
+5. **Caves and lava tube:** the pits and alcoves in the generator, `region.json` "caves", the interior builder, lighting, the portal model, `floor_at`, and handing the finds to step 5.
 
 ## 5. Performance
 
@@ -228,7 +228,7 @@ Each stage is committed on its own, with the region regenerated and tested.
 
 ## 6. Saves and determinism
 
-- **Deterministic:** the same seed and script always make the same region. Cave interiors come from `caves.json` and fixed seeds.
+- **Deterministic:** the same seed and script always make the same region. Cave interiors come from `region.json` "caves" and fixed seeds.
 - **Zone centres stay where they are and the pads stay level,** so a saved base on a region site sits on its pad as before.
 - Things saved out in the region (the rover, dropped items, GAR-Y, survey readings, trenches on the pad) are **set on the new ground when they load.** A survey reading in a spot that has changed is kept anyway; ice deposits are data in `sites.json`, so they don't move.
 - The four original sites aren't touched (§8 Q1).
@@ -267,3 +267,24 @@ Each stage is committed on its own, with the region regenerated and tested.
 5. The pit chain shows on the map from orbit; natural caves are found on foot.
 6. The cave finds go to the step 5 session for `data/discoveries.json`.
 7. All five stages, caves last.
+
+## 9. As built (stage 5, 1 Nov)
+
+What changed from §3 once it was built:
+
+- **The ground over a cave.** Terrain3D's ground can't open into a cave without crossing the tunnel somewhere, so the game (`scripts/caves.gd`, `MHCaves`) sinks Terrain3D's ground under the **whole** cave, 3 m below its floor, and lays a copy of it back over the top. The copy is built from Terrain3D's own vertices, read before the sinking, so its edges meet the ground exactly. It's drawn with Terrain3D's own texture arrays, control map and colour map (`shaders/cave_ground.gdshader`) and kept at least 0.9 m over the roof. It reaches two cells past the sunk ground, because Terrain3D shades each point from the heights beside it. Everything has collision (one `ConcavePolygonShape3D`).
+- **The portal is generated, not a Blender model.** It's a rough rock face from the tunnel's arch out to the ground round the mouth and up to the ground over it. Each mouth is a different size and shape, so a fixed model wouldn't fit. There's an apron on the floor in front.
+- **Skylights.** The generator cuts each pit down to just over the roof. The game opens a hole in the pit's floor, cuts the tunnel's roof under it and joins the two with a collar and a flat rim. Light comes in by being outside the cave's darkness (no spotlights yet).
+- **Darkness.** `MHCaves.darkness(position)` rises from 0 at a mouth to 1 about 12 m in, and drops again under a skylight. The environment fades the sky's ambient light to 3 % and the sun to nothing with it. The suit lamp (F) is the light.
+- **Where:**
+  - **The lava tube:** 726 m from (-1190, 1280) to (-912, 1948), 18 m wide and 12 m tall, its floor 4 m or more under the land. The ramp pit runs 130 m at about 11° (route-checked from all three zones). There are four skylights.
+  - **The canyon wall cave:** its mouth is at (-1200, -2294) on the canyon floor's south side, 55 m long.
+  - **The ice cave:** its mouth is at (-1568, -1282) under the ice scarp, 42 m long, with ice thickening towards the back.
+- **Not built yet:**
+  - side passages off the tube;
+  - light shafts (spotlight and dust) under the skylights;
+  - the "no radio inside" rule;
+  - map marks for found caves (step 6).
+  - Things that use `MHSiteTerrain.height()` still see the land over a cave. Only the corer asks `MHCaves.ground_y()` so far. GAR-Y, the rover's recall and dropped items should too.
+- **Finds for step 5:** each cave lists `finds` (an id and a centreline point) in `region.json`, matching §3.3. They were handed to the step 5 session rather than added to `data/discoveries.json`.
+- **Steep ground takes its textures from the side** (Terrain3D's projection is on). Before, the layered mound's terrace risers and the cliffs had their textures stretched down from above, so the layers smeared into blocky dark patches.

@@ -80,7 +80,7 @@ func _show_tool(at: Vector3) -> void:
 		MHPalette.apply(_tool)
 		world.add_child(_tool)
 	_tool.visible = true
-	var ground := MHSiteTerrain.height(at.x, at.z)
+	var ground := MHCaves.ground_y(at)
 	_tool.global_position = Vector3(at.x, ground - SINK_M * clampf(_held / HOLD_SECONDS, 0.0, 1.0), at.z)
 	_tool.rotation.y = world.player.rotation.y + _held * 4.0
 
