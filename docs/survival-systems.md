@@ -1,6 +1,6 @@
 # Survival systems rework: air, water, food, heat, radiation and the equipment behind them
 
-A design written 1 Nov 2026, after step 5. Nothing here is built yet. §10 has the questions to answer before building. This plan makes the equipment matter, so the models get remade to match it, in the batches in §9.
+A design written 1 Nov 2026, after step 5. Nothing here is built yet. §10 has the questions; §11 has the answers, which win where the text above disagrees (question 4 is still open). This plan makes the equipment matter, so the models get remade to match it, in the batches in §9.
 
 ## 1. Why
 
@@ -166,3 +166,17 @@ Three kinds instead of one: **rations** (from Earth, dehydrated, they keep), **p
 6. **Food spoilage:** produce keeps 10 sols, or 60 in a freezer? *Recommended, mild.* Or no spoilage.
 7. **Hygiene as a need:** the toilet and shower matter for wellbeing and use water? *Recommended.*
 8. **Where it shows:** a Chains view on the Monitor, plus readouts on the machines? *Recommended.* This is also the first step of the M page clean-up.
+
+## 11. Answers (1 Nov 2026)
+
+1. **Depth:** three to five steps a chain, no pipes.
+2. **Crops:** greens and potatoes now, more from discoveries; variety counts.
+3. **Sabatier and methane:** methane goes with Mars oxygen into an **ascent propellant tank** that fills towards "go home". The rover stays on batteries, as in NASA's Mars studies, where crew rovers are electric. A methane–oxygen **fuel-cell range extender** may come later as a long-range upgrade (core loop step 9), not in this rework.
+4. **The atmosphere processor:** unlocked by a discovery; **still to discuss** (user) whether its oxygen is breathed or is ascent propellant only.
+   - **Background:** MOXIE on Perseverance made about 122 g of oxygen in 2021–23 at over 98 % purity. A scaled-up version is NASA's plan for ascent oxygen.
+   - **Radiation:** the gas isn't made radioactive (oxygen-16 is stable).
+   - **Purity:** the real concern is the carbon monoxide the process also makes.
+5. **Radiation:** a running dose against a 600 mSv career limit, raising a health-risk figure for the reports and the ending; only solar storms harm on the spot.
+6. **Spoilage:** produce keeps 10 sols, 60 in a freezer; rations keep.
+7. **Hygiene** is a need: the toilet and shower use water and keep wellbeing up.
+8. **Display:** a Chains view on the Monitor and a readout on each machine. This is the first step of the M page clean-up.
