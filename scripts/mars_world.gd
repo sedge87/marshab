@@ -758,6 +758,10 @@ func _spawn_player() -> void:
 		if to_zone.length() > 1.0: player.rotation.y = atan2(-to_zone.x, -to_zone.y)
 	player.safe_position = player.position
 	add_child(player)
+	# A region's ground collision is built round the player, not the camera
+	# (original_mars_environment.gd).
+	var terrain := get_tree().get_first_node_in_group("region_terrain")
+	if terrain != null: terrain.collision_target = player
 	var camera := player.get_node("Head/Camera3D") as Camera3D
 	camera.set_meta("first_person", true)
 	# Dust motes drawn only near the camera (cheap on older laptops).

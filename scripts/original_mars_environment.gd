@@ -383,8 +383,9 @@ func _build_terrain() -> void:
 	_site_root.add_child(MHSiteTerrain.build_horizon())
 
 ## A region (gameplay loop prototype): Terrain3D draws the shared heightmap,
-## kilometres of it, with distance detail and full collision, textured by
-## zone and slope (its control map) and gently tinted (its colour map).
+## kilometres of it, with distance detail and collision round the player,
+## textured by zone and slope (its control map) and gently tinted (its
+## colour map).
 func _build_region_terrain() -> void:
 	var zone := MHSiteTerrain.region_zone()
 	if zone.is_empty(): return
@@ -436,11 +437,15 @@ func _build_region_terrain() -> void:
 			var caves := MHCaves.new()
 			caves.build(terrain, self)
 			_site_root.add_child.call_deferred(caves)
-		# Collision over the whole region, not just round the camera: GAR-Y and
-		# the rover roam out of view, and the rover's ground rays need it ahead
-		# of a fast drive. Switched on after the import (set earlier it reverts
-		# to dynamic, or is built from the flat ground before the heights).
-		terrain.collision_mode = Terrain3DCollision.FULL_GAME
+		# Collision round the player (mars_world.gd makes them its target),
+		# about 500 m out, built as they move: the whole region's took over
+		# 10 s to load. Nothing needs it further off: GAR-Y stays within 70 m
+		# of you, the rover drives on physics only within 150 m of you (further
+		# out a recall runs along MHSiteTerrain.height), and at the rover's
+		# top speed it's built well ahead of the wheels. Switched on after the
+		# import, so it isn't built from the flat ground before the heights.
+		terrain.collision_mode = Terrain3DCollision.DYNAMIC_GAME
+		terrain.collision_radius = 256   # vertices (2 m apart)
 		_scatter_region_rocks(terrain, MHSiteTerrain.RegionTerrain.world_bounds(origin).grow(-500.0)), CONNECT_ONE_SHOT)
 	_site_root.add_child(terrain)
 
