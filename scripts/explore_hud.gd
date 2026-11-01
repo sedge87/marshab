@@ -168,6 +168,33 @@ func set_minimal(on: bool) -> void:
 			create_tween().tween_property(control, "modulate:a", 1.0, 1.2)
 	if not on: _update_systems_panel()
 
+## News while you're walking about (a core's result, a new plan, a crate
+## unpacked): top centre under the compass, three at a time (a core can bring
+## three pieces of news at once), fading out.
+var _notices: VBoxContainer
+
+func flash_notice(tone: String, heading: String, text: String) -> void:
+	if _notices == null:
+		_notices = MHStyle.vbox(10)
+		_notices.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_notices.anchor_left = .5
+		_notices.anchor_right = .5
+		_notices.offset_left = -240
+		_notices.offset_right = 240
+		_notices.offset_top = 120
+		_root.add_child(_notices)
+	while _notices.get_child_count() >= 3:
+		var oldest := _notices.get_child(0)
+		_notices.remove_child(oldest)
+		oldest.queue_free()
+	var item := MHStyle.notice(tone, heading, text)
+	item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_notices.add_child(item)
+	var fade := item.create_tween()
+	fade.tween_interval(5.0)
+	fade.tween_property(item, "modulate:a", 0.0, .4)
+	fade.tween_callback(item.queue_free)
+
 func show_equipment_note(title: String, note: String) -> void:
 	if _note_panel == null or note.is_empty():
 		return

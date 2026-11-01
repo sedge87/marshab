@@ -325,7 +325,15 @@ static func cancel_job() -> void:
 static func core_at(point: Vector2, richness: float) -> Dictionary:
 	var dry := richness < DRY_CORE
 	return {"x": point.x, "z": point.y, "purity": snappedf(richness, .01), "dry": dry,
-		"depth_m": 0.0 if dry else snappedf(lerpf(4.5, .6, clampf(richness / .6, 0.0, 1.0)), .1), "good": richness >= GOOD_CORE}
+		"depth_m": 0.0 if dry else snappedf(lerpf(4.5, .6, clampf(richness / .6, 0.0, 1.0)), .1), "good": richness >= good_core()}
+
+## Richness a core needs to count as the find: GOOD_CORE, or on a site whose
+## best ice is poorer (the plains peak at .32), half its peak, so the middle
+## of the zone always works.
+static func good_core() -> float:
+	var peak := 0.0
+	for deposit in MHGame.site().get("ice_deposits", []): peak = maxf(peak, float(deposit.get("richness", 0.0)))
+	return maxf(DRY_CORE + .01, minf(GOOD_CORE, peak * .5))
 
 static func record_core(core: Dictionary) -> void:
 	cores.append(core)
@@ -348,11 +356,15 @@ static func stores_for(sols: float, crew := -1.0) -> Dictionary:
 		"food_kg": people * MHResources.setting("food_per_person", 1.8) * sols}
 
 ## Sols left of water, oxygen and food at today's use, or -1 when not running down.
+## Before anyone lives in the habitat, it's what the landed crew would use.
 static func sols_left(sim: Object) -> Dictionary:
 	var last: Dictionary = sim.get("last")
 	var crew := float(last.get("crew", 0))
 	var out := {"water": -1.0, "oxygen": -1.0, "food": -1.0}
-	if crew <= 0.0: return out
+	if crew <= 0.0:
+		if not on(): return out
+		crew = store_crew()
+		last = {"crew": crew, "water_out": crew * MHResources.setting("water_per_person", 10.0)}
 	var water_net := float(last.get("water_out", 0.0)) - float(last.get("water_in", 0.0))
 	if water_net > .01: out.water = float(sim.get("water_l")) / water_net
 	var o2_net := crew * MHResources.setting("o2_per_person", .84) - float(last.get("o2_in", 0.0))

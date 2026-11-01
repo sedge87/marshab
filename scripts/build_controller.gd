@@ -6620,6 +6620,10 @@ func _flash_notice(tone: String,heading: String,text: String,play_sound := true)
 	# Each notice tone has its own sound; "valid" notices are removals.
 	var sound:String={"invalid":"invalid","warn":"warn","valid":"remove","info":"undo"}.get(tone,"")
 	if play_sound and not sound.is_empty(): MHAudio.sfx(sound)
+	# Walking about, the build UI is hidden: the explore HUD shows it instead.
+	var explore_hud:=get_tree().get_first_node_in_group("explore_hud") as CanvasLayer if is_inside_tree() else null
+	if not notice_column.is_visible_in_tree() and explore_hud!=null and explore_hud.visible:
+		explore_hud.call("flash_notice",tone,heading,text); return
 	while notice_column.get_child_count()>=2: var oldest:=notice_column.get_child(0); notice_column.remove_child(oldest); oldest.queue_free()
 	var item:=MHStyle.notice(tone,heading,text); notice_column.add_child(item)
 	var fade:=item.create_tween(); fade.tween_interval(3.2); fade.tween_property(item,"modulate:a",0.0,.3); fade.tween_callback(item.queue_free)
