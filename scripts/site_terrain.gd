@@ -130,7 +130,11 @@ static func _trench_height(p: Vector2) -> float:
 static func _region_height(p: Vector2) -> float:
 	var zone := region_zone()
 	if zone.is_empty(): return 0.0
-	return RegionTerrain.height(p.x + float(zone.centre[0]), p.y + float(zone.centre[1])) - float(zone.height)
+	var natural := RegionTerrain.height(p.x + float(zone.centre[0]), p.y + float(zone.centre[1])) - float(zone.height)
+	# A base founded where the lander came down: its pad is levelled here
+	# (the named zones were levelled by the generator).
+	if zone.get("dynamic", false): return MHBaseSite.pad_height(zone, p, natural)
+	return natural
 
 ## The geology unit under a point (site metres) on a region site, e.g.
 ## "plains_basalt" or "canyon_layers"; empty elsewhere. For samples (step 5).
@@ -139,10 +143,14 @@ static func geology_unit(x: float, z: float) -> String:
 	if zone.is_empty(): return ""
 	return RegionTerrain.geology(x + float(zone.centre[0]), z + float(zone.centre[1]))
 
-## The site's landing zone in its region ({} when it isn't a region site).
+## The site's landing zone in its region ({} when it isn't a region site):
+## the base site founded where the lander came down when there is one
+## (MHGame.base_site, docs/landing-and-base-siting.md), else the site's
+## named zone.
 static func region_zone() -> Dictionary:
 	var s := settings()
 	if str(s.get("shape", "")) != "region" or not RegionTerrain.use(str(s.get("region", ""))): return {}
+	if not MHGame.base_site.is_empty(): return MHGame.base_site
 	return RegionTerrain.zone(str(s.get("zone", "")))
 
 static func _noise(p: Vector2, scale: float) -> float:

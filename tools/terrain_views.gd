@@ -5,6 +5,7 @@ extends SceneTree
 ##   godot --path . --script res://tools/terrain_views.gd -- [out_dir] [site=<id>] [view names...]
 ## Also "rover_ground" (the debug overlay from above the pad's edge), "map"
 ## and "map_zoom" (the region map, with the Rover ground layer).
+## base=x,z founds the base there (region metres) instead of the site's zone.
 ## Run windowed. Viewpoints are in region metres, so any region site works.
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
@@ -22,6 +23,8 @@ const VIEWS := {
 	"valleys": [900.0, 1300.0, 160.0, -12.0, 6.0],
 	"boulders": [-2150.0, 1950.0, 90.0, -8.0, 2.0],
 	"mound": [1180.0, -260.0, -39.0, 6.0, 2.0],
+	# A base founded away from the named zones (run with base=-715,442).
+	"base_pad": [-640.0, 380.0, -130.0, -14.0, 14.0],
 	# Caves (stage 5); "cave" stands on a cave's floor (the eye is the player's, about
 	# 1.6 m up), with the suit lamp on.
 	"tube_mouth": [-1200.5, 1252.0, 160.0, -4.0, 1.8],
@@ -43,13 +46,19 @@ func _initialize() -> void:
 	var out_dir := "user://terrain_views/"
 	if not args.is_empty() and not str(args[0]).contains("="): out_dir = str(args[0]).trim_suffix("/") + "/"
 	var site := "region_plains"
+	var base: PackedStringArray = []   # base=x,z: found the base there (region metres)
 	var wanted: Array = []
 	for arg in args.slice(1):
 		if str(arg).begins_with("site="): site = str(arg).trim_prefix("site=")
+		elif str(arg).begins_with("base="): base = str(arg).trim_prefix("base=").split(",")
 		else: wanted.append(str(arg))
 	if wanted.is_empty(): wanted = VIEWS.keys()
 	DirAccess.make_dir_recursive_absolute(out_dir)
-	MHGame.site_id = site; MHGame.game_mode = "creative"; MHGame.pending_save_state = {"site_id": site, "builder": {}}
+	MHGame.site_id = site; MHGame.game_mode = "creative"; MHGame.base_site = {}
+	if base.size() == 2:
+		MHSiteTerrain.region_zone()
+		MHGame.base_site = MHBaseSite.make(float(base[0]), float(base[1]), "View base")
+	MHGame.pending_save_state = {"site_id": site, "base_site": MHGame.base_site, "builder": {}}
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame

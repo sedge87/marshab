@@ -1079,6 +1079,7 @@ func current_state() -> Dictionary:
 	if carry != null: carry.put_back()
 	return {
 		"site_id": MHGame.site_id,
+		"base_site": MHGame.base_site,   # where the base was founded (empty: the site's named zone)
 		"site_name": MHGame.site_name(),
 		"colony_name": MHGame.colony_name,
 		"mission_statement": MHGame.mission_statement,

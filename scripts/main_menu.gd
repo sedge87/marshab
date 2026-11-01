@@ -1069,6 +1069,7 @@ func _landing_screen() -> void:
 	land.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	land.pressed.connect(func() -> void:
 		MHGame.landing_target = picker.target
+		MHGame.base_site = {}   # a new colony: founded at the site's named zone
 		MHChapterOne.reset()   # a new free-play game starts with the crates packed (chapter one)
 		show_screen("loading"))
 	bar.add_child(land)
@@ -1138,6 +1139,7 @@ func _mission_one_panel(picker: Control) -> void:
 		MHMissions.progress.base_site = picker.base_site
 		MHMissions.complete("landing_zones")
 		MHGame.landing_target = Vector2.INF
+		MHGame.base_site = {}
 		show_screen("loading"))
 	bar.add_child(confirm)
 	var refresh := func(_target: Vector2, _verdict: Dictionary) -> void:

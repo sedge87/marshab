@@ -57,7 +57,19 @@ A spot is valid for a base when, over the 60 m core (checked on a 10 m grid, the
 - it's at least 20 m clear of every cave and skylight footprint, and never over the lava tube's roof;
 - it's at least 400 m inside the region's edge (the framing hills and boundary).
 
-This lives in one place, `MHBaseSite.valid(point)` (new, `scripts/base_site.gd`). The Land step, the descent and the debug Rover ground view all use it.
+This lives in one place, `MHBaseSite.valid(point)` (new, `scripts/base_site.gd`).
+
+**As built (stage 2):** the 3 m limit failed nearly the whole region: the plains roll more than that over 120 m, and a single steep 2 m patch failed a spot the pad would level anyway. The check judges the ground as a whole instead:
+- no cliff (steeper than `CLIFF`);
+- an overall tilt across the pad (least-squares) of at most 0.16, about 9°;
+- no hump or hollow more than 5 m off that tilt;
+- at most 10 % of points steeper than `STEEP`;
+- no dune sand;
+- no boulder field (the rock map thick and big).
+
+The cave and edge rules are unchanged. About a quarter of the open ground inside the edge passes.
+
+The pad is a square matching the build area (`pad_half`), blending back over 0.6 × its half width. `MHSiteTerrain.height` and Terrain3D both level it (`MHBaseSite.pad_height`; `_level_pad` in `scripts/original_mars_environment.gd`). The named zones are left as generated. `tools/terrain_views.gd base=x,z` founds a base there for screenshots. The Land step, the descent and the debug Rover ground view all use it.
 
 ### 4.4 What changes for things round the zone
 

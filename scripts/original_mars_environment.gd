@@ -428,6 +428,9 @@ func _build_region_terrain() -> void:
 	terrain.ready.connect(func() -> void:
 		terrain.region_size = Terrain3D.SIZE_1024   # 2 km regions: about 16 for the whole map (set once it's ready)
 		terrain.data.import_images(_region_images(region_id), place.corner, float(place.offset), float(place.scale))
+		# A base founded where the lander came down: its pad, levelled as
+		# MHSiteTerrain.height has it (the named zones came levelled).
+		if zone.get("dynamic", false): _level_pad(terrain, zone)
 		if preview:
 			_scatter_region_rocks(terrain, Rect2(-PREVIEW_ROCKS, -PREVIEW_ROCKS, PREVIEW_ROCKS * 2.0, PREVIEW_ROCKS * 2.0))
 			return
@@ -448,6 +451,16 @@ func _build_region_terrain() -> void:
 		terrain.collision_radius = 256   # vertices (2 m apart)
 		_scatter_region_rocks(terrain, MHSiteTerrain.RegionTerrain.world_bounds(origin).grow(-500.0)), CONNECT_ONE_SHOT)
 	_site_root.add_child(terrain)
+
+## Terrain3D's ground over a dynamic base site's pad and apron, from
+## MHSiteTerrain.height (which levels them), so both agree.
+func _level_pad(terrain: Terrain3D, zone: Dictionary) -> void:
+	var spacing := terrain.vertex_spacing
+	var reach := ceili(MHBaseSite.pad_reach(zone) / spacing) + 1
+	for gz in range(-reach, reach + 1):
+		for gx in range(-reach, reach + 1):
+			terrain.data.set_height(Vector3(gx * spacing, 0, gz * spacing), MHSiteTerrain.height(gx * spacing, gz * spacing))
+	terrain.data.update_maps(Terrain3DRegion.TYPE_HEIGHT)
 
 ## The heightmap, control map and colour map for Terrain3D. The menu's
 ## backdrop keeps them while sites are switched; the game reads them once.
@@ -471,7 +484,7 @@ func _scatter_region_rocks(terrain: Terrain3D, area: Rect2) -> void:
 	rng.seed = 4242
 	var by_mesh: Array = []
 	for index in MHSiteTerrain.ROCK_MODELS.size(): by_mesh.append([] as Array[Transform3D])
-	var pad := float(MHSiteTerrain.settings().get("pad_half", 60.0)) + 40.0
+	var pad := maxf(float(MHSiteTerrain.settings().get("pad_half", 60.0)) + 40.0, MHBaseSite.pad_reach(MHSiteTerrain.region_zone()))
 	# Each model's footprint, for the rocks' collision (bigger rocks only).
 	var reach: Array = []
 	for model_name in MHSiteTerrain.ROCK_MODELS:

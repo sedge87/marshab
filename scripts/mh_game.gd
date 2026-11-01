@@ -215,6 +215,10 @@ static var showcase := false
 ## Where the player chose to land (site x, z in metres), set on the menu's
 ## Land step; INF means "let the game pick" (quick start, loaded games).
 static var landing_target := Vector2.INF
+## Where this colony's main base was founded, on a region site: a zone in
+## region.json's shape with "dynamic" set (MHBaseSite.make); empty for a
+## named zone's site and the old single-site maps. Saved.
+static var base_site := {}
 # Hidden debug cheats (Ctrl+Shift+F12 in a colony); session only, never saved.
 static var debug_unlimited_cargo := false
 static var debug_free_power := false
@@ -494,6 +498,7 @@ static func prepare_state_load(state: Dictionary) -> bool:
 		return false
 	pending_save_state = state
 	site_id = str(state.get("site_id", site_id))
+	base_site = state.get("base_site", {}) if state.get("base_site", null) is Dictionary else {}
 	colony_name = str(state.get("colony_name", colony_name))
 	mission_statement = str(state.get("mission_statement", mission_statement))
 	emblem = str(state.get("emblem", emblem))
