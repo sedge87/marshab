@@ -40,6 +40,7 @@ func _initialize() -> void:
 	_check(HOW_IT_WORKS.for_trigger("thermal_control_unit") == "heating", "a thermal control unit -> heating")
 	_check(HOW_IT_WORKS.for_trigger("grow_tray") == "food", "a grow tray -> food")
 	_check(HOW_IT_WORKS.for_trigger("chair") == "", "a chair has no card")
+	_check(HOW_IT_WORKS.for_trigger("sabatier_reactor") == "chain_air" and HOW_IT_WORKS.sections().any(func(s): return str(s[0]) == "Chains" and (s[1] as Array).size() == 4), "the Field guide has a card per chain")
 
 	# Steps find their card.
 	_check(HOW_IT_WORKS.for_step({"item": "solar"}) == "power", "a solar step -> power")

@@ -14,6 +14,7 @@ extends Node
 const PATH := "res://data/how_it_works.json"
 const SEEN_PATH := "user://how_it_works.cfg"
 const MHMissions := preload("res://scripts/mh_missions.gd")
+const HABITAT_CHAINS := preload("res://scripts/habitat_chains.gd")
 
 ## Which card explains a failed Test check.
 const CHECK_CARDS := {"always_powered": "power", "life_support_powered": "power", "min_temp": "heating", "breathable": "air",
@@ -106,6 +107,7 @@ const SECTIONS := [
 	["Getting started", ["landing", "building", "carrying", "testing"]],
 	["Keeping alive", ["power", "water", "air", "heating", "food", "research"]],
 	["The crew", ["crew", "wellbeing", "fitness", "earth"]],
+	["Chains", ["chain_air", "chain_water", "chain_food", "chain_waste"]],
 	["Hazards", ["storms", "radiation", "shielding", "breach", "breakdowns"]],
 	["Outside", ["gar_y", "rover", "dust"]],
 ]
@@ -355,6 +357,9 @@ class Picture extends Control:
 
 	func _draw() -> void:
 		draw_style_box(MHStyle.box(Color(1, 1, 1, .04), Color(1, 1, 1, .08), 10, 1), Rect2(Vector2.ZERO, size))
+		if id.begins_with("chain:"):
+			_chain(id.trim_prefix("chain:"))
+			return
 		match id:
 			"landing": _landing()
 			"testing": _testing()
@@ -397,6 +402,34 @@ class Picture extends Control:
 		var side := Vector2(-dir.y, dir.x)
 		draw_colored_polygon(PackedVector2Array([b, b - dir * 12 + side * 7, b - dir * 12 - side * 7]), colour)
 		if not label.is_empty(): _text(label, (a + b) * .5 + Vector2(0, -10), 13, colour)
+
+	## A chain drawn as its loop (habitat_chains.gd): the parts in order, the
+	## way back round to the first, and the leak while parts are missing.
+	func _chain(chain_id: String) -> void:
+		var spec: Dictionary = HABITAT_CHAINS.CHAINS.get(chain_id, {})
+		if spec.is_empty(): return
+		var links: Array = spec.links
+		var n := links.size()
+		var step := (size.x - 60.0) / n
+		var w := minf(150.0, step - 22.0)
+		for i in n:
+			var link: Dictionary = links[i]
+			var at := Vector2(30.0 + step * (i + .5), 95)
+			var core := bool(link.get("core", false))
+			_node(at, str(spec.icon) if core else "plus", HABITAT_CHAINS.label(link), WARM if core else GOOD, w)
+			if i < n - 1: _arrow(at + Vector2(w * .5 + 2, 0), at + Vector2(step - w * .5 - 2, 0), DIM)
+		# Round again: from the last part back to the first.
+		var first := Vector2(30.0 + step * .5, 131)
+		var last_x := 30.0 + step * (n - .5)
+		draw_line(Vector2(last_x, 131), Vector2(last_x, 190), GOOD, 3.0)
+		draw_line(Vector2(last_x, 190), Vector2(first.x, 190), GOOD, 3.0)
+		_arrow(Vector2(first.x, 190), first, GOOD)
+		_text("Every part added sends more back round", Vector2(size.x * .5, 182), 14, GOOD)
+		# The leak.
+		_arrow(Vector2(first.x + w * .5, 125), Vector2(first.x + w * .5 + 70, 225), BAD)
+		_text("Missing parts: lost or piling up", Vector2(first.x + w * .5 + 190, 236), 13, BAD)
+		_text("Core part", Vector2(size.x - 120, 24), 13, WARM)
+		_text("Closes the loop", Vector2(size.x - 120, 42), 13, GOOD)
 
 	func _landing() -> void:
 		var target := Vector2(300, 125)

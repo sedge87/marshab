@@ -5275,6 +5275,12 @@
       {
         "key": "primary",
         "type": "inspect",
+        "label": "How long the base runs without you",
+        "readout": "runway"
+      },
+      {
+        "key": "secondary",
+        "type": "inspect",
         "label": "Read the airlock panel",
         "observations": [
           [

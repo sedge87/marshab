@@ -205,6 +205,26 @@ Three kinds instead of one: **rations** (from Earth, dehydrated, they keep), **p
      - The chapter reports and the ending (step 11) will use `risk_pct`.
    - **Shielding insulates:** a room's hull heat loss × 1 / (1 + 0.06 × shield points per floor square). So 20 points a square roughly halves it.
 7. **The Chains view,** machine readouts and Field guide cards. Rebalance in the spreadsheet; the chapter one and samples tests extended.
+   - **Built (1 Nov).** scripts/habitat_chains.gd holds the four chains (air, water, food, waste) and their parts in loop order, with the core part marked.
+   - **Closure, measured from the last step:**
+     - **Air:** the oxygen the Sabatier gets back from the crew's carbon dioxide, over the oxygen breathed. About 40 % with one reactor for six.
+     - **Water:** water recovered over water used.
+     - **Food:** grown over eaten.
+     - **Waste:** recycled and composted over what is thrown away.
+   - **The Chains view** on the Monitor replaces the separate air, water, tank, Sabatier, food, waste and crop lines. One row per chain shows:
+     - the closure;
+     - the parts, ticked when built;
+     - the stores;
+     - the weak link: what's venting or overloaded, else the next part to add and what it gives.
+   - **Machine readouts:** each chain machine's look-at prompt carries its readout, for example "Water Processor · 4.2 L/h clean · grey 30 L". These move to a screen on the model with the model batches.
+   - **The runway (§12.5):** the sols until water, food, oxygen or carbon dioxide gives out at the current rates, and which goes first.
+     - It shows on the Monitor ("Without you: …"), on the airlock control panel (E, with each chain's weak link) and on the wrist pad when you're inside.
+     - Wear joins it with step 7.
+   - **News outside:** a warning or critical alert at the base lights a third visor light (slow amber, quick red), and the wrist pad shows "BASE: …".
+     - There's no voice line yet, because the voice files are being remade.
+   - **Field guide:** a new "Chains" section with one card per chain, drawn as its loop with the leak. The cards pop up on first placing a Sabatier, urine processor, harvest cart, nutrient mixer, waste sorter or compost hopper.
+   - **Spreadsheet:** docs/MarsHabitat_Balance.xlsx gains the rework's 17 settings (tanks, processors, Sabatier, washing) and the four new machines. The Water Reclaimer is renamed Water Processor.
+     - resources.json matches it, apart from the "region" site, which isn't on the Sites sheet yet. So don't regenerate from the sheet until that's added.
 
 **Models, in batches** (once the mechanics are settled; house style, MHPalette, no lettering). Each machine model shows its **inputs and outputs** (ports, tanks, a window on the tank), a **readout screen**, and its **service hatch**:
 - **Air:** CO₂ scrubber, oxygen generator (built: check it has the ports), Sabatier reactor, methane tank, atmosphere processor (outside), oxygen tanks.

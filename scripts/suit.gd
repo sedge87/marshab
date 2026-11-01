@@ -32,6 +32,7 @@ const WRIST_PAD := preload("res://scripts/wrist_pad.gd")
 const RESCUE := preload("res://scripts/gar_y_rescue.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
+const HABITAT_CHAINS := preload("res://scripts/habitat_chains.gd")
 const O2_HOURS := 2.0            # game hours of oxygen at a walk
 const POWER_HOURS := 3.0         # by day; the heater doubles the draw at night
 const SCRUBBER_HOURS := 4.0
@@ -350,7 +351,25 @@ func readout() -> Dictionary:
 		bearing = wrapf(atan2(-to.x, -to.z) - player.rotation.y, -PI, PI)
 	return {"o2": o2, "power": power, "scrubber": scrubber, "where": where, "active": active(), "filling": _filling,
 		"o2_hours": o2_hours_left(), "turn_back": turn_back_hours(), "refill": refill, "bearing": bearing,
-		"night": MHGame.sunlight_fraction < .1, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv, "dose_rate": dose_rate()}
+		"night": MHGame.sunlight_fraction < .1, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv, "dose_rate": dose_rate(),
+		"base_alert": base_alert(), "runway": _runway()}
+
+## The worst warning or critical alert at the base, {title, level} or {}: the
+## suit relays it to the wrist pad and the visor while you're out (§12.5).
+func base_alert() -> Dictionary:
+	var alerts: Node = get_tree().get_first_node_in_group("habitat_alerts") if is_inside_tree() else null
+	if alerts == null: return {}
+	var worst := {}
+	for id in alerts._active:
+		var level := str(alerts._active[id].level)
+		if not level in ["warning", "critical"]: continue
+		if worst.is_empty() or (level == "critical" and str(worst.level) != "critical"): worst = {"title": str(alerts._active[id].title), "level": level}
+	return worst
+
+func _runway() -> Dictionary:
+	var sim := _sim()
+	if sim == null or not MHGame.simulation_on() or where == "outside": return {}
+	return HABITAT_CHAINS.runway(sim)
 
 func _say(id: String) -> void:
 	MHAudio.suit(id)
@@ -407,6 +426,11 @@ func _tone(share: float) -> Color:
 ## suit's battery is flat and the heater is off.
 func _draw_visor() -> void:
 	var size := _visor.size
+	# Trouble at the base: a third light, top centre, slow amber or quick red.
+	var trouble := base_alert()
+	if not trouble.is_empty() and fmod(_blink, 1.6 if str(trouble.level) == "warning" else .7) < .4:
+		var colour := MHStyle.WARN if str(trouble.level) == "warning" else MHStyle.DANGER
+		for ring in 5: _visor.draw_circle(Vector2(size.x * .5, size.y * .03), size.y * (.004 + .006 * ring), Color(colour, .3 / (1.0 + ring * 1.4)))
 	for side in [[Vector2(size.x * .045, size.y * .055), o2], [Vector2(size.x * .955, size.y * .055), power]]:
 		var share := float(side[1])
 		if share <= .1 and fmod(_blink, .8) > .45: continue

@@ -12,6 +12,7 @@ const MHPalette := preload("res://scripts/mh_palette.gd")
 
 const SURVEY_MAP := preload("res://scripts/survey_map.gd")
 const INFO_SCREEN := preload("res://scripts/info_screen.gd")
+const HABITAT_CHAINS := preload("res://scripts/habitat_chains.gd")
 
 @export var equipment_id := ""
 var _maps: Dictionary = {}  # action index -> survey map Control
@@ -49,6 +50,11 @@ func _ready() -> void:
 func interaction_prompt() -> Dictionary:
 	var entry := EquipmentCatalog.get_entry(equipment_id)
 	var prompt := {"label": str(entry.get("label", equipment_id)), "info": "About"}
+	# The machine's readout (habitat_chains.gd): what goes in and out now.
+	var builder := _builder()
+	if builder != null and MHGame.simulation_on():
+		var line := HABITAT_CHAINS.readout(builder.simulation(), equipment_id)
+		if not line.is_empty(): prompt.label = "%s · %s" % [prompt.label, line]
 	for action in _actions:
 		prompt[str(action.get("key", "primary"))] = _action_label(action)
 	return prompt
@@ -963,6 +969,15 @@ func _inspect(action: Dictionary) -> void:
 		var battery := "Batteries %d%% (%d of %d kWh)" % [roundi(100.0 * sim.battery_kwh / capacity), roundi(sim.battery_kwh), roundi(capacity)] if capacity > 0.0 else "No battery bank: nothing stored for the night"
 		var text := "Making %.1f kW · using %.1f kW (heating %.1f kW)\n%s\nSolar panels at %d%% of full sun\n%s" % [generation, draw, float(last.get("heat_pump_kw", 0.0)), battery, roundi(MHGame.solar_irradiance(MHGame.sol_hour) * 100.0), status]
 		get_tree().call_group("explore_hud", "show_equipment_note", "Power status · %s" % MHGame.formatted_sol_time(), text)
+		return
+	if str(action.get("readout", "")) == "runway":
+		# How long the base runs without you, and each chain's weak link (§12.5).
+		var sim: RefCounted = builder.simulation()
+		var lines: Array = [str(HABITAT_CHAINS.runway(sim).text)]
+		for c in HABITAT_CHAINS.chains(sim):
+			if not str(c.weak).is_empty() and str(c.level) != "ok": lines.append("%s: %s" % [str(c.label), str(c.weak)])
+		get_tree().call_group("explore_hud", "show_equipment_note", "Before you go out · %s" % MHGame.formatted_sol_time(), "
+".join(lines))
 		return
 	if str(action.get("readout", "")) != "habitat_status": return
 	var lines: Array = []

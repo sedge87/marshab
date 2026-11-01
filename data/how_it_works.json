@@ -623,6 +623,109 @@
         "comms_antenna",
         "communications_station"
       ]
+    },
+    {
+      "id": "chain_air",
+      "title": "The air chain",
+      "icon": "wind",
+      "picture": "chain:air",
+      "lines": [
+        "The CO₂ scrubber takes the carbon dioxide the crew breathe out. The oxygen generator splits water into oxygen.",
+        "With only those two, the carbon dioxide is dumped outside and water is used up making oxygen.",
+        "A Sabatier reactor turns kept carbon dioxide and hydrogen back into water, so the loop closes a little.",
+        "Its methane needs a methane tank, or it is vented. An atmosphere processor outside makes oxygen from Mars air."
+      ],
+      "remember": "Two parts keep you breathing. The rest stop the air chain leaking water.",
+      "check": {
+        "question": "What does a Sabatier reactor give back?",
+        "options": [
+          "Water, made from carbon dioxide and hydrogen",
+          "Food",
+          "Electricity"
+        ],
+        "answer": 0
+      },
+      "triggers": [
+        "sabatier_reactor",
+        "methane_tank"
+      ]
+    },
+    {
+      "id": "chain_water",
+      "title": "The water chain",
+      "icon": "droplets",
+      "picture": "chain:water",
+      "lines": [
+        "The ice extractor alone gives you water, but every litre used ends up in the grey water tank.",
+        "When the grey tank is full, it is vented outside and lost. You need a lot of ice.",
+        "A water processor cleans meltwater and grey water. A urine processor gets most of the rest back.",
+        "With every part, almost all of the water goes round again, as on the space station."
+      ],
+      "remember": "A full tank venting tells you which part is missing.",
+      "check": {
+        "question": "Grey water is venting. What is missing?",
+        "options": [
+          "A water processor, or a bigger one",
+          "More ice",
+          "A methane tank"
+        ],
+        "answer": 0
+      },
+      "triggers": [
+        "urine_processor"
+      ]
+    },
+    {
+      "id": "chain_food",
+      "title": "The food chain",
+      "icon": "sprout",
+      "picture": "chain:food",
+      "lines": [
+        "Earth's rations keep the crew fed, until they run out.",
+        "Grow trays grow food over sols. Harvest ripe trays with E, or a harvest cart does it.",
+        "Crops use up nutrients. A nutrient mixer makes more from compost, so the trays keep full speed.",
+        "Fresh food keeps 10 sols, or 60 in a galley freezer. Eating only rations wears the crew down."
+      ],
+      "remember": "Grow, harvest, compost, and back to the trays.",
+      "check": {
+        "question": "Where do new nutrients come from?",
+        "options": [
+          "The nutrient mixer, from compost",
+          "The water processor",
+          "The airlock"
+        ],
+        "answer": 0
+      },
+      "triggers": [
+        "harvest_cart",
+        "nutrient_mixer"
+      ]
+    },
+    {
+      "id": "chain_waste",
+      "title": "The waste chain",
+      "icon": "recycle",
+      "picture": "chain:waste",
+      "lines": [
+        "Packaging, trash and the toilet all make rubbish. On its own it just piles up.",
+        "A waste sorter splits it into plastics, metals and organics.",
+        "Recycling hoppers turn plastics and metals into feedstock for the fabricator.",
+        "The compost hopper turns food scraps into compost, which feeds the food chain."
+      ],
+      "remember": "Rubbish is a resource once it is sorted.",
+      "check": {
+        "question": "What do the recycling hoppers make?",
+        "options": [
+          "Feedstock for the fabricator",
+          "Oxygen",
+          "Water"
+        ],
+        "answer": 0
+      },
+      "triggers": [
+        "waste_sorting_unit",
+        "compost_hopper"
+      ]
     }
   ]
 }

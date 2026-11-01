@@ -42,7 +42,24 @@
     "chapter_store_sols": 90.0,
     "chapter_store_sols_freedom": 150.0,
     "chapter_store_crew": 2.0,
-    "window_cargo_kg": 150.0
+    "window_cargo_kg": 150.0,
+    "urine_per_person": 1.5,
+    "vapour_per_person": 1.5,
+    "shower_l": 5.0,
+    "sponge_bath_l": 2.0,
+    "grey_tank_min_l": 60.0,
+    "grey_tank_share": 0.25,
+    "urine_tank_l": 30.0,
+    "raw_tank_l": 200.0,
+    "water_processor_l": 150.0,
+    "raw_fraction": 0.95,
+    "urine_processor_l": 15.0,
+    "urine_fraction": 0.85,
+    "co2_store_kg": 20.0,
+    "h2_store_kg": 5.0,
+    "sabatier_h2_kg": 0.5,
+    "sabatier_holds_ch4_kg": 5.0,
+    "methane_tank_kg": 300.0
   },
   "rooms": {
     "living": {
@@ -748,7 +765,7 @@
       "cargo_kg": 150.0
     },
     "atmosphere_processor": {
-      "room": "",
+      "room": "outside",
       "cargo_kg": 600.0,
       "power_kw": 2.5,
       "hours_per_sol": 24.0,

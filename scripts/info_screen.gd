@@ -157,6 +157,16 @@ func _draw_suit() -> void:
 		_: line = "AIRLOCK · TOPPING UP" if bool(r.filling) else "INSIDE · SEALED"
 	draw_rect(Rect2(Vector2(14, 190) * u, Vector2(size.x - 28 * u, 52 * u)), Color(colour, .12))
 	_text(line, Vector2(26, 228) * u, int(30 * u), colour, 800)
+	# Inside: how long the base runs without you (§12.5), before you go out.
+	var runway: Dictionary = r.get("runway", {})
+	if not runway.is_empty():
+		var short := float(runway.sols) < 3.0
+		_text(str(runway.text).to_upper(), Vector2(26, 292) * u, int(15 * u), MHStyle.WARN if short else MHStyle.TEXT_SECONDARY, 700)
+		return
+	# Outside: trouble at the base, relayed by the suit.
+	var trouble: Dictionary = r.get("base_alert", {})
+	if not trouble.is_empty() and str(r.where) == "outside":
+		_text("BASE: %s" % str(trouble.title).to_upper(), Vector2(26, 260) * u, int(15 * u), MHStyle.DANGER if str(trouble.level) == "critical" else MHStyle.WARN, 800)
 	# The way to the nearest refill, with an arrow from where you face.
 	var refill: Dictionary = r.refill
 	if refill.is_empty():

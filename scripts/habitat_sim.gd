@@ -682,7 +682,8 @@ func step(dt: float, hour: float) -> void:
 		"storm": storm_hours_left > 0.0, "storm_hours_left": storm_hours_left, "storm_eta": storm_eta_hours, "crew": crew, "people": people, "water_in": (water_made + water_recovered) / per_sol, "raw_in": drill_water / per_sol,
 		"water_out": water_used / per_sol, "food_in": food_grown / per_sol, "o2_in": o2_made / per_sol, "co2_out": co2_removed / per_sol,
 		"heat_capacity_short": heat.short, "night": night, "free_power": MHGame.debug_free_power, "vented": vented.duplicate(), "reclaimers": reclaim_capacity > 0.0,
-		"condensate": condensate / per_sol, "sabatier_water": sabatier_water / per_sol, "ch4_in": h2_used * 2.0 / per_sol, "methane_cap": methane_cap}
+		"condensate": condensate / per_sol, "sabatier_water": sabatier_water / per_sol, "ch4_in": h2_used * 2.0 / per_sol, "methane_cap": methane_cap,
+		"recovered": water_recovered / per_sol, "processed": (from_raw + from_grey) / per_sol, "urine_done": from_urine / per_sol, "co2_back": h2_used * 5.5 / per_sol, "electrolysis_o2": electrolysis_o2 / per_sol}
 
 ## Solar output at an hour: each array catches most light facing the sun
 ## (same rule as the build view's "SOLAR % AT NOON" label).

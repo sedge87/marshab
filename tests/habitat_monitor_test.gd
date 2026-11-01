@@ -78,6 +78,7 @@ func _initialize() -> void:
 	var text := ""
 	for label in m.find_children("*", "Label", true, false): text += (label as Label).text + " "
 	_check(text.contains("Grow Tray") and text.contains("Whole base") or text.to_lower().contains("whole base"), "the room and whole-base panels fill in")
+	_check(text.contains("WATER ·") and text.contains("WASTE ·") and text.contains("Without you:"), "the Chains view: a row per chain and the runway")
 
 	# The last sol is recorded every quarter hour.
 	var before: int = world.alerts.day.size()

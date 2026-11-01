@@ -188,6 +188,22 @@ func _initialize() -> void:
 	_check(shielded < bare * .75, "shielding the sleeping quarters cuts the crew's dose (%.2f)" % shielded)
 	_check(rad_sim.shield_insulation(rad_inv.rooms[bedroom]) < .5 and is_equal_approx(rad_sim.shield_insulation({"cells": 4, "shield_upgrades": 0.0}), 1.0), "shielding keeps a room's heat in")
 	rad_inv.rooms[bedroom].shield_upgrades = 0.0
+
+	# Phase 7, chains: closure, the weak link, the runway and the readouts.
+	var CHAINS := preload("res://scripts/habitat_chains.gd")
+	var rows: Array = CHAINS.chains(bin_sim)
+	var by_id := {}
+	for row in rows: by_id[str(row.id)] = row
+	_check(rows.size() == 4 and float(by_id.water.closure) > .5 and float(by_id.water.closure) < 1.0, "the water chain is mostly closed with a water processor (%d%%)" % roundi(float(by_id.water.closure) * 100.0))
+	_check(str(by_id.water.weak).contains("Ice Extractor") and str(by_id.water.level) == "bad" and (by_id.water.links as Array).any(func(l): return str(l.label) == "Urine Processor" and not bool(l.have)), "a missing core part comes first, and unbuilt parts are listed (%s)" % by_id.water.weak)
+	bin_sim.inventory().drills.append(.8)
+	_check(str(CHAINS.chain(bin_sim, "water").weak).to_lower().contains("urine processor"), "with ice, the missing link is named (%s)" % CHAINS.chain(bin_sim, "water").weak)
+	bin_sim.inventory().drills.pop_back()
+	_check(float(by_id.waste.closure) > .3, "sorting and recycling close the waste chain (%d%%)" % roundi(float(by_id.waste.closure) * 100.0))
+	_check(float(by_id.air.closure) == 0.0 and str(by_id.air.weak).contains("Sabatier"), "no Sabatier: none of the air's oxygen comes back (%s)" % by_id.air.weak)
+	var runway: Dictionary = CHAINS.runway(bin_sim)
+	_check(str(runway.text).begins_with("Safe"), "the runway says how long the base runs alone (%s)" % runway.text)
+	_check(CHAINS.readout(bin_sim, "water_reclaimer").contains("L/h") and CHAINS.readout(bin_sim, "crew_bunk") == "", "machines have a readout; furniture doesn't")
 	_check(is_equal_approx(rad_sim.life.risk_pct(600.0), 3.0) and rad_sim.life.dose_text(60.0).contains("60 of 600"), "the career limit: 3 % added risk at 600 mSv")
 
 	# A dust storm: solar drops, loads are shed, and life support goes last.

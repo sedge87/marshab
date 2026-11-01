@@ -26,6 +26,7 @@ const PILE_ALERT_KG := 40.0
 var sim: RefCounted
 var unsorted := {"plastic": 0.0, "metal": 0.0, "organic": 0.0}
 var recycled_kg := 0.0           # feedstock made in this game (reports)
+var last := {}                   # the last step, a sol's worth: {made, sorted, recycled, composted} (habitat_chains.gd)
 
 func _init(owner: RefCounted) -> void:
 	sim = owner
@@ -74,6 +75,7 @@ func step(dt: float, inv: Dictionary, powered: Dictionary, crew: int, rations_kg
 	var organic := minf(float(stores.organics_kg), _count(inv, "compost_hopper") * COMPOST_KG * per_sol)
 	stores.organics_kg = float(stores.organics_kg) - organic
 	stores.compost_kg = float(stores.compost_kg) + organic * .4
+	if per_sol > 0.0: last = {"made": (packaging + trash + crew * SOLIDS_KG * per_sol) / per_sol, "sorted": sortable / per_sol, "recycled": made / per_sol, "composted": organic / per_sol}
 
 func pile() -> float:
 	return float(unsorted.plastic) + float(unsorted.metal) + float(unsorted.organic)

@@ -15,6 +15,7 @@ extends Control
 ## the base. Esc or M closes it.
 
 const MHResources := preload("res://scripts/mh_resources.gd")
+const CHAINS := preload("res://scripts/habitat_chains.gd")
 const STATE_COLOURS := {"ok": Color("#3EE58A"), "warn": Color("#F5C542"), "danger": Color("#E5484D"), "idle": Color("#8796A0")}
 
 signal closed
@@ -220,31 +221,13 @@ func _fill_flows() -> void:
 	_flows_panel.add_child(_line(power, MHStyle.TEXT_PRIMARY if made >= used or float(snap.battery_pct) > 20.0 else MHStyle.WARN, 15))
 	_flows_panel.add_child(_line("Temperature: %d °C %s (comfortable 18–24 °C)" % [roundi(float(s.habitat_temp)), _trend("temp", float(s.habitat_temp))],
 		MHStyle.TEXT_PRIMARY if float(s.habitat_temp) >= 18.0 else (MHStyle.WARN if float(s.habitat_temp) >= 12.0 else MHStyle.DANGER), 15))
-	_flows_panel.add_child(_line("Air: O₂ %.1f%% %s · CO₂ %.2f%% %s" % [float(snap.o2_pct), _trend("o2", float(snap.o2_pct)), float(snap.co2_pct), _trend("co2", float(snap.co2_pct))],
-		MHStyle.TEXT_PRIMARY if float(snap.o2_pct) >= 19.5 and float(snap.co2_pct) <= 1.0 else MHStyle.DANGER, 15))
 	var crew := int(flows.crew)
-	var water_net := float(flows.water_made) - float(flows.water_used)
-	_flows_panel.add_child(_line("Water: %d L · makes %d, uses %d L a sol%s" % [roundi(float(snap.water_l)), roundi(float(flows.water_made)), roundi(float(flows.water_used)),
-		" · %s left" % _sols(float(snap.water_l) / -water_net) if water_net < 0.0 and crew > 0 else ""], MHStyle.TEXT_PRIMARY, 15))
-	var caps: Dictionary = s.store_caps(inv.capacity)
-	var lost: Dictionary = s.last.get("vented", {})
-	var venting := float(lost.get("grey_l", 0.0)) + float(lost.get("raw_l", 0.0)) + float(lost.get("urine_l", 0.0)) > .5
-	_flows_panel.add_child(_line("Tanks: meltwater %d · grey %d of %d · urine %d · brine %.1f L · CO₂ kept %.1f kg%s" % [roundi(float(s.stores.raw_l)), roundi(float(s.stores.grey_l)), roundi(float(caps.grey_l)),
-		roundi(float(s.stores.urine_l)), float(s.stores.brine_l), float(s.stores.co2_kg), " · venting" if venting else ""], MHStyle.WARN if venting else MHStyle.TEXT_SECONDARY, 15))
-	if float(s.last.get("ch4_in", 0.0)) > 0.0 or float(s.stores.ch4_kg) > 0.0:
-		var ch4_venting := float((s.last.get("vented", {}) as Dictionary).get("ch4_kg", 0.0)) > 0.0
-		_flows_panel.add_child(_line("Sabatier: %.1f L water back a sol · methane %.1f of %d kg%s" % [float(s.last.get("sabatier_water", 0.0)), float(s.stores.ch4_kg), roundi(float(s.last.get("methane_cap", 0.0))),
-			" · venting: add a methane tank" if ch4_venting else ""], MHStyle.WARN if ch4_venting else MHStyle.TEXT_SECONDARY, 15))
-	var food_net := float(flows.food_grown) - float(flows.food_eaten)
-	_flows_panel.add_child(_line("Food: %d kg · grows %.1f, eats %.1f kg a sol%s" % [roundi(float(snap.food_kg)), float(flows.food_grown), float(flows.food_eaten),
-		" · %s left" % _sols(float(snap.food_kg) / -food_net) if food_net < 0.0 and crew > 0 else ""], MHStyle.TEXT_PRIMARY, 15))
-	if float(s.stores.waste_kg) + float(s.stores.plastics_kg) + float(s.stores.organics_kg) + float(s.stores.compost_kg) > .5:
-		_flows_panel.add_child(_line("Waste: %d kg unsorted · plastics %d · metals %d · organics %d · compost %.1f kg · %.1f kg feedstock recycled" % [roundi(float(s.stores.waste_kg)), roundi(float(s.stores.plastics_kg)), roundi(float(s.stores.metals_kg)),
-			roundi(float(s.stores.organics_kg)), float(s.stores.compost_kg), float(s.waste.recycled_kg)], MHStyle.WARN if float(s.stores.waste_kg) >= s.waste.PILE_ALERT_KG else MHStyle.TEXT_SECONDARY, 15))
-	var crops: Dictionary = s.food.summary(inv)
-	if int(crops.growing) + int(crops.ripe) > 0:
-		_flows_panel.add_child(_line("Crops: %d growing, %d ripe · fresh %.1f kg · nutrients %.1f kg · %d%% of meals fresh" % [int(crops.growing), int(crops.ripe), float(crops.fresh_kg), float(crops.nutrients_kg), roundi(float(crops.fresh_share) * 100.0)],
-			MHStyle.WARN if int(crops.ripe) > 0 else MHStyle.TEXT_SECONDARY, 15))
+	# The Chains view (docs/survival-systems.md §8): one row per chain, with
+	# how closed it is, what it holds and the link to fix next.
+	_flows_panel.add_child(MHStyle.eyebrow("Chains", MHStyle.accent, 13))
+	for c in CHAINS.chains(s): _flows_panel.add_child(_chain_row(c))
+	var runway: Dictionary = CHAINS.runway(s)
+	_flows_panel.add_child(_line("Without you: %s" % str(runway.text), MHStyle.WARN if float(runway.sols) < 3.0 else MHStyle.TEXT_SECONDARY, 15))
 	_flows_panel.add_child(_line("Crew: %d aboard of %d bunks · health %d%%" % [crew, int(inv.capacity.berths), roundi(float(snap.crew_health))], MHStyle.TEXT_PRIMARY, 15))
 	if MHSamples.on():
 		_flows_panel.add_child(_line("Science: %d discoveries · %d samples waiting · %d leads" % [MHSamples.found.size(), MHSamples.waiting().size(), MHSamples.leads.size()], MHStyle.TEXT_PRIMARY, 15))
@@ -274,6 +257,22 @@ func _fill_flows() -> void:
 		for id in alerts._active:
 			var level := str(alerts._active[id].level)
 			_flows_panel.add_child(_line("%s · %s" % [level.to_upper(), str(alerts._active[id].title)], alerts.LEVEL_COLOUR.get(level, MHStyle.WARN)))
+
+## A chain's row: name and closure, its parts (ticked if built), its stores
+## and the weak link.
+func _chain_row(c: Dictionary) -> Control:
+	var col := MHStyle.vbox(2)
+	var tone: Color = {"ok": MHStyle.VALID, "warn": MHStyle.WARN, "bad": MHStyle.DANGER}[str(c.level)]
+	var head := MHStyle.hbox(8)
+	head.add_child(MHStyle.icon(str(c.icon), 18, tone))
+	var closure := float(c.closure)
+	head.add_child(_line("%s · %s" % [str(c.label).to_upper(), "%d%% closed" % roundi(closure * 100.0) if closure >= 0.0 else "nobody aboard"], tone, 15))
+	col.add_child(head)
+	var parts: Array = (c.links as Array).map(func(l): return "%s %s" % ["✓" if bool(l.have) else "·", str(l.label)])
+	col.add_child(_line("   ".join(parts), MHStyle.TEXT_SECONDARY, 13))
+	col.add_child(_line(str(c.stores), MHStyle.TEXT_SECONDARY, 13))
+	if not str(c.weak).is_empty(): col.add_child(_line(str(c.weak), tone if str(c.level) != "ok" else MHStyle.TEXT_MUTED, 13))
+	return col
 
 func _trend(key: String, value: float) -> String:
 	var before := float(_previous.get(key, value))
