@@ -3,8 +3,8 @@
   "size": 3072,
   "spacing": 2.0,
   "half": 3072.0,
-  "height_min": -181.88526649714072,
-  "height_max": 485.974671855069,
+  "height_min": -205.89915137954063,
+  "height_max": 513.9262925883024,
   "zones": {
     "plains": {
       "centre": [
@@ -12,7 +12,7 @@
         1000.0
       ],
       "flat_radius": 95.0,
-      "height": -45.296775557418954,
+      "height": -28.169762368421857,
       "label": "The plains"
     },
     "crater": {
@@ -21,7 +21,7 @@
         -320.0
       ],
       "flat_radius": 85.0,
-      "height": -97.57603829865394,
+      "height": -98.05988672895265,
       "label": "The crater floor"
     },
     "riverbed": {
@@ -30,7 +30,7 @@
         1739.9829044339674
       ],
       "flat_radius": 50.0,
-      "height": -28.96077981196092,
+      "height": -4.697312932864037,
       "label": "The old riverbed"
     }
   },
@@ -115,6 +115,27 @@
       "position": [
         826.4794999999999,
         82.43439999999993
+      ]
+    },
+    {
+      "name": "Wrinkle ridge",
+      "position": [
+        -1650.0,
+        1900.0
+      ]
+    },
+    {
+      "name": "Wrinkle ridge",
+      "position": [
+        -600.0,
+        1900.0
+      ]
+    },
+    {
+      "name": "Side canyon",
+      "position": [
+        -250.0,
+        -1800.0
       ]
     }
   ]

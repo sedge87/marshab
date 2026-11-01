@@ -492,6 +492,9 @@ func _autopilot(delta: float) -> Vector2:
 	var at := Vector2(global_position.x, global_position.z)
 	var target := _next_target(home, at)
 	if _recall_stage == "approach" and top_speed() > 0.0 and _no_progress(at.distance_to(target), delta): _hop()
+	if _recall_stage == "enter" and _no_progress(at.distance_to(home.centre), delta):
+		park_at_home(false)   # wedged at the door (it came in at an angle): lifted in, as on the way
+		return Vector2.ZERO
 	if _recall_stage == "enter" and at.distance_to(home.centre) < 1.2:
 		recalling = false
 		speed = 0.0
@@ -546,6 +549,8 @@ func _next_target(home: Dictionary, at: Vector2) -> Vector2:
 	while _route_i < _route.size() - 1 and at.distance_to(_route[_route_i]) < 6.0: _advance()
 	if _route_i >= _route.size() - 1 and at.distance_to(_route[_route.size() - 1]) < 2.5:
 		_recall_stage = "enter"
+		_best = INF
+		_since_better = 0.0
 		return home.centre
 	return _route[mini(_route_i, _route.size() - 1)]
 
