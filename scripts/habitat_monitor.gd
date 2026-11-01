@@ -256,7 +256,7 @@ func _fill_flows() -> void:
 	var pressure: float = life.pressure_pct(inv)
 	_flows_panel.add_child(_line("Air pressure: %d%%%s" % [roundi(pressure), "" if pressure > 99.5 else " · hull breach" if not (life.breach as Dictionary).is_empty() and float(life.breach.get("patched_at", -1.0)) < 0.0 else " · refilling"],
 		MHStyle.TEXT_PRIMARY if pressure > 99.5 else (MHStyle.WARN if pressure >= 70.0 else MHStyle.DANGER), 15))
-	var dose_line := "Radiation: %d mSv so far" % roundi(float(life.dose_msv))
+	var dose_line := "Radiation (crew): %s · %.2f mSv a sol inside" % [life.dose_text(float(life.dose_msv)), life.indoor_msv_per_sol(inv)]
 	if life.spe_active(): dose_line += " · SOLAR EVENT, %d mSv this event" % roundi(float(life.event_dose_msv))
 	_flows_panel.add_child(_line(dose_line, MHStyle.WARN if life.spe_active() else MHStyle.TEXT_PRIMARY, 15))
 	if life.crew_on and not (life.crew as Array).is_empty():

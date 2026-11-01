@@ -174,6 +174,22 @@ func _initialize() -> void:
 	bin_copy.simulation().load(bin_sim.save())
 	_check(is_equal_approx(float(bin_copy.simulation().waste.recycled_kg), float(bin_sim.waste.recycled_kg)), "waste survives save and load")
 
+	# Phase 6, radiation: an everyday dose under the hull, cut most by
+	# shielding where the crew sleep; a career limit; shielding insulates.
+	var rad_sim: RefCounted = bins.simulation()
+	var rad_inv: Dictionary = rad_sim.inventory()
+	var bare: float = rad_sim.life.indoor_msv_per_sol(rad_inv)
+	_check(absf(bare - .48) < .02, "bare habitat: about 0.48 mSv a sol (%.2f)" % bare)
+	var bedroom := -1
+	for index in range((rad_inv.rooms as Array).size()):
+		if str(rad_inv.rooms[index].kind) == "living": bedroom = index
+	rad_inv.rooms[bedroom].shield_upgrades = 9.0 * 20.0
+	var shielded: float = rad_sim.life.indoor_msv_per_sol(rad_inv)
+	_check(shielded < bare * .75, "shielding the sleeping quarters cuts the crew's dose (%.2f)" % shielded)
+	_check(rad_sim.shield_insulation(rad_inv.rooms[bedroom]) < .5 and is_equal_approx(rad_sim.shield_insulation({"cells": 4, "shield_upgrades": 0.0}), 1.0), "shielding keeps a room's heat in")
+	rad_inv.rooms[bedroom].shield_upgrades = 0.0
+	_check(is_equal_approx(rad_sim.life.risk_pct(600.0), 3.0) and rad_sim.life.dose_text(60.0).contains("60 of 600"), "the career limit: 3 % added risk at 600 mSv")
+
 	# A dust storm: solar drops, loads are shed, and life support goes last.
 	sim.start_storm(3.0)
 	var storm: Array = sim.run_hours(48.0, 8.0, 1.0)

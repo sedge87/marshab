@@ -65,7 +65,7 @@ func _initialize() -> void:
 	life.spe_hours_left = 24.0
 	var inv := {"rooms": [], "items": []}
 	life.post_step(1.0, inv, {}, 4, 0.0)
-	_check(float(life.dose_msv) == 0.0 and float(life.spe_hours_left) == 23.0, "radiation off: a solar event runs its course with no dose")
+	_check(float(life.dose_msv) < .1 and float(life.spe_hours_left) == 23.0 and life.risk_pct(float(life.dose_msv)) == 0.0, "radiation off: a solar event runs its course with no dose, and the everyday dose never counts")
 	life.radiation_on = true
 	life.post_step(1.0, inv, {}, 4, 0.0)
 	_check(float(life.dose_msv) > 0.0, "radiation on: the crew take a dose")

@@ -191,6 +191,19 @@ Three kinds instead of one: **rations** (from Earth, dehydrated, they keep), **p
      - The nutrient mixer turns 0.5 kg of compost a sol into 0.25 kg of nutrients. With no compost it makes none.
    - **Not yet:** spares made from feedstock (§12.4) come with step 7's wear.
 6. **Radiation:** the background dose, your own dose outside, the career limit, the dosimeter, shielding insulating.
+   - **Built (1 Nov).** Settings in data/hazards.json under "radiation".
+   - **The crew's dose:** 0.6 mSv a sol on open ground, × 0.8 under a bare hull, so 0.48 a sol.
+     - Two thirds of the day it's cut by the habitat's shielding, and the third in bed by the shield rating of the rooms with bunks (`sleep_shield`).
+     - The dose always adds up. With the Radiation option off it shows as "not counted" and carries no risk.
+     - Solar events work as before, through the storm shelter.
+   - **Your dose:** the suit's dosimeter (suit.gd).
+     - Rates: outside the full surface rate (0.025 mSv an hour), in a cave × 0.05, in the rover's cab × 0.8, in the lander × 0.7, in the habitat the crew's rate.
+     - A solar event adds its rate wherever you are; in the habitat the shelter cuts it.
+     - The wrist pad shows today's dose and the total, and "HIGH" in a solar event. Saved with the suit.
+   - **Career limit:** 600 mSv, +3 % health risk at the limit (linear). It shows on the Monitor and the crew screen.
+     - The crew screen also shows the sleeping quarters' shield points, with the advice to shield them first.
+     - The chapter reports and the ending (step 11) will use `risk_pct`.
+   - **Shielding insulates:** a room's hull heat loss × 1 / (1 + 0.06 × shield points per floor square). So 20 points a square roughly halves it.
 7. **The Chains view,** machine readouts and Field guide cards. Rebalance in the spreadsheet; the chapter one and samples tests extended.
 
 **Models, in batches** (once the mechanics are settled; house style, MHPalette, no lettering). Each machine model shows its **inputs and outputs** (ports, tanks, a window on the tank), a **readout screen**, and its **service hatch**:

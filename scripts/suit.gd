@@ -23,10 +23,15 @@ extends Node
 ## until you repair them at a suit service panel (or patch them by hand in a sealed space, if the base has no panel).
 ## Freedom warns but never lets you pass out; Creative and Missions don't run
 ## the suit.
+##
+## The suit's dosimeter (docs/survival-systems.md §7) keeps your own radiation
+## dose: the full surface rate outside (almost none in a cave), a little less
+## in the rover's cab or the lander, and the crew's indoor rate in the habitat.
 
 const WRIST_PAD := preload("res://scripts/wrist_pad.gd")
 const RESCUE := preload("res://scripts/gar_y_rescue.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
+const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
 const O2_HOURS := 2.0            # game hours of oxygen at a walk
 const POWER_HOURS := 3.0         # by day; the heater doubles the draw at night
 const SCRUBBER_HOURS := 4.0
@@ -68,6 +73,8 @@ var _layer: CanvasLayer
 var _visor: Control
 var _blink := 0.0
 var _check := 0.0
+var dose_msv := 0.0              # your own total (saved)
+var today_msv := 0.0             # since local midnight (saved)
 
 func setup(target_world: Node) -> void:
 	world = target_world
@@ -101,6 +108,7 @@ func _process(delta: float) -> void:
 	if get_tree().paused: return
 	var hour := MHGame.sol_hour
 	var hours := wrapf(hour - _last_hour, 0.0, 24.0) if _last_hour >= 0.0 else 0.0
+	if _last_hour >= 0.0 and hour < _last_hour: today_msv = 0.0   # past midnight
 	_last_hour = hour
 	if hours > .5: hours = 0.0   # a clock jump (loading, debug), not time worn
 	_check -= delta
@@ -116,6 +124,7 @@ func _process(delta: float) -> void:
 		o2 = 1.0; power = 1.0; scrubber = 1.0
 		_set_visor_visible(false)
 		return
+	dose(hours)
 	if where == "outside":
 		if not passed_out: step(hours)
 	else:
@@ -148,6 +157,33 @@ func step(hours: float) -> void:
 	o2 = maxf(0.0, o2 - hours * breathing_rate() * (LEAK if leak else 1.0) / O2_HOURS)
 	power = maxf(0.0, power - hours * (NIGHT_POWER if MHGame.sunlight_fraction < .1 else 1.0) / POWER_HOURS)
 	scrubber = maxf(0.0, scrubber - hours / SCRUBBER_HOURS)
+
+## Your dose rate where you are, mSv an hour.
+func dose_rate() -> float:
+	var sim := _sim()
+	var life: RefCounted = sim.life if sim != null else null
+	var surface := float(HABITAT_LIFE.value("radiation", "surface_msv_per_sol", .6)) / 24.0
+	var factor := 1.0
+	match where:
+		"habitat":
+			if life != null: return life.indoor_msv_per_sol(sim.inventory()) / 24.0 + _event_rate(life) * life.event_factor(sim.inventory(), sim.crew_count())
+			factor = float(HABITAT_LIFE.value("radiation", "indoors_factor", .8))
+		"rover": factor = float(HABITAT_LIFE.value("radiation", "rover_factor", .8))
+		"lander": factor = float(HABITAT_LIFE.value("radiation", "lander_factor", .7))
+		_:
+			if not MHCaves.cave_at(world.player.global_position).is_empty(): factor = float(HABITAT_LIFE.value("radiation", "cave_factor", .05))
+	return (surface + (_event_rate(life) if life != null else 0.0)) * factor
+
+func _event_rate(life: RefCounted) -> float:
+	if not life.spe_active(): return 0.0
+	return float(HABITAT_LIFE.value("radiation", "event_dose_msv", 150.0)) / float(HABITAT_LIFE.value("radiation", "event_hours", 24.0))
+
+## The dosimeter: hours pass wherever you are.
+func dose(hours: float) -> void:
+	if hours <= 0.0: return
+	var got := dose_rate() * hours
+	dose_msv += got
+	today_msv += got
 
 ## How hard you're breathing: 1 at a walk.
 func breathing_rate() -> float:
@@ -314,7 +350,7 @@ func readout() -> Dictionary:
 		bearing = wrapf(atan2(-to.x, -to.z) - player.rotation.y, -PI, PI)
 	return {"o2": o2, "power": power, "scrubber": scrubber, "where": where, "active": active(), "filling": _filling,
 		"o2_hours": o2_hours_left(), "turn_back": turn_back_hours(), "refill": refill, "bearing": bearing,
-		"night": MHGame.sunlight_fraction < .1, "leak": leak}
+		"night": MHGame.sunlight_fraction < .1, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv, "dose_rate": dose_rate()}
 
 func _say(id: String) -> void:
 	MHAudio.suit(id)
@@ -462,7 +498,7 @@ func wake_spot() -> Dictionary:
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"o2": o2, "power": power, "scrubber": scrubber, "leak": leak,
+	return {"o2": o2, "power": power, "scrubber": scrubber, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv,
 		"dropped": dropped.map(func(d): return {"placement_id": d.placement_id, "label": d.label, "position": [d.position.x, d.position.y, d.position.z]})}
 
 func restore_state(state: Dictionary) -> void:
@@ -470,4 +506,6 @@ func restore_state(state: Dictionary) -> void:
 	power = float(state.get("power", 1.0))
 	scrubber = float(state.get("scrubber", 1.0))
 	leak = bool(state.get("leak", false))
+	dose_msv = float(state.get("dose_msv", 0.0))
+	today_msv = float(state.get("today_msv", 0.0))
 	dropped = (state.get("dropped", []) as Array).map(func(d): return {"placement_id": str(d.placement_id), "label": str(d.label), "position": Vector3(float(d.position[0]), float(d.position[1]), float(d.position[2]))})

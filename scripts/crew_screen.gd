@@ -155,7 +155,8 @@ func _safety_panel(life: RefCounted, inv: Dictionary) -> Control:
 	_line(col, "wind", "Air reserve: %d kg (refills about %d floor squares)" % [roundi(float(life.air_reserve_kg)), floori(float(life.air_reserve_kg) / float(life.value("breach", "air_kg_per_cell", 31.0)))], float(life.air_reserve_kg) > 0.0)
 	_line(col, "wrench", "Hull patch kit: %s" % ("ready" if (inv.all_items as Array).any(func(i): return str(i.id) == "hull_patch_kit") else "none"), (inv.all_items as Array).any(func(i): return str(i.id) == "hull_patch_kit"))
 	_line(col, "package", "Spare parts: %d%s" % [int(life.spares), "  ·  %d machine%s broken" % [(life.broken as Dictionary).size(), "" if (life.broken as Dictionary).size() == 1 else "s"] if not (life.broken as Dictionary).is_empty() else ""], int(life.spares) > 0)
-	_line(col, "sun", "Radiation dose so far: %d mSv" % roundi(float(life.dose_msv)), true)
+	_line(col, "sun", "Radiation dose: %s" % life.dose_text(float(life.dose_msv)), life.risk_pct(float(life.dose_msv)) < 1.5)
+	_line(col, "radiation", "Where the crew sleep: %d shield points (a third of the day is in bed: shield the sleeping quarters first)" % roundi(life.sleep_shield(inv)), life.sleep_shield(inv) >= float(life.value("radiation", "safe_points", 20.0)))
 	return panel
 
 func _line(col: VBoxContainer, icon: String, text: String, good: bool) -> void:

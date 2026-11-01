@@ -138,6 +138,9 @@ func _draw_suit() -> void:
 	_bar(Vector2(x, 112 * u), 200 * u, float(r.power), tone.call(float(r.power)), u)
 	_text("CO2 SCRUBBER", Vector2(x, 146 * u), int(18 * u), MHStyle.TEXT_SECONDARY)
 	_bar(Vector2(x, 154 * u), 200 * u, float(r.scrubber), tone.call(float(r.scrubber)), u)
+	# The dosimeter: today and your running total.
+	var rate := float(r.get("dose_rate", 0.0)) * 24.0
+	_text("DOSE  %.2f mSv TODAY · %d TOTAL%s" % [float(r.get("today_msv", 0.0)), roundi(float(r.get("dose_msv", 0.0))), "  · HIGH" if rate > 2.0 else ""], Vector2(x, 180 * u), int(14 * u), MHStyle.DANGER if rate > 2.0 else MHStyle.TEXT_SECONDARY, 600)
 	# The line that matters most: when to turn back, or what's happening.
 	var line := ""
 	var colour := MHStyle.TEXT_PRIMARY

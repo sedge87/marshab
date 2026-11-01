@@ -25,6 +25,8 @@ static func role(role_id: String) -> Dictionary:
 		if str(each.id) == role_id: return each
 	return {}
 
+const SLEEP_SHARE := 1.0 / 3.0   # of the day in bed: the bedroom's shielding counts this much
+
 var sim: RefCounted
 
 # ---- switches (set by the world or the mission Test, not saved) ----
@@ -222,6 +224,45 @@ func shelter(inv: Dictionary) -> Dictionary:
 	if not best.is_empty():
 		best["ok"] = float(best.rating) >= float(value("radiation", "safe_points", 20.0)) and int(best.capacity) >= sim.crew_count() and bool(best.heated) and not bool(best.cold)
 	return best
+
+## Where the crew sleep: the bunks' rooms, averaged (a third of the day is in bed).
+func sleep_shield(inv: Dictionary) -> float:
+	var total := 0.0
+	var rooms := 0
+	for index in range((inv.rooms as Array).size()):
+		if not _ids_in(inv, index).has("crew_bunk"): continue
+		total += shield_rating(inv, index)
+		rooms += 1
+	return total / rooms if rooms > 0 else habitat_shield(inv)
+
+## The everyday dose inside, mSv a sol (docs/survival-systems.md §7): the
+## surface rate under the hull, cut by the habitat's shielding by day and the
+## bedroom's own by night. Shielding the sleeping quarters pays most.
+func indoor_msv_per_sol(inv: Dictionary) -> float:
+	var surface := float(value("radiation", "surface_msv_per_sol", .6)) * float(value("radiation", "indoors_factor", .8))
+	var night := SLEEP_SHARE
+	return surface * (dose_factor(habitat_shield(inv)) * (1.0 - night) + dose_factor(sleep_shield(inv)) * night)
+
+## The share of a solar event's dose that gets through to someone in the
+## habitat now: the shelter, for those it holds.
+func event_factor(inv: Dictionary, crew_n: int) -> float:
+	var place := shelter(inv)
+	if place.is_empty(): return 1.0
+	var inside := minf(1.0, float(place.capacity) / maxf(1.0, crew_n))
+	return inside * dose_factor(float(place.rating)) + (1.0 - inside)
+
+## The added lifetime cancer risk from a dose, in %, against the career limit
+## (NASA's 600 mSv, about 3 % at the limit). 0 with the Radiation option off:
+## the dose is still shown but never counts.
+func risk_pct(dose: float) -> float:
+	if not radiation_on: return 0.0
+	return dose / float(value("radiation", "career_limit_msv", 600.0)) * float(value("radiation", "risk_at_limit_pct", 3.0))
+
+## "62 of 600 mSv career limit · +0.3% health risk", for the Monitor and crew screen.
+func dose_text(dose: float) -> String:
+	var limit := float(value("radiation", "career_limit_msv", 600.0))
+	if not radiation_on: return "%d mSv (Radiation off: not counted)" % roundi(dose)
+	return "%d of %d mSv career limit · +%.1f%% health risk" % [roundi(dose), roundi(limit), risk_pct(dose)]
 
 ## How much of an event's radiation gets through this many shield points.
 static func dose_factor(points: float) -> float:
@@ -572,20 +613,15 @@ func post_step(dt: float, inv: Dictionary, tiers: Dictionary, crew_n: int, resea
 	var per_sol := dt / 24.0
 	var out := {"harm": 0.0, "causes": []}
 	if crew_n <= 0: return out
-	# Radiation (one crew dose).
-	# Everyday background radiation, eased by shielding anywhere on the habitat.
-	var background := float(value("radiation", "background_msv_per_sol", .3)) * per_sol * dose_factor(habitat_shield(inv))
-	if radiation_on: dose_msv += background
+	# Radiation (one crew dose). The everyday dose always adds up (shown even
+	# with Radiation off, when risk_pct() doesn't count it).
+	dose_msv += indoor_msv_per_sol(inv) * per_sol
 	if spe_active() and not radiation_on:
 		spe_hours_left = maxf(0.0, spe_hours_left - dt)   # the event runs its course; no dose is counted
 	elif spe_active():
 		var hours := float(value("radiation", "event_hours", 24.0))
 		var event := float(value("radiation", "event_dose_msv", 150.0)) * minf(dt, spe_hours_left) / hours
-		var place := shelter(inv)
-		var factor := 1.0
-		if not place.is_empty():
-			var inside := minf(1.0, float(place.capacity) / maxf(1.0, crew_n))
-			factor = inside * dose_factor(float(place.rating)) + (1.0 - inside)
+		var factor := event_factor(inv, crew_n)
 		dose_msv += event * factor
 		event_dose_msv += event * factor
 		worst_event_msv = maxf(worst_event_msv, event_dose_msv)

@@ -70,6 +70,11 @@ func _initialize() -> void:
 	suit.step(1.0)
 	_check(absf(suit.o2 - .5) < .01 and absf(suit.power - 2.0 / 3.0) < .01, "an hour outside: half the oxygen, a third of the power (%.2f, %.2f)" % [suit.o2, suit.power])
 	_check(suit.turn_back_hours() < suit.o2_hours_left(), "the turn-back time allows for the walk home")
+	var dose_before: float = suit.dose_msv
+	var outdoor_rate: float = suit.dose_rate()
+	suit.dose(1.0)
+	_check(absf(outdoor_rate - .025) < .001 and suit.dose_msv > dose_before and suit.readout().has("today_msv"), "the dosimeter: the full surface rate outside (%.3f mSv an hour)" % outdoor_rate)
+	_check(is_equal_approx(float(suit.export_state().dose_msv), suit.dose_msv), "your dose is saved")
 	world.day_night.set_hour(23.0)
 	var power_before: float = suit.power
 	suit.step(.5)

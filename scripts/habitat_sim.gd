@@ -538,7 +538,7 @@ func step(dt: float, hour: float) -> void:
 	var window_u := u * MHResources.setting("window_loss_factor", 6.0) * MHResources.setting("window_area", 3.0)
 	for index in range(rooms.size()):
 		var room: Dictionary = rooms[index]
-		loss.append((float(room.hull_m2) * u + float(room.windows) * window_u) * (habitat_temp - outside) / 1000.0 if _heated(room) else 0.0)
+		loss.append((float(room.hull_m2) * u * shield_insulation(room) + float(room.windows) * window_u) * (habitat_temp - outside) / 1000.0 if _heated(room) else 0.0)
 	# Heat reaching each room, assuming everything gets power (sizes the heat pump's draw).
 	var working: Array = (inv.items as Array).filter(func(i): return not life.is_broken(i))
 	var tcu_kw := 0.0
@@ -574,7 +574,7 @@ func step(dt: float, hour: float) -> void:
 	var heat_in := float(heat.useful)
 	for index in range(rooms.size()):
 		if not _heated(rooms[index]): continue
-		hull_g += (float(rooms[index].hull_m2) * u + float(rooms[index].windows) * window_u) / 1000.0   # kW per °C to outside
+		hull_g += (float(rooms[index].hull_m2) * u * shield_insulation(rooms[index]) + float(rooms[index].windows) * window_u) / 1000.0   # kW per °C to outside
 		mass += float(rooms[index].cells) * THERMAL_MASS_KWH_PER_C
 	if mass > 0.0:
 		if hull_g <= 0.000001: habitat_temp += heat_in * dt / mass
@@ -738,6 +738,12 @@ func clean_array(key: String, keep := 0.0) -> float:
 ## The habitat's comfortable target (heat pump set point).
 static func habitat_target() -> float:
 	return MHResources.setting("habitat_target_c", 21.0)
+
+## Radiation shielding piled on a room (regolith, water walls, earth) also
+## keeps its heat in: the share of the bare hull's heat loss left (§7).
+static func shield_insulation(room: Dictionary) -> float:
+	var per_square := float(room.get("shield_upgrades", 0.0)) / maxf(1.0, float(room.get("cells", 1)))
+	return 1.0 / (1.0 + per_square * float(HABITAT_LIFE.value("radiation", "insulation_per_point", .06)))
 
 static func _heated(room: Dictionary) -> bool:
 	return not str(room.kind) in UNHEATED
