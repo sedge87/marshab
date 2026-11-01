@@ -215,6 +215,7 @@ func _graphics() -> Control:
 	return grid
 
 const VOLUME_STEPS := ["Off", "25 %", "50 %", "75 %", "100 %"]
+const MC_LEVELS := {"log": "Log only", "quiet": "Quiet", "normal": "Normal", "chatty": "Chatty"}
 
 func _audio() -> Control:
 	var grid := MHStyle.hbox(48)
@@ -233,6 +234,27 @@ func _audio() -> Control:
 		control.changed.connect(_on_volume.bind(row[0]))
 		col.add_child(control)
 		form.add_child(col)
+	# Mission Control's people (scripts/mission_control_link.gd): how much
+	# small talk, and the rover radio. Story beats always come.
+	var mc := MHStyle.vbox(10)
+	var mc_text := MHStyle.hbox(12)
+	mc_text.add_child(MHStyle.label("Mission Control", 19, MHStyle.TEXT_PRIMARY, 600))
+	var mc_hint := MHStyle.body("How much small talk from Earth. Their stories always come; Log only keeps everything as text in the Messages log.", 15, MHStyle.TEXT_MUTED)
+	mc_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mc_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mc_text.add_child(mc_hint)
+	mc.add_child(mc_text)
+	var chatter := MHWidgets.Segmented.new().setup(MC_LEVELS.values(), str(MC_LEVELS.get(str(_values.get("mc_chatter", "normal")), "Normal")))
+	chatter.changed.connect(func(value: String) -> void: _values["mc_chatter"] = str(MC_LEVELS.find_key(value)))
+	mc.add_child(chatter)
+	var radio_row := MHStyle.hbox(18)
+	var radio := MHWidgets.Switch.new()
+	radio.button_pressed = bool(_values.get("rover_radio", true))
+	radio.toggled.connect(func(on: bool) -> void: _values["rover_radio"] = on)
+	radio_row.add_child(radio)
+	radio_row.add_child(MHStyle.body("Rover radio on when you get in (O while driving)", 15, MHStyle.TEXT_SECONDARY))
+	mc.add_child(radio_row)
+	form.add_child(mc)
 	var side := MHStyle.vbox(14)
 	side.custom_minimum_size.x = 460
 	side.add_child(MHStyle.eyebrow("Listening", MHStyle.TEXT_MUTED, 14))

@@ -720,6 +720,8 @@ static func defaults() -> Dictionary:
 	## Missions offer only each mission's kit unless this is on.
 	d["mission_full_catalogue"] = false
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
+	d["mc_chatter"] = "normal"   # Mission Control small talk: log, quiet, normal, chatty (scripts/mission_control_link.gd)
+	d["rover_radio"] = true      # the rover radio starts on (O while driving)
 	return d
 
 static func setting(key: String):

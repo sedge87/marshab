@@ -1,0 +1,20 @@
+{
+  "_about": "The people on the other end of the radio (docs/mission-control-voice.md). Each person has a Windows OneCore voice with their own pitch (%) and pace (SSML rate) and their own tweak of the Earth link (band low/high in Hz, crunch, static), used by tools/generate_voice.py. The rota is Houston time: landing is Monday 09:00, day shift 08:00-20:00, night 20:00-08:00.",
+  "earth_start": {"weekday": 0, "hour": 9.0},
+  "shifts": {"day_starts": 8.0, "night_starts": 20.0},
+  "weekdays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+  "rota": {
+    "day": ["ines", "ines", "ines", "theo", "theo", "sunny", "sunny"],
+    "night": ["noor", "noor", "noor", "noor", "noor", "noor", "noor"]
+  },
+  "people": {
+    "ines": {"name": "Ines Halvorsen", "short": "Ines", "role": "CAPCOM", "voice": "Susan", "pitch": 0, "pace": 0.95, "link": {}},
+    "theo": {"name": "Theo Brandt", "short": "Theo", "role": "CAPCOM", "voice": "Mark", "pitch": 2, "pace": 1.08, "link": {"high": 3400, "crunch": 2.2}},
+    "sunny": {"name": "Walt “Sunny” Ruiz", "short": "Sunny", "role": "CAPCOM", "voice": "George", "pitch": -6, "pace": 0.88, "link": {"low": 300, "high": 2900, "crunch": 2.8, "static": 0.04}},
+    "noor": {"name": "Noor Haddad", "short": "Noor", "role": "Night CAPCOM", "voice": "Catherine", "pitch": -3, "pace": 0.88, "link": {"low": 330, "high": 3000, "crunch": 1.8, "static": 0.025}},
+    "peg": {"name": "Margaret Ostrowski", "short": "Peg", "role": "Flight Director", "voice": "Zira", "pitch": -14, "pace": 0.85, "link": {"low": 380, "high": 3100, "crunch": 2.0}},
+    "kwame": {"name": "Dr Kwame Asante", "short": "Kwame", "role": "Flight Surgeon", "voice": "James", "pitch": 0, "pace": 0.98, "link": {}},
+    "ruth": {"name": "Ruth Lindqvist", "short": "Ruth", "role": "Geology", "voice": "Catherine", "pitch": 8, "pace": 1.1, "link": {"high": 3300}},
+    "pip": {"name": "Pip Okonkwo", "short": "Pip", "role": "Intern", "voice": "Mark", "pitch": 10, "pace": 1.12, "link": {}}
+  }
+}

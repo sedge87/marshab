@@ -1,5 +1,5 @@
 {
-  "_about": "Everything the habitat, your suit and Mission Control say. tools/generate_voice.py speaks each variant to assets/audio/voice/<id>_<n>.wav (Mission Control as mc_<id>_<n>.wav); the game plays a random variant and shows its text as a caption. The habitat speaks in the first person, warm and a little dry, and says what to do, not just what's wrong. Keep lines short: the numbers are on screen. The suit (suit_<id>_<n>.wav) is calm and brief, in your helmet. On the rover's radio (scripts/rover_radio.gd) an orbiter overhead relays (relay_<id>_<n>.wav): automated, brief, no names or numbers it couldn't know.",
+  "_about": "Everything the habitat, your suit and the orbital relay say (Mission Control's people are in data/mc_threads.json). tools/generate_voice.py speaks each variant to assets/audio/voice/<id>_<n>.wav; the game plays a random variant and shows its text as a caption. The habitat speaks in the first person, warm and a little dry, and says what to do, not just what's wrong. Keep lines short: the numbers are on screen. The suit (suit_<id>_<n>.wav) is calm and brief, in your helmet. On the rover's radio (scripts/rover_radio.gd) an orbiter overhead relays (relay_<id>_<n>.wav): automated, brief, no names or numbers it couldn't know.",
   "habitat": {
     "life_support_power_critical": [
       "Life support has no power. I can't keep the air clean without it.",
@@ -353,6 +353,12 @@
       "The sun's getting low, and you're a drive from home.",
       "Sunset's coming. The rover's roof panel stops at dark.",
       "It'll be dark soon. Worth heading back while there's light."
+    ],
+    "aside": [
+      "They do that.",
+      "I like that one.",
+      "I'll make a note of that.",
+      "Earth's in a good mood."
     ]
   },
   "suit": {
@@ -407,59 +413,6 @@
     "suit_seal_repaired": [
       "Seal repaired. Suit integrity good.",
       "Seal good."
-    ]
-  },
-  "mission_control": {
-    "hello": [
-      "Mission Control here. We've got your landing signal. Welcome to Mars. Everyone here is cheering.",
-      "This is Mission Control. Landing confirmed. Welcome to Mars."
-    ],
-    "first_room": [
-      "Mission Control. We see your first sealed room. That's a real home on another planet.",
-      "Mission Control. Pressure readings from your first room look great. Nice building."
-    ],
-    "storm_after": [
-      "Mission Control. We saw the dust storm on our satellites. Glad you came through it.",
-      "Mission Control. Our weather team tracked that storm. It looks like you handled it well."
-    ],
-    "critical_after": [
-      "Mission Control. We just saw your critical alert. By the time this reaches you, we hope it's already fixed.",
-      "Mission Control. We got your alert. We know you're on your own for this one. We trust you."
-    ],
-    "blackout_after": [
-      "Mission Control. The Sun's out of the way. It's good to hear from you again.",
-      "Mission Control. Contact restored. We missed you."
-    ],
-    "sol_10": [
-      "Mission Control. Ten sols on Mars. Keep it up."
-    ],
-    "sol_30": [
-      "Mission Control. Thirty sols. That's longer than anyone has ever stayed on Mars before."
-    ],
-    "sol_100": [
-      "Mission Control. One hundred sols. The whole team signed a card for you."
-    ],
-    "sol_669": [
-      "Mission Control. A full Martian year. Happy anniversary, colony."
-    ],
-    "tip": [
-      "Mission Control. Reminder: water is heavy to ship from Earth. Every litre you recycle is a win.",
-      "Mission Control. Our engineers say batteries are your best friend at night. And during storms.",
-      "Mission Control. The crew's families say hello.",
-      "Mission Control. Take a moment to look outside. Not many people have seen that view.",
-      "Mission Control. Half of Earth is watching your mission. No pressure."
-    ],
-    "drive": [
-      "Mission Control. We've got your rover on the tracking map. Nice line across the plain.",
-      "Mission Control. Geology desk here. Keep an eye out for layered rock. It's a record of old water.",
-      "Mission Control. The rover team says hello. They built that thing by hand, so go easy on it.",
-      "Mission Control. From the science desk: the dust out there is finer than flour. It gets into everything.",
-      "Mission Control. Weather team says it's well below freezing where you are. Glad the cab is warm.",
-      "Mission Control. Remember your range. We'd rather you came home with charge to spare.",
-      "Mission Control. Half the room stopped to watch your drive on the big screen. Carry on.",
-      "Mission Control. Sunsets on Mars are blue. If you're out at dusk, look west.",
-      "Mission Control. The football results are in. We'll spare you the details.",
-      "Mission Control. Our orbiter team caught your tracks in a picture. You've left your mark on Mars."
     ]
   },
   "relay": {

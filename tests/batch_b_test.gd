@@ -59,11 +59,22 @@ func _initialize() -> void:
 	# Every line has every recording.
 	var lines: Dictionary = MHAudio.lines()
 	var missing: Array = []
-	for speaker in ["habitat", "mission_control", "relay"]:
+	for speaker in ["habitat", "relay"]:
 		for id in lines[speaker]:
 			for n in range((lines[speaker][id] as Array).size()):
-				var path := "res://assets/audio/voice/%s%s_%d.wav" % [{"mission_control": "mc_", "relay": "relay_"}.get(speaker, ""), id, n]
+				var path := "res://assets/audio/voice/%s%s_%d.wav" % ["relay_" if speaker == "relay" else "", id, n]
 				if not FileAccess.file_exists(path): missing.append(path)
+	# Mission Control's people: every beat, reaction and bit of small talk.
+	var said: Dictionary = LINK.threads()
+	var ids: Array = []
+	for thread in said.threads.values():
+		for beat in thread.beats: ids.append(beat.id)
+	for reaction in said.reactions.values():
+		for line in reaction: ids.append(line.id)
+	for pool in said.chatter.values():
+		for line in pool: ids.append(line.id)
+	for id in ids:
+		if not FileAccess.file_exists("res://assets/audio/voice/mc_%s.wav" % id): missing.append(id)
 	assert(missing.is_empty(), "Missing recordings: %s" % str(missing))
 	for level_id in ["o2_warning", "o2_critical", "resolved_o2", "welcome_home", "storm_arrived", "seismic_activity", "remark_calm", "remark_dawn"]:
 		assert(lines.habitat.has(level_id), "The habitat has a line for %s." % level_id)

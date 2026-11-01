@@ -98,11 +98,18 @@ static func suit(id: String) -> void:
 	var d := director()
 	if d != null: d._run("_queue_voice", ["suit", id, ""])
 
-# Mission Control on the radio from Earth (mc_<id>_<n>.wav), with a note under
-# the caption (how long ago it was sent).
-static func radio(id: String, note := "") -> void:
+# Someone at Mission Control on the radio from Earth (scripts/mission_control_link.gd):
+# mc_<id>.wav, captioned with their name and role, with a note under it (how
+# long ago it was sent, or that it was left for you).
+static func cast_line(id: String, who: String, text: String, note := "") -> void:
 	var d := director()
-	if d != null: d._run("_queue_voice", ["mission_control", id, note])
+	if d != null: d._run("_queue_cast", [id, who, text, note])
+
+# Whether anyone is talking (or waiting to): Mission Control holds its
+# messages until the voice is free.
+static func voice_busy() -> bool:
+	var d := director()
+	return d != null and (d._voice.playing or not d._voice_queue.is_empty())
 
 # An orbiter overhead relaying for the rover (scripts/rover_radio.gd):
 # relay_<id>_<n>.wav, an automated voice through a narrow link, captioned
@@ -114,7 +121,8 @@ static func relay(id: String, note := "") -> void:
 const VOICE_LINES := "res://data/voice_lines.json"
 static var _lines: Dictionary = {}
 
-## Every line's variants: {"habitat": {id: [text]}, "mission_control": {...}}.
+## Every line's variants: {"habitat": {id: [text]}, "suit": {...}, "relay": {...}}.
+## (Mission Control's people are in data/mc_threads.json.)
 static func lines() -> Dictionary:
 	if _lines.is_empty():
 		var parsed = JSON.parse_string(FileAccess.get_file_as_string(VOICE_LINES))
@@ -345,34 +353,50 @@ func _queue_voice(speaker: String, id: String, note: String) -> void:
 		return
 	_play_line(line)
 
+func _queue_cast(id: String, who: String, text: String, note: String) -> void:
+	var line := {"speaker": "cast", "id": id, "who": who, "text": text, "note": note}
+	if _voice.playing:
+		if _voice_queue.size() < 3: _voice_queue.append(line)
+		return
+	_play_line(line)
+
 func _play_line(line: Dictionary) -> void:
 	var speaker := str(line.speaker)
+	if speaker == "cast":
+		var cast_stream := _stream("voice/mc_" + str(line.id))
+		var length := 0.0
+		if cast_stream != null:
+			_voice.stream = cast_stream
+			_voice.volume_db = -4.0
+			_voice.play()
+			length = cast_stream.get_length()
+		_show_caption(str(line.who), str(line.text), str(line.note), maxf(length, 3.0 + str(line.text).length() * .06), true)
+		return
 	var variants: Array = (lines().get(speaker, {}) as Dictionary).get(str(line.id), [])
 	var key := speaker + "/" + str(line.id)
 	var n := randi() % variants.size()
 	if variants.size() > 1 and n == int(_last_variant.get(key, -1)): n = (n + 1) % variants.size()
 	_last_variant[key] = n
-	var file := "voice/%s%s_%d" % [{"mission_control": "mc_", "relay": "relay_"}.get(speaker, ""), str(line.id), n]
+	var file := "voice/%s%s_%d" % ["relay_" if speaker == "relay" else "", str(line.id), n]
 	var stream := _stream(file)
 	if stream == null: return
 	_voice.stream = stream
-	_voice.volume_db = -5.0 if speaker in ["mission_control", "relay"] else -2.0
+	_voice.volume_db = -5.0 if speaker == "relay" else -2.0
 	_voice.play()
-	var who := "Mission Control" if speaker == "mission_control" else ("Orbital relay" if speaker == "relay" else ("Suit" if speaker == "suit" else MHGame.habitat_name))
-	_show_caption(who, str(variants[n]), str(line.get("note", "")), stream.get_length())
+	var who := "Orbital relay" if speaker == "relay" else ("Suit" if speaker == "suit" else MHGame.habitat_name)
+	_show_caption(who, str(variants[n]), str(line.get("note", "")), stream.get_length(), speaker == "relay")
 
 func _next_voice() -> void:
 	if _voice_queue.is_empty(): return
 	_play_line(_voice_queue.pop_front())
 
 # Captions for everything said, bottom centre (for playing with the sound off).
-func _show_caption(who: String, text: String, note: String, seconds: float) -> void:
+func _show_caption(who: String, text: String, note: String, seconds: float, radio := false) -> void:
 	if _caption_layer == null:
 		_caption_layer = CanvasLayer.new()
 		_caption_layer.layer = 7
 		add_child(_caption_layer)
 	if _caption != null and is_instance_valid(_caption): _caption.queue_free()
-	var radio := who == "Mission Control" or who == "Orbital relay"
 	_caption = PanelContainer.new()
 	_caption.theme = MHStyle.theme()
 	_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE

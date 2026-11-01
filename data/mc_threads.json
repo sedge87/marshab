@@ -1,0 +1,148 @@
+{
+  "_about": "Everything Mission Control's people say (docs/mission-control-voice.md). threads: each person's story, beat by beat; a beat goes out on its speaker's shift once 'shifts' of their shifts have passed since their last beat (and its 'event' has happened, if it has one). reactions: what the person on console says when something happens; lines marked always play first, whoever is on. chatter: each person's small talk, paced by the Mission Control setting; 'drive' lines only on the rover radio. then_habitat: ARDEN answers afterwards. Every id is the recording mc_<id>.wav (tools/generate_voice.py).",
+  "threads": {
+    "ines": {
+      "title": "I went anyway",
+      "beats": [
+        {"id": "ines_01", "speaker": "ines", "when": {"shifts": 1}, "text": "Ines Halvorsen, CAPCOM. You'll hear me Mondays to Wednesdays. For the record, I'm the calm one. Theo will tell you otherwise. Theo is wrong."},
+        {"id": "ines_02", "speaker": "ines", "when": {"shifts": 1}, "text": "I've decided to grow a tomato. Here, on the console, under a desk lamp. If you're going to farm on Mars, someone in this room should know how hard it is. How hard can it be."},
+        {"id": "ines_03", "speaker": "ines", "when": {"shifts": 2}, "text": "Tomato update. It has aphids. I don't know where aphids come from in a sealed control room. Geology says spontaneous generation was disproved in the eighteen hundreds. Geology has not met my aphids.", "then_habitat": true},
+        {"id": "ines_04", "speaker": "ines", "when": {"shifts": 2}, "text": "Somebody asked me today why I never applied to fly. I said I did. Four times. Then I asked them to pass the telemetry, and they did, and that was the end of it."},
+        {"id": "ines_05", "speaker": "ines", "when": {"shifts": 2}, "text": "The cleaner sprayed my tomato with glass cleaner. It is, I'm told, very shiny now. It is also, I'm told, dead. For the record, I've started again. From seed. Copy."}
+      ]
+    },
+    "theo": {
+      "title": "Ma",
+      "beats": [
+        {"id": "theo_01", "speaker": "theo", "when": {"shifts": 1}, "text": "Hey, Theo here, Thursdays and Fridays. Coffee number three. My partner Maya is due in a few weeks, so if I sound tired, that's practice. Okay. Okay okay. Back to the orbit."},
+        {"id": "theo_02", "speaker": "theo", "when": {"shifts": 1}, "text": "Fun thing: your signal and the light from Phobos are arriving at our dish at almost the same time tonight. Sorry, that's not relevant. It's a little relevant. It's beautiful, is what I mean."},
+        {"id": "theo_03", "speaker": "theo", "when": {"shifts": 2}, "text": "Maya's nesting. That's a real thing. She's reorganised the kitchen by colour. I came home and the spoons were in a gradient. I've never been so scared or so proud."},
+        {"id": "theo_04", "speaker": "theo", "when": {"shifts": 1}, "text": "False alarm last night. We got as far as the hospital car park. The baby has decided it is not ready, which, honestly, same. Coffee number five. Don't tell the Flight Surgeon."},
+        {"id": "theo_05", "speaker": "theo", "when": {"shifts": 2}, "text": "Any day now, they say. I've got a bag packed under the console. If you hear me stop mid-sentence and run, that's what it is. You'll be the second to know. Third. Maya's mum gets second."}
+      ]
+    },
+    "sunny": {
+      "title": "Two sandwiches",
+      "beats": [
+        {"id": "sunny_01", "speaker": "sunny", "when": {"shifts": 1}, "text": "Weekend shift. Walt Ruiz, but everyone calls me Sunny, on account of my disposition. Back in the day I drove rovers from a chair in a room very like this one. You're the first one that talks back. Well. That moves on its own. Steady now."},
+        {"id": "sunny_02", "speaker": "sunny", "when": {"shifts": 1}, "text": "I've brought two sandwiches again. Force of habit. My Rosa packed my lunch for thirty years of night shifts and always put in two, in case I made a friend. I usually did. Cheese and pickle, if you were wondering."},
+        {"id": "sunny_03", "speaker": "sunny", "when": {"shifts": 2}, "text": "How's the old girl? The rover, I mean. Mind her on the rocks. They always get you on the rocks you don't think about. Back in the day... no. Never mind. Mind the rocks."},
+        {"id": "sunny_04", "speaker": "sunny", "when": {"shifts": 2}, "text": "Bit of personal news. I've been asked out. Her name's Margo, she plays the harp, and she's seventy-three, so she's an older woman. I've no idea what you do on a date these days. Any advice? No? Wise. Very wise."},
+        {"id": "sunny_05", "speaker": "sunny", "when": {"shifts": 2}, "text": "Took your advice. Said very little and listened a lot. She says I'm a good listener. I've you to thank for that, two hundred million kilometres away and not a word out of you. Steady now.", "then_habitat": true}
+      ]
+    },
+    "noor": {
+      "title": "He thinks it's me up there",
+      "beats": [
+        {"id": "noor_01", "speaker": "noor", "when": {"shifts": 1}, "text": "Hi. Noor, the night shift. It's three in the morning in Houston and the car park lights are on for nobody. I don't sleep much, so I'll be here most nights. It's nice to have someone to talk to who doesn't need an answer."},
+        {"id": "noor_02", "speaker": "noor", "when": {"shifts": 2}, "text": "There's a moth in the control room. It lives on the big screen, right over your landing site. I've named him Major Tom. Please don't tell facilities. They'll fumigate, and he's been through enough."},
+        {"id": "noor_03", "speaker": "noor", "when": {"shifts": 2}, "text": "I called my dad tonight before shift. He has good days and other days. Tonight he asked how Mars was. He thinks it's me up there. I said it's cold, and the sunsets are blue. He said, good girl, wrap up."},
+        {"id": "noor_04", "speaker": "noor", "when": {"shifts": 2}, "text": "Dolores, who cleans the control room at night, beat me at chess again. Eleven games to nil. She says she learned in a waiting room. She won't say which one. It's four twenty here. Clouds. You'd hate it."},
+        {"id": "noor_05", "speaker": "noor", "when": {"shifts": 2}, "text": "I read your telemetry to Dad today, like it was a letter from me. Oxygen nominal, he said, and laughed, because I used to say it as a kid when I was fine. I hope you don't mind being me for an afternoon. He was very proud of you. Of me. Of us."}
+      ]
+    }
+  },
+  "reactions": {
+    "landed": [
+      {"id": "re_landed", "speaker": "ines", "always": true, "text": "Mission Control, Ines Halvorsen. We have your landing. The room is, for the record, cheering. Someone has cried. It was Theo. Welcome to Mars."}
+    ],
+    "first_room": [
+      {"id": "re_first_room_ines", "speaker": "ines", "text": "We see pressure in your first room. Copy. That's a home on another planet, and the first thing you did with it was seal it. Good instinct."},
+      {"id": "re_first_room_theo", "speaker": "theo", "text": "First room pressurised! That's air you made a wall for. Sorry, I'm emotional, coffee number four."},
+      {"id": "re_first_room_sunny", "speaker": "sunny", "text": "First room up and holding air. Back in the day we'd have opened something fizzy. I'll have a cup of tea on your behalf."},
+      {"id": "re_first_room_noor", "speaker": "noor", "text": "Your first room just pressurised on my screen. Major Tom flew right over it. I'm choosing to read that as a blessing."}
+    ],
+    "storm_after": [
+      {"id": "re_storm_ines", "speaker": "ines", "text": "Our orbiters watched that storm cross your site. You came out the other side. That's all we ask of anyone."},
+      {"id": "re_storm_theo", "speaker": "theo", "text": "That storm was huge on the weather map. Like, wall to wall. You did great. I did not do great, I watched it the entire time."},
+      {"id": "re_storm_sunny", "speaker": "sunny", "text": "Storms. Back in the day one buried the panels on a rover for months. You've done better. Steady now."},
+      {"id": "re_storm_noor", "speaker": "noor", "text": "I watched the dust clear over you on the orbital pictures tonight. Like a curtain going up. Glad you're still on stage."}
+    ],
+    "critical_after": [
+      {"id": "re_critical_ines", "speaker": "ines", "text": "We saw the critical alert. By the time you hear this, you'll have dealt with it, because you're the only one who can. We trust you. That's not a formality."},
+      {"id": "re_critical_theo", "speaker": "theo", "text": "We saw that alert and the whole room went quiet. We can't help from here, I know. But we're here. That's the least useful and most true thing I'll say all day."},
+      {"id": "re_critical_sunny", "speaker": "sunny", "text": "Saw the red on the board. Twenty minutes too late to say anything useful. So here's something useless: you've got this."},
+      {"id": "re_critical_noor", "speaker": "noor", "text": "Your alert came in at three in the morning. I sat with it until the next packet came. You'll have fixed it by now. I'm still sitting with it a bit."}
+    ],
+    "blackout_after": [
+      {"id": "re_blackout_ines", "speaker": "ines", "always": true, "text": "Contact restored. The Sun is out of the way, and you're still there. For the record, we missed you. All of us. Even Peg."}
+    ],
+    "sol_10": [
+      {"id": "re_sol10_ines", "speaker": "ines", "always": true, "text": "Ten sols. The pool on whether you'd still be talking to the habitat by now paid out. You are. Theo lost."}
+    ],
+    "sol_30": [
+      {"id": "re_sol30_peg", "speaker": "peg", "always": true, "text": "Be advised. The Flight Director formally notes thirty sols of continuous operations on the surface of Mars. That is all.", "then_habitat": true}
+    ],
+    "sol_100": [
+      {"id": "re_sol100_peg", "speaker": "peg", "always": true, "text": "One hundred sols. The Flight Director notes it. The Flight Director also notes that she said go, and has not once regretted it."}
+    ],
+    "sol_669": [
+      {"id": "re_sol669_ines", "speaker": "ines", "always": true, "text": "One Martian year. Six hundred and sixty-nine sols. The whole room signed a card. We'll keep it here. It's a long way to post."}
+    ],
+    "first_harvest": [
+      {"id": "re_harvest_ines", "speaker": "ines", "text": "We see your first harvest. That's food you grew in Martian light. My tomato has a single flower and an attitude. I'm proud of you. I'm also jealous. Both, for the record."},
+      {"id": "re_harvest_theo", "speaker": "theo", "text": "First harvest! Ines went very quiet and looked at her tomato. I've never seen anyone glare at a plant before."},
+      {"id": "re_harvest_sunny", "speaker": "sunny", "text": "Your first harvest. Rosa grew beans on a balcony the size of a tea tray. She'd have had a lot to say about your trays. All of it nice."},
+      {"id": "re_harvest_noor", "speaker": "noor", "text": "First harvest. I told Dad. He asked if you'd saved him some. I said it's a long way. He said he'd wait."}
+    ],
+    "far_drive": [
+      {"id": "re_far_ines", "speaker": "ines", "text": "Telemetry has the rover three kilometres out. That's the farthest anyone's driven on Mars with a person inside. The pool had you at sol twenty. Theo lost again."},
+      {"id": "re_far_theo", "speaker": "theo", "text": "Three kilometres out! I had you down for sol twenty in the pool. I keep betting against you and I keep being happy I lost."},
+      {"id": "re_far_sunny", "speaker": "sunny", "text": "Three kilometres from home in the old girl. Back in the day we'd do that in a year. Mind the rocks."},
+      {"id": "re_far_noor", "speaker": "noor", "text": "You're three kilometres out. On my screen you're a little dot, all on your own, in all that orange. It's the bravest little dot I know."}
+    ],
+    "walkback_breach": [
+      {"id": "re_walkback_peg", "speaker": "peg", "always": true, "text": "Be advised. The Flight Director notes an excursion beyond walkback range. The Flight Director requests that this not become a habit."},
+      {"id": "re_walkback_ines", "speaker": "ines", "text": "What she means is: please don't. For the record, I've seen your oxygen numbers. So has she. She's fine. She's on her third pen."},
+      {"id": "re_walkback_theo", "speaker": "theo", "text": "Translation: Peg is worried and has chosen to express it through grammar."},
+      {"id": "re_walkback_sunny", "speaker": "sunny", "text": "That's Peg for, come home in one piece, love. I've known her thirty years. That's practically a hug."},
+      {"id": "re_walkback_noor", "speaker": "noor", "text": "She wrote that at three in the morning, in her coat, on her way home. She came back in to send it. That's what it means."}
+    ],
+    "first_discovery": [
+      {"id": "re_discovery_ines", "speaker": "ines", "text": "Your first discovery came through. Geology have printed it out and stuck it on the wall. Life Sciences have stuck theirs next to it, slightly higher. It's started."},
+      {"id": "re_discovery_theo", "speaker": "theo", "text": "Your first discovery! Ruth from Geology ran down the corridor. I've never seen Ruth run. I've never seen Ruth outside Geology."},
+      {"id": "re_discovery_sunny", "speaker": "sunny", "text": "First discovery. That's the bit that lasts, that is. The rest of us are just the bus."},
+      {"id": "re_discovery_noor", "speaker": "noor", "text": "Your discovery came in while it was dark here. I was the first person on Earth to know. I didn't tell anyone for a whole minute. It was ours."}
+    ],
+    "no_sleep": [
+      {"id": "re_nosleep_ines", "speaker": "ines", "text": "The Flight Surgeon has asked me to tell you to sleep. He's asked three times. I'm passing it on once, with feeling."},
+      {"id": "re_nosleep_theo", "speaker": "theo", "text": "Kwame says you haven't slept. I haven't slept either, but I have a reason, and the reason is coming any day now. Go to bed."},
+      {"id": "re_nosleep_sunny", "speaker": "sunny", "text": "Our doctor's fretting. Says you've been up too long. Back in the day we'd say the same to the rovers. They never listened either."},
+      {"id": "re_nosleep_noor", "speaker": "noor", "text": "We're both still awake. I recognise the signs. Take it from a professional insomniac: lie down, even if you don't sleep."}
+    ]
+  },
+  "chatter": {
+    "ines": [
+      {"id": "ch_ines_01", "text": "Flight rules say I'm not allowed to make the potato joke. For the record, I didn't."},
+      {"id": "ch_ines_02", "text": "Someone taped a sign to the coffee machine that says, I'm sorry, Dave. We've taken it down twice. Theo denies everything."},
+      {"id": "ch_ines_03", "text": "Earth news. It's raining in Houston, the river's up, and a cat has moved into the car park. Facilities say it can't stay. Facilities have bought it a bed."},
+      {"id": "ch_ines_04", "text": "Geology wants me to remind you not to lick the rocks. I said you're in a suit. They said, quote, still."},
+      {"id": "ch_ines_05", "tags": ["drive"], "text": "We have the rover on the tracking map. You're drawing a very straight line. The orbit team have asked who taught you. I said nobody. They were hurt."},
+      {"id": "ch_ines_06", "tags": ["drive"], "text": "Rover telemetry nominal. Range is fine, for now. I'd rather you came home with charge to spare than a story. Copy."}
+    ],
+    "theo": [
+      {"id": "ch_theo_01", "text": "Fun fact. Phobos is falling towards Mars about two metres a century. You've got time. I checked twice."},
+      {"id": "ch_theo_02", "text": "The flight director wants to know if you packed a towel. I said that's classified. Coffee number two."},
+      {"id": "ch_theo_03", "text": "Earth news: the cup final went to penalties and the city has lost its voice. Ines watched the whole thing without blinking. She says she wasn't watching."},
+      {"id": "ch_theo_04", "text": "Did you know sunsets on Mars are blue? The dust scatters red light away from the Sun. Sorry, of course you know. You're looking at one. I'm jealous."},
+      {"id": "ch_theo_05", "tags": ["drive"], "text": "You're driving at about the speed of a bicycle, across a planet, with no road. That's the most romantic thing I've ever seen on a telemetry screen."},
+      {"id": "ch_theo_06", "tags": ["drive"], "text": "Orbit team caught your tracks in a picture. You've left marks on Mars. Ours are coffee rings. Mostly mine."}
+    ],
+    "sunny": [
+      {"id": "ch_sunny_01", "text": "In nineteen thirty-eight a radio play convinced half the country that Martians had landed. Tonight it's true, and the ratings are worse."},
+      {"id": "ch_sunny_02", "text": "The dust out there's finer than flour. Gets into everything. Back in the day it got into a wheel motor and we drove backwards for a year. Worked fine."},
+      {"id": "ch_sunny_03", "text": "Earth news: it's spring here. Daffodils by the car park. The new cat sat on one. It's fine. The daffodil's fine."},
+      {"id": "ch_sunny_04", "text": "The perchlorate in that soil would wreck a thyroid. It also makes a decent rocket oxidiser. Mars is like that. Gives with one hand."},
+      {"id": "ch_sunny_05", "tags": ["drive"], "text": "Out in the old girl again. Lovely. Keep the sun on her roof and your eye on the battery, and she'll see you home."},
+      {"id": "ch_sunny_06", "tags": ["drive"], "text": "If you're out at dusk, look west. The blue's worth the detour. Then come home, mind."}
+    ],
+    "noor": [
+      {"id": "ch_noor_01", "text": "It's two in the morning here. From Houston you can't see the Milky Way, there's too much light. From where you are, you can't avoid it. I'd trade, for a night."},
+      {"id": "ch_noor_02", "text": "Major Tom update. He's moved to the weather screen. I think he likes the storms. Ground control to Major Tom: please stay off the keyboard."},
+      {"id": "ch_noor_03", "text": "Someone's been reading Bradbury aloud on night shift. You're in the Martian chapters now. We all are."},
+      {"id": "ch_noor_04", "text": "Earth news, the quiet kind. The bakery across the road opens at four. I can smell it from the door. That's all. That's the news."},
+      {"id": "ch_noor_05", "tags": ["drive"], "text": "Driving at night? Your headlights are the only lights for millions of square kilometres. Think about that. Actually, don't. Watch the road."},
+      {"id": "ch_noor_06", "tags": ["drive"], "text": "When Opportunity went quiet in a dust storm, people wrote, my battery is low and it's getting dark, for it. It never said that. We still do. Keep yours topped up."}
+    ]
+  }
+}

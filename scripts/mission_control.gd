@@ -42,6 +42,8 @@ func _ready() -> void:
 	var titles := MHStyle.vbox(8)
 	titles.add_child(MHStyle.eyebrow("%s · %s" % [MHGame.colony_name, MHGame.site_name()], MHStyle.accent, 16))
 	titles.add_child(MHStyle.display("Mission Control", 52))
+	var link := get_tree().get_first_node_in_group("mission_control_link")
+	if link != null: titles.add_child(MHStyle.mono(str(link.rota_line()), 13, MHStyle.INFO))
 	header.add_child(titles)
 	header.add_child(MHStyle.spacer())
 	var guide := MHStyle.button("Field guide", "secondary", "book-open")
@@ -79,6 +81,13 @@ func _ready() -> void:
 		science.tooltip_text = "The terminal: what your samples have shown, by section"
 		science.pressed.connect(_show_discoveries)
 		header.add_child(science)
+	if link != null:
+		var unread := int(link.unread) + (link.messages as Array).filter(func(m): return not bool(m.heard)).size()
+		var messages := MHStyle.button("Messages%s" % (" (%d new)" % unread if unread > 0 else ""), "secondary", "volume-2")
+		messages.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		messages.tooltip_text = "Everything Mission Control's people have said, by person"
+		messages.pressed.connect(_show_messages)
+		header.add_child(messages)
 	var log_button := MHStyle.button("Alert log (%d)" % count, "secondary", "triangle-alert")
 	log_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	log_button.pressed.connect(_show_alert_log)
@@ -376,6 +385,78 @@ func _discovery_card(entry: Dictionary) -> Control:
 	else:
 		words.add_child(MHStyle.mono("Sent to Earth · reply on its way", 12, MHStyle.TEXT_MUTED))
 	return card
+
+## The Messages log: who's on the rota, and everything each person has said,
+## newest first, with replay (scripts/mission_control_link.gd).
+func _show_messages(only := "") -> void:
+	var link := get_tree().get_first_node_in_group("mission_control_link")
+	if link == null: return
+	link.mark_read()
+	var scrim := ColorRect.new()
+	scrim.color = Color(0, 0, 0, .55)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(scrim)
+	var centre := CenterContainer.new()
+	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(centre)
+	var panel := _sheet(1100)
+	centre.add_child(panel)
+	var col := MHStyle.vbox(12)
+	panel.add_child(col)
+	var head := MHStyle.hbox(8)
+	head.add_child(MHStyle.eyebrow("Messages from Earth", MHStyle.accent))
+	head.add_child(MHStyle.mono(str(link.rota_line()), 13, MHStyle.INFO))
+	head.add_child(MHStyle.spacer())
+	var back := MHStyle.button("Back", "secondary", "chevron-left")
+	back.pressed.connect(scrim.queue_free)
+	head.add_child(back)
+	col.add_child(head)
+	# The people: tap one to read only their story.
+	var cast: Dictionary = link.cast().get("people", {})
+	var people := MHStyle.hbox(8)
+	var everyone := MHStyle.button("Everyone", "primary" if only.is_empty() else "secondary")
+	everyone.pressed.connect(func() -> void: scrim.queue_free(); _show_messages(""))
+	people.add_child(everyone)
+	var spoken := {}
+	for message in link.messages: spoken[str(message.speaker)] = true
+	for id in cast:
+		if not spoken.has(id): continue
+		var chip := MHStyle.button("%s · %s" % [str(cast[id].short), str(cast[id].role)], "primary" if only == id else "secondary")
+		chip.pressed.connect(func() -> void: scrim.queue_free(); _show_messages(id))
+		people.add_child(chip)
+	col.add_child(people)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(1040, 560)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(scroll)
+	var list := MHStyle.vbox(12)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	var shown: Array = (link.messages as Array).filter(func(m): return only.is_empty() or str(m.speaker) == only)
+	shown.reverse()
+	if shown.is_empty():
+		list.add_child(MHStyle.body("Nothing from Earth yet. Messages take minutes to cross; they'll be here.", 16, MHStyle.TEXT_MUTED))
+	for message in shown:
+		var who: Dictionary = cast.get(str(message.speaker), {})
+		var row := MHStyle.hbox(12)
+		var when := MHStyle.vbox(2)
+		when.custom_minimum_size.x = 150
+		when.add_child(MHStyle.mono("SOL %d" % (floori(float(message.hours) / 24.0) + 1), 13, MHStyle.TEXT_MUTED))
+		when.add_child(MHStyle.mono(str(link.earth_clock(float(message.earth))), 12, MHStyle.TEXT_MUTED))
+		row.add_child(when)
+		var words := MHStyle.vbox(2)
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.add_child(MHStyle.label("%s · %s" % [str(who.get("name", message.speaker)), str(who.get("role", ""))], 15, MHStyle.INFO, 600))
+		var body := MHStyle.body(str(message.text), 16, MHStyle.TEXT_PRIMARY)
+		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		words.add_child(body)
+		row.add_child(words)
+		var play := MHStyle.button("Play", "ghost", "play")
+		play.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var entry: Dictionary = message
+		play.pressed.connect(func() -> void: MHAudio.cast_line(str(entry.id), "%s · %s" % [str(who.get("name", "")), str(who.get("role", ""))], str(entry.text), "replayed"))
+		row.add_child(play)
+		list.add_child(row)
 
 func _show_alert_log() -> void:
 	var alerts := get_tree().get_first_node_in_group("habitat_alerts")

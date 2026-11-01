@@ -7,18 +7,22 @@ extends Node
 ## minutes of driving (one or two a charge).
 ##
 ## What comes over it:
-## - An orbiter's relay pass: the orbiter rises, Mission Control's messages
-##   from Earth come through it (with the light delay, and not during a solar
-##   conjunction blackout), and the pass ends.
+## - An orbiter's relay pass: the orbiter rises, anything Mission Control has
+##   left for you comes through it, or else a word from whoever's on console
+##   (scripts/mission_control_link.gd; nothing during a solar conjunction
+##   blackout), and the pass ends.
 ## - Bulletins from orbit: the weather (the storm, if there is one) or dust
 ##   devils in the afternoon.
 ## - The habitat, at most once a trip each: when you're a long way out, and
 ##   when sunset is coming with you a drive from home.
 ##
-## The lines are in data/voice_lines.json ("relay", Mission Control's "drive",
-## the habitat's "rover_*"), spoken by tools/generate_voice.py.
+## O in the rover turns the radio off (and on): then it's silent, and Mission
+## Control holds its messages until you're out or it's back on.
+##
+## The lines are in data/voice_lines.json ("relay", the habitat's "rover_*")
+## and data/mc_threads.json (each person's "drive" small talk), spoken by
+## tools/generate_voice.py.
 
-const MISSION_CONTROL_LINK := preload("res://scripts/mission_control_link.gd")
 const FIRST_AFTER := Vector2(40.0, 75.0)   # s of driving out before the first call
 const EVERY := Vector2(110.0, 210.0)       # s of driving between calls after that
 const FAR := 2000.0                        # m from the bay: "a long way out"
@@ -38,7 +42,7 @@ func _process(delta: float) -> void:
 		_said.clear()
 		_wait = -1.0
 		return
-	if not bool(rover.driving): return
+	if not bool(rover.driving) or not bool(rover.radio_on): return
 	if _pass_left > 0.0:
 		_pass_left -= delta
 		if _pass_left <= 0.0: MHAudio.relay("pass_end", _orbiter)
@@ -64,18 +68,18 @@ func _call() -> void:
 	var sim = rover.builder.simulation() if rover.builder != null else null
 	var storm := sim != null and float(sim.storm_hours_left) > 0.0
 	var roll := randf()
-	if roll < .55 and _earth_in_contact(sim): _relay_pass(sim)
+	if roll < .55 and _earth_in_contact(sim): _relay_pass()
 	elif storm: MHAudio.relay("storm", _pick_orbiter())
 	elif roll < .8 and day > .4 and day < .8: MHAudio.relay("dust_devil", _pick_orbiter())
 	else: MHAudio.relay("weather", _pick_orbiter())
 
-## An orbiter comes over: its pass begins, Earth's message comes through it,
+## An orbiter comes over: its pass begins, Earth's messages come through it,
 ## and in a little while it ends.
-func _relay_pass(sim) -> void:
+func _relay_pass() -> void:
 	_pick_orbiter()
 	MHAudio.relay("pass_start", "%s · pass of %d min" % [_orbiter, randi_range(8, 14)])
-	var one_way := MISSION_CONTROL_LINK.one_way_minutes(float(sim.hours_run) / 24.0 if sim != null else 0.0)
-	MHAudio.radio("drive", "sent %d min ago · via %s" % [roundi(one_way), _orbiter])
+	var link := get_tree().get_first_node_in_group("mission_control_link")
+	if link != null: link.relay_pass(_orbiter)
 	_pass_left = PASS_LENGTH
 
 func _pick_orbiter() -> String:

@@ -32,7 +32,9 @@ extends CharacterBody3D
 ## C is cruise control: it holds the speed you were doing (or full speed from
 ## a standstill) so you only steer; W while cruising raises the set speed, and
 ## S, Space or C again lets go. In Creative the batteries never run down.
-## The driving HUD carries the compass, with the same landmarks as on foot.
+## The driving HUD carries the compass, with the same landmarks as on foot,
+## and who's on console at Mission Control. O turns the radio off and on
+## (scripts/rover_radio.gd): off, Mission Control holds its messages.
 ##
 ## Arcade handling on a bicycle model; the body follows the ground with four
 ## rays (pitch, roll and height, like suspension), and its collision box sits
@@ -84,6 +86,8 @@ var lights_on := false
 var driving := false
 ## Cruise control's set speed, m/s (0 when off).
 var cruise := 0.0
+## The radio (scripts/rover_radio.gd, and Mission Control while you drive).
+var radio_on := bool(MHGame.setting("rover_radio"))
 var first_person := false
 
 var _player: CharacterBody3D
@@ -99,6 +103,7 @@ var _dust: Array[CPUParticles3D] = []
 var _hud: CanvasLayer
 var _readout: Label
 var _compass: MHWidgets.Compass
+var _rota: Label
 var _hangar: Node = null        # the hangar door this rover opened
 var _player_layers := Vector2i.ZERO
 var _was_charging := false
@@ -294,6 +299,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_C:
 				_toggle_cruise()
+				get_viewport().set_input_as_handled()
+			KEY_O:
+				radio_on = not radio_on
+				MHAudio.sfx("ui_click", -8.0)
 				get_viewport().set_input_as_handled()
 			KEY_B:
 				get_viewport().set_input_as_handled()   # no building from the driver's seat
@@ -899,8 +908,8 @@ func _show_hud(on: bool) -> void:
 		# Lower left, clear of ARDEN's captions in the middle.
 		panel.anchor_left = 0.0; panel.anchor_right = 0.0
 		panel.anchor_top = 1.0; panel.anchor_bottom = 1.0
-		panel.offset_left = 32; panel.offset_right = 470
-		panel.offset_top = -168; panel.offset_bottom = -90
+		panel.offset_left = 32; panel.offset_right = 600
+		panel.offset_top = -192; panel.offset_bottom = -90
 		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_hud.add_child(panel)
 		var column := MHStyle.vbox(4)
@@ -908,6 +917,8 @@ func _show_hud(on: bool) -> void:
 		column.add_child(MHStyle.eyebrow("CREW ROVER"))
 		_readout = MHStyle.mono("", 18)
 		column.add_child(_readout)
+		_rota = MHStyle.mono("", 12, MHStyle.TEXT_MUTED)
+		column.add_child(_rota)
 		# The compass, where it sits on foot (top centre).
 		var compass_band := CenterContainer.new()
 		compass_band.anchor_right = 1
@@ -918,7 +929,7 @@ func _show_hud(on: bool) -> void:
 		_compass = MHWidgets.Compass.new()
 		compass_band.add_child(_compass)
 		var map_hint: Array = [[["Tab"], "Map"]] if MHGame.site().get("terrain", {}).get("shape", "") == "region" else []
-		_hud.add_child(MHStyle.hint_strip([[["W", "S"], "Drive"], [["A", "D"], "Steer"], [["Space"], "Brake"], [["C"], "Cruise"], [["F"], "Lights"], [["V"], "View"], [["R"], "Recover"]] + map_hint + [[["E"], "Get out", "accent"]]))
+		_hud.add_child(MHStyle.hint_strip([[["W", "S"], "Drive"], [["A", "D"], "Steer"], [["Space"], "Brake"], [["C"], "Cruise"], [["O"], "Radio"], [["F"], "Lights"], [["V"], "View"], [["R"], "Recover"]] + map_hint + [[["E"], "Get out", "accent"]]))
 	if _hud != null: _hud.visible = on
 
 func _update_hud() -> void:
@@ -935,6 +946,9 @@ func _update_hud() -> void:
 	var held := "   ·   CRUISE %d" % roundi(cruise * 3.6) if cruise > 0.0 else ""
 	_readout.text = "%3d km/h%s   ·   %s%s%s" % [roundi(absf(speed) * 3.6), held, power, air, "   ·   " + state if not state.is_empty() else ""]
 	_readout.modulate = MHStyle.DANGER if battery < 15.0 else MHStyle.TEXT_PRIMARY
+	var link := get_tree().get_first_node_in_group("mission_control_link")
+	if _rota != null:
+		_rota.text = ("RADIO ON  ·  " if radio_on else "RADIO OFF  ·  ") + (str(link.rota_line()) if link != null else "")
 	if _compass != null:
 		# The way the camera looks, so the markers line up with the view.
 		var look := -_cam.global_transform.basis.z
@@ -956,7 +970,7 @@ func _home_marker() -> String:
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"position": global_position, "yaw": rotation.y, "battery": battery, "reserve": reserve, "o2": o2, "lights": lights_on, "recalling": recalling}
+	return {"position": global_position, "yaw": rotation.y, "battery": battery, "reserve": reserve, "o2": o2, "lights": lights_on, "recalling": recalling, "radio": radio_on}
 
 func restore_state(state: Dictionary) -> void:
 	if state.has("position"): global_position = state.position as Vector3
@@ -967,3 +981,4 @@ func restore_state(state: Dictionary) -> void:
 	if bool(state.get("recalling", false)):
 		_start_recall.call_deferred()
 	_set_lights(bool(state.get("lights", false)))
+	radio_on = bool(state.get("radio", radio_on))
