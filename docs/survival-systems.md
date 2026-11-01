@@ -211,9 +211,13 @@ One part means you get by on reserves and a lot of ice; every part means you cou
 *Overrides core loop round 1's single jump to six: the crew grows in steps of **1 → 2 → 4 → 6**, then open-ended. Going home stays the other choice.*
 
 - **Load per person:** each person adds a fixed daily load to every chain. Machines have a top rate, so a base sized for one won't carry six; that needs second units or bigger models.
-- **Always visible:** the Chains view gives each chain's crew capacity ("Water: enough for 2"). The base is **ready for** as many as its weakest chain can support. Before anyone is coming, it's just information.
+- **Two numbers, always visible** (user, 1 Nov):
+  - **Survival:** can the base keep *the crew you have now* alive? This is the base-level need, and the alerts and leaks of §12.1 are about it.
+  - **Mission readiness:** is the base ready for *the crew you've said yes to*? It's one of the player's goals (part of the Humans goal), shown chain by chain: "Water: ready for 2 of 4". The base's readiness is its weakest chain.
+  - **The goalpost moves.** Each crew step you accept raises the readiness target. Survival stays met while readiness drops back below 100 % until you catch up. Choose not to grow, and readiness stays complete.
+  - Before you've accepted any step, readiness just shows your current crew, plus how many the base could take.
 - **Earth offers; you accept.** Mission Control offers the next step at a milestone: the base is self-sufficient for its current crew. ("We can send two more on the next lander.")
-  - Saying yes raises the target.
+  - Saying yes raises the readiness target.
   - It's never forced: you can stay small, or go home instead.
 - **The countdown:** saying yes launches the lander, which arrives after a fixed number of sols. That's the time to get ready.
   - The real trip takes about 7 months, with launch windows 26 months apart, so the game compresses both. The exact sols are still to set.
