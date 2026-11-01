@@ -374,7 +374,7 @@ func _telemetry_metric(caption: String, value: String, colour: Color) -> Label:
 func _process(delta: float) -> void:
 	if player == null or not visible: return
 	_compass.heading = wrapf(rad_to_deg(-player.rotation.y), 0.0, 360.0)
-	_compass.markers = _markers()
+	_compass.markers = compass_markers()
 	_compass.queue_redraw()
 	_refresh_hint_strip()
 	_update_chip()
@@ -455,7 +455,9 @@ func _update_sol_clock() -> void:
 		_sol_clock.text += "  ·  RESUPPLY %s" % ("%d H" % ceili(due) if due < 24.0 else "%.1f SOLS" % (due / 24.0))
 	_sol_clock.add_theme_color_override("font_color", MHStyle.INFO if daytime else MHStyle.TEXT_MUTED)
 
-func _markers() -> Array:
+## Landmarks and airlocks for a compass, from where you are (the rover's
+## driving HUD shows them too).
+func compass_markers() -> Array:
 	var out: Array = []
 	for landmark in get_tree().get_nodes_in_group("landmark"):
 		var spot := (landmark as Node3D).global_position - player.global_position

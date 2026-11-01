@@ -15,6 +15,10 @@ Three speakers, all from data/voice_lines.json:
     and a little quick, slightly band-limited and close, with the helmet's
     tiny reflections and a soft two-note chime before each line.
 
+  - An orbiter relaying for the rover (scripts/rover_radio.gd): Zira quicker
+    and through a narrower, crunchier link than Earth's, with data chirps
+    either side instead of Quindar beeps.
+
 Each line has a few variants so it doesn't repeat: <id>_<n>.wav for the
 habitat, mc_<id>_<n>.wav for Mission Control. The game picks one at random
 and shows its text as a caption.
@@ -43,6 +47,7 @@ LINES = json.loads((ROOT / "data" / "voice_lines.json").read_text(encoding="utf-
 HABITAT_VOICE = "Microsoft Hazel Desktop"
 CONTROL_VOICE = "Microsoft David Desktop"
 SUIT_VOICE = "Microsoft Zira Desktop"
+RELAY_VOICE = "Microsoft Zira Desktop"   # quicker and through the relay's link, so not the suit
 RATE = ga.RATE
 
 
@@ -108,6 +113,20 @@ def radio(signal):
     return body + static
 
 
+def relay(signal):
+    """An orbiter's automated relay: narrower and crunchier than Earth, a
+    rising data chirp before and a falling one after, a hiss under it."""
+    voiced = ga.highpass(ga.lowpass(trim(signal), 2600, 4), 500, 4)
+    voiced = np.tanh(voiced * 3.0) / np.tanh(3.0)
+    voiced = np.round(voiced * 24) / 24   # a little bit-crushed
+    t = np.arange(int(.18 * RATE)) / RATE
+    rise = np.sin(2 * np.pi * (1200 * t + 4000 * t * t)) * .18 * ga.fade_edges(np.ones(len(t)), .005, .02)
+    gap = np.zeros(int(.07 * RATE))
+    body = np.concatenate([rise, gap, voiced, gap, rise[::-1]])
+    hiss = ga.bandpass(ga.noise((len(body) + 2) / RATE)[: len(body)], 1500, 3000) * .045
+    return body + hiss
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     missing_only = "--missing" in sys.argv
@@ -123,6 +142,8 @@ def main():
         for n, text in enumerate(variants): jobs.append((f"{line_id}_{n}", text, SUIT_VOICE, 1, suit))
     for line_id, variants in LINES["mission_control"].items():
         for n, text in enumerate(variants): jobs.append((f"mc_{line_id}_{n}", text, CONTROL_VOICE, 1, radio))
+    for line_id, variants in LINES.get("relay", {}).items():
+        for n, text in enumerate(variants): jobs.append((f"relay_{line_id}_{n}", text, RELAY_VOICE, 2, relay))
     with tempfile.TemporaryDirectory() as scratch:
         for name, text, voice, rate, treatment in jobs:
             if missing_only and (output / f"{name}.wav").exists(): continue

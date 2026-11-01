@@ -31,6 +31,7 @@ func _initialize() -> void:
 	assert(absf(rover.global_position.y - y) < 0.25 and rover._in_bay(), "It's parked on the bay floor (%s, floor %.2f)." % [rover.global_position, y])
 	assert(not get_nodes_in_group("vehicle_bay_ramp").is_empty(), "The hangar has a ramp down to the ground.")
 	assert(str(rover.interaction_prompt().primary) == "Drive", "Look at it: Drive.")
+	MHGame.game_mode = "freedom"   # the batteries run down (Creative's never do)
 	# At night, so the roof panel isn't topping the battery up as it drains.
 	world.day_night.set_hour(23.0); world.day_night.frozen = true
 	for i in 5: await process_frame
@@ -54,6 +55,21 @@ func _initialize() -> void:
 	for i in 60 * 2: await physics_frame
 	_key(KEY_W, false); _key(KEY_A, false)
 	assert(absf(wrapf(rover.rotation.y - yaw_before, -PI, PI)) > 0.3, "A turns it left.")
+	for i in 90: await physics_frame
+	# The compass is on the driving HUD, with the airlocks on it.
+	assert(rover._compass != null and rover._compass.is_visible_in_tree(), "The compass shows while driving.")
+	assert(rover._compass.markers.any(func(m): return str(m.label) == "AIRLOCK"), "The airlock is on the rover's compass (%s)." % str(rover._compass.markers))
+	# C: cruise control holds the speed with no keys held; Space lets go.
+	_key(KEY_W, true)
+	for i in 60: await physics_frame
+	_key(KEY_W, false)
+	_key(KEY_C, true); _key(KEY_C, false)
+	for i in 60 * 3: await physics_frame
+	assert(rover.cruise > 3.0 and rover.speed > 3.0, "Cruising: still at %.1f m/s (set %.1f) with nothing held." % [rover.speed, rover.cruise])
+	_key(KEY_SPACE, true)
+	for i in 30: await physics_frame
+	_key(KEY_SPACE, false)
+	assert(rover.cruise == 0.0, "Braking turns cruise control off.")
 	for i in 90: await physics_frame
 	# Get out: you're standing beside it.
 	_key(KEY_E, true); _key(KEY_E, false)
@@ -94,5 +110,11 @@ func _initialize() -> void:
 	var hangar_open := get_nodes_in_group("airlock_door").any(func(d): return str(d.door_label()) == "HANGAR" and d.is_open())
 	assert(not hangar_open, "And shut the hangar behind it.")
 	assert(str(rover.recall()).contains("already"), "A second recall: it's already home.")
-	print("Crew rover test passed: in the bay, the ramp, getting in, driving out through the hangar, steering, the battery, getting out, saving, the reserve, no solar at night, and a recall home.")
+	# In Creative the batteries never run down.
+	MHGame.game_mode = "creative"
+	rover.battery = 30.0
+	rover.reserve = 0.0
+	for i in 3: await physics_frame
+	assert(rover.battery == 100.0 and rover.reserve == 100.0, "Creative: always full.")
+	print("Crew rover test passed: in the bay, the ramp, getting in, driving out through the hangar, steering, the battery, getting out, saving, the reserve, no solar at night, a recall home, the compass, cruise control and Creative's endless battery.")
 	quit(0)

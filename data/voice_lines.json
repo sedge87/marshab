@@ -1,5 +1,5 @@
 {
-  "_about": "Everything the habitat, your suit and Mission Control say. tools/generate_voice.py speaks each variant to assets/audio/voice/<id>_<n>.wav (Mission Control as mc_<id>_<n>.wav); the game plays a random variant and shows its text as a caption. The habitat speaks in the first person, warm and a little dry, and says what to do, not just what's wrong. Keep lines short: the numbers are on screen. The suit (suit_<id>_<n>.wav) is calm and brief, in your helmet.",
+  "_about": "Everything the habitat, your suit and Mission Control say. tools/generate_voice.py speaks each variant to assets/audio/voice/<id>_<n>.wav (Mission Control as mc_<id>_<n>.wav); the game plays a random variant and shows its text as a caption. The habitat speaks in the first person, warm and a little dry, and says what to do, not just what's wrong. Keep lines short: the numbers are on screen. The suit (suit_<id>_<n>.wav) is calm and brief, in your helmet. On the rover's radio (scripts/rover_radio.gd) an orbiter overhead relays (relay_<id>_<n>.wav): automated, brief, no names or numbers it couldn't know.",
   "habitat": {
     "life_support_power_critical": [
       "Life support has no power. I can't keep the air clean without it.",
@@ -343,6 +343,16 @@
     ],
     "tut_done": [
       "That's the basics. The Field guide in the pause menu explains every system. Good luck out here."
+    ],
+    "rover_far": [
+      "You're a long way out. Keep an eye on the battery for the trip home.",
+      "That's quite a drive. I'll keep the airlock warm for you.",
+      "You're further out than I can see. Mind your range."
+    ],
+    "rover_sunset": [
+      "The sun's getting low, and you're a drive from home.",
+      "Sunset's coming. The rover's roof panel stops at dark.",
+      "It'll be dark soon. Worth heading back while there's light."
     ]
   },
   "suit": {
@@ -438,6 +448,44 @@
       "Mission Control. The crew's families say hello.",
       "Mission Control. Take a moment to look outside. Not many people have seen that view.",
       "Mission Control. Half of Earth is watching your mission. No pressure."
+    ],
+    "drive": [
+      "Mission Control. We've got your rover on the tracking map. Nice line across the plain.",
+      "Mission Control. Geology desk here. Keep an eye out for layered rock. It's a record of old water.",
+      "Mission Control. The rover team says hello. They built that thing by hand, so go easy on it.",
+      "Mission Control. From the science desk: the dust out there is finer than flour. It gets into everything.",
+      "Mission Control. Weather team says it's well below freezing where you are. Glad the cab is warm.",
+      "Mission Control. Remember your range. We'd rather you came home with charge to spare.",
+      "Mission Control. Half the room stopped to watch your drive on the big screen. Carry on.",
+      "Mission Control. Sunsets on Mars are blue. If you're out at dusk, look west.",
+      "Mission Control. The football results are in. We'll spare you the details.",
+      "Mission Control. Our orbiter team caught your tracks in a picture. You've left your mark on Mars."
+    ]
+  },
+  "relay": {
+    "pass_start": [
+      "Relay link acquired. Orbiter overhead. Messages from Earth follow.",
+      "Relay pass beginning. Link is good. Downloading your telemetry.",
+      "Orbiter rising. Relay link established."
+    ],
+    "pass_end": [
+      "Relay pass ending. Loss of signal shortly.",
+      "Orbiter setting. Link closing. Data stored for the next pass.",
+      "End of relay pass. Telemetry received."
+    ],
+    "weather": [
+      "Weather from orbit. Dust levels low across the region. Light winds.",
+      "Orbital weather. Clear skies over the region for the rest of the sol.",
+      "Weather from orbit. A small dust front far to the south. No threat today.",
+      "Orbital weather. Thin water ice clouds high overhead. Nothing to worry about."
+    ],
+    "storm": [
+      "Weather from orbit. Dust storm over the region. Visibility poor. Keep your lights on.",
+      "Orbital weather. Heavy dust overhead. Solar charging will be weak."
+    ],
+    "dust_devil": [
+      "Orbital imaging. Dust devils active in the region this afternoon.",
+      "Orbital imaging. Several dust devil tracks near your position. Harmless, but worth a look."
     ]
   }
 }

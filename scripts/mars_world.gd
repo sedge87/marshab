@@ -72,6 +72,7 @@ var scout_rover: Node3D
 ## the base has one, and is saved with the base.
 const CREW_ROVER_SCRIPT := preload("res://scripts/crew_rover.gd")
 var crew_rover: CharacterBody3D
+var region_map: CanvasLayer   # scripts/region_map.gd (region sites only): Tab, and your trail since the airlock
 var _crew_rover_state := {}
 var interior_builder: MHInteriorBuildController
 var surface_builder: MHSurfaceBuildController
@@ -123,7 +124,7 @@ func _ready() -> void:
 	_build_landscape()
 	# Region sites (gameplay loop prototype): Tab shows the region map.
 	if MHSiteTerrain.shape() == "region":
-		var region_map := preload("res://scripts/region_map.gd").new()
+		region_map = preload("res://scripts/region_map.gd").new()
 		region_map.setup(self, MHSiteTerrain.region_zone())
 		add_child(region_map)
 	if MHMissions.active() and MHGame.pending_save_state.has("missions_progress"):
@@ -265,7 +266,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		else: _resume()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
 		_open_mission_control()
-	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C and not event.ctrl_pressed and not bool(player.get_meta("build_mode_active", false)):
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C and not event.ctrl_pressed and not bool(player.get_meta("build_mode_active", false)) and not bool(player.get_meta("driving", false)):
 		# C: straight to the Crew screen (in Mission Control).
 		_open_mission_control()
 		if mission_control != null:
@@ -1140,6 +1141,7 @@ func current_state() -> Dictionary:
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
 		"crew_rover": crew_rover.export_state() if crew_rover != null else {},
 		"suit": suit.export_state() if suit != null else {},
+		"trail": region_map.trail if region_map != null else PackedVector2Array(),
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
 		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
 	}
@@ -1208,6 +1210,7 @@ func _restore_pending_habitat() -> void:
 	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
 	_crew_rover_state = state.get("crew_rover", {}) as Dictionary
 	_suit_state = state.get("suit", {}) as Dictionary
+	if region_map != null: region_map.trail = PackedVector2Array(state.get("trail", PackedVector2Array()))
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()
 	player.global_position = state.get("player_position", player.global_position) as Vector3
 	player.rotation.y = float(state.get("player_rotation_y", player.rotation.y))

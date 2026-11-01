@@ -59,10 +59,10 @@ func _initialize() -> void:
 	# Every line has every recording.
 	var lines: Dictionary = MHAudio.lines()
 	var missing: Array = []
-	for speaker in ["habitat", "mission_control"]:
+	for speaker in ["habitat", "mission_control", "relay"]:
 		for id in lines[speaker]:
 			for n in range((lines[speaker][id] as Array).size()):
-				var path := "res://assets/audio/voice/%s%s_%d.wav" % ["mc_" if speaker == "mission_control" else "", id, n]
+				var path := "res://assets/audio/voice/%s%s_%d.wav" % [{"mission_control": "mc_", "relay": "relay_"}.get(speaker, ""), id, n]
 				if not FileAccess.file_exists(path): missing.append(path)
 	assert(missing.is_empty(), "Missing recordings: %s" % str(missing))
 	for level_id in ["o2_warning", "o2_critical", "resolved_o2", "welcome_home", "storm_arrived", "seismic_activity", "remark_calm", "remark_dawn"]:

@@ -29,6 +29,11 @@ extends CharacterBody3D
 ## from the habitat's oxygen. With the tank empty the cab is no shelter: your
 ## suit runs down as if you were outside.
 ##
+## C is cruise control: it holds the speed you were doing (or full speed from
+## a standstill) so you only steer; W while cruising raises the set speed, and
+## S, Space or C again lets go. In Creative the batteries never run down.
+## The driving HUD carries the compass, with the same landmarks as on foot.
+##
 ## Arcade handling on a bicycle model; the body follows the ground with four
 ## rays (pitch, roll and height, like suspension), and its collision box sits
 ## above the wheels so small rocks don't stop it, but walls and machines do.
@@ -77,6 +82,8 @@ var _last_hour := -1.0
 var recalling := false
 var lights_on := false
 var driving := false
+## Cruise control's set speed, m/s (0 when off).
+var cruise := 0.0
 var first_person := false
 
 var _player: CharacterBody3D
@@ -91,6 +98,7 @@ var _motor: AudioStreamPlayer3D
 var _dust: Array[CPUParticles3D] = []
 var _hud: CanvasLayer
 var _readout: Label
+var _compass: MHWidgets.Compass
 var _hangar: Node = null        # the hangar door this rover opened
 var _player_layers := Vector2i.ZERO
 var _was_charging := false
@@ -148,6 +156,9 @@ func _ready() -> void:
 	_cam.far = 2000.0
 	add_child(_cam)
 	_cam.top_level = true
+	var radio := preload("res://scripts/rover_radio.gd").new()   # chatter on the drive
+	radio.rover = self
+	add_child(radio)
 
 # ---------- interaction ----------
 
@@ -213,6 +224,7 @@ func _get_out() -> void:
 	var spot := _exit_spot()
 	driving = false
 	speed = 0.0
+	cruise = 0.0
 	_player.global_position = spot
 	_player.rotation.y = rotation.y
 	if "safe_position" in _player: _player.safe_position = spot
@@ -280,6 +292,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_R:
 				_recover()
 				get_viewport().set_input_as_handled()
+			KEY_C:
+				_toggle_cruise()
+				get_viewport().set_input_as_handled()
 			KEY_B:
 				get_viewport().set_input_as_handled()   # no building from the driver's seat
 
@@ -293,6 +308,9 @@ func _physics_process(delta: float) -> void:
 		throttle = _axis(KEY_W, "move_forward") - _axis(KEY_S, "move_back")
 		steer_in = _axis(KEY_A, "move_left") - _axis(KEY_D, "move_right")
 		braking = Input.is_key_pressed(KEY_SPACE)
+		throttle = _cruise_throttle(throttle, braking)
+	elif driving and not get_tree().paused:
+		throttle = _cruise_throttle(0.0, false)   # cruising on while you look at the map
 	elif recalling and not get_tree().paused:
 		if _far_from_you():
 			_ghost_drive(delta)
@@ -333,6 +351,29 @@ func _physics_process(delta: float) -> void:
 		_player.rotation.y = rotation.y   # you face where it's going (the region map's arrow)
 		_place_camera(delta)
 		_update_hud()
+
+## C: hold the speed you're doing, or full speed from a standstill.
+func _toggle_cruise() -> void:
+	if cruise > 0.0:
+		cruise = 0.0
+		MHAudio.sfx("ui_click", -8.0)
+		return
+	if speed < -0.05: return
+	cruise = speed if speed > 1.0 else MAX_SPEED
+	MHAudio.sfx("ui_confirm", -10.0)
+
+## Cruise control's throttle: W raises the set speed, S or Space lets go;
+## otherwise it holds the set speed (as far as the battery allows).
+func _cruise_throttle(throttle: float, braking: bool) -> float:
+	if cruise <= 0.0: return throttle
+	if braking or throttle < 0.0:
+		cruise = 0.0
+		return throttle
+	if throttle > 0.0:
+		cruise = maxf(cruise, speed)
+		return throttle
+	var top := top_speed()
+	return clampf(minf(cruise, top) / top, 0.0, 1.0) if top > 0.0 else 0.0
 
 func _axis(key: Key, action: String) -> float:
 	return 1.0 if Input.is_key_pressed(key) or (InputMap.has_action(action) and Input.is_action_pressed(action)) else 0.0
@@ -408,6 +449,12 @@ func top_speed() -> float:
 	return LIMP_SPEED if MHGame.sunlight_fraction > DAYLIGHT else 0.0
 
 func _battery(delta: float, moved: float) -> void:
+	if MHGame.game_mode == "creative":   # Creative: it never runs down
+		battery = 100.0
+		reserve = 100.0
+		_air(delta, false)
+		_was_charging = _in_bay() and absf(speed) < 0.1
+		return
 	if battery > 0.0: battery = maxf(0.0, battery - moved * DRAIN_PER_M)
 	elif reserve > 0.0:
 		var was := reserve
@@ -861,7 +908,17 @@ func _show_hud(on: bool) -> void:
 		column.add_child(MHStyle.eyebrow("CREW ROVER"))
 		_readout = MHStyle.mono("", 18)
 		column.add_child(_readout)
-		_hud.add_child(MHStyle.hint_strip([[["W", "S"], "Drive"], [["A", "D"], "Steer"], [["Space"], "Brake"], [["F"], "Lights"], [["V"], "View"], [["R"], "Recover"], [["E"], "Get out", "accent"]]))
+		# The compass, where it sits on foot (top centre).
+		var compass_band := CenterContainer.new()
+		compass_band.anchor_right = 1
+		compass_band.offset_top = 48
+		compass_band.offset_bottom = 104
+		compass_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_hud.add_child(compass_band)
+		_compass = MHWidgets.Compass.new()
+		compass_band.add_child(_compass)
+		var map_hint: Array = [[["Tab"], "Map"]] if MHGame.site().get("terrain", {}).get("shape", "") == "region" else []
+		_hud.add_child(MHStyle.hint_strip([[["W", "S"], "Drive"], [["A", "D"], "Steer"], [["Space"], "Brake"], [["C"], "Cruise"], [["F"], "Lights"], [["V"], "View"], [["R"], "Recover"]] + map_hint + [[["E"], "Get out", "accent"]]))
 	if _hud != null: _hud.visible = on
 
 func _update_hud() -> void:
@@ -874,8 +931,16 @@ func _update_hud() -> void:
 	elif solar and absf(speed) < 0.1: state = "solar topping up"
 	elif lights_on: state = "lights on"
 	var air := "   ·   O2 %d%%" % roundi(o2) if SUIT.active() else ""
-	_readout.text = "%3d km/h   ·   %s%s%s" % [roundi(absf(speed) * 3.6), power, air, "   ·   " + state if not state.is_empty() else ""]
+	if MHGame.game_mode == "creative": power = "battery unlimited"
+	var held := "   ·   CRUISE %d" % roundi(cruise * 3.6) if cruise > 0.0 else ""
+	_readout.text = "%3d km/h%s   ·   %s%s%s" % [roundi(absf(speed) * 3.6), held, power, air, "   ·   " + state if not state.is_empty() else ""]
 	_readout.modulate = MHStyle.DANGER if battery < 15.0 else MHStyle.TEXT_PRIMARY
+	if _compass != null:
+		# The way the camera looks, so the markers line up with the view.
+		var look := -_cam.global_transform.basis.z
+		_compass.heading = wrapf(rad_to_deg(atan2(look.x, -look.z)), 0.0, 360.0)
+		var hud := get_tree().get_first_node_in_group("explore_hud")
+		_compass.markers = hud.compass_markers() if hud != null and hud.has_method("compass_markers") else []
 
 ## "home 240 m" with an arrow: the way back to the vehicle bay, from where
 ## the rover faces.
