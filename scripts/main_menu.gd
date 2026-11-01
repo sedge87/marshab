@@ -1,6 +1,7 @@
 extends Control
 const MHSaves := preload("res://scripts/saves.gd")   # named saves, one file per base
 const LANDING_PICKER_SCRIPT := preload("res://scripts/landing_picker.gd")
+const REGION_LANDING_PICKER_SCRIPT := preload("res://scripts/region_landing_picker.gd")
 const MHMissions := preload("res://scripts/mh_missions.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
@@ -1026,6 +1027,9 @@ func _refresh_plaque() -> void:
 ## shows where the lander might touch down (Survival); Freedom and Creative
 ## land exactly on target.
 func _landing_screen() -> void:
+	if MHSiteTerrain.shape() == "region" and not MHMissions.active():
+		_region_landing_screen()
+		return
 	_scrim("right", .62, .95, .4)
 	_stepper(2)
 	_place(MHStyle.display("Choose where to land", 64), Vector2(120, 120))
@@ -1070,6 +1074,7 @@ func _landing_screen() -> void:
 	land.pressed.connect(func() -> void:
 		MHGame.landing_target = picker.target
 		MHGame.base_site = {}   # a new colony: founded at the site's named zone
+		MHGame.cargo_at = Vector2.INF
 		MHChapterOne.reset()   # a new free-play game starts with the crates packed (chapter one)
 		show_screen("loading"))
 	bar.add_child(land)
@@ -1080,6 +1085,59 @@ func _landing_screen() -> void:
 		land.disabled = level == "red"
 	picker.target_changed.connect(show_verdict)
 	show_verdict.call(picker.target, picker.verdict)
+
+## The Land step on a region site: the landing oval on the whole region map
+## (docs/landing-and-base-siting.md §5.1). The base is founded where the
+## lander touches down; until the descent is built, the autopilot picks the
+## nearest good ground to the oval's centre.
+func _region_landing_screen() -> void:
+	_scrim("right", .62, .95, .4)
+	_stepper(2)
+	_place(MHStyle.display("Choose where to land", 64), Vector2(120, 120))
+	var picker := REGION_LANDING_PICKER_SCRIPT.new()
+	picker.position = Vector2(120, 230)
+	picker.custom_minimum_size = Vector2(760, 640)
+	picker.size = Vector2(760, 640)
+	screen.add_child(picker)
+	var panel := MHStyle.hud_panel(24, false, true)
+	panel.position = Vector2(930, 230)
+	panel.custom_minimum_size = Vector2(520, 0)
+	var col := MHStyle.vbox(14)
+	col.add_child(MHStyle.eyebrow("%s · %s" % [MHGame.site_name(), str(MHGame.GAME_MODES.get(MHGame.game_mode, ""))], MHStyle.accent))
+	col.add_child(MHStyle.title("The landing oval", 28))
+	var how := MHStyle.body("Your lander can reach anywhere inside the oval on the way down, and your base is founded where it touches down. The two cargo landers came down at its centre months ago. Green dots are level, open ground for a base. Click or drag on the map.", 17)
+	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(how)
+	var status := MHStyle.body("", 17)
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(status)
+	col.add_child(_tutorial_choice())
+	panel.add_child(col)
+	screen.add_child(panel)
+	var bar := _bottom_bar()
+	bar.alignment = BoxContainer.ALIGNMENT_END
+	var back := MHStyle.button("Back", "ghost", "chevron-left")
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	back.pressed.connect(func() -> void: show_screen("title" if _quick_start else "colony"))
+	bar.add_child(back)
+	var land := MHStyle.button("Land", "primary", "rocket")
+	land.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	land.pressed.connect(func() -> void:
+		var spot: Vector2 = picker.touchdown()
+		if is_inf(spot.x): return
+		MHGame.base_site = MHBaseSite.make(spot.x, spot.y, MHGame.colony_name)
+		MHGame.cargo_at = picker.centre - spot   # site metres from the base
+		MHGame.landing_target = Vector2.INF       # the lander sets down on the pad's centre
+		MHChapterOne.reset()
+		show_screen("loading"))
+	bar.add_child(land)
+	var show_verdict := func(_centre: Vector2, verdict: Dictionary) -> void:
+		status.text = str(verdict.get("text", ""))
+		var level := str(verdict.get("level", "red"))
+		status.add_theme_color_override("font_color", MHStyle.VALID if level == "green" else (MHStyle.WARN if level == "orange" else MHStyle.DANGER))
+		land.disabled = level == "red"
+	picker.area_changed.connect(show_verdict)
+	show_verdict.call(picker.centre, picker.verdict)
 
 const TUTORIAL_CHOICES := {"full": "Full", "hints": "Hints only", "off": "Off"}
 const TUTORIAL_NOTES := {

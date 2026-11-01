@@ -19,11 +19,38 @@ const MAX_BUMP := 5.0       # metres the ground rises or dips from that slope
 const CAVE_CLEAR := 20.0    # metres between the pad and any cave or skylight
 const EDGE_CLEAR := 400.0   # metres inside the region's edge
 const APRON := .6           # the pad blends back to the ground over this × its half width
+const ICE_REACH := 450.0    # metres round the base its ice deposits are looked for
 
 ## A zone for a base founded at (rx, rz): the pad's level is the mean ground
 ## height over it.
 static func make(rx: float, rz: float, label: String, half := 60.0) -> Dictionary:
-	return {"centre": [rx, rz], "height": _mean_height(rx, rz, half), "pad_half": half, "label": label, "dynamic": true}
+	return {"centre": [rx, rz], "height": _mean_height(rx, rz, half), "pad_half": half, "label": label, "dynamic": true,
+		"ice_deposits": ice_deposits(rx, rz)}
+
+## Buried ice round a base founded at (rx, rz), in the shape of
+## data/sites.json's ice_deposits (site metres): rich where the region's
+## ice mantle lies within ICE_REACH, up to three deposits at least 60 m
+## apart, nearest first; otherwise one thin deposit near the pad (there's a
+## little ground ice almost everywhere at these latitudes).
+static func ice_deposits(rx: float, rz: float) -> Array:
+	var RT = MHSiteTerrain.RegionTerrain
+	var cells: Array = []
+	var step := 30.0
+	for i in range(-roundi(ICE_REACH / step), roundi(ICE_REACH / step) + 1):
+		for j in range(-roundi(ICE_REACH / step), roundi(ICE_REACH / step) + 1):
+			var at := Vector2(i, j) * step
+			if at.length() > ICE_REACH: continue
+			if RT.geology(rx + at.x, rz + at.y) == "ice_mantle": cells.append(at)
+	cells.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.length() < b.length())
+	var deposits: Array = []
+	for at: Vector2 in cells:
+		if deposits.any(func(d): return Vector2(float(d.x), float(d.z)).distance_to(at) < 60.0): continue
+		# Richer where more of the ground round it is ice mantle.
+		var around := cells.filter(func(c: Vector2) -> bool: return c.distance_to(at) < 50.0).size()
+		deposits.append({"x": roundf(at.x), "z": roundf(at.y), "radius": 20, "richness": snappedf(clampf(.45 + around * .05, .45, .92), .01)})
+		if deposits.size() == 3: break
+	if deposits.is_empty(): deposits.append({"x": 45, "z": -42, "radius": 13, "richness": .25})
+	return deposits
 
 ## Whether a base can be founded at (rx, rz).
 static func valid(rx: float, rz: float, half := 60.0) -> bool:

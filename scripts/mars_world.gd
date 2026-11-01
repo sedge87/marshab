@@ -837,10 +837,21 @@ func _land_precursor_cargo() -> void:
 	if MHChapterOne.lander_spots.is_empty():
 		var centre := Vector2(lander.global_position.x, lander.global_position.z)
 		var basis := Basis(Vector3.UP, lander.rotation.y)
+		var drop := lander.global_position
+		# On a region site the cargo came down at the landing oval's centre,
+		# on level ground there (it may be a walk from the base).
+		if not is_inf(MHGame.cargo_at.x) and MHGame.cargo_at.length() > 40.0:
+			var zone := MHSiteTerrain.region_zone()
+			var origin := Vector2(float(zone.centre[0]), float(zone.centre[1]))
+			var region := MHBaseSite.nearest_valid(MHGame.cargo_at.x + origin.x, MHGame.cargo_at.y + origin.y, 200.0, 20.0)
+			var site := (region - origin) if not is_inf(region.x) else MHGame.cargo_at
+			drop = Vector3(site.x, MHSiteTerrain.height(site.x, site.y), site.y)
+			basis = Basis(Vector3.UP, atan2(-site.x, -site.y))   # their ramps face the base
 		for offset in [Vector3(-16, 0, 9), Vector3(16, 0, 9)]:
-			var at: Vector3 = lander.global_position + basis * offset
+			var at: Vector3 = drop + basis * offset
 			var spot := CARGO_LANDER_SCRIPT.spot_at(Vector2(at.x, at.z), centre)
 			MHChapterOne.lander_spots.append({"position": spot.position, "yaw": float(spot.yaw)})
+		MHGame.cargo_at = Vector2.INF
 	for index in MHChapterOne.lander_spots.size():
 		var saved: Dictionary = MHChapterOne.lander_spots[index]
 		var cargo := _add_cargo_lander(index + 1)

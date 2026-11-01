@@ -219,6 +219,9 @@ static var landing_target := Vector2.INF
 ## region.json's shape with "dynamic" set (MHBaseSite.make); empty for a
 ## named zone's site and the old single-site maps. Saved.
 static var base_site := {}
+## Where the precursor cargo came down, in site metres, for a new colony on
+## a region site (the landing oval's centre); INF: beside the crew lander.
+static var cargo_at := Vector2.INF
 # Hidden debug cheats (Ctrl+Shift+F12 in a colony); session only, never saved.
 static var debug_unlimited_cargo := false
 static var debug_free_power := false
@@ -292,9 +295,20 @@ static func sites() -> Array:
 static func picker_sites() -> Array:
 	return sites().filter(func(entry): return not bool(entry.get("legacy", false)))
 
+static var _founded_site := {}     # site() for a base founded away from the named zones
+static var _founded_from := {}     # the base_site it was made from
+
 static func site() -> Dictionary:
 	for entry in sites():
-		if str(entry.get("id", "")) == site_id: return entry
+		if str(entry.get("id", "")) != site_id: continue
+		# A base founded where the lander came down has its own ice round it
+		# (MHBaseSite.ice_deposits); the rest of the site is unchanged.
+		if not base_site.has("ice_deposits"): return entry
+		if not is_same(_founded_from, base_site):
+			_founded_from = base_site
+			_founded_site = entry.duplicate()
+			_founded_site["ice_deposits"] = base_site.ice_deposits
+		return _founded_site
 	return {"id": "plains", "name": "Open Plains", "palette": "day", "icon": "sun"}
 
 static func site_name() -> String: return str(site().get("name", "Open Plains"))
