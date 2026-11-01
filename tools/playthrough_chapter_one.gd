@@ -174,7 +174,12 @@ func _play() -> void:
 	world.player.rotation.y = 0.0
 	(world.player.get_node("Head") as Node3D).rotation.x = -.5
 	for i in 5: await physics_frame
-	_note("corer prompt outside: " + _prompt())
+	_note("corer before any survey: '%s'" % world.hand_corer.prompt())
+	await _shot("unsurveyed_no_prompt")
+	# GAR-Y's survey would leave readings here (its order takes game hours).
+	var rover: Node = get_first_node_in_group("gar_y")
+	if rover != null: (rover.ice_samples as Array).append(Vector3(ice_at.x, ice_at.z, .2))
+	_note("corer after a reading here: '%s'" % world.hand_corer.prompt())
 	await _shot("corer_ready")
 	_key_e(true)
 	await create_timer(1.0).timeout

@@ -1,8 +1,9 @@
 extends Node
 
 ## The hand corer (docs/start-and-chapter-one.md §6), from the Outside crate.
-## Outside, away from the base and not looking at anything, hold E to drive
-## a core into the ground in front of you. The core shows the ice's depth
+## Only on ground GAR-Y has surveyed (no hole without a reason), away from
+## the base and not looking at anything: hold E to drive a core into the
+## ground in front of you. The core shows the ice's depth
 ## and purity: shallow, clean ice makes the extractor run faster, and some
 ## cores come up dry. The first good core is the ice discovery.
 ## GAR-Y's "Survey zone" finds where to try; the wrist only does life support.
@@ -10,6 +11,7 @@ extends Node
 const MHResources := preload("res://scripts/mh_resources.gd")
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
+const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
 const HOLD_SECONDS := 1.8
 const KEEP_CLEAR_M := 8.0   # from the habitat and landers, so a tap of E still works the doors
 
@@ -48,6 +50,7 @@ func _target() -> Vector3:
 	for node in [world.lander] + (world.cargo_landers as Array):
 		if node != null and Vector2(node.global_position.x - at.x, node.global_position.z - at.z).length() < KEEP_CLEAR_M: return Vector3.INF
 	if not world.builder.zones.is_empty() and world.builder.call("_zone_at_point", Vector2(at.x, at.z)).size() > 0: return Vector3.INF
+	if not ICE_KNOWLEDGE.surveyed(ICE_KNOWLEDGE.samples(get_tree()), Vector2(at.x, at.z)): return Vector3.INF
 	return at
 
 ## The HUD's hint while you could take one.

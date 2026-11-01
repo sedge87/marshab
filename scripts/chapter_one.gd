@@ -356,15 +356,14 @@ static func stores_for(sols: float, crew := -1.0) -> Dictionary:
 		"food_kg": people * MHResources.setting("food_per_person", 1.8) * sols}
 
 ## Sols left of water, oxygen and food at today's use, or -1 when not running down.
-## Before anyone lives in the habitat, it's what the landed crew would use.
+## Before anyone lives in the habitat nothing is used yet: the full store life.
 static func sols_left(sim: Object) -> Dictionary:
 	var last: Dictionary = sim.get("last")
 	var crew := float(last.get("crew", 0))
 	var out := {"water": -1.0, "oxygen": -1.0, "food": -1.0}
 	if crew <= 0.0:
-		if not on(): return out
-		crew = store_crew()
-		last = {"crew": crew, "water_out": crew * MHResources.setting("water_per_person", 10.0)}
+		if on(): out = {"water": store_sols(), "oxygen": store_sols(), "food": store_sols()}
+		return out
 	var water_net := float(last.get("water_out", 0.0)) - float(last.get("water_in", 0.0))
 	if water_net > .01: out.water = float(sim.get("water_l")) / water_net
 	var o2_net := crew * MHResources.setting("o2_per_person", .84) - float(last.get("o2_in", 0.0))
@@ -440,7 +439,7 @@ static func _check_steps(builder: Object, sim: Object, last: Dictionary, hours: 
 	var o2_need := crew * MHResources.setting("o2_per_person", .84)
 	if known.has("oxygen_generator") and not steps.has("oxygen") and crew > 0.0 and float(last.get("o2_in", 0.0)) >= o2_need - .01:
 		steps["oxygen"] = now
-		out.append({"id": "step", "title": "Oxygen self-sufficient", "text": "The generator covers the crew's breathing. Last: food.", "tone": "valid"})
+		out.append({"id": "step", "title": "Oxygen self-sufficient", "text": "The generator covers the crew's breathing. Last: food. Take a core on surveyed ground to bag some regolith, then wash it at the Workshop Bench.", "tone": "valid"})
 	# 4. Food: the test seed in washed regolith comes up (see bench_use()).
 	if soil == "potted" and not known.has("grow_tray") and now - soil_potted_at >= SOIL_TEST_HOURS:
 		learn_after("food")

@@ -103,6 +103,9 @@ func _initialize() -> void:
 	var good := MHChapterOne.core_at(Vector2.ZERO, .5)
 	_check(bool(dry.dry) and not bool(dry.good), "a thin core comes up dry")
 	_check(bool(good.good) and float(good.depth_m) < float(MHChapterOne.core_at(Vector2.ZERO, .3).depth_m), "richer ice is shallower")
+	var ice_knowledge := preload("res://scripts/ice_knowledge.gd")
+	var readings := [Vector3(40, -40, .2)]
+	_check(ice_knowledge.surveyed(readings, Vector2(44, -42)) and not ice_knowledge.surveyed(readings, Vector2(10, 10)) and not ice_knowledge.surveyed([], Vector2(40, -40)), "cores only on ground GAR-Y has surveyed")
 	_check(not MHChapterOne.rover_landed(), "the crew rover waits for a later lander")
 	MHChapterOne.ice_found(10.0)
 	_check(MHChapterOne.plan_known("ice_drill") and MHChapterOne.rover_landed(), "a good core earns the Ice Extractor plan, and the rover comes")

@@ -62,6 +62,16 @@ static func survey_grid(zone: Dictionary, from: Vector2) -> Array:
 		at = next
 	return ordered
 
+## How near a GAR-Y reading you can take a core (m). Chapter one: no hole
+## without a scientific reason, so coring needs a survey first.
+const CORE_REACH := 7.0
+
+## Whether a point is inside ground GAR-Y has surveyed (samples as below).
+static func surveyed(samples_list: Array, point: Vector2) -> bool:
+	for sample in samples_list:
+		if Vector2(float(sample.x), float(sample.y)).distance_to(point) <= CORE_REACH: return true
+	return false
+
 ## Every spot GAR-Y has surveyed: [Vector3(x, z, richness)].
 static func samples(tree: SceneTree) -> Array:
 	var rover := tree.get_first_node_in_group("gar_y")

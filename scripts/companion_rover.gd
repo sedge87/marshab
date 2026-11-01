@@ -449,7 +449,7 @@ func _radar_reading(at: Vector2, richness: float) -> void:
 			_task_age = 0.0
 			return
 		_survey_done()
-		_toast("GAR-Y's zone survey is done", "%d radar readings are on the site plan and the survey map. Read them, then take a core with the hand corer where the signal looks strongest. Radar can be fooled: only a core is sure." % int(task_data.get("stops", 0)), MHStyle.INFO)
+		_toast("GAR-Y's zone survey is done", "%d radar readings are on the site plan and the survey map. You can take a core with the hand corer anywhere in the surveyed area: try where the signal looks strongest. Radar can be fooled; only a core is sure." % int(task_data.get("stops", 0)), MHStyle.INFO)
 	else:
 		if _ordered: _survey_done()
 		_toast("GAR-Y's radar reading", "A %s signal here. It's on the survey map; a core will tell you for sure." % ("strong" if reading >= .35 else ("faint" if reading >= .15 else "weak")), MHStyle.INFO)
