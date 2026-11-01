@@ -46,6 +46,8 @@ func _ready() -> void:
 	_fly_button = _toggle_row(col, "Fly / noclip  [N; T flies you where you look]", _set_fly)
 	_cargo_button = _toggle_row(col, "Unlimited cargo", func(on: bool) -> void: MHGame.debug_unlimited_cargo = on; _refresh_builder())
 	_power_button = _toggle_row(col, "Free power (grid always online)", func(on: bool) -> void: MHGame.debug_free_power = on; world.builder.refresh_power_grid())
+	if preload("res://scripts/site_terrain.gd").shape() == "region":
+		_toggle_row(col, "Rover ground (green drivable, yellow slow or sand, red no)", _set_rover_ground)
 
 	col.add_child(MHStyle.eyebrow("Stuck? Get home safe", MHStyle.accent))
 	_suit_button = _toggle_row(col, "Suit never runs out", func(on: bool) -> void: MHGame.debug_suit_never_runs_out = on)
@@ -326,6 +328,19 @@ func _toggle_button(text: String, on_change: Callable) -> Button:
 		b.theme_type_variation = "SelectedButton" if on else "GhostButton"
 		on_change.call(on))
 	return b
+
+## Rover ground: the ground round you (and the region map) coloured by
+## whether the rover can drive it (scripts/traversability.gd).
+func _set_rover_ground(on: bool) -> void:
+	const TRAVERSABILITY := preload("res://scripts/traversability.gd")
+	TRAVERSABILITY.on = on
+	var overlay: Node = world.get_node_or_null("RoverGround")
+	if on and overlay == null:
+		overlay = TRAVERSABILITY.new()
+		overlay.setup(world)
+		world.add_child(overlay)
+	elif not on and overlay != null:
+		overlay.queue_free()
 
 func _toggle_row(parent: Control, text: String, on_change: Callable) -> Button:
 	var b := _toggle_button(text, on_change)

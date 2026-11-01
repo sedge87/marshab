@@ -12,6 +12,7 @@ extends RefCounted
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const CELL := 10.0
 const MARGIN := 300.0       # how far beyond the straight line the route may stray
+const GENTLE := .21         # about 12 degrees: steeper than this the rover goes carefully (the Rover ground view's yellow)
 const STEEP := .36          # rise over run, about 20 degrees: past it, ground costs a lot more to cross
 const CLIFF := .8           # about 40 degrees: never
 const BIG_ROCK := .8        # rock radius (m) the rover can't drive over (0.45 m clearance)

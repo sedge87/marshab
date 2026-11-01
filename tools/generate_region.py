@@ -1126,7 +1126,8 @@ def ground_shape(h):
     soft = box_blur(h, 3)
     curvature = (np.roll(soft, 4, 0) + np.roll(soft, -4, 0) + np.roll(soft, 4, 1) + np.roll(soft, -4, 1) - 4.0 * soft) / (8.0 * SPACING) ** 2
     cliff_near = box_blur((slope > 0.9).astype(np.float32), 10)   # within about 20 m
-    return slope, curvature, cliff_near, gz
+    facing, _ = np.gradient(box_blur(h, 8), SPACING)   # rise to the south over about 30 m: > 0 faces the pole
+    return slope, curvature, cliff_near, facing
 
 
 def small_crater_marks(h, masks):
@@ -1202,20 +1203,38 @@ def write_control(h, masks):
     write_file(os.path.join(OUT, "control.u32.gz"), lambda path: open(path, "wb").write(data))
 
 
-def write_map(h, masks):
-    """The region map: shaded relief coloured by ground type, 1024 px."""
-    step = N // 1024
+def relief(h, masks, size, minor, major):
+    """A map image `size` px across: ground colours, multi-directional
+    hillshade (lit mainly from the north-west, as maps are: lit from below,
+    the eye reads craters as hills) and contour lines every `minor` m,
+    heavier every `major` m."""
+    step = N // size
     hs = h[::step, ::step]
     colours = np.array([m[5] for m in MATERIALS], dtype=float) / 255.0
-    control_base = masks["_base"][::step, ::step]
-    rgb = colours[control_base]
+    rgb = colours[masks["_base"][::step, ::step]]
     gz, gx = np.gradient(hs, SPACING * step)
-    # Lit from the north-west (top left), as maps are: lit from anywhere
-    # below, the eye reads craters as hills and hills as craters.
-    shade = np.clip(0.82 + (gx + gz) * 1.4, 0.35, 1.25)[..., None]
-    lift = (0.92 + 0.16 * (hs - hs.min()) / (hs.max() - hs.min()))[..., None]
-    img = np.clip(rgb * shade * lift, 0, 1)
-    write_file(os.path.join(OUT, "map.png"), Image.fromarray((img * 255).astype("uint8"), "RGB").save)
+    norm = np.sqrt(gx * gx + gz * gz + 1.0)
+    shade = np.zeros_like(hs)
+    for azimuth, weight in ((315.0, 0.5), (270.0, 0.25), (0.0, 0.25)):   # map azimuths: 0 north, clockwise
+        a = math.radians(azimuth)
+        lx, lz, ly = math.sin(a), -math.cos(a), 1.1
+        ll = math.sqrt(lx * lx + lz * lz + ly * ly)
+        shade += weight * np.clip((-gx * lx - gz * lz + ly) / (norm * ll), 0.0, 1.0)
+    lift = 0.94 + 0.12 * (hs - hs.min()) / (hs.max() - hs.min())
+    img = rgb * (0.25 + 0.95 * shade)[..., None] * lift[..., None]
+    for interval, strength in ((minor, 0.12), (major, 0.28)):
+        band = np.floor(hs / interval)
+        edge = (band != np.roll(band, 1, 0)) | (band != np.roll(band, 1, 1))
+        img = img * (1.0 - strength * edge[..., None])
+    return np.clip(img, 0, 1)
+
+
+def write_map(h, masks):
+    """The region map (1024 px, 20 m contours) and its close-up (2048 px,
+    5 m contours) for the zoomed map round you."""
+    write_file(os.path.join(OUT, "map.png"), Image.fromarray((relief(h, masks, 1024, 20.0, 100.0) * 255).astype("uint8"), "RGB").save)
+    detail = Image.fromarray((relief(h, masks, 2048, 5.0, 25.0) * 255).astype("uint8"), "RGB")
+    write_file(os.path.join(OUT, "map_detail.jpg"), lambda path: detail.save(path, quality=88))
 
 
 def write_colour(masks, h=None):

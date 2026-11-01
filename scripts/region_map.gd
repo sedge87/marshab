@@ -4,11 +4,14 @@ extends CanvasLayer
 ## whole region, coloured by ground, with named places, the landing zones,
 ## you (and which way you face), the lander, the base, the crew rover and
 ## GAR-Y, a 1 km scale bar and the distance home. Gameplay loop prototype
-## (docs/gameplay-loop-brief.md §5.3); the map image is made by
-## tools/generate_region.py.
+## (docs/gameplay-loop-brief.md §5.3); the map images (relief with contours)
+## are made by tools/generate_region.py. Z (or the mouse wheel) zooms to the
+## kilometre round you, with 5 m contours.
 
 const RegionTerrain := preload("res://scripts/region_terrain.gd")
 const SIZE := 860.0          # map square on screen, px
+const ZOOMED := 1000.0       # metres across when zoomed in
+const TRAVERSABILITY := preload("res://scripts/traversability.gd")
 
 var world: Node
 var _panel: Control
@@ -17,6 +20,12 @@ var _markers: Control
 var _readout: Label
 var _origin := Vector2.ZERO  # the landing zone's centre, region metres
 var _half := 3072.0
+var _zoomed := false
+var _view := Rect2()         # the region (metres) the map shows
+var _overview: Texture2D
+var _detail: Texture2D
+var _layer: TextureRect     # Rover ground (debug)
+var _labels: Control
 
 func setup(target_world: Node, zone: Dictionary) -> void:
 	world = target_world
@@ -52,26 +61,65 @@ func _ready() -> void:
 	var frame := Control.new()
 	frame.custom_minimum_size = Vector2(SIZE, SIZE)
 	column.add_child(frame)
+	frame.clip_contents = true
+	var folder := RegionTerrain.DIRECTORY + str(RegionTerrain.meta().get("id", "")) + "/"
+	_overview = load(folder + "map.png") as Texture2D
+	_detail = load(folder + "map_detail.jpg") as Texture2D
 	_map = TextureRect.new()
-	_map.texture = load(RegionTerrain.DIRECTORY + str(RegionTerrain.meta().get("id", "")) + "/map.png") as Texture2D
+	_map.texture = _overview
 	_map.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_map.stretch_mode = TextureRect.STRETCH_SCALE
 	_map.size = Vector2(SIZE, SIZE)
 	frame.add_child(_map)
+	_layer = TextureRect.new()
+	_layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_layer.stretch_mode = TextureRect.STRETCH_SCALE
+	_layer.size = Vector2(SIZE, SIZE)
+	_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_layer.visible = false
+	frame.add_child(_layer)
 	_markers = Control.new()
 	_markers.size = Vector2(SIZE, SIZE)
 	_markers.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_markers.draw.connect(_draw_markers)
 	frame.add_child(_markers)
+	_labels = Control.new()
+	_labels.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_markers.add_child(_labels)
+	_set_view()
+	_readout = MHStyle.mono("", 13, MHStyle.TEXT_SECONDARY)
+	column.add_child(_readout)
+
+## The whole region, or (zoomed) the kilometre round you on the close-up map.
+func _set_view() -> void:
+	if _zoomed:
+		var you := Vector2(world.player.global_position.x, world.player.global_position.z) + _origin
+		var corner := (you - Vector2(ZOOMED, ZOOMED) * .5).clamp(Vector2(-_half, -_half), Vector2(_half - ZOOMED, _half - ZOOMED))
+		_view = Rect2(corner, Vector2(ZOOMED, ZOOMED))
+	else:
+		_view = Rect2(-_half, -_half, _half * 2.0, _half * 2.0)
+	var image := _detail if _zoomed and _detail != null else _overview
+	var crop := AtlasTexture.new()
+	crop.atlas = image
+	var pixels_per_m := image.get_width() / (_half * 2.0)
+	crop.region = Rect2((_view.position + Vector2(_half, _half)) * pixels_per_m, _view.size * pixels_per_m)
+	_map.texture = crop
+	_layer.visible = TRAVERSABILITY.on
+	if _layer.visible:
+		var layer := AtlasTexture.new()
+		layer.atlas = TRAVERSABILITY.map_layer()
+		var layer_scale := layer.atlas.get_width() / (_half * 2.0)
+		layer.region = Rect2((_view.position + Vector2(_half, _half)) * layer_scale, _view.size * layer_scale)
+		_layer.texture = layer
+	for child in _labels.get_children(): child.free()
 	for feature in RegionTerrain.meta().get("features", []):
 		_label(str(feature.name), _region_to_map(Vector2(float(feature.position[0]), float(feature.position[1]))), MHStyle.TEXT_PRIMARY)
 	for zone_id in (RegionTerrain.meta().get("zones", {}) as Dictionary):
 		var zone: Dictionary = RegionTerrain.zone(zone_id)
 		_label("Landing zone: " + str(zone.get("label", zone_id)), _region_to_map(Vector2(float(zone.centre[0]), float(zone.centre[1]))) + Vector2(0, 18), MHStyle.accent)
-	_readout = MHStyle.mono("", 13, MHStyle.TEXT_SECONDARY)
-	column.add_child(_readout)
 
 func _label(text: String, at: Vector2, colour: Color) -> void:
+	if not Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)).has_point(at): return
 	var label := MHStyle.label(text, 13, colour, 600)
 	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, .85))
 	label.add_theme_constant_override("outline_size", 5)
@@ -79,19 +127,30 @@ func _label(text: String, at: Vector2, colour: Color) -> void:
 	label.custom_minimum_size.x = 120
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_markers.add_child(label)
+	_labels.add_child(label)
 
 func _region_to_map(region: Vector2) -> Vector2:
-	return (region + Vector2(_half, _half)) / (_half * 2.0) * SIZE
+	return (region - _view.position) / _view.size.x * SIZE
 
 func _world_to_map(world_position: Vector3) -> Vector2:
 	return _region_to_map(Vector2(world_position.x, world_position.z) + _origin)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if visible and event is InputEventMouseButton and event.pressed and (event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		_zoomed = event.button_index == MOUSE_BUTTON_WHEEL_UP
+		_set_view()
+		get_viewport().set_input_as_handled()
+		return
 	if not (event is InputEventKey and event.pressed and not event.echo): return
+	if visible and (event as InputEventKey).keycode == KEY_Z:
+		_zoomed = not _zoomed
+		_set_view()
+		get_viewport().set_input_as_handled()
+		return
 	var key := (event as InputEventKey).keycode
 	if key == KEY_TAB and (visible or _can_open()):
 		visible = not visible
+		if visible: _set_view()
 		get_viewport().set_input_as_handled()
 	elif key == KEY_ESCAPE and visible:
 		visible = false
@@ -110,23 +169,30 @@ func _process(_delta: float) -> void:
 	var player: Node3D = world.player
 	var home: Vector3 = world.lander.global_position if world.lander != null else Vector3.ZERO
 	var away := Vector2(player.global_position.x - home.x, player.global_position.z - home.z).length()
-	_readout.text = "YOU  %.1f km from the lander   ·   1 SQUARE = 1 KM   ·   NORTH IS UP" % (away / 1000.0)
+	_readout.text = "YOU  %.1f km from the lander   ·   1 SQUARE = %s   ·   NORTH IS UP   ·   Z %s" % [away / 1000.0, "100 M" if _zoomed else "1 KM", "WHOLE REGION" if _zoomed else "ZOOM IN"]
 
 func _draw_markers() -> void:
 	var c := _markers
-	# 1 km grid.
-	var km := SIZE / (_half * 2.0) * 1000.0
-	var lines := int(_half * 2.0 / 1000.0)
-	for i in range(1, lines + 1):
-		var at := fmod(i * km, SIZE)
+	# A 1 km grid (100 m zoomed in), on the region's own lines.
+	var spacing := 100.0 if _zoomed else 1000.0
+	var first := Vector2(ceilf(_view.position.x / spacing), ceilf(_view.position.y / spacing)) * spacing
+	var gx := first.x
+	while gx < _view.end.x:
+		var at := _region_to_map(Vector2(gx, 0)).x
 		c.draw_line(Vector2(at, 0), Vector2(at, SIZE), Color(1, 1, 1, .08), 1.0)
+		gx += spacing
+	var gz := first.y
+	while gz < _view.end.y:
+		var at := _region_to_map(Vector2(0, gz)).y
 		c.draw_line(Vector2(0, at), Vector2(SIZE, at), Color(1, 1, 1, .08), 1.0)
+		gz += spacing
 	# The base: every room cell.
 	if world.builder != null:
 		for zone in world.builder.zones:
 			for cell in zone.get("cells", []):
 				var p := _world_to_map(Vector3(cell.x * 3.0, 0, cell.y * 3.0))
-				c.draw_rect(Rect2(p - Vector2(2, 2), Vector2(4, 4)), Color("#F2F3F0"))
+				var w := maxf(4.0, 3.0 / _view.size.x * SIZE)   # true size when zoomed in
+				c.draw_rect(Rect2(p - Vector2(w, w) * .5, Vector2(w, w)), Color("#F2F3F0"))
 	if world.lander != null and world.lander.visible: _marker(world.lander.global_position, "Lander", Color("#F2C35A"), "square")
 	for rover in world.get_tree().get_nodes_in_group("crew_rover"): _marker((rover as Node3D).global_position, "Rover", Color("#8CC3CB"), "circle")
 	for gary in world.get_tree().get_nodes_in_group("gar_y"): _marker((gary as Node3D).global_position, "GAR-Y", Color("#8CC3CB"), "circle")

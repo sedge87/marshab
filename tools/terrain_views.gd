@@ -3,6 +3,8 @@ extends SceneTree
 ## Screenshots of the region's landforms from fixed viewpoints (terrain
 ## overhaul, docs/terrain-overhaul.md), for checking the ground by eye.
 ##   godot --path . --script res://tools/terrain_views.gd -- [out_dir] [site=<id>] [view names...]
+## Also "rover_ground" (the debug overlay from above the pad's edge), "map"
+## and "map_zoom" (the region map, with the Rover ground layer).
 ## Run windowed. Viewpoints are in region metres, so any region site works.
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
@@ -44,6 +46,9 @@ func _initialize() -> void:
 	var p: Node3D = world.player
 	p.process_mode = Node.PROCESS_MODE_DISABLED
 	for view in wanted:
+		if view == "rover_ground" or view == "map" or view == "map_zoom":
+			await _special(world, str(view), out_dir)
+			continue
 		if not VIEWS.has(view): continue
 		var v: Array = VIEWS[view]
 		var x := float(v[0]) - origin.x
@@ -55,3 +60,25 @@ func _initialize() -> void:
 		root.get_texture().get_image().save_png(out_dir + "%s.png" % view)
 		print("VIEW %s at (%d, %d): %s" % [view, roundi(v[0]), roundi(v[1]), MHSiteTerrain.geology_unit(x, z)])
 	quit()
+
+func _special(world: Node, view: String, out_dir: String) -> void:
+	var p: Node3D = world.player
+	if view == "rover_ground":
+		world.debug_panel._set_rover_ground(true) if world.get("debug_panel") != null else _rover_ground(world)
+		p.global_position = Vector3(110.0, MHSiteTerrain.height(110.0, 60.0) + 25.0, 60.0)
+		p.rotation.y = deg_to_rad(-60.0)
+		(p.get_node("Head") as Node3D).rotation.x = deg_to_rad(-35.0)
+	else:
+		var map: Node = world.get_children().filter(func(n): return n.get_script() == preload("res://scripts/region_map.gd"))[0]
+		map.visible = true
+		map._zoomed = view == "map_zoom"
+		map._set_view()
+	for i in 60: await process_frame
+	root.get_texture().get_image().save_png(out_dir + "%s.png" % view)
+	print("VIEW %s" % view)
+
+func _rover_ground(world: Node) -> void:
+	var overlay := preload("res://scripts/traversability.gd").new()
+	preload("res://scripts/traversability.gd").on = true
+	overlay.setup(world)
+	world.add_child(overlay)
