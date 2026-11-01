@@ -1,5 +1,7 @@
 # Samples, the lab, the terminal and the journal (core-loop step 5)
 
+> **Paused 1 Nov 2026 (user):** step 5 waits for the terrain overhaul (`docs/terrain-overhaul.md`), because samples, rocks, caves and lava tubes depend on the new ground, so this design gets revisited after it. Work started on the build (`MHSamples`, the sample tools, GAR-Y's samples, sim bonuses, `data/discoveries.json`) is kept in `git stash` as "Step 5 WIP… paused until the terrain overhaul". It is not in the working tree.
+
 Design, 1 Nov 2026. Builds on `docs/core-loop.md` (rounds 1, 2 and 4) and `docs/start-and-chapter-one.md` (step 4, built). Nothing here is built yet. §12 has the answers to §11's questions, and they win where the text above disagrees.
 
 ## 1. What this step is for
