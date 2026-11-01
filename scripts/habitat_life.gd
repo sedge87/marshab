@@ -415,7 +415,9 @@ func sections(inv: Dictionary) -> Dictionary:
 			var other: int = room_of_cell.get(cell + side, -1)
 			var mine: int = room_of_cell[cell]
 			if other < 0 or other == mine: continue
-			if builder._has_interior_door(cell, side) or builder._is_airlock_inner_doorway(cell, side) or builder._is_airlock_inner_doorway(cell + side, -side): continue
+			if builder._is_airlock_inner_doorway(cell, side) or builder._is_airlock_inner_doorway(cell + side, -side): continue
+			# A door keeps the air apart; an open wall shares it.
+			if builder._has_interior_door(cell, side) and not builder.is_open_wall(cell, side): continue
 			if builder._should_build_wall(cell, side) or builder._should_build_wall(cell + side, -side): continue
 			var a: int = find.call(mine)
 			var b: int = find.call(other)

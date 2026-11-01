@@ -2824,6 +2824,7 @@ func _rebuild() -> void:
 			if str(_zone_at(outline_grid_cell).get("kind", "")) == "vehicle_bay": continue   # the bay builds its own hatch
 			_add_door(Vector3(outline_grid_cell.x * CELL, 0, outline_grid_cell.y * CELL), outline_grid_side, "INTERIOR", true)
 			continue
+		if bool(door_data.get("open", false)): continue   # an open wall: nothing in the gap
 		var door_cell: Vector2i = door_data.get("cell", Vector2i.ZERO)
 		var door_side: Vector2i = door_data.get("side", Vector2i.ZERO)
 		var first_zone := _zone_at(door_cell)
@@ -3941,14 +3942,58 @@ func interior_door_invalid_reason(cell: Vector2i, side: Vector2i) -> String:
 		return "This is already part of one room"
 	if str(first.kind) == "airlock" or str(second.kind) == "airlock":
 		return "Use an airlock hatch here"
-	if _has_interior_door(cell, side):
+	if _has_interior_door(cell, side) and not is_open_wall(cell, side):
 		return "Interior door already installed"
 	return ""
 
 func place_interior_door(cell: Vector2i, side: Vector2i) -> bool:
 	if not interior_door_invalid_reason(cell, side).is_empty():
 		return false
-	_store_interior_door({"cell": cell, "side": side})
+	if is_open_wall(cell, side): (interior_doors[_door_index_at(cell, side)] as Dictionary).erase("open")   # a door back in the gap
+	else: _store_interior_door({"cell": cell, "side": side})
+	_rebuild()
+	return true
+
+# ---------- open walls ----------
+# The wall between two spaces taken out (1 Nov), so a corridor can run
+# straight into a room, or two rooms share one floor and one air. Stored as
+# an interior door with "open": nothing is built in the gap.
+
+func _door_index_at(cell: Vector2i, side: Vector2i) -> int:
+	var canonical := _canonical_interior_door(cell, side)
+	for index in range(interior_doors.size()):
+		var data: Dictionary = interior_doors[index]
+		if data.has("cell") and data.get("cell") == canonical.cell and data.get("side") == canonical.side: return index
+	return -1
+
+func is_open_wall(cell: Vector2i, side: Vector2i) -> bool:
+	var index := _door_index_at(cell, side)
+	return index >= 0 and bool(interior_doors[index].get("open", false))
+
+func open_wall_invalid_reason(target: Dictionary) -> String:
+	if target.is_empty(): return "Aim at a shared wall"
+	if target.has("wall_a") or target.has("invalid"): return "Open walls go on square-grid walls"
+	var cell: Vector2i = target.get("cell", Vector2i.ZERO)
+	var side: Vector2i = target.get("side", Vector2i.ZERO)
+	if _zone_at(cell).is_empty() or _zone_at(cell + side).is_empty(): return "Open walls go on square-grid walls"
+	var index := _door_index_at(cell, side)
+	if index >= 0: return "Already open" if bool(interior_doors[index].get("open", false)) else ""
+	var reason := interior_door_invalid_reason(cell, side)
+	if not reason.is_empty(): return reason
+	if "vehicle_bay" in [str(_zone_at(cell).kind), str(_zone_at(cell + side).kind)]: return "The vehicle bay keeps its hatch"
+	return ""
+
+## Opens the wall, or turns a door already there into an opening.
+func place_open_wall(target: Dictionary) -> bool:
+	if not open_wall_invalid_reason(target).is_empty(): return false
+	var cell: Vector2i = target.get("cell", Vector2i.ZERO)
+	var side: Vector2i = target.get("side", Vector2i.ZERO)
+	var index := _door_index_at(cell, side)
+	if index >= 0: interior_doors[index]["open"] = true
+	else:
+		var record := _canonical_interior_door(cell, side)
+		record["open"] = true
+		interior_doors.append(record)
 	_rebuild()
 	return true
 

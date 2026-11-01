@@ -22,7 +22,8 @@ const STRUCTURE_TOOLS := [
 	{"id": "partition_half", "label": "Half-glass partition", "icon": "panels-top-left", "text": "Solid to waist height with glass above: private enough for a desk or a bunk, but the room still feels open. Drag to draw, or aim at a wall panel to change it."},
 	{"id": "partition_door", "label": "Partition door", "icon": "door-open", "text": "A door in a partition wall: aim at a wall panel to turn it into a door, or at the floor to add one. Press E to open it: it swings away from you."},
 	{"id": "partition_glass_door", "label": "Glass door", "icon": "door-open", "text": "A glass door in a metal frame, for a partition: light gets through but it still closes off the space. Aim at a wall panel, or at the floor to add one."},
-	{"id": "interior_door", "label": "Room door", "icon": "door-closed", "text": "A doorway in a shared wall, so two sealed rooms connect. For an open corridor end, aim at the floor right by the opening."},
+	{"id": "interior_door", "label": "Room door", "icon": "door-closed", "text": "A doorway in a shared wall, so two sealed rooms connect, including a side doorway from a corridor into the room it runs past. For a corridor's end, aim at the floor right by the opening."},
+	{"id": "open_wall", "label": "Open wall", "icon": "door-open", "text": "Takes out a shared wall bay, or the hatch in it, so the two spaces share one floor and one air: a corridor running straight into a room, or two rooms opened up. Aim at the wall or hatch; a Room door puts a door back."},
 	{"id": "window", "label": "Window", "icon": "sun", "text": "Glazes one wall bay. On an outside wall, a view of Mars, but glass loses heat faster than the hull. On a wall between two rooms, a window into the next room that loses no heat."},
 	{"id": "upgrade_regolith", "label": "Regolith shielding", "icon": "shield", "text": "Bags of Mars soil stacked against an outside wall, against radiation. Printed by the regolith printer, so it costs no cargo once you're printing. Aim at an outside wall."},
 	{"id": "upgrade_water", "label": "Water wall", "icon": "droplets", "text": "A water tank panel on an outside wall. Water is one of the best radiation shields. Aim at an outside wall."},
@@ -338,9 +339,9 @@ func _refresh_preview(force_rebuild: bool) -> void:
 			_drag_partitions(Vector2(point.x, point.z), glass, half)
 		_update_hud()
 		return
-	if _selected_structure == "interior_door":
+	if _selected_structure in ["interior_door", "open_wall"]:
 		_door_target = builder.interior_door_from_world_point(point, normal)
-		_valid_reason = builder.interior_door_target_invalid_reason(_door_target)
+		_valid_reason = builder.interior_door_target_invalid_reason(_door_target) if _selected_structure == "interior_door" else builder.open_wall_invalid_reason(_door_target)
 		if force_rebuild or preview == null:
 			if preview != null: preview.queue_free()
 			preview = _interior_door_preview(_door_target, normal)
@@ -640,8 +641,8 @@ func _place_preview() -> void:
 		else:
 			MHAudio.sfx("invalid")
 		return
-	if _selected_structure == "interior_door":
-		if builder.place_interior_door_target(_door_target):
+	if _selected_structure in ["interior_door", "open_wall"]:
+		if (builder.place_interior_door_target(_door_target) if _selected_structure == "interior_door" else builder.place_open_wall(_door_target)):
 			MHAudio.sfx("place")
 			_refresh_preview(true)
 		else:

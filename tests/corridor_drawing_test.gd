@@ -60,11 +60,12 @@ func _initialize() -> void:
 	var inv: Dictionary = builder.simulation().inventory()
 	var map: Dictionary = builder.simulation().life.sections(inv)
 	var rooms: Array = inv.rooms
-	var index_of := func(zone: Dictionary) -> int:
-		for i in range(rooms.size()):
-			if rooms[i].zone == zone: return i
+	# Lambdas capture locals when made, so the room list is passed in.
+	var index_of := func(list: Array, zone: Dictionary) -> int:
+		for i in range(list.size()):
+			if list[i].zone == zone: return i
 		return -1
-	_check(map[index_of.call(living)] != map[index_of.call(storage)], "the hatches keep the two rooms' air apart (%s)" % [map])
+	_check(map[index_of.call(rooms, living)] != map[index_of.call(rooms, storage)], "the hatches keep the two rooms' air apart (%s)" % [map])
 
 	# ---- undo, a leg at a time ----
 	builder._undo()
@@ -95,6 +96,26 @@ func _initialize() -> void:
 	builder._rebuild()
 	_check(builder._corridor_end_connects(Vector2i(21, 0), Vector2i(1, 0)) and builder._should_build_wall(Vector2i(20, 0), Vector2i(0, 1)), "a saved straight corridor connects as it did")
 
+	# ---- doors, open walls and windows on a corridor ----
+	builder.zones = []; builder.interior_doors = []; builder._history = []
+	var lab := _room("science", [Vector2i(4, -5), Vector2i(5, -5), Vector2i(6, -5)])
+	_click(Vector2i(2, -6)); _click(Vector2i(8, -6)); builder._end_corridor_drawing()
+	_check(not _corridors().is_empty(), "a corridor along the lab (%s)" % builder._invalid_reason([Vector2i(2, -6)]))
+	if _corridors().is_empty(): quit(1); return
+	var passage: Dictionary = _corridors().back()
+	_check(builder.interior_doors.is_empty() and builder._should_build_wall(Vector2i(5, -6), Vector2i(0, 1)), "a corridor running past a room is walled off from it")
+	_check(builder.interior_door_invalid_reason(Vector2i(5, -6), Vector2i(0, 1)).is_empty() and builder.place_interior_door(Vector2i(5, -6), Vector2i(0, 1)), "a side doorway into the room it runs past")
+	_check(builder.open_wall_invalid_reason({"cell": Vector2i(6, -6), "side": Vector2i(0, 1)}).is_empty() and builder.place_open_wall({"cell": Vector2i(6, -6), "side": Vector2i(0, 1)}), "an open wall beside it")
+	_check(not builder._should_build_wall(Vector2i(6, -6), Vector2i(0, 1)) and builder.is_open_wall(Vector2i(6, -6), Vector2i(0, 1)), "the open wall leaves no wall")
+	inv = builder.simulation().inventory()
+	map = builder.simulation().life.sections(inv)
+	rooms = inv.rooms
+	_check(map[index_of.call(rooms, lab)] == map[index_of.call(rooms, passage)], "an open wall shares the air (%s)" % [map])
+	_check(builder.place_open_wall({"cell": Vector2i(5, -6), "side": Vector2i(0, 1)}) and builder.is_open_wall(Vector2i(5, -6), Vector2i(0, 1)), "the open wall tool takes a door out too")
+	_check(builder.place_interior_door(Vector2i(5, -6), Vector2i(0, 1)) and not builder.is_open_wall(Vector2i(5, -6), Vector2i(0, 1)) and builder.interior_doors.size() == 2, "a Room door puts the door back in")
+	var bay := builder.window_target_at(Vector3(3.0 * BuildController.CELL, builder.habitat_base_y + 1.4, -6.0 * BuildController.CELL - BuildController.HALF_CELL + .1))
+	_check(not bay.is_empty() and builder.window_invalid_reason(bay).is_empty(), "a corridor's outside wall takes a window")
+
 	if failures == 0:
-		print("Corridor drawing test passed: room to room with a bend, R flips it, hatches, walls, air, undo by leg, T's, sealed ends, U-turns, no self-crossing, older saves.")
+		print("Corridor drawing test passed: room to room with a bend, R flips it, hatches, walls, air, undo by leg, T's, sealed ends, U-turns, no self-crossing, older saves, side doors, open walls, windows.")
 	quit(1 if failures > 0 else 0)
