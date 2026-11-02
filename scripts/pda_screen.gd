@@ -11,7 +11,7 @@ const APPS := [
 	{"id": "goals", "label": "Goals", "icon": "clipboard-check", "built": true},
 	{"id": "map", "label": "Map", "icon": "map-pin", "built": true},
 	{"id": "base", "label": "Base", "icon": "gauge", "built": true},
-	{"id": "comms", "label": "Comms", "icon": "satellite", "built": false},
+	{"id": "comms", "label": "Comms", "icon": "satellite", "built": true},
 	{"id": "site", "label": "Site", "icon": "mountain-snow", "built": false},
 	{"id": "log", "label": "Log", "icon": "clock", "built": true},
 ]
@@ -30,6 +30,9 @@ var _shown_log := -1      # notices on the Log page when it was drawn
 var _shown_goals := ""    # what the Goals page showed (redrawn when it changes)
 var _map_you: Label
 var _shown_base := ""     # what the Base page showed
+var _shown_comms := ""    # what the Comms page showed
+var _comms_tab := "messages"
+var _comms_only := ""     # one person's messages, or everyone's
 const SYSTEMS := [["battery", "Battery", "zap"], ["water", "Water", "droplets"], ["food", "Food", "wheat"], ["air", "Air", "wind"], ["crew", "Crew health", "heart-pulse"]]
 var _map_cursor: Label
 const MAP_FIT := 600.0    # the map square on the screen, px
@@ -125,6 +128,7 @@ func show_app(id: String) -> void:
 		"map": _page.add_child(_map_page())
 		"goals": _page.add_child(_goals_page())
 		"base": _page.add_child(_base_page())
+		"comms": _page.add_child(_comms_page())
 		_: _page.add_child(_log_page())
 	for key in _rail_buttons:
 		(_rail_buttons[key].button as Button).theme_type_variation = "SelectedButton" if key == id else "GhostButton"
@@ -160,6 +164,7 @@ func _process(delta: float) -> void:
 		var lines: Array = _region().readouts()
 		_map_you.text = str(lines[0])
 		_map_cursor.text = str(lines[1])
+	if app == "comms" and _comms_signature() != _shown_comms: _redraw()
 	if app == "base" and _base_signature() != _shown_base:
 		for child in _page.get_children(): child.queue_free()
 		_page.add_child(_base_page())
@@ -445,6 +450,119 @@ func _base_signature() -> String:
 	var rows: Dictionary = hud.system_rows() if hud != null else {}
 	var words: Array = rows.values().map(func(r): return str(r.text))
 	return "%s|%s|%d" % [str(words), str(alerts.active_alerts().map(func(a): return "%s%s" % [a.id, a.level])) if alerts != null else "", alerts.history.size() if alerts != null else 0]
+
+## Redraws the open app in place.
+func _redraw() -> void:
+	for child in _page.get_children(): child.queue_free()
+	match app:
+		"comms": _page.add_child(_comms_page())
+	MHNotices.seen(app)
+
+## Comms: messages from Earth by person, newest first, each with Play; and
+## the Discoveries (what's been found, leads, and what might be out there).
+## One-way: no replies (docs/mission-control-voice.md).
+func _comms_page() -> Control:
+	_shown_comms = _comms_signature()
+	var link: Node = get_tree().get_first_node_in_group("mission_control_link") if is_inside_tree() else null
+	var page := MHStyle.vbox(14)
+	var top := MHStyle.hbox(10)
+	for tab in [["messages", "Messages", "satellite"], ["discoveries", "Discoveries", "sparkles"]]:
+		var button := MHStyle.button(str(tab[1]), "primary" if _comms_tab == tab[0] else "secondary", str(tab[2]), 48)
+		button.focus_mode = Control.FOCUS_NONE
+		var id := str(tab[0])
+		button.pressed.connect(func() -> void:
+			_comms_tab = id
+			_redraw())
+		top.add_child(button)
+	top.add_child(MHStyle.spacer())
+	if link != null: top.add_child(MHStyle.mono(str(link.rota_line()), 15, MHStyle.INFO))
+	page.add_child(top)
+	if not _linked(): page.add_child(MHStyle.body("No link down here: new messages wait until you're back under the sky.", 16, MHStyle.WARN))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(scroll)
+	var list := MHStyle.vbox(12)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	if _comms_tab == "discoveries": _discoveries(list)
+	elif link == null: list.add_child(MHStyle.body("No Mission Control link in this game.", 17, MHStyle.TEXT_MUTED))
+	else: _messages(list, link)
+	return page
+
+func _messages(list: VBoxContainer, link: Node) -> void:
+	link.mark_read()
+	var cast: Dictionary = link.cast().get("people", {})
+	var spoken := {}
+	for message in link.messages: spoken[str(message.speaker)] = true
+	if spoken.size() > 1:
+		var people := HFlowContainer.new()
+		people.add_theme_constant_override("h_separation", 8)
+		people.add_theme_constant_override("v_separation", 8)
+		var choices: Array = [["", "Everyone"]]
+		for id in cast:
+			if spoken.has(id): choices.append([str(id), "%s · %s" % [str(cast[id].short), str(cast[id].role)]])
+		for choice in choices:
+			var chip := MHStyle.button(str(choice[1]), "primary" if _comms_only == choice[0] else "ghost", "", 40)
+			chip.focus_mode = Control.FOCUS_NONE
+			var who := str(choice[0])
+			chip.pressed.connect(func() -> void:
+				_comms_only = who
+				_redraw())
+			people.add_child(chip)
+		list.add_child(people)
+	var shown: Array = (link.messages as Array).filter(func(m): return _comms_only.is_empty() or str(m.speaker) == _comms_only)
+	shown.reverse()
+	if shown.is_empty():
+		list.add_child(MHStyle.body("Nothing from Earth yet. Messages take minutes to cross; they'll be here.", 17, MHStyle.TEXT_MUTED))
+	for message in shown:
+		var who: Dictionary = cast.get(str(message.speaker), {})
+		var row := MHStyle.hbox(14)
+		var when := MHStyle.vbox(2)
+		when.custom_minimum_size.x = 120
+		when.add_child(MHStyle.mono("SOL %d" % (floori(float(message.hours) / 24.0) + 1), 15, MHStyle.TEXT_MUTED))
+		when.add_child(MHStyle.mono(str(link.earth_clock(float(message.earth))), 13, MHStyle.TEXT_MUTED))
+		row.add_child(when)
+		var words := MHStyle.vbox(4)
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.add_child(MHStyle.label("%s · %s" % [str(who.get("name", message.speaker)), str(who.get("role", ""))], 17, MHStyle.INFO, 700))
+		var body := MHStyle.body(str(message.text), 17, MHStyle.TEXT_PRIMARY)
+		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		words.add_child(body)
+		row.add_child(words)
+		var play := MHStyle.button("Play", "ghost", "play", 44)
+		play.focus_mode = Control.FOCUS_NONE
+		play.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var entry: Dictionary = message
+		play.pressed.connect(func() -> void: MHAudio.cast_line(str(entry.id), "%s · %s" % [str(who.get("name", "")), str(who.get("role", ""))], str(entry.text), "replayed"))
+		row.add_child(play)
+		list.add_child(row)
+
+func _discoveries(list: VBoxContainer) -> void:
+	list.add_child(MHStyle.eyebrow("DISCOVERIES · %d OF %d" % [MHSamples.found.size(), MHSamples.discoveries().size()], MHStyle.accent, 13))
+	var counts := MHSamples.section_counts()
+	for section in ["life", "climate", "geology", "humans"]:
+		var tally: Array = counts.get(section, [0, 0])
+		var title := MHStyle.hbox(8)
+		title.add_child(MHStyle.icon(str((MHSamples.data().get("sections", {}) as Dictionary).get(section, {}).get("icon", "flask-conical")), 20, MHStyle.accent))
+		title.add_child(MHStyle.label("%s  %d / %d" % [MHSamples.section_label(section), int(tally[0]), int(tally[1])], 19, MHStyle.TEXT_PRIMARY, 700))
+		list.add_child(title)
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override("h_separation", 10)
+		grid.add_theme_constant_override("v_separation", 10)
+		for entry in MHSamples.discoveries():
+			if str(entry.section) != section: continue
+			var card := MHMissionControl._discovery_card(entry)
+			card.custom_minimum_size.x = 440
+			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			grid.add_child(card)
+		list.add_child(grid)
+
+## Changes when the Comms page would look different.
+func _comms_signature() -> String:
+	var link: Node = get_tree().get_first_node_in_group("mission_control_link") if is_inside_tree() else null
+	return "%d|%d|%d|%s" % [(link.messages as Array).size() if link != null else 0, MHSamples.found.size(), MHSamples.leads.size(), _linked()]
 
 ## Map: the region map itself, lent to the screen (region_map.gd embed):
 ## wheel zoom, drag, Z, Space, L for the ice survey and G to send GAR-Y.

@@ -308,6 +308,7 @@ func _deliver() -> void:
 func _arrive(line: Dictionary, note: String) -> void:
 	_held.append({"line": line, "note": note, "arrived_earth": earth(), "missed": not can_hear()})
 	messages.append({"id": str(line.id), "speaker": str(line.speaker), "text": str(line.text), "hours": hours, "earth": earth(), "note": note, "heard": false})
+	MHNotices.post("info", "Message from %s" % str(person(str(line.speaker)).get("name", "Mission Control")), str(line.text), "comms")
 	if level() == "log":
 		unread += 1
 		messages[messages.size() - 1].heard = true

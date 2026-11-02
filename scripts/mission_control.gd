@@ -195,7 +195,7 @@ func _export_dossier(ids: Array) -> void:
 func _dossier_clear() -> void:
 	for child in _dossier_detail.get_children(): child.queue_free()
 
-func _wrap(text: String, size := 15, colour := MHStyle.TEXT_SECONDARY) -> Label:
+static func _wrap(text: String, size := 15, colour := MHStyle.TEXT_SECONDARY) -> Label:
 	var label := MHStyle.body(text, size, colour)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -355,7 +355,8 @@ func _show_discoveries() -> void:
 		for entry in MHSamples.discoveries():
 			if str(entry.section) == section: list.add_child(_discovery_card(entry))
 
-func _discovery_card(entry: Dictionary) -> Control:
+## A discovery as a card (also the slate's Comms app): unknown, a lead, or found.
+static func _discovery_card(entry: Dictionary) -> Control:
 	var id := str(entry.id)
 	var known := MHSamples.found.has(id)
 	var lead := MHSamples.leads.has(id)
