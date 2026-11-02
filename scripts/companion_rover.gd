@@ -62,6 +62,8 @@ const WORRY_EVERY := Vector2(240.0, 420.0)
 const NAP_AFTER := 25.0
 const TASK_STOP := .75
 const MAX_FLAGS := 12
+## How far away a zone GAR-Y is sent to from the Tab map can be (m).
+const REMOTE_SURVEY_M := 300.0
 const ESCORT_MS := 90000
 ## GAR-Y's rock collection: now and then a survey turns up a special rock,
 ## which GAR-Y names and keeps beside its charger. Each is a real kind of
@@ -453,10 +455,10 @@ func _radar_reading(at: Vector2, richness: float) -> void:
 			_task_age = 0.0
 			return
 		_survey_done()
-		_toast("GAR-Y's zone survey is done", "%d radar readings are on the site plan and the survey map. You can take a core with the hand corer anywhere in the surveyed area: try where the signal looks strongest. Radar can be fooled; only a core is sure." % int(task_data.get("stops", 0)), MHStyle.INFO)
+		_toast("GAR-Y's zone survey is done", "%d stakes are in, one per reading: blue is a strong signal, amber faint, grey weak. Take a core with the hand corer inside a stake's ring; try the strongest. Hold T and press F to ping them, or see them on your map (Tab). Radar can be fooled; only a core is sure." % int(task_data.get("stops", 0)), MHStyle.INFO)
 	else:
 		if _ordered: _survey_done()
-		_toast("GAR-Y's radar reading", "A %s signal here. It's on the survey map; a core will tell you for sure." % ("strong" if reading >= .35 else ("faint" if reading >= .15 else "weak")), MHStyle.INFO)
+		_toast("GAR-Y's radar reading", "A %s signal here, and a stake to mark it. Core inside its ring to know for sure; it's on your map (Tab) too." % ("strong" if reading >= .35 else ("faint" if reading >= .15 else "weak")), MHStyle.INFO)
 	_end_task()
 
 ## "Find ice": on to the next stop of the survey loop, or report the best spot.
@@ -974,12 +976,14 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 			_start(kind if kind != "goto" else ("goto" if inside_point else "survey"), point)
 			_ordered = true
 			_say("curious")
-		"find_ice":
-			# Its own survey loop across the nearest likely zone from orbit.
+		"find_ice", "find_ice_at":
+			# Its own survey loop across the nearest likely zone from orbit
+			# (find_ice_at: the zone at `point`, sent from the Tab map).
 			if indoors: return "GAR-Y looks for ice outside. Ping it (E) so it comes through the airlock with you."
 			var here := Vector2(global_position.x, global_position.z)
-			var zone := ICE_KNOWLEDGE.nearest_zone(here, 90.0)
-			if zone.is_empty(): return "There's no likely ice within reach. Check the site map for where orbital radar sees it."
+			var zone := ICE_KNOWLEDGE.nearest_zone(here, 90.0) if kind == "find_ice" else ICE_KNOWLEDGE.nearest_zone(Vector2(point.x, point.z), 60.0)
+			if zone.is_empty(): return "There's no likely ice within reach. Open the map (Tab): the dashed circles are where orbital radar sees it." if kind == "find_ice" else "Point at one of the dashed ice zones."
+			if (zone.centre as Vector2).distance_to(here) > REMOTE_SURVEY_M: return "That zone is too far for GAR-Y (over %d m). Bring it closer first." % roundi(REMOTE_SURVEY_M)
 			# Chapter one: a coarse grid across the zone, for you to read.
 			var stops := ICE_KNOWLEDGE.survey_grid(zone, here) if MHChapterOne.on() else ICE_KNOWLEDGE.survey_stops(zone, here)
 			var first: Vector2 = stops.pop_front()
@@ -987,7 +991,7 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 			_start("survey", Vector3(first.x, global_position.y, first.y), {"hunt": stops, "stops": stops.size() + 1, "best": -1.0})
 			_ordered = true
 			_say("curious")
-			if MHChapterOne.on(): _toast("GAR-Y is surveying the zone", "It'll take %d radar readings in a grid across it. They'll fill in on the survey map as it goes." % (stops.size() + 1), MHStyle.INFO)
+			if MHChapterOne.on(): _toast("GAR-Y is surveying the zone", "It'll take %d radar readings in a grid across it, leaving a stake at each. They fill in on your map (Tab) as it goes." % (stops.size() + 1), MHStyle.INFO)
 			else: _toast("GAR-Y is off to find ice", "It'll check %d spots across the likely zone, flag any ice worth drilling, and report back." % (stops.size() + 1), MHStyle.INFO)
 		"fetch":
 			if not indoors: return "GAR-Y fetches things inside the habitat."

@@ -120,6 +120,10 @@ func _draw_suit() -> void:
 	var tone := func(share: float) -> Color: return MHStyle.DANGER if share <= .1 else (MHStyle.WARN if share <= .25 else MHStyle.VALID)
 	_text("SUIT", Vector2(22, 34) * u, int(20 * u), MHStyle.accent, 700)
 	_text("%02d:%02d" % [int(MHGame.sol_hour), int(fmod(MHGame.sol_hour, 1.0) * 60.0)], Vector2(size.x - 22 * u, 34 * u), int(18 * u), MHStyle.TEXT_SECONDARY, 500, HORIZONTAL_ALIGNMENT_RIGHT, -1)
+	# Chapter one: F sends a survey ping to GAR-Y's stakes (scripts/survey_stakes.gd).
+	var stakes := get_tree().get_first_node_in_group("survey_stakes")
+	if stakes != null and str(r.get("where", "")) == "outside" and not (stakes.call("readings") as Array).is_empty():
+		_text("F · PING STAKES", Vector2(92, 32) * u, int(15 * u), MHStyle.INFO, 700)
 	if not bool(r.active):
 		_text("Life support not simulated", Vector2(22, 110) * u, int(22 * u), MHStyle.TEXT_MUTED)
 		_text("(Creative)", Vector2(22, 140) * u, int(18 * u), MHStyle.TEXT_MUTED, 500)

@@ -53,6 +53,24 @@ func _target() -> Vector3:
 	if not ICE_KNOWLEDGE.surveyed(ICE_KNOWLEDGE.samples(get_tree()), Vector2(at.x, at.z)): return Vector3.INF
 	return at
 
+## Why holding E here takes no core, when the only reason is the ground
+## hasn't been surveyed (shown while you hold E): the way to the nearest
+## stake, or how to get a survey. "" otherwise.
+func why_not() -> String:
+	if not MHChapterOne.on() or not MHChapterOne.has_corer or world.player == null: return ""
+	var player: Node3D = world.player
+	if bool(player.get_meta("driving", false)) or player._any_build_mode_active(): return ""
+	if world.builder.is_inside(player.global_position) or world.lander.cabin_contains(player.global_position): return ""
+	var at := player.global_position - player.global_transform.basis.z * 1.2
+	if ICE_KNOWLEDGE.surveyed(ICE_KNOWLEDGE.samples(get_tree()), Vector2(at.x, at.z)): return ""
+	var stakes := get_tree().get_first_node_in_group("survey_stakes")
+	var nearest: Dictionary = stakes.call("nearest", Vector2(at.x, at.z)) if stakes != null else {}
+	if nearest.is_empty(): return "Not surveyed · hold G: Survey zone, or G on the map (Tab)"
+	var gap := (nearest.at as Vector2) - Vector2(at.x, at.z)
+	var heading := wrapf(rad_to_deg(atan2(gap.x, -gap.y)), 0.0, 360.0)
+	var points := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+	return "Not surveyed here · nearest stake %d m %s" % [roundi(gap.length()), points[roundi(heading / 45.0) % 8]]
+
 ## The HUD's hint while you could take one.
 func prompt() -> String:
 	return "core" if _target() != Vector3.INF else ""

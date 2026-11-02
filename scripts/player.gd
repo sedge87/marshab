@@ -43,7 +43,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
 		# Focused equipment retains its contextual secondary action (such as a
 		# bunk reading light); otherwise F always operates the suit flashlight.
-		if not _use_looked_at_interactable("interact_secondary"):
+		# With the wrist pad up (T held), F pings GAR-Y's survey stakes.
+		var stakes := get_tree().get_first_node_in_group("survey_stakes")
+		if Input.is_physical_key_pressed(KEY_T) and stakes != null and stakes.call("ping"): pass
+		elif not _use_looked_at_interactable("interact_secondary"):
 			set_flashlight_enabled(not _flashlight_enabled)
 	# I: the looked-at item's info card (what it does in the habitat).
 	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:

@@ -527,6 +527,15 @@ func _update_prompt() -> void:
 			_prompt_keys.text = "" if text == "Already sampled" else "E"
 			_prompt_verb.text = text
 			_prompt_state.text = ""
+	# Chapter one: holding E on ground GAR-Y hasn't surveyed says why no core.
+	if not show and Input.is_physical_key_pressed(KEY_E) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		var corer := get_tree().get_first_node_in_group("hand_corer")
+		var why: String = corer.call("why_not") if corer != null else ""
+		if not why.is_empty():
+			show = true
+			_prompt_keys.text = "E"
+			_prompt_verb.text = "No core"
+			_prompt_state.text = "· " + why
 	# 120 ms fade
 	_prompt.modulate.a = move_toward(_prompt.modulate.a, 1.0 if show else 0.0, get_process_delta_time() / 0.12)
 

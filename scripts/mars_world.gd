@@ -25,11 +25,13 @@ const CARGO_LANDER_SCRIPT := preload("res://scripts/cargo_lander.gd")
 ## Chapter one (scripts/chapter_one.gd): the crates, the hand corer and the fabricator's screen.
 const PRECURSOR_CRATE := preload("res://scripts/precursor_crate.gd")
 const HAND_CORER := preload("res://scripts/hand_corer.gd")
+const SURVEY_STAKES := preload("res://scripts/survey_stakes.gd")
 const SAMPLE_TOOLS := preload("res://scripts/sample_tools.gd")
 const JOURNAL_KEEPER := preload("res://scripts/journal_keeper.gd")
 const LAB_SCREEN := preload("res://scripts/lab_screen.gd")
 const FABRICATOR_SCREEN := preload("res://scripts/fabricator_screen.gd")
 var hand_corer: Node
+var survey_stakes: Node3D   # scripts/survey_stakes.gd (chapter one): GAR-Y's readings as stakes, T + F pings them
 var sample_tools: Node   # step 5: scoop, rock chips, the sample case
 var journal_keeper: Node   # step 5: J, the bunk's notebook, sketches
 var _chapter_check := 0.0
@@ -212,6 +214,8 @@ func _ready() -> void:
 	if MHChapterOne.on():
 		hand_corer = HAND_CORER.new().setup(self)
 		add_child(hand_corer)
+		survey_stakes = SURVEY_STAKES.new().setup(self)
+		add_child(survey_stakes)
 		sample_tools = SAMPLE_TOOLS.new().setup(self)
 		add_child(sample_tools)
 		journal_keeper = JOURNAL_KEEPER.new().setup(self)

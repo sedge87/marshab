@@ -500,7 +500,7 @@
       "goal": "self_sufficient",
       "rules": "chapter",
       "text": "Find water ice",
-      "how": "Ask GAR-Y to survey a zone, then take a core with the hand corer where it shows ice. A good core gives the Ice Extractor plan.",
+      "how": "Open the map (Tab): dashed circles are where orbital radar sees ice. Point at one and press G to send GAR-Y, or hold G near it outside and pick Survey zone. It leaves a stake at each reading: blue strong, amber faint. Hold E inside a stake's ring to take a core. Hold T and press F to ping the stakes. A good core gives the Ice Extractor plan.",
       "keys": [
         [
           [

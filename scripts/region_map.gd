@@ -9,7 +9,8 @@ extends CanvasLayer
 ##
 ## It's a map you can move: the mouse wheel zooms (towards the cursor), drag
 ## or W/A/S/D pans, Z jumps between the whole region and the kilometre round
-## you, Space centres on you. Coordinates are X east and Y north, in metres on
+## you, Space centres on you. L shows or hides the ice survey layer, and G
+## sends GAR-Y to survey the ice zone under the cursor. Coordinates are X east and Y north, in metres on
 ## the region's own grid (the lines on the map), for you and for the cursor.
 ##
 ## Your trail: every step since you last came in through an airlock (into the
@@ -26,6 +27,13 @@ const PAN_SPEED := .6        # map widths a second with the keys
 const TRAIL_STEP := 6.0      # metres between trail points
 const TRAIL_MAX := 6000      # points kept (thinned to half past this)
 const TRAVERSABILITY := preload("res://scripts/traversability.gd")
+const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
+const SURVEY_STAKES := preload("res://scripts/survey_stakes.gd")
+## The ice survey layer (L): likely zones from orbit, GAR-Y's readings with
+## the ring you can core in, the cores taken and its stops still to go.
+var survey_layer := true
+var _note := ""
+var _note_left := 0.0
 
 var world: Node
 ## World x, z of every few metres since you last came in through an airlock.
@@ -84,6 +92,8 @@ func _ready() -> void:
 	head.add_child(MHStyle.control_hint(["Drag"], "Move"))
 	head.add_child(MHStyle.control_hint(["Z"], "Region / 1 km"))
 	head.add_child(MHStyle.control_hint(["Space"], "You"))
+	head.add_child(MHStyle.control_hint(["L"], "Ice survey"))
+	head.add_child(MHStyle.control_hint(["G"], "GAR-Y: survey zone"))
 	head.add_child(MHStyle.control_hint(["Tab"], "Close"))
 	column.add_child(head)
 	_frame = Control.new()
@@ -216,6 +226,10 @@ func _input(event: InputEvent) -> void:
 				KEY_SPACE:
 					_centre = _you()
 					_set_view()
+				KEY_L:
+					survey_layer = not survey_layer
+					_say("Ice survey layer on." if survey_layer else "Ice survey layer off.")
+				KEY_G: _send_gar_y()
 		get_viewport().set_input_as_handled()   # nothing else hears keys while it's open
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -264,7 +278,10 @@ func _process(delta: float) -> void:
 	var away := Vector2(player.global_position.x - home.x, player.global_position.z - home.z).length()
 	_readout.text = "YOU  %s   ·   %.1f km from the lander   ·   1 SQUARE = %s   ·   NORTH IS UP" % [_coordinates(_you()), away / 1000.0, _distance(_grid_spacing())]
 	var at := _frame.get_local_mouse_position()
-	if Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)).has_point(at):
+	_note_left -= delta
+	if _note_left > 0.0:
+		_cursor_readout.text = _note
+	elif Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)).has_point(at):
 		var there := _map_to_region(at)
 		_cursor_readout.text = "CURSOR  %s   ·   %s from you" % [_coordinates(there), _distance(there.distance_to(_you()))]
 	else:
@@ -338,6 +355,7 @@ func _draw_markers() -> void:
 				var p := _world_to_map(Vector3(cell.x * 3.0, 0, cell.y * 3.0))
 				var w := maxf(4.0, 3.0 / _view.size.x * SIZE)   # true size when zoomed in
 				c.draw_rect(Rect2(p - Vector2(w, w) * .5, Vector2(w, w)), Color("#F2F3F0"))
+	if survey_layer: _draw_survey()
 	_draw_trail()
 	if world.lander != null and world.lander.visible: _marker(world.lander.global_position, "Lander", Color("#F2C35A"), "square")
 	for rover in world.get_tree().get_nodes_in_group("crew_rover"): _marker((rover as Node3D).global_position, "Rover", Color("#8CC3CB"), "circle")
@@ -385,3 +403,70 @@ func _marker(world_position: Vector3, text: String, colour: Color, shape: String
 	if shape == "square": _markers.draw_rect(Rect2(at - Vector2(6, 6), Vector2(12, 12)), colour)
 	else: _markers.draw_circle(at, 6.0, colour)
 	_markers.draw_string(ThemeDB.fallback_font, at + Vector2(10, 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, colour)
+
+# ---------- the ice survey layer ----------
+
+## A line under the map for a few seconds (replies to L and G).
+func _say(text: String) -> void:
+	_note = text.to_upper()
+	_note_left = 4.0
+
+## G: GAR-Y surveys the likely ice zone under the cursor.
+func _send_gar_y() -> void:
+	var gary := get_tree().get_first_node_in_group("gar_y")
+	if gary == null:
+		_say("GAR-Y isn't here.")
+		return
+	var at := _frame.get_local_mouse_position()
+	if not Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)).has_point(at):
+		_say("Point at a dashed ice zone first.")
+		return
+	var there := _map_to_region(at) - _origin
+	var why: String = gary.call("order", "find_ice_at", Vector3(there.x, 0.0, there.y))
+	_say(why if not why.is_empty() else "GAR-Y is on its way to survey the zone.")
+
+## Dashed circles where orbital radar sees likely ice, each reading as a dot
+## in its signal colour inside the ring you can core in, a tick or cross for
+## the cores taken, and GAR-Y's stops still to go on a zone survey.
+func _draw_survey() -> void:
+	var c := _markers
+	var font := ThemeDB.fallback_font
+	var px_per_m := SIZE / _view.size.x
+	var zone_colour := Color(SURVEY_STAKES.STRONG_COLOUR, .75)
+	for zone in ICE_KNOWLEDGE.likely_zones():
+		var centre := _region_to_map((zone.centre as Vector2) + _origin)
+		var r := maxf(6.0, float(zone.radius) * px_per_m)
+		var dashes := maxi(12, int(r * .5))
+		for i in dashes:
+			if i % 2 == 1: continue
+			c.draw_arc(centre, r, TAU * i / dashes, TAU * (i + 1) / dashes, 4, zone_colour, 2.0, true)
+		if r > 14.0: c.draw_string(font, centre + Vector2(-40, -r - 6), "LIKELY ICE", HORIZONTAL_ALIGNMENT_CENTER, 80, 11, zone_colour)
+	var stakes := get_tree().get_first_node_in_group("survey_stakes")
+	var readings: Array = stakes.call("readings") if stakes != null else ICE_KNOWLEDGE.samples(get_tree()).map(func(v): return {"at": Vector2(v.x, v.y), "reading": float(v.z), "cored": ""})
+	for entry in readings:
+		var at := _region_to_map((entry.at as Vector2) + _origin)
+		if at.x < -20 or at.y < -20 or at.x > SIZE + 20 or at.y > SIZE + 20: continue
+		var colour := SURVEY_STAKES.colour_for(SURVEY_STAKES.strength(float(entry.reading)))
+		var ring := ICE_KNOWLEDGE.CORE_REACH * px_per_m
+		if ring > 4.0:
+			c.draw_circle(at, ring, Color(colour, .14))
+			c.draw_arc(at, ring, 0.0, TAU, 32, Color(colour, .6), 1.0, true)
+		c.draw_circle(at, 4.0, Color(0, 0, 0, .7))
+		c.draw_circle(at, 3.0, colour)
+		match str(entry.cored):
+			"ice":
+				c.draw_polyline(PackedVector2Array([at + Vector2(5, 0), at + Vector2(8, 4), at + Vector2(14, -5)]), SURVEY_STAKES.STRONG_COLOUR, 2.0, true)
+			"dry":
+				c.draw_line(at + Vector2(6, -4), at + Vector2(13, 3), SURVEY_STAKES.WEAK_COLOUR, 2.0, true)
+				c.draw_line(at + Vector2(6, 3), at + Vector2(13, -4), SURVEY_STAKES.WEAK_COLOUR, 2.0, true)
+	# GAR-Y's zone survey: the stops still to go, in order.
+	for gary in get_tree().get_nodes_in_group("gar_y"):
+		if str(gary.get("task")) != "survey": continue
+		var data: Dictionary = gary.get("task_data")
+		if not data.has("hunt"): continue
+		var path := PackedVector2Array([_world_to_map((gary as Node3D).global_position)])
+		var goal: Vector3 = gary.get("task_goal")
+		if goal != Vector3.INF: path.append(_world_to_map(goal))
+		for stop in data.hunt: path.append(_region_to_map((stop as Vector2) + _origin))
+		if path.size() > 1: c.draw_polyline(path, Color(1, 1, 1, .35), 1.0, true)
+		for i in range(1, path.size()): c.draw_arc(path[i], 4.0, 0.0, TAU, 12, Color(1, 1, 1, .8), 1.5, true)
