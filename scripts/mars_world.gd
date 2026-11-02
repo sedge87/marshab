@@ -918,8 +918,8 @@ func show_chapter_messages(messages: Array) -> void:
 		builder._flash_notice(str(message.get("tone", "info")), str(message.title), str(message.text))
 	if not messages.is_empty(): builder._update_budget()
 
-func open_fabricator() -> void:
-	_open_live_view(FABRICATOR_SCREEN.new().setup(self))
+func open_fabricator(printer := "") -> void:
+	_open_live_view(FABRICATOR_SCREEN.new().setup(self, printer))
 
 ## The lab screen for one Science Workbench (its placement id).
 func open_lab(bench: String) -> void:

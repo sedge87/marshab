@@ -74,11 +74,16 @@ func _initialize() -> void:
 	_check(is_equal_approx(MHChapterOne.fabricator_speed(b), .75), "the General Module runs it at 75 %")
 	var cost := MHChapterOne.plan_cost("crew_bunk")
 	_check(MHChapterOne.start_job("crew_bunk", b).is_empty(), "a job starts")
-	_check(MHChapterOne.start_job("crew_bunk", b) == "The Print Shop is busy", "one job at a time")
+	_check(MHChapterOne.start_job("crew_bunk", b) == "Already printing", "a plan prints once at a time")
+	var printer := MHChapterOne._printer(b, "")
+	_check(MHChapterOne.start_job(MHChapterOne.SPARES_KIT, b).is_empty() and (MHChapterOne.printer_work(printer).queue as Array).size() == 1, "a busy printer queues the next plan, unpaid")
+	MHChapterOne.unqueue(printer, 0)
+	_check((MHChapterOne.printer_work(printer).queue as Array).is_empty(), "a queued plan comes off for nothing")
+	_check(float(cost.hours) <= .5, "a sleep station prints in minutes (%.2f h)" % float(cost.hours))
 	_check(is_equal_approx(MHChapterOne.feedstock_kg, 1500.0 - float(cost.feedstock_kg)), "the job takes its feedstock")
 	b.simulation().last = {"generation_kw": 5.0, "crew": 0}
 	MHChapterOne.tick(float(cost.hours) / .75 + .1, b)
-	_check(MHChapterOne.job.is_empty() and MHChapterOne.available("crew_bunk", b) == 1, "the bunk is made and ready to place")
+	_check(not MHChapterOne.printing() and MHChapterOne.available("crew_bunk", b) == 1, "the bunk is made and ready to place")
 	_check(MHChapterOne.known.has("spare_parts_rack"), "the first job brings a sent plan")
 	_check(MHChapterOne.made.has("crew_bunk") and MHChapterOne.job_reason("crew_bunk", b) == "Already made: place it from the build bar", "the first job makes the plan; no second job")
 	_check(MHChapterOne.on_build_bar(b).has("crew_bunk"), "a made item stays on the Unpacked tab")
@@ -132,6 +137,7 @@ func _initialize() -> void:
 	_check(ice_knowledge.surveyed(readings, Vector2(44, -42)) and not ice_knowledge.surveyed(readings, Vector2(10, 10)) and not ice_knowledge.surveyed([], Vector2(40, -40)), "cores only on ground GAR-Y has surveyed")
 	_check(not MHChapterOne.rover_landed(), "the crew rover waits for a later lander")
 	MHChapterOne.ice_found(10.0)
+	_check(MHChapterOne.made.has("ice_drill") and int(MHChapterOne.stock.get("ice_drill", 0)) == 1, "a plan the story gives arrives printed")
 	_check(MHChapterOne.plan_known("ice_drill") and MHChapterOne.rover_landed(), "a good core earns the Ice Extractor plan, and the rover comes")
 	# The extractor drills where a core found ice, not anywhere ice happens to be.
 	var deposit: Dictionary = MHGame.site().get("ice_deposits", [{}])[0]

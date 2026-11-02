@@ -31,6 +31,10 @@ const STEPS := ["ice", "water", "oxygen", "food"]
 const SPARES_KIT := "spares_kit"
 const KITS_PER_JOB := 2
 const KIT_COST := {"feedstock_kg": 12.0, "earth_parts": 0, "hours": 2.0}
+## Prints take an eighth of the plan's time, at least five minutes (§13.4).
+const PRINT_PACE := .125
+const MIN_PRINT_HOURS := 5.0 / 60.0
+const QUEUE_MAX := 5
 const STEP_LABELS := {"ice": "Ice found", "water": "Water self-sufficient", "oxygen": "Oxygen self-sufficient", "food": "Food self-sufficient"}
 ## A core this rich is a find (the same line GAR-Y flags at).
 const GOOD_CORE := .25
@@ -56,7 +60,9 @@ static var shell_kg := 0
 static var feedstock_kg := 0.0
 static var earth_parts := 0
 static var known: Dictionary = {}        # plan id -> how it came ("sent", "discovered")
-static var job: Dictionary = {}          # {id, hours_left, hours}
+## Each Print Shop's work (docs/start-and-chapter-one.md §13.5): placement id
+## -> {current: {id, hours_left, hours} or {}, queue: [plan ids]}.
+static var jobs: Dictionary = {}
 static var made: Dictionary = {}         # id -> true once the fabricator has made one
 static var paid: Dictionary = {}         # id -> copies placed beyond stock, paid for from the stores
 static var has_corer := false
@@ -88,7 +94,7 @@ static func new_rules() -> bool:
 static func reset() -> void:
 	older_rules = false
 	unpacked = {}; stock = {}; shell_kg = 0; feedstock_kg = 0.0; earth_parts = 0
-	known = {}; job = {}; made = {}; paid = {}; has_corer = false; cores = []; steps = {}; finished_at = -1.0
+	known = {}; jobs = {}; made = {}; paid = {}; has_corer = false; cores = []; steps = {}; finished_at = -1.0
 	stores_landed = false; reserve_used = false; emergency_eta = -1.0; said = {}
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
 	MHSamples.reset()   # step 5's samples and journal start with the chapter
@@ -97,7 +103,7 @@ static func reset() -> void:
 
 static func export_state() -> Dictionary:
 	return {"older_rules": older_rules, "unpacked": unpacked.duplicate(), "stock": stock.duplicate(), "shell_kg": shell_kg,
-		"feedstock_kg": feedstock_kg, "earth_parts": earth_parts, "known": known.duplicate(), "job": job.duplicate(),
+		"feedstock_kg": feedstock_kg, "earth_parts": earth_parts, "known": known.duplicate(), "jobs": jobs.duplicate(true),
 		"made": made.duplicate(), "paid": paid.duplicate(),
 		"has_corer": has_corer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
 		"stores_landed": stores_landed, "reserve_used": reserve_used, "emergency_eta": emergency_eta, "said": said.duplicate(),
@@ -118,7 +124,13 @@ static func load_state(state: Dictionary, has_section: bool) -> void:
 	feedstock_kg = float(state.get("feedstock_kg", 0.0))
 	earth_parts = int(state.get("earth_parts", 0))
 	known = (state.get("known", {}) as Dictionary).duplicate()
-	job = (state.get("job", {}) as Dictionary).duplicate()
+	jobs = (state.get("jobs", {}) as Dictionary).duplicate(true)
+	# Saved with one job for the whole base: it goes to the first Print Shop
+	# (key "", settled on the first tick), at the new pace.
+	var old_job: Dictionary = state.get("job", {})
+	if not old_job.is_empty():
+		var hours := float(plan_cost(str(old_job.id)).hours)
+		jobs[""] = {"current": {"id": str(old_job.id), "hours_left": minf(float(old_job.get("hours_left", hours)), hours), "hours": hours}, "queue": []}
 	for key in (state.get("paid", {}) as Dictionary): paid[str(key)] = int(state.paid[key])
 	if state.has("made"):
 		for key in (state.made as Dictionary): made[str(key)] = true
@@ -128,6 +140,8 @@ static func load_state(state: Dictionary, has_section: bool) -> void:
 		for id in stock:
 			if int(stock[id]) > int(from_crates.get(id, 0)): made[str(id)] = true
 	has_corer = bool(state.get("has_corer", false))
+	# Saved before story plans arrived printed: they get their first copy now.
+	for id in known: _give_first(str(id))
 	cores = (state.get("cores", []) as Array).duplicate(true)
 	steps = (state.get("steps", {}) as Dictionary).duplicate()
 	finished_at = float(state.get("finished_at", -1.0))
@@ -326,18 +340,26 @@ static func learn_after(event: String) -> Array:
 	for id in all:
 		if str(all[id].get("after", "")) == event and not known.has(id):
 			known[id] = str(all[id].get("source", "sent"))
+			_give_first(str(id))
 			learned.append(str(id))
 	return learned
 
+## A plan the story hands you arrives printed: its first copy is on the build
+## bar at once, free (§13.3).
+static func _give_first(id: String) -> void:
+	if made.has(id) or not needs_stock(id): return
+	stock[id] = int(stock.get(id, 0)) + 1
+	made[id] = true
+
 ## {feedstock_kg, earth_parts, hours} for one job.
 static func plan_cost(id: String) -> Dictionary:
-	if id == SPARES_KIT: return KIT_COST.duplicate()
+	if id == SPARES_KIT: return {"feedstock_kg": KIT_COST.feedstock_kg, "earth_parts": KIT_COST.earth_parts, "hours": maxf(MIN_PRINT_HOURS, KIT_COST.hours * PRINT_PACE)}
 	var p := plan(id)
 	var d: Dictionary = plans_data().get("defaults", {})
 	var mass := float(p.get("cargo_kg", EquipmentCatalog.get_entry(id).get("cargo_cost", 50)))
 	return {"feedstock_kg": float(p.get("feedstock_kg", roundf(mass * float(d.get("feedstock_per_kg", .6))))),
 		"earth_parts": int(p.get("earth_parts", ceili(mass / float(d.get("kg_per_part", 50))))),
-		"hours": float(p.get("hours", clampf(roundf(mass / float(d.get("kg_per_hour", 25))), float(d.get("min_hours", 1)), float(d.get("max_hours", 20)))))}
+		"hours": maxf(MIN_PRINT_HOURS, PRINT_PACE * float(p.get("hours", clampf(roundf(mass / float(d.get("kg_per_hour", 25))), float(d.get("min_hours", 1)), float(d.get("max_hours", 20))))))}
 
 ## Everything the fabricator could make now (known plans), in catalogue order.
 static func fabricable() -> Array:
@@ -358,39 +380,135 @@ static func fabricators(builder: Object) -> Array:
 	if builder == null: return []
 	return (builder.get("placed_interior") as Array).filter(func(i): return str(i.get("id", "")) == "fabricator")
 
-## Work speed: the Workshop at full rate, the General Module at 75 % (as other work there).
-static func fabricator_speed(builder: Object) -> float:
+## Work speed: Power & Engineering at full rate, the General Module at 75 %
+## (as other work there). For one printer, or the best of them.
+static func fabricator_speed(builder: Object, printer := "") -> float:
 	var best := 0.0
 	for item in fabricators(builder):
+		if not printer.is_empty() and str(item.get("placement_id", "")) != printer: continue
 		var zone: Dictionary = builder.call("_zone_at_point", Vector2((item.position as Vector3).x, (item.position as Vector3).z)) if item.has("position") else {}
 		best = maxf(best, .75 if str(zone.get("kind", "")) == "general" else 1.0)
 	return best
 
-static func job_reason(id: String, builder: Object) -> String:
-	if fabricators(builder).is_empty(): return "Place the Print Shop first"
-	if made.has(id) and id != SPARES_KIT: return "Already made: place it from the build bar"
-	if not job.is_empty(): return "The Print Shop is busy"
-	if not plan_known(id) and id != SPARES_KIT: return plan_hint(id)
-	var cost := plan_cost(id)
-	if feedstock_kg < float(cost.feedstock_kg): return "Not enough feedstock"
-	if earth_parts < int(cost.earth_parts): return "Not enough Earth parts"
+## The printer a call means: the one named, or the first placed.
+static func _printer(builder: Object, printer: String) -> String:
+	if not printer.is_empty(): return printer
+	var all := fabricators(builder)
+	return str(all[0].get("placement_id", "")) if not all.is_empty() else ""
+
+## A printer's work: {current, queue}.
+static func printer_work(printer: String) -> Dictionary:
+	if not jobs.has(printer): jobs[printer] = {"current": {}, "queue": []}
+	return jobs[printer]
+
+## Whether any printer is printing (the tutorial's "start a job").
+static func printing() -> bool:
+	return jobs.values().any(func(w): return not (w.current as Dictionary).is_empty())
+
+## Where a plan is printing or waiting: the printer's placement id, or "".
+static func printing_where(id: String) -> String:
+	for printer in jobs:
+		var work: Dictionary = jobs[printer]
+		if str((work.current as Dictionary).get("id", "")) == id or (work.queue as Array).has(id): return str(printer)
 	return ""
 
-static func start_job(id: String, builder: Object) -> String:
-	var reason := job_reason(id, builder)
+static func job_reason(id: String, builder: Object, printer := "") -> String:
+	if fabricators(builder).is_empty(): return "Place the Print Shop first"
+	printer = _printer(builder, printer)
+	if made.has(id) and id != SPARES_KIT: return "Already made: place it from the build bar"
+	if id != SPARES_KIT and not printing_where(id).is_empty():
+		return "Already printing" if printing_where(id) == printer else "Printing at the other Print Shop"
+	if not plan_known(id) and id != SPARES_KIT: return plan_hint(id)
+	var work := printer_work(printer)
+	if (work.queue as Array).size() >= QUEUE_MAX: return "The queue is full (%d)" % QUEUE_MAX
+	# Started now, it's paid for now; queued, it's paid for when it starts.
+	if (work.current as Dictionary).is_empty():
+		var cost := plan_cost(id)
+		if feedstock_kg < float(cost.feedstock_kg): return "Not enough feedstock"
+		if earth_parts < int(cost.earth_parts): return "Not enough Earth parts"
+	return ""
+
+## Prints it now on an idle printer, or adds it to that printer's queue.
+static func start_job(id: String, builder: Object, printer := "") -> String:
+	var reason := job_reason(id, builder, printer)
 	if not reason.is_empty(): return reason
+	var work := printer_work(_printer(builder, printer))
+	if (work.current as Dictionary).is_empty(): _begin(work, id, builder)
+	else: (work.queue as Array).append(id)
+	return ""
+
+static func _begin(work: Dictionary, id: String, builder: Object) -> void:
 	var cost := plan_cost(id)
 	feedstock_kg -= float(cost.feedstock_kg)
 	earth_parts -= int(cost.earth_parts)
-	job = {"id": id, "hours_left": float(cost.hours), "hours": float(cost.hours)}
-	return ""
+	work.current = {"id": id, "hours_left": float(cost.hours), "hours": float(cost.hours)}
+	_power_changed(builder)
 
-static func cancel_job() -> void:
-	if job.is_empty(): return
-	var cost := plan_cost(str(job.id))
+## Stops the printer's job and gives its feedstock and parts back.
+static func cancel_job(builder: Object = null, printer := "") -> void:
+	var work := printer_work(_printer(builder, printer))
+	var current: Dictionary = work.current
+	if current.is_empty(): return
+	var cost := plan_cost(str(current.id))
 	feedstock_kg += float(cost.feedstock_kg)
 	earth_parts += int(cost.earth_parts)
-	job = {}
+	work.current = {}
+	_power_changed(builder)
+
+## Takes a waiting plan off a printer's queue (nothing was paid yet).
+static func unqueue(printer: String, index: int) -> void:
+	var queue: Array = printer_work(printer).queue
+	if index >= 0 and index < queue.size(): queue.remove_at(index)
+
+## Whether this printer is printing now (its power draw, the sim).
+static func is_printing(printer: String) -> bool:
+	return jobs.has(printer) and not (jobs[printer].current as Dictionary).is_empty()
+
+## The habitat's power use follows whether its Print Shops are printing.
+static func _power_changed(builder: Object) -> void:
+	if builder != null and builder.has_method("simulation"): builder.call("simulation").invalidate()
+
+## Advances every printer; returns what finished.
+static func _run_printers(hours: float, builder: Object, sim: Object) -> Array:
+	var out: Array = []
+	var present := fabricators(builder).map(func(i): return str(i.get("placement_id", "")))
+	# An old save's one job goes to the first printer.
+	if jobs.has("") and not present.is_empty():
+		var old: Dictionary = jobs[""]
+		jobs.erase("")
+		jobs[str(present[0])] = old
+	# A removed printer: what it was printing is refunded, its queue dropped.
+	for printer in jobs.keys():
+		if str(printer).is_empty() or present.has(printer): continue
+		cancel_job(builder, str(printer))
+		jobs.erase(printer)
+	for printer in present:
+		var work := printer_work(str(printer))
+		var current: Dictionary = work.current
+		# Idle with something waiting: start it if it can be paid for.
+		if current.is_empty() and not (work.queue as Array).is_empty():
+			var next := str(work.queue[0])
+			var cost := plan_cost(next)
+			if feedstock_kg >= float(cost.feedstock_kg) and earth_parts >= int(cost.earth_parts):
+				(work.queue as Array).pop_front()
+				_begin(work, next, builder)
+				current = work.current
+		if current.is_empty(): continue
+		current.hours_left = float(current.hours_left) - hours * fabricator_speed(builder, str(printer))
+		if float(current.hours_left) > 0.0: continue
+		var id := str(current.id)
+		work.current = {}
+		_power_changed(builder)
+		if id == SPARES_KIT:
+			var life: Object = sim.get("life")
+			life.set("spares", int(life.get("spares")) + KITS_PER_JOB)
+			out.append({"id": "made", "title": "Print Shop: %d spares kits printed" % KITS_PER_JOB, "text": "%d on the shelf. Each one services a worn machine or repairs a broken one." % int(life.get("spares")), "tone": "valid"})
+		else:
+			stock[id] = int(stock.get(id, 0)) + 1
+			made[id] = true
+			out.append({"id": "made", "title": "Print Shop: %s printed" % label(id), "text": "It's on the build bar's Unpacked tab now: place as many as your stores allow.", "tone": "valid"})
+		for learned in learn_after("first_job"): out.append(_plan_message(learned))
+	return out
 
 # ---------- ice ----------
 
@@ -464,23 +582,8 @@ static func tick(hours: float, builder: Object) -> Array:
 	var crew := int(last.get("crew", 0))
 	var now := float(sim.get("hours_run"))
 	var powered := float(last.get("generation_kw", 0.0)) > 0.0 or float(sim.get("battery_kwh")) > .5
-	# The fabricator's job.
-	if not job.is_empty() and powered:
-		var speed := fabricator_speed(builder)
-		if speed > 0.0:
-			job.hours_left = float(job.hours_left) - hours * speed
-			if float(job.hours_left) <= 0.0:
-				var id := str(job.id)
-				job = {}
-				if id == SPARES_KIT:
-					var life: Object = sim.get("life")
-					life.set("spares", int(life.get("spares")) + KITS_PER_JOB)
-					out.append({"id": "made", "title": "Print Shop: %d spares kits printed" % KITS_PER_JOB, "text": "%d on the shelf. Each one services a worn machine or repairs a broken one." % int(life.get("spares")), "tone": "valid"})
-				else:
-					stock[id] = int(stock.get(id, 0)) + 1
-					made[id] = true
-					out.append({"id": "made", "title": "Print Shop: %s printed" % label(id), "text": "It's on the build bar's Unpacked tab now: place as many as your stores allow.", "tone": "valid"})
-				for learned in learn_after("first_job"): out.append(_plan_message(learned))
+	# The Print Shops' jobs.
+	if powered: out.append_array(_run_printers(hours, builder, sim))
 	# Recycling tops the feedstock up from what the crew throw away (habitat_waste.gd).
 	# Plans Mission Control sends on a given sol.
 	var sol := floori(now / 24.0) + 1
@@ -493,7 +596,7 @@ static func tick(hours: float, builder: Object) -> Array:
 	return out
 
 static func _plan_message(id: String) -> Dictionary:
-	return {"id": "plan", "title": "New plan: %s" % label(id), "text": "Mission Control sent the plan. Print the first one at the Print Shop.", "tone": "info"}
+	return {"id": "plan", "title": "New plan: %s" % label(id), "text": "Mission Control sent the plan, and the first one is printed: it's ready on the build bar's Unpacked tab.", "tone": "info"}
 
 static func _count(builder: Object, kind: String) -> int:
 	return (builder.get("zones") as Array).filter(func(z): return str(z.get("kind", "")) == kind).size()
@@ -506,7 +609,7 @@ static func _check_steps(builder: Object, sim: Object, last: Dictionary, hours: 
 		water_hours += hours
 		if water_hours >= WATER_TEST_HOURS:
 			learn_after("water")
-			out.append({"id": "water_clean", "title": "The meltwater is tested", "text": "Dust and a little perchlorate: nothing a filter can't take out. Plan: Water Processor, to clean the meltwater and send used water round again.", "tone": "valid"})
+			out.append({"id": "water_clean", "title": "The meltwater is tested", "text": "Dust and a little perchlorate: nothing a filter can't take out. Plan: Water Processor, to clean the meltwater and send used water round again. The first one is ready on the build bar.", "tone": "valid"})
 	var water_steady := crew > 0.0 and float(last.get("water_in", 0.0)) >= float(last.get("water_out", 0.0)) - .01
 	if known.has("water_reclaimer") and not steps.has("water") and water_steady and placed_count("water_reclaimer", builder) > 0:
 		steps["water"] = now
@@ -514,7 +617,7 @@ static func _check_steps(builder: Object, sim: Object, last: Dictionary, hours: 
 	# 3. Oxygen: enough water to split.
 	if steps.has("water") and not known.has("oxygen_generator"):
 		learn_after("oxygen")
-		out.append({"id": "plan", "title": "Plan: Oxygen Generator", "text": "There's water to spare now. Electrolysis splits it into oxygen (and hydrogen, vented).", "tone": "info"})
+		out.append({"id": "plan", "title": "Plan: Oxygen Generator", "text": "There's water to spare now. Electrolysis splits it into oxygen (and hydrogen, vented). The first one is ready on the build bar.", "tone": "info"})
 	var o2_need := crew * MHResources.setting("o2_per_person", .84)
 	if known.has("oxygen_generator") and not steps.has("oxygen") and crew > 0.0 and float(last.get("o2_in", 0.0)) >= o2_need - .01:
 		steps["oxygen"] = now
@@ -522,7 +625,7 @@ static func _check_steps(builder: Object, sim: Object, last: Dictionary, hours: 
 	# 4. Food: the test seed in washed regolith comes up (see bench_use()).
 	if soil == "potted" and not known.has("grow_tray") and now - soil_potted_at >= SOIL_TEST_HOURS:
 		learn_after("food")
-		out.append({"id": "plan", "title": "The test seed came up", "text": "Washed of its perchlorate, Mars soil grows plants. Plans: grow trays, planters, a seedling station and a nutrient mixer.", "tone": "valid"})
+		out.append({"id": "plan", "title": "The test seed came up", "text": "Washed of its perchlorate, Mars soil grows plants. Plans: grow trays, planters, a seedling station and a nutrient mixer, and one of each is ready on the build bar.", "tone": "valid"})
 	if known.has("grow_tray") and not steps.has("food") and crew > 0.0 and float(last.get("food_in", 0.0)) >= crew * MHGame.food_per_person() - .01:
 		steps["food"] = now
 		out.append({"id": "step", "title": "Food self-sufficient", "text": "The crew eat what they grow.", "tone": "valid"})
@@ -584,7 +687,7 @@ static func ice_found(now: float) -> Array:
 	if steps.has("ice"): return []
 	steps["ice"] = now
 	learn_after("ice")
-	return [{"id": "step", "title": "Water ice confirmed", "text": "A good core. Plan: Ice Extractor. Print it at the Print Shop and place it where the core was richest.", "tone": "valid"},
+	return [{"id": "step", "title": "Water ice confirmed", "text": "A good core. Plan: Ice Extractor, and the first one is ready on the build bar. Place it within 7 m of a core that found ice.", "tone": "valid"},
 		{"id": "rover", "title": "The crew rover is on its way", "text": "Mission Control: it lands with the next cargo and waits in your vehicle bay once you build one.", "tone": "info"}]
 
 ## The soft net (question 3): no game over from the stores alone.

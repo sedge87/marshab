@@ -82,7 +82,7 @@ static func levels(id: String) -> Dictionary:
 	for action in rig(id).get("actions", []):
 		if str(action.get("type", "")) == "levels":
 			var fx := effects(id)
-			return {"key": str(action.get("state", "")), "power": fx.get("power_draw_levels", []), "heat": fx.get("heat_levels_c", [])}
+			return {"key": str(action.get("state", "")), "power": fx.get("power_draw_levels", []), "heat": fx.get("heat_levels_c", []), "default": int(action.get("default", 0))}
 	return {}
 
 static func exists(id: String) -> bool:

@@ -192,7 +192,7 @@ func _met(step: Dictionary) -> bool:
 			return true
 		"read": return _read_pressed
 		"unpacked": return MHChapterOne.crates_left() == 0
-		"fab_job": return not MHChapterOne.job.is_empty() or MHChapterOne.known.has("spare_parts_rack")
+		"fab_job": return MHChapterOne.printing() or MHChapterOne.known.has("spare_parts_rack")
 		"chapter_step": return MHChapterOne.steps.has(str(check.step))
 		"flag": return bool((world.guide_flags as Dictionary).get(str(check.key), false))
 	return false

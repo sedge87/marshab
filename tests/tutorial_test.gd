@@ -116,10 +116,17 @@ func _initialize() -> void:
 	_check(_step() == "go_in", "not while the site plan is open")
 	b._toggle()
 	await _settle()
-	_check(_step() == "bunk", "walking into the habitat ticks it (%s)" % _step())
+	_check(_step() == "heat", "walking into the habitat ticks it (%s)" % _step())
+
+	# Heat first: the Thermal Control Unit came in a crate.
+	var y: float = b.habitat_base_y
+	var tcu_at := Vector3(15.0, y, 3.0)
+	_check(b.free_interior_invalid_reason("thermal_control_unit", tcu_at, Vector3.UP).is_empty(), "the TCU can be placed from the crates (%s)" % b.free_interior_invalid_reason("thermal_control_unit", tcu_at, Vector3.UP))
+	b.place_free_interior_equipment("thermal_control_unit", tcu_at, 0.0, Vector2i(5, 1), b.free_interior_visual("thermal_control_unit", tcu_at, 0.0), Vector3.UP)
+	await _settle()
+	_check(_step() == "bunk", "placing the TCU ticks it (%s)" % _step())
 
 	# 9–11. Furnishing from the Unpacked tab: a bunk, the fabricator, one job.
-	var y: float = b.habitat_base_y
 	for item in [["crew_bunk", Vector3(13.0, y, 1.0)], ["fabricator", Vector3(17.0, y, 5.0)]]:
 		_check(b.free_interior_invalid_reason(item[0], item[1], Vector3.UP).is_empty(), "%s can be placed from the crates (%s)" % [item[0], b.free_interior_invalid_reason(item[0], item[1], Vector3.UP)])
 		var visual: Node3D = b.free_interior_visual(item[0], item[1], 0.0)
@@ -143,7 +150,7 @@ func _initialize() -> void:
 	await _settle()
 	_check(_step() == "save", "the crew screen ticks it (%s)" % _step())
 	var state: Dictionary = world.current_state()
-	_check(str(state.tutorial.mode) == "full" and (state.tutorial.done as Array).size() == 13, "the save records the tutorial and its 13 done steps (%s)" % [state.tutorial])
+	_check(str(state.tutorial.mode) == "full" and (state.tutorial.done as Array).size() == 14, "the save records the tutorial and its 14 done steps (%s)" % [state.tutorial])
 	world._save_habitat(6)
 	await _settle()
 	_check(_step() == "ice" and not bool(t.finished) and t.current_goal() == "self_sufficient", "saving finishes Learn the ropes; chapter one's Self-sufficient goal comes next (%s)" % _step())
@@ -200,5 +207,5 @@ func _initialize() -> void:
 	for clip in unique: _check(GUIDE.has_clip(clip), "the %s clip exists" % clip)
 
 	if failures == 0:
-		print("Tutorial test passed: the goal checklist (14 chapter-one steps, then Self-sufficient in any order) ticks from play, H hides it, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
+		print("Tutorial test passed: the goal checklist (15 chapter-one steps, then Self-sufficient in any order) ticks from play, H hides it, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
 	quit(1 if failures > 0 else 0)

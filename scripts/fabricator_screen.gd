@@ -4,7 +4,8 @@ extends Control
 ## "Needed now" at the top (the plans the chapter just unlocked, and spares
 ## kits when a machine is worn), then the known plans as cards in tabs by
 ## purpose, with a search box. Pick a card to see its feedstock, Earth parts,
-## time and power, and print it. One job at a time. The first job makes the
+## time and power, and print it. Each Print Shop runs its own job, with a
+## queue of up to five (§13.5); this screen is the one you pressed E on. The first job makes the
 ## plan: the item goes onto the build bar's Unpacked tab for good, and later
 ## copies are paid for from the stores as they're placed. The game keeps
 ## running while this is open.
@@ -47,10 +48,26 @@ var _job: Label
 var _job_bar: ProgressBar
 var _refresh := 0.0
 var _shown_state := ""
+var printer := ""   # this Print Shop's placement id
 
-func setup(target_world: Node) -> Control:
+func setup(target_world: Node, which := "") -> Control:
 	world = target_world
+	printer = which
 	return self
+
+## What this printer is doing: {current, queue}.
+func _work() -> Dictionary:
+	return MHChapterOne.printer_work(printer)
+
+## "8 min", "1 h 15 min".
+static func duration(hours: float) -> String:
+	var minutes := maxi(1, ceili(hours * 60.0))
+	if minutes < 60: return "%d min" % minutes
+	return "%d h" % (minutes / 60) if minutes % 60 == 0 else "%d h %d min" % [minutes / 60, minutes % 60]
+
+func _signature() -> String:
+	var work := _work()
+	return "%s|%s|%d|%d|%d" % [str((work.current as Dictionary).get("id", "")), str(work.queue), roundi(MHChapterOne.feedstock_kg), MHChapterOne.earth_parts, MHChapterOne.made.size()]
 
 func _builder() -> BuildController:
 	return world.builder
@@ -58,6 +75,7 @@ func _builder() -> BuildController:
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = MHStyle.theme()
+	printer = MHChapterOne._printer(_builder(), printer)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	# Its own layer, above the checklist, notices, captions and build HUD (6-25),
 	# so nothing covers the cards or the Print button.
@@ -153,8 +171,7 @@ func _process(delta: float) -> void:
 	_refresh = .5
 	_update_status()
 	# Redraw when something the cards show changes (a job ends, stock arrives).
-	var state := "%s|%d|%d|%d" % [str(MHChapterOne.job.get("id", "")), roundi(MHChapterOne.feedstock_kg), MHChapterOne.earth_parts, MHChapterOne.made.size()]
-	if state != _shown_state: _render()
+	if _signature() != _shown_state: _render()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_E and not get_viewport().gui_get_focus_owner() is LineEdit):
@@ -167,14 +184,16 @@ func _close() -> void:
 
 func _update_status() -> void:
 	_stock.text = "FEEDSTOCK %s   ·   EARTH PARTS %d" % [MHStyle.kg(roundi(MHChapterOne.feedstock_kg)), MHChapterOne.earth_parts]
-	var job := MHChapterOne.job
+	var work := _work()
+	var job: Dictionary = work.current
+	var waiting := (work.queue as Array).size()
 	_job_bar.visible = not job.is_empty()
 	if job.is_empty():
-		_job.text = "Idle. Pick a plan and print it; it runs on the habitat's power."
+		_job.text = "Waiting for feedstock to start the next print" if waiting > 0 else "Idle. Pick a plan and print it; it runs on the habitat's power."
 		return
 	var done := 1.0 - float(job.hours_left) / maxf(.01, float(job.hours))
-	var speed := MHChapterOne.fabricator_speed(_builder())
-	_job.text = "PRINTING %s · %d%% · about %d h left%s" % [MHChapterOne.label(str(job.id)).to_upper(), roundi(done * 100.0), ceili(float(job.hours_left) / maxf(.01, speed)), "  (General Module: 75 % speed)" if speed < 1.0 else ""]
+	var speed := MHChapterOne.fabricator_speed(_builder(), printer)
+	_job.text = "PRINTING %s · %d%% · %s left%s%s" % [MHChapterOne.label(str(job.id)).to_upper(), roundi(done * 100.0), duration(float(job.hours_left) / maxf(.01, speed)).to_upper(), "  ·  %d QUEUED" % waiting if waiting > 0 else "", "  (General Module: 75 % speed)" if speed < 1.0 else ""]
 	_job_bar.value = done * 100.0
 
 # ---------- what goes where ----------
@@ -208,7 +227,7 @@ func _icon(id: String) -> String:
 # ---------- drawing ----------
 
 func _render() -> void:
-	_shown_state = "%s|%d|%d|%d" % [str(MHChapterOne.job.get("id", "")), roundi(MHChapterOne.feedstock_kg), MHChapterOne.earth_parts, MHChapterOne.made.size()]
+	_shown_state = _signature()
 	var ids := MHChapterOne.fabricable()
 	var needed := needed_now(ids)
 	if _selected.is_empty() or not ids.has(_selected):
@@ -265,9 +284,11 @@ func _render() -> void:
 
 ## What a card says about a plan: [text, colour].
 func _state(id: String) -> Array:
-	if MHChapterOne.job.get("id", "") == id: return ["Printing…", MHStyle.accent]
+	var work := _work()
+	if str((work.current as Dictionary).get("id", "")) == id: return ["Printing…", MHStyle.accent]
+	if (work.queue as Array).has(id): return ["Queued", MHStyle.accent]
 	if MHChapterOne.made.has(id) and id != MHChapterOne.SPARES_KIT: return ["Printed · on the build bar", MHStyle.VALID]
-	var reason := MHChapterOne.job_reason(id, _builder())
+	var reason := MHChapterOne.job_reason(id, _builder(), printer)
 	if reason.is_empty(): return ["Ready to print", MHStyle.TEXT_PRIMARY]
 	if reason.begins_with("Not enough"): return [reason.replace("Not enough", "Short of"), MHStyle.WARN]
 	return [reason, MHStyle.TEXT_MUTED]
@@ -301,7 +322,7 @@ func _card(id: String, needed: bool) -> Control:
 	name_label.max_lines_visible = 2
 	col.add_child(name_label)
 	var cost := MHChapterOne.plan_cost(id)
-	col.add_child(MHStyle.mono("%s · %d parts · %d h" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), int(cost.earth_parts), roundi(float(cost.hours))], 12, MHStyle.TEXT_SECONDARY))
+	col.add_child(MHStyle.mono("%s · %d parts · %s" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), int(cost.earth_parts), duration(float(cost.hours))], 12, MHStyle.TEXT_SECONDARY))
 	var state := _state(id)
 	var state_label := MHStyle.mono(str(state[0]), 12, state[1])
 	state_label.clip_text = true
@@ -349,7 +370,7 @@ func _render_detail() -> void:
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail.add_child(about)
 	var rows := MHStyle.vbox(6)
-	for row in [["layers", "Feedstock", MHStyle.kg(roundi(float(cost.feedstock_kg))), MHChapterOne.feedstock_kg >= float(cost.feedstock_kg)], ["cpu", "Earth parts", str(int(cost.earth_parts)), MHChapterOne.earth_parts >= int(cost.earth_parts)], ["clock", "Time", "%d game hours" % roundi(float(cost.hours)), true], ["zap", "Power", "1.2 kW while it prints", true]]:
+	for row in [["layers", "Feedstock", MHStyle.kg(roundi(float(cost.feedstock_kg))), MHChapterOne.feedstock_kg >= float(cost.feedstock_kg)], ["cpu", "Earth parts", str(int(cost.earth_parts)), MHChapterOne.earth_parts >= int(cost.earth_parts)], ["clock", "Time", duration(float(cost.hours)) + " (game time)", true], ["zap", "Power", "1.2 kW while it prints", true]]:
 		var line := MHStyle.hbox(10)
 		line.add_child(MHStyle.icon(str(row[0]), 16, MHStyle.TEXT_SECONDARY if bool(row[3]) else MHStyle.WARN))
 		var what := MHStyle.mono(str(row[1]), 13, MHStyle.TEXT_MUTED)
@@ -363,15 +384,40 @@ func _render_detail() -> void:
 	var bar_note := MHStyle.body(on_bar, 14, MHStyle.TEXT_MUTED)
 	bar_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail.add_child(bar_note)
-	var reason := MHChapterOne.job_reason(_selected, _builder())
-	var start := MHStyle.button(("Print %d" % MHChapterOne.KITS_PER_JOB if _selected == MHChapterOne.SPARES_KIT else "Print the first one") if reason.is_empty() else reason, "primary" if reason.is_empty() else "secondary", "play", 48)
+	var reason := MHChapterOne.job_reason(_selected, _builder(), printer)
+	var busy := not (_work().current as Dictionary).is_empty()
+	var verb := "Add to the queue" if busy else ("Print %d" % MHChapterOne.KITS_PER_JOB if _selected == MHChapterOne.SPARES_KIT else "Print the first one")
+	var start := MHStyle.button(verb if reason.is_empty() else reason, "primary" if reason.is_empty() else "secondary", "plus" if busy else "play", 48)
 	start.disabled = not reason.is_empty()
 	start.pressed.connect(func() -> void:
-		if MHChapterOne.start_job(_selected, _builder()).is_empty():
+		if MHChapterOne.start_job(_selected, _builder(), printer).is_empty():
 			MHAudio.sfx("ui_click")
 			_render())
 	_detail.add_child(start)
-	if not MHChapterOne.job.is_empty():
+	if busy:
 		var cancel := MHStyle.button("Cancel the print (stock returned)", "secondary", "x", 44)
-		cancel.pressed.connect(func() -> void: MHChapterOne.cancel_job(); _render())
+		cancel.pressed.connect(func() -> void: MHChapterOne.cancel_job(_builder(), printer); _render())
 		_detail.add_child(cancel)
+	_detail.add_child(_queue_list())
+
+## This printer's queue: each waiting plan with a button to take it off
+## (nothing is paid until it starts).
+func _queue_list() -> Control:
+	var box := MHStyle.vbox(6)
+	var queue: Array = _work().queue
+	box.add_child(MHStyle.eyebrow("QUEUE  %d / %d" % [queue.size(), MHChapterOne.QUEUE_MAX], MHStyle.TEXT_MUTED, 12))
+	if queue.is_empty():
+		box.add_child(MHStyle.body("Nothing waiting. While it prints, add plans here and it works through them in order.", 14, MHStyle.TEXT_MUTED))
+	for index in queue.size():
+		var row := MHStyle.hbox(8)
+		row.add_child(MHStyle.icon(_icon(str(queue[index])), 16, MHStyle.TEXT_SECONDARY))
+		var name_label := MHStyle.label("%d. %s" % [index + 1, _label(str(queue[index]))], 15, MHStyle.TEXT_PRIMARY, 600)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(name_label)
+		row.add_child(MHStyle.mono(duration(float(MHChapterOne.plan_cost(str(queue[index])).hours)), 13, MHStyle.TEXT_MUTED))
+		var drop := MHStyle.button("", "ghost", "x", 32)
+		drop.tooltip_text = "Take it off the queue"
+		drop.pressed.connect(func() -> void: MHChapterOne.unqueue(printer, index); _render())
+		row.add_child(drop)
+		box.add_child(row)
+	return box

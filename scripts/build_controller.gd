@@ -2146,7 +2146,7 @@ func _equipment_effects() -> Dictionary:
 		# Heaters draw power by their Off / Low / High setting.
 		var levels := EquipmentCatalog.levels(item_id)
 		if not levels.is_empty():
-			var level := int((item.get("state", {}) as Dictionary).get(levels.key, 0))
+			var level := int((item.get("state", {}) as Dictionary).get(levels.key, levels.get("default", 0)))
 			if level >= 0 and level < (levels.power as Array).size(): totals.power_draw += int(levels.power[level])
 	return totals
 
@@ -2157,7 +2157,7 @@ func _heater_warmth(zone: Dictionary) -> float:
 	for item in placed_interior:
 		var levels := EquipmentCatalog.levels(str(item.get("id", "")))
 		if levels.is_empty() or not (zone.get("cells", []) as Array).has(item.get("zone_cell", Vector2i(999999, 0))): continue
-		var level := int((item.get("state", {}) as Dictionary).get(levels.key, 0))
+		var level := int((item.get("state", {}) as Dictionary).get(levels.key, levels.get("default", 0)))
 		if level > 0 and level < (levels.heat as Array).size(): warmth += float(levels.heat[level])
 	return warmth
 

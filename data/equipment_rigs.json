@@ -3164,6 +3164,7 @@
         "key": "primary",
         "type": "levels",
         "state": "heat",
+        "default": 1,
         "label": "Heater",
         "levels": [
           "Off",
@@ -3221,6 +3222,7 @@
         "key": "primary",
         "type": "levels",
         "state": "heat",
+        "default": 1,
         "label": "Heater",
         "levels": [
           "Off",

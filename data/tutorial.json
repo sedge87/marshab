@@ -305,6 +305,37 @@
       "said": "tut_go_in"
     },
     {
+      "id": "heat",
+      "goal": "home",
+      "text": "Heat the base",
+      "how": "Inside the General Module, press B and place the Thermal Control Unit from the Unpacked tab. It came in the Life support crate, runs as soon as it's placed and keeps the whole base warm through the night.",
+      "keys": [
+        [
+          [
+            "B"
+          ],
+          "Furnish this room"
+        ],
+        [
+          [
+            "LMB"
+          ],
+          "Place"
+        ]
+      ],
+      "check": {
+        "type": "items",
+        "ids": [
+          "thermal_control_unit"
+        ]
+      },
+      "highlight": [
+        "item:thermal_control_unit",
+        "group:here"
+      ],
+      "rules": "chapter"
+    },
+    {
       "id": "bunk",
       "goal": "home",
       "text": "Furnish your General Module",

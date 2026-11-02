@@ -43,10 +43,22 @@ func _box(node_name: String, size: Vector3, at: Vector3, role: String) -> MeshIn
 	add_child(mesh)
 	return mesh
 
+## Which Print Shop this is (its placement), for its own job and queue.
+func placement() -> String:
+	var node: Node = self
+	while node != null:
+		if node.has_meta("interior_placement_id"): return str(node.get_meta("interior_placement_id"))
+		node = node.get_parent()
+	return ""
+
 func interaction_prompt() -> Dictionary:
-	var job := MHChapterOne.job
-	return {"primary": "Open the Print Shop", "label": "Print Shop" + ("" if job.is_empty() else " · printing %s" % MHChapterOne.label(str(job.id)))}
+	var work := MHChapterOne.printer_work(placement()) if MHChapterOne.jobs.has(placement()) else {}
+	var current: Dictionary = work.get("current", {})
+	var waiting := (work.get("queue", []) as Array).size()
+	var doing := "" if current.is_empty() else " · printing %s" % MHChapterOne.label(str(current.id))
+	if waiting > 0: doing += " (+%d queued)" % waiting
+	return {"primary": "Open the Print Shop", "label": "Print Shop" + doing}
 
 func interact(_actor: Node = null) -> bool:
-	get_tree().call_group("habitat_world", "open_fabricator")
+	get_tree().call_group("habitat_world", "open_fabricator", placement())
 	return true

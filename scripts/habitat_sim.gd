@@ -334,6 +334,8 @@ func inventory() -> Dictionary:
 		if balance.is_empty(): continue
 		var record := _item_record(id, balance, placed.get("state", {}), room_index)
 		record["pid"] = str(placed.get("placement_id", ""))
+		# A Print Shop draws its power only while printing (§13.5).
+		if id == "fabricator" and MHChapterOne.on(): record.power = float(balance.get("power_kw", 0.0)) if MHChapterOne.is_printing(record.pid) else 0.0
 		items.append(record)
 	# Outdoor grid equipment.
 	for placed in builder.placed_surface:
@@ -392,7 +394,7 @@ func _item_record(id: String, balance: Dictionary, state: Dictionary, room: int)
 	var levels := EquipmentCatalog.levels(id)
 	if not levels.is_empty():
 		var steps := maxi(1, (levels.power as Array).size() - 1)
-		power = float(balance.get("power_kw", 0.0)) * clampi(int(state.get(levels.key, 0)), 0, steps) / steps
+		power = float(balance.get("power_kw", 0.0)) * clampi(int(state.get(levels.key, levels.default)), 0, steps) / steps
 	var tier := TIER_OTHER
 	if id in LIFE_ITEMS: tier = TIER_LIFE
 	elif id in HEAT_ITEMS: tier = TIER_HEAT
@@ -506,6 +508,12 @@ func solar_cut() -> float:
 	storm_eta_hours = -1.0
 
 ## Forecasts a storm to arrive in this many hours (the HUD warns until then).
+## Chapter one: no storm reaches a new base before sol 15, so the landed kit
+## has time to become a home (docs/start-and-chapter-one.md §13.7).
+const STORM_GRACE_SOLS := 14.0
+func _storm_grace() -> bool:
+	return MHChapterOne.on() and hours_run < STORM_GRACE_SOLS * 24.0
+
 func forecast_storm(hours := -1.0) -> void:
 	storm_eta_hours = hours if hours >= 0.0 else MHResources.setting("storm_warning_hours", 10.0) * MHSamples.bonus("storm_warning")
 
@@ -527,7 +535,7 @@ func step(dt: float, hour: float) -> void:
 	elif storm_eta_hours >= 0.0:
 		storm_eta_hours -= dt
 		if storm_eta_hours <= 0.0: start_storm()
-	elif random_storms and _rng.randf() < float(site.get("dust_storms_per_100_sols", 1.0)) / 100.0 / 24.0 * dt:
+	elif random_storms and not _storm_grace() and _rng.randf() < float(site.get("dust_storms_per_100_sols", 1.0)) / 100.0 / 24.0 * dt:
 		forecast_storm()
 	life.pre_step(dt, hour, inv)
 	if room_temp.size() != rooms.size(): _sync_room_temps(rooms, outside)

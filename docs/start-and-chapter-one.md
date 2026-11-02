@@ -262,11 +262,8 @@ Costs in feedstock and Earth parts don't change.
   - The heater example ("a 6-hour job … 30 kg") is replaced by the table in §13.4.
   - "One job at a time per fabricator" is now what the game does.
 
-### 13.7 Questions before building
+### 13.7 Decided (user, 2 Nov)
 
-1. **Storms in the first sols.** A 3-sol storm still freezes a base built only from the crates. Options:
-   - no storms before sol 15 (the forecast still teaches them);
-   - a Storm Shelter Locker and a Portable Heater in the crates;
-   - leave storms as they are.
-2. **Queue size:** 5 per printer?
-3. **Speed:** is an eighth of the old times right, or faster still? A Battery Bank would take 2 h of game time.
+1. **No storms before sol 15** under chapter rules. Forecasts can still mention storms building far off, but none reach the base until then.
+2. **Queue:** 5 per printer.
+3. **Speed:** an eighth of the old times, at least 5 minutes.

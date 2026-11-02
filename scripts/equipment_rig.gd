@@ -73,7 +73,7 @@ func _on(action: Dictionary) -> bool:
 	return bool(_state.get(str(action.get("state", "")), action.get("default", false)))
 
 func _level(action: Dictionary) -> int:
-	return clampi(int(_state.get(str(action.get("state", "")), 0)), 0, (action.get("levels", ["Off", "On"]) as Array).size() - 1)
+	return clampi(int(_state.get(str(action.get("state", "")), int(action.get("default", 0)))), 0, (action.get("levels", ["Off", "On"]) as Array).size() - 1)
 
 func _action_label(action: Dictionary) -> String:
 	var wear := _wear()
