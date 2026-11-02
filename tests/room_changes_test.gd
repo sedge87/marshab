@@ -57,7 +57,7 @@ func _initialize() -> void:
 
 	# ---- names and kit ----
 	_check(str(BuildController.ZONE_TYPES.living.label) == "Sleeping Quarters" and str(BuildController.ZONE_TYPES.galley.label) == "Day Room", "Living Quarters is Sleeping Quarters, the Galley the Day Room")
-	_check(str(BuildController.ZONE_TYPES.engineering.label) == "Workshop" and str(BuildController.ZONE_TYPES.storage.label) == "Storage & Recycling", "the Workshop, and Storage & Recycling")
+	_check(str(BuildController.ZONE_TYPES.engineering.label) == "Power & Engineering" and str(BuildController.ZONE_TYPES.storage.label) == "Storage & Recycling", "Power & Engineering, and Storage & Recycling")
 	_check(not MHMissions.zone_unlocked("waste_management"), "Waste Management is off the build menu")
 	_check(MHMissions.zone_unlocked("general"), "the General Module is on it in free play")
 	for id in ["crew_bunk", "galley_kitchenette", "hygiene_toilet", "air_recycler", "oxygen_generator", "tool_bench", "communications_station", "grow_tray", "battery_bank"]:

@@ -7,6 +7,6 @@
     {"id": "living", "lander": 2, "size": "small", "label": "Living", "contents": {"crew_bunk": 2, "galley_kitchenette": 1, "hygiene_toilet": 1, "hygiene_shower": 1, "waste_sorting_unit": 1, "cycle_ergometer": 1}},
     {"id": "work", "lander": 2, "size": "small", "label": "Work", "contents": {"tool_bench": 1, "fabricator": 1, "communications_station": 1}},
     {"id": "outside", "lander": 2, "size": "small", "label": "Outside", "contents": {"suit_rack": 1, "rover_charger": 1, "_hand_corer": 1}, "note": "The suit's rack, GAR-Y's dock and the sampling kit: a hand corer for ice, a scoop and a six-slot sample case."},
-    {"id": "fabricator_stock", "lander": 2, "size": "tall", "label": "Fabricator stock", "contents": {"_feedstock_kg": 1500, "_earth_parts": 60}, "note": "Polymer and metal powder, and the electronics, seals and sensors Mars can't make."}
+    {"id": "fabricator_stock", "lander": 2, "size": "tall", "label": "Print stock", "contents": {"_feedstock_kg": 1500, "_earth_parts": 60}, "note": "Polymer and metal powder, and the electronics, seals and sensors Mars can't make."}
   ]
 }

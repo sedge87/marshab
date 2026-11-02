@@ -1077,7 +1077,7 @@ func warnings() -> Array:
 	if float(lost.get("raw_l", 0.0)) > .5:
 		out.append({"level": "warn", "text": "Meltwater spilling: %s, so the ice drill's water is wasted." % ("the water processor can't keep up" if processing else "no water processor to clean it")})
 	if float(stores.waste_kg) >= waste.PILE_ALERT_KG:
-		out.append({"level": "info", "text": "Rubbish piling up (%d kg): a waste sorter sorts it, so recycling hoppers can turn the packaging into fabricator feedstock." % roundi(float(stores.waste_kg))})
+		out.append({"level": "info", "text": "Rubbish piling up (%d kg): a waste sorter sorts it, so recycling hoppers can turn the packaging into print feedstock." % roundi(float(stores.waste_kg))})
 	var crops: Dictionary = food.summary(inv)
 	if int(crops.ripe) > 0:
 		out.append({"level": "info", "text": "%d %s ripe: harvest %s (E) within %d sols, or a harvest cart in the room does it." % [int(crops.ripe), "trays are" if int(crops.ripe) > 1 else "tray is", "them" if int(crops.ripe) > 1 else "it", roundi(food.RIPE_SOLS)]})

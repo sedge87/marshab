@@ -32,7 +32,7 @@ const CHAINS := {
 		{"id": "galley_freezer", "gives": "keeps harvests 60 sols instead of 10"}]},
 	"waste": {"label": "Waste", "icon": "recycle", "links": [
 		{"id": "waste_sorting_unit", "core": true, "gives": "sorts the rubbish so it can be used"},
-		{"id": "recycling_hopper_plastics", "gives": "melts plastics into fabricator feedstock"},
+		{"id": "recycling_hopper_plastics", "gives": "melts plastics into print feedstock"},
 		{"id": "recycling_hopper_metals", "gives": "turns metals into feedstock"},
 		{"id": "compost_hopper", "gives": "turns food scraps into compost for the nutrient mixer"}]},
 }

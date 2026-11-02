@@ -75,7 +75,7 @@ static func from_messages(messages: Array, sol: int) -> void:
 	for message in messages:
 		var title := str(message.get("title", ""))
 		match str(message.get("id", "")):
-			"made": write("made", sol, {"what": title.trim_prefix("Fabricator: ").trim_suffix(" ready").to_lower()})
+			"made": write("made", sol, {"what": title.trim_prefix("Print Shop: ").trim_suffix(" printed").trim_suffix(" ready").to_lower()})
 			"step", "soil", "emergency_landed": write(str(message.id), sol, {"title": title})
 			"chapter_one":
 				write("chapter_one", sol)

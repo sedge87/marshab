@@ -113,7 +113,7 @@ const RULE_INFO := {
 	"food_water": ["Food and water", "Off: nobody needs to eat or drink; the food plans aren't needed.", []],
 	"suit_o2": ["Suit oxygen", "Your suit's air runs down outside.", []],
 	"harm": ["Shortages hurt", "Off: warnings only, nobody is hurt.", []],
-	"plans": ["Plans", "Earn the fabricator's plans, or know them all.", [["earned", "Earned"], ["all", "All known"]]],
+	"plans": ["Plans", "Earn the Print Shop's plans, or know them all.", [["earned", "Earned"], ["all", "All known"]]],
 	"stores": ["Starting stores", "How long the landed food, water and oxygen last.", [["90", "90 sols"], ["150", "150 sols"]]],
 	"cargo": ["Cargo", "The precursor crates, or unlimited building.", [["crates", "Crates"], ["unlimited", "Unlimited"]]],
 	"landing": ["Landing", "Where in the landing ellipse you touch down.", [["ellipse", "In the ellipse"], ["target", "On target"]]],

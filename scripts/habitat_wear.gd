@@ -94,7 +94,7 @@ func service(pid: String, id: String) -> Dictionary:
 	if sim.life.broken.has(pid): return {"title": "%s is broken" % name, "text": "The crew repair it with a spares kit and a few hours' work."}
 	var w := level(pid)
 	if w < SERVICE_FROM: return {"title": "%s: no need yet" % name, "text": "Wear %d %%. Service it from about %d %%, or a spares kit is wasted." % [roundi(w * 100.0), roundi(ROUND_FROM * 100.0)]}
-	if int(sim.life.spares) <= 0: return {"title": "No spares kit", "text": "The fabricator makes spares kits from feedstock."}
+	if int(sim.life.spares) <= 0: return {"title": "No spares kit", "text": "The Print Shop prints spares kits from feedstock."}
 	sim.life.spares = int(sim.life.spares) - 1
 	wear[pid] = 0.0
 	worn_h.erase(pid)

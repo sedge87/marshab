@@ -119,7 +119,7 @@ const ZONE_TYPES := {
 	"storage":{"label":"Storage & Recycling","colour":Color(.62,.46,.18),"cost":CELL_COST},
 	"hydroponics":{"label":"Hydroponics","colour":Color(.18,.62,.31),"cost":CELL_COST},
 	"life_support":{"label":"Life Support","colour":Color(.12,.63,.67),"cost":CELL_COST},
-	"engineering":{"label":"Workshop","colour":Color(.88,.30,.16),"cost":CELL_COST},
+	"engineering":{"label":"Power & Engineering","colour":Color(.88,.30,.16),"cost":CELL_COST},
 	"galley":{"label":"Day Room","colour":Color(.90,.53,.16),"cost":CELL_COST},
 	"hygiene":{"label":"Hygiene","colour":Color(.18,.56,.75),"cost":CELL_COST},
 	"medical":{"label":"Medical Bay","colour":Color(.78,.26,.34),"cost":CELL_COST},

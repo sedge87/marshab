@@ -267,7 +267,7 @@ func _life_alerts(s: RefCounted, inv: Dictionary, out: Array) -> void:
 		var names: Array = life.broken_labels()
 		var down: bool = not (life.down_hours as Dictionary).is_empty()
 		out.append({"id": "breakdown", "level": "critical" if down else "warning", "title": "%s broken" % str(names[0]) + (" (+%d more)" % (names.size() - 1) if names.size() > 1 else ""),
-			"text": ("Being repaired: %s left." % _hours(float(life.repair_left)) if not str(life.repairing).is_empty() else "No spares kit to repair it! The fabricator makes them from feedstock.") + (" A whole system is down." if down else " A second unit is keeping things going."),
+			"text": ("Being repaired: %s left." % _hours(float(life.repair_left)) if not str(life.repairing).is_empty() else "No spares kit to repair it! The Print Shop prints them from feedstock.") + (" A whole system is down." if down else " A second unit is keeping things going."),
 			"chain": [["wrench", "%d broken" % names.size(), false], ["package", "%d spares left" % int(life.spares), int(life.spares) == 0], ["heart-pulse", "Crew" if down else "Redundancy", down]]})
 	# Wear (habitat_wear.gd): the most worn machine still running.
 	var due: Array = s.wear.rounds(inv).filter(func(r): return not bool(r.broken) and float(r.wear) >= s.wear.ALERT_FROM)
@@ -326,7 +326,7 @@ const EXPLAIN := {
 	"breach": "Hatches seal automatically, so only the rooms joined to the breached one without a hatch lose their air. Then a patch kit seals the hole.",
 	"repress": "Once the hole is patched, stored air from the air reserve racks refills the empty rooms.",
 	"bunks": "Earth's crew land whether or not the base is ready. Each person needs a sleep station.",
-	"worn": "Filters clog, brine bags fill and catalysts tire. Servicing a machine by hand takes a spares kit, which the fabricator makes from feedstock. Left fully worn for two sols, a machine breaks.",
+	"worn": "Filters clog, brine bags fill and catalysts tire. Servicing a machine by hand takes a spares kit, which the Print Shop prints from feedstock. Left fully worn for two sols, a machine breaks.",
 	"breakdown": "Machines wear out. Each repair uses a spare part. Having two of every life-critical machine (redundancy) keeps the crew safe while one is fixed.",
 	"blackout": "Every two years Mars passes behind the Sun from Earth, and for about two weeks no messages get through. Crews have to manage on their own.",
 	"injury": "With Earth up to 24 minutes away by message, the crew's doctor treats injuries here, in the Medical Bay.",

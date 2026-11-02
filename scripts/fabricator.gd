@@ -45,7 +45,7 @@ func _box(node_name: String, size: Vector3, at: Vector3, role: String) -> MeshIn
 
 func interaction_prompt() -> Dictionary:
 	var job := MHChapterOne.job
-	return {"primary": "Open the fabricator", "label": "Fabricator" + ("" if job.is_empty() else " · making %s" % MHChapterOne.label(str(job.id)))}
+	return {"primary": "Open the Print Shop", "label": "Print Shop" + ("" if job.is_empty() else " · printing %s" % MHChapterOne.label(str(job.id)))}
 
 func interact(_actor: Node = null) -> bool:
 	get_tree().call_group("habitat_world", "open_fabricator")

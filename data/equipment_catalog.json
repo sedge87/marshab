@@ -73,7 +73,7 @@
     },
     {
       "id": "power",
-      "label": "Workshop & Power",
+      "label": "Power & Engineering",
       "icon": "zap"
     },
     {
@@ -804,7 +804,7 @@
     },
     {
       "id": "tool_bench",
-      "label": "Workshop Bench",
+      "label": "Engineering Bench",
       "group": "storage",
       "status": "future",
       "icon": "hammer",
@@ -3458,7 +3458,7 @@
     },
     {
       "id": "fabricator",
-      "label": "Fabricator",
+      "label": "Print Shop",
       "group": "storage",
       "pack": "mars_fabrication_v1",
       "status": "catalogue",
@@ -3485,7 +3485,7 @@
         1.46,
         0.93
       ],
-      "system_note": "Shipping every spare from Earth takes months. A fabricator turns a plan, some feedstock and a few Earth-made parts into equipment here; recycling tops the feedstock up. It works best in the Workshop (75 % speed in the General Module).",
+      "system_note": "Shipping every spare from Earth takes months. A Print Shop turns a plan, some feedstock and a few Earth-made parts into equipment here; recycling tops the feedstock up. It works best in Power & Engineering (75 % speed in the General Module).",
       "system_links": [
         "Plans",
         "Recycling",

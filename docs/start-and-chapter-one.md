@@ -54,6 +54,8 @@ So in Survival a new room costs printed material, and new equipment costs a plan
 
 ## 4. The fabricator and plans
 
+> **Renamed 2 Nov: the Print Shop.** Players never see "fabricator" now (it read as a Subnautica copy). The name follows NASA's 3D-printed habitat work (ICON, the CHAPEA analog) and the ISS's Additive Manufacturing Facility: you *print* equipment from plans with print feedstock. The code ids stay `fabricator`. Its room, the old Workshop, is now **Power & Engineering**, and the Workshop Bench is the **Engineering Bench**. The screen: search, a **Needed now** strip (plans the chapter steps just unlocked, and spares kits while machines are worn), then cards in tabs by purpose (Water, Air, Food, Power, Outside, Crew, Safety, Work, Upkeep, Decor), each showing its cost and whether it's ready, short of stock or printed.
+
 ### The fabricator
 
 - **A new piece of equipment:** a bench-sized machine with a build chamber behind a window, a filament or powder hopper and a small working display (the one screen that shows text: the job's progress). It's in the precursor crates.

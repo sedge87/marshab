@@ -268,7 +268,7 @@ static func item_reason(id: String, builder: Object) -> String:
 	settle(builder)
 	if available(id, builder) > 0: return ""
 	if not plan_known(id): return plan_hint(id)
-	if not made.has(id): return "Make the first one at the fabricator"
+	if not made.has(id): return "Print the first one at the Print Shop"
 	var cost := plan_cost(id)
 	if feedstock_kg < float(cost.feedstock_kg) - .001: return "Needs %s feedstock (you have %s)" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), MHStyle.kg(floori(feedstock_kg))]
 	if earth_parts < int(cost.earth_parts): return "Needs %d Earth part%s (you have %d)" % [int(cost.earth_parts), "" if int(cost.earth_parts) == 1 else "s", earth_parts]
@@ -315,7 +315,7 @@ static func plan_hint(id: String) -> String:
 			"oxygen": "Plan: make enough water to split", "food": "Plan: wash regolith of perchlorate"}.get(after, "Plan: a discovery")
 	match after:
 		"first_walk": return "Plan: Mission Control sends it after your first walk outside"
-		"first_job": return "Plan: Mission Control sends it after your first fabricator job"
+		"first_job": return "Plan: Mission Control sends it after your first print job"
 	if after.begins_with("sol_"): return "Plan: Mission Control sends it on sol %s" % after.trim_prefix("sol_")
 	return "Plan: Mission Control will send it"
 
@@ -367,9 +367,9 @@ static func fabricator_speed(builder: Object) -> float:
 	return best
 
 static func job_reason(id: String, builder: Object) -> String:
-	if fabricators(builder).is_empty(): return "Place the fabricator first"
+	if fabricators(builder).is_empty(): return "Place the Print Shop first"
 	if made.has(id) and id != SPARES_KIT: return "Already made: place it from the build bar"
-	if not job.is_empty(): return "The fabricator is busy"
+	if not job.is_empty(): return "The Print Shop is busy"
 	if not plan_known(id) and id != SPARES_KIT: return plan_hint(id)
 	var cost := plan_cost(id)
 	if feedstock_kg < float(cost.feedstock_kg): return "Not enough feedstock"
@@ -475,11 +475,11 @@ static func tick(hours: float, builder: Object) -> Array:
 				if id == SPARES_KIT:
 					var life: Object = sim.get("life")
 					life.set("spares", int(life.get("spares")) + KITS_PER_JOB)
-					out.append({"id": "made", "title": "Fabricator: %d spares kits made" % KITS_PER_JOB, "text": "%d on the shelf. Each one services a worn machine or repairs a broken one." % int(life.get("spares")), "tone": "valid"})
+					out.append({"id": "made", "title": "Print Shop: %d spares kits printed" % KITS_PER_JOB, "text": "%d on the shelf. Each one services a worn machine or repairs a broken one." % int(life.get("spares")), "tone": "valid"})
 				else:
 					stock[id] = int(stock.get(id, 0)) + 1
 					made[id] = true
-					out.append({"id": "made", "title": "Fabricator: %s made" % label(id), "text": "It's on the build bar's Unpacked tab now: place as many as your stores allow.", "tone": "valid"})
+					out.append({"id": "made", "title": "Print Shop: %s printed" % label(id), "text": "It's on the build bar's Unpacked tab now: place as many as your stores allow.", "tone": "valid"})
 				for learned in learn_after("first_job"): out.append(_plan_message(learned))
 	# Recycling tops the feedstock up from what the crew throw away (habitat_waste.gd).
 	# Plans Mission Control sends on a given sol.
@@ -493,7 +493,7 @@ static func tick(hours: float, builder: Object) -> Array:
 	return out
 
 static func _plan_message(id: String) -> Dictionary:
-	return {"id": "plan", "title": "New plan: %s" % label(id), "text": "Mission Control sent the plan. Make the first one at the fabricator.", "tone": "info"}
+	return {"id": "plan", "title": "New plan: %s" % label(id), "text": "Mission Control sent the plan. Print the first one at the Print Shop.", "tone": "info"}
 
 static func _count(builder: Object, kind: String) -> int:
 	return (builder.get("zones") as Array).filter(func(z): return str(z.get("kind", "")) == kind).size()
@@ -518,7 +518,7 @@ static func _check_steps(builder: Object, sim: Object, last: Dictionary, hours: 
 	var o2_need := crew * MHResources.setting("o2_per_person", .84)
 	if known.has("oxygen_generator") and not steps.has("oxygen") and crew > 0.0 and float(last.get("o2_in", 0.0)) >= o2_need - .01:
 		steps["oxygen"] = now
-		out.append({"id": "step", "title": "Oxygen self-sufficient", "text": "The generator covers the crew's breathing. Last: food. Take a core on surveyed ground to bag some regolith, then wash it at the Workshop Bench.", "tone": "valid"})
+		out.append({"id": "step", "title": "Oxygen self-sufficient", "text": "The generator covers the crew's breathing. Last: food. Take a core on surveyed ground to bag some regolith, then wash it at the Engineering Bench.", "tone": "valid"})
 	# 4. Food: the test seed in washed regolith comes up (see bench_use()).
 	if soil == "potted" and not known.has("grow_tray") and now - soil_potted_at >= SOIL_TEST_HOURS:
 		learn_after("food")
@@ -550,7 +550,7 @@ static func soil_due() -> bool:
 static func bag_soil() -> Array:
 	if not soil_due() or not soil.is_empty(): return []
 	soil = "bagged"
-	return [{"id": "soil", "title": "Regolith sample bagged", "text": "Take it to the Workshop Bench and wash the perchlorate out (E there).", "tone": "info"}]
+	return [{"id": "soil", "title": "Regolith sample bagged", "text": "Take it to the Engineering Bench and wash the perchlorate out (E there).", "tone": "info"}]
 
 ## What E does at the Workshop Bench for the food step, or "".
 static func bench_action() -> String:
@@ -584,7 +584,7 @@ static func ice_found(now: float) -> Array:
 	if steps.has("ice"): return []
 	steps["ice"] = now
 	learn_after("ice")
-	return [{"id": "step", "title": "Water ice confirmed", "text": "A good core. Plan: Ice Extractor. Make it at the fabricator and place it where the core was richest.", "tone": "valid"},
+	return [{"id": "step", "title": "Water ice confirmed", "text": "A good core. Plan: Ice Extractor. Print it at the Print Shop and place it where the core was richest.", "tone": "valid"},
 		{"id": "rover", "title": "The crew rover is on its way", "text": "Mission Control: it lands with the next cargo and waits in your vehicle bay once you build one.", "tone": "info"}]
 
 ## The soft net (question 3): no game over from the stores alone.

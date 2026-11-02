@@ -82,8 +82,8 @@
         },
         {
           "id": "engineering",
-          "text": "Build a Workshop",
-          "how": "Rooms tab: drag out a Workshop. It's where the batteries live.",
+          "text": "Build Power & Engineering",
+          "how": "Rooms tab: drag out Power & Engineering. It's where the batteries live.",
           "check": "zone",
           "kind": "engineering",
           "marker": "base"
@@ -166,7 +166,7 @@
       ],
       "hints": [
         "Press B to open the site plan. Power is under Resources.",
-        "A Workshop holds the batteries. Give it an airlock, walk in and press B to furnish it.",
+        "Power & Engineering holds the batteries. Give it an airlock, walk in and press B to furnish it.",
         "Solar arrays only work by day. Batteries carry the drills through the night.",
         "Pale blue ground has the most ice. Hold G near GAR-Y and choose Survey there: it flags rich ice for your drills.",
         "Press T to test your design: it fast-forwards 5 sols, including the storm."
@@ -218,7 +218,7 @@
         {
           "id": "life_support",
           "text": "Build a Life Support room",
-          "how": "Site plan, Rooms tab: drag out Life Support next to your Workshop, so they share a wall.",
+          "how": "Site plan, Rooms tab: drag out Life Support next to Power & Engineering, so they share a wall.",
           "check": "zone",
           "kind": "life_support",
           "marker": "base"
@@ -291,7 +291,7 @@
         }
       ],
       "hints": [
-        "Life Support holds the machines that keep everyone alive. Put it next to the Workshop.",
+        "Life Support holds the machines that keep everyone alive. Put it next to Power & Engineering.",
         "Rooms lose heat through their outside walls and windows. Compact bases stay warmer.",
         "The thermal control unit heats every connected room. A wall heater can top up a cold one.",
         "Press T to test: 10 sols, every night included."
@@ -851,7 +851,7 @@
       "hints": [
         "Fitness falls a little every sol in Mars gravity. Powered exercise stations bring it back up.",
         "Each person has a favourite thing (it's on the Crew screen). Having it in the base cheers them up.",
-        "Noise matters: bunks next to a Workshop or Life Support sleep badly.",
+        "Noise matters: bunks next to Power & Engineering or Life Support sleep badly.",
         "Everyone has a job, and a room to do it in. Someone without their work room loses heart.",
         "Injured crew can't work. The others cover, so work slows down until they recover."
       ],

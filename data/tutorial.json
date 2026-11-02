@@ -347,8 +347,8 @@
       "id": "fabricator",
       "goal": "home",
       "rules": "chapter",
-      "text": "Place the fabricator",
-      "how": "In the General Module press B and open the Unpacked tab. Place the Fabricator: it makes equipment from plans, with feedstock and Earth parts. It works faster in a Workshop.",
+      "text": "Place the Print Shop",
+      "how": "In the General Module press B and open the Unpacked tab. Place the Print Shop: it prints equipment from plans, with feedstock and Earth parts. It works faster in Power & Engineering.",
       "keys": [
         [
           [
@@ -378,14 +378,14 @@
       "id": "fab_job",
       "goal": "home",
       "rules": "chapter",
-      "text": "Start a fabricator job",
-      "how": "Press E on the fabricator, pick a plan and start the job. It runs on the base's power for a few game hours, then the item waits on the Unpacked tab.",
+      "text": "Start a print job",
+      "how": "Press E on the Print Shop, pick a plan and start printing. It runs on the base's power for a few game hours, then the item waits on the Unpacked tab.",
       "keys": [
         [
           [
             "E"
           ],
-          "Open the fabricator"
+          "Open the Print Shop"
         ]
       ],
       "check": {
@@ -520,13 +520,13 @@
       "goal": "self_sufficient",
       "rules": "chapter",
       "text": "Make your own water",
-      "how": "Make an Ice Extractor at the fabricator and place it where the core was richest. Once its meltwater is tested, add a Water Processor.",
+      "how": "Print an Ice Extractor at the Print Shop and place it where the core was richest. Once its meltwater is tested, add a Water Processor.",
       "keys": [
         [
           [
             "E"
           ],
-          "Fabricator"
+          "Print Shop"
         ],
         [
           [
@@ -551,7 +551,7 @@
           [
             "E"
           ],
-          "Fabricator"
+          "Print Shop"
         ],
         [
           [
@@ -571,13 +571,13 @@
       "needs_food": true,
       "rules": "chapter",
       "text": "Grow your own food",
-      "how": "A core on surveyed ground bags some regolith. Wash it at the Workshop Bench and plant the test seed there. When it comes up, make grow trays.",
+      "how": "A core on surveyed ground bags some regolith. Wash it at the Engineering Bench and plant the test seed there. When it comes up, make grow trays.",
       "keys": [
         [
           [
             "E"
           ],
-          "Workshop Bench"
+          "Engineering Bench"
         ]
       ],
       "check": {

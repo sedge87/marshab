@@ -3,7 +3,7 @@
   "events": {
     "landed": {"once": true, "lines": ["We're down. The lander's quiet now, and outside it's nothing but {where} in every direction.", "Touchdown. I keep looking out of the port at {where}: it's ours now.", "Landed. The cargo's out there waiting, and the ground is the colour of rust."]},
     "first_walk": {"once": true, "lines": ["First walk outside. The suit's heavy, the sky's butterscotch, and the silence is total.", "Stepped out for the first time today. My footprints are the only ones for a very long way.", "Out of the airlock at last. I stood there for a minute just looking."]},
-    "made": {"lines": ["The fabricator finished the {what}.", "One more thing made here, not shipped: the {what}.", "Printed the {what} today. It still smells of warm polymer."]},
+    "made": {"lines": ["The Print Shop finished printing the {what}.", "One more thing made here, not shipped: the {what}.", "Printed the {what} today. It still smells of warm polymer."]},
     "step": {"lines": ["{title}. A good day.", "{title}. One less thing Earth has to send us.", "{title}. I wrote it twice to be sure."]},
     "chapter_one": {"once": true, "lines": ["We're self-sufficient: water, air and food, all made here. Mission Control went quiet for a while, then cheered."]},
     "soil": {"lines": ["{title}.", "Worked on the soil: {title}."]},

@@ -709,14 +709,14 @@
       "lines": [
         "Packaging, trash and the toilet all make rubbish. On its own it just piles up.",
         "A waste sorter splits it into plastics, metals and organics.",
-        "Recycling hoppers turn plastics and metals into feedstock for the fabricator.",
+        "Recycling hoppers turn plastics and metals into print feedstock for the Print Shop.",
         "The compost hopper turns food scraps into compost, which feeds the food chain."
       ],
       "remember": "Rubbish is a resource once it is sorted.",
       "check": {
         "question": "What do the recycling hoppers make?",
         "options": [
-          "Feedstock for the fabricator",
+          "Print feedstock for the Print Shop",
           "Oxygen",
           "Water"
         ],

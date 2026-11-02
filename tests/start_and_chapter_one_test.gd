@@ -49,7 +49,7 @@ func _initialize() -> void:
 	# ---- unpacking ----
 	var b := _builder()
 	b.zones.append({"kind": "general", "cells": _block(0, 0, 3, 3), "door_direction": Vector2i(0, -1), "cost": 0})
-	_check(MHChapterOne.item_reason("crew_bunk", b) == "Make the first one at the fabricator", "a bunk needs stock before the crates are unpacked (%s)" % MHChapterOne.item_reason("crew_bunk", b))
+	_check(MHChapterOne.item_reason("crew_bunk", b) == "Print the first one at the Print Shop", "a bunk needs stock before the crates are unpacked (%s)" % MHChapterOne.item_reason("crew_bunk", b))
 	for crate in MHChapterOne.crates(): _check(MHChapterOne.unpack(str(crate.id)), "unpacks %s" % crate.id)
 	_check(not MHChapterOne.unpack("shells"), "a crate unpacks once")
 	_check(MHChapterOne.crates_left() == 0, "all crates unpacked")
@@ -59,7 +59,7 @@ func _initialize() -> void:
 	_check(MHChapterOne.item_reason("crew_bunk", b).is_empty(), "an unpacked bunk can be placed")
 	_check(b.earth_cost(100, false) == 0 and b.earth_cost(100, true) == 100, "equipment costs no Earth cargo; printable things still do")
 	_add(b, "crew_bunk"); _add(b, "crew_bunk")
-	_check(MHChapterOne.available("crew_bunk", b) == 0 and MHChapterOne.item_reason("crew_bunk", b) == "Make the first one at the fabricator", "both bunks placed: crate copies don't make the plan")
+	_check(MHChapterOne.available("crew_bunk", b) == 0 and MHChapterOne.item_reason("crew_bunk", b) == "Print the first one at the Print Shop", "both bunks placed: crate copies don't make the plan")
 	_check(MHChapterOne.ready_to_place(b).has("fabricator") and not MHChapterOne.ready_to_place(b).has("crew_bunk"), "the Unpacked list follows what's placed")
 	_check(MHChapterOne.zone_reason("airlock", b).is_empty() and MHChapterOne.zone_reason("ice_extractor", b).begins_with("Plan:"), "an airlock is unpacked; the ice extractor needs its plan")
 
@@ -69,12 +69,12 @@ func _initialize() -> void:
 	_check(not MHChapterOne.fabricable().has("ice_drill") and MHChapterOne.fabricable().has("crew_bunk"), "the fabricator lists known plans only")
 
 	# ---- a fabricator job ----
-	_check(MHChapterOne.job_reason("crew_bunk", b) == "Place the fabricator first", "no job without a fabricator")
+	_check(MHChapterOne.job_reason("crew_bunk", b) == "Place the Print Shop first", "no job without a fabricator")
 	_add(b, "fabricator", Vector2i(1, 1))
 	_check(is_equal_approx(MHChapterOne.fabricator_speed(b), .75), "the General Module runs it at 75 %")
 	var cost := MHChapterOne.plan_cost("crew_bunk")
 	_check(MHChapterOne.start_job("crew_bunk", b).is_empty(), "a job starts")
-	_check(MHChapterOne.start_job("crew_bunk", b) == "The fabricator is busy", "one job at a time")
+	_check(MHChapterOne.start_job("crew_bunk", b) == "The Print Shop is busy", "one job at a time")
 	_check(is_equal_approx(MHChapterOne.feedstock_kg, 1500.0 - float(cost.feedstock_kg)), "the job takes its feedstock")
 	b.simulation().last = {"generation_kw": 5.0, "crew": 0}
 	MHChapterOne.tick(float(cost.hours) / .75 + .1, b)
