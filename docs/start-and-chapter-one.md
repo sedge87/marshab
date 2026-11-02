@@ -179,3 +179,94 @@ A save from before step 4 loads **as already supplied:** every plan known, no cr
   - GAR-Y's core shows as a tube in its rack; the crew rover gets a sample drawer with visible slots;
   - back at base, the lab bench (or the terminal until there's a lab) and the journal keep the record;
   - the suit rack shows the EVA kit hanging on it (corer, bags, case): you take what you need before going out.
+
+## 13. Rework after the 2 Nov playtest (design: check before building)
+
+*From a chapter-one playtest, 2 Nov 2026. Decided with the user: the TCU comes in a crate, story plans arrive printed, printing takes minutes instead of hours, each Print Shop runs its own job with a queue, and the Print Shop draws power only while printing. Where this section disagrees with §2 and §4, this section wins.*
+
+**What went wrong.** The player couldn't heat the habitat without printing. No crate holds any heat, and the only heater that can warm a module (the Thermal Control Unit) took about 13 hours to print in the General Module. Printing felt far too slow overall (1–20 game-hours a job). Only one job ran in the whole base, so a second Print Shop added nothing. And a plan the story handed you still had to be printed in full.
+
+### 13.1 The principle: land with enough to stay out of danger
+
+**The landed kit keeps the crew out of critical condition until they're self-sufficient.** Agencies wouldn't land a crew who'd freeze on the first night. The landed stores are the clock: 90 sols in Survival, 150 in Freedom. Printing and the four steps (§5) are how you get **better and independent**, not how you **stay alive** in the first sols.
+
+### 13.2 Survival audit of the crate kit
+
+The habitat sim was run with every crate item placed in a 3×3 General Module plus an airlock and the two solar arrays. It used chapter rules, Aeolis Reach (the region), a solo first crew and 10 sols with no random storms (the audit script is kept out of the repo).
+
+| Kit | Coldest | Battery low | O₂ / CO₂ | Crew |
+|---|---|---|---|---|
+| Crates as they are | **−9 °C** | 32 % | 20.5 % / 0.04 % | **Evacuated** (cold) |
+| + Thermal Control Unit | 20.6 °C | **11 %** each night | 20.5 % / 0.09 % | Fine |
+| + TCU and a 2nd Battery Bank | 20.6 °C | 55 % | 20.5 % / 0.09 % | Fine |
+| + TCU and 2 batteries, 3-sol dust storm | **−19 °C** | 0 % | fine | Lives (health back to 100 after) |
+
+**Air, water and food** are fine from the landed stores and the Air Recycler. O₂ reserve, water and food all last well past 10 sols. **Pressure and radiation** aren't threatened at the start.
+
+**So the kit gains:**
+- **A Thermal Control Unit** in the Life support crate. It runs as soon as it's placed.
+- **A second Battery Bank** in the Power crate. With one, the TCU drains it to 11 % every night, so any extra load or a dusty day blacks the base out.
+
+**Dust storms** still beat the starting kit. A 3-sol storm empties the batteries and the habitat freezes. That's the storm's job (forecast, shelter, shed load), but see question 1 below.
+
+### 13.3 Story plans arrive printed
+
+When the story hands you a plan, **its first copy is ready on the build bar at once**, free. This covers:
+- sent plans: first walk, sol 10, sol 30, first job
+- discovered plans: ice, water, oxygen, food
+- plans from Discoveries
+
+The notice reads "New plan: Ice Extractor. One is ready on the build bar." Plans known from the start (the "brought" ones) still print normally. **Old saves:** a plan learned but never made gets its copy when the game loads.
+
+### 13.4 Printing takes minutes, not hours
+
+A job is a short wait, not an overnight one. Feedstock and Earth parts are the real limits. The General Module still prints at 75 %.
+
+**The rule:** every print takes **an eighth of its old time, at least 5 minutes**. That applies to the times in `data/plans.json` and to the mass formula for everything else. The longest print (the Compact Reactor) is 2½ h; most are under 1½ h.
+
+| Item | Was | Now |
+|---|---|---|
+| Wall Cabin / Portable Heater | 1 h | 8 min |
+| Spares kits (×2) | 2 h | 15 min |
+| Sleep Station, Utility Rack | 3–4 h | 25–30 min |
+| Grow Tray, Large Planter, Methane Tank | 4 h | 30 min |
+| Urine Processor, Sabatier Reactor, Solar Array | 8 h | 1 h |
+| Air Recycler, TCU, Water Processor, Oxygen Generator | 10 h | 1 h 15 min |
+| Ice Extractor, Regolith Intake | 12 h | 1 h 30 min |
+| Battery Bank, Atmosphere Processor | 16 h | 2 h |
+| Regolith Printer | 18 h | 2 h 15 min |
+| Airlock, Print Shop, Compact Reactor | 20 h | 2 h 30 min |
+
+Costs in feedstock and Earth parts don't change.
+
+### 13.5 One job per printer, with a queue
+
+- **Each Print Shop runs its own job.** Two Print Shops print two things at once, each at its own room's speed. A second Print Shop is a "brought" plan, so you can print one.
+- **A queue of up to 5 per printer.**
+  - Add a plan and it waits its turn.
+  - Its feedstock and Earth parts are taken **when it starts**, not when queued.
+  - An item that can't be paid for when its turn comes waits at the front with "Waiting for feedstock".
+  - Removing an item from the queue costs nothing. Cancelling the running job refunds it in full.
+  - Spares kits can be queued as often as you like.
+- **Which printer:** E on a Print Shop opens *its* screen. You see its current job and its queue, and can add or remove items. The Needed now strip, the search and the tabs stay as they are.
+- **The same plan on two printers** is allowed only for spares kits. A plan's first copy is made once (the plan-once rule, §4), so a plan already printing or queued anywhere shows "Printing at the other Print Shop".
+- **Removing a Print Shop** refunds what it was printing and drops its queue.
+- **Saving:** each printer's job and queue are saved with it. Old saves move their single job to the first Print Shop.
+- **Power:** a Print Shop draws 1.2 kW **only while it's printing**. Before, it drew an average 0.4 kW whether printing or not.
+
+### 13.6 Also
+
+- **Heaters you print** (Wall Cabin, Portable) are placed on Low, not Off.
+- **The tutorial** under chapter rules gains "Place the Thermal Control Unit", after placing the General Module.
+- **Corrections to §4 above:**
+  - The heater example ("a 6-hour job … 30 kg") is replaced by the table in §13.4.
+  - "One job at a time per fabricator" is now what the game does.
+
+### 13.7 Questions before building
+
+1. **Storms in the first sols.** A 3-sol storm still freezes a base built only from the crates. Options:
+   - no storms before sol 15 (the forecast still teaches them);
+   - a Storm Shelter Locker and a Portable Heater in the crates;
+   - leave storms as they are.
+2. **Queue size:** 5 per printer?
+3. **Speed:** is an eighth of the old times right, or faster still? A Battery Bank would take 2 h of game time.
