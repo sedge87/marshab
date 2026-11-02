@@ -54,7 +54,7 @@ func _initialize() -> void:
 	_check(not MHChapterOne.unpack("shells"), "a crate unpacks once")
 	_check(MHChapterOne.crates_left() == 0, "all crates unpacked")
 	_check(MHGame.cargo_budget() == 12000, "the hull kit is the Earth budget (%d)" % MHGame.cargo_budget())
-	_check(MHChapterOne.has_corer and MHChapterOne.earth_parts == 60 and is_equal_approx(MHChapterOne.feedstock_kg, 1500.0), "corer, Earth parts and feedstock unpacked")
+	_check(MHChapterOne.has_corer and is_equal_approx(MHChapterOne.feedstock_kg, 3000.0), "corer and feedstock unpacked")
 	_check(MHChapterOne.available("crew_bunk", b) == 2, "two sleep stations ready")
 	_check(MHChapterOne.item_reason("crew_bunk", b).is_empty(), "an unpacked bunk can be placed")
 	_check(b.earth_cost(100, false) == 0 and b.earth_cost(100, true) == 100, "equipment costs no Earth cargo; printable things still do")
@@ -80,7 +80,7 @@ func _initialize() -> void:
 	MHChapterOne.unqueue(printer, 0)
 	_check((MHChapterOne.printer_work(printer).queue as Array).is_empty(), "a queued plan comes off for nothing")
 	_check(float(cost.hours) <= .5, "a sleep station prints in minutes (%.2f h)" % float(cost.hours))
-	_check(is_equal_approx(MHChapterOne.feedstock_kg, 1500.0 - float(cost.feedstock_kg)), "the job takes its feedstock")
+	_check(is_equal_approx(MHChapterOne.feedstock_kg, 3000.0 - float(cost.feedstock_kg)), "the job takes its feedstock")
 	b.simulation().last = {"generation_kw": 5.0, "crew": 0}
 	MHChapterOne.tick(float(cost.hours) / .75 + .1, b)
 	_check(not MHChapterOne.printing() and MHChapterOne.available("crew_bunk", b) == 1, "the bunk is made and ready to place")
@@ -91,16 +91,15 @@ func _initialize() -> void:
 	# ---- copies after the first: paid as they're placed ----
 	_add(b, "crew_bunk")
 	var before := MHChapterOne.feedstock_kg
-	var parts_before := MHChapterOne.earth_parts
 	_check(MHChapterOne.available("crew_bunk", b) == 0 and MHChapterOne.item_reason("crew_bunk", b).is_empty(), "with the first one placed, another can still go down")
 	_check(is_equal_approx(MHChapterOne.feedstock_kg, before), "placing the free copy costs nothing")
-	_check(MHChapterOne.on_build_bar(b).has("crew_bunk") and MHChapterOne.card_line("crew_bunk", b).contains("part"), "the card shows the per-copy cost (%s)" % MHChapterOne.card_line("crew_bunk", b))
+	_check(MHChapterOne.on_build_bar(b).has("crew_bunk") and MHChapterOne.card_line("crew_bunk", b).ends_with("kg"), "the card shows the per-copy cost (%s)" % MHChapterOne.card_line("crew_bunk", b))
 	_add(b, "crew_bunk")
 	MHChapterOne.settle(b)
-	_check(is_equal_approx(MHChapterOne.feedstock_kg, before - float(cost.feedstock_kg)) and MHChapterOne.earth_parts == parts_before - int(cost.earth_parts), "an extra copy takes its feedstock and Earth parts")
+	_check(is_equal_approx(MHChapterOne.feedstock_kg, before - float(cost.feedstock_kg)), "an extra copy takes its feedstock")
 	b.placed_interior.pop_back()
 	MHChapterOne.settle(b)
-	_check(is_equal_approx(MHChapterOne.feedstock_kg, before) and MHChapterOne.earth_parts == parts_before, "removing it gives them back")
+	_check(is_equal_approx(MHChapterOne.feedstock_kg, before), "removing it gives it back")
 	var keep_feed := MHChapterOne.feedstock_kg
 	MHChapterOne.feedstock_kg = 1.0
 	_check(MHChapterOne.item_reason("crew_bunk", b).begins_with("Needs"), "short of feedstock, it says what's missing (%s)" % MHChapterOne.item_reason("crew_bunk", b))
@@ -109,6 +108,14 @@ func _initialize() -> void:
 	old_save.erase("made")
 	MHChapterOne.load_state(old_save, true)
 	_check(MHChapterOne.made.has("crew_bunk") and not MHChapterOne.made.has("fabricator"), "an older save counts what the fabricator made, not crate copies")
+	var parts_save := MHChapterOne.export_state()
+	parts_save["earth_parts"] = 12
+	MHChapterOne.load_state(parts_save, true)
+	_check(is_equal_approx(MHChapterOne.feedstock_kg, keep_feed + MHChapterOne.OLD_SAVE_TOP_UP), "a save from when printing took Earth parts gets the bigger crate's feedstock")
+	MHChapterOne.feedstock_kg = keep_feed
+	# Feedstock from Mars: a running regolith intake makes it.
+	var intake_sim: RefCounted = b.simulation()
+	_check(is_equal_approx(intake_sim.feedstock_rate({"intakes": 2}), 120.0) and intake_sim.feedstock_rate({"intakes": 0}) == 0.0, "each running regolith intake makes 60 kg of feedstock a sol")
 
 	# ---- stores ----
 	var sim: RefCounted = b.simulation()

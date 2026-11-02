@@ -14,7 +14,7 @@ extends RefCounted
 ## rules. Crate copies are free to place (stock, less what's placed, so
 ## removing something puts it back). The fabricator makes the plan: its first
 ## job makes one copy and puts the item on the build bar for good; after that
-## each extra copy takes its feedstock and Earth parts as it's placed, and
+## each extra copy takes its feedstock as it's placed, and
 ## gives them back when it's removed (settle()). The Earth budget is only the
 ## hull kit from the shells crate, which printable shells, windows and
 ## partitions use after any printed material.
@@ -30,7 +30,11 @@ const STEPS := ["ice", "water", "oxygen", "food"]
 ## (habitat_wear.gd). Always known; each job makes KITS_PER_JOB.
 const SPARES_KIT := "spares_kit"
 const KITS_PER_JOB := 2
-const KIT_COST := {"feedstock_kg": 12.0, "earth_parts": 0, "hours": 2.0}
+const KIT_COST := {"feedstock_kg": 12.0, "hours": 2.0}
+## Feedstock is the one thing printing uses (playtest, 2 Nov: Earth parts are
+## gone). Besides the crate and recycling, a running regolith intake makes it,
+## and each wave of crew lands with more (data/resources.json).
+const OLD_SAVE_TOP_UP := 1500.0
 ## Prints take an eighth of the plan's time, at least five minutes (§13.4).
 const PRINT_PACE := .125
 const MIN_PRINT_HOURS := 5.0 / 60.0
@@ -58,7 +62,6 @@ static var unpacked: Dictionary = {}     # crate id -> true
 static var stock: Dictionary = {}        # id -> count landed or made (placed ones included)
 static var shell_kg := 0
 static var feedstock_kg := 0.0
-static var earth_parts := 0
 static var known: Dictionary = {}        # plan id -> how it came ("sent", "discovered")
 ## Each Print Shop's work (docs/start-and-chapter-one.md §13.5): placement id
 ## -> {current: {id, hours_left, hours} or {}, queue: [plan ids]}.
@@ -93,7 +96,7 @@ static func new_rules() -> bool:
 ## A new game: the crates are all still packed.
 static func reset() -> void:
 	older_rules = false
-	unpacked = {}; stock = {}; shell_kg = 0; feedstock_kg = 0.0; earth_parts = 0
+	unpacked = {}; stock = {}; shell_kg = 0; feedstock_kg = 0.0
 	known = {}; jobs = {}; made = {}; paid = {}; has_corer = false; cores = []; steps = {}; finished_at = -1.0
 	stores_landed = false; reserve_used = false; emergency_eta = -1.0; said = {}
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
@@ -103,7 +106,7 @@ static func reset() -> void:
 
 static func export_state() -> Dictionary:
 	return {"older_rules": older_rules, "unpacked": unpacked.duplicate(), "stock": stock.duplicate(), "shell_kg": shell_kg,
-		"feedstock_kg": feedstock_kg, "earth_parts": earth_parts, "known": known.duplicate(), "jobs": jobs.duplicate(true),
+		"feedstock_kg": feedstock_kg, "known": known.duplicate(), "jobs": jobs.duplicate(true),
 		"made": made.duplicate(), "paid": paid.duplicate(),
 		"has_corer": has_corer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
 		"stores_landed": stores_landed, "reserve_used": reserve_used, "emergency_eta": emergency_eta, "said": said.duplicate(),
@@ -122,7 +125,9 @@ static func load_state(state: Dictionary, has_section: bool) -> void:
 	for key in (state.get("stock", {}) as Dictionary): stock[str(key)] = int(state.stock[key])
 	shell_kg = int(state.get("shell_kg", 0))
 	feedstock_kg = float(state.get("feedstock_kg", 0.0))
-	earth_parts = int(state.get("earth_parts", 0))
+	# Saved when printing also took Earth parts: the crate was 1,500 kg then,
+	# 3,000 now, so an unpacked one gets the difference.
+	if state.has("earth_parts") and unpacked.has("fabricator_stock"): feedstock_kg += OLD_SAVE_TOP_UP
 	known = (state.get("known", {}) as Dictionary).duplicate()
 	jobs = (state.get("jobs", {}) as Dictionary).duplicate(true)
 	# Saved with one job for the whole base: it goes to the first Print Shop
@@ -178,7 +183,6 @@ static func manifest_lines(crate_id: String) -> Array:
 		match str(key):
 			"_shell_kg": lines.append("Hull kit · %s" % MHStyle.kg(int(contents[key])))
 			"_feedstock_kg": lines.append("Feedstock · %s" % MHStyle.kg(int(contents[key])))
-			"_earth_parts": lines.append("Earth parts · %d" % int(contents[key]))
 			"_hand_corer": lines.append("Sampling kit (corer, scoop, sample case)")
 			_: lines.append("%s%s" % [label(str(key)), " ×%d" % int(contents[key]) if int(contents[key]) > 1 else ""])
 	return lines
@@ -191,7 +195,6 @@ static func unpack(crate_id: String) -> bool:
 		match str(key):
 			"_shell_kg": shell_kg += int(contents[key])
 			"_feedstock_kg": feedstock_kg += float(contents[key])
-			"_earth_parts": earth_parts += int(contents[key])
 			"_hand_corer": has_corer = true
 			_: stock[str(key)] = int(stock.get(str(key), 0)) + int(contents[key])
 	return true
@@ -258,7 +261,7 @@ static func on_build_bar(builder: Object) -> Array:
 		if not out.has(id): out.append(id)
 	return out
 
-## Copies placed beyond the free ones take their feedstock and Earth parts;
+## Copies placed beyond the free ones take their feedstock;
 ## removing one gives them back. Worked out from what's placed, so every way
 ## of placing, removing or undoing is covered.
 static func settle(builder: Object) -> void:
@@ -272,7 +275,6 @@ static func settle(builder: Object) -> void:
 		if diff == 0: continue
 		var cost := plan_cost(str(id))
 		feedstock_kg = maxf(0.0, feedstock_kg - float(cost.feedstock_kg) * diff)
-		earth_parts = maxi(0, earth_parts - int(cost.earth_parts) * diff)
 		if want > 0: paid[id] = want
 		else: paid.erase(id)
 
@@ -285,21 +287,20 @@ static func item_reason(id: String, builder: Object) -> String:
 	if not made.has(id): return "Print the first one at the Print Shop"
 	var cost := plan_cost(id)
 	if feedstock_kg < float(cost.feedstock_kg) - .001: return "Needs %s feedstock (you have %s)" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), MHStyle.kg(floori(feedstock_kg))]
-	if earth_parts < int(cost.earth_parts): return "Needs %d Earth part%s (you have %d)" % [int(cost.earth_parts), "" if int(cost.earth_parts) == 1 else "s", earth_parts]
 	return ""
 
 static func zone_reason(kind: String, builder: Object) -> String:
 	if not on() or not ZONE_STOCK.has(kind): return ""
 	return item_reason(str(ZONE_STOCK[kind]), builder)
 
-## Build-bar card line: "×2 ready", "30 kg · 1 part", "MAKE FIRST", "NO PLAN".
+## Build-bar card line: "×2 ready", "30 kg", "MAKE FIRST", "NO PLAN".
 static func card_line(id: String, builder: Object) -> String:
 	if not needs_stock(id): return ""
 	var left := available(id, builder)
 	if left > 0: return "×%d ready" % left
 	if made.has(id):
 		var cost := plan_cost(id)
-		return "%s · %d part%s" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), int(cost.earth_parts), "" if int(cost.earth_parts) == 1 else "s"]
+		return MHStyle.kg(roundi(float(cost.feedstock_kg)))
 	if not plan_known(id): return "NO PLAN"
 	return "MAKE FIRST"
 
@@ -351,14 +352,13 @@ static func _give_first(id: String) -> void:
 	stock[id] = int(stock.get(id, 0)) + 1
 	made[id] = true
 
-## {feedstock_kg, earth_parts, hours} for one job.
+## {feedstock_kg, hours} for one job.
 static func plan_cost(id: String) -> Dictionary:
-	if id == SPARES_KIT: return {"feedstock_kg": KIT_COST.feedstock_kg, "earth_parts": KIT_COST.earth_parts, "hours": maxf(MIN_PRINT_HOURS, KIT_COST.hours * PRINT_PACE)}
+	if id == SPARES_KIT: return {"feedstock_kg": KIT_COST.feedstock_kg, "hours": maxf(MIN_PRINT_HOURS, KIT_COST.hours * PRINT_PACE)}
 	var p := plan(id)
 	var d: Dictionary = plans_data().get("defaults", {})
 	var mass := float(p.get("cargo_kg", EquipmentCatalog.get_entry(id).get("cargo_cost", 50)))
 	return {"feedstock_kg": float(p.get("feedstock_kg", roundf(mass * float(d.get("feedstock_per_kg", .6))))),
-		"earth_parts": int(p.get("earth_parts", ceili(mass / float(d.get("kg_per_part", 50))))),
 		"hours": maxf(MIN_PRINT_HOURS, PRINT_PACE * float(p.get("hours", clampf(roundf(mass / float(d.get("kg_per_hour", 25))), float(d.get("min_hours", 1)), float(d.get("max_hours", 20))))))}
 
 ## Everything the fabricator could make now (known plans), in catalogue order.
@@ -425,7 +425,6 @@ static func job_reason(id: String, builder: Object, printer := "") -> String:
 	if (work.current as Dictionary).is_empty():
 		var cost := plan_cost(id)
 		if feedstock_kg < float(cost.feedstock_kg): return "Not enough feedstock"
-		if earth_parts < int(cost.earth_parts): return "Not enough Earth parts"
 	return ""
 
 ## Prints it now on an idle printer, or adds it to that printer's queue.
@@ -440,18 +439,16 @@ static func start_job(id: String, builder: Object, printer := "") -> String:
 static func _begin(work: Dictionary, id: String, builder: Object) -> void:
 	var cost := plan_cost(id)
 	feedstock_kg -= float(cost.feedstock_kg)
-	earth_parts -= int(cost.earth_parts)
 	work.current = {"id": id, "hours_left": float(cost.hours), "hours": float(cost.hours)}
 	_power_changed(builder)
 
-## Stops the printer's job and gives its feedstock and parts back.
+## Stops the printer's job and gives its feedstock back.
 static func cancel_job(builder: Object = null, printer := "") -> void:
 	var work := printer_work(_printer(builder, printer))
 	var current: Dictionary = work.current
 	if current.is_empty(): return
 	var cost := plan_cost(str(current.id))
 	feedstock_kg += float(cost.feedstock_kg)
-	earth_parts += int(cost.earth_parts)
 	work.current = {}
 	_power_changed(builder)
 
@@ -489,7 +486,7 @@ static func _run_printers(hours: float, builder: Object, sim: Object) -> Array:
 		if current.is_empty() and not (work.queue as Array).is_empty():
 			var next := str(work.queue[0])
 			var cost := plan_cost(next)
-			if feedstock_kg >= float(cost.feedstock_kg) and earth_parts >= int(cost.earth_parts):
+			if feedstock_kg >= float(cost.feedstock_kg):
 				(work.queue as Array).pop_front()
 				_begin(work, next, builder)
 				current = work.current

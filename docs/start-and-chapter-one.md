@@ -33,7 +33,7 @@ Enough to stand up one working base, and no more:
 | Living | 2 sleep stations, the low-water shower, the trash compactor, the exercise bike |
 | Work | 1 tool bench, the fabricator (§4), the comms station |
 | Outside | GAR-Y, the suit and its bench (the crew rover comes with a later lander, Q2) |
-| Stores | water, oxygen and food (§3), fabricator feedstock and Earth parts (§4) |
+| Stores | water, oxygen and food (§3), fabricator feedstock (§4, §13.8) |
 
 Everything else comes from the fabricator, the regolith printer or a later lander.
 
@@ -62,10 +62,10 @@ So in Survival a new room costs printed material, and new equipment costs a plan
 - **Where it goes:** the Workshop, or the General Module at a cost (slower, like other work there: 75 %).
 - **What it uses:**
   - **feedstock:** polymer and metal powder, landed with the cargo, and topped up by recycling. The trash compactor's tiles and the plastics hopper turn waste into feedstock;
-  - **Earth parts:** electronics, seals and sensors, which can't be made on Mars. A fixed stock comes with the cargo; later landers bring more.
+  - ~~**Earth parts**~~: removed 2 Nov (§13.8). Feedstock is the only print input.
 - **A job:**
   - choose a plan at the fabricator (E opens its screen);
-  - see the cost in feedstock and Earth parts, the time and the power draw;
+  - see the cost in feedstock, the time and the power draw;
   - start it. Jobs take game hours, so most run overnight;
   - when it's done, the item goes onto the build bar's Unpacked tab.
 - **The fabricator makes the plan, once** (playtest, 1 Nov). The first job makes one copy and puts the item on the Unpacked tab for good. Each extra copy takes its feedstock and Earth parts as it's placed, with no wait, and gives them back when it's removed. Crate copies are free and go first. Example: the first heater is a 6-hour job; the second, placed later in the lab, just takes 30 kg of feedstock and a part.
@@ -220,7 +220,7 @@ The notice reads "New plan: Ice Extractor. One is ready on the build bar." Plans
 
 ### 13.4 Printing takes minutes, not hours
 
-A job is a short wait, not an overnight one. Feedstock and Earth parts are the real limits. The General Module still prints at 75 %.
+A job is a short wait, not an overnight one. Feedstock is the real limit. The General Module still prints at 75 %.
 
 **The rule:** every print takes **an eighth of its old time, at least 5 minutes**. That applies to the times in `data/plans.json` and to the mass formula for everything else. The longest print (the Compact Reactor) is 2½ h; most are under 1½ h.
 
@@ -237,14 +237,14 @@ A job is a short wait, not an overnight one. Feedstock and Earth parts are the r
 | Regolith Printer | 18 h | 2 h 15 min |
 | Airlock, Print Shop, Compact Reactor | 20 h | 2 h 30 min |
 
-Costs in feedstock and Earth parts don't change.
+Feedstock costs don't change.
 
 ### 13.5 One job per printer, with a queue
 
 - **Each Print Shop runs its own job.** Two Print Shops print two things at once, each at its own room's speed. A second Print Shop is a "brought" plan, so you can print one.
 - **A queue of up to 5 per printer.**
   - Add a plan and it waits its turn.
-  - Its feedstock and Earth parts are taken **when it starts**, not when queued.
+  - Its feedstock is taken **when it starts**, not when queued.
   - An item that can't be paid for when its turn comes waits at the front with "Waiting for feedstock".
   - Removing an item from the queue costs nothing. Cancelling the running job refunds it in full.
   - Spares kits can be queued as often as you like.
@@ -267,3 +267,16 @@ Costs in feedstock and Earth parts don't change.
 1. **No storms before sol 15** under chapter rules. Forecasts can still mention storms building far off, but none reach the base until then.
 2. **Queue:** 5 per printer.
 3. **Speed:** an eighth of the old times, at least 5 minutes.
+
+### 13.8 One print input: feedstock (decided 2 Nov)
+
+Earth parts are gone, at the cost of some realism: with a fixed 60 and no way to get more, Survival couldn't be played or tested through. Printing takes only feedstock, from four places:
+
+| Source | How much |
+|---|---|
+| The Print stock crate | 3,000 kg (was 1,500 kg and 60 parts) |
+| Recycling (waste sorter and hoppers) | as before, about 90–95 % of sorted plastics and metals |
+| A running regolith intake | 60 kg a sol each, while tier 4 has power (`intake_feedstock_kg_per_sol`) |
+| Each crew member who lands | 400 kg in their lander (`crew_feedstock_kg`), said in the landing message |
+
+Old saves: one saved while Earth parts existed, with the crate unpacked, gets the extra 1,500 kg on load. Plan costs in `data/plans.json` keep their feedstock; their Earth-part figures are deleted.

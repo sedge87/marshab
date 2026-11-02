@@ -1,5 +1,5 @@
 {
-  "_comment": "The precursor cargo (docs/start-and-chapter-one.md §2): crates in two cargo landers, unpacked with E onto the build bar's Unpacked tab. Keys starting with _ are not items: _shell_kg is hull kit for printable shells (General Module, corridors, partitions, windows), _feedstock_kg and _earth_parts feed the fabricator, _hand_corer is the ice-coring tool. Sizes: small (kit), long (frames), tall (tanks).",
+  "_comment": "The precursor cargo (docs/start-and-chapter-one.md §2): crates in two cargo landers, unpacked with E onto the build bar's Unpacked tab. Keys starting with _ are not items: _shell_kg is hull kit for printable shells (General Module, corridors, partitions, windows), _feedstock_kg feeds the Print Shop, _hand_corer is the ice-coring tool. Sizes: small (kit), long (frames), tall (tanks).",
   "crates": [
     {"id": "shells", "lander": 1, "size": "long", "label": "Habitat shells", "contents": {"_shell_kg": 12000, "airlock": 1}, "note": "One General Module, two corridor sections and the hull kit for them, and an airlock."},
     {"id": "power", "lander": 1, "size": "long", "label": "Power", "contents": {"solar_array": 2, "battery_bank": 2, "power_distribution_panel": 1}, "note": "Two battery banks: enough to carry the heating through the night (docs/start-and-chapter-one.md §13.2)."},
@@ -7,6 +7,6 @@
     {"id": "living", "lander": 2, "size": "small", "label": "Living", "contents": {"crew_bunk": 2, "galley_kitchenette": 1, "hygiene_toilet": 1, "hygiene_shower": 1, "waste_sorting_unit": 1, "cycle_ergometer": 1}},
     {"id": "work", "lander": 2, "size": "small", "label": "Work", "contents": {"tool_bench": 1, "fabricator": 1, "communications_station": 1}},
     {"id": "outside", "lander": 2, "size": "small", "label": "Outside", "contents": {"suit_rack": 1, "rover_charger": 1, "_hand_corer": 1}, "note": "The suit's rack, GAR-Y's dock and the sampling kit: a hand corer for ice, a scoop and a six-slot sample case."},
-    {"id": "fabricator_stock", "lander": 2, "size": "tall", "label": "Print stock", "contents": {"_feedstock_kg": 1500, "_earth_parts": 60}, "note": "Polymer and metal powder, and the electronics, seals and sensors Mars can't make."}
+    {"id": "fabricator_stock", "lander": 2, "size": "tall", "label": "Print stock", "contents": {"_feedstock_kg": 3000}, "note": "Polymer and metal powder for the Print Shop. Recycling, a regolith intake and every crew lander add more."}
   ]
 }

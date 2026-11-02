@@ -128,7 +128,11 @@ static func tick(hours: float, sim: RefCounted, chapter_done: bool, now: float) 
 			life.ensure_crew(sim.crew_count(), names())
 			life.set_names(names())
 		var short: bool = not bool(checklist(sim).ready)
-		out.append({"id": "crew_landed", "title": "%s landed" % _names(arrived), "text": "Mission Control: welcome them aboard. %d aboard now.%s" % [aboard(), " The base wasn't ready for them: check the Monitor's Chains." if short else ""], "tone": "warn" if short else "valid"})
+		# Each lander brings Print Shop feedstock with its crew.
+		var brought := arrived.size() * MHResources.setting("crew_feedstock_kg", 400.0)
+		if MHChapterOne.on(): MHChapterOne.feedstock_kg += brought
+		var cargo := " Their lander brought %s of feedstock for the Print Shop." % MHStyle.kg(roundi(brought)) if MHChapterOne.on() else ""
+		out.append({"id": "crew_landed", "title": "%s landed" % _names(arrived), "text": "Mission Control: welcome them aboard. %d aboard now.%s%s" % [aboard(), cargo, " The base wasn't ready for them: check the Monitor's Chains." if short else ""], "tone": "warn" if short else "valid"})
 		if aboard() >= final_size:
 			out.append({"id": "crew_full", "title": "Full crew of %d aboard" % aboard(), "text": "Mission Control: that's everyone Earth is sending. Keep them all alive.", "tone": "valid"})
 		return out

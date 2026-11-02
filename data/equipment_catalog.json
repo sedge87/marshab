@@ -3465,7 +3465,7 @@
       "icon": "wrench",
       "height": 1.46,
       "description": "A bench-sized machine that makes equipment from plans, in layers of polymer and metal powder, with the electronics and seals brought from Earth.",
-      "role": "Makes equipment from plans (feedstock and Earth parts)",
+      "role": "Makes equipment from plans, out of feedstock",
       "asset_scene": "res://assets/equipment/mars_fabrication_v1/fabricator.tscn",
       "cargo_cost": 400,
       "valid_zones": [

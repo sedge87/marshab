@@ -379,7 +379,7 @@
       "goal": "home",
       "rules": "chapter",
       "text": "Place the Print Shop",
-      "how": "In the General Module press B and open the Unpacked tab. Place the Print Shop: it prints equipment from plans, with feedstock and Earth parts. It works faster in Power & Engineering.",
+      "how": "In the General Module press B and open the Unpacked tab. Place the Print Shop: it prints equipment from plans, out of feedstock. It works faster in Power & Engineering.",
       "keys": [
         [
           [

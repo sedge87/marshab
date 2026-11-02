@@ -117,7 +117,7 @@ func _play() -> void:
 		spot.y = MHSiteTerrain.height(spot.x, spot.z) + 1.0
 		await _use(crate, spot, .6)
 	await _shot("crates_unpacked")
-	_note("after unpacking: crates left %d, has corer %s, feedstock %s, parts %s" % [MHChapterOne.crates_left(), MHChapterOne.has_corer, MHChapterOne.feedstock_kg, MHChapterOne.earth_parts])
+	_note("after unpacking: crates left %d, has corer %s, feedstock %s" % [MHChapterOne.crates_left(), MHChapterOne.has_corer, MHChapterOne.feedstock_kg])
 	_note("toasts: " + _toasts())
 
 	# ---- the build bar's Unpacked tab ----

@@ -3,7 +3,7 @@ extends Control
 ## The Print Shop's screen (E on the Print Shop; docs/start-and-chapter-one.md §4).
 ## "Needed now" at the top (the plans the chapter just unlocked, and spares
 ## kits when a machine is worn), then the known plans as cards in tabs by
-## purpose, with a search box. Pick a card to see its feedstock, Earth parts,
+## purpose, with a search box. Pick a card to see its feedstock,
 ## time and power, and print it. Each Print Shop runs its own job, with a
 ## queue of up to five (§13.5); this screen is the one you pressed E on. The first job makes the
 ## plan: the item goes onto the build bar's Unpacked tab for good, and later
@@ -67,7 +67,7 @@ static func duration(hours: float) -> String:
 
 func _signature() -> String:
 	var work := _work()
-	return "%s|%s|%d|%d|%d" % [str((work.current as Dictionary).get("id", "")), str(work.queue), roundi(MHChapterOne.feedstock_kg), MHChapterOne.earth_parts, MHChapterOne.made.size()]
+	return "%s|%s|%d|%d|%d" % [str((work.current as Dictionary).get("id", "")), str(work.queue), roundi(MHChapterOne.feedstock_kg), 0, MHChapterOne.made.size()]
 
 func _builder() -> BuildController:
 	return world.builder
@@ -183,7 +183,7 @@ func _close() -> void:
 	queue_free()
 
 func _update_status() -> void:
-	_stock.text = "FEEDSTOCK %s   ·   EARTH PARTS %d" % [MHStyle.kg(roundi(MHChapterOne.feedstock_kg)), MHChapterOne.earth_parts]
+	_stock.text = "FEEDSTOCK %s" % MHStyle.kg(roundi(MHChapterOne.feedstock_kg))
 	var work := _work()
 	var job: Dictionary = work.current
 	var waiting := (work.queue as Array).size()
@@ -322,7 +322,7 @@ func _card(id: String, needed: bool) -> Control:
 	name_label.max_lines_visible = 2
 	col.add_child(name_label)
 	var cost := MHChapterOne.plan_cost(id)
-	col.add_child(MHStyle.mono("%s · %d parts · %s" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), int(cost.earth_parts), duration(float(cost.hours))], 12, MHStyle.TEXT_SECONDARY))
+	col.add_child(MHStyle.mono("%s · %s" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), duration(float(cost.hours))], 12, MHStyle.TEXT_SECONDARY))
 	var state := _state(id)
 	var state_label := MHStyle.mono(str(state[0]), 12, state[1])
 	state_label.clip_text = true
@@ -370,7 +370,7 @@ func _render_detail() -> void:
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail.add_child(about)
 	var rows := MHStyle.vbox(6)
-	for row in [["layers", "Feedstock", MHStyle.kg(roundi(float(cost.feedstock_kg))), MHChapterOne.feedstock_kg >= float(cost.feedstock_kg)], ["cpu", "Earth parts", str(int(cost.earth_parts)), MHChapterOne.earth_parts >= int(cost.earth_parts)], ["clock", "Time", duration(float(cost.hours)) + " (game time)", true], ["zap", "Power", "1.2 kW while it prints", true]]:
+	for row in [["layers", "Feedstock", MHStyle.kg(roundi(float(cost.feedstock_kg))), MHChapterOne.feedstock_kg >= float(cost.feedstock_kg)], ["clock", "Time", duration(float(cost.hours)) + " (game time)", true], ["zap", "Power", "1.2 kW while it prints", true]]:
 		var line := MHStyle.hbox(10)
 		line.add_child(MHStyle.icon(str(row[0]), 16, MHStyle.TEXT_SECONDARY if bool(row[3]) else MHStyle.WARN))
 		var what := MHStyle.mono(str(row[1]), 13, MHStyle.TEXT_MUTED)
@@ -379,7 +379,7 @@ func _render_detail() -> void:
 		line.add_child(MHStyle.mono(str(row[2]), 14, MHStyle.TEXT_PRIMARY if bool(row[3]) else MHStyle.WARN, 600))
 		rows.add_child(line)
 	_detail.add_child(rows)
-	var on_bar := "On the build bar: each extra one takes this feedstock and these parts as you place it" if MHChapterOne.made.has(_selected) else "Not printed yet: the first job puts it on the build bar for good"
+	var on_bar := "On the build bar: each extra one takes this feedstock as you place it" if MHChapterOne.made.has(_selected) else "Not printed yet: the first job puts it on the build bar for good"
 	if _selected == MHChapterOne.SPARES_KIT: on_bar = "Print them as you need them: worn machines lose output, then break"
 	var bar_note := MHStyle.body(on_bar, 14, MHStyle.TEXT_MUTED)
 	bar_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

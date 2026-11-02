@@ -677,6 +677,9 @@ func step(dt: float, hour: float) -> void:
 	food_grown = food.rate(inv, powered.tiers) * per_sol
 	# Printing: running printers make material while tier 4 has power and an intake feeds them.
 	if powered.tiers[TIER_OTHER]: printed_kg += print_rate(inv) * per_sol
+	# Chapter rules: a running regolith intake sifts and sinters Mars dirt
+	# into Print Shop feedstock (playtest, 2 Nov).
+	if MHChapterOne.on() and powered.tiers[TIER_OTHER]: MHChapterOne.feedstock_kg += feedstock_rate(inv) * per_sol
 	if inv.cells > 0:
 		var o2_breathed := crew * MHResources.setting("o2_per_person", .84) * per_sol
 		var co2_out := crew * MHResources.setting("co2_per_person", 1.0) * per_sol
@@ -954,6 +957,10 @@ func print_rate(inv: Dictionary) -> float:
 	if printers == 0: return 0.0
 	var recycling := (inv.items as Array).any(func(i): return i.id == "recycling_hopper_plastics")
 	return printers * MHResources.setting("print_kg_per_sol", 2500.0) * (1.0 + (MHResources.setting("print_recycle_bonus", .25) if recycling else 0.0)) * MHSamples.bonus("print")
+
+## Feedstock the regolith intakes make a sol under chapter rules.
+func feedstock_rate(inv: Dictionary) -> float:
+	return int(inv.get("intakes", 0)) * MHResources.setting("intake_feedstock_kg_per_sol", 60.0)
 
 ## numbers behind the readiness checklist and the systems panel.
 ## planned: for the full mission crew (readiness); otherwise for the crew on board now.

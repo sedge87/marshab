@@ -21,7 +21,7 @@ const PARTITION_STEP := 1.5
 const PARTITION_THICKNESS := .1
 var partitions: Array = []
 var mars_made_label: Label   # [{"a": Vector2, "b": Vector2, "door": bool}]
-var chapter_label: Label   # chapter one: unpacked items, feedstock and Earth parts
+var chapter_label: Label   # chapter one: unpacked items and feedstock
 const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
 ## Site-plan parts that have a real model (for thumbnails and the 3D preview).
 const PART_MODELS := {"reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake", "atmosphere_processor": "atmosphere_processor"}
@@ -167,7 +167,7 @@ const ZONE_INFO := {
 	"solar":{"cat":"power","icon":"sun","rule":"One cell, or a roof · R turns","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
 	"reactor":{"cat":"power","icon":"atom","rule":"One cell · R turns","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
 	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell on ice · R turns","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
-	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil and feeds it to a regolith printer indoors, which turns it into building material."},
+	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil: it makes Print Shop feedstock while it runs (about 60 kg a sol), and feeds a regolith printer indoors, which turns it into building material."},
 	"atmosphere_processor":{"cat":"power","icon":"wind","rule":"Anywhere · R turns","desc":"Splits oxygen out of the Mars air, like NASA's MOXIE scaled up. No water needed, but 2.5 kW."}
 }
 # Exterior construction deliberately excludes furnishing. Interior equipment is
@@ -5799,7 +5799,7 @@ func _update_budget() -> void:
 		chapter_label.visible = MHChapterOne.on()
 		if chapter_label.visible:
 			var ready: int = MHChapterOne.ready_to_place(self).values().reduce(func(a, b): return a + b, 0)
-			chapter_label.text = "UNPACKED %d · FEEDSTOCK %s · EARTH PARTS %d" % [ready, MHStyle.kg(roundi(MHChapterOne.feedstock_kg)), MHChapterOne.earth_parts]
+			chapter_label.text = "UNPACKED %d · FEEDSTOCK %s" % [ready, MHStyle.kg(roundi(MHChapterOne.feedstock_kg))]
 	cargo_meter.value=remaining
 	cargo_meter.tone="accent" if remaining>MHGame.cargo_budget()*.1 else "warn"
 	if mars_made_label != null:
