@@ -141,7 +141,10 @@ func _initialize() -> void:
 	_check(_step() == "fab_job", "the bunk, then the fabricator, tick (%s)" % _step())
 	_check(MHChapterOne.start_job("crew_bunk", b).is_empty(), "a fabricator job starts")
 	await _settle()
-	_check(_step() == "systems", "starting a job ticks it (%s)" % _step())
+	_check(_step() == "intake", "starting a job ticks it (%s)" % _step())
+	MHChapterOne.steps["feedstock"] = 0.0   # stands in for the first intake running
+	await _settle()
+	_check(_step() == "systems", "a running regolith intake ticks the feedstock step (%s)" % _step())
 
 	# 12. The base on the slate: its Base app.
 	world.pda.open("base")
@@ -154,7 +157,7 @@ func _initialize() -> void:
 	await _settle()
 	_check(_step() == "save", "the crew screen ticks it (%s)" % _step())
 	var state: Dictionary = world.current_state()
-	_check(str(state.tutorial.mode) == "full" and (state.tutorial.done as Array).size() == 15, "the save records the tutorial and its 15 done steps (%s)" % [state.tutorial])
+	_check(str(state.tutorial.mode) == "full" and (state.tutorial.done as Array).size() == 16, "the save records the tutorial and its 16 done steps (%s)" % [state.tutorial])
 	world._save_habitat(6)
 	await _settle()
 	_check(_step() == "ice" and not bool(t.finished) and t.current_goal() == "self_sufficient", "saving finishes Learn the ropes; chapter one's Self-sufficient goal comes next (%s)" % _step())
@@ -213,5 +216,5 @@ func _initialize() -> void:
 	for clip in unique: _check(GUIDE.has_clip(clip), "the %s clip exists" % clip)
 
 	if failures == 0:
-		print("Tutorial test passed: the goal checklist (16 chapter-one steps, then Self-sufficient in any order) ticks from play, H hides it, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
+		print("Tutorial test passed: the goal checklist (17 chapter-one steps, then Self-sufficient in any order) ticks from play, H hides it, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
 	quit(1 if failures > 0 else 0)

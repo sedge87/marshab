@@ -601,6 +601,11 @@ static func _count(builder: Object, kind: String) -> int:
 static func _check_steps(builder: Object, sim: Object, last: Dictionary, hours: float, now: float) -> Array:
 	var out: Array = []
 	var crew := float(last.get("crew", 0))
+	# 1. Feedstock: the first running regolith intake (tutorial step "intake").
+	var intakes := int(sim.inventory().get("intakes", 0))
+	if intakes > 0 and not steps.has("feedstock") and float(last.get("generation_kw", 0.0)) > 0.0:
+		steps["feedstock"] = now
+		out.append({"id": "step", "title": "Feedstock is coming in", "text": "The intake sifts Mars dirt into %d kg a sol for the Print Shops. Build more and it multiplies. While the crate refills, go exploring: on your slate's Map, radar shows where ice might be, and GAR-Y can survey it for you." % roundi(sim.feedstock_rate(sim.inventory())), "tone": "valid"})
 	# 2. Water: the extractor's meltwater is tested once it has run a while.
 	if steps.has("ice") and not known.has("water_reclaimer") and _count(builder, "ice_extractor") > 0 and float(last.get("raw_in", 0.0)) > 0.0:
 		water_hours += hours

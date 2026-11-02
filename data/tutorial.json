@@ -455,6 +455,31 @@
       }
     },
     {
+      "id": "intake",
+      "goal": "home",
+      "rules": "chapter",
+      "text": "Make feedstock from regolith",
+      "how": "Printing eats feedstock, and the crate won't last for ever. Print a Regolith Intake (250 kg, about an hour and a half), then open the site plan (B outside) and place it on open ground by your base. It needs 1.5 kW. Once it runs it makes 150 kg a sol; build another and you get double. While the crate refills, it's a good time to go exploring.",
+      "keys": [
+        [
+          [
+            "E"
+          ],
+          "Open the Print Shop"
+        ],
+        [
+          [
+            "B"
+          ],
+          "Site plan"
+        ]
+      ],
+      "check": {
+        "type": "chapter_step",
+        "step": "feedstock"
+      }
+    },
+    {
       "id": "air",
       "goal": "home",
       "text": "Make air and heat",

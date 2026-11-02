@@ -960,7 +960,7 @@ func print_rate(inv: Dictionary) -> float:
 
 ## Feedstock the regolith intakes make a sol under chapter rules.
 func feedstock_rate(inv: Dictionary) -> float:
-	return int(inv.get("intakes", 0)) * MHResources.setting("intake_feedstock_kg_per_sol", 60.0)
+	return int(inv.get("intakes", 0)) * MHResources.setting("intake_feedstock_kg_per_sol", 150.0)
 
 ## numbers behind the readiness checklist and the systems panel.
 ## planned: for the full mission crew (readiness); otherwise for the crew on board now.

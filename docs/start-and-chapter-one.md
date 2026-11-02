@@ -276,7 +276,7 @@ Earth parts are gone, at the cost of some realism: with a fixed 60 and no way to
 |---|---|
 | The Print stock crate | 3,000 kg (was 1,500 kg and 60 parts) |
 | Recycling (waste sorter and hoppers) | as before, about 90–95 % of sorted plastics and metals |
-| A running regolith intake | 60 kg a sol each, while tier 4 has power (`intake_feedstock_kg_per_sol`) |
+| A running regolith intake | 150 kg a sol each, while tier 4 has power (`intake_feedstock_kg_per_sol`) |
 | Each crew member who lands | 400 kg in their lander (`crew_feedstock_kg`), said in the landing message |
 
 Old saves: one saved while Earth parts existed, with the crate unpacked, gets the extra 1,500 kg on load. Plan costs in `data/plans.json` keep their feedstock; their Earth-part figures are deleted.

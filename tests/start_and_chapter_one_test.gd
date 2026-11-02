@@ -115,7 +115,7 @@ func _initialize() -> void:
 	MHChapterOne.feedstock_kg = keep_feed
 	# Feedstock from Mars: a running regolith intake makes it.
 	var intake_sim: RefCounted = b.simulation()
-	_check(is_equal_approx(intake_sim.feedstock_rate({"intakes": 2}), 120.0) and intake_sim.feedstock_rate({"intakes": 0}) == 0.0, "each running regolith intake makes 60 kg of feedstock a sol")
+	_check(is_equal_approx(intake_sim.feedstock_rate({"intakes": 2}), 300.0) and intake_sim.feedstock_rate({"intakes": 0}) == 0.0, "each running regolith intake makes 150 kg of feedstock a sol")
 
 	# ---- stores ----
 	var sim: RefCounted = b.simulation()

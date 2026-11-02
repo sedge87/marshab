@@ -167,7 +167,7 @@ const ZONE_INFO := {
 	"solar":{"cat":"power","icon":"sun","rule":"One cell, or a roof · R turns","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
 	"reactor":{"cat":"power","icon":"atom","rule":"One cell · R turns","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
 	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell on ice · R turns","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
-	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil: it makes Print Shop feedstock while it runs (about 60 kg a sol), and feeds a regolith printer indoors, which turns it into building material."},
+	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil: it makes Print Shop feedstock while it runs (about 150 kg a sol), and feeds a regolith printer indoors, which turns it into building material."},
 	"atmosphere_processor":{"cat":"power","icon":"wind","rule":"Anywhere · R turns","desc":"Splits oxygen out of the Mars air, like NASA's MOXIE scaled up. No water needed, but 2.5 kW."}
 }
 # Exterior construction deliberately excludes furnishing. Interior equipment is

@@ -44,7 +44,7 @@
     "chapter_store_crew": 1.0,
     "crew_trip_sols": 20.0,
     "crew_feedstock_kg": 400.0,
-    "intake_feedstock_kg_per_sol": 60.0,
+    "intake_feedstock_kg_per_sol": 150.0,
     "crew_settle_sols": 10.0,
     "crew_store_food_sols": 30.0,
     "crew_store_water_sols": 7.0,
