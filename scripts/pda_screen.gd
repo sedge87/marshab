@@ -378,6 +378,8 @@ func _base_page() -> Control:
 		var row: Dictionary = rows.get(entry[0], {})
 		if row.is_empty(): continue
 		left.add_child(_gauge(str(entry[1]), str(entry[2]), row))
+	if MHChapterOne.on() and sim != null:
+		left.add_child(_feedstock_block(sim))
 	var right := MHStyle.vbox(12)
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var scroll := ScrollContainer.new()
@@ -406,6 +408,26 @@ func _base_page() -> Control:
 			line.add_child(words)
 			right.add_child(line)
 	return page
+
+## The Print Shops' feedstock: what's in the crate, what the regolith intakes
+## make a sol, and what recycling makes from the crew's waste.
+func _feedstock_block(sim: RefCounted) -> Control:
+	var box := MHStyle.vbox(4)
+	var top := MHStyle.hbox(10)
+	top.add_child(MHStyle.icon("package", 22, MHStyle.INFO))
+	top.add_child(MHStyle.label("Feedstock", 19, MHStyle.TEXT_PRIMARY, 700))
+	box.add_child(top)
+	box.add_child(MHStyle.body(_feedstock_words(sim), 17, MHStyle.TEXT_SECONDARY))
+	return box
+
+func _feedstock_words(sim: RefCounted) -> String:
+	var intakes := int(sim.inventory().get("intakes", 0))
+	var intake := float(sim.feedstock_rate(sim.inventory()))
+	var recycled := float((sim.waste.last as Dictionary).get("recycled", 0.0))
+	var made := "%s kg a sol from %d regolith intake%s" % [str(snappedf(intake, .1)), intakes, "" if intakes == 1 else "s"] if intakes > 0 else "no regolith intake yet"
+	return "%s in store
+%s
+%s kg a sol recycled from waste" % [MHStyle.kg(floori(MHChapterOne.feedstock_kg)), made, str(snappedf(recycled, .1))]
 
 ## One system: its name, a bar and the words (charge, trend, sols left).
 func _gauge(title: String, glyph: String, row: Dictionary) -> Control:
@@ -454,7 +476,9 @@ func _base_signature() -> String:
 	var alerts: Node = world.get("alerts") if world != null else null
 	var rows: Dictionary = hud.system_rows() if hud != null else {}
 	var words: Array = rows.values().map(func(r): return str(r.text))
-	return "%s|%s|%d" % [str(words), str(alerts.active_alerts().map(func(a): return "%s%s" % [a.id, a.level])) if alerts != null else "", alerts.history.size() if alerts != null else 0]
+	var sim: RefCounted = world.builder.simulation() if world != null and world.builder != null else null
+	var stock := _feedstock_words(sim) if MHChapterOne.on() and sim != null else ""
+	return "%s|%s|%s|%d" % [str(words), stock, str(alerts.active_alerts().map(func(a): return "%s%s" % [a.id, a.level])) if alerts != null else "", alerts.history.size() if alerts != null else 0]
 
 ## Redraws the open app in place.
 func _redraw() -> void:
