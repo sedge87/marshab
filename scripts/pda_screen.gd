@@ -28,6 +28,9 @@ var _rail_buttons := {}   # app id -> {button, dot}
 var _page: MarginContainer
 var _shown_log := -1      # notices on the Log page when it was drawn
 var _shown_goals := ""    # what the Goals page showed (redrawn when it changes)
+var _map_you: Label
+var _map_cursor: Label
+const MAP_FIT := 600.0    # the map square on the screen, px
 var _tick := 0.0
 
 func _ready() -> void:
@@ -108,6 +111,7 @@ func opened(wanted := "") -> void:
 
 func show_app(id: String) -> void:
 	if id == app and _page.get_child_count() > 0: return
+	_lend_map(false)
 	app = id
 	MHNotices.seen(id)
 	var values := MHGame.settings()
@@ -130,6 +134,9 @@ func typing() -> bool:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo): return
+	if app == "map" and _region() != null and _region().slate_key((event as InputEventKey).keycode):
+		get_viewport().set_input_as_handled()
+		return
 	var index := (event as InputEventKey).keycode - KEY_1
 	var list := apps()
 	if index >= 0 and index < list.size():
@@ -146,6 +153,10 @@ func _process(delta: float) -> void:
 		for child in _page.get_children(): child.queue_free()
 		_page.add_child(_log_page())
 		MHNotices.seen("log")
+	if app == "map" and _map_you != null and _region() != null:
+		var lines: Array = _region().readouts()
+		_map_you.text = str(lines[0])
+		_map_cursor.text = str(lines[1])
 	if app == "goals" and _goals_signature() != _shown_goals:
 		for child in _page.get_children(): child.queue_free()
 		_page.add_child(_goals_page())
@@ -329,23 +340,43 @@ func _goals_signature() -> String:
 	var builder: Node = world.builder if world != null else null
 	return "%s|%s|%s" % [str(tutorial.done) if tutorial != null else "", str(tutorial.finished) if tutorial != null else "", str(builder.readiness()) if builder != null and MHGame.game_mode != "missions" else ""]
 
-## Map: for now the region map opens over the view (it moves onto the
-## slate's screen next, docs/pda.md §9).
+## Map: the region map itself, lent to the screen (region_map.gd embed):
+## wheel zoom, drag, Z, Space, L for the ice survey and G to send GAR-Y.
 func _map_page() -> Control:
-	var page := MHStyle.vbox(20)
-	var region: Node = world.get("region_map") if world != null else null
+	var region := _region()
 	if region == null:
-		page.add_child(_heading("Map", "No region map at this site."))
-		return page
-	page.add_child(_heading("Map", "The region: places, your base, GAR-Y and its survey stakes, your trail. L shows the ice survey; G sends GAR-Y."))
-	var open := MHStyle.button("Open the map", "primary", "map-pin", 64)
-	open.custom_minimum_size.x = 320
-	open.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	open.focus_mode = Control.FOCUS_NONE
-	open.pressed.connect(_open_region_map)
-	page.add_child(open)
+		var empty := MHStyle.vbox(12)
+		empty.add_child(_heading("Map", "No region map at this site."))
+		return empty
+	var page := MHStyle.hbox(24)
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(MAP_FIT, MAP_FIT)
+	holder.clip_contents = true
+	page.add_child(holder)
+	var side := MHStyle.vbox(12)
+	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page.add_child(side)
+	side.add_child(MHStyle.eyebrow("REGION MAP · %s" % str(MHGame.site().get("name", "")).to_upper(), MHStyle.accent, 13))
+	_map_you = MHStyle.body("", 16, MHStyle.TEXT_SECONDARY)
+	_map_you.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	side.add_child(_map_you)
+	_map_cursor = MHStyle.body("", 16, MHStyle.TEXT_MUTED)
+	_map_cursor.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	side.add_child(_map_cursor)
+	side.add_child(GUIDE.keys_box([[["Wheel"], "Zoom"], [["Drag"], "Move"], [["Z"], "Region / 1 km"], [["Space"], "You"], [["L"], "Ice survey"], [["G"], "GAR-Y: survey the zone"]]))
+	holder.ready.connect(func() -> void: region.embed.call_deferred(holder, MAP_FIT), CONNECT_ONE_SHOT)
 	return page
 
-func _open_region_map() -> void:
-	pda.close()
-	world.region_map.call_deferred("open_from_slate")
+func _region() -> Node:
+	return world.get("region_map") if world != null else null
+
+## Gives the map square back before the page goes (or the slate is lowered).
+func _lend_map(_on: bool) -> void:
+	var region := _region()
+	if region != null and bool(region.embedded): region.unembed()
+	_map_you = null
+	_map_cursor = null
+
+## The slate was lowered.
+func closed() -> void:
+	_lend_map(false)

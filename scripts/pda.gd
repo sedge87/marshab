@@ -144,6 +144,7 @@ func close() -> void:
 		if is_instance_valid(entry[0]): (entry[0] as CanvasLayer).visible = bool(entry[1])
 	_hidden.clear()
 	MHNotices.hidden = false
+	screen.closed()
 	MHAudio.sfx("ui_back", -12.0)
 
 func _process(delta: float) -> void:

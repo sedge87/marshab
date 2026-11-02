@@ -57,6 +57,11 @@ var _dragging := false
 var _mouse_before := Input.MOUSE_MODE_CAPTURED
 var _freeze_before := false
 var _trail_check := 0.0
+## On the slate's screen (docs/pda.md §3): the map square is lent to its Map
+## app, scaled to fit, and takes the mouse there (embed / unembed).
+var embedded := false
+var _cursor_at := Vector2(-1, -1)   # the mouse over the lent map, map px
+var _frame_home: Control
 
 func setup(target_world: Node, zone: Dictionary) -> void:
 	world = target_world
@@ -101,6 +106,7 @@ func _ready() -> void:
 	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_frame)
 	_frame.clip_contents = true
+	_frame.gui_input.connect(_frame_input)
 	var folder := RegionTerrain.DIRECTORY + str(RegionTerrain.meta().get("id", "")) + "/"
 	_overview = load(folder + "map.png") as Texture2D
 	_detail = load(folder + "map_detail.jpg") as Texture2D
@@ -203,7 +209,7 @@ func _input(event: InputEvent) -> void:
 	if not visible: return
 	if event is InputEventMouseButton:
 		var button := event as InputEventMouseButton
-		var at := _frame.get_local_mouse_position()
+		var at := _mouse()
 		if button.pressed and (button.button_index == MOUSE_BUTTON_WHEEL_UP or button.button_index == MOUSE_BUTTON_WHEEL_DOWN):
 			if not Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)).has_point(at): at = Vector2(SIZE, SIZE) * .5
 			_zoom(1.0 / ZOOM_STEP if button.button_index == MOUSE_BUTTON_WHEEL_UP else ZOOM_STEP, at)
@@ -232,9 +238,73 @@ func _input(event: InputEvent) -> void:
 				KEY_G: _send_gar_y()
 		get_viewport().set_input_as_handled()   # nothing else hears keys while it's open
 
-## Opened from the slate's Map app (Tab raises the slate now, docs/pda.md §7).
-func open_from_slate() -> void:
-	if not visible and _can_open(): _open()
+## Where the mouse is over the map square, in map px.
+func _mouse() -> Vector2:
+	return _cursor_at if embedded else _frame.get_local_mouse_position()
+
+## Lends the map square to the slate's Map app, scaled to `fit` px across.
+func embed(holder: Control, fit: float) -> void:
+	if embedded: return
+	embedded = true
+	_frame_home = _frame.get_parent()
+	_frame_home.remove_child(_frame)
+	holder.add_child(_frame)
+	_frame.scale = Vector2.ONE * fit / SIZE
+	_frame.position = Vector2.ZERO
+	_frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	_dragging = false
+	_cursor_at = Vector2(-1, -1)
+	if _span < _half * 2.0: _centre = _you()
+	_set_view()
+
+## Takes the map square back (the slate went down or changed app).
+func unembed() -> void:
+	if not embedded: return
+	embedded = false
+	_frame.get_parent().remove_child(_frame)
+	_frame_home.add_child(_frame)
+	_frame_home.move_child(_frame, 1)   # under the header row
+	_frame.scale = Vector2.ONE
+	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dragging = false
+
+## The mouse on the lent map: wheel zoom, drag to move.
+func _frame_input(event: InputEvent) -> void:
+	if not embedded: return
+	if event is InputEventMouse: _cursor_at = (event as InputEventMouse).position
+	if event is InputEventMouseButton:
+		var button := event as InputEventMouseButton
+		if button.pressed and (button.button_index == MOUSE_BUTTON_WHEEL_UP or button.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+			_zoom(1.0 / ZOOM_STEP if button.button_index == MOUSE_BUTTON_WHEEL_UP else ZOOM_STEP, button.position)
+		elif button.button_index == MOUSE_BUTTON_LEFT or button.button_index == MOUSE_BUTTON_RIGHT:
+			_dragging = button.pressed
+		_frame.accept_event()
+	elif event is InputEventMouseMotion and _dragging:
+		_centre -= (event as InputEventMouseMotion).relative / SIZE * _span
+		_set_view()
+		_frame.accept_event()
+
+## A key on the slate's Map app; true when the map used it.
+func slate_key(keycode: int) -> bool:
+	if not embedded: return false
+	match keycode:
+		KEY_Z:
+			_span = ZOOMED if _span > ZOOMED * 1.5 else _half * 2.0
+			_centre = _you()
+			_set_view()
+		KEY_SPACE:
+			_centre = _you()
+			_set_view()
+		KEY_L:
+			survey_layer = not survey_layer
+			_say("Ice survey layer on." if survey_layer else "Ice survey layer off.")
+		KEY_G: _send_gar_y()
+		_: return false
+	return true
+
+## Readouts for the slate's Map app: [you, cursor or note].
+func readouts() -> Array:
+	return [_readout.text, _cursor_readout.text]
 
 ## Only while exploring: not in a build mode or another screen.
 func _can_open() -> bool:
@@ -264,7 +334,7 @@ func _close() -> void:
 
 func _process(delta: float) -> void:
 	_record_trail(delta)
-	if not visible: return
+	if not visible and not embedded: return
 	var pan := Vector2(float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT)),
 		float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) - float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)))
 	if pan != Vector2.ZERO:
@@ -275,11 +345,11 @@ func _process(delta: float) -> void:
 	var home: Vector3 = world.lander.global_position if world.lander != null else Vector3.ZERO
 	var away := Vector2(player.global_position.x - home.x, player.global_position.z - home.z).length()
 	_readout.text = "YOU  %s   ·   %.1f km from the lander   ·   1 SQUARE = %s   ·   NORTH IS UP" % [_coordinates(_you()), away / 1000.0, _distance(_grid_spacing())]
-	var at := _frame.get_local_mouse_position()
+	var at := _mouse()
 	_note_left -= delta
 	if _note_left > 0.0:
 		_cursor_readout.text = _note
-	elif Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)).has_point(at):
+	elif Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)).has_point(at) and (not embedded or _cursor_at.x >= 0.0):
 		var there := _map_to_region(at)
 		_cursor_readout.text = "CURSOR  %s   ·   %s from you" % [_coordinates(there), _distance(there.distance_to(_you()))]
 	else:
@@ -415,7 +485,7 @@ func _send_gar_y() -> void:
 	if gary == null:
 		_say("GAR-Y isn't here.")
 		return
-	var at := _frame.get_local_mouse_position()
+	var at := _mouse()
 	if not Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)).has_point(at):
 		_say("Point at a dashed ice zone first.")
 		return

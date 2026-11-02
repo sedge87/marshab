@@ -15,7 +15,7 @@ func _initialize() -> void:
 	MHGame.save_directory = "user://slate_look_saves"
 	DisplayServer.window_set_size(Vector2i(1600, 900))
 	root.size = Vector2i(1600, 900)
-	MHGame.site_id = "plains"; MHGame.game_mode = "survival"; MHGame.pending_save_state = {}
+	MHGame.site_id = "region"; MHGame.game_mode = "survival"; MHGame.pending_save_state = {}
 	MHGame.landing_target = Vector2.INF; MHGame.tutorial_mode = "full"; MHGame.colony_name = "Slate"
 	MHChapterOne.reset()
 	world = load("res://scenes/mars_world.tscn").instantiate()
@@ -38,8 +38,26 @@ func _initialize() -> void:
 	await create_timer(.5).timeout
 	await _shot("slate_goals")
 	pda.screen.show_app("map")
-	await create_timer(.5).timeout
+	await create_timer(.8).timeout
+	print("map lent: ", world.region_map.embedded if world.region_map != null else "no region map")
 	await _shot("slate_map")
+	# The wheel zooms in, at the middle of the lent map.
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	var mid := Vector2(1600, 900) * .5 + Vector2(-90, 20)
+	wheel.position = mid
+	wheel.global_position = mid
+	var span_before: float = world.region_map._span
+	for i in 4:
+		wheel.pressed = true
+		Input.parse_input_event(wheel.duplicate())
+		wheel.pressed = false   # a real wheel sends both
+		Input.parse_input_event(wheel.duplicate())
+		await process_frame
+	print("wheel zoom: span ", span_before, " -> ", world.region_map._span)
+	await create_timer(.3).timeout
+	await _shot("slate_map_zoomed")
 	# A click on the rail's first button (Map is 1, Log 2) lands through the 3D screen.
 	# Where the Log button sits on the display (from the slate_map shot: Goals, Map, Log), and
 	# where on the screen's own pixels that lands.
@@ -58,6 +76,7 @@ func _initialize() -> void:
 	await _shot("slate_clicked")
 	pda.close()
 	await create_timer(.6).timeout
+	print("after close, map back home: ", world.region_map != null and not world.region_map.embedded and world.region_map._frame.get_parent() != null)
 	print("closed; mouse captured: ", Input.mouse_mode == Input.MOUSE_MODE_CAPTURED, ", frozen: ", world.player.get_meta("ui_freeze", false))
 	await _shot("lowered")
 	quit()
