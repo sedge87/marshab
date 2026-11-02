@@ -58,6 +58,37 @@
       "said": "tut_move"
     },
     {
+      "id": "slate",
+      "goal": "camp",
+      "text": "Raise your slate",
+      "how": "Press Tab: your slate lifts into view. Goals has these tasks and how to do each; Map, Base, Comms, Site and the Log are down its left side. Click with the mouse, or press 1 to 6. Tab or Esc puts it away.",
+      "keys": [
+        [
+          [
+            "Tab"
+          ],
+          "Raise or lower the slate"
+        ],
+        [
+          [
+            "1",
+            "6"
+          ],
+          "Switch apps"
+        ],
+        [
+          [
+            "M"
+          ],
+          "Slate on Comms"
+        ]
+      ],
+      "check": {
+        "type": "flag",
+        "key": "slate"
+      }
+    },
+    {
       "id": "outside",
       "goal": "camp",
       "text": "Step outside",
@@ -462,23 +493,27 @@
     {
       "id": "systems",
       "goal": "ropes",
-      "text": "Read the systems panel",
-      "how": "The panel at the side shows power, air, water and heat. Green is fine, amber needs attention, red is urgent. Press Enter when you've had a look.",
+      "text": "Check the base on your slate",
+      "how": "Press Tab and open Base: battery, water, food, air and crew health, and any alerts with what's wrong and what to do. Green is fine, amber needs attention, red is urgent.",
       "keys": [
         [
           [
-            "Enter"
+            "Tab"
           ],
-          "Got it"
+          "Slate"
+        ],
+        [
+          [
+            "3"
+          ],
+          "Base"
         ]
       ],
       "check": {
-        "type": "read"
+        "type": "flag",
+        "key": "slate_base"
       },
       "needs_sim": true,
-      "highlight": [
-        "systems"
-      ],
       "said": "tut_systems"
     },
     {
@@ -531,7 +566,7 @@
       "goal": "self_sufficient",
       "rules": "chapter",
       "text": "Find water ice",
-      "how": "Open the map (Tab): dashed circles are where orbital radar sees ice. Point at one and press G to send GAR-Y, or hold G near it outside and pick Survey zone. It leaves a stake at each reading: blue strong, amber faint. Hold E inside a stake's ring to take a core. Hold T and press F to ping the stakes. A good core gives the Ice Extractor plan.",
+      "how": "Open the Map on your slate (Tab, then 2): dashed circles are where orbital radar sees ice. Point at one and press G to send GAR-Y, or hold G near it outside and pick Survey zone. It leaves a stake at each reading: blue strong, amber faint. Hold E inside a stake's ring to take a core. Hold T and press F to ping the stakes. A good core gives the Ice Extractor plan.",
       "keys": [
         [
           [

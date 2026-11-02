@@ -270,7 +270,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if pause_menu == null: _show_pause()
 		else: _resume()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
-		_open_mission_control()
+		# M raises the slate on Comms; Missions keep their Mission Control.
+		if MHGame.game_mode != "missions" and pda != null and pda.can_open(): pda.open("comms")
+		else: _open_mission_control()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C and not event.ctrl_pressed and not bool(player.get_meta("build_mode_active", false)) and not bool(player.get_meta("driving", false)):
 		# C: straight to the Crew screen (in Mission Control).
 		_open_mission_control()
@@ -920,6 +922,12 @@ func show_chapter_messages(messages: Array) -> void:
 	if not messages.is_empty(): MHAudio.sfx("undo")
 	if not messages.is_empty(): builder._update_budget()
 
+## The comms terminal (the Communications Station, or the lander's Mission
+## Planning Console): Mission Control's station screen, with the Monitor,
+## Cameras, Crew and Dossier (docs/pda.md §6).
+func open_terminal() -> void:
+	_open_mission_control()
+
 func open_fabricator(printer := "") -> void:
 	_open_live_view(FABRICATOR_SCREEN.new().setup(self, printer))
 
@@ -947,6 +955,8 @@ func _apply_settings() -> void:
 	if not _built_graphics.is_empty() and built != _built_graphics and builder != null: builder._rebuild()
 	_built_graphics = built
 	_budget_dirty = true
+	if explore_hud != null: explore_hud.apply_hud_style()
+	if alerts != null: alerts._refresh_icons()
 
 var _built_graphics := ""
 ## Dynamic resolution: below 30 frames a second the picture is drawn a little
@@ -1029,7 +1039,7 @@ func _show_pause() -> void:
 	MHAudio.sfx("ui_back", 0.0, 0.0)
 	pause_menu = MHPauseMenu.new()
 	pause_menu.resumed.connect(_resume)
-	pause_menu.mission_control.connect(_open_mission_control)
+	pause_menu.mission_control.connect(_pause_comms)
 	pause_menu.settings.connect(_open_settings)
 	pause_menu.save_requested.connect(save_now)
 	pause_menu.save_copy_requested.connect(save_copy)
@@ -1041,6 +1051,14 @@ func _open_settings() -> void:
 	var panel := MHSettingsPanel.new()
 	panel.applied.connect(_apply_settings)
 	pause_menu.add_child(panel)
+
+## The pause menu's M row: the slate on Comms (Missions: Mission Control).
+func _pause_comms() -> void:
+	if MHGame.game_mode == "missions" or pda == null:
+		_open_mission_control()
+		return
+	_resume()
+	if pda.can_open(): pda.open("comms")
 
 func _close_pause() -> void:
 	if pause_menu != null:

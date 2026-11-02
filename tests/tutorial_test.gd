@@ -73,7 +73,13 @@ func _initialize() -> void:
 		player.rotation.y += .08
 		await process_frame
 	await _settle()
-	_check(_step() == "outside", "moving ticks the first step (%s)" % _step())
+	_check(_step() == "slate", "moving ticks the first step (%s)" % _step())
+
+	# 1b. Raise the slate (Tab).
+	world.pda.open()
+	await _settle()
+	world.pda.close()
+	_check(_step() == "outside", "raising the slate ticks it (%s)" % _step())
 
 	# 2. Out of the lander: the hatch open and you outside the cabin.
 	world.lander.set_hatch(true)
@@ -137,32 +143,32 @@ func _initialize() -> void:
 	await _settle()
 	_check(_step() == "systems", "starting a job ticks it (%s)" % _step())
 
-	# 12. The systems panel: Enter when read.
-	world.explore_hud._update_systems_panel()   # it refreshes every 0.5 s; the test runs faster
-	var systems_panel: Control = world.explore_hud._systems_panel
-	_check(GUIDE.find_target(self, "systems") != null, "the systems panel can be found for the highlight (visible %s, in tree %s, minimal %s, size %s)" % [systems_panel.visible, systems_panel.is_visible_in_tree(), world.explore_hud._minimal, systems_panel.get_global_rect().size])
-	_key(KEY_ENTER)
+	# 12. The base on the slate: its Base app.
+	world.pda.open("base")
 	await _settle()
-	_check(_step() == "crew", "Enter ticks the read-only step (%s)" % _step())
+	world.pda.close()
+	_check(_step() == "crew", "opening the slate's Base app ticks it (%s)" % _step())
 
 	# 13. The crew screen (C), then 14. saving.
 	world.guide_flags["crew_screen"] = true
 	await _settle()
 	_check(_step() == "save", "the crew screen ticks it (%s)" % _step())
 	var state: Dictionary = world.current_state()
-	_check(str(state.tutorial.mode) == "full" and (state.tutorial.done as Array).size() == 14, "the save records the tutorial and its 14 done steps (%s)" % [state.tutorial])
+	_check(str(state.tutorial.mode) == "full" and (state.tutorial.done as Array).size() == 15, "the save records the tutorial and its 15 done steps (%s)" % [state.tutorial])
 	world._save_habitat(6)
 	await _settle()
 	_check(_step() == "ice" and not bool(t.finished) and t.current_goal() == "self_sufficient", "saving finishes Learn the ropes; chapter one's Self-sufficient goal comes next (%s)" % _step())
 
 	# The checklist hides: H cycles full, folded, hidden (remembered in settings).
 	var keep_view := str(MHGame.setting("checklist"))
+	var keep_hud := str(MHGame.setting("hud"))
+	var hud_values := MHGame.settings(); hud_values["hud"] = "classic"; MHGame.save_settings(hud_values)   # H is a Classic HUD key
 	for want in ["folded", "hidden", "full"]:
 		_key(KEY_H)
 		await _settle()
 		_check(TUTORIAL.view() == want, "H turns the checklist %s (%s)" % [want, TUTORIAL.view()])
 		if want == "hidden": _check(not t._panel.visible, "hidden, the checklist is off the screen")
-	var view_values := MHGame.settings(); view_values["checklist"] = keep_view; MHGame.save_settings(view_values)
+	var view_values := MHGame.settings(); view_values["checklist"] = keep_view; view_values["hud"] = keep_hud; MHGame.save_settings(view_values)
 
 	# Self-sufficient: chapter one's steps tick in any order.
 	MHChapterOne.steps["food"] = 500.0
@@ -207,5 +213,5 @@ func _initialize() -> void:
 	for clip in unique: _check(GUIDE.has_clip(clip), "the %s clip exists" % clip)
 
 	if failures == 0:
-		print("Tutorial test passed: the goal checklist (15 chapter-one steps, then Self-sufficient in any order) ticks from play, H hides it, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
+		print("Tutorial test passed: the goal checklist (16 chapter-one steps, then Self-sufficient in any order) ticks from play, H hides it, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
 	quit(1 if failures > 0 else 0)

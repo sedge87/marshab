@@ -3026,8 +3026,8 @@
     "actions": [
       {
         "key": "primary",
-        "type": "monitor",
-        "label": "Open the habitat monitor"
+        "type": "terminal",
+        "label": "Use the comms terminal"
       },
       {
         "key": "secondary",
@@ -3106,6 +3106,11 @@
     "actions": [
       {
         "key": "primary",
+        "type": "terminal",
+        "label": "Use the comms terminal"
+      },
+      {
+        "key": "secondary",
         "type": "machine",
         "state": "uplink",
         "default": true,
@@ -3121,21 +3126,6 @@
         "label_off": "Switch uplink on",
         "note_off": "Uplink off. No messages can reach Earth or the rovers until it's back on.",
         "note_on": "Uplink on. Messages to Earth take between 5 and 20 minutes each way, depending on where the planets are."
-      },
-      {
-        "key": "secondary",
-        "type": "slide",
-        "parts": [
-          "service_data_module"
-        ],
-        "offset": [
-          0,
-          0,
-          -0.3
-        ],
-        "label_on": "Insert data module",
-        "label_off": "Pull data module",
-        "state": "module"
       },
       {
         "key": "tertiary",

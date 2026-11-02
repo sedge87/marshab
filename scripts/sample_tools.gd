@@ -127,7 +127,10 @@ func prompt_text() -> String:
 # ---------- holding E and I ----------
 
 func _process(delta: float) -> void:
-	_pips.visible = MHSamples.on() and MHChapterOne.has_corer and world.player != null and not world.builder.is_inside(world.player.global_position) and not bool(world.lander.cabin_contains(world.player.global_position)) and world.explore_hud != null and world.explore_hud.visible
+	# Out on the ground with the corer: the case's visor pips (Classic HUD; the
+	# wrist pad shows the count either way), the air reading and the I key.
+	var out_here: bool = MHSamples.on() and MHChapterOne.has_corer and world.player != null and not world.builder.is_inside(world.player.global_position) and not bool(world.lander.cabin_contains(world.player.global_position)) and world.explore_hud != null and world.explore_hud.visible
+	_pips.visible = out_here and MHGame.classic_hud()
 	_pips.queue_redraw()
 	var mode := prompt()
 	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not get_tree().paused
@@ -149,10 +152,10 @@ func _process(delta: float) -> void:
 		if MHSamples.find_near(world.player.global_position) == "cave_climate":
 			world.call("show_chapter_messages", MHSamples.log_reading("cave_climate", daylight, _now()))
 		# The air (mars_air): logged by day and by night, away from the base's own exhaust.
-		elif _pips.visible and world.player.global_position.distance_to(world.lander.global_position) > AIR_READING_M:
+		elif out_here and world.player.global_position.distance_to(world.lander.global_position) > AIR_READING_M:
 			world.call("show_chapter_messages", MHSamples.log_reading("mars_air", daylight, _now()))
 	# I: the case's line; hold I: leave the last sample behind.
-	var info := captured and _pips.visible and Input.is_physical_key_pressed(KEY_I) and world.explore_hud.call("_looked_at_interactable") == null
+	var info := captured and out_here and Input.is_physical_key_pressed(KEY_I) and world.explore_hud.call("_looked_at_interactable") == null
 	if info:
 		if _info_held == 0.0: world.explore_hud.call("show_equipment_note", "Sample case", MHSamples.case_line())
 		_info_held += delta

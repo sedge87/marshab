@@ -121,6 +121,7 @@ func show_app(id: String) -> void:
 	_lend_map(false)
 	app = id
 	MHNotices.seen(id)
+	if world != null and world.get("guide_flags") != null: world.guide_flags["slate_" + id] = true
 	var values := MHGame.settings()
 	if str(values.get("slate_app", "")) != id:
 		values["slate_app"] = id

@@ -103,7 +103,7 @@ func _action_label(action: Dictionary) -> String:
 		"crop":
 			var crops := _crops()
 			return str(crops.next_label(_placement_id())) if crops != null else "Next crop"
-		"workout", "inspect", "play", "sign_edit", "monitor", "camera", "sleep", "recall_rover", "suit_refill":
+		"workout", "inspect", "play", "sign_edit", "monitor", "terminal", "camera", "sleep", "recall_rover", "suit_refill":
 			return str(action.get("label", "Use"))
 		"screen":
 			var labels: Array = action.get("mode_labels", action.get("modes", []))
@@ -175,6 +175,9 @@ func _run(key: String, _actor: Node) -> bool:
 				return true
 			"monitor":
 				get_tree().call_group("habitat_world", "open_monitor")
+				return true
+			"terminal":
+				get_tree().call_group("habitat_world", "open_terminal")
 				return true
 			"suit_refill":
 				# A full suit refill from the habitat's oxygen and batteries (scripts/suit.gd).

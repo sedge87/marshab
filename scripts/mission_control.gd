@@ -75,23 +75,27 @@ func _ready() -> void:
 		dossier_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		dossier_button.pressed.connect(_show_dossier)
 		header.add_child(dossier_button)
-	if MHSamples.on():
+	# Messages, Discoveries and the alert log live on the slate now (docs/pda.md
+	# §6); Missions keep them here.
+	var on_slate := MHGame.game_mode != "missions"
+	if MHSamples.on() and not on_slate:
 		var science := MHStyle.button("Discoveries (%d)" % MHSamples.found.size(), "secondary", "flask-conical")
 		science.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		science.tooltip_text = "The terminal: what your samples have shown, by section"
 		science.pressed.connect(_show_discoveries)
 		header.add_child(science)
-	if link != null:
+	if link != null and not on_slate:
 		var unread := int(link.unread) + (link.messages as Array).filter(func(m): return not bool(m.heard)).size()
 		var messages := MHStyle.button("Messages%s" % (" (%d new)" % unread if unread > 0 else ""), "secondary", "volume-2")
 		messages.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		messages.tooltip_text = "Everything Mission Control's people have said, by person"
 		messages.pressed.connect(_show_messages)
 		header.add_child(messages)
-	var log_button := MHStyle.button("Alert log (%d)" % count, "secondary", "triangle-alert")
-	log_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	log_button.pressed.connect(_show_alert_log)
-	header.add_child(log_button)
+	if not on_slate:
+		var log_button := MHStyle.button("Alert log (%d)" % count, "secondary", "triangle-alert")
+		log_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		log_button.pressed.connect(_show_alert_log)
+		header.add_child(log_button)
 	var close := MHStyle.button("Close", "secondary", "x")
 	close.tooltip_text = "Esc"
 	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER

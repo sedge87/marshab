@@ -134,6 +134,7 @@ func open(app := "") -> void:
 			layer.visible = false
 	MHNotices.hidden = true
 	_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	if world.get("guide_flags") != null: world.guide_flags["slate"] = true   # the tutorial's first task
 	screen.opened(app)
 	MHAudio.sfx("suit_beep", -14.0)
 

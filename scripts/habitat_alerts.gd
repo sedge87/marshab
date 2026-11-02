@@ -465,6 +465,7 @@ func _build_hud() -> void:
 ## One icon per active alert (not hidden), most serious first. A new one
 ## pops in; critical ones pulse.
 func _refresh_icons() -> void:
+	_icons.visible = MHGame.classic_hud() and not get_tree().get_nodes_in_group("pda").any(func(p): return bool(p.is_open))
 	var order := _active.keys().filter(func(id): return not _dismissed.has(id))
 	order.sort_custom(func(a, b): return LEVEL_RANK[str(_active[a].level)] > LEVEL_RANK[str(_active[b].level)])
 	# Rebuilt only when something changed, so hovering and pulses aren't reset.
@@ -551,9 +552,11 @@ func _close_detail() -> void:
 	_mouse_before = -1
 	_refresh_icons()
 
-## N: open the most serious alert showing, or close the open one.
+## N: open the most serious alert showing, or close the open one (Classic
+## HUD; with Minimal the alerts are in the slate's Base app).
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_N) or event.ctrl_pressed: return
+	if not MHGame.classic_hud(): return
 	if get_tree().paused: return
 	if not _detail_id.is_empty():
 		_close_detail()

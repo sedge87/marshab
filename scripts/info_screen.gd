@@ -124,6 +124,10 @@ func _draw_suit() -> void:
 	var stakes := get_tree().get_first_node_in_group("survey_stakes")
 	if stakes != null and str(r.get("where", "")) == "outside" and not (stakes.call("readings") as Array).is_empty():
 		_text("F · PING STAKES", Vector2(92, 32) * u, int(15 * u), MHStyle.INFO, 700)
+	# The sample case, on the wrist (docs/pda.md: the visor pips' place).
+	if MHSamples.on() and MHChapterOne.has_corer:
+		var full := MHSamples.case_items.size() >= MHSamples.CASE_SLOTS
+		_text("CASE %d/%d" % [MHSamples.case_items.size(), MHSamples.CASE_SLOTS], Vector2(size.x - 92 * u, 34 * u), int(15 * u), MHStyle.WARN if full else MHStyle.TEXT_SECONDARY, 700, HORIZONTAL_ALIGNMENT_RIGHT, -1)
 	if not bool(r.active):
 		_text("Life support not simulated", Vector2(22, 110) * u, int(22 * u), MHStyle.TEXT_MUTED)
 		_text("(Creative)", Vector2(22, 140) * u, int(18 * u), MHStyle.TEXT_MUTED, 500)

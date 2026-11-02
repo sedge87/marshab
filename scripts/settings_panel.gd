@@ -218,6 +218,7 @@ const VOLUME_STEPS := ["Off", "25 %", "50 %", "75 %", "100 %"]
 const MC_LEVELS := {"log": "Log only", "quiet": "Quiet", "normal": "Normal", "chatty": "Chatty"}
 const SUBTITLES := {"full": "Full", "compact": "Compact", "off": "Off"}
 const CHECKLIST := {"full": "Full", "folded": "Folded", "hidden": "Hidden"}
+const HUD_STYLES := {"minimal": "Minimal", "classic": "Classic"}
 
 func _audio() -> Control:
 	var grid := MHStyle.hbox(48)
@@ -260,8 +261,9 @@ func _audio() -> Control:
 	# On screen: captions for what's said, and the getting-started checklist.
 	var screen_group := MHStyle.vbox(10)
 	screen_group.add_child(MHStyle.label("On screen", 19, MHStyle.TEXT_PRIMARY, 600))
-	for row in [["subtitles", "Subtitles", SUBTITLES, "compact", "Captions for ARDEN, the suit and Mission Control. Compact keeps them small, and in the corner while you build."],
-			["checklist", "Checklist", CHECKLIST, "full", "The getting-started goals. H cycles it in a game; Hidden gives you the whole screen."]]:
+	for row in [["hud", "HUD", HUD_STYLES, "minimal", "Minimal keeps the crosshair, compass, captions and one notice line: the rest is on your slate (Tab). Classic brings back the old panels."],
+			["subtitles", "Subtitles", SUBTITLES, "compact", "Captions for ARDEN, the suit and Mission Control. Compact keeps them small, and in the corner while you build."],
+			["checklist", "Checklist", CHECKLIST, "full", "The getting-started goals on screen, with the Classic HUD. H cycles it in a game."]]:
 		var line := MHStyle.hbox(12)
 		line.add_child(MHStyle.label(str(row[1]), 16, MHStyle.TEXT_SECONDARY, 600))
 		var hint := MHStyle.body(str(row[4]), 14, MHStyle.TEXT_MUTED)
