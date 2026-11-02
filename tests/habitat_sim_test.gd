@@ -242,6 +242,60 @@ func _initialize() -> void:
 	worn_copy.load(worn_sim.save())
 	_check(worn_copy.wear.save().hash() == worn_sim.wear.save().hash(), "wear survives save and load")
 	_check(MHChapterOne.fabricable().has(MHChapterOne.SPARES_KIT) and float(MHChapterOne.plan_cost(MHChapterOne.SPARES_KIT).feedstock_kg) > 0.0, "the fabricator makes spares kits from feedstock")
+
+	# Earth's crew (crew_plan.gd): you land alone; the crew you chose arrive in waves.
+	MHCrewPlan.reset()
+	MHCrewPlan.final_size = 6
+	var plan_sim: RefCounted = _habitat("plains", 6, _full_kit()).simulation()
+	_check(plan_sim.crew_count() == 1 and int(plan_sim.daily_flows(true).crew) == 1, "a new game: just you, with six bunks (%d)" % plan_sim.crew_count())
+	_check(MHCrewPlan.tick(1.0, plan_sim, false, 100.0).is_empty() and MHCrewPlan.roster.is_empty(), "nobody is sent before chapter one ends")
+	var news: Array = MHCrewPlan.tick(1.0, plan_sim, true, 100.0)
+	var lands := float(MHCrewPlan.roster[0].lands_at) if not MHCrewPlan.roster.is_empty() else -1.0
+	_check(MHCrewPlan.en_route().size() == 2 and not news.is_empty() and str(news[0].title).contains(str(MHCrewPlan.roster[0].name)) and is_equal_approx(lands, 100.0 + 20.0 * 24.0),
+		"then the first wave's manifest: 2 crew, landing in 20 sols")
+	_check(int(plan_sim.daily_flows(true).crew) == 3 and plan_sim.crew_count() == 1, "readiness counts 3; the sim is still just you")
+	var list: Dictionary = MHCrewPlan.checklist(plan_sim)
+	_check(is_equal_approx(float(list.need.food), 3.0 * 30.0 * 1.8) and list.has("ready"), "the checklist wants 30 sols of food for 3 (%d kg)" % roundi(float(list.need.food)))
+	plan_sim.inventory().drills.append(.8)
+	var one_processor: Dictionary = CHAINS.supports_all(plan_sim)
+	var more_kit := _full_kit()
+	more_kit["water_reclaimer"] = ["life_support", 3]
+	var more_sim: RefCounted = _habitat("plains", 6, more_kit).simulation()
+	more_sim.inventory().drills.append(.8)
+	var more: Dictionary = CHAINS.supports_all(more_sim)
+	_check(int(more.water) >= int(one_processor.water) and int(one_processor.air) >= 1, "each chain says how many it carries (water %d, then %d with more processors)" % [one_processor.water, more.water])
+	_check(MHCrewPlan.tick(1.0, plan_sim, true, lands - 1.0).is_empty() and MHCrewPlan.landed().is_empty(), "nobody lands early")
+	var landing: Array = MHCrewPlan.tick(1.0, plan_sim, true, lands)
+	_check(MHCrewPlan.landed().size() == 2 and plan_sim.crew_count() == 3 and not landing.is_empty(), "they land on the day, ready or not: 3 aboard (%d)" % plan_sim.crew_count())
+	_check(MHCrewPlan.tick(1.0, plan_sim, true, lands + 2.0).is_empty() and MHCrewPlan.en_route().is_empty(), "no new wave until they've settled")
+	MHCrewPlan.settled_hours = 10.0 * 24.0
+	MHCrewPlan.tick(1.0, plan_sim, true, lands + 3.0)
+	_check(MHCrewPlan.en_route().size() == 3 or CHAINS.chains(plan_sim).any(func(c): return str(c.level) == "bad"), "settled, the second wave: 3 more to make 6")
+	var saved_plan := MHCrewPlan.export_state()
+	MHCrewPlan.load_state({})
+	_check(not MHCrewPlan.solo and plan_sim.crew_count() == 6, "an older chapter save keeps its bunk-based crew (%d)" % plan_sim.crew_count())
+	MHCrewPlan.load_state(saved_plan)
+	_check(MHCrewPlan.solo and MHCrewPlan.landed().size() == 2 and str(MHCrewPlan.roster[0].name) == str(saved_plan.roster[0].name), "the roster survives save and load")
+	MHCrewPlan.reset()
+	MHCrewPlan.final_size = 3
+	MHCrewPlan.tick(1.0, plan_sim, true, 0.0)
+	MHCrewPlan.tick(1.0, plan_sim, true, 10000.0)
+	MHCrewPlan.settled_hours = 1000.0
+	MHCrewPlan.tick(1.0, plan_sim, true, 10001.0)
+	_check(MHCrewPlan.roster.size() == 2 and MHCrewPlan.aboard() == 3, "Small: one wave of 2, then nobody else")
+	MHCrewPlan.reset()
+	MHCrewPlan.final_size = 9
+	var goals: Array = [MHCrewPlan.next_goal()]
+	MHCrewPlan.roster = [{}, {}]
+	goals.append(MHCrewPlan.next_goal())
+	MHCrewPlan.roster = [{}, {}, {}, {}, {}]
+	goals.append(MHCrewPlan.next_goal())
+	_check(goals == [3, 6, 9], "Large: three waves, to 3, 6 and 9 (%s)" % str(goals))
+	MHCrewPlan.reset()
+	MHCrewPlan.final_size = 1
+	_check(MHCrewPlan.tick(1.0, plan_sim, true, 0.0).is_empty() and MHCrewPlan.roster.is_empty(), "Solitary: Earth sends nobody")
+	MHCrewPlan.final_size = 6
+	MHCrewPlan.reset()
 	MHChapterOne.older_rules = true
 	_check(is_equal_approx(rad_sim.life.risk_pct(600.0), 3.0) and rad_sim.life.dose_text(60.0).contains("60 of 600"), "the career limit: 3 % added risk at 600 mSv")
 

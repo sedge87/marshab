@@ -34,7 +34,7 @@ const LEVEL_SOUND := {"advisory": "ui_confirm", "warning": "storm_alert", "criti
 ## Each alert's icon in the notification row.
 const ICONS := {"life_support_power": "zap", "power": "zap", "battery_sunset": "moon", "o2": "wind", "co2": "recycle",
 	"cold": "flame", "cold_spot": "flame", "water": "droplets", "food": "utensils", "health": "heart-pulse",
-	"radiation": "radiation", "breach": "shield", "repress": "gauge", "breakdown": "wrench", "worn": "wrench", "blackout": "satellite",
+	"radiation": "radiation", "breach": "shield", "repress": "gauge", "breakdown": "wrench", "worn": "wrench", "bunks": "bed-double", "blackout": "satellite",
 	"injury": "syringe", "fitness": "dumbbell", "wellbeing": "smile"}
 ## A critical alert still active chimes (softly, no voice) this often.
 const CRITICAL_CHIME := 60.0
@@ -276,6 +276,12 @@ func _life_alerts(s: RefCounted, inv: Dictionary, out: Array) -> void:
 		out.append({"id": "worn", "level": "warning" if float(worst.wear) >= 1.0 else "advisory", "title": "%s %d%% worn" % [str(worst.label), roundi(float(worst.wear) * 100.0)] + (" (+%d more)" % (due.size() - 1) if due.size() > 1 else ""),
 			"text": "%s: it's losing output%s. Servicing it takes a spares kit." % [str(worst.job), ", and breaks after two sols fully worn" if float(worst.wear) >= 1.0 else ""],
 			"chain": [["wrench", "%d%% worn" % roundi(float(worst.wear) * 100.0), false], ["package", "%d spares kits" % int(life.spares), int(life.spares) == 0]]})
+	# Earth's crew (crew_plan.gd): people aboard without a bunk.
+	var bunkless: int = s.crew_count() - int(inv.capacity.berths)
+	if MHChapterOne.on() and MHCrewPlan.solo and bunkless > 0:
+		out.append({"id": "bunks", "level": "warning", "title": "%d crew without a bunk" % bunkless,
+			"text": "They're sleeping on the floor. Place a sleep station for each.",
+			"chain": [["bed-double", "%d bunks" % int(inv.capacity.berths), true], ["users", "%d aboard" % s.crew_count(), false]]})
 	if float(life.blackout_hours_left) > 0.0:
 		out.append({"id": "blackout", "level": "advisory", "title": "No contact with Earth",
 			"text": "The Sun is between Mars and Earth: %s until contact returns." % _sols(float(life.blackout_hours_left) / 24.0),
@@ -319,6 +325,7 @@ const EXPLAIN := {
 	"radiation": "Mars has no magnetic field and thin air, so radiation from solar flares reaches the ground. A small, well-shielded storm shelter protects the crew for the day it lasts.",
 	"breach": "Hatches seal automatically, so only the rooms joined to the breached one without a hatch lose their air. Then a patch kit seals the hole.",
 	"repress": "Once the hole is patched, stored air from the air reserve racks refills the empty rooms.",
+	"bunks": "Earth's crew land whether or not the base is ready. Each person needs a sleep station.",
 	"worn": "Filters clog, brine bags fill and catalysts tire. Servicing a machine by hand takes a spares kit, which the fabricator makes from feedstock. Left fully worn for two sols, a machine breaks.",
 	"breakdown": "Machines wear out. Each repair uses a spare part. Having two of every life-critical machine (redundancy) keeps the crew safe while one is fixed.",
 	"blackout": "Every two years Mars passes behind the Sun from Earth, and for about two weeks no messages get through. Crews have to manage on their own.",

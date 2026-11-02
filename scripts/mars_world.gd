@@ -517,6 +517,10 @@ func configure_life() -> void:
 	else:
 		# Survival and Freedom: the challenge options (docs/new-game-options.md).
 		life.crew_on = MHGame.simulation_on()
+		# Earth's landed crew (crew_plan.gd) join the crew list by name.
+		if life.crew_on and MHChapterOne.on() and MHCrewPlan.solo:
+			life.ensure_crew(sim.crew_count(), MHCrewPlan.names())
+			life.set_names(MHCrewPlan.names())
 		if MHGame.surprise_scale() > 0.0 and MHGame.simulation_on(): kinds = ["spe", "breach", "breakdowns"]
 		life.live_scale = MHGame.surprise_scale()
 		life.radiation_on = MHGame.challenge_on("radiation")

@@ -87,6 +87,7 @@ static func reset() -> void:
 	stores_landed = false; reserve_used = false; emergency_eta = -1.0; said = {}
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
 	MHSamples.reset()   # step 5's samples and journal start with the chapter
+	MHCrewPlan.reset()  # you're alone; Earth's crew plan comes when the chapter ends
 	MHJournal.reset()
 
 static func export_state() -> Dictionary:
@@ -95,12 +96,13 @@ static func export_state() -> Dictionary:
 		"made": made.duplicate(), "paid": paid.duplicate(),
 		"has_corer": has_corer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
 		"stores_landed": stores_landed, "reserve_used": reserve_used, "emergency_eta": emergency_eta, "said": said.duplicate(),
-		"water_hours": water_hours, "soil": soil, "soil_potted_at": soil_potted_at, "lander_spots": lander_spots.duplicate(true)}
+		"water_hours": water_hours, "soil": soil, "soil_potted_at": soil_potted_at, "lander_spots": lander_spots.duplicate(true), "crew_plan": MHCrewPlan.export_state()}
 
 ## A loaded save. One from before step 4 has no "chapter_one" and plays as
 ## already supplied: every plan known, no crates, the old cargo budget.
 static func load_state(state: Dictionary, has_section: bool) -> void:
 	reset()
+	MHCrewPlan.load_state(state.get("crew_plan", {}))   # older chapter saves: the bunk-based crew, no plan
 	if not has_section:
 		older_rules = true
 		return
@@ -480,6 +482,7 @@ static func tick(hours: float, builder: Object) -> Array:
 			for learned in learn_after(event): out.append(_plan_message(learned))
 	out.append_array(_check_steps(builder, sim, last, hours, now))
 	out.append_array(_check_stores(sim, crew, now))
+	out.append_array(MHCrewPlan.tick(hours, sim, finished_at >= 0.0, now))
 	return out
 
 static func _plan_message(id: String) -> Dictionary:

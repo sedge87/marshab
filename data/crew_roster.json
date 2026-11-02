@@ -1,0 +1,17 @@
+{
+  "_note": "Earth's crew, in the order they're sent (scripts/crew_plan.gd). Unseen for now: each is a record that counts in the sim once landed. Names avoid Mission Control's cast (mc_cast.json) and the Missions crew (hazards.json).",
+  "crew": [
+    {"name": "Daniel Achterberg", "role": "engineer"},
+    {"name": "Lucía Ferrer", "role": "botanist"},
+    {"name": "Hiroshi Tanabe", "role": "geologist"},
+    {"name": "Amara Diallo", "role": "doctor"},
+    {"name": "Callum Fraser", "role": "systems specialist"},
+    {"name": "Sofia Marchetti", "role": "engineer"},
+    {"name": "Yusuf Demir", "role": "botanist"},
+    {"name": "Elena Petrova", "role": "geologist"},
+    {"name": "Rangi Parata", "role": "doctor"},
+    {"name": "Grace Mbeki", "role": "systems specialist"},
+    {"name": "Arjun Mehta", "role": "engineer"},
+    {"name": "Freya Lund", "role": "botanist"}
+  ]
+}

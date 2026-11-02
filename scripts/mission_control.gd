@@ -592,7 +592,7 @@ func _readiness_column() -> Control:
 	var items := builder.readiness()
 	var met := builder.readiness_met()
 	var head := MHStyle.hbox(8)
-	head.add_child(MHStyle.eyebrow("Readiness · Crew of %d" % BuildController.CREW_TARGET))
+	head.add_child(MHStyle.eyebrow("Readiness · Crew of %d" % (MHCrewPlan.planned() if MHChapterOne.on() and MHCrewPlan.solo else BuildController.CREW_TARGET)))
 	head.add_child(MHStyle.spacer())
 	head.add_child(MHStyle.mono("%d / %d" % [met, items.size()], 18, MHStyle.VALID if met == items.size() else MHStyle.accent, 700))
 	col.add_child(head)

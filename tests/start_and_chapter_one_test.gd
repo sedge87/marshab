@@ -108,15 +108,15 @@ func _initialize() -> void:
 	# ---- stores ----
 	var sim: RefCounted = b.simulation()
 	var stores := MHChapterOne.stores_for(MHChapterOne.store_sols())
-	_check(is_equal_approx(float(stores.food_kg), 2.0 * 1.8 * 90.0), "Survival stores: 90 sols for two (%s)" % stores)
+	_check(is_equal_approx(float(stores.food_kg), 1.0 * 1.8 * 90.0), "Survival stores: 90 sols for you alone (%s)" % stores)
 	sim.invalidate(); sim.inventory()
 	_check(MHChapterOne.stores_landed and float(sim.food_kg) >= float(stores.food_kg) - .1 and float(sim.water_l) >= float(stores.water_l) - .1, "the landed stores arrive with the crew")
-	sim.last = {"crew": 2, "water_out": 20.0, "water_in": 0.0, "o2_in": 0.0, "food_in": 0.0, "generation_kw": 5.0}
+	sim.last = {"crew": 1, "water_out": 10.0, "water_in": 0.0, "o2_in": 0.0, "food_in": 0.0, "generation_kw": 5.0}
 	var left := MHChapterOne.sols_left(sim)
 	_check(float(left.food) > 80.0 and float(left.food) < 100.0, "food shown as sols left (%s)" % left)
 	sim.food_kg = 0.0
 	var news := MHChapterOne.tick(.5, b)
-	_check(MHChapterOne.reserve_used and float(sim.food_kg) > 30.0 and news.any(func(m): return str(m.id) == "reserve"), "running out opens the contingency reserve")
+	_check(MHChapterOne.reserve_used and float(sim.food_kg) > 15.0 and news.any(func(m): return str(m.id) == "reserve"), "running out opens the contingency reserve")
 	_check(MHChapterOne.emergency_eta > 0.0, "and an emergency lander is sent")
 	sim.hours_run = MHChapterOne.emergency_eta + 1.0
 	news = MHChapterOne.tick(.5, b)

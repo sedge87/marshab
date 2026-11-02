@@ -313,6 +313,31 @@ One part means you get by on reserves and a lot of ice; every part means you cou
   - The two-person EVA rule returns at two crew (core loop round 6, item 10).
   - More crew means more science per sol.
 
+**Built 2 Nov: the crew size you pick, arriving in waves, unseen.** The user benched visible NPCs, but wanted to pick the final crew at the start, "like setting the map size in Stellaris". So this differs from the design above:
+
+- **The Crew choice** on the new game's Colony step (Survival and Freedom): **Solitary 1 · Small 3 · Standard 6 · Large 9**, fixed for the game. It isn't a challenge option.
+- **You land alone.** Under chapter rules the sim's crew is you plus the landed crew (`MHCrewPlan.solo`). Older chapter saves keep their bunk-based crew. `chapter_store_crew` is now 1, so the stores still last the designed 90 sols.
+- **Waves, not offers.** When chapter one ends, Earth announces the first wave by name and role. It lands `crew_trip_sols` (20) later. The waves step through 3, 6 and 9, stopping at your size.
+  - The next wave is announced once the crew aboard has settled: `crew_settle_sols` (10) with no chain failing.
+  - At the full size: "Full crew of N aboard".
+  - This is scripts/crew_plan.gd; the names are in data/crew_roster.json. Its state is saved with chapter one.
+- **The checklist before a landing:**
+  - a bunk each;
+  - every chain carrying the planned head count (`habitat_chains.supports_all`, up to 12);
+  - stores for everyone planned: food for `crew_store_food_sols` (30), clean water for `crew_store_water_sols` (7) and O₂ for `crew_store_o2_sols` (3).
+  - The Monitor's Chains view heads with "Next crew: 3 land in 14 sols · ready for 4 of 6 (water is the weak chain) · stores: food 80 of 324 kg". It also lists Earth's crew.
+- **Landing day:** they land whether or not you're ready. People without a bunk raise an alert.
+  - They're **unseen**: each is a roster record that counts in the sim (eating, breathing, washing) and joins the crew list by name (habitat_life.gd). It has no body yet and no health of its own.
+  - A visible NPC later is a body attached to that record.
+- **Solitary:** Earth sends nobody. Readiness just says how many the base could take.
+
+**Benched (2 Nov), to design before building:**
+- A visible NPC crew living at the base. The user's wife wants to see people at her base and see it come alive. The user likes the solitude, and the stories over the radio.
+- The framing: you're the advance commissioner. It's odd to start alone with so much and then have Earth send one person with nothing.
+- Specialists arriving with their own lander and cargo. The user's idea: the first crew member brings the crew rover and the vehicle bay module.
+- Radio stories from crew in transit could crowd Mission Control's lines (docs/mission-control-voice.md) and make the atmosphere too busy. That needs a design pass first.
+- From the design above: the countdown, the test run, the arrival checklist and landing pad, and the two-person EVA rule.
+
 ### 12.3 Whose goals: NASA's, on purpose
 
 - **Discoveries:** the four sections (Life, Climate, Geology, Humans) are the four science goals of NASA's Mars Exploration Program, as set by its science advisory group (MEPAG).

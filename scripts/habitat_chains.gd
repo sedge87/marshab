@@ -122,6 +122,23 @@ static func chain(sim: RefCounted, id: String) -> Dictionary:
 	elif level == "ok": level = "warn"
 	return {"id": id, "label": str(spec.label), "icon": str(spec.icon), "closure": closure, "stores": stores, "links": links, "weak": weak, "level": level}
 
+## The most crew each chain could carry, {air, water, food, waste} (Mission
+## readiness, §12.2): the largest n up to MAX_CREW whose sol balances.
+const MAX_CREW := 12
+static func supports_all(sim: RefCounted) -> Dictionary:
+	var out := {"air": 0, "water": 0, "food": 0, "waste": 0}
+	var inv: Dictionary = sim.inventory()
+	var sorters := (inv.items as Array).filter(func(i): return str(i.id) == "waste_sorting_unit" and bool(i.on)).size()
+	for n in range(1, MAX_CREW + 1):
+		var f: Dictionary = sim.daily_flows(true, n)
+		if float(f.o2_made) >= float(f.o2_need) - .001 and float(f.co2_removed) >= float(f.co2_made) - .001: out.air = n
+		if float(f.water_made) >= float(f.water_used) - .001: out.water = n
+		if float(f.food_grown) >= float(f.food_eaten) - .001 or float(sim.food_kg) >= float(f.food_eaten) * 30.0: out.food = n
+		var rations := maxf(0.0, float(f.food_eaten) - float(f.food_grown))
+		var rubbish: float = rations * float(sim.waste.PACKAGING_PER_KG) + n * (float(sim.waste.TRASH_KG) + float(sim.waste.SOLIDS_KG))
+		if sorters * float(sim.waste.SORTER_KG) >= rubbish: out.waste = n
+	return out
+
 static func chains(sim: RefCounted) -> Array:
 	return ORDER.map(func(id): return chain(sim, id))
 

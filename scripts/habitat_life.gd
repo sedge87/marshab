@@ -110,10 +110,11 @@ func ensure_crew(count: int, names: Array = []) -> void:
 	var roles: Array = data().crew.roles
 	var defaults: Array = data().crew.default_names
 	var favourites: Array = data().crew.favourites
-	while crew.size() < count and crew.size() < roles.size():
+	# Past the six roles (a Large crew, crew_plan.gd) the roles go round again.
+	while crew.size() < count:
 		var i := crew.size()
-		var person_name := str(names[i]) if i < names.size() and not str(names[i]).strip_edges().is_empty() else str(defaults[i])
-		crew.append({"name": person_name, "role": str(roles[i].id), "fitness": float(value("fitness", "start", 100.0)),
+		var person_name := str(names[i]) if i < names.size() and not str(names[i]).strip_edges().is_empty() else str(defaults[i % defaults.size()])
+		crew.append({"name": person_name, "role": str(roles[i % roles.size()].id), "fitness": float(value("fitness", "start", 100.0)),
 			"wellbeing": float(value("wellbeing", "start", 80.0)), "injured_h": 0.0, "recovered_h": 0.0, "favourite": str(favourites[i % favourites.size()])})
 	if crew.size() > count: crew.resize(count)
 

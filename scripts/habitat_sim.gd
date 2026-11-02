@@ -444,7 +444,11 @@ func _take_landed_stores(capacity: Dictionary) -> void:
 ## Crew live in the habitat once there are bunks for them (the rest wait on the lander).
 func crew_count_for(capacity: Dictionary) -> int:
 	if crew_evacuated: return 0
-	var crew := mini(int(MHResources.setting("crew", 6.0)), int(capacity.berths))
+	# Chapter rules: you (once you've a bunk) plus Earth's landed crew, bunks or not
+	# (crew_plan.gd); older chapter saves keep the bunk rule.
+	var chapter_crew := MHChapterOne.on() and MHCrewPlan.solo
+	var most := 1 if chapter_crew else int(MHResources.setting("crew", 6.0))
+	var crew := mini(most, int(capacity.berths)) + (MHCrewPlan.landed().size() if chapter_crew else 0)
 	return mini(crew, crew_cap) if crew_cap >= 0 else crew
 
 func crew_count() -> int:
@@ -943,9 +947,12 @@ func print_rate(inv: Dictionary) -> float:
 
 ## numbers behind the readiness checklist and the systems panel.
 ## planned: for the full mission crew (readiness); otherwise for the crew on board now.
-func daily_flows(planned := true) -> Dictionary:
+## A sol's flows for the crew planned for (Earth's crew plan under chapter
+## rules, else the crew setting), the crew aboard, or crew_override people.
+func daily_flows(planned := true, crew_override := -1) -> Dictionary:
 	var inv := inventory()
-	var crew := float(MHResources.setting("crew", 6.0)) if planned else float(crew_count_for(inv.capacity))
+	var plan := float(MHCrewPlan.planned()) if MHChapterOne.on() and MHCrewPlan.solo else float(MHResources.setting("crew", 6.0))
+	var crew := float(crew_override) if crew_override >= 0 else (plan if planned else float(crew_count_for(inv.capacity)))
 	var crew_water := crew * crew_water_per_person(inv)
 	var out := {"crew": crew, "berths": int(inv.capacity.berths), "o2_made": 0.0, "co2_removed": 0.0, "food_grown": 0.0, "water_made": 0.0, "water_used": crew_water,
 		"o2_need": crew * MHResources.setting("o2_per_person", .84), "co2_made": crew * MHResources.setting("co2_per_person", 1.0), "food_eaten": crew * MHResources.setting("food_per_person", 1.8), "research": 0.0}

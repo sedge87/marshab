@@ -905,6 +905,21 @@ func _colony_screen() -> void:
 		challenge_box.add_child(challenge_head)
 		challenge_box.add_child(challenge)
 		form.add_child(challenge_box)
+	# Earth's crew plan (crew_plan.gd): the crew the base grows to, like a map size.
+	if _crates_mode():
+		var crew_box := MHStyle.vbox(8)
+		var crew_head := MHStyle.hbox(12)
+		crew_head.add_child(MHStyle.eyebrow("Crew"))
+		crew_head.add_child(MHStyle.mono("Set for the whole game", 13, MHStyle.TEXT_MUTED))
+		crew_box.add_child(crew_head)
+		var sizes: Array = MHCrewPlan.SIZES.keys().map(func(k): return "%s %d" % [k, int(MHCrewPlan.SIZES[k])])
+		var crew_choice := MHWidgets.Segmented.new().setup(sizes, "%s %d" % [MHCrewPlan.size_label(), MHCrewPlan.final_size], 40)
+		crew_choice.changed.connect(func(label: String) -> void:
+			MHCrewPlan.final_size = int(label.get_slice(" ", 1))
+			show_screen("colony"))
+		crew_box.add_child(crew_choice)
+		crew_box.add_child(MHStyle.body("Just you, GAR-Y and Mission Control's voices. Earth sends nobody." if MHCrewPlan.solitary() else "You land alone. After chapter one, Earth sends crew in waves until there are %d of you. Each wave is announced with a landing date: get bunks, life support and stores ready for them." % MHCrewPlan.final_size, 14, MHStyle.TEXT_MUTED))
+		form.add_child(crew_box)
 	# Who's building: on every save's card, in Tour ("Designed by") and on a
 	# Missions dossier. Remembered for next time.
 	var maker := MHGame.maker()

@@ -225,7 +225,16 @@ func _fill_flows() -> void:
 	# The Chains view (docs/survival-systems.md §8): one row per chain, with
 	# how closed it is, what it holds and the link to fix next.
 	_flows_panel.add_child(MHStyle.eyebrow("Chains", MHStyle.accent, 13))
-	for c in CHAINS.chains(s): _flows_panel.add_child(_chain_row(c))
+	# Survival and Mission readiness (crew_plan.gd): who's here, and who Earth plans for.
+	var rows: Array = CHAINS.chains(s)
+	var can := {}
+	if MHChapterOne.on() and MHCrewPlan.solo:
+		can = CHAINS.supports_all(s)
+		_flows_panel.add_child(_readiness_line(s, inv, rows, can))
+		if not MHCrewPlan.roster.is_empty(): _flows_panel.add_child(_roster_line())
+	for c in rows:
+		if not can.is_empty(): c["ready"] = int(can.get(str(c.id), 0))
+		_flows_panel.add_child(_chain_row(c))
 	var runway: Dictionary = CHAINS.runway(s)
 	_flows_panel.add_child(_line("Without you: %s" % str(runway.text), MHStyle.WARN if float(runway.sols) < 3.0 else MHStyle.TEXT_SECONDARY, 15))
 	_flows_panel.add_child(_line("Crew: %d aboard of %d bunks · health %d%%" % [crew, int(inv.capacity.berths), roundi(float(snap.crew_health))], MHStyle.TEXT_PRIMARY, 15))
@@ -263,6 +272,38 @@ func _fill_flows() -> void:
 			var level := str(alerts._active[id].level)
 			_flows_panel.add_child(_line("%s · %s" % [level.to_upper(), str(alerts._active[id].title)], alerts.LEVEL_COLOUR.get(level, MHStyle.WARN)))
 
+## Survival (the crew aboard) and Mission readiness (Earth's crew plan,
+## crew_plan.gd), with the weak chain or the bunks holding it back.
+func _readiness_line(s: RefCounted, inv: Dictionary, rows: Array, can: Dictionary) -> Label:
+	var weakest := "air"
+	for id in can:
+		if int(can[id]) < int(can[weakest]): weakest = id
+	var most := mini(int(can[weakest]), int(inv.capacity.berths))
+	var surviving := rows.all(func(c): return str(c.level) != "bad")
+	var aboard: int = s.crew_count()
+	var text := "Survival: %s for %s · " % ["OK" if surviving else "AT RISK", "you" if aboard <= 1 else "%d aboard" % aboard]
+	var goal := MHCrewPlan.planned()
+	if MHCrewPlan.solitary(): text += "Solitary: just you · the base could take %d" % most
+	elif MHCrewPlan.roster.is_empty(): text += "Earth sends a crew of %d once chapter one is done · the base could take %d" % [MHCrewPlan.final_size, most]
+	elif MHCrewPlan.en_route().is_empty():
+		text += "Crew of %d aboard" % MHCrewPlan.aboard() + (" · full crew" if MHCrewPlan.aboard() >= MHCrewPlan.final_size else " · Earth sends more once they've settled")
+	else:
+		var list: Dictionary = MHCrewPlan.checklist(s)
+		var sols_to := maxf(0.0, MHCrewPlan.next_landing() - float(s.hours_run)) / 24.0
+		text += "Next crew: %d land in %s · ready for %d of %d" % [MHCrewPlan.en_route().size(), _sols(sols_to), mini(most, goal), goal]
+		if most < goal: text += " (%s)" % ("bunks" if int(can[weakest]) >= goal else "%s is the weak chain" % str(CHAINS.CHAINS[weakest].label).to_lower())
+		var short: Array = []
+		for key in ["food", "water", "o2"]:
+			if float(list.have[key]) < float(list.need[key]):
+				short.append("%s %d of %d %s" % [{"food": "food", "water": "water", "o2": "O₂"}[key], roundi(float(list.have[key])), roundi(float(list.need[key])), "L" if key == "water" else "kg"])
+		text += " · stores: " + (", ".join(short) if not short.is_empty() else "ready")
+	return _line(text, MHStyle.TEXT_PRIMARY if surviving else MHStyle.DANGER, 15)
+
+## Earth's crew (crew_plan.gd): who's aboard and who's on the way.
+func _roster_line() -> Label:
+	var parts: Array = MHCrewPlan.roster.map(func(p): return "%s (%s)%s" % [str(p.name), str(p.role), "" if bool(p.landed) else ", lands sol %d" % (floori(float(p.lands_at) / 24.0) + 1)])
+	return _line("Earth's crew: %s" % ", ".join(parts), MHStyle.TEXT_SECONDARY, 13)
+
 ## A chain's row: name and closure, its parts (ticked if built), its stores
 ## and the weak link.
 func _chain_row(c: Dictionary) -> Control:
@@ -271,7 +312,11 @@ func _chain_row(c: Dictionary) -> Control:
 	var head := MHStyle.hbox(8)
 	head.add_child(MHStyle.icon(str(c.icon), 18, tone))
 	var closure := float(c.closure)
-	head.add_child(_line("%s · %s" % [str(c.label).to_upper(), "%d%% closed" % roundi(closure * 100.0) if closure >= 0.0 else "nobody aboard"], tone, 15))
+	var ready := ""
+	var goal := MHCrewPlan.planned()
+	if c.has("ready") and not MHCrewPlan.solitary() and goal > 1: ready = " · ready for %d of %d" % [mini(int(c.ready), goal), goal]
+	elif c.has("ready"): ready = " · carries %d" % int(c.ready)
+	head.add_child(_line("%s · %s%s" % [str(c.label).to_upper(), "%d%% closed" % roundi(closure * 100.0) if closure >= 0.0 else "nobody aboard", ready], tone, 15))
 	col.add_child(head)
 	var parts: Array = (c.links as Array).map(func(l): return "%s %s" % ["✓" if bool(l.have) else "·", str(l.label)])
 	col.add_child(_line("   ".join(parts), MHStyle.TEXT_SECONDARY, 13))
