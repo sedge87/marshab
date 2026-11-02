@@ -55,9 +55,9 @@ func _ready() -> void:
 		add_child(_guide))
 	_panel_buttons["controls"] = _row(list, "Controls", "secondary", "keyboard")
 	_panel_buttons.controls.pressed.connect(_toggle_panel.bind("controls"))
-	if not MHGame.challenge_options().is_empty() and not MHGame.showcase:
-		_panel_buttons["challenge"] = _row(list, "Challenge", "secondary", "gauge")
-		_panel_buttons.challenge.tooltip_text = "This game's challenge options: switch one on, never off"
+	if MHGame.game_mode != "missions" and not MHGame.showcase:
+		_panel_buttons["challenge"] = _row(list, "Rules", "secondary", "gauge")
+		_panel_buttons.challenge.tooltip_text = "This game's mode, rules and challenge options"
 		_panel_buttons.challenge.pressed.connect(_toggle_panel.bind("challenge"))
 	_row(list, "Settings", "secondary", "settings").pressed.connect(func() -> void: settings.emit())
 	_row(list, "Mission Control", "secondary", "clipboard-check", "M").pressed.connect(func() -> void: mission_control.emit())
@@ -119,20 +119,48 @@ func _sheet_head(col: VBoxContainer, title: String, note: String) -> void:
 	head.add_child(kind)
 	col.add_child(head)
 
-# ---------- challenge (docs/new-game-options.md) ----------
+# ---------- rules (docs/game-modes.md) ----------
 
 func _build_challenge() -> Control:
 	var sheet := _sheet()
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sheet.add_child(scroll)
 	var col := MHStyle.vbox(16)
-	sheet.add_child(col)
-	_sheet_head(col, "Challenge", "On only, never off")
-	var note := MHStyle.body("Chosen when this game started. You can switch an option on, or raise surprises, but not take it back.", 14, MHStyle.TEXT_MUTED)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(col)
+	_fill_rules(col)
+	return sheet
+
+func _fill_rules(col: VBoxContainer) -> void:
+	for child in col.get_children(): child.queue_free()
+	var mode := str(MHGame.GAME_MODES.get(MHGame.game_mode, ""))
+	_sheet_head(col, "Rules", mode)
+	var relive := func() -> void:
+		var world := get_tree().current_scene
+		if world != null and world.has_method("configure_life"): world.configure_life()
+	var challenge := CHALLENGE_UI.build(true, relive)
+	if challenge != null:
+		col.add_child(MHStyle.eyebrow("Challenge · on only, never off", MHStyle.TEXT_MUTED, 12))
+		col.add_child(challenge)
+	var note := MHStyle.body("Custom: needs, plans and the lab can change any time; the start rules were set when the game began." if MHGame.game_mode == "custom" else "%s's rules. Convert to Custom to change them." % mode, 14, MHStyle.TEXT_MUTED)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(note)
-	col.add_child(CHALLENGE_UI.build(true, func() -> void:
-		var world := get_tree().current_scene
-		if world != null and world.has_method("configure_life"): world.configure_life()))
-	return sheet
+	col.add_child(CHALLENGE_UI.build_rules(true, func() -> void:
+		relive.call()
+		_fill_rules.call_deferred(col)))
+	if MHGame.game_mode != "custom":
+		# One-way, like Subnautica's: two presses, and the save is Custom from then on.
+		var convert := MHStyle.button("Convert to Custom", "secondary", "settings")
+		convert.tooltip_text = "Keeps this game's rules and lets you change them. It can't be undone."
+		convert.pressed.connect(func() -> void:
+			if convert.text == "Convert to Custom":
+				convert.text = "Press again: it can't be undone"
+				return
+			MHGame.convert_to_custom()
+			relive.call()
+			_fill_rules.call_deferred(col))
+		col.add_child(convert)
 
 # ---------- save & load ----------
 

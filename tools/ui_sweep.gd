@@ -94,9 +94,13 @@ func _path(control: Control) -> String:
 func _menus(size: Vector2i) -> void:
 	var menu: Node = load("res://scenes/main_menu.tscn").instantiate()
 	root.add_child(menu)
-	for screen in ["title", "site", "colony", "landing", "saves"]:
+	for screen in ["title", "site", "colony", "rules", "landing", "saves"]:
 		menu.show_screen(screen)
 		await _shot(size, "menu_" + screen)
+	MHGame.set_mode("custom")
+	menu.show_screen("rules")
+	await _shot(size, "menu_rules_custom")
+	MHGame.set_mode("survival")
 	menu.queue_free()
 	await process_frame
 

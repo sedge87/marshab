@@ -109,7 +109,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		if screen_id == "site": show_screen("title")
 		elif screen_id == "colony": show_screen("site" if MHGame.game_mode == "missions" else "title")
-		elif screen_id == "landing": show_screen("title" if _quick_start else "colony")
+		elif screen_id == "rules": show_screen("colony")
+		elif screen_id == "landing": show_screen(_landing_back())
 
 # ---------- backdrop ----------
 func _build_backdrop() -> void:
@@ -233,6 +234,8 @@ func show_screen(id: String) -> void:
 			environment.apply_palette(MHGame.palette_name()); _set_camera("site-" + MHGame.site_id); _site_screen()
 		"colony":
 			environment.apply_palette("golden"); _set_camera("hero"); _colony_screen()
+		"rules":
+			environment.apply_palette("golden"); _set_camera("hero"); _rules_screen()
 		"landing":
 			environment.apply_palette(MHGame.palette_name()); _set_camera("hero"); _landing_screen()
 		"loading":
@@ -275,14 +278,13 @@ func _bottom_bar(height := 120.0) -> HBoxContainer:
 	fade.add_child(row)
 	return row
 
-func _stepper(active: int) -> void:
+func _stepper(current: String) -> void:
 	var row := MHStyle.hbox(32)
 	row.position = Vector2(120, 64)
-	# Free play has no site step: the Land step picks the spot on the region.
-	var steps := ["Site", "Colony", "Land"]
-	if MHGame.game_mode != "missions":
-		steps.pop_front()
-		active -= 1
+	# Free play has no site step (the Land step picks the spot on the region)
+	# but a Rules step; Missions set their own rules.
+	var steps := ["Site", "Colony", "Land"] if MHGame.game_mode == "missions" else ["Colony", "Rules", "Land"]
+	var active := steps.find(current)
 	for i in steps.size():
 		var text := "%02d %s" % [i + 1, steps[i]]
 		var step := MHStyle.eyebrow(text, MHStyle.accent if i == active else MHStyle.TEXT_MUTED, 16)
@@ -327,7 +329,7 @@ func _title_screen() -> void:
 	var hero: Button = _hero_button("New colony", "Name your colony · choose where to land", "plus") if newest.is_empty() else MHStyle.button("New colony", "secondary", "plus")
 	hero.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	hero.pressed.connect(func() -> void:
-		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
+		MHGame.set_mode("survival" if MHGame.game_mode == "missions" else MHGame.game_mode)
 		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 		MHGame.start_new_challenge()
 		MHSaves.current_path = ""
@@ -366,7 +368,7 @@ func _title_screen() -> void:
 	quick.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	quick.pressed.connect(func() -> void:
 		# Straight to choosing where to land (skipping the site and colony steps).
-		if MHGame.game_mode == "missions": MHGame.game_mode = "survival"
+		MHGame.set_mode("survival" if MHGame.game_mode == "missions" else MHGame.game_mode)
 		MHGame.landing_target = Vector2.INF
 		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 		MHGame.start_new_challenge()
@@ -663,7 +665,7 @@ func _site_ids() -> Array:
 
 func _site_screen() -> void:
 	_scrim("right", .52, .9, .3)
-	_stepper(0)
+	_stepper("Site")
 	_place(MHStyle.display("Choose a build site", 64), Vector2(120, 120))
 	# The sites scroll when there are more than fit.
 	var scroll := ScrollContainer.new()
@@ -822,7 +824,7 @@ func _choose_site(id: String, move_camera := true) -> void:
 # 1c ---------------------------------------------------------------
 func _colony_screen() -> void:
 	_scrim("right", .5, .92, .34)
-	_stepper(1)
+	_stepper("Colony")
 	_place(MHStyle.display("Name your colony", 64), Vector2(120, 120))
 	var form := MHStyle.vbox(28)
 	_place(form, Vector2(120, 240), 640)
@@ -875,51 +877,13 @@ func _colony_screen() -> void:
 	voice_box.add_child(MHStyle.body("It talks to you.", 15, MHStyle.TEXT_MUTED))
 	name_row.add_child(voice_box)
 	form.add_child(name_row)
-	# Game mode: the cargo challenge, or free building.
-	var mode_box := MHStyle.vbox(8)
-	var mode_head := MHStyle.hbox(12)
-	mode_head.add_child(MHStyle.eyebrow("Game mode"))
-	mode_head.add_child(MHStyle.mono("Missions: from the title screen", 13, MHStyle.TEXT_MUTED))
-	mode_box.add_child(mode_head)
+	# Missions set their own rules; free play picks them on the Rules step.
 	if MHGame.game_mode == "missions":
+		var mode_box := MHStyle.vbox(8)
+		mode_box.add_child(MHStyle.eyebrow("Game mode"))
 		mode_box.add_child(MHStyle.title("Missions campaign", 24))
-	else:
-		var modes := MHWidgets.Segmented.new().setup(MHGame.GAME_MODES.values(), str(MHGame.GAME_MODES.get(MHGame.game_mode, "Survival")), 44)
-		modes.changed.connect(func(label: String) -> void:
-			MHGame.game_mode = MHGame.GAME_MODES.find_key(label)
-			show_screen("colony"))
-		mode_box.add_child(modes)
-	var cargo_note := " Land with %s of cargo." % MHStyle.kg(MHGame.mission_cargo_budget()) if not MHGame.cargo_unlimited() else ""
-	if _crates_mode(): cargo_note = " Land with %d crates of precursor cargo and stores for %d sols." % [MHChapterOne.crates().size(), roundi(MHChapterOne.store_sols())]
-	var mode_note := "Set up your base step by step, the way NASA would: choose landing zones, send the cargo first, test everything, then land the crew." if MHGame.game_mode == "missions" else str(MHGame.GAME_MODE_NOTES.get(MHGame.game_mode, "")) + cargo_note
-	mode_box.add_child(MHStyle.body(mode_note, 14, MHStyle.TEXT_MUTED))
-	form.add_child(mode_box)
-	# Challenge options (docs/new-game-options.md): Survival all, Freedom
-	# surprises only. In the game, each can only be switched on.
-	var challenge := CHALLENGE_UI.build(false, MHGame.remember_challenge)
-	if challenge != null:
-		var challenge_box := MHStyle.vbox(10)
-		var challenge_head := MHStyle.hbox(12)
-		challenge_head.add_child(MHStyle.eyebrow("Challenge"))
-		challenge_head.add_child(MHStyle.mono("Can be switched on later, never off", 13, MHStyle.TEXT_MUTED))
-		challenge_box.add_child(challenge_head)
-		challenge_box.add_child(challenge)
-		form.add_child(challenge_box)
-	# Earth's crew plan (crew_plan.gd): the crew the base grows to, like a map size.
-	if _crates_mode():
-		var crew_box := MHStyle.vbox(8)
-		var crew_head := MHStyle.hbox(12)
-		crew_head.add_child(MHStyle.eyebrow("Crew"))
-		crew_head.add_child(MHStyle.mono("Set for the whole game", 13, MHStyle.TEXT_MUTED))
-		crew_box.add_child(crew_head)
-		var sizes: Array = MHCrewPlan.SIZES.keys().map(func(k): return "%s %d" % [k, int(MHCrewPlan.SIZES[k])])
-		var crew_choice := MHWidgets.Segmented.new().setup(sizes, "%s %d" % [MHCrewPlan.size_label(), MHCrewPlan.final_size], 40)
-		crew_choice.changed.connect(func(label: String) -> void:
-			MHCrewPlan.final_size = int(label.get_slice(" ", 1))
-			show_screen("colony"))
-		crew_box.add_child(crew_choice)
-		crew_box.add_child(MHStyle.body("Just you, GAR-Y and Mission Control's voices. Earth sends nobody." if MHCrewPlan.solitary() else "You land alone. After chapter one, Earth sends crew in waves until there are %d of you. Each wave is announced with a landing date: get bunks, life support and stores ready for them." % MHCrewPlan.final_size, 14, MHStyle.TEXT_MUTED))
-		form.add_child(crew_box)
+		mode_box.add_child(MHStyle.body("Set up your base step by step, the way NASA would: choose landing zones, send the cargo first, test everything, then land the crew.", 14, MHStyle.TEXT_MUTED))
+		form.add_child(mode_box)
 	# Who's building: on every save's card, in Tour ("Designed by") and on a
 	# Missions dossier. Remembered for next time.
 	var maker := MHGame.maker()
@@ -1022,17 +986,181 @@ func _colony_screen() -> void:
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(func() -> void: show_screen("site" if MHGame.game_mode == "missions" else "title"))
 	bar.add_child(back)
-	_land_button = MHStyle.button("Choose where to land", "primary", "map-pin")
+	var missions := MHGame.game_mode == "missions"
+	_land_button = MHStyle.button("Choose where to land" if missions else "Next: rules", "primary", "map-pin" if missions else "chevron-right")
 	_land_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_land_button.pressed.connect(show_screen.bind("landing"))
+	_land_button.pressed.connect(show_screen.bind("landing" if missions else "rules"))
 	bar.add_child(_land_button)
 	_refresh_plaque()
 	_name_field.grab_focus.call_deferred()
 	_name_field.caret_column = _name_field.text.length()
 
-## A new Survival or Freedom game lands precursor crates (chapter one).
+## A new game whose rules land precursor crates (chapter one).
 func _crates_mode() -> bool:
-	return MHGame.game_mode in ["survival", "freedom"]
+	return MHGame.game_mode != "missions" and str(MHGame.rule("cargo")) == "crates"
+
+## Where Back goes from the Land step.
+func _landing_back() -> String:
+	if _quick_start: return "title"
+	return "colony" if MHGame.game_mode == "missions" else "rules"
+
+# 1b+ --------------------------------------------------------------
+## Rules step (docs/game-modes.md): four mode cards, the crew, the challenge,
+## the rules (every row editable in Custom), and the tutorial.
+func _rules_screen() -> void:
+	_scrim("right", .5, .92, .34)
+	_stepper("Rules")
+	_place(MHStyle.display("How you'll play", 64), Vector2(120, 120))
+	var cards := MHStyle.hbox(20)
+	_place(cards, Vector2(120, 236), 1180)
+	for mode in ["survival", "freedom", "creative", "custom"]:
+		cards.add_child(_mode_card(mode))
+	var below := MHStyle.hbox(40)
+	_place(below, Vector2(120, 512), 1180)
+	var left := MHStyle.vbox(24)
+	left.custom_minimum_size.x = 560
+	below.add_child(left)
+	# Earth's crew plan (crew_plan.gd): the crew the base grows to, like a map size.
+	if _crates_mode():
+		var crew_box := MHStyle.vbox(8)
+		var crew_head := MHStyle.hbox(12)
+		crew_head.add_child(MHStyle.eyebrow("Crew"))
+		crew_head.add_child(MHStyle.mono("Set for the whole game", 13, MHStyle.TEXT_MUTED))
+		crew_box.add_child(crew_head)
+		var sizes: Array = MHCrewPlan.SIZES.keys().map(func(k): return "%s %d" % [k, int(MHCrewPlan.SIZES[k])])
+		var crew_choice := MHWidgets.Segmented.new().setup(sizes, "%s %d" % [MHCrewPlan.size_label(), MHCrewPlan.final_size], 40)
+		crew_choice.changed.connect(func(label: String) -> void:
+			MHCrewPlan.final_size = int(label.get_slice(" ", 1))
+			show_screen("rules"))
+		crew_box.add_child(crew_choice)
+		var crew_note := MHStyle.body("Just you, GAR-Y and Mission Control's voices. Earth sends nobody." if MHCrewPlan.solitary() else "You land alone. After chapter one, Earth sends crew in waves until there are %d of you. Get bunks, life support and stores ready for each wave." % MHCrewPlan.final_size, 14, MHStyle.TEXT_MUTED)
+		crew_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		crew_box.add_child(crew_note)
+		left.add_child(crew_box)
+	if left.get_child_count() == 0:
+		var nothing := MHStyle.body("Nothing to survive, so no crew plan. Mission Control, samples and the Discoveries still run.", 16, MHStyle.TEXT_MUTED)
+		nothing.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		left.add_child(nothing)
+	# The rules themselves: read-only, or every row for Custom.
+	var right := MHStyle.vbox(12)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	below.add_child(right)
+	var rules_head := MHStyle.hbox(12)
+	rules_head.add_child(MHStyle.eyebrow("Rules"))
+	rules_head.add_child(MHStyle.mono("Change any rule" if MHGame.game_mode == "custom" else "Pick Custom to change these", 13, MHStyle.TEXT_MUTED))
+	right.add_child(rules_head)
+	if MHGame.game_mode == "custom":
+		var start_row := MHStyle.hbox(12)
+		var start_label := MHStyle.body("Start from", 14, MHStyle.TEXT_MUTED)
+		start_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		start_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		start_row.add_child(start_label)
+		var presets := {"survival": "Survival", "freedom": "Freedom", "creative": "Creative"}
+		var start := MHWidgets.Segmented.new().setup(presets.values(), "", 34)
+		start.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		start.changed.connect(func(label: String) -> void:
+			MHGame.rules = MHGame.preset(str(presets.find_key(label)))
+			show_screen("rules"))
+		start_row.add_child(start)
+		right.add_child(start_row)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size.y = 300 if MHGame.game_mode == "custom" else 350
+	var rows := CHALLENGE_UI.build_rules(false, func() -> void: show_screen("rules"))
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(rows)
+	right.add_child(scroll)
+	# The side column: the tutorial and the challenge.
+	var side := MHStyle.vbox(20)
+	side.anchor_left = 1
+	side.anchor_right = 1
+	side.offset_left = -560
+	side.offset_right = -120
+	side.offset_top = 236
+	screen.add_child(side)
+	var tutorial_panel := MHStyle.hud_panel(24, false, true)
+	tutorial_panel.add_child(_tutorial_choice())
+	side.add_child(tutorial_panel)
+	# Challenge options (docs/new-game-options.md): in the game, each can only be switched on.
+	var challenge := CHALLENGE_UI.build(false, MHGame.remember_challenge)
+	if challenge != null:
+		var challenge_box := MHStyle.vbox(10)
+		var challenge_head := MHStyle.hbox(12)
+		challenge_head.add_child(MHStyle.eyebrow("Challenge"))
+		challenge_head.add_child(MHStyle.mono("Can be switched on later, never off", 13, MHStyle.TEXT_MUTED))
+		challenge_box.add_child(challenge_head)
+		challenge_box.add_child(challenge)
+		var challenge_panel := MHStyle.hud_panel(24, false, false)
+		challenge_panel.add_child(challenge_box)
+		side.add_child(challenge_panel)
+	var bar := _bottom_bar()
+	bar.alignment = BoxContainer.ALIGNMENT_END
+	# The whole choice in one line.
+	var summary := MHStyle.mono(_rules_summary(), 14, MHStyle.TEXT_SECONDARY)
+	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.add_child(summary)
+	var back := MHStyle.button("Back", "ghost", "chevron-left")
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	back.pressed.connect(show_screen.bind("colony"))
+	bar.add_child(back)
+	var next := MHStyle.button("Choose where to land", "primary", "map-pin")
+	next.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	next.pressed.connect(show_screen.bind("landing"))
+	bar.add_child(next)
+
+## One mode's card: icon, name, pitch and what's on; click to pick it.
+func _mode_card(mode: String) -> Control:
+	var on := MHGame.game_mode == mode
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(280, 240)
+	card.add_theme_stylebox_override("panel", MHStyle.selected_box(18) if on else MHStyle.control_box(18))
+	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	card.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT and not on:
+			MHGame.set_mode(mode)
+			MHGame.start_new_challenge()
+			show_screen("rules"))
+	var col := MHStyle.vbox(10)
+	var head := MHStyle.hbox(12)
+	head.add_child(MHStyle.icon_tile(str(MHGame.MODE_ICONS[mode]), 40, 22, MHStyle.accent if on else MHStyle.SURFACE_CONTROL_HOVER, MHStyle.TEXT_ON_ACCENT if on else MHStyle.STRUCTURAL_WHITE, MHStyle.RADIUS_SM))
+	var name_label := MHStyle.title(str(MHGame.GAME_MODES[mode]), 24)
+	name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(name_label)
+	col.add_child(head)
+	var pitch := MHStyle.body(str(MHGame.GAME_MODE_NOTES.get(mode, "")), 14, MHStyle.TEXT_SECONDARY)
+	pitch.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pitch.custom_minimum_size.y = 58
+	col.add_child(pitch)
+	if mode == "custom" and not on:
+		var how := MHStyle.body("Start from a mode, then switch any rule on or off.", 14, MHStyle.TEXT_SECONDARY)
+		how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(how)
+	else:
+		var rules := MHGame.current_rules() if mode == "custom" else MHGame.preset(mode)
+		for tick in CHALLENGE_UI.mode_ticks(rules):
+			var row := MHStyle.hbox(8)
+			row.add_child(MHStyle.icon("check" if bool(tick[0]) else "x", 15, MHStyle.VALID if bool(tick[0]) else MHStyle.TEXT_MUTED))
+			var tick_label := MHStyle.body(str(tick[1]), 14, MHStyle.TEXT_PRIMARY if bool(tick[0]) else MHStyle.TEXT_MUTED)
+			tick_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+			row.add_child(tick_label)
+			col.add_child(row)
+	_ignore_mouse(col)
+	card.add_child(col)
+	return card
+
+func _ignore_mouse(control: Control) -> void:
+	control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in control.get_children(): if child is Control: _ignore_mouse(child)
+
+## "Freedom · Standard crew of 6 · Rare surprises · Tutorial: Full".
+func _rules_summary() -> String:
+	var parts := [str(MHGame.GAME_MODES.get(MHGame.game_mode, ""))]
+	if _crates_mode(): parts.append("Solitary" if MHCrewPlan.solitary() else "%s crew of %d" % [MHCrewPlan.size_label(), MHCrewPlan.final_size])
+	var hard := MHGame.challenge_summary(MHGame.challenge, MHGame.game_mode) if not MHGame.challenge_options().is_empty() else ""
+	if not hard.is_empty(): parts.append(hard)
+	parts.append("Tutorial: %s" % str(TUTORIAL_CHOICES.get(MHGame.tutorial_mode, "Full")))
+	return " · ".join(parts)
 
 func _refresh_plaque() -> void:
 	if _land_button != null: _land_button.disabled = MHGame.colony_name.length() < 2
@@ -1048,7 +1176,7 @@ func _refresh_plaque() -> void:
 	name_label.clip_text = true
 	name_label.custom_minimum_size.x = 280
 	text.add_child(name_label)
-	text.add_child(MHStyle.eyebrow("%s · Crew of %d" % [MHGame.site_name(), BuildController.CREW_TARGET], MHStyle.TEXT_MUTED, 14))
+	text.add_child(MHStyle.eyebrow("%s · Crew of %d" % [MHGame.site_name(), MHCrewPlan.final_size if _crates_mode() else BuildController.CREW_TARGET], MHStyle.TEXT_MUTED, 14))
 	row.add_child(text)
 	col.add_child(row)
 	if not MHGame.mission_statement.strip_edges().is_empty():
@@ -1066,7 +1194,7 @@ func _landing_screen() -> void:
 		_region_landing_screen()
 		return
 	_scrim("right", .62, .95, .4)
-	_stepper(2)
+	_stepper("Land")
 	_place(MHStyle.display("Choose where to land", 64), Vector2(120, 120))
 	var picker := LANDING_PICKER_SCRIPT.new()
 	picker.position = Vector2(120, 230)
@@ -1085,7 +1213,7 @@ func _landing_screen() -> void:
 	var how := MHStyle.body("A lander can't touch down on an exact spot. It comes down somewhere inside the oval around your target: the landing ellipse. Pick flat, open ground with room to spare. Click or drag on the map.", 17)
 	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(how)
-	var mode_note := "Survival: your lander will touch down somewhere inside the ellipse." if not (MHGame.game_mode == "freedom" or MHGame.game_mode == "creative") else "%s: your lander will touch down exactly on the target." % str(MHGame.GAME_MODES.get(MHGame.game_mode, ""))
+	var mode_note := "Your lander will touch down somewhere inside the ellipse." if str(MHGame.rule("landing")) != "target" else "Your lander will touch down exactly on the target."
 	var mode_label := MHStyle.body(mode_note, 16, MHStyle.TEXT_PRIMARY)
 	mode_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(mode_label)
@@ -1095,14 +1223,14 @@ func _landing_screen() -> void:
 	var suggest := MHStyle.button("Use the suggested spot", "ghost", "map-pin")
 	suggest.pressed.connect(picker.use_suggested)
 	col.add_child(suggest)
-	col.add_child(_tutorial_choice())
+	if _quick_start: col.add_child(_tutorial_choice())   # quick start skips the Rules step
 	panel.add_child(col)
 	screen.add_child(panel)
 	var bar := _bottom_bar()
 	bar.alignment = BoxContainer.ALIGNMENT_END
 	var back := MHStyle.button("Back", "ghost", "chevron-left")
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	back.pressed.connect(func() -> void: show_screen("title" if _quick_start else "colony"))
+	back.pressed.connect(func() -> void: show_screen(_landing_back()))
 	bar.add_child(back)
 	var land := MHStyle.button("Land at %s" % MHGame.site_name(), "primary", "rocket")
 	land.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -1127,7 +1255,7 @@ func _landing_screen() -> void:
 ## nearest good ground to the oval's centre.
 func _region_landing_screen() -> void:
 	_scrim("right", .62, .95, .4)
-	_stepper(2)
+	_stepper("Land")
 	_place(MHStyle.display("Choose where to land", 64), Vector2(120, 120))
 	var picker := REGION_LANDING_PICKER_SCRIPT.new()
 	picker.position = Vector2(120, 230)
@@ -1149,29 +1277,29 @@ func _region_landing_screen() -> void:
 	# The orbital report: what living at the touchdown spot would be like.
 	var report := MHStyle.vbox(6)
 	col.add_child(report)
-	col.add_child(_tutorial_choice())
-	if MHGame.game_mode != "creative":
-		var skip := CheckBox.new()
-		skip.text = "Skip the descent (the autopilot picks the spot)"
-		skip.button_pressed = bool(MHGame.setting("skip_descent"))
-		skip.toggled.connect(func(on: bool) -> void:
-			var values := MHGame.settings()
-			values["skip_descent"] = on
-			MHGame.save_settings(values))
-		col.add_child(skip)
+	if _quick_start: col.add_child(_tutorial_choice())   # quick start skips the Rules step
+	# Every mode flies the descent; this box skips it.
+	var skip := CheckBox.new()
+	skip.text = "Skip the descent (the autopilot picks the spot)"
+	skip.button_pressed = bool(MHGame.setting("skip_descent"))
+	skip.toggled.connect(func(on: bool) -> void:
+		var values := MHGame.settings()
+		values["skip_descent"] = on
+		MHGame.save_settings(values))
+	col.add_child(skip)
 	panel.add_child(col)
 	screen.add_child(panel)
 	var bar := _bottom_bar()
 	bar.alignment = BoxContainer.ALIGNMENT_END
 	var back := MHStyle.button("Back", "ghost", "chevron-left")
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	back.pressed.connect(func() -> void: show_screen("title" if _quick_start else "colony"))
+	back.pressed.connect(func() -> void: show_screen(_landing_back()))
 	bar.add_child(back)
 	var land := MHStyle.button("Land", "primary", "rocket")
 	land.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	land.pressed.connect(func() -> void:
 		_landing_area = picker.centre
-		if bool(MHGame.setting("skip_descent")) or MHGame.game_mode == "creative": _found_base(picker.touchdown())
+		if bool(MHGame.setting("skip_descent")): _found_base(picker.touchdown())
 		else: show_screen("descent"))
 	bar.add_child(land)
 	var show_verdict := func(_centre: Vector2, verdict: Dictionary) -> void:

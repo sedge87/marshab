@@ -48,10 +48,14 @@ Every event keeps its warning (storms forecast 10 h ahead, solar events 30 min a
 
 ## 4. Modes
 
-- **Survival:** all four options.
-- **Freedom:** surprises only (the crew never come to harm, so radiation and injuries would do nothing). Things go wrong and warn you; nothing hurts.
+The modes are now presets of one rules table: see **docs/game-modes.md** (2 Nov). In short:
+
+- **Survival** and **Freedom:** all four options (Freedom harms the crew too now; it just has no food or water).
 - **Creative:** no options; the simulation is off.
-- **Missions:** no options. Each mission sets its own hazards, as now. Once the campaign is done and you play on, the Survival rules apply with the options you choose then.
+- **Custom:** all four while harm is on; with harm off, surprises and wear only (nothing can hurt).
+- **Missions:** no options. Each mission sets its own hazards, as now.
+
+The options sit on the new game's Rules step, and in the game under Pause → Rules.
 
 ## 5. Defaults
 
