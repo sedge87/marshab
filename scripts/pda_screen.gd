@@ -10,7 +10,7 @@ extends Control
 const APPS := [
 	{"id": "goals", "label": "Goals", "icon": "clipboard-check", "built": true},
 	{"id": "map", "label": "Map", "icon": "map-pin", "built": true},
-	{"id": "base", "label": "Base", "icon": "gauge", "built": false},
+	{"id": "base", "label": "Base", "icon": "gauge", "built": true},
 	{"id": "comms", "label": "Comms", "icon": "satellite", "built": false},
 	{"id": "site", "label": "Site", "icon": "mountain-snow", "built": false},
 	{"id": "log", "label": "Log", "icon": "clock", "built": true},
@@ -29,6 +29,8 @@ var _page: MarginContainer
 var _shown_log := -1      # notices on the Log page when it was drawn
 var _shown_goals := ""    # what the Goals page showed (redrawn when it changes)
 var _map_you: Label
+var _shown_base := ""     # what the Base page showed
+const SYSTEMS := [["battery", "Battery", "zap"], ["water", "Water", "droplets"], ["food", "Food", "wheat"], ["air", "Air", "wind"], ["crew", "Crew health", "heart-pulse"]]
 var _map_cursor: Label
 const MAP_FIT := 600.0    # the map square on the screen, px
 var _tick := 0.0
@@ -122,6 +124,7 @@ func show_app(id: String) -> void:
 	match id:
 		"map": _page.add_child(_map_page())
 		"goals": _page.add_child(_goals_page())
+		"base": _page.add_child(_base_page())
 		_: _page.add_child(_log_page())
 	for key in _rail_buttons:
 		(_rail_buttons[key].button as Button).theme_type_variation = "SelectedButton" if key == id else "GhostButton"
@@ -157,6 +160,10 @@ func _process(delta: float) -> void:
 		var lines: Array = _region().readouts()
 		_map_you.text = str(lines[0])
 		_map_cursor.text = str(lines[1])
+	if app == "base" and _base_signature() != _shown_base:
+		for child in _page.get_children(): child.queue_free()
+		_page.add_child(_base_page())
+		MHNotices.seen("base")
 	if app == "goals" and _goals_signature() != _shown_goals:
 		for child in _page.get_children(): child.queue_free()
 		_page.add_child(_goals_page())
@@ -339,6 +346,105 @@ func _goals_signature() -> String:
 	var tutorial: Node = world.get("tutorial") if world != null else null
 	var builder: Node = world.builder if world != null else null
 	return "%s|%s|%s" % [str(tutorial.done) if tutorial != null else "", str(tutorial.finished) if tutorial != null else "", str(builder.readiness()) if builder != null and MHGame.game_mode != "missions" else ""]
+
+## Base: the habitat's battery, water, food, air and crew health with their
+## trends (the systems panel's rows), the active alerts as cards (what's
+## wrong and why) and the alert history, newest first.
+func _base_page() -> Control:
+	_shown_base = _base_signature()
+	var hud: Node = world.get("explore_hud") if world != null else null
+	var rows: Dictionary = hud.system_rows() if hud != null else {}
+	var page := MHStyle.hbox(32)
+	var left := MHStyle.vbox(18)
+	left.custom_minimum_size.x = 440
+	page.add_child(left)
+	var builder: Node = world.builder
+	var sim: RefCounted = builder.simulation() if builder != null else null
+	if rows.is_empty():
+		left.add_child(_heading("Base", "No habitat yet: its systems show here once the first module stands." if MHGame.simulation_on() else "Creative mode: no simulation to watch."))
+		return page
+	left.add_child(_heading("Base", "%d crew%s" % [sim.crew_count(), " · dust storm" if bool(sim.last.get("storm", false)) else ""]))
+	for entry in SYSTEMS:
+		var row: Dictionary = rows.get(entry[0], {})
+		if row.is_empty(): continue
+		left.add_child(_gauge(str(entry[1]), str(entry[2]), row))
+	var right := MHStyle.vbox(12)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.add_child(right)
+	page.add_child(scroll)
+	var alerts: Node = world.get("alerts")
+	var active: Array = alerts.active_alerts() if alerts != null else []
+	right.add_child(MHStyle.eyebrow("ALERTS · %d" % active.size(), MHStyle.TEXT_MUTED, 13))
+	if active.is_empty(): right.add_child(MHStyle.body("All systems normal.", 17, MHStyle.VALID))
+	for alert in active: right.add_child(_alert_card(alert))
+	var history: Array = alerts.history if alerts != null else []
+	if not history.is_empty():
+		var gap := Control.new()
+		gap.custom_minimum_size.y = 6
+		right.add_child(gap)
+		right.add_child(MHStyle.eyebrow("HISTORY", MHStyle.TEXT_MUTED, 13))
+		for i in range(history.size() - 1, maxi(-1, history.size() - 13), -1):
+			var entry: Dictionary = history[i]
+			var line := MHStyle.hbox(10)
+			line.add_child(MHStyle.mono("SOL %d %02d:%02d" % [int(entry.sol), floori(float(entry.sol_hour)), floori(fmod(float(entry.sol_hour), 1.0) * 60.0)], 14, MHStyle.TEXT_MUTED))
+			var words := MHStyle.label(str(entry.title), 16, alerts.LEVEL_COLOUR.get(str(entry.level), MHStyle.TEXT_SECONDARY), 500)
+			words.clip_text = true
+			words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			line.add_child(words)
+			right.add_child(line)
+	return page
+
+## One system: its name, a bar and the words (charge, trend, sols left).
+func _gauge(title: String, glyph: String, row: Dictionary) -> Control:
+	var tone: Color = row.tone
+	var box := MHStyle.vbox(6)
+	var top := MHStyle.hbox(10)
+	top.add_child(MHStyle.icon(glyph, 22, tone))
+	top.add_child(MHStyle.label(title, 19, MHStyle.TEXT_PRIMARY, 700))
+	box.add_child(top)
+	var track := ColorRect.new()
+	track.color = MHStyle.INK_800
+	track.custom_minimum_size = Vector2(440, 8)
+	var fill := ColorRect.new()
+	fill.color = tone
+	fill.size = Vector2(440.0 * float(row.fraction), 8)
+	track.add_child(fill)
+	box.add_child(track)
+	var words := MHStyle.body(str(row.text), 17, MHStyle.TEXT_SECONDARY if tone == MHStyle.VALID else tone)
+	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(words)
+	return box
+
+## An active alert: its level's colour, what's wrong and why.
+func _alert_card(alert: Dictionary) -> Control:
+	var colour: Color = world.alerts.LEVEL_COLOUR.get(str(alert.level), MHStyle.WARN)
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.INK_900, Color(colour, .5), MHStyle.RADIUS_MD, 1, Vector4(16, 12, 16, 12)))
+	var column := MHStyle.vbox(4)
+	var top := MHStyle.hbox(10)
+	top.add_child(MHStyle.icon("triangle-alert" if str(alert.level) != "advisory" else "info", 20, colour))
+	var title := MHStyle.label(str(alert.title), 18, MHStyle.TEXT_PRIMARY, 700)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(title)
+	top.add_child(MHStyle.mono(str(alert.level).to_upper(), 13, colour, 700))
+	column.add_child(top)
+	if not str(alert.get("text", "")).is_empty():
+		var body := MHStyle.body(str(alert.text), 16)
+		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		column.add_child(body)
+	card.add_child(column)
+	return card
+
+## Changes when the Base page would look different.
+func _base_signature() -> String:
+	var hud: Node = world.get("explore_hud") if world != null else null
+	var alerts: Node = world.get("alerts") if world != null else null
+	var rows: Dictionary = hud.system_rows() if hud != null else {}
+	var words: Array = rows.values().map(func(r): return str(r.text))
+	return "%s|%s|%d" % [str(words), str(alerts.active_alerts().map(func(a): return "%s%s" % [a.id, a.level])) if alerts != null else "", alerts.history.size() if alerts != null else 0]
 
 ## Map: the region map itself, lent to the screen (region_map.gd embed):
 ## wheel zoom, drag, Z, Space, L for the ice survey and G to send GAR-Y.

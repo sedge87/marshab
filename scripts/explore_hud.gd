@@ -251,6 +251,9 @@ func _build_systems_panel() -> PanelContainer:
 	return _systems_panel
 
 func _set_system_row(id: String, text: String, fraction: float, tone: Color) -> void:
+	if _rows_out != null:
+		_rows_out[id] = {"text": text, "fraction": clampf(fraction, 0.0, 1.0), "tone": tone}
+		return
 	var row: Dictionary = _systems_rows[id]
 	(row.value as Label).text = text
 	(row.value as Label).add_theme_color_override("font_color", tone if tone != MHStyle.VALID else MHStyle.TEXT_PRIMARY)
@@ -266,10 +269,23 @@ func _update_systems_panel() -> void:
 	var inv: Dictionary = sim.inventory()
 	_systems_panel.visible = MHGame.simulation_on() and int(inv.get("cells", 0)) > 0 and not _minimal
 	if not _systems_panel.visible: return
+	_systems_title.text = "HABITAT SYSTEMS · %d CREW%s" % [sim.crew_count(), " · DUST STORM" if bool(sim.last.get("storm", false)) else ""]
+	_compute_rows(sim, inv)
+	for child in _systems_warnings.get_children(): child.queue_free()
+	var shown := 0
+	for warning in sim.warnings():
+		if shown >= 3 or str(warning.level) == "info": continue
+		var line := MHStyle.body("• " + str(warning.text), 11, MHStyle.DANGER if str(warning.level) == "danger" else MHStyle.WARN)
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.custom_minimum_size = Vector2(276, 0)
+		_systems_warnings.add_child(line)
+		shown += 1
+
+## Battery, water, food, air and crew health: each row's words, how full
+## and its tone (_set_system_row), for the panel or the slate's Base app.
+func _compute_rows(sim: RefCounted, inv: Dictionary) -> void:
 	var last: Dictionary = sim.last
 	var flows: Dictionary = sim.daily_flows(false)
-	var crew: int = sim.crew_count()
-	_systems_title.text = "HABITAT SYSTEMS · %d CREW%s" % [crew, " · DUST STORM" if bool(last.get("storm", false)) else ""]
 	# Battery: charge and whether it is filling or draining.
 	var capacity := float(inv.capacity.kwh)
 	var rate := float(last.get("battery_rate_kw", 0.0))
@@ -308,15 +324,21 @@ func _update_systems_panel() -> void:
 	elif health < 99.5: trend = " · recovering"
 	if not MHGame.crew_can_be_harmed(): trend = " · Freedom mode: no harm"
 	_set_system_row("crew", "%d%%%s" % [roundi(health), trend], health / 100.0, MHStyle.DANGER if not causes.is_empty() and MHGame.crew_can_be_harmed() else (MHStyle.VALID if health > 70.0 else (MHStyle.WARN if health > 30.0 else MHStyle.DANGER)))
-	for child in _systems_warnings.get_children(): child.queue_free()
-	var shown := 0
-	for warning in sim.warnings():
-		if shown >= 3 or str(warning.level) == "info": continue
-		var line := MHStyle.body("• " + str(warning.text), 11, MHStyle.DANGER if str(warning.level) == "danger" else MHStyle.WARN)
-		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		line.custom_minimum_size = Vector2(276, 0)
-		_systems_warnings.add_child(line)
-		shown += 1
+
+var _rows_out = null   # collecting rows for system_rows() instead of drawing them
+
+## The habitat's rows for the slate's Base app: id -> {text, fraction, tone}
+## ({} with no habitat or no simulation).
+func system_rows() -> Dictionary:
+	if builder == null or not MHGame.simulation_on(): return {}
+	var sim: RefCounted = builder.simulation()
+	var inv: Dictionary = sim.inventory()
+	if int(inv.get("cells", 0)) <= 0: return {}
+	_rows_out = {}
+	_compute_rows(sim, inv)
+	var out: Dictionary = _rows_out
+	_rows_out = null
+	return out
 
 ## The sol clock time after some game hours, e.g. "04:30".
 func _clock_after(hours: float) -> String:

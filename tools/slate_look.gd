@@ -37,6 +37,15 @@ func _initialize() -> void:
 	pda.screen.show_app("goals")
 	await create_timer(.5).timeout
 	await _shot("slate_goals")
+	# A habitat to watch: a module and an airlock, for the Base app.
+	var b: Node = world.builder
+	b.zones.append({"kind": "general", "cells": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)], "door_direction": Vector2i(0, -1), "cost": 0})
+	b._rebuild()
+	b.simulation().invalidate()
+	await create_timer(1.5).timeout
+	pda.screen.show_app("base")
+	await create_timer(.6).timeout
+	await _shot("slate_base")
 	pda.screen.show_app("map")
 	await create_timer(.8).timeout
 	print("map lent: ", world.region_map.embedded if world.region_map != null else "no region map")
@@ -59,9 +68,9 @@ func _initialize() -> void:
 	await create_timer(.3).timeout
 	await _shot("slate_map_zoomed")
 	# A click on the rail's first button (Map is 1, Log 2) lands through the 3D screen.
-	# Where the Log button sits on the display (from the slate_map shot: Goals, Map, Log), and
+	# Where the Log button sits on the display (Goals, Map, Base, Log), and
 	# where on the screen's own pixels that lands.
-	var at := Vector2(430, 356)
+	var at := Vector2(430, 403)
 	print("display ", at, " -> screen pixels ", pda._screen_point(at), "; Log button rect ", pda.screen._rail_buttons["log"].button.get_global_rect())
 	for pressed in [true, false]:
 		var click := InputEventMouseButton.new()

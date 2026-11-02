@@ -31,7 +31,7 @@ var _dim: MeshInstance3D
 var _dim_material: StandardMaterial3D
 var _mouse_before := Input.MOUSE_MODE_CAPTURED
 var _freeze_before := false
-var _hidden: Array = []   # HUD layers lowered with the slate up: [layer, was visible]
+var _hidden: Array = []   # HUD parts hidden with the slate up: [node, was visible]
 
 func setup(target_world: Node) -> MHPda:
 	world = target_world
@@ -123,13 +123,15 @@ func open(app := "") -> void:
 	_freeze_before = bool(world.player.get_meta("ui_freeze", false))
 	world.player.set_meta("ui_freeze", true)
 	# The HUD steps aside: the explore HUD, the checklist and its highlights,
-	# a mission's panel. They come back as they were.
+	# a mission's panel and the alert icon row (the red edge glow stays). They
+	# come back as they were.
 	_hidden.clear()
 	var tutorial: Node = world.get("tutorial")
-	for layer in [world.get("explore_hud"), tutorial, tutorial.get("guide") if tutorial != null else null, world.get("mission_hud")]:
-		if layer is CanvasLayer and is_instance_valid(layer):
-			_hidden.append([layer, (layer as CanvasLayer).visible])
-			(layer as CanvasLayer).visible = false
+	var alerts: Node = world.get("alerts")
+	for layer in [world.get("explore_hud"), tutorial, tutorial.get("guide") if tutorial != null else null, world.get("mission_hud"), alerts.get("_icons") if alerts != null else null]:
+		if (layer is CanvasLayer or layer is CanvasItem) and is_instance_valid(layer):
+			_hidden.append([layer, bool(layer.visible)])
+			layer.visible = false
 	MHNotices.hidden = true
 	_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	screen.opened(app)
@@ -141,7 +143,7 @@ func close() -> void:
 	Input.mouse_mode = _mouse_before
 	world.player.set_meta("ui_freeze", _freeze_before)
 	for entry in _hidden:
-		if is_instance_valid(entry[0]): (entry[0] as CanvasLayer).visible = bool(entry[1])
+		if is_instance_valid(entry[0]): entry[0].visible = bool(entry[1])
 	_hidden.clear()
 	MHNotices.hidden = false
 	screen.closed()

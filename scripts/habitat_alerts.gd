@@ -409,6 +409,18 @@ func _update(alerts: Array) -> void:
 	# An open card follows its alert as it changes (only when its words do).
 	if not _detail_id.is_empty() and _active.has(_detail_id) and _detail_words(_detail_id) != _shown_words: _fill_detail(_detail_id)
 
+## The alerts up now, most serious first: [{id, level, title, text, chain}]
+## (the slate's Base app).
+func active_alerts() -> Array:
+	var out: Array = []
+	for id in _active:
+		var alert: Dictionary = (_active[id].get("alert", {}) as Dictionary).duplicate()
+		alert["id"] = id
+		alert["level"] = str(_active[id].level)
+		out.append(alert)
+	out.sort_custom(func(a, b): return LEVEL_RANK[str(a.level)] > LEVEL_RANK[str(b.level)])
+	return out
+
 func _detail_words(id: String) -> String:
 	var alert: Dictionary = _active[id].get("alert", {})
 	return "%s|%s|%s|%s" % [_active[id].level, alert.get("title", ""), alert.get("text", ""), alert.get("chain", [])]
