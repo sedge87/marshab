@@ -734,9 +734,25 @@ func _begin_lander_intro() -> void:
 		return
 	_intro_stage = "inside"
 	explore_hud.set_minimal(true)
+	get_tree().create_timer(9.0).timeout.connect(_hand_over_slate)
 	get_tree().create_timer(2.5).timeout.connect(func() -> void:
 		if _intro_stage == "inside":
 			explore_hud.show_equipment_note("Touchdown", "You've landed on Mars. When you're ready, look at the hatch and press E to open it."))
+
+## ARDEN passes you the slate (retried while a menu or the cursor is in the way).
+func _hand_over_slate() -> void:
+	if pda == null or pda.received: return
+	if pda.is_open or not _slate_ready():
+		get_tree().create_timer(2.0).timeout.connect(_hand_over_slate)
+		return
+	pda.received = true   # can_open() needs it; hand_over() sets it again
+	var ok: bool = pda.can_open()
+	pda.received = false
+	if ok: pda.hand_over()
+	else: get_tree().create_timer(2.0).timeout.connect(_hand_over_slate)
+
+func _slate_ready() -> bool:
+	return not get_tree().paused and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 
 func _update_lander_intro() -> void:
 	if _intro_stage == "inside" and lander.hatch_open():

@@ -64,6 +64,14 @@ func _initialize() -> void:
 	await _settle()
 	_check(_step() == "move", "it starts with looking around (%s)" % _step())
 
+	# 0. The lander start: the slate isn't yours until ARDEN hands it over, and the hand-over doesn't tick "Raise your slate".
+	_check(not world.pda.received and not world.pda.can_open(), "in the lander the slate isn't received yet")
+	world.pda.hand_over()
+	_check(world.pda.received and world.pda.is_open and not world.guide_flags.has("slate"), "ARDEN hands it over: it's up on Goals and the task isn't ticked")
+	world.pda.close()
+	await _settle()
+	_check(_step() == "move", "the hand-over leaves the first task alone (%s)" % _step())
+
 	# 1. Look and move: a few metres and a turn.
 	var player: Node3D = world.player
 	player.process_mode = Node.PROCESS_MODE_DISABLED

@@ -99,7 +99,7 @@ Tab keeps its meaning in build mode (catalogue) and at a camera mast (next mast)
 
 Saves don't change. Notices and the slate's state aren't saved; the last app used is a setting.
 
-**Status (2 Nov):** steps 1–3 built, plus step 4's tutorial steps ("Raise your slate" in the first goal, "Check the base on your slate", the ice step naming the Map) and CONTROLS.md / Pause → Controls. With the Minimal HUD each new task is said once on the notice line, pointing to Goals. Not built yet: the lander hand-over moment (ARDEN handing you the slate in the cabin).
+**Status (2 Nov):** steps 1–3 built, plus step 4's tutorial steps ("Raise your slate" in the first goal, "Check the base on your slate", the ice step naming the Map) and CONTROLS.md / Pause → Controls. With the Minimal HUD each new task is said once on the notice line, pointing to Goals. The lander hand-over is built: Tab does nothing until about 9 s after touchdown, when ARDEN passes the slate over (it lifts up on Goals, with a notice in the Log); lowering it is on the player, and then the first task asks them to raise it themselves.
 
 ## 10. Decided (user, 2 Nov)
 

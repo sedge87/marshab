@@ -23,6 +23,8 @@ const DIM := .5                           # the world behind, darkened
 var world: Node
 var raised := 0.0
 var is_open := false
+var received := true         # false from touchdown in the crew lander until ARDEN hands it over
+var _handing := false        # the hand-over's own raise: it doesn't tick "Raise your slate"
 var screen: Control
 var _view: SubViewport
 var _slate: Node3D
@@ -40,6 +42,7 @@ func setup(target_world: Node) -> MHPda:
 func _ready() -> void:
 	name = "Slate"
 	add_to_group("pda")
+	received = not bool(world.get("_start_in_lander"))
 	_slate = Node3D.new()
 	add_child(_slate)
 	var model := SLATE_MODEL.instantiate() as Node3D
@@ -108,11 +111,22 @@ func _raised_distance() -> float:
 
 ## Exploring (or parked in the rover), with nothing else open.
 func can_open() -> bool:
-	if world == null or get_tree().paused: return false
+	if world == null or get_tree().paused or not received: return false
 	var player: Node = world.player
 	if bool(player.get_meta("driving", false)) or bool(player.get_meta("ui_freeze", false)) or player._any_build_mode_active(): return false
 	if world.get("interior_builder") != null and bool(world.interior_builder.active): return false
 	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+
+## The lander start (docs/pda.md §8): ARDEN passes the slate over once you've
+## had a moment to take in the cabin. It lifts into view on Goals; lowering it
+## is on you, and the first task then asks you to raise it yourself.
+func hand_over() -> void:
+	if received: return
+	received = true
+	_handing = true
+	MHNotices.post("info", "ARDEN: your slate", "It has your goals, the map, the base, comms and a log of everything you're told. Tab raises and lowers it.", "goals")
+	MHAudio.sfx("suit_beep", -8.0)
+	open("goals")
 
 ## Raise it, on an app if one is named (otherwise the last one used).
 func open(app := "") -> void:
@@ -134,13 +148,14 @@ func open(app := "") -> void:
 			layer.visible = false
 	MHNotices.hidden = true
 	_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	if world.get("guide_flags") != null: world.guide_flags["slate"] = true   # the tutorial's first task
+	if world.get("guide_flags") != null and not _handing: world.guide_flags["slate"] = true   # the tutorial's first task
 	screen.opened(app)
 	MHAudio.sfx("suit_beep", -14.0)
 
 func close() -> void:
 	if not is_open: return
 	is_open = false
+	_handing = false
 	Input.mouse_mode = _mouse_before
 	world.player.set_meta("ui_freeze", _freeze_before)
 	for entry in _hidden:
