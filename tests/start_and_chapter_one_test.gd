@@ -133,6 +133,15 @@ func _initialize() -> void:
 	_check(not MHChapterOne.rover_landed(), "the crew rover waits for a later lander")
 	MHChapterOne.ice_found(10.0)
 	_check(MHChapterOne.plan_known("ice_drill") and MHChapterOne.rover_landed(), "a good core earns the Ice Extractor plan, and the rover comes")
+	# The extractor drills where a core found ice, not anywhere ice happens to be.
+	var deposit: Dictionary = MHGame.site().get("ice_deposits", [{}])[0]
+	var rich := Vector2(float(deposit.get("x", 0.0)), float(deposit.get("z", 0.0)))
+	var cores_before := MHChapterOne.cores.duplicate()
+	MHChapterOne.cores.clear()
+	_check(b._extractor_ice_reason(rich).begins_with("Drill where a core found ice"), "no extractor without a core there")
+	MHChapterOne.record_core(MHChapterOne.core_at(rich + Vector2(4, 0), .5))
+	_check(b._extractor_ice_reason(rich).is_empty(), "an extractor beside a core that found ice")
+	MHChapterOne.cores = cores_before
 	MHChapterOne.stock["ice_drill"] = 1
 	b.zones.append({"kind": "ice_extractor", "cells": [Vector2i(10, 10)], "cost": 450})
 	sim.last = {"crew": 2, "water_in": 30.0, "raw_in": 30.0, "water_out": 20.0, "o2_in": 0.0, "food_in": 0.0, "generation_kw": 5.0}

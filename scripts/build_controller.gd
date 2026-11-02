@@ -2400,7 +2400,7 @@ func _invalid_reason(cells: Array) -> String:
 		var airlock_reason := _airlock_invalid_reason(cells)
 		if not airlock_reason.is_empty(): return airlock_reason
 	if kind=="vehicle_bay" and not _valid_vehicle_bay(cells): return "2–4 cells each way, door facing outside, beside a room"
-	if kind=="ice_extractor" and _ice_richness_at(cells[0])<.12: return "No recoverable subsurface ice here"
+	if kind=="ice_extractor" and not _extractor_ice_reason(Vector2(cells[0].x*CELL,cells[0].y*CELL)).is_empty(): return _extractor_ice_reason(Vector2(cells[0].x*CELL,cells[0].y*CELL))
 	if _used_cargo()+earth_cost(_zone_cost(cells), zone_printable(kind))>MHGame.cargo_budget(): return "Not enough cargo left"
 	# Build on a local, reasonably flat patch. A short foundation can bridge a
 	# shallow dip, but we reject hills and deep drops instead of making towers.
@@ -2550,6 +2550,15 @@ func _power_source_in_field(source: Dictionary) -> bool:
 		for habitat_cell in zone.cells:
 			if Vector2(cell.x-habitat_cell.x,cell.y-habitat_cell.y).length()*CELL<=radius: return true
 	return false
+
+## Why an ice extractor can't drill here, or "". Chapter one: only where a
+## core has shown ice (within a stake's coring reach of it), so the drill goes
+## where you found the ice, not anywhere ice happens to be.
+func _extractor_ice_reason(at: Vector2) -> String:
+	if _ice_richness_at_point(at) < .12: return "No recoverable subsurface ice here"
+	if MHChapterOne.on() and not MHChapterOne.cores.any(func(c): return not bool(c.get("dry", false)) and Vector2(float(c.x), float(c.z)).distance_to(at) <= ICE_KNOWLEDGE.CORE_REACH):
+		return "Drill where a core found ice: within %d m of it" % roundi(ICE_KNOWLEDGE.CORE_REACH)
+	return ""
 
 func _ice_richness_at(cell: Vector2i) -> float:
 	return _ice_richness_at_point(Vector2(cell.x * CELL, cell.y * CELL))
@@ -4321,7 +4330,7 @@ func _free_site_reason(target: Dictionary) -> String:
 		for point in [at] + corners:
 			var under := _zone_at_point(point)
 			if not under.is_empty() and not under.has("at"): return "Overlaps the habitat"
-		if kind=="ice_extractor" and _ice_richness_at_point(at)<.12: return "No recoverable subsurface ice here"
+		if kind=="ice_extractor" and not _extractor_ice_reason(at).is_empty(): return _extractor_ice_reason(at)
 		var player := world.get_node_or_null("Player") as Node3D
 		if player != null and Vector2(player.global_position.x, player.global_position.z).distance_to(at) < radius + .5: return "Move clear of the player before building"
 	if _used_cargo()+earth_cost(_zone_cost([cell]), zone_printable(kind))>MHGame.cargo_budget(): return "Not enough cargo left"
