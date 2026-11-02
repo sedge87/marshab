@@ -757,8 +757,11 @@ func _slate_ready() -> bool:
 func _update_lander_intro() -> void:
 	if _intro_stage == "inside" and lander.hatch_open():
 		_intro_stage = "open"
+		# Nobody leaves the lander without the slate: opening the hatch hands it over now.
+		if pda != null and not pda.received: pda.hand_over()
 	elif _intro_stage == "open" and not lander.cabin_contains(player.global_position):
 		_intro_stage = "done"
+		if pda != null: pda.received = true   # however they got out (a save, a skipped intro)
 		explore_hud.set_minimal(false)
 		if crew_arrival:
 			crew_arrival = false
