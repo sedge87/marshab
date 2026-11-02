@@ -77,7 +77,12 @@ static var _plans: Dictionary = {}
 # ---------- rules ----------
 
 static func on() -> bool:
-	return not older_rules and MHGame.game_mode in ["survival", "freedom"] and not MHGame.showcase
+	return new_rules() and str(MHGame.rule("cargo")) == "crates"
+
+## A new game in free play (not Missions, an older save or Showcase): samples,
+## the journal and Mission Control's story run, crates or not (Creative too).
+static func new_rules() -> bool:
+	return not older_rules and MHGame.game_mode != "missions" and not MHGame.showcase
 
 ## A new game: the crates are all still packed.
 static func reset() -> void:
@@ -299,7 +304,7 @@ static func plan_source(id: String) -> String:
 	return str(plan(id).get("source", "brought"))
 
 static func plan_known(id: String) -> bool:
-	if MHGame.game_mode == "freedom" or plan_source(id) == "brought": return true
+	if str(MHGame.rule("plans")) == "all" or plan_source(id) == "brought": return true
 	return known.has(id)
 
 ## How to get a plan you don't have.
@@ -342,6 +347,8 @@ static func fabricable() -> Array:
 	for id in EquipmentCatalog.entries():
 		var entry: Dictionary = EquipmentCatalog.get_entry(str(id))
 		if bool(entry.get("retired", false)) or not needs_stock(str(id)) or not plan_known(str(id)): continue
+		# Freedom: nobody needs food, so its plans (grow trays and the rest) aren't offered.
+		if not MHGame.needs_food_water() and str(plan(str(id)).get("after", "")) == "food": continue
 		out.append(str(id))
 	return out
 
@@ -408,9 +415,9 @@ static func record_core(core: Dictionary) -> void:
 
 # ---------- stores ----------
 
-## Sols the landed stores last (Survival 90, Freedom 150) and for how many crew.
+## Sols the landed stores last (the Starting stores rule: 90 or 150) and for how many crew.
 static func store_sols() -> float:
-	return MHResources.setting("chapter_store_sols_freedom", 150.0) if MHGame.game_mode == "freedom" else MHResources.setting("chapter_store_sols", 90.0)
+	return MHResources.setting("chapter_store_sols_freedom", 150.0) if str(MHGame.rule("stores")) == "150" else MHResources.setting("chapter_store_sols", 90.0)
 
 static func store_crew() -> float:
 	return MHResources.setting("chapter_store_crew", 2.0)
@@ -435,7 +442,7 @@ static func sols_left(sim: Object) -> Dictionary:
 	if water_net > .01: out.water = float(sim.get("water_l")) / water_net
 	var o2_net := crew * MHResources.setting("o2_per_person", .84) - float(last.get("o2_in", 0.0))
 	if o2_net > .01: out.oxygen = float(sim.get("o2_reserve_kg")) / o2_net
-	var food_net := crew * MHResources.setting("food_per_person", 1.8) - float(last.get("food_in", 0.0))
+	var food_net := crew * MHGame.food_per_person() - float(last.get("food_in", 0.0))
 	if food_net > .01: out.food = float(sim.get("food_kg")) / food_net
 	return out
 
@@ -516,9 +523,11 @@ static func _check_steps(builder: Object, sim: Object, last: Dictionary, hours: 
 	if soil == "potted" and not known.has("grow_tray") and now - soil_potted_at >= SOIL_TEST_HOURS:
 		learn_after("food")
 		out.append({"id": "plan", "title": "The test seed came up", "text": "Washed of its perchlorate, Mars soil grows plants. Plans: grow trays, planters, a seedling station and a nutrient mixer.", "tone": "valid"})
-	if known.has("grow_tray") and not steps.has("food") and crew > 0.0 and float(last.get("food_in", 0.0)) >= crew * MHResources.setting("food_per_person", 1.8) - .01:
+	if known.has("grow_tray") and not steps.has("food") and crew > 0.0 and float(last.get("food_in", 0.0)) >= crew * MHGame.food_per_person() - .01:
 		steps["food"] = now
 		out.append({"id": "step", "title": "Food self-sufficient", "text": "The crew eat what they grow.", "tone": "valid"})
+	# Freedom: nobody needs food, so the food step comes with the oxygen one.
+	if steps.has("oxygen") and not steps.has("food") and not MHGame.needs_food_water(): steps["food"] = now
 	if finished_at < 0.0 and STEPS.all(func(s): return steps.has(s)):
 		finished_at = now
 		out.append({"id": "chapter_one", "title": "Self-sufficient", "text": report(), "tone": "valid"})

@@ -29,7 +29,7 @@ func _initialize() -> void:
 	_check(builder._invalid_reason(huge_room).contains("cargo"), "survival mode refuses a room bigger than the cargo allows")
 	MHGame.game_mode = "freedom"
 	_check(builder._invalid_reason(huge_room).contains("cargo"), "freedom mode keeps the cargo limit")
-	_check(MHGame.simulation_on() and not MHGame.crew_can_be_harmed(), "freedom runs the simulation without harming the crew")
+	_check(MHGame.simulation_on() and MHGame.crew_can_be_harmed() and not MHGame.needs_food_water() and is_zero_approx(MHGame.food_per_person()), "freedom: the simulation runs and can hurt, but nobody needs food or water")
 	# Creative: no limit, no simulation.
 	MHGame.game_mode = "creative"
 	_check(not builder._invalid_reason(huge_room).contains("cargo"), "creative mode has no cargo limit")
@@ -48,7 +48,24 @@ func _initialize() -> void:
 	MHGame.save_habitat(3, state)
 	MHGame.prepare_habitat_load(3)
 	MHGame.pending_save_state = {}
-	_check(MHGame.game_mode == "creative", "loading a creative save returns to creative mode")
+	_check(MHGame.game_mode == "creative" and not MHGame.simulation_on(), "loading a creative save returns to creative mode, with its rules")
+	# Custom: a mode's preset, then any rule changed; saved and loaded with it.
+	MHGame.game_mode = "survival"
+	MHGame.set_mode("custom")
+	MHGame.rules.food_water = false
+	MHGame.rules.cargo = "unlimited"
+	_check(MHGame.simulation_on() and not MHGame.needs_food_water() and MHGame.cargo_unlimited() and MHGame.crew_can_be_harmed(), "Custom: Survival's preset with food off and unlimited cargo")
+	var custom_state: Dictionary = world.current_state()
+	MHGame.set_mode("survival")
+	MHGame.save_habitat(3, custom_state)
+	MHGame.prepare_habitat_load(3)
+	MHGame.pending_save_state = {}
+	_check(MHGame.game_mode == "custom" and not MHGame.needs_food_water() and MHGame.cargo_unlimited(), "a Custom save loads with its own rules")
+	_check(not bool(MHGame.rules_from_state({"game_mode": "freedom"}).harm) and bool(MHGame.rules_from_state({"game_mode": "freedom"}).food_water), "an old Freedom save keeps what it had: food and water, nobody hurt")
+	MHGame.set_mode("freedom")
+	MHGame.convert_to_custom()
+	_check(MHGame.game_mode == "custom" and not MHGame.needs_food_water() and str(MHGame.rule("plans")) == "all", "converting Freedom to Custom keeps Freedom's rules")
+	MHGame.set_mode("survival")
 	_check(MHGame.normalise_mode("sandbox") == "creative" and MHGame.normalise_mode("mission") == "survival", "old sandbox and mission saves load as creative and survival")
 	MHGame.game_mode = "survival"
 

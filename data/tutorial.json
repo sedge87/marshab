@@ -444,10 +444,7 @@
       "check": {
         "type": "read"
       },
-      "modes": [
-        "survival",
-        "freedom"
-      ],
+      "needs_sim": true,
       "highlight": [
         "systems"
       ],
@@ -571,6 +568,7 @@
     {
       "id": "food",
       "goal": "self_sufficient",
+      "needs_food": true,
       "rules": "chapter",
       "text": "Grow your own food",
       "how": "A core on surveyed ground bags some regolith. Wash it at the Workshop Bench and plant the test seed there. When it comes up, make grow trays.",

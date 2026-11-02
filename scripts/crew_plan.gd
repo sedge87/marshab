@@ -87,8 +87,10 @@ static func next_landing() -> float:
 ## The stores the base should hold by the landing: for everyone planned.
 static func stores_needed() -> Dictionary:
 	var n := float(planned())
-	return {"food": n * MHResources.setting("crew_store_food_sols", 30.0) * MHResources.setting("food_per_person", 1.8),
-		"water": n * MHResources.setting("crew_store_water_sols", 7.0) * MHResources.setting("water_per_person", 10.0),
+	# Freedom: nobody needs food or drinking water, so neither is stocked.
+	var water := MHResources.setting("water_per_person", 10.0) if MHGame.needs_food_water() else 0.0
+	return {"food": n * MHResources.setting("crew_store_food_sols", 30.0) * MHGame.food_per_person(),
+		"water": n * MHResources.setting("crew_store_water_sols", 7.0) * water,
 		"o2": n * MHResources.setting("crew_store_o2_sols", 3.0) * MHResources.setting("o2_per_person", .84)}
 
 ## The checklist for the planned crew: {bunks, chains (the most the weakest carries), weakest, food, water, o2, ready}.

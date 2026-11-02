@@ -30,10 +30,13 @@ func _initialize() -> void:
 
 	# Modes.
 	MHGame.game_mode = "freedom"
-	_check(MHGame.challenge_options() == ["surprises", "wear"], "Freedom offers surprises and wear")
+	_check(MHGame.challenge_options() == ["surprises", "wear", "radiation", "injuries"], "Freedom offers every option (shortages hurt there too)")
 	_check(MHGame.raise_challenge("wear", 1.5) and not MHGame.raise_challenge("wear", 1.0) and is_equal_approx(float(MHGame.challenge.wear), 1.5), "in a game, wear can go faster but not slower")
 	MHGame.challenge.wear = 1.0
-	_check(not MHGame.challenge_on("radiation"), "nothing hurts in Freedom, whatever was set")
+	MHGame.set_mode("custom")
+	MHGame.rules.harm = false
+	_check(MHGame.challenge.radiation and not MHGame.challenge_on("radiation") and MHGame.challenge_options() == ["surprises", "wear"], "with harm off (Custom) nothing hurts, whatever was set, and only surprises and wear are offered")
+	MHGame.set_mode("freedom")
 	MHGame.game_mode = "creative"
 	_check(MHGame.challenge_options().is_empty() and MHGame.surprise_scale() == 0.0, "Creative has no options and no surprises")
 	MHGame.game_mode = "missions"

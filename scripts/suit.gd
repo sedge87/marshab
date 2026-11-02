@@ -96,9 +96,9 @@ func setup(target_world: Node) -> void:
 	pad.suit = self
 	camera.add_child(pad)
 
-## Whether the suit is simulated in this game (Survival and Freedom).
+## Whether the suit is simulated in this game (the Suit oxygen rule).
 static func active() -> bool:
-	return MHGame.game_mode in ["survival", "freedom"] and not MHGame.showcase
+	return MHGame.suit_o2_on() and not MHGame.showcase
 
 func _sim() -> RefCounted:
 	return world.builder.simulation() if world.builder != null else null

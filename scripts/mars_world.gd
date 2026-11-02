@@ -1130,6 +1130,7 @@ func current_state() -> Dictionary:
 		"accent_index": MHGame.accent_index,
 		"game_mode": MHGame.game_mode,
 		"challenge": MHGame.export_challenge(),
+		"rules": MHGame.current_rules(),
 		"builder": builder.export_habitat_state(),
 		"lander": {"position": lander.global_position, "yaw": lander.rotation.y},
 		"missions_progress": MHMissions.save_state() if MHMissions.active() else {},

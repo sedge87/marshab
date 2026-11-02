@@ -39,7 +39,7 @@ static var readings: Dictionary = {}     # reading discovery id -> {"day": true,
 static var _data: Dictionary = {}
 
 static func on() -> bool:
-	return MHChapterOne.on()
+	return MHChapterOne.new_rules()
 
 static func reset() -> void:
 	case_items = []; store = []; next_id = 1; jobs = {}; evidence = {}; leads = {}
@@ -232,7 +232,7 @@ static func _in_job(id: int) -> bool:
 static func analysis_hours(kind: String, microscope: bool) -> float:
 	var hours := float(ANALYSIS_HOURS.get(kind, 4.0))
 	if microscope and kind != "ice_core": hours /= MICROSCOPE_SPEED
-	if MHGame.game_mode == "freedom": hours *= .5
+	if str(MHGame.rule("lab")) == "fast": hours *= .5
 	return hours
 
 static func start_job(bench: String, sample_id: int, microscope: bool) -> String:

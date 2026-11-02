@@ -93,7 +93,7 @@ static func evaluate(point: Vector2) -> Dictionary:
 ## inside the ellipse (moved back towards the target if that ground is unsafe);
 ## Freedom and Creative: exactly on target.
 static func touchdown(point: Vector2, mode: String, rng: RandomNumberGenerator) -> Vector2:
-	if mode == "freedom" or mode == "creative": return point
+	if mode != "missions" and str(MHGame.rule("landing")) == "target": return point
 	var angle := rng.randf() * TAU
 	var distance := sqrt(rng.randf())
 	var landed := point + Vector2(cos(angle) * ELLIPSE_A, sin(angle) * ELLIPSE_B) * distance

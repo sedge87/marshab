@@ -224,11 +224,11 @@ func evaluate(test_sim: RefCounted = null, test_hour := -1.0) -> Array:
 		var why := "Water processor can't keep up" if bool(s.last.get("reclaimers", false)) else "No water processor"
 		out.append({"id": "raw_spill", "level": "warning", "title": "Meltwater spilling", "text": "The ice drill's meltwater has dust and perchlorate in it, so it must be cleaned before anyone drinks it. Its tank is full: %d L a sol is wasted." % roundi(spilt),
 			"chain": [["drill", "Ice drill", false], ["droplets", why, false], ["droplets", "Clean water", true]]})
-	var food_net := crew * MHResources.setting("food_per_person", 1.8) - float(s.last.get("food_in", 0.0))
+	var food_net := crew * MHGame.food_per_person() - float(s.last.get("food_in", 0.0))
 	if crew > 0 and food_net > 0.0 and float(snap.food_kg) / food_net < 10.0:
 		out.append({"id": "food", "level": "critical" if float(snap.food_kg) <= 0.0 else "warning", "title": "Food running low",
 			"text": "%s of food left for %d crew." % [_sols(float(snap.food_kg) / food_net), crew],
-			"chain": [["wheat", "Grown %.1f kg a sol" % float(s.last.get("food_in", 0.0)), false], ["wheat", "Eaten %.1f kg a sol" % (crew * MHResources.setting("food_per_person", 1.8)), true], ["heart-pulse", "Crew", true]]})
+			"chain": [["wheat", "Grown %.1f kg a sol" % float(s.last.get("food_in", 0.0)), false], ["wheat", "Eaten %.1f kg a sol" % (crew * MHGame.food_per_person()), true], ["heart-pulse", "Crew", true]]})
 	# Crew health, with its causes.
 	var health := float(snap.crew_health)
 	if crew > 0 and MHGame.crew_can_be_harmed() and health < 80.0 and not (s.health_causes as Array).is_empty():

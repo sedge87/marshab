@@ -136,3 +136,75 @@ static func _row(option: String, running: bool, changed: Callable) -> Control:
 		sw.set_pressed_no_signal(false)
 		sw.queue_redraw())
 	return row
+
+# ---------- the rules (docs/game-modes.md) ----------
+
+## Rules that can change in a running Custom game; the rest are set at the start.
+const IN_GAME_RULES := ["food_water", "suit_o2", "harm", "plans", "lab"]
+const RULE_GROUPS := [["Needs", ["simulation", "food_water", "suit_o2", "harm"]], ["Start", ["plans", "stores", "cargo", "landing", "lab"]]]
+
+## The rules as rows, in groups. Editable for Custom: every rule on the
+## Rules step (running false), the in-game ones from the pause menu; read-only
+## otherwise. changed runs after each change.
+static func build_rules(running: bool, changed := Callable()) -> VBoxContainer:
+	var col := MHStyle.vbox(14)
+	for group in RULE_GROUPS:
+		col.add_child(MHStyle.eyebrow(str(group[0]), MHStyle.TEXT_MUTED, 12))
+		for key in group[1]:
+			var editable: bool = MHGame.game_mode == "custom" and (not running or IN_GAME_RULES.has(key))
+			col.add_child(_rule_row(str(key), editable, changed))
+	return col
+
+## A rule's value as words: "On", "Off", or its choice's label.
+static func rule_text(key: String) -> String:
+	var info: Array = MHGame.RULE_INFO[key]
+	var value = MHGame.rule(key)
+	if (info[2] as Array).is_empty(): return "On" if bool(value) else "Off"
+	for choice in info[2]:
+		if str(choice[0]) == str(value): return str(choice[1])
+	return str(value)
+
+static func _rule_row(key: String, editable: bool, changed: Callable) -> Control:
+	var info: Array = MHGame.RULE_INFO[key]
+	var row := MHStyle.hbox(16)
+	var words := MHStyle.vbox(2)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.add_child(MHStyle.title(str(info[0]), 17, 700))
+	var note := MHStyle.body(str(info[1]), 13, MHStyle.TEXT_MUTED)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	words.add_child(note)
+	row.add_child(words)
+	if not editable:
+		var value := MHStyle.mono(rule_text(key), 14, MHStyle.TEXT_SECONDARY)
+		value.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(value)
+		return row
+	var choices: Array = info[2]
+	if choices.is_empty():
+		var sw := MHWidgets.Switch.new()
+		sw.button_pressed = bool(MHGame.rule(key))
+		sw.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		sw.toggled.connect(func(on: bool) -> void:
+			MHGame.rules[key] = on
+			if changed.is_valid(): changed.call())
+		row.add_child(sw)
+	else:
+		var labels: Array = choices.map(func(c): return str(c[1]))
+		var pick := MHWidgets.Segmented.new().setup(labels, rule_text(key), 36)
+		pick.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pick.changed.connect(func(label: String) -> void:
+			for c in choices:
+				if str(c[1]) == label: MHGame.rules[key] = str(c[0])
+			if changed.is_valid(): changed.call())
+		row.add_child(pick)
+	return row
+
+## A mode's few ✓/✗ lines for its card: [icon, text, on].
+static func mode_ticks(rules: Dictionary) -> Array:
+	var sim := bool(rules.simulation)
+	return [
+		[sim, "Life support to run" if sim else "Nothing to survive"],
+		[sim and bool(rules.food_water), "Food and water" if sim and bool(rules.food_water) else "No food or water needed"],
+		[str(rules.plans) == "earned", "Plans earned as you go" if str(rules.plans) == "earned" else "Every plan known"],
+		[str(rules.cargo) == "crates", "Precursor crates" if str(rules.cargo) == "crates" else "Unlimited cargo"],
+	]

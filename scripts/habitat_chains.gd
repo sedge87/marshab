@@ -97,7 +97,7 @@ static func chain(sim: RefCounted, id: String) -> Dictionary:
 			elif float(lost.get("urine_l", 0.0)) > .5: weak = "Urine venting: %s." % ("the urine processor can't keep up" if count(inv, CHAINS.water.links[2]) > 0 else "no urine processor")
 			elif float(lost.get("raw_l", 0.0)) > .5: weak = "Meltwater spilling: %s." % ("the water processor can't keep up" if reclaimers > 0 else "no water processor to clean it")
 		"food":
-			var eaten := crew * MHResources.setting("food_per_person", 1.8)
+			var eaten := crew * MHGame.food_per_person()
 			closure = _share(float(last.get("food_in", 0.0)), eaten)
 			var crops: Dictionary = sim.food.summary(inv)
 			stores = "%d kg (fresh %.1f) · nutrients %.1f kg · %d growing, %d ripe · %d%% of meals fresh" % [roundi(float(sim.food_kg)), float(crops.fresh_kg), float(crops.nutrients_kg), int(crops.growing), int(crops.ripe), roundi(float(crops.fresh_share) * 100.0)]
@@ -120,6 +120,11 @@ static func chain(sim: RefCounted, id: String) -> Dictionary:
 		level = "bad"
 	if weak.is_empty(): weak = next
 	elif level == "ok": level = "warn"
+	# Freedom: nobody needs food, so the food chain is optional.
+	if id == "food" and not MHGame.needs_food_water():
+		level = "ok"
+		closure = -1.0
+		weak = "Not needed: nobody needs food in this game."
 	return {"id": id, "label": str(spec.label), "icon": str(spec.icon), "closure": closure, "stores": stores, "links": links, "weak": weak, "level": level}
 
 ## The most crew each chain could carry, {air, water, food, waste} (Mission
@@ -154,7 +159,7 @@ static func runway(sim: RefCounted) -> Dictionary:
 	if crew > 0:
 		var water_net := float(last.get("water_in", 0.0)) - float(last.get("water_out", 0.0))
 		if water_net < -.01: limits.append([float(sim.water_l) / -water_net, "the water", "runs out"])
-		var food_net := float(last.get("food_in", 0.0)) - crew * MHResources.setting("food_per_person", 1.8)
+		var food_net := float(last.get("food_in", 0.0)) - crew * MHGame.food_per_person()
 		if food_net < -.01: limits.append([float(sim.food_kg) / -food_net, "the food", "runs out"])
 		var o2_net := float(last.get("o2_in", 0.0)) - crew * MHResources.setting("o2_per_person", .84)
 		if o2_net < -.01: limits.append([float(sim.o2_reserve_kg) / -o2_net + .3, "the oxygen", "runs out"])

@@ -151,10 +151,10 @@ func _initialize() -> void:
 	_check(book.page == 1 and book._turn.text.contains("Sol 2"), "the book opens on the newest sol (%s)" % book._turn.text)
 	book.queue_free()
 
-	# ---- Creative has no samples ----
+	# ---- Creative keeps samples, so the story still runs (docs/game-modes.md) ----
 	MHGame.game_mode = "creative"
 	MHChapterOne.reset()
-	_check(not MHSamples.on() and MHSamples.bonus("food") == 1.0, "Creative has no samples")
+	_check(MHSamples.on() and not MHChapterOne.on() and MHSamples.bonus("food") == 1.0, "Creative keeps samples and the Discoveries, without the crates")
 
 	MHGame.base_site = {}
 	MHGame.debug_free_power = false

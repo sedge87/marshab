@@ -316,7 +316,7 @@ func _chain_row(c: Dictionary) -> Control:
 	var goal := MHCrewPlan.planned()
 	if c.has("ready") and not MHCrewPlan.solitary() and goal > 1: ready = " · ready for %d of %d" % [mini(int(c.ready), goal), goal]
 	elif c.has("ready"): ready = " · carries %d" % int(c.ready)
-	head.add_child(_line("%s · %s%s" % [str(c.label).to_upper(), "%d%% closed" % roundi(closure * 100.0) if closure >= 0.0 else "nobody aboard", ready], tone, 15))
+	head.add_child(_line("%s · %s%s" % [str(c.label).to_upper(), "%d%% closed" % roundi(closure * 100.0) if closure >= 0.0 else ("not needed" if str(c.weak).begins_with("Not needed") else "nobody aboard"), ready], tone, 15))
 	col.add_child(head)
 	var parts: Array = (c.links as Array).map(func(l): return "%s %s" % ["✓" if bool(l.have) else "·", str(l.label)])
 	col.add_child(_line("   ".join(parts), MHStyle.TEXT_SECONDARY, 13))

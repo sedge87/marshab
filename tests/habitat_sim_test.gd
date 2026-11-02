@@ -313,11 +313,27 @@ func _initialize() -> void:
 	_check(not (stuffy.simulation().warnings() as Array).filter(func(w): return str(w.text).contains("no air recycler")).is_empty(), "the CO2 warning names the missing air recycler")
 	_check(float(stuffy.simulation().crew_health) < 100.0, "in Survival bad air harms the crew")
 
-	# Freedom: the same problem, but the crew are never harmed.
+	# Freedom (docs/game-modes.md): bad air still hurts, but nobody needs food
+	# or water, so empty stores don't.
 	MHGame.game_mode = "freedom"
+	var thin := _habitat("plains", 6, kit)
+	thin.simulation().run_hours(72.0, 8.0)
+	_check(float(thin.simulation().co2_pct) > 1.0 and float(thin.simulation().crew_health) < 100.0, "in Freedom bad air still harms the crew")
+	var unfed := _habitat("plains", 6, _full_kit())
+	var unfed_sim: RefCounted = unfed.simulation()
+	unfed_sim.food_kg = 0.0
+	var food_flows: Dictionary = unfed_sim.daily_flows(false)
+	unfed_sim.run_hours(48.0, 8.0)
+	_check(is_zero_approx(float(food_flows.food_eaten)) and not str(unfed_sim.get("health_causes")).contains("no food"), "in Freedom nobody eats, and no food harms nobody")
+	_check(is_zero_approx(unfed_sim.crew_water_per_person(unfed_sim.inventory())) or unfed_sim.inventory().items.any(func(i): return str(i.id) == "hygiene_shower"), "and nobody drinks (only a shower uses water)")
+	# Custom: Survival's rules with harm off is the old "warnings only" Freedom.
+	MHGame.set_mode("custom")
+	MHGame.rules = MHGame.preset("survival")
+	MHGame.rules.harm = false
 	var safe := _habitat("plains", 6, kit)
 	safe.simulation().run_hours(72.0, 8.0)
-	_check(float(safe.simulation().co2_pct) > 1.0 and is_equal_approx(float(safe.simulation().crew_health), 100.0), "Freedom shows the problem without harming the crew")
+	_check(float(safe.simulation().co2_pct) > 1.0 and is_equal_approx(float(safe.simulation().crew_health), 100.0), "Custom with harm off shows the problem without harming the crew")
+	MHGame.set_mode("freedom")
 	MHGame.game_mode = "survival"
 
 	# No heating on the Ice Fields: rooms go cold, and the reason is given.

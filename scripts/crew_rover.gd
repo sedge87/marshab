@@ -458,7 +458,7 @@ func top_speed() -> float:
 	return LIMP_SPEED if MHGame.sunlight_fraction > DAYLIGHT else 0.0
 
 func _battery(delta: float, moved: float) -> void:
-	if MHGame.game_mode == "creative":   # Creative: it never runs down
+	if not MHGame.simulation_on():   # Creative: it never runs down
 		battery = 100.0
 		reserve = 100.0
 		_air(delta, false)
@@ -942,7 +942,7 @@ func _update_hud() -> void:
 	elif solar and absf(speed) < 0.1: state = "solar topping up"
 	elif lights_on: state = "lights on"
 	var air := "   ·   O2 %d%%" % roundi(o2) if SUIT.active() else ""
-	if MHGame.game_mode == "creative": power = "battery unlimited"
+	if not MHGame.simulation_on(): power = "battery unlimited"
 	var held := "   ·   CRUISE %d" % roundi(cruise * 3.6) if cruise > 0.0 else ""
 	_readout.text = "%3d km/h%s   ·   %s%s%s" % [roundi(absf(speed) * 3.6), held, power, air, "   ·   " + state if not state.is_empty() else ""]
 	_readout.modulate = MHStyle.DANGER if battery < 15.0 else MHStyle.TEXT_PRIMARY

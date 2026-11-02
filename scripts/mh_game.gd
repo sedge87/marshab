@@ -88,18 +88,93 @@ static var outside_temperature_c := -25.0
 static var pending_save_state: Dictionary = {}
 
 # ---------- game mode ----------
-# Like Subnautica: "survival" runs the full habitat simulation with a cargo
-# limit and the crew can come to harm; "freedom" runs the simulation with
-# warnings only; "creative" turns the simulation and cargo limit off.
-# ("missions", the Understand > Design > Test > Improve mode, comes next.)
+# Like Subnautica's (docs/game-modes.md): each mode is a preset of the same
+# rules, and Custom lets you change them. "missions" is separate (to be
+# removed later) and keeps its own rules.
 const MHResources := preload("res://scripts/mh_resources.gd")
-const GAME_MODES := {"survival": "Survival", "freedom": "Freedom", "creative": "Creative"}
+const GAME_MODES := {"survival": "Survival", "freedom": "Freedom", "creative": "Creative", "custom": "Custom"}
 const GAME_MODE_NOTES := {
-	"survival": "The full challenge: power, heat, air, water and food all run, and the crew can come to harm.",
-	"freedom": "Everything runs and warns you, but the crew never come to harm. Experiment safely.",
-	"creative": "No simulation and unlimited cargo: build anything.",
+	"survival": "Air, water, food, cold and your suit's oxygen all matter. Plans are earned as you go.",
+	"freedom": "Survival without food or water. Every plan known, bigger stores, landing on target.",
+	"creative": "Nothing to survive and unlimited cargo: build anything. The story still runs.",
+	"custom": "Start from a mode and change any rule.",
+}
+const MODE_ICONS := {"survival": "heart-pulse", "freedom": "wind", "creative": "sparkles", "custom": "settings"}
+## The rules (docs/game-modes.md §2), and each mode's preset.
+const RULE_KEYS := ["simulation", "food_water", "suit_o2", "harm", "plans", "stores", "cargo", "landing", "lab"]
+const MODE_RULES := {
+	"survival": {"simulation": true, "food_water": true, "suit_o2": true, "harm": true, "plans": "earned", "stores": "90", "cargo": "crates", "landing": "ellipse", "lab": "normal"},
+	"freedom": {"simulation": true, "food_water": false, "suit_o2": true, "harm": true, "plans": "all", "stores": "150", "cargo": "crates", "landing": "target", "lab": "fast"},
+	"creative": {"simulation": false, "food_water": false, "suit_o2": false, "harm": false, "plans": "all", "stores": "150", "cargo": "unlimited", "landing": "target", "lab": "fast"},
+}
+## For Custom's rows: the label, a note, and the choices ([value, label]; switches are bools).
+const RULE_INFO := {
+	"simulation": ["Life support", "Power, heat, air and water run. Off: nothing to survive.", []],
+	"food_water": ["Food and water", "Off: nobody needs to eat or drink; the food plans aren't needed.", []],
+	"suit_o2": ["Suit oxygen", "Your suit's air runs down outside.", []],
+	"harm": ["Shortages hurt", "Off: warnings only, nobody is hurt.", []],
+	"plans": ["Plans", "Earn the fabricator's plans, or know them all.", [["earned", "Earned"], ["all", "All known"]]],
+	"stores": ["Starting stores", "How long the landed food, water and oxygen last.", [["90", "90 sols"], ["150", "150 sols"]]],
+	"cargo": ["Cargo", "The precursor crates, or unlimited building.", [["crates", "Crates"], ["unlimited", "Unlimited"]]],
+	"landing": ["Landing", "Where in the landing ellipse you touch down.", [["ellipse", "In the ellipse"], ["target", "On target"]]],
+	"lab": ["Lab analysis", "How long samples take in the lab.", [["normal", "Normal"], ["fast", "Fast"]]],
 }
 static var game_mode := "survival"
+## This game's rules: Custom's own, or a mode's preset (an old Freedom save
+## keeps its own). Used only while game_mode is the mode they were set for.
+static var rules: Dictionary = (MODE_RULES.survival as Dictionary).duplicate()
+static var rules_for := "survival"
+
+## A rule's value for this game. A mode set without its rules (Missions, or
+## a test) plays by its preset; Missions by Survival's.
+static func rule(key: String):
+	if game_mode == "custom" or game_mode == rules_for: return rules.get(key, (MODE_RULES.survival as Dictionary).get(key))
+	return preset(game_mode).get(key)
+
+## The preset for a mode (Custom starts from Survival's).
+static func preset(mode: String) -> Dictionary:
+	return (MODE_RULES.get(mode, MODE_RULES.survival) as Dictionary).duplicate()
+
+## Sets the mode for a new game, with its preset (Custom keeps the rules as they are).
+static func set_mode(mode: String) -> void:
+	if mode != "custom": rules = preset(mode)
+	elif game_mode != "custom": rules = preset(game_mode)   # Custom starts from the mode you were on
+	game_mode = mode
+	rules_for = mode
+
+## The rules in play now, for saving.
+static func current_rules() -> Dictionary:
+	var out := {}
+	for key in RULE_KEYS: out[key] = rule(key)
+	return out
+
+## A running game becomes Custom: one-way, its rules kept as they are.
+static func convert_to_custom() -> void:
+	rules = current_rules()
+	game_mode = "custom"
+	rules_for = "custom"
+
+## The rules saved with a game; an older save gets its mode's preset, and an
+## old Freedom save keeps what it had (food and water needed, nobody hurt).
+static func rules_from_state(state: Dictionary) -> Dictionary:
+	var mode := normalise_mode(str(state.get("game_mode", "survival")))
+	var out := preset(mode)
+	var saved = state.get("rules", null)
+	if saved is Dictionary:
+		for key in RULE_KEYS:
+			if (saved as Dictionary).has(key): out[key] = saved[key]
+	elif mode == "freedom":
+		out.food_water = true
+		out.harm = false
+	return out
+
+## Whether anyone needs food and water (not in Freedom).
+static func needs_food_water() -> bool:
+	return game_mode == "missions" or (simulation_on() and bool(rule("food_water")))
+
+## Food each person eats a sol (0 when nobody needs food).
+static func food_per_person() -> float:
+	return MHResources.setting("food_per_person", 1.8) if needs_food_water() else 0.0
 ## The tutorial chosen for a new game on the Land step: "full" (ARDEN's
 ## getting-started steps and first-time hints), "hints" or "off". Saved
 ## with the game; older saves have none ("off").
@@ -141,22 +216,22 @@ static var challenge_debugged := false
 static func default_challenge() -> Dictionary:
 	return {"fatigue": false, "radiation": false, "injuries": false, "surprises": "rare", "wear": 1.0}
 
-## Whether a body option is on. Only Survival can hurt anyone, so Freedom,
-## Creative and Missions (which set their own hazards) never count it.
+## Whether a body option is on: only where shortages hurt (Missions set
+## their own hazards).
 static func challenge_on(option: String) -> bool:
 	if game_mode == "missions": return true
-	return game_mode == "survival" and bool(challenge.get(option, false))
+	return crew_can_be_harmed() and bool(challenge.get(option, false))
 
 ## How often random hazards come, against today's rates (0 = none).
 static func surprise_scale() -> float:
-	if game_mode == "creative": return 0.0
+	if not simulation_on(): return 0.0
 	return float(SURPRISE_SCALE.get(str(challenge.get("surprises", "rare")), 0.5))
 
-## Which options this mode offers: Survival all, Freedom surprises only.
+## Which options this game offers: all where the simulation runs, the body
+## ones only where shortages hurt.
 static func challenge_options() -> Array:
-	if game_mode == "survival": return ["surprises", "wear"] + CHALLENGE_SWITCHES
-	if game_mode == "freedom": return ["surprises", "wear"]
-	return []
+	if game_mode == "missions" or not simulation_on(): return []
+	return ["surprises", "wear"] + (CHALLENGE_SWITCHES if bool(rule("harm")) else [])
 
 ## During a game: turns an option on, or raises the surprise level. Refuses
 ## anything that would turn one off or lower it.
@@ -220,12 +295,11 @@ static func challenge_from_state(state: Dictionary) -> Dictionary:
 
 ## "Rare surprises · Radiation · Injuries" for save cards.
 static func challenge_summary(saved: Dictionary, mode: String) -> String:
-	if mode != "survival" and mode != "freedom": return ""
+	if not mode in ["survival", "freedom", "custom"]: return ""
 	var parts := ["%s surprises" % str(SURPRISE_LABELS.get(str(saved.get("surprises", "rare")), "Rare"))]
 	if not is_equal_approx(float(saved.get("wear", 1.0)), 1.0): parts.append("Wear %s" % wear_label(float(saved.get("wear", 1.0))))
-	if mode == "survival":
-		for option in ["fatigue"] + CHALLENGE_SWITCHES:
-			if bool(saved.get(option, false)): parts.append(str(CHALLENGE_LABELS[option]))
+	for option in ["fatigue"] + CHALLENGE_SWITCHES:
+		if bool(saved.get(option, false)): parts.append(str(CHALLENGE_LABELS[option]))
 	return " · ".join(parts)
 
 ## Showcase mode (scripts/showcase.gd): a save presenting itself. Nothing is saved.
@@ -246,15 +320,19 @@ static var debug_free_power := false
 static var debug_suit_never_runs_out := false
 
 static func cargo_unlimited() -> bool:
-	return game_mode == "creative" or debug_unlimited_cargo
+	return (game_mode != "missions" and str(rule("cargo")) == "unlimited") or debug_unlimited_cargo
 
-## Whether the habitat simulation runs (every mode but Creative).
+## Whether the habitat simulation runs (not in Creative).
 static func simulation_on() -> bool:
-	return game_mode != "creative"
+	return game_mode == "missions" or bool(rule("simulation"))
 
-## Whether shortages can harm the crew (not in Freedom).
+## Whether shortages can harm the crew.
 static func crew_can_be_harmed() -> bool:
-	return game_mode == "survival" or game_mode == "missions"
+	return game_mode == "missions" or (simulation_on() and bool(rule("harm")))
+
+## Whether your suit's air runs down outside (not in Creative).
+static func suit_o2_on() -> bool:
+	return game_mode != "missions" and bool(rule("suit_o2"))
 
 ## Old save names: "mission" was the cargo challenge, "sandbox" free building.
 static func normalise_mode(mode: String) -> String:
@@ -557,6 +635,8 @@ static func prepare_state_load(state: Dictionary) -> bool:
 	habitat_name = str(state.get("habitat_name", "ARDEN"))
 	set_accent(int(state.get("accent_index", accent_index)))
 	game_mode = normalise_mode(str(state.get("game_mode", "survival")))
+	rules = rules_from_state(state)
+	rules_for = game_mode
 	challenge = challenge_from_state(state)
 	challenge_debugged = bool((state.get("challenge", {}) as Dictionary).get("debug", false)) if state.get("challenge", null) is Dictionary else false
 	return true

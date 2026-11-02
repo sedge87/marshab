@@ -121,7 +121,7 @@ func step(dt: float, inv: Dictionary, powered: Dictionary, crew: int) -> Diction
 		if not live.has(pid): trays.erase(pid)
 	_spoil(inv, powered)
 	# Eating: fresh produce first (oldest first), then rations.
-	var want := crew * MHResources.setting("food_per_person", 1.8) * per_sol
+	var want := crew * MHGame.food_per_person() * per_sol
 	var fresh := 0.0
 	while not batches.is_empty() and fresh < want - .000001:
 		var batch: Dictionary = batches[0]

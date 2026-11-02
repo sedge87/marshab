@@ -162,6 +162,8 @@ static func _empty_stores() -> Dictionary:
 func crew_water_per_person(inv: Dictionary) -> float:
 	var shower := (inv.items as Array).any(func(i): return str(i.id) == "hygiene_shower" and bool(i.on))
 	var washing := MHResources.setting("shower_l", 5.0) if shower else MHResources.setting("sponge_bath_l", 2.0)
+	# Freedom: nobody needs to drink; a shower still uses its water.
+	if not MHGame.needs_food_water(): return MHResources.setting("shower_l", 5.0) if shower else 0.0
 	return MHResources.setting("water_per_person", 10.0) - MHResources.setting("shower_l", 5.0) + washing
 
 ## Grey water and urine tank sizes (the tank models come with phase 3).
@@ -891,8 +893,8 @@ func _crew_condition(dt: float, crew: int, rooms: Array, people: Array, effects:
 	elif o2_pct < MHResources.setting("o2_min_pct", 19.5): harm += 1.0; health_causes.append("oxygen low")
 	for index in range(rooms.size()):
 		if float(people[index]) > 0.0 and float(room_temp.get(rooms[index].key, habitat_temp)) < MHResources.setting("danger_cold_c", 5.0): harm += 3.0; health_causes.append("the habitat is freezing"); break
-	if water_l <= 0.0: harm += 1.0; health_causes.append("no water")
-	if food_kg <= 0.0: harm += .3; health_causes.append("no food")
+	if water_l <= 0.0 and MHGame.needs_food_water(): harm += 1.0; health_causes.append("no water")
+	if food_kg <= 0.0 and MHGame.needs_food_water(): harm += .3; health_causes.append("no food")
 	if harm > 0.0:
 		if MHGame.crew_can_be_harmed():
 			crew_health = maxf(0.0, crew_health - harm * dt)
@@ -955,7 +957,7 @@ func daily_flows(planned := true, crew_override := -1) -> Dictionary:
 	var crew := float(crew_override) if crew_override >= 0 else (plan if planned else float(crew_count_for(inv.capacity)))
 	var crew_water := crew * crew_water_per_person(inv)
 	var out := {"crew": crew, "berths": int(inv.capacity.berths), "o2_made": 0.0, "co2_removed": 0.0, "food_grown": 0.0, "water_made": 0.0, "water_used": crew_water,
-		"o2_need": crew * MHResources.setting("o2_per_person", .84), "co2_made": crew * MHResources.setting("co2_per_person", 1.0), "food_eaten": crew * MHResources.setting("food_per_person", 1.8), "research": 0.0}
+		"o2_need": crew * MHResources.setting("o2_per_person", .84), "co2_made": crew * MHResources.setting("co2_per_person", 1.0), "food_eaten": crew * MHGame.food_per_person(), "research": 0.0}
 	var reclaimers := 0
 	var urine_processors := 0
 	for item in inv.items:
@@ -1079,7 +1081,7 @@ func warnings() -> Array:
 	var crops: Dictionary = food.summary(inv)
 	if int(crops.ripe) > 0:
 		out.append({"level": "info", "text": "%d %s ripe: harvest %s (E) within %d sols, or a harvest cart in the room does it." % [int(crops.ripe), "trays are" if int(crops.ripe) > 1 else "tray is", "them" if int(crops.ripe) > 1 else "it", roundi(food.RIPE_SOLS)]})
-	var food_per_sol := crew * MHResources.setting("food_per_person", 1.8) - float(last.get("food_in", 0.0))
+	var food_per_sol := crew * MHGame.food_per_person() - float(last.get("food_in", 0.0))
 	if crew > 0 and food_per_sol > 0.0 and food_kg / food_per_sol < 10.0:
 		out.append({"level": "danger" if food_kg <= 0.0 else "warn", "text": "Food runs out in %d sols." % floori(food_kg / food_per_sol)})
 	if int(inv.capacity.berths) < int(MHResources.setting("crew", 6.0)):

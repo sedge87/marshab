@@ -44,7 +44,7 @@ var finished := false
 ## The steps for this game mode.
 static func steps() -> Array:
 	var all: Array = _data().get("steps", [])
-	return all.filter(func(step): return (not step.has("modes") or (step.modes as Array).has(MHGame.game_mode)) and _rules_fit(step))
+	return all.filter(func(step): return (not step.has("modes") or (step.modes as Array).has(MHGame.game_mode)) and _rules_fit(step) and (not bool(step.get("needs_food", false)) or MHGame.needs_food_water()) and (not bool(step.get("needs_sim", false)) or MHGame.simulation_on()))
 
 ## The goals in order: [{id, title}].
 static func goals() -> Array:

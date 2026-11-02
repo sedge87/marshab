@@ -535,7 +535,7 @@ func _cargo_column() -> Control:
 	col.add_child(MHStyle.eyebrow("Cargo remaining" if not MHGame.cargo_unlimited() else "Cargo used"))
 	if MHGame.cargo_unlimited():
 		col.add_child(MHStyle.label(MHStyle.kg(used), 72, MHStyle.accent, 600, true))
-		col.add_child(MHStyle.mono("Creative · unlimited cargo" if MHGame.game_mode == "creative" else "Debug · unlimited cargo", 16, MHStyle.TEXT_MUTED))
+		col.add_child(MHStyle.mono("Debug · unlimited cargo" if MHGame.debug_unlimited_cargo else "Unlimited cargo", 16, MHStyle.TEXT_MUTED))
 	else:
 		col.add_child(MHStyle.label(MHStyle.kg(remaining), 72, MHStyle.accent if remaining > MHGame.mission_cargo_budget() * .1 else MHStyle.WARN, 600, true))
 		col.add_child(MHStyle.mono("of %s delivered" % MHStyle.kg(MHGame.mission_cargo_budget()), 16, MHStyle.TEXT_MUTED))
