@@ -53,6 +53,10 @@ func _initialize() -> void:
 	pda.screen._redraw()
 	await create_timer(.4).timeout
 	await _shot("slate_discoveries")
+	b.simulation().forecast_storm(6.0)
+	pda.screen.show_app("site")
+	await create_timer(.8).timeout
+	await _shot("slate_site")
 	pda.screen.show_app("map")
 	await create_timer(.8).timeout
 	print("map lent: ", world.region_map.embedded if world.region_map != null else "no region map")
@@ -75,9 +79,9 @@ func _initialize() -> void:
 	await create_timer(.3).timeout
 	await _shot("slate_map_zoomed")
 	# A click on the rail's first button (Map is 1, Log 2) lands through the 3D screen.
-	# Where the Log button sits on the display (Goals, Map, Base, Comms, Log), and
+	# Where the Log button sits on the display (Goals, Map, Base, Comms, Site, Log), and
 	# where on the screen's own pixels that lands.
-	var at := Vector2(430, 450)
+	var at := Vector2(430, 497)
 	print("display ", at, " -> screen pixels ", pda._screen_point(at), "; Log button rect ", pda.screen._rail_buttons["log"].button.get_global_rect())
 	for pressed in [true, false]:
 		var click := InputEventMouseButton.new()

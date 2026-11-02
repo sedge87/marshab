@@ -12,11 +12,12 @@ const APPS := [
 	{"id": "map", "label": "Map", "icon": "map-pin", "built": true},
 	{"id": "base", "label": "Base", "icon": "gauge", "built": true},
 	{"id": "comms", "label": "Comms", "icon": "satellite", "built": true},
-	{"id": "site", "label": "Site", "icon": "mountain-snow", "built": false},
+	{"id": "site", "label": "Site", "icon": "mountain-snow", "built": true},
 	{"id": "log", "label": "Log", "icon": "clock", "built": true},
 ]
 const SIZE := Vector2(1280, 800)
 const GUIDE := preload("res://scripts/guide_overlay.gd")
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 var world: Node
 var pda: Node
@@ -31,6 +32,7 @@ var _shown_goals := ""    # what the Goals page showed (redrawn when it changes)
 var _map_you: Label
 var _shown_base := ""     # what the Base page showed
 var _shown_comms := ""    # what the Comms page showed
+var _shown_site := ""     # what the Site page showed
 var _comms_tab := "messages"
 var _comms_only := ""     # one person's messages, or everyone's
 const SYSTEMS := [["battery", "Battery", "zap"], ["water", "Water", "droplets"], ["food", "Food", "wheat"], ["air", "Air", "wind"], ["crew", "Crew health", "heart-pulse"]]
@@ -129,6 +131,7 @@ func show_app(id: String) -> void:
 		"goals": _page.add_child(_goals_page())
 		"base": _page.add_child(_base_page())
 		"comms": _page.add_child(_comms_page())
+		"site": _page.add_child(_site_page())
 		_: _page.add_child(_log_page())
 	for key in _rail_buttons:
 		(_rail_buttons[key].button as Button).theme_type_variation = "SelectedButton" if key == id else "GhostButton"
@@ -165,6 +168,7 @@ func _process(delta: float) -> void:
 		_map_you.text = str(lines[0])
 		_map_cursor.text = str(lines[1])
 	if app == "comms" and _comms_signature() != _shown_comms: _redraw()
+	if app == "site" and _site_signature() != _shown_site: _redraw()
 	if app == "base" and _base_signature() != _shown_base:
 		for child in _page.get_children(): child.queue_free()
 		_page.add_child(_base_page())
@@ -456,6 +460,7 @@ func _redraw() -> void:
 	for child in _page.get_children(): child.queue_free()
 	match app:
 		"comms": _page.add_child(_comms_page())
+		"site": _page.add_child(_site_page())
 	MHNotices.seen(app)
 
 ## Comms: messages from Earth by person, newest first, each with Play; and
@@ -558,6 +563,97 @@ func _discoveries(list: VBoxContainer) -> void:
 			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			grid.add_child(card)
 		list.add_child(grid)
+
+## Site: where you are (room or outside, the ground, the grid), the air
+## outside, radiation, how much sun the arrays get, and the storm forecast
+## (the old site telemetry, zone chip and storm pill).
+func _site_page() -> Control:
+	var facts := _site_facts()
+	_shown_site = str(facts)
+	var page := MHStyle.vbox(18)
+	page.add_child(_heading("Site", str(facts.where)))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 16)
+	for tile in facts.tiles: grid.add_child(_site_tile(tile[0], tile[1], tile[2], tile[3]))
+	page.add_child(grid)
+	var storm := PanelContainer.new()
+	var tone: Color = facts.storm_tone
+	storm.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.INK_900, Color(tone, .45), MHStyle.RADIUS_MD, 1, Vector4(20, 14, 20, 14)))
+	var row := MHStyle.hbox(14)
+	row.add_child(MHStyle.icon("wind", 26, tone))
+	var words := MHStyle.vbox(4)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.add_child(MHStyle.label(str(facts.storm), 20, MHStyle.TEXT_PRIMARY, 700))
+	var detail := MHStyle.body(str(facts.storm_detail), 16)
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	words.add_child(detail)
+	row.add_child(words)
+	storm.add_child(row)
+	page.add_child(storm)
+	return page
+
+func _site_tile(caption: String, glyph: String, value: String, colour: Color) -> Control:
+	var tile := PanelContainer.new()
+	tile.custom_minimum_size = Vector2(300, 0)
+	tile.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.INK_900, MHStyle.BORDER_SUBTLE, MHStyle.RADIUS_MD, 1, Vector4(16, 12, 16, 12)))
+	var column := MHStyle.vbox(6)
+	var top := MHStyle.hbox(8)
+	top.add_child(MHStyle.icon(glyph, 18, MHStyle.TEXT_MUTED))
+	top.add_child(MHStyle.eyebrow(caption, MHStyle.TEXT_MUTED, 13))
+	column.add_child(top)
+	var big := MHStyle.label(value, 24, colour, 700)
+	big.clip_text = true
+	column.add_child(big)
+	tile.add_child(column)
+	return tile
+
+## What the Site page shows, worked out once (also its signature).
+func _site_facts() -> Dictionary:
+	var player: Node3D = world.player
+	var builder: Node = world.builder
+	var telemetry: Dictionary = MHGame.site().get("telemetry", {})
+	var climate: Dictionary = builder.climate_at(player.global_position) if builder != null else {}
+	var cave := MHCaves.cave_at(player.global_position)
+	var unit := MHSiteTerrain.geology_unit(player.global_position.x, player.global_position.z) if str(climate.get("state", "outside")) == "outside" else ""
+	var where := str(climate.get("context", "Outside"))
+	if not cave.is_empty(): where = "In a cave · no link"
+	elif not unit.is_empty(): where += " · on %s" % MHSamples.unit_label(unit)
+	var region: Node = world.get("region_map")
+	if region != null: where += " · " + str(region._coordinates(region._you()))
+	var solar := MHGame.solar_irradiance(MHGame.sol_hour)
+	var sim: RefCounted = builder.simulation() if builder != null else null
+	var storm_left := float(sim.storm_hours_left) if sim != null else 0.0
+	var eta := float(sim.storm_eta_hours) if sim != null else -1.0
+	if storm_left > 0.0: solar *= 1.0 - float(sim.solar_cut())
+	var radiation := str(climate.get("radiation", telemetry.get("radiation", "—")))
+	var storm := "Clear skies"
+	var storm_detail := "No dust storm forecast. Storms are forecast hours ahead and cut the sun on the arrays."
+	var storm_tone := MHStyle.VALID
+	if storm_left > 0.0:
+		storm = "Dust storm"
+		storm_detail = "About %s left. The arrays get a fraction of the sun; the batteries carry the base." % _hours_text(storm_left)
+		storm_tone = MHStyle.DANGER
+	elif eta >= 0.0:
+		storm = "Storm in %s" % _hours_text(eta)
+		storm_detail = "Charge the batteries and finish outside work before it arrives."
+		storm_tone = MHStyle.WARN
+	return {"where": where, "storm": storm, "storm_detail": storm_detail, "storm_tone": storm_tone, "tiles": [
+		["TEMPERATURE", "flame", "%d °C" % roundi(float(climate.get("temperature", telemetry.get("outside_temp_c", -30.0)))), MHStyle.INFO],
+		["ELEVATION", "mountain-snow", str(telemetry.get("elevation", "—")), MHStyle.TEXT_PRIMARY],
+		["RADIATION", "radiation", radiation, MHStyle.WARN if radiation == "High" else MHStyle.VALID],
+		["SOLAR", "sun", "%d%%" % roundi(solar * 100.0), MHStyle.VALID if solar > .1 else MHStyle.TEXT_MUTED],
+		["TIME", "clock", MHGame.formatted_sol_time(), MHStyle.TEXT_PRIMARY],
+		["DAYLIGHT", "moon" if MHGame.sunlight_fraction <= .08 else "sun", "Night" if MHGame.sunlight_fraction <= .08 else "Day", MHStyle.TEXT_PRIMARY],
+	]}
+
+## "5 hours", "1.5 sols".
+static func _hours_text(hours: float) -> String:
+	return "%d hours" % ceili(hours) if hours < 24.0 else "%.1f sols" % (hours / 24.0)
+
+func _site_signature() -> String:
+	return str(_site_facts())
 
 ## Changes when the Comms page would look different.
 func _comms_signature() -> String:
