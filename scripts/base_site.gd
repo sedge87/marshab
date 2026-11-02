@@ -168,6 +168,36 @@ static func ice_deposits(rx: float, rz: float) -> Array:
 	if deposits.is_empty(): deposits.append({"x": 45, "z": -42, "radius": 13, "richness": .25})
 	return deposits
 
+## The deposits as the colony uses them: if none reaches drillable ice
+## (richness .12 or more, MHChapterOne's coring and the extractor's test)
+## inside the build pad, a thinner seam of the nearest deposit is added at the
+## pad's edge on its side, so the base can always drill its own water. The
+## far, rich ice stays for the landing report and later. Pure: the same pad
+## and deposits always give the same seam (old saves get it too).
+const DRILLABLE := .12
+const SEAM_RADIUS := 18.0
+
+static func with_pad_ice(deposits: Array, half := 60.0) -> Array:
+	var inner := half - 6.0   # room for a 3 m extractor cell inside the edge
+	var nearest := {}
+	for deposit: Dictionary in deposits:
+		var centre := Vector2(float(deposit.get("x", 0.0)), float(deposit.get("z", 0.0)))
+		var richness := float(deposit.get("richness", 0.0))
+		if richness < DRILLABLE: continue
+		# The drillable disc's point nearest the base.
+		var usable := float(deposit.get("radius", 1.0)) * (1.0 - DRILLABLE / richness)
+		var toward := centre - centre.limit_length(usable)
+		if absf(toward.x) <= inner and absf(toward.y) <= inner: return deposits
+		if nearest.is_empty() or centre.length() < Vector2(float(nearest.x), float(nearest.z)).length(): nearest = deposit
+	var side := Vector2(float(nearest.get("x", 45.0)), float(nearest.get("z", -42.0)))
+	if side.length() < 1.0: side = Vector2(45, -42)
+	# On the pad, as far out towards the deposit as the seam's own drillable
+	# core still fits inside.
+	var reach := (inner - 4.0) / maxf(absf(side.normalized().x), absf(side.normalized().y))
+	var at := side.normalized() * minf(reach, side.length())
+	var seam := {"x": roundf(at.x), "z": roundf(at.y), "radius": SEAM_RADIUS, "richness": snappedf(clampf(float(nearest.get("richness", .4)) * .6, .4, .55), .01), "seam": true}
+	return deposits + [seam]
+
 ## Whether a base can be founded at (rx, rz).
 static func valid(rx: float, rz: float, half := 60.0) -> bool:
 	return reason(rx, rz, half).is_empty()

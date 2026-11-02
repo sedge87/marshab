@@ -64,6 +64,9 @@ const TASK_STOP := .75
 const MAX_FLAGS := 12
 ## How far away a zone GAR-Y is sent to from the Tab map can be (m).
 const REMOTE_SURVEY_M := 300.0
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
+## Chapter one: ice surveys stay on the build pad, where an extractor can go.
+const OFF_PAD := "That's outside the build site: GAR-Y surveys for ice where you can build."
 const ESCORT_MS := 90000
 ## GAR-Y's rock collection: now and then a survey turns up a special rock,
 ## which GAR-Y names and keeps beside its charger. Each is a real kind of
@@ -386,6 +389,8 @@ func start_survey() -> bool:
 		var spot := global_position + Vector3(cos(angle), 0, sin(angle)) * randf_range(7.0, 12.0)
 		spot.y = global_position.y
 		if habitat.is_inside(spot): continue
+		# Chapter one: a survey leaves a stake, so only where you can build.
+		if MHChapterOne.on() and not MHSiteTerrain.is_buildable(Vector2(spot.x, spot.z)): continue
 		_start("survey", spot)
 		_say("curious")
 		return true
@@ -399,7 +404,8 @@ func _survey_here() -> void:
 	var at := Vector2(global_position.x, global_position.z)
 	var richness := float(habitat._ice_richness_at_point(at)) if habitat.has_method("_ice_richness_at_point") else 0.0
 	if MHChapterOne.on():
-		_radar_reading(at, richness)
+		if MHSiteTerrain.is_buildable(at): _radar_reading(at, richness)
+		else: _skip_reading()
 		return
 	var near_flag := flags.any(func(f): return Vector2((f as Vector3).x, (f as Vector3).z).distance_to(at) < 10.0)
 	ice_samples.append(Vector3(at.x, at.y, snappedf(richness, .01)))
@@ -459,6 +465,22 @@ func _radar_reading(at: Vector2, richness: float) -> void:
 	else:
 		if _ordered: _survey_done()
 		_toast("GAR-Y's radar reading", "A %s signal here, and a stake to mark it. Core inside its ring to know for sure; it's on your map (Tab) too." % ("strong" if reading >= .35 else ("faint" if reading >= .15 else "weak")), MHStyle.INFO)
+	_end_task()
+
+## Chapter one: it stopped off the build pad (pushed aside on the way), so no
+## reading or stake here; on to the next stop.
+func _skip_reading() -> void:
+	_busy = false
+	if task_data.has("hunt"):
+		var left: Array = task_data.get("hunt", [])
+		if not left.is_empty():
+			var next: Vector2 = left.pop_front()
+			task_data.hunt = left
+			task_goal = Vector3(next.x, global_position.y, next.y)
+			_task_age = 0.0
+			return
+		_survey_done()
+	elif _ordered: _survey_done()
 	_end_task()
 
 ## "Find ice": on to the next stop of the survey loop, or report the best spot.
@@ -971,6 +993,7 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 			if Vector2(point.x - global_position.x, point.z - global_position.z).length() > 60.0: return "That's too far for GAR-Y (over 60 m)."
 			if kind != "goto" and inside_point: return "Surveys and core samples are for outside."
 			if kind == "core" and has_core: return "GAR-Y is already carrying a core sample. Bring it inside to the Science Lab."
+			if kind == "survey" and MHChapterOne.on() and not MHSiteTerrain.is_buildable(Vector2(point.x, point.z)): return OFF_PAD
 			staying = false
 			point.y = global_position.y
 			_start(kind if kind != "goto" else ("goto" if inside_point else "survey"), point)
@@ -986,6 +1009,7 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 			if (zone.centre as Vector2).distance_to(here) > REMOTE_SURVEY_M: return "That zone is too far for GAR-Y (over %d m). Bring it closer first." % roundi(REMOTE_SURVEY_M)
 			# Chapter one: a coarse grid across the zone, for you to read.
 			var stops := ICE_KNOWLEDGE.survey_grid(zone, here) if MHChapterOne.on() else ICE_KNOWLEDGE.survey_stops(zone, here)
+			if stops.is_empty(): return OFF_PAD
 			var first: Vector2 = stops.pop_front()
 			staying = false
 			_start("survey", Vector3(first.x, global_position.y, first.y), {"hunt": stops, "stops": stops.size() + 1, "best": -1.0})

@@ -411,7 +411,7 @@ static func good_core() -> float:
 
 static func record_core(core: Dictionary) -> void:
 	cores.append(core)
-	while cores.size() > 40: cores.pop_front()
+	while cores.size() > 200: cores.pop_front()
 
 # ---------- stores ----------
 

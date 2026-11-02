@@ -4,7 +4,9 @@ extends Node3D
 ## Every reading leaves a survey stake: a thin pole with a beacon whose colour
 ## is the signal (grey weak, amber faint, ice blue strong). Near a stake, a
 ## ring on the ground marks the 7 m you can take a core in. Once a core has
-## been taken there the beacon stops blinking: steady for ice, dark for dry.
+## been taken there the beacon stops blinking (steady for ice, dark for dry)
+## for a few seconds, then the stake is pulled up: it's done its job. The Tab
+## map's survey layer keeps a tick or cross where it stood.
 ## Holding T (the wrist pad) and pressing F sends a survey ping: every stake
 ## within PING_RANGE flashes and shows through the terrain with its distance
 ## for a few seconds. The strongest stake not yet cored is on the compass.
@@ -20,6 +22,8 @@ const STRONG := .35
 const WEAK_COLOUR := Color("#9AA3A8")
 const FAINT_COLOUR := Color("#F2B84B")
 const STRONG_COLOUR := Color("#7FE6FF")
+const GONE_AFTER := 4.0     # seconds a cored stake stays before it's pulled up
+const RING_HEIGHT := 1.0    # the ring's decal: thin, so it stays on the ground
 
 var world: Node
 var _signature := ""
@@ -31,6 +35,10 @@ var _pole_material: StandardMaterial3D
 var _ring_texture: Texture2D
 var _compass: Node3D
 var _overlay: Control
+## Cored readings (str of their spot) -> when this session first saw them
+## cored (msec), or -1 for ones cored before the game was loaded.
+var _cored_seen := {}
+var _loaded := false
 
 func setup(target_world: Node) -> Node:
 	world = target_world
@@ -93,11 +101,13 @@ static func cored_at(at: Vector2) -> String:
 			found = "dry"
 	return found
 
-## The nearest reading to a point: {at: Vector2, distance} or {}.
+## The nearest stake still standing (not yet cored) to a point:
+## {at: Vector2, distance} or {}.
 func nearest(point: Vector2) -> Dictionary:
 	var best := {}
 	for sample in ICE_KNOWLEDGE.samples(get_tree()):
 		var at := Vector2(float(sample.x), float(sample.y))
+		if _cored_seen.has(str(at)) or not cored_at(at).is_empty(): continue
 		var gap := at.distance_to(point)
 		if best.is_empty() or gap < float(best.distance): best = {"at": at, "distance": gap}
 	return best
@@ -123,8 +133,18 @@ func _process(delta: float) -> void:
 		_ping_left -= delta
 		energy = 4.0 * (.6 + .4 * sin(Time.get_ticks_msec() * .02))
 	for key in ["weak", "faint", "strong"]: (_beacons[key] as StandardMaterial3D).emission_energy_multiplier = energy
+	# Rings only outside: indoors they'd show on the floor.
+	var builder: Node = world.get("builder")
+	var outside: bool = builder == null or not builder.is_inside(player.global_position)
+	var now := Time.get_ticks_msec()
 	for stake in _stakes:
-		(stake.ring as Node3D).visible = (stake.at as Vector3).distance_to(player.global_position) < RING_NEAR
+		(stake.ring as Node3D).visible = outside and (stake.at as Vector3).distance_to(player.global_position) < RING_NEAR
+		# A cored stake is pulled up after a few seconds.
+		if int(stake.get("gone_at", 0)) > 0 and now >= int(stake.gone_at) and not stake.has("going"):
+			stake["going"] = true
+			var going := (stake.node as Node3D).create_tween()
+			going.tween_property(stake.node, "scale", Vector3(1, .01, 1), .5)
+			going.tween_callback(func(): _signature = "")
 	_overlay.visible = _ping_left > 0.0
 	if _overlay.visible: _overlay.queue_redraw()
 
@@ -138,15 +158,25 @@ func _refresh() -> void:
 	for stake in _stakes: (stake.node as Node).queue_free()
 	_stakes.clear()
 	var best := {}
+	var now := Time.get_ticks_msec()
 	for entry in list:
 		var at := Vector2(entry.at)
+		# Cored: shown for a few seconds, then gone. Cored before this game
+		# was loaded: already gone.
+		var gone_at := 0
+		if not str(entry.cored).is_empty():
+			if not _cored_seen.has(str(at)): _cored_seen[str(at)] = now if _loaded else -1
+			var seen := int(_cored_seen[str(at)])
+			if seen < 0 or now >= seen + int(GONE_AFTER * 1000.0) + 600: continue
+			gone_at = seen + int(GONE_AFTER * 1000.0)
 		var ground := MHCaves.ground_y(Vector3(at.x, 0.0, at.y))
 		var spot := Vector3(at.x, ground, at.y)
 		var key := strength(float(entry.reading))
 		var cored := str(entry.cored)
 		var node := _stake(spot, _beacons[cored if not cored.is_empty() else key])
 		var ring := Decal.new()
-		ring.size = Vector3(ICE_KNOWLEDGE.CORE_REACH * 2.0, 8.0, ICE_KNOWLEDGE.CORE_REACH * 2.0)
+		ring.size = Vector3(ICE_KNOWLEDGE.CORE_REACH * 2.0, RING_HEIGHT, ICE_KNOWLEDGE.CORE_REACH * 2.0)
+		ring.normal_fade = .5   # flat ground only, not walls
 		ring.texture_albedo = _ring_texture
 		ring.modulate = colour_for(key) if cored.is_empty() else Color(1, 1, 1, .35)
 		ring.albedo_mix = .85
@@ -155,9 +185,10 @@ func _refresh() -> void:
 		ring.visible = false
 		node.add_child(ring)
 		add_child(node)
-		_stakes.append({"node": node, "ring": ring, "at": spot, "reading": float(entry.reading), "cored": cored, "key": key})
+		_stakes.append({"node": node, "ring": ring, "at": spot, "reading": float(entry.reading), "cored": cored, "key": key, "gone_at": gone_at})
 		if cored.is_empty() and float(entry.reading) >= FAINT and (best.is_empty() or float(entry.reading) > float(best.reading)):
 			best = {"at": spot, "reading": float(entry.reading)}
+	_loaded = true
 	# The compass: the strongest reading still to core.
 	if best.is_empty():
 		if _compass.is_in_group("landmark"): _compass.remove_from_group("landmark")

@@ -18,6 +18,7 @@ const SAMPLE_REACH := 5.0
 const WORTH_DRILLING := .25
 ## False zones from orbit under chapter-one rules.
 const DECOYS := 2
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 ## The likely zones from orbit: [{centre: Vector2, radius: float}], the same
 ## every time for a site.
@@ -38,11 +39,19 @@ static func likely_zones(site := {}) -> Array:
 		rng.seed = hash("%s/decoys" % str(site.get("id", "site")))
 		for index in range(DECOYS):
 			for attempt in 20:
-				var spot := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(45.0, 110.0)
-				if zones.all(func(z): return (z.centre as Vector2).distance_to(spot) > float(z.radius) * 2.0 + 12.0):
-					zones.append({"centre": spot, "radius": rng.randf_range(14.0, 22.0), "decoy": true})
+				var spot := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(20.0, 50.0)
+				var decoy := {"centre": spot, "radius": rng.randf_range(12.0, 18.0), "decoy": true}
+				if on_pad(decoy) and zones.all(func(z): return (z.centre as Vector2).distance_to(spot) > float(z.radius) + float(decoy.radius) + 6.0):
+					zones.append(decoy)
 					break
-	return zones
+	# GAR-Y surveys where you can build: zones off the build pad aren't offered.
+	return zones.filter(on_pad)
+
+## Whether a likely zone reaches onto the build pad (its edge nearest the
+## base is buildable).
+static func on_pad(zone: Dictionary) -> bool:
+	var centre: Vector2 = zone.centre
+	return MHSiteTerrain.is_buildable(centre - centre.limit_length(float(zone.radius) * .7))
 
 ## Chapter one: survey stops in a coarse grid across a zone (3 by 3), in an
 ## order that makes a short drive from `from`.
@@ -51,6 +60,7 @@ static func survey_grid(zone: Dictionary, from: Vector2) -> Array:
 	var step := float(zone.radius) * .55
 	for gx in [-1, 0, 1]:
 		for gz in [-1, 0, 1]: points.append((zone.centre as Vector2) + Vector2(gx, gz) * step)
+	points = points.filter(MHSiteTerrain.is_buildable)   # only where you can build
 	var ordered: Array = []
 	var at := from
 	while not points.is_empty():
@@ -98,6 +108,7 @@ static func survey_stops(zone: Dictionary, from: Vector2, ring := 6) -> Array:
 	var points: Array = [zone.centre]
 	for i in range(ring):
 		points.append((zone.centre as Vector2) + Vector2.from_angle(TAU * i / ring) * float(zone.radius) * .5)
+	points = points.filter(MHSiteTerrain.is_buildable)   # only where you can build
 	var ordered: Array = []
 	var at := from
 	while not points.is_empty():

@@ -405,7 +405,7 @@ static func site() -> Dictionary:
 		if not is_same(_founded_from, base_site):
 			_founded_from = base_site
 			_founded_site = entry.duplicate(true)
-			_founded_site["ice_deposits"] = base_site.ice_deposits
+			_founded_site["ice_deposits"] = MHBaseSite.with_pad_ice(base_site.ice_deposits, float(base_site.get("pad_half", 60.0)))
 			if not base_site.has("conditions"):   # founded before conditions were kept
 				base_site["conditions"] = MHBaseSite.conditions(float(base_site.centre[0]), float(base_site.centre[1]))
 			var local: Dictionary = base_site.conditions

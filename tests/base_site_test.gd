@@ -57,6 +57,18 @@ func _initialize() -> void:
 	assert(float(walled.conditions.shelter_c) > float(open.conditions.shelter_c) + 3.0, "Walls make warmer nights.")
 	assert(float(MHBaseSite.sunshine(walled.conditions.horizon).share) < float(MHBaseSite.sunshine(open.conditions.horizon).share) - .05, "Walls hide the low sun.")
 	assert(float(icy.ice_deposits[0].richness) >= .6 and float(icy.conditions.frost_peak) > .5, "The ice fields: rich ice, heavy frost.")
+	# Every base can drill its own water: drillable ice reaches onto the pad,
+	# even when the region's ice is all far off (playtest, 2 Nov).
+	var far_only := [{"x": 300.0, "z": -200.0, "radius": 20, "richness": .8}]
+	for deposits in [walled.ice_deposits, open.ice_deposits, icy.ice_deposits, far_only]:
+		var usable := MHBaseSite.with_pad_ice(deposits, 60.0)
+		var reaches := false
+		for d: Dictionary in usable:
+			var centre := Vector2(float(d.x), float(d.z))
+			var inner := centre - centre.limit_length(float(d.radius) * (1.0 - .12 / float(d.richness)))
+			reaches = reaches or (absf(inner.x) <= 54.0 and absf(inner.y) <= 54.0)
+		assert(reaches, "Drillable ice on the pad for %s." % str(deposits))
+	assert(MHBaseSite.with_pad_ice(far_only, 60.0).size() == 2, "A seam is added when the ice is far off.")
 	var crater := MHBaseSite.science(1580.0, -320.0)
 	var plains := MHBaseSite.science(-1400.0, 1000.0)
 	assert((crater.rocks as Array).size() > (plains.rocks as Array).size(), "The crater has more to study than the plains.")
