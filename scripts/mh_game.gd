@@ -822,7 +822,7 @@ static func defaults() -> Dictionary:
 	d["rover_radio"] = true      # the rover radio starts on (O while driving)
 	d["subtitles"] = "compact"   # captions for spoken lines: full, compact, off (mh_audio.gd)
 	d["checklist"] = "full"      # the getting-started checklist: full, folded, hidden (tutorial.gd; H cycles it)
-	d["slate_app"] = "log"       # the slate's last app (pda_screen.gd)
+	d["slate_app"] = "goals"     # the slate's last app (pda_screen.gd)
 	return d
 
 static func setting(key: String):

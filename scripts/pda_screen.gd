@@ -8,7 +8,7 @@ extends Control
 ## Apps arrive one at a time (docs/pda.md §9); the rail shows those built.
 
 const APPS := [
-	{"id": "goals", "label": "Goals", "icon": "clipboard-check", "built": false},
+	{"id": "goals", "label": "Goals", "icon": "clipboard-check", "built": true},
 	{"id": "map", "label": "Map", "icon": "map-pin", "built": true},
 	{"id": "base", "label": "Base", "icon": "gauge", "built": false},
 	{"id": "comms", "label": "Comms", "icon": "satellite", "built": false},
@@ -16,6 +16,7 @@ const APPS := [
 	{"id": "log", "label": "Log", "icon": "clock", "built": true},
 ]
 const SIZE := Vector2(1280, 800)
+const GUIDE := preload("res://scripts/guide_overlay.gd")
 
 var world: Node
 var pda: Node
@@ -26,6 +27,7 @@ var _rail: VBoxContainer
 var _rail_buttons := {}   # app id -> {button, dot}
 var _page: MarginContainer
 var _shown_log := -1      # notices on the Log page when it was drawn
+var _shown_goals := ""    # what the Goals page showed (redrawn when it changes)
 var _tick := 0.0
 
 func _ready() -> void:
@@ -99,7 +101,7 @@ func apps() -> Array:
 ## The slate was raised (pda.gd): on this app, or the last one used.
 func opened(wanted := "") -> void:
 	var choice := wanted if wanted in apps() else str(MHGame.setting("slate_app"))
-	if not choice in apps(): choice = "log"
+	if not choice in apps(): choice = "goals"
 	app = ""
 	show_app(choice)
 	_update_status()
@@ -115,6 +117,7 @@ func show_app(id: String) -> void:
 	for child in _page.get_children(): child.queue_free()
 	match id:
 		"map": _page.add_child(_map_page())
+		"goals": _page.add_child(_goals_page())
 		_: _page.add_child(_log_page())
 	for key in _rail_buttons:
 		(_rail_buttons[key].button as Button).theme_type_variation = "SelectedButton" if key == id else "GhostButton"
@@ -143,6 +146,10 @@ func _process(delta: float) -> void:
 		for child in _page.get_children(): child.queue_free()
 		_page.add_child(_log_page())
 		MHNotices.seen("log")
+	if app == "goals" and _goals_signature() != _shown_goals:
+		for child in _page.get_children(): child.queue_free()
+		_page.add_child(_goals_page())
+		MHNotices.seen("goals")
 
 func _update_status() -> void:
 	var daytime := MHGame.sunlight_fraction > .08
@@ -213,6 +220,114 @@ func _log_row(entry: Dictionary) -> Control:
 	line.add_child(time)
 	row.add_child(line)
 	return row
+
+## Goals: the getting-started goals down the left, the current one's tasks
+## with the next one's how-to, keys and Show me, and what the base still
+## needs (the readiness list). Replaces the on-screen checklist (docs/pda.md §3).
+func _goals_page() -> Control:
+	_shown_goals = _goals_signature()
+	var tutorial: Node = world.get("tutorial") if world != null else null
+	var page := MHStyle.hbox(28)
+	var side := MHStyle.vbox(10)
+	side.custom_minimum_size.x = 260
+	page.add_child(side)
+	var main := MHStyle.vbox(14)
+	main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.add_child(main)
+	page.add_child(scroll)
+	if tutorial == null or bool(tutorial.finished):
+		side.add_child(_heading("Goals"))
+		side.add_child(MHStyle.body("The getting-started checklist is done." if tutorial != null else "Hints only: no checklist this game.", 17, MHStyle.TEXT_MUTED))
+		_needs(main)
+		return page
+	# The goals, in order.
+	side.add_child(MHStyle.eyebrow("GOALS", MHStyle.TEXT_MUTED, 13))
+	var goal: String = tutorial.current_goal()
+	var used: Array = tutorial.goals().filter(func(g): return not (tutorial.goal_steps(str(g.id)) as Array).is_empty())
+	var past := true
+	for g in used:
+		var tasks: Array = tutorial.goal_steps(str(g.id))
+		var ticked := tasks.filter(func(s): return tutorial.done.has(str(s.id))).size()
+		var is_current := str(g.id) == goal
+		if is_current: past = false
+		var row := MHStyle.hbox(10)
+		row.add_child(MHStyle.icon("circle-check" if past else ("circle-arrow-right" if is_current else "circle-dashed"), 20, MHStyle.VALID if past else (MHStyle.accent if is_current else MHStyle.TEXT_MUTED)))
+		var name_label := MHStyle.label(str(g.title), 18, MHStyle.TEXT_PRIMARY if is_current else MHStyle.TEXT_SECONDARY, 700 if is_current else 500)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(name_label)
+		row.add_child(MHStyle.mono("%d/%d" % [ticked, tasks.size()], 14, MHStyle.TEXT_MUTED))
+		side.add_child(row)
+	# The current goal's tasks.
+	var tasks: Array = tutorial.goal_steps(goal)
+	var step: Dictionary = tutorial.current()
+	var ticked := tasks.filter(func(s): return tutorial.done.has(str(s.id))).size()
+	main.add_child(MHStyle.eyebrow("%s · GOAL %d OF %d · %d OF %d DONE" % [MHGame.habitat_name.to_upper(), used.map(func(g): return str(g.id)).find(goal) + 1, used.size(), ticked, tasks.size()], MHStyle.accent, 13))
+	main.add_child(MHStyle.title(str(tutorial._goal_title(goal)), 30))
+	for task in tasks:
+		var is_done: bool = tutorial.done.has(str(task.id))
+		var is_next := str(task.id) == str(step.get("id", ""))
+		var row := MHStyle.hbox(12)
+		row.add_child(MHStyle.icon("circle-check" if is_done else ("circle-arrow-right" if is_next else "circle-dashed"), 22, MHStyle.VALID if is_done else (MHStyle.accent if is_next else MHStyle.TEXT_MUTED)))
+		row.add_child(MHStyle.label(str(task.text), 20, MHStyle.TEXT_MUTED if is_done else (MHStyle.TEXT_PRIMARY if is_next else MHStyle.TEXT_SECONDARY), 700 if is_next else 500))
+		main.add_child(row)
+		if is_next: main.add_child(_next_task(task, tutorial))
+	_needs(main)
+	return page
+
+## The next task, opened out: how to do it, its keys, Show me, and "Done
+## reading" for a step you only have to read.
+func _next_task(task: Dictionary, tutorial: Node) -> Control:
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.INK_900, Color(MHStyle.accent, .35), MHStyle.RADIUS_MD, 1, Vector4(20, 16, 20, 16)))
+	var column := MHStyle.vbox(12)
+	box.add_child(column)
+	var how := MHStyle.body(str(task.get("how", "")), 18)
+	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(how)
+	if not (task.get("keys", []) as Array).is_empty(): column.add_child(GUIDE.keys_box(task.keys))
+	var buttons := MHStyle.hbox(12)
+	if GUIDE.has_clip(str(task.get("clip", ""))):
+		var show := MHStyle.button("Show me", "secondary", "play", 48)
+		show.focus_mode = Control.FOCUS_NONE
+		show.pressed.connect(func() -> void:
+			pda.close()
+			tutorial.guide.show_clip(str(task.clip), str(task.text), task.get("keys", [])))
+		buttons.add_child(show)
+	if str((task.get("check", {}) as Dictionary).get("type", "")) == "read":
+		var read := MHStyle.button("Done reading", "primary", "check", 48)
+		read.focus_mode = Control.FOCUS_NONE
+		read.pressed.connect(func() -> void:
+			tutorial._read_pressed = true
+			tutorial._check_in = 0.0)
+		buttons.add_child(read)
+	if buttons.get_child_count() > 0: column.add_child(buttons)
+	return box
+
+## What the base still needs: the readiness list, unmet items first.
+func _needs(column: VBoxContainer) -> void:
+	var builder: Node = world.builder if world != null else null
+	if builder == null or MHGame.game_mode == "missions": return
+	var items: Array = builder.readiness()
+	if items.is_empty(): return
+	var met: int = builder.readiness_met()
+	var gap := Control.new()
+	gap.custom_minimum_size.y = 8
+	column.add_child(gap)
+	column.add_child(MHStyle.eyebrow("THE BASE · %d OF %d READY" % [met, items.size()], MHStyle.TEXT_MUTED, 13))
+	if met == items.size():
+		column.add_child(MHStyle.body("Everything the crew needs is in place.", 17, MHStyle.VALID))
+		return
+	for item in items:
+		if str(item.status) != "met": column.add_child(MHStyle.readiness_item(item))
+
+## Changes when the Goals page would look different.
+func _goals_signature() -> String:
+	var tutorial: Node = world.get("tutorial") if world != null else null
+	var builder: Node = world.builder if world != null else null
+	return "%s|%s|%s" % [str(tutorial.done) if tutorial != null else "", str(tutorial.finished) if tutorial != null else "", str(builder.readiness()) if builder != null and MHGame.game_mode != "missions" else ""]
 
 ## Map: for now the region map opens over the view (it moves onto the
 ## slate's screen next, docs/pda.md §9).

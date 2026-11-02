@@ -34,13 +34,16 @@ func _initialize() -> void:
 	pda.open("log")
 	await create_timer(1.0).timeout
 	await _shot("slate_log")
+	pda.screen.show_app("goals")
+	await create_timer(.5).timeout
+	await _shot("slate_goals")
 	pda.screen.show_app("map")
 	await create_timer(.5).timeout
 	await _shot("slate_map")
 	# A click on the rail's first button (Map is 1, Log 2) lands through the 3D screen.
-	# Where the Log button sits on the display (from the slate_map shot), and
+	# Where the Log button sits on the display (from the slate_map shot: Goals, Map, Log), and
 	# where on the screen's own pixels that lands.
-	var at := Vector2(430, 309)
+	var at := Vector2(430, 356)
 	print("display ", at, " -> screen pixels ", pda._screen_point(at), "; Log button rect ", pda.screen._rail_buttons["log"].button.get_global_rect())
 	for pressed in [true, false]:
 		var click := InputEventMouseButton.new()
