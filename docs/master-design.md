@@ -1,0 +1,216 @@
+# Outpost One: Mars, master design
+
+*Decided with the user over one long session on 3 Nov 2026, after reading Charlie Cleveland's GDC 2019 talk "The Design of Subnautica" and Jesse Schell's "The Art of Game Design" (see `Game Design Documents/`). It replaces `docs/core-loop.md` as the master design. Where any other design doc disagrees, this one wins. Nothing is sacred: any existing system can change to serve this.*
+
+**Why a revamp.** The game began as a freeform habitat builder, and exploration, a starting story and survival were added on top. They don't fit together, and the player is handed nearly everything at the start (every crate, most plans, 3,000 kg of feedstock, 90 sols of stores), so it's too much and too easy. One example from the 3 Nov playtest: the site plan's ice overlay shows ice that the 7 m core rule won't let you drill.
+
+## 1. Pillars
+
+Subnautica wrote down three pillars, each tied to an emotion, but built only one of them properly. We do the same.
+
+1. **First to see it: the wonder of the untouched.** This is the main pillar: exploring, sites, caves and discoveries. Subnautica's unknown is terror, of what's in the dark. Ours is awe, of what no one has ever seen.
+2. **Mars will kill you for it: exposure.** This is the price of exploring: cold, thin air, dust, radiation, night and distance. It's never a fight, always a margin you manage.
+3. **A foothold: hard-won self-reliance that becomes a home.** The base is built from what you went out and brought back.
+
+**In the user's words:** being alone, with the chance to discover the wonders of a new planet before anyone else, at the risk of a planet whose natural elements will kill you.
+
+## 2. The premise and the opening
+
+- **You're the advance commissioner.** Your job was to be the first on the ground and set up the whole base alongside GAR-Y. It was a well-planned mission.
+- **A global dust storm ruined the plan.** The cargo landers came down during last season's planet-wide storm (as when Opportunity was lost in 2018). Their beacons are dead, and Mission Control has only fuzzy last-known areas. Earth can't simply send more: launch windows are 26 months apart.
+- **You land fine; the cargo isn't there.** The site is fixed and authored (the storm decides). The lander cabin is your lifepod, and its air lasts about a sol.
+- **The first pallet is in sight.** A cargo parachute lies draped over a nearby ridge, and that pallet holds life support. Parachutes and backshells are the game's landmarks, seen from far off (NASA photographed Curiosity's from orbit). They do the job of Subnautica's Aurora, with no crash and nobody dead.
+- **Pallets hold everything:** the habitat, power, life support, the Print Shop, comms, GAR-Y, the rover. Recovering one unlocks its kit and plans. A damaged one needs repairing.
+- **Big pieces ride walking carriers,** like JPL's ATHLETE (a six-limbed walker built to carry habitat modules). The storm left them stranded and damaged. You find one, repair it with a short procedure, and it walks itself to your base at walking pace, with GAR-Y leading. Bringing it home is a find-and-repair moment, not a hauling job.
+- **Smaller things** are carried by hand, put in the rover, or towed by GAR-Y on its sled.
+
+### Meeting GAR-Y
+
+GAR-Y is in one of the pallets. You meet it one of two ways, and both should be a big moment:
+- **you find it** in or near its pallet; or
+- **you black out on an EVA before finding it, and GAR-Y finds you.** It had been out there all along, searching for the crew lander. You wake with it beside you.
+
+After that, its usual rescue applies.
+
+## 3. Finding things
+
+**The one rule:** every "what's out there" view (the site plan overlay, the slate's Map, the compass) shows only what you, GAR-Y or Earth have actually found, from one shared record of what's known. Creative sees everything. This fixes the ice overlay at its root.
+
+- **The map starts blank.** Its data was lost in the storm, and it fills in as you explore.
+- **You can pin hints and set your own goals** as markers on the Map and the compass.
+
+How knowledge grows:
+1. **Your eyes.** This is a main layer. The land gives real clues: bright scarps where buried ice is exposed, cracked polygon ground, frost in shaded crater walls at dawn, parachutes on ridges. The art must carry these clues, and learning to read them is progress in itself (the Outer Wilds idea).
+2. **The radio link.**
+   - **At first:** the storm damaged the lander's antenna, so you only get short text when an orbiter passes over, a couple of times a sol. Real rovers work this way.
+   - **Once repaired:** fixing the link from the comms pallet brings back Earth's voices, Mission Control's fuzzy cargo areas and orbital hints, and the cast's story threads.
+3. **GAR-Y's radar.** It surveys a zone, and the results show as a coarse map on the slate. It also wakes the carriers' short-range beacons when it gets close.
+4. **The core.** It confirms depth and purity. The extractor goes on a deposit you've cored, which replaces the 7 m rule.
+
+**Ice comes in a few patches** of different depth and purity, and they may be far from the base.
+
+## 4. Materials and building
+
+### Materials
+
+| Material | Where from | What it's for |
+|---|---|---|
+| **Water ice** | a few patches, found | water, oxygen, fuel |
+| **Regolith** | everywhere, via the regolith intake | bulk print stock, shielding, shells |
+| **Iron-rich rock** (haematite) | outcrops, found | metal parts, frames, tanks |
+| **Salvage** (Earth-made electronics and parts) | cargo pallets, later resupplies | batteries, electronics, advanced machines |
+
+Recipes mix them (a battery needs salvage and metal), so each material gives a different reason to go somewhere. Amounts stay modest: tens of kilograms in a suit, a few hundred in the rover.
+
+**Never a hauling game:** moving things is a one-off build or event, never a repeated chore.
+
+### Getting water home
+
+Two options, still open: **a heated pipe** you lay point to point (it costs per metre and needs power to keep the water from freezing), or **an outpost at the ice** (extractor, tank, solar panel and shelter, a second home you service). To decide once the materials have numbers.
+
+### Building
+
+- **Building becomes a slate app, Build,** with two views:
+  - **Plan:** the overhead floor plan, using today's drawing tools (rooms by cell, click-to-click corridors, windows). It only covers ground you've explored, because the slate draws it from your own survey.
+  - **Look:** first-person AR through the slate's camera, for placing equipment and outdoor pieces exactly. Tablet AR exists today, so it's grounded.
+- **Drawing is planning.** Placing a piece stakes it out. The work happens in the world: carriers set modules down, you fit printed equipment with a short procedure, and GAR-Y does groundwork later.
+- **Building can happen anywhere you've explored,** including outposts away from the base.
+
+## 5. Progression
+
+**Plans come from four places:**
+1. **Pallets:** each one brings the plans for its kit (the mission's manifest, piece by piece).
+2. **Discoveries:** finding and analysing Mars materials unlocks the things made from them (ice gives the extractor, haematite the smelter).
+3. **Earth's teams,** once the link is fixed: plans and requests in answer to what you've found.
+4. **Studying damaged kit:** bring a broken unit from a wrecked pallet to the Engineering Bench and work out how to print your own. This is our grounded take on Subnautica's fragments.
+
+**The Print Shop starts tiny,** with the lander's tool kit (a repair kit, sample bags, a spare O₂ bottle), and grows from those four sources.
+
+**Steer, don't tell.**
+- The Goals checklist and the step-by-step tutorial go. Early direction comes from the situation: air running low, a parachute in view, orbiter texts.
+- The slate's Goals app becomes **Notes**: Earth's requests plus your own pinned goals.
+- Optional hints, in Settings, are the only remaining help.
+
+**Chapters are no longer visible.** Milestones become story beats: radio reports and events.
+
+## 6. Survival as training wheels
+
+The pressures change in kind as you go, and each fades once a machine takes it over:
+
+| When | Pressure | What fades it |
+|---|---|---|
+| Hour 1 | **Air:** the cabin lasts about a sol | the life-support pallet |
+| Night 1 | **Cold and power** | the power pallet: solar and batteries |
+| Sols 2–5 | **Water:** the lander's tank runs low | the first ice and the extractor |
+| Weeks | **Food:** rations from pallets | the greenhouse |
+| Later | **Wear, spares, storms** | servicing, the Print Shop, forecasts |
+| The whole run | **Radiation** | shielding, and choosing when to go out |
+
+- **Five survival needs:** air, warmth, water, food and sleep. Washing, fresh food and comfort only lift wellbeing; they never hurt you.
+- **The deep chains stay in the sim** (urine processor, waste sorter and so on), as "closing the loop" upgrades unlocked later, not day-one chores.
+
+## 7. The story
+
+The story is several separate threads, each started by something you do or by a timer, so every run gets its own slice through them:
+1. **The storm:** what happened to the cargo, and Earth's apologetic search. Starts at landing.
+2. **The link:** orbiter texts, then the cast's voices once the comms are repaired (docs/mission-control-voice.md).
+3. **GAR-Y:** found or finding you, and its personality.
+4. **The wonder:** discoveries that lead from an ancient lakebed to a lava tube and end in strong evidence of ancient microbial life. Real science only.
+5. **The crew:** Earth's waves once the base is ready (docs/survival-systems.md §12.2).
+6. **The storm returns:** the next dust season, the big late test.
+
+**Endings:** survive the storm's return, then choose:
+- **welcome the crew** and carry on, open-ended; or
+- **go home:** fuel the ascent vehicle from the Sabatier tank and leave with a final report.
+
+## 8. Modes and the screen
+
+| Mode | What it is |
+|---|---|
+| **Survival** | Everything in this doc. |
+| **Freedom** | Like Subnautica's: the same game as Survival (scattered cargo, plans earned, materials gathered), just no food or water. |
+| **Creative** | The original freeform habitat builder, kept intact: choose your landing site, the full map, every plan, the overhead plan anywhere, no sim, optional story. |
+| **Custom** | The rules table, with new rows: cargo scattered or delivered; map hidden or revealed; start harsh or gentle. |
+
+**Missions mode is removed.**
+
+**The slate's apps:**
+- **Notes** (was Goals);
+- **Map:** fills in as you explore, with pins;
+- **Comms:** orbiter text until the link is fixed; the status bar shows the next relay pass;
+- **Build:** Plan and Look;
+- **Base, Site, Log:** as now.
+
+**On screen:** only the crosshair and prompt, captions, the compass (with pins and found things) and the notice line. **The Classic HUD setting is dropped.** The wrist pad stays life support only.
+
+## 9. Existing systems: keep, rebuild, cut
+
+**Keep, with light changes:**
+- the slate (device, notice bus, Base, Site, Comms, Log);
+- the wrist pad, suit O₂ and GAR-Y's rescue;
+- the habitat sim (power, heat, air, water, food), wear and spares kits;
+- each Print Shop's queue;
+- the room and corridor drawing tools and windows, which become the Plan view;
+- the Mission Control cast;
+- samples, the lab, Discoveries and the journal;
+- Earth's crew waves (late game);
+- the terrain, caves, rover and descent cutscene;
+- the mode rules table (`MHGame.MODE_RULES`).
+
+**Rebuild:**
+1. **The start:** scattered pallets on walking carriers; the lander cabin as lifepod; a fixed, authored site.
+2. **One record of what's known,** feeding the overlay, the Map and the compass; the map filling in as you explore; player pins; ice in a few patches; the 7 m core rule removed.
+3. **GAR-Y:** found in a pallet, or it finds you.
+4. **Materials:** four materials replace feedstock-only; the regolith intake stays.
+5. **Plans:** a tiny start, then pallets, discoveries, Earth and studying damaged kit at the bench.
+6. **Building:** the Build app (Plan on explored ground, Look in AR), with assembly by carriers or short fitting procedures.
+7. **Comms:** the link starts broken; orbiter passes; the repair starts the threads.
+8. **Needs:** five survival needs; wellbeing bonuses; the deep chains as later upgrades.
+9. **The tutorial:** the Goals checklist becomes the situation plus Notes, with optional hints.
+10. **Modes:** Freedom's rules and Custom's new rows.
+11. **Water to the base:** a pipe and/or an outpost.
+
+**Cut:**
+- Missions mode and what's left of the M page;
+- the Classic HUD;
+- the landing map and site choice outside Creative;
+- visible chapters and their report screens;
+- the 7 m core rule and the full-truth ice overlay in Survival;
+- the precursor-crate start, the 3,000 kg crate and the 400 kg of feedstock per landed crew member.
+
+**Tests:** the three already-failing tests (suit "Freedom blackout", weather "card for every save slot", habitat_alerts "voice lines for bunks and worn") get triaged as their systems are rebuilt.
+
+## 10. Build order: minutes of fun
+
+From Subnautica: build a rough playable version first with placeholder art and goals, then grow it in steps of playtime, playtesting each step.
+
+1. **20 minutes:** landing, the cabin air running down, the parachute on the ridge, the walk, opening the first pallet, air restored. Plus the record of what's known, the map filling in, and pins.
+2. **40 minutes:** meeting GAR-Y (both ways); two or three more pallets; repairing a carrier and walking it home; the Plan view on explored ground; the first habitat set down.
+3. **1 hour:** the four materials; the tiny Print Shop; studying damaged kit at the bench; power and night cold.
+4. **2 hours:** the comms repair (orbiter text, then the cast's threads); ice through reading the land, the radar and a core; the water link home.
+5. **4 hours and up:** food, wear, storms, the wonder thread, the storm's return, the endings.
+
+**Throughout:** Creative stays playable (it's mode rules), and Missions mode and the Classic HUD are removed early, so there's less to maintain.
+
+## 11. Open questions
+
+1. Water home: the pipe, the outpost or both, once the materials have numbers.
+2. Carriers: how many, their speed, what breaks on them, and what the repair procedure is.
+3. The authored map: where each pallet lies, the order in which they're likely found, and what the first pallet holds beyond life support.
+4. Material numbers: recipes, carry limits, and the regolith intake's rate.
+5. Resupplies: how often Earth sends salvage once the link is fixed (in a compressed version of the 26-month windows).
+6. Old saves: whether pre-revamp Survival saves keep their old start or load as Custom.
+
+## Sources
+
+- Charlie Cleveland, "The Design of Subnautica", GDC 2019 (transcript and slides in `Game Design Documents/`).
+- Jesse Schell, "The Art of Game Design: A Book of Lenses". Lenses used here: #1 Essential Experience, #7 Tetrad, #9 Unification, #4 Curiosity, #5 Endogenous Value, #71 Freedom, #72 Indirect Control, #61 Interest Curve, #32 Meaningful Choices, #33 Triangularity, #46 Economy.
+- Further viewing:
+  - "'Subnautica' Postmortem" (Jonas Boetel, GDC 2019);
+  - "Curiosity-Driven Exploration: The Design of 'Outer Wilds'" (GDC 2020);
+  - "A Long Dark Road" (Raphael van Lierop, GDC 2018);
+  - "'Pacific Drive' Under the Hood" (Seth Rosen);
+  - Astroneer's crafting talk (GDC);
+  - Breath of the Wild's GDC 2017 talk;
+  - Unknown Worlds' "How We Approach Story".
+- Mars background: NASA's Design Reference Architecture 5.0 (cargo landed ahead of the crew); JPL's ATHLETE; the 2018 global dust storm.

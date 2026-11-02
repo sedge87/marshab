@@ -1,5 +1,7 @@
 # The start and chapter one (core-loop step 4)
 
+> **Replaced 3 Nov 2026 by `docs/master-design.md`** (§2 the opening, §5 progression). The precursor-crate start, the 3,000 kg crate and visible chapters are cut. Kept for history.
+
 A design to answer before building. It follows `docs/core-loop.md` round 3 ("Build") and the build order's step 4: the precursor cargo, stores that run down gently, the fabricator with plans, and the self-sufficiency steps. The questions to answer first are in §10.
 
 ## 1. The problem

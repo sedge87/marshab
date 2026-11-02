@@ -1,5 +1,7 @@
 # The core loop: build, live, work, survive on Mars
 
+> **Replaced 3 Nov 2026 by `docs/master-design.md`.** Kept for history; where they differ, the master design wins.
+
 *Decided with you in six short rounds, 31 Oct 2026. Where the other design docs (`gameplay-loop-brief.md`, `commissioning-and-flight-rules.md`, `mars-science-goals.md`) disagree with this one, this one wins.*
 
 **The direction:**

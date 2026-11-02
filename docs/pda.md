@@ -48,7 +48,7 @@ Plus the things that are already the suit and its visor: the visor brackets, the
 
 **Gone from the screen:** Sol clock, zone chip, site telemetry, habitat systems panel, readiness panel, checklist, alert icon row, storm pill, sample pips, the key-hint strip. Key hints come back briefly the first few times you use a feature. The full list of controls is in Pause → Controls.
 
-**Classic HUD:** Settings → On screen → HUD: **Minimal** (default) or **Classic**. Classic brings back the habitat systems panel and the clock, for players who want them.
+**Classic HUD:** Settings → On screen → HUD: **Minimal** (default) or **Classic**. Classic brings back the habitat systems panel and the clock, for players who want them. *(Dropped 3 Nov 2026, `docs/master-design.md` §8: Minimal is the only HUD.)*
 
 Build mode, the Print Shop, the Lab, the Journal and the pause menu are unchanged. They're work screens you choose to open, not clutter.
 

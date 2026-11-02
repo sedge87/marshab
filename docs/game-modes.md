@@ -1,5 +1,7 @@
 # Game modes
 
+> **Partly replaced 3 Nov 2026 by `docs/master-design.md` §8:** Freedom now matches Subnautica's (plans earned, cargo scattered, just no food or water), Creative keeps the original freeform builder, Custom gains new rows, and Missions is removed.
+
 *Decided 2 Nov 2026, with the user. Modelled on Subnautica's modes (similar, not identical). This doc replaces docs/new-game-options.md §4 for the modes; the challenge options in that doc still apply.*
 
 There are four free-play modes: **Survival, Freedom, Creative and Custom**. Missions is separate and will be removed later. **There's no Hardcore mode and no one-life option** (user, 2 Nov).
