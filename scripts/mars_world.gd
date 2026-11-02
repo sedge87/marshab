@@ -74,6 +74,7 @@ var scout_rover: Node3D
 ## the base has one, and is saved with the base.
 const CREW_ROVER_SCRIPT := preload("res://scripts/crew_rover.gd")
 var crew_rover: CharacterBody3D
+var pda: MHPda   # the slate (scripts/pda.gd, docs/pda.md): Tab
 var region_map: CanvasLayer   # scripts/region_map.gd (region sites only): Tab, and your trail since the airlock
 var _crew_rover_state := {}
 var interior_builder: MHInteriorBuildController
@@ -911,11 +912,12 @@ func _tick_chapter_one() -> void:
 		for learned in MHChapterOne.learn_after("first_walk"): messages.append(MHChapterOne._plan_message(learned))
 	show_chapter_messages(messages)
 
-## Toasts (and a Mission Control radio line) for chapter-one news.
+## Chapter-one news: the notice line, and the slate's Goals app.
 func show_chapter_messages(messages: Array) -> void:
 	if not messages.is_empty() and builder != null: MHJournal.from_messages(messages, floori(float(builder.simulation().hours_run) / 24.0) + 1)
 	for message in messages:
-		builder._flash_notice(str(message.get("tone", "info")), str(message.title), str(message.text))
+		MHNotices.post(str(message.get("tone", "info")), str(message.title), str(message.text), "goals")
+	if not messages.is_empty(): MHAudio.sfx("undo")
 	if not messages.is_empty(): builder._update_budget()
 
 func open_fabricator(printer := "") -> void:
@@ -926,9 +928,12 @@ func open_lab(bench: String) -> void:
 	_open_live_view(LAB_SCREEN.new().setup(self, bench))
 
 func _build_hud() -> void:
+	MHNotices.attach(self)
 	explore_hud = MHExploreHUD.new()
 	explore_hud.setup(player, builder)
 	add_child(explore_hud)
+	pda = MHPda.new().setup(self)
+	player.get_node("Head/Camera3D").add_child(pda)
 	overlay_layer = CanvasLayer.new()
 	overlay_layer.layer = 20
 	overlay_layer.process_mode = Node.PROCESS_MODE_ALWAYS

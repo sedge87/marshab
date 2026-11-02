@@ -232,11 +232,9 @@ func _input(event: InputEvent) -> void:
 				KEY_G: _send_gar_y()
 		get_viewport().set_input_as_handled()   # nothing else hears keys while it's open
 
-func _unhandled_input(event: InputEvent) -> void:
-	if visible or not (event is InputEventKey and event.pressed and not event.echo): return
-	if (event as InputEventKey).keycode == KEY_TAB and _can_open():
-		_open()
-		get_viewport().set_input_as_handled()
+## Opened from the slate's Map app (Tab raises the slate now, docs/pda.md §7).
+func open_from_slate() -> void:
+	if not visible and _can_open(): _open()
 
 ## Only while exploring: not in a build mode or another screen.
 func _can_open() -> bool:

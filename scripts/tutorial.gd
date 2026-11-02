@@ -25,7 +25,6 @@ var _panel: PanelContainer
 var _body: VBoxContainer
 var _pill: PanelContainer
 var _pill_body: VBoxContainer
-var _toast: PanelContainer
 var _marker: Node3D
 var guide: CanvasLayer
 var _check_in := 0.0
@@ -288,41 +287,10 @@ func _wrapped(text: String, size: int, colour: Color, width := 380.0) -> Label:
 	label.custom_minimum_size.x = width
 	return label
 
+## A step or goal done: one line under the compass (MHNotices), and the
+## slate's Goals app gets its dot.
 func _show_toast(text: String, heading: String) -> void:
-	if _toast != null: _toast.queue_free()
-	_toast = MHStyle.hud_panel(12, false, true)
-	_toast.theme = MHStyle.theme()
-	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Beside the checklist, clear of the notices in the middle: under the
-	# panel while walking about, above the pill while building.
-	_toast.anchor_left = 1
-	_toast.anchor_right = 1
-	_toast.offset_left = -444
-	_toast.offset_right = -104
-	if _building():
-		_toast.anchor_top = 1
-		_toast.anchor_bottom = 1
-		_toast.offset_right = -48
-		_toast.offset_left = -408
-		_toast.offset_bottom = _pill.offset_bottom - (_pill.size.y + 12.0 if _pill.visible else 0.0)
-		_toast.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	else:
-		_toast.offset_top = _panel.get_rect().end.y + 12.0 if _panel.visible else 104.0
-	var row := MHStyle.hbox(10)
-	row.add_child(MHStyle.icon("circle-check", 22, MHStyle.VALID))
-	var words := MHStyle.vbox(2)
-	words.add_child(MHStyle.eyebrow(heading, MHStyle.VALID, 11))
-	var label := MHStyle.body(text, 16, MHStyle.TEXT_PRIMARY)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.custom_minimum_size.x = 280
-	words.add_child(label)
-	row.add_child(words)
-	_toast.add_child(row)
-	add_child(_toast)
-	var fade := _toast.create_tween()
-	fade.tween_interval(2.6)
-	fade.tween_property(_toast, "modulate:a", 0.0, .5)
-	fade.tween_callback(_toast.queue_free)
+	MHNotices.post("valid", heading, text, "goals")
 
 ## A compass landmark for the step: the lander, the base, ice or the airlock.
 func _set_marker(kind: String) -> void:

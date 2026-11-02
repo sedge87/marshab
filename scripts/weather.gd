@@ -23,7 +23,7 @@ var _sound_age := 0.0
 var _layer: CanvasLayer
 var _pill: PanelContainer
 var _pill_label: Label
-var _toast: PanelContainer
+
 var _storm_dust: CPUParticles3D
 var _billows: CPUParticles3D
 var _wall: MeshInstance3D
@@ -137,15 +137,15 @@ func _announce(state: String, eta: float, storm_left: float) -> void:
 		"forecast":
 			MHAudio.sfx("storm_alert")
 			MHAudio.voice("storm_forecast")
-			_show_toast("DUST STORM FORECAST", "Orbiters see a storm coming: it arrives in about %d hours and will cut solar power by %d%%. Charge the batteries and switch off what you don't need." % [ceili(eta), cut], MHStyle.WARN)
+			_show_toast("Dust storm forecast", "Orbiters see a storm coming: it arrives in about %d hours and will cut solar power by %d%%. Charge the batteries and switch off what you don't need." % [ceili(eta), cut], MHStyle.WARN)
 		"storm":
 			MHAudio.sfx("storm_alert")
 			MHAudio.voice("storm_arrived")
-			_show_toast("DUST STORM", "Solar output is down %d%% for about %s. Batteries and any reactor carry the base until it clears." % [cut, _duration(storm_left)], MHStyle.DANGER)
+			_show_toast("Dust storm", "Solar output is down %d%% for about %s. Batteries and any reactor carry the base until it clears." % [cut, _duration(storm_left)], MHStyle.DANGER)
 		"calm":
 			MHAudio.sfx("all_clear")
 			MHAudio.voice("storm_cleared")
-			_show_toast("STORM CLEARED", "The sky is clearing and the solar arrays are back to full output.", MHStyle.VALID)
+			_show_toast("Storm cleared", "The sky is clearing and the solar arrays are back to full output.", MHStyle.VALID)
 
 func _duration(hours: float) -> String:
 	return "%d hours" % ceili(hours) if hours < 24.0 else "%.1f sols" % (hours / 24.0)
@@ -192,35 +192,13 @@ func _build_hud() -> void:
 	_pill.visible = false
 	band.add_child(_pill)
 
-## A short toast under the sol clock (also used by GAR-Y).
-func toast(title: String, text: String, tone: Color = MHStyle.INFO) -> void:
-	_show_toast(title, text, tone)
+## News under the compass (also used by GAR-Y): MHNotices, kept in the
+## slate's Log; storm news belongs to its Site app.
+func toast(title: String, text: String, tone: Color = MHStyle.INFO, app := "log") -> void:
+	MHNotices.post(MHNotices.tone_of(tone), title, text, app)
 
 func _show_toast(title: String, text: String, tone: Color) -> void:
-	if _toast != null and is_instance_valid(_toast): _toast.queue_free()
-	_toast = PanelContainer.new()
-	_toast.anchor_left = .5
-	_toast.anchor_right = .5
-	_toast.offset_left = -300
-	_toast.offset_right = 300
-	_toast.offset_top = 186
-	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_toast.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, tone, 8, 1, Vector4(18, 12, 18, 14)))
-	var col := MHStyle.vbox(4)
-	col.add_child(MHStyle.eyebrow(title, tone, 13))
-	var body := MHStyle.body(text, 15, MHStyle.TEXT_PRIMARY)
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size.x = 560
-	col.add_child(body)
-	_toast.add_child(col)
-	_layer.get_child(0).add_child(_toast)
-	var shown := _toast
-	var tween := create_tween()
-	shown.modulate.a = 0.0
-	tween.tween_property(shown, "modulate:a", 1.0, .3)
-	tween.tween_interval(8.0)
-	tween.tween_property(shown, "modulate:a", 0.0, .8)
-	tween.tween_callback(shown.queue_free)
+	toast(title, text, tone, "site")
 
 ## Sheets of blowing dust around the camera (outdoors, effects on).
 func _build_storm_dust() -> void:

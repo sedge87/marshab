@@ -29,7 +29,7 @@ func _initialize() -> void:
 	sim.forecast_storm(2.0)
 	for i in 3: await process_frame
 	_check(weather._state == "forecast" and weather._pill.visible and weather._pill_label.text.begins_with("STORM IN"), "a forecast shows the warning pill (%s)" % weather._pill_label.text)
-	_check(weather._toast != null and is_instance_valid(weather._toast), "and a toast")
+	_check(not MHNotices.history.is_empty() and str(MHNotices.history[-1].app) == "site", "and a notice for the slate's Site app")
 	var saved: Dictionary = sim.save()
 	_check(is_equal_approx(float(saved.storm_eta_hours), sim.storm_eta_hours), "the forecast is saved")
 	sim.run_hours(3.0, 12.0)
