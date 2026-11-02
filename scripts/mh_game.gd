@@ -740,6 +740,8 @@ static func defaults() -> Dictionary:
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
 	d["mc_chatter"] = "normal"   # Mission Control small talk: log, quiet, normal, chatty (scripts/mission_control_link.gd)
 	d["rover_radio"] = true      # the rover radio starts on (O while driving)
+	d["subtitles"] = "compact"   # captions for spoken lines: full, compact, off (mh_audio.gd)
+	d["checklist"] = "full"      # the getting-started checklist: full, folded, hidden (tutorial.gd; H cycles it)
 	return d
 
 static func setting(key: String):

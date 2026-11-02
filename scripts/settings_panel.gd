@@ -40,7 +40,7 @@ func _ready() -> void:
 	var heading := MHStyle.display("Settings", 36)
 	heading.custom_minimum_size.y = 72
 	tabs.add_child(heading)
-	for tab in [["graphics", "Graphics", "monitor"], ["audio", "Audio", "volume-2"], ["controls", "Controls", "keyboard"]]:
+	for tab in [["graphics", "Graphics", "monitor"], ["audio", "Audio & HUD", "volume-2"], ["controls", "Controls", "keyboard"]]:
 		var b := MHStyle.button(tab[1], "ghost", tab[2])
 		b.text = tab[1]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -216,6 +216,8 @@ func _graphics() -> Control:
 
 const VOLUME_STEPS := ["Off", "25 %", "50 %", "75 %", "100 %"]
 const MC_LEVELS := {"log": "Log only", "quiet": "Quiet", "normal": "Normal", "chatty": "Chatty"}
+const SUBTITLES := {"full": "Full", "compact": "Compact", "off": "Off"}
+const CHECKLIST := {"full": "Full", "folded": "Folded", "hidden": "Hidden"}
 
 func _audio() -> Control:
 	var grid := MHStyle.hbox(48)
@@ -255,6 +257,24 @@ func _audio() -> Control:
 	radio_row.add_child(MHStyle.body("Rover radio on when you get in (O while driving)", 15, MHStyle.TEXT_SECONDARY))
 	mc.add_child(radio_row)
 	form.add_child(mc)
+	# On screen: captions for what's said, and the getting-started checklist.
+	var screen_group := MHStyle.vbox(10)
+	screen_group.add_child(MHStyle.label("On screen", 19, MHStyle.TEXT_PRIMARY, 600))
+	for row in [["subtitles", "Subtitles", SUBTITLES, "compact", "Captions for ARDEN, the suit and Mission Control. Compact keeps them small, and in the corner while you build."],
+			["checklist", "Checklist", CHECKLIST, "full", "The getting-started goals. H cycles it in a game; Hidden gives you the whole screen."]]:
+		var line := MHStyle.hbox(12)
+		line.add_child(MHStyle.label(str(row[1]), 16, MHStyle.TEXT_SECONDARY, 600))
+		var hint := MHStyle.body(str(row[4]), 14, MHStyle.TEXT_MUTED)
+		hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.add_child(hint)
+		screen_group.add_child(line)
+		var labels: Dictionary = row[2]
+		var key := str(row[0])
+		var pick := MHWidgets.Segmented.new().setup(labels.values(), str(labels.get(str(_values.get(key, row[3])), labels[row[3]])))
+		pick.changed.connect(func(value: String) -> void: _values[key] = str(labels.find_key(value)))
+		screen_group.add_child(pick)
+	form.add_child(screen_group)
 	var side := MHStyle.vbox(14)
 	side.custom_minimum_size.x = 460
 	side.add_child(MHStyle.eyebrow("Listening", MHStyle.TEXT_MUTED, 14))

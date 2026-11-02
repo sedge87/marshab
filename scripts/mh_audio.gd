@@ -166,6 +166,7 @@ var _last_variant := {}
 var _caption_layer: CanvasLayer
 var _caption: PanelContainer
 var _caption_left := 0.0
+var _caption_building := false
 var _drone: AudioStreamPlayer
 var _pulse: AudioStreamPlayer
 var _pads: Array[AudioStreamPlayer] = []
@@ -390,8 +391,17 @@ func _next_voice() -> void:
 	if _voice_queue.is_empty(): return
 	_play_line(_voice_queue.pop_front())
 
-# Captions for everything said, bottom centre (for playing with the sound off).
+## Subtitles (Settings → On screen): full, compact (the default) or off.
+## Off shows nothing; Mission Control's lines still reach the Messages log.
+static func subtitles() -> String:
+	var value := str(MHGame.setting("subtitles"))
+	return value if value in ["full", "compact", "off"] else "compact"
+
+# Captions for everything said (for playing with the sound off): bottom
+# centre while walking about; while building, a slim strip at the bottom
+# left above the build bar, clear of the plan and the notices.
 func _show_caption(who: String, text: String, note: String, seconds: float, radio := false) -> void:
+	if subtitles() == "off": return
 	if _caption_layer == null:
 		_caption_layer = CanvasLayer.new()
 		_caption_layer.layer = 7
@@ -400,38 +410,54 @@ func _show_caption(who: String, text: String, note: String, seconds: float, radi
 	_caption = PanelContainer.new()
 	_caption.theme = MHStyle.theme()
 	_caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_caption.add_theme_stylebox_override("panel", MHStyle.box(Color(MHStyle.SURFACE_HUD, .82), Color(0, 0, 0, 0), 8, 0, Vector4(18, 10, 18, 10)))
-	_caption.anchor_left = .5
-	_caption.anchor_right = .5
-	_caption.anchor_top = 1.0
-	_caption.anchor_bottom = 1.0
-	_caption.offset_bottom = _caption_bottom()
-	_caption.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_caption.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_caption_building = _building()
+	var full := subtitles() == "full" and not _caption_building
+	var pad := Vector4(18, 10, 18, 10) if full else Vector4(14, 7, 14, 8)
+	_caption.add_theme_stylebox_override("panel", MHStyle.box(Color(MHStyle.SURFACE_HUD, .82), Color(0, 0, 0, 0), 8, 0, pad))
+	_place_caption()
 	var col := MHStyle.vbox(2)
 	_caption.add_child(col)
 	var head := MHStyle.hbox(8)
-	head.add_child(MHStyle.eyebrow(who, MHStyle.INFO if radio else MHGame.accent(), 13))
-	if not note.is_empty(): head.add_child(MHStyle.mono(note, 12, MHStyle.TEXT_MUTED))
+	head.add_child(MHStyle.eyebrow(who, MHStyle.INFO if radio else MHGame.accent(), 13 if full else 11))
+	if not note.is_empty(): head.add_child(MHStyle.mono(note, 12 if full else 10, MHStyle.TEXT_MUTED))
 	col.add_child(head)
-	var words := MHStyle.body(text, 18, MHStyle.TEXT_PRIMARY)
+	var size := 18 if full else (14 if _caption_building else 15)
+	var words := MHStyle.body(text, size, MHStyle.TEXT_PRIMARY)
 	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	words.custom_minimum_size.x = minf(720.0, 14.0 * text.length() * .62 + 40.0)
+	var widest := 720.0 if full else (420.0 if _caption_building else 520.0)
+	words.custom_minimum_size.x = minf(widest, size * .78 * text.length() * .62 + 40.0)
 	col.add_child(words)
 	_caption_layer.add_child(_caption)
 	_caption_left = seconds + 2.0
 
-## Above the build bars and their tool strip while building, so a caption
-## doesn't sit on them (or on a hint card just above the bar).
-func _caption_bottom() -> float:
+func _building() -> bool:
 	var world := get_tree().get_first_node_in_group("habitat_world") if is_inside_tree() else null
-	if world != null and world.get("builder") != null and (bool(world.builder.build_mode) or (world.get("interior_builder") != null and bool(world.interior_builder.active))):
-		return -470.0
-	return -132.0
+	return world != null and world.get("builder") != null and (bool(world.builder.build_mode) or (world.get("interior_builder") != null and bool(world.interior_builder.active)))
+
+## Bottom centre while walking about; bottom left above the build bar while building.
+func _place_caption() -> void:
+	if _caption_building:
+		_caption.anchor_left = 0.0
+		_caption.anchor_right = 0.0
+		_caption.offset_left = 32.0
+		_caption.offset_right = 32.0
+		_caption.grow_horizontal = Control.GROW_DIRECTION_END
+	else:
+		_caption.anchor_left = .5
+		_caption.anchor_right = .5
+		_caption.offset_left = 0.0
+		_caption.offset_right = 0.0
+		_caption.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_caption.anchor_top = 1.0
+	_caption.anchor_bottom = 1.0
+	_caption.offset_bottom = -340.0 if _caption_building else -132.0
+	_caption.grow_vertical = Control.GROW_DIRECTION_BEGIN
 
 func _process_caption(delta: float) -> void:
 	if _caption == null or not is_instance_valid(_caption): return
-	_caption.offset_bottom = _caption_bottom()
+	if _building() != _caption_building:
+		_caption_building = not _caption_building
+		_place_caption()
 	_caption_left -= delta
 	_caption.modulate.a = clampf(_caption_left / .5, 0.0, 1.0)
 	if _caption_left <= 0.0:

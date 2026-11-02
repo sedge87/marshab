@@ -146,7 +146,24 @@ func _initialize() -> void:
 	_check(str(state.tutorial.mode) == "full" and (state.tutorial.done as Array).size() == 13, "the save records the tutorial and its 13 done steps (%s)" % [state.tutorial])
 	world._save_habitat(6)
 	await _settle()
-	_check(bool(t.finished), "saving finishes the tutorial")
+	_check(_step() == "ice" and not bool(t.finished) and t.current_goal() == "self_sufficient", "saving finishes Learn the ropes; chapter one's Self-sufficient goal comes next (%s)" % _step())
+
+	# The checklist hides: H cycles full, folded, hidden (remembered in settings).
+	var keep_view := str(MHGame.setting("checklist"))
+	for want in ["folded", "hidden", "full"]:
+		_key(KEY_H)
+		await _settle()
+		_check(TUTORIAL.view() == want, "H turns the checklist %s (%s)" % [want, TUTORIAL.view()])
+		if want == "hidden": _check(not t._panel.visible, "hidden, the checklist is off the screen")
+	var view_values := MHGame.settings(); view_values["checklist"] = keep_view; MHGame.save_settings(view_values)
+
+	# Self-sufficient: chapter one's steps tick in any order.
+	MHChapterOne.steps["food"] = 500.0
+	await _settle()
+	_check(t.done.has("food") and _step() == "ice", "a later task ticks first; the next is still the ice (%s)" % _step())
+	for s in ["ice", "water", "oxygen"]: MHChapterOne.steps[s] = 600.0
+	await _settle()
+	_check(bool(t.finished), "chapter one's steps finish the checklist")
 	_check(bool(MHGame.setting("tutorial_finished")) and MHGame.default_tutorial_mode() == "hints", "and the next new game offers Hints only")
 	var values := MHGame.settings(); values["tutorial_finished"] = false; MHGame.save_settings(values)
 
@@ -183,5 +200,5 @@ func _initialize() -> void:
 	for clip in unique: _check(GUIDE.has_clip(clip), "the %s clip exists" % clip)
 
 	if failures == 0:
-		print("Tutorial test passed: all 14 chapter-one steps tick from play, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
+		print("Tutorial test passed: the goal checklist (14 chapter-one steps, then Self-sufficient in any order) ticks from play, H hides it, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
 	quit(1 if failures > 0 else 0)

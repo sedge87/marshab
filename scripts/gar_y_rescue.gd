@@ -136,6 +136,7 @@ void fragment() {
 	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_caption.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	_caption.position.y -= 90.0
+	_caption.visible = MHAudio.subtitles() != "off"
 	_caption.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_layer.add_child(_caption)
 	var centre := CenterContainer.new()
