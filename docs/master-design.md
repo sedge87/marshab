@@ -2,6 +2,9 @@
 
 *Decided with the user over one long session on 3 Nov 2026, after reading Charlie Cleveland's GDC 2019 talk "The Design of Subnautica" and Jesse Schell's "The Art of Game Design" (see `Game Design Documents/`). It replaces `docs/core-loop.md` as the master design. Where any other design doc disagrees, this one wins. Nothing is sacred: any existing system can change to serve this.*
 
+
+*Companion: `docs/systems-and-items.md` has every system, its numbers, the rooms, field kit, instruments, vehicles, voices, the item-by-item table and the code rebuild order.*
+
 **Why a revamp.** The game began as a freeform habitat builder, and exploration, a starting story and survival were added on top. They don't fit together, and the player is handed nearly everything at the start (every crate, most plans, 3,000 kg of feedstock, 90 sols of stores), so it's too much and too easy. One example from the 3 Nov playtest: the site plan's ice overlay shows ice that the 7 m core rule won't let you drill.
 
 ## 1. Pillars
@@ -116,7 +119,7 @@ The story is several separate threads, each started by something you do or by a 
 2. **The link:** orbiter texts, then the cast's voices once the comms are repaired (docs/mission-control-voice.md).
 3. **GAR-Y:** found or finding you, and its personality.
 4. **The wonder:** discoveries that lead from an ancient lakebed to a lava tube and end in strong evidence of ancient microbial life. Real science only.
-5. **The crew:** Earth's waves once the base is ready (docs/survival-systems.md §12.2).
+5. **The crew:** the people who were meant to land wait in the orbiter and talk to you while you work and drive. They come down only in the welcome ending (docs/systems-and-items.md §10e).
 6. **The storm returns:** the next dust season, the big late test.
 
 **Endings:** survive the storm's return, then choose:
@@ -153,7 +156,7 @@ The story is several separate threads, each started by something you do or by a 
 - the room and corridor drawing tools and windows, which become the Plan view;
 - the Mission Control cast;
 - samples, the lab, Discoveries and the journal;
-- Earth's crew waves (late game);
+- Crew size (now how many wait in the orbiter; the mid-game crew waves are replaced by the welcome ending, see docs/systems-and-items.md §10e);
 - the terrain, caves, rover and descent cutscene;
 - the mode rules table (`MHGame.MODE_RULES`).
 

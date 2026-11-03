@@ -1,5 +1,8 @@
 # Resource model
 
+> **Replaced 3 Nov 2026 by `docs/systems-and-items.md`** (systems, numbers and items for the revamp). Kept for history; where they differ, that doc wins.
+
+
 How the habitat simulation will work. **The numbers live in
 [MarsHabitat_Balance.xlsx](MarsHabitat_Balance.xlsx)**: edit them there, then run
 `python tools/import_balance.py` to write `data/resources.json`, which the game

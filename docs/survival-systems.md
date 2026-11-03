@@ -1,5 +1,8 @@
 # Survival systems rework: air, water, food, heat, radiation and the equipment behind them
 
+> **Replaced 3 Nov 2026 by `docs/systems-and-items.md`** (systems, numbers and items for the revamp). Kept for history; where they differ, that doc wins.
+
+
 A design written 1 Nov 2026, after step 5. Nothing here is built yet. §10 has the questions; §11 has the answers, which win where the text above disagrees (question 4 is still open). This plan makes the equipment matter, so the models get remade to match it, in the batches in §9.
 
 ## 1. Why
