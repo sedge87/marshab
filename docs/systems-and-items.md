@@ -252,6 +252,58 @@ Discoveries are the reason to survive. Today there are 29 (`data/discoveries.jso
 
 The biggest finds sit at the end of the hardest chains. The life thread needs multi-step and high-risk work in the far ring, so the reward matches the danger (Schell's Lens of Reward, the second pillar "Mars will kill you for it").
 
+### 6c. All 45 discoveries · **Draft, 3 Nov, for review**
+
+Place numbers refer to the map (§9.3). 29 are today's (kept, some reworked); 16 are new. **Tally:** 15 simple, 15 multi-step, 10 high risk, 5 timed or rare.
+
+| Discovery | Kind | Where (place #) | How you earn it | Pays off |
+|---|---|---|---|---|
+| Basalt bedrock | Simple | 3 | chip it with the hammer; analyse in the Lab | the regolith printer's shell recipe (journal) |
+| Dust-coated rock | Simple | 3 | scoop the dust off a boulder; analyse | journal; the dust monitor plan |
+| Iron-oxide dust | Simple | 1 | scoop the plain; analyse | journal: why Mars is red |
+| Olivine | Simple | 9 | scoop the dune sand's edge; analyse | journal: the rock is barely weathered, so it has been dry for ages |
+| Perchlorate in the soil | Simple | 1, 5 | scoop; analyse | warning: wash soil before growing; the soil washer plan |
+| Water bound in the soil | Simple | 5 | scoop; bake it in the Lab | a little water from regolith (slow) |
+| Haematite concretions | Simple | 15 | pick up the 'blueberries' | the Print Shop's iron recipe; the miner plan later |
+| Sandstone layers | Simple | 10 | chip at the foot of a mesa | journal; points to the mesa tops |
+| Impact breccia | Simple | 4 | chip the crater's ejecta | journal: how impacts dig up the deep |
+| Gypsum veins | Simple | 16 | chip a white vein | journal: water once flowed through cracks |
+| Salt crust | Simple | 16 | scoop the pan's crust | warning plus the brine question (leads on to brines) |
+| River conglomerate | Simple | 7 | chip pebbles from a ridge | story: a real river ran here; leads to the delta |
+| Water ice in the ground | Simple | 4, 5 | core the Little Bowl wall or the hollow | the ice extractor plan |
+| The air outside | Simple | 1 | take an air sample with the case | journal; leads to the atmosphere processor |
+| Vesicular basalt | Simple | 20 | chip a bubbly rock at the lava plain's edge | journal: gas bubbles in old lava; leads to the tubes |
+| Water from Mars ice | Multi-step | base | extract ice, then run it through the water processor | drinkable local water |
+| Oxygen from Mars water | Multi-step | base | feed your water to the oxygen generator | local oxygen |
+| Washed soil grows plants | Multi-step | base | wash regolith, plant it, grow a first crop | the planter's soil recipe |
+| Dust layers in the ice | Multi-step | 11 | core the scarp, then study the core under the microscope | storm history; longer storm forecasts |
+| Layered sediments | Multi-step | 10, 18 | sample three layers at different heights on a mesa, then on the mound | story: the climate changed over time |
+| Clay-rich rock | Multi-step | 18 | radar the mound's lower slopes, then core where it points | journal: long-lasting water; the life thread's next clue |
+| Lakebed mudstone | Multi-step | 7, 19 | follow the ridges to the delta, then core the lakebed | the life thread starts |
+| **New:** Marsquakes | Multi-step | 12 | set a seismometer on firm ground and wait several sols | journal; quake warnings; leads on |
+| **New:** The lava tube | Multi-step | 12, 20, 21 | place a second seismometer to work out where the quakes echo from | the tube's location on your map |
+| **New:** Buried glacier | Multi-step | 23 | drag the radar sled across the apron | a far ice source that never runs out; outpost site |
+| **New:** Heat from below | Multi-step | 22 | hammer in the heat-flow probe and read it over sols | journal: Mars is still warm inside |
+| **New:** Brines | Multi-step | 16 | run the weather station by the pan, then sample at dawn when humidity peaks | journal: liquid water for minutes a day |
+| **New:** Organics in the mudstone | Multi-step | 19 | core fresh mudstone and analyse with the microscope | story: the life thread's middle |
+| **New:** Dust devils | Multi-step | 8 | the weather station logs pressure dips; then photograph one passing | journal; the solar panels clean themselves a little |
+| **New:** Water-ice clouds | Multi-step | 1 | the weather station's sky sensor over several dawns | journal; the first frost forecast |
+| Ice from an older climate | High risk | 11 | chip the crumbling scarp face; falls and slides are possible | story; the outpost's tank plan |
+| Ice in the caves | High risk | 13 | go deep in a canyon cave by headlamp, in the cold | a hidden ice source |
+| Mineral crust in the caves | High risk | 13 | reach the back of the deepest cave | journal; hints at the lava tube's chemistry |
+| A steady climate underground | High risk | 21 | winch down a skylight into the lava tube and set a weather station inside | the lava tube refuge (storms and solar events) |
+| Pure sulfur | High risk | 18 | climb the mound's steep upper slopes | journal; sulfur for the Print Shop |
+| Iron meteorite | High risk | 24 | find one far out and get it home before night | metal for the Print Shop; journal |
+| Unweathered basalt | High risk | 20 | drive deep into the lava plain; the rough ground wears the rover | journal: recent volcanism |
+| **New:** A solar event, measured | High risk | anywhere | stay out during a solar event with the radiation monitor running | longer solar warnings; a better Medical Bay shelter |
+| **New:** Leopard-spot rock | High risk | 19 | cross the crater floor to the far lakebed edge and core it | story: textures that microbes might have made (Perseverance's Cheyava Falls) |
+| **New:** Signs of ancient life | High risk | 19, 21 | bring the finest mudstone core and lava tube samples together in the Lab, then send it all to Earth | the game's biggest moment; the endings open |
+| **New:** Morning CO2 frost | Timed or rare | 5 | be at the hollow at dawn, before the Sun burns it off | journal photo |
+| **New:** Mars's aurora | Timed or rare | any, at night | be outside, away from the base lights, on a night after a solar event | journal photo; the cast's reaction |
+| **New:** The blue sunset | Timed or rare | any high point | watch a sunset from a ridge or mesa top | journal photo |
+| **New:** A meteor | Timed or rare | any, at night | be outside on a clear night; rare | journal photo |
+| **New:** Phobos crossing the Sun | Timed or rare | the forecast spot | be where the forecast says, at the right time | journal photo; a nod to Perseverance's film of it |
+
 ---
 
 ## 7. Vehicles and machines
@@ -363,6 +415,42 @@ Nights and storms keep you inside, so there's always hands-on work. None of it i
   - light and shadow changing over the sol.
 
 The generator (`tools/generate_region.py`) gets a density check that flags any stretch of ground with nothing on it.
+
+### 9.3 The map: 25 places · **Draft, 3 Nov, for review**
+
+The lander sits near the middle of the 12 km region. Bearings and distances are from it (N up). The landmarks you can see from afar are the Layered mound (E), the Great crater rim (E), the Lava plain (N) and the Highland walls (all round).
+
+| # | Place | Ring | From the lander | Based on | What's there |
+|---|---|---|---|---|---|
+| 1 | Landing plain | Near | centre | Aeolis plains | the lander; flat, dusty, easy walking |
+| 2 | Parachute ridge | Near | N 0.4 km |  | the first pallet, in view of the hatch |
+| 3 | Boulder field | Near | E 0.8 km | ejecta blocks | a second pallet; salvage; basalt and dust-coated rock |
+| 4 | Little Bowl | Near | E 1.1 km | the 2021 fresh impacts that exposed ice | a fresh 150 m crater; bright ice in its wall; breccia |
+| 5 | Frost hollow | Near | SW 1.0 km |  | ice under a thin dust cover; dawn frost; a third pallet |
+| 6 | Overhang cave | Near | W 1.3 km |  | a short cave under a low scarp; the headlamp's first use |
+| 7 | Riverbed ridges | Middle | NE 1.5-3 km | Aeolis Dorsa inverted channels | old rivers standing as ridges; conglomerate; they lead to the delta |
+| 8 | Yardang rows | Middle | W 2-3 km | Medusae Fossae | long wind-carved ridges; dust devils; a pallet in the lee |
+| 9 | Dark dune sea | Middle | SW 2-3 km | Bagnold dunes | black basalt dunes, soft and risky to drive; olivine sand |
+| 10 | Ramp mesas | Middle | S 2 km |  | layered sandstone mesas; fallen-wall ramps up to wide views |
+| 11 | Ice scarp | Middle | NW 2.5 km | HiRISE mid-latitude ice scarps | bright cliffs of buried ice, crumbling; the first outpost site |
+| 12 | Wrinkle ridges | Middle | E 2 km |  | long low ridges; a natural road east; seismometer ground |
+| 13 | Canyon caves | Middle | N 2.5-3 km |  | a canyon wall with caves; cave ice and mineral crusts |
+| 14 | Broken lander | Middle | E 2.5 km |  | a cargo lander the storm wrecked; rich salvage, damaged kit to study |
+| 15 | Blueberry flats | Middle | SE 2 km | Opportunity at Meridiani | haematite concretions; the first miner site |
+| 16 | Salt pan | Middle | SE 2.8 km | chloride deposits | a white salt flat; perchlorate crust, gypsum veins; brines at dawn |
+| 17 | Great crater rim | Far | E 4-6 km | Gale crater | a 4 km crater; the river breaks through its rim |
+| 18 | Layered mound | Far | E 5.5 km | Aeolis Mons (Mount Sharp) | a tall mound you can see from anywhere; clay and sulfate layers; sulfur |
+| 19 | Delta and lakebed | Far | E 4.5 km, inside the crater | Jezero's delta, Gale's lake | lakebed mudstone; the life thread |
+| 20 | Lava plain | Far | N 4-5 km | Elysium Planitia | dark rough lava, hard on the rover; vesicular and fresh basalt |
+| 21 | Skylights and lava tube | Far | N 5 km, under the lava plain | Arsia Mons pit craters | pits into a long tube; a steady climate; the safe refuge |
+| 22 | Chaos blocks | Far | S 4.5 km | Aram Chaos | jumbled blocks where ground ice melted away; heat-flow ground |
+| 23 | Glacier apron | Far | W 5 km | lobate debris aprons | a buried glacier under rock, at the highland foot |
+| 24 | Meteorite strewn field | Far | SW 4 km | Heat Shield Rock, Lebanon | iron meteorites scattered across a dark plain |
+| 25 | Highland walls | Far | the edge, about 6 km |  | walls too steep to climb; dust haze; blocked passes for later |
+
+**Pallets (about 12):** 3 near (#2, #3, #5), 6 middle (#7, #8, #10, #12, #14, #15) and 3 far (#17, #20, #22). The storm decides which carriers still walk.
+
+**Ice:** a little near (#4, #5); the scarp in the middle ring (#11); caves (#13, #21); and the glacier far out (#23).
 
 ## 10. Failure and recovery · **Decided 3 Nov**
 
