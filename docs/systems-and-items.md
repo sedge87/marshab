@@ -252,7 +252,7 @@ Discoveries are the reason to survive. Today there are 29 (`data/discoveries.jso
 
 The biggest finds sit at the end of the hardest chains. The life thread needs multi-step and high-risk work in the far ring, so the reward matches the danger (Schell's Lens of Reward, the second pillar "Mars will kill you for it").
 
-### 6c. All 45 discoveries · **Draft, 3 Nov, for review**
+### 6c. All 45 discoveries · **Decided 3 Nov**
 
 Place numbers refer to the map (§9.3). 29 are today's (kept, some reworked); 16 are new. **Tally:** 15 simple, 15 multi-step, 10 high risk, 5 timed or rare.
 
@@ -416,7 +416,7 @@ Nights and storms keep you inside, so there's always hands-on work. None of it i
 
 The generator (`tools/generate_region.py`) gets a density check that flags any stretch of ground with nothing on it.
 
-### 9.3 The map: 25 places · **Draft, 3 Nov, for review**
+### 9.3 The map: 25 places · **Decided 3 Nov** (positions tuned when built)
 
 The lander sits near the middle of the 12 km region. Bearings and distances are from it (N up). The landmarks you can see from afar are the Layered mound (E), the Great crater rim (E), the Lava plain (N) and the Highland walls (all round).
 
