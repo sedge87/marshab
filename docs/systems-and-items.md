@@ -217,6 +217,41 @@ Every kind of find has a machine that turns it into something, and every working
 | Organics (the wonder thread) | Lab | the big find |
 | Personal items | Quarters, Day Room | wellbeing |
 
+
+## 6b. Discoveries · **Decided 3 Nov: about 45, and the big ones are earned**
+
+Discoveries are the reason to survive. Today there are 29 (`data/discoveries.json`), mostly rocks, ice and caves. These grow to **about 45**, in five strands. Every discovery pays off with at least one of: a plan, a journal page with your photo, or a step in a story thread. Every answer raises a new question (Schell's Lens of Curiosity), so there's always another one to chase.
+
+| Strand | Examples | Pays off with |
+|---|---|---|
+| **Rock and ground** (today's set, kept) | basalt, olivine, haematite, gypsum, river conglomerate, lakebed mudstone, clay, sulfur, iron meteorite, impact breccia | the smelter, shielding, glass and other plans |
+| **Water and ice** | ground ice, an ice scarp, ice from an older climate, dust layers in the ice, brines in the soil | the extractor and the water processor; where outposts can go |
+| **Sky and climate** (new, from instruments) | dust devils, morning CO₂ frost, water-ice clouds, Mars's real aurora, the blue sunset, a meteor, Phobos crossing the Sun | longer storm forecasts, solar event warnings |
+| **Deep ground** (new) | marsquakes, buried ice, heat from below, the lava tube | outposts, the lava tube as a safe refuge |
+| **The life thread** (far ring) | lakebed mudstone, then organics, then layered mats, then a strong sign of ancient microbes | the game's biggest moment (master-design §7) |
+
+**How you earn them: the payoffs are varied, not just pick-up-and-analyse.** Of the 45, roughly:
+- **About 15 are simple:** pick it up or core it, then analyse it in the Lab. These teach the loop and keep the journal growing.
+- **About 15 take several steps across sols.** For example:
+  - set a seismometer, feel marsquakes, then place a second one to work out where they come from, which leads you to the lava tube;
+  - core an ice scarp, then core deeper with a stacked corer, to read the old climate in its layers;
+  - follow the old riverbed ridges to the delta, then to the lakebed, then core the mudstone.
+- **About 10 are high risk.** They need a good plan and a full suit, and they can go wrong. For example:
+  - climb down a skylight into the lava tube on a winch line;
+  - chip a sample from a crumbling ice cliff;
+  - cross the dune sea in the rover;
+  - reach an iron meteorite far out before night falls;
+  - sample fresh deposits at the edge of a dust storm;
+  - stay out through a solar event to read the radiation spike.
+- **About 5 depend on timing or are rare:**
+  - be outside, in the right place, for the aurora (at night, in the cold);
+  - Phobos crossing the Sun at a forecast time;
+  - a meteor;
+  - the first blue sunset;
+  - dawn frost before the Sun burns it off.
+
+The biggest finds sit at the end of the hardest chains. The life thread needs multi-step and high-risk work in the far ring, so the reward matches the danger (Schell's Lens of Reward, the second pillar "Mars will kill you for it").
+
 ---
 
 ## 7. Vehicles and machines
@@ -237,6 +272,27 @@ Steep ground and caves are reached on foot, by design.
 - **Sleeping skips the night.** You wake at dawn, or earlier for an alert.
 - **Nights are for being inside:** cold and dark, no solar, so power is tight, and going out drains the suit faster. That's when you work in the Lab, the Print Shop and the journal, eat, and fit out rooms.
 - **A few night lures** tempt a short, risky trip: dawn frost on ice patches, and the methane sniffer.
+
+### 8.1 Work around the base · **Decided 3 Nov**
+
+Nights and storms keep you inside, so there's always hands-on work. None of it is reading a menu, and most of it is fed by what you bring home (§6).
+- **Inside:**
+  - the Lab: analyse the day's samples;
+  - the Bench: study damaged kit, repair, make spares, take salvage apart;
+  - the Print Shop: queue parts and load iron;
+  - the Greenhouse: plant, tend and harvest;
+  - the Galley, the shower and exercise;
+  - swap filters and top up tanks;
+  - plan new rooms and fit them out;
+  - the journal: photos and finds;
+  - the radio: talk to the orbiter crew.
+- **Just outside, by day:**
+  - brush the dust off the solar panels;
+  - patch a cable or thaw a pipe;
+  - set up an instrument and read its data;
+  - watch the printer raise a room;
+  - pile up a regolith berm.
+- **GAR-Y takes over some chores** as it's upgraded (§10c), so you can go further.
 
 ## 9. The outside
 
@@ -271,6 +327,42 @@ Steep ground and caves are reached on foot, by design.
 - parachutes on ridges near the start, with the first pallet in view of your hatch;
 - landmarks you can see from far away (the layered mound, a crater rim, the dark lava field);
 - ground that slopes gently down towards the interesting middle ring.
+
+**Density · Decided 3 Nov: a find every few minutes.** About 25 named places, plus small finds scattered between them. Never more than about 2 minutes on foot, or about 1 minute in the rover, without something worth stopping for.
+- **Near ring (on foot):**
+  - the landing plain;
+  - parachutes on ridges;
+  - boulder fields;
+  - a small cave;
+  - a fresh crater;
+  - the first ice under dust.
+- **Middle ring (scout rover):**
+  - the old riverbed ridges;
+  - the yardang field;
+  - the dune sea;
+  - mesas with ramps;
+  - ice scarp cliffs;
+  - wrinkle ridges;
+  - more caves;
+  - a broken-up lander wreck.
+- **Far ring (HabRover):**
+  - the big crater and its layered mound;
+  - the dark lava plain, with skylights into the lava tube;
+  - the ancient lakebed;
+  - chaos terrain;
+  - the highland walls.
+- **Between places:**
+  - haematite outcrops;
+  - meteorites;
+  - salvage from the storm;
+  - dust-devil tracks;
+  - morning frost in the hollows.
+- **A living land:**
+  - dust devils that move across it;
+  - haze;
+  - light and shadow changing over the sol.
+
+The generator (`tools/generate_region.py`) gets a density check that flags any stretch of ground with nothing on it.
 
 ## 10. Failure and recovery · **Decided 3 Nov**
 
@@ -510,7 +602,7 @@ This covers the 141 catalogue items (`data/equipment_catalog.json`) and the 5 si
 One Survival run should let you try every pillar:
 - **Survival:** cabin air and the first pallet; the night cold; water from ice; a meal; sleep.
 - **Exploration:** the map filling in; parachute landmarks; reading the land; a field loadout; a cave by headlamp.
-- **Discovery:** samples to the lab; a weather station deployed; a first discovery and the plan it unlocks.
+- **Discovery:** samples to the lab; a weather station deployed; a first discovery and the plan it unlocks; one multi-step discovery and one high-risk one (§6b).
 - **Design and build:** the General Module set down; a printed room drawn; equipment fitted in Look; a cable or pipe laid.
 - **Story:** meeting GAR-Y; the comms repair; the orbiter crew talking on a drive, with a short reply picked.
 - **Range:** the scout rover found and driven; a night in the HabRover (or a stand-in).
