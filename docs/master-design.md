@@ -195,14 +195,14 @@ From Subnautica: build a rough playable version first with placeholder art and g
 
 **Throughout:** Creative stays playable (it's mode rules), and Missions mode and the Classic HUD are removed early, so there's less to maintain.
 
-## 11. Open questions
+## 11. Open questions · **All settled 3 Nov** (details in docs/systems-and-items.md §15)
 
-1. Water home: the pipe, the outpost or both, once the materials have numbers.
-2. Carriers: how many, their speed, what breaks on them, and what the repair procedure is.
-3. The authored map: where each pallet lies, the order in which they're likely found, and what the first pallet holds beyond life support.
-4. Material numbers: recipes, carry limits, and the regolith intake's rate.
-5. Resupplies: how often Earth sends salvage once the link is fixed (in a compressed version of the 26-month windows).
-6. Old saves: whether pre-revamp Survival saves keep their old start or load as Custom.
+1. **Water home:** a heated pipe for near ice, an outpost with its own tank for far ice.
+2. **Carriers:** 3 walking carriers (General Module, regolith printer, power kit), each with one fault you fix by hand. Once fixed, it walks home within the sol.
+3. **The authored map:** 25 places and about 12 pallets (systems-and-items §9.3). The first pallet holds life support for the lander, food and water, and the sampling tools.
+4. **Material numbers:** a first set of carry limits and recipe sizes, tuned in playtests.
+5. **Resupplies:** Earth sends a lander about every 25 sols once the link is fixed.
+6. **Old saves:** they don't carry over. They belong to v0.3.0, which stays tagged and playable.
 
 ## Sources
 

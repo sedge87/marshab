@@ -751,3 +751,44 @@ One Survival run should let you try every pillar:
   - the storm stall;
   - the vehicle bay counted as heated in one place and unheated in another;
   - stale Freedom notes in `suit.gd:24` and `resource-model.md`.
+
+## 15. Settled questions · **Decided 3 Nov**
+
+**Water home.** A heated pipe serves near ice; an outpost with its own tank serves far ice (§1.4, §9.1).
+
+**Resupply.** Once the link is fixed, Earth sends a lander about every 25 sols. It lands 1–2 km away with salvage, a plan or two, and sometimes a comfort item.
+
+**Walking carriers.** They're based on JPL's ATHLETE, a six-legged robot with a wheel on each leg that rolls on flat ground and walks on rough ground. It was built to carry cargo, even a habitat module, off a lander (NASA's Desert RATS trials). Our stretch: the real one was steered from Earth, while ours drive themselves home once fixed.
+- There are **3:** the General Module, the regolith printer and the power kit (solar and battery).
+- They move at a steady walking pace. One found 2 km out gets home within the sol while you do other things.
+- **Each one has one fault.** You spot it by looking (a blinking lamp on the bad part) and fix it by hand:
+  - a leg jammed with dust: clean it;
+  - a flat battery: charge it from a solar blanket or a spare cell;
+  - a blind navigation camera: GAR-Y guides it home.
+
+**Pallets and the likely order of finds:**
+- **Pallet 1, on the Parachute ridge (#2):** an air recycler and O₂ tank to plug into the lander, a portable heater, about 5 sols of food and water, and the hand corer, scoop and sample case.
+- **The other near pallets:** GAR-Y (Boulder field, #3); the rock hammer, headlamp and patch kit (Frost hollow, #5).
+- **The middle ring:** the 3 carriers, the scout rover, the Print Shop and the comms parts for the link repair.
+- **The far ring:** the HabRover's parts, the compact reactor and spares.
+- You can find them in any order, but the land makes this order likely: survive, then GAR-Y, then the base pieces and the rover, then range.
+
+**Material numbers (a first set, tuned in playtests through §12):**
+- Ice, regolith and haematite are counted in kg. Salvage is counted in pieces, and you see it as parts and scrap on the shelves.
+- **What you can carry:**
+
+  | Carried by | Load |
+  |---|---|
+  | your hands | about 20 kg |
+  | GAR-Y's sled | 50 kg |
+  | the scout rover | 150 kg |
+  | the HabRover | 500 kg |
+
+- The regolith intake makes 150 kg a sol.
+- **Recipes come in three sizes:**
+  - a small part: 2–5 kg of iron;
+  - a machine: 20–60 kg of iron and 1–3 pieces of salvage;
+  - a printed room shell: regolith only.
+- 1 kg of haematite gives about 0.5 kg of iron.
+
+**Old saves.** They don't load in the revamp. A clear message says they belong to v0.3.0, which stays tagged and playable. Creative keeps the freeform builder.
