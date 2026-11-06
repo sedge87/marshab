@@ -16,7 +16,7 @@ func _initialize() -> void:
 	MHGame.base_site = MHBaseSite.make(spot.x, spot.y, "Test base")
 	MHGame.cargo_at = Vector2(150.0, 90.0)
 	MHGame.landing_target = Vector2.INF
-	MHChapterOne.reset()
+	MHChapterOne.reset(); MHChapterOne.crates_landing = true
 	MHGame.pending_save_state = {}
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)

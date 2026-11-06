@@ -182,7 +182,7 @@ static var tutorial_mode := "hints"
 ## What the Land step offers first: Full until the tutorial has been
 ## finished once, then Hints only.
 static func default_tutorial_mode() -> String:
-	return "hints" if bool(setting("tutorial_finished")) else "full"
+	return "hints"   # the step-by-step Full walk-through went with the old crates (revamp step 2)
 # ---------- challenge options (docs/new-game-options.md) ----------
 # Chosen on the Colony step; during a game one can be switched on from the
 # pause menu but never off, and surprises only go up a level.

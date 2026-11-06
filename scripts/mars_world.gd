@@ -571,7 +571,7 @@ func _sync_crew_rover() -> void:
 ## Two cargo landers beside the crew lander, with the crates not yet unpacked
 ## in front of their ramps.
 func _land_precursor_cargo() -> void:
-	if not MHChapterOne.on(): return
+	if not MHChapterOne.on() or not MHChapterOne.crates_landing: return
 	if MHChapterOne.lander_spots.is_empty():
 		var centre := Vector2(lander.global_position.x, lander.global_position.z)
 		var basis := Basis(Vector3.UP, lander.rotation.y)

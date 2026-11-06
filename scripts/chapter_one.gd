@@ -58,6 +58,10 @@ const EMERGENCY_HOURS := 72.0
 ## Off until the menu starts a new game (reset()) or a step-4 save loads, so
 ## a world started any other way (tests, the menu backdrop) keeps the old rules.
 static var older_rules := true
+## The old chapter one's two cargo landers of crates. Off for new games since
+## the revamp (systems-and-items §14 step 2): your cargo comes on pallets
+## scattered by the storm instead. Saves from before keep theirs.
+static var crates_landing := false
 static var unpacked: Dictionary = {}     # crate id -> true
 static var stock: Dictionary = {}        # id -> count landed or made (placed ones included)
 static var shell_kg := 0
@@ -100,12 +104,13 @@ static func reset() -> void:
 	known = {}; jobs = {}; made = {}; paid = {}; has_corer = false; cores = []; steps = {}; finished_at = -1.0
 	stores_landed = false; reserve_used = false; emergency_eta = -1.0; said = {}
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
+	crates_landing = false
 	MHSamples.reset()   # step 5's samples and journal start with the chapter
 	MHCrewPlan.reset()  # you're alone; Earth's crew plan comes when the chapter ends
 	MHJournal.reset()
 
 static func export_state() -> Dictionary:
-	return {"older_rules": older_rules, "unpacked": unpacked.duplicate(), "stock": stock.duplicate(), "shell_kg": shell_kg,
+	return {"older_rules": older_rules, "crates": crates_landing, "unpacked": unpacked.duplicate(), "stock": stock.duplicate(), "shell_kg": shell_kg,
 		"feedstock_kg": feedstock_kg, "known": known.duplicate(), "jobs": jobs.duplicate(true),
 		"made": made.duplicate(), "paid": paid.duplicate(),
 		"has_corer": has_corer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
@@ -121,6 +126,7 @@ static func load_state(state: Dictionary, has_section: bool) -> void:
 		older_rules = true
 		return
 	older_rules = bool(state.get("older_rules", false))
+	crates_landing = bool(state.get("crates", true))   # saved before the revamp: they had crates
 	unpacked = (state.get("unpacked", {}) as Dictionary).duplicate()
 	for key in (state.get("stock", {}) as Dictionary): stock[str(key)] = int(state.stock[key])
 	shell_kg = int(state.get("shell_kg", 0))

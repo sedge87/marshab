@@ -42,7 +42,7 @@ func _initialize() -> void:
 	# ---- off by default, on for a new Survival game ----
 	MHGame.game_mode = "survival"
 	_check(not MHChapterOne.on(), "chapter rules stay off until a new game starts")
-	MHChapterOne.reset()
+	MHChapterOne.reset(); MHChapterOne.crates_landing = true
 	_check(MHChapterOne.on(), "a new Survival game uses chapter-one rules")
 	_check(MHGame.cargo_budget() == 0, "no tonnes budget before the shells crate (%d)" % MHGame.cargo_budget())
 
@@ -183,14 +183,14 @@ func _initialize() -> void:
 
 	# ---- saving ----
 	var saved := MHChapterOne.export_state()
-	MHChapterOne.reset()
+	MHChapterOne.reset(); MHChapterOne.crates_landing = true
 	MHChapterOne.load_state(saved, true)
 	_check(MHChapterOne.finished_at >= 0.0 and MHChapterOne.has_corer and MHChapterOne.unpacked.size() == MHChapterOne.crates().size(), "chapter one saves and loads")
 	MHChapterOne.load_state({}, false)
 	_check(MHChapterOne.older_rules and not MHChapterOne.on() and MHGame.cargo_budget() > 50000, "a save from before step 4 plays as already supplied")
 
 	# ---- modes ----
-	MHChapterOne.reset()
+	MHChapterOne.reset(); MHChapterOne.crates_landing = true
 	MHGame.game_mode = "freedom"
 	_check(MHChapterOne.on() and MHChapterOne.plan_known("ice_drill") and is_equal_approx(MHChapterOne.store_sols(), 150.0), "Freedom: crates, all plans known, 150 sols of stores")
 	MHGame.game_mode = "creative"

@@ -1117,7 +1117,7 @@ func _rules_summary() -> String:
 	if _crates_mode(): parts.append("Solitary" if MHCrewPlan.solitary() else "%s crew of %d" % [MHCrewPlan.size_label(), MHCrewPlan.final_size])
 	var hard := MHGame.challenge_summary(MHGame.challenge, MHGame.game_mode) if not MHGame.challenge_options().is_empty() else ""
 	if not hard.is_empty(): parts.append(hard)
-	parts.append("Tutorial: %s" % str(TUTORIAL_CHOICES.get(MHGame.tutorial_mode, "Full")))
+	parts.append("Tutorial: %s" % str(TUTORIAL_CHOICES.get(MHGame.tutorial_mode, "Hints")))
 	return " · ".join(parts)
 
 func _refresh_plaque() -> void:
@@ -1193,7 +1193,7 @@ func _landing_screen() -> void:
 		MHGame.landing_target = picker.target
 		MHGame.base_site = {}   # a new colony: founded at the site's named zone
 		MHGame.cargo_at = Vector2.INF
-		MHChapterOne.reset()   # a new free-play game starts with the crates packed (chapter one)
+		MHChapterOne.reset()   # a new free-play game: chapter rules, no crates (the revamp's pallets instead)
 		show_screen("loading"))
 	bar.add_child(land)
 	var show_verdict := func(_target: Vector2, verdict: Dictionary) -> void:
@@ -1311,7 +1311,9 @@ func _found_base(touchdown: Vector2) -> void:
 	environment.rebuild_site()   # the backdrop behind the loading screen: the new base
 	show_screen("loading")
 
-const TUTORIAL_CHOICES := {"full": "Full", "hints": "Hints only", "off": "Off"}
+## The old step-by-step walk-through (Full) went with the crates; new games
+## choose between first-time hints and nothing.
+const TUTORIAL_CHOICES := {"hints": "Hints", "off": "Off"}
 const TUTORIAL_NOTES := {
 	"full": "ARDEN walks you through your first base, step by step, and explains each new thing the first time you meet it.",
 	"hints": "No steps: just a short card the first time you meet something new.",
@@ -1325,6 +1327,7 @@ func _tutorial_choice() -> Control:
 	head.add_child(MHStyle.icon("lightbulb", 16, MHStyle.accent))
 	head.add_child(MHStyle.eyebrow("Tutorial", MHStyle.accent, 12))
 	box.add_child(head)
+	if not TUTORIAL_CHOICES.has(MHGame.tutorial_mode): MHGame.tutorial_mode = "hints"
 	var note := MHStyle.body(str(TUTORIAL_NOTES[MHGame.tutorial_mode]), 13, MHStyle.TEXT_MUTED)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = 440

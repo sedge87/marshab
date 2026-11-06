@@ -48,7 +48,7 @@ func _initialize() -> void:
 	MHGame.pending_save_state = {}
 	MHGame.landing_target = Vector2.INF
 	MHGame.tutorial_mode = "full"
-	MHChapterOne.reset()   # as the menu does for a new game
+	MHChapterOne.reset(); MHChapterOne.crates_landing = true   # as the menu does for a new game
 	world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
