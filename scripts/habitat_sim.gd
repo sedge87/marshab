@@ -532,7 +532,8 @@ func step(dt: float, hour: float) -> void:
 	if storm_hours_left > 0.0: storm_hours_left = maxf(0.0, storm_hours_left - dt)
 	if weather_wear: _wear(dt)
 	if research_boost_hours > 0.0: research_boost_hours = maxf(0.0, research_boost_hours - dt)
-	elif storm_eta_hours >= 0.0:
+	# The storm countdown runs on its own (a research boost used to stall it).
+	if storm_eta_hours >= 0.0:
 		storm_eta_hours -= dt
 		if storm_eta_hours <= 0.0: start_storm()
 	elif random_storms and not _storm_grace() and _rng.randf() < float(site.get("dust_storms_per_100_sols", 1.0)) / 100.0 / 24.0 * dt:

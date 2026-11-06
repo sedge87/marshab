@@ -21,8 +21,8 @@ extends Node
 ## (scripts/gar_y_rescue.gd): hours pass, what you carried lies where you
 ## fell, the rover drives itself home if it can, and the suit's seals leak
 ## until you repair them at a suit service panel (or patch them by hand in a sealed space, if the base has no panel).
-## Freedom warns but never lets you pass out; Creative and Missions don't run
-## the suit.
+## Freedom (Survival without food or water) runs the suit the same way;
+## Creative doesn't run it.
 ##
 ## The suit's dosimeter (docs/survival-systems.md §7) keeps your own radiation
 ## dose: the full surface rate outside (almost none in a cave), a little less

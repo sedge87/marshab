@@ -221,7 +221,7 @@ func shelter(inv: Dictionary) -> Dictionary:
 		var room: Dictionary = inv.rooms[index]
 		best = {"index": index, "key": str(room.key), "label": str(room.label), "rating": rating,
 			"capacity": int(floor(float(room.cells) * float(value("radiation", "crew_per_shelter_cell", 3.0)))),
-			"heated": not str(room.kind) in ["airlock", "vehicle_bay"], "cold": (sim.cold_spots as Array).has(str(room.label))}
+			"heated": sim._heated(room), "cold": (sim.cold_spots as Array).has(str(room.label))}
 	if not best.is_empty():
 		best["ok"] = float(best.rating) >= float(value("radiation", "safe_points", 20.0)) and int(best.capacity) >= sim.crew_count() and bool(best.heated) and not bool(best.cold)
 	return best

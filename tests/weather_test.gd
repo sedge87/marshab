@@ -32,8 +32,9 @@ func _initialize() -> void:
 	_check(not MHNotices.history.is_empty() and str(MHNotices.history[-1].app) == "site", "and a notice for the slate's Site app")
 	var saved: Dictionary = sim.save()
 	_check(is_equal_approx(float(saved.storm_eta_hours), sim.storm_eta_hours), "the forecast is saved")
+	sim.research_boost_hours = 10.0   # a research boost used to stall the countdown
 	sim.run_hours(3.0, 12.0)
-	_check(sim.storm_hours_left > 0.0 and sim.storm_eta_hours < 0.0, "the storm arrives when the forecast runs out")
+	_check(sim.storm_hours_left > 0.0 and sim.storm_eta_hours < 0.0, "the storm arrives when the forecast runs out, even during a research boost")
 	for i in 3: await process_frame
 	_check(weather._state == "storm" and weather._pill_label.text.begins_with("DUST STORM"), "the pill switches to the storm")
 	weather._level = .9
