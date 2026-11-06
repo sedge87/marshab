@@ -1,9 +1,7 @@
 extends CanvasLayer
 
 ## ARDEN's getting-started tutorial (docs/tutorial-design.md), for Survival,
-## Freedom and Creative when the player chose Tutorial: Full. Missions mode
-## doesn't use this: its own step tracker (mission_hud.gd) carries the same
-## guidance.
+## Freedom and Creative when the player chose Tutorial: Full.
 ##
 ## A checklist of goals (2 Nov): each goal ("Set up camp", "Your first
 ## module", ...) shows all its tasks at once at the top right, and they tick
@@ -14,7 +12,6 @@ extends CanvasLayer
 ## building, a slim pill sits above the build bar on the right. H cycles the
 ## checklist full, folded, hidden (Settings, On screen, remembers it).
 const STEPS_PATH := "res://data/tutorial.json"
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
 const GUIDE := preload("res://scripts/guide_overlay.gd")
 

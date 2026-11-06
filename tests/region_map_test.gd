@@ -14,7 +14,6 @@ func _initialize() -> void:
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 30: await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	var map = world.region_map
 	assert(map != null, "A region site has the region map.")
 	var player: Node3D = world.player

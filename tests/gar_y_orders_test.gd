@@ -5,7 +5,6 @@ extends SceneTree
 # boost in the Science Lab), the airlock rule, the radial menu's sectors and
 # the mission counters behind Mission 2's survey step and Mission 6's goal.
 # Run with: godot --headless --path . --script res://tests/gar_y_orders_test.gd
-const MHMissions := preload("res://scripts/mh_missions.gd")
 var failures := 0
 
 func _check(ok: bool, what: String) -> void:
@@ -106,16 +105,6 @@ func _initialize() -> void:
 	_check(base >= float(b.simulation().daily_flows(false).research), "the boost raises research")
 	_check(g.export_state().has("has_core"), "the core sample is saved")
 
-	# Mission counters (Mission 2's survey step, Mission 6's stretch goal).
-	MHGame.game_mode = "missions"
-	MHMissions.reset()
-	var survey_step: Dictionary = (MHMissions.get_mission("cargo_power_water").steps as Array).filter(func(s): return str(s.id) == "survey")[0]
-	_check(not MHMissions._step_met(survey_step, b, {}, "cargo_power_water"), "no survey yet")
-	MHMissions.bump("gar_y_surveys")
-	_check(MHMissions._step_met(survey_step, b, {}, "cargo_power_water"), "one survey (a whole Find ice loop counts as one) ticks Mission 2's step")
-	_check(bool(MHMissions.get_mission("cargo_power_water").rover), "GAR-Y comes on Mission 2")
-	_check((MHMissions.get_mission("self_sufficiency").stretch as Array).any(func(s): return str(s.get("key", "")) == "core_sample"), "Mission 6 has the core sample stretch goal")
-	MHGame.game_mode = "creative"
 
 	if failures == 0:
 		print("GAR-Y orders test passed: stay, fetch, patrol, home, airlock rule, survey, core sample and lab boost, menu, mission counters.")

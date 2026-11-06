@@ -111,7 +111,6 @@ func _game(size: Vector2i) -> void:
 	world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 20: await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	await create_timer(1.0).timeout   # the intro letterbox slides away in real time
 	await _shot(size, "game_cabin")
 	for crate in world.get_children().filter(func(n): return str(n.name).begins_with("Crate_")): crate.interact(world.player)

@@ -9,7 +9,6 @@ extends SceneTree
 # step only with Tutorial: Full; every step's keys, highlight and clip; the
 # build bar's buttons can be found for highlighting; every clip exists.
 
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const GUIDE := preload("res://scripts/guide_overlay.gd")
 const HINTS := preload("res://scripts/feature_hints.gd")
 const TUTORIAL := preload("res://scripts/tutorial.gd")
@@ -53,7 +52,6 @@ func _initialize() -> void:
 	world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	b = world.builder
 	t = world.tutorial
 	_check(t != null, "a new game with Tutorial: Full has the tutorial")
@@ -197,14 +195,8 @@ func _initialize() -> void:
 	_check(str(restored.current().get("id", "")) == "save", "a loaded game resumes at the same step")
 	restored.free()
 
-	# Missions: ARDEN's look-and-move step only with Tutorial: Full.
-	var mission := MHMissions.get_mission("cargo_power_water")
-	MHGame.tutorial_mode = "full"
-	_check(str(MHMissions.steps_of(mission)[0].id) == "look", "Missions with Tutorial: Full start with looking around")
-	MHGame.tutorial_mode = "hints"
-	_check(str(MHMissions.steps_of(mission)[0].id) == "roll_out", "but not with Hints only")
 	var extras := GUIDE.step_extras({"check": "zone", "kind": "solar"})
-	_check((extras.highlight as Array).has("part:solar") and (extras.highlight as Array).has("tab:power") and str(extras.clip) == "solar", "a mission step to place solar points at its card and clip (%s)" % extras)
+	_check((extras.highlight as Array).has("part:solar") and (extras.highlight as Array).has("tab:power") and str(extras.clip) == "solar", "a step to place solar points at its card and clip (%s)" % extras)
 	extras = GUIDE.step_extras({"check": "item", "item": "battery_bank"})
 	_check((extras.highlight as Array).has("item:battery_bank") and not (extras.keys as Array).is_empty(), "a furnishing step points at its item")
 
@@ -215,14 +207,10 @@ func _initialize() -> void:
 	var named: Array = []
 	for step in TUTORIAL.steps(): if not str(step.get("clip", "")).is_empty(): named.append(str(step.clip))
 	for hint in HINTS.hints().values(): if not str(hint.get("clip", "")).is_empty(): named.append(str(hint.clip))
-	for m in ["cargo_power_water", "cargo_habitat", "crew_land"]:
-		for step in MHMissions.get_mission(m).get("steps", []):
-			var clip := str(GUIDE.step_extras(step).clip)
-			if not clip.is_empty() and not ["test", "gar_y"].has(clip): named.append(clip)
 	var unique: Array = []
 	for clip in named: if not unique.has(clip): unique.append(clip)
 	for clip in unique: _check(GUIDE.has_clip(clip), "the %s clip exists" % clip)
 
 	if failures == 0:
-		print("Tutorial test passed: the goal checklist (17 chapter-one steps, then Self-sufficient in any order) ticks from play, H hides it, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, Missions get ARDEN's guidance, and every clip exists.")
+		print("Tutorial test passed: the goal checklist (17 chapter-one steps, then Self-sufficient in any order) ticks from play, H hides it, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, and every clip exists.")
 	quit(1 if failures > 0 else 0)

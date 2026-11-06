@@ -91,7 +91,7 @@ static func on() -> bool:
 ## A new game in free play (not Missions, an older save or Showcase): samples,
 ## the journal and Mission Control's story run, crates or not (Creative too).
 static func new_rules() -> bool:
-	return not older_rules and MHGame.game_mode != "missions" and not MHGame.showcase
+	return not older_rules and not MHGame.showcase
 
 ## A new game: the crates are all still packed.
 static func reset() -> void:

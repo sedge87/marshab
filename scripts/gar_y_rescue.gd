@@ -102,7 +102,7 @@ func start(target_world: Node, target_suit: Node) -> void:
 	_build_overlay()
 	# Nothing on screen but what you'd see: no HUD, and no suit lines still
 	# waiting to be said.
-	for hud in [world.get("explore_hud"), world.get("mission_hud")]:
+	for hud in [world.get("explore_hud")]:
 		if hud != null and hud.visible:
 			hud.visible = false
 			_huds.append(hud)

@@ -95,7 +95,6 @@ func _play() -> void:
 	world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 20: await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	await create_timer(1.2).timeout
 	await _shot("cabin_start")
 	_note("chapter rules on: %s, crates left %d" % [MHChapterOne.on(), MHChapterOne.crates_left()])

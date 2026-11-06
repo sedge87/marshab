@@ -47,7 +47,6 @@ func _initialize() -> void:
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	world.set_tutorial_mode("off")
 	world.lander.place_at(Vector2(-24, -20))
 	var b = world.builder

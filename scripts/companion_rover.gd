@@ -1,7 +1,6 @@
 class_name MHCompanionRover
 extends CharacterBody3D
 const MHPalette := preload("res://scripts/mh_palette.gd")
-const MHMissions := preload("res://scripts/mh_missions.gd")
 
 ## GAR-Y, the Geological Analysis Rover, Y-Class: the crew's companion.
 ##
@@ -225,12 +224,11 @@ func _physics_process(delta: float) -> void:
 	# Build mode uses an isometric construction camera; keep the rover out of it.
 	var building := bool(target.get_meta("build_mode_active", false))
 	visible = not building
-	# Free play: the first time you walk up to GAR-Y, its card (once ever;
-	# in Missions it's in the brief).
+	# The first time you walk up to GAR-Y, its card (once ever).
 	if not _rocks_shown: _rebuild_rocks()
 	if not _met and not building and global_position.distance_to(target.global_position) < 4.0:
 		_met = true
-		if not MHMissions.active(): HOW_IT_WORKS.first_meeting(get_tree(), "gar_y", "Meet GAR-Y")
+		HOW_IT_WORKS.first_meeting(get_tree(), "gar_y", "Meet GAR-Y")
 	if building:
 		if not task.is_empty(): _end_task(true)
 		velocity = Vector3.ZERO
@@ -1087,7 +1085,6 @@ func _airlock_waiting_spot() -> Vector3:
 
 func _survey_done() -> void:
 	surveys_ordered += 1
-	MHMissions.bump("gar_y_surveys")
 
 # ---- core sample: drill outside, carry it in, deliver to the Science Lab ----
 
@@ -1134,7 +1131,6 @@ func _core_delivered() -> void:
 		_end_task()
 		return
 	habitat.simulation().research_boost_hours = 240.0
-	MHMissions.bump("core_sample")
 	await _arm_move("stow", .6)
 	_say("tada")
 	_toast("Core sample delivered", "The Science Lab is studying GAR-Y's core: research +20% for the next 10 sols.", MHStyle.VALID)

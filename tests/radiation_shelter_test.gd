@@ -7,7 +7,6 @@ extends SceneTree
 # (but eases everyone's background dose); outside wall panels and a shield
 # block inside the shelter add their points × 1.5 over its floor.
 
-const MHMissions := preload("res://scripts/mh_missions.gd")
 
 var failures := 0
 
@@ -21,6 +20,11 @@ func _cells(x0: int, z0: int, w: int, h: int) -> Array:
 	for x in range(x0, x0 + w):
 		for z in range(z0, z0 + h): out.append(Vector2i(x, z))
 	return out
+
+## The storm shelter's shield points (habitat_life.gd shelter()).
+func _points(b) -> float:
+	var sim: RefCounted = b.simulation()
+	return float(sim.life.shelter(sim.inventory()).get("rating", 0.0))
 
 func _initialize() -> void:
 	MHGame.site_id = "plains"; MHGame.save_directory = "user://test_habitats"; MHGame.game_mode = "survival"
@@ -39,19 +43,19 @@ func _initialize() -> void:
 	var y: float = b.habitat_base_y
 	var at := Vector3(14.0, y, 0.0)
 	b.place_free_interior_equipment("storm_shelter_locker", at, 0.0, Vector2i(5, 0), b.free_interior_visual("storm_shelter_locker", at, 0.0))
-	var bare: float = MHMissions.shelter_points(b)
+	var bare: float = _points(b)
 	_check(absf(bare - 5.5) < .01, "the hull and the locker alone: 5.5 points (%.2f)" % bare)
 
 	# Roof on the big room only: the shelter isn't shielded by it.
 	b.place_upgrade("roof", {"cells": big_cells})
-	_check(absf(MHMissions.shelter_points(b) - bare) < .01, "roofing another room doesn't shield the shelter (%.2f)" % MHMissions.shelter_points(b))
+	_check(absf(_points(b) - bare) < .01, "roofing another room doesn't shield the shelter (%.2f)" % _points(b))
 	var life = b.simulation().life
 	var inv: Dictionary = b.simulation().inventory()
 	_check(life.dose_factor(life.habitat_shield(inv)) < 1.0, "but it eases everyone's background dose")
 
 	# Roof on the shelter: +12, whatever the size of the rest of the base.
 	b.place_upgrade("roof", {"cells": shelter_cells})
-	var roofed: float = MHMissions.shelter_points(b)
+	var roofed: float = _points(b)
 	_check(absf(roofed - (bare + 12.0)) < .01, "a full roof over the shelter adds 12 points (%.2f)" % roofed)
 
 	# A regolith wall panel on the shelter's outside wall: 8 × 1.5 ÷ 6 = 2.
@@ -60,14 +64,14 @@ func _initialize() -> void:
 		var inside: Vector2 = (candidate.mid as Vector2) - (candidate.outward as Vector2) * 1.5
 		if shelter_cells.has(Vector2i(roundi(inside.x / 3.0), roundi(inside.y / 3.0))): bay = candidate; break
 	_check(not bay.is_empty() and b.place_upgrade("regolith", {"mid": bay.mid, "dir": bay.dir, "outward": bay.outward}), "a regolith panel goes on the shelter's outside wall")
-	_check(absf(MHMissions.shelter_points(b) - (roofed + 2.0)) < .01, "and adds 2 points to a six-square shelter (%.2f)" % MHMissions.shelter_points(b))
+	_check(absf(_points(b) - (roofed + 2.0)) < .01, "and adds 2 points to a six-square shelter (%.2f)" % _points(b))
 
 	# A shield block inside: 8 × 1.5 ÷ 6 = 2 more. That's past the 20-point line.
-	var before: float = MHMissions.shelter_points(b)
+	var before: float = _points(b)
 	var block_at := Vector3(18.5, y, 2.0)
 	b.place_free_interior_equipment("regolith_shield_block", block_at, 0.0, Vector2i(6, 1), b.free_interior_visual("regolith_shield_block", block_at, 0.0))
-	_check(absf(MHMissions.shelter_points(b) - (before + 2.0)) < .01, "a shield block in the shelter adds 2 (%.2f)" % MHMissions.shelter_points(b))
-	_check(MHMissions.shelter_points(b) >= 20.0, "a roof, a wall panel and a block shield a small shelter past 20 points (%.2f)" % MHMissions.shelter_points(b))
+	_check(absf(_points(b) - (before + 2.0)) < .01, "a shield block in the shelter adds 2 (%.2f)" % _points(b))
+	_check(_points(b) >= 20.0, "a roof, a wall panel and a block shield a small shelter past 20 points (%.2f)" % _points(b))
 
 	if failures == 0:
 		print("Radiation shelter test passed: the shelter's own roof (+12), walls and blocks shield it; other rooms ease the background dose.")

@@ -13,7 +13,6 @@ extends Node
 
 const PATH := "res://data/how_it_works.json"
 const SEEN_PATH := "user://how_it_works.cfg"
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const HABITAT_CHAINS := preload("res://scripts/habitat_chains.gd")
 
 ## Which card explains a failed Test check.
@@ -35,42 +34,15 @@ static func card(id: String) -> Dictionary:
 		if str(each.id) == id: return each
 	return {}
 
-static func for_mission(mission_id: String) -> Array:
-	return cards().filter(func(c): return (c.get("missions", []) as Array).has(mission_id)).map(func(c): return str(c.id))
-
 ## The card for something you just placed (an item or zone id), or "".
 static func for_trigger(id: String) -> String:
 	for each in cards():
 		if (each.get("triggers", []) as Array).has(id): return str(each.id)
 	return ""
 
-## The card behind a mission step (by what it asks for).
-static func for_step(step: Dictionary) -> String:
-	for key in ["learn", "item", "kind"]:
-		var value := str(step.get(key, ""))
-		if value.is_empty(): continue
-		if key == "learn": return value
-		var found := for_trigger(value)
-		if not found.is_empty(): return found
-	match str(step.get("check", "")):
-		"tested", "passed": return "testing"
-		"counter": return "gar_y" if str(step.get("key", "")) == "gar_y_surveys" else ""
-		"food_share": return "food"
-		"item_any": return "food"
-	return ""
-
-## Every card unlocked so far: in Missions, those for missions up to the
-## current one; elsewhere, all of them.
+## Every card unlocked so far: all of them.
 static func unlocked() -> Array:
-	if not MHMissions.active(): return cards().map(func(c): return str(c.id))
-	var number := int(MHMissions.current().get("number", 1))
-	# Cards you've already seen (a pop-up on first placing something) stay too.
-	var ids: Array = cards().map(func(c): return str(c.id)).filter(func(id): return seen(id))
-	for mission in MHMissions.missions():
-		if int(mission.number) > number: continue
-		for id in for_mission(str(mission.id)):
-			if not ids.has(id): ids.append(id)
-	return ids
+	return cards().map(func(c): return str(c.id))
 
 # ---------- seen once ----------
 
@@ -178,7 +150,7 @@ static func guide(tree: SceneTree) -> ColorRect:
 		tabs.add_child(tab)
 		buttons.append(tab)
 	open_section.call(0)
-	col.add_child(MHStyle.body("More cards unlock as the missions go on." if MHMissions.active() else "Every card is here in free play.", 14, MHStyle.TEXT_MUTED))
+	col.add_child(MHStyle.body("Every card is here.", 14, MHStyle.TEXT_MUTED))
 	# Pop-up cards on or off, right here (the same switch as in Settings).
 	var row := MHStyle.hbox(14)
 	var sw := MHWidgets.Switch.new()

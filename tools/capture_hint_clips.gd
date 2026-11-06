@@ -10,7 +10,6 @@ extends SceneTree
 ## come first; the script trims them.
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const WARMUP := 45
 const FPS := 30.0
 
@@ -38,7 +37,6 @@ func _new_world(hour := 11.0, lander_in_shot := false) -> void:
 	world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	b = world.builder
 	p = world.player
 	world.day_night.set_hour(hour); world.day_night.frozen = true

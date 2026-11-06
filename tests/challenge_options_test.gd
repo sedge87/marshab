@@ -39,9 +39,7 @@ func _initialize() -> void:
 	MHGame.set_mode("freedom")
 	MHGame.game_mode = "creative"
 	_check(MHGame.challenge_options().is_empty() and MHGame.surprise_scale() == 0.0, "Creative has no options and no surprises")
-	MHGame.game_mode = "missions"
-	_check(MHGame.challenge_options().is_empty() and MHGame.challenge_on("injuries"), "Missions set their own hazards")
-	_check(CHALLENGE_UI.build(true) == null, "and show no Challenge rows")
+	_check(CHALLENGE_UI.build(true) == null, "and shows no Challenge rows")
 	MHGame.game_mode = "survival"
 	var rows := CHALLENGE_UI.build(true)
 	_check(rows != null and rows.get_child_count() == 4, "Survival's pause sheet shows four rows")

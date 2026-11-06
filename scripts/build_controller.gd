@@ -9,7 +9,6 @@ const CELL := 3.0
 const LIMIT := 60
 const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_SIM := preload("res://scripts/habitat_sim.gd")
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const ModelThumbnails := preload("res://scripts/model_thumbnails.gd")
 const PARTITION_DOOR_SCRIPT := preload("res://scripts/partition_door.gd")
 const ICE_SURVEY_SHADER := preload("res://shaders/ice_survey.gdshader")
@@ -980,10 +979,15 @@ func reassign_reason(zone: Dictionary) -> String:
 	if str(ZONE_INFO[kind].cat) != "rooms": return "Pick the new room type in the Rooms tab first"
 	if str(ZONE_INFO.get(str(zone.kind), {}).get("cat", "")) != "rooms" or str(zone.kind) == "vehicle_bay": return "Only rooms can be reassigned"
 	if str(zone.kind) == kind: return "It's already %s" % str(ZONE_TYPES[kind].label)
-	if not MHMissions.zone_unlocked(kind): return "Not delivered yet: this arrives in a later mission"
+	if not zone_offered(kind): return "No longer made"
 	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
 	if _used_cargo() - int(zone.cost) + _reassigned_cost(zone, kind) > MHGame.cargo_budget(): return "Not enough cargo left"
 	return ""
+
+## Whether a room or site kind is still offered (Waste Management merged
+## into Storage & Recycling on 31 Oct).
+static func zone_offered(kind: String) -> bool:
+	return kind != "waste_management"
 
 ## A room's cargo as another room type (same size).
 func _reassigned_cost(zone: Dictionary, new_kind: String) -> int:
@@ -1538,7 +1542,6 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 	var entry := EquipmentCatalog.get_entry(id)
 	if entry.is_empty(): return "Unknown interior item"
 	if bool(entry.get("retired", false)): return str(entry.get("retired_note", "No longer made"))
-	if not MHMissions.item_unlocked(id): return "Not delivered yet: this arrives in a later mission"
 	var stock_reason := MHChapterOne.item_reason(id, self)
 	if not stock_reason.is_empty(): return stock_reason
 	var sample := world_position + Vector3.UP * .35
@@ -2372,14 +2375,10 @@ func _invalid_reason(cells: Array) -> String:
 	for cell in cells:
 		var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
 		if not site_reason.is_empty(): return site_reason
-	if not MHMissions.zone_unlocked(kind): return "Not delivered yet: this arrives in a later mission"
+	if not zone_offered(kind): return "No longer made"
 	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
-	if kind=="reactor" and MHMissions.active():
-		var allowed:=int(MHMissions.current().get("max_reactors",99))
-		if zones.filter(func(z): return str(z.kind)=="reactor").size()>=allowed: return "This landing brought only %d reactor%s" % [allowed,"" if allowed==1 else "s"]
 	for cell in cells:
 		if lander != null and lander.keeps_clear(Vector2(cell.x * CELL, cell.y * CELL), CELL * .5): return "Too close to the lander"
-		if MHMissions.in_blast_zone(Vector2(cell.x * CELL, cell.y * CELL)): return "Inside the landing zone: engine blast would damage it"
 	for cell in cells:
 		if _occupied(cell): return "Overlaps existing habitat"
 		for machine in zones:
@@ -4300,11 +4299,8 @@ func _free_site_reason(target: Dictionary) -> String:
 	var at: Vector2 = target.at
 	var radius := float(FREE_SITE_KINDS[kind])
 	var cell := Vector2i(roundi(at.x / CELL), roundi(at.y / CELL))
-	if not MHMissions.zone_unlocked(kind): return "Not delivered yet: this arrives in a later mission"
+	if not zone_offered(kind): return "No longer made"
 	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
-	if kind=="reactor" and MHMissions.active():
-		var allowed:=int(MHMissions.current().get("max_reactors",99))
-		if zones.filter(func(z): return str(z.kind)=="reactor").size()>=allowed: return "This landing brought only %d reactor%s" % [allowed,"" if allowed==1 else "s"]
 	# Its corners, turned with it.
 	var turn := free_yaw if (kind == "solar" or _free_yaw_set) else 0.0
 	var corners: Array = []
@@ -4326,7 +4322,6 @@ func _free_site_reason(target: Dictionary) -> String:
 		var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
 		if not site_reason.is_empty(): return site_reason
 		if lander != null and lander.keeps_clear(at, radius): return "Too close to the lander"
-		if MHMissions.in_blast_zone(at): return "Inside the landing zone: engine blast would damage it"
 		for point in [at] + corners:
 			var under := _zone_at_point(point)
 			if not under.is_empty() and not under.has("at"): return "Overlaps the habitat"
@@ -4433,7 +4428,6 @@ func _ladder_target() -> Dictionary:
 func _site_upgrade_reason(target: Dictionary) -> String:
 	var upgrade := str(SITE_UPGRADES.get(kind, "ladder"))
 	if target.is_empty(): return "Point at a room" if upgrade == "roof" else "Point at an outside wall"
-	if upgrade != "ladder" and not MHMissions.structure_unlocked("upgrade_" + upgrade): return "Not delivered yet: this arrives in a later mission"
 	return upgrade_invalid_reason(upgrade, target)
 
 ## A ghost of the upgrade on the wall or roof under the cursor; returns why it
@@ -5927,8 +5921,6 @@ func surface_invalid_reason(id: String, position: Vector3) -> String:
 	if is_inside(position): return "Keep surface equipment outside the habitat"
 	if id == "camera_mast" and placed_surface.filter(func(s): return str(s.get("id", "")) == "camera_mast").size() >= 4: return "Up to 4 camera masts per base"
 	if lander != null and lander.keeps_clear(Vector2(position.x, position.z), float(entry.get("radius", .6))): return "Too close to the lander"
-	if MHMissions.active() and not MHMissions.item_unlocked(id): return "Not delivered yet: this arrives in a later mission"
-	if MHMissions.in_blast_zone(Vector2(position.x, position.z)): return "Inside the landing zone: engine blast would damage it"
 	var radius := float(entry.get("radius", .6))
 	# Off the ground: crates only, on a pallet, a workbench or another crate.
 	if position.y > _terrain_height(position) + .2:
@@ -6645,17 +6637,16 @@ func _refresh_catalogue() -> void:
 		return
 	else:
 		var shown:=0
-		# Missions: never leave a part selected that this payload didn't bring.
-		if not MHMissions.zone_unlocked(kind) and equipment_id.is_empty():
+		# Never leave a retired part selected.
+		if not zone_offered(kind) and equipment_id.is_empty():
 			for id in ZONE_TYPES:
-				if str(ZONE_INFO[id].cat)==category and MHMissions.zone_unlocked(id): kind=id; break
+				if str(ZONE_INFO[id].cat)==category and zone_offered(id): kind=id; break
 		# Rooms in alphabetical order; the other tabs keep their own order.
 		var ids:=ZONE_TYPES.keys()
 		if category=="rooms": ids.sort_custom(func(a,b): return str(ZONE_TYPES[a].label).naturalnocasecmp_to(str(ZONE_TYPES[b].label))<0)
-		ids=MHMissions.badge_order(ids,true)   # Missions: what's needed first, then what's new
 		for id in ids:
 			if str(ZONE_INFO[id].cat)!=category: continue
-			if not MHMissions.zone_unlocked(id): continue   # Missions: only this payload's parts
+			if not zone_offered(id): continue
 			shown+=1
 			var card:=_part_card(id,id==kind and equipment_id.is_empty(),remaining<earth_cost(cell_cost(id),zone_printable(id)))
 			card.set_meta("pick_index",shown)
@@ -6756,19 +6747,7 @@ func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
 			card.tooltip_text = MHChapterOne.zone_reason(id, self)
 			mass.add_theme_color_override("font_color", MHStyle.TEXT_MUTED)
 	card.set_meta("number_label",mass)
-	add_mission_badge(card,MHMissions.zone_badge(id),selected)
 	return card
-
-## Missions: a NEEDED (accent, outlined) or NEW tag in a build-bar card's
-## top-left corner.
-static func add_mission_badge(card: Button, badge: String, selected := false) -> void:
-	if badge.is_empty(): return
-	var tag:=MHStyle.badge("Needed" if badge=="needed" else "New","accent" if badge=="needed" else "info",badge=="needed")
-	tag.position=Vector2(10,10)
-	tag.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	card.add_child(tag)
-	if badge=="needed" and not selected:
-		card.add_theme_stylebox_override("normal",MHStyle.box(MHStyle.SURFACE_CONTROL,MHStyle.accent.darkened(.15),8,2,Vector4(8,8,8,8)))
 
 ## A card in the build bar: picture on top, then name and numbers.
 func _bar_card(selected: bool) -> Button:

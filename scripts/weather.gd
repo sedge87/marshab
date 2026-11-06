@@ -1,6 +1,5 @@
 extends Node
 
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
 
@@ -35,7 +34,6 @@ func setup(target_world: Node) -> void:
 	world = target_world
 	# Missions teach with their own scripted storms in the Test, so the live
 	# base only gets random storms in free play.
-	if MHMissions.active(): sim().random_storms = false
 	# Dust and frost on the panels and hull (weather_wear.gd): free play, and
 	# Missions once storms arrive (Mission 5).
 	sim().weather_wear = WEATHER_WEAR.enabled()

@@ -5,7 +5,6 @@ extends SceneTree
 # the Cameras view opens live and aims/switches masts, wall screens have a
 # camera mode, and Mission 4 delivers them.
 # Run with: godot --headless --path . --script res://tests/camera_mast_test.gd
-const MHMissions := preload("res://scripts/mh_missions.gd")
 var failures := 0
 
 func _check(ok: bool, what: String) -> void:
@@ -78,10 +77,9 @@ func _initialize() -> void:
 	await process_frame
 	_check(world.monitor == null and not bool(world.player.get_meta("ui_freeze", false)), "closing frees you")
 
-	# Wall screens and missions.
+	# Wall screens.
 	var modes: Array = EquipmentCatalog.rig("wall_screen").actions[0].modes
 	_check(modes.has("camera"), "wall screens have a camera mode")
-	_check((MHMissions.get_mission("crew_land").get("unlock_items", []) as Array).has("camera_mast"), "Mission 4 delivers camera masts")
 	_check(EquipmentCatalog.rig("camera_mast").actions[0].type == "camera", "E on a mast looks through it")
 
 	if failures == 0:

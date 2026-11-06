@@ -465,7 +465,7 @@ func _update_sol_clock() -> void:
 		return
 	var daytime := MHGame.sunlight_fraction > .08
 	_sol_clock.text = "%s · %s" % [MHGame.formatted_sol_time(), "DAY" if daytime else "NIGHT"]
-	if MHGame.resupplies_on() and MHGame.game_mode != "missions" and builder != null:
+	if MHGame.resupplies_on() and builder != null:
 		var due := MHGame.resupply_due_in_hours(builder.simulation().hours_run)
 		_sol_clock.text += "  ·  RESUPPLY %s" % ("%d H" % ceili(due) if due < 24.0 else "%.1f SOLS" % (due / 24.0))
 	_sol_clock.add_theme_color_override("font_color", MHStyle.INFO if daytime else MHStyle.TEXT_MUTED)
@@ -633,7 +633,6 @@ func _refresh_readiness(quiet := false) -> void:
 
 func _render_readiness() -> void:
 	for child in _readiness_slot.get_children(): child.queue_free()
-	if MHGame.game_mode == "missions": return   # the mission panel shows the requirements instead
 	var items := builder.readiness()
 	var met := builder.readiness_met()
 	if _collapsed or met == items.size():

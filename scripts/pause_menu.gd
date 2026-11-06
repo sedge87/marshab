@@ -55,18 +55,17 @@ func _ready() -> void:
 		add_child(_guide))
 	_panel_buttons["controls"] = _row(list, "Controls", "secondary", "keyboard")
 	_panel_buttons.controls.pressed.connect(_toggle_panel.bind("controls"))
-	if MHGame.game_mode != "missions" and not MHGame.showcase:
+	if not MHGame.showcase:
 		_panel_buttons["challenge"] = _row(list, "Rules", "secondary", "gauge")
 		_panel_buttons.challenge.tooltip_text = "This game's mode, rules and challenge options"
 		_panel_buttons.challenge.pressed.connect(_toggle_panel.bind("challenge"))
 	_row(list, "Settings", "secondary", "settings").pressed.connect(func() -> void: settings.emit())
-	if MHGame.game_mode == "missions": _row(list, "Mission Control", "secondary", "clipboard-check", "M").pressed.connect(func() -> void: mission_control.emit())
-	else: _row(list, "Slate: Comms", "secondary", "tablet", "M").pressed.connect(func() -> void: mission_control.emit())
+	_row(list, "Slate: Comms", "secondary", "tablet", "M").pressed.connect(func() -> void: mission_control.emit())
 	var gap := Control.new()
 	gap.custom_minimum_size.y = 18
 	list.add_child(gap)
 	_row(list, "Exit to main menu", "ghost", "log-out").pressed.connect(func() -> void: exit_to_menu.emit())
-	var footer := MHStyle.mono("%s · %s" % [MHGame.site_name(), MHGame.GAME_MODES.get(MHGame.game_mode, "Missions")], 13, MHStyle.TEXT_MUTED)
+	var footer := MHStyle.mono("%s · %s" % [MHGame.site_name(), MHGame.GAME_MODES.get(MHGame.game_mode, "Survival")], 13, MHStyle.TEXT_MUTED)
 	footer.custom_minimum_size.y = 36
 	footer.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	list.add_child(footer)

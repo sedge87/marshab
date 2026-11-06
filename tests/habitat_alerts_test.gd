@@ -4,7 +4,6 @@ extends SceneTree
 # alert and clear, raise -> repeat -> all clear, the advisories setting, the
 # Mission Control log and alerts replayed in the Test report.
 # Run with: godot --headless --path . --script res://tests/habitat_alerts_test.gd
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const PICKER := preload("res://scripts/landing_picker.gd")
 var failures := 0
 
@@ -15,14 +14,7 @@ func _check(ok: bool, what: String) -> void:
 
 func _initialize() -> void:
 	MHGame.save_directory = "user://test_habitats"
-	MHGame.site_id = "plains"; MHGame.game_mode = "missions"; MHGame.pending_save_state = {}
-	MHMissions.reset()
-	var target: Vector2 = PICKER.suggested()
-	MHMissions.progress.landing_target = target
-	MHMissions.progress.base_site = target + Vector2(30, 0)
-	for id in ["landing_zones", "cargo_power_water", "cargo_habitat"]: (MHMissions.progress.completed as Array).append(id)
-	for id in ["cargo_power_water", "cargo_habitat", "crew_land"]: MHMissions.set_arrived(id)
-	MHMissions.progress.current = "crew_land"
+	MHGame.site_id = "plains"; MHGame.set_mode("survival"); MHGame.pending_save_state = {}
 	var world: Node = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 5: await process_frame
@@ -104,10 +96,6 @@ func _initialize() -> void:
 	for label in world.mission_control.find_children("*", "Label", true, false): text += label.text + " "
 	_check(text.to_lower().contains("alert log") and text.to_lower().contains("all clear"), "Mission Control's alert log lists them")
 	world.mission_control._close()
-
-	# The Test replays the alerts on its run.
-	var report: Dictionary = MHMissions.run_test(b)
-	_check(report.has("alerts") and report.alerts is Array, "the test report has the alerts it would have raised (%d)" % (report.get("alerts", []) as Array).size())
 
 	if failures == 0:
 		print("Habitat alerts test passed: levels, cause chains, voice lines, raise/clear, explainers, log and test report.")

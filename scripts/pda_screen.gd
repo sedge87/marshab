@@ -183,7 +183,7 @@ func _update_status() -> void:
 	var daytime := MHGame.sunlight_fraction > .08
 	var text := "%s · %s" % [MHGame.formatted_sol_time(), "DAY" if daytime else "NIGHT"]
 	var builder: Node = world.builder if world != null else null
-	if MHGame.resupplies_on() and MHGame.game_mode != "missions" and builder != null:
+	if MHGame.resupplies_on() and builder != null:
 		var due := MHGame.resupply_due_in_hours(builder.simulation().hours_run)
 		text += "  ·  RESUPPLY %s" % ("%d H" % ceili(due) if due < 24.0 else "%.1f SOLS" % (due / 24.0))
 	_clock.text = text
@@ -337,7 +337,7 @@ func _next_task(task: Dictionary, tutorial: Node) -> Control:
 ## What the base still needs: the readiness list, unmet items first.
 func _needs(column: VBoxContainer) -> void:
 	var builder: Node = world.builder if world != null else null
-	if builder == null or MHGame.game_mode == "missions": return
+	if builder == null: return
 	var items: Array = builder.readiness()
 	if items.is_empty(): return
 	var met: int = builder.readiness_met()
@@ -355,7 +355,7 @@ func _needs(column: VBoxContainer) -> void:
 func _goals_signature() -> String:
 	var tutorial: Node = world.get("tutorial") if world != null else null
 	var builder: Node = world.builder if world != null else null
-	return "%s|%s|%s" % [str(tutorial.done) if tutorial != null else "", str(tutorial.finished) if tutorial != null else "", str(builder.readiness()) if builder != null and MHGame.game_mode != "missions" else ""]
+	return "%s|%s|%s" % [str(tutorial.done) if tutorial != null else "", str(tutorial.finished) if tutorial != null else "", str(builder.readiness()) if builder != null else ""]
 
 ## Base: the habitat's battery, water, food, air and crew health with their
 ## trends (the systems panel's rows), the active alerts as cards (what's

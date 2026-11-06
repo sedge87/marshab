@@ -37,9 +37,7 @@ var journal_keeper: Node   # step 5: J, the bunk's notebook, sketches
 var _chapter_check := 0.0
 var _chapter_hours := -1.0
 const LANDING_PICKER_SCRIPT := preload("res://scripts/landing_picker.gd")
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
-const MISSION_HUD_SCRIPT := preload("res://scripts/mission_hud.gd")
 const SCOUT_ROVER_SCENE_PATH := "res://scenes/mars_scout_rover.tscn"
 # Optional companion feature. Set false to remove it without touching player,
 # habitat or simulation code.
@@ -59,9 +57,6 @@ var site_weather: Node3D
 var alerts: Node    # scripts/habitat_alerts.gd: habitat alerts (backlog 26)
 var earth_link: Node   # scripts/mission_control_link.gd: delayed messages from Earth
 var _earth_link_state := {}
-## The finished campaign's record (versions, reports) for a base carried on
-## into free play, so Mission Control can still open its dossier.
-var campaign_record := {}
 var sleep: Node   # scripts/sleep.gd: sleep at a bunk to pass the time
 var carry: Node   # scripts/carry.gd: pick up small things and put them elsewhere
 var suit: Node    # scripts/suit.gd: your suit's oxygen, power and scrubber (hold T for the wrist pad)
@@ -87,7 +82,6 @@ var lander: Node3D
 var _start_in_lander := false
 var _intro_stage := "done"
 var _landing_miss := 0.0   # metres between the chosen target and the touchdown
-var mission_hud: CanvasLayer
 ## ARDEN's getting-started tutorial (scripts/tutorial.gd), when chosen.
 const TUTORIAL_SCRIPT := preload("res://scripts/tutorial.gd")
 var tutorial: CanvasLayer
@@ -100,26 +94,11 @@ var guide_flags := {}
 const LIGHT_RANGE := 40.0
 var _budget_lights: Array = []
 var _budget_dirty := true
-# Missions: cargo landers on site, the one this mission's robot rode down in,
-# and what only the world knows for the step tracker.
+# The cargo landers on site (chapter one's precursor cargo).
 var cargo_landers: Array = []
-var current_cargo_lander: Node3D
-var mission_flags := {"left_lander": false, "opened_plan": false, "inside": false}
-# Mission 4: the crew's own lander touches down and they start in its cabin.
-var crew_arrival := false
 # Survival and Freedom: resupply landers on compressed launch windows.
 var resupply_landers: Array = []   # [{position, yaw}] for saving
 var _resupply_check := 0.0
-var arrival_pending := false
-signal arrival_finished
-var _arrival_t := -1.0
-var _arrival_camera: Camera3D
-var _arrival_layer: CanvasLayer
-var _arrival_caption: Array = []
-var _arrival_dust: CPUParticles3D
-var _arrival_from := Vector3.ZERO
-var _arrival_landed := false
-const ARRIVAL_LENGTH := 10.5
 
 func _ready() -> void:
 	add_to_group("habitat_world")
@@ -130,29 +109,10 @@ func _ready() -> void:
 		region_map = preload("res://scripts/region_map.gd").new()
 		region_map.setup(self, MHSiteTerrain.region_zone())
 		add_child(region_map)
-	if MHMissions.active() and MHGame.pending_save_state.has("missions_progress"):
-		MHMissions.load_state(MHGame.pending_save_state.get("missions_progress", {}) as Dictionary)
-	elif not (MHGame.pending_save_state.get("campaign_record", {}) as Dictionary).is_empty():
-		# A base carried on from a finished campaign keeps its dossier.
-		campaign_record = (MHGame.pending_save_state.campaign_record as Dictionary).duplicate(true)
-		MHMissions.progress = campaign_record.duplicate(true)
 	lander = CREW_LANDER_SCRIPT.new()
 	add_child(lander)
 	_land_lander()
-	_start_in_lander = MHGame.pending_save_state.is_empty() and not MHMissions.active()   # every new free-play game opens in the lander
-	if MHMissions.active():
-		lander.set_present(bool(MHMissions.current().get("lander", true)))
-		_add_landing_zone_marker()
-		_spawn_cargo_landers()
-		var mission := MHMissions.current()
-		if bool(mission.get("crew_arrival", false)) and not MHMissions.arrived(str(mission.id)):
-			crew_arrival = true
-			_start_in_lander = true
-			arrival_pending = true   # the crew lander's descent, then you're in the cabin
-			var target := MHMissions.landing_target()
-			var rng := RandomNumberGenerator.new()
-			rng.randomize()
-			lander.place_at(_clear_touchdown(target if not is_inf(target.x) else Vector2.ZERO, rng, false))
+	_start_in_lander = MHGame.pending_save_state.is_empty()   # every new game opens in the lander
 	_spawn_player()
 	_spawn_scout_rover()
 	builder = BUILD_CONTROLLER_SCRIPT.new()
@@ -162,7 +122,6 @@ func _ready() -> void:
 	builder.mission_control_requested.connect(_open_mission_control)
 	builder.habitat_changed.connect(func() -> void: _budget_dirty = true)
 	builder.habitat_changed.connect(_sync_crew_rover)
-	if MHMissions.active(): builder.simulation().crew_cap = MHMissions.crew_cap()
 	builder.interior_build_requested.connect(_open_interior_build)
 	builder.surface_build_requested.connect(_open_surface_build)
 	interior_builder = INTERIOR_BUILD_CONTROLLER_SCRIPT.new()
@@ -177,13 +136,7 @@ func _ready() -> void:
 	_restore_pending_habitat()
 	_land_precursor_cargo()
 	_sync_crew_rover()
-	if MHMissions.active(): MHMissions.deliver_mission_food(builder.simulation())
 	configure_life()
-	if crew_arrival:
-		var cabin: Dictionary = lander.cabin_start()
-		player.global_position = cabin.position
-		player.rotation.y = float(cabin.yaw)
-		player.safe_position = player.global_position
 	_build_hud()
 	weather = WEATHER_SCRIPT.new()
 	add_child(weather)
@@ -221,18 +174,12 @@ func _ready() -> void:
 		add_child(sample_tools)
 		journal_keeper = JOURNAL_KEEPER.new().setup(self)
 		add_child(journal_keeper)
-	if MHMissions.active() and not MHGame.showcase:
-		if str(MHMissions.current().get("player", "crew")) == "robot": explore_hud.chip_prefix = "ROBOT · "
-		mission_hud = MISSION_HUD_SCRIPT.new()
-		mission_hud.setup(self)
-		add_child(mission_hud)
-	elif str(_tutorial_state.get("mode", "off")) == "full" and not MHGame.showcase:
+	if str(_tutorial_state.get("mode", "off")) == "full" and not MHGame.showcase:
 		tutorial = TUTORIAL_SCRIPT.new()
 		tutorial.setup(self, _tutorial_state)
 		add_child(tutorial)
 	_apply_settings()
-	if arrival_pending: _start_arrival()
-	else: _play_intro()
+	_play_intro()
 	MHAudio.music("surface")
 	MHAudio.ambience("outside")
 	MHAudio.build_layer(false)
@@ -245,12 +192,6 @@ func _ready() -> void:
 	MHAudio.muffle(false)
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Any key or click skips the touchdown cinematic.
-	if _arrival_t >= 0.0:
-		if (event is InputEventKey or event is InputEventMouseButton) and event.is_pressed() and not event.is_echo() and _arrival_t > .6:
-			_finish_arrival()
-		get_viewport().set_input_as_handled()
-		return
 	# Hidden debug tools for testing: Ctrl+Shift+F12.
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F12 and event.ctrl_pressed and event.shift_pressed:
 		if debug_panel == null:
@@ -270,8 +211,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if pause_menu == null: _show_pause()
 		else: _resume()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
-		# M raises the slate on Comms; Missions keep their Mission Control.
-		if MHGame.game_mode != "missions" and pda != null and pda.can_open(): pda.open("comms")
+		# M raises the slate on Comms.
+		if pda != null and pda.can_open(): pda.open("comms")
 		else: _open_mission_control()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C and not event.ctrl_pressed and not bool(player.get_meta("build_mode_active", false)) and not bool(player.get_meta("driving", false)):
 		# C: straight to the Crew screen (in Mission Control).
@@ -297,7 +238,7 @@ const AUTOSAVE_SECONDS := 600.0   # free play: every 10 minutes, once the base h
 
 func _process(delta: float) -> void:
 	_update_lander_intro()
-	if not MHMissions.active() and not MHGame.showcase and not MHSaves.current_path.is_empty() and not get_tree().paused:
+	if not MHGame.showcase and not MHSaves.current_path.is_empty() and not get_tree().paused:
 		_autosave_in -= delta
 		if _autosave_in <= 0.0:
 			_autosave_in = AUTOSAVE_SECONDS
@@ -311,14 +252,6 @@ func _process(delta: float) -> void:
 	if _chapter_check <= 0.0:
 		_chapter_check = .5
 		_tick_chapter_one()
-	if _arrival_t >= 0.0: _update_arrival(delta)
-	if MHMissions.active():
-		if builder.build_mode: mission_flags.opened_plan = true
-		if builder.is_inside(player.global_position): mission_flags.inside = true
-		if crew_arrival or bool(MHMissions.current().get("crew_arrival", false)):
-			if lander.hatch_open() and not lander.cabin_contains(player.global_position): mission_flags.left_lander = true
-		elif current_cargo_lander == null or (current_cargo_lander.ramp_open and not current_cargo_lander.hold_contains(player.global_position)):
-			mission_flags.left_lander = true
 	_space_check -= delta
 	if _space_check > 0.0: return
 	_space_check = .3
@@ -380,47 +313,12 @@ func _apply_light_budget() -> void:
 		# the rover's headlights, an equipment light).
 		light.visible = index < budget and eye.distance_to(light.global_position) < LIGHT_RANGE and bool(light.get_meta("rig_on", true))
 
-## A new game opens in the dim lander cabin with a minimal HUD; opening the
-## hatch lowers the ramp, and stepping out onto Mars brings the full HUD in.
-## Saved games restore the lander where it landed. New games land on the
-## player's chosen target: exactly in Freedom and Creative, somewhere in the
-## landing ellipse in Survival. Quick start lets the game pick.
-## Missions: the landing zone (ellipse and its engine-blast margin) marked on
-## the ground, so players can see where they mustn't build.
-func _add_landing_zone_marker() -> void:
-	var target := MHMissions.landing_target()
-	if is_inf(target.x): return
-	for ring in [[LANDING_PICKER_SCRIPT.ELLIPSE_A, LANDING_PICKER_SCRIPT.ELLIPSE_B, Color(1.0, .8, .3, .9), .35], [LANDING_PICKER_SCRIPT.ELLIPSE_A + MHMissions.BLAST_MARGIN, LANDING_PICKER_SCRIPT.ELLIPSE_B + MHMissions.BLAST_MARGIN, Color(1.0, .45, .2, .7), .2]]:
-		var surface := SurfaceTool.new()
-		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-		var steps := 72
-		for i in range(steps):
-			var a0 := TAU * i / steps
-			var a1 := TAU * (i + 1) / steps
-			var points: Array = []
-			for a in [a0, a1]:
-				for scale in [1.0, 1.0 - float(ring[3]) / float(ring[1])]:
-					var p: Vector2 = target + Vector2(cos(a) * float(ring[0]) * scale, sin(a) * float(ring[1]) * scale)
-					points.append(Vector3(p.x, MHSiteTerrain.height(p.x, p.y) + .06, p.y))
-			for index in [0, 2, 1, 1, 2, 3]: surface.add_vertex(points[index])
-		var marker := MeshInstance3D.new()
-		marker.name = "LandingZoneMarker"
-		marker.mesh = surface.commit()
-		var material := StandardMaterial3D.new()
-		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		material.albedo_color = ring[2]
-		material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		material.cull_mode = BaseMaterial3D.CULL_DISABLED
-		(marker.mesh as ArrayMesh).surface_set_material(0, material)
-		marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(marker)
-
 # ---------- resupply landers ----------
 
 ## When a launch window comes round, a resupply lander comes down near the
 ## crew lander, adds its cargo, and stays on site as a landmark.
 func _check_resupply() -> void:
-	if not MHGame.resupplies_on() or MHMissions.active() or _intro_stage != "done": return
+	if not MHGame.resupplies_on() or _intro_stage != "done": return
 	if MHGame.resupply_due_in_hours(builder.simulation().hours_run) > 0.0: return
 	var spot := _resupply_spot()
 	MHGame.resupply_count += 1
@@ -476,79 +374,22 @@ func _resupply_spot() -> Dictionary:
 	var fallback := centre + Vector2(20, 0)
 	return {"position": Vector3(fallback.x, MHSiteTerrain.height(fallback.x, fallback.y), fallback.y), "yaw": 0.0}
 
-# ---------- Missions: cargo landers and the touchdown cinematic ----------
-
-## Every cargo lander so far stands where it landed. A mission that arrives by
-## cargo lander and has not played its arrival yet lands a new one now.
-func _spawn_cargo_landers() -> void:
-	for saved in MHMissions.cargo_landers():
-		var cargo := _add_cargo_lander(int(saved.number))
-		cargo.global_position = saved.position as Vector3
-		cargo.rotation.y = float(saved.yaw)
-		cargo.set_ramp(true)
-	var mission := MHMissions.current()
-	var number := int(mission.get("cargo_lander", 0))
-	if number <= 0: return
-	for cargo in cargo_landers:
-		if int(cargo.number) == number: current_cargo_lander = cargo
-	if MHMissions.arrived(str(mission.id)) or current_cargo_lander != null: return
-	var target := MHMissions.landing_target()
-	if is_inf(target.x): target = Vector2.ZERO
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	current_cargo_lander = _add_cargo_lander(number)
-	var base := MHMissions.base_site()
-	current_cargo_lander.place_at(_clear_touchdown(target, rng), base if not is_inf(base.x) else Vector2.ZERO)
-	MHMissions.cargo_landers().append({"number": number, "position": current_cargo_lander.global_position, "yaw": current_cargo_lander.rotation.y})
-	arrival_pending = true
-
-## A touchdown point in the landing ellipse that keeps clear of the landers
-## already down: the best of several tries, at least 16 m from the others
-## where the ellipse allows.
-## Act 2 in live play: named crew (Mission 8 on, and free play) and, with
-## the Settings toggle, rare hazards from missions already passed; in free
-## play, the game's challenge options.
+## Live play: named crew and the game's challenge options
+## (docs/new-game-options.md).
 func configure_life() -> void:
 	var sim: RefCounted = builder.simulation()
 	var life: RefCounted = sim.life
 	var kinds: Array = []
-	if MHMissions.active():
-		life.crew_on = int(MHMissions.current().get("number", 1)) >= 8
-		if bool(MHGame.setting("live_hazards")):
-			if MHMissions.is_complete("solar_shelter"): kinds.append("spe")
-			if MHMissions.is_complete("hull_breach"): kinds.append("breach")
-			if MHMissions.is_complete("long_silence"): kinds.append("breakdowns")
-		if life.crew_on:
-			life.ensure_crew(sim.crew_count(), MHMissions.progress.get("crew_names", []))
-			life.set_names(MHMissions.progress.get("crew_names", []))
-	else:
-		# Survival and Freedom: the challenge options (docs/new-game-options.md).
-		life.crew_on = MHGame.simulation_on()
-		# Earth's landed crew (crew_plan.gd) join the crew list by name.
-		if life.crew_on and MHChapterOne.on() and MHCrewPlan.solo:
-			life.ensure_crew(sim.crew_count(), MHCrewPlan.names())
-			life.set_names(MHCrewPlan.names())
-		if MHGame.surprise_scale() > 0.0 and MHGame.simulation_on(): kinds = ["spe", "breach", "breakdowns"]
-		life.live_scale = MHGame.surprise_scale()
-		life.radiation_on = MHGame.challenge_on("radiation")
-		life.live_injuries = MHGame.challenge_on("injuries")
+	life.crew_on = MHGame.simulation_on()
+	# Earth's landed crew (crew_plan.gd) join the crew list by name.
+	if life.crew_on and MHChapterOne.on() and MHCrewPlan.solo:
+		life.ensure_crew(sim.crew_count(), MHCrewPlan.names())
+		life.set_names(MHCrewPlan.names())
+	if MHGame.surprise_scale() > 0.0 and MHGame.simulation_on(): kinds = ["spe", "breach", "breakdowns"]
+	life.live_scale = MHGame.surprise_scale()
+	life.radiation_on = MHGame.challenge_on("radiation")
+	life.live_injuries = MHGame.challenge_on("injuries")
 	life.live_kinds = kinds
-
-func _clear_touchdown(target: Vector2, rng: RandomNumberGenerator, avoid_lander := true) -> Vector2:
-	var taken: Array = MHMissions.cargo_landers().map(func(c): return Vector2((c.position as Vector3).x, (c.position as Vector3).z))
-	for cargo in cargo_landers: taken.append(Vector2(cargo.global_position.x, cargo.global_position.z))
-	if avoid_lander and lander != null and lander.present: taken.append(Vector2(lander.global_position.x, lander.global_position.z))
-	var best := LANDING_PICKER_SCRIPT.touchdown(target, "missions", rng) as Vector2
-	var best_gap := -1.0
-	for attempt in 40:
-		var spot: Vector2 = LANDING_PICKER_SCRIPT.touchdown(target, "missions", rng) if attempt > 0 else best
-		var gap := INF
-		for other in taken: gap = minf(gap, spot.distance_to(other))
-		if gap > best_gap:
-			best_gap = gap
-			best = spot
-		if best_gap >= 16.0: break
-	return best
 
 func _add_cargo_lander(number: int) -> Node3D:
 	var cargo: Node3D = CARGO_LANDER_SCRIPT.new()
@@ -558,166 +399,10 @@ func _add_cargo_lander(number: int) -> Node3D:
 	cargo_landers.append(cargo)
 	return cargo
 
-## The cargo lander's descent, seen from the ground: engine burn, dust, touchdown.
-## Captions close Mission 1 and introduce this landing. Any key skips it.
-func _start_arrival() -> void:
-	var mission := MHMissions.current()
-	var cargo := _arrival_craft()
-	_arrival_landed = false
-	_arrival_from = cargo.global_position
-	cargo.global_position = _arrival_from + Vector3.UP * 90.0
-	cargo.set_burn(true)
-	player.process_mode = Node.PROCESS_MODE_DISABLED
-	explore_hud.visible = false
-	if mission_hud != null: mission_hud.visible = false
-	_arrival_camera = Camera3D.new()
-	_arrival_camera.fov = 58.0
-	add_child(_arrival_camera)
-	var side: Vector3 = cargo.global_transform.basis * Vector3(15.0, 0.0, -11.0)
-	var eye := _arrival_from + side
-	eye.y = MHSiteTerrain.height(eye.x, eye.z) + 3.0
-	_arrival_camera.global_position = eye
-	_arrival_camera.current = true
-	# Dust thrown out by the plume as it nears the ground.
-	_arrival_dust = CPUParticles3D.new()
-	_arrival_dust.emitting = false
-	_arrival_dust.amount = 220
-	_arrival_dust.lifetime = 3.0
-	_arrival_dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
-	_arrival_dust.emission_ring_axis = Vector3.UP
-	_arrival_dust.emission_ring_radius = 2.5
-	_arrival_dust.emission_ring_inner_radius = .5
-	_arrival_dust.emission_ring_height = .2
-	_arrival_dust.direction = Vector3(1, .15, 0)
-	_arrival_dust.spread = 180.0
-	_arrival_dust.flatness = .85
-	_arrival_dust.initial_velocity_min = 5.0
-	_arrival_dust.initial_velocity_max = 13.0
-	_arrival_dust.damping_min = 2.5
-	_arrival_dust.damping_max = 4.0
-	_arrival_dust.gravity = Vector3(0, -.3, 0)
-	_arrival_dust.scale_amount_min = 1.0
-	_arrival_dust.scale_amount_max = 2.4
-	var puff := QuadMesh.new(); puff.size = Vector2(1.4, 1.4)
-	var puff_material := StandardMaterial3D.new()
-	puff_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	puff_material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	puff_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	puff_material.albedo_color = Color(MHStyle.DUST_200, .28)
-	puff_material.albedo_texture = CARGO_LANDER_SCRIPT.soft_puff_texture()
-	puff.material = puff_material
-	_arrival_dust.mesh = puff
-	_arrival_dust.position = _arrival_from + Vector3.UP * .4
-	add_child(_arrival_dust)
-	# Letterbox and captions.
-	_arrival_layer = CanvasLayer.new()
-	_arrival_layer.layer = 30
-	add_child(_arrival_layer)
-	for top in [true, false]:
-		var bar := ColorRect.new()
-		bar.color = MHStyle.INK_950
-		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		bar.anchor_right = 1
-		if top: bar.offset_bottom = 104
-		else:
-			bar.anchor_top = 1
-			bar.anchor_bottom = 1
-			bar.offset_top = -150
-		_arrival_layer.add_child(bar)
-	var title := str(mission.get("title", ""))
-	var headline := title.get_slice(": ", 1) if title.contains(": ") else title
-	var touchdown := "Crew lander · Touchdown · %d crew aboard" % int(mission.get("crew", 4)) if crew_arrival else "Cargo Lander %d · Touchdown · %s payload" % [int(mission.get("cargo_lander", 1)), MHStyle.kg(int(mission.get("payload_kg", 0)))]
-	var captions := [["Mission %d complete" % (int(mission.get("number", 2)) - 1), str(mission.get("previous_line", ""))],
-		[touchdown, headline]]
-	for caption in captions:
-		var box := MHStyle.vbox(6)
-		box.anchor_top = 1
-		box.anchor_bottom = 1
-		box.offset_left = 120
-		box.offset_top = -330
-		box.offset_right = 1500
-		box.modulate.a = 0.0
-		box.add_child(MHStyle.eyebrow(caption[0], MHStyle.accent, 18))
-		box.add_child(MHStyle.display(caption[1], 54))
-		_arrival_layer.add_child(box)
-		_arrival_caption.append(box)
-	var skip := MHStyle.mono("ANY KEY  SKIP", 13, MHStyle.TEXT_MUTED)
-	skip.anchor_left = 1; skip.anchor_right = 1; skip.anchor_top = 1; skip.anchor_bottom = 1
-	skip.offset_left = -260; skip.offset_top = -92
-	_arrival_layer.add_child(skip)
-	MHAudio.sfx("landing", 0.0, 0.0)
-	_arrival_t = 0.0
-
-## What's landing in the cutscene: the crew lander (Mission 4) or this
-## mission's cargo lander.
-func _arrival_craft() -> Node3D:
-	return lander if crew_arrival else current_cargo_lander
-
-func _update_arrival(delta: float) -> void:
-	_arrival_t += delta
-	var cargo := _arrival_craft()
-	# Descent: fast at first, easing to a gentle touchdown at 7 s.
-	var fall := clampf(_arrival_t / 7.0, 0.0, 1.0)
-	var height := 90.0 * pow(1.0 - fall, 2.6)
-	cargo.global_position = _arrival_from + Vector3.UP * height
-	if height < 14.0 and not _arrival_landed: _arrival_dust.emitting = true
-	if fall >= 1.0 and not _arrival_landed:
-		_arrival_landed = true
-		cargo.set_burn(false)
-		MHAudio.sfx("land", 0.0, 0.0)
-		get_tree().create_timer(1.2).timeout.connect(func() -> void: if _arrival_dust != null: _arrival_dust.emitting = false)
-	_arrival_camera.look_at(cargo.global_position + Vector3.UP * 4.0, Vector3.UP)
-	# A little shake as the engine nears the ground and at touchdown.
-	if fall > .7 and _arrival_t < 7.6:
-		_arrival_camera.rotation += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * .004 * (1.0 - absf(_arrival_t - 7.0))
-	# Captions: the first fades in and out, then the second holds.
-	_fade_caption(_arrival_caption[0], _arrival_t, .6, 3.6)
-	_fade_caption(_arrival_caption[1], _arrival_t, 4.4, ARRIVAL_LENGTH)
-	if _arrival_t >= ARRIVAL_LENGTH: _finish_arrival()
-
-func _fade_caption(box: Control, t: float, start: float, end: float) -> void:
-	box.modulate.a = clampf(minf((t - start) / .5, (end - t) / .5), 0.0, 1.0)
-
-func _finish_arrival() -> void:
-	if _arrival_t < 0.0: return
-	_arrival_t = -1.0
-	var cargo := _arrival_craft()
-	cargo.global_position = _arrival_from
-	cargo.set_burn(false)
-	if _arrival_dust != null:
-		_arrival_dust.queue_free()
-		_arrival_dust = null
-	_arrival_camera.queue_free()
-	_arrival_layer.queue_free()
-	_arrival_caption.clear()
-	var start: Dictionary = lander.cabin_start() if crew_arrival else cargo.hold_start()
-	player.global_position = start.position
-	player.rotation.y = float(start.yaw)
-	player.safe_position = player.global_position
-	player.process_mode = Node.PROCESS_MODE_INHERIT
-	(player.get_node("Head/Camera3D") as Camera3D).current = true
-	explore_hud.visible = true
-	if mission_hud != null: mission_hud.visible = true
-	arrival_pending = false
-	arrival_finished.emit()
-	if crew_arrival:
-		# The crew lander: you're in the cabin; open the hatch to step out
-		# (the lander intro marks the mission arrived once you're out).
-		explore_hud.show_equipment_note("Touchdown", "The crew have landed. Look at the hatch and press E to open it.")
-		_play_intro()
-		return
-	MHMissions.set_arrived(str(MHMissions.current().id))
-	save_mission_progress()
-	_play_intro()
-
 func _land_lander() -> void:
 	var saved: Dictionary = MHGame.pending_save_state.get("lander", {})
 	if not saved.is_empty():
 		lander.place_exact(saved.get("position", Vector3.ZERO) as Vector3, float(saved.get("yaw", 0.0)))
-	elif MHMissions.active() and not is_inf(MHMissions.landing_target().x):
-		var rng := RandomNumberGenerator.new()
-		rng.randomize()
-		lander.place_at(_clear_touchdown(MHMissions.landing_target(), rng, false))
 	elif not MHGame.pending_save_state.is_empty() or is_inf(MHGame.landing_target.x):
 		lander.place_on_site()
 	else:
@@ -763,12 +448,6 @@ func _update_lander_intro() -> void:
 		_intro_stage = "done"
 		if pda != null: pda.received = true   # however they got out (a save, a skipped intro)
 		explore_hud.set_minimal(false)
-		if crew_arrival:
-			crew_arrival = false
-			MHMissions.set_arrived(str(MHMissions.current().id))
-			save_mission_progress()
-			explore_hud.show_equipment_note("Mission %d · %s" % [int(MHMissions.current().number), str(MHMissions.current().title)], "You're on Mars. The base your robots built is waiting: follow BASE SITE on your compass to the airlock.")
-			return
 		var landing := "You touched down %d m from your target: that's the landing ellipse at work. " % roundi(_landing_miss) if _landing_miss >= 1.0 else ""
 		# A base founded away from the cargo (the landing oval's centre): the walk to it.
 		if not cargo_landers.is_empty():
@@ -793,17 +472,6 @@ func _spawn_player() -> void:
 		var start: Dictionary = lander.cabin_start()
 		player.position = start.position
 		player.rotation.y = float(start.yaw)
-	elif arrival_pending:
-		# Missions: the robot rides down in the cargo lander's hold.
-		var hold: Dictionary = current_cargo_lander.hold_start()
-		player.position = hold.position
-		player.rotation.y = float(hold.yaw)
-	elif MHMissions.active() and not is_inf(MHMissions.base_site().x):
-		# Missions: the robot starts at the base site, facing the landing zone.
-		var base := MHMissions.base_site()
-		player.position = Vector3(base.x, MHSiteTerrain.height(base.x, base.y) + 1.2, base.y)
-		var to_zone := MHMissions.landing_target() - base
-		if to_zone.length() > 1.0: player.rotation.y = atan2(-to_zone.x, -to_zone.y)
 	player.safe_position = player.position
 	add_child(player)
 	# A region's ground collision is built round the player, not the camera
@@ -840,9 +508,6 @@ func _spawn_player() -> void:
 func _spawn_scout_rover() -> void:
 
 	if not SPAWN_SCOUT_ROVER:
-		return
-	# Missions: GAR-Y rolls out with the first cargo (Mission 2) to prospect for ice.
-	if MHMissions.active() and not bool(MHMissions.current().get("rover", true)):
 		return
 	var rover_scene := load(SCOUT_ROVER_SCENE_PATH) as PackedScene
 	if rover_scene == null:
@@ -881,7 +546,7 @@ func _sync_crew_rover() -> void:
 ## Two cargo landers beside the crew lander, with the crates not yet unpacked
 ## in front of their ramps.
 func _land_precursor_cargo() -> void:
-	if not MHChapterOne.on() or MHMissions.active(): return
+	if not MHChapterOne.on(): return
 	if MHChapterOne.lander_spots.is_empty():
 		var centre := Vector2(lander.global_position.x, lander.global_position.z)
 		var basis := Basis(Vector3.UP, lander.rotation.y)
@@ -1011,12 +676,8 @@ func _open_mission_control() -> void:
 	MHAudio.muffle(true)
 	mission_control = MHMissionControl.new().setup(builder)
 	preload("res://scripts/feature_hints.gd").first(get_tree(), "mission_control")
-	# The mission panel and its toasts sit on a higher layer: hide them while
-	# Mission Control is open.
-	if mission_hud != null: mission_hud.visible = false
 	mission_control.closed.connect(func() -> void:
 		mission_control = null
-		if mission_hud != null: mission_hud.visible = true
 		_unpause())
 	overlay_layer.add_child(mission_control)
 
@@ -1041,12 +702,10 @@ func _open_live_view(view: Control) -> void:
 	MHAudio.muffle(false)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	player.set_meta("ui_freeze", true)
-	if mission_hud != null: mission_hud.visible = false
 	monitor = view
 	monitor.closed.connect(func() -> void:
 		monitor = null
 		player.set_meta("ui_freeze", false)
-		if mission_hud != null: mission_hud.visible = true
 		_unpause())
 	overlay_layer.add_child(monitor)
 
@@ -1071,9 +730,9 @@ func _open_settings() -> void:
 	panel.applied.connect(_apply_settings)
 	pause_menu.add_child(panel)
 
-## The pause menu's M row: the slate on Comms (Missions: Mission Control).
+## The pause menu's M row: the slate on Comms.
 func _pause_comms() -> void:
-	if MHGame.game_mode == "missions" or pda == null:
+	if pda == null:
 		_open_mission_control()
 		return
 	_resume()
@@ -1100,14 +759,10 @@ func _unpause() -> void:
 ## carried to another computer still says who built it.
 var made_by := {}
 
-## The extra things a save card shows: crew, sols, cargo, the mission.
+## The extra things a save card shows: crew, sols, cargo.
 func save_details() -> Dictionary:
 	var sim: RefCounted = builder.simulation()
 	var details := {"crew": int(sim.crew_count()), "sols": int(float(sim.hours_run) / 24.0) + 1, "cargo_kg": int(builder._used_cargo())}
-	if MHMissions.active():
-		var all: Array = MHMissions.missions()
-		var finished := all.all(func(m): return MHMissions.is_complete(str(m.id)))
-		details["mission"] = "Campaign complete" if finished else "Mission %d of %d" % [int(MHMissions.current().get("number", 1)), all.size()]
 	return details
 
 ## A picture of the base for its save card, with the menus and HUD hidden
@@ -1179,8 +834,6 @@ func current_state() -> Dictionary:
 		"rules": MHGame.current_rules(),
 		"builder": builder.export_habitat_state(),
 		"lander": {"position": lander.global_position, "yaw": lander.rotation.y},
-		"missions_progress": MHMissions.save_state() if MHMissions.active() else {},
-		"campaign_record": campaign_record,
 		"player_position": player.global_position,
 		"player_rotation_y": player.rotation.y,
 		"day_night": day_night.export_state() if day_night != null else {},
@@ -1203,19 +856,13 @@ func set_tutorial_mode(mode: String) -> void:
 	MHGame.tutorial_mode = mode
 	if tutorial != null: _tutorial_state = tutorial.export_state()
 	_tutorial_state["mode"] = mode
-	if mode == "full" and tutorial == null and not MHMissions.active():
+	if mode == "full" and tutorial == null:
 		tutorial = TUTORIAL_SCRIPT.new()
 		tutorial.setup(self, _tutorial_state)
 		add_child(tutorial)
 	elif mode != "full" and tutorial != null:
 		tutorial.queue_free()
 		tutorial = null
-	if mission_hud != null: mission_hud._update_steps()
-
-## Missions autosave: the campaign base and its progress, saved to the
-## campaign's own file whenever a step or test changes.
-func save_mission_progress() -> void:
-	if MHMissions.active() and not MHGame.showcase: MHSaves.save_current(current_state(), null, save_details())
 
 func _save_habitat(slot: int) -> void:
 	if builder == null or player == null:

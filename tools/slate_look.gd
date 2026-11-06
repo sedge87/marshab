@@ -21,7 +21,6 @@ func _initialize() -> void:
 	world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 20: await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	await create_timer(1.5).timeout
 	for card in get_nodes_in_group("feature_hint"): card.queue_free()
 	MHNotices.post("valid", "Core 3: ice found", "Rich ice 1.2 m down. The Ice Extractor goes within 7 m of it.", "map")

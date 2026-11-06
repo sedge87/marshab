@@ -4,7 +4,6 @@ extends SceneTree
 # material paying for printable things first, the regolith printer in the
 # simulation, and resupply landers (switched off; still work when switched on).
 # Run with: godot --headless --path . --script res://tests/cargo_supply_test.gd
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 var failures := 0
 
@@ -122,15 +121,8 @@ func _initialize() -> void:
 	_check(MHGame.resupply_count == 0 and MHGame.resupply_kg == 0, "a new game starts with no resupplies")
 	mars.queue_free()
 
-	# Missions: the printer and intake arrive in Mission 6.
-	MHGame.game_mode = "missions"
-	MHMissions.reset()
-	MHMissions.progress.current = "storm_season"
-	_check(not MHMissions.item_unlocked("regolith_printer") and not MHMissions.zone_unlocked("regolith_intake"), "no printer before Mission 6")
-	MHMissions.progress.current = "self_sufficiency"
-	_check(MHMissions.item_unlocked("regolith_printer") and MHMissions.zone_unlocked("regolith_intake"), "Mission 6 delivers the printer and intake")
 	MHGame.game_mode = "survival"
 	MHResources.data().settings["resupply_enabled"] = 0.0
 	if failures == 0:
-		print("Cargo supply test passed: budgets, Mars-made material, the printer, switchable resupply landers, saving and Mission 6.")
+		print("Cargo supply test passed: budgets, Mars-made material, the printer, switchable resupply landers and saving.")
 	quit(1 if failures > 0 else 0)

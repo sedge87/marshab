@@ -21,7 +21,6 @@ extends Node
 ## (WASD, mouse to look, Q/E down and up, Shift faster), and F again hands
 ## it back to the tour where it left off.
 
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const MHSaves := preload("res://scripts/saves.gd")   # the Showcase playlist
 const MONITOR := preload("res://scripts/habitat_monitor.gd")
 const ORBIT_SECONDS := 26.0
@@ -73,7 +72,7 @@ func setup(target_world: Node) -> void:
 func _hide_game_ui() -> void:
 	world.player.set_meta("ui_freeze", true)
 	Input.mouse_mode = Input.MOUSE_MODE_HIDDEN
-	for node in [world.explore_hud, world.mission_hud, world.gar_y_orders]:
+	for node in [world.explore_hud, world.gar_y_orders]:
 		if node != null: node.visible = false
 	if world.alerts != null:
 		world.alerts.set_process(false)
@@ -354,12 +353,11 @@ func _build_overlay() -> void:
 	# Who built it, saved with the base (scripts/saves.gd).
 	var made_by: Dictionary = world.made_by if not (world.made_by as Dictionary).is_empty() else MHGame.maker()
 	var commander := str(made_by.get("name", ""))
-	if commander.is_empty() and MHGame.game_mode == "missions": commander = MHMissions.player_name()
 	if not commander.is_empty():
 		var by := MHStyle.body("Designed by %s" % commander, 28, MHStyle.TEXT_PRIMARY)
 		by.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card.add_child(by)
-	var mode := MHStyle.mono(str(MHGame.GAME_MODES.get(MHGame.game_mode, "Missions")).to_upper(), 15, MHStyle.TEXT_SECONDARY)
+	var mode := MHStyle.mono(str(MHGame.GAME_MODES.get(MHGame.game_mode, "Survival")).to_upper(), 15, MHStyle.TEXT_SECONDARY)
 	mode.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card.add_child(mode)
 	if not MHGame.mission_statement.strip_edges().is_empty():
@@ -396,24 +394,10 @@ func _fill_story() -> void:
 	panel.add_child(col)
 	col.add_child(MHStyle.eyebrow("How %s was built" % MHGame.colony_name, MHStyle.accent, 18))
 	var lines: Array = []
-	if MHGame.game_mode == "missions":
-		var done: Array = (MHMissions.progress.get("completed", []) as Array)
-		var tests := 0
-		for mission in MHMissions.missions(): tests += MHMissions.versions(str(mission.id)).size()
-		lines.append("%d mission%s completed, %d design%s tested." % [done.size(), "" if done.size() == 1 else "s", tests, "" if tests == 1 else "s"])
-		for mission in MHMissions.missions():
-			var list := MHMissions.versions(str(mission.id))
-			var passed: Array = list.filter(func(v): return bool(v.passed))
-			if passed.is_empty(): continue
-			var line := "Mission %d, %s: passed on version %d." % [int(mission.number), str(mission.title), int(passed[0].version)]
-			var fixes := MHMissions.fixes(str(mission.id))
-			if not fixes.is_empty(): line += " Fixed %s with %s." % [str(fixes[-1].text).to_lower(), str(fixes[-1].changes)]
-			lines.append(line)
-	else:
-		var b: BuildController = world.builder
-		var rooms: int = (b.simulation().inventory().rooms as Array).size()
-		lines.append("%d rooms and %d pieces of equipment, built in %s mode." % [rooms, b.placed_interior.size() + b.placed_surface.size(), str(MHGame.GAME_MODES.get(MHGame.game_mode, MHGame.game_mode))])
-		lines.append("%s of cargo from Earth." % MHStyle.kg(b.used_cargo()))
+	var b: BuildController = world.builder
+	var rooms: int = (b.simulation().inventory().rooms as Array).size()
+	lines.append("%d rooms and %d pieces of equipment, built in %s mode." % [rooms, b.placed_interior.size() + b.placed_surface.size(), str(MHGame.GAME_MODES.get(MHGame.game_mode, MHGame.game_mode))])
+	lines.append("%s of cargo from Earth." % MHStyle.kg(b.used_cargo()))
 	for line in lines.slice(0, 7):
 		var label := MHStyle.body(str(line), 22, MHStyle.TEXT_PRIMARY)
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

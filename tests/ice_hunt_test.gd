@@ -25,7 +25,6 @@ func _initialize() -> void:
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	var gary: Node = world.scout_rover
 	# Indoors it won't go; outside near the zone it plans a loop.
 	gary.global_position = Vector3(30, gary.global_position.y, -30)

@@ -1,7 +1,6 @@
 extends CanvasLayer
 
-## ARDEN's pointers, shared by the tutorial (scripts/tutorial.gd) and the
-## mission tracker (scripts/mission_hud.gd): a pulsing outline round the
+## ARDEN's pointers for the tutorial (scripts/tutorial.gd): a pulsing outline round the
 ## button or panel a step needs, key caps for a step, and "Show me": a short
 ## looping clip of the real game doing the step (assets/tutorial/clips).
 ##

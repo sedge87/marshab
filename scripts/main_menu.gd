@@ -3,7 +3,6 @@ const MHSaves := preload("res://scripts/saves.gd")   # named saves, one file per
 const LANDING_PICKER_SCRIPT := preload("res://scripts/landing_picker.gd")
 const REGION_LANDING_PICKER_SCRIPT := preload("res://scripts/region_landing_picker.gd")
 const DESCENT_SCRIPT := preload("res://scripts/descent.gd")
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 # Title flow (shots 1a–1d): Title → Site select → Colony setup → Landing.
@@ -19,7 +18,7 @@ const TIPS := [
 	"Solar Arrays must be within 12 m of the habitat. Aim them north for full output.",
 	"Every three cells of Sleeping Quarters house two crew.",
 	"Removing a zone refunds its full cargo mass, so experiment freely.",
-	"Open Mission Control with M to see what your crew still needs."
+	"Press M to raise your slate on Comms."
 ]
 # Camera presets from the reference scene: position, look-at, vertical FOV.
 const CAMERAS := {
@@ -108,7 +107,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.keycode == KEY_UP: _choose_site(ids[(index - 1 + ids.size()) % ids.size()])
 	if event.is_action_pressed("ui_cancel"):
 		if screen_id == "site": show_screen("title")
-		elif screen_id == "colony": show_screen("site" if MHGame.game_mode == "missions" else "title")
+		elif screen_id == "colony": show_screen("title")
 		elif screen_id == "rules": show_screen("colony")
 		elif screen_id == "landing": show_screen(_landing_back())
 
@@ -281,9 +280,8 @@ func _bottom_bar(height := 120.0) -> HBoxContainer:
 func _stepper(current: String) -> void:
 	var row := MHStyle.hbox(32)
 	row.position = Vector2(120, 64)
-	# Free play has no site step (the Land step picks the spot on the region)
-	# but a Rules step; Missions set their own rules.
-	var steps := ["Site", "Colony", "Land"] if MHGame.game_mode == "missions" else ["Colony", "Rules", "Land"]
+	# No site step (the Land step picks the spot on the region), but a Rules step.
+	var steps := ["Colony", "Rules", "Land"]
 	var active := steps.find(current)
 	for i in steps.size():
 		var text := "%02d %s" % [i + 1, steps[i]]
@@ -329,7 +327,7 @@ func _title_screen() -> void:
 	var hero: Button = _hero_button("New colony", "Name your colony · choose where to land", "plus") if newest.is_empty() else MHStyle.button("New colony", "secondary", "plus")
 	hero.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	hero.pressed.connect(func() -> void:
-		MHGame.set_mode("survival" if MHGame.game_mode == "missions" else MHGame.game_mode)
+		MHGame.set_mode(MHGame.game_mode)
 		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 		MHGame.start_new_challenge()
 		MHSaves.current_path = ""
@@ -346,29 +344,11 @@ func _title_screen() -> void:
 		load.tooltip_text = "Every saved base: play, tour, duplicate or showcase them"
 		load.pressed.connect(func() -> void: show_screen("saves"))
 		menu.add_child(load)
-	# Missions: the NASA-style campaign; its newest save continues it.
-	var campaign := MHSaves.latest("missions")
-	if not campaign.is_empty():
-		var resume := MHStyle.button("Continue missions · %s" % str(campaign.get("name", "")), "secondary", "rocket")
-		resume.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		resume.pressed.connect(_open_save.bind(str(campaign.path)))
-		menu.add_child(resume)
-	var missions := MHStyle.button("New missions campaign" if not campaign.is_empty() else "Missions campaign", "ghost" if not campaign.is_empty() else "secondary", "clipboard-check")
-	missions.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	missions.tooltip_text = "Set up a Mars base step by step, like NASA: landing zones, cargo first, then the crew."
-	missions.pressed.connect(func() -> void:
-		MHGame.game_mode = "missions"
-		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
-		MHGame.start_new_challenge()
-		MHMissions.reset()
-		MHSaves.current_path = ""
-		show_screen("site"))
-	menu.add_child(missions)
 	var quick := MHStyle.button("Quick start · %s" % str(MHGame.picker_sites()[0].get("name", "Mars")), "ghost" if not newest.is_empty() else "secondary", "rocket")
 	quick.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	quick.pressed.connect(func() -> void:
 		# Straight to choosing where to land (skipping the site and colony steps).
-		MHGame.set_mode("survival" if MHGame.game_mode == "missions" else MHGame.game_mode)
+		MHGame.set_mode(MHGame.game_mode)
 		MHGame.landing_target = Vector2.INF
 		MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 		MHGame.start_new_challenge()
@@ -404,12 +384,10 @@ func _title_screen() -> void:
 
 var _saves_query := ""
 var _saves_sort := 0            # see SAVES_SORTS
-var _saves_filter := 0          # all, free play, missions
 var _saves_note := ""
 var _saves_grid: GridContainer
 var _renaming := ""             # path of the card being renamed
 const SAVES_SORTS := ["Newest first", "Name", "Builder", "Site", "Biggest", "Longest on Mars"]
-const SAVES_FILTERS := ["All modes", "Free play", "Missions"]
 
 func _saves_screen() -> void:
 	_scrim("right", 1.0, .9)
@@ -445,14 +423,6 @@ func _saves_screen() -> void:
 		_saves_query = text
 		_fill_saves())
 	tools.add_child(search)
-	var filter := OptionButton.new()
-	for label in SAVES_FILTERS: filter.add_item(label)
-	filter.selected = _saves_filter
-	filter.custom_minimum_size = Vector2(180, 46)
-	filter.item_selected.connect(func(index: int) -> void:
-		_saves_filter = index
-		_fill_saves())
-	tools.add_child(filter)
 	var sort := OptionButton.new()
 	for label in SAVES_SORTS: sort.add_item(label)
 	sort.selected = _saves_sort
@@ -478,13 +448,10 @@ func _saves_screen() -> void:
 	_fill_saves()
 	search.grab_focus.call_deferred()
 
-## The saves shown, after search, the mode filter and the sort.
+## The saves shown, after search and the sort.
 func _shown_saves() -> Array:
 	var query := _saves_query.strip_edges().to_lower()
 	var saves: Array = MHSaves.entries().filter(func(h):
-		var group := MHGame.save_set_for_mode(str(h.get("game_mode", "")))
-		if _saves_filter == 1 and group != "free_play": return false
-		if _saves_filter == 2 and group != "missions": return false
 		var words := " ".join([h.get("name", ""), h.get("builder", ""), h.get("site_name", ""), h.get("colony_name", "")]).to_lower()
 		return query.is_empty() or words.contains(query))
 	match _saves_sort:
@@ -500,7 +467,7 @@ func _fill_saves() -> void:
 	for child in _saves_grid.get_children(): child.queue_free()
 	var saves := _shown_saves()
 	if saves.is_empty():
-		_saves_grid.add_child(MHStyle.body("No saves yet." if _saves_query.strip_edges().is_empty() and _saves_filter == 0 else "No saves match.", 20, MHStyle.TEXT_SECONDARY))
+		_saves_grid.add_child(MHStyle.body("No saves yet." if _saves_query.strip_edges().is_empty() else "No saves match.", 20, MHStyle.TEXT_SECONDARY))
 		return
 	for save in saves: _saves_grid.add_child(_save_card(save))
 
@@ -606,7 +573,7 @@ func _on_files_dropped(files: PackedStringArray) -> void:
 	_saves_note = ("Added %d save%s." % [added, "" if added == 1 else "s"]) if added > 0 else "Nothing added: drop Outpost One save files (.save) or older .habitat files."
 	show_screen("saves")
 
-## Play a save (Continue, Continue missions, a card's Play).
+## Play a save (Continue, a card's Play).
 func _open_save(path: String) -> void:
 	if MHSaves.prepare_load(path): show_screen("loading")
 
@@ -877,15 +844,8 @@ func _colony_screen() -> void:
 	voice_box.add_child(MHStyle.body("It talks to you.", 15, MHStyle.TEXT_MUTED))
 	name_row.add_child(voice_box)
 	form.add_child(name_row)
-	# Missions set their own rules; free play picks them on the Rules step.
-	if MHGame.game_mode == "missions":
-		var mode_box := MHStyle.vbox(8)
-		mode_box.add_child(MHStyle.eyebrow("Game mode"))
-		mode_box.add_child(MHStyle.title("Missions campaign", 24))
-		mode_box.add_child(MHStyle.body("Set up your base step by step, the way NASA would: choose landing zones, send the cargo first, test everything, then land the crew.", 14, MHStyle.TEXT_MUTED))
-		form.add_child(mode_box)
-	# Who's building: on every save's card, in Tour ("Designed by") and on a
-	# Missions dossier. Remembered for next time.
+	# Who's building: on every save's card and in Tour ("Designed by").
+	# Remembered for next time.
 	var maker := MHGame.maker()
 	var maker_box := MHStyle.vbox(6)
 	maker_box.add_child(MHStyle.eyebrow("Your name"))
@@ -893,13 +853,12 @@ func _colony_screen() -> void:
 	var player_box := LineEdit.new()
 	player_box.max_length = 40
 	player_box.placeholder_text = "Your name (optional)"
-	player_box.text = str(maker.name) if not str(maker.name).is_empty() else MHMissions.player_name()
+	player_box.text = str(maker.name) if not str(maker.name).is_empty() else ""
 	player_box.custom_minimum_size.y = 44
 	player_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	maker_row.add_child(player_box)
 	var keep_maker := func(_text := "") -> void:
 		MHGame.set_maker(player_box.text)
-		MHMissions.set_player_name(player_box.text)
 	player_box.text_changed.connect(keep_maker)
 	maker_box.add_child(maker_row)
 	maker_box.add_child(MHStyle.body("Shown on your saves and in Tour, so a showcase can say who built each base.", 14, MHStyle.TEXT_MUTED))
@@ -984,12 +943,11 @@ func _colony_screen() -> void:
 	bar.alignment = BoxContainer.ALIGNMENT_END
 	var back := MHStyle.button("Back", "ghost", "chevron-left")
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	back.pressed.connect(func() -> void: show_screen("site" if MHGame.game_mode == "missions" else "title"))
+	back.pressed.connect(func() -> void: show_screen("title"))
 	bar.add_child(back)
-	var missions := MHGame.game_mode == "missions"
-	_land_button = MHStyle.button("Choose where to land" if missions else "Next: rules", "primary", "map-pin" if missions else "chevron-right")
+	_land_button = MHStyle.button("Next: rules", "primary", "chevron-right")
 	_land_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_land_button.pressed.connect(show_screen.bind("landing" if missions else "rules"))
+	_land_button.pressed.connect(show_screen.bind("rules"))
 	bar.add_child(_land_button)
 	_refresh_plaque()
 	_name_field.grab_focus.call_deferred()
@@ -997,12 +955,12 @@ func _colony_screen() -> void:
 
 ## A new game whose rules land precursor crates (chapter one).
 func _crates_mode() -> bool:
-	return MHGame.game_mode != "missions" and str(MHGame.rule("cargo")) == "crates"
+	return str(MHGame.rule("cargo")) == "crates"
 
 ## Where Back goes from the Land step.
 func _landing_back() -> String:
 	if _quick_start: return "title"
-	return "colony" if MHGame.game_mode == "missions" else "rules"
+	return "rules"
 
 # 1b+ --------------------------------------------------------------
 ## Rules step (docs/game-modes.md): four mode cards, the crew, the challenge,
@@ -1190,7 +1148,7 @@ func _refresh_plaque() -> void:
 ## shows where the lander might touch down (Survival); Freedom and Creative
 ## land exactly on target.
 func _landing_screen() -> void:
-	if MHSiteTerrain.shape() == "region" and not MHMissions.active():
+	if MHSiteTerrain.shape() == "region":
 		_region_landing_screen()
 		return
 	_scrim("right", .62, .95, .4)
@@ -1201,9 +1159,6 @@ func _landing_screen() -> void:
 	picker.custom_minimum_size = Vector2(760, 600)
 	picker.size = Vector2(760, 600)
 	screen.add_child(picker)
-	if MHMissions.active():
-		_mission_one_panel(picker)
-		return
 	var panel := MHStyle.hud_panel(24, false, true)
 	panel.position = Vector2(930, 230)
 	panel.custom_minimum_size = Vector2(520, 0)
@@ -1380,67 +1335,6 @@ func _tutorial_choice() -> Control:
 	box.add_child(choice)
 	box.add_child(note)
 	return box
-
-## Missions: the Land step is Mission 1, Landing Zones. Left-click sets the
-## landing target, right-click the base site; both checks update live.
-func _mission_one_panel(picker: Control) -> void:
-	var mission := MHMissions.get_mission("landing_zones")
-	picker.base_mode = true
-	var panel := MHStyle.hud_panel(24, false, true)
-	panel.position = Vector2(930, 230)
-	panel.custom_minimum_size = Vector2(520, 0)
-	var col := MHStyle.vbox(12)
-	col.add_child(MHStyle.eyebrow("Mission 1 · %s" % str(mission.nasa_step), MHStyle.accent))
-	col.add_child(MHStyle.title(str(mission.title), 28))
-	var situation := MHStyle.body(str(mission.situation), 16)
-	situation.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(situation)
-	col.add_child(MHStyle.mono("LEFT-CLICK  landing target    RIGHT-CLICK  base site", 12, MHStyle.TEXT_MUTED))
-	var rows := MHStyle.vbox(8)
-	col.add_child(rows)
-	col.add_child(_tutorial_choice())
-	panel.add_child(col)
-	screen.add_child(panel)
-	var bar := _bottom_bar()
-	bar.alignment = BoxContainer.ALIGNMENT_END
-	var back := MHStyle.button("Back", "ghost", "chevron-left")
-	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	back.pressed.connect(show_screen.bind("colony"))
-	bar.add_child(back)
-	var confirm := MHStyle.button("Confirm landing zone", "primary", "rocket")
-	confirm.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	confirm.pressed.connect(func() -> void:
-		MHMissions.progress.landing_target = picker.target
-		MHMissions.progress.base_site = picker.base_site
-		MHMissions.complete("landing_zones")
-		MHGame.landing_target = Vector2.INF
-		MHGame.base_site = {}
-		show_screen("loading"))
-	bar.add_child(confirm)
-	var refresh := func(_target: Vector2, _verdict: Dictionary) -> void:
-		for child in rows.get_children(): child.queue_free()
-		var result: Dictionary = MHMissions.check_landing(picker.target, picker.base_site)
-		for line in [[bool(result.landing_safe), str(mission.requirements[0].text), str(result.landing_text)], [bool(result.landing_clear), str(mission.requirements[1].text), str(result.clear_text)]]:
-			var row := MHStyle.hbox(10)
-			row.add_child(MHStyle.icon("circle-check" if line[0] else "circle-x", 20, MHStyle.VALID if line[0] else MHStyle.DANGER))
-			var words := MHStyle.vbox(2)
-			var head := MHStyle.body(line[1], 15, MHStyle.TEXT_PRIMARY)
-			head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			head.custom_minimum_size.x = 420
-			words.add_child(head)
-			var detail := MHStyle.body(line[2], 13)
-			detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			detail.custom_minimum_size.x = 420
-			words.add_child(detail)
-			row.add_child(words)
-			rows.add_child(row)
-		var stretch := MHStyle.body(("★ Stretch goal met: " if bool(result.close) else "☆ Stretch goal: ") + str(mission.stretch[0].text), 13, MHStyle.accent if bool(result.close) else MHStyle.TEXT_MUTED)
-		stretch.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		stretch.custom_minimum_size.x = 440
-		rows.add_child(stretch)
-		confirm.disabled = not bool(result.passed)
-	picker.target_changed.connect(refresh)
-	refresh.call(picker.target, picker.verdict)
 
 # 1d ---------------------------------------------------------------
 func _loading_screen() -> void:

@@ -4,7 +4,6 @@ extends ColorRect
 ## they need, and how safe the base is from radiation, breaches and
 ## breakdowns. Names can be changed here; in Missions, naming the crew ticks
 ## Mission 8's first step. Reads the live simulation (habitat_life.gd).
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
 
 var builder: Node
@@ -26,8 +25,7 @@ func open(target_builder: Node) -> void:
 	var sim: RefCounted = builder.simulation()
 	var life: RefCounted = sim.life
 	var inv: Dictionary = sim.inventory()
-	var crew_n: int = maxi(sim.crew_count(), int(MHMissions.current().get("crew", 0)) if MHMissions.active() else 0)
-	life.ensure_crew(crew_n, MHMissions.progress.get("crew_names", []) if MHMissions.active() else [])
+	life.ensure_crew(sim.crew_count(), [])
 	# Header
 	var head := MHStyle.hbox(10)
 	head.add_child(MHStyle.icon("users", 26, MHStyle.accent))
@@ -150,7 +148,7 @@ func _safety_panel(life: RefCounted, inv: Dictionary) -> Control:
 	var safe := float(life.value("radiation", "safe_points", 20.0))
 	if place.is_empty(): _line(col, "radiation", "Storm shelter: none yet (place a Storm Shelter Locker)", false)
 	else: _line(col, "radiation", "Storm shelter: %s, %d of %d shield points, room for %d" % [str(place.label), roundi(float(place.rating)), roundi(safe), int(place.capacity)], bool(place.ok))
-	var share: float = MHMissions.largest_section(builder)
+	var share: float = _largest_section(builder)
 	_line(col, "gauge", "Biggest section: %d%% of the base (rooms sharing air)" % roundi(share * 100.0), share <= .4)
 	_line(col, "wind", "Air reserve: %d kg (refills about %d floor squares)" % [roundi(float(life.air_reserve_kg)), floori(float(life.air_reserve_kg) / float(life.value("breach", "air_kg_per_cell", 31.0)))], float(life.air_reserve_kg) > 0.0)
 	_line(col, "wrench", "Hull patch kit: %s" % ("ready" if (inv.all_items as Array).any(func(i): return str(i.id) == "hull_patch_kit") else "none"), (inv.all_items as Array).any(func(i): return str(i.id) == "hull_patch_kit"))
@@ -172,8 +170,20 @@ func _save_names() -> void:
 	var names: Array = _fields.map(func(f): return (f as LineEdit).text.strip_edges())
 	var life: RefCounted = builder.simulation().life
 	life.set_names(names)
-	if MHMissions.active(): MHMissions.set_crew_names((life.crew as Array).map(func(p): return str(p.name)))
-	get_tree().call_group("habitat_world", "save_mission_progress")
+
+## The share of the base's floor in its biggest section (rooms sharing air).
+static func _largest_section(builder: Node) -> float:
+	var sim: RefCounted = builder.simulation()
+	var inv: Dictionary = sim.inventory()
+	var total := 0.0
+	var by_section := {}
+	var map: Dictionary = sim.life.sections(inv)
+	for index in range((inv.rooms as Array).size()):
+		var cells := float(inv.rooms[index].cells)
+		total += cells
+		by_section[map[index]] = float(by_section.get(map[index], 0.0)) + cells
+	if total <= 0.0: return 1.0
+	return float(by_section.values().max()) / total
 
 func _close() -> void:
 	if not _fields.is_empty(): _save_names()

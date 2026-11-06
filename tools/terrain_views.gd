@@ -62,7 +62,6 @@ func _initialize() -> void:
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	world.set_tutorial_mode("off")
 	world.day_night.set_hour(15.5); world.day_night.frozen = true
 	var zone := MHSiteTerrain.region_zone()

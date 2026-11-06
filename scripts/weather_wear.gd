@@ -23,7 +23,6 @@ extends RefCounted
 ## Only in Survival and Freedom, and in Missions from Mission 5 (when storms
 ## arrive). Creative and the mission Tests stay clean.
 
-const MHMissions := preload("res://scripts/mh_missions.gd")
 
 ## Dust gathered per sol in calm weather, and in a storm.
 const DUST_PER_SOL := {"plains": .02, "crater": .016, "ridge": .025, "ice": .008}
@@ -43,7 +42,6 @@ const FROST_PEAK := {"ice": 1.0, "ridge": .45, "crater": .25, "plains": .12}
 static func enabled() -> bool:
 	match MHGame.game_mode:
 		"survival", "freedom": return true
-		"missions": return int(MHMissions.current().get("number", 0)) >= 5 if MHMissions.active() else false
 	return false
 
 ## Frost cover (0-1) at this hour: builds from late evening, peaks before

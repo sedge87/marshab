@@ -9,7 +9,6 @@ extends SceneTree
 ## (trim them in the edit).
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const PICKER := preload("res://scripts/landing_picker.gd")
 const WARMUP := 45
 const FPS := 30.0
@@ -407,27 +406,3 @@ func rover() -> void:
 			for w in rv._wheels: w.rotate_object_local(Vector3.RIGHT, -0.12)
 		p.rotation.y = atan2(-dir.x, -dir.z)
 		await process_frame
-
-func missions() -> void:
-	MHGame.save_directory = "user://trailer_saves"
-	MHGame.site_id = "plains"; MHGame.game_mode = "missions"; MHGame.pending_save_state = {}
-	MHMissions.reset()
-	var target: Vector2 = PICKER.suggested()
-	var base := Vector2.INF
-	for x in range(-45, 46, 3):
-		for zz in range(-45, 46, 3):
-			var candidate := Vector2(x, zz)
-			if is_inf(base.x) and bool(MHMissions.check_landing(target, candidate).passed) and candidate.distance_to(target) < 35.0: base = candidate
-	MHMissions.progress.landing_target = target
-	MHMissions.progress.base_site = base
-	MHMissions.complete("landing_zones")
-	world = load("res://scenes/mars_world.tscn").instantiate(); root.add_child(world)
-	await process_frame
-	world.day_night.set_hour(9.5); world.day_night.frozen = true
-	await _warm()
-	await _frames(10.0)          # the touchdown cinematic and its captions
-	await _frames(2.5)           # the short brief card
-	world.mission_hud._close_overlay()
-	await _frames(1.8)           # the step tracker, top right
-	world.mission_hud._run_test()
-	await _frames(3.5)           # the Test report

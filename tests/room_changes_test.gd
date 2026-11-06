@@ -1,6 +1,5 @@
 extends SceneTree
 
-const MHMissions := preload("res://scripts/mh_missions.gd")
 
 # Room changes (docs/room-changes.md, 31 Oct): the General Module (basic kit
 # only, two bunks, noisy, slower work, half space), the renamed rooms and
@@ -58,8 +57,8 @@ func _initialize() -> void:
 	# ---- names and kit ----
 	_check(str(BuildController.ZONE_TYPES.living.label) == "Sleeping Quarters" and str(BuildController.ZONE_TYPES.galley.label) == "Day Room", "Living Quarters is Sleeping Quarters, the Galley the Day Room")
 	_check(str(BuildController.ZONE_TYPES.engineering.label) == "Power & Engineering" and str(BuildController.ZONE_TYPES.storage.label) == "Storage & Recycling", "Power & Engineering, and Storage & Recycling")
-	_check(not MHMissions.zone_unlocked("waste_management"), "Waste Management is off the build menu")
-	_check(MHMissions.zone_unlocked("general"), "the General Module is on it in free play")
+	_check(not BuildController.zone_offered("waste_management"), "Waste Management is off the build menu")
+	_check(BuildController.zone_offered("general"), "the General Module is on it")
 	for id in ["crew_bunk", "galley_kitchenette", "hygiene_toilet", "air_recycler", "oxygen_generator", "tool_bench", "communications_station", "grow_tray", "battery_bank"]:
 		_check(_fits(id, "general"), "the General Module takes %s" % id)
 	for id in ["microscope_station", "medical_exam_cot", "hygiene_shower", "galley_oven", "regolith_printer", "rover_charger", "greenhouse_planter"]:

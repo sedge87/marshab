@@ -7,7 +7,6 @@ extends SceneTree
 # is printable), save, come off again, unlock in Missions 7 and 8, and old
 # shield blocks in a save turn into upgrades.
 const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
-const MHMissions := preload("res://scripts/mh_missions.gd")
 
 func _initialize() -> void:
 	MHGame.site_id = "plains"
@@ -66,17 +65,6 @@ func _initialize() -> void:
 	builder.zones = builder.zones.filter(func(z): return str(z.kind) != "engineering")
 	builder._rebuild()
 	assert(builder.wall_upgrades.filter(func(r): return str(r.kind) == "acoustic").is_empty(), "Insulation goes when the wall stops being shared.")
-	# Missions: shielding arrives in Mission 7, insulation in Mission 8.
-	MHGame.game_mode = "missions"
-	MHMissions.reset()
-	MHMissions.progress.current = "self_sufficiency"
-	assert(not MHMissions.structure_unlocked("upgrade_regolith"), "No shielding before Mission 7.")
-	MHMissions.progress.current = "solar_shelter"
-	assert(MHMissions.structure_unlocked("upgrade_regolith") and MHMissions.structure_unlocked("upgrade_roof") and not MHMissions.structure_unlocked("upgrade_acoustic"), "Mission 7 brings shielding, not insulation.")
-	MHMissions.progress.current = "crew_people"
-	assert(MHMissions.structure_unlocked("upgrade_acoustic"), "Mission 8 brings insulation.")
-	assert(MHMissions.structure_unlocked("window"), "Tools no mission names are always there.")
-	MHGame.game_mode = "survival"
 	# An older save with shield blocks standing in the room.
 	builder.wall_upgrades.clear()
 	var old := builder.export_habitat_state()

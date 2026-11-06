@@ -69,16 +69,12 @@ func _initialize() -> void:
 	_check(MHGame.normalise_mode("sandbox") == "creative" and MHGame.normalise_mode("mission") == "survival", "old sandbox and mission saves load as creative and survival")
 	MHGame.game_mode = "survival"
 
-	# Missions and free play keep separate save slots: the same slot number in
-	# each set holds a different habitat, and neither overwrites the other.
+	# Every mode shares one set of save slots.
 	MHGame.game_mode = "survival"
 	MHGame.save_habitat(2, {"colony_name": "Free play base", "game_mode": "survival"})
-	MHGame.game_mode = "missions"
-	MHGame.save_habitat(2, {"colony_name": "Mission base", "game_mode": "missions"})
-	_check(str(MHGame.save_slot_summary(2).get("colony_name", "")) == "Mission base", "missions mode reads the mission save in slot 2")
 	MHGame.game_mode = "creative"
-	_check(str(MHGame.save_slot_summary(2).get("colony_name", "")) == "Free play base", "free-play modes read their own save in slot 2")
-	_check(str(MHGame.save_slot_summary(2, "missions").get("colony_name", "")) == "Mission base", "the main menu can list mission saves from any mode")
+	_check(str(MHGame.save_slot_summary(2).get("colony_name", "")) == "Free play base", "every mode reads the same save in slot 2")
+	_check(MHGame.normalise_mode("missions") == "survival", "an old Missions save opens as Survival")
 	# A save from before the split moves into Free play, without overwriting.
 	var old_file := FileAccess.open("%s/slot_1.save" % MHGame.save_directory, FileAccess.WRITE)
 	old_file.store_var({"version": 1, "saved_at": "old", "state": {"colony_name": "Old base", "game_mode": "mission"}})

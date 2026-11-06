@@ -162,7 +162,7 @@ static func entries() -> Array:
 	out.sort_custom(func(a, b): return float(a.get("saved_unix", a.modified)) > float(b.get("saved_unix", b.modified)))
 	return out
 
-## The newest save (of one mode group, "missions" or "free_play", if given).
+## The newest save (of one mode group, if given).
 static func latest(group := "") -> Dictionary:
 	for header in entries():
 		if group.is_empty() or MHGame.save_set_for_mode(str(header.game_mode)) == group: return header
@@ -195,8 +195,7 @@ static func thumbnail(header: Dictionary) -> Texture2D:
 ## "Missions · Mission 7 of 10", "Creative"…
 static func mode_label(header: Dictionary) -> String:
 	var mode := MHGame.normalise_mode(str(header.get("game_mode", "survival")))
-	var label := str(MHGame.GAME_MODES.get(mode, "Missions"))
-	if mode == "missions" and not str(header.get("mission", "")).is_empty(): label += " · " + str(header.mission)
+	var label := str(MHGame.GAME_MODES.get(mode, "Survival"))
 	if header.get("challenge", null) is Dictionary:
 		var options := MHGame.challenge_summary(header.challenge as Dictionary, mode)
 		if not options.is_empty(): label += " · " + options

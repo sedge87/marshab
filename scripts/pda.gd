@@ -142,7 +142,7 @@ func open(app := "") -> void:
 	_hidden.clear()
 	var tutorial: Node = world.get("tutorial")
 	var alerts: Node = world.get("alerts")
-	for layer in [world.get("explore_hud"), tutorial, tutorial.get("guide") if tutorial != null else null, world.get("mission_hud"), alerts.get("_icons") if alerts != null else null]:
+	for layer in [world.get("explore_hud"), tutorial, tutorial.get("guide") if tutorial != null else null, alerts.get("_icons") if alerts != null else null]:
 		if (layer is CanvasLayer or layer is CanvasItem) and is_instance_valid(layer):
 			_hidden.append([layer, bool(layer.visible)])
 			layer.visible = false

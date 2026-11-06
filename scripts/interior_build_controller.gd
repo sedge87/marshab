@@ -7,7 +7,6 @@ const MHPlacementGhost := preload("res://scripts/placement_ghost.gd")
 ## and yaw rather than a single exterior-grid cell.
 
 const BUILD_RANGE := 4.8
-const MHMissions := preload("res://scripts/mh_missions.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const ModelThumbnails := preload("res://scripts/model_thumbnails.gd")
 const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
@@ -296,7 +295,7 @@ func _refresh_preview(force_rebuild: bool) -> void:
 		var upgrade := _selected_structure.trim_prefix("upgrade_")
 		var target: Dictionary = builder.upgrade_target_at(upgrade, point, normal)
 		_upgrade_target = target
-		_valid_reason = builder.upgrade_invalid_reason(upgrade, target) if MHMissions.structure_unlocked(_selected_structure) else "Not delivered yet: this arrives in a later mission"
+		_valid_reason = builder.upgrade_invalid_reason(upgrade, target)
 		var key := str(target.get("mid", target.get("cells", ""))) + str(snappedf(point.y, .5))
 		if force_rebuild or preview == null or key != _upgrade_key:
 			_upgrade_key = key
@@ -930,7 +929,7 @@ func _refresh_contextual_selector(force := false) -> void:
 	_catalog_items.clear()
 	for raw_id in _catalogue_ids():
 		var id := str(raw_id)
-		if not EquipmentCatalog.get_entry(id).is_empty() and builder.interior_asset_available(id) and MHMissions.item_unlocked(id):
+		if not EquipmentCatalog.get_entry(id).is_empty() and builder.interior_asset_available(id):
 			_catalog_items.append(id)
 	# This room: its own kit first, then shared things in tab order.
 	_selector_items.clear()
@@ -1051,11 +1050,10 @@ func _render_selector_cards() -> void:
 func _visible_ids() -> Array:
 	if _selector_group == STRUCTURE_TAB:
 		return STRUCTURE_TOOLS.map(func(tool): return str(tool.id))
-	# Missions: what this mission needs first, then what it just delivered.
 	if _selector_group == HERE_TAB:
-		return MHMissions.badge_order(_selector_items)
+		return _selector_items
 	if _selector_group == UNPACKED_TAB: return _unpacked_ids()
-	return MHMissions.badge_order(_catalog_items.filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == _selector_group))
+	return _catalog_items.filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == _selector_group)
 
 ## Interior items on the Unpacked tab (crate copies, or made at the fabricator), in catalogue order.
 func _unpacked_ids() -> Array:
@@ -1145,7 +1143,6 @@ func _card(id: String, index: int) -> Button:
 		card.modulate = Color(1, 1, 1, .55)
 	column.add_child(sub)
 	card.add_child(column)
-	if structure.is_empty(): BuildController.add_mission_badge(card, MHMissions.item_badge(id), selected)
 	card.pressed.connect(_pick_card.bind(id))
 	return card
 

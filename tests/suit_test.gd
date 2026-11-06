@@ -24,7 +24,6 @@ func _world(mode: String, state: Dictionary) -> Node:
 	var world: Node = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	world.set_tutorial_mode("off")
 	var b = world.builder
 	if b.zones.is_empty():

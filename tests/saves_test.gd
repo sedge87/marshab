@@ -4,7 +4,7 @@ extends SceneTree
 # Named saves (scripts/saves.gd): the first save makes a base's file, later
 # saves update it (backing up the old one, five kept), Save a copy makes a
 # separate base, cards show who built it and the details, Continue finds the
-# newest, Missions continue from their own save, duplicate, rename, delete,
+# newest, duplicate, rename, delete,
 # dropped files from another computer join without clashes, the old slots
 # and library move across once, and the Showcase playlist steps through.
 # Uses test folders, never the real Documents/Outpost One/Saves.
@@ -24,7 +24,6 @@ func _initialize() -> void:
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
-	if world._arrival_t >= 0.0: world._finish_arrival()
 	var b = world.builder
 	b.zones = [{"kind": "living", "cells": [Vector2i(0, 0), Vector2i(1, 0)], "door_direction": Vector2i(0, -1), "cost": 0},
 		{"kind": "galley", "cells": [Vector2i(2, 0)], "door_direction": Vector2i(0, -1), "cost": 0},
@@ -53,14 +52,8 @@ func _initialize() -> void:
 	var copy: String = SAVES.save_copy("Ridge Outpost, sol 20", world.current_state(), picture, world.save_details())
 	assert(not copy.is_empty() and SAVES.current_path == path and SAVES.entries().size() == 2, "A copy is its own save; still playing the original.")
 	assert(str(SAVES.read_header(copy).id) != str(header.id), "With its own tag.")
-	# Continue: the newest; Missions continue from their own save.
+	# Continue: the newest.
 	assert(str(SAVES.latest().path) == copy, "Continue opens the newest save.")
-	var missions_state: Dictionary = world.current_state().duplicate(true)
-	missions_state["game_mode"] = "missions"
-	SAVES.current_path = ""
-	var campaign: String = SAVES.save_current(missions_state, null, {"mission": "Mission 7 of 10"})
-	assert(str(SAVES.latest("missions").path) == campaign and SAVES.mode_label(SAVES.read_header(campaign)) == "Missions · Mission 7 of 10", "Continue missions finds the campaign, and the card says how far.")
-	assert(SAVES.prepare_load(campaign) and MHGame.game_mode == "missions" and SAVES.current_path == campaign, "Playing it continues the campaign, saving to its own file.")
 	assert(SAVES.prepare_load(copy, true) and MHGame.showcase and SAVES.current_path.is_empty(), "Tour never saves.")
 	MHGame.showcase = false
 	# Duplicate, rename, delete.
@@ -68,14 +61,14 @@ func _initialize() -> void:
 	assert(str(SAVES.read_header(twin).name) == "Ridge Outpost, sol 20 copy", "Duplicated.")
 	var renamed: String = SAVES.rename(twin, "Showcase: Ridge")
 	assert(str(SAVES.read_header(renamed).name) == "Showcase Ridge" and not FileAccess.file_exists(twin), "Renamed, file and all.")
-	assert(SAVES.remove(renamed) and SAVES.entries().size() == 3, "Deleted.")
+	assert(SAVES.remove(renamed) and SAVES.entries().size() == 2, "Deleted.")
 	# Files from another computer: same name, different base, no clash.
 	var other := ProjectSettings.globalize_path("user://test_saves_other")
 	_wipe(other)
 	DirAccess.make_dir_recursive_absolute(other)
 	DirAccess.copy_absolute(path, other.path_join(path.get_file()))
 	var added: int = SAVES.import_files(PackedStringArray([other.path_join(path.get_file()), other.path_join("missing.save")]))
-	assert(added == 1 and SAVES.entries().size() == 4, "A dropped save joins without replacing ours (%d)." % SAVES.entries().size())
+	assert(added == 1 and SAVES.entries().size() == 3, "A dropped save joins without replacing ours (%d)." % SAVES.entries().size())
 	# The old numbered slots and habitat library move across once.
 	SAVES.directory_override = ""
 	MHGame.save_habitat(3, world.current_state(), "free_play")
@@ -94,7 +87,7 @@ func _initialize() -> void:
 	MHGame.showcase = false
 	SAVES.playlist = []
 	MHGame.set_maker("")
-	print("Saves test passed: one file per base, saving in place with five backups, Save a copy, who built it and the card details, Continue and Continue missions, Tour never saving, duplicate, rename, delete, files from another computer, old slots moving across, and the Showcase playlist.")
+	print("Saves test passed: one file per base, saving in place with five backups, Save a copy, who built it and the card details, Continue, Tour never saving, duplicate, rename, delete, files from another computer, old slots moving across, and the Showcase playlist.")
 	quit(0)
 
 func _wipe(dir: String) -> void:

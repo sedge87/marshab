@@ -12,7 +12,7 @@ const SETTINGS_PATH := "user://settings.cfg"
 const SAVE_DIRECTORY := "user://habitats"
 # Tests point this at their own folder so they never overwrite real saves.
 static var save_directory := SAVE_DIRECTORY
-const SAVE_SLOT_COUNT := 6   # per save set (Free play, Missions)
+const SAVE_SLOT_COUNT := 6
 const EMBLEMS := ["rocket", "orbit", "satellite", "mountain-snow", "sun", "atom"]
 
 # Lighting presets from the reference scene (mars-scene.js PAL). sun is the
@@ -89,8 +89,7 @@ static var pending_save_state: Dictionary = {}
 
 # ---------- game mode ----------
 # Like Subnautica's (docs/game-modes.md): each mode is a preset of the same
-# rules, and Custom lets you change them. "missions" is separate (to be
-# removed later) and keeps its own rules.
+# rules, and Custom lets you change them.
 const MHResources := preload("res://scripts/mh_resources.gd")
 const GAME_MODES := {"survival": "Survival", "freedom": "Freedom", "creative": "Creative", "custom": "Custom"}
 const GAME_MODE_NOTES := {
@@ -125,8 +124,8 @@ static var game_mode := "survival"
 static var rules: Dictionary = (MODE_RULES.survival as Dictionary).duplicate()
 static var rules_for := "survival"
 
-## A rule's value for this game. A mode set without its rules (Missions, or
-## a test) plays by its preset; Missions by Survival's.
+## A rule's value for this game. A mode set without its rules (a test) plays
+## by its preset.
 static func rule(key: String):
 	if game_mode == "custom" or game_mode == rules_for: return rules.get(key, (MODE_RULES.survival as Dictionary).get(key))
 	return preset(game_mode).get(key)
@@ -170,7 +169,7 @@ static func rules_from_state(state: Dictionary) -> Dictionary:
 
 ## Whether anyone needs food and water (not in Freedom).
 static func needs_food_water() -> bool:
-	return game_mode == "missions" or (simulation_on() and bool(rule("food_water")))
+	return simulation_on() and bool(rule("food_water"))
 
 ## Food each person eats a sol (0 when nobody needs food).
 static func food_per_person() -> float:
@@ -216,10 +215,8 @@ static var challenge_debugged := false
 static func default_challenge() -> Dictionary:
 	return {"fatigue": false, "radiation": false, "injuries": false, "surprises": "rare", "wear": 1.0}
 
-## Whether a body option is on: only where shortages hurt (Missions set
-## their own hazards).
+## Whether a body option is on: only where shortages hurt.
 static func challenge_on(option: String) -> bool:
-	if game_mode == "missions": return true
 	return crew_can_be_harmed() and bool(challenge.get(option, false))
 
 ## How often random hazards come, against today's rates (0 = none).
@@ -230,7 +227,7 @@ static func surprise_scale() -> float:
 ## Which options this game offers: all where the simulation runs, the body
 ## ones only where shortages hurt.
 static func challenge_options() -> Array:
-	if game_mode == "missions" or not simulation_on(): return []
+	if not simulation_on(): return []
 	return ["surprises", "wear"] + (CHALLENGE_SWITCHES if bool(rule("harm")) else [])
 
 ## During a game: turns an option on, or raises the surprise level. Refuses
@@ -320,30 +317,29 @@ static var debug_free_power := false
 static var debug_suit_never_runs_out := false
 
 static func cargo_unlimited() -> bool:
-	return (game_mode != "missions" and str(rule("cargo")) == "unlimited") or debug_unlimited_cargo
+	return str(rule("cargo")) == "unlimited" or debug_unlimited_cargo
 
 ## Whether the habitat simulation runs (not in Creative).
 static func simulation_on() -> bool:
-	return game_mode == "missions" or bool(rule("simulation"))
+	return bool(rule("simulation"))
 
 ## Whether shortages can harm the crew.
 static func crew_can_be_harmed() -> bool:
-	return game_mode == "missions" or (simulation_on() and bool(rule("harm")))
+	return simulation_on() and bool(rule("harm"))
 
 ## Whether your suit's air runs down outside (not in Creative).
 static func suit_o2_on() -> bool:
-	return game_mode != "missions" and bool(rule("suit_o2"))
+	return bool(rule("suit_o2"))
 
 ## Old save names: "mission" was the cargo challenge, "sandbox" free building.
+## Missions mode is gone, so its saves fall back to Survival.
 static func normalise_mode(mode: String) -> String:
-	if mode == "mission": return "survival"
 	if mode == "sandbox": return "creative"
-	return mode if GAME_MODES.has(mode) or mode == "missions" else "survival"
+	return mode if GAME_MODES.has(mode) else "survival"
 
 ## The landed cargo this site allows: the balance budget plus the site's
 ## landing bonus (low sites have thicker air for parachutes).
 static func mission_cargo_budget() -> int:
-	if game_mode == "missions": return preload("res://scripts/mh_missions.gd").cargo_budget()
 	# Chapter one: no tonnes from Earth, only the hull kit the crates brought.
 	if MHChapterOne.on(): return MHChapterOne.shell_kg
 	var start := MHResources.setting("freedom_cargo_budget_kg", 140000.0) if game_mode == "freedom" else MHResources.setting("cargo_budget_kg", 100000.0)
@@ -558,13 +554,12 @@ static func formatted_sol_time() -> String:
 	return "%02d:%02d" % [whole_hour, minutes]
 
 # ---------- habitat saves ----------
-# Two separate sets of save slots: Missions keeps a player's mission progress,
-# and Free play is shared by Survival, Freedom and Creative, so playing or
-# testing in another mode never touches mission saves.
-const SAVE_SETS := {"free_play": "Free play", "missions": "Missions"}
+# One set of save slots, shared by every mode (Missions had its own until it
+# was removed).
+const SAVE_SETS := {"free_play": "Free play"}
 
-static func save_set_for_mode(mode: String) -> String:
-	return "missions" if mode == "missions" else "free_play"
+static func save_set_for_mode(_mode: String) -> String:
+	return "free_play"
 
 ## The save set in use: the one for the current game mode unless named.
 static func _save_set(save_set := "") -> String:
@@ -621,7 +616,7 @@ static func save_slot_summary(slot: int, save_set := "") -> Dictionary:
 		return {"slot": slot, "exists": false}
 	var state: Dictionary = payload.get("state", {})
 	return {"slot": slot, "exists": true, "saved_at": str(payload.get("saved_at", "")), "colony_name": str(state.get("colony_name", "Habitat")), "site_name": str(state.get("site_name", "Mars")),
-		"mode": str(GAME_MODES.get(normalise_mode(str(state.get("game_mode", "survival"))), "Missions"))}
+		"mode": str(GAME_MODES.get(normalise_mode(str(state.get("game_mode", "survival"))), "Survival"))}
 
 static func prepare_habitat_load(slot: int, save_set := "") -> bool:
 	var payload := load_habitat(slot, save_set)
@@ -821,8 +816,6 @@ static func defaults() -> Dictionary:
 	d["last_challenge"] = {}
 	## Who's playing: shown on their saves and in Tour ("Designed by").
 	d["commander"] = ""
-	## Missions offer only each mission's kit unless this is on.
-	d["mission_full_catalogue"] = false
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
 	d["mc_chatter"] = "normal"   # Mission Control small talk: log, quiet, normal, chatty (scripts/mission_control_link.gd)
 	d["rover_radio"] = true      # the rover radio starts on (O while driving)

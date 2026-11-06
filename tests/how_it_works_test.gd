@@ -5,7 +5,6 @@ extends SceneTree
 # test checks and in Mission Control's Field guide.
 # Run with: godot --headless --path . --script res://tests/how_it_works_test.gd
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
-const MHMissions := preload("res://scripts/mh_missions.gd")
 var failures := 0
 
 func _check(ok: bool, what: String) -> void:
@@ -19,7 +18,6 @@ func _initialize() -> void:
 	var saved_seen := FileAccess.get_file_as_string(HOW_IT_WORKS.SEEN_PATH)
 	var cards: Array = HOW_IT_WORKS.cards()
 	_check(cards.size() >= 11, "the cards load (%d)" % cards.size())
-	var mission_ids: Array = MHMissions.missions().map(func(m): return str(m.id))
 	for c in cards:
 		var lines: Array = c.get("lines", [])
 		_check(lines.size() >= 3 and lines.size() <= 4, "%s has 3 or 4 lines" % c.id)
@@ -28,13 +26,6 @@ func _initialize() -> void:
 		_check(not str(c.get("remember", "")).is_empty(), "%s has a Remember line" % c.id)
 		var check: Dictionary = c.get("check", {})
 		_check((check.get("options", []) as Array).size() == 3 and int(check.get("answer", -1)) == 0, "%s has a 3-option check, answer first" % c.id)
-		for m in c.get("missions", []):
-			_check(mission_ids.has(m), "%s names a real mission (%s)" % [c.id, m])
-
-	# Every mission explains its systems.
-	for m in mission_ids:
-		_check(not HOW_IT_WORKS.for_mission(m).is_empty(), "mission %s has How it works cards" % m)
-	_check(HOW_IT_WORKS.for_mission("cargo_habitat").has("heating"), "Mission 3 explains heating")
 
 	# Placing a key machine finds its card.
 	_check(HOW_IT_WORKS.for_trigger("thermal_control_unit") == "heating", "a thermal control unit -> heating")
@@ -42,21 +33,12 @@ func _initialize() -> void:
 	_check(HOW_IT_WORKS.for_trigger("chair") == "", "a chair has no card")
 	_check(HOW_IT_WORKS.for_trigger("sabatier_reactor") == "chain_air" and HOW_IT_WORKS.sections().any(func(s): return str(s[0]) == "Chains" and (s[1] as Array).size() == 4), "the Field guide has a card per chain")
 
-	# Steps find their card.
-	_check(HOW_IT_WORKS.for_step({"item": "solar"}) == "power", "a solar step -> power")
-	_check(HOW_IT_WORKS.for_step({"check": "tested"}) == "testing", "a test step -> testing")
-	_check(HOW_IT_WORKS.for_step({"check": "counter", "key": "gar_y_surveys"}) == "gar_y", "a survey step -> GAR-Y")
-	for mission in MHMissions.missions():
-		for step in mission.get("steps", []):
-			var id := HOW_IT_WORKS.for_step(step)
-			_check(id.is_empty() or not HOW_IT_WORKS.card(id).is_empty(), "step %s maps to a real card (%s)" % [step.get("id", "?"), id])
-
 	# Failed checks have a card.
 	for key in HOW_IT_WORKS.CHECK_CARDS:
 		_check(not HOW_IT_WORKS.card(str(HOW_IT_WORKS.CHECK_CARDS[key])).is_empty(), "check %s explains with a real card" % key)
 
-	# Free play unlocks every card.
-	_check(HOW_IT_WORKS.unlocked().size() == cards.size(), "free play: every card in the Field guide")
+	# Every card is unlocked.
+	_check(HOW_IT_WORKS.unlocked().size() == cards.size(), "every card in the Field guide")
 
 	# Seen once.
 	HOW_IT_WORKS.mark_seen(["storms"])
