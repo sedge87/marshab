@@ -124,9 +124,9 @@ func hand_over() -> void:
 	if received: return
 	received = true
 	_handing = true
-	MHNotices.post("info", "ARDEN: your slate", "It has your goals, the map, the base, comms and a log of everything you're told. Tab raises and lowers it.", "goals")
+	MHNotices.post("info", "ARDEN: your slate", "It has your notes, the map, the base, comms and a log of everything you're told. Tab raises and lowers it.", "log")
 	MHAudio.sfx("suit_beep", -8.0)
-	open("goals")
+	open("notes" if world == null or world.get("tutorial") == null else "goals")
 
 ## Raise it, on an app if one is named (otherwise the last one used).
 func open(app := "") -> void:

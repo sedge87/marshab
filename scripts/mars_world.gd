@@ -12,6 +12,7 @@ const SUIT := preload("res://scripts/suit.gd")
 const CABIN_LIFE := preload("res://scripts/lander_cabin_life.gd")
 const BODY := preload("res://scripts/body.gd")
 const KNOWN := preload("res://scripts/known_things.gd")
+const NOTES := preload("res://scripts/notes.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
 const SHOWCASE_SCRIPT := preload("res://scripts/showcase.gd")
@@ -70,6 +71,8 @@ var body: Node         # scripts/body.gd: the place you're in acts on you
 var _body_state := {}
 var known: Node        # scripts/known_things.gd: what you, GAR-Y and Earth know; the Map's fog and pins
 var _known_state := {}
+var notes: Node        # scripts/notes.gd: your inner voice, the slate's Notes app
+var _notes_state := {}
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
@@ -186,6 +189,9 @@ func _ready() -> void:
 		if not _known_state.is_empty(): known.load_state(_known_state)
 		elif not _start_in_lander: known.from_trail(region_map.trail)   # a save from before the record
 		if _start_in_lander and MHGame.game_mode == "creative": known.reveal_all()
+	notes = NOTES.new()
+	add_child(notes)
+	notes.setup(self, _notes_state, _start_in_lander)
 	gar_y_orders = GAR_Y_ORDERS.new()
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)
@@ -626,8 +632,9 @@ func _tick_chapter_one() -> void:
 ## Chapter-one news: the notice line, and the slate's Goals app.
 func show_chapter_messages(messages: Array) -> void:
 	if not messages.is_empty() and builder != null: MHJournal.from_messages(messages, floori(float(builder.simulation().hours_run) / 24.0) + 1)
+	var app := "goals" if tutorial != null else "log"   # the Goals app only runs with the old checklist
 	for message in messages:
-		MHNotices.post(str(message.get("tone", "info")), str(message.title), str(message.text), "goals")
+		MHNotices.post(str(message.get("tone", "info")), str(message.title), str(message.text), app)
 	if not messages.is_empty(): MHAudio.sfx("undo")
 	if not messages.is_empty(): builder._update_budget()
 
@@ -874,6 +881,7 @@ func current_state() -> Dictionary:
 		"body": body.export_state() if body != null else {},
 		"trail": region_map.trail if region_map != null else PackedVector2Array(),
 		"known": known.export_state() if known != null else {},
+		"notes": notes.export_state() if notes != null else {},
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
 		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
 	}
@@ -939,6 +947,7 @@ func _restore_pending_habitat() -> void:
 	_cabin_state = state.get("cabin", {}) as Dictionary
 	_body_state = state.get("body", {}) as Dictionary
 	_known_state = state.get("known", {}) as Dictionary
+	_notes_state = state.get("notes", {}) as Dictionary
 	if region_map != null: region_map.trail = PackedVector2Array(state.get("trail", PackedVector2Array()))
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()
 	player.global_position = state.get("player_position", player.global_position) as Vector3

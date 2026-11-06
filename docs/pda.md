@@ -9,7 +9,7 @@
 | Device | What it's for | How you use it |
 |---|---|---|
 | **Wrist pad** (exists, `wrist_pad.gd`) | **Life support at a glance.** O₂ time, suit power, scrubber, dose, turn-back time, the nearest refill. Also new: the sample case count. | **Hold T.** You keep walking and looking. It never takes the mouse. |
-| **Slate** (new, internally "PDA") | **Everything else you need to know.** Goals, map, base systems, comms, site data, a log of everything you were told. | **Tab** to raise or lower. **M** raises it on Base. **Esc** lowers it. |
+| **Slate** (new, internally "PDA") | **Everything else you need to know.** Notes, map, base systems, comms, site data, a log of everything you were told. | **Tab** to raise or lower. **M** raises it on Base. **Esc** lowers it. |
 
 The wrist stays "life support only" (docs/start-and-chapter-one.md:99). The slate doesn't scan anything. Finding ice is still GAR-Y's job and the survey stakes'. The slate only shows what you, GAR-Y and Earth already know.
 
@@ -19,14 +19,15 @@ The wrist stays "life support only" (docs/start-and-chapter-one.md:99). The slat
 - **The mouse works on the screen itself.** A cursor appears and you click on the slate's screen. 1–6 switch apps.
 - **The world keeps running.** You can't walk while it's up, but time, weather and **your O₂ keep going**. Reading the map mid-EVA has a cost, on purpose. The edges of your view stay visible, slightly darkened, so you can see a storm or GAR-Y arriving.
 - **It works everywhere**: in the lander, the base, outside and in the rover (parked). Not while driving or in build mode.
-- **In caves with no link**, Comms and the map's live positions show "No link". Goals, Base (last known), Site and Log still work.
+- **In caves with no link**, Comms and the map's live positions show "No link". Notes, Base (last known), Site and Log still work.
 - It drops automatically if you're rescued, fall asleep or a cutscene starts.
 
 ## 3. The apps
 
 | App | What's in it | Where it came from |
 |---|---|---|
-| **Goals** | The current goal and its tasks, with ticks. The next task's how-to and its keys. "Show me" plays the clip. What the base still needs. | The getting-started checklist (`tutorial.gd`) and the readiness panel |
+| **Notes** (new games, 7 Nov) | Your inner voice: 3 to 5 of your own first-person thoughts, newest at the top, on a notebook page. No ticks, counts or markers. A thought changes as you act; an answered one leaves for the journal and may raise the next. Words in `data/notes.json`. | `notes.gd` (master-design §5) |
+| **Goals** (old saves on the checklist only) | The current goal and its tasks, with ticks. The next task's how-to and its keys. "Show me" plays the clip. What the base still needs. | The getting-started checklist (`tutorial.gd`) and the readiness panel |
 | **Map** | The region map, with every current layer: places, base, you, lander, rover, GAR-Y, dropped items, trail. **L** = ice survey layer. **G** = send GAR-Y to the zone under the cursor. | The Tab map (`region_map.gd`) |
 | **Base** | Battery, water, food, O₂/CO₂, crew health and their trends. Active alerts as cards: what's wrong, why, what to do. The alert history. | The habitat systems panel, the alert row and cards, Mission Control's Alert log |
 | **Comms** | Messages from Earth by person, unread first. Discoveries. | Mission Control's Messages and Discoveries pages |

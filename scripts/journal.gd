@@ -68,6 +68,12 @@ static func write(event: String, sol: int, fills := {}) -> void:
 	for field in fills: line = line.replace("{%s}" % field, str(fills[field]))
 	if not (entry.lines as Array).has(line): (entry.lines as Array).append(line)
 
+## A line in your own words (an answered thought, scripts/notes.gd).
+static func note(sol: int, line: String) -> void:
+	if not on() or line.is_empty(): return
+	var entry := _entry(sol)
+	if not (entry.lines as Array).has(line): (entry.lines as Array).append(line)
+
 ## The game's messages for this sol, as journal lines; a sample from new
 ## ground or a cave asks for a sketch.
 static func from_messages(messages: Array, sol: int) -> void:

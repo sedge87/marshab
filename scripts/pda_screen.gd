@@ -8,6 +8,7 @@ extends Control
 ## Apps arrive one at a time (docs/pda.md §9); the rail shows those built.
 
 const APPS := [
+	{"id": "notes", "label": "Notes", "icon": "pencil", "built": true},
 	{"id": "goals", "label": "Goals", "icon": "clipboard-check", "built": true},
 	{"id": "map", "label": "Map", "icon": "map-pin", "built": true},
 	{"id": "base", "label": "Base", "icon": "gauge", "built": true},
@@ -29,6 +30,7 @@ var _rail_buttons := {}   # app id -> {button, dot}
 var _page: MarginContainer
 var _shown_log := -1      # notices on the Log page when it was drawn
 var _shown_goals := ""    # what the Goals page showed (redrawn when it changes)
+var _shown_notes := ""    # what the Notes page showed
 var _map_you: Label
 var _shown_base := ""     # what the Base page showed
 var _shown_comms := ""    # what the Comms page showed
@@ -104,14 +106,16 @@ func _build_rail() -> Control:
 		_rail_buttons[str(entry.id)] = {"button": button, "dot": dot}
 	return panel
 
-## Built apps, in rail order.
+## Built apps, in rail order. Goals only for a game still on the old
+## getting-started checklist; Notes otherwise (master-design §5).
 func apps() -> Array:
-	return APPS.filter(func(entry): return bool(entry.built)).map(func(entry): return str(entry.id))
+	var checklist: bool = world != null and world.get("tutorial") != null
+	return APPS.filter(func(entry): return bool(entry.built) and (str(entry.id) != ("notes" if checklist else "goals"))).map(func(entry): return str(entry.id))
 
 ## The slate was raised (pda.gd): on this app, or the last one used.
 func opened(wanted := "") -> void:
 	var choice := wanted if wanted in apps() else str(MHGame.setting("slate_app"))
-	if not choice in apps(): choice = "goals"
+	if not choice in apps(): choice = str(apps()[0])
 	app = ""
 	show_app(choice)
 	_update_status()
@@ -130,6 +134,7 @@ func show_app(id: String) -> void:
 	match id:
 		"map": _page.add_child(_map_page())
 		"goals": _page.add_child(_goals_page())
+		"notes": _page.add_child(_notes_page())
 		"base": _page.add_child(_base_page())
 		"comms": _page.add_child(_comms_page())
 		"site": _page.add_child(_site_page())
@@ -174,6 +179,9 @@ func _process(delta: float) -> void:
 		for child in _page.get_children(): child.queue_free()
 		_page.add_child(_base_page())
 		MHNotices.seen("base")
+	if app == "notes" and _notes_signature() != _shown_notes:
+		_redraw()
+		MHNotices.seen("notes")
 	if app == "goals" and _goals_signature() != _shown_goals:
 		for child in _page.get_children(): child.queue_free()
 		_page.add_child(_goals_page())
@@ -248,6 +256,49 @@ func _log_row(entry: Dictionary) -> Control:
 	line.add_child(time)
 	row.add_child(line)
 	return row
+
+## Notes: a notebook page of your own thoughts, newest at the top. No ticks,
+## counts or markers; an answered thought leaves for the journal.
+func _notes_page() -> Control:
+	_shown_notes = _notes_signature()
+	var notes: Node = world.get("notes") if world != null else null
+	var page := MHStyle.vbox(0)
+	var sheet := PanelContainer.new()
+	sheet.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sheet.add_theme_stylebox_override("panel", MHStyle.box(Color("#1d1a17"), Color(1, 1, 1, .06), MHStyle.RADIUS_MD, 1, Vector4(40, 30, 40, 30)))
+	page.add_child(sheet)
+	var column := MHStyle.vbox(0)
+	sheet.add_child(column)
+	column.add_child(MHStyle.eyebrow("NOTES", Color("#c9b99a"), 13))
+	var gap := Control.new()
+	gap.custom_minimum_size.y = 14
+	column.add_child(gap)
+	var list: Array = notes.thoughts() if notes != null else []
+	if list.is_empty():
+		column.add_child(_note_line("Nothing on my mind just now. Odd feeling, on Mars.", true))
+	for i in list.size():
+		column.add_child(_note_line(str(list[i].text), i > 0))
+	return page
+
+## One thought on ruled paper: the newest in ink, older ones a little faded.
+func _note_line(text: String, older: bool) -> Control:
+	var box := MHStyle.vbox(0)
+	var line := MHStyle.body(text, 22, Color("#efe3cc") if not older else Color("#b9ad97"))
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.custom_minimum_size.y = 40
+	box.add_child(line)
+	var rule := ColorRect.new()
+	rule.color = Color("#6f8fa8", .25)
+	rule.custom_minimum_size.y = 1
+	box.add_child(rule)
+	var gap := Control.new()
+	gap.custom_minimum_size.y = 16
+	box.add_child(gap)
+	return box
+
+func _notes_signature() -> String:
+	var notes: Node = world.get("notes") if world != null else null
+	return str(notes.thoughts()) if notes != null else ""
 
 ## Goals: the getting-started goals down the left, the current one's tasks
 ## with the next one's how-to, keys and Show me, and what the base still

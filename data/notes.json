@@ -1,0 +1,47 @@
+{
+  "_about": "Notes: your inner voice on the slate (docs/master-design.md §5). First person, hedged, short. A thought has stages that change as you act; answering it writes its journal line and may raise the next question. Fills in {braces} come from the game.",
+  "thoughts": {
+    "air": {
+      "stages": {
+        "start": "The dial says the cabin air's good for about a sol. After that I'm living off the suit.",
+        "low": "Cabin air's getting thin. Whatever's under that parachute, I need it soon.",
+        "carrying": "Got the cartridge. Twenty kilos of it. Back to the cabin."
+      },
+      "journal": "Plugged the new cartridge into the cabin. The needle swung right over. I can breathe for days now."
+    },
+    "parachute": {
+      "stages": {
+        "start": "Parachute on the ridge {dir} of the hatch. Life support, I hope.",
+        "near": "It's ours. A pallet on its side under the canopy, latches still shut.",
+        "open": "Pallet's open. Food, water, the sample kit, and a fresh oxygen cartridge."
+      },
+      "journal": "Found the first pallet under its parachute, right where Rao's photo said.",
+      "next": ["cargo"]
+    },
+    "cargo": {
+      "stages": {
+        "start": "Rao said a dozen pallets came down in the storm. That's eleven still out there somewhere."
+      },
+      "journal": "Every pallet is home, or as home as they'll get."
+    },
+    "sunset": {
+      "stages": {
+        "start": "Someone in training swore Martian sunsets are blue. I'd like to see one for myself."
+      },
+      "journal": "Watched the sun go down from outside. It really is blue round the sun, like cold glass. Nobody said how quiet it would be."
+    },
+    "power": {
+      "stages": {
+        "start": "ARDEN doesn't think the cabin battery lasts the night. There's a power pallet out there. Before dark would be better.",
+        "night": "Dark now. Heat or lights through the night: I don't think the battery gives me both."
+      },
+      "journal": "Made it to morning. {how}"
+    },
+    "cold": {
+      "stages": {
+        "start": "Cold in here. The heater's on the wall switch, if the battery can spare it."
+      },
+      "journal": "Warm again. I'd forgotten how much I like my fingers."
+    }
+  }
+}
