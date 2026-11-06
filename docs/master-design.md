@@ -37,7 +37,7 @@ After that, its usual rescue applies.
 
 ## 3. Finding things
 
-**The one rule:** every "what's out there" view (the site plan overlay, the slate's Map, the compass) shows only what you, GAR-Y or Earth have actually found, from one shared record of what's known. Creative sees everything. This fixes the ice overlay at its root.
+**The one rule:** every "what's out there" view (the site plan overlay, the slate's Map, the compass) shows only what you, GAR-Y or Earth have actually found, from one shared record of what's known. Creative sees everything. This fixes the ice overlay at its root. (Built 7 Nov, scripts/known_things.gd: the Map starts dark and clears round where you've been, further from high ground; a named place joins the record once it's within sight. GAR-Y's and Earth's finds reach your Map when they report them to you, so each view stays "what you know".)
 
 - **The map starts blank.** Its data was lost in the storm, and it fills in as you explore.
 - **You can pin hints and set your own goals** as markers on the Map and the compass.
@@ -150,7 +150,7 @@ The story is several separate threads, each started by something you do or by a 
 - **Build:** Plan and Look;
 - **Base, Site, Log:** as now.
 
-**On screen:** the crosshair and prompt, captions, the compass (with pins and found things), the notice line, and **the warning icon row and storm pill** (7 Nov: the base at a glance, systems-and-items §2). **M** raises the slate on Base, the overview. **The Classic HUD setting is dropped.** The wrist pad stays life support only.
+**On screen:** the crosshair and prompt, captions, the compass strip at the top (always on, even in the lander, so you can always orient yourself; Settings → On screen → Compass chooses what it marks: the lander and airlocks, your pins, things you've found, places you know, distances), the notice line, and **the warning icon row and storm pill** (7 Nov: the base at a glance, systems-and-items §2). **M** raises the slate on Base, the overview. **The Classic HUD setting is dropped.** The wrist pad stays life support only.
 
 ## 9. Existing systems: keep, rebuild, cut
 

@@ -11,6 +11,7 @@ const CARRY := preload("res://scripts/carry.gd")
 const SUIT := preload("res://scripts/suit.gd")
 const CABIN_LIFE := preload("res://scripts/lander_cabin_life.gd")
 const BODY := preload("res://scripts/body.gd")
+const KNOWN := preload("res://scripts/known_things.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
 const SHOWCASE_SCRIPT := preload("res://scripts/showcase.gd")
@@ -67,6 +68,8 @@ var cabin_life: Node   # scripts/lander_cabin_life.gd: the lander cabin on the n
 var _cabin_state := {}
 var body: Node         # scripts/body.gd: the place you're in acts on you
 var _body_state := {}
+var known: Node        # scripts/known_things.gd: what you, GAR-Y and Earth know; the Map's fog and pins
+var _known_state := {}
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
@@ -176,6 +179,13 @@ func _ready() -> void:
 	body = BODY.new()
 	add_child(body)
 	body.setup(self, _body_state)
+	if region_map != null:
+		known = KNOWN.new()
+		known.setup(self, region_map.origin(), region_map.region_half())
+		add_child(known)
+		if not _known_state.is_empty(): known.load_state(_known_state)
+		elif not _start_in_lander: known.from_trail(region_map.trail)   # a save from before the record
+		if _start_in_lander and MHGame.game_mode == "creative": known.reveal_all()
 	gar_y_orders = GAR_Y_ORDERS.new()
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)
@@ -863,6 +873,7 @@ func current_state() -> Dictionary:
 		"cabin": cabin_life.export_state() if cabin_life != null else {},
 		"body": body.export_state() if body != null else {},
 		"trail": region_map.trail if region_map != null else PackedVector2Array(),
+		"known": known.export_state() if known != null else {},
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
 		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
 	}
@@ -927,6 +938,7 @@ func _restore_pending_habitat() -> void:
 	_suit_state = state.get("suit", {}) as Dictionary
 	_cabin_state = state.get("cabin", {}) as Dictionary
 	_body_state = state.get("body", {}) as Dictionary
+	_known_state = state.get("known", {}) as Dictionary
 	if region_map != null: region_map.trail = PackedVector2Array(state.get("trail", PackedVector2Array()))
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()
 	player.global_position = state.get("player_position", player.global_position) as Vector3

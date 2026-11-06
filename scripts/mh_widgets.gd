@@ -112,7 +112,8 @@ class Crosshair extends Control:
 class Compass extends Control:
 	var heading := 0.0:
 		set(v): heading = v; queue_redraw()
-	var markers: Array = []   # [{bearing, label, distance}]
+	var markers: Array = []   # [{bearing, label, distance, colour (optional)}]
+	var show_distance := true
 	const SPAN := 180.0
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -142,8 +143,8 @@ class Compass extends Control:
 			var mx := _x_for(float(marker.bearing))
 			if mx < 8 or mx > size.x - 8: continue
 			var diamond := PackedVector2Array([Vector2(mx, 33), Vector2(mx + 5, 38), Vector2(mx, 43), Vector2(mx - 5, 38)])
-			draw_colored_polygon(diamond, MHStyle.INFO)
-			var text_m := "%s · %d m" % [marker.label, roundi(float(marker.distance))]
+			draw_colored_polygon(diamond, marker.get("colour", MHStyle.INFO))
+			var text_m := "%s · %d m" % [marker.label, roundi(float(marker.distance))] if show_distance else str(marker.label)
 			draw_string(MHStyle.font(500, true), Vector2(mx + 9, 43), text_m, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(MHStyle.INK_100, 0.85))
 
 # Diegetic visor: four corner brackets.

@@ -217,6 +217,7 @@ const MC_LEVELS := {"log": "Log only", "quiet": "Quiet", "normal": "Normal", "ch
 const SUBTITLES := {"full": "Full", "compact": "Compact", "off": "Off"}
 const CHECKLIST := {"full": "Full", "folded": "Folded", "hidden": "Hidden"}
 const BODY_CUES := {"full": "Full", "soft": "Softer", "low": "Low"}
+const COMPASS_MARKS := [["compass_home", "Lander and airlocks"], ["compass_pins", "Your pins"], ["compass_finds", "Things you've found"], ["compass_places", "Places you know"], ["compass_distance", "Distances"]]
 
 func _audio() -> Control:
 	var grid := MHStyle.hbox(48)
@@ -275,6 +276,28 @@ func _audio() -> Control:
 		var pick := MHWidgets.Segmented.new().setup(labels.values(), str(labels.get(str(_values.get(key, row[3])), labels[row[3]])))
 		pick.changed.connect(func(value: String) -> void: _values[key] = str(labels.find_key(value)))
 		screen_group.add_child(pick)
+	# The compass strip: always on, you choose what's marked on it.
+	var compass_text := MHStyle.hbox(12)
+	compass_text.add_child(MHStyle.label("Compass", 16, MHStyle.TEXT_SECONDARY, 600))
+	var compass_hint := MHStyle.body("The strip at the top of the screen is always there. Choose what it marks.", 14, MHStyle.TEXT_MUTED)
+	compass_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	compass_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	compass_text.add_child(compass_hint)
+	screen_group.add_child(compass_text)
+	var compass_grid := GridContainer.new()
+	compass_grid.columns = 2
+	compass_grid.add_theme_constant_override("h_separation", 24)
+	compass_grid.add_theme_constant_override("v_separation", 8)
+	for entry in COMPASS_MARKS:
+		var row := MHStyle.hbox(12)
+		var toggle := MHWidgets.Switch.new()
+		var compass_key := str(entry[0])
+		toggle.button_pressed = bool(_values.get(compass_key, true))
+		toggle.toggled.connect(func(on: bool) -> void: _values[compass_key] = on)
+		row.add_child(toggle)
+		row.add_child(MHStyle.body(str(entry[1]), 15, MHStyle.TEXT_SECONDARY))
+		compass_grid.add_child(row)
+	screen_group.add_child(compass_grid)
 	form.add_child(screen_group)
 	var side := MHStyle.vbox(14)
 	side.custom_minimum_size.x = 460

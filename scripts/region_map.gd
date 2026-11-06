@@ -16,6 +16,11 @@ extends CanvasLayer
 ## Your trail: every step since you last came in through an airlock (into the
 ## habitat, the vehicle bay or a lander), walked or driven, drawn on the map so
 ## you can find your way back. Saved with the colony.
+##
+## The map only shows what you know (scripts/known_things.gd): it starts dark
+## and clears round where you've been, named places appear once you've seen
+## them, and a click drops one of your own pins (click a pin to lift it). Pins
+## and finds show on the compass too.
 
 const RegionTerrain := preload("res://scripts/region_terrain.gd")
 const SIZE := 860.0          # map square on screen, px
@@ -62,12 +67,35 @@ var _trail_check := 0.0
 var embedded := false
 var _cursor_at := Vector2(-1, -1)   # the mouse over the lent map, map px
 var _frame_home: Control
+var _fog: TextureRect
+var _fog_texture: ImageTexture
+var _fog_version := -1
+var _labels_dirty := true
+var _press_at := Vector2(-1, -1)    # where a click started, map px (a click without a drag drops a pin)
+var _press_moved := 0.0
+const CLICK_SLOP := 6.0
+const PIN_REACH_PX := 14.0
 
 func setup(target_world: Node, zone: Dictionary) -> void:
 	world = target_world
 	_origin = Vector2(float(zone.centre[0]), float(zone.centre[1]))
 	_half = float(RegionTerrain.meta().get("half", 3072.0))
 	_span = _half * 2.0
+
+## The landing zone's centre in region metres (the world's 0, 0).
+func origin() -> Vector2:
+	return _origin
+
+func region_half() -> float:
+	return _half
+
+func _known() -> Node:
+	var known: Node = world.get("known") if world != null else null
+	if known != null and not known.changed.is_connected(_on_known_changed): known.changed.connect(_on_known_changed)
+	return known
+
+func _on_known_changed() -> void:
+	_labels_dirty = true
 
 func _ready() -> void:
 	layer = 40
@@ -97,6 +125,7 @@ func _ready() -> void:
 	head.add_child(MHStyle.control_hint(["Drag"], "Move"))
 	head.add_child(MHStyle.control_hint(["Z"], "Region / 1 km"))
 	head.add_child(MHStyle.control_hint(["Space"], "You"))
+	head.add_child(MHStyle.control_hint(["Click"], "Pin"))
 	head.add_child(MHStyle.control_hint(["L"], "Ice survey"))
 	head.add_child(MHStyle.control_hint(["G"], "GAR-Y: survey zone"))
 	head.add_child(MHStyle.control_hint(["Tab"], "Close"))
@@ -124,6 +153,12 @@ func _ready() -> void:
 	_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_layer.visible = false
 	_frame.add_child(_layer)
+	_fog = TextureRect.new()
+	_fog.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_fog.stretch_mode = TextureRect.STRETCH_SCALE
+	_fog.size = Vector2(SIZE, SIZE)
+	_fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_frame.add_child(_fog)
 	_markers = Control.new()
 	_markers.size = Vector2(SIZE, SIZE)
 	_markers.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -160,12 +195,35 @@ func _set_view() -> void:
 		var layer_scale := layer.atlas.get_width() / (_half * 2.0)
 		layer.region = Rect2((_view.position + Vector2(_half, _half)) * layer_scale, _view.size * layer_scale)
 		_layer.texture = layer
+	_crop_fog()
+	_place_labels()
+
+## Names on the map: only the places you know, by the names you know them by.
+func _place_labels() -> void:
+	_labels_dirty = false
 	for child in _labels.get_children(): child.free()
-	for feature in RegionTerrain.meta().get("features", []):
-		_label(str(feature.name), _region_to_map(Vector2(float(feature.position[0]), float(feature.position[1]))), MHStyle.TEXT_PRIMARY)
-	for zone_id in (RegionTerrain.meta().get("zones", {}) as Dictionary):
-		var zone: Dictionary = RegionTerrain.zone(zone_id)
-		_label("Landing zone: " + str(zone.get("label", zone_id)), _region_to_map(Vector2(float(zone.centre[0]), float(zone.centre[1]))) + Vector2(0, 18), MHStyle.accent)
+	var known := _known()
+	if known == null:
+		for feature in RegionTerrain.meta().get("features", []):
+			_label(str(feature.name), _region_to_map(Vector2(float(feature.position[0]), float(feature.position[1]))), MHStyle.TEXT_PRIMARY)
+		return
+	for place in known.known("you", "place"):
+		_label(str(place.name), _region_to_map(place.at as Vector2), MHStyle.TEXT_PRIMARY)
+
+## The fog over the part of the region in view (cleared where you've been).
+func _crop_fog() -> void:
+	var known := _known()
+	_fog.visible = known != null
+	if known == null: return
+	if _fog_texture == null or _fog_version != int(known.version):
+		_fog_version = int(known.version)
+		if _fog_texture == null: _fog_texture = ImageTexture.create_from_image(known.fog_image())
+		else: _fog_texture.update(known.fog_image())
+	var crop := AtlasTexture.new()
+	crop.atlas = _fog_texture
+	var per_m := float(known.GRID) / (_half * 2.0)
+	crop.region = Rect2((_view.position + Vector2(_half, _half)) * per_m, _view.size * per_m)
+	_fog.texture = crop
 
 func _you() -> Vector2:
 	return Vector2(world.player.global_position.x, world.player.global_position.z) + _origin
@@ -215,8 +273,10 @@ func _input(event: InputEvent) -> void:
 			_zoom(1.0 / ZOOM_STEP if button.button_index == MOUSE_BUTTON_WHEEL_UP else ZOOM_STEP, at)
 		elif button.button_index == MOUSE_BUTTON_LEFT or button.button_index == MOUSE_BUTTON_RIGHT:
 			_dragging = button.pressed
+			if button.button_index == MOUSE_BUTTON_LEFT: _click(button.pressed, at)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and _dragging:
+		_press_moved += (event as InputEventMouseMotion).relative.length()
 		_centre -= (event as InputEventMouseMotion).relative / SIZE * _span
 		_set_view()
 		get_viewport().set_input_as_handled()
@@ -278,11 +338,37 @@ func _frame_input(event: InputEvent) -> void:
 			_zoom(1.0 / ZOOM_STEP if button.button_index == MOUSE_BUTTON_WHEEL_UP else ZOOM_STEP, button.position)
 		elif button.button_index == MOUSE_BUTTON_LEFT or button.button_index == MOUSE_BUTTON_RIGHT:
 			_dragging = button.pressed
+			if button.button_index == MOUSE_BUTTON_LEFT: _click(button.pressed, button.position)
 		_frame.accept_event()
 	elif event is InputEventMouseMotion and _dragging:
+		_press_moved += (event as InputEventMouseMotion).relative.length()
 		_centre -= (event as InputEventMouseMotion).relative / SIZE * _span
 		_set_view()
 		_frame.accept_event()
+
+## A left click without a drag: drop a pin there, or lift the pin under it.
+func _click(pressed: bool, at: Vector2) -> void:
+	if pressed:
+		_press_at = at
+		_press_moved = 0.0
+		return
+	if _press_at.x < 0.0 or _press_moved > CLICK_SLOP: return
+	_press_at = Vector2(-1, -1)
+	toggle_pin(at)
+
+## Drops a pin at `at` (map px), or lifts one already there. The pin's id, or "".
+func toggle_pin(at: Vector2) -> String:
+	var known := _known()
+	if known == null or not Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)).has_point(at): return ""
+	var there := _map_to_region(at)
+	var near: String = known.pin_near(there, PIN_REACH_PX / SIZE * _span)
+	if not near.is_empty():
+		_say("%s lifted." % str(known.thing(near).name))
+		known.remove_pin(near)
+		return ""
+	var id: String = known.add_pin(there)
+	_say("%s dropped. It shows on your compass." % str(known.thing(id).name))
+	return id
 
 ## A key on the slate's Map app; true when the map used it.
 func slate_key(keycode: int) -> bool:
@@ -340,6 +426,9 @@ func _process(delta: float) -> void:
 	if pan != Vector2.ZERO:
 		_centre += pan.normalized() * _span * PAN_SPEED * delta
 		_set_view()
+	var known := _known()
+	if known != null and _fog_version != int(known.version): _crop_fog()
+	if _labels_dirty: _place_labels()
 	_markers.queue_redraw()
 	var player: Node3D = world.player
 	var home: Vector3 = world.lander.global_position if world.lander != null else Vector3.ZERO
@@ -425,6 +514,7 @@ func _draw_markers() -> void:
 				c.draw_rect(Rect2(p - Vector2(w, w) * .5, Vector2(w, w)), Color("#F2F3F0"))
 	if survey_layer: _draw_survey()
 	_draw_trail()
+	_draw_known()
 	if world.lander != null and world.lander.visible: _marker(world.lander.global_position, "Lander", Color("#F2C35A"), "square")
 	for rover in world.get_tree().get_nodes_in_group("crew_rover"): _marker((rover as Node3D).global_position, "Rover", Color("#8CC3CB"), "circle")
 	for gary in world.get_tree().get_nodes_in_group("gar_y"): _marker((gary as Node3D).global_position, "GAR-Y", Color("#8CC3CB"), "circle")
@@ -465,6 +555,30 @@ func _draw_trail() -> void:
 	var start := points[0]
 	_markers.draw_arc(start, 6.0, 0.0, TAU, 20, colour, 2.0, true)
 	_markers.draw_string(ThemeDB.fallback_font, start + Vector2(10, -6), "Airlock", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, colour)
+
+## Your pins (a dot on a stem) and the things you've found (a diamond).
+func _draw_known() -> void:
+	var known := _known()
+	if known == null: return
+	var font := ThemeDB.fallback_font
+	for entry in known.known("you"):
+		var kind := str(entry.kind)
+		if kind != "pin" and kind != "find": continue
+		var at := _region_to_map(entry.at as Vector2)
+		if at.x < -30 or at.y < -30 or at.x > SIZE + 30 or at.y > SIZE + 30: continue
+		if kind == "pin":
+			_markers.draw_line(at, at + Vector2(0, -14), Color(0, 0, 0, .8), 3.0, true)
+			_markers.draw_line(at, at + Vector2(0, -14), MHStyle.accent, 1.5, true)
+			_markers.draw_circle(at + Vector2(0, -16), 5.5, Color(0, 0, 0, .8))
+			_markers.draw_circle(at + Vector2(0, -16), 4.5, MHStyle.accent)
+			_markers.draw_string(font, at + Vector2(9, -12), str(entry.name), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MHStyle.accent)
+		else:
+			var diamond := PackedVector2Array([at + Vector2(0, -6), at + Vector2(6, 0), at + Vector2(0, 6), at + Vector2(-6, 0)])
+			_markers.draw_colored_polygon(diamond, MHStyle.WARN)
+			var outline := diamond.duplicate()
+			outline.append(diamond[0])
+			_markers.draw_polyline(outline, Color(0, 0, 0, .8), 1.0, true)
+			_markers.draw_string(font, at + Vector2(10, 5), str(entry.name), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MHStyle.WARN)
 
 func _marker(world_position: Vector3, text: String, colour: Color, shape: String) -> void:
 	var at := _world_to_map(world_position)

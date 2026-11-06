@@ -733,7 +733,7 @@ func _map_page() -> Control:
 	_map_cursor = MHStyle.body("", 16, MHStyle.TEXT_MUTED)
 	_map_cursor.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	side.add_child(_map_cursor)
-	side.add_child(GUIDE.keys_box([[["Wheel"], "Zoom"], [["Drag"], "Move"], [["Z"], "Region / 1 km"], [["Space"], "You"], [["L"], "Ice survey"], [["G"], "GAR-Y: survey the zone"]]))
+	side.add_child(GUIDE.keys_box([[["Wheel"], "Zoom"], [["Drag"], "Move"], [["Z"], "Region / 1 km"], [["Space"], "You"], [["Click"], "Drop or lift a pin"], [["L"], "Ice survey"], [["G"], "GAR-Y: survey the zone"]]))
 	holder.ready.connect(func() -> void: region.embed.call_deferred(holder, MAP_FIT), CONNECT_ONE_SHOT)
 	return page
 

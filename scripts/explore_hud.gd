@@ -79,7 +79,7 @@ func _ready() -> void:
 	compass_band.add_child(_compass)
 	var sol_clock := _build_sol_clock()
 	_root.add_child(sol_clock)
-	_minimal_nodes = [compass_band, sol_clock]
+	_minimal_nodes = [sol_clock]   # the compass stays: you can always orient yourself
 	# Colony chip, top-left inside the visor.
 	_chip_slot = Control.new()
 	_chip_slot.position = Vector2(104, 104)
@@ -471,6 +471,16 @@ func _update_sol_clock() -> void:
 ## driving HUD shows them too).
 func compass_markers() -> Array:
 	var out: Array = []
+	_compass.show_distance = bool(MHGame.setting("compass_distance"))
+	if bool(MHGame.setting("compass_home")): _home_markers(out)
+	# Your pins, finds and places you know (scripts/known_things.gd), as Settings choose.
+	var known := get_tree().get_first_node_in_group("known_things")
+	if known != null:
+		for marker in known.compass_markers(player.global_position):
+			if bool(MHGame.setting("compass_" + str(marker.kind) + "s")): out.append(marker)
+	return out
+
+func _home_markers(out: Array) -> void:
 	for landmark in get_tree().get_nodes_in_group("landmark"):
 		var spot := (landmark as Node3D).global_position - player.global_position
 		out.append({"bearing": wrapf(rad_to_deg(atan2(spot.x, -spot.z)), 0.0, 360.0), "label": str(landmark.get_meta("landmark_label", "")), "distance": Vector2(spot.x, spot.z).length()})
@@ -481,7 +491,6 @@ func compass_markers() -> Array:
 		if door_name != "OUTER" and door_name != "HANGAR": continue
 		var offset := door.global_position - player.global_position
 		out.append({"bearing": wrapf(rad_to_deg(atan2(offset.x, -offset.z)), 0.0, 360.0), "label": "AIRLOCK" if door_name == "OUTER" else "HANGAR", "distance": Vector2(offset.x, offset.z).length()})
-	return out
 
 func _update_chip() -> void:
 	var context := chip_prefix + "ZONE · OUTSIDE · " + MHGame.site_name()
