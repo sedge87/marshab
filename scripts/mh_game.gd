@@ -468,14 +468,22 @@ static func horizon_at(heading: Vector2) -> float:
 	var profile: Array = sun.get("horizon_profile", [])
 	return float(sun.get("horizon", 0.0)) if profile.is_empty() else MHBaseSite.skyline_towards(profile, heading)
 
+## Real minutes of daylight in a sol, and of night: a 30-minute sol, 22 of
+## them daylight (docs/systems-and-items.md §8; the New numbers sheet).
+static func daylight_minutes() -> float:
+	return MHResources.revamp("day_real_minutes", 22.0)
+
+static func night_minutes() -> float:
+	return maxf(1.0, MHResources.revamp("sol_real_minutes", 30.0) - daylight_minutes())
+
 ## Average solar output over a whole sol in real play time, 0–1, used for the
 ## site cards. Night counts, so long nights lower it.
 static func average_solar(site_entry: Dictionary) -> float:
 	var saved := site_id
 	site_id = str(site_entry.get("id", site_id))
 	var cycle: Dictionary = site().get("day_cycle", {})
-	var day_seconds := float(cycle.get("daylight_minutes", 15.0)) * 60.0
-	var night_seconds := float(cycle.get("night_minutes", 5.0)) * 60.0
+	var day_seconds := daylight_minutes() * 60.0
+	var night_seconds := night_minutes() * 60.0
 	var sunrise := float(cycle.get("sunrise_hour", 5.0))
 	var sunset := float(cycle.get("sunset_hour", 19.0))
 	var total := 0.0
@@ -806,6 +814,7 @@ static func defaults() -> Dictionary:
 	d["skip_descent"] = false
 	d["descent_flown"] = false
 	d["live_hazards"] = true
+	d["body_cues"] = "full"        # full, soft or low: how strongly the body cues show (scripts/body.gd)
 	## The challenge options chosen last time, offered again on the Colony step.
 	d["last_challenge"] = {}
 	## Who's playing: shown on their saves and in Tour ("Designed by").

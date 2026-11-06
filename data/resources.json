@@ -836,6 +836,20 @@
     "recipe_machine_salvage_max": 3.0,
     "haematite_iron_fraction": 0.5,
     "resupply_sols_new": 25.0,
-    "world_km": 12.0
+    "world_km": 12.0,
+    "cabin_battery_kwh": 6.0,
+    "cabin_solar_kw": 1.5,
+    "cabin_ua_kw_per_c": 0.012,
+    "cabin_heat_kwh_per_c": 0.2,
+    "cabin_air_m3": 15.0,
+    "cabin_heater_kw": 1.5,
+    "cabin_warm_c": 20.0,
+    "cabin_low_c": 10.0,
+    "cabin_lights_kw": 0.15,
+    "cabin_scrubber_kw": 0.25,
+    "cabin_scrub_kg_per_h": 0.1,
+    "cabin_avionics_kw": 0.1,
+    "cabin_o2_tank_kg": 3.0,
+    "body_heat_kw": 0.1
   }
 }

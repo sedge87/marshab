@@ -30,3 +30,8 @@ static func site(id: String) -> Dictionary:
 ## One item's number, e.g. item_value("grow_tray", "food_kg").
 static func item_value(id: String, key: String, fallback := 0.0) -> float:
 	return float(item(id).get(key, fallback))
+
+## One of the revamp's numbers, from the New numbers sheet
+## (docs/systems-and-items.md), e.g. revamp("suit_hours", 8.0).
+static func revamp(key: String, fallback := 0.0) -> float:
+	return float((data().get("revamp", {}) as Dictionary).get(key, fallback))

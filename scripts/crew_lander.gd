@@ -42,6 +42,8 @@ const RAMP_OPEN_DEGREES := -132.0
 const INNER_DOOR := AABB(Vector3(-1.12, 2.52, -1.25), Vector3(2.24, 3.03, .45))
 
 var rig: Node3D       # the model
+var cabin_lights: Array = []     # the cabin's lamps (scripts/lander_cabin_life.gd dims them)
+var cabin_glow: StandardMaterial3D
 var _ramp: Node3D     # its hinged hatch ramp
 var _open := false
 
@@ -146,6 +148,9 @@ func _build_cabin() -> void:
 	fill.light_specular = 0.0
 	fill.omni_range = 3.4
 	add_child(fill)
+	for light in [down, fill]: light.set_meta("full_energy", light.light_energy)
+	cabin_lights = [down, fill]
+	cabin_glow = glow
 
 ## A solid wall block between two corners (lander space), in the house shell.
 func _wall(body: StaticBody3D, corner_a: Vector3, corner_b: Vector3) -> void:

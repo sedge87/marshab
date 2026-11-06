@@ -33,11 +33,13 @@ func _process(delta: float) -> void:
 	var sunset := float(cycle.get("sunset_hour", 19.0))
 	var daylight_hours := sunset - sunrise
 	var night_hours := 24.0 - daylight_hours
-	var daylight_seconds := maxf(1.0, float(cycle.get("daylight_minutes", 15.0)) * 60.0)
-	var night_seconds := maxf(1.0, float(cycle.get("night_minutes", 5.0)) * 60.0)
+	var daylight_seconds := maxf(1.0, MHGame.daylight_minutes() * 60.0)
+	var night_seconds := maxf(1.0, MHGame.night_minutes() * 60.0)
 	var is_day := hour >= sunrise and hour < sunset
 	var step_hours := delta * ((daylight_hours / daylight_seconds) if is_day else (night_hours / night_seconds))
 	if builder != null: builder.advance_simulation(step_hours, hour)
+	# The new survival core (the lander cabin, scripts/lander_cabin_life.gd).
+	if is_inside_tree(): get_tree().call_group("survival_core", "advance", step_hours, hour)
 	hour = wrapf(hour + step_hours, 0.0, 24.0)
 	_apply_conditions()
 
@@ -49,6 +51,10 @@ func export_state() -> Dictionary:
 	return {"hour": hour}
 
 func _sunlight_at(time_hour: float, cycle: Dictionary) -> float:
+	return sunlight_at(time_hour, cycle)
+
+## Sunlight 0–1 at an hour: dawn and dusk ramp it in and out.
+static func sunlight_at(time_hour: float, cycle: Dictionary) -> float:
 	var dawn := float(cycle.get("dawn_hour", 4.0))
 	var sunrise := float(cycle.get("sunrise_hour", 5.0))
 	var sunset := float(cycle.get("sunset_hour", 19.0))

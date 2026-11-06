@@ -9,6 +9,8 @@ const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const SLEEP := preload("res://scripts/sleep.gd")
 const CARRY := preload("res://scripts/carry.gd")
 const SUIT := preload("res://scripts/suit.gd")
+const CABIN_LIFE := preload("res://scripts/lander_cabin_life.gd")
+const BODY := preload("res://scripts/body.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
 const SHOWCASE_SCRIPT := preload("res://scripts/showcase.gd")
@@ -61,6 +63,10 @@ var sleep: Node   # scripts/sleep.gd: sleep at a bunk to pass the time
 var carry: Node   # scripts/carry.gd: pick up small things and put them elsewhere
 var suit: Node    # scripts/suit.gd: your suit's oxygen, power and scrubber (hold T for the wrist pad)
 var _suit_state := {}
+var cabin_life: Node   # scripts/lander_cabin_life.gd: the lander cabin on the new survival core
+var _cabin_state := {}
+var body: Node         # scripts/body.gd: the place you're in acts on you
+var _body_state := {}
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
@@ -133,6 +139,9 @@ func _ready() -> void:
 	day_night = DAY_NIGHT_SCRIPT.new()
 	add_child(day_night)
 	day_night.setup(environment, builder)
+	# A new game lands an hour after sunrise, so the first sunset comes about
+	# 20 real minutes in, just after the first pallet (docs/systems-and-items.md §14 step 1).
+	if _start_in_lander: day_night.set_hour(float(MHGame.site().get("day_cycle", {}).get("sunrise_hour", 5.0)) + 1.0)
 	_restore_pending_habitat()
 	_land_precursor_cargo()
 	_sync_crew_rover()
@@ -161,6 +170,12 @@ func _ready() -> void:
 	add_child(suit)
 	suit.setup(self)
 	suit.restore_state(_suit_state)
+	cabin_life = CABIN_LIFE.new()
+	add_child(cabin_life)
+	cabin_life.setup(self, _cabin_state)
+	body = BODY.new()
+	add_child(body)
+	body.setup(self, _body_state)
 	gar_y_orders = GAR_Y_ORDERS.new()
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)
@@ -845,6 +860,8 @@ func current_state() -> Dictionary:
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
 		"crew_rover": crew_rover.export_state() if crew_rover != null else {},
 		"suit": suit.export_state() if suit != null else {},
+		"cabin": cabin_life.export_state() if cabin_life != null else {},
+		"body": body.export_state() if body != null else {},
 		"trail": region_map.trail if region_map != null else PackedVector2Array(),
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
 		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
@@ -908,6 +925,8 @@ func _restore_pending_habitat() -> void:
 	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
 	_crew_rover_state = state.get("crew_rover", {}) as Dictionary
 	_suit_state = state.get("suit", {}) as Dictionary
+	_cabin_state = state.get("cabin", {}) as Dictionary
+	_body_state = state.get("body", {}) as Dictionary
 	if region_map != null: region_map.trail = PackedVector2Array(state.get("trail", PackedVector2Array()))
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()
 	player.global_position = state.get("player_position", player.global_position) as Vector3

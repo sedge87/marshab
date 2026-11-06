@@ -756,7 +756,13 @@ One Survival run should let you try every pillar:
        - **Built beside the old sim:** it takes over power, heat and air; water and food stay on the old code until steps 5 and 7.
        - **The 30-minute sol and 8 hours of suit air start here.**
        - **The body cues are clear,** with a comfort slider to tone them down.
-       - **Night one is a real choice:** the battery can't run the heater, lights and scrubber all night. Doing nothing means a cold, stuffy morning that hurts but doesn't kill.
+       - **Night one is a real choice:** the battery can't run the heater, lights and scrubber all night. Everything on runs it flat in the small hours, which are cold and dark. The heater on Low nearly lasts; Off keeps the power but is the coldest. You feel it, and nothing kills you. It's a fallback you set as you leave, because the cabin runs while you're away.
+     - **The first hour, decided 7 Nov** (the user: "using the lander like the lifepod is a good idea but forcing them to stay in it is not"):
+       - **Land an hour after sunrise,** so the first sunset comes about 20 real minutes in, just after pallet 1. Built in step 1.
+       - **Night is walkable.** The suit drains by real minutes, so a night trip lasts about as long as a day trip; the heater works harder (×1.4) but doesn't cripple you. Built in step 1. Night gets its own finds (stars, Phobos and Deimos, dawn frost, a meteor; §6c), from step 2.
+       - **Sleep is offered, never forced:** from any sealed place (the cabin, later the rover and the habitat), and offered at a pause such as after a pallet, like Firewatch's cuts "at points of closure or tension". Step 2.
+       - **Night one's real fix is out in the world:** ARDEN warns that the cabin can't stay warm all night on its own battery, so you look for the power pallet before dark (master-design §6's pressure table). Step 2.
+       - **Too far at night and you black out:** GAR-Y finds you, the second way to meet it (master-design §2).
        - **Collapse:** you wake in the cabin (GAR-Y's rescue comes in step 7).
        - **Not in step 1:** splitting `build_controller.gd` (step 3).
   2. **The 20-minute opening, built close to finished quality** (art, sound, voice), to prove that walking, talking and surviving are fun before anything else is built (Firewatch's vertical slice):

@@ -216,6 +216,7 @@ const VOLUME_STEPS := ["Off", "25 %", "50 %", "75 %", "100 %"]
 const MC_LEVELS := {"log": "Log only", "quiet": "Quiet", "normal": "Normal", "chatty": "Chatty"}
 const SUBTITLES := {"full": "Full", "compact": "Compact", "off": "Off"}
 const CHECKLIST := {"full": "Full", "folded": "Folded", "hidden": "Hidden"}
+const BODY_CUES := {"full": "Full", "soft": "Softer", "low": "Low"}
 
 func _audio() -> Control:
 	var grid := MHStyle.hbox(48)
@@ -260,6 +261,7 @@ func _audio() -> Control:
 	screen_group.add_child(MHStyle.label("On screen", 19, MHStyle.TEXT_PRIMARY, 600))
 	for row in [
 			["subtitles", "Subtitles", SUBTITLES, "compact", "Captions for ARDEN, the suit and Mission Control. Compact keeps them small, and in the corner while you build."],
+			["body_cues", "Body cues", BODY_CUES, "full", "How strongly cold, stale air and low oxygen show on screen: frost, the headache edge, grey vision, shaking hands. It never changes the harm."],
 			["checklist", "Checklist", CHECKLIST, "full", "The getting-started goals on screen, with the Classic HUD. H cycles it in a game."]]:
 		var line := MHStyle.hbox(12)
 		line.add_child(MHStyle.label(str(row[1]), 16, MHStyle.TEXT_SECONDARY, 600))

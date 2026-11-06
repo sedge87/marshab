@@ -370,15 +370,21 @@ func _base_page() -> Control:
 	page.add_child(left)
 	var builder: Node = world.builder
 	var sim: RefCounted = builder.simulation() if builder != null else null
-	if rows.is_empty():
+	var cabin: Node = world.get("cabin_life")
+	if rows.is_empty() and cabin != null and cabin.running():
+		left.add_child(_heading("Lander cabin", "Your first base: its battery, warmth and air, and how long each lasts as things are set."))
+		for entry in [["battery", "Battery", "zap"], ["warmth", "Warmth", "thermometer"], ["air", "Air", "wind"]]:
+			left.add_child(_gauge(str(entry[1]), str(entry[2]), _cabin_rows(cabin)[entry[0]]))
+		rows = {}
+	elif rows.is_empty():
 		left.add_child(_heading("Base", "No habitat yet: its systems show here once the first module stands." if MHGame.simulation_on() else "Creative mode: no simulation to watch."))
 		return page
-	left.add_child(_heading("Base", "%d crew%s" % [sim.crew_count(), " · dust storm" if bool(sim.last.get("storm", false)) else ""]))
-	for entry in SYSTEMS:
+	if not rows.is_empty(): left.add_child(_heading("Base", "%d crew%s" % [sim.crew_count(), " · dust storm" if bool(sim.last.get("storm", false)) else ""]))
+	for entry in SYSTEMS if not rows.is_empty() else []:
 		var row: Dictionary = rows.get(entry[0], {})
 		if row.is_empty(): continue
 		left.add_child(_gauge(str(entry[1]), str(entry[2]), row))
-	if MHChapterOne.on() and sim != null:
+	if MHChapterOne.on() and sim != null and not rows.is_empty():
 		left.add_child(_feedstock_block(sim))
 	var right := MHStyle.vbox(12)
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -471,6 +477,23 @@ func _alert_card(alert: Dictionary) -> Control:
 	return card
 
 ## Changes when the Base page would look different.
+## The cabin's three gauges: {battery, warmth, air} → {tone, fraction, text}.
+func _cabin_rows(cabin: Node) -> Dictionary:
+	var core: RefCounted = cabin.core
+	var ahead: Dictionary = cabin.ahead
+	var when := func(key: String, ok: String) -> String:
+		var h := float(ahead.get(key, -1.0))
+		return ok if h < 0.0 else "until %s" % core._clock_after(h)
+	var charging: bool = float(core.last.get("solar", 0.0)) > float(core.last.get("draw", 0.0))
+	var battery_text := "%d%% · %s · heater %s" % [roundi(core.battery_pct()), "charging" if charging else when.call("power", "lasts the day"), core.heater_mode]
+	var co2: float = core.co2_pct()
+	var air_text := "CO₂ %.1f%% · O₂ tank %.1f kg · %s" % [co2, core.tank_o2_kg, "fresh " + when.call("air", "all day") if co2 < 1.0 else "stale"]
+	var warm_text := "%d °C · %s" % [roundi(core.temp_c), "warm " + when.call("cold", "all day") if core.temp_c >= 12.0 else "cold"]
+	var tone := func(bad: bool, worse: bool) -> Color: return MHStyle.DANGER if worse else (MHStyle.WARN if bad else MHStyle.VALID)
+	return {"battery": {"tone": tone.call(core.battery_pct() < 25.0, not core.powered()), "fraction": core.battery_pct() / 100.0, "text": battery_text},
+		"warmth": {"tone": tone.call(core.temp_c < 12.0, core.temp_c < 0.0), "fraction": clampf((core.temp_c + 10.0) / 32.0, 0.0, 1.0), "text": warm_text},
+		"air": {"tone": tone.call(co2 >= 1.0 or core.tank_o2_kg < .4, co2 >= 3.0 or core.tank_o2_kg <= 0.0), "fraction": clampf(core.tank_o2_kg / core.tank_cap, 0.0, 1.0), "text": air_text}}
+
 func _base_signature() -> String:
 	var hud: Node = world.get("explore_hud") if world != null else null
 	var alerts: Node = world.get("alerts") if world != null else null
@@ -478,6 +501,8 @@ func _base_signature() -> String:
 	var words: Array = rows.values().map(func(r): return str(r.text))
 	var sim: RefCounted = world.builder.simulation() if world != null and world.builder != null else null
 	var stock := _feedstock_words(sim) if MHChapterOne.on() and sim != null else ""
+	var cabin: Node = world.get("cabin_life") if world != null else null
+	if cabin != null and cabin.running() and rows.is_empty(): stock += str(_cabin_rows(cabin).values().map(func(r): return str(r.text)))
 	return "%s|%s|%s|%d" % [str(words), stock, str(alerts.active_alerts().map(func(a): return "%s%s" % [a.id, a.level])) if alerts != null else "", alerts.history.size() if alerts != null else 0]
 
 ## Redraws the open app in place.

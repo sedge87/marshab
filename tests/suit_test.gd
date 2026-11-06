@@ -62,12 +62,12 @@ func _initialize() -> void:
 	await _put(world, Vector3(1.5, y + .3, 0))
 	await process_frame
 	_check(suit.where == "habitat", "in a room you're in the habitat (%s, inside %s, o2 %.1f)" % [suit.where, b.is_inside(world.player.global_position), sim.o2_pct])
-	# Outside: two hours of oxygen at a walk, three of power by day.
+	# Outside: eight hours of oxygen at a walk, and of power, by day.
 	await _put(world, Vector3(-30, MHSiteTerrain_height(-30, -30) + 1.0, -30))
 	await process_frame
 	_check(suit.where == "outside", "out on the ground you're outside (%s)" % suit.where)
 	suit.step(1.0)
-	_check(absf(suit.o2 - .5) < .01 and absf(suit.power - 2.0 / 3.0) < .01, "an hour outside: half the oxygen, a third of the power (%.2f, %.2f)" % [suit.o2, suit.power])
+	_check(absf(suit.o2 - .875) < .01 and absf(suit.power - .875) < .01, "an hour outside by day: an eighth of the oxygen and power (%.2f, %.2f)" % [suit.o2, suit.power])
 	_check(suit.turn_back_hours() < suit.o2_hours_left(), "the turn-back time allows for the walk home")
 	var dose_before: float = suit.dose_msv
 	var outdoor_rate: float = suit.dose_rate()
@@ -77,7 +77,7 @@ func _initialize() -> void:
 	world.day_night.set_hour(23.0)
 	var power_before: float = suit.power
 	suit.step(.5)
-	_check(absf((power_before - suit.power) - 1.0 / 3.0) < .01, "the heater doubles the power drain at night")
+	_check(absf((power_before - suit.power) - .5 * suit.pace() * suit.NIGHT_POWER / suit.POWER_HOURS) < .005 and suit.pace() < .8, "at night the heater works harder, but the suit drains by real minutes (pace %.2f)" % suit.pace())
 	world.day_night.set_hour(12.0)
 	world.player.velocity = Vector3(8, 0, 0)
 	_check(is_equal_approx(suit.breathing_rate(), 1.6), "sprinting, you breathe harder")
@@ -110,7 +110,7 @@ func _initialize() -> void:
 	var tank: float = rover.o2
 	suit.top_up_from_rover()
 	_check(suit.o2 > .99 and suit.power > .99, "topped up from the rover")
-	_check(absf((tank - rover.o2) - 100.0 / 12.0) < .1 and absf((battery - rover.battery) - 4.0) < .1, "which drains its tank and battery (%.1f%%, %.1f%%)" % [tank - rover.o2, battery - rover.battery])
+	_check(absf((tank - rover.o2) - 400.0 / 12.0) < .2 and absf((battery - rover.battery) - 4.0) < .1, "which drains its tank and battery (%.1f%%, %.1f%%)" % [tank - rover.o2, battery - rover.battery])
 	# The bay refills the rover's tank from the habitat.
 	rover.o2 = 50.0
 	reserve = sim.o2_reserve_kg
@@ -155,7 +155,7 @@ func _initialize() -> void:
 	_check(suit.leak, "the suit's seals leak")
 	suit.o2 = 1.0
 	suit.step(.5)
-	_check(absf(suit.o2 - (1.0 - .5 * 1.5 / 2.0)) < .01, "so oxygen goes faster (%.3f)" % suit.o2)
+	_check(absf(suit.o2 - (1.0 - .5 * suit.pace() * 1.5 / suit.O2_HOURS)) < .01, "so oxygen goes faster (%.3f)" % suit.o2)
 	var dropped_state: Dictionary = suit.export_state()
 	b.placed_interior.append({"placement_id": "suit_panel", "id": "suit_service_panel", "position": Vector3(0, y + 1.2, -3.0), "zone_cell": Vector2i(0, -1), "state": {}})
 	suit.refill_at_panel()

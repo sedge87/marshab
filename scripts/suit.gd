@@ -33,14 +33,14 @@ const RESCUE := preload("res://scripts/gar_y_rescue.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
 const HABITAT_CHAINS := preload("res://scripts/habitat_chains.gd")
-const O2_HOURS := 2.0            # game hours of oxygen at a walk
-const POWER_HOURS := 3.0         # by day; the heater doubles the draw at night
-const SCRUBBER_HOURS := 4.0
+const O2_HOURS := 8.0            # game hours of oxygen at a walk: about 10 real minutes by day (New numbers: suit_hours)
+const POWER_HOURS := 8.0         # by day; the heater doubles the draw at night
+const SCRUBBER_HOURS := 10.0
 const SPRINT := 1.6              # breathing harder
 const CARRYING := 1.3
 const COLD := 1.25               # a flat battery: no heater, more oxygen burned
 const STALE := 1.5               # a spent scrubber: CO2 builds up
-const NIGHT_POWER := 2.0
+const NIGHT_POWER := 1.4         # the heater works harder at night: felt, never crippling
 const O2_KG_PER_HOUR := 0.035    # what an hour of suit oxygen takes from a tank (0.84 kg a day)
 const FULL_KWH := 1.0            # a full suit battery
 const FILL_PER_S := 0.5          # share of a full suit an umbilical fills each second
@@ -155,9 +155,18 @@ func _where() -> String:
 ## A stretch of time outside, in game hours.
 func step(hours: float) -> void:
 	if hours <= 0.0 or MHGame.debug_suit_never_runs_out: return
+	# Night runs faster on the clock than day; the suit drains by real minutes,
+	# so a night walk lasts about as long as a day walk (7 Nov).
+	hours *= pace()
 	o2 = maxf(0.0, o2 - hours * breathing_rate() * (LEAK if leak else 1.0) / O2_HOURS)
 	power = maxf(0.0, power - hours * (NIGHT_POWER if MHGame.sunlight_fraction < .1 else 1.0) / POWER_HOURS)
 	scrubber = maxf(0.0, scrubber - hours / SCRUBBER_HOURS)
+
+## How fast the clock runs now against daytime: 1 by day, about 0.5 at night.
+static func pace() -> float:
+	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+	var day_hours := maxf(.1, float(cycle.get("sunset_hour", 19.0)) - float(cycle.get("sunrise_hour", 5.0)))
+	return real_seconds_per_hour() / (maxf(1.0, MHGame.daylight_minutes() * 60.0) / day_hours)
 
 ## Your dose rate where you are, mSv an hour.
 func dose_rate() -> float:
@@ -226,6 +235,12 @@ func fill(share: float, source: String) -> bool:
 			if sim != null and MHGame.simulation_on():
 				got_o2 = sim.take_oxygen(want_o2 * O2_HOURS * O2_KG_PER_HOUR) / (O2_HOURS * O2_KG_PER_HOUR)
 				got_power = sim.take_energy(want_power * FULL_KWH) / FULL_KWH
+		"lander":
+			# The cabin's own tank and battery (scripts/lander_cabin_life.gd).
+			var cabin: Node = world.get("cabin_life")
+			if cabin != null and MHGame.simulation_on():
+				got_o2 = cabin.core.take_oxygen(want_o2 * O2_HOURS * O2_KG_PER_HOUR) / (O2_HOURS * O2_KG_PER_HOUR)
+				got_power = cabin.core.take_energy(want_power * FULL_KWH) / FULL_KWH
 		"rover":
 			var rover: Node = world.get("crew_rover")
 			if rover == null: return false
@@ -304,7 +319,7 @@ func _prune_dropped() -> void:
 
 ## Game hours of oxygen left at the current rate.
 func o2_hours_left() -> float:
-	return o2 * O2_HOURS / (breathing_rate() * (LEAK if leak else 1.0))
+	return o2 * O2_HOURS / (breathing_rate() * (LEAK if leak else 1.0) * pace())
 
 ## Game hours left before you must turn back for the nearest refill, with a
 ## margin (negative: you're already past it).
@@ -319,8 +334,8 @@ static func real_seconds_per_hour() -> float:
 	var sunrise := float(cycle.get("sunrise_hour", 5.0))
 	var sunset := float(cycle.get("sunset_hour", 19.0))
 	if MHGame.sol_hour >= sunrise and MHGame.sol_hour < sunset:
-		return maxf(1.0, float(cycle.get("daylight_minutes", 15.0)) * 60.0) / maxf(.1, sunset - sunrise)
-	return maxf(1.0, float(cycle.get("night_minutes", 5.0)) * 60.0) / maxf(.1, 24.0 - (sunset - sunrise))
+		return maxf(1.0, MHGame.daylight_minutes() * 60.0) / maxf(.1, sunset - sunrise)
+	return maxf(1.0, MHGame.night_minutes() * 60.0) / maxf(.1, 24.0 - (sunset - sunrise))
 
 ## The nearest place to top up: {position, distance, label}.
 func nearest_refill() -> Dictionary:

@@ -44,7 +44,8 @@ func blocked_reason() -> String:
 	if asleep: return "Already asleep."
 	if _critical(): return "Not with a critical alert up. Fix it first."
 	var player: Node3D = world.player
-	if not world.builder.is_inside(player.global_position): return "You can only sleep inside the habitat."
+	var in_cabin: bool = world.lander != null and bool(world.lander.cabin_contains(player.global_position))
+	if not world.builder.is_inside(player.global_position) and not in_cabin: return "You can only sleep inside: the habitat or the lander cabin."
 	return ""
 
 # ---------- the panel ----------
