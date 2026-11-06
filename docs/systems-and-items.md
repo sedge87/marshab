@@ -96,7 +96,7 @@ Each system has stores (what's kept), flows (what goes in and out each sol), how
 - **Keep** the forecast storms, dust on the panels and frost.
 - **Dusting the panels** is needed only after a dust storm, as one hands-on job; the dust monitor tells you when (7 Nov). It's never a daily chore.
 - **Forecasts start short and get better** once weather stations are out (§5).
-- **Fix** the bug where forecast storms stall during a research boost (`habitat_sim.gd:534-539`).
+- **Fixed 7 Nov:** forecast storms no longer stall during a research boost.
 
 ### 1.11 Materials and making · **Decided 3 Nov**
 - **Iron-rich rock (haematite):**
@@ -136,6 +136,11 @@ With feedstock gone, recycling needs a new job. **Proposal:** one Recycler takes
 | Suit | visor fog, LEDs, breathing sounds, frost on the visor; the wrist pad shows icons, not numbers |
 
 **The slate's Base app** becomes a picture of the base: rooms tinted by state, with icons for problems. Exact numbers are one tap deeper.
+
+**The base at a glance · Decided 7 Nov.** A playtester liked seeing the warning icons and the old overview, because they always knew how the base was doing. So show-don't-tell never hides state:
+- **The warning icon row stays on the HUD,** always on while the slate is down (N opens the most serious one). The storm pill stays too.
+- **M raises the slate on Base,** the overview: the picture of the base, the stores as gauges and what to fix first. It's built properly with the new sim (§14 step 1 on). Comms keeps its own tab.
+- The body cues above add to the readout; they never replace it.
 
 ---
 
@@ -721,6 +726,13 @@ This covers the 141 catalogue items (`data/equipment_catalog.json`) and the 5 si
 - Every number goes in the spreadsheet (`docs/MarsHabitat_Balance.xlsx` → `tools/import_balance.py` → `data/resources.json`). That includes `hazards.json` and the constants now hard-coded in the sim, suit, wear, waste, food and weather scripts.
 - Unused keys are dropped.
 - Each number gets a "real figure" and a source.
+- **Set up 7 Nov (step 0):**
+  - **Hazards sheet:** written to `hazards.json` on import; that file's lists stay hand-edited.
+  - **New numbers sheet:** this brief's first figures, exported under `revamp` for step 1.
+  - **Real figure and source** columns.
+  - **Unused keys** no longer exported: five settings and three hazard keys.
+
+  Constants still hard-coded in scripts move in as step 1 replaces those scripts.
 
 ## 13. The playable slice and its checklist
 

@@ -144,7 +144,7 @@ The story is several separate threads, each started by something you do or by a 
 - **Build:** Plan and Look;
 - **Base, Site, Log:** as now.
 
-**On screen:** only the crosshair and prompt, captions, the compass (with pins and found things) and the notice line. **The Classic HUD setting is dropped.** The wrist pad stays life support only.
+**On screen:** the crosshair and prompt, captions, the compass (with pins and found things), the notice line, and **the warning icon row and storm pill** (7 Nov: the base at a glance, systems-and-items §2). **M** raises the slate on Base, the overview. **The Classic HUD setting is dropped.** The wrist pad stays life support only.
 
 ## 9. Existing systems: keep, rebuild, cut
 

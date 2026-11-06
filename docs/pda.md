@@ -9,7 +9,7 @@
 | Device | What it's for | How you use it |
 |---|---|---|
 | **Wrist pad** (exists, `wrist_pad.gd`) | **Life support at a glance.** O₂ time, suit power, scrubber, dose, turn-back time, the nearest refill. Also new: the sample case count. | **Hold T.** You keep walking and looking. It never takes the mouse. |
-| **Slate** (new, internally "PDA") | **Everything else you need to know.** Goals, map, base systems, comms, site data, a log of everything you were told. | **Tab** to raise or lower. **M** raises it on Comms. **Esc** lowers it. |
+| **Slate** (new, internally "PDA") | **Everything else you need to know.** Goals, map, base systems, comms, site data, a log of everything you were told. | **Tab** to raise or lower. **M** raises it on Base. **Esc** lowers it. |
 
 The wrist stays "life support only" (docs/start-and-chapter-one.md:99). The slate doesn't scan anything. Finding ice is still GAR-Y's job and the survey stakes'. The slate only shows what you, GAR-Y and Earth already know.
 
@@ -46,9 +46,9 @@ While exploring, **only these**:
 
 Plus the things that are already the suit and its visor: the visor brackets, the O₂ and power LEDs, the top-centre base-alert blink, frost, and the red edge glow for a critical alert.
 
-**Gone from the screen:** Sol clock, zone chip, site telemetry, habitat systems panel, readiness panel, checklist, alert icon row, storm pill, sample pips, the key-hint strip. Key hints come back briefly the first few times you use a feature. The full list of controls is in Pause → Controls.
+**Gone from the screen:** Sol clock, zone chip, site telemetry, habitat systems panel, readiness panel, checklist, sample pips, the key-hint strip. *(7 Nov: the alert icon row and storm pill came back, always on: the base at a glance, systems-and-items §2.)* Key hints come back briefly the first few times you use a feature. The full list of controls is in Pause → Controls.
 
-**Classic HUD:** Settings → On screen → HUD: **Minimal** (default) or **Classic**. Classic brings back the habitat systems panel and the clock, for players who want them. *(Dropped 3 Nov 2026, `docs/master-design.md` §8: Minimal is the only HUD.)*
+**Classic HUD:** Settings → On screen → HUD: **Minimal** (default) or **Classic**. Classic brings back the habitat systems panel and the clock, for players who want them. *(Dropped 3 Nov 2026, `docs/master-design.md` §8; the setting was removed 7 Nov.)*
 
 Build mode, the Print Shop, the Lab, the Journal and the pause menu are unchanged. They're work screens you choose to open, not clutter.
 
@@ -67,14 +67,14 @@ Build mode, the Print Shop, the Lab, the Journal and the pause menu are unchange
 
 - **Into the slate:** Messages, Discoveries, the Alert log. They're personal and you want them anywhere.
 - **To a comms terminal in the base** (a new in-world machine, E to use): Monitor, Cameras, Crew and Dossier. They're the station's tools, used at a desk.
-- **M** raises the slate on Comms. **C** still opens the Crew screen for now.
+- **M** raises the slate on Base (7 Nov; it was Comms). **C** still opens the Crew screen for now.
 
 ## 7. Keys
 
 | Key | Now | Before |
 |---|---|---|
 | Tab | Slate up/down (last app) | Region map |
-| M | Slate on Comms | Mission Control |
+| M | Slate on Base | Mission Control |
 | Esc | Lowers the slate (when up) | Pause |
 | 1–6 | Switch apps (slate up) | — |
 | T (hold) | Wrist pad, unchanged | — |
