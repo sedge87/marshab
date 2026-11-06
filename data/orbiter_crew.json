@@ -1,0 +1,10 @@
+{
+  "_about": "The orbiter crew (docs/systems-and-items.md §10e, step 2 notes): the people meant to land with you, waiting in orbit until the finale. A working draft (7 Nov): the user will revisit names, roles and threads. Small crew = the first two; Standard = all five.",
+  "people": [
+    {"id": "castellanos", "name": "Mira Castellanos", "role": "Commander", "thread": "keeping five people safe in a ship built for a short stay, and choosing when to land them"},
+    {"id": "rao", "name": "Devan Rao", "role": "Pilot", "thread": "fuel for one landing only; practises it in the simulator every night"},
+    {"id": "achterberg", "name": "Tamsin Achterberg", "role": "Engineer", "thread": "the orbiter's water recycler is failing; her fixes mirror yours"},
+    {"id": "mwangi", "name": "Joseph Mwangi", "role": "Doctor", "thread": "months of weightlessness wear the crew down; the wait gives the finale its heart"},
+    {"id": "tupou", "name": "Kai Tupou", "role": "Biologist", "thread": "life: pores over every sample, wants the wonder thread most"}
+  ]
+}

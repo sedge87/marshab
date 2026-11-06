@@ -767,7 +767,14 @@ One Survival run should let you try every pillar:
     - **The old chapter-one crates are removed from new games:** only the lander and pallet 1, true to the story. There's little past 20 minutes until step 3.
     - **The descent is talked down live on the radio** by the orbiter crew (about 40 s, skippable). At touchdown the link drops to static and the orbiter is texts only. No separate cutscene.
     - **Voices stay on text-to-speech** (tools/generate_voice.py), with lines written to a finished standard and timed to the walk.
-    - **I propose the orbiter crew** (five, for Standard) for approval; two speak in step 2.
+    - **The orbiter crew, a working draft (7 Nov; the user will revisit the specifics later; the dialogue tone is approved):**
+      - Commander Mira Castellanos: keeping five safe and choosing when to land.
+      - Pilot Devan Rao: one landing's worth of fuel; practises nightly.
+      - Engineer Tamsin Achterberg: the orbiter's failing water recycler mirrors your repairs.
+      - Doctor Joseph Mwangi: the long wait wears the crew down, which gives the finale heart without a timer.
+      - Biologist Kai Tupou: wants the life thread most.
+
+      Castellanos and Rao talk you down in step 2. Names and roles live in one data file (`data/orbiter_crew.json`), so changes don't touch code.
     - **Notes replaces Goals** as your inner voice (master-design §5). The chapter-one checklist and tutorial are off for new games; optional hints stay.
     - **Pallet 1:** free its latches, then carry the ~20 kg oxygen cartridge back and plug it into the cabin. The cabin air is cut back to about a sol, and suit refills draw from it.
        - **Collapse:** you wake in the cabin (GAR-Y's rescue comes in step 7).
