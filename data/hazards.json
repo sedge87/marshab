@@ -1,25 +1,106 @@
 {
-  "_comment": "Act 2 (Missions 7-10): the crew as people and the hazards. scripts/habitat_life.gd reads this; docs/missions-7-10-design.md section 7 explains every rule. Tune the game here: every number has a note.",
+  "_comment": "The crew as people and the hazards; scripts/habitat_life.gd reads this. Its numbers are generated from the Hazards sheet of docs/MarsHabitat_Balance.xlsx by tools/import_balance.py: edit them there. The lists (roles, names, items) are edited here.",
   "crew": {
     "roles": [
-      {"id": "commander", "label": "Commander", "room": "communications"},
-      {"id": "engineer", "label": "Engineer", "room": "engineering"},
-      {"id": "doctor", "label": "Doctor", "room": "medical"},
-      {"id": "botanist", "label": "Botanist", "room": "hydroponics"},
-      {"id": "geologist", "label": "Geologist", "room": "science"},
-      {"id": "systems", "label": "Systems specialist", "room": "life_support"}
+      {
+        "id": "commander",
+        "label": "Commander",
+        "room": "communications"
+      },
+      {
+        "id": "engineer",
+        "label": "Engineer",
+        "room": "engineering"
+      },
+      {
+        "id": "doctor",
+        "label": "Doctor",
+        "room": "medical"
+      },
+      {
+        "id": "botanist",
+        "label": "Botanist",
+        "room": "hydroponics"
+      },
+      {
+        "id": "geologist",
+        "label": "Geologist",
+        "room": "science"
+      },
+      {
+        "id": "systems",
+        "label": "Systems specialist",
+        "room": "life_support"
+      }
     ],
-    "default_names": ["Ada Okafor", "Tom Reyes", "Mei Lin", "Priya Nair", "Jonas Berg", "Sam Taylor"],
-    "favourites": ["photo_frame", "guitar", "paper_books", "herb_pot", "chess_set", "zero_g_plush"],
-    "personal_items": ["photo_frame", "paper_books", "guitar", "chess_set", "zero_g_plush", "crew_mug", "crew_tablet", "crew_laptop", "desk_lamp", "retro_mars_poster", "arcade_cabinet", "vr_station", "table_football", "telescope", "music_station", "dartboard", "games_shelf", "projector_screen", "table_tennis", "climbing_wall"],
-    "plant_items": ["plant_pot", "herb_pot", "greenhouse_planter", "grow_tray", "plant_wall"],
-    "table_items": {"common_table": 4, "galley_table_set": 4, "galley_bench_unit": 2, "coffee_bar": 2, "floor_cushions": 4},
-    "galley_items": ["galley_oven", "galley_kitchenette"],
-    "noisy_rooms": ["engineering", "life_support", "general", "vehicle_bay"],
+    "default_names": [
+      "Ada Okafor",
+      "Tom Reyes",
+      "Mei Lin",
+      "Priya Nair",
+      "Jonas Berg",
+      "Sam Taylor"
+    ],
+    "favourites": [
+      "photo_frame",
+      "guitar",
+      "paper_books",
+      "herb_pot",
+      "chess_set",
+      "zero_g_plush"
+    ],
+    "personal_items": [
+      "photo_frame",
+      "paper_books",
+      "guitar",
+      "chess_set",
+      "zero_g_plush",
+      "crew_mug",
+      "crew_tablet",
+      "crew_laptop",
+      "desk_lamp",
+      "retro_mars_poster",
+      "arcade_cabinet",
+      "vr_station",
+      "table_football",
+      "telescope",
+      "music_station",
+      "dartboard",
+      "games_shelf",
+      "projector_screen",
+      "table_tennis",
+      "climbing_wall"
+    ],
+    "plant_items": [
+      "plant_pot",
+      "herb_pot",
+      "greenhouse_planter",
+      "grow_tray",
+      "plant_wall"
+    ],
+    "table_items": {
+      "common_table": 4.0,
+      "galley_table_set": 4.0,
+      "galley_bench_unit": 2.0,
+      "coffee_bar": 2.0,
+      "floor_cushions": 4.0
+    },
+    "galley_items": [
+      "galley_oven",
+      "galley_kitchenette"
+    ],
+    "noisy_rooms": [
+      "engineering",
+      "life_support",
+      "general",
+      "vehicle_bay"
+    ],
     "general_sleep": 0.5,
     "general_space_share": 0.5,
     "general_work_speed": 0.75,
-    "noisy_items": ["regolith_printer"],
+    "noisy_items": [
+      "regolith_printer"
+    ],
     "living_cells_per_person": 2.0
   },
   "fitness": {
@@ -48,14 +129,20 @@
     "hull_points": 5.0,
     "safe_points": 20.0,
     "coverage_factor": 1.5,
-    "shield_points": {"regolith_shield_block": 8.0, "water_wall_panel": 10.0, "pantry_cabinet": 2.0, "locker": 2.0, "sample_storage_cabinet": 2.0, "storm_shelter_locker": 2.0, "spare_parts_rack": 2.0},
+    "shield_points": {
+      "regolith_shield_block": 8.0,
+      "water_wall_panel": 10.0,
+      "pantry_cabinet": 2.0,
+      "locker": 2.0,
+      "sample_storage_cabinet": 2.0,
+      "storm_shelter_locker": 2.0,
+      "spare_parts_rack": 2.0
+    },
     "crew_per_shelter_cell": 3.0,
     "event_dose_msv": 150.0,
     "event_hours": 24.0,
     "warning_hours": 0.5,
     "falloff_points": 12.0,
-    "background_msv_per_sol": 0.3,
-    "event_limit_msv": 50.0,
     "surface_msv_per_sol": 0.6,
     "indoors_factor": 0.8,
     "rover_factor": 0.8,
@@ -71,17 +158,25 @@
     "patch_hours_no_engineer": 2.0,
     "air_kg_per_cell": 31.0,
     "repress_kg_per_hour": 40.0,
-    "reserve_air_kg": {"air_reserve_rack": 60.0},
+    "reserve_air_kg": {
+      "air_reserve_rack": 60.0
+    },
     "danger_pct": 70.0
   },
   "breakdowns": {
-    "machines": ["air_recycler", "oxygen_generator", "water_reclaimer", "thermal_control_unit"],
+    "machines": [
+      "air_recycler",
+      "oxygen_generator",
+      "water_reclaimer",
+      "thermal_control_unit"
+    ],
     "mean_sols_between": 200.0,
     "repair_hours": 6.0,
     "repair_hours_no_engineer": 12.0,
-    "spares_per_rack": {"spare_parts_rack": 8},
-    "printer_sols_per_spare": 10.0,
-    "max_down_hours": 12.0
+    "spares_per_rack": {
+      "spare_parts_rack": 8.0
+    },
+    "printer_sols_per_spare": 10.0
   },
   "live": {
     "spe_per_100_sols": 1.0,
