@@ -763,6 +763,13 @@ One Survival run should let you try every pillar:
        - **Sleep is offered, never forced:** from any sealed place (the cabin, later the rover and the habitat), and offered at a pause such as after a pallet, like Firewatch's cuts "at points of closure or tension". Step 2.
        - **Night one's real fix is out in the world:** ARDEN warns that the cabin can't stay warm all night on its own battery, so you look for the power pallet before dark (master-design §6's pressure table). Step 2.
        - **Too far at night and you black out:** GAR-Y finds you, the second way to meet it (master-design §2).
+  - **Step 2, decided 7 Nov:**
+    - **The old chapter-one crates are removed from new games:** only the lander and pallet 1, true to the story. There's little past 20 minutes until step 3.
+    - **The descent is talked down live on the radio** by the orbiter crew (about 40 s, skippable). At touchdown the link drops to static and the orbiter is texts only. No separate cutscene.
+    - **Voices stay on text-to-speech** (tools/generate_voice.py), with lines written to a finished standard and timed to the walk.
+    - **I propose the orbiter crew** (five, for Standard) for approval; two speak in step 2.
+    - **Notes replaces Goals** as your inner voice (master-design §5). The chapter-one checklist and tutorial are off for new games; optional hints stay.
+    - **Pallet 1:** free its latches, then carry the ~20 kg oxygen cartridge back and plug it into the cabin. The cabin air is cut back to about a sol, and suit refills draw from it.
        - **Collapse:** you wake in the cabin (GAR-Y's rescue comes in step 7).
        - **Not in step 1:** splitting `build_controller.gd` (step 3).
   2. **The 20-minute opening, built close to finished quality** (art, sound, voice), to prove that walking, talking and surviving are fun before anything else is built (Firewatch's vertical slice):

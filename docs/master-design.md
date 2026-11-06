@@ -91,7 +91,13 @@ Two options, still open: **a heated pipe** you lay point to point (it costs per 
 
 **Steer, don't tell.**
 - The Goals checklist and the step-by-step tutorial go. Early direction comes from the situation: air running low, a parachute in view, orbiter texts.
-- The slate's Goals app becomes **Notes**: Earth's requests plus your own pinned goals.
+- The slate's Goals app becomes **Notes, your inner voice** (decided 7 Nov). It's a notebook page of your own written thoughts and the threads that guide you, never a quest list:
+  - **3 to 5 open thoughts at a time,** in the first person and hedged: "Parachute on the ridge north of the hatch. Life support, I hope."
+  - **No ticks, counts or markers.** Pins are your own, on the Map and compass.
+  - **Reactive:** a thought changes when you act, even out of order ("Found it. Cartridge is heavy."). It reads the who-knows-what record (systems-and-items §10f).
+  - **An answered thought becomes a Journal page.** Every answer raises a new question (Schell's Lens of Curiosity).
+  - **Earth's requests appear as your reaction to them:** "Earth wants a crater-wall sample. If I'm passing."
+  - **Written, never spoken:** you're silent apart from short replies (systems-and-items §10e).
 - Optional hints, in Settings, are the only remaining help.
 
 **Chapters are no longer visible.** Milestones become story beats: radio reports and events.
