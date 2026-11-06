@@ -751,6 +751,14 @@ One Survival run should let you try every pillar:
 - **The order runs from the opening to the slice** (master-design §10). Each step ends playable and gets a playtest:
   0. **Clear the ground:** remove Missions mode and the Classic HUD; fix the three bugs below; move the numbers into one balance source (§12).
   1. **The new sim core** with power, heat and air only, and the one body (§2) driven by it. The lander cabin is the first "base" it runs.
+     - **Decided 7 Nov:**
+       - **Four parts:** stores and flows, one alerts engine, one runway sum, and the body.
+       - **Built beside the old sim:** it takes over power, heat and air; water and food stay on the old code until steps 5 and 7.
+       - **The 30-minute sol and 8 hours of suit air start here.**
+       - **The body cues are clear,** with a comfort slider to tone them down.
+       - **Night one is a real choice:** the battery can't run the heater, lights and scrubber all night. Doing nothing means a cold, stuffy morning that hurts but doesn't kill.
+       - **Collapse:** you wake in the cabin (GAR-Y's rescue comes in step 7).
+       - **Not in step 1:** splitting `build_controller.gd` (step 3).
   2. **The 20-minute opening, built close to finished quality** (art, sound, voice), to prove that walking, talking and surviving are fun before anything else is built (Firewatch's vertical slice):
      - the cabin air dial;
      - the parachute photo and window;
