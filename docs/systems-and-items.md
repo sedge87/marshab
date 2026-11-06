@@ -72,6 +72,7 @@ Each system has stores (what's kept), flows (what goes in and out each sol), how
   - Tiredness builds through the sol: blinks, yawns, a drifting view. Very tired slows you, and you can doze off in the field.
   - Sleep is poor in the General Module (noise), good in Quarters and fair in the HabRover.
 - **At zero health you collapse.** GAR-Y gets you to safety (before you've met it, you crawl back to the cabin). You wake hours later, weak, with the problem still there. It costs time, never the save.
+- **Exercise is an optional boost,** never a decline you must fight: a session leaves you walking faster and carrying more for the sol.
 - **Wellbeing** is lifted by washing, fresh food, comfort, personal items, a window and contact with Earth. Low wellbeing slows your work; it never harms you.
 - **Injuries** are an optional challenge, treated with the medical kit.
 - **The crew (finale):** there are no mid-game crew waves. The orbiter crew land only in the welcome ending (§10e), and after that they get their own simple shared track.
@@ -89,9 +90,11 @@ Each system has stores (what's kept), flows (what goes in and out each sol), how
 - **One failure path:** wear. A machine wears while it runs, sounds and looks it, loses output past about 70 %, and fails if left fully worn.
 - **Rare surprises** (a breakdown, a breach, a solar event) follow the surprises setting.
 - **One generic spares kit,** made at the Engineering Bench from iron and salvage.
+- **No routine upkeep (7 Nov):** no filter swaps, no topping up tanks by hand. Machines just run; wear is the only upkeep, and it's rare and heard before it's seen.
 
 ### 1.10 Storms and weather *(after sol 15)*
 - **Keep** the forecast storms, dust on the panels and frost.
+- **Dusting the panels** is needed only after a dust storm, as one hands-on job; the dust monitor tells you when (7 Nov). It's never a daily chore.
 - **Forecasts start short and get better** once weather stations are out (§5).
 - **Fix** the bug where forecast storms stall during a research boost (`habitat_sim.gd:534-539`).
 
@@ -331,15 +334,14 @@ Nights and storms keep you inside, so there's always hands-on work. None of it i
 - **Inside:**
   - the Lab: analyse the day's samples;
   - the Bench: study damaged kit, repair, make spares, take salvage apart;
-  - the Print Shop: queue parts and load iron;
+  - the Print Shop: pick a plan and watch it print (it draws iron from your stores, which you see on the shelves);
   - the Greenhouse: plant, tend and harvest;
   - the Galley, the shower and exercise;
-  - swap filters and top up tanks;
   - plan new rooms and fit them out;
   - the journal: photos and finds;
   - the radio: talk to the orbiter crew.
 - **Just outside, by day:**
-  - brush the dust off the solar panels;
+  - after a dust storm, brush the panels clean;
   - patch a cable or thaw a pipe;
   - set up an instrument and read its data;
   - watch the printer raise a room;
@@ -350,11 +352,11 @@ Nights and storms keep you inside, so there's always hands-on work. None of it i
 
 ### 9.1 Cables, pipes and outposts
 **Decided 3 Nov: you plan the route, GAR-Y lays it.**
-- **Planning:** in the Build app's Look view, click the start, each bend, and the end, as with corridors.
+- **Planning:** in the Build app's Look view, click the two ends and GAR-Y suggests a route (7 Nov). Add bends yourself when the path matters, as with corridors.
 - **Laying:** GAR-Y drives the route and lays it over time while you get on with other things. You can lay a short run yourself by hand, for when it's urgent.
 - **Cable:** laid point to point. It costs iron per metre.
 - **Heated pipe:** laid point to point. It costs iron per metre and draws power per metre to keep the water from freezing, so it suits near ice.
-- **Outpost:** a shelter, an extractor, a tank and solar, built at far ice or a far site. It's a second home you service.
+- **Outpost:** a shelter, an extractor, a tank and solar, built at far ice or a far site. It runs itself once built: you go back for a storm, a fault or a find nearby, never to service it (7 Nov).
 
 ### 9.2 The world · **Decided 3 Nov**
 
@@ -492,7 +494,7 @@ GAR-Y is found early, with its radar survey and the rescue. After that it learns
 - **laying cable and pipe** along the routes you plan (§9.1);
 - **collecting from miners** on its rounds (§1.11);
 - **a longer survey range;**
-- **light servicing rounds in the base** (filter swaps while you're away);
+- **hauling bulk** (iron, ice, regolith) from early on, so you carry only samples and small finds and are never a delivery driver (7 Nov);
 - **guiding a walking carrier home.**
 
 ## 10d. Accessibility · **Decided 3 Nov**
@@ -540,6 +542,13 @@ Firewatch is the nearest game to ours: first person, physically alone, and the o
 - **Talks fit the drive.** A crew story starts as you set off and is written to fit the trip, checked with a stopwatch on the slice. Short replies time out, and saying nothing is an answer (§10e).
 - **Music fills the quiet valleys.** As well as the big moments (§10b), a little music comes in when nothing has happened for a while and nothing is near.
 
+## 10g. The chore check · **Decided 7 Nov** (from Firewatch)
+
+Every job is tested: does it make you feel like the first person on Mars, at risk, or does it model the commissioner's day job? Settled:
+- **Cut:** filter swaps and tank top-ups (§1.9); servicing outposts (§9.1); hygiene as a need (washing only lifts wellbeing, §1.6, and the toilet feeds the water loop by itself).
+- **Simplified:** panel dusting only after storms (§1.10); exercise as an optional boost (§1.6); GAR-Y suggests cable and pipe routes (§9.1); the Print Shop draws from your stores (§8.1); GAR-Y hauls bulk (§10c).
+- **Kept, because they serve the feeling:** air, warmth, water, food and sleep; repairing the carriers and the radio link; instruments, samples and the Lab; rare wear and the spares kit; building and fitting out rooms.
+
 ## 11. Today's items: keep, rework, merge or cut. **Draft, 3 Nov, for review**
 
 This covers the 141 catalogue items (`data/equipment_catalog.json`) and the 5 site machines. The 12 surface props are among the catalogue's exterior items. **Tally:** 35 personal & comfort (found), 29 rework, 26 keep, 21 merge, 19 furnishing, 8 cut, 2 variant of exercise station, 1 variant of work desk.
@@ -553,7 +562,7 @@ This covers the 141 catalogue items (`data/equipment_catalog.json`) and the 5 si
 | Common Table | Furnishing | seating for meals together |
 | Task Light | Cut | lights are automatic |
 | Privacy Divider | Furnishing | a free-standing screen |
-| Exercise Station | Rework | Exercise: keeps fitness up; looks: station, treadmill, bike |
+| Exercise Station | Rework | Exercise: an optional boost (faster walking, more carried for the sol); looks: station, treadmill, bike |
 | Science Workbench | Rework | Lab bench: analyses rocks, regolith and cores |
 | Microscope Station | Keep | speeds up rock and regolith analysis; Lab only |
 | Sample Storage Cabinet | Keep | the sample archive: your story on show |
