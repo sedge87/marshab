@@ -207,6 +207,7 @@ From Subnautica: build a rough playable version first with placeholder art and g
 ## Sources
 
 - Charlie Cleveland, "The Design of Subnautica", GDC 2019 (transcript and slides in `Game Design Documents/`).
+- Chris Remo, "Interactive Story Without Challenge Mechanics: The Design of Firewatch", and Jane Ng, "Making the World of Firewatch" (GDC; transcripts in `Game Design Documents/`). Lessons used: the player as a participant, not an archaeologist; reactivity; one record of who knows what; talks timed to travel; landmarks first; evidence trails; a world that changes; a full-quality slice first (docs/systems-and-items.md §10f, §9.2, §14).
 - Jesse Schell, "The Art of Game Design: A Book of Lenses". Lenses used here: #1 Essential Experience, #7 Tetrad, #9 Unification, #4 Curiosity, #5 Endogenous Value, #71 Freedom, #72 Indirect Control, #61 Interest Curve, #32 Meaningful Choices, #33 Triangularity, #46 Economy.
 - Further viewing:
   - "'Subnautica' Postmortem" (Jonas Boetel, GDC 2019);

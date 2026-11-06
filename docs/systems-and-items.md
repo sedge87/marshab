@@ -416,6 +416,13 @@ Nights and storms keep you inside, so there's always hands-on work. None of it i
 
 The generator (`tools/generate_region.py`) gets a density check that flags any stretch of ground with nothing on it.
 
+**Storm debris trails · Decided 7 Nov.** Each scattered pallet leaves a trail: a parachute strip, a crate lid, straps and packing, lying in a line along the wind. Following one leads you to the pallet. These are breadcrumbs, not markers. Some bits are salvage.
+
+**The world changes · Decided 7 Nov.**
+- **Storms re-shape the land:** dunes move, things get buried or uncovered, and new debris is scattered (§1.11).
+- **Some ways open later:** a blocked pass clears after the big storm, for example.
+- **Your spaces show your life:** the lander cabin and your rooms fill with your own clutter over the sols (samples, photos, mugs).
+
 ### 9.3 The map: 25 places · **Decided 3 Nov** (positions tuned when built)
 
 The lander sits near the middle of the 12 km region. Bearings and distances are from it (N up). The landmarks you can see from afar are the Layered mound (E), the Great crater rim (E), the Lava plain (N) and the Highland walls (all round).
@@ -511,6 +518,27 @@ GAR-Y is found early, with its radar survey and the rescue. After that it learns
 **Crew size** becomes how many wait in orbit: Small 2, Standard 5, Large 8. That sets how big a base the finale needs. In Solitary the orbiter is uncrewed, and its voice is Earth's relay only.
 
 **Landing them is the finale:** the welcome-the-crew ending, the moment the base was built towards. After it the game carries on open-ended. This replaces Earth's crew waves (docs/survival-systems.md §12.2, commit 3417721). Visible crew at the base can come later as an expansion.
+
+## 10f. Reactivity and the present-tense story · **Decided 7 Nov** (from Firewatch)
+
+Firewatch is the nearest game to ours: first person, physically alone, and the only company is a voice on the radio. Two lessons from its GDC talks (Chris Remo on its story, Jane Ng on its world) shape our voices:
+- **You're a participant, not an archaeologist.** The story threads happen to you now:
+  - the orbiter crew's own troubles;
+  - Earth's search for the cargo;
+  - GAR-Y.
+
+  Logs, wrecks and the old landers are a side layer, never the main way the story is told.
+- **Reactive voices: a "series of interesting outcomes".** The game quietly notices what you do, and the voices react later. You're never told it's a choice. For example:
+  - what you carried home;
+  - which pallet you opened first;
+  - a risk you took (out at night, a crumbling cliff);
+  - a short reply that wasn't true, which someone calls out later.
+
+  Cheap lines in large numbers add up to a crew who feel real.
+- **One record of who knows what.** The known-things registry (master-design §5) also holds what each character knows about you and what they've told you. Every line checks it, so nobody contradicts themselves.
+- **Your words name the map.** When you describe a place in a short reply, it takes that name on your Map ("the Shark Fin", "Bad Idea Ridge").
+- **Talks fit the drive.** A crew story starts as you set off and is written to fit the trip, checked with a stopwatch on the slice. Short replies time out, and saying nothing is an answer (§10e).
+- **Music fills the quiet valleys.** As well as the big moments (§10b), a little music comes in when nothing has happened for a while and nothing is near.
 
 ## 11. Today's items: keep, rework, merge or cut. **Draft, 3 Nov, for review**
 
@@ -702,7 +730,7 @@ One Survival run should let you try every pillar:
 - **The order runs from the opening to the slice** (master-design §10). Each step ends playable and gets a playtest:
   0. **Clear the ground:** remove Missions mode and the Classic HUD; fix the three bugs below; move the numbers into one balance source (§12).
   1. **The new sim core** with power, heat and air only, and the one body (§2) driven by it. The lander cabin is the first "base" it runs.
-  2. **The 20-minute opening:**
+  2. **The 20-minute opening, built close to finished quality** (art, sound, voice), to prove that walking, talking and surviving are fun before anything else is built (Firewatch's vertical slice):
      - the cabin air dial;
      - the parachute photo and window;
      - the walk;
