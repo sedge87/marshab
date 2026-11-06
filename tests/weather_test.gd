@@ -14,9 +14,6 @@ func _check(ok: bool, what: String) -> void:
 
 func _initialize() -> void:
 	MHGame.site_id = "plains"; MHGame.game_mode = "survival"; MHGame.pending_save_state = {}; MHGame.landing_target = Vector2.INF
-	# The storm pill is a Classic HUD panel (with Minimal the slate's Site app has the forecast).
-	var keep_hud := str(MHGame.setting("hud"))
-	var values := MHGame.settings(); values["hud"] = "classic"; MHGame.save_settings(values)
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
@@ -93,5 +90,4 @@ func _initialize() -> void:
 	pause.queue_free()
 	if failures == 0:
 		print("Weather test passed: forecast, storm, haze, effects switch, guitar, plush and the pause menu.")
-	values = MHGame.settings(); values["hud"] = keep_hud; MHGame.save_settings(values)
 	quit(1 if failures > 0 else 0)

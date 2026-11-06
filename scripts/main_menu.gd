@@ -18,7 +18,7 @@ const TIPS := [
 	"Solar Arrays must be within 12 m of the habitat. Aim them north for full output.",
 	"Every three cells of Sleeping Quarters house two crew.",
 	"Removing a zone refunds its full cargo mass, so experiment freely.",
-	"Press M to raise your slate on Comms."
+	"Press M to raise your slate on Base: how the base is doing."
 ]
 # Camera presets from the reference scene: position, look-at, vertical FOV.
 const CAMERAS := {

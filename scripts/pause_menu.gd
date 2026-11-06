@@ -60,7 +60,7 @@ func _ready() -> void:
 		_panel_buttons.challenge.tooltip_text = "This game's mode, rules and challenge options"
 		_panel_buttons.challenge.pressed.connect(_toggle_panel.bind("challenge"))
 	_row(list, "Settings", "secondary", "settings").pressed.connect(func() -> void: settings.emit())
-	_row(list, "Slate: Comms", "secondary", "tablet", "M").pressed.connect(func() -> void: mission_control.emit())
+	_row(list, "Slate: Base", "secondary", "tablet", "M").pressed.connect(func() -> void: mission_control.emit())
 	var gap := Control.new()
 	gap.custom_minimum_size.y = 18
 	list.add_child(gap)

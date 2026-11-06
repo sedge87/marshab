@@ -134,7 +134,7 @@ func _process(delta: float) -> void:
 	if world == null or world.player == null: return
 	# (Shown in the lander's minimal HUD too: that's where step 1 happens.)
 	var overlay_open: bool = world.pause_menu != null or world.mission_control != null or world.monitor != null
-	var shown := not finished and not overlay_open and view() != "hidden" and MHGame.classic_hud()
+	var shown := not finished and not overlay_open and false   # the checklist is on the slate
 	_panel.visible = shown and not _building()
 	_pill.visible = shown and _building()
 	_track_movement()
@@ -218,7 +218,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				guide.show_clip(str(step.clip), str(step.text), step.get("keys", []))
 				get_viewport().set_input_as_handled()
 		KEY_H:
-			if _building() or not MHGame.classic_hud(): return
+			return   # the checklist is on the slate
 			var values := MHGame.settings()
 			values["checklist"] = {"full": "folded", "folded": "hidden"}.get(view(), "full")
 			MHGame.save_settings(values)
@@ -235,9 +235,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _refresh() -> void:
 	var step := current()
-	# With the Minimal HUD the checklist is on the slate: each new task is
-	# said once on the notice line instead.
-	if not MHGame.classic_hud() and not step.is_empty() and str(step.get("id", "")) != _shown_step:
+	# The checklist is on the slate: each new task is said once on the
+	# notice line instead.
+	if not step.is_empty() and str(step.get("id", "")) != _shown_step:
 		MHNotices.post("info", "Next: %s" % str(step.text), "Tab, Goals: how to do it.", "goals")
 	_shown_step = str(step.get("id", ""))
 	_shown_inside = _building()

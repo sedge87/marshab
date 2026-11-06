@@ -130,7 +130,7 @@ func _process(delta: float) -> void:
 	# Out on the ground with the corer: the case's visor pips (Classic HUD; the
 	# wrist pad shows the count either way), the air reading and the I key.
 	var out_here: bool = MHSamples.on() and MHChapterOne.has_corer and world.player != null and not world.builder.is_inside(world.player.global_position) and not bool(world.lander.cabin_contains(world.player.global_position)) and world.explore_hud != null and world.explore_hud.visible
-	_pips.visible = out_here and MHGame.classic_hud()
+	_pips.visible = false   # the wrist pad shows the count
 	_pips.queue_redraw()
 	var mode := prompt()
 	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not get_tree().paused

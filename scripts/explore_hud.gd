@@ -47,7 +47,6 @@ var _systems_age := 1.0
 # notes show; the rest fades in when they step outside (set_minimal).
 var _minimal := false
 var _minimal_nodes: Array = []
-var _classic_nodes: Array = []   # shown only with the Classic HUD (apply_hud_style)
 ## "ROBOT" in Missions before the crew land (set by the world).
 var chip_prefix := ""
 
@@ -101,7 +100,9 @@ func _ready() -> void:
 	_readiness_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_readiness_slot)
 	_minimal_nodes.append(_readiness_slot)
-	_classic_nodes = [sol_clock, _chip_slot, telemetry, _readiness_slot]
+	# The old Classic HUD panels stay hidden: the slate has all of it
+	# (docs/pda.md §4). They go with the old sim (docs/systems-and-items.md §14).
+	for node in [sol_clock, _chip_slot, telemetry, _readiness_slot]: (node as CanvasItem).visible = false
 	# Crosshair + interact prompt in the centre.
 	var centre := CenterContainer.new()
 	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -134,14 +135,10 @@ func _ready() -> void:
 	_refresh_readiness()
 	apply_hud_style()
 
-## Minimal or Classic (Settings, On screen, HUD): with Minimal only the
-## crosshair, prompts, compass and the notice line stay; the slate has the
-## rest (docs/pda.md §4).
+## On screen: the crosshair, prompts, compass, notice line, warning icons
+## and storm pill; the slate has the rest (docs/pda.md §4).
 func apply_hud_style() -> void:
-	var classic := MHGame.classic_hud()
-	for node in _classic_nodes:
-		if node is CanvasItem: (node as CanvasItem).visible = classic and not _minimal
-	if _hint_strip != null: _hint_strip.visible = classic or not _key_rows.is_empty()
+	if _hint_strip != null: _hint_strip.visible = not _key_rows.is_empty()
 	_update_systems_panel()
 
 func _build_equipment_note() -> void:
@@ -281,7 +278,7 @@ func _update_systems_panel() -> void:
 	if _systems_panel == null or builder == null: return
 	var sim: RefCounted = builder.simulation()
 	var inv: Dictionary = sim.inventory()
-	_systems_panel.visible = MHGame.simulation_on() and int(inv.get("cells", 0)) > 0 and not _minimal and MHGame.classic_hud()
+	_systems_panel.visible = false   # the old Classic HUD panel: the slate's Base app has it
 	if not _systems_panel.visible: return
 	_systems_title.text = "HABITAT SYSTEMS · %d CREW%s" % [sim.crew_count(), " · DUST STORM" if bool(sim.last.get("storm", false)) else ""]
 	_compute_rows(sim, inv)
@@ -432,9 +429,9 @@ func _refresh_hint_strip() -> void:
 		return
 	var build_hints: Array = [[["B"], "Furnish room"], [["Shift", "B"], "Site plan"]] if inside else [[["B"], "Site plan"]]
 	var gary: Array = [[["G"], "Hold: GAR-Y"]] if get_tree().get_first_node_in_group("gar_y") != null else []
-	_hint_strip = MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["Ctrl"], "Crouch"], [["E"], "Interact", "accent"], [["F"], "Light"]] + gary + build_hints + [[["Tab"], "Slate"]] + ([[["T"], "Wrist"]] if preload("res://scripts/suit.gd").active() else []) + [[["M"], "Comms"], [["Esc"], "Pause"]])
+	_hint_strip = MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["Ctrl"], "Crouch"], [["E"], "Interact", "accent"], [["F"], "Light"]] + gary + build_hints + [[["Tab"], "Slate"]] + ([[["T"], "Wrist"]] if preload("res://scripts/suit.gd").active() else []) + [[["M"], "Base"], [["Esc"], "Pause"]])
 	_root.add_child(_hint_strip)
-	_hint_strip.visible = MHGame.classic_hud()
+	_hint_strip.visible = false
 	# Keep the strip under the other HUD layers, where it was originally built.
 	_root.move_child(_hint_strip, 1)
 

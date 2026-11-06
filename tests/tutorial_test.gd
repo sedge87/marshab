@@ -168,17 +168,6 @@ func _initialize() -> void:
 	await _settle()
 	_check(_step() == "ice" and not bool(t.finished) and t.current_goal() == "self_sufficient", "saving finishes Learn the ropes; chapter one's Self-sufficient goal comes next (%s)" % _step())
 
-	# The checklist hides: H cycles full, folded, hidden (remembered in settings).
-	var keep_view := str(MHGame.setting("checklist"))
-	var keep_hud := str(MHGame.setting("hud"))
-	var hud_values := MHGame.settings(); hud_values["hud"] = "classic"; MHGame.save_settings(hud_values)   # H is a Classic HUD key
-	for want in ["folded", "hidden", "full"]:
-		_key(KEY_H)
-		await _settle()
-		_check(TUTORIAL.view() == want, "H turns the checklist %s (%s)" % [want, TUTORIAL.view()])
-		if want == "hidden": _check(not t._panel.visible, "hidden, the checklist is off the screen")
-	var view_values := MHGame.settings(); view_values["checklist"] = keep_view; view_values["hud"] = keep_hud; MHGame.save_settings(view_values)
-
 	# Self-sufficient: chapter one's steps tick in any order.
 	MHChapterOne.steps["food"] = 500.0
 	await _settle()
@@ -212,5 +201,5 @@ func _initialize() -> void:
 	for clip in unique: _check(GUIDE.has_clip(clip), "the %s clip exists" % clip)
 
 	if failures == 0:
-		print("Tutorial test passed: the goal checklist (17 chapter-one steps, then Self-sufficient in any order) ticks from play, H hides it, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, and every clip exists.")
+		print("Tutorial test passed: the goal checklist (17 chapter-one steps, then Self-sufficient in any order) ticks from play, crates unpack, built-ahead steps are skipped, highlights find their buttons, it saves and resumes, and every clip exists.")
 	quit(1 if failures > 0 else 0)

@@ -150,7 +150,7 @@ func _duration(hours: float) -> String:
 
 func _update_pill(state: String, eta: float, storm_left: float) -> void:
 	var hud = world.explore_hud
-	var show: bool = state != "calm" and hud != null and hud.visible and not bool(hud.get("_minimal")) and MHGame.classic_hud()
+	var show: bool = state != "calm" and hud != null and hud.visible and not bool(hud.get("_minimal"))
 	_pill.visible = show
 	if not show: return
 	var tone: Color = MHStyle.DANGER if state == "storm" else MHStyle.WARN

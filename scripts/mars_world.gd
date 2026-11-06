@@ -212,7 +212,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		else: _resume()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
 		# M raises the slate on Comms.
-		if pda != null and pda.can_open(): pda.open("comms")
+		if pda != null and pda.can_open(): pda.open("base")
 		else: _open_mission_control()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C and not event.ctrl_pressed and not bool(player.get_meta("build_mode_active", false)) and not bool(player.get_meta("driving", false)):
 		# C: straight to the Crew screen (in Mission Control).
@@ -730,13 +730,13 @@ func _open_settings() -> void:
 	panel.applied.connect(_apply_settings)
 	pause_menu.add_child(panel)
 
-## The pause menu's M row: the slate on Comms.
+## The pause menu's M row: the slate on Base (the base at a glance).
 func _pause_comms() -> void:
 	if pda == null:
 		_open_mission_control()
 		return
 	_resume()
-	if pda.can_open(): pda.open("comms")
+	if pda.can_open(): pda.open("base")
 
 func _close_pause() -> void:
 	if pause_menu != null:
