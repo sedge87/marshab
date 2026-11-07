@@ -75,7 +75,7 @@ Each system has stores (what's kept), flows (what goes in and out each sol), how
 - **Exercise is an optional boost,** never a decline you must fight: a session leaves you walking faster and carrying more for the sol.
 - **Wellbeing** is lifted by washing, fresh food, comfort, personal items, a window and contact with Earth. Low wellbeing slows your work; it never harms you.
 - **Injuries** are an optional challenge, treated with the medical kit.
-- **The crew (finale):** there are no mid-game crew waves. The orbiter crew land only in the welcome ending (§10e), and after that they get their own simple shared track.
+- **The crew (finale):** there are no mid-game crew waves. The orbiter crew land only in the ending (§10e), once the buried heart is understood and the way down is safe (master-design §7, One ending · 7 Nov).
 
 ### 1.7 Suit and EVA *(hour 1)*
 - **Keep:** the suit's O₂, power and scrubber, the wrist pad, the GAR-Y rescue, leaks and patching, and refills at the airlock, lander and rover.
@@ -526,7 +526,7 @@ GAR-Y is found early, with its radar survey and the rescue. After that it learns
 
 **Crew size** becomes how many wait in orbit: Small 2, Standard 5, Large 8. That sets how big a base the finale needs. In Solitary the orbiter is uncrewed, and its voice is Earth's relay only.
 
-**Landing them is the finale:** the welcome-the-crew ending, the moment the base was built towards. After it the game carries on open-ended. This replaces Earth's crew waves (docs/survival-systems.md §12.2, commit 3417721). Visible crew at the base can come later as an expansion.
+**Landing them is the finale:** the game's one ending, the moment the base was built towards. **7 Nov:** they're held in orbit until the buried heart is explained (docs/interference-options.md), go-home is cut, and the game doesn't carry on open-ended after (master-design §7). This replaces Earth's crew waves (docs/survival-systems.md §12.2, commit 3417721). Visible crew at the base can come later as an expansion.
 
 ### 10e+. Fewer voices, each one meaningful · **Decided 7 Nov**
 After step 2 the game had about 17 speaking characters (ARDEN, the suit, the relay, five orbiter crew, eight Mission Control people and more). The user: "we want conversation to be meaningful not just noise to fill empty space." Grounded in Firewatch (one relationship; talks fit the travel; silence allowed), Schell Lens #76 Character Function (fold characters that do the same job), #79 Character Web and #61 Interest Curve, and Cleveland's talk (story threads started by what you do):
@@ -712,7 +712,7 @@ This covers the 141 catalogue items (`data/equipment_catalog.json`) and the 5 si
 | Exercise Bike | Variant of Exercise station | same job, different look |
 | Utility Rack | Rework | General Module rack: basic storage and the first stores |
 | Sabatier Reactor | Keep | later: water, plus methane for the ascent tank |
-| Methane Tank | Keep | the ascent tank (go-home ending) |
+| Methane Tank | Keep | the Sabatier methane tank (the go-home ending is cut 7 Nov; its use to be rethought) |
 | Atmosphere Processor | Keep | discovery: O2 from Mars air |
 | Urine Processor | Keep | later: closes the water loop |
 
