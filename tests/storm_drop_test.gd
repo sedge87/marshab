@@ -110,7 +110,16 @@ func _initialize() -> void:
 
 	# Carry the cartridge home.
 	var cart = drop.cartridge
-	cart.interact(player)
+	# As in play: stand at the pallet and look in; whatever the crosshair hits must offer the cartridge.
+	var inside: Vector3 = pallet.inside_point()
+	var eye: Vector3 = inside + pallet.global_basis.z * 1.2 + Vector3(0, 1.1, 0)
+	await physics_frame
+	var ray := PhysicsRayQueryParameters3D.create(eye, eye + (inside - eye) * 1.5)
+	ray.exclude = [player.get_rid()]
+	var hit: Dictionary = player.get_world_3d().direct_space_state.intersect_ray(ray)
+	var aimed: Node = hit.collider.get_meta("interaction_target", hit.collider) if not hit.is_empty() else null
+	_check(aimed != null and str(aimed.interaction_prompt().get("primary", "")) == "Pick up", "looking into the open pallet offers to pick the cartridge up (%s)" % (str(aimed.interaction_prompt()) if aimed != null else "nothing hit"))
+	if aimed != null: aimed.interact(player)
 	_check(cart.where == "carried" and float(player.get_meta("load_speed", 1.0)) < .9, "picked up, it slows you (%.2f)" % float(player.get_meta("load_speed", 1.0)))
 	_check(world.notes.stage("air") == "carrying", "you think about getting it home")
 	cart.put_down()

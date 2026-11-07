@@ -47,12 +47,22 @@ func setup(target_drop: Node, is_open: bool) -> void:
 		_freed = LATCHES
 
 func interaction_prompt() -> Dictionary:
-	if opened: return {"label": "Pallet 1 · open"}
+	if opened:
+		var inside := _inside()
+		return inside.interaction_prompt() if inside != null else {"label": "Pallet 1 · open"}
 	if _holding and _freed > 0: return {"label": "Cargo pallet", "primary": "Freeing the latches · %d of %d" % [_freed, LATCHES]}
 	return {"label": "Cargo pallet", "primary": "Hold to free the latches"}
 
+## The cartridge, while it still lies in the open pallet. The pallet's
+## solid box surrounds it, so looking into the pallet reaches it through here.
+func _inside() -> Node:
+	var cartridge: Node = drop.get("cartridge") if drop != null else null
+	return cartridge if cartridge != null and str(cartridge.where) == "pallet" else null
+
 func interact(_player: Node = null) -> bool:
-	if opened: return false
+	if opened:
+		var inside := _inside()
+		return inside.interact(_player) if inside != null else false
 	_holding = true
 	return true
 
