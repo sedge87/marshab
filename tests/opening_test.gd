@@ -2,7 +2,7 @@ extends SceneTree
 
 # The first minutes of a new Survival game, in order (docs/systems-and-items.md
 # §14 step 2): you wake in the lander cabin; ARDEN says the high-gain antenna
-# has lost lock; Rao's text with the parachute photo is already waiting; ARDEN
+# has lost lock; Castellanos's text with Rao's parachute photo is already waiting; ARDEN
 # hands you the slate and it opens on Comms with that photo at the top; Notes
 # already holds the first thoughts (the air, the sunset, the parachute); no
 # old crates, no checklist, no "design your habitat" note. Run with:
@@ -26,7 +26,7 @@ func _initialize() -> void:
 	_check(world.lander.cabin_contains(world.player.global_position), "you start in the lander cabin")
 	_check(str(world._intro_stage) == "inside" and not world.pda.received, "the slate isn't in your hands yet")
 	_check(world.get("tutorial") == null and world.cargo_landers.is_empty(), "no checklist and no old crates")
-	_check(world.orbiter_texts.has("parachute_photo"), "Rao's photo text is already waiting")
+	_check(world.orbiter_texts.has("parachute_photo"), "the orbiter's photo text is already waiting")
 	# ARDEN's line about the link, a second or so in.
 	var audio: MHAudio = MHAudio.director()
 	var heard := false
@@ -44,10 +44,10 @@ func _initialize() -> void:
 	_check(world.pda.received and world.pda.is_open, "ARDEN hands you the slate")
 	_check(str(world.pda.screen.app) == "comms", "it opens on Comms (%s)" % str(world.pda.screen.app))
 	var labels: Array = world.pda.screen.find_children("*", "Label", true, false).map(func(l): return str(l.text))
-	_check(labels.any(func(t): return t.begins_with("FROM ORBIT")) and labels.any(func(t): return t.begins_with("Caught it on this pass")), "with Rao's text at the top")
+	_check(labels.any(func(t): return t.begins_with("FROM ORBIT")) and labels.any(func(t): return t.begins_with("Rao caught it on this pass")), "with the orbiter's text at the top")
 	var notes: Node = world.notes
 	_check(notes.is_open("air") and notes.is_open("sunset") and notes.is_open("parachute"), "Notes holds the first thoughts: the air, the sunset, the parachute")
 	_check(not notes.is_open("power"), "the night worry waits for the afternoon")
 	if failures == 0:
-		print("Opening test passed: the cabin, ARDEN's lost-lock line, Rao's photo text waiting, the slate handed over on Comms with the photo, the first thoughts, and nothing from the old opening.")
+		print("Opening test passed: the cabin, ARDEN's lost-lock line, the orbiter's photo text waiting, the slate handed over on Comms with the photo, the first thoughts, and nothing from the old opening.")
 	quit(1 if failures > 0 else 0)

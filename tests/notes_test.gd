@@ -56,7 +56,14 @@ func _initialize() -> void:
 
 	# ARDEN raises the night a little after the air is settled.
 	_check(not notes.is_open("power"), "no night worry straight away")
+	var cabin_spot: Vector3 = world.player.global_position
+	world.player.global_position = world.lander.global_position + Vector3(0, 0, 20)
 	notes._air_settled_for = notes.AFTER_AIR
+	notes._check = 0.0
+	await process_frame
+	await process_frame
+	_check(not notes.is_open("power"), "ARDEN is only the habitat's voice: the warning waits while you're outside")
+	world.player.global_position = cabin_spot
 	notes._check = 0.0
 	await process_frame
 	await process_frame

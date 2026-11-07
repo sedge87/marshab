@@ -207,11 +207,12 @@ func _ready() -> void:
 		orbiter_texts = ORBITER_TEXTS.new()
 		add_child(orbiter_texts)
 		orbiter_texts.setup(self, _texts_state)
-		# Rao's first text: the photo of the parachute, waiting when you land.
+		# Castellanos's first text (the one near voice, systems brief §10e+):
+		# Rao's photo of the parachute, waiting when you land.
 		if storm_drop != null and _start_in_lander:
 			var dir: String = storm_drop.direction_word(storm_drop.ridge - lander.global_position)
 			var metres := roundi(Vector2(storm_drop.ridge.x - lander.global_position.x, storm_drop.ridge.z - lander.global_position.z).length() / 50.0) * 50
-			orbiter_texts.send("parachute_photo", "rao", "Caught it on this pass. Your first parachute, on the high ground about %d m %s of you. That's your air. Go and get it. Eleven more came down somewhere; we're looking." % [metres, dir], "parachute")
+			orbiter_texts.send("parachute_photo", "castellanos", "Rao caught it on this pass. Your first parachute, on the high ground about %d m %s of you. That's your air. Go and get it. Eleven more came down somewhere; we're looking." % [metres, dir], "parachute")
 	gar_y_orders = GAR_Y_ORDERS.new()
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)

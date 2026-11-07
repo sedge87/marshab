@@ -155,10 +155,12 @@ func _process(delta: float) -> void:
 	if is_open("power") and stage("power") == "night" and hour >= sunrise and hour < sunrise + 2.0:
 		answer("power", {"how": _night_summary()})
 	# ARDEN's afternoon warning, once: a little after the air is sorted (a
-	# pause, then the next worry), or by mid-afternoon whatever you're doing.
-	if not is_open("power") and not is_settled("power") and not dark and hour >= sunrise + 1.0:
+	# pause, then the next worry), or by mid-afternoon. ARDEN is only the
+	# habitat's voice (systems brief §10e+), so it waits until you're inside,
+	# even if that's after dark.
+	if not is_open("power") and not is_settled("power") and hour >= sunrise + 1.0:
 		if is_settled("air"): _air_settled_for += CHECK
-		if hour >= sunset - 5.0 or _air_settled_for >= AFTER_AIR:
+		if not outside and (hour >= sunset - 5.0 or _air_settled_for >= AFTER_AIR):
 			MHAudio.voice("cabin_battery_night")
 			think("power")
 	# A cold cabin while you're in it.

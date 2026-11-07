@@ -15,12 +15,12 @@
         "near": "It's ours. A pallet in the dust by the canopy, latches still shut.",
         "open": "Pallet's open. The sample kit, and a fresh oxygen cartridge for the cabin."
       },
-      "journal": "Found the first pallet under its parachute, right where Rao's photo said.",
+      "journal": "Found the first pallet under its parachute, right where the orbiter's photo said.",
       "next": ["cargo"]
     },
     "cargo": {
       "stages": {
-        "start": "Rao said a dozen pallets came down in the storm. That's eleven still out there somewhere."
+        "start": "Castellanos says a dozen pallets came down in the storm. That's eleven still out there somewhere."
       },
       "journal": "Every pallet is home, or as home as they'll get."
     },

@@ -803,7 +803,7 @@ One Survival run should let you try every pillar:
      - the storm drop: the 21 m parachute draped on a ridge ~400 m in front of the hatch, the backshell, a trail of eight debris pieces, pallet 1 with four latches, the 20 kg oxygen cartridge carried back to the cabin's new dial port;
      - the blue sunset, with a music moment;
      - the descent talked down live by Rao and Castellanos (data/orbiter_crew.json "radio"), cut into static at touchdown, then ARDEN's lost-lock line;
-     - Rao's first text with the orbiter photo of the parachute (rendered in game, softened and grained), which the slate opens on;
+     - Castellanos's first text with Rao's orbiter photo of the parachute (rendered in game, softened and grained), which the slate opens on;
      - tests: known_things, notes, storm_drop, descent_radio, opening.
 
      **Not yet:** food and water in pallet 1 (they come with the food and water rework); the power pallet to find (step 3).
