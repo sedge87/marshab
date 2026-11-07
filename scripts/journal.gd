@@ -116,3 +116,41 @@ static func sketches_on(sol: int) -> int:
 ## A sketch was saved: put it on its sol's page.
 static func add_sketch(sol: int, path: String, caption: String) -> void:
 	(_entry(sol).sketches as Array).append({"path": path, "caption": caption})
+
+# ---------- photos and your own words (the slate's camera, scripts/slate_camera.gd) ----------
+
+static func photos_on(sol: int) -> int:
+	if entries.is_empty() or int(entries.back().sol) != sol: return 0
+	return (entries.back().get("photos", []) as Array).size()
+
+## A photo from the slate: on its sol's page in colour, with a caption you can
+## change, and what was in frame (`subjects`, ids).
+static func add_photo(sol: int, path: String, caption: String, subjects: Array) -> Dictionary:
+	var entry := _entry(sol)
+	if not entry.has("photos"): entry["photos"] = []
+	var record := {"path": path, "caption": caption, "subjects": subjects.duplicate()}
+	(entry.photos as Array).append(record)
+	return record
+
+## Whether you've photographed this (an id from slate_camera.gd subjects()).
+static func photographed(subject: String) -> bool:
+	for entry in entries:
+		for photo in entry.get("photos", []):
+			if (photo.get("subjects", []) as Array).has(subject): return true
+	return false
+
+## Your own note on a page (typed in the book), kept with the game.
+static func set_own(index: int, text: String) -> void:
+	if index < 0 or index >= entries.size(): return
+	entries[index]["own"] = text
+
+static func set_caption(index: int, photo: int, text: String) -> void:
+	if index < 0 or index >= entries.size(): return
+	var photos: Array = entries[index].get("photos", [])
+	if photo >= 0 and photo < photos.size(): photos[photo]["caption"] = text
+
+## Today's page, so there's somewhere to write even on a quiet sol.
+static func today(sol: int) -> int:
+	if not on(): return entries.size() - 1
+	_entry(sol)
+	return entries.size() - 1

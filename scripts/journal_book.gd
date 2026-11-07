@@ -2,8 +2,9 @@ extends Control
 
 ## The crew journal as a book (J, or E on the notebook by your bunk; docs/
 ## samples-lab-journal.md §7): one sol a spread, the day's lines on the left
-## and its sketches on the right, drawn in pencil (shaders/pencil_sketch.
-## gdshader). Arrow keys or the buttons turn the pages; J or Esc closes.
+## with a box for your own note under them, and its pictures on the right:
+## photos from the slate's camera in colour, taped in, each caption yours to
+## change, and sketches drawn in pencil (shaders/pencil_sketch.gdshader). Arrow keys or the buttons turn the pages; J or Esc closes.
 
 signal closed
 
@@ -55,6 +56,12 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo): return
 	var key := (event as InputEventKey).keycode
+	var focus := get_viewport().gui_get_focus_owner()
+	if focus is TextEdit or focus is LineEdit:
+		if event.is_action_pressed("ui_cancel"):
+			focus.release_focus()
+			get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_cancel") or key == KEY_J: _close()
 	elif key == KEY_LEFT or key == KEY_A: _turn_page(-1)
 	elif key == KEY_RIGHT or key == KEY_D: _turn_page(1)
@@ -87,7 +94,7 @@ func _ink(text: String, size: int, colour := INK) -> Label:
 func _render() -> void:
 	for child in _spread.get_children(): child.queue_free()
 	var left := _sheet()
-	var right := _sheet()
+	var right := _scrolled(_sheet())
 	if MHJournal.entries.is_empty():
 		left.add_child(_ink(MHGame.colony_name, 30))
 		left.add_child(_ink("Nothing written yet. The journal fills in as the days go by.", 18, FAINT))
@@ -97,10 +104,13 @@ func _render() -> void:
 	_turn.text = "Sol %d · page %d of %d" % [int(entry.sol), page + 1, MHJournal.entries.size()]
 	left.add_child(_ink("Sol %d" % int(entry.sol), 30))
 	for line in entry.lines: left.add_child(_ink(str(line), 18))
+	left.add_child(_own_note(entry))
+	var photos: Array = entry.get("photos", [])
 	var sketches: Array = entry.get("sketches", [])
-	if sketches.is_empty():
-		right.add_child(_ink("No sketch today.", 16, FAINT))
+	if photos.is_empty() and sketches.is_empty():
+		right.add_child(_ink("No pictures today.", 16, FAINT))
 		return
+	for i in photos.size(): right.add_child(_photo(photos[i], i))
 	for sketch in sketches:
 		var texture := _load(str(sketch.path))
 		if texture == null: continue
@@ -108,12 +118,83 @@ func _render() -> void:
 		picture.texture = texture
 		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		picture.custom_minimum_size = Vector2(480, 270 if sketches.size() > 1 else 400)
+		picture.custom_minimum_size = Vector2(480, 270 if sketches.size() + photos.size() > 1 else 400)
 		var material := ShaderMaterial.new()
 		material.shader = PENCIL
 		picture.material = material
 		right.add_child(picture)
 		right.add_child(_ink(str(sketch.caption), 15, FAINT))
+
+## The right-hand page scrolls when it holds more than fits.
+func _scrolled(col: VBoxContainer) -> VBoxContainer:
+	var sheet := col.get_parent()
+	sheet.remove_child(col)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(480, 568)
+	sheet.add_child(scroll)
+	scroll.add_child(col)
+	return col
+
+## "Write a note…": your own words on the page, kept with the game.
+func _own_note(entry: Dictionary) -> Control:
+	var box := TextEdit.new()
+	box.name = "OwnNote"
+	box.placeholder_text = "Write a note…"
+	box.text = str(entry.get("own", ""))
+	box.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	box.custom_minimum_size = Vector2(480, 150)
+	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_theme_font_size_override("font_size", 18)
+	box.add_theme_color_override("font_color", Color("#2B3A67"))
+	box.add_theme_color_override("font_placeholder_color", FAINT)
+	box.add_theme_color_override("caret_color", Color("#2B3A67"))
+	var lined := MHStyle.box(Color(PAPER.darkened(.03)), Color("#C9BEA6"), 2, 1, Vector4(10, 8, 10, 8))
+	box.add_theme_stylebox_override("normal", lined)
+	box.add_theme_stylebox_override("focus", MHStyle.box(Color(PAPER.darkened(.05)), Color("#9C8E73"), 2, 1, Vector4(10, 8, 10, 8)))
+	var at := page
+	box.text_changed.connect(func() -> void: MHJournal.set_own(at, box.text))
+	return box
+
+## A photo in colour, taped in at two corners, with its caption to change.
+func _photo(photo: Dictionary, index: int) -> Control:
+	var holder := VBoxContainer.new()
+	holder.add_theme_constant_override("separation", 6)
+	var mount := Control.new()
+	mount.custom_minimum_size = Vector2(480, 286)
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel", MHStyle.box(Color("#FBFAF6"), Color("#D4CBB8"), 1, 1, Vector4(8, 8, 8, 8)))
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mount.add_child(frame)
+	var texture := _load(str(photo.get("path", "")))
+	if texture != null:
+		var picture := TextureRect.new()
+		picture.texture = texture
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picture.custom_minimum_size = Vector2(464, 261)
+		frame.add_child(picture)
+	else:
+		frame.add_child(_ink("(the picture's gone from this computer)", 14, FAINT))
+	holder.add_child(mount)
+	for corner in [Vector2(-14, -6), Vector2(440, -6)]:
+		var tape := ColorRect.new()
+		tape.color = Color(.93, .89, .74, .75)
+		tape.size = Vector2(54, 20)
+		tape.position = corner
+		tape.rotation = deg_to_rad(-8.0 if corner.x < 0 else 8.0)
+		tape.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mount.add_child(tape)
+	var words := LineEdit.new()
+	words.text = str(photo.get("caption", ""))
+	words.flat = true
+	words.add_theme_font_size_override("font_size", 15)
+	words.add_theme_color_override("font_color", FAINT.darkened(.2))
+	words.add_theme_color_override("caret_color", INK)
+	var at := page
+	words.text_changed.connect(func(text: String) -> void: MHJournal.set_caption(at, index, text))
+	holder.add_child(words)
+	return holder
 
 func _load(path: String) -> Texture2D:
 	if not FileAccess.file_exists(path): return null

@@ -37,6 +37,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	open_book()
 
 func open_book() -> void:
+	MHJournal.today(_sol())   # always a page for today, to write on
 	world.call("_open_live_view", BOOK.new())
 
 # ---------- the notebook by the bunk ----------

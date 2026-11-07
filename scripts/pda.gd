@@ -34,6 +34,7 @@ var _dim_material: StandardMaterial3D
 var _mouse_before := Input.MOUSE_MODE_CAPTURED
 var _freeze_before := false
 var _hidden: Array = []   # HUD parts hidden with the slate up: [node, was visible]
+var _camera := false      # the Camera app: the mouse looks round, a click takes the picture
 
 func setup(target_world: Node) -> MHPda:
 	world = target_world
@@ -155,6 +156,12 @@ func open(app := "") -> void:
 	screen.opened(app)
 	MHAudio.sfx("suit_beep", -14.0)
 
+## The Camera app (scripts/pda_screen.gd): the mouse goes back to looking
+## round, and the world behind isn't dimmed.
+func camera_mode(on: bool) -> void:
+	_camera = on
+	if is_open: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if on else Input.MOUSE_MODE_VISIBLE
+
 func close() -> void:
 	if not is_open: return
 	is_open = false
@@ -181,7 +188,7 @@ func _process(delta: float) -> void:
 	var tilt := Basis(Vector3.RIGHT, deg_to_rad(-50.0)) * Basis(Vector3.FORWARD, deg_to_rad(8.0))
 	_slate.transform = Transform3D(tilt.slerp(Basis.IDENTITY, t), (at + DROP).lerp(at, t))
 	_dim.position = Vector3(0, 0, at.z - .03)
-	_dim_material.albedo_color.a = DIM * t
+	_dim_material.albedo_color.a = (DIM * .2 if _camera else DIM) * t
 
 # ---------- keys and the mouse ----------
 
@@ -200,6 +207,11 @@ func _input(event: InputEvent) -> void:
 		else:
 			_view.push_input(event)
 		get_viewport().set_input_as_handled()
+	elif event is InputEventMouse and _camera:
+		# Looking round passes through to the player; a click is the shutter.
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			screen.shutter()
+			get_viewport().set_input_as_handled()
 	elif event is InputEventMouse:
 		var at := _screen_point((event as InputEventMouse).position)
 		if at.x >= 0.0:

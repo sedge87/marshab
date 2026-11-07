@@ -15,6 +15,7 @@ const APPS := [
 	{"id": "comms", "label": "Comms", "icon": "satellite", "built": true},
 	{"id": "site", "label": "Site", "icon": "mountain-snow", "built": true},
 	{"id": "log", "label": "Log", "icon": "clock", "built": true},
+	{"id": "camera", "label": "Camera", "icon": "camera", "built": true},
 ]
 const SIZE := Vector2(1280, 800)
 const GUIDE := preload("res://scripts/guide_overlay.gd")
@@ -117,7 +118,8 @@ func _fill_rail() -> void:
 ## getting-started checklist; Notes otherwise (master-design §5).
 func apps() -> Array:
 	var checklist: bool = world != null and world.get("tutorial") != null
-	return APPS.filter(func(entry): return bool(entry.built) and (str(entry.id) != ("notes" if checklist else "goals"))).map(func(entry): return str(entry.id))
+	var shoots: bool = world != null and world.get("slate_camera") != null
+	return APPS.filter(func(entry): return bool(entry.built) and (str(entry.id) != ("notes" if checklist else "goals")) and (shoots or str(entry.id) != "camera")).map(func(entry): return str(entry.id))
 
 ## The slate was raised (pda.gd): on this app, or the last one used.
 func opened(wanted := "") -> void:
@@ -131,6 +133,7 @@ func opened(wanted := "") -> void:
 func show_app(id: String) -> void:
 	if id == app and _page.get_child_count() > 0: return
 	_lend_map(false)
+	if app == "camera" and id != "camera": _camera_off()
 	app = id
 	MHNotices.seen(id)
 	if world != null and world.get("guide_flags") != null: world.guide_flags["slate_" + id] = true
@@ -146,6 +149,7 @@ func show_app(id: String) -> void:
 		"base": _page.add_child(_base_page())
 		"comms": _page.add_child(_comms_page())
 		"site": _page.add_child(_site_page())
+		"camera": _page.add_child(_camera_page())
 		_: _page.add_child(_log_page())
 	for key in _rail_buttons:
 		(_rail_buttons[key].button as Button).theme_type_variation = "SelectedButton" if key == id else "GhostButton"
@@ -159,6 +163,10 @@ func typing() -> bool:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo): return
 	if app == "map" and _region() != null and _region().slate_key((event as InputEventKey).keycode):
+		get_viewport().set_input_as_handled()
+		return
+	if app == "camera" and (event as InputEventKey).keycode in [KEY_E, KEY_SPACE]:
+		shutter()
 		get_viewport().set_input_as_handled()
 		return
 	var index := (event as InputEventKey).keycode - KEY_1
@@ -182,6 +190,7 @@ func _process(delta: float) -> void:
 		_map_you.text = str(lines[0])
 		_map_cursor.text = str(lines[1])
 	if app == "comms" and _comms_signature() != _shown_comms: _redraw()
+	if app == "camera": _camera_words()
 	if app == "site" and _site_signature() != _shown_site: _redraw()
 	if app == "base" and _base_signature() != _shown_base:
 		for child in _page.get_children(): child.queue_free()
@@ -881,3 +890,55 @@ func _lend_map(_on: bool) -> void:
 ## The slate was lowered.
 func closed() -> void:
 	_lend_map(false)
+	if app == "camera": _camera_off()
+
+# ---------- Camera: photos for the journal (scripts/slate_camera.gd) ----------
+
+var _camera_hint: Label
+
+func _camera() -> Node:
+	return world.get("slate_camera") if world != null else null
+
+func _camera_page() -> Control:
+	var page := MHStyle.vbox(14)
+	var camera := _camera()
+	if camera == null:
+		page.add_child(_heading("Camera", "No camera on this slate."))
+		return page
+	var view := TextureRect.new()
+	view.texture = camera.viewfinder()
+	view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	view.custom_minimum_size = Vector2(880, 495)
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(view)
+	var row := MHStyle.hbox(16)
+	_camera_hint = MHStyle.body("", 17, MHStyle.TEXT_SECONDARY)
+	_camera_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_camera_hint)
+	var take := MHStyle.button("Take picture  E", "primary", "camera", 48)
+	take.focus_mode = Control.FOCUS_NONE
+	take.pressed.connect(shutter)
+	row.add_child(take)
+	page.add_child(row)
+	_camera_words()
+	if pda != null: pda.camera_mode(true)
+	return page
+
+func _camera_words() -> void:
+	var camera := _camera()
+	if _camera_hint == null or camera == null: return
+	var found: Array = camera.subjects()
+	var framed := ("In frame: " + ", ".join(found.map(func(s): return str(s.name)))) if not found.is_empty() else "Move the mouse to frame the shot."
+	_camera_hint.text = framed if camera.can_take() else "Today's journal page is full of pictures."
+
+func shutter() -> void:
+	var camera := _camera()
+	if camera == null or not camera.can_take(): return
+	camera.take()
+
+func _camera_off() -> void:
+	var camera := _camera()
+	if camera != null: camera.stop_viewfinder()
+	_camera_hint = null
+	if pda != null: pda.camera_mode(false)
