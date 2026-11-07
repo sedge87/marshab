@@ -15,7 +15,7 @@
     {"id": "spares", "name": "Pallet 12 · Spares", "holds": "Spare parts for every system on the manifest."}
   ],
   "walkers": [
-    {"id": "general_module", "name": "Walker 1 · General Module", "holds": "The base's first room, carried whole."},
+    {"id": "general_module", "name": "Walker 1 · General Module", "holds": "The base's first room, carried whole.", "source": "walker"},
     {"id": "regolith_printer", "name": "Walker 2 · Regolith printer", "holds": "The big printer that builds room shells from the ground itself."},
     {"id": "power_kit", "name": "Walker 3 · Power kit", "holds": "The base's solar arrays and batteries."}
   ]

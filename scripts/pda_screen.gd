@@ -918,6 +918,10 @@ func cargo_state(entry: Dictionary) -> String:
 		var drop: Node = world.get("storm_drop")
 		if drop != null and drop.pallet != null and bool(drop.pallet.opened): return "recovered"
 		if known != null and (known.knows("find:parachute") or known.knows("find:parachute", "orbiter")): return "seen"
+	elif source == "walker":
+		var walker: Node = world.get("walker")
+		if walker != null and str(walker.state) != "stalled": return "recovered"
+		if walker != null and walker.knows(): return "seen"
 	elif source.begins_with("drop_field:"):
 		var field: Node = world.get("drop_field")
 		var kind := source.trim_prefix("drop_field:")
@@ -929,7 +933,7 @@ func cargo_state(entry: Dictionary) -> String:
 
 func _cargo_signature() -> String:
 	var data := _manifest_data()
-	return ",".join((data.get("pallets", []) as Array).map(func(e): return cargo_state(e)))
+	return ",".join(((data.get("pallets", []) as Array) + (data.get("walkers", []) as Array)).map(func(e): return cargo_state(e)))
 
 func _cargo_page() -> Control:
 	_shown_cargo = _cargo_signature()
@@ -993,6 +997,14 @@ func _camera_page() -> Control:
 	take.pressed.connect(shutter)
 	row.add_child(take)
 	page.add_child(row)
+	# 3c: a picture of the walker's tracks can go up to the orbiter.
+	var walker: Node = world.get("walker") if world != null else null
+	if walker != null and walker.can_send():
+		var send := MHStyle.button("Send the tracks photo to the orbiter", "secondary", "radio", 44)
+		send.focus_mode = Control.FOCUS_NONE
+		send.pressed.connect(func() -> void:
+			if walker.send_up(): send.disabled = true; send.text = "Sent: it goes up on the next pass")
+		page.add_child(send)
 	_camera_words()
 	if pda != null: pda.camera_mode(true)
 	return page

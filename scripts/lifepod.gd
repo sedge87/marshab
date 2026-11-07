@@ -381,6 +381,8 @@ func walker_night() -> void:
 	walker_moved = true
 	var notes: Node = world.get("notes")
 	if notes != null: notes.think("night_sound")
+	var walker: Node = world.get("walker")
+	if walker != null: walker.lay_tracks()   # 3c: it came close, then wandered off
 
 func export_state() -> Dictionary:
 	var site_state := {}

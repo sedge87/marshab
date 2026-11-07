@@ -49,6 +49,9 @@ func latest_photo() -> Dictionary:
 func photo(photo_name: String) -> Texture2D:
 	if photo_name == "parachute" and world != null and world.get("storm_drop") != null:
 		return world.storm_drop.photo
+	if photo_name == "walker" and world != null and world.get("walker") != null:
+		if world.walker.photo == null: world.walker.take_photo()   # after a load
+		return world.walker.photo
 	return null
 
 static var _crew: Dictionary = {}

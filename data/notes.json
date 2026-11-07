@@ -129,6 +129,42 @@
         "start": "Woke to a long, slow grinding somewhere out on the flats. Then nothing."
       },
       "journal": "Found what made the noise in the night."
+    },
+    "tracks": {
+      "stages": {
+        "start": "Tracks. Six wheels, wide apart, heading out across the flats. That's what I heard in the night: one of the walkers. Worth a picture for the orbiter."
+      },
+      "journal": "Followed the walker's tracks."
+    },
+    "walker_seen": {
+      "stages": {
+        "start": "That's Walker 1, with the General Module slung under it. Its fault lamp's blinking. Something's wrong with one of its legs."
+      },
+      "journal": "Found Walker 1. Dug the dust out of its jammed wheel and it walked home."
+    },
+    "walker_home": {
+      "stages": {
+        "start": "Walker 1's parked by the lander with the module. Now, where do I want to live? Somewhere I've walked, flat, with room to grow."
+      },
+      "journal": "Chose where the General Module goes. Watched the walker lower it."
+    },
+    "module_plans": {
+      "stages": {
+        "start": "The module came with its plans: an ice extractor among them. That ice wall's in reach now. The iron needs a smelter; not yet."
+      },
+      "journal": "The General Module's plans: an ice extractor. The iron can wait for a smelter."
+    },
+    "first_room": {
+      "stages": {
+        "start": "First night under a real roof. It's quiet in here. I can hear my own breathing."
+      },
+      "journal": "First night in the General Module. A real room."
+    },
+    "module_power": {
+      "stages": {
+        "start": "The module's running on its own battery and a strip of roof solar. Fine by day, but it won't see out a heated night. The solar blanket by the lander would keep it going."
+      },
+      "journal": "Moved the solar blanket over to the module's socket. It holds the night now."
     }
   }
 }

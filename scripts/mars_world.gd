@@ -16,6 +16,8 @@ const NOTES := preload("res://scripts/notes.gd")
 const STORM_DROP := preload("res://scripts/storm_drop.gd")
 const DROP_FIELD := preload("res://scripts/drop_field.gd")
 const LIFEPOD := preload("res://scripts/lifepod.gd")
+const WALKER := preload("res://scripts/walker.gd")
+const MODULE_LIFE := preload("res://scripts/module_life.gd")
 const DESCENT_SEEN := 450.0   # metres round the landing the descent cameras saw
 const ORBITER_TEXTS := preload("res://scripts/orbiter_texts.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
@@ -84,6 +86,10 @@ var storm_drop: Node3D  # scripts/storm_drop.gd: the parachute ridge, pallet 1 a
 var _drop_state := {}
 var drop_field: Node3D  # scripts/drop_field.gd: pallets 2-4 round the landing, the field tools, GAR-Y's sunset
 var lifepod: Node3D     # scripts/lifepod.gd: the lifepod days (water, threads, salvage, the tiny printer)
+var walker: Node3D      # scripts/walker.gd: Walker 1 and the General Module (step 3c)
+var _walker_state := {}
+var module_life: Node   # scripts/module_life.gd: the General Module's own life support (3c)
+var _module_life_state := {}
 var _field_state := {}
 var _lifepod_state := {}
 ## GAR-Y is met at its pallet (or finds you) in revamp games; it's there from
@@ -229,6 +235,10 @@ func _ready() -> void:
 		lifepod = LIFEPOD.new()
 		add_child(lifepod)
 		lifepod.setup(self, _lifepod_state)
+		walker = WALKER.new()
+		add_child(walker)
+		walker.setup(self, _walker_state)
+		if str(walker.state) == "done": start_module_life()
 	if MHChapterOne.new_rules():
 		orbiter_texts = ORBITER_TEXTS.new()
 		add_child(orbiter_texts)
@@ -986,6 +996,8 @@ func current_state() -> Dictionary:
 		"storm_drop": storm_drop.export_state() if storm_drop != null else {},
 		"drop_field": drop_field.export_state() if drop_field != null else {},
 		"lifepod": lifepod.export_state() if lifepod != null else {},
+		"walker": walker.export_state() if walker != null else {},
+		"module_life": module_life.export_state() if module_life != null else {},
 		"gary_met": gary_met,
 		"orbiter_texts": orbiter_texts.export_state() if orbiter_texts != null else {},
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
@@ -1057,6 +1069,8 @@ func _restore_pending_habitat() -> void:
 	_drop_state = state.get("storm_drop", {}) as Dictionary
 	_field_state = state.get("drop_field", {}) as Dictionary
 	_lifepod_state = state.get("lifepod", {}) as Dictionary
+	_walker_state = state.get("walker", {}) as Dictionary
+	_module_life_state = state.get("module_life", {}) as Dictionary
 	_texts_state = state.get("orbiter_texts", {}) as Dictionary
 	if region_map != null: region_map.trail = PackedVector2Array(state.get("trail", PackedVector2Array()))
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()
@@ -1089,3 +1103,10 @@ func _play_intro() -> void:
 	tween.tween_property(bars[0], "position:y", -110.0, .36).set_delay(.35)
 	tween.tween_property(bars[1], "position:y", get_viewport().get_visible_rect().size.y + 10.0, .36).set_delay(.35)
 	tween.chain().tween_callback(layer.queue_free)
+
+## The General Module is down (scripts/walker.gd): its own life support starts.
+func start_module_life() -> void:
+	if module_life != null: return
+	module_life = MODULE_LIFE.new()
+	add_child(module_life)
+	module_life.setup(self, _module_life_state)
