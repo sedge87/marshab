@@ -96,6 +96,22 @@ def build():
     frame.append(box("cam_bar", -0.5, 0.5, hy - 0.95, hy - 0.65, z1 + 1.5, z1 + 1.7, "graphite", 0.03))
     for x in (-0.38, 0.38):
         frame.append(cyl("cam_lens", (x, hy - 0.63, z1 + 1.6), 0.07, 0.05, "dark_glass", axis="y", verts=16))
+    # A ladder up the back and a small grated deck behind the solar strips,
+    # with a rail, so you can ride it home (the game's Ladder body).
+    dy0, dy1 = -hy, -hy + 1.1
+    frame.append(box("deck", -1.4, 1.4, dy0, dy1, z1, z1 + 0.06, "dark_alloy", 0.01))
+    for x in (-1.4, 1.4):
+        frame.append(rod("rail", (x, dy0, z1 + 0.06), (x, dy0, z1 + 1.0), 0.03, "dark_alloy", 10))
+        frame.append(rod("rail", (x, dy1, z1 + 0.06), (x, dy1, z1 + 1.0), 0.03, "dark_alloy", 10))
+        frame.append(rod("rail", (x, dy0, z1 + 1.0), (x, dy1, z1 + 1.0), 0.03, "dark_alloy", 10))
+        frame.append(rod("rail", (x, dy0, z1 + 1.0), (x * 0.32, dy0, z1 + 1.0), 0.03, "dark_alloy", 10))
+    ly = -hy - 0.14
+    for x in (-0.35, 0.35):
+        frame.append(rod("ladder", (x, ly, 0.3), (x, ly, z1 + 1.0), 0.035, "dark_alloy", 10))
+    z = 0.45
+    while z < z1:
+        frame.append(rod("rung", (-0.35, ly, z), (0.35, ly, z), 0.025, "alloy", 8))
+        z += 0.34
     # Winches at the four corners of the module.
     winch_at = [(sx * (MODULE[0] - 0.4), sy * (MODULE[1] - 0.5)) for sx in (-1, 1) for sy in (-1, 1)]
     for (x, y) in winch_at:
@@ -105,7 +121,8 @@ def build():
         groups.setdefault(o.name.split(".")[0], []).append(o)
     names = {"beam": "frame_rover_white", "beam_trim": "frame_trim_orange", "cross": "frame_cross_warm_panel", "solar": "deck_solar_cell",
              "solar_rim": "deck_rim_alloy", "avionics": "avionics_warm_shell", "avionics_vent": "avionics_vent_graphite", "mast": "mast_dark_alloy",
-             "cam_bar": "cam_graphite", "cam_lens": "cam_lens_dark_glass", "winch": "winch_graphite"}
+             "cam_bar": "cam_graphite", "cam_lens": "cam_lens_dark_glass", "winch": "winch_graphite",
+             "deck": "ride_deck_dark_alloy", "rail": "ride_rail_dark_alloy", "ladder": "ladder_dark_alloy", "rung": "ladder_rung_alloy"}
     attach([join(names[key], objs) for key, objs in groups.items()], body)
 
     # ---- the six legs ----

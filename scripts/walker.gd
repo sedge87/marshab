@@ -23,13 +23,11 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const BUILD_RULES := preload("res://scripts/build_rules.gd")
 const ID := "find:walker"
 const NAME := "Walker 1"
-const SPEED := 2.0              # m/s while you can see it: a steady, heavy walk
-const UNSEEN_SPEED := 9.0       # m/s out of view, so the 2 km walk home takes minutes, not a quarter-hour
-const WATCH_RANGE := 600.0      # closer than this and on screen counts as watched
+const SPEED := 3.0              # m/s, one steady pace (near real wheel-on-leg walkers' top speed): ~7 min home
 const TURN := .4                # rad/s
 const CLEAN_SECONDS := 4.0
 const SEE_NEAR := 700.0         # you see it this close
-const SEE_HIGH := 1500.0        # ... or this far from ground this much higher
+const SEE_HIGH := 1000.0        # ... or this far from ground this much higher
 const HIGH_ABOVE := 10.0
 const PARK_FROM_LANDER := 48.0
 const TRACKS_FROM := 220.0      # the tracks run this far out from the lander ...
@@ -41,6 +39,12 @@ const LOWER_SECONDS := 9.0
 const MODULE_BOTTOM := 1.25     # the carried module's floor above the ground
 const WHEEL_R := .62
 const FORK := Vector3(7.7, 1.17, -5.0)   # leg 4's wheel fork, in the model
+const LADDER := Vector3(0, 1.6, 5.74)   # the ladder up its back, in the model
+const DECK := Vector3(0, 5.67, 5.05)     # where you stand riding, on the rear deck
+const STEP_OFF := Vector3(0, 0, 7.4)     # the ladder's foot, where you climb down to
+const TALK_AFTER := 45.0        # seconds into the walk home: Castellanos's first text
+const TALK_AGAIN := 0.5         # ... and again this far along
+const LADDER_SCRIPT := preload("res://scripts/walker_ladder.gd")
 const PHOTO_SIZE := Vector2i(480, 300)
 const PHOTO_METRES := 70.0
 
@@ -77,6 +81,12 @@ var _check := 0.0
 var _lowered := 0.0
 var _drop := 0.0
 var _last_hour := -1.0
+var riding := false
+var _ride_yaw := 0.0
+var _ride_layers := Vector2i.ZERO
+var _walk_from := 0.0           # metres to home when it set off
+var _talk := 0                  # the walk-home texts sent so far
+var _walk_clock := 0.0
 
 func _ready() -> void:
 	name = "Walker"
@@ -116,7 +126,8 @@ static func _vec(a: Variant) -> Vector3:
 static func _arr(v: Vector3) -> Array:
 	return [] if is_inf(v.x) else [v.x, v.y, v.z]
 
-## About 2 km out on open ground, away from the other finds' bearings.
+## About 1.4 km out on open ground (past where its tracks fade), away from
+## the other finds' bearings.
 func _choose() -> Vector3:
 	var field: Node = world.get("drop_field")
 	var lander: Vector3 = world.lander.global_position
@@ -128,7 +139,7 @@ func _choose() -> Vector3:
 	var pod: Node = world.get("lifepod")
 	if pod != null:
 		for kind in pod.sites: taken.append(field._bearing(pod.sites[kind].global_position))
-	return field.choose("walker", 1850.0, 2200.0, "flat", taken, ridge)
+	return field.choose("walker", 1300.0, 1500.0, "flat", taken, ridge)
 
 func _face_yaw(direction: Vector3) -> float:
 	return atan2(-direction.x, -direction.z)   # the model's front is -Z
@@ -172,6 +183,13 @@ func _build() -> void:
 	var shape := CollisionShape3D.new()
 	shape.shape = sphere
 	fault.add_child(shape)
+	var ladder: StaticBody3D = LADDER_SCRIPT.new()
+	ladder.name = "Ladder"
+	ladder.walker = self
+	ladder.set_meta("interaction_target", ladder)
+	ladder.position = LADDER
+	add_child(ladder)
+	_shape(ladder, BoxShape3D.new(), Vector3(1.0, 3.2, .4), Vector3.ZERO)
 
 func _shape(body: StaticBody3D, box: BoxShape3D, size: Vector3, at: Vector3) -> CollisionShape3D:
 	box.size = size
@@ -374,10 +392,13 @@ func _wake() -> void:
 	var lander: Vector3 = world.lander.global_position
 	var out := Vector3(global_position.x - lander.x, 0, global_position.z - lander.z).normalized()
 	home = lander + out * PARK_FROM_LANDER
+	_walk_from = Vector2(home.x - global_position.x, home.z - global_position.z).length()
+	_walk_clock = 0.0
+	_talk = 0
 	MHAudio.sfx_at("mode_build", self, 0.0, .6)
 	var notes: Node = world.get("notes")
 	if notes != null: notes.answer("walker_seen")
-	MHNotices.post("info", NAME + " is walking home", "GAR-Y's pinging it the way. It'll park by the lander.", "")
+	MHNotices.post("info", NAME + " is walking home", "GAR-Y's pinging it the way. It'll park by the lander. Climb the ladder on its back to ride along.", "")
 
 # ---------- the walk ----------
 
@@ -396,7 +417,12 @@ func _process(delta: float) -> void:
 		if _text_left <= 0.0: _orbiter_text()
 	match state:
 		"walking":
-			if _drive(home, delta, INF, SPEED if _watched() else UNSEEN_SPEED):
+			_walk_texts(delta)
+			# Asleep or resting, the hours fly and so does the walk.
+			var pace := delta
+			var sleep: Node = world.get("sleep")
+			if sleep != null and bool(sleep.asleep): pace *= float(world.day_night.time_scale)
+			if _drive(home, pace):
 				state = "parked"
 				MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit
 				var notes: Node = world.get("notes")
@@ -405,6 +431,7 @@ func _process(delta: float) -> void:
 		"carrying":
 			if _drive(target, delta, target_yaw): _start_lowering()
 		"lowering": _lower(delta)
+	if riding: _ride()
 	_check -= delta
 	if _check <= 0.0:
 		_check = .5
@@ -427,13 +454,69 @@ func _drive(goal: Vector3, delta: float, yaw := INF, speed := SPEED) -> bool:
 	_settle()
 	return false
 
-## On screen and near enough to see it move. Out of view it hurries home
-## (UNSEEN_SPEED), so it never looks rushed but the walk doesn't drag.
-func _watched() -> bool:
-	var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
-	if camera == null: return false
-	var at := global_position + Vector3(0, 4, 0)
-	return camera.global_position.distance_to(at) < WATCH_RANGE and camera.is_position_in_frustum(at)
+# ---------- riding it ----------
+
+func ladder_prompt() -> Dictionary:
+	if riding: return {"label": NAME, "primary": "Climb down"}
+	if state == "lowering": return {"label": NAME + " · setting the module down"}
+	return {"label": NAME + " · a ladder up to its rear deck", "primary": "Climb aboard"}
+
+## Up the ladder onto the rear deck: you ride where it walks, free to look
+## round and use the slate. E climbs down.
+func climb() -> bool:
+	var player: CharacterBody3D = world.get("player")
+	if player == null or riding or state == "lowering": return false
+	riding = true
+	_ride_yaw = rotation.y
+	_ride_layers = Vector2i(player.collision_layer, player.collision_mask)
+	player.collision_layer = 0
+	player.collision_mask = 0
+	player.set_meta("riding", true)
+	player.velocity = Vector3.ZERO
+	MHAudio.sfx_at("step_metal_1", self, -4.0, .1)
+	_ride()
+	return true
+
+func climb_down() -> void:
+	var player: CharacterBody3D = world.get("player")
+	if player == null or not riding: return
+	riding = false
+	var spot := to_global(STEP_OFF)
+	spot.y = MHSiteTerrain.height(spot.x, spot.z) + .1
+	player.global_position = spot
+	if "safe_position" in player: player.safe_position = spot
+	player.collision_layer = _ride_layers.x
+	player.collision_mask = _ride_layers.y
+	player.set_meta("riding", false)
+	MHAudio.sfx_at("step_metal_2", self, -4.0, .1)
+
+## Keep you on the deck as it walks and turns.
+func _ride() -> void:
+	var player: CharacterBody3D = world.get("player")
+	if player == null: return
+	player.global_position = to_global(DECK)
+	player.rotation.y += angle_difference(_ride_yaw, rotation.y)
+	_ride_yaw = rotation.y
+	player.velocity = Vector3.ZERO
+
+func _unhandled_input(event: InputEvent) -> void:
+	if riding and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		climb_down()
+		get_viewport().set_input_as_handled()
+
+## Castellanos keeps you company on the walk home: two short texts, the
+## second well before it arrives (the talk never outlasts the walk).
+func _walk_texts(delta: float) -> void:
+	_walk_clock += delta
+	var texts: Node = world.get("orbiter_texts")
+	if texts == null or _talk >= 2: return
+	var left := Vector2(home.x - global_position.x, home.z - global_position.z).length()
+	if _talk == 0 and _walk_clock >= TALK_AFTER:
+		_talk = 1
+		texts.send("walker_walking", "castellanos", "It's moving! Rao has it on the long camera, a little dust plume heading your way. At that pace it's about %d minutes out. Ride it if you can, the view from up there must be something." % maxi(1, roundi(left / SPEED / 60.0)))
+	elif _talk == 1 and _walk_from > 0.0 and left < _walk_from * TALK_AGAIN:
+		_talk = 2
+		texts.send("walker_halfway", "castellanos", "Halfway. When it parks, it'll ask where the General Module goes. Pick somewhere you'd want to wake up every morning.")
 
 ## Wheels turn with the ground covered; a tripod gait lifts alternate legs.
 func _roll(metres: float) -> void:
@@ -499,6 +582,7 @@ func _lower(delta: float) -> void:
 
 ## Down: the real module takes over, the kit and plans are yours.
 func _finish_set_down() -> void:
+	if riding: climb_down()
 	state = "done"
 	_hide_base(false)
 	if _module != null: _module.visible = false

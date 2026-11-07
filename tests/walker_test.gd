@@ -2,7 +2,7 @@ extends SceneTree
 
 # Step 3c, Walker 1 and the General Module (scripts/walker.gd,
 # scripts/build_rules.gd; systems-and-items §14 step 3c):
-# - the walker stands stalled about 2 km out, its fault lamp blinking;
+# - the walker stands stalled about 1.4 km out, its fault lamp blinking;
 # - B does nothing before the module's home;
 # - the night it moves it leaves tracks; near them, a Notes thought;
 # - a photo of the tracks sent up brings Castellanos's text and puts it on
@@ -84,7 +84,7 @@ func _initialize() -> void:
 	var lander: Vector3 = world.lander.global_position
 	var player: Node3D = world.player
 	var far := _flat(walker.global_position, lander)
-	_check(far > 1800.0 and far < 2250.0, "it stands about 2 km out (%.0f m)" % far)
+	_check(far > 1250.0 and far < 1550.0, "it stands about 1.4 km out (%.0f m)" % far)
 	_check(walker.state == "stalled" and walker._dust.visible, "stalled, its wheel packed with dust")
 	var lit := false
 	for i in 30:
@@ -130,8 +130,18 @@ func _initialize() -> void:
 	_check(walker.dig_for(2.5) and walker.state == "walking" and not walker._dust.visible, "dug out: it wakes and walks home")
 	_check(screen.cargo_state(walkers[0]) == "recovered", "Cargo: Walker 1 recovered")
 	_check(RULES.b_reason(builder) == "Nothing to build with yet", "still nothing to build with on the way")
-	var home_in := _run(walker, 2400.0, func(): return walker.state == "parked")
-	_check(home_in, "it walks all the way home")
+	# Riding it: up the ladder, on the deck as it walks, and down again.
+	var ladder: Node = walker.get_node("Ladder")
+	_check(str(ladder.interaction_prompt().get("primary", "")) == "Climb aboard" and ladder.interact(), "the ladder: climb aboard")
+	_run(walker, 30.0, func(): return false)
+	_check(walker.riding and bool(player.get_meta("riding", false)) and player.global_position.distance_to(walker.to_global(walker.DECK)) < .1, "riding on the rear deck as it walks")
+	_run(walker, 30.0, func(): return false)
+	_check(world.orbiter_texts.has_method("send") and walker._talk >= 1, "Castellanos texts on the walk home")
+	walker.climb_down()
+	_check(not walker.riding and not bool(player.get_meta("riding", false)) and player.collision_mask != 0 and _flat(player.global_position, walker.to_global(walker.STEP_OFF)) < .5, "climbed down at the ladder's foot")
+	var home_in := _run(walker, 1200.0, func(): return walker.state == "parked")
+	_check(home_in, "it walks all the way home, at one steady pace, inside 20 minutes")
+	_check(walker._talk == 2, "and texts again halfway")
 	_check(_flat(walker.global_position, lander) < 60.0, "and parks by the lander (%.0f m)" % _flat(walker.global_position, lander))
 	_check(world.notes.is_open("walker_home") and int(MHChapterOne.stock.get("airlock", 0)) == 1, "home: a thought, and its airlock kit")
 
@@ -231,5 +241,5 @@ func _initialize() -> void:
 	again.queue_free()
 	await process_frame
 	if failures == 0:
-		print("Walker test passed: stalled 2 km out, lamp blinking; B waits; tracks and their thought; the photo sent up and Castellanos's text; seen, dug out, walked home and parked; the plan's first lesson (the module and its airlock, explored ground, free); carried and lowered; the fit-out kit; its plans; the first night; saved and loaded.")
+		print("Walker test passed: stalled 1.4 km out, lamp blinking; B waits; tracks and their thought; the photo sent up and Castellanos's text; seen, dug out, walked home and parked; the plan's first lesson (the module and its airlock, explored ground, free); carried and lowered; the fit-out kit; its plans; the first night; saved and loaded.")
 	quit(1 if failures > 0 else 0)
