@@ -19,9 +19,14 @@ Subnautica wrote down three pillars, each tied to an emotion, but built only one
 
 ## 2. The premise and the opening
 
-- **You're the advance commissioner.** Your job was to be the first on the ground and set up the whole base alongside GAR-Y. It was a well-planned mission.
-- **A global dust storm ruined the plan.** The cargo landers came down during last season's planet-wide storm (as when Opportunity was lost in 2018). Their beacons are dead, and Mission Control has only fuzzy last-known areas. Earth can't simply send more: launch windows are 26 months apart.
-- **You land fine; the cargo isn't there.** The site is fixed and authored (the storm decides). The lander cabin is your lifepod, and its air lasts about a sol.
+**The story · Decided 7 Nov** (the user: "you were always sent to land after the walkers had established and built the base"; Mission Control "wouldn't let you pick your landing site … with blurry photos").
+- **Cargo first, then you.** As in NASA's Design Reference Architecture 5.0, the cargo landed ahead of the crew. Its walking carriers were to gather the pallets and assemble the base at the planned site, ready for you.
+- **You're the commissioner.** You were always to land after the base was built. The crew lander only had to keep you alive for a few hours: touch down beside the finished base, walk in and commission it (bring each system up, check it, sign it off) with GAR-Y. Its air, water and battery are sized for that, about a sol.
+- **The storm hit while you were on your way.** You launched on schedule. Months into the cruise, a planet-wide dust storm swallowed Aeolis Reach (like the one that ended Opportunity in 2018). Contact with the walkers and the pallets' beacons was lost: the walkers stalled mid-task and were damaged, and pallets were strewn across the Reach. You can't turn back mid-transfer, and Earth can't send more for 26 months.
+- **Knocked off course.** You were to home in on the base's landing beacon, but it's silent, and the dust-thickened air throws your entry long. The descent falls back on the lander's own cameras: they check the ground below in real time (like Perseverance's terrain-relative navigation) and show the safe spots within your fuel. You choose one, or the autopilot does. Where you come down is where your new base starts, and where the walkers will bring everything home. The planned site is somewhere out in the Reach: a later find.
+- **What you know of the land.** Only what the cameras saw coming down is sharp. The rest is the mission's old pre-landing survey: the land's shape, coarse and blurry, with nothing on it (no ice, iron or cargo). Exploring sharpens the Map. There's no menu screen for choosing where to land.
+- **Why you go out on the first sol.** At touchdown ARDEN says plainly what the lander is for, and that the base is in the pallets and the walkers. The slate holds the mission's cargo manifest: the 12 pallets and what each carries, each greyed out until found. It reads like paperwork, not a quest list; Notes stays your inner voice.
+- **You land fine; the cargo isn't there.** The lander cabin is your lifepod, and its air lasts about a sol.
 - **The first pallet is in sight.** A cargo parachute lies draped over a nearby ridge, and that pallet holds life support. Parachutes and backshells are the game's landmarks, seen from far off (NASA photographed Curiosity's from orbit). They do the job of Subnautica's Aurora, with no crash and nobody dead.
 - **Pallets hold everything:** the habitat, power, life support, the Print Shop, comms, GAR-Y, the rover. Recovering one unlocks its kit and plans. A damaged one needs repairing.
 - **Big pieces ride walking carriers,** like JPL's ATHLETE (a six-limbed walker built to carry habitat modules). The storm left them stranded and damaged. You find one, repair it with a short procedure, and it walks itself to your base at walking pace, with GAR-Y leading. Bringing it home is a find-and-repair moment, not a hauling job.
@@ -183,7 +188,7 @@ The story is several separate threads, each started by something you do or by a 
 - the mode rules table (`MHGame.MODE_RULES`).
 
 **Rebuild:**
-1. **The start:** scattered pallets on walking carriers; the lander cabin as lifepod; a fixed, authored site.
+1. **The start:** scattered pallets on walking carriers; the lander cabin as lifepod; knocked off course on the way down (the cameras find a safe spot; no landing menu).
 2. **One record of what's known,** feeding the overlay, the Map and the compass; the map filling in as you explore; player pins; ice in a few patches; the 7 m core rule removed.
 3. **GAR-Y:** found in a pallet, or it finds you.
 4. **Materials:** four materials replace feedstock-only; the regolith intake stays.
