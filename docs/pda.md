@@ -87,7 +87,7 @@ Tab keeps its meaning in build mode (catalogue) and at a camera mast (next mast)
 
 ## 8. Teaching it
 
-- **The slate is the first thing you pick up · Built 8 Nov** (`scripts/slate_cradle.gd`). In a new game it lies on the cabin console's worktop, dark.
+- **The slate is the first thing you pick up · Built 8 Nov** (`scripts/slate_cradle.gd`). In a new game it stands upright in a dock on top of the cabin console, at eye level, dark (8 Nov playtest: flat on the desk it hid and E found the console).
   - About 9 s in, Castellanos's text arrives: its screen lights up and beeps every few seconds, ARDEN's notice says it's on the console, and Notes thinks "My slate's lit up…".
   - E picks it up and it rises in your hands on Comms, on the photo. A reminder note comes 14 s later if it's still lying there. Opening the hatch takes it anyway, into your pocket without raising it (so you're not stopped on the ramp): nobody leaves without it.
   - **The keys are on its own screen:** for the first 4 times it's up, a strip along the bottom reads "TAB lower the slate · TAB again to raise it · click an app on the left". It shows in every game, whatever the Hints setting (the user, 8 Nov), and the count is saved.

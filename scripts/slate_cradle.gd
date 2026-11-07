@@ -10,9 +10,12 @@ extends StaticBody3D
 
 const SLATE_MODEL := preload("res://assets/models/suit/slate.glb")
 const MHPalette := preload("res://scripts/mh_palette.gd")
-## On the console's worktop (its desk_top mesh), at the right end clear of
-## the keys: this far in from the end, metres of the model.
-const FROM_END := .14
+## Standing upright in a dock on top of the console's back panel (its
+## static_back mesh), at eye level and facing the seats, so it's seen and
+## clear of the console's own click box (8 Nov playtest: flat on the desk it
+## hid and E found the console). Metres above the panel's top, and its lean.
+const ABOVE_PANEL := .15
+const LEAN := -14.0
 const BEEP_EVERY := 6.0
 
 var world: Node
@@ -27,19 +30,18 @@ func setup(target_world: Node, console: Node3D) -> void:
 	add_to_group("slate_cradle")
 	set_meta("interaction_target", self)
 	world.lander.add_child(self)
-	# The worktop as placed (the lander may fit the model to its spot).
-	var top: MeshInstance3D = null
+	# The back panel as placed (the lander may fit the model to its spot).
+	var panel: MeshInstance3D = null
 	for mesh in console.find_children("*", "MeshInstance3D", true, false):
-		if str(mesh.name).begins_with("desk_top"): top = mesh
-	var yaw := console.global_rotation.y
-	if top != null:
-		var box := top.get_aabb()
-		global_position = top.global_transform * Vector3(box.end.x - FROM_END, box.end.y + .012, box.get_center().z + .05)
-		yaw = top.global_rotation.y
+		if str(mesh.name).begins_with("static_back"): panel = mesh
+	if panel != null:
+		var box := panel.get_aabb()
+		global_position = panel.global_transform * Vector3(box.get_center().x, box.end.y + ABOVE_PANEL, box.get_center().z)
+		# Its screen (+Z) faces the console's front (the model's −Z), leaning back a little.
+		global_basis = panel.global_basis.orthonormalized() * Basis(Vector3.UP, PI) * Basis(Vector3.RIGHT, deg_to_rad(LEAN))
 	else:
-		global_position = console.global_position + Vector3(0, 1.0, 0)
-	# Flat on the desk, screen up, its long side along the console.
-	global_basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, -PI * .5)
+		global_position = console.global_position + Vector3(0, 1.3, 0)
+	_dock()
 	var model := SLATE_MODEL.instantiate() as Node3D
 	add_child(model)
 	MHPalette.apply(model)
@@ -55,9 +57,23 @@ func setup(target_world: Node, console: Node3D) -> void:
 	add_child(face)
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(.3, .2, .06)
+	box.size = Vector3(.36, .26, .12)   # a little generous, so it's easy to look at
 	shape.shape = box
 	add_child(shape)
+
+## The dock it stands in: a small bracket under its bottom edge, house colours.
+func _dock() -> void:
+	var source := StandardMaterial3D.new()
+	source.resource_name = "graphite"
+	var mat := MHPalette.material(source)
+	for spec in [[Vector3(.26, .025, .05), Vector3(0, -.095, .0)], [Vector3(.05, .05, .03), Vector3(0, -.115, -.03)]]:
+		var block := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = spec[0]
+		block.mesh = mesh
+		block.position = spec[1]
+		block.material_override = mat
+		add_child(block)
 
 ## A text has come in: the screen lights and it beeps now and then.
 func light_up() -> void:

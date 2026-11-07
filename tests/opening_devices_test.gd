@@ -26,6 +26,16 @@ func _new_world(state := {}) -> Node:
 	return world
 
 func _initialize() -> void:
+	# A fresh launch boots with "older rules"; starting a new game from the
+	# menu must clear it, or the menu shows the old landing map (8 Nov).
+	MHChapterOne.older_rules = true
+	MHGame.set_mode("survival")
+	MHGame.start_new_challenge()
+	_check(MHChapterOne.new_rules(), "a new game from the menu plays by the new rules (no landing map)")
+	var menu = load("res://scripts/main_menu.gd").new()
+	MHGame.site_id = "region"
+	_check(menu._arrives(), "so the menu's third step is Arrive, not Land")
+	menu.free()
 	var world = await _new_world()
 	var pda: Node = world.pda
 	_check(not pda.received, "a new game's slate isn't yours yet")
@@ -41,8 +51,16 @@ func _initialize() -> void:
 	for mesh in console.find_children("*", "MeshInstance3D", true, false):
 		if str(mesh.name).begins_with("desk_top"): top = mesh
 	var desk: AABB = top.global_transform * top.get_aabb() if top != null else AABB()
-	_check(top != null and desk.grow(.05).has_point(cradle.global_position - Vector3(0, .02, 0)), "on the console's worktop (slate %s, desk %s)" % [cradle.global_position, desk])
-	_check(cradle.global_position.y >= desk.end.y - .001, "on top of it, not inside")
+	var flat := Vector2(cradle.global_position.x - desk.get_center().x, cradle.global_position.z - desk.get_center().z).length()
+	_check(top != null and flat < 1.0, "in its dock on the console (%.2f m from the desk's centre)" % flat)
+	var up: float = cradle.global_position.y - console.global_position.y
+	_check(up > 1.15 and up < 1.6, "standing at eye level above the console (%.2f m up)" % up)
+	_check(cradle.global_basis.z.y < .5 and absf(cradle.global_basis.z.y) < .5, "upright, its screen facing out, not up")
+	# Looking at it from the seats, the ray finds the slate, not the console.
+	var eye: Vector3 = console.to_global(Vector3(0, 1.55, -1.4))
+	await process_frame
+	var hit := root.get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(eye, eye + (cradle.global_position - eye) * 1.5))
+	_check(not hit.is_empty() and hit.collider == cradle, "looking at it from the seats, you're looking at the slate (hit %s)" % (str(hit.collider.name) if not hit.is_empty() else "nothing"))
 	world._slate_lights_up()
 	_check(cradle.waiting and world.notes.is_open("slate"), "nine seconds in it lights up, and a thought")
 	_check(str(cradle.interaction_prompt().get("primary", "")) == "Pick up", "E picks it up")

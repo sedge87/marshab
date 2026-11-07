@@ -261,6 +261,10 @@ static func debug_set_challenge(option: String, value: Variant) -> void:
 
 ## A new game starts with what you chose last time (or the defaults).
 static func start_new_challenge() -> void:
+	# A new game plays by today's rules from the menu on: without this the
+	# boot default ("older rules") showed the old landing map on the Land step
+	# (fixed 8 Nov; master-design §2: no landing map outside Creative).
+	MHChapterOne.reset()
 	challenge = default_challenge()
 	challenge_debugged = false
 	var last = setting("last_challenge")
