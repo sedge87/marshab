@@ -126,18 +126,50 @@ func reveal_all() -> void:
 		var spot := Vector2(float(feature.position[0]), float(feature.position[1]))
 		learn(place_id(str(feature.name), spot), "place", spot, str(feature.name))
 
-## The fog for the Map: dark where you haven't been, clear where you have.
+## The fog for the Map (master-design §2): where you haven't been, only the
+## mission's old pre-landing survey: the land's shape, coarse, blurred and
+## dark, with nothing on it. Clear where you've been.
 func fog_image() -> Image:
 	if _fog_image != null: return _fog_image
+	var survey := _survey()
 	var bytes := PackedByteArray()
 	bytes.resize(GRID * GRID * 4)
 	for i in GRID * GRID:
-		bytes[i * 4] = 12
-		bytes[i * 4 + 1] = 10
-		bytes[i * 4 + 2] = 9
-		bytes[i * 4 + 3] = int((255 - _seen[i]) * .93)
+		var c := survey.get_pixel(i % GRID, i / GRID) if survey != null else Color(.05, .04, .035)
+		bytes[i * 4] = int(c.r8)
+		bytes[i * 4 + 1] = int(c.g8)
+		bytes[i * 4 + 2] = int(c.b8)
+		bytes[i * 4 + 3] = 255 - _seen[i]
 	_fog_image = Image.create_from_data(GRID, GRID, false, Image.FORMAT_RGBA8, bytes)
 	return _fog_image
+
+static var _survey_image: Image
+static var _survey_id := ""
+
+## The region's map, shrunk to a blur and darkened: what orbit told the mission.
+static func _survey() -> Image:
+	var id := str(RegionTerrain.meta().get("id", ""))
+	if _survey_image != null and _survey_id == id: return _survey_image
+	var texture := load(RegionTerrain.DIRECTORY + id + "/map.png") as Texture2D if not id.is_empty() else null
+	if texture == null: return null
+	var image := texture.get_image()
+	if image == null: return null
+	image = image.duplicate()
+	if image.is_compressed(): image.decompress()
+	image.convert(Image.FORMAT_RGB8)
+	# Halved step by step (a true average, not a few sampled pixels), down to
+	# a quarter of the fog grid, then smoothed back up: a blur.
+	while image.get_width() > GRID / 4:
+		image.resize(maxi(GRID / 4, image.get_width() / 2), maxi(GRID / 4, image.get_height() / 2), Image.INTERPOLATE_BILINEAR)
+	image.resize(GRID, GRID, Image.INTERPOLATE_BILINEAR)
+	for y in GRID:
+		for x in GRID:
+			var c := image.get_pixel(x, y)
+			var grey := c.get_luminance()
+			image.set_pixel(x, y, Color(grey, grey * .92, grey * .85).lerp(c, .3) * .34)
+	_survey_image = image
+	_survey_id = id
+	return image
 
 # ---------- things ----------
 

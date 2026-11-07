@@ -12,6 +12,7 @@ const APPS := [
 	{"id": "goals", "label": "Goals", "icon": "clipboard-check", "built": true},
 	{"id": "map", "label": "Map", "icon": "map-pin", "built": true},
 	{"id": "base", "label": "Base", "icon": "gauge", "built": true},
+	{"id": "cargo", "label": "Cargo", "icon": "package", "built": true},
 	{"id": "comms", "label": "Comms", "icon": "satellite", "built": true},
 	{"id": "site", "label": "Site", "icon": "mountain-snow", "built": true},
 	{"id": "log", "label": "Log", "icon": "clock", "built": true},
@@ -119,7 +120,8 @@ func _fill_rail() -> void:
 func apps() -> Array:
 	var checklist: bool = world != null and world.get("tutorial") != null
 	var shoots: bool = world != null and world.get("slate_camera") != null
-	return APPS.filter(func(entry): return bool(entry.built) and (str(entry.id) != ("notes" if checklist else "goals")) and (shoots or str(entry.id) != "camera")).map(func(entry): return str(entry.id))
+	var cargo: bool = world != null and world.get("storm_drop") != null
+	return APPS.filter(func(entry): return bool(entry.built) and (str(entry.id) != ("notes" if checklist else "goals")) and (shoots or str(entry.id) != "camera") and (cargo or str(entry.id) != "cargo")).map(func(entry): return str(entry.id))
 
 ## The slate was raised (pda.gd): on this app, or the last one used.
 func opened(wanted := "") -> void:
@@ -150,6 +152,7 @@ func show_app(id: String) -> void:
 		"comms": _page.add_child(_comms_page())
 		"site": _page.add_child(_site_page())
 		"camera": _page.add_child(_camera_page())
+		"cargo": _page.add_child(_cargo_page())
 		_: _page.add_child(_log_page())
 	for key in _rail_buttons:
 		(_rail_buttons[key].button as Button).theme_type_variation = "SelectedButton" if key == id else "GhostButton"
@@ -191,6 +194,9 @@ func _process(delta: float) -> void:
 		_map_cursor.text = str(lines[1])
 	if app == "comms" and _comms_signature() != _shown_comms: _redraw()
 	if app == "camera": _camera_words()
+	if app == "cargo" and _cargo_signature() != _shown_cargo:
+		for child in _page.get_children(): child.queue_free()
+		_page.add_child(_cargo_page())
 	if app == "site" and _site_signature() != _shown_site: _redraw()
 	if app == "base" and _base_signature() != _shown_base:
 		for child in _page.get_children(): child.queue_free()
@@ -891,6 +897,72 @@ func _lend_map(_on: bool) -> void:
 func closed() -> void:
 	_lend_map(false)
 	if app == "camera": _camera_off()
+
+# ---------- Cargo: the mission's manifest (data/cargo_manifest.json) ----------
+
+const MANIFEST_PATH := "res://data/cargo_manifest.json"
+var _manifest := {}
+var _shown_cargo := ""
+
+func _manifest_data() -> Dictionary:
+	if _manifest.is_empty():
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(MANIFEST_PATH))
+		if parsed is Dictionary: _manifest = parsed
+	return _manifest
+
+## "recovered", "seen" or "missing" for a manifest line.
+func cargo_state(entry: Dictionary) -> String:
+	var source := str(entry.get("source", ""))
+	var known: Node = world.get("known") if world != null else null
+	if source == "storm_drop":
+		var drop: Node = world.get("storm_drop")
+		if drop != null and drop.pallet != null and bool(drop.pallet.opened): return "recovered"
+		if known != null and (known.knows("find:parachute") or known.knows("find:parachute", "orbiter")): return "seen"
+	elif source.begins_with("drop_field:"):
+		var field: Node = world.get("drop_field")
+		var kind := source.trim_prefix("drop_field:")
+		if field != null and field.sites.has(kind):
+			var site: Node = field.sites[kind]
+			if (site.pallet != null and bool(site.pallet.opened)) or bool(site.get("empty")): return "recovered"
+			if known != null and (known.knows(site.id()) or known.knows(site.id(), "orbiter")): return "seen"
+	return "missing"
+
+func _cargo_signature() -> String:
+	var data := _manifest_data()
+	return ",".join((data.get("pallets", []) as Array).map(func(e): return cargo_state(e)))
+
+func _cargo_page() -> Control:
+	_shown_cargo = _cargo_signature()
+	var data := _manifest_data()
+	var page := MHStyle.vbox(14)
+	var pallets: Array = data.get("pallets", [])
+	var found := pallets.filter(func(e): return cargo_state(e) == "recovered").size()
+	page.add_child(_heading("Cargo manifest", "Landed ahead of you, scattered by the storm. %d of %d pallets recovered." % [found, pallets.size()]))
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(scroll)
+	var list := MHStyle.vbox(8)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	for entry in pallets: list.add_child(_cargo_row(entry, cargo_state(entry)))
+	list.add_child(MHStyle.eyebrow("WALKING CARRIERS", MHStyle.TEXT_MUTED, 13))
+	for entry in data.get("walkers", []): list.add_child(_cargo_row(entry, "missing"))
+	return page
+
+func _cargo_row(entry: Dictionary, state: String) -> Control:
+	var colour: Color = {"recovered": MHStyle.VALID, "seen": MHStyle.WARN}.get(state, MHStyle.TEXT_MUTED)
+	var row := MHStyle.hbox(14)
+	row.add_child(MHStyle.icon({"recovered": "circle-check", "seen": "eye"}.get(state, "circle-dashed"), 20, colour))
+	var words := MHStyle.vbox(2)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.add_child(MHStyle.label(str(entry.name), 18, MHStyle.TEXT_PRIMARY if state != "missing" else MHStyle.TEXT_SECONDARY, 700))
+	var holds := MHStyle.body(str(entry.holds), 15, MHStyle.TEXT_SECONDARY if state != "missing" else MHStyle.TEXT_MUTED)
+	holds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	words.add_child(holds)
+	row.add_child(words)
+	row.add_child(MHStyle.mono({"recovered": "RECOVERED", "seen": "SEEN"}.get(state, "NO SIGNAL"), 13, colour, 700))
+	return row
 
 # ---------- Camera: photos for the journal (scripts/slate_camera.gd) ----------
 

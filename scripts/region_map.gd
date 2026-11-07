@@ -158,6 +158,7 @@ func _ready() -> void:
 	_fog.stretch_mode = TextureRect.STRETCH_SCALE
 	_fog.size = Vector2(SIZE, SIZE)
 	_fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fog.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR   # the survey's blur, not blocks
 	_frame.add_child(_fog)
 	_markers = Control.new()
 	_markers.size = Vector2(SIZE, SIZE)

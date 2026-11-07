@@ -16,6 +16,7 @@ const NOTES := preload("res://scripts/notes.gd")
 const STORM_DROP := preload("res://scripts/storm_drop.gd")
 const DROP_FIELD := preload("res://scripts/drop_field.gd")
 const LIFEPOD := preload("res://scripts/lifepod.gd")
+const DESCENT_SEEN := 450.0   # metres round the landing the descent cameras saw
 const ORBITER_TEXTS := preload("res://scripts/orbiter_texts.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
@@ -211,6 +212,9 @@ func _ready() -> void:
 		if not _known_state.is_empty(): known.load_state(_known_state)
 		elif not _start_in_lander: known.from_trail(region_map.trail)   # a save from before the record
 		if _start_in_lander and MHGame.game_mode == "creative": known.reveal_all()
+		# What the lander's cameras saw on the way down (master-design §2).
+		elif _start_in_lander and _known_state.is_empty() and lander != null:
+			known.reveal(Vector2(lander.global_position.x, lander.global_position.z) + known.origin, DESCENT_SEEN)
 	notes = NOTES.new()
 	add_child(notes)
 	notes.setup(self, _notes_state, _start_in_lander)
@@ -528,7 +532,10 @@ func _begin_lander_intro() -> void:
 	get_tree().create_timer(9.0).timeout.connect(_hand_over_slate)
 	# The link dropped at touchdown (scripts/descent.gd): ARDEN says why, after
 	# the static has died away. A skipped descent hears it too.
-	if MHChapterOne.new_rules(): get_tree().create_timer(1.2).timeout.connect(func() -> void: MHAudio.voice("link_lost"))
+	if MHChapterOne.new_rules():
+		get_tree().create_timer(1.2).timeout.connect(func() -> void: MHAudio.voice("link_lost"))
+		# What the lander is for, and why you go out (master-design §2).
+		get_tree().create_timer(6.0).timeout.connect(func() -> void: MHAudio.voice("lander_brief"))
 	get_tree().create_timer(2.5 if not MHChapterOne.new_rules() else 10.5).timeout.connect(func() -> void:
 		if _intro_stage == "inside":
 			explore_hud.show_equipment_note("Touchdown", "You've landed on Mars. When you're ready, look at the hatch and press E to open it."))

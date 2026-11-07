@@ -360,6 +360,9 @@
     "link_lost": [
       "Touchdown. The high-gain antenna has lost lock. The orbiter can still send text on its passes."
     ],
+    "lander_brief": [
+      "A word about where we are. This lander was built to set you down beside a finished base and keep you for one night. Air, water and battery for about a sol. The base is out there in the pallets now, and the walkers. We'll need them."
+    ],
     "aside": [
       "They do that.",
       "I like that one.",

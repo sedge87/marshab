@@ -1,0 +1,22 @@
+{
+  "_about": "The mission's cargo manifest on the slate (scripts/pda_screen.gd Cargo app; docs/master-design.md §2, systems-and-items §15). Twelve pallets and the three walking carriers that went down ahead of you. Paperwork, not a quest list: each line is greyed out until you find it, and says nothing about where it is. 'source' tells the slate how to check it: storm_drop (pallet 1), drop_field:<kind> (pallets 2-4); the rest come with later steps.",
+  "pallets": [
+    {"id": "life", "name": "Pallet 1 · Life support", "holds": "An oxygen cartridge for the lander, a portable heater, food and water for about five sols, the hand corer, scoop and sample case.", "source": "storm_drop"},
+    {"id": "power", "name": "Pallet 2 · Field power", "holds": "A rolled solar blanket and a battery pack.", "source": "drop_field:power"},
+    {"id": "gary", "name": "Pallet 3 · GAR-Y", "holds": "GAR-Y, the commissioning rover, folded for the trip.", "source": "drop_field:gary"},
+    {"id": "tools", "name": "Pallet 4 · Field tools", "holds": "A rock hammer, a headlamp and a suit patch kit.", "source": "drop_field:tools"},
+    {"id": "rover", "name": "Pallet 5 · Scout rover", "holds": "A two-seat open rover, folded."},
+    {"id": "print_shop", "name": "Pallet 6 · Print Shop", "holds": "The base's printer and its regolith intake."},
+    {"id": "comms", "name": "Pallet 7 · Comms", "holds": "The high-gain antenna's spares and the base's long-range radio."},
+    {"id": "instruments", "name": "Pallet 8 · Instruments", "holds": "The weather station and the field instruments."},
+    {"id": "habrover_a", "name": "Pallet 9 · HabRover, chassis", "holds": "The pressurised rover's frame, wheels and drive."},
+    {"id": "habrover_b", "name": "Pallet 10 · HabRover, cabin", "holds": "The pressurised rover's cabin and its life support."},
+    {"id": "reactor", "name": "Pallet 11 · Compact reactor", "holds": "The base's long-term power: a small fission reactor and its radiators."},
+    {"id": "spares", "name": "Pallet 12 · Spares", "holds": "Spare parts for every system on the manifest."}
+  ],
+  "walkers": [
+    {"id": "general_module", "name": "Walker 1 · General Module", "holds": "The base's first room, carried whole."},
+    {"id": "regolith_printer", "name": "Walker 2 · Regolith printer", "holds": "The big printer that builds room shells from the ground itself."},
+    {"id": "power_kit", "name": "Walker 3 · Power kit", "holds": "The base's solar arrays and batteries."}
+  ]
+}
