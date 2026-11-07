@@ -1,6 +1,6 @@
 # The interference: options
 
-**Status: options for the user to choose, 7 Nov.** Nothing here is built. Once one is picked it gets planted in the arrival story (master-design §2) and the story threads (§7), and built later.
+**Status: decided 7 Nov: option A, the buried heart.** Planted in master-design §2 and §7; not built yet.
 
 **The idea (the user, 7 Nov):** the storm alone didn't break everything. Something larger caused interference that sent the walkers' navigation wrong and explains other faults, and finding it is a huge late discovery, core to the story.
 
