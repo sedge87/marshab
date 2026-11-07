@@ -65,7 +65,11 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 			var p: Array = state.at
 			where = Vector3(float(p[0]), float(p[1]), float(p[2]))
 			yaw = float(state.get("yaw", 0.0))
-		else:
+			# Older saves could strand an unopened pallet on a mesa top: move it.
+			if not bool(state.get("opened", false)) and not reachable(where):
+				where = Vector3.INF
+				state = {}
+		if is_inf(where.x):
 			where = choose(kind, float(spec[1]), float(spec[2]), str(spec[3]), taken, ridge)
 			var back: Vector3 = world.lander.global_position - where
 			yaw = atan2(back.x, back.z)
@@ -97,6 +101,7 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 			var h: float = MHSiteTerrain.height(p.x, p.z)
 			var slope := _slope(p, 6.0)
 			if slope > 2.5: continue
+			if not reachable(p): continue
 			var score := 0.0
 			match ground:
 				"flat": score = h * .1 - _roughness(p) * 4.0 - slope * 2.0 - absf(distance - 600.0) * .01
@@ -109,6 +114,26 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 		var p := home + Vector3(0, 0, -(nearest + furthest) * .5)
 		out = Vector3(p.x, MHSiteTerrain.height(p.x, p.z), p.z)
 	return out
+
+## Can you walk there from the lander? Marches the straight line in 2 m
+## steps; a cliff (two steps in a row steeper than 45°) rules the spot out,
+## so nothing lands on a mesa top or a crater floor you can't climb from.
+## Conservative: a spot with a ramp round the side may be refused too.
+func reachable(p: Vector3) -> bool:
+	var home: Vector3 = world.lander.global_position
+	var flat := Vector2(p.x - home.x, p.z - home.z)
+	var steps := int(flat.length() / 2.0)
+	if steps < 2: return true
+	var dir := flat / float(steps)
+	var last: float = MHSiteTerrain.height(home.x, home.z)
+	var steep := 0
+	for i in range(1, steps + 1):
+		var h: float = MHSiteTerrain.height(home.x + dir.x * i, home.z + dir.y * i)
+		if absf(h - last) > dir.length(): steep += 1
+		else: steep = 0
+		if steep >= 2: return false
+		last = h
+	return true
 
 func _slope(p: Vector3, reach: float) -> float:
 	var h: float = MHSiteTerrain.height(p.x, p.z)
