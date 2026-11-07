@@ -46,6 +46,7 @@ func blocked_reason() -> String:
 	var player: Node3D = world.player
 	var in_cabin: bool = world.lander != null and bool(world.lander.cabin_contains(player.global_position))
 	if not world.builder.is_inside(player.global_position) and not in_cabin: return "You can only sleep inside: the habitat or the lander cabin."
+	if in_cabin and world.lander.has_method("sealed_cabin") and not world.lander.sealed_cabin(): return "Close the hatch and let it seal first."
 	return ""
 
 # ---------- the panel ----------

@@ -20,18 +20,10 @@ static func build(owner: Node3D, path: String, pivot_name: String, ramp_size: Ve
 	model.name = "Model"
 	model.position.y = -.05   # footpads' undersides on the ground
 	if cut_out.is_valid(): _cut(model, cut_out)
-	# The painted markings (name plates) import flipped: upside down on the
-	# hull, turned half round on the ramp. Flip them back.
+	# The painted markings (name plates and lettering) stay hidden: no text
+	# on models (docs/house-style.md).
 	for node in model.find_children("*Marking*", "MeshInstance3D", true, false):
-		var marking := node as MeshInstance3D
-		var on_ramp := marking.get_parent().name == pivot_name
-		for surface in marking.mesh.get_surface_count():
-			var source := marking.get_active_material(surface) as StandardMaterial3D
-			if source == null: continue
-			var upright := source.duplicate() as StandardMaterial3D
-			upright.uv1_scale = Vector3(-1, -1, 1) if on_ramp else Vector3(1, -1, 1)
-			upright.uv1_offset = Vector3(1, 1, 0) if on_ramp else Vector3(0, 1, 0)
-			marking.set_surface_override_material(surface, upright)
+		(node as MeshInstance3D).visible = false
 	MHPalette.apply(model)
 	owner.add_child(model)
 	var pivot := model.find_child(pivot_name, true, false) as Node3D

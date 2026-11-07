@@ -456,8 +456,11 @@ func _add_cargo_lander(number: int) -> Node3D:
 	cargo_landers.append(cargo)
 	return cargo
 
+var _saved_hatch_open := true   # a loaded game's hatch (older saves: open)
+
 func _land_lander() -> void:
 	var saved: Dictionary = MHGame.pending_save_state.get("lander", {})
+	_saved_hatch_open = bool(saved.get("hatch_open", true))
 	if not saved.is_empty():
 		lander.place_exact(saved.get("position", Vector3.ZERO) as Vector3, float(saved.get("yaw", 0.0)))
 	elif not MHGame.pending_save_state.is_empty() or is_inf(MHGame.landing_target.x):
@@ -487,7 +490,10 @@ func danger_level() -> float:
 
 func _begin_lander_intro() -> void:
 	if not _start_in_lander:
-		lander.set_hatch(true)
+		# A loaded game: the hatch as it was saved (open in older saves). Shut,
+		# it's sealed at once (a close in progress finishes).
+		if _saved_hatch_open: lander.set_hatch(true)
+		else: lander.sealed.emit()
 		return
 	_intro_stage = "inside"
 	explore_hud.set_minimal(true)
@@ -910,7 +916,7 @@ func current_state() -> Dictionary:
 		"challenge": MHGame.export_challenge(),
 		"rules": MHGame.current_rules(),
 		"builder": builder.export_habitat_state(),
-		"lander": {"position": lander.global_position, "yaw": lander.rotation.y},
+		"lander": {"position": lander.global_position, "yaw": lander.rotation.y, "hatch_open": lander.hatch_open()},
 		"player_position": player.global_position,
 		"player_rotation_y": player.rotation.y,
 		"day_night": day_night.export_state() if day_night != null else {},

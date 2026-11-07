@@ -852,6 +852,8 @@
     "cabin_o2_tank_kg": 0.84,
     "body_heat_kw": 0.1,
     "cartridge_o2_kg": 6.0,
-    "cartridge_carry_kg": 20.0
+    "cartridge_carry_kg": 20.0,
+    "cabin_repress_o2_kg": 0.03,
+    "cabin_vent_heat_c": 4.0
   }
 }

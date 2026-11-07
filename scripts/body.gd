@@ -94,7 +94,7 @@ func comfort() -> float:
 func surroundings() -> Dictionary:
 	if not MHGame.simulation_on() or world.player == null: return {}
 	var cabin: Node = world.get("cabin_life")
-	if cabin != null and cabin.running() and cabin.player_inside(): return cabin.conditions()
+	if cabin != null and cabin.running() and cabin.player_inside() and cabin.breathable(): return cabin.conditions()
 	var builder: Node = world.builder
 	if builder != null and not builder.build_mode and builder.is_inside(world.player.global_position):
 		var sim: RefCounted = builder.simulation()

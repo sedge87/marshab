@@ -59,6 +59,22 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 	_emergency.visible = false
 	lander.add_child(_emergency)
 	_apply_lights(0.0)
+	# The hatch (scripts/crew_lander.gd): opening vents the cabin, sealing repressurises it.
+	if lander.has_signal("vented"):
+		lander.vented.connect(_on_vented)
+		lander.sealed.connect(_on_sealed)
+
+func _on_vented() -> void:
+	core.vent()
+	_since_runway = 99.0
+
+func _on_sealed() -> void:
+	core.repressurise()
+	_since_runway = 99.0
+
+## Is there air to breathe in the cabin (the hatch shut and sealed)?
+func breathable() -> bool:
+	return not bool(core.vented)
 
 ## Is the cabin running? Only in modes with the simulation, and while the lander stands.
 func running() -> bool:
@@ -67,7 +83,7 @@ func running() -> bool:
 ## Game hours passing (the day/night clock).
 func advance(hours: float, start_hour: float) -> void:
 	if not running() or hours <= 0.0: return
-	core.people = 1.0 if player_inside() else 0.0
+	core.people = 1.0 if player_inside() and breathable() else 0.0
 	core.advance(hours, start_hour)
 
 ## A cartridge plugged into the port: the tank grows by its oxygen, full.

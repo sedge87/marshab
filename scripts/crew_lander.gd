@@ -46,6 +46,19 @@ var cabin_lights: Array = []     # the cabin's lamps (scripts/lander_cabin_life.
 var cabin_glow: StandardMaterial3D
 var _ramp: Node3D     # its hinged hatch ramp
 var _open := false
+## The hatch's seal (docs/systems-and-items.md §14 step 2): closing swings the
+## ramp shut, the latches clamp, then the cabin repressurises from its tank.
+## Only then is the cabin's air yours again (and the suit refills here).
+## "open", "closing", "latching", "pressurising" or "sealed".
+var seal_state := "sealed"
+var _seal_run := 0               # a new open or close cancels the steps in flight
+var _seal_lamp: StandardMaterial3D
+var _seal_light: OmniLight3D
+const SEAL_COLOURS := {"open": Color("#FF4A3A"), "working": Color("#FFB23A"), "sealed": Color("#5CFF8A")}
+const LATCH_SECONDS := 1.2
+const PRESSURE_SECONDS := 3.0
+signal vented                    # the hatch opened: the cabin is open to Mars
+signal sealed                    # the hatch is shut, latched and the cabin repressurised
 
 func _ready() -> void:
 	add_to_group("landmark")
@@ -118,6 +131,12 @@ func _build_cabin() -> void:
 		_wall(deck_body, Vector3(side * 1.34, 2.3, -1.62), Vector3(side * 1.8, 5.8, FRONT_WALL))
 	# Over the doorway: hides the trimmed edges of the old door's frame.
 	_wall(deck_body, Vector3(-1.08, 5.4, FRONT_WALL + .03), Vector3(1.08, CEILING, FRONT_WALL + .09))
+	# The door seal: jambs either side of the shut door,
+	# at the hatch frame's plane, so it shuts with no light round its edges
+	# (the hull opening is wider than the door). Clear of the door's swing.
+	for side in [-1.0, 1.0]:
+		_wall(deck_body, Vector3(side * .955, 2.28, -2.67), Vector3(side * 1.37, 5.72, -2.54))
+	_build_seal_lamp()
 	# A round ceiling lamp, a downlight under it and a soft fill.
 	var lamp := MeshInstance3D.new()
 	var lamp_disc := CylinderMesh.new()
@@ -172,6 +191,35 @@ func _wall(body: StaticBody3D, corner_a: Vector3, corner_b: Vector3) -> void:
 	collision.position = mesh.position
 	body.add_child(collision)
 
+## The seal lamp inside by the hatch: red open, amber working, green sealed.
+func _build_seal_lamp() -> void:
+	var lamp := MeshInstance3D.new()
+	lamp.name = "HatchSealLamp"
+	var box := BoxMesh.new()
+	box.size = Vector3(.025, .07, .07)
+	_seal_lamp = StandardMaterial3D.new()
+	_seal_lamp.emission_enabled = true
+	_seal_lamp.emission_energy_multiplier = 2.5
+	box.material = _seal_lamp
+	lamp.mesh = box
+	lamp.position = Vector3(.99, DECK + 1.55, -1.95)
+	add_child(lamp)
+	_seal_light = OmniLight3D.new()
+	_seal_light.position = lamp.position + Vector3(-.08, 0, 0)
+	_seal_light.light_energy = .3
+	_seal_light.light_specular = 0.0
+	_seal_light.omni_range = .5
+	_seal_light.shadow_enabled = false
+	add_child(_seal_light)
+	_show_seal()
+
+func _show_seal() -> void:
+	if _seal_lamp == null: return
+	var colour: Color = SEAL_COLOURS.get(seal_state, SEAL_COLOURS.working)
+	_seal_lamp.albedo_color = colour.darkened(.3)
+	_seal_lamp.emission = colour
+	_seal_light.light_color = colour
+
 func _furnish() -> void:
 	var builder := get_tree().get_first_node_in_group("habitat_builder")
 	if builder == null: return
@@ -188,7 +236,8 @@ func _furnish() -> void:
 		add_child(holder)
 
 func interaction_prompt() -> Dictionary:
-	return {"label": "Crew Lander", "primary": "Close hatch" if _open else "Open hatch", "info": "About"}
+	var label := "Crew Lander · sealing…" if seal_state in ["closing", "latching", "pressurising"] else "Crew Lander"
+	return {"label": label, "primary": "Close hatch" if _open else "Open hatch", "info": "About"}
 
 func interact(_actor: Node = null) -> bool:
 	set_hatch(not _open, true)
@@ -294,9 +343,44 @@ func set_burn(on: bool) -> void:
 func hatch_open() -> bool:
 	return _open
 
-## Open (or close) the hatch; loaded games start open.
+## Is the cabin shut and repressurised (its air breathable, the suit refilling)?
+func sealed_cabin() -> bool:
+	return seal_state == "sealed"
+
+## Open (or close) the hatch. Opening vents the cabin at once; an animated
+## close swings shut, latches and repressurises before it's sealed, and a
+## close that isn't animated (a loaded game) seals at once.
 func set_hatch(open: bool, animate := false) -> void:
 	if _ramp == null or _open == open: return
 	_open = open
+	_seal_run += 1
 	LanderModel.swing(_ramp, open, RAMP_OPEN_DEGREES, 2.6 if animate else 0.0)
 	if animate: MHAudio.sfx("mode_build", -6.0)
+	if open:
+		_set_seal("open")
+		vented.emit()
+	elif not animate:
+		_set_seal("sealed")
+		sealed.emit()
+	else:
+		_set_seal("closing")
+		_seal_steps(_seal_run)
+
+func _seal_steps(run: int) -> void:
+	await get_tree().create_timer(2.6).timeout
+	if run != _seal_run: return
+	_set_seal("latching")
+	MHAudio.sfx("suit_clamp", -4.0)
+	await get_tree().create_timer(LATCH_SECONDS).timeout
+	if run != _seal_run: return
+	_set_seal("pressurising")
+	MHAudio.sfx("suit_fill", -6.0)
+	await get_tree().create_timer(PRESSURE_SECONDS).timeout
+	if run != _seal_run: return
+	_set_seal("sealed")
+	MHAudio.sfx("all_clear", -10.0)
+	sealed.emit()
+
+func _set_seal(state: String) -> void:
+	seal_state = state
+	_show_seal()

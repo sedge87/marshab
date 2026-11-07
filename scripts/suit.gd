@@ -140,13 +140,16 @@ func _process(delta: float) -> void:
 	if o2 <= 0.0 and where == "outside" and MHGame.crew_can_be_harmed() and not passed_out: pass_out()
 
 ## Where you're breathing from. The habitat counts only while its air is fit
-## to breathe; the rover's cab only while its tank has oxygen.
+## to breathe; the rover's cab only while its tank has oxygen; the lander
+## cabin only once its hatch is shut and sealed (open, you're on your suit).
 func _where() -> String:
 	var player: Node3D = world.player
 	if bool(player.get_meta("driving", false)):
 		var rover: Node = world.get("crew_rover")
 		return "rover" if rover != null and float(rover.o2) > 0.0 else "outside"
-	if world.lander != null and world.lander.cabin_contains(player.global_position): return "lander"
+	if world.lander != null and world.lander.cabin_contains(player.global_position):
+		if not world.lander.has_method("sealed_cabin") or world.lander.sealed_cabin(): return "lander"
+		return "outside"
 	if world.builder != null and not world.builder.build_mode and world.builder.is_inside(player.global_position):
 		var sim := _sim()
 		if sim == null or not MHGame.simulation_on() or float(sim.o2_pct) >= 17.0: return "habitat"

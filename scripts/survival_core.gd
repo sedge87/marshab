@@ -51,6 +51,7 @@ var heater_mode := "warm"
 var lights_on := true
 var scrubber_on := true
 var last := {}                   # the last sub-step's flows (kW): solar, draw, heater, loss
+var vented := false              # open to Mars (the lander's hatch is open): no air to breathe
 
 func _init() -> void:
 	battery_cap = n("cabin_battery_kwh", 6.0)
@@ -86,6 +87,7 @@ func heater_target() -> float:
 
 ## What the body feels in here.
 func conditions() -> Dictionary:
+	if vented: return {"temp_c": temp_c, "o2_pct": 0.0, "co2_pct": 0.0, "powered": powered(), "lit": powered() and lights_on, "vented": true}
 	return {"temp_c": temp_c, "o2_pct": o2_pct(), "co2_pct": co2_pct(), "powered": powered(), "lit": powered() and lights_on}
 
 # ---------- the flows ----------
@@ -121,7 +123,10 @@ func step(dt: float, outside: float, sun: float) -> void:
 	var solar := n("cabin_solar_kw", 1.5) * sun
 	battery_kwh = clampf(battery_kwh + (solar - draw) * dt, 0.0, battery_cap)
 	temp_c += (draw + body - loss) * dt / heat_cap
-	# Air.
+	# Air (none while the cabin is open to Mars: the suit breathes for you).
+	if vented:
+		last = {"solar": solar, "draw": draw, "heater": heater, "loss": loss}
+		return
 	o2_kg = maxf(0.0, o2_kg - people * MHResources.setting("o2_per_person", .84) / 24.0 * dt)
 	co2_kg += people * MHResources.setting("co2_per_person", 1.0) / 24.0 * dt
 	if on and scrubber_on:
@@ -138,6 +143,24 @@ static func outside_at(hour: float) -> float:
 	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
 	var light := DAY_NIGHT.sunlight_at(hour, cycle)
 	return lerpf(float(cycle.get("night_temp_c", -68.0)), float(cycle.get("day_temp_c", -25.0)), light)
+
+## The hatch opened: the cabin's air goes, and some of its warmth with it.
+func vent() -> void:
+	if vented: return
+	vented = true
+	temp_c -= n("cabin_vent_heat_c", 4.0)
+
+## The hatch is shut and latched: the regulator refills the cabin from the
+## tank (a small cost each time). A tank too low refills it only partly.
+## Returns the oxygen it took.
+func repressurise() -> float:
+	if not vented: return 0.0
+	vented = false
+	var need := n("cabin_repress_o2_kg", .03)
+	var got := take_oxygen(need)
+	o2_kg = air_kg * .209 / O2_VOL * (got / need if need > 0.0 else 1.0)
+	co2_kg = air_kg * .0004 / CO2_VOL
+	return got
 
 ## Up to `kg` of oxygen from the tank (filling a suit); returns what it gave.
 func take_oxygen(kg: float) -> float:
@@ -213,7 +236,7 @@ static func _clock_after(hours: float) -> String:
 
 func export_state() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "tank_cap": tank_cap, "tank_o2_kg": tank_o2_kg, "o2_kg": o2_kg, "co2_kg": co2_kg, "temp_c": temp_c,
-		"heater": heater_mode, "lights": lights_on, "scrubber": scrubber_on, "people": people}
+		"heater": heater_mode, "lights": lights_on, "scrubber": scrubber_on, "people": people, "vented": vented}
 
 func load_state(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -227,3 +250,4 @@ func load_state(state: Dictionary) -> void:
 	lights_on = bool(state.get("lights", lights_on))
 	scrubber_on = bool(state.get("scrubber", scrubber_on))
 	people = float(state.get("people", people))
+	vented = bool(state.get("vented", vented))
