@@ -27,6 +27,18 @@ void fragment() {
 	ALPHA = smoothstep(0.5, 0.46, edge);
 }
 """
+const BLUE_HOUR_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never, fog_disabled, blend_mix;
+uniform vec4 glow_colour : source_color = vec4(0.47, 0.62, 0.86, 1.0);
+uniform float glow = 0.0;
+void fragment() {
+	float radius = length(UV - vec2(0.5)) * 2.0;
+	float fall = 1.0 - smoothstep(0.0, 1.0, radius);
+	ALBEDO = glow_colour.rgb;
+	ALPHA = glow * pow(fall, 1.4) * 0.6;
+}
+"""
 const SOLAR_CORONA_SHADER := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, fog_disabled, blend_mix;
@@ -53,6 +65,8 @@ var palette_name := "day"
 var _palette_values: Dictionary = {}
 var _sky_material: ProceduralSkyMaterial
 var _sun_corona: MeshInstance3D
+const BLUE_HOUR_GLOW := Color("#6F9BE0")     # the halo round a setting sun
+const BLUE_HOUR_LIGHT := Color("#AFC3F0")
 var _phobos: MeshInstance3D
 var _deimos: MeshInstance3D
 var _show_celestials := true
@@ -129,6 +143,22 @@ func _solar_corona() -> MeshInstance3D:
 	material.shader.code = SOLAR_CORONA_SHADER
 	corona.material_override = material
 	add_child(corona)
+	# The blue hour's glow: about 12 degrees of soft blue round a low sun, as
+	# in photos from Mars. It rides with the sun quad, a little behind it.
+	_blue_glow = MeshInstance3D.new()
+	_blue_glow.name = "BlueHourGlow"
+	var glow_mesh := QuadMesh.new()
+	glow_mesh.size = Vector2(230.0, 230.0)
+	_blue_glow.mesh = glow_mesh
+	_blue_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var glow_material := ShaderMaterial.new()
+	glow_material.shader = Shader.new()
+	glow_material.shader.code = BLUE_HOUR_SHADER
+	glow_material.render_priority = -1
+	_blue_glow.material_override = glow_material
+	_blue_glow.position = Vector3(0, 0, -2.0)
+	_blue_glow.visible = false
+	corona.add_child(_blue_glow)
 	return corona
 
 func _celestial_disc(body_name: String, diameter: float, colour: Color, emission: float, crater_strength := 1.0) -> MeshInstance3D:
@@ -307,6 +337,20 @@ func _apply_martian_sun_direction(sunlight: float) -> void:
 	sun.basis = MHGame.sun_basis({"sun": toward_sun})
 	var noon_colour: Color = _palette_values.get("sun_colour", Color.WHITE)
 	sun.light_color = Color("#FFAC7B").lerp(noon_colour, clampf(sunlight * 1.3, 0.0, 1.0))
+	# Mars's blue sunset (and sunrise): fine dust scatters blue light forwards,
+	# so the sky round a low sun glows blue while the rest stays butterscotch.
+	sun.light_color = sun.light_color.lerp(BLUE_HOUR_LIGHT, blue_hour() * .35)
+
+## How deep in the blue hour the sky is, 0 to 1: the sun low, just after
+## sunrise or just before sunset (and a little after, as it slips down).
+static func blue_hour() -> float:
+	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+	var sunrise := float(cycle.get("sunrise_hour", 5.0))
+	var sunset := float(cycle.get("sunset_hour", 19.0))
+	var hour := MHGame.sol_hour
+	var evening := smoothstep(sunset - 2.0, sunset - .7, hour) * (1.0 - smoothstep(sunset + .2, sunset + .7, hour))
+	var morning := smoothstep(sunrise - .4, sunrise + .1, hour) * (1.0 - smoothstep(sunrise + .5, sunrise + 1.4, hour))
+	return maxf(evening, morning)
 
 func _martian_sun_vector(sunlight: float) -> Vector3:
 	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
@@ -328,7 +372,14 @@ func _update_celestial_bodies(sunlight: float) -> void:
 	var hour := MHGame.sol_hour
 	var toward_sun := _martian_sun_vector(sunlight)
 	_sky_directions[_sun_corona] = toward_sun
-	_sun_corona.visible = sunlight > .015
+	var blue := blue_hour()
+	_sun_corona.visible = sunlight > .015 or blue > .3
+	var corona_material := _sun_corona.material_override as ShaderMaterial
+	if corona_material != null:
+		corona_material.set_shader_parameter("corona_colour", Color(1.0, .5, .2).lerp(BLUE_HOUR_GLOW, blue))
+	if _blue_glow != null:
+		(_blue_glow.material_override as ShaderMaterial).set_shader_parameter("glow", blue)
+		_blue_glow.visible = blue > .01
 	# Actual orbital periods: Phobos 7 h 39 m, Deimos ~30 h 18 m. Phobos moves
 	# west-to-east as seen from Mars; Deimos follows the slower opposite drift.
 	var phobos_angle := -PI * .45 + TAU * hour / 7.653
@@ -350,6 +401,8 @@ func _place_celestial(body: MeshInstance3D, altitude: float, azimuth: float) -> 
 ## (they used to sit 760 m from the site's centre, nearer than a region's
 ## far hills, which then showed the sun through them).
 var _sky_directions: Dictionary = {}   # body -> unit direction
+var _sky_scale: Dictionary = {}        # body -> extra size
+var _blue_glow: MeshInstance3D         # the blue hour's wide halo, behind the sun
 const SKY_BASE_DISTANCE := 760.0       # the distance the bodies' sizes were made for
 
 func _process(_delta: float) -> void:
@@ -363,7 +416,7 @@ func _follow_camera() -> void:
 		if not is_instance_valid(body): continue
 		var mesh := body as MeshInstance3D
 		mesh.global_position = camera.global_position + (_sky_directions[body] as Vector3) * distance
-		mesh.scale = Vector3.ONE * distance / SKY_BASE_DISTANCE
+		mesh.scale = Vector3.ONE * distance / SKY_BASE_DISTANCE * float(_sky_scale.get(body, 1.0))
 		mesh.look_at(camera.global_position, Vector3.UP, true)
 
 func _build_terrain() -> void:

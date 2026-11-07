@@ -70,6 +70,14 @@ func _initialize() -> void:
 	pda.screen.show_app("map")
 	await create_timer(1.0).timeout
 	await _shot("9_map")
+	pda.close()
+	await create_timer(.6).timeout
+	# The blue sunset, from the ridge looking west.
+	var sunset := float(MHGame.site().get("day_cycle", {}).get("sunset_hour", 19.0))
+	world.day_night.set_hour(sunset - .8)
+	_stand(drop.ridge + Vector3(0, 1.8, 0), drop.ridge + Vector3(-100, 6, 0), 9.0)
+	await create_timer(1.0).timeout
+	await _shot("10_blue_sunset")
 	quit()
 
 ## Puts the player at `at` looking towards `target`, the head pitched by `pitch` degrees.

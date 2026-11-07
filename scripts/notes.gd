@@ -135,7 +135,7 @@ func _process(delta: float) -> void:
 	var hour := MHGame.sol_hour
 	var outside := not _indoors()
 	# The blue sunset: outside as the sun goes down.
-	if outside and hour >= sunset - .6 and hour <= sunset + .25: answer("sunset")
+	if outside and hour >= sunset - 1.0 and hour <= sunset + .25 and answer("sunset"): MHAudio.moment()
 	# Night one's question: dark, then dawn.
 	var dark := hour >= sunset + .5 or hour < sunrise
 	if dark and is_open("power"): think("power", "night")
