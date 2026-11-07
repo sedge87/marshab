@@ -857,6 +857,19 @@
     "cabin_vent_heat_c": 4.0,
     "power_pack_kw": 1.5,
     "power_pack_kwh": 10.0,
-    "power_pack_carry_kg": 18.0
+    "power_pack_carry_kg": 18.0,
+    "cabin_water_l": 7.5,
+    "water_per_sol_l": 3.0,
+    "thirst_after_h": 12.0,
+    "ice_chunk_kg": 8.0,
+    "ice_chunk_big_kg": 12.0,
+    "ice_melt_l_per_kg": 0.9,
+    "water_bladder_l": 6.0,
+    "sled_ice_kg": 48.0,
+    "salvage_per_piece": 2.0,
+    "print_hitch_parts": 3.0,
+    "print_pick_parts": 2.0,
+    "print_bladder_parts": 2.0,
+    "lifepod_jobs_for_walker": 3.0
   }
 }

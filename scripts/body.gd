@@ -144,6 +144,10 @@ func _process(delta: float) -> void:
 	stale = move_toward(stale, float(cue.stale), delta * .3)
 	hypoxia = move_toward(hypoxia, float(cue.hypoxia), delta * .4)
 	var harm := harm_for(air)
+	# No water for long enough (the lander's tank, scripts/survival_core.gd).
+	var cabin: Node = world.get("cabin_life")
+	if cabin != null and cabin.running() and bool(cabin.core.thirsty()):
+		harm = {"rate": maxf(float(harm.rate), 0.0) + 3.0, "causes": (harm.causes as Array) + ["thirst"]}
 	causes = harm.causes
 	if MHGame.crew_can_be_harmed() and hours > 0.0 and hours < 6.0:
 		health = clampf(health - float(harm.rate) * hours, 0.0, 100.0)

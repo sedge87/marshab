@@ -9,7 +9,9 @@ extends RefCounted
 ## - the battery (kWh);
 ## - the oxygen tank (kg);
 ## - the cabin air: kg of O₂ and CO₂ in its free volume;
-## - the cabin temperature (°C), with a heat capacity.
+## - the cabin temperature (°C), with a heat capacity;
+## - the lander's water tank (L): you drink from it wherever you are (the
+##   suit's drink bag is filled from it), and melted ice tops it up (step 3b).
 ##
 ## Flows, worked out in short sub-steps:
 ## - the sun charges the battery;
@@ -54,12 +56,17 @@ var last := {}                   # the last sub-step's flows (kW): solar, draw, 
 var vented := false              # open to Mars (the lander's hatch is open): no air to breathe
 var pack_kw := 0.0               # pallet 2's solar blanket, laid out by the lander (peak kW)
 var pack_kwh := 0.0              # and its battery, added to the cabin's
+var water_cap := 7.5             # the lander's water tank (L); a printed bladder adds to it
+var water_l := 7.5
+var dry_hours := 0.0             # hours with nothing to drink
 
 func _init() -> void:
 	battery_cap = n("cabin_battery_kwh", 6.0)
 	battery_kwh = battery_cap
 	tank_cap = n("cabin_o2_tank_kg", 3.0)
 	tank_o2_kg = tank_cap
+	water_cap = maxf(n("cabin_water_l", 7.5), 12.0)
+	water_l = n("cabin_water_l", 7.5)
 	air_kg = n("cabin_air_m3", 15.0) * AIR_DENSITY
 	o2_kg = air_kg * .209 / O2_VOL
 	co2_kg = air_kg * .0004 / CO2_VOL
@@ -106,6 +113,9 @@ func advance(hours: float, start_hour: float) -> void:
 
 ## One sub-step: `outside` °C, `sun` 0–1 of noon sunlight.
 func step(dt: float, outside: float, sun: float) -> void:
+	# You drink wherever you are.
+	water_l = maxf(0.0, water_l - n("water_per_sol_l", 3.0) / 24.0 * dt)
+	dry_hours = dry_hours + dt if water_l <= 0.0 else 0.0
 	var on := powered()
 	var draw := 0.0
 	if on:
@@ -172,6 +182,21 @@ func add_power_pack(kw: float, kwh: float, charge := .5) -> void:
 	battery_cap += kwh
 	battery_kwh = minf(battery_cap, battery_kwh + kwh * charge)
 
+## Melted ice (or anything drinkable) into the tank; returns what fitted.
+func add_water(litres: float) -> float:
+	var got := clampf(litres, 0.0, water_cap - water_l)
+	water_l += got
+	if got > 0.0: dry_hours = 0.0
+	return got
+
+## Sols of drinking left in the tank.
+func water_sols() -> float:
+	return water_l / maxf(.01, n("water_per_sol_l", 3.0))
+
+## Gone without water long enough to hurt.
+func thirsty() -> bool:
+	return dry_hours >= n("thirst_after_h", 12.0)
+
 ## Up to `kg` of oxygen from the tank (filling a suit); returns what it gave.
 func take_oxygen(kg: float) -> float:
 	var got := clampf(kg, 0.0, tank_o2_kg)
@@ -230,6 +255,12 @@ func alerts(ahead: Dictionary = {}) -> Array:
 		out.append({"id": "cabin_cold", "level": "critical" if temp_c < COLD_LIMITS[1] else "warning", "title": "Cabin cold",
 			"text": "%d °C inside. The heater is %s%s." % [roundi(temp_c), heater_mode, "" if powered() else ", with no power"],
 			"chain": [["flame", "Heater " + heater_mode, heater_mode != "off" and powered()], ["thermometer", "%d °C" % roundi(temp_c), false]]})
+	if water_l <= 0.0:
+		out.append({"id": "cabin_water", "level": "critical", "title": "No water left",
+			"text": "The lander's tank is dry. Ice melts into it.", "chain": [["droplet", "Tank empty", false]]})
+	elif water_sols() < 1.0:
+		out.append({"id": "cabin_water", "level": "warning", "title": "Water low",
+			"text": "%.1f L left: under a sol." % water_l, "chain": [["droplet", "Tank %.1f L" % water_l, false]]})
 	if not powered():
 		out.append({"id": "cabin_power", "level": "warning", "title": "Cabin battery flat",
 			"text": "Lights, scrubber and heater are off until the sun charges it.", "chain": [["zap", "Battery 0%", false], ["sun", "Waiting for the sun", true]]})
@@ -246,7 +277,8 @@ static func _clock_after(hours: float) -> String:
 
 func export_state() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "tank_cap": tank_cap, "tank_o2_kg": tank_o2_kg, "o2_kg": o2_kg, "co2_kg": co2_kg, "temp_c": temp_c,
-		"heater": heater_mode, "lights": lights_on, "scrubber": scrubber_on, "people": people, "vented": vented, "pack_kw": pack_kw, "pack_kwh": pack_kwh}
+		"heater": heater_mode, "lights": lights_on, "scrubber": scrubber_on, "people": people, "vented": vented, "pack_kw": pack_kw, "pack_kwh": pack_kwh,
+		"water_cap": water_cap, "water_l": water_l, "dry_hours": dry_hours}
 
 func load_state(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -264,3 +296,6 @@ func load_state(state: Dictionary) -> void:
 	scrubber_on = bool(state.get("scrubber", scrubber_on))
 	people = float(state.get("people", people))
 	vented = bool(state.get("vented", vented))
+	water_cap = maxf(water_cap, float(state.get("water_cap", water_cap)))
+	water_l = clampf(float(state.get("water_l", water_l)), 0.0, water_cap)
+	dry_hours = float(state.get("dry_hours", 0.0))
