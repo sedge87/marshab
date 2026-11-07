@@ -95,7 +95,11 @@ func _initialize() -> void:
 	# Pallet 3: GAR-Y wakes, and points to pallet 4.
 	player.global_position = field.sites.gary.pallet.global_position + Vector3(2.5, 1.0, 0)
 	await _open(field.sites.gary.pallet)
-	_check(world.gary_met and world.scout_rover != null and field.meeting != null and bool(player.get_meta("ui_freeze", false)) and _flat(world.scout_rover.global_position, field.sites.gary.pallet.global_position) < .5, "opening pallet 3: GAR-Y folded in its cradle, and you're held to watch it wake")
+	_check(world.gary_met and world.scout_rover != null and field.gary_in_cradle and field.meeting == null and _flat(world.scout_rover.global_position, field.sites.gary.pallet.global_position) < .5, "opening pallet 3: GAR-Y folded in its cradle")
+	var cradle: Node = field.sites.gary.pallet
+	_check(str(cradle.interaction_prompt().get("primary", "")) == "Lift it out", "looking in: Lift it out")
+	cradle.interact(player)
+	_check(field.meeting != null and not field.gary_in_cradle and bool(player.get_meta("ui_freeze", false)), "you lift it out, and you're held to watch it wake")
 	_check(not world.explore_hud.visible and not world.notes.is_settled("gary"), "the HUD gone while it plays")
 	await create_timer(1.0).timeout
 	field.meeting._t = field.meeting.PALLET_SECONDS - .05

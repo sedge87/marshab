@@ -10,19 +10,27 @@ in the same habitat as everything else.
 Unlike the furniture, GAR-Y is a hierarchy of pivots the game animates:
 
   GarY
-    body (chassis, deck, solar panel, rocker-bogie legs, bumpers)
-    Wheel_1..Wheel_6     pivots at each axle (spin about local X)
-    Mast                 pivot at the deck (pans about Y)
+    Body                 the chassis, deck and bumpers; lowers to crouch when folded
+      SolarPanel         hinged at its front edge: folds forward over the deck
+      Leg_L, Leg_R       rocker-bogie legs, hinged at the rocker pivot: splay out
+        Wheel_1..Wheel_6 pivots at each axle (spin about local X)
+      MastHinge          at the mast's foot: lays the mast flat over the rear deck
+        Mast             pivot at the deck (pans about Y)
       Head               pivot at the head (tilts about X)
         Eye_L, Eye_R     the face light: two glowing eyes the game tints,
                          squints and blinks to show GAR-Y's mood
         LampMount        where the torch spotlight goes (points forward)
-    ArmShoulder          pivot (pitches about X), modelled pointing straight up
+      ArmShoulder        pivot (pitches about X), modelled pointing straight up
       ArmElbow
         ArmWrist
           Grip           where a carried item is held
 
 Metres, ground origin; the front faces -Z in glTF (Blender +Y here).
+
+Folding (it ships folded in pallet 3, scripts/companion_rover.gd set_fold):
+the panel flips forward over the deck, the mast lies back along it, the body
+crouches and the legs splay so the wheels stay on the ground. Modelled
+unfolded; the game sets the hinges.
 """
 import math
 import os
@@ -70,6 +78,7 @@ def attach(objs, parent):
 def build():
     global ROOT
     ROOT = empty("GarY", (0, 0, 0))
+    BODY = empty("Body", (0, 0, 0), ROOT)
     body = []
     # ---- chassis: a rounded white shell on a dark belly, orange trim ----
     body.append(box("chassis_rover_white", -0.32, 0.32, -0.42, 0.42, 0.30, 0.49, "rover_white", 0.045))
@@ -80,36 +89,37 @@ def build():
     body.append(box("bumper_rear_graphite", -0.26, 0.26, -0.465, -0.42, 0.30, 0.39, "graphite", 0.02))
     body.append(join("headlights_lamp_white", [box("h", x - 0.035, x + 0.035, 0.464, 0.468, 0.33, 0.36, "lamp_white", 0.006) for x in (-0.17, 0.17)]))
     # Solar panel on the rear deck, with cell lines.
-    body.append(box("solar_frame_alloy", -0.29, 0.29, -0.42, -0.02, 0.525, 0.545, "alloy", 0.008))
-    body.append(box("solar_cells_solar_cell", -0.275, 0.275, -0.405, -0.035, 0.545, 0.55, "solar_cell", 0))
-    body.append(join("solar_lines_slate_panel", [box("l", -0.275, 0.275, y, y + 0.004, 0.55, 0.552, "slate_panel", 0) for y in (-0.32, -0.22, -0.12)]
-                     + [box("l", x, x + 0.004, -0.405, -0.035, 0.55, 0.552, "slate_panel", 0) for x in (-0.09, 0.09)]))
-    # Sample drawer on the side and a little badge (GAR-Y's orange "Y").
+    panel = [box("solar_frame_alloy", -0.29, 0.29, -0.42, -0.02, 0.525, 0.545, "alloy", 0.008),
+             box("solar_cells_solar_cell", -0.275, 0.275, -0.405, -0.035, 0.545, 0.55, "solar_cell", 0),
+             join("solar_lines_slate_panel", [box("l", -0.275, 0.275, y, y + 0.004, 0.55, 0.552, "slate_panel", 0) for y in (-0.32, -0.22, -0.12)]
+                  + [box("l", x, x + 0.004, -0.405, -0.035, 0.55, 0.552, "slate_panel", 0) for x in (-0.09, 0.09)]),
+             cyl("panel_hinge_graphite", (0.0, -0.02, 0.535), 0.012, 0.5, "graphite", axis="x", verts=12)]
+    # Sample drawer on the side (no badge: no lettering on models).
     body.append(box("sample_drawer_warm_panel", 0.322, 0.335, -0.2, 0.08, 0.32, 0.385, "warm_panel", 0.006))
     body.append(box("drawer_handle_graphite", 0.334, 0.342, -0.1, 0.0, 0.345, 0.36, "graphite", 0.003))
-    body.append(join("badge_orange", [rod("y", (-0.329, 0.18, 0.44), (-0.329, 0.21, 0.47), 0.006, "orange", 8), rod("y", (-0.329, 0.24, 0.44), (-0.329, 0.21, 0.47), 0.006, "orange", 8),
-                                      rod("y", (-0.329, 0.21, 0.47), (-0.329, 0.21, 0.5), 0.006, "orange", 8)]))
     # Comms whip antenna at the back.
     body.append(rod("antenna_dark_alloy", (-0.24, -0.38, 0.52), (-0.24, -0.38, 0.86), 0.006, "dark_alloy", 8))
     body.append(sphere("antenna_tip_orange", (-0.24, -0.38, 0.87), 0.014, "orange", segments=12))
     # Rocker-bogie legs: a rocker from the body pivot to the front wheel and a
     # bogie carrying the middle and rear wheels.
-    legs = []
+    attach(body, BODY)
+    panel_hinge = empty("SolarPanel", (0.0, -0.02, 0.545), BODY)
+    attach(panel, panel_hinge)
+    leg_pivots = {}
     for s in (-1, 1):
         pivot = (s * 0.39, 0.02, 0.36)
         bogie = (s * 0.42, -0.2, 0.25)
-        legs += [rod("r", pivot, (s * 0.43, 0.36, 0.17), 0.018, "dark_alloy"), rod("r", pivot, bogie, 0.018, "dark_alloy"),
-                 rod("b", bogie, (s * 0.43, -0.02, 0.17), 0.016, "dark_alloy"), rod("b", bogie, (s * 0.43, -0.38, 0.17), 0.016, "dark_alloy")]
-        legs.append(cyl("p", pivot, 0.03, 0.05, "graphite", axis="x", verts=16))
-        legs.append(cyl("p", bogie, 0.024, 0.045, "graphite", axis="x", verts=16))
-    body.append(join("legs_dark_alloy", legs))
-    attach(body, ROOT)
+        leg = [rod("r", pivot, (s * 0.43, 0.36, 0.17), 0.018, "dark_alloy"), rod("r", pivot, bogie, 0.018, "dark_alloy"),
+               rod("b", bogie, (s * 0.43, -0.02, 0.17), 0.016, "dark_alloy"), rod("b", bogie, (s * 0.43, -0.38, 0.17), 0.016, "dark_alloy"),
+               cyl("p", pivot, 0.03, 0.05, "graphite", axis="x", verts=16), cyl("p", bogie, 0.024, 0.045, "graphite", axis="x", verts=16)]
+        leg_pivots[s] = empty("Leg_L" if s < 0 else "Leg_R", pivot, BODY)
+        attach([join("leg_%s_dark_alloy" % ("l" if s < 0 else "r"), leg)], leg_pivots[s])
 
-    # ---- six wheels, each on a pivot at its axle ----
+    # ---- six wheels, each on a pivot at its axle, on its side's leg ----
     for i, (y) in enumerate((0.36, -0.02, -0.38)):
         for s in (-1, 1):
             centre = (s * 0.45, y, 0.165)
-            pivot = empty("Wheel_%d" % (i * 2 + (0 if s < 0 else 1) + 1), centre, ROOT)
+            pivot = empty("Wheel_%d" % (i * 2 + (0 if s < 0 else 1) + 1), centre, leg_pivots[s])
             parts = [cyl("t", centre, 0.165, 0.11, "black_rubber", axis="x", verts=32, bevel=0.012)]
             parts.append(cyl("h", (centre[0] + s * 0.056, y, 0.165), 0.085, 0.012, "alloy", axis="x", verts=24))
             parts.append(cyl("c", (centre[0] + s * 0.064, y, 0.165), 0.035, 0.01, "orange", axis="x", verts=16))
@@ -121,7 +131,8 @@ def build():
             attach([wheel], pivot)
 
     # ---- the mast and head: GAR-Y's face ----
-    mast = empty("Mast", (0.0, 0.2, 0.53), ROOT)
+    mast_hinge = empty("MastHinge", (0.0, 0.2, 0.53), BODY)
+    mast = empty("Mast", (0.0, 0.2, 0.53), mast_hinge)
     pole = [cyl("collar_graphite", (0.0, 0.2, 0.55), 0.05, 0.05, "graphite", verts=24, bevel=0.008),
             cyl("pole_alloy", (0.0, 0.2, 0.71), 0.024, 0.3, "alloy", verts=16)]
     attach(pole, mast)
@@ -144,7 +155,7 @@ def build():
 
     # ---- the arm: shoulder, upper arm, elbow, forearm, wrist, gripper ----
     # Modelled pointing straight up from the shoulder; the game folds it.
-    shoulder = empty("ArmShoulder", (0.2, 0.43, 0.42), ROOT)
+    shoulder = empty("ArmShoulder", (0.2, 0.43, 0.42), BODY)
     attach([cyl("shoulder_joint_graphite", (0.2, 0.43, 0.42), 0.04, 0.07, "graphite", axis="x", verts=20, bevel=0.006),
             box("upper_arm_rover_white", 0.18, 0.22, 0.41, 0.45, 0.42, 0.66, "rover_white", 0.012),
             box("upper_arm_stripe_orange", 0.221, 0.224, 0.415, 0.445, 0.5, 0.58, "orange", 0)], shoulder)

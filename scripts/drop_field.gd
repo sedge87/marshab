@@ -36,6 +36,9 @@ var sunset: Node
 ## It found you before you found it, and waits at the ramp to say hello
 ## (scripts/gary_meeting.gd "door").
 var intro_pending := false
+## Pallet 3 is open and GAR-Y lies folded in it, waiting to be lifted out.
+var gary_in_cradle := false
+var _cradled := false
 var meeting: Node
 var _holding := false
 var _tap := 2.0
@@ -48,6 +51,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	tools = bool(saved.get("tools", false))
 	chutes_seen = bool(saved.get("chutes_seen", false))
 	intro_pending = bool(saved.get("intro_pending", false))
+	gary_in_cradle = bool(saved.get("gary_in_cradle", false))
 	var saved_sites: Dictionary = saved.get("sites", {})
 	var taken: Array = []
 	var ridge: Vector3 = world.storm_drop.ridge if world.get("storm_drop") != null else Vector3.INF
@@ -162,6 +166,7 @@ func _process(delta: float) -> void:
 	var drop: Node = world.get("storm_drop")
 	if not chutes_seen and drop != null and you.distance_to(drop.ridge) < RIDGE_VIEW: see_from_ridge()
 	_door_intro(delta + .5)
+	_keep_in_cradle()
 	var notes: Node = world.get("notes")
 	if notes != null and notes.is_open("chutes") and sites.power.pallet.opened and sites.gary.pallet.opened: notes.answer("chutes")
 
@@ -180,13 +185,44 @@ func pallet_opened(_site: Node) -> void:
 
 # ---------- GAR-Y ----------
 
-## Pallet 3 opened: GAR-Y, folded in its cradle, wakes and unfolds while you
-## watch (scripts/gary_meeting.gd "pallet").
-func wake_gary(site: Node) -> void:
-	var spot: Vector3 = site.pallet.inside_point() + Vector3(0, -.22, 0)
-	var gary: Node3D = world.meet_gary(spot)
+## Pallet 3 opened: GAR-Y lies folded in its cradle, dark. You lift it out
+## (E on it), and it wakes and unfolds while you watch (scripts/gary_meeting.gd
+## "pallet").
+func wake_gary(_site: Node) -> void:
+	var gary: Node3D = world.meet_gary(cradle_spot())
 	if gary == null: return
-	_meet(gary, "pallet", spot)
+	gary_in_cradle = true
+	_cradled = false
+	_keep_in_cradle()
+
+func cradle_spot() -> Vector3:
+	var site: Node = sites.get("gary")
+	return site.pallet.inside_point() + Vector3(0, -.04, 0) if site != null else Vector3.ZERO
+
+func _keep_in_cradle() -> void:
+	if not gary_in_cradle or _cradled or meeting != null: return
+	var gary: Node3D = world.get("scout_rover")
+	if gary == null or not is_instance_valid(gary) or not gary.is_inside_tree(): return
+	_cradled = true
+	gary.call("begin_rescue")   # held still
+	gary.set("staying", true)
+	gary.set_meta("lift_out", true)
+	var pallet: Node3D = sites.gary.pallet
+	gary.global_position = cradle_spot()
+	gary.global_basis = pallet.global_basis
+	gary.call("set_fold", 1.0, 1.0, 1.0)
+	var material: StandardMaterial3D = gary.get("_eye_material")
+	if material != null: material.albedo_color = Color.BLACK
+	var head: Node3D = gary.get("_head")
+	if head != null: head.rotation.x = deg_to_rad(-35.0)
+
+## E on GAR-Y in its cradle: you lift it out, and it wakes.
+func lift_gary() -> void:
+	var gary: Node3D = world.get("scout_rover")
+	if not gary_in_cradle or gary == null or meeting != null: return
+	gary.remove_meta("lift_out")
+	gary_in_cradle = false
+	_meet(gary, "pallet", gary.global_position)
 
 func _meet(gary: Node3D, mode: String, from: Vector3) -> void:
 	meeting = MEETING.new()
@@ -279,6 +315,6 @@ func _apply_tools() -> void:
 	lamp.spot_angle = minf(lamp.spot_angle + 10.0, 60.0)
 
 func export_state() -> Dictionary:
-	var out := {"tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}}
+	var out := {"tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "gary_in_cradle": gary_in_cradle, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}}
 	for kind in sites: out.sites[kind] = sites[kind].export_state()
 	return out

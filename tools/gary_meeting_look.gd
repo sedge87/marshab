@@ -26,7 +26,11 @@ func _initialize() -> void:
 	world.player.rotation.y = atan2(-d.x, -d.z)
 	await create_timer(.5).timeout
 	pallet.open(false)
-	var times := [[.6, "1_folded"], [2.2, "2_lamp"], [4.2, "3_unfolding"], [6.5, "4_scan"], [9.3, "5_found_you"], [10.8, "6_hop"], [14.0, "7_loop"], [17.5, "8_spin"], [19.6, "9_parked_title"]]
+	await create_timer(.8).timeout
+	(world.player.get_node("Head") as Node3D).rotation.x = deg_to_rad(-35.0)
+	await _shot("0_in_cradle")
+	world.scout_rover.interact(world.player)
+	var times := [[1.0, "1_lifted"], [3.2, "2_lamp"], [4.5, "3_panel"], [5.6, "3b_legs"], [6.8, "3c_mast"], [8.5, "4_scan"], [11.8, "5_found_you"], [14.5, "7_loop"], [18.0, "8_spin"], [21.0, "9_parked_title"]]
 	var started := Time.get_ticks_msec()
 	for cue in times:
 		while field.meeting != null and float(field.meeting._t) < float(cue[0]): await process_frame

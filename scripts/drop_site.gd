@@ -165,6 +165,9 @@ func _drape(mesh_instance: MeshInstance3D) -> void:
 ## What looking into the open pallet reaches (scripts/cargo_pallet.gd).
 func inside_of() -> Node:
 	if pack != null and pack.where == "pallet": return pack
+	if kind == "gary" and bool(field.get("gary_in_cradle")):
+		var gary: Variant = world.get("scout_rover")
+		if gary != null and is_instance_valid(gary): return gary
 	return null
 
 func pallet_opened() -> void:

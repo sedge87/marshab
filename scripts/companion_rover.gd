@@ -155,6 +155,14 @@ var _visual: Node3D
 var _wheels: Array[Node3D] = []
 var _mast: Node3D
 var _head: Node3D
+## The fold (asset_packs/gar_y_v1/source/build_gar_y.py): how it ships in
+## pallet 3. See set_fold.
+var _body: Node3D
+var _panel: Node3D
+var _legs: Array[Node3D] = []   # left, right
+var _mast_hinge: Node3D
+var _body_y := 0.0
+var _panel_y := 0.0
 var _eyes: Array[Node3D] = []
 var _eye_material: StandardMaterial3D
 var _arm: Array[Node3D] = []   # shoulder, elbow, wrist
@@ -186,6 +194,14 @@ func _ready() -> void:
 		var wheel := find_child("Wheel_%d" % i, true, false) as Node3D
 		if wheel != null: _wheels.append(wheel)
 	_mast = find_child("Mast", true, false) as Node3D
+	_body = find_child("Body", true, false) as Node3D
+	_panel = find_child("SolarPanel", true, false) as Node3D
+	_mast_hinge = find_child("MastHinge", true, false) as Node3D
+	for leg_name in ["Leg_L", "Leg_R"]:
+		var leg := find_child(leg_name, true, false) as Node3D
+		if leg != null: _legs.append(leg)
+	if _body != null: _body_y = _body.position.y
+	if _panel != null: _panel_y = _panel.position.y
 	_head = find_child("Head", true, false) as Node3D
 	for eye_name in ["Eye_L", "Eye_R"]:
 		var eye := find_child(eye_name, true, false) as Node3D
@@ -1155,6 +1171,7 @@ func _patrol_next() -> void:
 
 func interaction_prompt() -> Dictionary:
 	if has_meta("sunset_offer"): return {"label": NAME + " · looking at the sun", "primary": "Watch the sunset together", "info": "About"}
+	if has_meta("lift_out"): return {"label": NAME + " · folded in its cradle", "primary": "Lift it out"}
 	return {"label": "%s · %s" % [NAME, status_text()], "primary": "Ping", "info": "About"}
 
 func status_text() -> String:
@@ -1178,6 +1195,11 @@ func status_text() -> String:
 
 ## A ping: it wakes, chirps and wiggles. Three pings in a row: a spin.
 func interact(_actor: Node = null) -> bool:
+	# Folded in pallet 3: you lift it out, and it wakes (scripts/drop_field.gd).
+	if has_meta("lift_out"):
+		var field := get_tree().get_first_node_in_group("drop_field")
+		if field != null: field.lift_gary()
+		return true
 	# Its first sunset with you (scripts/gary_sunset.gd).
 	if has_meta("sunset_offer"):
 		var scene := get_tree().get_first_node_in_group("drop_field")
@@ -1288,6 +1310,22 @@ func _animate(before: Vector3, delta: float) -> void:
 	var want := 2.2 if (MHGame.sunlight_fraction < .3 and not napping and not _lit_room()) else 0.0
 	_lamp.light_energy = move_toward(_lamp.light_energy, want, delta * 3.0)
 	_lamp.visible = _lamp.light_energy > .01
+
+## Folded for the trip (1) or standing (0), part by part: the solar panel
+## flipped forward over the deck, the legs splayed out with the body crouched
+## between them (the wheels stay on the ground), and the mast laid back along
+## the deck. Scripts/gary_meeting.gd unfolds it in that order.
+const FOLD_CROUCH := .12        # m the body drops
+const FOLD_SPLAY := 50.0        # degrees the legs swing out
+const FOLD_MAST := 88.0         # degrees the mast lies back
+func set_fold(panel: float, legs: float, mast: float) -> void:
+	if _panel != null:
+		_panel.rotation.x = -PI * clampf(panel, 0.0, 1.0)
+		_panel.position.y = _panel_y + .045 * clampf(panel * 2.0, 0.0, 1.0)   # clear of the folded mast
+	if _body != null: _body.position.y = _body_y - FOLD_CROUCH * legs
+	for i in _legs.size():
+		_legs[i].rotation.z = deg_to_rad(FOLD_SPLAY) * legs * (-1.0 if i == 0 else 1.0)
+	if _mast_hinge != null: _mast_hinge.rotation.x = deg_to_rad(FOLD_MAST) * mast
 
 func _set_pose(pose: String, animate := true) -> void:
 	if _arm.size() < 3: return

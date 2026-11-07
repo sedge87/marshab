@@ -3,11 +3,13 @@ extends Node
 ## Meeting GAR-Y (master-design "Meeting GAR-Y", decided 7 Nov): the moment
 ## you learn you're not alone on Mars. Through your own eyes, held: the HUD
 ## fades, you can't walk, and your view is drawn gently to GAR-Y.
-## - "pallet": you've freed pallet 3's latches. A folded, dusty shape in the
-##   cradle; a lamp flickers; the mast lifts and it unfolds; the head scans the
-##   dunes, finds you and stops; a questioning chirp; it hops out, loops in
-##   front of you, does a happy spin and parks at your side. The music swells,
-##   "GAR-Y" fades up, and the thought "I'm not alone out here." (~24 s)
+## - "pallet": it lay folded in pallet 3's cradle and you've chosen to lift it
+##   out. You set it down in front of you; a lamp flickers; it unfolds part by
+##   part (the panel flips back, the legs swing in and the body rises, the
+##   mast lifts); the head scans the dunes, finds you and stops; a questioning
+##   chirp; it loops in front of you, does a happy spin and parks at your side.
+##   The music swells, "GAR-Y" fades up, and the thought "I'm not alone out
+##   here." (~25 s)
 ## - "door": it found you out cold before you'd found it and dragged you
 ##   home. It waited at the foot of the ramp, tapping, while you came round;
 ##   you open the hatch and step out, and it looks up at you, rolls close,
@@ -16,10 +18,9 @@ extends Node
 ## starts it and is told when it's over.
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
-const PALLET_SECONDS := 24.0
+const PALLET_SECONDS := 25.0
 const DOOR_SECONDS := 18.5
-const FOLD_SCALE := .6         # the body squashed down in its cradle
-const FOLD_PITCH := -40.0      # the head tucked down
+const FOLD_PITCH := -35.0      # the head tucked down
 
 signal finished(mode: String)
 
@@ -38,8 +39,6 @@ var _out := Vector3.ZERO       # where it lands, hopping out
 var _dir := Vector3.FORWARD    # from you, towards where it is
 var _loop_dir := Vector3.FORWARD  # where its happy loop goes: open ground, clear of the pallet or the lander
 var _park := Vector3.ZERO
-var _visual_scale := Vector3.ONE
-var _mast_y := 0.0
 var _scan_from := 0.0
 var _done_cues := {}
 
@@ -59,7 +58,7 @@ func start(target_world: Node, target_gary: Node3D, scene_mode: String, from: Ve
 	var flat := Vector3(from.x - you.x, 0, from.z - you.z)
 	_dir = flat.normalized() if flat.length() > .3 else -_player.global_transform.basis.z
 	if mode == "pallet":
-		_out = _ground(you + _dir * maxf(1.6, flat.length() - 1.6))
+		_out = _ground(you + _dir * clampf(flat.length() - 1.0, .9, 1.4))   # set down in front of you
 		_loop_dir = _dir.cross(Vector3.UP).normalized()   # off to your right, beside the pallet
 	else:
 		_out = _ground(you + _dir * .95)
@@ -68,14 +67,11 @@ func start(target_world: Node, target_gary: Node3D, scene_mode: String, from: Ve
 		_loop_dir = away.normalized() if away.length() > .3 else _dir
 	var right := _loop_dir.cross(Vector3.UP).normalized()
 	_park = _ground(you + right * 1.3 + _loop_dir * 1.1)
-	var visual: Node3D = gary.get("_visual")
-	if visual != null: _visual_scale = visual.scale
-	var mast: Node3D = gary.get("_mast")
-	if mast != null: _mast_y = mast.position.y
 	gary.global_position = from
-	_face(gary, you - from)
-	if mode == "pallet": _fold(1.0)
-	else: _eyes(Color("#7FE6FF"), 1.0)
+	if mode == "pallet": _fold(1.0, 1.0, 1.0)
+	else:
+		_face(gary, you - from)
+		_eyes(Color("#7FE6FF"), 1.0)
 	var hud: Node = world.get("explore_hud")
 	if hud != null and hud.visible:
 		hud.visible = false
@@ -98,13 +94,12 @@ func _eyes(colour: Color, level: float, open := 1.0) -> void:
 	if material != null: material.albedo_color = colour * level
 	for eye in gary.get("_eyes"): (eye as Node3D).scale.y = open
 
-## 1: folded in its cradle, dark; 0: standing tall.
-func _fold(amount: float) -> void:
-	var visual: Node3D = gary.get("_visual")
-	if visual != null: visual.scale = Vector3(_visual_scale.x, _visual_scale.y * lerpf(1.0, FOLD_SCALE, amount), _visual_scale.z)
+## Each part 1: folded, dark; 0: standing (scripts/companion_rover.gd set_fold).
+func _fold(panel: float, legs: float, mast: float) -> void:
+	gary.call("set_fold", panel, legs, mast)
 	var head: Node3D = gary.get("_head")
-	if head != null: head.rotation.x = deg_to_rad(FOLD_PITCH * amount)
-	if amount >= 1.0: _eyes(Color.BLACK, 0.0, .3)
+	if head != null: head.rotation.x = deg_to_rad(FOLD_PITCH * mast)
+	if panel >= 1.0: _eyes(Color.BLACK, 0.0, .3)
 
 func _pan(angle: float, tilt_deg: float, rate: float, delta: float) -> void:
 	var mast: Node3D = gary.get("_mast")
@@ -153,48 +148,63 @@ func _process(delta: float) -> void:
 
 func _pallet(delta: float) -> void:
 	var t := _t
-	if t < 1.5:
+	if t < .4:
 		return
-	if t < 3.0:
+	if t < 1.8:
+		# You lift it out, and set it down in front of you.
+		if _cue("grab", .4):
+			MHAudio.sfx_at("suit_clamp", gary, -6.0, .9)
+			_head.rotation.z = deg_to_rad(-2.0)
+			create_tween().tween_property(_head, "rotation:z", 0.0, .6)
+		var k := ease(clampf((t - .4) / 1.4, 0.0, 1.0), -1.8)
+		var at := _from.lerp(_out, k)
+		at.y = lerpf(_from.y, _out.y, k) + sin(k * PI) * .45
+		gary.global_position = at
+		gary.rotation.y = lerp_angle(gary.rotation.y, _yaw_to(_player.global_position - _out), minf(1.0, delta * 3.0))
+		if _cue("down", 1.75): MHAudio.sfx_at("place", gary, -4.0)
+		return
+	if t < 2.6:
+		return
+	if t < 4.0:
 		# A lamp flickers: on, off, on.
-		if _cue("wake", 1.5): gary.call("_say", "sleepy")
-		var on := fmod(t * 9.0, 1.0) < (.25 + .5 * (t - 1.5) / 1.5)
+		if _cue("wake", 2.6): gary.call("_say", "sleepy")
+		var on := fmod(t * 9.0, 1.0) < (.25 + .5 * (t - 2.6) / 1.4)
 		_eyes(Color("#5A7DFF"), .9 if on else .05, .4)
 		return
 	if t < 5.0:
-		# The mast lifts and it unfolds.
-		if _cue("unfold", 3.0): MHAudio.sfx_at("suit_clamp", gary, -6.0, .9)
-		var k := ease(clampf((t - 3.0) / 2.0, 0.0, 1.0), -2.0)
-		_fold(1.0 - k)
-		_eyes(Color("#5A7DFF").lerp(Color("#7FE6FF"), k), lerpf(.6, 1.0, k), lerpf(.4, 1.0, k))
-		gary.global_position = _from + Vector3(0, .12 * k, 0)
+		# The panel flips back off the deck.
+		if _cue("panel", 4.0): MHAudio.sfx_at("suit_clamp", gary, -8.0, .7)
+		_fold(1.0 - ease(clampf(t - 4.0, 0.0, 1.0), -2.0), 1.0, 1.0)
+		_eyes(Color("#5A7DFF"), .6, .4)
 		return
-	if t < 8.0:
+	if t < 6.2:
+		# The legs swing in under it and it stands up.
+		if _cue("legs", 5.0): MHAudio.sfx_at("suit_clamp", gary, -6.0, .85)
+		_fold(0.0, 1.0 - ease(clampf((t - 5.0) / 1.2, 0.0, 1.0), -2.0), 1.0)
+		return
+	if t < 7.4:
+		# The mast lifts, the head comes up last, and the eyes come on.
+		if _cue("mast", 6.2): MHAudio.sfx_at("suit_clamp", gary, -6.0, 1.1)
+		var k := ease(clampf((t - 6.2) / 1.2, 0.0, 1.0), -2.0)
+		_fold(0.0, 0.0, 1.0 - k)
+		_eyes(Color("#5A7DFF").lerp(Color("#7FE6FF"), k), lerpf(.6, 1.0, k), lerpf(.4, 1.0, k))
+		return
+	if t < 10.4:
 		# It looks out over the dunes, one way, then the other.
-		if _cue("scan", 5.0):
+		if _cue("scan", 7.4):
 			gary.call("_say", "curious")
 			var mast: Node3D = gary.get("_mast")
 			_scan_from = mast.rotation.y if mast != null else 0.0
-		var sweep := sin((t - 5.0) / 3.0 * PI * 1.5) * deg_to_rad(55.0)
+		var sweep := sin((t - 7.4) / 3.0 * PI * 1.5) * deg_to_rad(55.0)
 		_pan(_scan_from + sweep, 4.0, 3.0, delta)
 		return
-	if t < 10.0:
+	if t < 12.4:
 		# It finds you, and stops. Eyes wide. Then the question.
 		_pan(_pan_to_you(), 12.0, 7.0, delta)
 		_eyes(Color("#7FE6FF"), 1.15, 1.25)
-		if _cue("ask", 9.4): gary.call("_say", "curious")
+		if _cue("ask", 11.6): gary.call("_say", "curious")
 		return
-	if t < 11.4:
-		# It hops out of the cradle.
-		var k := ease(clampf((t - 10.0) / 1.4, 0.0, 1.0), -1.6)
-		var at := _from.lerp(_out, k)
-		at.y = lerpf(_from.y + .12, _out.y, k) + sin(k * PI) * .35
-		_move(at)
-		_face(gary, _player.global_position - at)
-		_pan(0.0, 8.0, 5.0, delta)
-		if _cue("land", 11.3): MHAudio.sfx_at("place", gary, -6.0)
-		return
-	_together(delta, 11.4)
+	_together(delta, 12.4)
 
 # ---------- at the ramp ----------
 
@@ -312,11 +322,7 @@ func _show_title() -> void:
 func _finish() -> void:
 	var finished_mode := mode
 	mode = ""
-	_fold(0.0)
-	var visual: Node3D = gary.get("_visual")
-	if visual != null: visual.scale = _visual_scale
-	var mast: Node3D = gary.get("_mast")
-	if mast != null: mast.position.y = _mast_y
+	_fold(0.0, 0.0, 0.0)
 	gary.set("staying", false)
 	gary.set("rescuing", false)
 	gary.set("_met", true)
