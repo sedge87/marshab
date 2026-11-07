@@ -432,7 +432,9 @@ The generator (`tools/generate_region.py`) gets a density check that flags any s
 
 ### 9.3 The map: 25 places · **Decided 3 Nov** (positions tuned when built)
 
-The lander sits near the middle of the 12 km region. Bearings and distances are from it (N up). The landmarks you can see from afar are the Layered mound (E), the Great crater rim (E), the Lava plain (N) and the Highland walls (all round).
+The lander sits near the middle of the 12 km region. Bearings and distances are from it (N up).
+
+**The map follows your landing · Decided 7 Nov.** You can land anywhere, so the three rings are laid out round wherever you touch down. The pallets keep their order and rough distances, and each goes to the best real landform of its kind near that spot (the parachute where Rao sees it on the way down, a boulder field, an ice hollow, and so on). The bearings below are the pattern to aim for, not fixed points on the region map. The landmarks you can see from afar are the Layered mound (E), the Great crater rim (E), the Lava plain (N) and the Highland walls (all round).
 
 | # | Place | Ring | From the lander | Based on | What's there |
 |---|---|---|---|---|---|
