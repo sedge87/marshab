@@ -126,7 +126,10 @@ func hand_over() -> void:
 	_handing = true
 	MHNotices.post("info", "ARDEN: your slate", "It has your notes, the map, the base, comms and a log of everything you're told. Tab raises and lowers it.", "log")
 	MHAudio.sfx("suit_beep", -8.0)
-	open("notes" if world == null or world.get("tutorial") == null else "goals")
+	# A new game: straight to Rao's photo of the parachute (Comms), if it came.
+	var texts: Node = world.get("orbiter_texts") if world != null else null
+	if texts != null and not texts.latest_photo().is_empty(): open("comms")
+	else: open("notes" if world == null or world.get("tutorial") == null else "goals")
 
 ## Raise it, on an app if one is named (otherwise the last one used).
 func open(app := "") -> void:

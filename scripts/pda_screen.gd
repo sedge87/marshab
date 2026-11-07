@@ -599,10 +599,80 @@ func _comms_page() -> Control:
 	var list := MHStyle.vbox(12)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
+	if _comms_tab != "discoveries": _orbiter(list)
 	if _comms_tab == "discoveries": _discoveries(list)
 	elif link == null: list.add_child(MHStyle.body("No Mission Control link in this game.", 17, MHStyle.TEXT_MUTED))
 	else: _messages(list, link)
 	return page
+
+## The orbiter crew's texts (scripts/orbiter_texts.gd), newest first, with
+## their photos: grainy and soft, as from orbit.
+func _orbiter(list: VBoxContainer) -> void:
+	var texts: Node = get_tree().get_first_node_in_group("orbiter_texts") if is_inside_tree() else null
+	if texts == null or (texts.messages as Array).is_empty(): return
+	list.add_child(MHStyle.eyebrow("FROM ORBIT · TEXT ONLY", MHStyle.INFO, 13))
+	var shown: Array = (texts.messages as Array).duplicate()
+	shown.reverse()
+	for message in shown:
+		var person: Dictionary = texts.person_of(str(message.who))
+		var row := MHStyle.hbox(14)
+		var when := MHStyle.vbox(2)
+		when.custom_minimum_size.x = 120
+		when.add_child(MHStyle.mono("SOL %d" % int(message.get("sol", 1)), 15, MHStyle.TEXT_MUTED))
+		when.add_child(MHStyle.mono("%02d:%02d" % [floori(float(message.get("hour", 0.0))), floori(fmod(float(message.get("hour", 0.0)), 1.0) * 60.0)], 13, MHStyle.TEXT_MUTED))
+		row.add_child(when)
+		var words := MHStyle.vbox(8)
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.add_child(MHStyle.label("%s · %s" % [str(person.get("name", message.who)), str(person.get("role", ""))], 17, MHStyle.INFO, 700))
+		var body := MHStyle.body(str(message.text), 17, MHStyle.TEXT_PRIMARY)
+		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		words.add_child(body)
+		var picture: Texture2D = texts.photo(str(message.get("photo", "")))
+		if not str(message.get("photo", "")).is_empty():
+			words.add_child(_orbit_photo(picture))
+		row.add_child(words)
+		list.add_child(row)
+	list.add_child(HSeparator.new())
+
+const ORBIT_PHOTO_SHADER := """
+shader_type canvas_item;
+uniform float grain = 0.16;
+void fragment() {
+	vec4 colour = texture(TEXTURE, UV);
+	float grey = dot(colour.rgb, vec3(0.3, 0.59, 0.11));
+	colour.rgb = mix(colour.rgb, vec3(grey), 0.45);
+	vec2 cell = floor(UV * vec2(240.0, 150.0));
+	float noise = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+	colour.rgb += (noise - 0.5) * grain;
+	float edge = smoothstep(0.75, 0.2, length(UV - vec2(0.5)));
+	colour.rgb *= mix(0.72, 1.0, edge);
+	COLOR = vec4(colour.rgb, 1.0);
+}
+"""
+
+## A photo from orbit, or a grey frame saying it's still coming down the link.
+func _orbit_photo(picture: Texture2D) -> Control:
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel", MHStyle.box(Color(0, 0, 0, .6), MHStyle.BORDER_STRONG, 6, 1, Vector4(4, 4, 4, 4)))
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	if picture == null:
+		var waiting := MHStyle.mono("PHOTO · RECEIVING", 13, MHStyle.TEXT_MUTED)
+		waiting.custom_minimum_size = Vector2(480, 300)
+		waiting.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		waiting.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		frame.add_child(waiting)
+		return frame
+	var image := TextureRect.new()
+	image.texture = picture
+	image.custom_minimum_size = Vector2(480, 300)
+	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	var material := ShaderMaterial.new()
+	material.shader = Shader.new()
+	material.shader.code = ORBIT_PHOTO_SHADER
+	image.material = material
+	frame.add_child(image)
+	return frame
 
 func _messages(list: VBoxContainer, link: Node) -> void:
 	link.mark_read()
@@ -767,7 +837,9 @@ func _site_signature() -> String:
 ## Changes when the Comms page would look different.
 func _comms_signature() -> String:
 	var link: Node = get_tree().get_first_node_in_group("mission_control_link") if is_inside_tree() else null
-	return "%d|%d|%d|%s" % [(link.messages as Array).size() if link != null else 0, MHSamples.found.size(), MHSamples.leads.size(), _linked()]
+	var texts: Node = get_tree().get_first_node_in_group("orbiter_texts") if is_inside_tree() else null
+	var photo_in: bool = texts != null and not texts.latest_photo().is_empty() and texts.photo(str(texts.latest_photo().photo)) != null
+	return "%d|%d|%d|%s|%d|%s" % [(link.messages as Array).size() if link != null else 0, MHSamples.found.size(), MHSamples.leads.size(), _linked(), int(texts.version) + (texts.messages as Array).size() if texts != null else 0, photo_in]
 
 ## Map: the region map itself, lent to the screen (region_map.gd embed):
 ## wheel zoom, drag, Z, Space, L for the ice survey and G to send GAR-Y.

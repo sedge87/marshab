@@ -48,6 +48,12 @@ var yaw := 0.0                         # the parachute's turn: its +Z faces the 
 var pallet: StaticBody3D
 var cartridge: StaticBody3D
 var _saved := {}
+var photo: Texture2D                   # the orbiter's picture of it (take_photo)
+## The photo: straight down from orbit, about 60 m tall, centred a little
+## towards the backshell so the canopy, pallet and lines all show.
+const PHOTO_SIZE := Vector2i(480, 300)
+const PHOTO_METRES := 58.0
+const PHOTO_CENTRE := Vector3(-3.0, 0, 6.0)
 var _check := 0.0
 
 func _ready() -> void:
@@ -66,6 +72,34 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 		_choose_ridge()
 	_build()
 	if not saved.has("ridge"): _first_thoughts()
+	# Once the ground round the ridge has drawn in.
+	get_tree().create_timer(1.5).timeout.connect(take_photo)
+
+## The orbiter's photo: a camera straight above the canopy renders once, then
+## the picture is shrunk and enlarged again so it's soft, as from a few hundred
+## kilometres up through dust. The slate adds the grain (pda_screen.gd).
+func take_photo() -> void:
+	if DisplayServer.get_name() == "headless" or not is_inside_tree(): return
+	var viewport := SubViewport.new()
+	viewport.size = PHOTO_SIZE
+	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = PHOTO_METRES
+	camera.far = 900.0
+	viewport.add_child(camera)
+	add_child(viewport)
+	# North up: looking straight down with the camera's up along -Z.
+	camera.global_transform = Transform3D(Basis(Vector3.RIGHT, -PI / 2.0), local_to_world(PHOTO_CENTRE) + Vector3(0, 300.0, 0))
+	camera.current = true
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	var image := viewport.get_texture().get_image()
+	viewport.queue_free()
+	if image == null or image.is_empty(): return
+	image.resize(PHOTO_SIZE.x / 4, PHOTO_SIZE.y / 4, Image.INTERPOLATE_BILINEAR)
+	image.resize(PHOTO_SIZE.x, PHOTO_SIZE.y, Image.INTERPOLATE_CUBIC)
+	photo = ImageTexture.create_from_image(image)
 
 # ---------- where it lies ----------
 

@@ -67,6 +67,9 @@ func _initialize() -> void:
 	pda.open("notes")
 	await create_timer(1.0).timeout
 	await _shot("8_notes")
+	pda.screen.show_app("comms")
+	await create_timer(1.0).timeout
+	await _shot("8b_comms_photo")
 	pda.screen.show_app("map")
 	await create_timer(1.0).timeout
 	await _shot("9_map")

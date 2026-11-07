@@ -54,6 +54,12 @@ func _initialize() -> void:
 		low += MHSiteTerrain.height(p.x, p.z)
 	_check(drop.ridge.y >= low / 15.0, "on higher ground than the arc round it (%.1f m against %.1f m)" % [drop.ridge.y, low / 15.0])
 
+	# Rao's first text: the photo, with the direction and distance, waiting on Comms.
+	var texts: Node = world.orbiter_texts
+	_check(texts != null and texts.has("parachute_photo") and str(texts.latest_photo().get("photo", "")) == "parachute", "Rao's text with the parachute photo is waiting")
+	_check(texts != null and str(texts.latest_photo().get("text", "")).contains(drop.direction_word(drop.ridge - lander.global_position)), "the text names the ridge's direction")
+	_check(world.pda.screen._comms_signature() != "", "Comms can show it")
+
 	# The canopy lies on the ground, wherever it is.
 	var canopy := drop.get_node("Parachute").find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
 	var points: PackedVector3Array = canopy.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
@@ -126,6 +132,7 @@ func _initialize() -> void:
 	var state: Dictionary = world.current_state()
 	_check(state.storm_drop.opened and str(state.storm_drop.cartridge) == "plugged" and state.storm_drop.ridge.size() == 3, "the drop is saved: where, opened, the cartridge plugged in")
 	_check(float(state.cabin.tank_cap) > 6.0, "the bigger tank is saved")
+	_check((state.orbiter_texts.messages as Array).size() == 1, "the orbiter's texts are saved")
 	if failures == 0:
-		print("Storm drop test passed: the ridge 400 m ahead on high ground, the canopy draped on the terrain, the debris trail, who knows where it is, the thought naming its direction, holding E to free the latches, the sample kit, carrying the cartridge slowly, putting it down, plugging it into the cabin's port, the tank and dial, the journal, and saving.")
+		print("Storm drop test passed: the ridge 400 m ahead on high ground, the canopy draped on the terrain, the debris trail, who knows where it is, the thought naming its direction, holding E to free the latches, the sample kit, carrying the cartridge slowly, putting it down, plugging it into the cabin's port, the tank and dial, the journal, Rao's photo text, and saving.")
 	quit(1 if failures > 0 else 0)
