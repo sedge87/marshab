@@ -785,6 +785,18 @@ One Survival run should let you try every pillar:
      - the walk;
      - the first pallet;
      - the known-things record, the map filling in and pins.
+
+     **Built 7 Nov, ready to playtest** (commits fffa4d8 to 5c8fb5d on survival-revamp):
+     - the known-things record, the Map filling in from what you've seen, pins, and the compass always on with Settings switches for its marks;
+     - the old crates gone from new games;
+     - Notes as your inner voice (data/notes.json): the air, the parachute, the sunset, ARDEN's afternoon power warning, night and dawn, a cold cabin, rest offered at dusk;
+     - the storm drop: the 21 m parachute draped on a ridge ~400 m in front of the hatch, the backshell, a trail of eight debris pieces, pallet 1 with four latches, the 20 kg oxygen cartridge carried back to the cabin's new dial port;
+     - the blue sunset, with a music moment;
+     - the descent talked down live by Rao and Castellanos (data/orbiter_crew.json "radio"), cut into static at touchdown, then ARDEN's lost-lock line;
+     - Rao's first text with the orbiter photo of the parachute (rendered in game, softened and grained), which the slate opens on;
+     - tests: known_things, notes, storm_drop, descent_radio, opening.
+
+     **Not yet:** food and water in pallet 1 (they come with the food and water rework); the power pallet to find (step 3).
   3. **The 40 minutes:**
      - GAR-Y (found, or finding you);
      - more pallets;
