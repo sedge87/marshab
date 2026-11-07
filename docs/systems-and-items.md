@@ -887,6 +887,11 @@ One Survival run should let you try every pillar:
      - the General Module set down;
      - the Plan view on explored ground;
      - printed shells built at watchable speed (§3).
+  4a. **The five needs, early · Decided 8 Nov** (the user: "get this stuff in early so the player has to actually manage it… it's part of the basic survival mechanics"). Built before the materials work, so every need is live from the lifepod days:
+     - **Food:** pallet 1's rations (about 5 sols, on a shelf in the lander), eaten by hand (E); hunger builds slowly and shows on your body (slower hands, a lazier camera); more rations in later pallets and resupplies. The galley and crops stay in step 7.
+     - **Tiredness:** builds through the sol (blinks, yawns, a drifting view); pushed too far you doze off in the field. Sleep in the sealed cabin or the module resets it.
+     - **Water** keeps today's lander loop until step 5; **radiation** keeps the suit's running dose until the monitor in step 7.
+     - **Why (the design references):** survival as training wheels (the underwater survival game's talks): needs give direction early and fade as machines take over, so they must exist from the start for the fading to feel like progress; Schell's Lens #33 Triangularity (going far on low rations is a real risk-for-reward choice) and #19 Needs; our chore check (§10g) keeps them hands-on, never a routine.
   4. **Materials and making:**
      - the four materials;
      - the Print Shop with haematite;
@@ -904,8 +909,8 @@ One Survival run should let you try every pillar:
      - the orbiter crew on drives (§10e);
      - the 12 km world in three rings (§9.2).
   7. **Food, the body and science:**
-     - the galley by hand;
-     - sleep;
+     - the galley by hand (rations and hunger came in 4a);
+     - sleep quality by room (tiredness came in 4a);
      - collapse and GAR-Y's rescue;
      - instruments (§5);
      - the processing rule (§6);
