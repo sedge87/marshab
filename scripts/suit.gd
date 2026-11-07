@@ -84,6 +84,14 @@ var today_msv := 0.0             # since local midnight (saved)
 var drink_l := DRINK_L           # (saved)
 var food_bar := true             # (saved)
 var dry_hours := 0.0             # out here with the bag dry (saved)
+## The wrist pad's introduction (docs/pda.md §8): the first time the hatch
+## opens, the suit runs a seal check and lifts your arm to show it. Its screen
+## names the key (HOLD T) the first few times; a working display, so text is fine.
+const WRIST_HINT_TIMES := 4
+const SEAL_CHECK_SECONDS := 4.5
+var seal_checked := false        # (saved)
+var wrist_hint_uses := 0         # times you've raised it yourself (saved)
+var seal_banner := false         # the check is on the pad now
 
 func setup(target_world: Node) -> void:
 	world = target_world
@@ -137,6 +145,11 @@ func _process(delta: float) -> void:
 	if where == "outside":
 		if not passed_out: step(hours)
 		sip(hours)
+		if o2 < .75 and wrist_hint_uses == 0 and not _said.has("wrist_reminder"):
+			_said["wrist_reminder"] = true
+			MHAudio.sfx("suit_beep", -6.0)
+			var notes: Node = world.get("notes")
+			if notes != null: notes.think("wrist")
 		if _patch_kit(): _patch_by_hand(hours)   # pallet 4's patch kit works out here too
 	else:
 		_top_up(delta)
@@ -180,6 +193,35 @@ func step(hours: float) -> void:
 	o2 = maxf(0.0, o2 - hours * breathing_rate() * rested * (LEAK if leak else 1.0) / O2_HOURS)
 	power = maxf(0.0, power - hours * (NIGHT_POWER if MHGame.sunlight_fraction < .1 else 1.0) / POWER_HOURS)
 	scrubber = maxf(0.0, scrubber - hours / SCRUBBER_HOURS)
+
+## The hatch opens for the first time: the suit checks its seals and lifts
+## the wrist pad into view to show you, then lowers it.
+func seal_check() -> void:
+	if seal_checked or not active(): return
+	# Not over the slate: once it's lowered.
+	var pda: Node = world.get("pda")
+	if pda != null and bool(pda.is_open):
+		get_tree().create_timer(.8).timeout.connect(seal_check)
+		return
+	seal_checked = true
+	seal_banner = true
+	pad.held = true
+	MHAudio.sfx("suit_clamp", -8.0)
+	get_tree().create_timer(.6).timeout.connect(func() -> void: MHAudio.sfx("suit_beep", -8.0))
+	get_tree().create_timer(SEAL_CHECK_SECONDS).timeout.connect(func() -> void:
+		pad.held = false
+		seal_banner = false)
+
+## The pad's screen shows its key: during the check, and the first few times.
+func wrist_keys() -> bool:
+	return seal_banner or wrist_hint_uses < WRIST_HINT_TIMES
+
+## You raised it yourself (scripts/wrist_pad.gd).
+func wrist_raised() -> void:
+	if seal_banner: return
+	wrist_hint_uses += 1
+	var notes: Node = world.get("notes")
+	if notes != null: notes.answer("wrist")
 
 ## Sipping from the drink bag outside, at the body's pace (game hours).
 func sip(hours: float) -> void:
@@ -426,7 +468,8 @@ func readout() -> Dictionary:
 		"o2_hours": o2_hours_left(), "turn_back": turn_back_hours(), "refill": refill, "bearing": bearing,
 		"night": MHGame.sunlight_fraction < .1, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv, "dose_rate": dose_rate(),
 		"base_alert": base_alert(), "runway": _runway(),
-		"needs": MHGame.needs_food_water(), "drink": drink_l / DRINK_L, "food_bar": food_bar}
+		"needs": MHGame.needs_food_water(), "drink": drink_l / DRINK_L, "food_bar": food_bar,
+		"seal_banner": seal_banner, "wrist_keys": wrist_keys()}
 
 ## The worst warning or critical alert at the base, {title, level} or {}: the
 ## suit relays it to the wrist pad and the visor while you're out (§12.5).
@@ -602,7 +645,7 @@ func wake_spot() -> Dictionary:
 
 func export_state() -> Dictionary:
 	return {"o2": o2, "power": power, "scrubber": scrubber, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv,
-		"drink_l": drink_l, "food_bar": food_bar, "dry_hours": dry_hours,
+		"drink_l": drink_l, "food_bar": food_bar, "dry_hours": dry_hours, "seal_checked": seal_checked, "wrist_hint_uses": wrist_hint_uses,
 		"dropped": dropped.map(func(d): return {"placement_id": d.placement_id, "label": d.label, "position": [d.position.x, d.position.y, d.position.z]})}
 
 func restore_state(state: Dictionary) -> void:
@@ -615,4 +658,7 @@ func restore_state(state: Dictionary) -> void:
 	drink_l = clampf(float(state.get("drink_l", DRINK_L)), 0.0, DRINK_L)
 	food_bar = bool(state.get("food_bar", true))
 	dry_hours = float(state.get("dry_hours", 0.0))
+	# Older saves were past the hatch long ago.
+	seal_checked = bool(state.get("seal_checked", not state.is_empty()))
+	wrist_hint_uses = int(state.get("wrist_hint_uses", 0))
 	dropped = (state.get("dropped", []) as Array).map(func(d): return {"placement_id": str(d.placement_id), "label": str(d.label), "position": Vector3(float(d.position[0]), float(d.position[1]), float(d.position[2]))})

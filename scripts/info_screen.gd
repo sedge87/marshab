@@ -133,6 +133,11 @@ func _draw_suit() -> void:
 		_text("(Creative)", Vector2(22, 140) * u, int(18 * u), MHStyle.TEXT_MUTED, 500)
 		return
 	var o2: float = r.o2
+	# The wrist pad's introduction (scripts/suit.gd seal_check): the check, and the key.
+	if bool(r.get("seal_banner", false)):
+		_text("SEAL CHECK OK  ·  HOLD T TO RAISE THIS", Vector2(0, 33 * u), int(15 * u), MHStyle.VALID, 800, HORIZONTAL_ALIGNMENT_CENTER, size.x)
+	elif bool(r.get("wrist_keys", false)):
+		_text("LET GO OF T TO LOWER", Vector2(0, 33 * u), int(15 * u), MHStyle.INFO, 700, HORIZONTAL_ALIGNMENT_CENTER, size.x)
 	if bool(r.get("leak", false)) and fmod(Time.get_ticks_msec() / 1000.0, 1.2) < .85:
 		_text("SEAL LEAK · REPAIR", Vector2(0, 33 * u), int(17 * u), MHStyle.DANGER, 800, HORIZONTAL_ALIGNMENT_CENTER, size.x)
 	# Oxygen: time left at this rate, big.

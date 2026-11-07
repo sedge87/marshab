@@ -124,6 +124,18 @@
       },
       "journal": "Took a picture for the journal."
     },
+    "slate": {
+      "stages": {
+        "start": "My slate's lit up on the console. Something from orbit."
+      },
+      "journal": ""
+    },
+    "wrist": {
+      "stages": {
+        "start": "The suit beeped. Its wrist pad shows how much air I've got left. I should keep an eye on it out here."
+      },
+      "journal": ""
+    },
     "hungry": {
       "stages": {
         "start": "Stomach's starting to talk. There are rations in the crate by the airlock.",

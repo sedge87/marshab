@@ -87,7 +87,13 @@ Tab keeps its meaning in build mode (catalogue) and at a camera mast (next mast)
 
 ## 8. Teaching it
 
-- **The slate is the first thing you pick up.** In the lander start it's in the cabin, and the first goal is "Raise your slate (Tab)". The minimal lander HUD already covers this.
+- **The slate is the first thing you pick up · Built 8 Nov** (`scripts/slate_cradle.gd`). In a new game it lies on the cabin console's worktop, dark.
+  - About 9 s in, Castellanos's text arrives: its screen lights up and beeps every few seconds, ARDEN's notice says it's on the console, and Notes thinks "My slate's lit up…".
+  - E picks it up and it rises in your hands on Comms, on the photo. A reminder note comes 14 s later if it's still lying there. Opening the hatch takes it anyway, into your pocket without raising it (so you're not stopped on the ramp): nobody leaves without it.
+  - **The keys are on its own screen:** for the first 4 times it's up, a strip along the bottom reads "TAB lower the slate · TAB again to raise it · click an app on the left". It shows in every game, whatever the Hints setting (the user, 8 Nov), and the count is saved.
+- **The wrist pad's introduction · Built 8 Nov** (`suit.gd` `seal_check`). The first time the hatch opens (once the slate is lowered), the suit runs a seal check. A clamp, a beep, and your arm lifts the wrist pad into view for 4.5 s, showing "SEAL CHECK OK · HOLD T TO RAISE THIS". Then it drops.
+  - For the first 4 times you raise it yourself, it shows "LET GO OF T TO LOWER".
+  - If you haven't raised it by the time your oxygen falls to three quarters outside, a beep and a Notes thought say the pad shows your air.
 - ARDEN's "HERE" highlights point at things inside the slate's screen, drawn by the slate itself.
 - Tutorial steps that pointed at old HUD places ("the panel on the left") are rewritten to name the app.
 
@@ -99,6 +105,8 @@ Tab keeps its meaning in build mode (catalogue) and at a camera mast (next mast)
 4. **Teaching and tidy-up:** tutorial steps, the lander hand-over, CONTROLS.md.
 
 Saves don't change. Notices and the slate's state aren't saved; the last app used is a setting.
+
+**8 Nov:** the hand-over below is replaced by the slate on the console and the suit's seal check (§8).
 
 **Status (2 Nov):** steps 1–3 built, plus step 4's tutorial steps ("Raise your slate" in the first goal, "Check the base on your slate", the ice step naming the Map) and CONTROLS.md / Pause → Controls. With the Minimal HUD each new task is said once on the notice line, pointing to Goals. The lander hand-over is built: Tab does nothing until about 9 s after touchdown, when ARDEN passes the slate over (it lifts up on Goals, with a notice in the Log); lowering it is on the player, and then the first task asks them to raise it themselves.
 

@@ -7,6 +7,7 @@ const ALERTS_SCRIPT := preload("res://scripts/habitat_alerts.gd")
 const MISSION_CONTROL_LINK := preload("res://scripts/mission_control_link.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const SLEEP := preload("res://scripts/sleep.gd")
+const SLATE_CRADLE := preload("res://scripts/slate_cradle.gd")
 const CARRY := preload("res://scripts/carry.gd")
 const SUIT := preload("res://scripts/suit.gd")
 const CABIN_LIFE := preload("res://scripts/lander_cabin_life.gd")
@@ -118,6 +119,8 @@ var lander: Node3D
 # until the player steps out, then "done".
 var _start_in_lander := false
 var _intro_stage := "done"
+var slate_cradle: Node3D   # your slate on the console at touchdown (scripts/slate_cradle.gd)
+var _slate_state := {}     # the slate's key-label count (scripts/pda.gd)
 var _landing_miss := 0.0   # metres between the chosen target and the touchdown
 ## ARDEN's getting-started tutorial (scripts/tutorial.gd), when chosen.
 const TUTORIAL_SCRIPT := preload("res://scripts/tutorial.gd")
@@ -539,7 +542,9 @@ func _begin_lander_intro() -> void:
 		return
 	_intro_stage = "inside"
 	explore_hud.set_minimal(true)
-	get_tree().create_timer(9.0).timeout.connect(_hand_over_slate)
+	# Your slate lies on the console; a text from orbit lights it up (docs/pda.md §8).
+	_place_slate.call_deferred()
+	get_tree().create_timer(9.0).timeout.connect(_slate_lights_up)
 	# The link dropped at touchdown (scripts/descent.gd): ARDEN says why, after
 	# the static has died away. A skipped descent hears it too.
 	if MHChapterOne.new_rules():
@@ -548,7 +553,33 @@ func _begin_lander_intro() -> void:
 		get_tree().create_timer(6.0).timeout.connect(func() -> void: MHAudio.voice("lander_brief"))
 	get_tree().create_timer(2.5 if not MHChapterOne.new_rules() else 10.5).timeout.connect(func() -> void:
 		if _intro_stage == "inside":
-			explore_hud.show_equipment_note("Touchdown", "You've landed on Mars. When you're ready, look at the hatch and press E to open it."))
+			if pda != null and not pda.received: explore_hud.show_equipment_note("Touchdown", "Your slate is lighting up on the console. Look at it and press E to pick it up.")
+			else: explore_hud.show_equipment_note("Touchdown", "You've landed on Mars. When you're ready, look at the hatch and press E to open it."))
+
+## The slate on the console's worktop, for a new game in the lander.
+func _place_slate() -> void:
+	if pda == null or pda.received or lander == null: return
+	for child in lander.get_children():
+		if str(child.name).begins_with("Cabin_mission_planning_console"):
+			slate_cradle = SLATE_CRADLE.new()
+			slate_cradle.setup(self, child as Node3D)
+			return
+	# No console to lie on: ARDEN hands it over as before.
+	get_tree().create_timer(9.0).timeout.connect(_hand_over_slate)
+
+## Nine seconds in: the text from orbit lights the slate up, and ARDEN says where it is.
+func _slate_lights_up() -> void:
+	if pda == null or pda.received: return
+	if slate_cradle == null or not is_instance_valid(slate_cradle):
+		_hand_over_slate()
+		return
+	slate_cradle.light_up()
+	MHNotices.post("info", "ARDEN: your slate", "Your slate is on the console. Something has come in from orbit.", "log")
+	if notes != null: notes.think("slate")
+	# Still on the console a while later: the reminder, once.
+	get_tree().create_timer(14.0).timeout.connect(func() -> void:
+		if _intro_stage == "inside" and pda != null and not pda.received:
+			explore_hud.show_equipment_note("Your slate", "It's on the console, lit up. Look at it and press E."))
 
 ## ARDEN passes you the slate (retried while a menu or the cursor is in the way).
 func _hand_over_slate() -> void:
@@ -569,7 +600,10 @@ func _update_lander_intro() -> void:
 	if _intro_stage == "inside" and lander.hatch_open():
 		_intro_stage = "open"
 		# Nobody leaves the lander without the slate: opening the hatch hands it over now.
-		if pda != null and not pda.received: pda.hand_over()
+		if slate_cradle != null and is_instance_valid(slate_cradle): slate_cradle.take(false)
+		elif pda != null and not pda.received: pda.hand_over(false)
+		# The suit checks its seals and shows you on the wrist pad (scripts/suit.gd).
+		if suit != null: suit.seal_check()
 	elif _intro_stage == "open" and not lander.cabin_contains(player.global_position):
 		_intro_stage = "done"
 		if pda != null: pda.received = true   # however they got out (a save, a skipped intro)
@@ -988,6 +1022,7 @@ func current_state() -> Dictionary:
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
 		"crew_rover": crew_rover.export_state() if crew_rover != null else {},
 		"suit": suit.export_state() if suit != null else {},
+		"slate": {"hint_uses": pda.hint_uses} if pda != null else {},
 		"cabin": cabin_life.export_state() if cabin_life != null else {},
 		"body": body.export_state() if body != null else {},
 		"trail": region_map.trail if region_map != null else PackedVector2Array(),
@@ -1062,6 +1097,7 @@ func _restore_pending_habitat() -> void:
 	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
 	_crew_rover_state = state.get("crew_rover", {}) as Dictionary
 	_suit_state = state.get("suit", {}) as Dictionary
+	_slate_state = state.get("slate", {}) as Dictionary
 	_cabin_state = state.get("cabin", {}) as Dictionary
 	_body_state = state.get("body", {}) as Dictionary
 	_known_state = state.get("known", {}) as Dictionary

@@ -25,6 +25,10 @@ var raised := 0.0
 var is_open := false
 var received := true         # false from touchdown in the crew lander until ARDEN hands it over
 var _handing := false        # the hand-over's own raise: it doesn't tick "Raise your slate"
+## Its screen shows the keys along the bottom for the first few times you lower
+## it (a working display, so text is fine), in every game. Saved.
+const HINT_TIMES := 4
+var hint_uses := 0
 var screen: Control
 var _view: SubViewport
 var _slate: Node3D
@@ -44,6 +48,7 @@ func _ready() -> void:
 	name = "Slate"
 	add_to_group("pda")
 	received = not bool(world.get("_start_in_lander"))
+	hint_uses = int((world.get("_slate_state") as Dictionary).get("hint_uses", 0)) if world.get("_slate_state") is Dictionary else 0
 	_slate = Node3D.new()
 	add_child(_slate)
 	var model := SLATE_MODEL.instantiate() as Node3D
@@ -121,11 +126,17 @@ func can_open() -> bool:
 ## The lander start (docs/pda.md §8): ARDEN passes the slate over once you've
 ## had a moment to take in the cabin. It lifts into view on Goals; lowering it
 ## is on you, and the first task then asks you to raise it yourself.
-func hand_over() -> void:
+func hand_over(raise := true) -> void:
 	if received: return
 	received = true
 	_handing = true
-	MHNotices.post("info", "ARDEN: your slate", "It has your notes, the map, the base, comms and a log of everything you're told. Tab raises and lowers it.", "log")
+	MHNotices.post("info", "Your slate", "Your notes, the map, the base, comms and a log of everything you're told. Tab raises and lowers it.", "log")
+	var notes: Node = world.get("notes") if world != null else null
+	if notes != null: notes.answer("slate")
+	# Grabbed on the way out (the hatch): into your pocket, not up in your face.
+	if not raise:
+		_handing = false
+		return
 	MHAudio.sfx("suit_beep", -8.0)
 	# A new game: straight to the orbiter's photo of the parachute (Comms), if it came.
 	var texts: Node = world.get("orbiter_texts") if world != null else null
@@ -158,6 +169,10 @@ func open(app := "") -> void:
 
 ## The Camera app (scripts/pda_screen.gd): the mouse goes back to looking
 ## round, and the world behind isn't dimmed.
+## The keys along the bottom of its screen, for the first few times.
+func show_keys() -> bool:
+	return hint_uses < HINT_TIMES
+
 func camera_mode(on: bool) -> void:
 	_camera = on
 	if is_open: Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if on else Input.MOUSE_MODE_VISIBLE
@@ -166,6 +181,7 @@ func close() -> void:
 	if not is_open: return
 	is_open = false
 	_handing = false
+	hint_uses += 1
 	Input.mouse_mode = _mouse_before
 	world.player.set_meta("ui_freeze", _freeze_before)
 	for entry in _hidden:

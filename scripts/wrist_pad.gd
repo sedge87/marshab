@@ -128,6 +128,7 @@ func _process(delta: float) -> void:
 	if raised > 0.0 and was <= 0.0:
 		MHAudio.sfx("suit_beep", -18.0)
 		_screen.refresh()
+		if suit != null and up: suit.wrist_raised()
 	visible = raised > 0.0
 	_screen.set_process(visible)
 	if not visible: return

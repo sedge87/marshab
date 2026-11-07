@@ -27,6 +27,7 @@ var pda: Node
 var app := ""
 var _clock: Label
 var _link: Label
+var _keys: Control       # the keys along the bottom, the first few times (pda.gd show_keys)
 var _rail: VBoxContainer
 var _rail_buttons := {}   # app id -> {button, dot}
 var _page: MarginContainer
@@ -68,6 +69,19 @@ func _ready() -> void:
 	_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for side in ["left", "right", "top", "bottom"]: _page.add_theme_constant_override("margin_" + side, 28)
 	body.add_child(_page)
+	# The keys, along the bottom, the first few times the slate is up.
+	_keys = PanelContainer.new()
+	_keys.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.INK_900, Color(0, 0, 0, 0), 0, 0, Vector4(24, 10, 24, 10)))
+	var keys_row := MHStyle.hbox(18)
+	keys_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	keys_row.add_child(MHStyle.mono("TAB  LOWER THE SLATE", 18, MHStyle.accent, 700))
+	keys_row.add_child(MHStyle.mono("·", 18, MHStyle.TEXT_MUTED, 700))
+	keys_row.add_child(MHStyle.mono("TAB AGAIN TO RAISE IT", 18, MHStyle.TEXT_SECONDARY, 700))
+	keys_row.add_child(MHStyle.mono("·", 18, MHStyle.TEXT_MUTED, 700))
+	keys_row.add_child(MHStyle.mono("CLICK AN APP ON THE LEFT", 18, MHStyle.TEXT_SECONDARY, 700))
+	_keys.add_child(keys_row)
+	_keys.visible = false
+	column.add_child(_keys)
 
 func _status_bar() -> Control:
 	var bar := PanelContainer.new()
@@ -131,6 +145,7 @@ func opened(wanted := "") -> void:
 	app = ""
 	show_app(choice)
 	_update_status()
+	_keys.visible = pda != null and bool(pda.show_keys())
 
 func show_app(id: String) -> void:
 	if id == app and _page.get_child_count() > 0: return

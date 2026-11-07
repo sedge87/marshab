@@ -487,11 +487,11 @@ The lander sits near the middle of the 12 km region. Bearings and distances are 
 
 **The first five minutes, taught with no checklist:**
 1. **Touchdown.** The cabin is dim, and its air gauge, a physical dial, is dropping.
-2. **ARDEN hands you the slate.** It shows only one thing: a blurry orbiter photo of a parachute.
+2. **Your slate lights up on the console** (built 8 Nov, docs/pda.md §8): pick it up (E) and it shows only one thing, a blurry orbiter photo of a parachute, with its keys along the bottom.
 3. **Through the cabin window,** you see the same parachute on a ridge.
 4. **Prompts appear only** when you look at something you can use ("E Suit up").
 5. **Stepping out,** the music swells for the first view.
-6. **The walk to the parachute** teaches walking, the wrist pad (oxygen) and the feel of turning back in time.
+6. **The walk to the parachute** teaches walking, the wrist pad (oxygen) and the feel of turning back in time. Opening the hatch, the suit's seal check lifts the wrist pad once to show "HOLD T" (built 8 Nov).
 7. **Opening the pallet restores the air:** the first relief.
 
 ## 10c. GAR-Y's growth · **Decided 3 Nov**
