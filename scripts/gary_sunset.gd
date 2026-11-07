@@ -168,6 +168,7 @@ func _finish() -> void:
 	if notes != null:
 		notes.answer("sunset")
 		notes.answer("sunset_gary")
+		notes.answer("not_alone")
 
 ## Towards the sun, flat: the sky's sun light shines along its -Z
 ## (scripts/original_mars_environment.gd).

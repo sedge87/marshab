@@ -95,7 +95,14 @@ func _initialize() -> void:
 	# Pallet 3: GAR-Y wakes, and points to pallet 4.
 	player.global_position = field.sites.gary.pallet.global_position + Vector3(2.5, 1.0, 0)
 	await _open(field.sites.gary.pallet)
-	_check(world.gary_met and world.scout_rover != null and _flat(world.scout_rover.global_position, field.sites.gary.pallet.global_position) < 6.0, "opening pallet 3 wakes GAR-Y beside it")
+	_check(world.gary_met and world.scout_rover != null and field.meeting != null and bool(player.get_meta("ui_freeze", false)) and _flat(world.scout_rover.global_position, field.sites.gary.pallet.global_position) < .5, "opening pallet 3: GAR-Y folded in its cradle, and you're held to watch it wake")
+	_check(not world.explore_hud.visible and not world.notes.is_settled("gary"), "the HUD gone while it plays")
+	await create_timer(1.0).timeout
+	field.meeting._t = field.meeting.PALLET_SECONDS - .05
+	await create_timer(.3).timeout
+	_check(field.meeting == null and not bool(player.get_meta("ui_freeze", false)) and world.explore_hud.visible, "then you're free again, the HUD back")
+	_check(_flat(world.scout_rover.global_position, player.global_position) < 4.0 and not bool(world.scout_rover.get("rescuing")), "GAR-Y parked at your side, its own self again")
+	_check(world.notes.is_open("not_alone"), "the thought: I'm not alone out here")
 	_check(world.notes.is_settled("gary") and world.notes.is_open("tools") and known.knows(field.sites.tools.id()), "GAR-Y points you to pallet 4")
 	for i in 3: await process_frame
 	_check(world.notes.is_settled("chutes"), "both pallets seen from the ridge are found")
@@ -119,7 +126,7 @@ func _initialize() -> void:
 	_check(field.sunset.phase == "watch" and bool(player.get_meta("ui_freeze", false)), "saying yes: you sit and watch")
 	field.sunset._t = field.sunset.WATCH - .01
 	await create_timer(.2).timeout
-	_check(field.sunset.shared and not bool(player.get_meta("ui_freeze", false)) and world.notes.is_settled("sunset_gary"), "then it's in the journal, and you're free again")
+	_check(field.sunset.shared and not bool(player.get_meta("ui_freeze", false)) and world.notes.is_settled("sunset_gary") and world.notes.is_settled("not_alone"), "then it's in the journal, and you're free again")
 
 	# Saved and loaded.
 	var spots := {}
@@ -137,11 +144,42 @@ func _initialize() -> void:
 
 	# Blacking out before meeting GAR-Y: it comes from its pallet.
 	var third = await _new_world()
-	third.drop_field.gary_finds_you()
-	_check(third.gary_met and third.scout_rover != null and third.drop_field.sites.gary.empty, "GAR-Y comes to find you; its pallet is empty")
+	var you: Node3D = third.player
+	var lander3: Node3D = third.lander
+	third.day_night.frozen = true
+	lander3.set_hatch(true, false)
+	you.global_position = lander3.ramp_foot(12.0) + Vector3(0, 1.0, 0)
+	third.suit.pass_out()
+	_check(third.gary_met and third.scout_rover != null and third.drop_field.sites.gary.empty and third.drop_field.intro_pending, "blacking out first: GAR-Y comes to find you; its pallet is empty")
+	Engine.time_scale = 6.0
+	var rescue: Node = third.suit.get_node_or_null("Rescue")
+	var waited := 0.0
+	var saw_lying := false
+	while is_instance_valid(rescue) and waited < 60.0:
+		if str(rescue.get("phase")) == "wake" and float(rescue.get("_t")) > 2.5 and float(rescue.get("_t")) < 4.5:
+			saw_lying = saw_lying or (you.get_node("Head") as Node3D).rotation.x > deg_to_rad(40.0)
+		await process_frame
+		waited += .016
+	Engine.time_scale = 1.0
+	_check(not is_instance_valid(rescue), "the rescue plays through")
+	_check(saw_lying, "you come round lying down, looking up at the roof")
+	_check(lander3.cabin_contains(you.global_position) and not lander3.hatch_open() and lander3.sealed_cabin(), "you wake in the cabin with the hatch shut and sealed")
+	var gary3: Node3D = third.scout_rover
+	await create_timer(1.2).timeout
+	_check(not lander3.cabin_contains(gary3.global_position) and _flat(gary3.global_position, lander3.ramp_foot(3.0)) < .5, "GAR-Y waits outside at the foot of the ramp")
+	third.drop_field._tap = 0.0
+	await create_timer(1.2).timeout
+	_check(third.notes.is_open("tapping"), "something tapping on the hull")
+	lander3.set_hatch(true, false)
+	you.global_position = gary3.global_position + (lander3.global_position - gary3.global_position).normalized() * 2.5 + Vector3(0, .5, 0)
+	await create_timer(1.2).timeout
+	_check(third.drop_field.meeting != null and bool(you.get_meta("ui_freeze", false)), "step out to it, and it says hello")
+	third.drop_field.meeting._t = third.drop_field.meeting.DOOR_SECONDS - .05
+	await create_timer(.3).timeout
+	_check(not third.drop_field.intro_pending and third.notes.is_settled("gary") and third.notes.is_settled("tapping") and third.notes.is_open("not_alone"), "met: not alone out here")
 	await _open(third.drop_field.sites.gary.pallet)
 	_check(third.get_tree().get_nodes_in_group("gar_y").size() == 1, "opening its empty cradle doesn't make a second GAR-Y")
 
 	if failures == 0:
-		print("Drop field test passed: pallets 2-4 placed round the landing on their ground; no GAR-Y at the start; two parachutes seen from the ridge; the power pack carried and laid out, night one lasting; GAR-Y woken and pointing to pallet 4; the tools; GAR-Y's sunset; saved and loaded; and GAR-Y finding you.")
+		print("Drop field test passed: pallets 2-4 placed round the landing on their ground; no GAR-Y at the start; two parachutes seen from the ridge; the power pack carried and laid out, night one lasting; GAR-Y waking in its cradle while you watch, parking at your side and pointing to pallet 4; the tools; GAR-Y's sunset; saved and loaded; and GAR-Y finding you: you come round lying in the sealed cabin, it taps on the hull from the ramp, and says hello when you step out.")
 	quit(1 if failures > 0 else 0)

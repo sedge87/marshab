@@ -37,6 +37,7 @@ const FURNITURE := [
 ## Catalogue models face -Z; turn by this to face `direction`.
 const MODEL_FRONT := PI
 const RAMP_OPEN_DEGREES := -132.0
+const RAMP_TIP_Z := -5.45        # the open ramp's far edge, in the lander's frame
 ## The model's inner airlock door (model space), cut out so the airlock opens
 ## straight into the cabin.
 const INNER_DOOR := AABB(Vector3(-1.12, 2.52, -1.25), Vector3(2.24, 3.03, .45))
@@ -350,6 +351,12 @@ func cabin_start() -> Dictionary:
 func beside_ramp() -> Vector3:
 	var at := to_global(Vector3(3.6, 0, -6.4))
 	return Vector3(at.x, MHSiteTerrain.height(at.x, at.z) + .2, at.z)
+
+## A spot on the ground just out from the foot of the ramp, facing the
+## hatch (where GAR-Y waits while you come round inside).
+func ramp_foot(out := 1.6) -> Vector3:
+	var at := to_global(Vector3(.6, 0, RAMP_TIP_Z - out))
+	return Vector3(at.x, MHSiteTerrain.height(at.x, at.z) + .02, at.z)
 
 var present := true
 

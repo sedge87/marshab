@@ -17,18 +17,28 @@ extends Node3D
 
 const SITE := preload("res://scripts/drop_site.gd")
 const SUNSET := preload("res://scripts/gary_sunset.gd")
+const MEETING := preload("res://scripts/gary_meeting.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const RIDGE_VIEW := 45.0          # this close to the first canopy, you see the next two
 
 ## [kind, nearest, furthest, the ground it wants]
 const KINDS := [["power", 520.0, 680.0, "flat"], ["gary", 720.0, 900.0, "rough"], ["tools", 900.0, 1150.0, "low"]]
 const APART_DEG := 50.0           # bearings at least this far apart, from the lander
+const DOOR_WAIT := 3.0            # GAR-Y waits this far out from the ramp's foot
+const DOOR_REACH := 4.2           # step out this close and it introduces itself
+const TAP_EVERY := 7.0            # seconds between its taps on the hull
 
 var world: Node
 var sites := {}                   # kind → scripts/drop_site.gd
 var tools := false                # pallet 4 opened: hammer, headlamp, patch kit
 var chutes_seen := false
 var sunset: Node
+## It found you before you found it, and waits at the ramp to say hello
+## (scripts/gary_meeting.gd "door").
+var intro_pending := false
+var meeting: Node
+var _holding := false
+var _tap := 2.0
 var _check := 0.0
 
 func setup(target_world: Node, saved: Dictionary) -> void:
@@ -37,6 +47,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	add_to_group("drop_field")
 	tools = bool(saved.get("tools", false))
 	chutes_seen = bool(saved.get("chutes_seen", false))
+	intro_pending = bool(saved.get("intro_pending", false))
 	var saved_sites: Dictionary = saved.get("sites", {})
 	var taken: Array = []
 	var ridge: Vector3 = world.storm_drop.ridge if world.get("storm_drop") != null else Vector3.INF
@@ -150,6 +161,7 @@ func _process(delta: float) -> void:
 	var you: Vector3 = world.player.global_position
 	var drop: Node = world.get("storm_drop")
 	if not chutes_seen and drop != null and you.distance_to(drop.ridge) < RIDGE_VIEW: see_from_ridge()
+	_door_intro(delta + .5)
 	var notes: Node = world.get("notes")
 	if notes != null and notes.is_open("chutes") and sites.power.pallet.opened and sites.gary.pallet.opened: notes.answer("chutes")
 
@@ -168,31 +180,73 @@ func pallet_opened(_site: Node) -> void:
 
 # ---------- GAR-Y ----------
 
-## Pallet 3 opened: GAR-Y unfolds beside it and wakes.
+## Pallet 3 opened: GAR-Y, folded in its cradle, wakes and unfolds while you
+## watch (scripts/gary_meeting.gd "pallet").
 func wake_gary(site: Node) -> void:
-	var spot: Vector3 = site.local_to_world(site.PALLET_LOCAL + Vector3(2.2, 0, 1.2))
-	var gary: Node3D = world.meet_gary(spot + Vector3(0, .2, 0))
+	var spot: Vector3 = site.pallet.inside_point() + Vector3(0, -.22, 0)
+	var gary: Node3D = world.meet_gary(spot)
 	if gary == null: return
-	gary.look_at(Vector3(world.player.global_position.x, gary.global_position.y, world.player.global_position.z), Vector3.UP)
-	gary.call("_say", "sleepy")
-	gary.call("_set_pose", "reach")
-	get_tree().create_timer(1.4).timeout.connect(_unfolded.bind(gary))
-	MHNotices.post("valid", "Pallet 3: GAR-Y", "GAR-Y is awake. It follows you, tows on its sled, and (hold G) takes orders.", "log")
-	_met("Woke GAR-Y in the boulder field. It looked at me for a long second, then beeped as if it had been waiting all along.")
+	_meet(gary, "pallet", spot)
 
-func _unfolded(gary: Node3D) -> void:
-	if not is_instance_valid(gary): return
-	gary.call("_set_pose", "stow")
-	gary.call("_say", "tada")
+func _meet(gary: Node3D, mode: String, from: Vector3) -> void:
+	meeting = MEETING.new()
+	add_child(meeting)
+	meeting.finished.connect(_met_scene)
+	meeting.start(world, gary, mode, from)
+
+func _met_scene(mode: String) -> void:
+	meeting = null
+	if mode == "pallet":
+		MHNotices.post("valid", "Pallet 3: GAR-Y", "GAR-Y is awake. It follows you, tows on its sled, and (hold G) takes orders.", "log")
+		_met("Woke GAR-Y in the boulder field. It looked at me for a long second, then beeped as if it had been waiting all along.")
+	else:
+		intro_pending = false
+		_holding = false
+		var notes: Node = world.get("notes")
+		if notes != null: notes.answer("tapping")
+		MHNotices.post("valid", "GAR-Y", "GAR-Y found you and dragged you home. It follows you, tows on its sled, and (hold G) takes orders.", "log")
+		_met("GAR-Y found me out cold in the dust and dragged me home. It's been out here looking for the lander since the storm, and it waited at the ramp all the while I was out.")
 
 ## You blacked out before finding it: GAR-Y comes from its pallet to find
-## you (scripts/suit.gd, before the rescue starts).
+## you (scripts/suit.gd, before the rescue starts), drags you home, and waits
+## at the ramp to say hello once you've come round.
 func gary_finds_you() -> void:
 	var site: Node = sites.get("gary")
 	if site == null or world.gary_met: return
 	site.empty = true
 	world.meet_gary(site.pallet_spot() + Vector3(0, .2, 0))
-	_met("GAR-Y found me out cold in the dust. It's been out here looking for the lander since the storm.")
+	intro_pending = true
+	_holding = false
+
+## Waiting at the foot of the ramp: it taps on the hull now and then while
+## you're inside, and says hello when you step out to it.
+func _door_intro(delta: float) -> void:
+	if not intro_pending or meeting != null: return
+	var gary: Node3D = world.get("scout_rover")
+	var lander: Node3D = world.get("lander")
+	if gary == null or not is_instance_valid(gary) or lander == null: return
+	var player: Node3D = world.player
+	if not _holding:
+		if bool(gary.get("rescuing")): return   # still dragging you home
+		gary.call("begin_rescue")
+		gary.set("staying", true)
+		_holding = true
+	var foot: Vector3 = lander.ramp_foot(DOOR_WAIT)
+	gary.global_position = foot
+	var to_hatch: Vector3 = lander.to_global(Vector3(0, 0, -2.7)) - foot
+	gary.rotation.y = atan2(-to_hatch.x, -to_hatch.z)
+	if bool(player.get_meta("ui_freeze", false)): return   # coming round
+	var inside: bool = lander.cabin_contains(player.global_position) and not lander.hatch_open()
+	if inside:
+		_tap -= delta
+		if _tap <= 0.0:
+			_tap = TAP_EVERY
+			MHAudio.sfx("place", -12.0, .15)
+			if randf() < .5: MHAudio.sfx_at("gary_curious", gary, -14.0, .8)
+			var notes: Node = world.get("notes")
+			if notes != null and not notes.is_settled("tapping"): notes.think("tapping")
+	elif lander.hatch_open() and player.global_position.distance_to(gary.global_position) < DOOR_REACH:
+		_meet(gary, "door", gary.global_position)
 
 func _met(how: String) -> void:
 	var notes: Node = world.get("notes")
@@ -225,6 +279,6 @@ func _apply_tools() -> void:
 	lamp.spot_angle = minf(lamp.spot_angle + 10.0, 60.0)
 
 func export_state() -> Dictionary:
-	var out := {"tools": tools, "chutes_seen": chutes_seen, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}}
+	var out := {"tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}}
 	for kind in sites: out.sites[kind] = sites[kind].export_state()
 	return out

@@ -515,7 +515,9 @@ func _come_round(summary: Dictionary) -> void:
 		if rover_line != "": lines.append(rover_line)
 	var count := int(summary.rescues)
 	var remark := "\"Please don't do that again.\"" if count <= 1 else ("\"Twice now, Commander.\"" if count == 2 else "\"That's %d times now, Commander.\"" % count)
-	lines.append("GAR-Y's beeps, roughly: " + remark)
+	var field: Node = world.get("drop_field")
+	if field != null and bool(field.get("intro_pending")): lines.append("Something is waiting outside the hatch.")
+	else: lines.append("GAR-Y's beeps, roughly: " + remark)
 	get_tree().call_group("explore_hud", "show_equipment_note", "GAR-Y brought you home", " ".join(lines))
 
 func _has_airlock() -> bool:

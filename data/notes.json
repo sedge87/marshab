@@ -80,6 +80,18 @@
     "sunset_gary": {
       "stages": {},
       "journal": "Watched the sun go down with GAR-Y. Neither of us made a sound. It's the first time it's felt like we live here."
+    },
+    "not_alone": {
+      "stages": {
+        "start": "I'm not alone out here."
+      },
+      "journal": "Not alone out here after all. GAR-Y sticks so close it bumps my boots."
+    },
+    "tapping": {
+      "stages": {
+        "start": "Something is tapping on the hull outside the hatch. Something small, and patient."
+      },
+      "journal": "There was something tapping on the hull when I came round. It was GAR-Y."
     }
   }
 }

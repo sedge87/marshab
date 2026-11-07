@@ -106,6 +106,11 @@ func _build(saved: Dictionary) -> void:
 			add_child(rock)
 			var offset := Vector3(rng.randf_range(9.0, 28.0), 0, 0).rotated(Vector3.UP, rng.randf_range(0.0, TAU))
 			var p := _ground(at + offset)
+			# Clear of the pallet, so you can watch GAR-Y wake.
+			var cradle := pallet_spot()
+			var away := Vector3(p.x - cradle.x, 0, p.z - cradle.z)
+			if away.length() < 8.0:
+				p = _ground(cradle + (away.normalized() if away.length() > .1 else Vector3.RIGHT) * 8.0)
 			rock.global_position = p + Vector3(0, -.2, 0)
 			rock.rotation.y = rng.randf_range(0.0, TAU)
 			var size := rng.randf_range(1.2, 2.6)

@@ -40,7 +40,9 @@ const DARK := 1.2
 const ARRIVE := 3.4
 const HOOK := 1.3
 const DRAG := 4.6
-const WAKE := 1.6
+const WAKE := 8.0             # coming round: sounds in the dark, blurred eyes, sitting up
+const LYING_EYE := .34         # your eyes, lying on the cabin floor
+const LYING_PITCH := 62.0      # looking up at the roof
 
 signal finished(summary: Dictionary)
 
@@ -122,11 +124,15 @@ func _build_overlay() -> void:
 	shader.code = """shader_type canvas_item;
 uniform float tunnel = 0.0;
 uniform float dark = 0.0;
+uniform float blur = 0.0;
+uniform sampler2D screen: hint_screen_texture, filter_linear_mipmap;
 void fragment() {
 	vec2 p = UV - 0.5;
 	p.x *= 1.7;
 	float edge = smoothstep(0.95 - 0.7 * tunnel, 1.15 - 0.55 * tunnel, length(p) * 1.6);
-	COLOR = vec4(0.02, 0.0, 0.0, max(dark, max(edge * tunnel * 1.4, tunnel * 0.22)));
+	float a = clamp(max(dark, max(edge * tunnel * 1.4, tunnel * 0.22)), 0.0, 1.0);
+	vec3 seen = textureLod(screen, SCREEN_UV, blur).rgb;
+	COLOR = vec4(mix(seen, vec3(0.02, 0.0, 0.0), a), 1.0);
 }"""
 	_shade_material = ShaderMaterial.new()
 	_shade_material.shader = shader
@@ -159,9 +165,10 @@ void fragment() {
 	_drag_sound.volume_db = -14.0
 	add_child(_drag_sound)
 
-func _shade_to(tunnel: float, dark: float) -> void:
+func _shade_to(tunnel: float, dark: float, blur := 0.0) -> void:
 	_shade_material.set_shader_parameter("tunnel", tunnel)
 	_shade_material.set_shader_parameter("dark", dark)
+	_shade_material.set_shader_parameter("blur", blur)
 
 ## A point on the ground (the region, trenches and all), lifted a little.
 func _ground(at: Vector3, lift := .05) -> Vector3:
@@ -250,10 +257,45 @@ func _process(delta: float) -> void:
 				world.day_night.time_scale = 1.0
 				_next("wake")
 		"wake":
-			_shade_to(.5 * (1.0 - _t / WAKE), 1.0 - clampf(_t / WAKE, 0.0, 1.0))
-			_clock.modulate.a = 1.0 - clampf(_t * 3.0, 0.0, 1.0)
-			_status.modulate.a = _clock.modulate.a
-			if _t >= WAKE: _finish()
+			_wake_scene(delta)
+
+## Coming round (master-design "Waking up"): the hatch shut behind you. Dark,
+## with muffled sounds (the latches, air hissing back); your eyes open
+## blurred, lying down, looking up; you sit up slowly, breathing hard.
+func _wake_scene(_delta: float) -> void:
+	var t := _t
+	_clock.modulate.a = 1.0 - clampf(t * 3.0, 0.0, 1.0)
+	_status.modulate.a = _clock.modulate.a
+	if _at(.3): MHAudio.sfx("suit_clamp", -10.0)
+	if _at(1.0): MHAudio.sfx("suit_fill", -12.0)
+	if t < 2.2:
+		_shade_to(.6, 1.0, 5.0)
+	elif t < 5.0:
+		# Eyes opening: two heavy blinks, the world swimming.
+		var k := (t - 2.2) / 2.8
+		var dark := lerpf(1.0, .18, ease(k, -1.8))
+		for blink in [3.2, 4.2]:
+			dark = maxf(dark, .9 * clampf(1.0 - absf(t - blink) / .22, 0.0, 1.0))
+		_shade_to(lerpf(.6, .4, k), dark, lerpf(5.0, 2.0, k))
+		_head.rotation.z = deg_to_rad(6.0 + sin(t * 1.3) * 2.0)
+		if _at(2.4): MHAudio.sfx("suit_breath_in", -8.0)
+		if _at(3.7): MHAudio.sfx("suit_breath_out", -8.0)
+	elif t < 7.6:
+		# Sitting up, slowly.
+		var k := ease(clampf((t - 5.0) / 2.6, 0.0, 1.0), -2.0)
+		_head.position.y = lerpf(LYING_EYE, _head_was.origin.y, k)
+		_head.rotation.x = lerpf(deg_to_rad(LYING_PITCH), 0.0, k)
+		_head.rotation.z = lerpf(deg_to_rad(6.0), 0.0, k)
+		_shade_to(.4 * (1.0 - k), .18 * (1.0 - k), 2.0 * (1.0 - k))
+		if _at(5.2): MHAudio.sfx("suit_breath_in", -6.0)
+		if _at(6.7): MHAudio.sfx("suit_breath_out", -7.0)
+	else:
+		_head.transform = _head_was
+		_shade_to(0.0, 0.0, 0.0)
+	if t >= WAKE: _finish()
+
+func _at(cue: float) -> bool:
+	return _t >= cue and _t - get_process_delta_time() < cue
 
 func _next(next_phase: String) -> void:
 	phase = next_phase
@@ -263,15 +305,29 @@ func _next(next_phase: String) -> void:
 		_shade_to(0.0, .97)
 		# You're home while the hours pass (so the suit tops up from the
 		# habitat like anyone's would), GAR-Y beside you.
-		_head.transform = _head_was
 		_player.global_position = _wake.position
 		_player.rotation.y = float(_wake.yaw)
 		_player.safe_position = _player.global_position
 		_player.velocity = Vector3.ZERO
+		# Lying on the floor, looking up, for when your eyes open.
+		_head.position = Vector3(0, LYING_EYE, 0)
+		_head.rotation = Vector3(deg_to_rad(LYING_PITCH), 0, deg_to_rad(6.0))
+		var lander: Node = world.get("lander")
+		var in_lander: bool = lander != null and lander.cabin_contains(_wake.position)
+		# The hatch shut and sealed behind you, always.
+		if in_lander: lander.set_hatch(false, false)
 		if gary != null:
-			var side: Vector3 = _player.global_transform.basis.x * 1.3
-			gary.global_position = _wake.position + side + Vector3(0, -.1, 0)
-			gary.rotation.y = _player.rotation.y + PI * .5
+			if in_lander:
+				# It can't fit inside: it waits at the foot of the ramp.
+				var foot: Vector3 = lander.ramp_foot(3.0)
+				gary.global_position = foot
+				var to_hatch: Vector3 = lander.to_global(Vector3(0, 0, -2.7)) - foot
+				gary.rotation.y = atan2(-to_hatch.x, -to_hatch.z)
+			else:
+				var side: Vector3 = _player.global_transform.basis.x * 1.3
+				gary.global_position = _wake.position + side + Vector3(0, -.1, 0)
+				gary.rotation.y = _player.rotation.y + PI * .5
+		if gary != null:
 			_clock.visible = true
 			_status.visible = true
 			_last_hour = world.day_night.hour
