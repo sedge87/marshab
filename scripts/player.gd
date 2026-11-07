@@ -100,6 +100,7 @@ func _physics_process(delta: float) -> void:
 	var direction := (transform.basis * Vector3(input_vector.x, 0.0, input_vector.y)).normalized()
 	var speed := CROUCH_SPEED if crouching else SPRINT_SPEED if Input.is_action_pressed("sprint") or Input.is_key_pressed(KEY_SHIFT) else WALK_SPEED
 	speed *= float(get_meta("body_speed", 1.0))   # the cold and low oxygen slow you (scripts/body.gd)
+	speed *= float(get_meta("load_speed", 1.0))   # carrying something heavy (scripts/o2_cartridge.gd)
 	velocity.x = direction.x * speed
 	velocity.z = direction.z * speed
 	move_and_slide()

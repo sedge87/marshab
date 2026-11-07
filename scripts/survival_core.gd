@@ -212,12 +212,13 @@ static func _clock_after(hours: float) -> String:
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"battery_kwh": battery_kwh, "tank_o2_kg": tank_o2_kg, "o2_kg": o2_kg, "co2_kg": co2_kg, "temp_c": temp_c,
+	return {"battery_kwh": battery_kwh, "tank_cap": tank_cap, "tank_o2_kg": tank_o2_kg, "o2_kg": o2_kg, "co2_kg": co2_kg, "temp_c": temp_c,
 		"heater": heater_mode, "lights": lights_on, "scrubber": scrubber_on, "people": people}
 
 func load_state(state: Dictionary) -> void:
 	if state.is_empty(): return
 	battery_kwh = clampf(float(state.get("battery_kwh", battery_kwh)), 0.0, battery_cap)
+	tank_cap = maxf(tank_cap, float(state.get("tank_cap", tank_cap)))   # a cartridge plugged in adds to it
 	tank_o2_kg = clampf(float(state.get("tank_o2_kg", tank_o2_kg)), 0.0, tank_cap)
 	o2_kg = float(state.get("o2_kg", o2_kg))
 	co2_kg = float(state.get("co2_kg", co2_kg))

@@ -75,6 +75,12 @@ static func music(mood: String) -> void:
 	var d := director()
 	if d != null: d._run("_set_mood", [mood])
 
+# A moment worth marking (a pallet found, the cabin's air restored, the blue
+# sunset): a warm chord over the music and three rising bells.
+static func moment() -> void:
+	var d := director()
+	if d != null: d._run("_moment", [])
+
 # "outside", "inside", "menu" or "off".
 static func ambience(space: String) -> void:
 	var d := director()
@@ -263,6 +269,27 @@ func _next_pad(level_db: float) -> void:
 	_kill_fade(p)
 	p.volume_db = level_db
 	p.play()
+
+func _moment() -> void:
+	var p := _pads[_pad_index]
+	_pad_index = (_pad_index + 1) % _pads.size()
+	p.stream = _stream("music/pad_fadd9")
+	if p.stream != null:
+		_kill_fade(p)
+		p.volume_db = -11.0
+		p.play()
+		_pad_timer = maxf(_pad_timer, 9.0)
+	for i in 3:
+		var bell := AudioStreamPlayer.new()
+		bell.bus = _bell.bus
+		bell.stream = _stream("music/bell_glass")
+		bell.pitch_scale = pow(2.0, [0.0, 4.0, 7.0][i] / 12.0)
+		bell.volume_db = -15.0
+		add_child(bell)
+		get_tree().create_timer(.45 * i + .2).timeout.connect(func() -> void:
+			bell.play()
+			bell.finished.connect(bell.queue_free))
+	_bell_timer = maxf(_bell_timer, 6.0)
 
 func _ring_bell() -> void:
 	var id: String = BELLS[randi() % BELLS.size()]

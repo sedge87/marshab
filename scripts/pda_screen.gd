@@ -87,9 +87,17 @@ func _build_rail() -> Control:
 	panel.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.INK_900, Color(0, 0, 0, 0), 0, 0, Vector4(12, 16, 12, 16)))
 	_rail = MHStyle.vbox(8)
 	panel.add_child(_rail)
+	_fill_rail()
+	return panel
+
+## The rail's buttons, one per app in apps() (rebuilt if that changes, e.g.
+## Notes for Goals once the world is known).
+func _fill_rail() -> void:
+	for child in _rail.get_children(): child.free()
+	_rail_buttons = {}
 	var n := 0
 	for entry in APPS:
-		if not bool(entry.built): continue
+		if not str(entry.id) in apps(): continue
 		n += 1
 		var button := MHStyle.button("%d  %s" % [n, entry.label], "ghost", str(entry.icon), 56)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -104,7 +112,6 @@ func _build_rail() -> Control:
 		button.add_child(dot)
 		_rail.add_child(button)
 		_rail_buttons[str(entry.id)] = {"button": button, "dot": dot}
-	return panel
 
 ## Built apps, in rail order. Goals only for a game still on the old
 ## getting-started checklist; Notes otherwise (master-design §5).
@@ -114,6 +121,7 @@ func apps() -> Array:
 
 ## The slate was raised (pda.gd): on this app, or the last one used.
 func opened(wanted := "") -> void:
+	if _rail_buttons.keys() != apps(): _fill_rail()
 	var choice := wanted if wanted in apps() else str(MHGame.setting("slate_app"))
 	if not choice in apps(): choice = str(apps()[0])
 	app = ""

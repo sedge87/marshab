@@ -41,7 +41,7 @@ func _initialize() -> void:
 		page.free()
 
 	# Out of order: you find the pallet without ever thinking about it.
-	_check(notes.think("parachute", "start", {"dir": "north"}) and notes.text_of(notes.open[notes._find("parachute")]).contains("north of the hatch"), "a thought takes its fills (the ridge's direction)")
+	_check(notes.is_open("parachute") and notes.text_of(notes.open[notes._find("parachute")]).contains(" of the hatch") and not notes.text_of(notes.open[notes._find("parachute")]).contains("{"), "a thought takes its fills (the ridge's direction)")
 	notes.think("parachute", "open")
 	_check(notes.stage("parachute") == "open", "a thought changes when you act")
 	var sol: int = notes._sol()

@@ -16,11 +16,16 @@ extends Node
 const CORE := preload("res://scripts/survival_core.gd")
 const SWITCH := preload("res://scripts/cabin_switch.gd")
 ## Switch spots on the back wall, left of the console (lander space, above the deck).
+## The oxygen port (scripts/cabin_o2_port.gd): on the curved back wall beside
+## the switches (the side away from the locker), facing the middle of the cabin.
+const PORT_SPOT := Vector3(.12, 1.12, 2.16)
+const PORT := preload("res://scripts/cabin_o2_port.gd")
 const SWITCH_SPOTS := {"heater": Vector3(-.95, 1.45, 2.06), "lights": Vector3(-.72, 1.45, 2.1), "scrubber": Vector3(-.49, 1.45, 2.13)}
 
 var world: Node
 var core: RefCounted
 var switches := {}
+var port: StaticBody3D         # the oxygen port and its dial
 var ahead := {}                  # the latest runway(), refreshed about once a second
 var _since_runway := 99.0
 var _emergency: OmniLight3D
@@ -40,6 +45,11 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 		s.position = SWITCH_SPOTS[kind] + Vector3(0, lander.DECK, 0)
 		s.setup(self, kind)
 		switches[kind] = s
+	port = PORT.new()
+	lander.add_child(port)
+	port.position = PORT_SPOT + Vector3(0, lander.DECK, 0)
+	port.rotation.y = atan2(-PORT_SPOT.x, -PORT_SPOT.z)
+	port.setup(self)
 	_emergency = OmniLight3D.new()
 	_emergency.name = "CabinEmergencyLight"
 	_emergency.light_color = Color("#FF3B2E")
@@ -59,6 +69,12 @@ func advance(hours: float, start_hour: float) -> void:
 	if not running() or hours <= 0.0: return
 	core.people = 1.0 if player_inside() else 0.0
 	core.advance(hours, start_hour)
+
+## A cartridge plugged into the port: the tank grows by its oxygen, full.
+func add_cartridge(oxygen_kg: float) -> void:
+	core.tank_cap += oxygen_kg
+	core.tank_o2_kg = core.tank_cap
+	_since_runway = 99.0
 
 func player_inside() -> bool:
 	return world.player != null and bool(world.lander.cabin_contains(world.player.global_position))

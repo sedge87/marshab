@@ -849,7 +849,9 @@
     "cabin_scrubber_kw": 0.25,
     "cabin_scrub_kg_per_h": 0.1,
     "cabin_avionics_kw": 0.1,
-    "cabin_o2_tank_kg": 3.0,
-    "body_heat_kw": 0.1
+    "cabin_o2_tank_kg": 0.84,
+    "body_heat_kw": 0.1,
+    "cartridge_o2_kg": 6.0,
+    "cartridge_carry_kg": 20.0
   }
 }

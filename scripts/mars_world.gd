@@ -13,6 +13,7 @@ const CABIN_LIFE := preload("res://scripts/lander_cabin_life.gd")
 const BODY := preload("res://scripts/body.gd")
 const KNOWN := preload("res://scripts/known_things.gd")
 const NOTES := preload("res://scripts/notes.gd")
+const STORM_DROP := preload("res://scripts/storm_drop.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
 const SHOWCASE_SCRIPT := preload("res://scripts/showcase.gd")
@@ -73,6 +74,8 @@ var known: Node        # scripts/known_things.gd: what you, GAR-Y and Earth know
 var _known_state := {}
 var notes: Node        # scripts/notes.gd: your inner voice, the slate's Notes app
 var _notes_state := {}
+var storm_drop: Node3D  # scripts/storm_drop.gd: the parachute ridge, pallet 1 and the debris trail
+var _drop_state := {}
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
@@ -192,6 +195,11 @@ func _ready() -> void:
 	notes = NOTES.new()
 	add_child(notes)
 	notes.setup(self, _notes_state, _start_in_lander)
+	# The storm's cargo, for a new game on the revamp's rules (no old crates).
+	if MHChapterOne.new_rules() and not MHChapterOne.crates_landing and lander != null:
+		storm_drop = STORM_DROP.new()
+		add_child(storm_drop)
+		storm_drop.setup(self, _drop_state)
 	gar_y_orders = GAR_Y_ORDERS.new()
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)
@@ -882,6 +890,7 @@ func current_state() -> Dictionary:
 		"trail": region_map.trail if region_map != null else PackedVector2Array(),
 		"known": known.export_state() if known != null else {},
 		"notes": notes.export_state() if notes != null else {},
+		"storm_drop": storm_drop.export_state() if storm_drop != null else {},
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
 		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
 	}
@@ -948,6 +957,7 @@ func _restore_pending_habitat() -> void:
 	_body_state = state.get("body", {}) as Dictionary
 	_known_state = state.get("known", {}) as Dictionary
 	_notes_state = state.get("notes", {}) as Dictionary
+	_drop_state = state.get("storm_drop", {}) as Dictionary
 	if region_map != null: region_map.trail = PackedVector2Array(state.get("trail", PackedVector2Array()))
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()
 	player.global_position = state.get("player_position", player.global_position) as Vector3

@@ -12,8 +12,8 @@
     "parachute": {
       "stages": {
         "start": "Parachute on the ridge {dir} of the hatch. Life support, I hope.",
-        "near": "It's ours. A pallet on its side under the canopy, latches still shut.",
-        "open": "Pallet's open. Food, water, the sample kit, and a fresh oxygen cartridge."
+        "near": "It's ours. A pallet in the dust by the canopy, latches still shut.",
+        "open": "Pallet's open. The sample kit, and a fresh oxygen cartridge for the cabin."
       },
       "journal": "Found the first pallet under its parachute, right where Rao's photo said.",
       "next": ["cargo"]
