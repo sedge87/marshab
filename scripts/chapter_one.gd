@@ -73,6 +73,7 @@ static var jobs: Dictionary = {}
 static var made: Dictionary = {}         # id -> true once the fabricator has made one
 static var paid: Dictionary = {}         # id -> copies placed beyond stock, paid for from the stores
 static var has_corer := false
+static var has_hammer := false   # pallet 4's rock hammer (scripts/drop_field.gd)
 static var cores: Array = []             # [{x, z, depth_m, purity}]
 static var steps: Dictionary = {}        # step -> sim hours it was met
 static var finished_at := -1.0
@@ -101,7 +102,7 @@ static func new_rules() -> bool:
 static func reset() -> void:
 	older_rules = false
 	unpacked = {}; stock = {}; shell_kg = 0; feedstock_kg = 0.0
-	known = {}; jobs = {}; made = {}; paid = {}; has_corer = false; cores = []; steps = {}; finished_at = -1.0
+	known = {}; jobs = {}; made = {}; paid = {}; has_corer = false; has_hammer = false; cores = []; steps = {}; finished_at = -1.0
 	stores_landed = false; reserve_used = false; emergency_eta = -1.0; said = {}
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
 	crates_landing = false
@@ -113,7 +114,7 @@ static func export_state() -> Dictionary:
 	return {"older_rules": older_rules, "crates": crates_landing, "unpacked": unpacked.duplicate(), "stock": stock.duplicate(), "shell_kg": shell_kg,
 		"feedstock_kg": feedstock_kg, "known": known.duplicate(), "jobs": jobs.duplicate(true),
 		"made": made.duplicate(), "paid": paid.duplicate(),
-		"has_corer": has_corer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
+		"has_corer": has_corer, "has_hammer": has_hammer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
 		"stores_landed": stores_landed, "reserve_used": reserve_used, "emergency_eta": emergency_eta, "said": said.duplicate(),
 		"water_hours": water_hours, "soil": soil, "soil_potted_at": soil_potted_at, "lander_spots": lander_spots.duplicate(true), "crew_plan": MHCrewPlan.export_state()}
 
@@ -151,6 +152,7 @@ static func load_state(state: Dictionary, has_section: bool) -> void:
 		for id in stock:
 			if int(stock[id]) > int(from_crates.get(id, 0)): made[str(id)] = true
 	has_corer = bool(state.get("has_corer", false))
+	has_hammer = bool(state.get("has_hammer", false))
 	# Saved before story plans arrived printed: they get their first copy now.
 	for id in known: _give_first(str(id))
 	cores = (state.get("cores", []) as Array).duplicate(true)

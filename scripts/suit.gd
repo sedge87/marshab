@@ -128,6 +128,7 @@ func _process(delta: float) -> void:
 	dose(hours)
 	if where == "outside":
 		if not passed_out: step(hours)
+		if _patch_kit(): _patch_by_hand(hours)   # pallet 4's patch kit works out here too
 	else:
 		_top_up(delta)
 		_patch_by_hand(hours)
@@ -307,11 +308,17 @@ func _in_airlock() -> bool:
 func _patch_by_hand(hours: float) -> void:
 	if not leak or _has_panel or passed_out: return
 	_patching += hours
-	if _patching < PATCH_HOURS: return
+	if _patching < PATCH_HOURS * (.25 if _patch_kit() else 1.0): return
 	leak = false
 	_patching = 0.0
 	_say("suit_seal_repaired")
 	get_tree().call_group("explore_hud", "show_equipment_note", "Suit seal patched", "With no suit service panel in the base, you patched the leaking seal by hand from the repair kit.")
+
+## Pallet 4's patch kit (scripts/drop_field.gd): a seal patched anywhere, in
+## a quarter of the time.
+func _patch_kit() -> bool:
+	var field: Node = world.get("drop_field") if world != null else null
+	return field != null and bool(field.tools)
 
 ## Forget dropped things once they've been picked up.
 func _prune_dropped() -> void:
@@ -474,6 +481,9 @@ func _draw_visor() -> void:
 func pass_out() -> void:
 	passed_out = true
 	if bool(world.player.get_meta("driving", false)) and world.get("crew_rover") != null: world.crew_rover._get_out()
+	# Not met GAR-Y yet? It's been out looking for the lander, and finds you.
+	var field: Node = world.get("drop_field")
+	if field != null and not bool(world.get("gary_met")): field.gary_finds_you()
 	var rescue := RESCUE.new()
 	rescue.name = "Rescue"
 	add_child(rescue)

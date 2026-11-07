@@ -16,7 +16,9 @@
         "open": "Pallet's open. The sample kit, and a fresh oxygen cartridge for the cabin."
       },
       "journal": "Found the first pallet under its parachute, right where the orbiter's photo said.",
-      "next": ["cargo"]
+      "next": [
+        "cargo"
+      ]
     },
     "cargo": {
       "stages": {
@@ -38,16 +40,46 @@
       "journal": "Made it to morning. {how}"
     },
     "rest": {
-   "stages": {
-    "start": "Long day. The landing seats recline. I could sleep till dawn, or I could go and look at the stars."
-   },
-   "journal": ""
-  },
-  "cold": {
+      "stages": {
+        "start": "Long day. The landing seats recline. I could sleep till dawn, or I could go and look at the stars."
+      },
+      "journal": ""
+    },
+    "cold": {
       "stages": {
         "start": "Cold in here. The heater's on the wall switch, if the battery can spare it."
       },
       "journal": "Warm again. I'd forgotten how much I like my fingers."
+    },
+    "chutes": {
+      "stages": {
+        "start": "From up here I can see two more parachutes. One off to the {a}, one to the {b}."
+      },
+      "journal": "Two more parachutes from the ridge, and both pallets found."
+    },
+    "power_pallet": {
+      "stages": {
+        "near": "This pallet's flat and wide. Could be the power kit ARDEN wants.",
+        "open": "A rolled solar blanket and a battery pack. Lay it out by the lander and the heater can run all night."
+      },
+      "journal": "Laid pallet 2's solar blanket out by the lander and plugged its battery in. Warm nights now, if the sun does its part."
+    },
+    "gary": {
+      "stages": {
+        "near": "There's a cradle in this one the shape of GAR-Y. Please be in there."
+      },
+      "journal": "{how}"
+    },
+    "tools": {
+      "stages": {
+        "start": "GAR-Y keeps turning towards the {dir}. A pallet beacon, maybe, too faint for my suit.",
+        "near": "Frost on the ground in this hollow, and a pallet sitting in it."
+      },
+      "journal": "Pallet 4, in the frost hollow: a rock hammer, a headlamp and a patch kit. The headlamp throws a lot more light than the suit lamp."
+    },
+    "sunset_gary": {
+      "stages": {},
+      "journal": "Watched the sun go down with GAR-Y. Neither of us made a sound. It's the first time it's felt like we live here."
     }
   }
 }

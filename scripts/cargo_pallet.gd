@@ -19,9 +19,12 @@ var _held := 0.0
 var _holding := false
 var _freed := 0
 
-func setup(target_drop: Node, is_open: bool) -> void:
+var label := "Pallet 1"
+
+func setup(target_drop: Node, is_open: bool, pallet_label := "Pallet 1") -> void:
 	drop = target_drop
-	name = "Pallet1"
+	label = pallet_label
+	name = pallet_label.replace(" ", "")
 	add_to_group("cargo_pallet")
 	set_meta("interaction_target", self)
 	var body: Node3D = BODY.instantiate()
@@ -49,13 +52,15 @@ func setup(target_drop: Node, is_open: bool) -> void:
 func interaction_prompt() -> Dictionary:
 	if opened:
 		var inside := _inside()
-		return inside.interaction_prompt() if inside != null else {"label": "Pallet 1 · open"}
+		return inside.interaction_prompt() if inside != null else {"label": label + " · open"}
 	if _holding and _freed > 0: return {"label": "Cargo pallet", "primary": "Freeing the latches · %d of %d" % [_freed, LATCHES]}
 	return {"label": "Cargo pallet", "primary": "Hold to free the latches"}
 
 ## The cartridge, while it still lies in the open pallet. The pallet's
 ## solid box surrounds it, so looking into the pallet reaches it through here.
+## Other drops (scripts/drop_site.gd) say what's inside themselves.
 func _inside() -> Node:
+	if drop != null and drop.has_method("inside_of"): return drop.inside_of()
 	var cartridge: Node = drop.get("cartridge") if drop != null else null
 	return cartridge if cartridge != null and str(cartridge.where) == "pallet" else null
 

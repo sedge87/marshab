@@ -52,6 +52,8 @@ var lights_on := true
 var scrubber_on := true
 var last := {}                   # the last sub-step's flows (kW): solar, draw, heater, loss
 var vented := false              # open to Mars (the lander's hatch is open): no air to breathe
+var pack_kw := 0.0               # pallet 2's solar blanket, laid out by the lander (peak kW)
+var pack_kwh := 0.0              # and its battery, added to the cabin's
 
 func _init() -> void:
 	battery_cap = n("cabin_battery_kwh", 6.0)
@@ -120,7 +122,7 @@ func step(dt: float, outside: float, sun: float) -> void:
 		var want := loss - draw - body + (heater_target() - temp_c) * heat_cap / .5
 		heater = clampf(want, 0.0, n("cabin_heater_kw", 1.5))
 	draw += heater
-	var solar := n("cabin_solar_kw", 1.5) * sun
+	var solar := (n("cabin_solar_kw", 1.5) + pack_kw) * sun
 	battery_kwh = clampf(battery_kwh + (solar - draw) * dt, 0.0, battery_cap)
 	temp_c += (draw + body - loss) * dt / heat_cap
 	# Air (none while the cabin is open to Mars: the suit breathes for you).
@@ -161,6 +163,14 @@ func repressurise() -> float:
 	o2_kg = air_kg * .209 / O2_VOL * (got / need if need > 0.0 else 1.0)
 	co2_kg = air_kg * .0004 / CO2_VOL
 	return got
+
+## Pallet 2's power pack is set up: a solar blanket and a battery, which
+## arrives part-charged.
+func add_power_pack(kw: float, kwh: float, charge := .5) -> void:
+	pack_kw += kw
+	pack_kwh += kwh
+	battery_cap += kwh
+	battery_kwh = minf(battery_cap, battery_kwh + kwh * charge)
 
 ## Up to `kg` of oxygen from the tank (filling a suit); returns what it gave.
 func take_oxygen(kg: float) -> float:
@@ -236,10 +246,13 @@ static func _clock_after(hours: float) -> String:
 
 func export_state() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "tank_cap": tank_cap, "tank_o2_kg": tank_o2_kg, "o2_kg": o2_kg, "co2_kg": co2_kg, "temp_c": temp_c,
-		"heater": heater_mode, "lights": lights_on, "scrubber": scrubber_on, "people": people, "vented": vented}
+		"heater": heater_mode, "lights": lights_on, "scrubber": scrubber_on, "people": people, "vented": vented, "pack_kw": pack_kw, "pack_kwh": pack_kwh}
 
 func load_state(state: Dictionary) -> void:
 	if state.is_empty(): return
+	pack_kw = float(state.get("pack_kw", 0.0))
+	pack_kwh = float(state.get("pack_kwh", 0.0))
+	battery_cap = n("cabin_battery_kwh", 6.0) + pack_kwh
 	battery_kwh = clampf(float(state.get("battery_kwh", battery_kwh)), 0.0, battery_cap)
 	tank_cap = maxf(tank_cap, float(state.get("tank_cap", tank_cap)))   # a cartridge plugged in adds to it
 	tank_o2_kg = clampf(float(state.get("tank_o2_kg", tank_o2_kg)), 0.0, tank_cap)

@@ -14,6 +14,7 @@ const BODY := preload("res://scripts/body.gd")
 const KNOWN := preload("res://scripts/known_things.gd")
 const NOTES := preload("res://scripts/notes.gd")
 const STORM_DROP := preload("res://scripts/storm_drop.gd")
+const DROP_FIELD := preload("res://scripts/drop_field.gd")
 const ORBITER_TEXTS := preload("res://scripts/orbiter_texts.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
@@ -77,6 +78,11 @@ var notes: Node        # scripts/notes.gd: your inner voice, the slate's Notes a
 var _notes_state := {}
 var storm_drop: Node3D  # scripts/storm_drop.gd: the parachute ridge, pallet 1 and the debris trail
 var _drop_state := {}
+var drop_field: Node3D  # scripts/drop_field.gd: pallets 2-4 round the landing, the field tools, GAR-Y's sunset
+var _field_state := {}
+## GAR-Y is met at its pallet (or finds you) in revamp games; it's there from
+## the start otherwise.
+var gary_met := true
 var orbiter_texts: Node  # scripts/orbiter_texts.gd: the orbiter crew's texts and photos (Comms)
 var _texts_state := {}
 var _danger_t := 0.0
@@ -208,6 +214,9 @@ func _ready() -> void:
 		storm_drop = STORM_DROP.new()
 		add_child(storm_drop)
 		storm_drop.setup(self, _drop_state)
+		drop_field = DROP_FIELD.new()
+		add_child(drop_field)
+		drop_field.setup(self, _field_state)
 	if MHChapterOne.new_rules():
 		orbiter_texts = ORBITER_TEXTS.new()
 		add_child(orbiter_texts)
@@ -596,10 +605,15 @@ func _spawn_player() -> void:
 	dust.mesh = mote
 	player.get_node("Head").add_child(dust)
 
-func _spawn_scout_rover() -> void:
+func _spawn_scout_rover(meeting := false) -> void:
 
 	if not SPAWN_SCOUT_ROVER:
 		return
+	# Revamp games: GAR-Y is out in the field until you meet it.
+	if not meeting:
+		var saved: Dictionary = MHGame.pending_save_state
+		gary_met = bool(saved.get("gary_met", true)) if not saved.is_empty() else not (MHChapterOne.new_rules() and not MHChapterOne.crates_landing)
+		if not gary_met: return
 	var rover_scene := load(SCOUT_ROVER_SCENE_PATH) as PackedScene
 	if rover_scene == null:
 		push_warning("GAR-Y rover scene is unavailable; continuing without companion.")
@@ -608,6 +622,16 @@ func _spawn_scout_rover() -> void:
 	add_child(scout_rover)
 	scout_rover.global_position = lander.beside_ramp() if _start_in_lander else player.global_position + player.global_transform.basis.z * 2.4
 	scout_rover.call("setup", player)
+
+## Meeting GAR-Y (scripts/drop_field.gd): it's here from now on, at `at`.
+func meet_gary(at: Vector3) -> Node3D:
+	if scout_rover != null and is_instance_valid(scout_rover): return scout_rover
+	gary_met = true
+	_spawn_scout_rover(true)
+	if scout_rover == null: return null
+	scout_rover.global_position = at
+	if builder != null: scout_rover.set("habitat", builder)
+	return scout_rover
 
 ## The crew rover: a saved one comes back where it was left; otherwise it
 ## appears in the first vehicle bay, facing the hangar door.
@@ -943,6 +967,8 @@ func current_state() -> Dictionary:
 		"known": known.export_state() if known != null else {},
 		"notes": notes.export_state() if notes != null else {},
 		"storm_drop": storm_drop.export_state() if storm_drop != null else {},
+		"drop_field": drop_field.export_state() if drop_field != null else {},
+		"gary_met": gary_met,
 		"orbiter_texts": orbiter_texts.export_state() if orbiter_texts != null else {},
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
 		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
@@ -1011,6 +1037,7 @@ func _restore_pending_habitat() -> void:
 	_known_state = state.get("known", {}) as Dictionary
 	_notes_state = state.get("notes", {}) as Dictionary
 	_drop_state = state.get("storm_drop", {}) as Dictionary
+	_field_state = state.get("drop_field", {}) as Dictionary
 	_texts_state = state.get("orbiter_texts", {}) as Dictionary
 	if region_map != null: region_map.trail = PackedVector2Array(state.get("trail", PackedVector2Array()))
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()

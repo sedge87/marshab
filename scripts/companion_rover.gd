@@ -1154,6 +1154,7 @@ func _patrol_next() -> void:
 # ---------- look at it (explore HUD) ----------
 
 func interaction_prompt() -> Dictionary:
+	if has_meta("sunset_offer"): return {"label": NAME + " · looking at the sun", "primary": "Watch the sunset together", "info": "About"}
 	return {"label": "%s · %s" % [NAME, status_text()], "primary": "Ping", "info": "About"}
 
 func status_text() -> String:
@@ -1177,6 +1178,12 @@ func status_text() -> String:
 
 ## A ping: it wakes, chirps and wiggles. Three pings in a row: a spin.
 func interact(_actor: Node = null) -> bool:
+	# Its first sunset with you (scripts/gary_sunset.gd).
+	if has_meta("sunset_offer"):
+		var scene := get_tree().get_first_node_in_group("drop_field")
+		if scene != null and scene.get("sunset") != null:
+			scene.sunset.accept()
+			return true
 	if napping: _wake()
 	staying = false
 	# "Come with me": follow closely for a while (through airlocks you cycle).

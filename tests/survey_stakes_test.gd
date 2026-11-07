@@ -22,6 +22,7 @@ func _initialize() -> void:
 	for i in 30: await process_frame
 	var stakes = world.survey_stakes
 	_check(stakes != null, "chapter one has survey stakes")
+	if not world.gary_met: world.meet_gary(world.player.global_position + Vector3(2, 0, 0))   # revamp games: GAR-Y is met in the field (drop_field.gd)
 	var gary = world.get_tree().get_first_node_in_group("gar_y")
 	_check(gary != null, "GAR-Y is here")
 	if stakes == null or gary == null:
