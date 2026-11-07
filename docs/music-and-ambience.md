@@ -1,6 +1,6 @@
 # Music and ambience: the dynamic score (proposal, 7 Nov)
 
-Status: **previews made, not built into the game.** `tools/music_previews.py <folder>` renders 90-second previews of each mood and 60-second previews of the two ambiences. It uses the same parts as today's score (the drone, chord pads and glass bells from `tools/generate_audio.py`), and a small sequencer schedules them the way `scripts/mh_audio.gd` does. Sound is mostly quiet with music at moments, as decided in systems-and-items §10b; this document adds what the music sounds like *when* it plays.
+Status: **previews made, not built into the game; to be built after the step 2 playtest (user, 7 Nov).** `tools/music_previews.py <folder>` renders 90-second previews of each mood and 60-second previews of the two ambiences. It uses the same parts as today's score (the drone, chord pads and glass bells from `tools/generate_audio.py`), and a small sequencer schedules them the way `scripts/mh_audio.gd` does. Sound is mostly quiet with music at moments, as decided in systems-and-items §10b; this document adds what the music sounds like *when* it plays.
 
 ## 1. The moods
 
@@ -11,7 +11,7 @@ Every mood shares one sound: D-centred, slow synth pads with a lot of space, a l
 | **Dawn** | sunrise −0.5 h to +1.5 h | light catching frost; a lift | D Lydian (major 3rd, raised 4th): Dmaj9, Gmaj7, Bm11, Aadd9, Em9; brighter pads; a thin drone on A; bells rising in threes |
 | **Day** | the rest of the daylight | warm, a little hopeful, lonely | **today's score, unchanged:** D Dorian pads (Dm9, Bbmaj7, Gm9, Fadd9, Am7, Csus2), drone on D, single pentatonic bells |
 | **Dusk** | sunset −1.5 h to +0.7 h (the blue hour) | warmer, darker, winding down | D minor leaning on Bb and Eb (Bbmaj9, Gm9, Ebmaj7, Dm9, Fadd9); darker pads, slower; bells falling in pairs; a faint high shimmer for the blue round the sun |
-| **Night** (name to choose) | after dusk until dawn | low, wide, sparse: the stars | deep, low chords 18 s apart; a sub-heavy drone; very high, pure bells with long echoes; occasional faint twinkles; about 4 dB quieter than Day |
+| **Starlight** (night) | after dusk until dawn | low, wide, sparse: the stars | deep, low chords 18 s apart; a sub-heavy drone; very high, pure bells with long echoes; occasional faint twinkles; about 4 dB quieter than Day |
 | **Danger** | something is wrong (an overlay, see §2) | slow dread, not action | a 62 bpm heartbeat and a telemetry tick; a drone that beats against itself (D against Eb); tense clusters (Dm(b9), Gm(maj7), Bb aug) with a tremble; metal tones a half step apart; rises with the danger level |
 
 ## 2. How it plays (when built)
