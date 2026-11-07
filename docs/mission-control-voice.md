@@ -1,5 +1,7 @@
 # Mission Control's voice: the canon
 
+> **Pulled back 7 Nov (docs/systems-and-items.md §10e+):** only the four CAPCOMs (Ines, Theo, Sunny, Noor) keep a voice, and their messages arrive as letters you play when you choose and can reply to. The specialists below (Peg, Kwame, Ruth, Jasper, Pip) appear only as things the four mention. Sunny also records a weekly show for your drives. Small talk is rationed, not removed outright.
+
 The people on the other end of the radio. Read this before writing a single line for them. It settles `core-loop.md` item 9 ("Mission Control's voice").
 
 **The idea.** Mission Control isn't a system, it's a room of people on a weekly rota, each with a life you overhear in pieces. The humour is *The Martian*'s (science as stubborn problem-solving, bureaucracy played straight, gallows humour about how hostile Mars is). The weight is *Firewatch*'s (one voice in your ear, small honest moments, silences that count). It's one-way for now: they talk, and **what you do is your reply**. They see your telemetry a few minutes late and react to it.

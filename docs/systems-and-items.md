@@ -526,6 +526,16 @@ GAR-Y is found early, with its radar survey and the rescue. After that it learns
 
 **Landing them is the finale:** the welcome-the-crew ending, the moment the base was built towards. After it the game carries on open-ended. This replaces Earth's crew waves (docs/survival-systems.md §12.2, commit 3417721). Visible crew at the base can come later as an expansion.
 
+### 10e+. Fewer voices, each one meaningful · **Decided 7 Nov**
+After step 2 the game had about 17 speaking characters (ARDEN, the suit, the relay, five orbiter crew, eight Mission Control people and more). The user: "we want conversation to be meaningful not just noise to fill empty space." Grounded in Firewatch (one relationship; talks fit the travel; silence allowed), Schell Lens #76 Character Function (fold characters that do the same job), #79 Character Web and #61 Interest Curve, and Cleveland's talk (story threads started by what you do):
+- **ARDEN is only the habitat's voice:** heard in the cabin and the habitat, never out on the suit radio. Practical, with a little dry warmth kept but rationed.
+- **The suit has no voice.** It gives alerts only (tones, the wrist dial, screen cues). The orbital relay becomes text.
+- **Castellanos is the one near voice** (the Delilah role): she talks with you on walks and drives during orbiter passes, reacts to what you did, and you can answer or stay silent. The other crew exist and are heard *about* through her; they speak only in the descent and the finale.
+- **Earth keeps the four CAPCOM arcs** (Ines, Theo, Sunny, Noor) **as letters:** recorded messages that wait on the slate, played when you choose, with a short reply you can send that the next shift answers. The specialists (Peg, Kwame, Ruth, Jasper, Pip) live on as things the four mention.
+- **Drives:** unopened letters play on the rover radio as you set off (one a drive); **Sunny's weekend show** (a few of the game's own tracks with his stories and jokes between) plays on drives on a weekly schedule; Castellanos talks when the orbiter is overhead; and some drives are left to the music and the view on purpose. You can respond to all of them.
+- **Voices are earned in layers:** at landing, ARDEN and orbiter texts only; repairing the link brings Castellanos's voice; a later goal (the high-gain dish) brings Earth's letters.
+- **The meaning rule, with flavour:** a line reacts to something you did, moves a story on, or warns of real danger, or it's a rationed bit of warmth or humour that never repeats and never wears out its welcome. Pure filler goes (most of the 24 chatter lines). One voice at a time, and talks fit inside the journey.
+
 ## 10f. Reactivity and the present-tense story · **Decided 7 Nov** (from Firewatch)
 
 Firewatch is the nearest game to ours: first person, physically alone, and the only company is a voice on the radio. Two lessons from its GDC talks (Chris Remo on its story, Jane Ng on its world) shape our voices:
