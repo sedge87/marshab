@@ -243,10 +243,15 @@ func _initialize() -> void:
 	_check(worn_copy.wear.save().hash() == worn_sim.wear.save().hash(), "wear survives save and load")
 	_check(MHChapterOne.fabricable().has(MHChapterOne.SPARES_KIT) and float(MHChapterOne.plan_cost(MHChapterOne.SPARES_KIT).feedstock_kg) > 0.0, "the fabricator makes spares kits from feedstock")
 
-	# Earth's crew (crew_plan.gd): you land alone; the crew you chose arrive in waves.
+	# Earth's crew (crew_plan.gd): a new game's five wait in orbit (7 Nov);
+	# older saves keep the waves.
 	MHCrewPlan.reset()
-	MHCrewPlan.final_size = 6
 	var plan_sim: RefCounted = _habitat("plains", 6, _full_kit()).simulation()
+	_check(MHCrewPlan.held and MHCrewPlan.final_size == 1 + MHCrewPlan.IN_ORBIT and MHCrewPlan.tick(1.0, plan_sim, true, 100.0).is_empty() and MHCrewPlan.tick(1.0, plan_sim, true, 100000.0).is_empty() and MHCrewPlan.roster.is_empty(),
+		"a new game: the five wait in orbit, nobody is sent")
+	MHCrewPlan.reset()
+	MHCrewPlan.held = false
+	MHCrewPlan.final_size = 6
 	_check(plan_sim.crew_count() == 1 and int(plan_sim.daily_flows(true).crew) == 1, "a new game: just you, with six bunks (%d)" % plan_sim.crew_count())
 	_check(MHCrewPlan.tick(1.0, plan_sim, false, 100.0).is_empty() and MHCrewPlan.roster.is_empty(), "nobody is sent before chapter one ends")
 	var news: Array = MHCrewPlan.tick(1.0, plan_sim, true, 100.0)
@@ -275,8 +280,9 @@ func _initialize() -> void:
 	MHCrewPlan.load_state({})
 	_check(not MHCrewPlan.solo and plan_sim.crew_count() == 6, "an older chapter save keeps its bunk-based crew (%d)" % plan_sim.crew_count())
 	MHCrewPlan.load_state(saved_plan)
-	_check(MHCrewPlan.solo and MHCrewPlan.landed().size() == 2 and str(MHCrewPlan.roster[0].name) == str(saved_plan.roster[0].name), "the roster survives save and load")
+	_check(MHCrewPlan.solo and not MHCrewPlan.held and MHCrewPlan.landed().size() == 2 and str(MHCrewPlan.roster[0].name) == str(saved_plan.roster[0].name), "the roster survives save and load")
 	MHCrewPlan.reset()
+	MHCrewPlan.held = false
 	MHCrewPlan.final_size = 3
 	MHCrewPlan.tick(1.0, plan_sim, true, 0.0)
 	MHCrewPlan.tick(1.0, plan_sim, true, 10000.0)

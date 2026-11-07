@@ -284,6 +284,7 @@ func _readiness_line(s: RefCounted, inv: Dictionary, rows: Array, can: Dictionar
 	var text := "Survival: %s for %s · " % ["OK" if surviving else "AT RISK", "you" if aboard <= 1 else "%d aboard" % aboard]
 	var goal := MHCrewPlan.planned()
 	if MHCrewPlan.solitary(): text += "Solitary: just you · the base could take %d" % most
+	elif MHCrewPlan.held: text += "The other %d wait in orbit · the base could take %d" % [MHCrewPlan.IN_ORBIT, most]
 	elif MHCrewPlan.roster.is_empty(): text += "Earth sends a crew of %d once chapter one is done · the base could take %d" % [MHCrewPlan.final_size, most]
 	elif MHCrewPlan.en_route().is_empty():
 		text += "Crew of %d aboard" % MHCrewPlan.aboard() + (" · full crew" if MHCrewPlan.aboard() >= MHCrewPlan.final_size else " · Earth sends more once they've settled")

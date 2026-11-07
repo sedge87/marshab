@@ -524,7 +524,7 @@ GAR-Y is found early, with its radar survey and the rescue. After that it learns
 
 **ARDEN** (proposed) keeps to practical safety lines: the cabin air, the suit, the hatch. It isn't a story voice.
 
-**Crew size** becomes how many wait in orbit: Small 2, Standard 5, Large 8. That sets how big a base the finale needs. In Solitary the orbiter is uncrewed, and its voice is Earth's relay only.
+**No crew size choice · Decided 7 Nov.** The orbiter always holds the story's five (Castellanos and four others), so the finale asks for a base ready for five more. Solitary and the Small/Standard/Large picker are gone (`MHCrewPlan.IN_ORBIT`, `held`).
 
 **Landing them is the finale:** the game's one ending, the moment the base was built towards. **7 Nov:** they're held in orbit until the buried heart is explained (docs/interference-options.md), go-home is cut, and the game doesn't carry on open-ended after (master-design §7). This replaces Earth's crew waves (docs/survival-systems.md §12.2, commit 3417721). Visible crew at the base can come later as an expansion.
 

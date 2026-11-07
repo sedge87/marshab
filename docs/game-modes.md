@@ -38,7 +38,7 @@ Each mode is a preset of the same rules (`MHGame.MODE_RULES`). Custom lets you c
 - They're one-way in every mode: switch on later, never off.
 - They're offered whenever the simulation runs. In Freedom they now include radiation and injuries, because shortages hurt there too.
 
-**Crew size** is its own choice: Solitary, Small, Standard or Large (docs/survival-systems.md §12.2).
+**Crew size** is no longer a choice (7 Nov): the story's five wait in the orbiter until the ending (docs/systems-and-items.md §10e).
 
 ## 3. Old saves
 
@@ -52,7 +52,7 @@ Each mode is a preset of the same rules (`MHGame.MODE_RULES`). Custom lets you c
   - **Colony** is who you are: the names, emblem, accent, statement and the live plaque.
   - **Rules** is how you play:
     - four mode cards, each with ✓/✗ ticks;
-    - the crew size;
+    - a note on the crew (five wait in orbit);
     - the challenge rows;
     - Custom's full rules;
     - the tutorial choice;

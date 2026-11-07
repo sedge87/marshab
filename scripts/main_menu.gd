@@ -978,20 +978,11 @@ func _rules_screen() -> void:
 	var left := MHStyle.vbox(24)
 	left.custom_minimum_size.x = 560
 	below.add_child(left)
-	# Earth's crew plan (crew_plan.gd): the crew the base grows to, like a map size.
+	# The crew (crew_plan.gd): no choice since 7 Nov; the story's five wait in orbit.
 	if _crates_mode():
 		var crew_box := MHStyle.vbox(8)
-		var crew_head := MHStyle.hbox(12)
-		crew_head.add_child(MHStyle.eyebrow("Crew"))
-		crew_head.add_child(MHStyle.mono("Set for the whole game", 13, MHStyle.TEXT_MUTED))
-		crew_box.add_child(crew_head)
-		var sizes: Array = MHCrewPlan.SIZES.keys().map(func(k): return "%s %d" % [k, int(MHCrewPlan.SIZES[k])])
-		var crew_choice := MHWidgets.Segmented.new().setup(sizes, "%s %d" % [MHCrewPlan.size_label(), MHCrewPlan.final_size], 40)
-		crew_choice.changed.connect(func(label: String) -> void:
-			MHCrewPlan.final_size = int(label.get_slice(" ", 1))
-			show_screen("rules"))
-		crew_box.add_child(crew_choice)
-		var crew_note := MHStyle.body("Just you, GAR-Y and Mission Control's voices. Earth sends nobody." if MHCrewPlan.solitary() else "You land alone. After chapter one, Earth sends crew in waves until there are %d of you. Get bunks, life support and stores ready for each wave." % MHCrewPlan.final_size, 14, MHStyle.TEXT_MUTED)
+		crew_box.add_child(MHStyle.eyebrow("Crew"))
+		var crew_note := MHStyle.body("You land first and alone, to commission the base. The other %d wait in the orbiter until it's safe to bring them down." % MHCrewPlan.IN_ORBIT, 14, MHStyle.TEXT_MUTED)
 		crew_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		crew_box.add_child(crew_note)
 		left.add_child(crew_box)
@@ -1111,10 +1102,9 @@ func _ignore_mouse(control: Control) -> void:
 	control.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for child in control.get_children(): if child is Control: _ignore_mouse(child)
 
-## "Freedom · Standard crew of 6 · Rare surprises · Tutorial: Full".
+## "Freedom · Rare surprises · Tutorial: Full".
 func _rules_summary() -> String:
 	var parts := [str(MHGame.GAME_MODES.get(MHGame.game_mode, ""))]
-	if _crates_mode(): parts.append("Solitary" if MHCrewPlan.solitary() else "%s crew of %d" % [MHCrewPlan.size_label(), MHCrewPlan.final_size])
 	var hard := MHGame.challenge_summary(MHGame.challenge, MHGame.game_mode) if not MHGame.challenge_options().is_empty() else ""
 	if not hard.is_empty(): parts.append(hard)
 	parts.append("Tutorial: %s" % str(TUTORIAL_CHOICES.get(MHGame.tutorial_mode, "Hints")))

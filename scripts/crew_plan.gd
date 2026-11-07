@@ -1,9 +1,13 @@
 class_name MHCrewPlan
 extends RefCounted
 
-## Earth's crew plan (docs/survival-systems.md §12.2, as built 2 Nov): you
-## land alone and pick the crew the base grows to on the Colony step
-## (Solitary 1, Small 3, Standard 6, Large 9). Earth sends them in waves;
+## Earth's crew plan. **7 Nov:** the crew size choice is gone. A new game's
+## crew are always the story's five (IN_ORBIT), held in the orbiter until the
+## buried heart is explained and the way down is safe: they land only in the
+## one ending (docs/master-design.md §7). `held` stops the waves below.
+##
+## Older saves keep the 2 Nov wave plan (docs/survival-systems.md §12.2):
+## you landed alone with a chosen crew size; Earth sent them in waves;
 ## each is announced with its manifest and lands crew_trip_sols later, and the
 ## base needs bunks, every chain and stores for them by then.
 ##
@@ -16,11 +20,12 @@ extends RefCounted
 ## their bunk-based crew. State is static and saved with chapter one.
 const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_CHAINS := preload("res://scripts/habitat_chains.gd")
-const SIZES := {"Solitary": 1, "Small": 3, "Standard": 6, "Large": 9}
+const IN_ORBIT := 5            # the orbiter crew: Castellanos and four others
 const WAVES := [3, 6, 9]
 const ROSTER_PATH := "res://data/crew_roster.json"
 
-static var final_size := 6     # chosen on the new game's Colony step
+static var final_size := 1 + IN_ORBIT  # you plus the orbiter crew (older saves: their chosen size)
+static var held := false        # new games: the crew wait in orbit; no waves (older saves: false)
 static var solo := false        # the sim counts you plus the landed crew (false in older chapter saves)
 static var roster: Array = []   # everyone announced so far
 static var settled_hours := 0.0 # how long the base has carried the crew aboard since the last landing
@@ -29,27 +34,25 @@ static var _pool: Dictionary = {}
 
 static func reset() -> void:
 	solo = true
+	held = true
+	final_size = 1 + IN_ORBIT
 	roster = []
 	settled_hours = 0.0
 	_check = 0.0
 
 static func export_state() -> Dictionary:
-	return {"final_size": final_size, "solo": solo, "roster": roster.duplicate(true), "settled_hours": settled_hours}
+	return {"final_size": final_size, "solo": solo, "held": held, "roster": roster.duplicate(true), "settled_hours": settled_hours}
 
 static func load_state(state: Dictionary) -> void:
 	final_size = int(state.get("final_size", 6))
 	solo = bool(state.get("solo", false))
+	held = bool(state.get("held", false))
 	roster = (state.get("roster", []) as Array).duplicate(true)
 	settled_hours = float(state.get("settled_hours", 0.0))
 	_check = 0.0
 
 static func solitary() -> bool:
 	return final_size <= 1
-
-static func size_label(size: int = final_size) -> String:
-	for label in SIZES:
-		if int(SIZES[label]) == size: return label
-	return "Standard"
 
 static func landed() -> Array:
 	return roster.filter(func(p): return bool(p.landed))
@@ -110,7 +113,7 @@ static func checklist(sim: RefCounted) -> Dictionary:
 ## Chapter one's clock (chapter_one.gd tick): announcements and landings, checked once a game hour.
 static func tick(hours: float, sim: RefCounted, chapter_done: bool, now: float) -> Array:
 	var out: Array = []
-	if not solo or solitary() or not chapter_done: return out
+	if not solo or solitary() or held or not chapter_done: return out
 	_check += hours
 	if _check < 1.0 and not roster.is_empty(): return out
 	var step := _check

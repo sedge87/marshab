@@ -188,7 +188,7 @@ The story is several separate threads, each started by something you do or by a 
 - the room and corridor drawing tools and windows, which become the Plan view;
 - the Mission Control cast;
 - samples, the lab, Discoveries and the journal;
-- Crew size (now how many wait in the orbiter; the mid-game crew waves are replaced by the welcome ending, see docs/systems-and-items.md §10e);
+- the crew plan (no size choice since 7 Nov: the story's five wait in the orbiter until the ending; older saves keep their waves);
 - the terrain, caves, rover and descent cutscene;
 - the mode rules table (`MHGame.MODE_RULES`).
 
