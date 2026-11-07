@@ -825,7 +825,7 @@ One Survival run should let you try every pillar:
        - every blackout ends with the hatch shut and sealed;
        - the wake-up scene (dark sounds, blurred eyes, sitting up);
        - GAR-Y introducing itself at the hatch if it found you first.
-     - **3b, the lifepod days (sols 2 to about 4) · Decided 7 Nov.** Building waits (master-design §10). You live out of the lander and get to know the land round it.
+     - **3b, the lifepod days (sols 2 to about 4) · Decided 7 Nov · built 7 Nov.** Building waits (master-design §10). You live out of the lander and get to know the land round it.
        - **The pull at dawn on sol 2:** the cabin's water dial is low (the lander's tank, §1.4), and a Notes thread points at what you saw yesterday.
        - **Threads you can't use yet:** each place joins Notes as an open thought, and the General Module's plans answer them later.
          - iron: haematite at Blueberry flats, or a nearer outcrop, "Iron. Nothing to cut it with yet.";
@@ -838,6 +838,16 @@ One Survival run should let you try every pillar:
          - **First discoveries:** samples in the case, looked at on a small bench in the lander, become Journal pages. This comes forward from step 7.
          - **The near ring and GAR-Y:** more small finds round the landing, and GAR-Y learning its jobs (the sled, surveys).
        - **The gate:** once you've done most of these, whatever the sol, the walker shifts in the night. Its fresh tracks cross the near ring by morning (a world that changes, §10f). The lander's water running out at sol 3–5 stops anyone stalling.
+       - **Built 7 Nov** (scripts/lifepod.gd, thread_site.gd, carried_find.gd, salvage_piece.gd, lifepod_bench.gd, lifepod_station.gd, slate_camera.gd; tests/lifepod_test.gd):
+         - **water:** the lander's tank holds 7.5 L and you drink 3 L a sol; Notes says it's low at the dawn of sol 2; dry for 12 hours, thirst hurts; the cabin's dispenser reads the tank;
+         - **threads:** an iron outcrop (1.0–1.4 km, rough ground) and an ice wall (1.0–1.5 km, low ground) placed like the pallets, and a frost patch by pallet 4; within 35 m they join Notes and the Map;
+         - **chipping:** hold E with the rock hammer: ice chunks (8 kg, 12 with the pick head) and rock samples, carried (E, Q puts down) and slowing you;
+         - **the lifepod bench** on the cabin's right wall (it replaces a crate): the melter (0.9 L a kg), the hand-lens bench (a sample becomes a Journal page and sits on the shelf) and the tiny printer;
+         - **salvage:** every piece of storm debris strips once for 2 parts; the printer makes the sled hitch (3), the ice pick head (2) and a water bladder (2, +6 L kept);
+         - **GAR-Y's sled:** with the hitch, ice you chip near GAR-Y goes on its sled (48 kg), melted all at once by the lander;
+         - **the gate:** three of the four jobs (water, print, sample, tow) and the walker moves at the next 03:00 ("night_sound" in Notes); 3c builds the tracks on `walker_moved`;
+         - **the slate camera and your own journal:** a Camera app with a live viewfinder (the mouse still looks, E or a click takes it); photos go in the journal in colour, taped in, with a caption you can change and what was in frame (`MHJournal.photographed(id)`, for the walker's tracks in 3c); each page has a "Write a note…" box for your own words.
+         - **Not built yet:** the Overhang cave thread, the Boulder field as a place, regolith in the printer's recipes (step 4).
      - **3c, the first room · Decided 7 Nov.**
        - **The find:** the walker is found by you and the crew together, never handed to you, and never by GAR-Y waking it (the user: "too cheap").
          1. Six-legged tracks and a dropped leg panel in the near ring, the evidence trail (Firewatch's beer cans).
