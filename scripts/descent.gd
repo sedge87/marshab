@@ -21,6 +21,7 @@ extends Node3D
 signal finished(touchdown: Vector2)
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
+const MHPalette := preload("res://scripts/mh_palette.gd")
 const TRAVERSABILITY := preload("res://scripts/traversability.gd")
 const OVAL := Vector2(400.0, 250.0)       # the landing oval's half axes (region_landing_picker.gd)
 const LANDER_SCENE := "res://assets/vehicles/landers_v2/Crew_Lander.glb"
@@ -66,6 +67,10 @@ var _arden: Label
 var _hint: Label
 var _glow: ColorRect
 var _fade: ColorRect
+var _chute: Node3D                        # the parachute Rao spots, on the ground below
+var _chute_tag: Label
+var _chute_t := 0.0
+const CHUTE := preload("res://assets/models/storm_cargo/parachute.glb")
 
 ## camera and environment are the main menu's; at is the oval's centre (region metres).
 func setup(menu_camera: Camera3D, menu_environment: Node, at: Vector2) -> void:
@@ -89,6 +94,7 @@ func _ready() -> void:
 	_hazards = _make_hazards()
 	add_child(_hazards)
 	_hazards.visible = false
+	MHGame.spotted_chute = Vector3.INF
 	_load_radio()
 	_build_hud()
 	camera.fov = 60.0
@@ -180,6 +186,7 @@ func _radio() -> void:
 	if str(beat.phase) != phase or _t < float(beat.at): return
 	if str(beat.id) == "descent_fuel" and fuel > .35 and _t < 34.0: return   # only when it's true
 	_beats.pop_front()
+	if str(beat.id) == "descent_spotted": _spot_parachute()
 	_speak(beat)
 
 func _call(event: String, cut_in := false) -> void:
@@ -188,6 +195,40 @@ func _call(event: String, cut_in := false) -> void:
 func _speak(line: Dictionary, cut_in := false) -> void:
 	var person: Dictionary = _crew.get(str(line.speaker), {})
 	MHAudio.orbiter_line(str(line.id), str(person.get("short", line.speaker)), str(line.get("caption", line.text)), "Orbiter", cut_in)
+
+## Rao's parachute: the highest walkable ground 300–480 m from the landing
+## point, on the side the camera looks towards, so you see it come in. It
+## lies there in the game too (scripts/storm_drop.gd), and the lander faces it.
+func _spot_parachute() -> void:
+	var spot := pick_chute(marker)
+	if is_inf(spot.x): return
+	MHGame.spotted_chute = Vector3(spot.x + centre.x, 0.0, spot.z + centre.y)
+	_chute = CHUTE.instantiate()
+	add_child(_chute)
+	MHPalette.apply(_chute)
+	_chute.scale = Vector3.ONE * 1.5
+	_chute.global_position = spot + Vector3(0, .3, 0)
+	_chute.rotation.y = atan2(spot.x - marker.x, spot.z - marker.y)
+	_chute_t = 14.0
+
+## Where the chute lies for a landing point (both in the descent's site metres).
+static func pick_chute(from: Vector2) -> Vector3:
+	var best := -INF
+	var spot := Vector3.INF
+	for distance in range(300, 481, 30):
+		for step in range(-6, 7):
+			var dir := Vector2(0, -1).rotated(deg_to_rad(step * 8.0))
+			var at := from + dir * float(distance)
+			var h: float = MHSiteTerrain.height(at.x, at.y)
+			var slope := 0.0
+			for d in [Vector2(6, 0), Vector2(-6, 0), Vector2(0, 6), Vector2(0, -6)]:
+				slope = maxf(slope, absf(MHSiteTerrain.height(at.x + d.x, at.y + d.y) - h))
+			if slope > 2.5: continue
+			var score := h - absf(float(step)) * .3 - absf(distance - 400.0) * .01
+			if score > best:
+				best = score
+				spot = Vector3(at.x, h, at.y)
+	return spot
 
 func _lock() -> void:
 	var region := marker + centre
@@ -353,6 +394,11 @@ func _build_hud() -> void:
 	_hint.offset_left = 40
 	_hint.offset_top = -50
 	root.add_child(_hint)
+	_chute_tag = MHStyle.mono("PARACHUTE  ▾", 13, MHStyle.accent)
+	_chute_tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, .85))
+	_chute_tag.add_theme_constant_override("outline_size", 5)
+	_chute_tag.visible = false
+	root.add_child(_chute_tag)
 	_fade = ColorRect.new()
 	_fade.color = Color(0, 0, 0, 0)
 	_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -360,12 +406,24 @@ func _build_hud() -> void:
 	root.add_child(_fade)
 
 func _update_hud() -> void:
+	_update_chute_tag()
 	_alt_label.text = "ALT %4d m" % roundi(altitude)
 	_fuel_bar.value = fuel
 	if phase == "powered" and not _valid: _hint.text = "Landing point: %s    SPACE  confirm    HOLD ESC  skip" % _reason
 	elif phase == "powered": _hint.text = "WASD  move the landing point    SPACE  confirm    HOLD ESC  skip"
 	elif phase != "entry": _hint.text = ""
 	_hint.add_theme_color_override("font_color", MHStyle.DANGER if phase == "powered" and not _valid else MHStyle.TEXT_SECONDARY)
+
+## A small tag on Rao's parachute for a while after he spots it.
+func _update_chute_tag() -> void:
+	if _chute == null or _chute_tag == null: return
+	_chute_t -= get_process_delta_time()
+	var at := _chute.global_position + Vector3(0, 8, 0)
+	var shown := _chute_t > 0.0 and not camera.is_position_behind(at)
+	_chute_tag.visible = shown
+	if shown:
+		_chute_tag.position = camera.unproject_position(at) - Vector2(_chute_tag.size.x * .5, 36)
+		_chute_tag.modulate.a = clampf(_chute_t / 2.0, 0.0, 1.0)
 
 func _say(line: String) -> void:
 	_arden.text = "ARDEN: " + line

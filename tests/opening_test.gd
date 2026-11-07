@@ -25,6 +25,7 @@ func _initialize() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_check(world.lander.cabin_contains(world.player.global_position), "you start in the lander cabin")
 	_check(str(world._intro_stage) == "inside" and not world.pda.received, "the slate isn't in your hands yet")
+	_check(world.earth_link == null and get_first_node_in_group("mission_control_link") == null, "no Mission Control: the link with Earth is lost at touchdown")
 	_check(world.get("tutorial") == null and world.cargo_landers.is_empty(), "no checklist and no old crates")
 	_check(world.orbiter_texts.has("parachute_photo"), "the orbiter's photo text is already waiting")
 	# ARDEN's line about the link, a second or so in.
@@ -49,5 +50,5 @@ func _initialize() -> void:
 	_check(notes.is_open("air") and notes.is_open("sunset") and notes.is_open("parachute"), "Notes holds the first thoughts: the air, the sunset, the parachute")
 	_check(not notes.is_open("power"), "the night worry waits for the afternoon")
 	if failures == 0:
-		print("Opening test passed: the cabin, ARDEN's lost-lock line, the orbiter's photo text waiting, the slate handed over on Comms with the photo, the first thoughts, and nothing from the old opening.")
+		print("Opening test passed: the cabin, ARDEN's lost-lock line, the orbiter's photo text waiting, the slate handed over on Comms with the photo, the first thoughts, no Mission Control, and nothing from the old opening.")
 	quit(1 if failures > 0 else 0)

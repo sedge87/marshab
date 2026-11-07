@@ -304,6 +304,9 @@ static var showcase := false
 ## Where the player chose to land (site x, z in metres), set on the menu's
 ## Land step; INF means "let the game pick" (quick start, loaded games).
 static var landing_target := Vector2.INF
+## Where Rao spotted the first parachute during the descent (region metres;
+## y is unused). A new game's storm drop lies there, and the lander faces it.
+static var spotted_chute := Vector3.INF
 ## Where this colony's main base was founded, on a region site: a zone in
 ## region.json's shape with "dynamic" set (MHBaseSite.make); empty for a
 ## named zone's site and the old single-site maps. Saved.

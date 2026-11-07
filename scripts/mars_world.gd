@@ -169,10 +169,14 @@ func _ready() -> void:
 	alerts = ALERTS_SCRIPT.new()
 	add_child(alerts)
 	alerts.setup(self)
-	earth_link = MISSION_CONTROL_LINK.new()
-	add_child(earth_link)
-	earth_link.setup(self)
-	earth_link.restore_state(_earth_link_state)
+	# The revamp: Earth's link is lost at touchdown (the high-gain lost lock),
+	# so Mission Control stays silent; the CAPCOMs come back as letters after
+	# the comms repair (systems-and-items §10e+).
+	if not MHChapterOne.new_rules():
+		earth_link = MISSION_CONTROL_LINK.new()
+		add_child(earth_link)
+		earth_link.setup(self)
+		earth_link.restore_state(_earth_link_state)
 	sleep = SLEEP.new()
 	add_child(sleep)
 	sleep.setup(self)
@@ -472,6 +476,11 @@ func _land_lander() -> void:
 		_landing_miss = landed.distance_to(MHGame.landing_target)
 		lander.place_at(landed)
 	MHGame.landing_target = Vector2.INF
+	# A new game whose descent spotted the first parachute: the hatch faces it.
+	if saved.is_empty() and not is_inf(MHGame.spotted_chute.x):
+		var origin := Vector2(float(MHGame.base_site.get("centre", [0, 0])[0]), float(MHGame.base_site.get("centre", [0, 0])[1]))
+		var chute := Vector2(MHGame.spotted_chute.x, MHGame.spotted_chute.z) - origin
+		lander.place_at(Vector2(lander.global_position.x, lander.global_position.z), chute)
 
 ## How much danger you're in, 0 to 1, for the score (MHAudio.danger): only
 ## out on the ground in the suit. Low oxygen, past the turn-back point, a
@@ -924,7 +933,7 @@ func current_state() -> Dictionary:
 		"samples": MHSamples.export_state(),
 		"journal": MHJournal.export_state(),
 		"resupply": {"kg": MHGame.resupply_kg, "count": MHGame.resupply_count, "landers": resupply_landers.duplicate(true)},
-		"mission_control": earth_link.export_state() if earth_link != null else {},
+		"mission_control": earth_link.export_state() if earth_link != null else _earth_link_state,
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
 		"crew_rover": crew_rover.export_state() if crew_rover != null else {},
 		"suit": suit.export_state() if suit != null else {},

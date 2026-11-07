@@ -43,6 +43,12 @@ func _initialize() -> void:
 	var view: Vector3 = drop.local_to_world(Vector3(-6, 0, 32))
 	_stand(view + Vector3(0, 22.0, 0), drop.ridge, -32.0)
 	await _shot("3_canopy")
+	# The backshell, from the side and from near the ground.
+	var shell: Node3D = drop.get_node("Backshell")
+	for spec in [[Vector3(7, 0, 3), 1.6, "3b_backshell"], [Vector3(-5, 0, -6), .6, "3c_backshell_low"]]:
+		var at: Vector3 = shell.global_position + spec[0]
+		_stand(Vector3(at.x, MHSiteTerrain.height(at.x, at.z) + spec[1], at.z), shell.global_position + Vector3(0, .8, 0), -6.0)
+		await _shot(spec[2])
 	# The pallet, close, then open.
 	var close: Vector3 = pallet.global_position + pallet.global_transform.basis.z * 3.0 + pallet.global_transform.basis.x * 1.2
 	_stand(Vector3(close.x, MHSiteTerrain.height(close.x, close.z) + 1.0, close.z), pallet.global_position, -25.0)

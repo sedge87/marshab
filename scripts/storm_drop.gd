@@ -68,9 +68,17 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 		var at: Array = saved.ridge
 		ridge = Vector3(float(at[0]), float(at[1]), float(at[2]))
 		yaw = float(saved.get("yaw", 0.0))
+	elif not is_inf(MHGame.spotted_chute.x):
+		# Where Rao spotted it on the way down (scripts/descent.gd).
+		var origin: Vector2 = region_at(Vector3.ZERO)
+		var at := Vector2(MHGame.spotted_chute.x, MHGame.spotted_chute.z) - origin
+		ridge = Vector3(at.x, MHSiteTerrain.height(at.x, at.y), at.y)
+		var back: Vector3 = world.lander.global_position - ridge
+		yaw = atan2(back.x, back.z)
 	else:
 		_choose_ridge()
 	_build()
+	MHGame.spotted_chute = Vector3.INF
 	if not saved.has("ridge"): _first_thoughts()
 	# Once the ground round the ridge has drawn in.
 	get_tree().create_timer(1.5).timeout.connect(take_photo)
@@ -155,8 +163,15 @@ func _build() -> void:
 	var shell: Node3D = BACKSHELL.instantiate()
 	shell.name = "Backshell"
 	add_child(shell)
-	shell.global_position = local_to_world(BACKSHELL_LOCAL)
-	shell.rotation.y = yaw + .5
+	# Lying on its side, it settles into the ground along its rim instead of
+	# balancing on one point: tilted to the slope and sunk into the dust.
+	var shell_at := local_to_world(BACKSHELL_LOCAL)
+	var lowest := INF
+	for i in 8:
+		var p := shell_at + Vector3(2.0, 0, 0).rotated(Vector3.UP, i * TAU / 8.0)
+		lowest = minf(lowest, MHSiteTerrain.height(p.x, p.z))
+	shell.global_basis = _on_ground(shell_at, yaw + .5)
+	shell.global_position = Vector3(shell_at.x, minf(shell_at.y, lowest) - .35, shell_at.z)
 	MHPalette.apply(shell)
 	_collider(shell, Vector3(3.0, 2.0, 3.0), Vector3(0, .8, 0))
 	# The debris trail, from near the lander towards the backshell.
