@@ -95,6 +95,9 @@ func surroundings() -> Dictionary:
 	if not MHGame.simulation_on() or world.player == null: return {}
 	var cabin: Node = world.get("cabin_life")
 	if cabin != null and cabin.running() and cabin.player_inside() and cabin.breathable(): return cabin.conditions()
+	# The General Module (3c): its own life support (scripts/module_life.gd).
+	var module: Node = world.get("module_life")
+	if module != null and module.running() and module.player_inside(): return module.conditions()
 	var builder: Node = world.builder
 	if builder != null and not builder.build_mode and builder.is_inside(world.player.global_position):
 		var sim: RefCounted = builder.simulation()

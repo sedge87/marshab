@@ -59,20 +59,35 @@ var pack_kwh := 0.0              # and its battery, added to the cabin's
 var water_cap := 7.5             # the lander's water tank (L); a printed bladder adds to it
 var water_l := 7.5
 var dry_hours := 0.0             # hours with nothing to drink
+## Which room this core runs (3c): "cabin" (the lander) or "module" (the
+## General Module). The module reads its own numbers (module_*, falling back
+## to the cabin's), and doesn't drink: the water is the lander's one tank.
+var prefix := "cabin"
+var room_name := "Cabin"
+var drinks := true
 
-func _init() -> void:
-	battery_cap = n("cabin_battery_kwh", 6.0)
+func _init(room := "cabin") -> void:
+	prefix = room
+	room_name = "Module" if room == "module" else "Cabin"
+	drinks = room == "cabin"
+	battery_cap = m("cabin_battery_kwh", 6.0)
 	battery_kwh = battery_cap
-	tank_cap = n("cabin_o2_tank_kg", 3.0)
+	tank_cap = m("cabin_o2_tank_kg", 3.0)
 	tank_o2_kg = tank_cap
 	water_cap = maxf(n("cabin_water_l", 7.5), 12.0)
 	water_l = n("cabin_water_l", 7.5)
-	air_kg = n("cabin_air_m3", 15.0) * AIR_DENSITY
+	air_kg = m("cabin_air_m3", 15.0) * AIR_DENSITY
 	o2_kg = air_kg * .209 / O2_VOL
 	co2_kg = air_kg * .0004 / CO2_VOL
 
 static func n(key: String, fallback: float) -> float:
 	return MHResources.revamp(key, fallback)
+
+## A number for this room: module_x for the module, else cabin_x.
+func m(key: String, fallback: float) -> float:
+	if prefix != "cabin" and key.begins_with("cabin_"):
+		return n(prefix + key.trim_prefix("cabin"), n(key, fallback))
+	return n(key, fallback)
 
 # ---------- readings ----------
 
@@ -90,8 +105,8 @@ func battery_pct() -> float:
 
 func heater_target() -> float:
 	match heater_mode:
-		"warm": return n("cabin_warm_c", 20.0)
-		"low": return n("cabin_low_c", 10.0)
+		"warm": return m("cabin_warm_c", 20.0)
+		"low": return m("cabin_low_c", 10.0)
 	return -INF
 
 ## What the body feels in here.
@@ -114,25 +129,26 @@ func advance(hours: float, start_hour: float) -> void:
 ## One sub-step: `outside` °C, `sun` 0–1 of noon sunlight.
 func step(dt: float, outside: float, sun: float) -> void:
 	# You drink wherever you are.
-	water_l = maxf(0.0, water_l - n("water_per_sol_l", 3.0) / 24.0 * dt)
-	dry_hours = dry_hours + dt if water_l <= 0.0 else 0.0
+	if drinks:
+		water_l = maxf(0.0, water_l - n("water_per_sol_l", 3.0) / 24.0 * dt)
+		dry_hours = dry_hours + dt if water_l <= 0.0 else 0.0
 	var on := powered()
 	var draw := 0.0
 	if on:
-		draw += n("cabin_avionics_kw", .1)
-		if lights_on: draw += n("cabin_lights_kw", .15)
-		if scrubber_on: draw += n("cabin_scrubber_kw", .25)
+		draw += m("cabin_avionics_kw", .1)
+		if lights_on: draw += m("cabin_lights_kw", .15)
+		if scrubber_on: draw += m("cabin_scrubber_kw", .25)
 	var body := people * n("body_heat_kw", .1)
-	var loss := n("cabin_ua_kw_per_c", .012) * (temp_c - outside)
-	var heat_cap := n("cabin_heat_kwh_per_c", .2)
+	var loss := m("cabin_ua_kw_per_c", .012) * (temp_c - outside)
+	var heat_cap := m("cabin_heat_kwh_per_c", .2)
 	# The heater makes up the loss, and closes the gap to its setting over
 	# about half an hour.
 	var heater := 0.0
 	if on and heater_mode != "off":
 		var want := loss - draw - body + (heater_target() - temp_c) * heat_cap / .5
-		heater = clampf(want, 0.0, n("cabin_heater_kw", 1.5))
+		heater = clampf(want, 0.0, m("cabin_heater_kw", 1.5))
 	draw += heater
-	var solar := (n("cabin_solar_kw", 1.5) + pack_kw) * sun
+	var solar := (m("cabin_solar_kw", 1.5) + pack_kw) * sun
 	battery_kwh = clampf(battery_kwh + (solar - draw) * dt, 0.0, battery_cap)
 	temp_c += (draw + body - loss) * dt / heat_cap
 	# Air (none while the cabin is open to Mars: the suit breathes for you).
@@ -142,7 +158,7 @@ func step(dt: float, outside: float, sun: float) -> void:
 	o2_kg = maxf(0.0, o2_kg - people * MHResources.setting("o2_per_person", .84) / 24.0 * dt)
 	co2_kg += people * MHResources.setting("co2_per_person", 1.0) / 24.0 * dt
 	if on and scrubber_on:
-		co2_kg = maxf(air_kg * .0004 / CO2_VOL, co2_kg - n("cabin_scrub_kg_per_h", .1) * dt)
+		co2_kg = maxf(air_kg * .0004 / CO2_VOL, co2_kg - m("cabin_scrub_kg_per_h", .1) * dt)
 	var short := air_kg * .209 / O2_VOL - o2_kg
 	if short > 0.0 and tank_o2_kg > 0.0:
 		var feed := minf(minf(short, .3 * dt), tank_o2_kg)
@@ -160,7 +176,7 @@ static func outside_at(hour: float) -> float:
 func vent() -> void:
 	if vented: return
 	vented = true
-	temp_c -= n("cabin_vent_heat_c", 4.0)
+	temp_c -= m("cabin_vent_heat_c", 4.0)
 
 ## The hatch is shut and latched: the regulator refills the cabin from the
 ## tank (a small cost each time). A tank too low refills it only partly.
@@ -168,7 +184,7 @@ func vent() -> void:
 func repressurise() -> float:
 	if not vented: return 0.0
 	vented = false
-	var need := n("cabin_repress_o2_kg", .03)
+	var need := m("cabin_repress_o2_kg", .03)
 	var got := take_oxygen(need)
 	o2_kg = air_kg * .209 / O2_VOL * (got / need if need > 0.0 else 1.0)
 	co2_kg = air_kg * .0004 / CO2_VOL
@@ -181,6 +197,17 @@ func add_power_pack(kw: float, kwh: float, charge := .5) -> void:
 	pack_kwh += kwh
 	battery_cap += kwh
 	battery_kwh = minf(battery_cap, battery_kwh + kwh * charge)
+
+## The blanket and its battery taken away (3c: carried to the module). The
+## battery takes its share of the charge with it; returns that share (0-1).
+func remove_power_pack(kw: float, kwh: float) -> float:
+	if pack_kwh < kwh - .001: return 0.0
+	var share := battery_kwh / maxf(.001, battery_cap)
+	pack_kw = maxf(0.0, pack_kw - kw)
+	pack_kwh = maxf(0.0, pack_kwh - kwh)
+	battery_cap -= kwh
+	battery_kwh = minf(battery_cap, battery_kwh - kwh * share)
+	return share
 
 ## Melted ice (or anything drinkable) into the tank; returns what fitted.
 func add_water(litres: float) -> float:
@@ -215,7 +242,7 @@ func take_energy(kwh: float) -> float:
 ## note when each store crosses its warning line: game hours from now, or -1
 ## if it doesn't. {power, air, cold, oxygen}
 func runway(start_hour: float, horizon := 24.0) -> Dictionary:
-	var copy = get_script().new()
+	var copy = get_script().new(prefix)
 	copy.load_state(export_state())
 	var out := {"power": -1.0, "air": -1.0, "cold": -1.0, "oxygen": -1.0}
 	var hour := start_hour
@@ -238,34 +265,35 @@ func alerts(ahead: Dictionary = {}) -> Array:
 	var out: Array = []
 	var co2 := co2_pct()
 	if co2 >= CO2_LIMITS[0]:
-		out.append({"id": "cabin_co2", "level": "critical" if co2 >= CO2_LIMITS[1] else "warning", "title": "Cabin air going stale",
+		out.append({"id": prefix + "_co2", "level": "critical" if co2 >= CO2_LIMITS[1] else "warning", "title": room_name + " air going stale",
 			"text": "CO₂ at %.1f%%. The scrubber needs power and switching on." % co2,
 			"chain": [["wind", "Scrubber " + ("on" if scrubber_on and powered() else "off"), scrubber_on and powered()], ["heart-pulse", "You", false]]})
 	var o2 := o2_pct()
 	if o2 < O2_LIMITS[0]:
-		out.append({"id": "cabin_o2", "level": "critical" if o2 < O2_LIMITS[1] else "warning", "title": "Cabin oxygen low",
+		out.append({"id": prefix + "_o2", "level": "critical" if o2 < O2_LIMITS[1] else "warning", "title": room_name + " oxygen low",
 			"text": "O₂ at %.1f%%." % o2, "chain": [["wind", "Tank %.1f kg" % tank_o2_kg, tank_o2_kg > 0.0], ["heart-pulse", "You", false]]})
 	if tank_o2_kg <= 0.0:
-		out.append({"id": "cabin_tank", "level": "critical", "title": "Cabin oxygen tank empty",
+		out.append({"id": prefix + "_tank", "level": "critical", "title": room_name + " oxygen tank empty",
 			"text": "Nothing left to top the cabin air up.", "chain": [["wind", "Tank empty", false]]})
 	elif tank_o2_kg < .5 * MHResources.setting("o2_per_person", .84):
-		out.append({"id": "cabin_tank", "level": "warning", "title": "Cabin oxygen tank low",
+		out.append({"id": prefix + "_tank", "level": "warning", "title": room_name + " oxygen tank low",
 			"text": "%.1f kg left: under half a sol." % tank_o2_kg, "chain": [["wind", "Tank %.1f kg" % tank_o2_kg, false]]})
 	if temp_c < COLD_LIMITS[0]:
-		out.append({"id": "cabin_cold", "level": "critical" if temp_c < COLD_LIMITS[1] else "warning", "title": "Cabin cold",
+		out.append({"id": prefix + "_cold", "level": "critical" if temp_c < COLD_LIMITS[1] else "warning", "title": room_name + " cold",
 			"text": "%d °C inside. The heater is %s%s." % [roundi(temp_c), heater_mode, "" if powered() else ", with no power"],
 			"chain": [["flame", "Heater " + heater_mode, heater_mode != "off" and powered()], ["thermometer", "%d °C" % roundi(temp_c), false]]})
-	if water_l <= 0.0:
+	if not drinks: pass
+	elif water_l <= 0.0:
 		out.append({"id": "cabin_water", "level": "critical", "title": "No water left",
 			"text": "The lander's tank is dry. Ice melts into it.", "chain": [["droplet", "Tank empty", false]]})
 	elif water_sols() < 1.0:
 		out.append({"id": "cabin_water", "level": "warning", "title": "Water low",
 			"text": "%.1f L left: under a sol." % water_l, "chain": [["droplet", "Tank %.1f L" % water_l, false]]})
 	if not powered():
-		out.append({"id": "cabin_power", "level": "warning", "title": "Cabin battery flat",
+		out.append({"id": prefix + "_power", "level": "warning", "title": room_name + " battery flat",
 			"text": "Lights, scrubber and heater are off until the sun charges it.", "chain": [["zap", "Battery 0%", false], ["sun", "Waiting for the sun", true]]})
 	elif float(ahead.get("power", -1.0)) >= 0.0 and float(ahead.power) <= 4.0:
-		out.append({"id": "cabin_power", "level": "advisory", "title": "Cabin battery runs out at %s" % _clock_after(float(ahead.power)),
+		out.append({"id": prefix + "_power", "level": "advisory", "title": room_name + " battery runs out at %s" % _clock_after(float(ahead.power)),
 			"text": "At this rate. The heater is the biggest load.", "chain": [["zap", "Battery %d%%" % roundi(battery_pct()), false], ["flame", "Heater " + heater_mode, true]]})
 	return out
 
@@ -284,7 +312,7 @@ func load_state(state: Dictionary) -> void:
 	if state.is_empty(): return
 	pack_kw = float(state.get("pack_kw", 0.0))
 	pack_kwh = float(state.get("pack_kwh", 0.0))
-	battery_cap = n("cabin_battery_kwh", 6.0) + pack_kwh
+	battery_cap = m("cabin_battery_kwh", 6.0) + pack_kwh
 	battery_kwh = clampf(float(state.get("battery_kwh", battery_kwh)), 0.0, battery_cap)
 	tank_cap = maxf(tank_cap, float(state.get("tank_cap", tank_cap)))   # a cartridge plugged in adds to it
 	tank_o2_kg = clampf(float(state.get("tank_o2_kg", tank_o2_kg)), 0.0, tank_cap)

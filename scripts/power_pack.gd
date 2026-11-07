@@ -24,6 +24,12 @@ const BLANKET_AT := Vector3(8.4, 0, 1.0)
 var site: Node
 var world: Node
 var where := "pallet"
+## Where it's laid (3c): "lander", or "module" (the General Module's socket,
+## scripts/module_life.gd). Rolled up again, it carries its battery's charge.
+var laid_at := "lander"
+var _charge := .5
+var _laid_parts: Array = []
+var _ever_laid := false
 var _roll: Node3D
 var _shape: CollisionShape3D
 
@@ -48,6 +54,7 @@ func setup(target_site: Node, start: String) -> void:
 			global_basis = site.pallet.global_basis
 			reachable(site.pallet.opened)
 		"laid":
+			_ever_laid = true
 			_lay_out.call_deferred(false)
 
 func reachable(on: bool) -> void:
@@ -106,20 +113,58 @@ func near_lander() -> bool:
 	var at := global_position if where != "carried" else (world.player as Node3D).global_position
 	return lander != null and Vector2(at.x - lander.global_position.x, at.z - lander.global_position.z).length() < LAY_REACH and not lander.cabin_contains(at)
 
+## The General Module's life support, once it's down (3c), or null.
+func _module() -> Node:
+	var module: Node = world.get("module_life")
+	return module if module != null and module.running() else null
+
+func near_module() -> bool:
+	var module := _module()
+	var at := global_position if where != "carried" else (world.player as Node3D).global_position
+	return module != null and module.near_socket(at)
+
 func interaction_prompt() -> Dictionary:
 	match where:
-		"laid": return {"label": "Solar blanket · laid out"}
+		"laid":
+			var powering := "the module" if laid_at == "module" else "the lander"
+			if _module() == null: return {"label": "Solar blanket · laid out"}
+			return {"label": "Solar blanket · powering " + powering, "primary": "Roll it up"}
 		"ground":
+			if near_module(): return {"label": "Power pack · %d kg" % roundi(kg()), "primary": "Lay out the solar blanket by the module"}
 			if near_lander(): return {"label": "Power pack · %d kg" % roundi(kg()), "primary": "Lay out the solar blanket"}
 	return {"label": "Power pack · %d kg" % roundi(kg()), "primary": "Pick up"}
 
 func interact(_player: Node = null) -> bool:
-	if where == "carried" or where == "laid": return false
+	if where == "carried": return false
+	if where == "laid":
+		if _module() == null: return false
+		roll_up()
+		return true
+	if where == "ground" and near_module():
+		lay_out("module")
+		return true
 	if where == "ground" and near_lander():
-		lay_out()
+		lay_out("lander")
 		return true
 	pick_up()
 	return true
+
+## Unplugged and rolled up again, ready to carry (3c: to the module, or back).
+func roll_up() -> void:
+	if where != "laid": return
+	if laid_at == "module":
+		var module := _module()
+		if module != null: _charge = module.blanket(false)
+	else:
+		var cabin: Node = world.get("cabin_life")
+		if cabin != null: _charge = cabin.core.remove_power_pack(MHResources.revamp("power_pack_kw", 1.5), MHResources.revamp("power_pack_kwh", 10.0))
+	for part in _laid_parts:
+		if is_instance_valid(part): part.queue_free()
+	_laid_parts = []
+	_roll.visible = true
+	where = "ground"
+	MHAudio.sfx("place", -6.0)
+	pick_up()
 
 func pick_up() -> void:
 	var camera := world.player.get_node_or_null("Head/Camera3D") as Camera3D
@@ -162,16 +207,25 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # ---------- laying it out ----------
 
-## The blanket unrolls beside the lander and the cabin gets its power.
-func lay_out() -> void:
+## The blanket unrolls beside the lander (or the module's socket) and that
+## room gets its power.
+func lay_out(target := "lander") -> void:
 	if where == "laid": return
 	where = "laid"
-	var cabin: Node = world.get("cabin_life")
-	if cabin != null: cabin.core.add_power_pack(MHResources.revamp("power_pack_kw", 1.5), MHResources.revamp("power_pack_kwh", 10.0))
+	laid_at = target
+	if target == "module":
+		var module := _module()
+		if module != null: module.blanket(true, _charge)
+		MHNotices.post("valid", "Solar blanket at the module", "The module has the blanket's sunlight and battery now: enough for a heated night.", "log")
+	else:
+		var cabin: Node = world.get("cabin_life")
+		if cabin != null: cabin.core.add_power_pack(MHResources.revamp("power_pack_kw", 1.5), MHResources.revamp("power_pack_kwh", 10.0), _charge)
 	_lay_out(true)
 	MHAudio.sfx("place", -4.0)
-	MHAudio.moment()
-	site.power_laid()
+	if target == "lander" and not _ever_laid:
+		MHAudio.moment()
+		site.power_laid()
+	_ever_laid = true
 
 func _lay_out(animate: bool) -> void:
 	var lander: Node3D = world.lander
@@ -179,12 +233,24 @@ func _lay_out(animate: bool) -> void:
 	if get_parent() != site:
 		if get_parent() != null: get_parent().remove_child(self)
 		site.add_child(self)
-	reachable(false)
 	_roll.visible = false
 	var at := lander.to_global(BLANKET_AT)
+	var basis := lander.global_basis
+	var hull := lander.to_global(Vector3(3.0, 0, 1.0))
+	var module: Node = world.get("module_life")
+	if laid_at == "module" and module != null and not module.zone().is_empty():
+		# Beside the module's socket, a few metres out from its wall.
+		var socket: Vector3 = module.socket_spot()
+		var centre: Vector3 = module._centre()
+		var out := Vector3(socket.x - centre.x, 0, socket.z - centre.z).normalized()
+		at = socket + out * 4.5
+		basis = Basis(Vector3.UP, atan2(out.x, out.z) + PI * .5)
+		hull = socket
 	at.y = MHSiteTerrain.height(at.x, at.z)
 	global_position = at
-	global_basis = lander.global_basis
+	global_basis = basis
+	# Laid, it's still something you can roll up again (3c): a low body.
+	reachable(true)
 	var blanket := Node3D.new()
 	blanket.name = "Blanket"
 	add_child(blanket)
@@ -206,8 +272,7 @@ func _lay_out(animate: bool) -> void:
 	var battery := _block(Vector3(.62, .16, .34), "frame")
 	battery.position = Vector3(-BLANKET.x * .5 - .5, .08, 0)
 	add_child(battery)
-	var hull := lander.to_global(Vector3(3.0, 0, 1.0))
-	hull.y = MHSiteTerrain.height(hull.x, hull.z)
+	hull.y = MHSiteTerrain.height(hull.x, hull.z) if laid_at != "module" else hull.y - .9
 	var from := to_global(battery.position)
 	var cable := _block(Vector3(.04, .04, 1.0), "rubber")
 	var length := Vector2(hull.x - from.x, hull.z - from.z).length()
@@ -221,3 +286,4 @@ func _lay_out(animate: bool) -> void:
 	box.size = Vector3(BLANKET.x, .06, BLANKET.y)
 	body.shape = box
 	add_child(body)
+	_laid_parts = [blanket, battery, cable, body]

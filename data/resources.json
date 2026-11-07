@@ -870,6 +870,17 @@
     "print_hitch_parts": 3.0,
     "print_pick_parts": 2.0,
     "print_bladder_parts": 2.0,
-    "lifepod_jobs_for_walker": 3.0
+    "lifepod_jobs_for_walker": 3.0,
+    "module_air_m3": 120.0,
+    "module_battery_kwh": 8.0,
+    "module_o2_tank_kg": 25.0,
+    "module_ua_kw_per_c": 0.018,
+    "module_heat_kwh_per_c": 1.2,
+    "module_heater_kw": 3.0,
+    "module_solar_kw": 1.0,
+    "module_lights_kw": 0.3,
+    "module_scrubber_kw": 0.3,
+    "module_scrub_kg_per_h": 0.15,
+    "module_avionics_kw": 0.15
   }
 }

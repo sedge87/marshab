@@ -151,6 +151,9 @@ func _where() -> String:
 	if world.lander != null and world.lander.cabin_contains(player.global_position):
 		if not world.lander.has_method("sealed_cabin") or world.lander.sealed_cabin(): return "lander"
 		return "outside"
+	var module: Node = world.get("module_life")
+	if module != null and module.running() and module.player_inside():
+		return "habitat" if module.breathable() and float(module.core.o2_pct()) >= 17.0 else "outside"
 	if world.builder != null and not world.builder.build_mode and world.builder.is_inside(player.global_position):
 		var sim := _sim()
 		if sim == null or not MHGame.simulation_on() or float(sim.o2_pct) >= 17.0: return "habitat"

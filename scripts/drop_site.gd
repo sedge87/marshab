@@ -130,6 +130,7 @@ func _build(saved: Dictionary) -> void:
 			pack.setup(self, "ground")
 			pack.global_position = Vector3(float(p[0]), float(p[1]), float(p[2]))
 		else:
+			pack.laid_at = str(saved.get("pack_laid_at", "lander"))
 			pack.setup(self, where if where == "laid" else "pallet")
 
 func _on_ground(p: Vector3, turn: float) -> Basis:
@@ -223,4 +224,5 @@ func export_state() -> Dictionary:
 		out["pack"] = pack.where if pack.where != "carried" else "ground"
 		var p: Vector3 = pack.global_position if pack.where != "carried" else _ground(world.player.global_position)
 		out["pack_at"] = [p.x, p.y, p.z]
+		out["pack_laid_at"] = pack.laid_at
 	return out

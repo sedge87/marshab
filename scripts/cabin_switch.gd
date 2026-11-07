@@ -70,9 +70,9 @@ func interaction_prompt() -> Dictionary:
 		"heater":
 			var next: String = {"warm": "low", "low": "off", "off": "warm"}[core.heater_mode]
 			var words: Dictionary = {"warm": "Warm (%d °C)" % roundi(core.n("cabin_warm_c", 20.0)), "low": "Low (%d °C)" % roundi(core.n("cabin_low_c", 10.0)), "off": "Off"}
-			return {"label": "Cabin heater · " + words[core.heater_mode], "primary": "Set to " + str(words[next]).split(" (")[0]}
+			return {"label": "%s heater · " % str(core.room_name) + words[core.heater_mode], "primary": "Set to " + str(words[next]).split(" (")[0]}
 		"lights":
-			return {"label": "Cabin lights · " + ("On" if core.lights_on else "Off"), "primary": "Switch off" if core.lights_on else "Switch on"}
+			return {"label": "%s lights · " % str(core.room_name) + ("On" if core.lights_on else "Off"), "primary": "Switch off" if core.lights_on else "Switch on"}
 		"scrubber":
 			return {"label": "CO₂ scrubber · " + ("On" if core.scrubber_on else "Off"), "primary": "Switch off" if core.scrubber_on else "Switch on"}
 	return {}

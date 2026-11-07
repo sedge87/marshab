@@ -36,7 +36,8 @@ const ICONS := {"life_support_power": "zap", "power": "zap", "battery_sunset": "
 	"cold": "flame", "cold_spot": "flame", "water": "droplets", "food": "utensils", "health": "heart-pulse",
 	"radiation": "radiation", "breach": "shield", "repress": "gauge", "breakdown": "wrench", "worn": "wrench", "bunks": "bed-double", "blackout": "satellite",
 	"injury": "syringe", "fitness": "dumbbell", "wellbeing": "smile",
-	"cabin_power": "zap", "cabin_co2": "recycle", "cabin_o2": "wind", "cabin_tank": "wind", "cabin_cold": "flame"}
+	"cabin_power": "zap", "cabin_co2": "recycle", "cabin_o2": "wind", "cabin_tank": "wind", "cabin_cold": "flame",
+	"module_power": "zap", "module_co2": "recycle", "module_o2": "wind", "module_tank": "wind", "module_cold": "flame"}
 ## A critical alert still active chimes (softly, no voice) this often.
 const CRITICAL_CHIME := 60.0
 
@@ -147,6 +148,12 @@ func evaluate(test_sim: RefCounted = null, test_hour := -1.0) -> Array:
 	# or while you're in it.
 	var cabin: Node = world.get("cabin_life") if world != null and test_sim == null else null
 	if cabin != null and (int(inv.cells) == 0 or cabin.player_inside()): out.append_array(cabin.alerts())
+	# The General Module (3c) runs on its own core too: while it's the base,
+	# its alerts are the base's.
+	var module: Node = world.get("module_life") if world != null and test_sim == null else null
+	if module != null and module.running():
+		out.append_array(module.alerts())
+		return out
 	if int(inv.cells) == 0: return out
 	var snap: Dictionary = s.snapshot(sol_hour)
 	var tiers: Dictionary = s.last.get("tiers", {})
@@ -341,7 +348,7 @@ const EXPLAIN := {
 ## The voice line for an alert at a level (see tools/generate_voice.py).
 static func voice_line(id: String, level: String) -> String:
 	# The lander cabin's alerts use the habitat's lines.
-	id = {"cabin_tank": "o2"}.get(id, id.trim_prefix("cabin_"))
+	id = {"cabin_tank": "o2", "module_tank": "o2"}.get(id, id.trim_prefix("cabin_").trim_prefix("module_"))
 	return "resolved_" + id if level == "resolved" else "%s_%s" % [id, level]
 
 ## The first link of most chains: where the power is (or isn't) coming from.
