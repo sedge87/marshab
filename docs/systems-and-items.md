@@ -819,7 +819,38 @@ One Survival run should let you try every pillar:
        - **Pallet 3, GAR-Y (Boulder field, ~0.8 km):** folded and asleep; free the latches and it wakes. No GAR-Y at the start any more: you find it, or it finds you if you black out first, and then its pallet is empty.
        - **Pallet 4, field tools (Frost hollow, ~1 km):** the rock hammer, a headlamp and a patch kit.
        - **The first sunset with GAR-Y (the user's idea; GAR-Y can't fit in the lander):** GAR-Y starts it. At the first sunset after you've met, if you're outside, it rolls up to you, chirps and turns towards the sun, and you're offered "Watch the sunset with GAR-Y" (E). Your choice: say yes and you sit together in the quiet while the sky goes blue round the sun, with its own music moment and a Journal page. Walk on and it watches alone for a bit, then follows; it asks again at the next sunset.
-     - **3b, the first room:** split `build_controller.gd` first; the General Module carrier in the middle ring (~2 km) with a dust-jammed leg to clean, which walks home with GAR-Y leading; the Plan view on explored ground; the module set down and joined to the lander with a sealed hatch. Printed room shells move to step 4 with the regolith printer.
+       - **Built 7 Nov (8243383).** After the playtest the user asked for bigger moments (next).
+     - **3a+, the moments · Decided 7 Nov** (master-design "Meeting GAR-Y" and "Waking up"):
+       - meeting GAR-Y at pallet 3 through your own eyes, held (about 25 s);
+       - every blackout ends with the hatch shut and sealed;
+       - the wake-up scene (dark sounds, blurred eyes, sitting up);
+       - GAR-Y introducing itself at the hatch if it found you first.
+     - **3b, the lifepod days (sols 2 to about 4) · Decided 7 Nov.** Building waits (master-design §10). You live out of the lander and get to know the land round it.
+       - **The pull at dawn on sol 2:** the cabin's water dial is low (the lander's tank, §1.4), and a Notes thread points at what you saw yesterday.
+       - **Threads you can't use yet:** each place joins Notes as an open thought, and the General Module's plans answer them later.
+         - iron: haematite at Blueberry flats, or a nearer outcrop, "Iron. Nothing to cut it with yet.";
+         - ice in bulk: the Little Bowl wall, "A lot of it. I can only chip a few kilos by hand.";
+         - the Overhang cave, the headlamp's first use;
+         - salvage in the Boulder field.
+       - **The jobs that count:**
+         - **Water by hand:** read the land for ice (dawn frost in the hollow, bright walls), chip or core it, carry it home, and melt it in a small melter in the lander.
+         - **The tiny Print Shop in the lander:** it prints small things from debris salvage and scooped regolith, such as sample bags, a spare O₂ bottle and a GAR-Y part. This comes forward from step 4.
+         - **First discoveries:** samples in the case, looked at on a small bench in the lander, become Journal pages. This comes forward from step 7.
+         - **The near ring and GAR-Y:** more small finds round the landing, and GAR-Y learning its jobs (the sled, surveys).
+       - **The gate:** once you've done most of these, whatever the sol, the walker shifts in the night. Its fresh tracks cross the near ring by morning (a world that changes, §10f). The lander's water running out at sol 3–5 stops anyone stalling.
+     - **3c, the first room · Decided 7 Nov.**
+       - **The find:** the walker is found by you and the crew together, never handed to you, and never by GAR-Y waking it (the user: "too cheap").
+         1. Six-legged tracks and a dropped leg panel in the near ring, the evidence trail (Firewatch's beer cans).
+         2. Photograph them and send them up from the slate.
+         3. On the next pass, Castellanos texts back Rao's photo: the tracks lead to a big shape about 2 km out, by a landmark. The orbiter friends have a purpose.
+         4. From high ground you see its lamp blinking yourself.
+       - **Bringing it home:**
+         - split `build_controller.gd` first;
+         - clean the walker's dust-jammed leg;
+         - it walks home with GAR-Y leading;
+         - the Plan view on explored ground;
+         - the General Module set down and joined to the lander with a sealed hatch.
+       - **The payoff:** its plans (the extractor, the smelter and others) open your threads, and the first night in a real room closes the arc. Printed room shells move to step 4 with the regolith printer.
      - **The original list:**
      - GAR-Y (found, or finding you);
      - more pallets;

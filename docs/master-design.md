@@ -35,6 +35,22 @@ GAR-Y is in one of the pallets. You meet it one of two ways, and both should be 
 
 After that, its usual rescue applies.
 
+**How the big moment plays · Decided 7 Nov** (the user: finding it was "very anti-climactic, but it should be a wonderful moment for the player to learn that they're not alone on Mars").
+- **Through your own eyes, held.** No camera cut and no third person. The HUD fades and you can't walk, while your view is drawn gently to GAR-Y. It lasts about 25 s.
+- **At pallet 3:**
+  1. The lid comes off on a folded, dust-caked shape.
+  2. A lamp flickers. The mast lifts and the body unfolds.
+  3. The head scans the dunes, finds you and stops.
+  4. A questioning chirp, then it rolls out, circles you once, does a happy spin and parks at your side.
+  5. The music swells, "GAR-Y" fades up for a moment, and the Notes thought becomes "I'm not alone out here."
+- **If it finds you first:** you wake in the cabin (the wake-up below), and a strange little robot is sitting at the hatch watching you, its lamp blinking. It chirps, rolls closer and nudges you, and the same thought and title follow. Its pallet is then empty.
+
+**Waking up · Decided 7 Nov.** Every blackout ends somewhere sealed: the hatch is always shut behind you. Waking is a short scene of its own:
+1. Muffled sound in the dark: fans, the latches clamping, air hissing back.
+2. Your eyes open blurred, lying down.
+3. You sit up slowly and breathe hard.
+4. Then GAR-Y's remark, or its introduction if this is how you meet.
+
 ## 3. Finding things
 
 **The one rule:** every "what's out there" view (the site plan overlay, the slate's Map, the compass) shows only what you, GAR-Y or Earth have actually found, from one shared record of what's known. Creative sees everything. This fixes the ice overlay at its root. (Built 7 Nov, scripts/known_things.gd: the Map starts dark and clears round where you've been, further from high ground; a named place joins the record once it's within sight. GAR-Y's and Earth's finds reach your Map when they report them to you, so each view stays "what you know".)
@@ -194,10 +210,19 @@ The story is several separate threads, each started by something you do or by a 
 From Subnautica: build a rough playable version first with placeholder art and goals, then grow it in steps of playtime, playtesting each step.
 
 1. **20 minutes:** landing, the cabin air running down, the parachute on the ridge, the walk, opening the first pallet, air restored. Plus the record of what's known, the map filling in, and pins.
-2. **40 minutes:** meeting GAR-Y (both ways); two or three more pallets; repairing a carrier and walking it home; the Plan view on explored ground; the first habitat set down.
-3. **1 hour:** the four materials; the tiny Print Shop; studying damaged kit at the bench; power and night cold.
-4. **2 hours:** the comms repair (orbiter text, then the cast's threads); ice through reading the land, the radar and a core; the water link home.
-5. **4 hours and up:** food, wear, storms, the wonder thread, the storm's return, the endings.
+2. **40 minutes, the first night:** meeting GAR-Y (both ways); three more pallets; night power from the solar blanket; the sunset with GAR-Y.
+3. **1 to 1.5 hours, the lifepod days (sols 2 to about 4):** you live out of the lander and get to know the land round it. You find the things a habitat will need but can't use yet (iron, ice in bulk, a cave), and each one becomes a thread in Notes. Water by hand, the tiny Print Shop in the lander, first samples, and GAR-Y learning its jobs.
+4. **About 2 hours, the first room:** the walker found (its tracks, a photo from the orbiter, then its lamp from high ground), repaired and walked home; the Plan view on explored ground; the General Module set down. Its plans open your threads: "now I can get that iron".
+5. **Then:** the four materials in full; studying damaged kit at the bench; the comms repair (orbiter text, then the cast's threads); the water link home; food, wear, storms, the wonder thread, the storm's return and the endings.
+
+**Why building waits (decided 7 Nov).** Subnautica's team found building "got in the way of the exploration", because the game is about discovery. The lander is your lifepod, so you lean on it for a while first. Building arrives as the answer to threads you found yourself, not as the first job.
+
+**The shape of a sol (decided 7 Nov).** By Schell's Lens #61, the Interest Curve, which repeats at every scale ("fractal"): each sol has its own small curve inside the game's big one.
+- **Morning, a pull:** a pressure or an open thread in Notes at dawn.
+- **Midday, a high point:** a find, a repair or a moment.
+- **Dusk, closure:** back to shelter, the sunset, and sleep as a cut. Firewatch places its cuts "at points of closure or tension".
+- **Checked against it:** every new step is checked against this shape, and no sol should be flat.
+- **The big peaks:** pallet 1 and air; meeting GAR-Y; night one survived; the walker coming home; the first room.
 
 **Throughout:** Creative stays playable (it's mode rules), and Missions mode and the Classic HUD are removed early, so there's less to maintain.
 
