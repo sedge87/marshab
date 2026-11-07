@@ -100,9 +100,12 @@ static func voice(id: String, note := "") -> void:
 
 # The suit's own voice in your helmet (scripts/suit.gd): calm, short, after a
 # soft chime; voice/<id>_<n>.wav like the habitat's, captioned "Suit".
+# The suit has no voice (systems brief §10e+): an alert is a tone, plus the
+# line as a short visor alert when it tells you something. Routine ones
+# (sealed, topping up, full) are the tone alone.
 static func suit(id: String) -> void:
 	var d := director()
-	if d != null: d._run("_queue_voice", ["suit", id, ""])
+	if d != null: d._run("_suit_alert", [id])
 
 # Someone at Mission Control on the radio from Earth (scripts/mission_control_link.gd):
 # mc_<id>.wav, captioned with their name and role, with a note under it (how
@@ -386,9 +389,32 @@ func _play_sfx(id: String, volume_db: float, pitch_jitter: float) -> void:
 	p.pitch_scale = randf_range(1.0 - pitch_jitter, 1.0 + pitch_jitter)
 	p.play()
 
+const SUIT_QUIET := ["suit_sealed", "suit_topping_up", "suit_full"]
+const SUIT_URGENT := ["suit_o2_quarter", "suit_o2_critical", "suit_turn_back", "suit_power_out"]
+
+func _suit_alert(id: String) -> void:
+	var variants: Array = (lines().get("suit", {}) as Dictionary).get(id, [])
+	_play_sfx("suit_alarm" if id in SUIT_URGENT else "suit_beep", -6.0 if id in SUIT_URGENT else -10.0, 0.0)
+	if variants.is_empty() or id in SUIT_QUIET: return
+	_show_caption("Suit", str(variants[0]), "", 4.0, false, true)
+
+## Whether the player is inside the habitat or the lander cabin (true when
+## there's no world, e.g. the menu). ARDEN speaks only there (§10e+).
+func _player_indoors() -> bool:
+	var world := get_tree().get_first_node_in_group("habitat_world") if is_inside_tree() else null
+	if world == null or world.get("player") == null: return true
+	var at: Vector3 = (world.player as Node3D).global_position
+	var builder: Variant = world.get("builder")
+	if builder != null and builder.has_method("is_inside") and builder.is_inside(at): return true
+	var lander: Variant = world.get("lander")
+	return lander != null and lander.has_method("cabin_contains") and lander.cabin_contains(at)
+
 func _queue_voice(speaker: String, id: String, note: String) -> void:
 	var variants: Array = (lines().get(speaker, {}) as Dictionary).get(id, [])
 	if variants.is_empty(): return
+	# ARDEN is the habitat's voice: out on the ground it says nothing (its
+	# alerts still show as icons on the HUD).
+	if speaker == "habitat" and not _player_indoors(): return
 	var line := {"speaker": speaker, "id": id, "note": note}
 	if _voice.playing:
 		if not _voice_queue.any(func(q): return q.id == id) and _voice_queue.size() < 2: _voice_queue.append(line)
@@ -445,8 +471,8 @@ static func subtitles() -> String:
 # Captions for everything said (for playing with the sound off): bottom
 # centre while walking about; while building, a slim strip at the bottom
 # left above the build bar, clear of the plan and the notices.
-func _show_caption(who: String, text: String, note: String, seconds: float, radio := false) -> void:
-	if subtitles() == "off": return
+func _show_caption(who: String, text: String, note: String, seconds: float, radio := false, always := false) -> void:
+	if subtitles() == "off" and not always: return
 	if _caption_layer == null:
 		_caption_layer = CanvasLayer.new()
 		_caption_layer.layer = 7
