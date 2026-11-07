@@ -804,7 +804,10 @@ One Survival run should let you try every pillar:
      - the blue sunset, with a music moment;
      - the descent talked down live by Rao and Castellanos (data/orbiter_crew.json "radio"), cut into static at touchdown, then ARDEN's lost-lock line;
      - Castellanos's first text with Rao's orbiter photo of the parachute (rendered in game, softened and grained), which the slate opens on;
-     - tests: known_things, notes, storm_drop, descent_radio, opening.
+     - the voices pulled back (§10e+): the suit silent (tones and visor lines only), ARDEN only indoors;
+     - the dynamic score (docs/music-and-ambience.md): Dawn, Day, Dusk, Starlight and Danger, with day and night ambience (e9a3ba4);
+     - the lander hatch seals (734b8bc): no gaps round the shut door; closing swings, latches and repressurises from the cabin tank (0.03 kg) before it's sealed, shown by a red/amber/green lamp inside by the door; opening vents the cabin (no air, 4 °C colder), so the suit refills only once it's sealed again, and you can't sleep with it open;
+     - tests: known_things, notes, storm_drop, descent_radio, opening, voices, score, hatch_seal.
 
      **Not yet:** food and water in pallet 1 (they come with the food and water rework); the power pallet to find (step 3).
   3. **The 40 minutes:**
