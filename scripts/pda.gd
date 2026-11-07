@@ -10,6 +10,9 @@ extends Node3D
 ## A child of the first-person camera, like the wrist pad (wrist_pad.gd).
 
 const PDA_SCREEN := preload("res://scripts/pda_screen.gd")
+
+## Put down (Tab or Esc): the opening's next beat waits for it (scripts/mars_world.gd).
+signal lowered
 const SLATE_MODEL := preload("res://assets/models/suit/slate.glb")
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const LAYER := 1 << 19                    # the wrist pad's layer: the helmet lamp skips it
@@ -190,6 +193,7 @@ func close() -> void:
 	MHNotices.hidden = false
 	screen.closed()
 	MHAudio.sfx("ui_back", -12.0)
+	lowered.emit()
 
 func _process(delta: float) -> void:
 	# Dropped if something else takes over: a rescue, sleep, a cutscene, pause.

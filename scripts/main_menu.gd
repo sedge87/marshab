@@ -1352,12 +1352,8 @@ func _descent_screen() -> void:
 	descent.setup(camera, environment, _landing_area)
 	descent.finished.connect(func(touchdown: Vector2) -> void:
 		descent.queue_free()
-		# Flown once: later landings skip it (the Land step's box turns it back on).
-		if not bool(MHGame.setting("descent_flown")):
-			var values := MHGame.settings()
-			values["descent_flown"] = true
-			values["skip_descent"] = true
-			MHGame.save_settings(values)
+		# Never ticks "Skip the descent" for you: it stays as you left it
+		# (docs/game-modes.md, off by default; opening review, 8 Nov).
 		_found_base(touchdown))
 	backdrop.add_child(descent)
 

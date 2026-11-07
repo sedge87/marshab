@@ -256,8 +256,14 @@ func _collider(owner_node: Node3D, size: Vector3, offset: Vector3) -> void:
 func _first_thoughts() -> void:
 	var known: Node = world.get("known")
 	if known != null: known.learn("find:parachute", "find", region_at(ridge), "Parachute", "orbiter")
+	# A new game in the lander: the thought waits for its beat (scripts/mars_world.gd _after_slate).
+	if not bool(world.get("_start_in_lander")): parachute_thought()
+
+## "Parachute on the ridge …": once you've put the slate down, or the hatch opens.
+func parachute_thought() -> void:
 	var notes: Node = world.get("notes")
-	if notes != null: notes.think("parachute", "start", {"dir": direction_word(ridge - world.lander.global_position)})
+	if notes != null and not notes.is_open("parachute") and not notes.is_settled("parachute"):
+		notes.think("parachute", "start", {"dir": direction_word(ridge - world.lander.global_position)})
 
 func region_at(at: Vector3) -> Vector2:
 	var known: Node = world.get("known")

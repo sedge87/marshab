@@ -8,6 +8,8 @@ const MISSION_CONTROL_LINK := preload("res://scripts/mission_control_link.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const SLEEP := preload("res://scripts/sleep.gd")
 const SLATE_CRADLE := preload("res://scripts/slate_cradle.gd")
+## Seconds after touchdown that the text from orbit lights the slate.
+const SLATE_LIGHTS_AT := 10.0
 const CARRY := preload("res://scripts/carry.gd")
 const SUIT := preload("res://scripts/suit.gd")
 const CABIN_LIFE := preload("res://scripts/lander_cabin_life.gd")
@@ -119,6 +121,7 @@ var lander: Node3D
 # until the player steps out, then "done".
 var _start_in_lander := false
 var _intro_stage := "done"
+var _after_slate_done := false
 var slate_cradle: Node3D   # your slate on the console at touchdown (scripts/slate_cradle.gd)
 var _slate_state := {}     # the slate's key-label count (scripts/pda.gd)
 var _landing_miss := 0.0   # metres between the chosen target and the touchdown
@@ -542,16 +545,21 @@ func _begin_lander_intro() -> void:
 		return
 	_intro_stage = "inside"
 	explore_hud.set_minimal(true)
+	# What the lander's cameras saw coming down is sharp on the Map (master-design §2).
+	if known != null: known.reveal(Vector2(lander.global_position.x, lander.global_position.z) + known.origin, known.CAMERA_PATCH)
 	# Your slate lies on the console; a text from orbit lights it up (docs/pda.md §8).
 	_place_slate.call_deferred()
-	get_tree().create_timer(9.0).timeout.connect(_slate_lights_up)
+	# Touchdown in beats (opening review, 8 Nov): engines off and a few seconds'
+	# quiet, ARDEN's link-lost line, then the slate lights with the text. Put
+	# down, ARDEN explains the lander, then "air", then "parachute"
+	# (_after_slate). The sunset wish waits for the afternoon (scripts/notes.gd).
+	get_tree().create_timer(SLATE_LIGHTS_AT).timeout.connect(_slate_lights_up)
 	# The link dropped at touchdown (scripts/descent.gd): ARDEN says why, after
 	# the static has died away. A skipped descent hears it too.
 	if MHChapterOne.new_rules():
-		get_tree().create_timer(1.2).timeout.connect(func() -> void: MHAudio.voice("link_lost"))
-		# What the lander is for, and why you go out (master-design §2).
-		get_tree().create_timer(6.0).timeout.connect(func() -> void: MHAudio.voice("lander_brief"))
-	get_tree().create_timer(2.5 if not MHChapterOne.new_rules() else 10.5).timeout.connect(func() -> void:
+		get_tree().create_timer(4.0).timeout.connect(func() -> void: MHAudio.voice("link_lost"))
+	if pda != null: pda.lowered.connect(_after_slate, CONNECT_ONE_SHOT)
+	get_tree().create_timer(2.5 if not MHChapterOne.new_rules() else SLATE_LIGHTS_AT + 2.5).timeout.connect(func() -> void:
 		if _intro_stage == "inside":
 			if pda != null and not pda.received: explore_hud.show_equipment_note("Touchdown", "Your slate is lighting up on the console. Look at it and press E to pick it up.")
 			else: explore_hud.show_equipment_note("Touchdown", "You've landed on Mars. When you're ready, look at the hatch and press E to open it."))
@@ -567,14 +575,27 @@ func _place_slate() -> void:
 	# No console to lie on: ARDEN hands it over as before.
 	get_tree().create_timer(9.0).timeout.connect(_hand_over_slate)
 
-## Nine seconds in: the text from orbit lights the slate up, and ARDEN says where it is.
+## After the slate's first look (lowered, or pocketed at the hatch): ARDEN
+## says what the lander is for, then the air worry, then the parachute.
+func _after_slate() -> void:
+	if _after_slate_done: return
+	_after_slate_done = true
+	if MHChapterOne.new_rules():
+		get_tree().create_timer(2.0).timeout.connect(func() -> void: MHAudio.voice("lander_brief"))
+	get_tree().create_timer(9.0).timeout.connect(func() -> void:
+		if notes != null and not notes.is_open("air") and not notes.is_settled("air"): notes.think("air"))
+	get_tree().create_timer(16.0).timeout.connect(_parachute_beat)
+
+func _parachute_beat() -> void:
+	if storm_drop != null and is_instance_valid(storm_drop): storm_drop.parachute_thought()
+
+## Ten seconds in: the text from orbit lights the slate up, and ARDEN says where it is.
 func _slate_lights_up() -> void:
 	if pda == null or pda.received: return
 	if slate_cradle == null or not is_instance_valid(slate_cradle):
 		_hand_over_slate()
 		return
 	slate_cradle.light_up()
-	MHNotices.post("info", "ARDEN: your slate", "Your slate is on the console. Something has come in from orbit.", "log")
 	if notes != null: notes.think("slate")
 	# Still on the console a while later: the reminder, once.
 	get_tree().create_timer(14.0).timeout.connect(func() -> void:
@@ -604,6 +625,9 @@ func _update_lander_intro() -> void:
 		elif pda != null and not pda.received: pda.hand_over(false)
 		# The suit checks its seals and shows you on the wrist pad (scripts/suit.gd).
 		if suit != null: suit.seal_check()
+		# The hatch open: the opening's beats go on, and the parachute's in view.
+		_after_slate()
+		_parachute_beat()
 	elif _intro_stage == "open" and not lander.cabin_contains(player.global_position):
 		_intro_stage = "done"
 		if pda != null: pda.received = true   # however they got out (a save, a skipped intro)

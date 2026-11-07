@@ -38,6 +38,15 @@ func _initialize() -> void:
 	menu.free()
 	var world = await _new_world()
 	var pda: Node = world.pda
+	# The opening review (8 Nov): one seat, a quiet touchdown, the survey Map.
+	var seats := 0
+	for child in world.lander.get_children(): if str(child.name).begins_with("Cabin_landing_seat"): seats += 1
+	_check(seats == 1 and world.lander.get_node_or_null("Cabin_landing_seat_1") != null, "one seat: you came alone (%d)" % seats)
+	await create_timer(1.0).timeout
+	_check(not world.notes.is_open("air") and not world.notes.is_open("parachute") and not world.notes.is_open("sunset"), "no thoughts piled up at touchdown")
+	var spot: Vector2 = Vector2(world.lander.global_position.x, world.lander.global_position.z) + world.known.origin
+	_check(world.known.seen_at(spot + Vector2(350, 0)) > .5, "the lander cameras' patch is sharp on the Map")
+	_check(world.known.seen_share() < .05, "the rest is still the survey")
 	_check(not pda.received, "a new game's slate isn't yours yet")
 	var cradle: Node3D = world.slate_cradle
 	_check(cradle != null and is_instance_valid(cradle), "it lies on the console")
@@ -70,6 +79,13 @@ func _initialize() -> void:
 	_check(pda.received and pda.is_open, "picked up, it rises in your hands")
 	_check(pda.show_keys() and pda.screen._keys.visible, "its screen shows the keys")
 	_check(world.notes.is_settled("slate"), "the thought's answered")
+	pda.close()
+	_check(world._after_slate_done, "putting the slate down starts the next beats")
+	await create_timer(9.5).timeout
+	_check(world.notes.is_open("air") and not world.notes.is_open("parachute"), "then the air worry, before the parachute")
+	await create_timer(7.0).timeout
+	_check(world.notes.is_open("parachute"), "then the parachute")
+	pda.open()
 	for i in pda.HINT_TIMES:
 		pda.close()
 		pda.open()
@@ -104,7 +120,7 @@ func _initialize() -> void:
 	world.queue_free()
 	await process_frame
 	var again = await _new_world(save)
-	_check(int(again.pda.hint_uses) == times + 1, "the slate's count loads (%d)" % int(again.pda.hint_uses))
+	_check(int(again.pda.hint_uses) == times + 2, "the slate's count loads (%d)" % int(again.pda.hint_uses))
 	_check(again.suit.seal_checked and again.suit.wrist_hint_uses == 1, "the seal check and wrist count load")
 	_check(again.slate_cradle == null, "a loaded game has no slate on the console")
 	again.queue_free()

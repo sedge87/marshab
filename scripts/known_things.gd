@@ -7,7 +7,8 @@ extends Node
 ##
 ## Two parts:
 ## - Where you've been: a coarse grid over the region that clears around you
-##   as you walk or drive (the Map's fog). It starts dark.
+##   as you walk or drive (the Map's fog). It starts as the blurry survey,
+##   with the lander's camera patch sharp.
 ## - Things: named places, finds, the lander and your own pins, each with who
 ##   knows it ("you", "gary", "earth", "orbiter"), where it came from and when.
 ##   A place joins the record when you come within sight of it.
@@ -26,6 +27,12 @@ const SIGHT_HIGH := 120.0      # extra sight per 100 m you stand above the groun
 const PLACE_SIGHT := 600.0     # a named place joins the record within this
 const CHECK := .5              # seconds between looks
 const WHO := ["you", "gary", "earth", "orbiter"]
+## How bright the old survey shows where you haven't been: dim enough to read
+## as unknown, light enough that the land's shape reads (opening review, 8 Nov:
+## the first sol's Map is the blurry survey, not a dark one; was .34).
+const SURVEY_LIGHT := .62
+## What the lander's cameras saw coming down, sharp on the Map from touchdown.
+const CAMERA_PATCH := 450.0
 
 var world: Node
 var origin := Vector2.ZERO      # the landing zone's centre, region metres
@@ -166,7 +173,7 @@ static func _survey() -> Image:
 		for x in GRID:
 			var c := image.get_pixel(x, y)
 			var grey := c.get_luminance()
-			image.set_pixel(x, y, Color(grey, grey * .92, grey * .85).lerp(c, .3) * .34)
+			image.set_pixel(x, y, Color(grey, grey * .92, grey * .85).lerp(c, .3) * SURVEY_LIGHT)
 	_survey_image = image
 	_survey_id = id
 	return image

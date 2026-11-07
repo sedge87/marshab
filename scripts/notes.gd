@@ -140,13 +140,16 @@ func _process(delta: float) -> void:
 	_check = CHECK
 	if not _started:
 		_started = true
-		think("air")
-		think("sunset")
+		# A new game in the lander holds "air" for its beat, after the slate
+		# (scripts/mars_world.gd _after_slate; opening review, 8 Nov).
+		if not bool(world.get("_start_in_lander")): think("air")
 	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
 	var sunrise := float(cycle.get("sunrise_hour", 5.0))
 	var sunset := float(cycle.get("sunset_hour", 19.0))
 	var hour := MHGame.sol_hour
 	var outside := not _indoors()
+	# The blue sunset: the wish comes as the afternoon goes, not at touchdown.
+	if hour >= sunset - 3.0 and hour <= sunset + .25 and not is_open("sunset") and not is_settled("sunset"): think("sunset")
 	# The blue sunset: outside as the sun goes down.
 	if outside and hour >= sunset - 1.0 and hour <= sunset + .25 and answer("sunset"): MHAudio.moment()
 	# Night one's question: dark, then dawn.

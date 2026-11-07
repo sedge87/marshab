@@ -24,14 +24,12 @@ const CABIN := AABB(Vector3(-2.35, 2.3, -2.6), Vector3(4.7, 3.5, 4.95))  # cabin
 ## side of it, supplies against the front wall beside the airlock.
 const FURNITURE := [
 	["mission_planning_console", Vector3(0, 0, 1.55), Vector2(0, -1)],
-	["landing_seat", Vector3(-.55, 0, .42), Vector2(0, 1)],
-	["landing_seat", Vector3(.55, 0, .42), Vector2(0, 1)],
-	["landing_seat", Vector3(-1.62, 0, .12), Vector2(1, .3)],
-	["landing_seat", Vector3(1.62, 0, .12), Vector2(-1, .3)],
+	# One seat: you came down alone (opening review, 8 Nov). Index 1, as
+	# scripts/lander_cabin_life.gd looks for Cabin_landing_seat_1.
+	["landing_seat", Vector3(0, 0, .5), Vector2(0, 1)],
 	["storm_shelter_locker", Vector3(-1.5, 0, 1.3), Vector2(.8, -1)],
 	["potable_water_dispenser", Vector3(1.55, 0, 1.3), Vector2(-.8, -1)],
-	["supply_crate_medium", Vector3(-1.55, 0, -.52), Vector2(0, 1)],
-	["supply_crate_small", Vector3(-1.55, .447, -.52), Vector2(.3, 1)],
+	["supply_crate_small", Vector3(-1.55, 0, -.52), Vector2(.3, 1)],   # the rations
 	# The right wall holds the lifepod bench (scripts/lifepod_bench.gd).
 ]
 ## Catalogue models face -Z; turn by this to face `direction`.
