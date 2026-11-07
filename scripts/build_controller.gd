@@ -77,6 +77,7 @@ const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
 const SOLAR_ARRAY_INTERACTABLE := preload("res://scripts/solar_array_interactable.gd")
 const WALL_UPGRADES := preload("res://scripts/wall_upgrades.gd")
 const TRENCHES := preload("res://scripts/trenches.gd")
+const BUILD_RULES := preload("res://scripts/build_rules.gd")   # step 3c: the gate and the first lesson
 const FLOOR_PLAN := preload("res://scripts/floor_plan.gd")
 var plan_legend: Control
 # What each room shows on its roof. 31 Oct (room changes): the General Module
@@ -378,6 +379,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if build_mode:
 				if event.shift_pressed: _switch_to_interior()
 				else: _toggle()
+			elif not BUILD_RULES.b_reason(self).is_empty():
+				_flash_notice("info", BUILD_RULES.b_reason(self), BUILD_RULES.b_detail(self))
 			elif not event.shift_pressed and player_can_furnish():
 				interior_build_requested.emit()
 			else:
@@ -470,6 +473,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif reason.is_empty():
 				if zones.is_empty(): habitat_base_y=_proposed_base_y(cells)
 				var zone := {"kind":kind,"cells":cells,"door_direction":airlock_direction,"cost":_zone_cost(cells)}
+				BUILD_RULES.placed(self, zone)
 				zones.append(zone); _history.append({"type":"zone","zone":zone}); _learn(str(zone.kind))
 				_rebuild()
 				_after_room_placed()
@@ -608,8 +612,14 @@ func _toggle() -> void:
 	world.get_node("Player/Head/Camera3D").current=!build_mode
 	var explore_hud:=world.get_node_or_null("ExploreHUD") as CanvasLayer
 	if explore_hud!=null: explore_hud.visible=not build_mode
-	if not build_mode: _set_tool("place"); _update_hologram_ui([],""); _preview_key=""; _draw_preview([],false)
+	if not build_mode: _set_tool("place"); _update_hologram_ui([],""); _preview_key=""; _draw_preview([],false); BUILD_RULES.plan_closed(self)
 	elif not display_only: preload("res://scripts/feature_hints.gd").first(get_tree(), "site_plan")
+	if build_mode and BUILD_RULES.stage(self) == "set_down":
+		# The first lesson: the module first, then its airlock.
+		equipment_id = ""
+		if BUILD_RULES.module_zone(self).is_empty(): category = "rooms"; kind = "general"
+		else: category = str(ZONE_INFO.airlock.cat); kind = "airlock"
+		_refresh_catalogue()
 	_set_build_view(build_mode)
 	_update_player_marker()
 	_refresh_mode_switcher()
@@ -713,6 +723,8 @@ func _world_point_at_mouse(plane_y := 0.0) -> Vector3:
 func _cells(a: Vector2i,b: Vector2i) -> Array:
 	var out:Array=[]
 	if a.x==999 or b.x==999: return out
+	var fixed := BUILD_RULES.fixed_cells(self, kind, b)
+	if not fixed.is_empty(): return fixed
 	if kind=="airlock":
 		# Airlocks are short, straight chambers: drag along their orange outside arrow.
 		if airlock_direction.x!=0 and a.y!=b.y: return out
@@ -2377,6 +2389,8 @@ func _invalid_reason(cells: Array) -> String:
 		if not site_reason.is_empty(): return site_reason
 	if not zone_offered(kind): return "No longer made"
 	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
+	var rules_reason := BUILD_RULES.zone_reason(self, kind, cells)
+	if not rules_reason.is_empty(): return rules_reason
 	for cell in cells:
 		if lander != null and lander.keeps_clear(Vector2(cell.x * CELL, cell.y * CELL), CELL * .5): return "Too close to the lander"
 	for cell in cells:
@@ -5601,6 +5615,9 @@ func _remove_at(cell: Vector2i) -> void:
 	var selected_zone := _zone_at_point(Vector2(mouse_point.x, mouse_point.z)) if not is_inf(mouse_point.x) else _zone_at(cell)
 	for index in range(zones.size()-1,-1,-1):
 		if zones[index] == selected_zone:
+			if bool(zones[index].get("carried", false)) and BUILD_RULES.stage(self) != "set_down":
+				_flash_notice("invalid", "The module stays", "It's the base's first room, set down whole.")
+				return
 			var refund:=int(zones[index].cost)
 			zones.remove_at(index)
 			if zones.is_empty(): habitat_base_y=.35
@@ -5693,7 +5710,9 @@ func _undo_zone(index: int) -> void:
 	_rebuild()
 	_flash_notice("info","Undone","%s removed · +%s cargo returned." % [ZONE_TYPES[zone.kind].label,MHStyle.kg(refund)])
 
-func _zone_cost(cells: Array) -> int: return cell_cost(kind)*cells.size()
+func _zone_cost(cells: Array) -> int:
+	var rules_cost := BUILD_RULES.cost(self, kind)
+	return rules_cost if rules_cost >= 0 else cell_cost(kind)*cells.size()
 
 ## Landed cargo (kg) for one 3 x 3 m cell of a room type, or one solar array,
 ## reactor or ice extractor, from the balance spreadsheet.
@@ -5710,6 +5729,7 @@ static func window_cargo() -> int:
 ## A saved zone's cargo at today's balance numbers (older saves used other costs).
 func _recompute_zone_cost(zone: Dictionary) -> void:
 	var zone_kind := str(zone.get("kind", ""))
+	if bool(zone.get("carried", false)): zone["cost"] = 0; return   # the walker's module came whole
 	if zone.has("angled_mount"):
 		zone["cost"] = cell_cost(zone_kind) * (_angled_corridor_bays(float(zone.angled_mount.get("length", CELL))) if zone_kind == "corridor" else 1)
 	elif zone.has("outline") and (zone.outline as Array).size() >= 3:
@@ -5875,6 +5895,9 @@ func _zone_running(zone: Dictionary) -> bool:
 
 func grid_power_online() -> bool:
 	if not MHGame.simulation_on(): return true
+	# The General Module's own power (3c, scripts/module_life.gd).
+	var module: Node = world.get("module_life") if world != null else null
+	if module != null and module.running(): return module.lit()
 	return simulation().tier_powered(HABITAT_SIM.TIER_LIGHT, MHGame.sol_hour)
 
 var _last_power_key := ""
@@ -6646,7 +6669,7 @@ func _refresh_catalogue() -> void:
 		if category=="rooms": ids.sort_custom(func(a,b): return str(ZONE_TYPES[a].label).naturalnocasecmp_to(str(ZONE_TYPES[b].label))<0)
 		for id in ids:
 			if str(ZONE_INFO[id].cat)!=category: continue
-			if not zone_offered(id): continue
+			if not zone_offered(id) or not BUILD_RULES.offered(self, id): continue
 			shown+=1
 			var card:=_part_card(id,id==kind and equipment_id.is_empty(),remaining<earth_cost(cell_cost(id),zone_printable(id)))
 			card.set_meta("pick_index",shown)

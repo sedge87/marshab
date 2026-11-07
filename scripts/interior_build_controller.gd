@@ -10,6 +10,7 @@ const BUILD_RANGE := 4.8
 const MHResources := preload("res://scripts/mh_resources.gd")
 const ModelThumbnails := preload("res://scripts/model_thumbnails.gd")
 const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
+const BUILD_RULES := preload("res://scripts/build_rules.gd")   # step 3c: the fit-out kit first
 ## The build bar's last tab: doors, windows and removing things.
 const STRUCTURE_TAB := "_structure"
 const HERE_TAB := "_here"
@@ -943,7 +944,9 @@ func _refresh_contextual_selector(force := false) -> void:
 	if room_changed and _selector_group != STRUCTURE_TAB and not zone_kind.is_empty():
 		_selector_group = HERE_TAB
 	if not _tab_ids().has(_selector_group):
-		_selector_group = HERE_TAB
+		_selector_group = str(_tab_ids()[0])
+	if _selector_group == UNPACKED_TAB and not _unpacked_ids().has(selected_id) and not _unpacked_ids().is_empty():
+		selected_id = str(_unpacked_ids()[0])
 	if not _selector_items.has(selected_id) and not _selector_items.is_empty():
 		selected_id = _selector_items[0]
 		rotation_offset = 0.0
@@ -972,6 +975,8 @@ func _fits_in(id: String) -> String:
 
 ## Fixed tabs: This room, every equipment tab with something unlocked, Structure.
 func _tab_ids() -> Array:
+	# The fit-out kit is the Interior view's first lesson: only it, till it's out.
+	if not BUILD_RULES.kit_left(builder).is_empty(): return [UNPACKED_TAB]
 	var tabs: Array = [HERE_TAB]
 	if MHChapterOne.on(): tabs.append(UNPACKED_TAB)
 	for group in EquipmentCatalog.groups():
@@ -1058,6 +1063,8 @@ func _visible_ids() -> Array:
 ## Interior items on the Unpacked tab (crate copies, or made at the fabricator), in catalogue order.
 func _unpacked_ids() -> Array:
 	var ready := MHChapterOne.on_build_bar(builder)
+	var kit := BUILD_RULES.kit_left(builder)
+	if not kit.is_empty(): ready = kit
 	return _catalog_items.filter(func(id): return ready.has(id))
 
 func _structure_tool(id: String) -> Dictionary:
