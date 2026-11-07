@@ -26,6 +26,12 @@ Three speakers, all from data/voice_lines.json:
     data/mc_threads.json (story beats, reactions, small talk) becomes
     mc_<id>.wav: one recording each, since they're a story, not variants.
 
+  - The orbiter crew (data/orbiter_crew.json), live on the radio during the
+    descent: each person's OneCore voice as for the cast, through the
+    orbiter's link (a UHF radio overhead, clearer than Earth's), a squelch
+    burst at each end and no Quindar beeps. orb_<id>.wav. A line marked
+    "cut" is chopped off mid-word into a roar of static: the link dropping.
+
 Each habitat, suit and relay line has a few variants so it doesn't repeat:
 <id>_<n>.wav for the habitat, relay_<id>_<n>.wav for the relay. The game
 picks one at random and shows its text as a caption.
@@ -56,6 +62,7 @@ ROOT = Path(__file__).resolve().parent.parent
 LINES = json.loads((ROOT / "data" / "voice_lines.json").read_text(encoding="utf-8"))
 CAST = json.loads((ROOT / "data" / "mc_cast.json").read_text(encoding="utf-8"))
 THREADS = json.loads((ROOT / "data" / "mc_threads.json").read_text(encoding="utf-8"))
+ORBITER = json.loads((ROOT / "data" / "orbiter_crew.json").read_text(encoding="utf-8"))
 ONECORE = Path(__file__).resolve().parent / "speak_onecore.ps1"
 HABITAT_VOICE = "Microsoft Hazel Desktop"
 CONTROL_VOICE = "Microsoft David Desktop"
@@ -159,6 +166,36 @@ def earth(link):
     return treat
 
 
+def squelch(length=.09, level=.16):
+    """A UHF radio's squelch: a short burst of hiss as the carrier opens or closes."""
+    burst = ga.bandpass(ga.noise(length + .01)[: int(length * RATE)], 900, 4200)
+    return burst / max(1e-9, np.abs(burst).max()) * level * ga.fade_edges(np.ones(int(length * RATE)), .004, .03)
+
+
+def orbiter(link, cut=False):
+    """The orbiter overhead: a wider, cleaner band than Earth's, a little
+    crunch, squelch either side. With cut, the voice is chopped at its end
+    and a second and a half of static roars up and fades: the link lost."""
+    def treat(signal):
+        voiced = ga.highpass(ga.lowpass(trim(signal), float(link.get("high", 3600)), 4), float(link.get("low", 320)), 4)
+        crunch = float(link.get("crunch", 1.7))
+        voiced = np.tanh(voiced * crunch) / np.tanh(crunch)
+        gap = np.zeros(int(.05 * RATE))
+        if cut:
+            voiced = voiced[: int(len(voiced) * .97)]
+            roar_len = int(1.6 * RATE)
+            roar = ga.bandpass(ga.noise(1.62)[:roar_len], 400, 5000)
+            roar = roar / max(1e-9, np.abs(roar).max())
+            t = np.arange(roar_len) / RATE
+            roar *= .5 * np.minimum(1.0, t / .03) * np.exp(-t / .55)
+            body = np.concatenate([squelch(), gap, voiced, roar])
+        else:
+            body = np.concatenate([squelch(), gap, voiced, gap, squelch(.07, .12)])
+        static = ga.bandpass(ga.noise((len(body) + 2) / RATE)[: len(body)], 1800, 3200) * float(link.get("static", .02))
+        return body + static
+    return treat
+
+
 def cast_lines():
     """Every Mission Control line: (id, speaker, text)."""
     out = []
@@ -208,6 +245,12 @@ def main():
     for line_id, speaker, text in cast_lines():
         person = people[speaker]
         jobs.append((f"mc_{line_id}", lambda path, t=text, p=person: speak_cast(t, path, p), earth(person.get("link", {}))))
+    crew = {p["id"]: p for p in ORBITER["people"]}
+    radio = ORBITER.get("radio", {})
+    for line in radio.get("beats", []) + list(radio.get("events", {}).values()):
+        person = crew[line["speaker"]]
+        jobs.append((f"orb_{line['id']}", lambda path, t=line["text"], p=person: speak_cast(t, path, p),
+                     orbiter(person.get("link", {}), bool(line.get("cut", False)))))
     only = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--only=")]
     with tempfile.TemporaryDirectory() as scratch:
         for name, say, treatment in jobs:

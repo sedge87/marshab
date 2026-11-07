@@ -35,6 +35,8 @@ const LANDER_SPEED := 30.0                # metres a second the lander slides to
 const HAZARD_CELL := 15.0
 const HAZARD_CELLS := 9                   # a 135 m square of hazards round the marker
 const SKIP_HOLD := .6
+## The orbiter crew talk you down (data/orbiter_crew.json "radio").
+const CREW_FILE := "res://data/orbiter_crew.json"
 
 var camera: Camera3D
 var environment: Node
@@ -54,11 +56,12 @@ var _reason := ""
 var _locked := Vector2.INF
 var _lock_from := Vector3.ZERO
 var _skip_t := 0.0
-var _told_ground := false
+var _beats: Array = []                    # the radio beats still to come, in order
+var _events: Dictionary = {}              # lock, divert, contact
+var _crew: Dictionary = {}                # id -> person
 var _hud: CanvasLayer
 var _alt_label: Label
 var _fuel_bar: ProgressBar
-var _cargo_label: Label
 var _arden: Label
 var _hint: Label
 var _glow: ColorRect
@@ -86,7 +89,7 @@ func _ready() -> void:
 	_hazards = _make_hazards()
 	add_child(_hazards)
 	_hazards.visible = false
-	for side in [-1.0, 1.0]: add_child(_beacon(Vector2(side * 16.0, 9.0)))
+	_load_radio()
 	_build_hud()
 	camera.fov = 60.0
 	_place_lander(Vector2(-OVAL.x * .8, 0.0))
@@ -96,6 +99,7 @@ func _process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_ESCAPE):
 		_skip_t += delta
 		if _skip_t >= SKIP_HOLD and phase != "done":
+			MHAudio.hush()
 			_finish(_autopilot())
 			return
 	else:
@@ -105,6 +109,7 @@ func _process(delta: float) -> void:
 		"powered": _powered(delta)
 		"final": _final(delta)
 		"touchdown": _touchdown(delta)
+	_radio()
 	_update_hud()
 
 # ---------- phases ----------
@@ -123,9 +128,7 @@ func _entry(_delta: float) -> void:
 		marker = Vector2.ZERO
 		_marker_mesh.visible = true
 		_hazards.visible = true
-		# The tutorial: Full has ARDEN talk you through it; Hints only leaves the
-		# controls line at the foot of the screen; Off says nothing.
-		if MHGame.tutorial_mode == "full": _say("Powered descent. Move the landing point with WASD; watch the fuel.")
+		# Hints leaves the controls line at the foot of the screen; Off hides it.
 		_hint.visible = MHGame.tutorial_mode != "off"
 
 func _powered(delta: float) -> void:
@@ -151,11 +154,40 @@ func _final(delta: float) -> void:
 	if k >= 1.0:
 		phase = "touchdown"
 		_t = 0.0
-		_say("Contact. Engines off.")
+		_call("contact", true)
 
 func _touchdown(_delta: float) -> void:
-	_fade.color.a = clampf((_t - 1.2) / 1.3, 0.0, 1.0)
-	if _t > 2.6: _finish(_locked + centre)
+	# Hold on the dust while the call ends in static (orb_descent_contact).
+	_fade.color.a = clampf((_t - 3.4) / 1.6, 0.0, 1.0)
+	if _t > 5.2: _finish(_locked + centre)
+
+# ---------- the radio ----------
+
+func _load_radio() -> void:
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CREW_FILE))
+	for person in data.get("people", []): _crew[str(person.id)] = person
+	var radio: Dictionary = data.get("radio", {})
+	_beats = (radio.get("beats", []) as Array).duplicate()
+	_events = radio.get("events", {})
+
+## The next beat plays when its phase is on, its time has come and nobody
+## is talking; beats of a phase that's over are dropped.
+func _radio() -> void:
+	const ORDER := ["entry", "powered", "final", "touchdown", "done"]
+	while not _beats.is_empty() and ORDER.find(str(_beats[0].phase)) < ORDER.find(phase): _beats.pop_front()
+	if _beats.is_empty() or MHAudio.voice_busy(): return
+	var beat: Dictionary = _beats[0]
+	if str(beat.phase) != phase or _t < float(beat.at): return
+	if str(beat.id) == "descent_fuel" and fuel > .35 and _t < 34.0: return   # only when it's true
+	_beats.pop_front()
+	_speak(beat)
+
+func _call(event: String, cut_in := false) -> void:
+	if _events.has(event): _speak(_events[event], cut_in)
+
+func _speak(line: Dictionary, cut_in := false) -> void:
+	var person: Dictionary = _crew.get(str(line.speaker), {})
+	MHAudio.orbiter_line(str(line.id), str(person.get("short", line.speaker)), str(line.get("caption", line.text)), "Orbiter", cut_in)
 
 func _lock() -> void:
 	var region := marker + centre
@@ -166,8 +198,9 @@ func _lock() -> void:
 		if is_inf(near.x): near = _autopilot()
 		_locked = near - centre
 		_say("Diverting: %s." % why)
+		_call("divert")
 	else:
-		_say("Landing point locked.")
+		_call("lock")
 	marker = _locked
 	_update_marker(1.0, true)
 	_lock_from = Vector3(_lander.global_position.x, altitude, _lander.global_position.z)
@@ -274,22 +307,6 @@ func _make_hazards() -> MultiMeshInstance3D:
 	instance.multimesh = multimesh
 	return instance
 
-## A cargo lander's beacon: a tall thin light, visible from high up.
-func _beacon(at: Vector2) -> MeshInstance3D:
-	var beam := MeshInstance3D.new()
-	var cylinder := CylinderMesh.new()
-	cylinder.top_radius = .6
-	cylinder.bottom_radius = 1.2
-	cylinder.height = 60.0
-	beam.mesh = cylinder
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.albedo_color = Color(MHStyle.accent, .55)
-	beam.material_override = material
-	beam.position = Vector3(at.x, MHSiteTerrain.height(at.x, at.y) + 30.0, at.y)
-	return beam
-
 # ---------- HUD ----------
 
 func _build_hud() -> void:
@@ -318,8 +335,6 @@ func _build_hud() -> void:
 	_fuel_bar.max_value = 1.0
 	_fuel_bar.show_percentage = false
 	col.add_child(_fuel_bar)
-	_cargo_label = MHStyle.mono("", 14, MHStyle.TEXT_SECONDARY)
-	col.add_child(_cargo_label)
 	panel.add_child(col)
 	root.add_child(panel)
 	_arden = MHStyle.label("", 20, MHStyle.TEXT_PRIMARY, 600)
@@ -347,10 +362,6 @@ func _build_hud() -> void:
 func _update_hud() -> void:
 	_alt_label.text = "ALT %4d m" % roundi(altitude)
 	_fuel_bar.value = fuel
-	_cargo_label.text = "CARGO  %d m" % roundi(marker.distance_to(Vector2(0, 9))) if phase != "entry" else ""
-	if phase == "powered" and MHGame.tutorial_mode == "full" and _t > 6.0 and not _told_ground:
-		_told_ground = true
-		_say("Green ground is good for the base. The beacons are the cargo.")
 	if phase == "powered" and not _valid: _hint.text = "Landing point: %s    SPACE  confirm    HOLD ESC  skip" % _reason
 	elif phase == "powered": _hint.text = "WASD  move the landing point    SPACE  confirm    HOLD ESC  skip"
 	elif phase != "entry": _hint.text = ""

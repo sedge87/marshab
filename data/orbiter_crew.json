@@ -1,10 +1,27 @@
 {
-  "_about": "The orbiter crew (docs/systems-and-items.md §10e, step 2 notes): the people meant to land with you, waiting in orbit until the finale. A working draft (7 Nov): the user will revisit names, roles and threads. Small crew = the first two; Standard = all five.",
+  "_about": "The orbiter crew (docs/systems-and-items.md §10e, step 2 notes): the people meant to land with you, waiting in orbit until the finale. A working draft (7 Nov): the user will revisit names, roles and threads. Small crew = the first two; Standard = all five. voice, pitch, pace and link are as in data/mc_cast.json (tools/generate_voice.py), through the orbiter's link: a UHF radio a few hundred kilometres up, clearer than Earth's, a squelch at each end and no Quindar beeps. radio: lines spoken live, orb_<id>.wav; `at` is seconds into the descent phase, as a guide.",
   "people": [
-    {"id": "castellanos", "name": "Mira Castellanos", "role": "Commander", "thread": "keeping five people safe in a ship built for a short stay, and choosing when to land them"},
-    {"id": "rao", "name": "Devan Rao", "role": "Pilot", "thread": "fuel for one landing only; practises it in the simulator every night"},
+    {"id": "castellanos", "name": "Mira Castellanos", "short": "Castellanos", "role": "Commander", "voice": "Susan", "pitch": -7, "pace": 0.92, "link": {"low": 320, "high": 3600, "crunch": 1.7, "static": 0.02}, "thread": "keeping five people safe in a ship built for a short stay, and choosing when to land them"},
+    {"id": "rao", "name": "Devan Rao", "short": "Rao", "role": "Pilot", "voice": "David", "pitch": 2, "pace": 1.08, "link": {"low": 300, "high": 3800, "crunch": 1.6, "static": 0.02}, "thread": "fuel for one landing only; practises it in the simulator every night"},
     {"id": "achterberg", "name": "Tamsin Achterberg", "role": "Engineer", "thread": "the orbiter's water recycler is failing; her fixes mirror yours"},
     {"id": "mwangi", "name": "Joseph Mwangi", "role": "Doctor", "thread": "months of weightlessness wear the crew down; the wait gives the finale its heart"},
     {"id": "tupou", "name": "Kai Tupou", "role": "Biologist", "thread": "life: pores over every sample, wants the wonder thread most"}
-  ]
+  ],
+  "radio": {
+    "_about": "The descent, talked down live (scripts/descent.gd). Each beat plays once, in order, when its phase is on and the voice is free; a phase that ends early skips the rest of its beats. 'lock', 'divert' and 'contact' are events; contact cuts in over anything and ends in static.",
+    "beats": [
+      {"id": "descent_entry", "speaker": "rao", "phase": "entry", "at": 0.3, "text": "Entry interface. You're glowing nicely. Hang on, this bit's loud."},
+      {"id": "descent_engines", "speaker": "rao", "phase": "powered", "at": 0.6, "text": "Chute's away, engines lit. Powered descent: pick your spot, I'll keep you honest."},
+      {"id": "descent_beacons", "speaker": "castellanos", "phase": "powered", "at": 7.0, "text": "Still nothing from the cargo beacons. Not one since the storm."},
+      {"id": "descent_plan", "speaker": "castellanos", "phase": "powered", "at": 12.5, "text": "So the plan changes. You get down safe, and we find your kit from up here."},
+      {"id": "descent_spotted", "speaker": "rao", "phase": "powered", "at": 21.0, "text": "And I think I've got one. A parachute, on high ground. Picture when you're down."},
+      {"id": "descent_fuel", "speaker": "rao", "phase": "powered", "at": 31.0, "text": "Fuel's getting thin. Choose your ground and commit."},
+      {"id": "descent_dust", "speaker": "castellanos", "phase": "final", "at": 3.5, "text": "Dust is up. Steady. Steady."}
+    ],
+    "events": {
+      "lock": {"id": "descent_locked", "speaker": "rao", "text": "Locked. The computer has the last hundred metres. Hands off, breathe."},
+      "divert": {"id": "descent_divert", "speaker": "rao", "text": "Not there, it's too rough. The computer's moving you somewhere flatter."},
+      "contact": {"id": "descent_contact", "speaker": "castellanos", "text": "Contact light. Welcome to Mars. First one d", "caption": "Contact light. Welcome to Mars. First one d—", "cut": true}
+    }
+  }
 }

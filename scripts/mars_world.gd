@@ -459,7 +459,10 @@ func _begin_lander_intro() -> void:
 	_intro_stage = "inside"
 	explore_hud.set_minimal(true)
 	get_tree().create_timer(9.0).timeout.connect(_hand_over_slate)
-	get_tree().create_timer(2.5).timeout.connect(func() -> void:
+	# The link dropped at touchdown (scripts/descent.gd): ARDEN says why, after
+	# the static has died away. A skipped descent hears it too.
+	if MHChapterOne.new_rules(): get_tree().create_timer(1.2).timeout.connect(func() -> void: MHAudio.voice("link_lost"))
+	get_tree().create_timer(2.5 if not MHChapterOne.new_rules() else 10.5).timeout.connect(func() -> void:
 		if _intro_stage == "inside":
 			explore_hud.show_equipment_note("Touchdown", "You've landed on Mars. When you're ready, look at the hatch and press E to open it."))
 
@@ -487,6 +490,7 @@ func _update_lander_intro() -> void:
 		_intro_stage = "done"
 		if pda != null: pda.received = true   # however they got out (a save, a skipped intro)
 		explore_hud.set_minimal(false)
+		if MHChapterOne.new_rules(): return   # Notes carry the opening now (scripts/notes.gd)
 		var landing := "You touched down %d m from your target: that's the landing ellipse at work. " % roundi(_landing_miss) if _landing_miss >= 1.0 else ""
 		# A base founded away from the cargo (the landing oval's centre): the walk to it.
 		if not cargo_landers.is_empty():

@@ -111,6 +111,20 @@ static func cast_line(id: String, who: String, text: String, note := "") -> void
 	var d := director()
 	if d != null: d._run("_queue_cast", [id, who, text, note])
 
+# The orbiter crew live on the radio (the descent, scripts/descent.gd):
+# orb_<id>.wav, captioned like the cast. cut_in stops whoever is talking and
+# clears the queue first (the touchdown call, which ends in static).
+static func orbiter_line(id: String, who: String, text: String, note := "", cut_in := false) -> void:
+	var d := director()
+	if d == null: return
+	if cut_in: d._run("_hush", [])
+	d._run("_queue_cast", [id, who, text, note, "voice/orb_" + id])
+
+# Stops the voice now and drops anything waiting (a skipped descent).
+static func hush() -> void:
+	var d := director()
+	if d != null: d._run("_hush", [])
+
 # Whether anyone is talking (or waiting to): Mission Control holds its
 # messages until the voice is free.
 static func voice_busy() -> bool:
@@ -381,17 +395,21 @@ func _queue_voice(speaker: String, id: String, note: String) -> void:
 		return
 	_play_line(line)
 
-func _queue_cast(id: String, who: String, text: String, note: String) -> void:
-	var line := {"speaker": "cast", "id": id, "who": who, "text": text, "note": note}
+func _queue_cast(id: String, who: String, text: String, note: String, file := "") -> void:
+	var line := {"speaker": "cast", "id": id, "who": who, "text": text, "note": note, "file": file if not file.is_empty() else "voice/mc_" + id}
 	if _voice.playing:
 		if _voice_queue.size() < 3: _voice_queue.append(line)
 		return
 	_play_line(line)
 
+func _hush() -> void:
+	_voice_queue.clear()
+	_voice.stop()
+
 func _play_line(line: Dictionary) -> void:
 	var speaker := str(line.speaker)
 	if speaker == "cast":
-		var cast_stream := _stream("voice/mc_" + str(line.id))
+		var cast_stream := _stream(str(line.file))
 		var length := 0.0
 		if cast_stream != null:
 			_voice.stream = cast_stream

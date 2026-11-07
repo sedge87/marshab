@@ -354,6 +354,9 @@
       "Sunset's coming. The rover's roof panel stops at dark.",
       "It'll be dark soon. Worth heading back while there's light."
     ],
+    "link_lost": [
+      "Touchdown. The high-gain antenna has lost lock. The orbiter can still send text on its passes."
+    ],
     "aside": [
       "They do that.",
       "I like that one.",
