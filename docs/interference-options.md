@@ -1,6 +1,6 @@
 # The interference: options
 
-**Status: decided 7 Nov: option A, the buried heart.** Planted in master-design §2 and §7; not built yet.
+**Status: decided 7 Nov: option A, the buried heart.** Planted in master-design §2 and §7; not built yet. **Later the same day:** this becomes the game's only ending and its main late goal: the crew are held in orbit until the heart is explained, and the ending is landing them safely (master-design §7, One ending). The welcome and go-home endings below are superseded; the clues come later than "first sols" suggests, small and deniable until the late game.
 
 **The idea (the user, 7 Nov):** the storm alone didn't break everything. Something larger caused interference that sent the walkers' navigation wrong and explains other faults, and finding it is a huge late discovery, core to the story.
 

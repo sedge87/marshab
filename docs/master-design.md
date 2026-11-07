@@ -147,13 +147,16 @@ The story is several separate threads, each started by something you do or by a 
 2. **The link:** orbiter texts, then the cast's voices once the comms are repaired (docs/mission-control-voice.md).
 3. **GAR-Y:** found or finding you, and its personality.
 4. **The wonder:** discoveries that lead from an ancient lakebed to a lava tube and end in strong evidence of ancient microbial life. Real science only.
-   - **The buried heart · Decided 7 Nov** (docs/interference-options.md, A): the interference that wrecked the landing is a huge, faintly warm, magnetised magma body under the Reach. Clues from sol 1 (the compass strip wobbles, Walker 1's tracks curve, a rare green aurora, Castellanos's radio-noise jokes), a trail through the walkers' nav logs, a placed magnetometer and a magnetic Map layer, then the reveal: it fed the hot springs behind the life find. In the storm's return the aurora warns of a solar storm; in the welcome ending the crew land by your magnetic map.
-5. **The crew:** the people who were meant to land wait in the orbiter and talk to you while you work and drive. They come down only in the welcome ending (docs/systems-and-items.md §10e).
+   - **The buried heart · Decided 7 Nov** (docs/interference-options.md, A): the interference that wrecked the landing is a huge, faintly warm, magnetised magma body under the Reach. Clues from sol 1 (the compass strip wobbles, Walker 1's tracks curve, a rare green aurora, Castellanos's radio-noise jokes), a trail through the walkers' nav logs, a placed magnetometer and a magnetic Map layer, then the reveal: it fed the hot springs behind the life find. In the storm's return the aurora warns of a solar storm; in the ending the crew land by your magnetic map.
+5. **The crew:** the people who were meant to land wait in the orbiter and talk to you while you work and drive. They come down only in the ending, once the heart is understood and the way down is safe (docs/systems-and-items.md §10e).
 6. **The storm returns:** the next dust season, the big late test.
 
-**Endings:** survive the storm's return, then choose:
-- **welcome the crew** and carry on, open-ended; or
-- **go home:** fuel the ascent vehicle from the Sabatier tank and leave with a final report.
+**One ending · Decided 7 Nov** (replaces the two endings; the user: make the buried heart "the only ending and really something that would become the player's goal"):
+- **The goal is to bring the crew down safely.** You were always the commissioner, sent first on a small lander. After every cargo landing went wrong in a way the storm doesn't explain, the flight rules hold the crew in orbit until someone on the ground works out why. The mystery is the blocker.
+- **It becomes the main goal late,** not after the first clues. First you set up, build the base, work the other goals and live and work on Mars; the early clues stay small and deniable, and Notes doesn't sum them up until the late game.
+- **The end avoids a catastrophe rather than escaping one:** solve the heart, make the way down safe, survive the storm's return, and the crew land. "Go home" is cut.
+- **The game doesn't carry on open-ended after it.** How the final act plays is designed when we get there.
+- Grounded in Schell's "Multiple Endings Disappoint", Lens #25 Goals, #66 Obstacle and #9 Unification, and the design talks' "the story is the goal".
 
 ## 8. Modes and the screen
 
