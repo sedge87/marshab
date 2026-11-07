@@ -34,6 +34,37 @@ const SFX_TRIM := {
 	"guitar_strum_0": -5.0, "guitar_strum_1": -5.0, "guitar_strum_2": -5.0, "guitar_strum_3": -5.0,
 	"plush_squeak_0": -12.0, "plush_squeak_1": -12.0, "plush_squeak_2": -12.0
 }
+# The dynamic score (docs/music-and-ambience.md, stems from
+# tools/generate_score.py). Each palette: its pads (chord -> file), which
+# chord may follow which, the drone, levels, the gap between chords, the
+# bells (recorded at bell_root semitones from D5), their notes, gaps, levels
+# and figure, and an extra layer. Day is the original score.
+const SCORE := {
+	"day": {"pads": {"dm9": "pad_dm9", "bbmaj7": "pad_bbmaj7", "gm9": "pad_gm9", "fadd9": "pad_fadd9", "am7": "pad_am7", "csus2": "pad_csus2"},
+		"next": {"dm9": ["bbmaj7", "gm9", "am7", "fadd9"], "bbmaj7": ["fadd9", "gm9", "csus2", "dm9"], "gm9": ["dm9", "bbmaj7", "csus2"], "fadd9": ["csus2", "dm9", "am7"], "am7": ["dm9", "bbmaj7", "fadd9"], "csus2": ["dm9", "gm9", "am7"]},
+		"start": "dm9", "drone": "drone", "drone_db": -19.0, "pad_db": -15.0, "gap": 10.5,
+		"bells": ["bell_glass", "bell_soft", "bell_chime"], "bell_root": 0, "notes": [-12, -9, -7, -5, -2, 0, 3, 5, 7], "bell_gap": Vector2(6, 14), "bell_db": Vector2(-24, -17), "figure": "single"},
+	"dawn": {"pads": {"dmaj9": "dawn_dmaj9", "gmaj7": "dawn_gmaj7", "bm11": "dawn_bm11", "aadd9": "dawn_aadd9", "em9": "dawn_em9"},
+		"next": {"dmaj9": ["gmaj7", "bm11", "aadd9"], "gmaj7": ["dmaj9", "em9", "aadd9"], "bm11": ["gmaj7", "em9", "dmaj9"], "aadd9": ["dmaj9", "bm11"], "em9": ["aadd9", "gmaj7"]},
+		"start": "dmaj9", "drone": "drone_dawn", "drone_db": -22.0, "pad_db": -15.0, "gap": 12.0,
+		"bells": ["bell_chime", "bell_glass"], "bell_root": 0, "notes": [0, 2, 4, 7, 9, 12, 14], "bell_gap": Vector2(5, 10), "bell_db": Vector2(-23, -17), "figure": "rising"},
+	"dusk": {"pads": {"bbmaj9": "dusk_bbmaj9", "gm9": "dusk_gm9", "ebmaj7": "dusk_ebmaj7", "dm9": "dusk_dm9", "fadd9": "dusk_fadd9"},
+		"next": {"bbmaj9": ["gm9", "ebmaj7", "dm9"], "gm9": ["ebmaj7", "dm9", "bbmaj9"], "ebmaj7": ["bbmaj9", "dm9", "fadd9"], "dm9": ["bbmaj9", "gm9"], "fadd9": ["dm9", "bbmaj9"]},
+		"start": "bbmaj9", "drone": "drone_dusk", "drone_db": -19.0, "pad_db": -15.0, "gap": 13.0,
+		"bells": ["bell_soft", "bell_glass"], "bell_root": 0, "notes": [12, 10, 7, 5, 3, 0], "bell_gap": Vector2(8, 15), "bell_db": Vector2(-24, -18), "figure": "falling", "extra": "blue"},
+	"starlight": {"pads": {"dm": "starlight_dm", "am": "starlight_am", "bbmaj7": "starlight_bbmaj7", "csus2": "starlight_csus2"},
+		"next": {"dm": ["bbmaj7", "am", "csus2"], "am": ["dm", "bbmaj7"], "bbmaj7": ["dm", "csus2"], "csus2": ["dm", "am"]},
+		"start": "dm", "drone": "drone_starlight", "drone_db": -22.0, "pad_db": -20.0, "gap": 18.0,
+		"bells": ["bell_star"], "bell_root": 12, "notes": [-12, -10, -7, -5, 0, 2, 5], "bell_gap": Vector2(6, 16), "bell_db": Vector2(-29, -23), "figure": "single", "extra": "twinkle"},
+	"danger": {"pads": {"dmb9": "danger_dmb9", "gmmaj7": "danger_gmmaj7", "bbaug": "danger_bbaug", "dsus4b9": "danger_dsus4b9"},
+		"next": {"dmb9": ["gmmaj7", "bbaug", "dsus4b9"], "gmmaj7": ["dmb9", "bbaug"], "bbaug": ["dmb9", "dsus4b9"], "dsus4b9": ["dmb9", "gmmaj7"]},
+		"start": "dmb9", "drone": "drone_danger", "drone_db": -16.0, "pad_db": -15.0, "gap": 8.5,
+		"bells": ["bell_metal"], "bell_root": -12, "notes": [0, 1, 6, 7, 13], "bell_gap": Vector2(5, 11), "bell_db": Vector2(-25, -19), "figure": "semitone", "extra": "heartbeat"},
+}
+const DANGER_ON := .35          # the score turns to Danger above this level
+const DANGER_OFF := .2          # and resolves below this
+const PASSAGE := Vector2(150, 240)   # seconds of music, then...
+const QUIET := Vector2(80, 160)      # ...seconds of only the ambience (§10b)
 # Mood -> [drone dB, pad dB, seconds between pads, seconds between bells].
 const MOODS := {
 	"menu": [-16.0, -13.0, 12.0, Vector2(4.0, 9.0)],
@@ -70,7 +101,21 @@ static func weather(storm_level: float) -> void:
 	var d := director()
 	if d != null: d._run("_set_weather", [storm_level])
 
-# "menu", "surface" or "off".
+# How much danger you're in, 0 to 1 (the world sets it: low suit oxygen, a
+# storm on you, turning back too late...). Above about a third the score
+# turns to Danger, with a heartbeat that follows the level; when it passes,
+# a Dawn chord resolves it (docs/music-and-ambience.md §2).
+static func danger(level: float) -> void:
+	var d := director()
+	if d != null: d._run("_set_danger", [level])
+
+# The palette the score is using now: day, dawn, dusk, starlight or danger.
+static func palette() -> String:
+	var d := director()
+	return d._palette if d != null else ""
+
+# "menu", "surface" or "off". On the surface the time of day picks the
+# palette (Dawn, Day, Dusk, Starlight) and music comes in passages.
 static func music(mood: String) -> void:
 	var d := director()
 	if d != null: d._run("_set_mood", [mood])
@@ -206,6 +251,19 @@ var _pad_index := 0
 var _last_pad := ""
 var _pad_timer := 0.0
 var _bell_timer := 4.0
+var _palette := "day"
+var _drone_b: AudioStreamPlayer        # the other drone, for crossfades
+var _drone_file := "drone"
+var _shimmer: AudioStreamPlayer        # dusk's blue shimmer
+var _heartbeat: AudioStreamPlayer      # danger's heartbeat
+var _wind_night: AudioStreamPlayer
+var _danger := 0.0
+var _in_danger := false
+var _passage_on := true
+var _passage_left := 200.0
+var _look_t := 0.0                     # seconds to the next look at the clock
+var _extra_t := 10.0                   # twinkles
+var _amb_t := 6.0                      # cold ticks and dust devils
 var _fades := {}
 
 func _run(method: String, args: Array) -> void:
@@ -220,6 +278,10 @@ func _ready() -> void:
 	_voice = _player("Voice")
 	_voice.finished.connect(_next_voice)
 	_drone = _player("Music", "music/drone", true)
+	_drone_b = _player("Music")
+	_shimmer = _player("Music", "music/blue_shimmer", true)
+	_heartbeat = _player("Music", "music/heartbeat", true)
+	_wind_night = _player("Ambience", "ambience/wind_night", true)
 	_pulse = _player("Music", "music/pulse", true)
 	for i in 2: _pads.append(_player("Music"))
 	_bell = _player("Music")
@@ -262,32 +324,138 @@ func _stream(id: String, loop := false) -> AudioStream:
 
 func _process(delta: float) -> void:
 	_process_caption(delta)
+	_process_ambience(delta)
 	if _mood == "off": return
-	var mood: Array = MOODS[_mood]
+	var score: Dictionary = SCORE[_palette]
+	var menu := _mood == "menu"
+	# On the surface: look at the clock now and then, and run the passages.
+	if not menu:
+		_look_t -= delta
+		if _look_t <= 0.0:
+			_look_t = 2.0
+			_choose_palette()
+		_passage_left -= delta
+		if _passage_left <= 0.0 and not _in_danger:
+			_passage_on = not _passage_on
+			_passage_left = randf_range(PASSAGE.x, PASSAGE.y) if _passage_on else randf_range(QUIET.x, QUIET.y)
+			_apply_drone(6.0)
+	var playing := menu or _passage_on or _in_danger
 	_pad_timer -= delta
 	if _pad_timer <= 0.0:
-		_pad_timer = float(mood[2]) * randf_range(.85, 1.15)
-		_next_pad(float(mood[1]))
+		_pad_timer = (12.0 if menu else float(score.gap)) * randf_range(.85, 1.15)
+		if playing: _next_pad(-13.0 if menu else float(score.pad_db))
 	_bell_timer -= delta
 	if _bell_timer <= 0.0:
-		var gap: Vector2 = mood[3]
+		var gap: Vector2 = Vector2(4.0, 9.0) if menu else score.bell_gap
 		_bell_timer = randf_range(gap.x, gap.y)
 		# Inside the build blueprint the pulse carries the melody instead.
-		if not _build_on: _ring_bell()
+		if playing and not _build_on: _ring_bell()
+	if str(score.get("extra", "")) == "twinkle" and playing:
+		_extra_t -= delta
+		if _extra_t <= 0.0:
+			_extra_t = randf_range(11.0, 20.0)
+			_one_shot("music/twinkle", 0.0, -26.0, 0.0)
+
+## The palette for now: Danger while in danger, else the time of day (the
+## same windows as the blue hour). A change waits for the next chord.
+func _choose_palette() -> void:
+	var want := "danger" if _in_danger else time_palette(MHGame.sol_hour)
+	if want == _palette: return
+	_palette = want
+	_apply_drone(8.0)
+	_apply_extras()
+
+## Dawn, day, dusk or starlight for an hour of the sol.
+static func time_palette(hour: float) -> String:
+	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+	var sunrise := float(cycle.get("sunrise_hour", 5.0))
+	var sunset := float(cycle.get("sunset_hour", 19.0))
+	if hour >= sunrise - .5 and hour < sunrise + 1.5: return "dawn"
+	if hour >= sunset - 1.5 and hour < sunset + .7: return "dusk"
+	if hour >= sunset + .7 or hour < sunrise - .5: return "starlight"
+	return "day"
+
+## The drone for the palette (crossfaded), quieter between passages.
+func _apply_drone(time: float) -> void:
+	var score: Dictionary = SCORE[_palette]
+	var level := float(score.drone_db) if _mood != "menu" else -16.0
+	if _mood == "surface" and not _passage_on and not _in_danger: level -= 6.0
+	var file := str(score.drone)
+	if file == _drone_file:
+		_fade(_drone, level, time)
+		return
+	_drone_file = file
+	var old := _drone
+	_drone = _drone_b
+	_drone_b = old
+	_fade(old, -80.0, time, true)
+	_kill_fade(_drone)
+	_drone.stream = _stream("music/" + file, true)
+	_drone.volume_db = -60.0
+	_drone.play()
+	_fade(_drone, level, time)
+
+## Dusk's shimmer and Danger's heartbeat follow the palette.
+func _apply_extras() -> void:
+	var extra := str(SCORE[_palette].get("extra", ""))
+	_fade(_shimmer, -30.0 if extra == "blue" and _mood == "surface" else -80.0, 6.0, extra != "blue")
+	if extra != "heartbeat": _fade(_heartbeat, -80.0, 4.0, true)
+	else: _fade(_heartbeat, lerpf(-34.0, -18.0, _danger), 2.0)
+
+func _set_danger(level: float) -> void:
+	_danger = clampf(level, 0.0, 1.0)
+	if _mood != "surface": return
+	if not _in_danger and _danger >= DANGER_ON:
+		_in_danger = true
+		_pad_timer = minf(_pad_timer, 1.5)   # turn quickly
+		_choose_palette()
+	elif _in_danger and _danger < DANGER_OFF:
+		_in_danger = false
+		_choose_palette()
+		# The relief: a Dawn chord resolves it.
+		_last_pad = "dmaj9"
+		_play_pad("dawn_dmaj9", -13.0)
+		_pad_timer = maxf(_pad_timer, 9.0)
+		_passage_on = true
+		_passage_left = maxf(_passage_left, 60.0)
+	elif _in_danger:
+		_fade(_heartbeat, lerpf(-34.0, -18.0, _danger), 1.0)
 
 func _next_pad(level_db: float) -> void:
-	var choices: Array = PAD_NEXT.get(_last_pad, PADS)
-	var id: String = choices[randi() % choices.size()]
-	_last_pad = id
+	var score: Dictionary = SCORE[_palette]
+	var choices: Array = (score.next as Dictionary).get(_last_pad, [str(score.start)])
+	var chord: String = choices[randi() % choices.size()]
+	_last_pad = chord
+	_play_pad(str(score.pads[chord]), level_db)
+
+func _play_pad(file: String, level_db: float) -> void:
 	var p := _pads[_pad_index]
 	_pad_index = (_pad_index + 1) % _pads.size()
-	p.stream = _stream("music/" + id)
+	p.stream = _stream("music/" + file)
 	if p.stream == null: return
 	_kill_fade(p)
 	p.volume_db = level_db
 	p.play()
 
+## A short sound on its own player: a bell note or a twinkle.
+func _one_shot(file: String, semitones: float, level_db: float, after: float) -> void:
+	var stream := _stream(file)
+	if stream == null: return
+	var p := AudioStreamPlayer.new()
+	p.bus = "Music" if file.begins_with("music/") else "Ambience"
+	p.stream = stream
+	p.pitch_scale = pow(2.0, semitones / 12.0)
+	p.volume_db = level_db
+	add_child(p)
+	p.finished.connect(p.queue_free)
+	if after <= 0.0: p.play()
+	else: get_tree().create_timer(after).timeout.connect(func() -> void: if is_instance_valid(p): p.play())
+
 func _moment() -> void:
+	if _mood == "surface" and not _passage_on:
+		_passage_on = true
+		_passage_left = 60.0
+		_apply_drone(3.0)
 	var p := _pads[_pad_index]
 	_pad_index = (_pad_index + 1) % _pads.size()
 	p.stream = _stream("music/pad_fadd9")
@@ -308,23 +476,48 @@ func _moment() -> void:
 			bell.finished.connect(bell.queue_free))
 	_bell_timer = maxf(_bell_timer, 6.0)
 
+## The palette's bell, in its figure: one note, three rising, two falling,
+## or two a half step apart.
 func _ring_bell() -> void:
-	var id: String = BELLS[randi() % BELLS.size()]
-	_bell.stream = _stream("music/" + id)
-	if _bell.stream == null: return
-	_bell.pitch_scale = pow(2.0, BELL_NOTES[randi() % BELL_NOTES.size()] / 12.0)
-	_bell.volume_db = randf_range(-24.0, -17.0)
-	_bell.play()
+	var score: Dictionary = SCORE[_palette]
+	var bells: Array = score.bells
+	var file := "music/" + str(bells[randi() % bells.size()])
+	var notes: Array = score.notes
+	var root := float(score.bell_root)
+	var range_db: Vector2 = score.bell_db
+	var level := randf_range(range_db.x, range_db.y)
+	match str(score.figure):
+		"rising":
+			var i := randi() % maxi(1, notes.size() - 2)
+			for k in 3: _one_shot(file, float(notes[i + k]) - root, level - 2.0 * k, .42 * k)
+		"falling":
+			var i := randi() % maxi(1, notes.size() - 1)
+			_one_shot(file, float(notes[i]) - root, level, 0.0)
+			_one_shot(file, float(notes[i + 1]) - root, level - 3.0, .9)
+		"semitone":
+			var n := float(notes[randi() % notes.size()])
+			_one_shot(file, n - root, level, 0.0)
+			_one_shot(file, n + 1.0 - root, level - 2.0, 1.6)
+		_:
+			_bell.stream = _stream(file)
+			if _bell.stream == null: return
+			_bell.pitch_scale = pow(2.0, (float(notes[randi() % notes.size()]) - root) / 12.0)
+			_bell.volume_db = level
+			_bell.play()
 
 func _set_mood(mood: String) -> void:
 	if mood == _mood or (mood != "off" and not MOODS.has(mood)): return
 	var first := _mood == "off"
 	_mood = mood
 	if mood == "off":
-		for p in [_drone, _pulse, _bell, _pads[0], _pads[1]]: _fade(p, -80.0, 2.0, true)
+		for p in [_drone, _drone_b, _pulse, _bell, _pads[0], _pads[1], _shimmer, _heartbeat]: _fade(p, -80.0, 2.0, true)
 		return
-	var settings: Array = MOODS[mood]
-	_fade(_drone, float(settings[0]), 4.0)
+	_palette = "day" if mood == "menu" else time_palette(MHGame.sol_hour)
+	_in_danger = false
+	_passage_on = true
+	_passage_left = randf_range(PASSAGE.x, PASSAGE.y)
+	_apply_drone(4.0)
+	_apply_extras()
 	# Start a chord straight away on first entry; otherwise let the current one ring out.
 	if first:
 		_pad_timer = 0.0
@@ -338,9 +531,47 @@ func _set_space(space: String) -> void:
 	if space == _space: return
 	_space = space
 	var levels: Array = {"outside": [-12.0, -80.0], "inside": [-80.0, -27.0], "menu": [-20.0, -80.0], "off": [-80.0, -80.0]}.get(space, [-80.0, -80.0])
-	_fade(_wind, levels[0], 1.5, levels[0] <= -80.0)
+	_apply_wind(1.5)
 	_fade(_hum, levels[1], 1.0, levels[1] <= -80.0)
 	_apply_storm()
+
+## How far into night it is outside, 0 (day) to 1 (night), easing through
+## the dusk and dawn windows.
+static func night_amount(hour: float) -> float:
+	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+	var sunrise := float(cycle.get("sunrise_hour", 5.0))
+	var sunset := float(cycle.get("sunset_hour", 19.0))
+	if hour >= sunrise + .5 and hour < sunset - .5: return 0.0
+	if hour >= sunset + .7 or hour < sunrise - .5: return 1.0
+	if hour >= sunset - .5: return smoothstep(sunset - .5, sunset + .7, hour)
+	return 1.0 - smoothstep(sunrise - .5, sunrise + .5, hour)
+
+## Day wind and night wind, crossfaded by the hour (outside and the menu only).
+func _apply_wind(time: float) -> void:
+	var base: float = {"outside": -12.0, "menu": -20.0}.get(_space, -80.0)
+	if base <= -80.0:
+		_fade(_wind, -80.0, time, true)
+		_fade(_wind_night, -80.0, time, true)
+		return
+	var night := night_amount(MHGame.sol_hour) if _space == "outside" else 0.0
+	_fade(_wind, base + 20.0 * log(maxf(1.0 - night, .001)) / log(10.0), time, night >= .999)
+	_fade(_wind_night, base - 6.0 + 20.0 * log(maxf(night, .001)) / log(10.0), time, night <= .001)
+
+## Outside: now and then the cold ticks at night, or a dust devil passes by day.
+func _process_ambience(delta: float) -> void:
+	if _space != "outside": return
+	_amb_t -= delta
+	if _amb_t > 0.0: return
+	var night := night_amount(MHGame.sol_hour)
+	_apply_wind(2.0)
+	if night > .6:
+		_amb_t = randf_range(4.0, 13.0)
+		_one_shot("ambience/cold_tick", randf_range(-3.0, 4.0), randf_range(-30.0, -24.0), 0.0)
+	elif night < .1 and randf() < .02 and _storm_level < .1:
+		_amb_t = 120.0
+		_one_shot("ambience/dust_devil", randf_range(-1.0, 1.0), -18.0, 0.0)
+	else:
+		_amb_t = 3.0
 
 func _set_weather(level: float) -> void:
 	_storm_level = clampf(level, 0.0, 1.0)

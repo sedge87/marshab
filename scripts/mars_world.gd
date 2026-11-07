@@ -79,6 +79,7 @@ var storm_drop: Node3D  # scripts/storm_drop.gd: the parachute ridge, pallet 1 a
 var _drop_state := {}
 var orbiter_texts: Node  # scripts/orbiter_texts.gd: the orbiter crew's texts and photos (Comms)
 var _texts_state := {}
+var _danger_t := 0.0
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
@@ -290,6 +291,10 @@ const AUTOSAVE_SECONDS := 600.0   # free play: every 10 minutes, once the base h
 
 func _process(delta: float) -> void:
 	_update_lander_intro()
+	_danger_t -= delta
+	if _danger_t <= 0.0:
+		_danger_t = 1.0
+		MHAudio.danger(danger_level())
 	if not MHGame.showcase and not MHSaves.current_path.is_empty() and not get_tree().paused:
 		_autosave_in -= delta
 		if _autosave_in <= 0.0:
@@ -464,6 +469,21 @@ func _land_lander() -> void:
 		_landing_miss = landed.distance_to(MHGame.landing_target)
 		lander.place_at(landed)
 	MHGame.landing_target = Vector2.INF
+
+## How much danger you're in, 0 to 1, for the score (MHAudio.danger): only
+## out on the ground in the suit. Low oxygen, past the turn-back point, a
+## leak, flat suit power, or a storm on you.
+func danger_level() -> float:
+	if suit == null or not suit.active() or str(suit.where) != "outside": return 0.0
+	var level := 0.0
+	var o2 := float(suit.o2)
+	if o2 < .25: level = maxf(level, .5 + (.25 - o2) * 2.0)
+	if suit.turn_back_hours() <= 0.0 and o2 < .9: level = maxf(level, .6)
+	if bool(suit.leak): level = maxf(level, .4)
+	if float(suit.power) <= 0.0: level = maxf(level, .5)
+	var weather_node: Variant = get("weather")
+	if weather_node != null and weather_node.get("_level") != null: level = maxf(level, float(weather_node._level) * .6)
+	return clampf(level, 0.0, 1.0)
 
 func _begin_lander_intro() -> void:
 	if not _start_in_lander:

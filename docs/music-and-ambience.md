@@ -1,6 +1,6 @@
 # Music and ambience: the dynamic score (proposal, 7 Nov)
 
-Status: **previews made, not built into the game; to be built after the step 2 playtest (user, 7 Nov).** `tools/music_previews.py <folder>` renders 90-second previews of each mood and 60-second previews of the two ambiences. It uses the same parts as today's score (the drone, chord pads and glass bells from `tools/generate_audio.py`), and a small sequencer schedules them the way `scripts/mh_audio.gd` does. Sound is mostly quiet with music at moments, as decided in systems-and-items §10b; this document adds what the music sounds like *when* it plays.
+Status: **built 7 Nov (moods, Danger, day and night ambience); regions later, with the next map work.** Stems: `tools/generate_score.py`. `tools/music_previews.py <folder>` renders 90-second previews of each mood and 60-second previews of the two ambiences. It uses the same parts as today's score (the drone, chord pads and glass bells from `tools/generate_audio.py`), and a small sequencer schedules them the way `scripts/mh_audio.gd` does. Sound is mostly quiet with music at moments, as decided in systems-and-items §10b; this document adds what the music sounds like *when* it plays.
 
 ## 1. The moods
 
