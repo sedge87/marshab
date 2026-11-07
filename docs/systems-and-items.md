@@ -812,7 +812,15 @@ One Survival run should let you try every pillar:
      - tests: known_things, notes, storm_drop, descent_radio, opening, voices, score, hatch_seal.
 
      **Not yet:** food and water in pallet 1 (they come with the food and water rework); the power pallet to find (step 3).
-  3. **The 40 minutes:**
+  3. **The 40 minutes · Decided 7 Nov: built in two halves, each playtested.**
+     - **3a, the first night:**
+       - **Pallets placed round your landing:** each kind goes on the best real spot of its kind nearby (a rocky field, a shaded hollow, a ridge), with a parachute and a debris trail, like pallet 1. From the Parachute ridge you can see the next two parachutes.
+       - **Pallet 2, power (~0.6 km):** a rolled solar blanket and a battery pack. Lay the blanket out by the lander and plug the battery into the cabin, and the heater runs all night. This is night one's fix; the big power kit carrier comes later for the base.
+       - **Pallet 3, GAR-Y (Boulder field, ~0.8 km):** folded and asleep; free the latches and it wakes. No GAR-Y at the start any more: you find it, or it finds you if you black out first, and then its pallet is empty.
+       - **Pallet 4, field tools (Frost hollow, ~1 km):** the rock hammer, a headlamp and a patch kit.
+       - **The first night with GAR-Y (the user's idea):** the first night you spend in the sealed lander with GAR-Y, it rolls in with you and settles by your seat. When Phobos rises it goes to the window and chirps you over; looking out together plays a quiet music moment and writes a Journal page. If you sleep, it powers down beside you with its lamp dimmed.
+     - **3b, the first room:** split `build_controller.gd` first; the General Module carrier in the middle ring (~2 km) with a dust-jammed leg to clean, which walks home with GAR-Y leading; the Plan view on explored ground; the module set down and joined to the lander with a sealed hatch. Printed room shells move to step 4 with the regolith printer.
+     - **The original list:**
      - GAR-Y (found, or finding you);
      - more pallets;
      - a carrier repaired and walked home;
