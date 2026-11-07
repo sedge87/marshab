@@ -23,7 +23,9 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const BUILD_RULES := preload("res://scripts/build_rules.gd")
 const ID := "find:walker"
 const NAME := "Walker 1"
-const SPEED := 2.0              # m/s: about 2 km in a quarter of a sol
+const SPEED := 2.0              # m/s while you can see it: a steady, heavy walk
+const UNSEEN_SPEED := 9.0       # m/s out of view, so the 2 km walk home takes minutes, not a quarter-hour
+const WATCH_RANGE := 600.0      # closer than this and on screen counts as watched
 const TURN := .4                # rad/s
 const CLEAN_SECONDS := 4.0
 const SEE_NEAR := 700.0         # you see it this close
@@ -394,7 +396,7 @@ func _process(delta: float) -> void:
 		if _text_left <= 0.0: _orbiter_text()
 	match state:
 		"walking":
-			if _drive(home, delta):
+			if _drive(home, delta, INF, SPEED if _watched() else UNSEEN_SPEED):
 				state = "parked"
 				MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit
 				var notes: Node = world.get("notes")
@@ -409,7 +411,7 @@ func _process(delta: float) -> void:
 		_look()
 
 ## Drives towards `goal` (then turns to `yaw` if given). True on arrival.
-func _drive(goal: Vector3, delta: float, yaw := INF) -> bool:
+func _drive(goal: Vector3, delta: float, yaw := INF, speed := SPEED) -> bool:
 	var flat := Vector3(goal.x - global_position.x, 0, goal.z - global_position.z)
 	if flat.length() < .6:
 		if is_inf(yaw) or absf(angle_difference(rotation.y, yaw)) < .02: return true
@@ -419,11 +421,19 @@ func _drive(goal: Vector3, delta: float, yaw := INF) -> bool:
 	var want := _face_yaw(flat)
 	rotation.y = rotate_toward(rotation.y, want, TURN * delta)
 	if absf(angle_difference(rotation.y, want)) < .5:
-		var step := minf(SPEED * delta, flat.length())
+		var step := minf(speed * delta, flat.length())
 		global_position += flat.normalized() * step
 		_roll(step)
 	_settle()
 	return false
+
+## On screen and near enough to see it move. Out of view it hurries home
+## (UNSEEN_SPEED), so it never looks rushed but the walk doesn't drag.
+func _watched() -> bool:
+	var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
+	if camera == null: return false
+	var at := global_position + Vector3(0, 4, 0)
+	return camera.global_position.distance_to(at) < WATCH_RANGE and camera.is_position_in_frustum(at)
 
 ## Wheels turn with the ground covered; a tripod gait lifts alternate legs.
 func _roll(metres: float) -> void:
