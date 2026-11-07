@@ -281,7 +281,7 @@ func _stepper(current: String) -> void:
 	var row := MHStyle.hbox(32)
 	row.position = Vector2(120, 64)
 	# No site step (the Land step picks the spot on the region), but a Rules step.
-	var steps := ["Colony", "Rules", "Land"]
+	var steps := ["Colony", "Rules", "Arrive" if _arrives() else "Land"]
 	var active := steps.find(current)
 	for i in steps.size():
 		var text := "%02d %s" % [i + 1, steps[i]]
@@ -1062,7 +1062,7 @@ func _rules_screen() -> void:
 	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(show_screen.bind("colony"))
 	bar.add_child(back)
-	var next := MHStyle.button("Choose where to land", "primary", "map-pin")
+	var next := MHStyle.button("Arrival" if _arrives() else "Choose where to land", "primary", "rocket" if _arrives() else "map-pin")
 	next.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	next.pressed.connect(show_screen.bind("landing"))
 	bar.add_child(next)
@@ -1148,6 +1148,9 @@ func _refresh_plaque() -> void:
 ## shows where the lander might touch down (Survival); Freedom and Creative
 ## land exactly on target.
 func _landing_screen() -> void:
+	if MHSiteTerrain.shape() == "region" and _arrives():
+		_arrival_screen()
+		return
 	if MHSiteTerrain.shape() == "region":
 		_region_landing_screen()
 		return
@@ -1285,6 +1288,73 @@ func _show_report(box: VBoxContainer, rows: Array) -> void:
 		box.add_child(line)
 
 var _landing_area := Vector2.INF   # the landing oval's centre (region metres)
+
+## A story game on a region (docs/master-design.md §2): no landing map. You
+## were to home in on the finished base's beacon; it's silent and the dusty
+## air throws your entry long, so where you come down is chosen on the way
+## down from what the lander's cameras see (scripts/descent.gd). Creative
+## keeps the map.
+func _arrives() -> bool:
+	return MHChapterOne.new_rules() and MHGame.game_mode != "creative" and MHSiteTerrain.shape() == "region"
+
+## Where the entry carries you: near one of the region's landing zones,
+## off by up to half a kilometre, on ground with room for a base.
+static func entry_area(rng: RandomNumberGenerator) -> Vector2:
+	MHSiteTerrain.region_zone()
+	var zones: Dictionary = MHSiteTerrain.RegionTerrain.meta().get("zones", {})
+	var ids := zones.keys()
+	for attempt in 24:
+		var zone: Dictionary = zones[ids[rng.randi() % ids.size()]] if not ids.is_empty() else {"centre": [0.0, 0.0]}
+		var at := Vector2(float(zone.centre[0]), float(zone.centre[1])) + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, 500.0)
+		if str(REGION_LANDING_PICKER_SCRIPT.evaluate(at).level) == "green" or attempt == 23: return at
+	return Vector2.ZERO
+
+## The Arrive step: the briefing, then the descent.
+func _arrival_screen() -> void:
+	_scrim("right", .62, .95, .4)
+	_stepper("Arrive")
+	_place(MHStyle.display("Arrival", 64), Vector2(120, 120))
+	var panel := MHStyle.hud_panel(24, false, true)
+	panel.position = Vector2(120, 240)
+	panel.custom_minimum_size = Vector2(760, 0)
+	var col := MHStyle.vbox(14)
+	col.add_child(MHStyle.eyebrow("%s · %s" % [MHGame.site_name(), str(MHGame.GAME_MODES.get(MHGame.game_mode, ""))], MHStyle.accent))
+	col.add_child(MHStyle.title("Seven months out", 28))
+	for text in [
+		"The cargo went ahead of you. Its walkers were to gather the pallets and build the base, and you'd land beside it, walk in and commission it.",
+		"Halfway through your cruise a planet-wide dust storm swallowed the Reach. The walkers and the cargo beacons went quiet. There's no turning back mid-transfer.",
+		"Now you're coming down. The base's landing beacon is silent and the dusty air will carry you long. The lander's cameras will find you safe ground on the way down: steer for it, or let the autopilot choose."]:
+		var line := MHStyle.body(text, 18)
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(line)
+	if _quick_start: col.add_child(_tutorial_choice())
+	var skip := CheckBox.new()
+	skip.text = "Skip the descent (the autopilot picks the spot)"
+	skip.button_pressed = bool(MHGame.setting("skip_descent"))
+	skip.toggled.connect(func(on: bool) -> void:
+		var values := MHGame.settings()
+		values["skip_descent"] = on
+		MHGame.save_settings(values))
+	col.add_child(skip)
+	panel.add_child(col)
+	screen.add_child(panel)
+	var bar := _bottom_bar()
+	bar.alignment = BoxContainer.ALIGNMENT_END
+	var back := MHStyle.button("Back", "ghost", "chevron-left")
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	back.pressed.connect(func() -> void: show_screen(_landing_back()))
+	bar.add_child(back)
+	var land := MHStyle.button("Begin the descent", "primary", "rocket")
+	land.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	land.pressed.connect(func() -> void:
+		var rng := RandomNumberGenerator.new()
+		rng.randomize()
+		_landing_area = entry_area(rng)
+		if bool(MHGame.setting("skip_descent")):
+			var near := MHBaseSite.nearest_valid(_landing_area.x, _landing_area.y, 250.0)
+			_found_base(near if not is_inf(near.x) else _landing_area)
+		else: show_screen("descent"))
+	bar.add_child(land)
 
 ## The descent into the landing oval, in the backdrop (scripts/descent.gd).
 func _descent_screen() -> void:

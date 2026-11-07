@@ -1,6 +1,6 @@
 extends Node3D
 
-## The descent (docs/landing-and-base-siting.md §5.2): after the Land step on a
+## The descent (docs/landing-and-base-siting.md §5.2; master-design §2): after the Arrive (or Land) step on a
 ## region site, the crew lander comes down into the landing oval and you
 ## move the landing point; the autopilot flies. Played in the main menu's
 ## backdrop: its landscape is rebuilt round the oval (a preview: no caves or
@@ -71,6 +71,10 @@ var _chute: Node3D                        # the parachute Rao spots, on the grou
 var _chute_tag: Label
 var _chute_t := 0.0
 const CHUTE := preload("res://assets/models/storm_cargo/parachute.glb")
+const PICKER := preload("res://scripts/region_landing_picker.gd")
+const SAFE_SPOTS := 3
+const SAFE_APART := 140.0                 # metres between the cameras' safe spots
+var _safe: Array = []                     # [{at: Vector2 (site metres), tag, ring, label}]
 
 ## camera and environment are the main menu's; at is the oval's centre (region metres).
 func setup(menu_camera: Camera3D, menu_environment: Node, at: Vector2) -> void:
@@ -134,6 +138,7 @@ func _entry(_delta: float) -> void:
 		marker = Vector2.ZERO
 		_marker_mesh.visible = true
 		_hazards.visible = true
+		_find_safe_spots()
 		# Hints leaves the controls line at the foot of the screen; Off hides it.
 		_hint.visible = MHGame.tutorial_mode != "off"
 
@@ -407,10 +412,12 @@ func _build_hud() -> void:
 
 func _update_hud() -> void:
 	_update_chute_tag()
+	_update_safe_tags()
 	_alt_label.text = "ALT %4d m" % roundi(altitude)
 	_fuel_bar.value = fuel
 	if phase == "powered" and not _valid: _hint.text = "Landing point: %s    SPACE  confirm    HOLD ESC  skip" % _reason
-	elif phase == "powered": _hint.text = "WASD  move the landing point    SPACE  confirm    HOLD ESC  skip"
+	elif phase == "powered" and _on_safe() != "": _hint.text = "Safe ground: %s    SPACE  confirm    HOLD ESC  skip" % _on_safe()
+	elif phase == "powered": _hint.text = "WASD  move the landing point to safe ground    SPACE  confirm    HOLD ESC  skip"
 	elif phase != "entry": _hint.text = ""
 	_hint.add_theme_color_override("font_color", MHStyle.DANGER if phase == "powered" and not _valid else MHStyle.TEXT_SECONDARY)
 
@@ -424,6 +431,64 @@ func _update_chute_tag() -> void:
 	if shown:
 		_chute_tag.position = camera.unproject_position(at) - Vector2(_chute_tag.size.x * .5, 36)
 		_chute_tag.modulate.a = clampf(_chute_t / 2.0, 0.0, 1.0)
+
+# ---------- the cameras' safe spots ----------
+
+## With the base's beacon silent, the lander's cameras check the ground below
+## (terrain-relative navigation, like Perseverance's) and mark a few spots
+## with room for a base, spread apart, each tagged with what it's like
+## (region_landing_picker.gd report). Fly the landing point to one.
+func _find_safe_spots() -> void:
+	var spots: Array = PICKER.evaluate(centre).spots
+	var chosen: Array = []
+	if not spots.is_empty(): chosen.append(spots[0])
+	while chosen.size() < SAFE_SPOTS:
+		var best := Vector2.INF
+		var far := SAFE_APART
+		for spot in spots:
+			var near := INF
+			for c in chosen: near = minf(near, (spot as Vector2).distance_to(c))
+			if near > far:
+				far = near
+				best = spot
+		if is_inf(best.x): break
+		chosen.append(best)
+	for region in chosen:
+		var at: Vector2 = region - centre
+		var ring := _make_marker()
+		ring.scale = Vector3(1.4, .1, 1.4)
+		(ring.material_override as StandardMaterial3D).albedo_color = Color(MHStyle.INFO, .8)
+		ring.position = Vector3(at.x, MHSiteTerrain.height(at.x, at.y) + .5, at.y)   # the descent sits at the origin
+		add_child(ring)
+		var label := MHStyle.mono("", 13, MHStyle.INFO)
+		label.add_theme_color_override("font_outline_color", Color(0, 0, 0, .85))
+		label.add_theme_constant_override("outline_size", 5)
+		var tag := _safe_tag(region)
+		label.text = "SAFE  ·  " + tag.to_upper()
+		_hud.get_child(0).add_child(label)
+		_safe.append({"at": at, "tag": tag, "ring": ring, "label": label})
+
+## The best thing about living at a spot, in a few words.
+static func _safe_tag(region: Vector2) -> String:
+	for row in PICKER.report(region):
+		if str(row[3]) != "green" or str(row[1]) == "Science": continue
+		return str(row[2]).split(":")[0].split(".")[0].strip_edges()
+	return "level ground"
+
+## The safe spot the landing point is on ("" if none).
+func _on_safe() -> String:
+	for spot in _safe:
+		if marker.distance_to(spot.at) < 25.0: return str(spot.tag)
+	return ""
+
+func _update_safe_tags() -> void:
+	for spot in _safe:
+		var label: Label = spot.label
+		var at: Vector3 = (spot.ring as Node3D).global_position + Vector3(0, 10, 0)
+		var shown := phase == "powered" and not camera.is_position_behind(at)
+		label.visible = shown
+		if shown: label.position = camera.unproject_position(at) - Vector2(label.size.x * .5, 30)
+		(spot.ring as Node3D).visible = phase == "powered" or marker.distance_to(spot.at) < 25.0
 
 func _say(line: String) -> void:
 	_arden.text = "ARDEN: " + line

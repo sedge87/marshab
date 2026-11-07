@@ -12,8 +12,8 @@
     "beats": [
       {"id": "descent_entry", "speaker": "rao", "phase": "entry", "at": 0.3, "text": "Entry interface. You're glowing nicely. Hang on, this bit's loud."},
       {"id": "descent_engines", "speaker": "rao", "phase": "powered", "at": 0.6, "text": "Chute's away, engines lit. Powered descent: pick your spot, I'll keep you honest."},
-      {"id": "descent_beacons", "speaker": "castellanos", "phase": "powered", "at": 7.0, "text": "Still nothing from the cargo beacons. Not one since the storm."},
-      {"id": "descent_plan", "speaker": "castellanos", "phase": "powered", "at": 12.5, "text": "So the plan changes. You get down safe, and we find your kit from up here."},
+      {"id": "descent_beacons", "speaker": "castellanos", "phase": "powered", "at": 7.0, "text": "Base beacon's silent. So are the walkers. Nothing since the storm."},
+      {"id": "descent_plan", "speaker": "castellanos", "phase": "powered", "at": 12.5, "text": "You're coming in long, so forget the beacon. Your cameras will show you safe ground. Pick one."},
       {"id": "descent_spotted", "speaker": "rao", "phase": "powered", "at": 21.0, "text": "And I think I've got one. A parachute, on high ground. Picture when you're down."},
       {"id": "descent_fuel", "speaker": "rao", "phase": "powered", "at": 31.0, "text": "Fuel's getting thin. Choose your ground and commit."},
       {"id": "descent_dust", "speaker": "castellanos", "phase": "final", "at": 3.5, "text": "Dust is up. Steady. Steady."}
