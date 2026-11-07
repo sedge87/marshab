@@ -45,6 +45,10 @@ const STEP_OFF := Vector3(0, 0, 7.4)     # the ladder's foot, where you climb do
 const TALK_AFTER := 45.0        # seconds into the walk home: Castellanos's first text
 const TALK_AGAIN := 0.5         # ... and again this far along
 const LADDER_SCRIPT := preload("res://scripts/walker_ladder.gd")
+const LADDER_STOW := [1.9, 3.6]  # how far sections 2 and 3 slide up to pack away
+const LADDER_SECONDS := 1.6     # to run the ladder out or pack it away
+const WAIT_REACH := 5.0         # stand this near the ladder's foot and it stops for you
+const LEAVE_REACH := 12.0       # ... and walks on once you're this far off
 const PHOTO_SIZE := Vector2i(480, 300)
 const PHOTO_METRES := 70.0
 
@@ -87,6 +91,12 @@ var _ride_layers := Vector2i.ZERO
 var _walk_from := 0.0           # metres to home when it set off
 var _talk := 0                  # the walk-home texts sent so far
 var _walk_clock := 0.0
+var ladder_out := 1.0           # 0 packed away (bottom ~3.9 m up), 1 down to the ground
+var _sections: Array = []       # [node, rest y, stow] for Ladder_2 and Ladder_3
+var _ladder_shape: CollisionShape3D
+var _waiting := false           # stopped with its ladder down because you came up behind it
+var _getting_off := false       # running the ladder out so you can climb down
+var _clear := false             # you just climbed down: don't stop for you again until you've left
 
 func _ready() -> void:
 	name = "Walker"
@@ -153,6 +163,9 @@ func _build() -> void:
 	_body = _model.find_child("Body", true, false)
 	_module = _model.find_child("Module", true, false)
 	_lamp = _model.find_child("Lamp", true, false)
+	for i in 2:
+		var section := _model.find_child("Ladder_%d" % (i + 2), true, false) as Node3D
+		if section != null: _sections.append([section, section.position.y, float(LADDER_STOW[i])])
 	_dust = _model.find_child("Dust", true, false)
 	if _module != null: _module_y0 = _module.position.y
 	for i in range(1, 7):
@@ -189,7 +202,9 @@ func _build() -> void:
 	ladder.set_meta("interaction_target", ladder)
 	ladder.position = LADDER
 	add_child(ladder)
-	_shape(ladder, BoxShape3D.new(), Vector3(1.0, 3.2, .4), Vector3.ZERO)
+	_ladder_shape = _shape(ladder, BoxShape3D.new(), Vector3(1.0, 3.2, .4), Vector3.ZERO)
+	ladder_out = 1.0 if _ladder_wanted() else 0.0
+	_place_ladder()
 
 func _shape(body: StaticBody3D, box: BoxShape3D, size: Vector3, at: Vector3) -> CollisionShape3D:
 	box.size = size
@@ -422,15 +437,18 @@ func _process(delta: float) -> void:
 			var pace := delta
 			var sleep: Node = world.get("sleep")
 			if sleep != null and bool(sleep.asleep): pace *= float(world.day_night.time_scale)
-			if _drive(home, pace):
+			_watch_for_you()
+			if _can_move() and _drive(home, pace):
 				state = "parked"
 				MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit
 				var notes: Node = world.get("notes")
 				if notes != null: notes.think("walker_home")
 				MHNotices.post("info", NAME + " is home", "Press B to choose where the General Module goes.", "")
 		"carrying":
-			if _drive(target, delta, target_yaw): _start_lowering()
+			if _can_move() and _drive(target, delta, target_yaw): _start_lowering()
 		"lowering": _lower(delta)
+	_run_ladder(delta)
+	if _getting_off and ladder_out >= 1.0: _step_off()
 	if riding: _ride()
 	_check -= delta
 	if _check <= 0.0:
@@ -459,14 +477,54 @@ func _drive(goal: Vector3, delta: float, yaw := INF, speed := SPEED) -> bool:
 func ladder_prompt() -> Dictionary:
 	if riding: return {"label": NAME, "primary": "Climb down"}
 	if state == "lowering": return {"label": NAME + " · setting the module down"}
+	if ladder_out < .95: return {"label": NAME + " · its ladder's packed away"}
 	return {"label": NAME + " · a ladder up to its rear deck", "primary": "Climb aboard"}
+
+# ---------- the telescoping ladder ----------
+
+## Down while it stands still; packed away while it moves, unless it has
+## stopped for you to climb on or off.
+func _ladder_wanted() -> bool:
+	if _getting_off: return true
+	if state in ["stalled", "parked", "done"]: return true
+	return _waiting and not riding
+
+func _run_ladder(delta: float) -> void:
+	var want := 1.0 if _ladder_wanted() else 0.0
+	if is_equal_approx(ladder_out, want): return
+	if (ladder_out == 0.0 or ladder_out == 1.0): MHAudio.sfx_at("mode_build", self, -10.0, .2)
+	ladder_out = move_toward(ladder_out, want, delta / LADDER_SECONDS)
+	_place_ladder()
+
+func _place_ladder() -> void:
+	var t := smoothstep(0.0, 1.0, ladder_out)
+	for s in _sections:
+		(s[0] as Node3D).position.y = float(s[1]) + (1.0 - t) * float(s[2])
+	if _ladder_shape != null: _ladder_shape.disabled = ladder_out < .95
+
+## Walking: come up to its ladder's foot and it stops and runs the ladder
+## down for you; walk off and it carries on.
+func _watch_for_you() -> void:
+	var player: Node3D = world.get("player")
+	if player == null or riding: return
+	var foot := to_global(STEP_OFF)
+	var d := Vector2(player.global_position.x - foot.x, player.global_position.z - foot.z).length()
+	if d > LEAVE_REACH:
+		_waiting = false
+		_clear = false
+	elif d < WAIT_REACH and not _clear: _waiting = true
+
+## It only moves with the ladder packed away and nobody climbing.
+func _can_move() -> bool:
+	return ladder_out <= 0.0 and not _getting_off and (riding or not _waiting)
 
 ## Up the ladder onto the rear deck: you ride where it walks, free to look
 ## round and use the slate. E climbs down.
 func climb() -> bool:
 	var player: CharacterBody3D = world.get("player")
-	if player == null or riding or state == "lowering": return false
+	if player == null or riding or state == "lowering" or ladder_out < .95: return false
 	riding = true
+	_waiting = false
 	_ride_yaw = rotation.y
 	_ride_layers = Vector2i(player.collision_layer, player.collision_mask)
 	player.collision_layer = 0
@@ -477,10 +535,20 @@ func climb() -> bool:
 	_ride()
 	return true
 
+## E on the deck: it stops and runs its ladder down first if it's moving.
 func climb_down() -> void:
+	if not riding: return
+	if ladder_out < 1.0:
+		_getting_off = true
+		return
+	_step_off()
+
+func _step_off() -> void:
+	_getting_off = false
 	var player: CharacterBody3D = world.get("player")
 	if player == null or not riding: return
 	riding = false
+	_clear = state in ["walking", "carrying"]
 	var spot := to_global(STEP_OFF)
 	spot.y = MHSiteTerrain.height(spot.x, spot.z) + .1
 	player.global_position = spot
@@ -500,7 +568,7 @@ func _ride() -> void:
 	player.velocity = Vector3.ZERO
 
 func _unhandled_input(event: InputEvent) -> void:
-	if riding and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+	if riding and not _getting_off and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		climb_down()
 		get_viewport().set_input_as_handled()
 
@@ -582,7 +650,9 @@ func _lower(delta: float) -> void:
 
 ## Down: the real module takes over, the kit and plans are yours.
 func _finish_set_down() -> void:
-	if riding: climb_down()
+	ladder_out = 1.0
+	_place_ladder()
+	if riding: _step_off()
 	state = "done"
 	_hide_base(false)
 	if _module != null: _module.visible = false

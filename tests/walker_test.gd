@@ -130,15 +130,29 @@ func _initialize() -> void:
 	_check(walker.dig_for(2.5) and walker.state == "walking" and not walker._dust.visible, "dug out: it wakes and walks home")
 	_check(screen.cargo_state(walkers[0]) == "recovered", "Cargo: Walker 1 recovered")
 	_check(RULES.b_reason(builder) == "Nothing to build with yet", "still nothing to build with on the way")
-	# Riding it: up the ladder, on the deck as it walks, and down again.
+	# The telescoping ladder: packed away while it walks.
 	var ladder: Node = walker.get_node("Ladder")
+	player.global_position = walker.global_position + Vector3(0, 1.5, 300.0)
+	_run(walker, 4.0, func(): return false)
+	var section: Node3D = walker._sections[1][0]
+	_check(walker.ladder_out == 0.0 and section.position.y > float(walker._sections[1][1]) + 3.0 and str(ladder.interaction_prompt().get("primary", "")) == "", "walking: the ladder's packed away, out of reach")
+	# Come up behind it: it stops and runs the ladder down for you.
+	player.global_position = walker.to_global(walker.STEP_OFF) + Vector3(0, .1, 0)
+	var stopped_at := walker.global_position
+	_run(walker, 3.0, func(): return false)
+	_check(walker._waiting and walker.ladder_out == 1.0 and walker.global_position.distance_to(stopped_at) < 1.0, "come up behind it: it stops and lowers its ladder")
 	_check(str(ladder.interaction_prompt().get("primary", "")) == "Climb aboard" and ladder.interact(), "the ladder: climb aboard")
 	_run(walker, 30.0, func(): return false)
-	_check(walker.riding and bool(player.get_meta("riding", false)) and player.global_position.distance_to(walker.to_global(walker.DECK)) < .1, "riding on the rear deck as it walks")
+	_check(walker.riding and bool(player.get_meta("riding", false)) and walker.ladder_out == 0.0 and walker.global_position.distance_to(stopped_at) > 20.0 and player.global_position.distance_to(walker.to_global(walker.DECK)) < .1, "riding on the rear deck, the ladder packed, walking on")
 	_run(walker, 30.0, func(): return false)
-	_check(world.orbiter_texts.has_method("send") and walker._talk >= 1, "Castellanos texts on the walk home")
+	_check(walker._talk >= 1, "Castellanos texts on the walk home")
 	walker.climb_down()
+	_check(walker.riding and walker._getting_off, "E on the deck: it stops to let you down")
+	_run(walker, 3.0, func(): return false)
 	_check(not walker.riding and not bool(player.get_meta("riding", false)) and player.collision_mask != 0 and _flat(player.global_position, walker.to_global(walker.STEP_OFF)) < .5, "climbed down at the ladder's foot")
+	var left_at := walker.global_position
+	_run(walker, 6.0, func(): return false)
+	_check(walker.ladder_out == 0.0 and walker.global_position.distance_to(left_at) > 3.0, "then it packs the ladder and walks on, without stopping for you again")
 	var home_in := _run(walker, 1200.0, func(): return walker.state == "parked")
 	_check(home_in, "it walks all the way home, at one steady pace, inside 20 minutes")
 	_check(walker._talk == 2, "and texts again halfway")

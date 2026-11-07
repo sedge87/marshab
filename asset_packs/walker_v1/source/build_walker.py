@@ -19,6 +19,7 @@ A hierarchy of pivots the game animates (scripts/walker.gd):
       Module               the General Module on its cables: lowers
       Cable_1..Cable_4     winch cables (the game stretches them about Z)
       Lamp                 the fault lamp on leg 4 (the game blinks it)
+      Ladder_1..Ladder_3   the telescoping ladder's sections (2 and 3 slide)
     Dust                   the dust packed in leg 4's wheel fork (hidden once cleaned)
 
 Legs 1-3 on the left (-X), 4-6 on the right (+X), front to back. Metres,
@@ -105,13 +106,22 @@ def build():
         frame.append(rod("rail", (x, dy1, z1 + 0.06), (x, dy1, z1 + 1.0), 0.03, "dark_alloy", 10))
         frame.append(rod("rail", (x, dy0, z1 + 1.0), (x, dy1, z1 + 1.0), 0.03, "dark_alloy", 10))
         frame.append(rod("rail", (x, dy0, z1 + 1.0), (x * 0.32, dy0, z1 + 1.0), 0.03, "dark_alloy", 10))
+    # A telescoping ladder in three sections. Ladder_1 is fixed to the deck;
+    # Ladder_2 and Ladder_3 slide down to the ground when the walker stops
+    # and pack up inside Ladder_1 (bottom about 3.9 m up) while it moves.
+    # Built extended; the game slides them up by LADDER_STOW.
     ly = -hy - 0.14
-    for x in (-0.35, 0.35):
-        frame.append(rod("ladder", (x, ly, 0.3), (x, ly, z1 + 1.0), 0.035, "dark_alloy", 10))
-    z = 0.45
-    while z < z1:
-        frame.append(rod("rung", (-0.35, ly, z), (0.35, ly, z), 0.025, "alloy", 8))
-        z += 0.34
+    sections = [("Ladder_1", 0.35, ly, 3.9, z1 + 1.0, 4.05, z1), ("Ladder_2", 0.29, ly - 0.07, 2.0, 4.1, 2.15, 4.0),
+                ("Ladder_3", 0.23, ly - 0.14, 0.3, 2.2, 0.45, 2.1)]
+    for (pivot_name, half, sy, zb, zt, r0, r1) in sections:
+        pivot = empty(pivot_name, (0, sy, zb), body)
+        parts = [rod("ladder_rail_dark_alloy", (x, sy, zb), (x, sy, zt), 0.035, "dark_alloy", 10) for x in (-half, half)]
+        z = r0
+        while z <= r1 + 0.001:
+            parts.append(rod("ladder_rung_alloy", (-half, sy, z), (half, sy, z), 0.025, "alloy", 8))
+            z += 0.34
+        parts.append(box("ladder_foot_graphite", -half - 0.04, half + 0.04, sy - 0.05, sy + 0.05, zb - 0.04, zb + 0.06, "graphite", 0.01))
+        attach([join(pivot_name.lower() + "_dark_alloy", parts)], pivot)
     # Winches at the four corners of the module.
     winch_at = [(sx * (MODULE[0] - 0.4), sy * (MODULE[1] - 0.5)) for sx in (-1, 1) for sy in (-1, 1)]
     for (x, y) in winch_at:
@@ -122,7 +132,7 @@ def build():
     names = {"beam": "frame_rover_white", "beam_trim": "frame_trim_orange", "cross": "frame_cross_warm_panel", "solar": "deck_solar_cell",
              "solar_rim": "deck_rim_alloy", "avionics": "avionics_warm_shell", "avionics_vent": "avionics_vent_graphite", "mast": "mast_dark_alloy",
              "cam_bar": "cam_graphite", "cam_lens": "cam_lens_dark_glass", "winch": "winch_graphite",
-             "deck": "ride_deck_dark_alloy", "rail": "ride_rail_dark_alloy", "ladder": "ladder_dark_alloy", "rung": "ladder_rung_alloy"}
+             "deck": "ride_deck_dark_alloy", "rail": "ride_rail_dark_alloy"}
     attach([join(names[key], objs) for key, objs in groups.items()], body)
 
     # ---- the six legs ----
