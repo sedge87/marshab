@@ -105,7 +105,10 @@ func _build_cabin() -> void:
 	add_child(deck_body)
 	for part in [["frame_deck", DECK - .04, .08], ["shell_ceiling", CEILING + .05, .1]]:
 		var disc := CylinderMesh.new()
-		disc.top_radius = CABIN_RADIUS + .02; disc.bottom_radius = CABIN_RADIUS + .02
+		# The ceiling sits just inside the hull: level with it, the hull's
+		# inside flickered through its rim in dark patches.
+		var r := CABIN_RADIUS + (.02 if part[0] == "frame_deck" else -.03)
+		disc.top_radius = r; disc.bottom_radius = r
 		disc.height = part[2]; disc.radial_segments = 40
 		var source := StandardMaterial3D.new()
 		source.resource_name = part[0]
@@ -135,7 +138,28 @@ func _build_cabin() -> void:
 	# at the hatch frame's plane, so it shuts with no light round its edges
 	# (the hull opening is wider than the door). Clear of the door's swing.
 	for side in [-1.0, 1.0]:
-		_wall(deck_body, Vector3(side * .955, 2.28, -2.67), Vector3(side * 1.37, 5.72, -2.54))
+		_wall(deck_body, Vector3(side * .95, 2.28, -2.95), Vector3(side * 1.37, 5.76, -2.54))
+	# The door's slab is narrower (±0.845 m) than its top and bottom rails
+	# (±0.95 m): side rails on the door itself fill the slots (they swing with it).
+	for side in [-1.0, 1.0]:
+		var rail := _box(Vector3(side * .84, 2.45, -2.83), Vector3(side * .955, 5.62, -2.7))
+		rail.transform = _ramp.global_transform.affine_inverse() * global_transform * rail.transform
+		_ramp.add_child(rail)
+	for rails in [[5.5, 5.62, -2.7], [2.22, 2.34, -2.73]]:
+		var top_rail := _box(Vector3(-.955, rails[0], -2.83), Vector3(.955, rails[1], rails[2]))
+		top_rail.transform = _ramp.global_transform.affine_inverse() * global_transform * top_rail.transform
+		_ramp.add_child(top_rail)
+	# A header over the door, inside it and clear of its swing.
+	_wall(deck_body, Vector3(-1.37, 5.58, -2.66), Vector3(1.37, 5.76, -2.12))
+	_wall(deck_body, Vector3(-1.37, 5.64, -2.95), Vector3(1.37, 5.8, -2.66))
+	# The sill: the airlock floor stops short of the shut door, over a slot to the ground.
+	_wall(deck_body, Vector3(-.96, 2.26, -2.51), Vector3(.96, FLOOR_HEIGHT + .02, -2.38))
+	# Under the hinge line, where the door never swings.
+	_wall(deck_body, Vector3(-.96, 2.0, -2.7), Vector3(.96, 2.315, -2.38))
+	# The airlock's ceiling over the doorway, where the model's trimmed edges showed dark.
+	_wall(deck_body, Vector3(-1.34, CEILING - .01, -2.62), Vector3(1.34, CEILING + .05, FRONT_WALL))
+	# A soffit over the airlock just inside the shut door: the hull's lip there showed its dark inside.
+	_wall(deck_body, Vector3(-1.0, 5.28, -2.258), Vector3(1.0, CEILING, FRONT_WALL))
 	_build_seal_lamp()
 	# A round ceiling lamp, a downlight under it and a soft fill.
 	var lamp := MeshInstance3D.new()
@@ -170,6 +194,20 @@ func _build_cabin() -> void:
 	for light in [down, fill]: light.set_meta("full_energy", light.light_energy)
 	cabin_lights = [down, fill]
 	cabin_glow = glow
+
+## A box mesh between two corners (lander space), in the house shell, not yet added.
+func _box(corner_a: Vector3, corner_b: Vector3) -> MeshInstance3D:
+	var lo := corner_a.min(corner_b)
+	var size := corner_a.max(corner_b) - lo
+	var box := BoxMesh.new()
+	box.size = size
+	var source := StandardMaterial3D.new()
+	source.resource_name = "shell_wall"
+	box.material = MHPalette.material(source)
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = box
+	mesh.position = lo + size * .5
+	return mesh
 
 ## A solid wall block between two corners (lander space), in the house shell.
 func _wall(body: StaticBody3D, corner_a: Vector3, corner_b: Vector3) -> void:
@@ -286,8 +324,9 @@ func place_on_site() -> void:
 
 ## Stand on a chosen point: legs on the ground, hatch turned towards the site
 ## centre (where most bases are built).
-func place_at(point: Vector2) -> void:
-	var to_site := -point
+## `face` (site metres), when given, is what the hatch turns towards instead.
+func place_at(point: Vector2, face := Vector2.INF) -> void:
+	var to_site := -point if is_inf(face.x) else face - point
 	var yaw := atan2(-to_site.x, -to_site.y) if to_site.length() > 3.0 else 0.0
 	var basis := Basis(Vector3.UP, yaw)
 	var top := MHSiteTerrain.height(point.x, point.y)

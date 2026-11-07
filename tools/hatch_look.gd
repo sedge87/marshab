@@ -40,6 +40,13 @@ func _initialize() -> void:
 		var side := lander.to_global(Vector3(2.6, 0, -5.0))
 		_stand(Vector3(side.x, MHSiteTerrain_height(side) + 2.6, side.z), lander.to_global(Vector3(0, 3.6, -2.4)), 0.0)
 		await _shot("%s_4_outside_angle" % tag)
+		# Close up at the door's edges and its sill, from inside (where gaps showed in playtests).
+		_stand(lander.to_global(Vector3(.55, lander.DECK + .2, -2.0)), lander.to_global(Vector3(1.0, lander.DECK + 1.6, -2.65)), 0.0)
+		await _shot("%s_5_edge_close" % tag)
+		_stand(lander.to_global(Vector3(0, lander.DECK + .2, -1.7)), lander.to_global(Vector3(0, lander.DECK, -2.7)), -40.0)
+		await _shot("%s_6_sill" % tag)
+		_stand(lander.to_global(Vector3(0, lander.DECK + .3, -1.7)), lander.to_global(Vector3(0, lander.CEILING, -2.6)), 35.0)
+		await _shot("%s_7_header" % tag)
 	quit()
 
 func MHSiteTerrain_height(at: Vector3) -> float:
