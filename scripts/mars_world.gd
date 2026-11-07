@@ -15,6 +15,7 @@ const KNOWN := preload("res://scripts/known_things.gd")
 const NOTES := preload("res://scripts/notes.gd")
 const STORM_DROP := preload("res://scripts/storm_drop.gd")
 const DROP_FIELD := preload("res://scripts/drop_field.gd")
+const LIFEPOD := preload("res://scripts/lifepod.gd")
 const ORBITER_TEXTS := preload("res://scripts/orbiter_texts.gd")
 const HABITAT_MONITOR := preload("res://scripts/habitat_monitor.gd")
 const HABITAT_CAMERAS := preload("res://scripts/habitat_cameras.gd")
@@ -35,12 +36,14 @@ const HAND_CORER := preload("res://scripts/hand_corer.gd")
 const SURVEY_STAKES := preload("res://scripts/survey_stakes.gd")
 const SAMPLE_TOOLS := preload("res://scripts/sample_tools.gd")
 const JOURNAL_KEEPER := preload("res://scripts/journal_keeper.gd")
+const SLATE_CAMERA := preload("res://scripts/slate_camera.gd")
 const LAB_SCREEN := preload("res://scripts/lab_screen.gd")
 const FABRICATOR_SCREEN := preload("res://scripts/fabricator_screen.gd")
 var hand_corer: Node
 var survey_stakes: Node3D   # scripts/survey_stakes.gd (chapter one): GAR-Y's readings as stakes, T + F pings them
 var sample_tools: Node   # step 5: scoop, rock chips, the sample case
 var journal_keeper: Node   # step 5: J, the bunk's notebook, sketches
+var slate_camera: Node     # the slate's Camera app: photos into the journal
 var _chapter_check := 0.0
 var _chapter_hours := -1.0
 const LANDING_PICKER_SCRIPT := preload("res://scripts/landing_picker.gd")
@@ -79,7 +82,9 @@ var _notes_state := {}
 var storm_drop: Node3D  # scripts/storm_drop.gd: the parachute ridge, pallet 1 and the debris trail
 var _drop_state := {}
 var drop_field: Node3D  # scripts/drop_field.gd: pallets 2-4 round the landing, the field tools, GAR-Y's sunset
+var lifepod: Node3D     # scripts/lifepod.gd: the lifepod days (water, threads, salvage, the tiny printer)
 var _field_state := {}
+var _lifepod_state := {}
 ## GAR-Y is met at its pallet (or finds you) in revamp games; it's there from
 ## the start otherwise.
 var gary_met := true
@@ -217,6 +222,9 @@ func _ready() -> void:
 		drop_field = DROP_FIELD.new()
 		add_child(drop_field)
 		drop_field.setup(self, _field_state)
+		lifepod = LIFEPOD.new()
+		add_child(lifepod)
+		lifepod.setup(self, _lifepod_state)
 	if MHChapterOne.new_rules():
 		orbiter_texts = ORBITER_TEXTS.new()
 		add_child(orbiter_texts)
@@ -240,6 +248,8 @@ func _ready() -> void:
 		add_child(sample_tools)
 		journal_keeper = JOURNAL_KEEPER.new().setup(self)
 		add_child(journal_keeper)
+		slate_camera = SLATE_CAMERA.new().setup(self)
+		add_child(slate_camera)
 	if str(_tutorial_state.get("mode", "off")) == "full" and not MHGame.showcase:
 		tutorial = TUTORIAL_SCRIPT.new()
 		tutorial.setup(self, _tutorial_state)
@@ -968,6 +978,7 @@ func current_state() -> Dictionary:
 		"notes": notes.export_state() if notes != null else {},
 		"storm_drop": storm_drop.export_state() if storm_drop != null else {},
 		"drop_field": drop_field.export_state() if drop_field != null else {},
+		"lifepod": lifepod.export_state() if lifepod != null else {},
 		"gary_met": gary_met,
 		"orbiter_texts": orbiter_texts.export_state() if orbiter_texts != null else {},
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
@@ -1038,6 +1049,7 @@ func _restore_pending_habitat() -> void:
 	_notes_state = state.get("notes", {}) as Dictionary
 	_drop_state = state.get("storm_drop", {}) as Dictionary
 	_field_state = state.get("drop_field", {}) as Dictionary
+	_lifepod_state = state.get("lifepod", {}) as Dictionary
 	_texts_state = state.get("orbiter_texts", {}) as Dictionary
 	if region_map != null: region_map.trail = PackedVector2Array(state.get("trail", PackedVector2Array()))
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()

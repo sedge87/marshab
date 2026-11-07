@@ -1172,6 +1172,8 @@ func _patrol_next() -> void:
 func interaction_prompt() -> Dictionary:
 	if has_meta("sunset_offer"): return {"label": NAME + " · looking at the sun", "primary": "Watch the sunset together", "info": "About"}
 	if has_meta("lift_out"): return {"label": NAME + " · folded in its cradle", "primary": "Lift it out"}
+	var pod := get_tree().get_first_node_in_group("lifepod")
+	if pod != null and pod.sled_ready(self): return {"label": "%s · %d kg of ice on its sled" % [NAME, roundi(float(pod.sled_kg))], "primary": "Melt the sled's ice", "info": "About"}
 	return {"label": "%s · %s" % [NAME, status_text()], "primary": "Ping", "info": "About"}
 
 func status_text() -> String:
@@ -1199,6 +1201,12 @@ func interact(_actor: Node = null) -> bool:
 	if has_meta("lift_out"):
 		var field := get_tree().get_first_node_in_group("drop_field")
 		if field != null: field.lift_gary()
+		return true
+	# Back at the lander with ice on its sled (scripts/lifepod.gd).
+	var pod := get_tree().get_first_node_in_group("lifepod")
+	if pod != null and pod.sled_ready(self):
+		pod.unload_sled()
+		_say("happy")
 		return true
 	# Its first sunset with you (scripts/gary_sunset.gd).
 	if has_meta("sunset_offer"):

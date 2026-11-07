@@ -32,7 +32,7 @@ const FURNITURE := [
 	["potable_water_dispenser", Vector3(1.55, 0, 1.3), Vector2(-.8, -1)],
 	["supply_crate_medium", Vector3(-1.55, 0, -.52), Vector2(0, 1)],
 	["supply_crate_small", Vector3(-1.55, .447, -.52), Vector2(.3, 1)],
-	["supply_crate_medium", Vector3(1.55, 0, -.52), Vector2(0, 1)],
+	# The right wall holds the lifepod bench (scripts/lifepod_bench.gd).
 ]
 ## Catalogue models face -Z; turn by this to face `direction`.
 const MODEL_FRONT := PI

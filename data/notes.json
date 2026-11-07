@@ -92,6 +92,43 @@
         "start": "Something is tapping on the hull outside the hatch. Something small, and patient."
       },
       "journal": "There was something tapping on the hull when I came round. It was GAR-Y."
+    },
+    "water": {
+      "stages": {
+        "low": "Cabin water's lower than I thought. A day and a bit, maybe.{where}",
+        "empty": "The tank's dry. I need ice, and something to melt it in. The lander's bench has a melter."
+      },
+      "journal": "Melted my first ice in the lander's melter. It came out cloudy and tasted of rust and nothing. Best drink I've ever had."
+    },
+    "iron": {
+      "stages": {
+        "seen": "Dark red rock studded with little grey balls. Haematite, I think. Iron. Nothing to smelt it with yet."
+      },
+      "journal": "Haematite beads from the outcrop: iron, once I've got a way to smelt it."
+    },
+    "ice_wall": {
+      "stages": {
+        "seen": "A wall of buried ice, showing through the dust in slabs. Tonnes of it. I can only chip a few kilos by hand."
+      },
+      "journal": "The ice wall is old snow, layer on layer. Enough water for years, if I could dig it properly."
+    },
+    "salvage": {
+      "stages": {
+        "start": "The storm left good parts in this junk. The lander's little printer could use them."
+      },
+      "journal": "Printed my first part from storm junk. Small, but mine."
+    },
+    "photo": {
+      "stages": {
+        "start": "Should get a picture of this for the journal. The slate has a camera."
+      },
+      "journal": "Took a picture for the journal."
+    },
+    "night_sound": {
+      "stages": {
+        "start": "Woke to a long, slow grinding somewhere out on the flats. Then nothing."
+      },
+      "journal": "Found what made the noise in the night."
     }
   }
 }
