@@ -859,7 +859,15 @@ One Survival run should let you try every pillar:
          - clean the walker's dust-jammed leg;
          - it walks home with GAR-Y leading;
          - the Plan view on explored ground;
-         - the General Module set down and joined to the lander with a sealed hatch.
+         - the General Module set down.
+       - **Setting it down · Decided 7 Nov** (the user: "the habitat is its own thing … treating this as a tutorial for the site plan building"). It's the Plan view's first lesson, by limiting choice rather than by telling (Cleveland's training wheels; Schell: hands-on teaching):
+         - B does nothing before the module is home ("Nothing to build with yet"); Creative stays open.
+         - The walker parks near the lander. B opens the Site plan with only two things in its bar: the General Module and its Airlock. The previews explain the rules themselves: level ground, only where you've explored, the airlock on an outside wall. Optional Hints add short cards; there's no step-by-step tutorial.
+         - **Anywhere you've explored** with room for it, not joined to the lander. The walker carries it there and lowers it while you watch; the airlock unfolds from its kit. You walk over, cycle in, and the habitat is its own place.
+         - **The fit-out kit** rides with it: a sleep station, the General Module rack, a small table and seat, and a work lamp. Inside, B opens the Interior view with only those in its bar; each unfolds where you put it. It's the second lesson, the same training wheels indoors. More furniture is printable once the Print Shop pallet is found.
+         - Then the first night in a real room.
+       - **Code:** split only what 3c touches out of `build_controller.gd` (the build rules and the gate); the full split waits for step 4.
+       - **Later (after 3c):** Mission Control as its own room, separate from the Lab (the user, 7 Nov).
        - **The payoff:** its plans (the extractor, the smelter and others) open your threads, and the first night in a real room closes the arc. Printed room shells move to step 4 with the regolith printer.
      - **The original list:**
      - GAR-Y (found, or finding you);
