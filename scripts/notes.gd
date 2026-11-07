@@ -121,6 +121,10 @@ func _sol() -> int:
 
 # ---------- what's watched here ----------
 
+## Seconds after the air is settled before ARDEN raises the night.
+const AFTER_AIR := 20.0
+var _air_settled_for := 0.0
+
 func _process(delta: float) -> void:
 	_check -= delta
 	if _check > 0.0 or world == null or world.get("player") == null or get_tree().paused: return
@@ -141,6 +145,13 @@ func _process(delta: float) -> void:
 	if dark and is_open("power"): think("power", "night")
 	if is_open("power") and stage("power") == "night" and hour >= sunrise and hour < sunrise + 2.0:
 		answer("power", {"how": _night_summary()})
+	# ARDEN's afternoon warning, once: a little after the air is sorted (a
+	# pause, then the next worry), or by mid-afternoon whatever you're doing.
+	if not is_open("power") and not is_settled("power") and not dark and hour >= sunrise + 1.0:
+		if is_settled("air"): _air_settled_for += CHECK
+		if hour >= sunset - 5.0 or _air_settled_for >= AFTER_AIR:
+			MHAudio.voice("cabin_battery_night")
+			think("power")
 	# A cold cabin while you're in it.
 	var cabin: Node = world.get("cabin_life")
 	if cabin != null and cabin.running() and is_open("air") and stage("air") == "start" and float(cabin.core.tank_o2_kg) < float(cabin.core.tank_cap) * .3:

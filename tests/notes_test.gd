@@ -54,8 +54,16 @@ func _initialize() -> void:
 	notes.answer("air")   # never thought this stage: answering works out of order
 	_check(notes.is_settled("air"), "a thought can be answered from any stage")
 
+	# ARDEN raises the night a little after the air is settled.
+	_check(not notes.is_open("power"), "no night worry straight away")
+	notes._air_settled_for = notes.AFTER_AIR
+	notes._check = 0.0
+	await process_frame
+	await process_frame
+	_check(notes.is_open("power") and notes.stage("power") == "start", "after the air is sorted, ARDEN warns about the night and it becomes a thought")
+
 	# Few at a time.
-	for id in ["power", "cold"]: notes.think(id)
+	for id in ["cold"]: notes.think(id)
 	_check(notes.open.size() <= notes.MOST, "never more than %d open thoughts" % notes.MOST)
 
 	# What's watched: night then dawn for the power thought.
@@ -99,5 +107,5 @@ func _initialize() -> void:
 	_check(copy.is_open("cargo") and copy.is_settled("parachute") and copy.thoughts().size() == notes.thoughts().size(), "open and settled thoughts are saved")
 	copy.free()
 	if failures == 0:
-		print("Notes test passed: Notes instead of Goals and no old crates in a new game, the first thoughts, fills, thoughts changing out of order, answers into the journal raising the next question, never more than five, night and dawn, the blue sunset, a cold cabin, and saving.")
+		print("Notes test passed: Notes instead of Goals and no old crates in a new game, the first thoughts, fills, thoughts changing out of order, answers into the journal raising the next question, never more than five, ARDEN's afternoon warning, night and dawn, the blue sunset, a cold cabin, and saving.")
 	quit(1 if failures > 0 else 0)

@@ -354,6 +354,9 @@
       "Sunset's coming. The rover's roof panel stops at dark.",
       "It'll be dark soon. Worth heading back while there's light."
     ],
+    "cabin_battery_night": [
+      "One more thing before tonight. The cabin battery can't keep us warm until morning on its own. There's a power pallet out there somewhere. I'd rather we found it before dark."
+    ],
     "link_lost": [
       "Touchdown. The high-gain antenna has lost lock. The orbiter can still send text on its passes."
     ],
