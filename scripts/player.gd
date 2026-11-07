@@ -38,7 +38,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Driving the crew rover (scripts/crew_rover.gd): it takes the keys.
 	var exploring := not _any_build_mode_active() and not bool(get_meta("driving", false)) and not bool(get_meta("riding", false))
 	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
-		if not _use_looked_at_interactable("interact"):
+		# With the wrist pad up (T held), E eats the suit's food bar (scripts/suit.gd).
+		var suit := get_tree().get_first_node_in_group("suit")
+		if Input.is_physical_key_pressed(KEY_T) and suit != null and suit.eat_bar(): pass
+		elif not _use_looked_at_interactable("interact"):
 			_toggle_nearby_airlock_door()
 	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
 		# Focused equipment retains its contextual secondary action (such as a
@@ -57,8 +60,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	# G: a tap is the looked-at item's third action, holding it opens GAR-Y's
 	# orders. Both are handled by scripts/gar_y_orders.gd.
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
-		head.rotate_x(-event.relative.y * MOUSE_SENSITIVITY)
+		var look := float(get_meta("look_speed", 1.0))   # a lazier look when hungry (scripts/body.gd)
+		rotate_y(-event.relative.x * MOUSE_SENSITIVITY * look)
+		head.rotate_x(-event.relative.y * MOUSE_SENSITIVITY * look)
 		head.rotation.x = clamp(head.rotation.x, deg_to_rad(-80.0), deg_to_rad(80.0))
 	# Build Mode needs a free cursor for repeated placement clicks. The builder
 	# marks the player while its isometric camera is active.

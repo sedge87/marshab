@@ -100,16 +100,17 @@ const GAME_MODE_NOTES := {
 }
 const MODE_ICONS := {"survival": "heart-pulse", "freedom": "wind", "creative": "sparkles", "custom": "settings"}
 ## The rules (docs/game-modes.md §2), and each mode's preset.
-const RULE_KEYS := ["simulation", "food_water", "suit_o2", "harm", "plans", "stores", "cargo", "landing", "lab"]
+const RULE_KEYS := ["simulation", "food_water", "tiredness", "suit_o2", "harm", "plans", "stores", "cargo", "landing", "lab"]
 const MODE_RULES := {
-	"survival": {"simulation": true, "food_water": true, "suit_o2": true, "harm": true, "plans": "earned", "stores": "90", "cargo": "crates", "landing": "ellipse", "lab": "normal"},
-	"freedom": {"simulation": true, "food_water": false, "suit_o2": true, "harm": true, "plans": "all", "stores": "150", "cargo": "crates", "landing": "target", "lab": "fast"},
-	"creative": {"simulation": false, "food_water": false, "suit_o2": false, "harm": false, "plans": "all", "stores": "150", "cargo": "unlimited", "landing": "target", "lab": "fast"},
+	"survival": {"simulation": true, "food_water": true, "tiredness": true, "suit_o2": true, "harm": true, "plans": "earned", "stores": "90", "cargo": "crates", "landing": "ellipse", "lab": "normal"},
+	"freedom": {"simulation": true, "food_water": false, "tiredness": false, "suit_o2": true, "harm": true, "plans": "all", "stores": "150", "cargo": "crates", "landing": "target", "lab": "fast"},
+	"creative": {"simulation": false, "food_water": false, "tiredness": false, "suit_o2": false, "harm": false, "plans": "all", "stores": "150", "cargo": "unlimited", "landing": "target", "lab": "fast"},
 }
 ## For Custom's rows: the label, a note, and the choices ([value, label]; switches are bools).
 const RULE_INFO := {
 	"simulation": ["Life support", "Power, heat, air and water run. Off: nothing to survive.", []],
 	"food_water": ["Food and water", "Off: nobody needs to eat or drink; the food plans aren't needed.", []],
+	"tiredness": ["Tiredness", "Long days catch up with you; a good sleep leaves you well rested. Never locks you out.", []],
 	"suit_o2": ["Suit oxygen", "Your suit's air runs down outside.", []],
 	"harm": ["Shortages hurt", "Off: warnings only, nobody is hurt.", []],
 	"plans": ["Plans", "Earn the Print Shop's plans, or know them all.", [["earned", "Earned"], ["all", "All known"]]],
@@ -170,6 +171,10 @@ static func rules_from_state(state: Dictionary) -> Dictionary:
 ## Whether anyone needs food and water (not in Freedom).
 static func needs_food_water() -> bool:
 	return simulation_on() and bool(rule("food_water"))
+
+## Whether tiredness builds while you're awake (step 4a, scripts/body.gd).
+static func tiredness_on() -> bool:
+	return simulation_on() and bool(rule("tiredness"))
 
 ## Food each person eats a sol (0 when nobody needs food).
 static func food_per_person() -> float:

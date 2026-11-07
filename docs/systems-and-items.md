@@ -890,6 +890,18 @@ One Survival run should let you try every pillar:
   4a. **The five needs, early · Decided 8 Nov** (the user: "get this stuff in early so the player has to actually manage it… it's part of the basic survival mechanics"). Built before the materials work, so every need is live from the lifepod days:
      - **Food:** pallet 1's rations (about 5 sols, on a shelf in the lander), eaten by hand (E); hunger builds slowly and shows on your body (slower hands, a lazier camera); more rations in later pallets and resupplies. The galley and crops stay in step 7.
      - **Tiredness:** builds through the sol (blinks, yawns, a drifting view); pushed too far you doze off in the field. Sleep in the sealed cabin or the module resets it.
+     - **Built 8 Nov (the user's numbers):**
+       - **Hunger** (Food and water rule): fine for 12 h after eating. Peckish 12–24 h: a lazier look. Hungry from 24 h: hands 1.25× slower, walking 0.9×. Starving from 72 h: −1 health/h.
+       - **The ration crate** (the small supply crate by the airlock) starts with 2 packs from the descent. Pallet 1's 10 go in your pockets and are stowed when you're back in the cabin. E eats one.
+       - **Tiredness** is reward-led ("reward, don't force"), its own rule, on in Survival only:
+         - 6 h of sleep or more leaves you **well rested** for 16 h: hands 10% quicker, walking 5% quicker, about 10% less suit O₂;
+         - after 24 h awake, blinks, yawns, a slight drift and hands 10% slower;
+         - after 48 h, now and then a harmless 3–6 s doze where you stand;
+         - sleep clears 2 awake-hours per hour; nothing forces you to sleep.
+       - **Outside, the suit feeds you:**
+         - a 1 L drink bag, about 8 h of sipping, filled from the lander's tank; dry for 12 h, and thirst costs health as in the cabin;
+         - a food bar in the helmet port, taken from the crate when you're back at the lander. With the wrist pad up (T), E eats it;
+         - the wrist pad shows a drop and a bar, as icons.
      - **Water** keeps today's lander loop until step 5; **radiation** keeps the suit's running dose until the monitor in step 7.
      - **Why (the design references):** survival as training wheels (the underwater survival game's talks): needs give direction early and fade as machines take over, so they must exist from the start for the fading to feel like progress; Schell's Lens #33 Triangularity (going far on low rations is a real risk-for-reward choice) and #19 Needs; our chore check (§10g) keeps them hands-on, never a routine.
   4. **Materials and making:**

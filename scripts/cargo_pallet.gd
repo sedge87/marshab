@@ -80,7 +80,7 @@ func _process(delta: float) -> void:
 		_held = 0.0
 		_freed = 0
 		return
-	_held += delta
+	_held += delta * float(player.get_meta("hands_speed", 1.0))   # slower hungry or tired (scripts/body.gd)
 	var now := mini(LATCHES, floori(_held / HOLD * LATCHES))
 	while _freed < now:
 		_freed += 1

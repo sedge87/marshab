@@ -25,6 +25,9 @@ const SITE := preload("res://scripts/thread_site.gd")
 const FIND := preload("res://scripts/carried_find.gd")
 const SALVAGE := preload("res://scripts/salvage_piece.gd")
 const BENCH := preload("res://scripts/lifepod_bench.gd")
+const RATION_CRATE := preload("res://scripts/ration_crate.gd")
+const START_RATIONS := 2        # from the descent: a sol's food (step 4a)
+const PALLET_RATIONS := 10      # pallet 1's: about five sols, two a sol
 ## [kind, nearest, furthest, the ground it wants]
 const THREADS := [["iron", 1000.0, 1400.0, "rough"], ["ice_wall", 1000.0, 1500.0, "low"]]
 const PLANS := [["hitch", "the sled hitch", "print_hitch_parts", 3.0], ["pick", "an ice pick head", "print_pick_parts", 2.0], ["bladder", "a water bladder", "print_bladder_parts", 2.0]]
@@ -51,6 +54,8 @@ var _print_left := 0.0
 var _check := 0.0
 var _last_hour := -1.0
 var _photo_nudged := false
+var rations := START_RATIONS    # packs in the cabin's ration crate (scripts/ration_crate.gd)
+var rations_carried := 0        # pallet 1's, in your pockets until you're back in the cabin
 
 func setup(target_world: Node, saved: Dictionary) -> void:
 	world = target_world
@@ -65,11 +70,17 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	walker_due = bool(saved.get("walker_due", false))
 	walker_moved = bool(saved.get("walker_moved", false))
 	_photo_nudged = bool(saved.get("photo_nudged", false))
+	rations = int(saved.get("rations", START_RATIONS))
+	rations_carried = int(saved.get("rations_carried", 0))
+	# A save from before step 4a with pallet 1 already open: its rations are home.
+	var drop: Node = world.get("storm_drop")
+	if not saved.has("rations") and drop != null and drop.pallet != null and bool(drop.pallet.opened): rations += PALLET_RATIONS
 	_place_sites(saved.get("sites", {}))
 	_hook_salvage.call_deferred()
 	bench = BENCH.new()
 	bench.setup(self, world.lander)
 	_hook_dispenser.call_deferred()
+	_hook_ration_crate.call_deferred()
 	for find in saved.get("finds", []):
 		var p: Array = find.at
 		_spawn_find(str(find.kind), float(find.kg), str(find.source), Vector3(float(p[0]), float(p[1]), float(p[2])))
@@ -150,6 +161,48 @@ func _hook_dispenser() -> void:
 			child.set_meta("interaction_target", self)
 			for body in child.find_children("*", "StaticBody3D", true, false): body.set_meta("interaction_target", self)
 
+## The small supply crate by the airlock holds the rations (step 4a).
+func _hook_ration_crate() -> void:
+	for child in world.lander.get_children():
+		if str(child.name).begins_with("Cabin_supply_crate_small"):
+			var crate: Node = RATION_CRATE.new()
+			crate.setup(self, child)
+			return
+
+## E at the ration crate: one pack eaten, hunger gone (scripts/body.gd).
+func eat_ration() -> bool:
+	if rations <= 0 or not MHGame.needs_food_water(): return false
+	rations -= 1
+	var body: Node = world.get("body")
+	if body != null: body.eat()
+	MHAudio.sfx("ration_eat", -4.0, .06)
+	var notes: Node = world.get("notes")
+	if notes != null:
+		notes.answer("first_meal")
+		if rations <= 2 and rations_carried <= 0: notes.think("rations_low")
+		elif notes.is_open("rations_low"): notes.let_go("rations_low")
+	MHNotices.post("valid", "Ate a ration", "%d pack%s left in the crate." % [rations, "" if rations == 1 else "s"], "log")
+	return true
+
+## Takes one pack for the suit's food bar; false when the crate's empty.
+func take_ration() -> bool:
+	if rations <= 0: return false
+	rations -= 1
+	return true
+
+## Pallet 1's rations (scripts/storm_drop.gd): in your pockets until you're home.
+func pocket_rations(count: int) -> void:
+	rations_carried += count
+
+func _stow_rations() -> void:
+	if rations_carried <= 0 or not bool(world.lander.cabin_contains(world.player.global_position)): return
+	rations += rations_carried
+	MHNotices.post("valid", "Rations stowed", "Pallet 1's %d ration packs are in the cabin crate: %d in all." % [rations_carried, rations], "log")
+	MHAudio.sfx("place", -6.0)
+	rations_carried = 0
+	var notes: Node = world.get("notes")
+	if notes != null and notes.is_open("rations_low"): notes.let_go("rations_low")
+
 func interaction_prompt() -> Dictionary:
 	var c := core()
 	if c == null: return {"label": "Cabin water"}
@@ -169,6 +222,7 @@ func _process(delta: float) -> void:
 	if _check > 0.0 or world.get("player") == null: return
 	_check = .5
 	var you: Vector3 = world.player.global_position
+	_stow_rations()
 	for kind in sites:
 		var site: Node = sites[kind]
 		if not site.seen and you.distance_to(site.global_position) < SITE.SEEN_AT: see(site)
@@ -391,4 +445,4 @@ func export_state() -> Dictionary:
 	for find in get_tree().get_nodes_in_group("carried_find"):
 		if not (find as Node).is_queued_for_deletion(): finds.append(find.export_state())
 	return {"parts": parts, "prints": prints.keys(), "jobs": jobs.keys(), "studied": studied.keys(), "stripped": stripped_keys.keys(),
-		"sled_kg": sled_kg, "walker_due": walker_due, "walker_moved": walker_moved, "photo_nudged": _photo_nudged, "sites": site_state, "finds": finds}
+		"sled_kg": sled_kg, "walker_due": walker_due, "walker_moved": walker_moved, "photo_nudged": _photo_nudged, "rations": rations, "rations_carried": rations_carried, "sites": site_state, "finds": finds}

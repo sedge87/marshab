@@ -187,6 +187,9 @@ func wake(why: String) -> void:
 	asleep = false
 	woke_for = why
 	world.day_night.time_scale = 1.0
+	# Step 4a: a long enough sleep leaves you well rested (scripts/body.gd).
+	var body: Node = world.get("body")
+	if body != null: body.slept(_slept)
 	var sunrise := float(MHGame.site().get("day_cycle", {}).get("sunrise_hour", 5.0))
 	match why:
 		"alert": MHAudio.voice("wake_alert")

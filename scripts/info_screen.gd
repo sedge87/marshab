@@ -146,6 +146,20 @@ func _draw_suit() -> void:
 	_bar(Vector2(x, 112 * u), 200 * u, float(r.power), tone.call(float(r.power)), u)
 	_text("CO2 SCRUBBER", Vector2(x, 146 * u), int(18 * u), MHStyle.TEXT_SECONDARY)
 	_bar(Vector2(x, 154 * u), 200 * u, float(r.scrubber), tone.call(float(r.scrubber)), u)
+	# Step 4a: the drink bag (a drop that empties) and the food bar (lit while it's there).
+	if bool(r.get("needs", false)):
+		var drink := float(r.get("drink", 1.0))
+		var c := Vector2(32, 172) * u
+		var drop_col: Color = tone.call(drink)
+		var drop := PackedVector2Array([c + Vector2(0, -13) * u, c + Vector2(8, 1) * u, c + Vector2(6, 7) * u, c + Vector2(0, 10) * u, c + Vector2(-6, 7) * u, c + Vector2(-8, 1) * u])
+		draw_colored_polygon(drop, Color(1, 1, 1, .1))
+		draw_polyline(drop + PackedVector2Array([drop[0]]), drop_col, 1.5 * u, true)
+		_bar(Vector2(46, 167) * u, 60 * u, drink, drop_col, u)
+		var lit := bool(r.get("food_bar", false))
+		var bar_rect := Rect2(Vector2(126, 164) * u, Vector2(34, 14) * u)
+		draw_rect(bar_rect, MHStyle.VALID if lit else Color(1, 1, 1, .08))
+		draw_rect(bar_rect, MHStyle.TEXT_SECONDARY if lit else MHStyle.TEXT_MUTED, false, 1.5 * u)
+		if lit and str(r.get("where", "")) == "outside": _text("E · EAT", Vector2(168, 176) * u, int(14 * u), MHStyle.INFO, 700)
 	# The dosimeter: today and your running total.
 	var rate := float(r.get("dose_rate", 0.0)) * 24.0
 	_text("DOSE  %.2f mSv TODAY · %d TOTAL%s" % [float(r.get("today_msv", 0.0)), roundi(float(r.get("dose_msv", 0.0))), "  · HIGH" if rate > 2.0 else ""], Vector2(x, 180 * u), int(14 * u), MHStyle.DANGER if rate > 2.0 else MHStyle.TEXT_SECONDARY, 600)

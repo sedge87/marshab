@@ -140,8 +140,8 @@ static func _row(option: String, running: bool, changed: Callable) -> Control:
 # ---------- the rules (docs/game-modes.md) ----------
 
 ## Rules that can change in a running Custom game; the rest are set at the start.
-const IN_GAME_RULES := ["food_water", "suit_o2", "harm", "plans", "lab"]
-const RULE_GROUPS := [["Needs", ["simulation", "food_water", "suit_o2", "harm"]], ["Start", ["plans", "stores", "cargo", "landing", "lab"]]]
+const IN_GAME_RULES := ["food_water", "tiredness", "suit_o2", "harm", "plans", "lab"]
+const RULE_GROUPS := [["Needs", ["simulation", "food_water", "tiredness", "suit_o2", "harm"]], ["Start", ["plans", "stores", "cargo", "landing", "lab"]]]
 
 ## The rules as rows, in groups. Editable for Custom: every rule on the
 ## Rules step (running false), the in-game ones from the pause menu; read-only

@@ -282,13 +282,16 @@ func _process(delta: float) -> void:
 func pallet_opened() -> void:
 	MHChapterOne.has_corer = true   # the sample kit: hand corer, scoop and bags (scripts/sample_tools.gd)
 	cartridge.reachable(true)
+	# Step 4a: ten ration packs, into your pockets; stowed in the cabin crate when you're home.
+	var lifepod: Node = world.get("lifepod")
+	if lifepod != null: lifepod.pocket_rations(lifepod.PALLET_RATIONS)
 	var known: Node = world.get("known")
 	if known != null:
 		known.tell("find:parachute", "you")
 		known.rename("find:parachute", "Pallet 1")
 	var notes: Node = world.get("notes")
 	if notes != null: notes.answer("parachute")
-	MHNotices.post("valid", "Pallet 1: life support", "Inside: a fresh oxygen cartridge for the cabin, and the sample kit (hand corer, scoop, bags).", "log")
+	MHNotices.post("valid", "Pallet 1: life support", "Inside: a fresh oxygen cartridge for the cabin, ten ration packs (you pocket them), and the sample kit (hand corer, scoop, bags).", "log")
 	MHAudio.moment()
 
 func export_state() -> Dictionary:

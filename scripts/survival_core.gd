@@ -65,6 +65,8 @@ var dry_hours := 0.0             # hours with nothing to drink
 var prefix := "cabin"
 var room_name := "Cabin"
 var drinks := true
+## Out on the suit you drink from its bag instead (step 4a, scripts/suit.gd).
+var sipping_suit := false
 
 func _init(room := "cabin") -> void:
 	prefix = room
@@ -128,8 +130,8 @@ func advance(hours: float, start_hour: float) -> void:
 
 ## One sub-step: `outside` °C, `sun` 0–1 of noon sunlight.
 func step(dt: float, outside: float, sun: float) -> void:
-	# You drink wherever you are.
-	if drinks:
+	# You drink wherever you are: from the tank, or out on the suit from its bag.
+	if drinks and not sipping_suit:
 		water_l = maxf(0.0, water_l - n("water_per_sol_l", 3.0) / 24.0 * dt)
 		dry_hours = dry_hours + dt if water_l <= 0.0 else 0.0
 	var on := powered()

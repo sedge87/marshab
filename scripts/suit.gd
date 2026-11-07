@@ -31,6 +31,7 @@ extends Node
 const WRIST_PAD := preload("res://scripts/wrist_pad.gd")
 const RESCUE := preload("res://scripts/gar_y_rescue.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
+const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
 const HABITAT_CHAINS := preload("res://scripts/habitat_chains.gd")
 const O2_HOURS := 8.0            # game hours of oxygen at a walk: about 10 real minutes by day (New numbers: suit_hours)
@@ -49,6 +50,7 @@ const MARGIN := 1.25             # the walk back, with a little to spare
 const LOW := 0.25
 const LEAK := 1.5                # a damaged seal: oxygen goes this much faster
 const PATCH_HOURS := 1.0         # patching a seal by hand, with no service panel
+const DRINK_L := 1.0             # the in-suit drink bag (step 4a): about 8 game hours of sipping
 
 var world: Node
 ## Each store as a share of a full suit (0 to 1).
@@ -76,6 +78,12 @@ var _blink := 0.0
 var _check := 0.0
 var dose_msv := 0.0              # your own total (saved)
 var today_msv := 0.0             # since local midnight (saved)
+## Step 4a: eating and drinking outside. The drink bag fills from the lander's
+## tank and you sip it as you go; the food bar sits in the helmet's port, taken
+## from the cabin's ration crate. With the wrist pad up (T), E eats the bar.
+var drink_l := DRINK_L           # (saved)
+var food_bar := true             # (saved)
+var dry_hours := 0.0             # out here with the bag dry (saved)
 
 func setup(target_world: Node) -> void:
 	world = target_world
@@ -128,10 +136,12 @@ func _process(delta: float) -> void:
 	dose(hours)
 	if where == "outside":
 		if not passed_out: step(hours)
+		sip(hours)
 		if _patch_kit(): _patch_by_hand(hours)   # pallet 4's patch kit works out here too
 	else:
 		_top_up(delta)
 		_patch_by_hand(hours)
+		if where == "lander" and _check == .25: restock()
 	if not passed_out:
 		_warnings()
 		_breathing(delta)
@@ -165,9 +175,44 @@ func step(hours: float) -> void:
 	# Night runs faster on the clock than day; the suit drains by real minutes,
 	# so a night walk lasts about as long as a day walk (7 Nov).
 	hours *= pace()
-	o2 = maxf(0.0, o2 - hours * breathing_rate() * (LEAK if leak else 1.0) / O2_HOURS)
+	var body: Node = world.get("body")
+	var rested := float(body.o2_factor()) if body != null else 1.0   # well rested: a little less (scripts/body.gd)
+	o2 = maxf(0.0, o2 - hours * breathing_rate() * rested * (LEAK if leak else 1.0) / O2_HOURS)
 	power = maxf(0.0, power - hours * (NIGHT_POWER if MHGame.sunlight_fraction < .1 else 1.0) / POWER_HOURS)
 	scrubber = maxf(0.0, scrubber - hours / SCRUBBER_HOURS)
+
+## Sipping from the drink bag outside, at the body's pace (game hours).
+func sip(hours: float) -> void:
+	if hours <= 0.0 or not MHGame.needs_food_water(): return
+	drink_l = maxf(0.0, drink_l - MHResources.revamp("water_per_sol_l", 3.0) / 24.0 * hours)
+	dry_hours = dry_hours + hours if drink_l <= 0.0 else 0.0
+
+## Out here long enough with the bag dry to hurt (scripts/body.gd).
+func thirsty() -> bool:
+	return where == "outside" and MHGame.needs_food_water() and dry_hours >= MHResources.revamp("thirst_after_h", 12.0)
+
+## At the lander: the drink bag fills from the cabin's tank and a fresh food
+## bar goes in the helmet port from the ration crate.
+func restock() -> void:
+	if not MHGame.needs_food_water(): return
+	var cabin: Node = world.get("cabin_life")
+	if drink_l < DRINK_L - .01 and cabin != null and cabin.running():
+		var got := minf(DRINK_L - drink_l, float(cabin.core.water_l))
+		cabin.core.water_l -= got
+		drink_l += got
+		if got > 0.0: dry_hours = 0.0
+	var lifepod: Node = world.get("lifepod")
+	if not food_bar and lifepod != null and lifepod.take_ration(): food_bar = true
+
+## T and E: the food bar from the helmet port. Hunger's gone (scripts/body.gd).
+func eat_bar() -> bool:
+	if not food_bar or not MHGame.needs_food_water(): return false
+	food_bar = false
+	var body: Node = world.get("body")
+	if body != null: body.eat()
+	MHAudio.sfx("ration_eat", -6.0, .06)
+	MHNotices.post("valid", "Ate the suit's food bar", "A fresh one goes in when you're back at the lander.", "log")
+	return true
 
 ## How fast the clock runs now against daytime: 1 by day, about 0.5 at night.
 static func pace() -> float:
@@ -380,7 +425,8 @@ func readout() -> Dictionary:
 	return {"o2": o2, "power": power, "scrubber": scrubber, "where": where, "active": active(), "filling": _filling,
 		"o2_hours": o2_hours_left(), "turn_back": turn_back_hours(), "refill": refill, "bearing": bearing,
 		"night": MHGame.sunlight_fraction < .1, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv, "dose_rate": dose_rate(),
-		"base_alert": base_alert(), "runway": _runway()}
+		"base_alert": base_alert(), "runway": _runway(),
+		"needs": MHGame.needs_food_water(), "drink": drink_l / DRINK_L, "food_bar": food_bar}
 
 ## The worst warning or critical alert at the base, {title, level} or {}: the
 ## suit relays it to the wrist pad and the visor while you're out (§12.5).
@@ -556,6 +602,7 @@ func wake_spot() -> Dictionary:
 
 func export_state() -> Dictionary:
 	return {"o2": o2, "power": power, "scrubber": scrubber, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv,
+		"drink_l": drink_l, "food_bar": food_bar, "dry_hours": dry_hours,
 		"dropped": dropped.map(func(d): return {"placement_id": d.placement_id, "label": d.label, "position": [d.position.x, d.position.y, d.position.z]})}
 
 func restore_state(state: Dictionary) -> void:
@@ -565,4 +612,7 @@ func restore_state(state: Dictionary) -> void:
 	leak = bool(state.get("leak", false))
 	dose_msv = float(state.get("dose_msv", 0.0))
 	today_msv = float(state.get("today_msv", 0.0))
+	drink_l = clampf(float(state.get("drink_l", DRINK_L)), 0.0, DRINK_L)
+	food_bar = bool(state.get("food_bar", true))
+	dry_hours = float(state.get("dry_hours", 0.0))
 	dropped = (state.get("dropped", []) as Array).map(func(d): return {"placement_id": str(d.placement_id), "label": str(d.label), "position": Vector3(float(d.position[0]), float(d.position[1]), float(d.position[2]))})

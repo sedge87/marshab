@@ -663,6 +663,42 @@ def main_suit():
     write("sfx/suit_clamp", suit_clamp(), -3)
 
 
+# ---------- step 4a: eating and tiredness ----------
+def ration_eat():
+    L = 1.6
+    out = np.zeros(int(L * RATE))
+    # Foil crinkle: bursts of bright, crackly noise.
+    for i in range(14):
+        t0 = rnuniform(0.0, 0.55)
+        n = highpass(noise(0.05), 3500) * decay(0.05, 0.012) * rnuniform(.4, 1.0)
+        out = mix(out, at(n, t0, L))
+    # Three soft chews: low, muffled thumps.
+    for i, t0 in enumerate([0.75, 1.05, 1.35]):
+        c = lowpass(noise(0.18), 500) * np.sin(np.pi * seconds(0.18) / 0.18) ** 2 * 0.6
+        out = mix(out, at(c, t0, L))
+    return out
+
+def yawn():
+    L = 1.9
+    t = seconds(L)
+    # Breath in, opening (formant sweeping up), then a sigh out.
+    breath = noise(L)
+    env = np.sin(np.pi * np.clip(t / L, 0, 1)) ** 1.5
+    centre = 380 + 520 * np.sin(np.pi * np.clip(t / L, 0, 1))
+    # Approximate a sweeping formant by blending three fixed bands.
+    low = bandpass(breath, 400, 160)
+    mid = bandpass(breath, 700, 220)
+    high = bandpass(breath, 1000, 300)
+    w = (centre - 380) / 520
+    voiced = np.sin(2 * np.pi * np.cumsum(140 - 30 * t / L) / RATE) * 0.08 * env
+    return (low * (1 - w) + mid * w * (1 - w) * 2 + high * w) * env + voiced
+
+
+def main_needs():
+    write("sfx/ration_eat", ration_eat(), -2)
+    write("sfx/yawn", yawn(), -6)
+
+
 def main():
     global OUTPUT
     if len(sys.argv) < 2:
@@ -694,6 +730,7 @@ def main():
     main_weather()
     main_gary()
     main_suit()
+    main_needs()   # last, so the fixed seed leaves every earlier sound as it was
     total = 0
     for name, length in WRITTEN:
         total += length

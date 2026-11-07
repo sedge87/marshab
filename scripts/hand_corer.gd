@@ -78,7 +78,7 @@ func prompt() -> String:
 func _process(delta: float) -> void:
 	var at := _target()
 	var holding := Input.is_physical_key_pressed(KEY_E) and at != Vector3.INF and not world.get_tree().paused and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-	_held = _held + delta if holding else 0.0
+	_held = _held + delta * float(world.player.get_meta("hands_speed", 1.0)) if holding else 0.0
 	_ring.visible = _held > .15
 	_ring.queue_redraw()
 	_show_tool(at if _held > .15 else Vector3.INF)

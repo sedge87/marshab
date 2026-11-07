@@ -150,7 +150,7 @@ func _process(delta: float) -> void:
 	if not Input.is_key_pressed(KEY_E) or player.global_position.distance_to(global_position) > 8.0:
 		_holding = false
 		return
-	chip_for(delta)
+	chip_for(delta * float(player.get_meta("hands_speed", 1.0)))   # slower hungry or tired (scripts/body.gd)
 
 ## Hammer blows while E is held; a chunk comes away at the end.
 func chip_for(delta: float) -> bool:

@@ -84,6 +84,8 @@ func running() -> bool:
 func advance(hours: float, start_hour: float) -> void:
 	if not running() or hours <= 0.0: return
 	core.people = 1.0 if player_inside() and breathable() else 0.0
+	var suit: Node = world.get("suit")
+	core.sipping_suit = suit != null and suit.active() and str(suit.where) == "outside" and not player_inside()
 	core.advance(hours, start_hour)
 
 ## A cartridge plugged into the port: the tank grows by its oxygen, full.

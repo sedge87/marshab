@@ -13,7 +13,7 @@
       "stages": {
         "start": "Parachute on the ridge {dir} of the hatch. Life support, I hope.",
         "near": "It's ours. A pallet in the dust by the canopy, latches still shut.",
-        "open": "Pallet's open. The sample kit, and a fresh oxygen cartridge for the cabin."
+        "open": "Pallet's open. The sample kit, ten ration packs, and a fresh oxygen cartridge for the cabin."
       },
       "journal": "Found the first pallet under its parachute, right where the orbiter's photo said.",
       "next": [
@@ -123,6 +123,39 @@
         "start": "Should get a picture of this for the journal. The slate has a camera."
       },
       "journal": "Took a picture for the journal."
+    },
+    "hungry": {
+      "stages": {
+        "start": "Stomach's starting to talk. There are rations in the crate by the airlock.",
+        "hungry": "Properly hungry now. My hands feel slow. I should eat something.",
+        "starving": "I haven't eaten in days. Everything's an effort. Food, before anything else."
+      },
+      "journal": ""
+    },
+    "first_meal": {
+      "stages": {
+        "start": "Ration packs in the cabin crate. Not exactly a feast."
+      },
+      "journal": "First meal on Mars: a foil pouch, eaten cross-legged on the cabin deck. Tasted better than it had any right to."
+    },
+    "rations_low": {
+      "stages": {
+        "start": "Only a couple of ration packs left in the crate. The pallets brought food. More of them out there, maybe."
+      },
+      "journal": ""
+    },
+    "tired": {
+      "stages": {
+        "start": "I've been up a long time. A proper sleep in the sealed cabin would set me right.",
+        "exhausted": "I keep nodding off. Two sols without sleep. The landing seat reclines, I think."
+      },
+      "journal": ""
+    },
+    "dozed": {
+      "stages": {
+        "start": "Did I just fall asleep standing up? On Mars? That's a new one."
+      },
+      "journal": ""
     },
     "night_sound": {
       "stages": {

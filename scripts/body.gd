@@ -11,6 +11,10 @@ extends Node
 ## | Stale air  | a throbbing headache at the screen's edge                | above 3 % CO₂ health falls   |
 ## | Low O₂     | grey creeping in from the edges, slower                  | below 17 % health falls fast |
 ##
+## | Hunger     | (step 4a) peckish 12 h after eating: a lazier camera; hungry from 24 h: slower hands, slower walk | from 72 h, 1 health an hour |
+## | Tiredness  | (step 4a) a sol awake: blinks, yawns, a drifting view, slower hands; two sols: a rare few-second doze | never harms |
+## | Well rested| (step 4a) 6 h of sleep or more: 16 h of quicker hands and feet, a little less suit oxygen | |
+##
 ## At zero health you collapse and wake hours later where you fell, weak,
 ## with the problem still there (GAR-Y's rescue comes in step 7). It never
 ## costs the save. The comfort setting (Settings, On screen, Body cues) tones
@@ -20,6 +24,19 @@ const COMFORT := {"full": 1.0, "soft": .6, "low": .3}
 const COLLAPSE_HOURS := 4.0
 const WAKE_HEALTH := 25.0
 const SPEED := 120.0             # clock speed while you're out (as when asleep)
+## Step 4a, the needs (docs/systems-and-items.md §1.5, §1.6), in game hours.
+const PECKISH_H := 12.0
+const HUNGRY_H := 24.0
+const STARVING_H := 72.0
+const STARVING_HARM := 1.0       # health an hour
+const TIRED_H := 24.0
+const DOZE_H := 48.0
+const SLEEP_CLEARS := 2.0        # awake-hours cleared per hour asleep
+const RESTED_SLEEP_H := 6.0      # sleep this long to wake well rested
+const RESTED_FOR_H := 16.0
+const RESTED_WORK := 1.1
+const RESTED_WALK := 1.05
+const RESTED_O2 := .9
 
 var world: Node
 var health := 100.0
@@ -40,6 +57,16 @@ var _trembling := false
 var _filter_bus := -1
 var _filter_index := -1
 var _clock := 0.0
+var fed_hours := 0.0             # since you last ate (saved)
+var awake_hours := 0.0           # since you last slept it off (saved)
+var rested_hours := 0.0          # well rested for this much longer (saved)
+var _lid := 0.0                  # 0 open, 1 shut: blinks and dozes
+var _blink_in := 6.0
+var _yawn_in := 40.0
+var _doze_in := 90.0
+var _dozing := 0.0               # seconds left in a doze
+var _drift := 0.0
+var _voice_in := 2.0
 
 const VEIL_SHADER := """
 shader_type canvas_item;
@@ -48,6 +75,7 @@ uniform float cold = 0.0;
 uniform float stale = 0.0;
 uniform float hypoxia = 0.0;
 uniform float pulse = 0.0;
+uniform float lid = 0.0;
 void fragment() {
 	vec2 uv = SCREEN_UV;
 	vec3 c = texture(screen, uv).rgb;
@@ -62,6 +90,9 @@ void fragment() {
 	// Cold: a frosted blue-white rim.
 	float frost = smoothstep(.7 - cold * .25, 1.0, edge) * cold;
 	c = mix(c, vec3(.78, .86, .95), frost * .55);
+	// Tired: eyelids closing from top and bottom, soft-edged.
+	float shut = smoothstep(1.0 - lid * 1.05, 1.0 - lid * 1.05 + .12, abs(uv.y - .5) * 2.0);
+	c = mix(c, vec3(0.0), clamp(max(shut, lid * lid * .9), 0.0, 1.0));
 	COLOR = vec4(c, 1.0);
 }
 """
@@ -72,6 +103,9 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 	add_to_group("body")
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	health = clampf(float(state.get("health", 100.0)), 0.0, 100.0)
+	fed_hours = maxf(0.0, float(state.get("fed_hours", 0.0)))
+	awake_hours = maxf(0.0, float(state.get("awake_hours", 0.0)))
+	rested_hours = maxf(0.0, float(state.get("rested_hours", 0.0)))
 	_layer = CanvasLayer.new()
 	_layer.layer = 4
 	add_child(_layer)
@@ -141,6 +175,11 @@ func _process(delta: float) -> void:
 		if _out_for >= COLLAPSE_HOURS: _wake()
 		return
 	if get_tree().paused: return
+	if hours > 0.0 and hours < 6.0: tick_needs(hours, _asleep())
+	_voice_in -= delta
+	if _voice_in <= 0.0:
+		_voice_in = 2.0
+		_voice()
 	var air := surroundings()
 	var cue := cues_for(air)
 	cold = move_toward(cold, float(cue.cold), delta * .5)
@@ -151,28 +190,169 @@ func _process(delta: float) -> void:
 	var cabin: Node = world.get("cabin_life")
 	if cabin != null and cabin.running() and bool(cabin.core.thirsty()):
 		harm = {"rate": maxf(float(harm.rate), 0.0) + 3.0, "causes": (harm.causes as Array) + ["thirst"]}
+	# Out on the suit with its drink bag dry (scripts/suit.gd).
+	elif world.get("suit") != null and bool(world.suit.thirsty()):
+		harm = {"rate": maxf(float(harm.rate), 0.0) + 3.0, "causes": (harm.causes as Array) + ["thirst"]}
+	if starving():
+		harm = {"rate": maxf(float(harm.rate), 0.0) + STARVING_HARM, "causes": (harm.causes as Array) + ["hunger"]}
 	causes = harm.causes
 	if MHGame.crew_can_be_harmed() and hours > 0.0 and hours < 6.0:
 		health = clampf(health - float(harm.rate) * hours, 0.0, 100.0)
 		if health <= 0.0 and not causes.is_empty(): _collapse()
 	_show(delta, air)
 
-## Speed while you walk: cold and low oxygen slow you.
+## Speed while you walk: cold and low oxygen slow you; hunger a little; rest quickens you.
 func speed_factor() -> float:
-	return clampf(1.0 - .3 * cold - .3 * hypoxia - .3 * (1.0 - health / 100.0) * float(health < 50.0), .45, 1.0)
+	var base := clampf(1.0 - .3 * cold - .3 * hypoxia - .3 * (1.0 - health / 100.0) * float(health < 50.0), .45, 1.0)
+	if hungry(): base *= .9
+	if rested(): base *= RESTED_WALK
+	return base
+
+# ---------- step 4a: hunger and tiredness ----------
+
+static func hunger_on() -> bool:
+	return MHGame.needs_food_water() and not MHGame.showcase
+
+static func tiredness_on() -> bool:
+	return MHGame.tiredness_on() and not MHGame.showcase
+
+func _asleep() -> bool:
+	var sleep: Node = world.get("sleep") if world != null else null
+	return sleep != null and bool(sleep.asleep)
+
+## Game hours passing: hunger builds, and tiredness builds awake or clears asleep.
+func tick_needs(hours: float, asleep: bool) -> void:
+	if hunger_on(): fed_hours = minf(fed_hours + hours, 24.0 * 10.0)
+	if not tiredness_on():
+		awake_hours = 0.0
+		return
+	if asleep:
+		awake_hours = maxf(0.0, awake_hours - hours * SLEEP_CLEARS)
+	else:
+		awake_hours = minf(awake_hours + hours, 24.0 * 5.0)
+		rested_hours = maxf(0.0, rested_hours - hours)
+
+## You ate (a ration pack, or the suit's food bar).
+func eat() -> void:
+	fed_hours = 0.0
+
+## You slept `hours` (scripts/sleep.gd, on waking).
+func slept(hours: float) -> void:
+	if tiredness_on() and hours >= RESTED_SLEEP_H: rested_hours = RESTED_FOR_H
+
+func peckish() -> bool: return hunger_on() and fed_hours >= PECKISH_H
+func hungry() -> bool: return hunger_on() and fed_hours >= HUNGRY_H
+func starving() -> bool: return hunger_on() and fed_hours >= STARVING_H
+func tired() -> bool: return tiredness_on() and awake_hours >= TIRED_H
+func doze_risk() -> bool: return tiredness_on() and awake_hours >= DOZE_H
+func rested() -> bool: return tiredness_on() and rested_hours > 0.0 and not tired()
+
+## How quickly your hands work (hold-E jobs): hunger and tiredness slow
+## them, rest quickens them.
+func hands_factor() -> float:
+	var f := 1.0
+	if hungry(): f /= 1.25
+	if tired(): f /= 1.1
+	if rested(): f *= RESTED_WORK
+	return f
+
+## The suit's oxygen use (scripts/suit.gd): a little less when well rested.
+func o2_factor() -> float:
+	return RESTED_O2 if rested() else 1.0
+
+## A word or two for the slate's body line: "" when all's well.
+func needs_words() -> Array:
+	var out: Array = []
+	if starving(): out.append("weak with hunger")
+	elif hungry(): out.append("hungry")
+	elif peckish(): out.append("peckish")
+	if doze_risk(): out.append("exhausted")
+	elif tired(): out.append("tired")
+	elif rested(): out.append("well rested")
+	return out
+
+## Blinks, yawns, the drift, and now and then a doze; hunger's lazy look.
+func _tired_cues(delta: float, camera: Camera3D, k: float) -> void:
+	var player: Node = world.player
+	var walking := player != null and Vector2(player.velocity.x, player.velocity.z).length() > .3
+	var free := player != null and not bool(player.get_meta("ui_freeze", false))
+	var target_lid := 0.0
+	if _dozing > 0.0:
+		_dozing -= delta
+		target_lid = 1.0
+		if _dozing <= 0.0:
+			player.set_meta("ui_freeze", false)
+			MHAudio.sfx("land", -10.0)   # a jolt awake
+			if camera != null: camera.rotation.x = deg_to_rad(-4.0)
+	elif tired() and free:
+		_blink_in -= delta
+		if _blink_in <= 0.0:
+			_blink_in = randf_range(3.0, 7.0) if doze_risk() else randf_range(6.0, 12.0)
+			_lid = maxf(_lid, .95)
+		_yawn_in -= delta
+		if _yawn_in <= 0.0:
+			_yawn_in = randf_range(35.0, 70.0)
+			MHAudio.sfx("yawn", -8.0, .08)
+			_lid = maxf(_lid, .55)
+		if doze_risk():
+			_doze_in -= delta
+			if _doze_in <= 0.0:
+				_doze_in = randf_range(80.0, 160.0)
+				_doze()
+	_lid = move_toward(_lid, target_lid, delta * (1.2 if target_lid > _lid else 3.5))
+	# The drift: a slow lean of the view, more the more tired you are.
+	var lean := 0.0
+	if tired() and _dozing <= 0.0:
+		_drift += delta
+		var strength := .8 if not doze_risk() else 1.6
+		lean = deg_to_rad(strength * k) * sin(_drift * .37) * (1.0 if not walking else .6)
+	# Only while there's something to show, so other views of the camera are left alone.
+	if camera != null and (lean != 0.0 or absf(camera.rotation.z) > .0005 or absf(camera.rotation.x) > .0005):
+		camera.rotation.z = lerpf(camera.rotation.z, lean, clampf(delta * 2.0, 0.0, 1.0))
+		camera.rotation.x = lerpf(camera.rotation.x, 0.0, clampf(delta * 3.0, 0.0, 1.0))
+		if lean == 0.0 and absf(camera.rotation.z) < .0005: camera.rotation.z = 0.0
+		if absf(camera.rotation.x) < .0005: camera.rotation.x = 0.0
+	if player != null:
+		# A lazier look when hungry; slower hands from both.
+		player.set_meta("look_speed", lerpf(1.0, .8 if hungry() else .9, k) if peckish() else 1.0)
+		player.set_meta("hands_speed", hands_factor())
+
+## A few seconds' nod-off: you stop, the eyes shut, a jolt awake. Harmless.
+func _doze() -> void:
+	_dozing = randf_range(3.0, 6.0)
+	world.player.set_meta("ui_freeze", true)   # you stop where you stand
+	var notes: Node = world.get("notes")
+	if notes != null: notes.think("dozed")
+
+## The inner voice (data/notes.json) follows hunger and tiredness; eating and
+## sleeping let the thoughts go (they can come again).
+func _voice() -> void:
+	var notes: Node = world.get("notes")
+	if notes == null: return
+	if starving(): notes.think("hungry", "starving")
+	elif hungry(): notes.think("hungry", "hungry")
+	elif peckish(): notes.think("hungry")
+	elif notes.is_open("hungry"): notes.let_go("hungry")
+	if doze_risk(): notes.think("tired", "exhausted")
+	elif tired(): notes.think("tired")
+	else:
+		if notes.is_open("tired"): notes.let_go("tired")
+		if notes.is_open("dozed"): notes.let_go("dozed")
 
 func _show(delta: float, air: Dictionary) -> void:
 	var k := comfort()
 	var player: Node = world.player
 	if player != null: player.set_meta("body_speed", speed_factor())
-	var any := cold + stale + hypoxia > .01
+	var camera := _camera()
+	_tired_cues(delta, camera, k)
+	var any := cold + stale + hypoxia + _lid > .01
 	_veil.visible = any
 	if any:
+		_veil_mat.set_shader_parameter("lid", _lid if _dozing > 0.0 else _lid * maxf(k, .5))
 		_veil_mat.set_shader_parameter("cold", cold * k)
 		_veil_mat.set_shader_parameter("stale", stale * k)
 		_veil_mat.set_shader_parameter("hypoxia", hypoxia * k)
 		_veil_mat.set_shader_parameter("pulse", .5 + .5 * sin(_clock * 2.4))
-	var camera := _camera()
 	# Shaking hands: a small tremble of the view in the cold.
 	if camera != null:
 		if cold > .25:
@@ -278,4 +458,4 @@ func _wake() -> void:
 	tween.tween_callback(dark.queue_free)
 
 func export_state() -> Dictionary:
-	return {"health": health}
+	return {"health": health, "fed_hours": fed_hours, "awake_hours": awake_hours, "rested_hours": rested_hours}
