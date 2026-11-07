@@ -997,9 +997,10 @@ func reassign_reason(zone: Dictionary) -> String:
 	return ""
 
 ## Whether a room or site kind is still offered (Waste Management merged
-## into Storage & Recycling on 31 Oct).
+## into Storage & Recycling on 31 Oct; trenches dropped 7 Nov, though older
+## saves keep the ones they dug).
 static func zone_offered(kind: String) -> bool:
-	return kind != "waste_management"
+	return kind != "waste_management" and kind != "trench"
 
 ## A room's cargo as another room type (same size).
 func _reassigned_cost(zone: Dictionary, new_kind: String) -> int:
@@ -6867,7 +6868,7 @@ func _build_tool_bar() -> void:
 	var band:=CenterContainer.new(); band.anchor_top=1; band.anchor_bottom=1; band.anchor_right=1; band.offset_top=-436; band.offset_bottom=-340; band.mouse_filter=Control.MOUSE_FILTER_IGNORE; ui.add_child(band)
 	var bar:=PanelContainer.new(); bar.add_theme_stylebox_override("panel",MHStyle.box(MHStyle.SURFACE_HUD,MHStyle.BORDER_SUBTLE,MHStyle.RADIUS_MD,1,Vector4(8,8,8,8))); band.add_child(bar)
 	var row:=MHStyle.hbox(8); bar.add_child(row)
-	for entry in [["place","box","Place","LMB"],["footprint","git-branch","Footprint: click a room, then add or remove squares (F)","F"],["reassign","arrow-left-right","Reassign a room: pick the new type, then click the room","~SWAP"],["rotate","rotate-cw","Rotate","R"],["remove","trash-2","Remove","X"],["undo","undo-2","Undo","Ctrl Z"]]:
+	for entry in [["place","box","Place","LMB"],["footprint","git-branch","Footprint: click a room, then add or remove squares (F)","F"],["rotate","rotate-cw","Rotate","R"],["remove","trash-2","Remove","X"],["undo","undo-2","Undo","Ctrl Z"]]:
 		var item:=MHStyle.vbox(6); item.alignment=BoxContainer.ALIGNMENT_CENTER; row.add_child(item)
 		var b:=Button.new(); b.icon=MHIcons.texture(entry[1],22); b.tooltip_text=str(entry[2]); b.custom_minimum_size=Vector2(52,48); b.icon_alignment=HORIZONTAL_ALIGNMENT_CENTER; b.focus_mode=Control.FOCUS_NONE; b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 		b.theme_type_variation="GhostButton"; item.add_child(b)
