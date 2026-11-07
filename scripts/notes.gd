@@ -79,6 +79,14 @@ func answer(id: String, fills := {}) -> bool:
 	changed.emit()
 	return true
 
+## A thought that passes without an answer (it can come again): off the
+## page, no journal line, nothing settled.
+func let_go(id: String) -> void:
+	var at := _find(id)
+	if at < 0: return
+	open.remove_at(at)
+	changed.emit()
+
 func is_open(id: String) -> bool:
 	return _find(id) >= 0
 
@@ -124,6 +132,7 @@ func _sol() -> int:
 ## Seconds after the air is settled before ARDEN raises the night.
 const AFTER_AIR := 20.0
 var _air_settled_for := 0.0
+var _rest_offered := 0      # the sol rest was last offered (once a sol)
 
 func _process(delta: float) -> void:
 	_check -= delta
@@ -156,6 +165,15 @@ func _process(delta: float) -> void:
 	var cabin: Node = world.get("cabin_life")
 	if cabin != null and cabin.running() and is_open("air") and stage("air") == "start" and float(cabin.core.tank_o2_kg) < float(cabin.core.tank_cap) * .3:
 		think("air", "low")
+	# Rest, offered at a pause and never forced: in the cabin from dusk, once
+	# a sol. It passes when you sleep, or with the morning.
+	var sleep: Node = world.get("sleep")
+	var asleep: bool = sleep != null and bool(sleep.get("asleep"))
+	if cabin != null and cabin.player_inside() and not asleep and (hour >= sunset - 1.0 or hour < sunrise - 1.0) and _rest_offered != _sol():
+		_rest_offered = _sol()
+		if think("rest") and MHGame.tutorial_mode != "off" and world.get("explore_hud") != null:
+			world.explore_hud.show_equipment_note("Rest", "Sleep until dawn? Look at a landing seat and press Z. Or don't: the night is yours too.")
+	if is_open("rest") and (asleep or (hour >= sunrise and hour < sunset - 1.0)): let_go("rest")
 	if cabin != null and cabin.running() and cabin.player_inside():
 		var temp := float(cabin.core.temp_c)
 		if temp < 10.0: think("cold")

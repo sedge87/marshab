@@ -37,7 +37,13 @@
       },
       "journal": "Made it to morning. {how}"
     },
-    "cold": {
+    "rest": {
+   "stages": {
+    "start": "Long day. The landing seats recline. I could sleep till dawn, or I could go and look at the stars."
+   },
+   "journal": ""
+  },
+  "cold": {
       "stages": {
         "start": "Cold in here. The heater's on the wall switch, if the battery can spare it."
       },

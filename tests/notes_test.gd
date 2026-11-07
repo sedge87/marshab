@@ -74,10 +74,12 @@ func _initialize() -> void:
 	notes._check = 0.0
 	for i in 3: await process_frame
 	_check(notes.stage("power") == "night", "after dark the power thought turns to the night ahead")
+	_check(not world.cabin_life.player_inside() or notes.is_open("rest"), "in the cabin after dark, rest is offered")
 	world.day_night.set_hour(sunrise + .5)
 	notes._check = 0.0
 	for i in 3: await process_frame
 	_check(notes.is_settled("power") and MHJournal.entries.back().lines.any(func(l): return str(l).begins_with("Made it to morning.")), "dawn settles it, with how the night went")
+	_check(not notes.is_open("rest") and not notes.is_settled("rest"), "the offer passes with the morning, and can come again")
 
 	# The blue sunset, seen from outside.
 	world.player.global_position = world.lander.global_position + Vector3(0, 0, 20)
@@ -107,5 +109,5 @@ func _initialize() -> void:
 	_check(copy.is_open("cargo") and copy.is_settled("parachute") and copy.thoughts().size() == notes.thoughts().size(), "open and settled thoughts are saved")
 	copy.free()
 	if failures == 0:
-		print("Notes test passed: Notes instead of Goals and no old crates in a new game, the first thoughts, fills, thoughts changing out of order, answers into the journal raising the next question, never more than five, ARDEN's afternoon warning, night and dawn, the blue sunset, a cold cabin, and saving.")
+		print("Notes test passed: Notes instead of Goals and no old crates in a new game, the first thoughts, fills, thoughts changing out of order, answers into the journal raising the next question, never more than five, ARDEN's afternoon warning, night and dawn, rest offered and passing, the blue sunset, a cold cabin, and saving.")
 	quit(1 if failures > 0 else 0)
