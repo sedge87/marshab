@@ -510,7 +510,7 @@ func _process(delta: float) -> void:
 				MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit
 				var notes: Node = world.get("notes")
 				if notes != null: notes.think("walker_home")
-				MHNotices.post("info", NAME + " is home", "Press B to choose where the General Module goes.", "")
+				MHNotices.post("info", NAME + " is home", "Press B to choose where the General Module goes.", "", 1)   # what to do next: ahead of the queue
 		"carrying":
 			if _can_move() and _drive(target, delta, target_yaw): _start_lowering()
 		"lowering": _lower(delta)
@@ -603,6 +603,10 @@ func climb() -> bool:
 	# Seated facing forward, the way it walks.
 	player.rotation.y = rotation.y
 	MHAudio.sfx_at("step_metal_1", self, -4.0, .1)
+	# The seat's suit line: the module's air tops you up while you ride.
+	if not has_meta("suit_line_told"):
+		set_meta("suit_line_told", true)
+		MHNotices.post("valid", "Walker 1", "The seat's suit line clicks onto your pack: the module's air tops you up while you ride.", "log")
 	_ride()
 	return true
 
@@ -782,7 +786,7 @@ func _finish_set_down() -> void:
 		notes.answer("walker_home")
 		notes.think("module_plans")
 		notes.think("module_power")
-	MHNotices.post("info", "The General Module is down", "Walk over and cycle in. Inside, B unpacks its fit-out kit.", "")
+	MHNotices.post("info", "The General Module is down", "Walk over and cycle in. Inside, B unpacks its fit-out kit.", "", 1)
 
 ## The first night under a real roof: after dark, inside the module.
 func _night_check(you: Vector3) -> void:

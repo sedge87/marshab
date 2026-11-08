@@ -53,7 +53,7 @@
     },
     "chutes": {
       "stages": {
-        "start": "From up here I can see two more parachutes. One off to the {a}, one to the {b}."
+        "start": "From up here I can see two more parachutes. One off to the {a}, one to the {b}. One at a time, though: the suit's air won't stretch to both and back."
       },
       "journal": "Two more parachutes from the ridge, and both pallets found."
     },

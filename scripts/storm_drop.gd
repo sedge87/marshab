@@ -262,7 +262,8 @@ func _first_thoughts() -> void:
 ## "Parachute on the ridge …": once you've put the slate down, or the hatch opens.
 func parachute_thought() -> void:
 	var notes: Node = world.get("notes")
-	if notes != null and not notes.is_open("parachute") and not notes.is_settled("parachute"):
+	# Already open (you answered Castellanos first): it still takes the direction.
+	if notes != null and not notes.is_settled("parachute"):
 		notes.think("parachute", "start", {"dir": direction_word(ridge - world.lander.global_position)})
 
 func region_at(at: Vector3) -> Vector2:

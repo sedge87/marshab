@@ -46,7 +46,7 @@ const O2_KG_PER_HOUR := 0.035    # what an hour of suit oxygen takes from a tank
 const FULL_KWH := 1.0            # a full suit battery
 const FILL_PER_S := 0.5          # share of a full suit an umbilical fills each second
 const WALK := 5.0                # m/s, for the walk back
-const MARGIN := 1.25             # the walk back, with a little to spare
+const MARGIN := 1.6              # the walk back, with room for detours and rough ground (playthrough, 8 Nov)
 const LOW := 0.25
 const LEAK := 1.5                # a damaged seal: oxygen goes this much faster
 const PATCH_HOURS := 1.0         # patching a seal by hand, with no service panel
@@ -57,7 +57,7 @@ var world: Node
 var o2 := 1.0
 var power := 1.0
 var scrubber := 1.0
-## Where you are: "outside", "habitat", "lander" or "rover".
+## Where you are: "outside", "habitat", "lander", "rover" or "walker" (its seat's suit line).
 var where := "habitat"
 var passed_out := false
 var leak := false                # the seals took a knock (saved)
@@ -171,6 +171,9 @@ func _where() -> String:
 	if bool(player.get_meta("driving", false)):
 		var rover: Node = world.get("crew_rover")
 		return "rover" if rover != null and float(rover.o2) > 0.0 else "outside"
+	# Walker 1's front seat: a suit line off the module's air (playthrough, 8 Nov).
+	var walker: Node = world.get("walker")
+	if walker != null and bool(walker.get("riding")): return "walker"
 	if world.lander != null and world.lander.cabin_contains(player.global_position):
 		if not world.lander.has_method("sealed_cabin") or world.lander.sealed_cabin(): return "lander"
 		return "outside"
@@ -306,7 +309,7 @@ func full() -> bool:
 
 ## Inside: the suit fills from whatever you're in.
 func _top_up(delta: float) -> void:
-	var refills := where == "lander" or where == "rover" or (where == "habitat" and _in_airlock())
+	var refills := where == "lander" or where == "rover" or where == "walker" or (where == "habitat" and _in_airlock())
 	var was := _filling
 	_filling = refills and not full()
 	if _filling: fill(FILL_PER_S * delta, where)

@@ -566,6 +566,8 @@ func _update_quake(on: bool, delta: float) -> void:
 func marsquake() -> void:
 	_quake_left = 5.5
 	MHAudio.sfx("quake_rumble", -2.0, 0.0)
+	# The opening stays quiet: the ground shakes, but no facts till the module's down.
+	if world.has_method("opening_part") and int(world.opening_part()) < 4: return
 	MHAudio.voice("seismic_activity")
 	var weather = world.get("weather")
 	if weather != null and weather.has_method("toast"):

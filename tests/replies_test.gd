@@ -27,6 +27,7 @@ func _new_world(state := {}) -> Node:
 func _until_shown(r: Node) -> bool:
 	for i in 400:
 		MHAudio.hush()
+		if MHNotices._line != null: MHNotices._line._queue.clear()   # the line before it has been read
 		r._process(.1)
 		if r.showing(): return true
 	return false
@@ -55,6 +56,7 @@ func _initialize() -> void:
 
 	# ARDEN's brief: you say you'll go.
 	r._said_left = 0.0
+	r._gap = 0.0
 	r._panel.visible = false
 	r.offer_voice("lander_brief")
 	_check(_until_shown(r) and str(r._shown.who) == "ARDEN", "ARDEN's brief offers replies once it's spoken")
@@ -64,6 +66,7 @@ func _initialize() -> void:
 
 	# Silence is an answer.
 	r._said_left = 0.0
+	r._gap = 0.0
 	r.offer_voice("cabin_battery_night")
 	_check(_until_shown(r), "ARDEN's power warning offers replies")
 	r._process(r.SHOW_SECONDS + .5)

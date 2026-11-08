@@ -66,7 +66,9 @@ func think(id: String, stage := "start", fills := {}) -> bool:
 	var at := _find(id)
 	if at >= 0:
 		var thought: Dictionary = open[at]
-		if str(thought.stage) == stage: return false
+		if str(thought.stage) == stage:
+			(thought.fills as Dictionary).merge(fills, true)   # e.g. the ridge's direction, after a reply made it
+			return false
 		thought.stage = stage
 		(thought.fills as Dictionary).merge(fills, true)
 	else:
@@ -173,7 +175,9 @@ func text_of(thought: Dictionary) -> String:
 ## thought comes to mind in your own words and goes to the top of Notes.
 func take_up(id: String, said := "", stage := "start") -> void:
 	if settled.has(id) or _spec(id).is_empty(): return
-	if _find(id) < 0: think(id, stage)
+	if _find(id) < 0 and (_spec(id).get("stages", {}) as Dictionary).has(stage):
+		open.append({"id": id, "stage": stage, "fills": {}, "sol": _sol()})   # posted below, once
+		while open.size() > MOST: _drift()
 	var at := _find(id)
 	if at < 0: return
 	for thought in open: (thought.fills as Dictionary).erase("focus")
@@ -198,7 +202,7 @@ static func _fill(text: String, fills: Dictionary) -> String:
 ## thought has the amber edge and goes first. The slate's Notes gets a dot.
 func _post(id: String) -> void:
 	var at := _find(id)
-	if at >= 0: MHNotices.post("info", MHNotices.YOU_THINK, text_of(open[at]), "notes", 1 if rank(open[at]) < PRESSING.size() else 0)
+	if at >= 0: MHNotices.post("info", MHNotices.YOU_THINK, text_of(open[at]), "notes", 1 if rank(open[at]) < PRESSING.size() else 0, true, {"thought": id})
 
 func _sol() -> int:
 	var builder: Variant = world.get("builder") if world != null else null

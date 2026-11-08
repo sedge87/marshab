@@ -185,16 +185,14 @@ func set_minimal(on: bool) -> void:
 func flash_notice(tone: String, heading: String, text: String, app := "log") -> void:
 	MHNotices.post(tone, heading, text, app)
 
+## A how-to hint: on the one notice line now, readable (playthrough, 8 Nov).
 func show_equipment_note(title: String, note: String) -> void:
-	if _note_panel == null or note.is_empty():
-		return
-	_note_title.text = title.to_upper()
-	_note_body.text = note.replace(title.to_upper() + "\n", "")
-	_note_time_left = 4.5
-	_note_panel.modulate.a = 1.0
+	MHNotices.hint(title, note.replace(title.to_upper() + "\n", ""))
+	if _note_title != null: _note_title.text = title.to_upper()   # what's being hinted (hide_equipment_note)
 
 ## Clears the note early if its title starts with this (e.g. "Carrying").
 func hide_equipment_note(title_prefix: String) -> void:
+	MHNotices.drop(title_prefix)
 	if _note_title != null and _note_title.text.begins_with(title_prefix.to_upper()):
 		_note_time_left = 0.0
 		_note_panel.modulate.a = 0.0

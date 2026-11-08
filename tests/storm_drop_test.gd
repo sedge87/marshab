@@ -73,7 +73,9 @@ func _initialize() -> void:
 	for piece in drop.get_tree().get_nodes_in_group("storm_debris"): nearest = minf(nearest, (piece as Node3D).global_position.distance_to(lander.global_position))
 	_check(nearest < 90.0, "the trail starts near the lander (%.0f m)" % nearest)
 
-	# What's known and thought.
+	# What's known and thought. In the lander the parachute thought comes at
+	# its beat after the slate (mars_world._after_slate); stand in for it.
+	drop.parachute_thought()
 	var known = world.known
 	_check(known.knows("find:parachute", "orbiter") and not known.knows("find:parachute"), "the orbiter knows where the parachute is; you don't yet")
 	_check(world.notes.is_open("parachute") and world.notes.thoughts().any(func(t): return str(t.text).contains("of the hatch") and not str(t.text).contains("{dir}")), "your thought names the ridge's direction")

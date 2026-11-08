@@ -56,14 +56,35 @@ static func attach(world: Node) -> void:
 ## pressing: -1 works it out from the tone (warn and danger are pressing),
 ## 0 or 1 says so. screen = false puts it in the Log only (chatter that just
 ## repeats something you already know).
-static func post(tone: String, heading: String, text: String, app := "log", pressing := -1, screen := true) -> void:
+## extra: {"thought": id} drops it unseen once that Notes thought has left
+## the page (answered, or let go) while it waited (playthrough, 8 Nov).
+static func post(tone: String, heading: String, text: String, app := "log", pressing := -1, screen := true, extra := {}) -> void:
 	var urgent := (tone in ["warn", "danger"]) if pressing < 0 else pressing > 0
 	var entry := {"tone": tone, "heading": heading, "text": text, "app": app, "time": MHGame.formatted_sol_time(), "pressing": urgent}
+	entry.merge(extra)
 	history.append(entry)
 	while history.size() > KEEP: history.pop_front()
 	unread[app] = int(unread.get(app, 0)) + 1
 	if app != "log": unread["log"] = int(unread.get("log", 0)) + 1
 	if screen and _line != null and is_instance_valid(_line): _line._enqueue(entry)
+
+## A how-to hint (what used to be the HUD's separate note panel): the same
+## line as everything else, held for reading time. A long one is said in two.
+const HINT_SPLIT := 200
+static func hint(title: String, text: String) -> void:
+	if text.is_empty(): return
+	var parts: Array = [text]
+	if text.length() > HINT_SPLIT:
+		var cut := text.find(". ", int(text.length() * .4))
+		if cut > 0 and cut < text.length() - 20: parts = [text.substr(0, cut + 1), text.substr(cut + 2)]
+	for part in parts: post("info", title, str(part), "log", 0)
+
+## Takes back waiting (and showing) notices whose heading starts with this:
+## a hint that's done its job ("Carrying…" once it's put down).
+static func drop(heading_prefix: String) -> void:
+	if _line == null or not is_instance_valid(_line): return
+	_line._queue = _line._queue.filter(func(e): return not str(e.heading).begins_with(heading_prefix))
+	if _line._shown != null and str(_line._shown_entry.get("heading", "")).begins_with(heading_prefix): _line._fade_out()
 
 ## The slate opened an app: its dot goes.
 static func seen(app: String) -> void:
@@ -95,6 +116,8 @@ func _enqueue(entry: Dictionary) -> void:
 	# The same words twice in a row are said once.
 	for waiting in _queue:
 		if str(waiting.heading) == str(entry.heading) and str(waiting.text) == str(entry.text): return
+	# A thought that's still waiting is said once, in its newest words.
+	if entry.has("thought"): _queue = _queue.filter(func(w): return str(w.get("thought", "")) != str(entry.thought))
 	if bool(entry.get("pressing", false)):
 		# Ahead of everything that isn't pressing, behind what already is.
 		_queue.insert(_after_pressing(), entry)
@@ -123,7 +146,14 @@ func _process(delta: float) -> void:
 		elif _age >= _hold or _cut_short():
 			_fade_out()
 	if _shown == null and not _queue.is_empty() and not hidden:
-		_show(_queue.pop_front())
+		var next: Dictionary = _queue.pop_front()
+		if not _stale(next): _show(next)
+
+## A thought that left the page while it waited: no point saying it now.
+func _stale(entry: Dictionary) -> bool:
+	if not entry.has("thought"): return false
+	var notes: Node = get_tree().get_first_node_in_group("notes") if is_inside_tree() else null
+	return notes != null and not notes.is_open(str(entry.thought))
 
 ## A pressing notice is waiting behind ordinary news, or a long backlog: the
 ## shown one goes once it's had its basic time.

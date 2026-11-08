@@ -63,7 +63,7 @@ var rested_hours := 0.0          # well rested for this much longer (saved)
 var _lid := 0.0                  # 0 open, 1 shut: blinks and dozes
 var _blink_in := 6.0
 var _yawn_in := 40.0
-var _doze_in := 90.0
+var _doze_in := 300.0
 var _dozing := 0.0               # seconds left in a doze
 var _drift := 0.0
 var _voice_in := 2.0
@@ -297,7 +297,7 @@ func _tired_cues(delta: float, camera: Camera3D, k: float) -> void:
 		if doze_risk():
 			_doze_in -= delta
 			if _doze_in <= 0.0:
-				_doze_in = randf_range(80.0, 160.0)
+				_doze_in = randf_range(360.0, 600.0)   # rare: every 6-10 minutes (playthrough, 8 Nov)
 				_doze()
 	_lid = move_toward(_lid, target_lid, delta * (1.2 if target_lid > _lid else 3.5))
 	# The drift: a slow lean of the view, more the more tired you are.

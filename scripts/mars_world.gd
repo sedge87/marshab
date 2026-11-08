@@ -582,7 +582,7 @@ func _begin_lander_intro() -> void:
 ## shown): 1 Down (sol 1), 2 the lifepod days (sol 2 until the walker moves),
 ## 3 Walker 1 (until the General Module's down), then 4.
 func opening_part() -> int:
-	if walker != null and str(walker.state) == "done": return 4
+	if walker == null or str(walker.state) == "done": return 4   # no walker (Creative, older saves): past the opening
 	if lifepod != null and bool(lifepod.walker_moved): return 3
 	if notes != null and int(notes.call("_sol")) >= 2: return 2
 	return 1
@@ -842,8 +842,13 @@ func _tick_chapter_one() -> void:
 func show_chapter_messages(messages: Array) -> void:
 	if not messages.is_empty() and builder != null: MHJournal.from_messages(messages, floori(float(builder.simulation().hours_run) / 24.0) + 1)
 	var app := "goals" if tutorial != null else "log"   # the Goals app only runs with the old checklist
+	# The opening is just you, ARDEN, the orbiter and GAR-Y: Mission Control's
+	# science (leads, discoveries, replies, new plans) goes to the Log alone
+	# until the General Module is down (playthrough, 8 Nov).
+	var quiet := opening_part() < 4
 	for message in messages:
-		MHNotices.post(str(message.get("tone", "info")), str(message.title), str(message.text), app)
+		var science := str(message.get("id", "")) in ["lead", "discovery", "reply", "plan"]
+		MHNotices.post(str(message.get("tone", "info")), str(message.title), str(message.text), app, -1, not (quiet and science))
 	if not messages.is_empty(): MHAudio.sfx("undo")
 	if not messages.is_empty(): builder._update_budget()
 

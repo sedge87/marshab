@@ -17,6 +17,7 @@ const SHOW_SECONDS := 9.0       # how long the choices wait
 const SAID_SECONDS := 3.5       # your line stays this long
 const ANSWER_AFTER := 45.0      # seconds to the next pass's answer
 const TEXT_WAIT := 30.0         # an unread text's replies come up anyway after this
+const GAP := 20.0               # never two offers closer than this (playthrough, 8 Nov)
 
 var world: Node
 var answered: Dictionary = {}   # id -> the reply's index, or -1 for silence
@@ -25,6 +26,7 @@ var _queue: Array = []          # {id, who, line, at}
 var _shown: Dictionary = {}     # the offer up now
 var _left := 0.0
 var _said_left := 0.0
+var _gap := 0.0                 # seconds before the next offer may come up
 var _answers: Array = []        # [seconds left, id, who, text]
 var _panel: PanelContainer
 var _box: VBoxContainer
@@ -105,6 +107,7 @@ func _process(delta: float) -> void:
 			_answers.erase(a)
 			var texts: Node = world.get("orbiter_texts") if world != null else null
 			if texts != null: texts.send(str(a[1]), str(a[2]), str(a[3]))
+	_gap = maxf(0.0, _gap - delta)
 	if _said_left > 0.0:
 		_said_left -= delta
 		if _said_left <= 0.0: _panel.visible = false
@@ -125,7 +128,10 @@ func _process(delta: float) -> void:
 
 func _free() -> bool:
 	if world == null or world.get_tree().paused: return false
-	if MHAudio.voice_busy(): return false
+	if MHAudio.voice_busy() or _gap > 0.0: return false
+	# Let the line before it be read first: the notice line is all but clear.
+	var line = MHNotices._line
+	if line != null and is_instance_valid(line) and line._queue.size() > 1: return false
 	var pda: Node = world.get("pda")
 	if pda != null and bool(pda.get("is_open")): return false
 	var player: Node = world.get("player")
@@ -169,6 +175,7 @@ func choose(index: int) -> void:
 	if _shown.is_empty(): return
 	var entry := _shown
 	_shown = {}
+	_gap = GAP
 	var id := str(entry.id)
 	answered[id] = index
 	var spec: Dictionary = data().get(id, {})

@@ -106,6 +106,9 @@ func _watch(delta: float) -> void:
 		var top_id := str(top[0].id) if not top.is_empty() else ""
 		if top_id != str(_last.get("top", "")): log_line("TOP", top_id)
 		_last["top"] = top_id
+	var card := int(world.get("sol_card_shown")) if world.get("sol_card_shown") != null else -1
+	if card != int(_last.get("card", -1)) and card > 1: log_line("CARD", "SOL %d" % card)
+	_last["card"] = card
 	# Held still (cut-scenes, the slate, riding).
 	if player != null and is_instance_valid(player):
 		var frozen := bool(player.get_meta("ui_freeze", false))
@@ -139,6 +142,9 @@ func go(to: Vector3, what: String, stop_short := 2.5) -> void:
 		var p := from + dir * done
 		player.global_position = ground(p)
 		player.velocity = Vector3.ZERO
+		var gary = world.get("scout_rover")
+		if gary != null and is_instance_valid(gary) and not bool(gary.get("rescuing")) and (gary as Node3D).global_position.distance_to(player.global_position) > 40.0:
+			(gary as Node3D).global_position = ground(player.global_position + Vector3(4, 0, 4))
 		player.look_at(Vector3(to.x, player.global_position.y, to.z), Vector3.UP)
 		await wait(hop / WALK)
 
@@ -209,6 +215,7 @@ func run() -> void:
 	# Back to the ridge's view of pallets 2 and 3 if they aren't known.
 	var known: Node = world.known
 	if not known.knows(field.sites.power.id()): got_stuck("pallets 2-3 not known after the ridge")
+	await ready_for("before pallet 2")
 	await go(field.sites.power.pallet.global_position, "to pallet 2 (power)")
 	step("Open pallet 2, carry the blanket home")
 	field.sites.power.pallet.open(false)
@@ -222,6 +229,7 @@ func run() -> void:
 	if str(pack.where) != "laid": got_stuck("the blanket wasn't laid out")
 	await wait(5.0)
 
+	await ready_for("before pallet 3")
 	await go(field.sites.gary.pallet.global_position, "to pallet 3 (GAR-Y)")
 	step("Open pallet 3, lift GAR-Y out")
 	field.sites.gary.pallet.open(false)
@@ -234,6 +242,7 @@ func run() -> void:
 	if field.meeting != null: got_stuck("GAR-Y's wake-up never ended")
 	await wait(4.0)
 	if not known.knows(field.sites.tools.id()): got_stuck("pallet 4 not known after GAR-Y")
+	await refill("before pallet 4")
 	await go(field.sites.tools.pallet.global_position, "to pallet 4 (tools)")
 	step("Open pallet 4")
 	field.sites.tools.pallet.open(false)
@@ -291,6 +300,7 @@ func run() -> void:
 		t += 5.0
 	# The frost patch by pallet 4: ice by hand.
 	var frost: Node = pod.sites.frost
+	await ready_for("before the frost")
 	await go(frost.global_position, "to the frost patch")
 	step("Chip ice, carry it home, melt it")
 	frost.chip_for(2.0)
@@ -302,6 +312,7 @@ func run() -> void:
 	await wait(4.0)
 	# The iron outcrop: a sample for the bench.
 	var iron: Node = pod.sites.iron
+	await refill("before the iron")
 	await go(iron.global_position, "to the iron outcrop", 20.0)
 	await wait(3.0)
 	var cam: Node = world.slate_camera
@@ -321,6 +332,7 @@ func run() -> void:
 	await wait(6.0)
 	# GAR-Y's sled, with the hitch.
 	if gary != null and pod.prints.has("hitch"):
+		await refill("before the sled run")
 		await go(frost.global_position, "to the frost patch with GAR-Y")
 		gary.global_position = frost.global_position + Vector3(3, .3, 0)
 		frost.chip_for(2.0)
@@ -365,6 +377,7 @@ func run() -> void:
 			MHJournal.add_photo(MHJournal.today(3), "", "Walker tracks", ["walker_tracks"])
 		if walker.can_send(): walker.send_up()
 		await wait(4.0)
+	await refill("before following the tracks")
 	# Follow the tracks out until it's in sight.
 	var target: Vector3 = walker.global_position
 	var out_dir := Vector3(target.x - player.global_position.x, 0, target.z - player.global_position.z)
@@ -456,6 +469,29 @@ func run() -> void:
 		t += 10.0
 	await wait(20.0)
 	step("End")
+
+## A careful player: home to the cabin, hatch shut, suit full, a ration if hungry.
+func refill(why := "") -> void:
+	var lander: Node3D = world.lander
+	await go(lander.ramp_foot(2.0), "home to refill%s" % ("" if why.is_empty() else " (" + why + ")"), 0.0)
+	player.global_position = lander.to_global(Vector3(0, 1.2, .5))
+	lander.set_hatch(false, true)
+	var t := 0.0
+	while not (lander.sealed_cabin() and world.suit.full()) and t < 120.0:
+		await wait(1.0)
+		t += 1.0
+	if not world.suit.full(): got_stuck("the suit didn't fill in the cabin (o2 %.2f)" % float(world.suit.o2))
+	var body: Node = world.get("body")
+	if body != null and body.peckish() and world.lifepod != null:
+		if world.lifepod.eat_ration(): log_line("EAT", "a ration")
+	log_line("STATE", "refilled in %.0f s" % t)
+	lander.set_hatch(true)
+	player.global_position = ground(lander.ramp_foot(4.0))
+	await wait(2.0)
+
+## Tops up first when the suit's under `need` of a tank.
+func ready_for(trip: String, need := .8) -> void:
+	if float(world.suit.o2) < need: await refill(trip)
 
 func _sleep_to_dawn() -> void:
 	var sleep: Node = world.get("sleep")

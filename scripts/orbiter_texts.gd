@@ -28,7 +28,9 @@ func send(id: String, who: String, text: String, photo := "") -> void:
 	messages.append({"id": id, "who": who, "text": text, "photo": photo, "sol": _sol(), "hour": MHGame.sol_hour})
 	version += 1
 	var person := person_of(who)
-	MHNotices.post("info", "%s, from orbit" % str(person.get("short", who)), text, "comms")
+	# Before the slate's yours, a text only lights it up: you read it there.
+	var pda: Node = world.get("pda") if world != null else null
+	MHNotices.post("info", "%s, from orbit" % str(person.get("short", who)), text, "comms", -1, pda == null or bool(pda.get("received")))
 	MHAudio.sfx("suit_beep", -10.0)
 	# Some texts want an answer (scripts/replies.gd).
 	var replies: Node = world.get("replies") if world != null else null

@@ -720,13 +720,14 @@ func _show_caption(who: String, text: String, note: String, seconds: float, radi
 	var col := MHStyle.vbox(2)
 	_caption.add_child(col)
 	var head := MHStyle.hbox(8)
-	head.add_child(MHStyle.eyebrow(who, MHStyle.INFO if radio else MHGame.accent(), 13 if full else 11))
-	if not note.is_empty(): head.add_child(MHStyle.mono(note, 12 if full else 10, MHStyle.TEXT_MUTED))
+	head.add_child(MHStyle.eyebrow(who, MHStyle.INFO if radio else MHGame.accent(), 14 if full else 13))
+	if not note.is_empty(): head.add_child(MHStyle.mono(note, 13 if full else 12, MHStyle.TEXT_MUTED))
 	col.add_child(head)
-	var size := 18 if full else (14 if _caption_building else 15)
+	# As big as the notice line (playthrough, 8 Nov): 17 by default.
+	var size := 19 if full else (15 if _caption_building else 17)
 	var words := MHStyle.body(text, size, MHStyle.TEXT_PRIMARY)
 	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var widest := 720.0 if full else (420.0 if _caption_building else 520.0)
+	var widest := 760.0 if full else (440.0 if _caption_building else 640.0)
 	words.custom_minimum_size.x = minf(widest, size * .78 * text.length() * .62 + 40.0)
 	col.add_child(words)
 	_caption_layer.add_child(_caption)
