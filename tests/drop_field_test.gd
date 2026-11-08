@@ -84,13 +84,10 @@ func _initialize() -> void:
 	player.global_position = lander.to_global(Vector3(5.0, 0, 3.0))
 	player.global_position.y = MHSiteTerrain.height(player.global_position.x, player.global_position.z) + 1.0
 	pack.put_down()
-	_check(pack.where == "ground" and pack.near_lander() and str(pack.interaction_prompt().primary) == "Lay out the solar blanket", "set down by the lander, it offers to lay out the blanket")
-	pack.interact(player)
-	_check(pack.where == "laid" and is_equal_approx(float(cabin.core.pack_kw), 1.5) and is_equal_approx(float(cabin.core.battery_cap), 16.0), "laid out: the cabin has the blanket and a 16 kWh battery (%s)" % str(cabin.core.battery_cap))
-	cabin.core.battery_kwh = cabin.core.battery_cap
-	var after: Dictionary = cabin.core.runway(dusk_hour, 14.0)
-	_check(float(before.power) > 0.0 and float(after.power) < 0.0, "night one: everything on ran the battery flat before (%.1f h); now it lasts" % float(before.power))
-	_check(world.notes.is_settled("power") and world.notes.is_settled("power_pallet"), "the power worry is settled")
+	# The self-sufficient lander (docs/opening-days.md): the pack is the module's.
+	_check(pack.where == "ground" and not pack.near_lander() and str(pack.interaction_prompt().primary) == "Pick up", "set down by the lander, it waits packed for the module")
+	_check(float(before.power) < 0.0, "night one: the lander's power cell lasts the night without it (%.1f h)" % float(before.power))
+	_check(not world.notes.is_open("power"), "no power worry")
 
 	# Pallet 3: GAR-Y wakes, and points to pallet 4.
 	player.global_position = field.sites.gary.pallet.global_position + Vector3(2.5, 1.0, 0)
@@ -141,7 +138,7 @@ func _initialize() -> void:
 	var again = await _new_world(state)
 	var field2: Node = again.drop_field
 	_check(field2 != null and spots.keys().all(func(k): return field2.sites[k].at.distance_to(spots[k]) < .1), "the pallets are where they were")
-	_check(field2 != null and field2.sites.power.pack.where == "laid" and is_equal_approx(float(again.cabin_life.core.battery_cap), 16.0), "the blanket is still laid out, the battery still big")
+	_check(field2 != null and field2.sites.power.pack.where == "ground", "the pack still waits by the lander")
 	_check(again.gary_met and again.scout_rover != null and field2.tools and field2.sunset.shared, "GAR-Y, the tools and the sunset are kept")
 	again.queue_free()
 	await process_frame

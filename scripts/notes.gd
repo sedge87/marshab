@@ -19,7 +19,6 @@ const CHECK := 1.0         # seconds between looks round
 ## the notice line's amber edge and jump its queue, and are what
 ## remind_top() brings back to mind.
 const PRESSING := [
-	["air", []],
 	["power", []],
 	["water", []],
 	["water_low", []],
@@ -252,14 +251,16 @@ func _process(delta: float) -> void:
 	# even if that's after dark.
 	if not is_open("power") and not is_settled("power") and hour >= sunrise + 1.0:
 		if is_settled("air"): _air_settled_for += CHECK
-		if not outside and (hour >= sunset - 5.0 or _air_settled_for >= AFTER_AIR):
+		var lander_cell: Node = world.get("cabin_life")
+		var no_worry: bool = lander_cell != null and bool(lander_cell.core.self_sufficient)   # the lander's power cell sees out the night
+		if not no_worry and not outside and (hour >= sunset - 5.0 or _air_settled_for >= AFTER_AIR):
 			MHAudio.voice("cabin_battery_night")
 			var replies: Node = world.get("replies")
 			if replies != null: replies.offer_voice("cabin_battery_night")
 			think("power")
 	# A cold cabin while you're in it.
 	var cabin: Node = world.get("cabin_life")
-	if cabin != null and cabin.running() and is_open("air") and stage("air") == "start" and float(cabin.core.tank_o2_kg) < float(cabin.core.tank_cap) * .3:
+	if cabin != null and cabin.running() and not bool(cabin.core.self_sufficient) and is_open("air") and stage("air") == "start" and float(cabin.core.tank_o2_kg) < float(cabin.core.tank_cap) * .3:
 		think("air", "low")
 	# Rest, offered at a pause and never forced: in the cabin from dusk, once
 	# a sol. It passes when you sleep, or with the morning.

@@ -32,7 +32,10 @@ const PALLET_RATIONS := 10      # pallet 1's: about five sols, two a sol
 const THREADS := [["iron", 1000.0, 1400.0, "rough"], ["ice_wall", 1000.0, 1500.0, "low"]]
 const PLANS := [["hitch", "the sled hitch", "print_hitch_parts", 3.0], ["pick", "an ice pick head", "print_pick_parts", 2.0], ["bladder", "a water bladder", "print_bladder_parts", 2.0]]
 const PRINT_SECONDS := 6.0
-const JOBS := ["water", "print", "sample", "tow"]
+## GAR-Y's day (docs/opening-days.md): the hitch printed, the module's cargo
+## staged by the lander, a survey or core by GAR-Y, a sample on the bench.
+const JOBS := ["print", "tow", "scout", "sample"]
+const STAGE_REACH := 30.0       # cargo this near the lander is staged for the module
 const WALKER_HOUR := 3.0        # the walker moves in the small hours
 const GARY_NEAR := 15.0
 const SLED_REACH := 16.0        # GAR-Y this close to the lander to melt the sled's ice
@@ -44,6 +47,7 @@ var parts := 0
 var prints := {}                # plan id → true
 var jobs := {}                  # job → true
 var sled_kg := 0.0
+var sled_cargo: Array = []      # the module's cargo riding GAR-Y's sled (saved where it lies)
 var walker_due := false
 var walker_moved := false
 var studied := {}               # source → true (a Journal page each)
@@ -225,6 +229,7 @@ func _process(delta: float) -> void:
 	_check = .5
 	var you: Vector3 = world.player.global_position
 	_stow_rations()
+	_check_staging()
 	for kind in sites:
 		var site: Node = sites[kind]
 		if not site.seen and you.distance_to(site.global_position) < SITE.SEEN_AT: see(site)
@@ -233,7 +238,7 @@ func _process(delta: float) -> void:
 	var hour := MHGame.sol_hour
 	if notes != null and c != null:
 		var sol := int(notes.call("_sol"))
-		if not notes.is_settled("water"):
+		if not notes.is_settled("water") and not bool(c.self_sufficient):
 			if float(c.water_l) <= 0.0: notes.think("water", "empty")
 			elif (sol >= 2 and hour > 5.0 and hour < 12.0) or float(c.water_sols()) < 1.0:
 				notes.think("water", "low", {"where": _ice_hint()})
@@ -447,7 +452,10 @@ func _printed() -> void:
 	bench.printing(false)
 	MHAudio.sfx("all_clear", -10.0)
 	match id:
-		"hitch": MHNotices.post("valid", "Printed: sled hitch", "GAR-Y can tow ice now. Chip ice with it close by and it goes on the sled.", "log")
+		"hitch":
+			MHNotices.post("valid", "Printed: sled hitch", "GAR-Y can tow now: carrying cargo, E on GAR-Y loads it on the sled. Ice you chip with it close by goes on too.", "log")
+			var thinking: Node = world.get("notes")
+			if thinking != null and not (staged(_cartridge()) and staged(_pack())): thinking.think("staging")
 		"pick": MHNotices.post("valid", "Printed: ice pick head", "Ice comes away in bigger chunks now.", "log")
 		"bladder":
 			_apply_bladder(true)
@@ -467,7 +475,79 @@ func _apply_bladder(fresh: bool) -> void:
 func done(job: String) -> void:
 	if jobs.has(job): return
 	jobs[job] = true
-	if jobs.size() >= int(n("lifepod_jobs_for_walker", 3.0)): walker_due = true
+	var counted := 0
+	for id in JOBS: if jobs.has(id): counted += 1
+	if counted >= int(n("lifepod_jobs_for_walker", 3.0)): walker_due = true
+
+# ---------- the module's cargo, staged by the lander ----------
+
+func _cartridge() -> Node3D:
+	var drop: Node = world.get("storm_drop")
+	return drop.cartridge if drop != null else null
+
+func _pack() -> Node3D:
+	var field: Node = world.get("drop_field")
+	return field.sites.power.pack if field != null and field.sites.has("power") else null
+
+## Waiting by the lander (or already in the module).
+func staged(item: Node3D) -> bool:
+	if item == null: return true
+	var where := str(item.where)
+	if where in ["plugged", "laid"]: return true
+	if where != "ground": return false
+	var home: Vector3 = world.lander.global_position
+	return Vector2(item.global_position.x - home.x, item.global_position.z - home.z).length() < STAGE_REACH
+
+func _check_staging() -> void:
+	if jobs.has("tow"): return
+	var notes: Node = world.get("notes")
+	var cart := _cartridge()
+	if notes != null and cart != null and staged(cart) and notes.is_open("module_air"): notes.think("module_air", "staged")
+	if staged(cart) and staged(_pack()):
+		done("tow")
+		if notes != null: notes.answer("staging")
+		MHNotices.post("valid", "Cargo staged", "The module's air cartridge and power pack are waiting by the lander.", "log")
+
+## Carrying cargo, E on a hitched GAR-Y: onto its sled (scripts/o2_cartridge.gd, power_pack.gd).
+func sled_takes(target: Node) -> bool:
+	return target != null and target.is_in_group("gar_y") and prints.has("hitch") and sled_cargo.size() < 2
+
+func load_on_sled(item: Node3D, gary: Node3D) -> void:
+	world.player.set_meta("load_speed", 1.0)
+	var hud: Node = world.get("explore_hud")
+	if hud != null: hud.hide_equipment_note("Carrying")
+	item.where = "sled"
+	item.reachable(false)
+	item.get_parent().remove_child(item)
+	gary.add_child(item)
+	item.position = Vector3(0, .32, .85 + .55 * sled_cargo.size())   # behind it (its front is -Z)
+	item.rotation = Vector3(0, PI * .5, 0)
+	sled_cargo.append(item)
+	MHAudio.sfx("suit_clamp", -6.0)
+	gary.call("_say", "happy")
+	if gary.has_method("order"): gary.order("come")
+	MHNotices.post("info", "On GAR-Y's sled", "GAR-Y tows it now. At the lander, E on GAR-Y unloads it.", "log")
+
+func cargo_ready(gary: Node3D) -> bool:
+	return not sled_cargo.is_empty() and gary != null and gary.global_position.distance_to(world.lander.global_position) < SLED_REACH
+
+## E on GAR-Y by the lander: the cargo comes off, set down side by side.
+func unload_cargo() -> void:
+	var i := 0
+	for item in sled_cargo:
+		if item == null or not is_instance_valid(item): continue
+		var home: Node = item.get("drop") if item.get("drop") != null else item.get("site")
+		item.get_parent().remove_child(item)
+		home.add_child(item)
+		var at: Vector3 = world.lander.to_global(Vector3(-3.4 - 1.6 * i, 0, -6.6))
+		item.global_position = Vector3(at.x, MHSiteTerrain.height(at.x, at.z), at.z)
+		item.rotation = Vector3(0, world.lander.rotation.y, 0)
+		item.where = "ground"
+		item.reachable(true)
+		i += 1
+	sled_cargo.clear()
+	MHAudio.sfx("place", -6.0)
+	_check_staging()
 
 ## In the small hours: something big moves out on the flats (3c follows it).
 func walker_night() -> void:

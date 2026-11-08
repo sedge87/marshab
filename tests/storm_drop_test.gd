@@ -10,7 +10,8 @@ extends SceneTree
 # - holding E frees the pallet's latches one by one and opens it: the sample
 #   kit, and the oxygen cartridge, reachable only once it's open;
 # - carrying the cartridge slows you, Q puts it down, and E on the cabin's
-#   oxygen port plugs it in: the tank grows and fills, the air thought settles;
+#   oxygen port doesn't take it: it's the module's (docs/opening-days.md), and
+#   the self-sufficient lander needs none; the air thought settles on opening;
 # - the cabin's own tank lasts about a sol; saving.
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 var failures := 0
@@ -123,7 +124,8 @@ func _initialize() -> void:
 	_check(aimed != null and str(aimed.interaction_prompt().get("primary", "")) == "Pick up", "looking into the open pallet offers to pick the cartridge up (%s)" % (str(aimed.interaction_prompt()) if aimed != null else "nothing hit"))
 	if aimed != null: aimed.interact(player)
 	_check(cart.where == "carried" and float(player.get_meta("load_speed", 1.0)) < .9, "picked up, it slows you (%.2f)" % float(player.get_meta("load_speed", 1.0)))
-	_check(world.notes.stage("air") == "carrying", "you think about getting it home")
+	_check(world.notes.is_settled("air"), "opening pallet 1 settles the air thought: the lander looks after you")
+	_check(world.notes.is_open("module_air") and world.notes.stage("module_air") == "carrying", "you think: it's the module's air")
 	cart.put_down()
 	_check(cart.where == "ground" and is_equal_approx(float(player.get_meta("load_speed", 1.0)), 1.0), "Q puts it down")
 	cart.interact(player)
@@ -132,17 +134,13 @@ func _initialize() -> void:
 	_check(port != null and port.get_parent() == lander, "the cabin has its oxygen port")
 	var tank_before: float = cabin.core.tank_cap
 	_check(absf(tank_before - .84) < .01, "the cabin's own tank holds about a sol (%.2f kg)" % tank_before)
-	_check(cart.claim_label(port) == "Plug in the cartridge", "carrying it, the port offers to take it")
-	_check(cart.claim(port, "interact"), "E plugs it in")
-	_check(cart.where == "plugged" and cart.get_parent() == port and cabin.core.tank_cap > tank_before + 5.0 and is_equal_approx(cabin.core.tank_o2_kg, cabin.core.tank_cap), "the tank grows by its oxygen, full (%.2f kg)" % cabin.core.tank_cap)
-	_check(world.notes.is_settled("air") and MHJournal.entries.back().lines.any(func(l): return str(l).begins_with("Plugged the new cartridge")), "the air thought settles into the journal")
-	for i in 120: await process_frame
-	_check(port._shown > .1, "the dial's needle swings up")
+	_check(cart.claim_label(port) == "" and not cart.claim(port, "interact"), "the self-sufficient lander's port doesn't take it")
+	_check(bool(cabin.core.self_sufficient), "the lander makes its own air")
+	cart.put_down()
 
 	# Saving.
 	var state: Dictionary = world.current_state()
-	_check(state.storm_drop.opened and str(state.storm_drop.cartridge) == "plugged" and state.storm_drop.ridge.size() == 3, "the drop is saved: where, opened, the cartridge plugged in")
-	_check(float(state.cabin.tank_cap) > 6.0, "the bigger tank is saved")
+	_check(state.storm_drop.opened and str(state.storm_drop.cartridge) == "ground" and state.storm_drop.ridge.size() == 3, "the drop is saved: where, opened, the cartridge set down")
 	_check((state.orbiter_texts.messages as Array).size() == 1, "the orbiter's texts are saved")
 	if failures == 0:
 		print("Storm drop test passed: the ridge 400 m ahead on high ground, the canopy draped on the terrain, the debris trail, who knows where it is, the thought naming its direction, holding E to free the latches, the sample kit, carrying the cartridge slowly, putting it down, plugging it into the cabin's port, the tank and dial, the journal, the orbiter's photo text, and saving.")

@@ -5,8 +5,13 @@ extends StaticBody3D
 ## oxygen port (scripts/cabin_o2_port.gd) plugs it in: the cabin's tank grows
 ## by its oxygen and the dial swings over to full. Carrying it slows you.
 ##
-## where: "pallet" (inside, until the lid is open), "ground", "carried" or
-## "plugged" (in the port's cradle, for good).
+## where: "pallet" (inside, until the lid is open), "ground", "carried",
+## "sled" (on GAR-Y's sled) or "plugged" (in a cradle, for good).
+##
+## The opening's redesign (8 Nov, docs/opening-days.md): the lander makes its
+## own air, so this is the General Module's. It waits by the lander (on foot
+## or on GAR-Y's sled) and plugs into the module's outside socket
+## (scripts/module_life.gd). An older game's lander still takes it.
 
 const MODEL := preload("res://assets/models/storm_cargo/o2_cartridge.glb")
 const MHPalette := preload("res://scripts/mh_palette.gd")
@@ -16,6 +21,7 @@ const HELD_AT := Vector3(.28, -.42, -.62)   # in front of the camera, low and to
 
 var drop: Node
 var where := "pallet"
+var plugged_into := "cabin"     # "cabin" (older games) or "module"
 var _model: Node3D
 var _shape: CollisionShape3D
 
@@ -54,10 +60,11 @@ func oxygen_kg() -> float:
 	return MHResources.revamp("cartridge_o2_kg", 6.0)
 
 func interaction_prompt() -> Dictionary:
-	return {"label": "Oxygen cartridge · %d kg" % roundi(kg()), "primary": "Pick up"} if where != "plugged" else {"label": "Oxygen cartridge · plugged in"}
+	if where == "plugged": return {"label": "Air cartridge · plugged in"}
+	return {"label": "Module air cartridge · %d kg" % roundi(kg()), "primary": "Pick up"}
 
 func interact(_player: Node = null) -> bool:
-	if where == "carried" or where == "plugged": return false
+	if where in ["carried", "plugged", "sled"]: return false
 	pick_up()
 	return true
 
@@ -73,9 +80,12 @@ func pick_up() -> void:
 	drop.world.player.set_meta("load_speed", lerpf(1.0, .6, clampf(kg() / 40.0, 0.0, 1.0)))
 	MHAudio.sfx("suit_clamp", -6.0)
 	var notes: Node = drop.world.get("notes")
-	if notes != null: notes.think("air", "carrying")
+	if notes != null: notes.think("module_air", "carrying")
 	var hud: Node = drop.world.get("explore_hud")
-	if hud != null: hud.show_equipment_note("Carrying the cartridge", "E on the cabin's oxygen port plugs it in. Q puts it down.")
+	if hud != null:
+		if _cabin_takes_it(): hud.show_equipment_note("Carrying the cartridge", "E on the cabin's oxygen port plugs it in. Q puts it down.")
+		elif _module_socket() != null: hud.show_equipment_note("Carrying the cartridge", "E on the module's outside socket plugs it in. Q puts it down.")
+		else: hud.show_equipment_note("Carrying the cartridge", "Q puts it down by the lander for the module. E on GAR-Y loads it on its sled, once it has a hitch.")
 
 ## Q: down at your feet.
 func put_down() -> void:
@@ -104,12 +114,34 @@ func _unhandled_input(event: InputEvent) -> void:
 # ---------- the cabin's port claims E while you carry it ----------
 
 func claim(target: Node, method_name: String) -> bool:
-	if where != "carried" or method_name != "interact" or target == null or not target.is_in_group("cabin_o2_port"): return false
+	if where != "carried" or method_name != "interact": return false
+	var pod: Node = drop.world.get("lifepod")
+	if pod != null and pod.sled_takes(target):
+		pod.load_on_sled(self, target)
+		return true
+	if not _takes(target): return false
 	plug_in(target)
 	return true
 
 func claim_label(target: Node) -> String:
-	return "Plug in the cartridge" if where == "carried" and target != null and target.is_in_group("cabin_o2_port") else ""
+	if where != "carried": return ""
+	var pod: Node = drop.world.get("lifepod")
+	if pod != null and pod.sled_takes(target): return "Load it on GAR-Y's sled"
+	return "Plug in the cartridge" if _takes(target) else ""
+
+## Where it can go: the module's socket, or an older game's cabin port.
+func _takes(target: Node) -> bool:
+	if target == null: return false
+	if target.is_in_group("module_socket"): return target.has_method("running") and target.running()
+	return target.is_in_group("cabin_o2_port") and _cabin_takes_it()
+
+func _cabin_takes_it() -> bool:
+	var cabin: Node = drop.world.get("cabin_life")
+	return cabin != null and not bool(cabin.core.self_sufficient)
+
+func _module_socket() -> Node:
+	var module: Node = drop.world.get("module_life")
+	return module if module != null and module.running() else null
 
 ## Into the port's cradle: the cabin's tank takes its oxygen, the dial swings.
 func plug_in(port: Node) -> void:
@@ -117,16 +149,36 @@ func plug_in(port: Node) -> void:
 	drop.world.player.set_meta("load_speed", 1.0)
 	var hud: Node = drop.world.get("explore_hud")
 	if hud != null: hud.hide_equipment_note("Carrying")
-	_into_port()
-	var cabin: Node = drop.world.get("cabin_life")
-	if cabin != null: cabin.add_cartridge(oxygen_kg())
-	port.plugged()
 	var notes: Node = drop.world.get("notes")
-	if notes != null: notes.answer("air")
+	if port.is_in_group("module_socket"):
+		plugged_into = "module"
+		_into_port()
+		port.add_cartridge(oxygen_kg())
+		if notes != null: notes.answer("module_air")
+	else:
+		plugged_into = "cabin"
+		_into_port()
+		var cabin: Node = drop.world.get("cabin_life")
+		if cabin != null: cabin.add_cartridge(oxygen_kg())
+		port.plugged()
+		if notes != null: notes.answer("air")
 	MHAudio.sfx("suit_fill", -4.0)
 	MHAudio.moment()
 
 func _into_port() -> void:
+	if plugged_into == "module":
+		# On the module's socket plate (built a moment after loading).
+		var module: Node = drop.world.get("module_life")
+		var plate: Node3D = module.socket if module != null else null
+		if plate == null or not is_instance_valid(plate):
+			get_tree().create_timer(.5).timeout.connect(_into_port)
+			return
+		if get_parent() != null: get_parent().remove_child(self)
+		plate.add_child(self)
+		position = Vector3(0, -.32, .22)
+		rotation = Vector3.ZERO
+		reachable(false)
+		return
 	var port := get_tree().get_first_node_in_group("cabin_o2_port") as Node3D
 	if port == null: return
 	if get_parent() != null: get_parent().remove_child(self)

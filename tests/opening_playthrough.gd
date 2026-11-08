@@ -200,16 +200,10 @@ func run() -> void:
 	var drop: Node = world.storm_drop
 	await go(drop.ridge, "to the parachute ridge")
 	await wait(4.0)
-	step("Open pallet 1")
+	step("Open pallet 1 (the module's cargo: leave it for now)")
 	drop.pallet.open(false)
 	await wait(5.0)
-	drop.cartridge.interact(player)
-	if str(drop.cartridge.where) != "carried": got_stuck("couldn't pick up the cartridge")
-	await go(lander.global_position, "carrying the cartridge home", 4.0)
-	var port: Node = world.cabin_life.port
-	player.global_position = ground(lander.ramp_foot(1.0))
-	if not drop.cartridge.claim(port, "interact"): got_stuck("the port wouldn't take the cartridge")
-	await wait(6.0)
+	log_line("STATE", "cabin o2 %.2f kg, battery %d%%, water %.1f L" % [float(world.cabin_life.core.tank_o2_kg), roundi(world.cabin_life.core.battery_pct()), float(world.cabin_life.core.water_l)])
 
 	var field: Node = world.drop_field
 	# Back to the ridge's view of pallets 2 and 3 if they aren't known.
@@ -217,16 +211,8 @@ func run() -> void:
 	if not known.knows(field.sites.power.id()): got_stuck("pallets 2-3 not known after the ridge")
 	await ready_for("before pallet 2")
 	await go(field.sites.power.pallet.global_position, "to pallet 2 (power)")
-	step("Open pallet 2, carry the blanket home")
+	step("Open pallet 2 (the module's power: leave it packed)")
 	field.sites.power.pallet.open(false)
-	await wait(4.0)
-	field.sites.power.pallet.interact(player)
-	var pack: Node = field.sites.power.pack
-	if str(pack.where) != "carried": got_stuck("couldn't pick up the power pack")
-	await go(lander.to_global(Vector3(5, 0, 3)), "carrying the power pack home", 0.0)
-	pack.put_down()
-	pack.interact(player)
-	if str(pack.where) != "laid": got_stuck("the blanket wasn't laid out")
 	await wait(5.0)
 
 	await ready_for("before pallet 3")
@@ -269,20 +255,31 @@ func run() -> void:
 				await wait(1.0)
 				t += 1.0
 		else: got_stuck("no sunset offer from GAR-Y")
-	step("Into the cabin for the night")
-	player.global_position = lander.to_global(Vector3(0, 1.2, .5))
-	lander.set_hatch(false)
-	await wait(20.0)
-	await _sleep_to_dawn()
+	await _bed_and_sleep()
 
 	# ---- Part 2: the lifepod days ----
 	var pod: Node = world.lifepod
-	step("Sol 2: the jobs")
-	await wait(10.0)
+	step("Sol 2: GAR-Y's day")
+	await wait(12.0)
 	lander.set_hatch(true)
 	player.global_position = ground(lander.ramp_foot(4.0))
 	await wait(3.0)
-	# Salvage near the lander.
+	if gary == null: got_stuck("no GAR-Y on sol 2")
+	elif str(gary.interaction_prompt().get("primary", "")) != "What did you find?": got_stuck("GAR-Y has no report (%s)" % str(gary.interaction_prompt()))
+	else:
+		step("GAR-Y: what did you find?")
+		gary.interact(player)
+		await wait(4.0)
+		var site: Node = pod.gary_mark_to_show(gary.global_position)
+		await ready_for("before Show me")
+		if site != null and gary.order("show") == "":
+			step("GAR-Y: show me (%s)" % str(site.kind))
+			await go(gary.task_goal, "following GAR-Y to the %s" % str(site.kind), 4.0)
+			await wait(4.0)
+			if not site.seen: got_stuck("followed GAR-Y but didn't see the %s" % str(site.kind))
+		else: got_stuck("Show me didn't start")
+	# Salvage near the lander, then the hitch.
+	await ready_for("before the salvage")
 	var handles: Array = world.get_tree().get_nodes_in_group("salvage_piece")
 	handles.sort_custom(func(a, b): return a.global_position.distance_to(lander.global_position) < b.global_position.distance_to(lander.global_position))
 	for i in mini(5, handles.size()):
@@ -298,18 +295,37 @@ func run() -> void:
 	while str(pod.printing) != "" and t < 600.0:
 		await wait(5.0)
 		t += 5.0
-	# The frost patch by pallet 4: ice by hand.
-	var frost: Node = pod.sites.frost
-	await ready_for("before the frost")
-	await go(frost.global_position, "to the frost patch")
-	step("Chip ice, carry it home, melt it")
-	frost.chip_for(2.0)
-	await wait(4.0)
-	var ice := _carried(pod)
-	if ice == null: got_stuck("no ice chunk from the frost")
-	await go(lander.global_position, "carrying ice home", 4.0)
-	if ice != null and not ice.claim(pod.bench.stations.melter, "interact"): got_stuck("the melter wouldn't take the ice")
-	await wait(4.0)
+	# The module's cargo onto GAR-Y's sled, and home.
+	for item in [drop.cartridge, field.sites.power.pack]:
+		await ready_for("before the cargo run")
+		await go(item.global_position, "to the %s" % str(item.name), 1.5)
+		item.interact(player)
+		if str(item.where) != "carried":
+			got_stuck("couldn't pick up %s" % str(item.name))
+			continue
+		if gary != null:
+			if gary.global_position.distance_to(player.global_position) > 10.0: gary.global_position = player.global_position + Vector3(2, .3, 0)
+			if not item.claim(gary, "interact"): got_stuck("GAR-Y's sled wouldn't take %s" % str(item.name))
+			await wait(2.0)
+	await go(lander.ramp_foot(4.0), "home with GAR-Y's sled", 0.0)
+	if gary != null:
+		gary.global_position = lander.ramp_foot(3.0)
+		await wait(2.0)
+		step("Unload the cargo by the lander")
+		gary.interact(player)
+		await wait(2.0)
+	if not pod.jobs.has("tow"): got_stuck("the cargo didn't count as staged")
+	# A survey by GAR-Y near the lander.
+	if gary != null:
+		step("GAR-Y: survey there")
+		var spot: Vector3 = lander.global_position + Vector3(0, 0, 25)
+		var why: String = gary.order("survey", spot)
+		if why != "": got_stuck("survey refused: %s" % why)
+		t = 0.0
+		while not pod.jobs.has("scout") and t < 300.0:
+			await wait(5.0)
+			t += 5.0
+		if not pod.jobs.has("scout"): got_stuck("GAR-Y's survey never counted")
 	# The iron outcrop: a sample for the bench.
 	var iron: Node = pod.sites.iron
 	await refill("before the iron")
@@ -330,29 +346,8 @@ func run() -> void:
 	await go(lander.global_position, "carrying the sample home", 4.0)
 	if sample != null and not sample.claim(pod.bench.stations.study, "interact"): got_stuck("the bench wouldn't take the sample")
 	await wait(6.0)
-	# GAR-Y's sled, with the hitch.
-	if gary != null and pod.prints.has("hitch"):
-		await refill("before the sled run")
-		await go(frost.global_position, "to the frost patch with GAR-Y")
-		gary.global_position = frost.global_position + Vector3(3, .3, 0)
-		frost.chip_for(2.0)
-		await wait(3.0)
-		if float(pod.sled_kg) <= 0.0: got_stuck("no ice on GAR-Y's sled")
-		await go(lander.ramp_foot(4.0), "home with GAR-Y's sled", 0.0)
-		gary.global_position = lander.ramp_foot(3.0)
-		await wait(2.0)
-		gary.interact(player)
 	log_line("STATE", "jobs %s, walker due %s" % [str(pod.jobs), str(pod.walker_due)])
-	# Evening, then the night the walker moves.
-	step("Evening by the lander")
-	t = 0.0
-	while MHGame.sol_hour < sunset + .5 and MHGame.sol_hour > 6.0 and t < 3000.0:
-		await wait(10.0)
-		t += 10.0
-	player.global_position = lander.to_global(Vector3(0, 1.2, .5))
-	lander.set_hatch(false)
-	await wait(10.0)
-	await _sleep_to_dawn()
+	await _bed_and_sleep()
 	if not pod.walker_moved: got_stuck("the walker didn't move in the night (due %s)" % str(pod.walker_due))
 
 	# ---- Part 3: Walker 1 ----
@@ -462,6 +457,25 @@ func run() -> void:
 			else: got_stuck("placing %s refused" % id)
 			await wait(3.0)
 		log_line("STATE", "kit left: %s" % str(RULES.kit_left(builder)))
+		step("Unpack the staged cargo at the module's socket")
+		var module: Node = world.module_life
+		var socket: Vector3 = module.socket_spot()
+		player.global_position = ground(socket + (socket - lander.global_position).normalized() * -2.0)
+		await wait(2.0)
+		drop.cartridge.interact(player)
+		if str(drop.cartridge.where) == "carried":
+			await go(socket, "the cartridge to the socket", 1.5)
+			if not drop.cartridge.claim(module, "interact"): got_stuck("the module's socket wouldn't take the cartridge")
+		else: got_stuck("couldn't pick up the staged cartridge (%s)" % str(drop.cartridge.where))
+		var pack: Node = field.sites.power.pack
+		pack.interact(player)
+		if str(pack.where) == "carried":
+			await go(socket, "the power pack to the socket", 3.0)
+			pack.put_down()
+			pack.interact(player)
+			if str(pack.where) != "laid": got_stuck("the blanket wasn't laid at the module (%s)" % str(pack.where))
+		else: got_stuck("couldn't pick up the staged pack (%s)" % str(pack.where))
+		await wait(4.0)
 	step("The first night in the module")
 	t = 0.0
 	while MHGame.sol_hour < 21.0 and MHGame.sol_hour > 6.0 and t < 3000.0:
@@ -492,6 +506,32 @@ func refill(why := "") -> void:
 ## Tops up first when the suit's under `need` of a tank.
 func ready_for(trip: String, need := .8) -> void:
 	if float(world.suit.o2) < need: await refill(trip)
+
+## The opening days: wait for "bed", go home, check the hatch holds at night, sleep.
+func _bed_and_sleep() -> void:
+	var lander: Node3D = world.lander
+	var notes: Node = world.notes
+	step("Waiting for the day's end")
+	var t := 0.0
+	while not notes.is_open("bed") and t < 3000.0:
+		await wait(10.0)
+		t += 10.0
+	if not notes.is_open("bed"): got_stuck("no bed thought by %02d:%02d" % [int(MHGame.sol_hour), int(fmod(MHGame.sol_hour, 1.0) * 60)])
+	log_line("STATE", "bed (%s) at %02d:%02d" % [notes.stage("bed"), int(MHGame.sol_hour), int(fmod(MHGame.sol_hour, 1.0) * 60)])
+	await go(lander.ramp_foot(2.0), "home for bed", 0.0)
+	player.global_position = lander.to_global(Vector3(0, 1.2, .5))
+	lander.set_hatch(false, true)
+	t = 0.0
+	while not lander.sealed_cabin() and t < 60.0:
+		await wait(1.0)
+		t += 1.0
+	var body: Node = world.get("body")
+	if body != null and body.peckish() and world.lifepod != null and world.lifepod.eat_ration(): log_line("EAT", "a ration")
+	var days: Node = world.get("opening_days")
+	if days != null and days.is_night():
+		lander.interact()
+		log_line("STATE", "hatch at night from inside: %s" % ("held shut" if not lander.hatch_open() else "OPENED"))
+	await _sleep_to_dawn()
 
 func _sleep_to_dawn() -> void:
 	var sleep: Node = world.get("sleep")

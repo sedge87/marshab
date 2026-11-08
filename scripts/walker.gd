@@ -786,6 +786,8 @@ func _finish_set_down() -> void:
 		notes.answer("walker_home")
 		notes.think("module_plans")
 		notes.think("module_power")
+		var drop: Node = world.get("storm_drop")
+		if drop != null and drop.cartridge != null and str(drop.cartridge.where) == "ground": notes.think("module_air", "staged")
 	MHNotices.post("info", "The General Module is down", "Walk over and cycle in. Inside, B unpacks its fit-out kit.", "", 1)
 
 ## The first night under a real roof: after dark, inside the module.
@@ -796,7 +798,6 @@ func _night_check(you: Vector3) -> void:
 		first_night = true
 		var notes: Node = world.get("notes")
 		if notes != null:
-			notes.answer("module_plans")
 			notes.think("first_room")
 			notes.answer("first_room")
 

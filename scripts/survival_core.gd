@@ -23,6 +23,11 @@ extends RefCounted
 ##
 ## When the battery is flat, every powered machine stops.
 ##
+## The lander cabin is self-sufficient (the user, 8 Nov: a lifepod, too small
+## to be a base; docs/opening-days.md): a small radioisotope unit gives it
+## power day and night, it remakes oxygen into its tank, and it recycles its
+## water. Only food runs down. The General Module has none of that.
+##
 ## The same model gives the alerts (one engine for the icon row, the slate and
 ## the voices) and the runway: run a copy forward and see when each store
 ## crosses its limit.
@@ -67,11 +72,13 @@ var room_name := "Cabin"
 var drinks := true
 ## Out on the suit you drink from its bag instead (step 4a, scripts/suit.gd).
 var sipping_suit := false
+var self_sufficient := false     # the lander: power cell, oxygen remade, water recycled
 
 func _init(room := "cabin") -> void:
 	prefix = room
 	room_name = "Module" if room == "module" else "Cabin"
 	drinks = room == "cabin"
+	self_sufficient = room == "cabin" and n("cabin_self_sufficient", 1.0) > 0.0
 	battery_cap = m("cabin_battery_kwh", 6.0)
 	battery_kwh = battery_cap
 	tank_cap = m("cabin_o2_tank_kg", 3.0)
@@ -131,9 +138,11 @@ func advance(hours: float, start_hour: float) -> void:
 ## One sub-step: `outside` °C, `sun` 0–1 of noon sunlight.
 func step(dt: float, outside: float, sun: float) -> void:
 	# You drink wherever you are: from the tank, or out on the suit from its bag.
-	if drinks and not sipping_suit:
+	if drinks and not sipping_suit and not self_sufficient:
 		water_l = maxf(0.0, water_l - n("water_per_sol_l", 3.0) / 24.0 * dt)
 		dry_hours = dry_hours + dt if water_l <= 0.0 else 0.0
+	# The lander's recycler gives back what you drink, and tops up what the suit's bag took.
+	if self_sufficient: water_l = minf(water_cap, water_l + n("water_per_sol_l", 3.0) * 1.5 / 24.0 * dt)
 	var on := powered()
 	var draw := 0.0
 	if on:
@@ -151,6 +160,7 @@ func step(dt: float, outside: float, sun: float) -> void:
 		heater = clampf(want, 0.0, m("cabin_heater_kw", 1.5))
 	draw += heater
 	var solar := (m("cabin_solar_kw", 1.5) + pack_kw) * sun
+	if self_sufficient: solar += n("cabin_rtg_kw", .7)   # the power cell, day and night
 	battery_kwh = clampf(battery_kwh + (solar - draw) * dt, 0.0, battery_cap)
 	temp_c += (draw + body - loss) * dt / heat_cap
 	# Air (none while the cabin is open to Mars: the suit breathes for you).
@@ -161,6 +171,7 @@ func step(dt: float, outside: float, sun: float) -> void:
 	co2_kg += people * MHResources.setting("co2_per_person", 1.0) / 24.0 * dt
 	if on and scrubber_on:
 		co2_kg = maxf(air_kg * .0004 / CO2_VOL, co2_kg - m("cabin_scrub_kg_per_h", .1) * dt)
+	if self_sufficient and on: tank_o2_kg = minf(tank_cap, tank_o2_kg + n("cabin_o2_make_kg_per_h", .06) * dt)
 	var short := air_kg * .209 / O2_VOL - o2_kg
 	if short > 0.0 and tank_o2_kg > 0.0:
 		var feed := minf(minf(short, .3 * dt), tank_o2_kg)

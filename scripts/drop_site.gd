@@ -181,7 +181,7 @@ func pallet_opened() -> void:
 		"power":
 			pack.reachable(true)
 			if notes != null: notes.think("power_pallet", "open")
-			MHNotices.post("valid", "Pallet 2: power", "A rolled solar blanket and a battery pack. Carry it to the lander and lay it out: the heater can run all night.", "log")
+			MHNotices.post("valid", "Pallet 2: power", "A rolled solar blanket and a battery pack: the General Module's power. It waits by the lander, packed, until the module's down.", "log")
 		"gary":
 			if empty:
 				MHNotices.post("info", "Pallet 3", "GAR-Y's cradle, empty. It came looking for you.", "log")
@@ -221,7 +221,7 @@ func _process(delta: float) -> void:
 func export_state() -> Dictionary:
 	var out := {"at": [at.x, at.y, at.z], "yaw": yaw, "opened": pallet.opened, "empty": empty}
 	if pack != null:
-		out["pack"] = pack.where if pack.where != "carried" else "ground"
+		out["pack"] = pack.where if not pack.where in ["carried", "sled"] else "ground"
 		var p: Vector3 = pack.global_position if pack.where != "carried" else _ground(world.player.global_position)
 		out["pack_at"] = [p.x, p.y, p.z]
 		out["pack_laid_at"] = pack.laid_at

@@ -254,16 +254,20 @@ func _initialize() -> void:
 		builder.placed_interior.append({"id": str(id)})
 		if builder._used_cargo() > MHGame.cargo_budget(): kit_ok = false
 	_check(kit_ok, "the whole fit-out kit places free, piece after piece (used %d of %d)" % [builder._used_cargo(), MHGame.cargo_budget()])
-	# Science waits for something of your own: the kit alone doesn't open it.
+	# Science waits for the ice extractor (docs/opening-days.md): not the kit, not a chair.
 	world._tick_chapter_one()
 	_check(not MHSamples.science_open, "with only the module and its kit, no science yet")
 	builder.placed_interior.append({"id": "crew_chair"})
 	world._tick_chapter_one()
-	_check(MHSamples.science_open, "one thing of your own past the kit: science opens")
+	_check(not MHSamples.science_open, "a chair past the kit isn't it either")
+	builder.zones.append({"kind": "ice_extractor", "cells": [Vector2i(40, 40)]})
+	world._tick_chapter_one()
+	_check(MHSamples.science_open, "the ice extractor: science opens")
+	builder.zones.pop_back()
 	builder.placed_interior.assign(before_kit)
 	world._tick_chapter_one()
 	_check(MHSamples.science_open, "and stays open")
-	_check(MHChapterOne.known.has("ice_drill") and world.notes.is_open("module_plans") and world.notes.is_settled("walker_home"), "its plans: an ice extractor")
+	_check(MHChapterOne.known.has("ice_drill") and world.notes.is_settled("module_plans") and world.notes.is_settled("walker_home"), "its plans: an ice extractor, settled once it's built")
 
 	# The first night in a real room.
 	var inside_cell: Vector2i = cells[2]

@@ -1,4 +1,4 @@
-# The opening days (design, 8 Nov — for review)
+# The opening days (design, 8 Nov — approved and built)
 
 The user, 8 Nov: the first days are "baby steps", the game at a small scale. Each day ends with sleep. The lander is a self-sufficient lifepod, too small to be a base. The pallets are cargo for the General Module.
 
@@ -47,11 +47,23 @@ The user, 8 Nov: the first days are "baby steps", the game at a small scale. Eac
 
 ## Then it opens up
 - **The four main goals arrive** (Life, Climate, Geology, Humans) with the module's plans.
-- **The first real build is the ice extractor** at the ice wall GAR-Y found. That opens science: the first Lead.
+- **The first real build is the ice extractor.** That opens science, and Castellanos's text names the four goals.
+  - **Changed in building:** the build area is about 60 m round the base, so the extractor can't stand at the ice wall 1–1.5 km out.
+  - The module's plans send you to GAR-Y's ice radar near the module instead: survey, core, drill.
+  - The ice wall stays a thread for later.
 - **Free building and exploring** until the real story thread, the interference, starts.
 
-## Built already (8 Nov batch, not yet committed)
-- `scripts/opening_days.gd`: progress-based days, the bed thought at dusk, GAR-Y leading you home, the night hatch, and GAR-Y waiting at the ramp on sol 2.
-- GAR-Y's report, the "Show me" order, and its Notes thought.
-- The lander panel, the science gate, and the out-cold and blinking fixes.
-- **One mismatch:** ARDEN's sol 2 morning line ("Water for about a day…") assumes a short-lived lander. It gets rewritten with this redesign.
+## Built (8 Nov)
+- **The lander (`survival_core.gd` `self_sufficient`, cabin only):**
+  - a 0.7 kW power cell;
+  - oxygen remade into the tank, 0.06 kg/h while powered;
+  - water recycled.
+  - These are code fallbacks (`cabin_rtg_kw`, `cabin_o2_make_kg_per_h`, `cabin_self_sufficient`), not yet in the balance sheet.
+- **Gone:** ARDEN's night warning, the low-air and low-water thoughts, and the cabin port taking the cartridge. The power pack can't be laid at the lander.
+- **The cargo:**
+  - The air cartridge plugs into the module's outside socket (`module_life.gd`).
+  - Carrying it or the power pack, E on a hitched GAR-Y loads it on the sled (`lifepod.gd` `load_on_sled`). E on GAR-Y by the lander unloads it.
+  - Cargo within 30 m of the lander counts as staged.
+- **Day 2's jobs:** print, tow (both items staged), scout (a GAR-Y survey or core) and sample. Three of four.
+- **Science** opens on an ice extractor (`mars_world._science_build`). Castellanos's "science_open" text names the four goals.
+- **Tests:** `tests/opening_days_test.gd`. The robot run (`tests/opening_playthrough.gd`) follows this route.

@@ -269,7 +269,7 @@ func _ready() -> void:
 		if storm_drop != null and _start_in_lander:
 			var dir: String = storm_drop.direction_word(storm_drop.ridge - lander.global_position)
 			var metres := roundi(Vector2(storm_drop.ridge.x - lander.global_position.x, storm_drop.ridge.z - lander.global_position.z).length() / 50.0) * 50
-			orbiter_texts.send("parachute_photo", "castellanos", "Rao caught it on this pass. Your first parachute, on the high ground about %d m %s of you. That's your air. Go and get it. Eleven more came down somewhere; we're looking." % [metres, dir], "parachute")
+			orbiter_texts.send("parachute_photo", "castellanos", "Rao caught it on this pass. Your first parachute, on the high ground about %d m %s of you. Pallet 1, life support for the base. Go and get it. Eleven more came down somewhere; we're looking." % [metres, dir], "parachute")
 	gar_y_orders = GAR_Y_ORDERS.new()
 	add_child(gar_y_orders)
 	gar_y_orders.setup(self)
@@ -848,7 +848,12 @@ func _tick_chapter_one() -> void:
 	var hours := now - _chapter_hours
 	_chapter_hours = now
 	var messages := MHChapterOne.tick(hours, builder)
-	if not MHSamples.science_open and opening_part() >= 4 and _built_own(): MHSamples.science_open = true
+	if not MHSamples.science_open and opening_part() >= 4 and _science_build():
+		MHSamples.science_open = true
+		if notes != null: notes.answer("module_plans")
+		# The game opens up: the four goals arrive (docs/opening-days.md).
+		if orbiter_texts != null:
+			orbiter_texts.send("science_open", "castellanos", "Water of your own. Houston's whole floor cheered. The science teams have been waiting for this: Life, Climate, Geology and Humans. Anything odd you find out there, a rock, a reading, a hollow, put it on the bench and send it up. Discoveries is on your slate.")
 	messages.append_array(MHSamples.tick(hours, builder))
 	var sol := floori(now / 24.0) + 1
 	if now < 24.0: MHJournal.write("landed", sol, {"where": MHSamples.unit_label(MHSiteTerrain.geology_unit(0.0, 0.0)) if not MHSiteTerrain.geology_unit(0.0, 0.0).is_empty() else "red rock and dust"})
@@ -859,6 +864,16 @@ func _tick_chapter_one() -> void:
 
 ## Something of your own built past the General Module, its airlock and the
 ## fit-out kit: a room or site part, any equipment, or furniture beyond the kit.
+## What opens science: in the opening, the ice extractor (the module's
+## plans; docs/opening-days.md). Without the opening (Creative, older saves),
+## anything of your own.
+func _science_build() -> bool:
+	if walker == null: return _built_own()
+	if builder == null: return false
+	for zone in builder.zones:
+		if str(zone.get("kind", "")) == "ice_extractor": return true
+	return false
+
 func _built_own() -> bool:
 	if builder == null: return false
 	for zone in builder.zones:

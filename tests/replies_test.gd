@@ -62,7 +62,7 @@ func _initialize() -> void:
 	_check(_until_shown(r) and str(r._shown.who) == "ARDEN", "ARDEN's brief offers replies once it's spoken")
 	r.choose(0)
 	var top: Dictionary = notes.thoughts()[0]
-	_check(str(top.id) == "air" and str(top.text).begins_with("ARDEN says"), "saying you'll go: the air thought, in your words, first")
+	_check(str(top.id) == "air" and str(top.text).begins_with("The lander's mine"), "saying you'll go: the air thought, in your words, first")
 
 	# Silence is an answer.
 	r._said_left = 0.0
@@ -81,7 +81,7 @@ func _initialize() -> void:
 	var again = await _new_world(state)
 	_check(again.replies.answered.has("parachute_photo") and again.replies.answered.has("lander_brief"), "what you answered is saved")
 	var said: Array = again.notes.thoughts().filter(func(t): return str(t.id) == "air")
-	_check(not said.is_empty() and str(said[0].text).begins_with("ARDEN says"), "and your words stay in Notes")
+	_check(not said.is_empty() and str(said[0].text).begins_with("The lander's mine"), "and your words stay in Notes")
 	again.queue_free()
 	await process_frame
 	print("replies_test: %s" % ("PASS" if failures == 0 else "%d FAILED" % failures))

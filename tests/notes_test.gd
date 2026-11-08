@@ -55,7 +55,7 @@ func _initialize() -> void:
 		_check("notes" in screen.apps() and not "goals" in screen.apps(), "the slate has Notes, not Goals (%s)" % str(screen.apps()))
 		var page: Control = screen._notes_page()
 		var texts: Array = page.find_children("*", "Label", true, false).map(func(l): return str(l.text))
-		_check(texts.any(func(t): return t.begins_with("Cabin air's good")) and not texts.any(func(t): return t.contains("/") or t.contains("✓")), "the page is just your thoughts, no ticks or counts")
+		_check(texts.any(func(t): return t.begins_with("The lander will keep me going")) and not texts.any(func(t): return t.contains("/") or t.contains("✓")), "the page is just your thoughts, no ticks or counts")
 		page.free()
 
 	# Out of order: you find the pallet without ever thinking about it.
@@ -85,7 +85,8 @@ func _initialize() -> void:
 	notes._check = 0.0
 	await process_frame
 	await process_frame
-	_check(notes.is_open("power") and notes.stage("power") == "start", "after the air is sorted, ARDEN warns about the night and it becomes a thought")
+	# The self-sufficient lander (docs/opening-days.md): no night worry at all.
+	_check(not notes.is_open("power"), "the lander's power cell sees out the night: ARDEN has no warning")
 
 	# Few at a time.
 	for id in ["cold"]: notes.think(id)
@@ -99,13 +100,13 @@ func _initialize() -> void:
 	notes._check = 0.0
 	if world.get("opening_days") != null: world.opening_days._check = 0.0
 	for i in 3: await process_frame
-	_check(notes.stage("power") == "night", "after dark the power thought turns to the night ahead")
+	_check(not notes.is_open("power"), "after dark, still no battery worry")
 	# The opening days have "bed" instead (tests/opening_days_test.gd); past them, rest is offered.
 	_check(not world.cabin_life.player_inside() or notes.is_open("rest") or notes.is_open("bed"), "in the cabin after dark, rest (or, in the opening days, bed) is offered")
 	world.day_night.set_hour(sunrise + .5)
 	notes._check = 0.0
 	for i in 3: await process_frame
-	_check(notes.is_settled("power") and MHJournal.entries.back().lines.any(func(l): return str(l).begins_with("Made it to morning.")), "dawn settles it, with how the night went")
+	_check(not notes.is_open("power"), "and none at dawn")
 	_check(not notes.is_open("rest") and not notes.is_settled("rest"), "the offer passes with the morning, and can come again")
 
 	# The blue sunset, seen from outside.

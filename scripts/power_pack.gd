@@ -38,6 +38,7 @@ func setup(target_site: Node, start: String) -> void:
 	world = site.world
 	name = "PowerPack"
 	add_to_group("power_pack")
+	add_to_group("interaction_claims")   # GAR-Y's sled takes it while you carry it
 	set_meta("interaction_target", self)
 	_roll = _build_roll()
 	add_child(_roll)
@@ -109,6 +110,9 @@ func _mat(role: String) -> StandardMaterial3D:
 # ---------- carrying ----------
 
 func near_lander() -> bool:
+	# The self-sufficient lander has no use for it (docs/opening-days.md): it's the module's.
+	var cabin: Node = world.get("cabin_life")
+	if cabin != null and bool(cabin.core.self_sufficient): return false
 	var lander: Node3D = world.lander
 	var at := global_position if where != "carried" else (world.player as Node3D).global_position
 	return lander != null and Vector2(at.x - lander.global_position.x, at.z - lander.global_position.z).length() < LAY_REACH and not lander.cabin_contains(at)
@@ -178,7 +182,9 @@ func pick_up() -> void:
 	world.player.set_meta("load_speed", lerpf(1.0, .6, clampf(kg() / 40.0, 0.0, 1.0)))
 	MHAudio.sfx("suit_clamp", -6.0)
 	var hud: Node = world.get("explore_hud")
-	if hud != null: hud.show_equipment_note("Carrying the power pack", "Q puts it down. Set it down near the lander, then E lays out the blanket.")
+	if hud != null:
+		if near_lander() or _module() == null: hud.show_equipment_note("Carrying the power pack", "Q puts it down by the lander for the module. E on GAR-Y loads it on its sled, once it has a hitch." if _module() == null else "Q puts it down. Set it down near the lander, then E lays out the blanket.")
+		else: hud.show_equipment_note("Carrying the power pack", "Set it down by the module's outside socket, then E lays out the blanket.")
 
 func put_down() -> void:
 	if where != "carried": return
@@ -198,6 +204,19 @@ func put_down() -> void:
 	if hud != null:
 		hud.hide_equipment_note("Carrying")
 		if near_lander(): hud.show_equipment_note("Power pack", "E lays out the solar blanket and plugs the battery into the lander.")
+
+# ---------- GAR-Y's sled claims E while you carry it ----------
+
+func claim(target: Node, method_name: String) -> bool:
+	if where != "carried" or method_name != "interact": return false
+	var pod: Node = world.get("lifepod")
+	if pod == null or not pod.sled_takes(target): return false
+	pod.load_on_sled(self, target)
+	return true
+
+func claim_label(target: Node) -> String:
+	var pod: Node = world.get("lifepod")
+	return "Load it on GAR-Y's sled" if where == "carried" and pod != null and pod.sled_takes(target) else ""
 
 func _unhandled_input(event: InputEvent) -> void:
 	if where != "carried": return

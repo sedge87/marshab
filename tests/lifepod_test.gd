@@ -58,7 +58,8 @@ func _initialize() -> void:
 	world.builder.simulation().hours_run = 31.0
 	MHGame.sol_hour = 7.0
 	await create_timer(.6).timeout
-	_check(world.notes.is_open("water") and str(world.notes.stage("water")) == "low", "the dawn of sol 2: water's low, in Notes")
+	# The self-sufficient lander recycles its water (docs/opening-days.md): no worry on sol 2.
+	_check(not world.notes.is_open("water"), "the dawn of sol 2: the lander's water isn't a worry")
 	core.water_l = 0.0
 	core.dry_hours = 13.0
 	_check(core.thirsty(), "dry for 13 hours: thirsty")
@@ -151,7 +152,8 @@ func _initialize() -> void:
 	await process_frame
 	await process_frame
 	_check(pod.prints.has("hitch") and pod.jobs.has("print"), "the hitch is printed")
-	_check(pod.walker_due, "three jobs done: the walker is due")
+	pod.done("scout")   # a GAR-Y survey (tests/opening_days_test.gd runs the real one)
+	_check(pod.walker_due, "three jobs done (%s): the walker is due" % str(pod.jobs.keys()))
 	printer.interact_info(player)
 	var plan_name: String = str(printer.interaction_prompt().get("primary", ""))
 	printer.interact(player)

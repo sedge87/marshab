@@ -201,6 +201,7 @@ func _build() -> void:
 	add_child(cartridge)
 	var where := str(_saved.get("cartridge", "pallet"))
 	if where == "plugged":
+		cartridge.plugged_into = str(_saved.get("cartridge_into", "cabin"))
 		cartridge.setup(self, "plugged")
 	elif where == "ground" and _saved.has("cartridge_at"):
 		var at: Array = _saved.cartridge_at
@@ -297,14 +298,17 @@ func pallet_opened() -> void:
 		known.tell("find:parachute", "you")
 		known.rename("find:parachute", "Pallet 1")
 	var notes: Node = world.get("notes")
-	if notes != null: notes.answer("parachute")
-	MHNotices.post("valid", "Pallet 1: life support", "Inside: a fresh oxygen cartridge for the cabin, ten ration packs (you pocket them), and the sample kit (hand corer, scoop, bags).", "log")
+	if notes != null:
+		notes.answer("parachute")
+		notes.answer("air")
+	MHNotices.post("valid", "Pallet 1: life support", "Inside: the General Module's air cartridge, ten ration packs (you pocket them), and the sample kit (hand corer, scoop, bags).", "log")
 	MHAudio.moment()
 
 func export_state() -> Dictionary:
 	var out := {"ridge": [ridge.x, ridge.y, ridge.z], "yaw": yaw, "opened": pallet.opened if pallet != null else false}
 	if cartridge != null:
-		out["cartridge"] = cartridge.where if cartridge.where != "carried" else "ground"
+		out["cartridge"] = cartridge.where if not cartridge.where in ["carried", "sled"] else "ground"
+		out["cartridge_into"] = cartridge.plugged_into
 		var at: Vector3 = cartridge.global_position if cartridge.where != "carried" else _ground(world.player.global_position)
 		out["cartridge_at"] = [at.x, at.y, at.z]
 	return out

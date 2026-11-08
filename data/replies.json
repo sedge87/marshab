@@ -2,16 +2,16 @@
   "_about": "Short replies (docs/systems-and-items.md §10e, §10f; scripts/replies.gd). Keyed by what's said to you: an ARDEN voice line id or an orbit text id. Two or three choices, keys 1-3, gone after a few seconds; silence is an answer. 'note' takes up a Notes thought in your own words ('said') and puts it at the top; 'answer' is the sender's reply on the next pass (texts only). Your words are written, never spoken.",
   "lander_brief": {
     "replies": [
-      {"text": "Then I'd better find that air.", "note": "air", "said": "ARDEN says the cabin's good for about a sol. The cartridge on pallet 1 is the rest of my air. That's first."},
-      {"text": "One night. Great.", "note": "air"}
+      {"text": "Then let's find the pallets.", "note": "air", "said": "The lander's mine for as long as I need it. The base is in the pallets. The first one's on that ridge."},
+      {"text": "Cosy, then.", "note": "air"}
     ],
     "silence_note": "air"
   },
   "parachute_photo": {
     "replies": [
       {"text": "On my way.", "note": "parachute", "said": "Castellanos found my first parachute from orbit. My air's under it. Get to the ridge.", "answer": "Good. Walk, don't run. Rao says the ridge is steeper than it looks."},
-      {"text": "What's in it?", "note": "parachute", "answer": "Pallet 1: your air cartridge, a sample kit, ten ration packs. Air first, the rest can wait."},
-      {"text": "Eleven more?", "answer": "Eleven more pallets, somewhere in the Reach. One thing at a time. Air first."}
+      {"text": "What's in it?", "note": "parachute", "answer": "Pallet 1: the General Module's air cartridge, a sample kit, ten ration packs. Start there."},
+      {"text": "Eleven more?", "answer": "Eleven more pallets, somewhere in the Reach. One thing at a time."}
     ]
   },
   "cabin_battery_night": {
@@ -23,8 +23,8 @@
   },
   "cabin_morning_check": {
     "replies": [
-      {"text": "Ice first, then.", "note": "water", "said": "ARDEN says a day of water. Ice first: GAR-Y found frost, and there's the bench melter."},
-      {"text": "Parts, then.", "note": "salvage", "said": "The little printer wants parts from the storm junk. I'll strip some debris."}
+      {"text": "Parts, then.", "note": "salvage", "said": "The little printer could make GAR-Y a sled hitch from the storm junk. Strip some debris, then GAR-Y can tow the cargo home."},
+      {"text": "Where did it go?", "note": "salvage", "said": "GAR-Y was out all night. I'll ask it what it found. Then parts from the storm junk for its sled hitch."}
     ]
   },
   "walker_photo": {

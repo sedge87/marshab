@@ -98,9 +98,15 @@ func _initialize() -> void:
 	_check(days.arden_morning, "ARDEN's morning check is said in the cabin")
 	var r: Node = world.replies
 	_check(r.has_replies("cabin_morning_check"), "and has replies")
-	if _until_shown(r):
+	var shown_id := ""
+	for i in 4:
+		if not _until_shown(r): break
+		shown_id = str(r._shown.get("id", ""))
+		if shown_id == "cabin_morning_check": break
+		r.choose(-1)   # earlier ones, left unanswered
+	if shown_id == "cabin_morning_check":
 		r.choose(0)
-		_check(notes.is_open("water"), "\"Ice first, then.\" takes up water")
+		_check(notes.is_open("salvage"), "\"Parts, then.\" takes up the salvage (shown %s, settled %s)" % [shown_id, notes.is_settled("salvage")])
 	else:
 		_check(false, "the morning check's replies show")
 
@@ -126,6 +132,37 @@ func _initialize() -> void:
 	_check(str(world.known.thing(nearest.id()).name) == str(nearest.NAMES[nearest.kind]), "seen: it gets its real name")
 	_check(pod.gary_mark_to_show(gary.global_position) != nearest, "and Show me moves on to the next")
 
+	# The module's cargo: the hitch, then GAR-Y's sled brings it to the lander.
+	var cart: Node3D = world.storm_drop.cartridge
+	var pack: Node3D = world.drop_field.sites.power.pack
+	_check(not pod.staged(cart) and not pod.staged(pack), "the cargo starts out at its pallets")
+	_check(not pack.near_lander(), "the self-sufficient lander has no use for the power pack")
+	pod.prints["hitch"] = true
+	player.global_position = cart.global_position + Vector3(0, 1.0, 1.0)
+	cart.pick_up()
+	_check(notes.is_open("module_air"), "picking up the cartridge: it's the module's air")
+	gary.global_position = player.global_position + Vector3(2, 0, 0)
+	_check(cart.claim_label(gary) == "Load it on GAR-Y's sled", "carrying it, E on a hitched GAR-Y offers its sled")
+	cart.claim(gary, "interact")
+	_check(cart.where == "sled" and pod.sled_cargo.size() == 1, "the cartridge rides on GAR-Y's sled")
+	player.global_position = pack.global_position + Vector3(0, 1.0, 1.0)
+	pack.pick_up()
+	pack.claim(gary, "interact")
+	_check(pack.where == "sled" and pod.sled_cargo.size() == 2, "and the power pack too")
+	gary.global_position = lander.ramp_foot(5.0)
+	_check(str(gary.interaction_prompt().primary) == "Unload the cargo", "at the lander GAR-Y offers to unload")
+	gary.interact()
+	_check(pod.staged(cart) and pod.staged(pack) and pod.sled_cargo.is_empty(), "unloaded by the lander: staged")
+	_check(pod.jobs.has("tow"), "staging the cargo is a job done")
+
+	# The lander looks after you: a day and a night, and nothing runs down.
+	var core: RefCounted = world.cabin_life.core
+	var o2_before: float = core.tank_o2_kg
+	core.advance(24.0, 12.0)
+	_check(core.tank_o2_kg >= o2_before - .05, "the lander remakes its oxygen (%.2f to %.2f kg)" % [o2_before, core.tank_o2_kg])
+	_check(core.battery_pct() > 20.0 and core.temp_c > 15.0, "its power cell keeps it warm through the night (%d%%, %.0f C)" % [roundi(core.battery_pct()), core.temp_c])
+	_check(core.water_l >= 7.0, "and recycles its water (%.1f L)" % core.water_l)
+
 	# A slow day: night falls with jobs left. Bed, late; they carry over.
 	player.global_position = lander.cabin_start().position
 	MHGame.sol_hour = 20.0
@@ -147,6 +184,14 @@ func _initialize() -> void:
 	for i in 3: again.builder.placed_interior.append({"id": "crew_chair"})
 	_check(not again.opening_days.guided(), "the module fitted out: nights are yours")
 	for i in 3: again.builder.placed_interior.pop_back()
+
+	# The ice extractor opens science, and the four goals arrive from orbit.
+	MHSamples.science_open = false
+	again.builder.zones.append({"kind": "ice_extractor", "cells": [Vector2i(40, 40)]})
+	again._tick_chapter_one()
+	_check(MHSamples.science_open, "the ice extractor opens science")
+	_check(again.orbiter_texts.has("science_open"), "and Castellanos's text names the four goals")
+	again.builder.zones.pop_back()
 
 	print("opening_days_test: PASS" if failures == 0 else "opening_days_test: %d FAILED" % failures)
 	quit(1 if failures > 0 else 0)

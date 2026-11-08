@@ -1149,6 +1149,12 @@ func _airlock_waiting_spot() -> Vector3:
 
 func _survey_done() -> void:
 	surveys_ordered += 1
+	_scouted()
+
+## A survey or core for you: one of GAR-Y's day's jobs (scripts/lifepod.gd).
+func _scouted() -> void:
+	var pod := get_tree().get_first_node_in_group("lifepod")
+	if pod != null: pod.done("scout")
 
 # ---- core sample: drill outside, carry it in, deliver to the Science Lab ----
 
@@ -1161,6 +1167,7 @@ func _core_here() -> void:
 	await _arm_move("carry", .8)
 	has_core = true
 	_core_spot = Vector2(global_position.x, global_position.z)
+	_scouted()
 	_say("tada")
 	_toast("GAR-Y took a core sample", "A tube of layered regolith from below the surface. Bring GAR-Y inside (ping it so it follows you through the airlock) and it'll take the core to the Science Lab.", MHStyle.INFO)
 	_end_task()
@@ -1221,6 +1228,7 @@ func interaction_prompt() -> Dictionary:
 	if has_meta("sunset_offer"): return {"label": NAME + " · looking at the sun", "primary": "Watch the sunset together", "info": "About"}
 	if has_meta("lift_out"): return {"label": NAME + " · folded in its cradle", "primary": "Lift it out"}
 	var pod := get_tree().get_first_node_in_group("lifepod")
+	if pod != null and pod.cargo_ready(self): return {"label": NAME + " · cargo on its sled", "primary": "Unload the cargo", "info": "About"}
 	if pod != null and pod.sled_ready(self): return {"label": "%s · %d kg of ice on its sled" % [NAME, roundi(float(pod.sled_kg))], "primary": "Melt the sled's ice", "info": "About"}
 	if pod != null and pod.gary_report_ready(): return {"label": NAME + " · out all night", "primary": "What did you find?", "info": "About"}
 	return {"label": "%s · %s" % [NAME, status_text()], "primary": "Ping", "info": "About"}
@@ -1253,6 +1261,10 @@ func interact(_actor: Node = null) -> bool:
 		return true
 	# Back at the lander with ice on its sled (scripts/lifepod.gd).
 	var pod := get_tree().get_first_node_in_group("lifepod")
+	if pod != null and pod.cargo_ready(self):
+		pod.unload_cargo()
+		_say("tada")
+		return true
 	if pod != null and pod.sled_ready(self):
 		pod.unload_sled()
 		_say("happy")

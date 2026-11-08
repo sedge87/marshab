@@ -35,6 +35,7 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 	world = target_world
 	name = "ModuleLife"
 	add_to_group("survival_core")
+	add_to_group("module_socket")   # pallet 1's air cartridge plugs in here (scripts/o2_cartridge.gd)
 	core = CORE.new("module")
 	if state.is_empty():
 		core.heater_mode = "low"
@@ -100,6 +101,16 @@ func blanket(on: bool, charge := .5) -> float:
 	var notes: Node = world.get("notes")
 	if on and notes != null: notes.answer("module_power")
 	return share
+
+## Pallet 1's air cartridge on the socket: the module's tank grows by its oxygen, full.
+func add_cartridge(oxygen_kg: float) -> void:
+	core.tank_cap += oxygen_kg
+	core.tank_o2_kg = core.tank_cap
+	_since_runway = 99.0
+
+func has_cartridge() -> bool:
+	var cartridge := get_tree().get_first_node_in_group("o2_cartridge")
+	return cartridge != null and str(cartridge.where) == "plugged" and str(cartridge.plugged_into) == "module"
 
 func has_blanket() -> bool:
 	return float(core.pack_kwh) > 0.0
@@ -204,7 +215,8 @@ func _refresh_socket() -> void:
 
 func interaction_prompt() -> Dictionary:
 	var words := "the solar blanket's plugged in" if has_blanket() else "on its own battery, %d%%" % roundi(core.battery_pct())
-	return {"label": "Module power socket · " + words}
+	if has_cartridge(): words += " · air cartridge in"
+	return {"label": "Module socket · " + words}
 
 func interact(_actor: Node = null) -> bool:
 	return false
