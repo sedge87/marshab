@@ -33,6 +33,7 @@ var _telemetry_temp: Label
 var _telemetry_radiation: Label
 var _telemetry_sunlight: Label
 var _sol_clock: Label
+var _sol_day: Label
 var _telemetry_context: Label
 var _telemetry_key := ""
 var _hint_strip: Control
@@ -361,14 +362,16 @@ func _build_sol_clock() -> PanelContainer:
 	var panel := MHStyle.hud_panel(7, false, true)
 	panel.anchor_left = .5
 	panel.anchor_right = .5
-	panel.offset_left = -78
-	panel.offset_right = 78
+	panel.offset_left = -104
+	panel.offset_right = 104
 	panel.offset_top = 108
 	panel.offset_bottom = 142
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var row := MHStyle.hbox(7)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(MHStyle.eyebrow("SOL", MHStyle.TEXT_MUTED, 10))
+	# The day tracker (8 Nov playtest): which sol it is, always.
+	_sol_day = MHStyle.mono("SOL 1", 13, MHStyle.TEXT_PRIMARY, 700)
+	row.add_child(_sol_day)
 	_sol_clock = MHStyle.mono("08:00 · DAY", 13, MHStyle.INFO, 700)
 	row.add_child(_sol_clock)
 	panel.add_child(row)
@@ -462,6 +465,7 @@ func _update_sol_clock() -> void:
 		return
 	var daytime := MHGame.sunlight_fraction > .08
 	_sol_clock.text = "%s · %s" % [MHGame.formatted_sol_time(), "DAY" if daytime else "NIGHT"]
+	if _sol_day != null and builder != null: _sol_day.text = "SOL %d" % (floori(float(builder.simulation().hours_run) / 24.0) + 1)
 	if MHGame.resupplies_on() and builder != null:
 		var due := MHGame.resupply_due_in_hours(builder.simulation().hours_run)
 		_sol_clock.text += "  ·  RESUPPLY %s" % ("%d H" % ceili(due) if due < 24.0 else "%.1f SOLS" % (due / 24.0))

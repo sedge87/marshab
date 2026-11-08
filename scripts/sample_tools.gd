@@ -62,7 +62,7 @@ func _ready() -> void:
 func _outside_free() -> bool:
 	if not MHSamples.on() or not MHChapterOne.has_corer: return false
 	var player: Node3D = world.player
-	if player == null or bool(player.get_meta("driving", false)) or player._any_build_mode_active(): return false
+	if player == null or bool(player.get_meta("driving", false)) or bool(player.get_meta("riding", false)) or player._any_build_mode_active(): return false
 	if world.builder.is_inside(player.global_position) or world.lander.cabin_contains(player.global_position): return false
 	if world.explore_hud != null and world.explore_hud.call("_looked_at_interactable") != null: return false
 	var corer: Node = world.hand_corer

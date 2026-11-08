@@ -43,7 +43,7 @@ func _ready() -> void:
 func _target() -> Vector3:
 	if not MHChapterOne.on() or not MHChapterOne.has_corer: return Vector3.INF
 	var player: Node3D = world.player
-	if player == null or bool(player.get_meta("driving", false)) or player._any_build_mode_active(): return Vector3.INF
+	if player == null or bool(player.get_meta("driving", false)) or bool(player.get_meta("riding", false)) or player._any_build_mode_active(): return Vector3.INF
 	if world.builder.is_inside(player.global_position) or world.lander.cabin_contains(player.global_position): return Vector3.INF
 	var at := player.global_position - player.global_transform.basis.z * 1.2
 	if world.builder.is_inside(at + Vector3.UP * .5): return Vector3.INF
@@ -59,7 +59,7 @@ func _target() -> Vector3:
 func why_not() -> String:
 	if not MHChapterOne.on() or not MHChapterOne.has_corer or world.player == null: return ""
 	var player: Node3D = world.player
-	if bool(player.get_meta("driving", false)) or player._any_build_mode_active(): return ""
+	if bool(player.get_meta("driving", false)) or bool(player.get_meta("riding", false)) or player._any_build_mode_active(): return ""
 	if world.builder.is_inside(player.global_position) or world.lander.cabin_contains(player.global_position): return ""
 	var at := player.global_position - player.global_transform.basis.z * 1.2
 	if ICE_KNOWLEDGE.surveyed(ICE_KNOWLEDGE.samples(get_tree()), Vector2(at.x, at.z)): return ""
