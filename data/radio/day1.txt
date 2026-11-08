@@ -1,77 +1,112 @@
 # Day 1: the cargo (docs/opening-days.md). Castellanos and you, on the radio.
-# How to write these: docs/radio.md, or the top of scripts/radio.gd.
-# Keep each [ID:...] unique; change the words freely, then regenerate the
-# voices: python tools/generate_voice.py --missing --only=orb_d1
+# You've all just spent seven months in one small ship together: friends,
+# not a call centre. How to write these: docs/radio.md, or the top of
+# scripts/radio.gd. Keep each [ID:...] unique; change the words freely, then
+# regenerate the voices: python tools/generate_voice.py --missing --only=orb_d1
+# (delete a line's old orb_<ID>.wav first to re-record it).
 
 ~ d1_relock
-Castellanos: Outpost One, orbit. Outpost One, do you read? [ID:d1_relock_01]
-Castellanos: There you are. The antenna lost lock right as you touched down. Rao nearly had a heart attack. [ID:d1_relock_02]
-- I'm down. I'm fine.
+Castellanos: Outpost One, orbit. Outpost One, do you read me? [ID:d1_relock_01]
+Castellanos: Come on. Come on, talk to me. [ID:d1_relock_01b]
+Castellanos: Oh, thank God. There you are. We lost your antenna right as you touched down, and all we had was static and a dust cloud. Rao went completely white. I've never seen him go that colour, and I've seen him eat Achterberg's curry. [ID:d1_relock_02]
+- I'm down. I'm fine. Honestly.
 	set calm
-	Castellanos: Good. Take a breath. You're the first person on the Reach. [ID:d1_relock_03a]
-- That was a rough landing.
+	Castellanos: Good. Okay. Give me a second, I just need to breathe for a bit. Seven months of sims and none of them ended with ninety seconds of nothing. [ID:d1_relock_03a]
+	Castellanos: You're on Mars. You're actually standing on Mars. The first person on the Reach. How does that feel? [ID:d1_relock_03a2]
+	- Like I should say something historic.
+		set joker
+		Castellanos: Please don't. Mwangi's had a speech ready for you since the cruise and if you steal his thunder he'll sulk until the finale. [ID:d1_relock_03a3]
+	- Small. Very, very small.
+		set honest
+		Castellanos: Yeah. I think that's the right answer, actually. [ID:d1_relock_03a4]
+- That landing was rougher than the sims.
 	set honest
-	Castellanos: It looked rough from up here too. You walked away from it. That counts. [ID:d1_relock_03b]
-Castellanos: Listen. That lander will keep one person going about as long as you like. Air, water, power: it looks after itself. [ID:d1_relock_04]
-Castellanos: It won't keep a crew. Five of us are waiting up here, and the base is out there in the pallets. [ID:d1_relock_05]
-Castellanos: Rao's photo is on your slate. Pallet one, under the parachute on the ridge. Life support. Start there. [ID:d1_relock_06]
-- On my way.
-- Five of you. No pressure, then.
+	Castellanos: It looked rough from up here too. The dust threw you long, the beacon never answered, and you still put it down on flat ground. You walked away from it. That counts for everything. [ID:d1_relock_03b]
+- Is everyone up there okay?
+	set kind
+	Castellanos: Are we okay? You're the one who just fell out of the sky. Yes, we're fine. Tupou's pressed against the window, Rao's pretending he wasn't worried, and Mwangi is taking everybody's pulse whether they want it or not. [ID:d1_relock_03c]
+Castellanos: Right. Business, before I get sentimental. That lander is better than it looks. It recycles its air and water so well it can keep one person alive for a long, long time, and its power cell doesn't care about the dark. [ID:d1_relock_04]
+Castellanos: But it'll never work for all of us. There's one seat, and you're in it. The base is out there in the pallets and on the walkers, and the storm has scattered the lot. [ID:d1_relock_05]
+- So I go and find it.
+- No pressure, then.
 	set joker
-	Castellanos: None at all. [ID:d1_relock_07b]
+	Castellanos: None at all. Just the whole mission. You'll be fine, you were always the calm one on the ship. Apart from that one time with the coffee. [ID:d1_relock_06b]
+Castellanos: Rao got a photo of a parachute on the last pass. It's on your slate. Pallet one, up on the ridge, with the module's life support in it. That's where the base starts. Go and have a look, and talk to me while you walk if you like. [ID:d1_relock_07]
 => END
 
 ~ d1_pallet1
-Castellanos: I see a lid open on the ridge. What have we got? [ID:d1_p1_01]
-- An air cartridge, a sample kit, rations.
-	Castellanos: The cartridge is the General Module's air plant. Heavy, but it'll carry. Bring it down and leave it by the lander. [ID:d1_p1_02a]
-- It's not for the lander, is it?
-	Castellanos: No. That's the module's air. Carry it home and park it by the lander, ready for when the module comes. [ID:d1_p1_02b]
-Castellanos: And stay up there a minute. You've got the best view for kilometres. [ID:d1_p1_03]
+Castellanos: I can see the canopy moving on the long lens. Is that you up there? What have we got? [ID:d1_p1_01]
+- An air cartridge, a sample kit and some rations.
+	Castellanos: Oh, that's good. The cartridge is the General Module's air plant, the heart of the place. It's heavy, but you can carry it. Bring it down and leave it by the lander, and it'll be ready the day the module comes in. [ID:d1_p1_02a]
+- None of this is for the lander, is it?
+	Castellanos: No. The lander was only ever meant to get you down. That cartridge is the module's air. Carry it home and park it by the ramp, so it's waiting when the module comes. [ID:d1_p1_02b]
+- It's heavier than it looked in training.
+	Castellanos: Everything is. Mwangi says your legs will thank you in a week and hate you until then. Take it slowly, get it down to the lander, and leave it by the ramp for the module. [ID:d1_p1_02c]
+Castellanos: And while you're up there, look around for a minute. Seriously. Nobody has ever stood on that ridge. You've got the best view for kilometres and I'm jealous of every one of them. [ID:d1_p1_03]
 => END
 
 ~ d1_ridge
-Castellanos: From up there you should see two more canopies. Rao's put them on your Map. [ID:d1_ridge_01]
-Castellanos: The one on the flat should be power: the module's solar blanket and battery. The one in the hollow is pinging a field kit beacon. [ID:d1_ridge_02]
-Castellanos: One at a time. Your suit won't stretch to both and back. [ID:d1_ridge_03]
+Castellanos: Okay, look at you, up on the high ground. From there you should see two more canopies. Rao's already marked them on your Map, he's been glued to the window all morning. [ID:d1_ridge_01]
+Castellanos: The one out on the flat should be power: the module's solar blanket and its battery. The one down in the hollow is pinging a field kit beacon, so hammer, headlamp, the useful bits. [ID:d1_ridge_02]
+Castellanos: One at a time, please. Your suit won't stretch to both and back, and I'd really like you to come home tonight. [ID:d1_ridge_03]
 - Understood.
 - Yes, Commander.
 	set formal
-	Castellanos: Mira's fine. We're a long way from a parade ground. [ID:d1_ridge_04b]
+	Castellanos: Commander? We shared a bathroom the size of a phone box for seven months. It's Mira. It's been Mira since week two. [ID:d1_ridge_04b]
+- What does it look like from up there?
+	set curious
+	Castellanos: Honestly? Like a dusty orange marble with a very small, very brave dot on it. Rao's going to try and photograph you waving next pass. [ID:d1_ridge_04c]
 => END
 
 ~ d1_pallet2
-Castellanos: That's the module's power. Blanket and battery. It wants to come home too. [ID:d1_p2_01]
+Castellanos: That's the module's power. A rolled-up solar blanket and a battery pack. It'll want to come home too, I'm afraid. Achterberg says to keep the blanket rolled until it's on the socket, or the dust gets into everything. [ID:d1_p2_01]
+- Tell her I'll be careful.
+	Castellanos: She says she's heard that before. From you, specifically. [ID:d1_p2_02a]
+- It's lighter than the air cartridge, at least.
+	Castellanos: Small mercies. Take them where you can get them. [ID:d1_p2_02b]
 => END
 
 ~ d1_pallet4
-Castellanos: Field kit. Hammer, headlamp, patch kit. Now you're dressed for Mars. [ID:d1_p4_01]
+Castellanos: Field kit. Hammer, headlamp, patch kit. Now you're properly dressed for Mars. [ID:d1_p4_01]
+Castellanos: Tupou wants you to know that the hammer is for science and not for hitting things that annoy you. I told him that's the same thing on a good day. [ID:d1_p4_02]
 => END
 
 ~ d1_cargo
-Castellanos: That's the module's air and power waiting by the lander. It'll breathe the day it lands. [ID:d1_cargo_01]
-Castellanos: Good work for a first day. The sun's getting low. Watch it go down. You've earned it. [ID:d1_cargo_02]
+Castellanos: That's the module's air and power sitting by the lander. When the module turns up, it'll breathe the same day. That's a proper first day's work. [ID:d1_cargo_01]
+Castellanos: The sun's getting low. Do me a favour. Don't rush inside. Find somewhere to sit and watch it go down. You've earned it, and I want to hear about it. [ID:d1_cargo_02]
 => END
 
 ~ d1_sunset
 do sunset_view
-Castellanos: You seeing this? [ID:d1_sun_01]
-- The sky's gone blue round the sun.
+Castellanos: Are you seeing this? Tell me you're seeing this. [ID:d1_sun_01]
+- The sky's gone blue around the sun.
 	set warm
-	Castellanos: Blue sunsets. We've all read about them. You're the first one to actually see one. [ID:d1_sun_02a]
+	Castellanos: Blue sunsets. We've all read about them, we've all seen the rover pictures. But you're the first person to actually stand there and watch one. Describe it to me. Properly. [ID:d1_sun_02a]
+	- It's quiet. Bluer than I imagined.
+		Castellanos: I'm writing that down. Tupou's going to want it for something. [ID:d1_sun_02a2]
+	- I don't have the words. Sorry.
+		Castellanos: Don't be. That's probably the best description anyone could give. [ID:d1_sun_02a3]
 - It's getting cold fast.
 	set dry
-	Castellanos: Minus sixty tonight. That lander's a lot warmer than it looks. [ID:d1_sun_02b]
-Castellanos: Rao wants to know what it sounds like down there. [ID:d1_sun_03]
+	Castellanos: Minus sixty tonight. Well, minus something awful. That lander's a lot warmer than it looks, I promise. But look up for a second before you go in. Just once. [ID:d1_sun_02b]
+Castellanos: Rao wants to know what it sounds like down there. He says he's been imagining it since training. [ID:d1_sun_03]
 - Nothing. Wind, maybe.
-	Castellanos: That sounds lonely. [ID:d1_sun_04a]
+	Castellanos: That sounds lonely. Is it lonely? You can tell me if it is. [ID:d1_sun_04a]
+	- A bit.
+		set lonely
+		Castellanos: Then we'll talk every morning and every night, okay? That's not a request. [ID:d1_sun_04a2]
+	- No. It's peaceful.
+		Castellanos: Peaceful. Mwangi's going to put that in his notes and be insufferable about it. [ID:d1_sun_04a3]
 - My own breathing, mostly.
-	Castellanos: Ha. Same up here. [ID:d1_sun_04b]
-? joker Castellanos: For what it's worth, you're funnier than your file said. [ID:d1_sun_05]
-Castellanos: We go behind the planet in a few minutes. Get inside and get some sleep. [ID:d1_sun_06]
+	Castellanos: Ha. Same up here, except with five people and a fan that rattles. Achterberg's been trying to fix it for a month. [ID:d1_sun_04b]
+? joker Castellanos: For the record, you're funnier than your file says. Your file says you're very serious. Someone should update it. [ID:d1_sun_05]
+? kind Castellanos: And thanks for asking about us earlier. You fell out of the sky and asked if we were okay. That's very you. [ID:d1_sun_05b]
+Castellanos: We go behind the planet in a few minutes, so I'll lose you for a while. Get inside, eat something, and get some sleep. Tomorrow we start looking for the walkers. [ID:d1_sun_06]
 - Goodnight, orbit.
 	set goodnight
-- Talk tomorrow.
-Castellanos: Goodnight, Outpost One. Talk at sunrise. [ID:d1_sun_07]
+- Goodnight, Mira.
+	set first_name
+	Castellanos: Goodnight. I'm glad you're down there in one piece. We all are. [ID:d1_sun_06b]
+Castellanos: Talk at sunrise, Outpost One. Sleep well. [ID:d1_sun_07]
 do bed
 => END

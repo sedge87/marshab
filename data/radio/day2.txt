@@ -2,56 +2,66 @@
 # Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d2
 
 ~ d2_wake
-Castellanos: Morning, Outpost One. Wake up. Something's moving out there. [ID:d2_wake_01]
-Castellanos: Rao caught it on the night pass. Small, warm, and not where it was the pass before. [ID:d2_wake_02]
+Castellanos: Morning, Outpost One. Rise and shine. Sorry, I know it's early, but you'll want to hear this. [ID:d2_wake_01]
+Castellanos: Rao caught something on the night pass. Something small and warm, out past where your pallets came down. And the important part: it wasn't in the same place on the pass before. It's moving. [ID:d2_wake_02]
 - One of the walkers?
 	set hopeful
-	Castellanos: That's what I'm hoping. If a walker's still on its feet, the base isn't lost. [ID:d2_wake_03a]
+	Castellanos: That's what I'm hoping. I've been hoping it since three in the morning, if I'm honest. If even one walker's still on its feet, the base isn't lost. [ID:d2_wake_03a]
 - Moving how?
-	Castellanos: Slowly. Back and forth, like it's looking for something. [ID:d2_wake_03b]
+	Castellanos: Slowly. Back and forth, back and forth, like it's searching for something. Rao says it looks busy. I don't know what that means either. [ID:d2_wake_03b]
+- Did you sleep at all?
+	set kind
+	Castellanos: A bit. Mwangi caught me at the window at four and sent me back to bed like a naughty child. He's not wrong. [ID:d2_wake_03c]
 do gary_out
-Castellanos: I've put it on your Map. Go and have a look. Carefully. [ID:d2_wake_04]
+Castellanos: I've put it on your Map. Go and have a look, but carefully. We have no idea what state anything's in after that storm. [ID:d2_wake_04]
+? lonely Castellanos: And hey. I know last night was a long one, first one alone on a whole planet. We're right here, every pass. Don't forget that. [ID:d2_wake_05]
 => END
 
 ~ d2_cradle
-Castellanos: What have you got? [ID:d2_cradle_01]
+Castellanos: You've stopped. What have you got? [ID:d2_cradle_01]
 - An empty pallet. Opened from the inside.
-	Castellanos: From the inside. Okay. That's new. [ID:d2_cradle_02a]
-- Tracks. Small ones.
+	Castellanos: From the inside? Okay. That's new. That's slightly creepy, actually. Tupou's very excited and I'd like him to stop. [ID:d2_cradle_02a]
+- Tracks. Small ones. Six wheels.
 	set letdown
-	Castellanos: Small. So not a walker, then. [ID:d2_cradle_02b]
-Castellanos: Whatever was in there let itself out. Follow the tracks. Slowly. [ID:d2_cradle_03]
+	Castellanos: Small. So it's not a walker, then. Damn. Sorry. I really let myself get carried away there. [ID:d2_cradle_02b]
+Castellanos: Whatever was in there let itself out and went off on its own. Follow the tracks, slowly, and keep talking to me. [ID:d2_cradle_03]
 => END
 
 ~ d2_found
-Castellanos: Talk to me. What is it? [ID:d2_found_01]
+Castellanos: Talk to me. I can see you've stopped next to something. What is it? [ID:d2_found_01]
 - It's small. And I think it's friendly.
 - It just headbutted my boot.
 	set bumped
-	Castellanos: It what? [ID:d2_found_02b]
-Castellanos: Pulling the manifest. Pallet three. That's GAR-Y, the scout rover. [ID:d2_found_03]
-? hopeful Castellanos: Not a walker. Sorry. I really wanted it to be. [ID:d2_found_04]
-Castellanos: It was meant to map the ground ahead of the walkers. It must have woken in the storm and just kept working. [ID:d2_found_05]
-Castellanos: It scouts. Its radar reads the ground for ice. It takes cores. Give it a hitch and it'll tow. [ID:d2_found_06]
-Castellanos: Ask it what it's found. I bet it's been busy. [ID:d2_found_07]
+	Castellanos: It what? It headbutted you? Hang on, Rao's laughing so hard he's going to pull a muscle. [ID:d2_found_02b]
+- It's looking at me. Like, actually looking at me.
+	Castellanos: Okay, that's either adorable or terrifying, and I genuinely can't tell which. [ID:d2_found_02c]
+Castellanos: I'm pulling up the manifest. Pallet three. Oh, of course. That's GAR-Y. The scout rover. [ID:d2_found_03]
+? hopeful Castellanos: So, not a walker. I'm sorry. I really, really wanted it to be a walker. [ID:d2_found_04]
+Castellanos: It was meant to drive ahead of the walkers and map the ground for them. It must have woken itself up in the storm, and then just kept doing its job, all on its own, with nobody to report to. That's a bit heartbreaking, honestly. [ID:d2_found_05]
+Castellanos: Here's what it can do. It scouts, and it remembers what it finds. Its radar reads the ground for buried ice. It takes core samples. And if you print it a hitch, it'll tow things for you. [ID:d2_found_06]
+Castellanos: Ask it what it's found. I bet it's been very, very busy. [ID:d2_found_07]
 - Hello, GAR-Y.
 	set named
+	Castellanos: Did it beep at you? Tell me it beeped at you. [ID:d2_found_08a]
 - So I'm not alone out here after all.
-	Castellanos: Not alone. [ID:d2_found_08b]
+	Castellanos: No. Not alone. Small company, but company. [ID:d2_found_08b]
 => END
 
 ~ d2_sunset
-Castellanos: How's your new friend? [ID:d2_sun_01]
+Castellanos: So. How's your new friend? [ID:d2_sun_01]
 - It follows me everywhere.
-	Castellanos: Rao says it's imprinted on you. Like a duckling. [ID:d2_sun_02a]
+	Castellanos: Rao says it's imprinted on you. Like a duckling. Achterberg says that's not how robots work. Rao says it is now. They've been arguing about it for an hour. [ID:d2_sun_02a]
 - Useful. Very useful.
-	Castellanos: Good. You're going to need it. [ID:d2_sun_02b]
-Castellanos: Still no sign of the walkers. We'll keep looking, every pass. [ID:d2_sun_03]
-Castellanos: Get some sleep. Both of you. [ID:d2_sun_04]
+	Castellanos: Good. You're going to need all the help you can get, and it's nice to know someone's got your back down there. Even if it's knee-high. [ID:d2_sun_02b]
+- It sat with me and watched the sun go down.
+	set sunset_gary
+	Castellanos: Stop it. You're going to make me cry, and the cabin's too small for crying. [ID:d2_sun_02c]
+Castellanos: Still no sign of the walkers, I'm afraid. We're looking on every pass. Tupou's taken over the night shift at the window. [ID:d2_sun_03]
+Castellanos: Get some sleep. Both of you. Does GAR-Y sleep? Ask it. Actually, don't, it'll only beep. [ID:d2_sun_04]
 - Goodnight, orbit.
 - Goodnight, Mira.
 	set first_name
-	Castellanos: Goodnight. [ID:d2_sun_05b]
+	Castellanos: Goodnight. Thanks for today. It was a good one. [ID:d2_sun_05b]
 Castellanos: Talk at sunrise, Outpost One. [ID:d2_sun_06]
 do bed
 => END

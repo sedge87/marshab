@@ -266,6 +266,8 @@ func _ask(step: Dictionary) -> void:
 	else:
 		replies.ask(WHO, texts, REPLY_SECONDS, func(index: int) -> void: _choice = index)
 		while _choice == -2: await get_tree().create_timer(.1).timeout
+		# Your words stay up a moment: the next line waits till they've gone.
+		while replies.has_method("saying") and replies.saying(): await get_tree().create_timer(.1).timeout
 	if _choice >= 0 and _choice < options.size(): await _run(options[_choice].steps)
 
 ## Tests: pick a reply for the choice on screen.

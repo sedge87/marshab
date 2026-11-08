@@ -224,6 +224,10 @@ func choose(index: int) -> void:
 		MHNotices.post("info", "You, to %s" % str(entry.who), str(reply.text), "comms")
 		if reply.has("answer"): _answers.append([ANSWER_AFTER, id + "_answer", str(entry.get("sender", "castellanos")), str(reply.answer)])
 
+## Your reply is still on screen ("You: ...").
+func saying() -> bool:
+	return _said_left > 0.0
+
 func showing() -> bool:
 	return not _shown.is_empty()
 

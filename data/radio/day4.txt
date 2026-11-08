@@ -2,52 +2,63 @@
 # Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d4
 
 ~ d4_wake
-Castellanos: Outpost One, look out of your window. [ID:d4_wake_01]
-Castellanos: It made it. Walker 1's parked right outside, and it's lifting the module now. [ID:d4_wake_02]
-? chose_home Castellanos: Straight for your mark. [ID:d4_wake_03]
-Castellanos: Go and watch. You've waited long enough. [ID:d4_wake_04]
+Castellanos: Outpost One. Outpost One, wake up. Look out of your window. Go on, look. [ID:d4_wake_01]
+Castellanos: It made it. Walker 1 is parked right outside, it walked all night, and it's lifting the module right now. I've been watching it since four. I didn't sleep. Don't tell Mwangi. [ID:d4_wake_02]
+? chose_home Castellanos: It's heading straight for your stakes. Exactly where you put them. [ID:d4_wake_03]
+Castellanos: Go outside and watch it. You've waited long enough for this. We all have. [ID:d4_wake_04]
 => END
 
 ~ d4_down
-Castellanos: It's down. Your first room on Mars. [ID:d4_down_01]
+Castellanos: It's down. It's actually down. Your first room on Mars. Everyone up here is shouting at once and I can't hear myself think. [ID:d4_down_01]
 - It's bigger than it looked.
-	Castellanos: Everything is, after a lander. [ID:d4_down_02a]
+	Castellanos: Everything is, after three nights in a lander. You're going to feel like you're rattling round a cathedral. [ID:d4_down_02a]
 - It's real.
 	set moved
-	Castellanos: It's real. [ID:d4_down_02b]
-Castellanos: Now bring it to life. The air cartridge goes in its outside socket, and the solar blanket gives it power. [ID:d4_down_03]
-Castellanos: Then unpack the fit-out kit inside and make it somewhere you'd want to live. [ID:d4_down_04]
+	Castellanos: It's real. It's really real. Give me a second. [ID:d4_down_02b]
+- Does Rao still want the bunk by the window?
+	set joker
+	Castellanos: He's already drawn a floor plan. On the wall. In pen. Achterberg is furious. [ID:d4_down_02c]
+Castellanos: Okay. Now let's bring it to life. The air cartridge you carried down on day one goes in the socket on the outside. Then the solar blanket goes on its mount, and it's got power. [ID:d4_down_03]
+Castellanos: And then go in, unpack the fit-out kit and make it somewhere you'd actually want to live. Not a lab. A home. [ID:d4_down_04]
 => END
 
 ~ d4_home
-Castellanos: Rao's flying over. He says it looks like a home. [ID:d4_home_01]
+Castellanos: Rao just flew over and got a picture. He says it looks like a home. He's a bit choked up about it, honestly. We all are. [ID:d4_home_01]
 - It feels like one.
 	set home
+	Castellanos: Good. That was the whole point. [ID:d4_home_02a]
 - It's a start.
-	Castellanos: It's a good start. [ID:d4_home_02b]
-Castellanos: Call me at sunset. There's something I want to talk to you about. [ID:d4_home_03]
+	Castellanos: It's a very good start. Better than any of us thought we'd get, after that storm. [ID:d4_home_02b]
+Castellanos: Call me at sunset, okay? There's something I want to talk to you about properly. Nothing bad. I promise it's nothing bad. [ID:d4_home_03]
 => END
 
 ~ d4_sunset
-Castellanos: Sunset from your own window. How's the view? [ID:d4_sun_01]
+Castellanos: Sunset from your own window. How's the view from in there? [ID:d4_sun_01]
 - Better than the lander's.
+	Castellanos: Anything's better than the lander's. That window was the size of a dinner plate. [ID:d4_sun_01a]
 - Worth the trip.
 	set worth_it
-Castellanos: Okay. Here's the rest of it. You weren't sent just to build a room. [ID:d4_sun_02]
-Castellanos: Four science teams on Earth have been waiting years for someone to stand where you're standing. [ID:d4_sun_03]
-Castellanos: Life: was anything ever alive here? Climate: where did the water go? Geology: what is this place made of? [ID:d4_sun_04]
-Castellanos: And Humans: can people actually live here? That one's you. [ID:d4_sun_05]
+	Castellanos: I was hoping you'd say that. [ID:d4_sun_01b]
+Castellanos: Okay. Here's the bit I wanted to say. You weren't sent all this way just to build a room, as lovely as the room is. [ID:d4_sun_02]
+Castellanos: There are four science teams back on Earth who've been waiting their whole careers for someone to stand where you're standing right now. [ID:d4_sun_03]
+Castellanos: Life: was anything ever alive here? Climate: where did all the water go? Geology: what is this place actually made of? [ID:d4_sun_04]
+Castellanos: And Humans. Can people really live here, day after day? That one's you. You're the experiment. Sorry. [ID:d4_sun_05]
 - That's a lot for one person.
-	Castellanos: It is. You won't be one person forever. [ID:d4_sun_06a]
-- Where do I start?
-	Castellanos: Water. Your module's plans have an ice extractor in them. Water of your own changes everything. [ID:d4_sun_06b]
-Castellanos: And there are more walkers out there, with the rest of the base on them. We'll find them. [ID:d4_sun_07]
-Castellanos: Five of us are still up here, waiting for a base we can land to. Build it, and we'll come down. [ID:d4_sun_08]
+	Castellanos: It is. It really is. But you won't be one person forever. That's the other half of this. [ID:d4_sun_06a]
+- Where do I even start?
+	Castellanos: Water. Your module's plans have an ice extractor in them. Water of your own changes everything: drinking, air, growing things, all of it. [ID:d4_sun_06b]
+- Tupou must be beside himself.
+	set kind
+	Castellanos: He's been making lists since day one. Long ones. Laminated. I've hidden the laminator. [ID:d4_sun_06c]
+Castellanos: There are more walkers out there too, with the rest of the base strapped to them. We'll keep looking on every pass, and when we find one, you'll be the first to know. [ID:d4_sun_07]
+Castellanos: And the five of us are still up here. Waiting. Build us a base we can land to, and we'll come down and join you. That's the deal. [ID:d4_sun_08]
 - I'll build it.
 	set promise
+	Castellanos: I know you will. You always finish what you start. Even the jigsaw. Even the one with all the sky. [ID:d4_sun_09a]
 - No pressure, then.
-	? joker Castellanos: None at all. You keep saying that. [ID:d4_sun_09b]
-	?! joker Castellanos: None at all. [ID:d4_sun_09c]
-Castellanos: Goodnight, Outpost One. Sleep well under a real roof. [ID:d4_sun_10]
+	? joker Castellanos: None at all. You keep saying that, you know. I'm starting to think you mean it. [ID:d4_sun_09b]
+	?! joker Castellanos: None at all. Well. A little. [ID:d4_sun_09c]
+Castellanos: Right. That's enough serious talk for one day. Goodnight, Outpost One. Sleep well under a real roof. [ID:d4_sun_10]
+? first_name Castellanos: And, hey. I'm really proud of you. [ID:d4_sun_11]
 do bed
 => END
