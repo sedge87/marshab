@@ -63,6 +63,14 @@ func offer_voice(id: String) -> void:
 	var lines: Array = (MHAudio.lines().get("habitat", {}) as Dictionary).get(id, [])
 	offer(id, "ARDEN", str(lines[0]) if not lines.is_empty() else "")
 
+## The radio wants your answer now (scripts/radio.gd): `texts` are the
+## replies, `done` gets the index picked (-1 for silence). Goes ahead of
+## anything waiting, and the gap between offers doesn't hold it.
+func ask(who: String, texts: Array, seconds: float, done: Callable) -> void:
+	var replies: Array = []
+	for t in texts: replies.append({"text": str(t)})
+	_queue.push_front({"id": "radio", "who": who, "line": "", "radio": true, "replies": replies, "seconds": seconds, "done": done, "text": false, "wait": 0.0})
+
 func _ready() -> void:
 	# A dark backing so it reads on any wall or sky, above the subtitles.
 	_panel = PanelContainer.new()
@@ -114,11 +122,17 @@ func _process(delta: float) -> void:
 		return
 	if not _shown.is_empty():
 		_left -= delta
-		_bar.custom_minimum_size.x = 720.0 * clampf(_left / SHOW_SECONDS, 0.0, 1.0)
+		_bar.custom_minimum_size.x = 720.0 * clampf(_left / float(_shown.get("seconds", SHOW_SECONDS)), 0.0, 1.0)
 		if _left <= 0.0: choose(-1)
 		return
-	if _queue.is_empty() or not _free(): return
+	if _queue.is_empty(): return
 	var next: Dictionary = _queue[0]
+	if bool(next.get("radio", false)):
+		if world == null or world.get_tree().paused or MHAudio.voice_busy(): return
+		_queue.pop_front()
+		_show(next)
+		return
+	if not _free(): return
 	# A text waits until you've had the slate up (or a while has passed).
 	if bool(next.text) and float(next.wait) > 0.0 and not _read_since(next):
 		next.wait = float(next.wait) - delta
@@ -146,11 +160,11 @@ func slate_lowered() -> void:
 
 func _show(entry: Dictionary) -> void:
 	var spec: Dictionary = data().get(str(entry.id), {})
-	var replies: Array = spec.get("replies", [])
+	var replies: Array = entry.replies if bool(entry.get("radio", false)) else spec.get("replies", [])
 	_shown = entry.duplicate()
 	_shown["replies"] = replies
-	_left = SHOW_SECONDS
-	_context.text = "%s: %s" % [str(entry.who), str(entry.line)]
+	_left = float(entry.get("seconds", SHOW_SECONDS))
+	_context.text = "%s: %s" % [str(entry.who), str(entry.line)] if not str(entry.line).is_empty() else "Reply to %s" % str(entry.who)
 	for i in _rows.size():
 		var row: Label = _rows[i]
 		row.visible = i < replies.size()
@@ -175,6 +189,18 @@ func choose(index: int) -> void:
 	if _shown.is_empty(): return
 	var entry := _shown
 	_shown = {}
+	if bool(entry.get("radio", false)):
+		if index >= 0:
+			for row in _rows: (row as Label).visible = false
+			_bar.visible = false
+			_context.text = ""
+			_you.text = "You: %s" % str((entry.replies as Array)[index].text)
+			_you.visible = true
+			_said_left = SAID_SECONDS
+			MHAudio.sfx("suit_beep", -14.0)
+		else: _panel.visible = false
+		(entry.done as Callable).call(index)
+		return
 	_gap = GAP
 	var id := str(entry.id)
 	answered[id] = index
@@ -202,4 +228,4 @@ func showing() -> bool:
 	return not _shown.is_empty()
 
 func export_state() -> Dictionary:
-	return {"answered": answered.duplicate(), "answers": _answers.duplicate(true)}
+	return {"answered": answered.duplicate(), "answers": _answers.duplicate(true)}   # radio asks aren't saved: the call replays

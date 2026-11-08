@@ -154,6 +154,7 @@ func face(at: Vector3) -> void:
 # ---------- the run ----------
 
 func _initialize() -> void:
+	load("res://scripts/opening_days.gd").new_games_version = 1   # the first opening (version 2: tests/guided_days_test.gd)
 	MHGame.site_id = "region"; MHGame.set_mode("survival"); MHGame.pending_save_state = {}; MHGame.landing_target = Vector2.INF
 	MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 	MHGame.start_new_challenge()

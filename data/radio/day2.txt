@@ -1,0 +1,57 @@
+# Day 2: GAR-Y (docs/opening-days.md). Castellanos hopes it's a walker.
+# Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d2
+
+~ d2_wake
+Castellanos: Morning, Outpost One. Wake up. Something's moving out there. [ID:d2_wake_01]
+Castellanos: Rao caught it on the night pass. Small, warm, and not where it was the pass before. [ID:d2_wake_02]
+- One of the walkers?
+	set hopeful
+	Castellanos: That's what I'm hoping. If a walker's still on its feet, the base isn't lost. [ID:d2_wake_03a]
+- Moving how?
+	Castellanos: Slowly. Back and forth, like it's looking for something. [ID:d2_wake_03b]
+do gary_out
+Castellanos: I've put it on your Map. Go and have a look. Carefully. [ID:d2_wake_04]
+=> END
+
+~ d2_cradle
+Castellanos: What have you got? [ID:d2_cradle_01]
+- An empty pallet. Opened from the inside.
+	Castellanos: From the inside. Okay. That's new. [ID:d2_cradle_02a]
+- Tracks. Small ones.
+	set letdown
+	Castellanos: Small. So not a walker, then. [ID:d2_cradle_02b]
+Castellanos: Whatever was in there let itself out. Follow the tracks. Slowly. [ID:d2_cradle_03]
+=> END
+
+~ d2_found
+Castellanos: Talk to me. What is it? [ID:d2_found_01]
+- It's small. And I think it's friendly.
+- It just headbutted my boot.
+	set bumped
+	Castellanos: It what? [ID:d2_found_02b]
+Castellanos: Pulling the manifest. Pallet three. That's GAR-Y, the scout rover. [ID:d2_found_03]
+? hopeful Castellanos: Not a walker. Sorry. I really wanted it to be. [ID:d2_found_04]
+Castellanos: It was meant to map the ground ahead of the walkers. It must have woken in the storm and just kept working. [ID:d2_found_05]
+Castellanos: It scouts. Its radar reads the ground for ice. It takes cores. Give it a hitch and it'll tow. [ID:d2_found_06]
+Castellanos: Ask it what it's found. I bet it's been busy. [ID:d2_found_07]
+- Hello, GAR-Y.
+	set named
+- So I'm not alone out here after all.
+	Castellanos: Not alone. [ID:d2_found_08b]
+=> END
+
+~ d2_sunset
+Castellanos: How's your new friend? [ID:d2_sun_01]
+- It follows me everywhere.
+	Castellanos: Rao says it's imprinted on you. Like a duckling. [ID:d2_sun_02a]
+- Useful. Very useful.
+	Castellanos: Good. You're going to need it. [ID:d2_sun_02b]
+Castellanos: Still no sign of the walkers. We'll keep looking, every pass. [ID:d2_sun_03]
+Castellanos: Get some sleep. Both of you. [ID:d2_sun_04]
+- Goodnight, orbit.
+- Goodnight, Mira.
+	set first_name
+	Castellanos: Goodnight. [ID:d2_sun_05b]
+Castellanos: Talk at sunrise, Outpost One. [ID:d2_sun_06]
+do bed
+=> END

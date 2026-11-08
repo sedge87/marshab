@@ -183,7 +183,9 @@ func pallet_opened() -> void:
 			if notes != null: notes.think("power_pallet", "open")
 			MHNotices.post("valid", "Pallet 2: power", "A rolled solar blanket and a battery pack: the General Module's power. It waits by the lander, packed, until the module's down.", "log")
 		"gary":
-			if empty:
+			if empty and int(world.get("opening_version")) >= 2:
+				pass   # it opened itself in the storm (scripts/drop_field.gd gary_out)
+			elif empty:
 				MHNotices.post("info", "Pallet 3", "GAR-Y's cradle, empty. It came looking for you.", "log")
 			else:
 				field.wake_gary(self)
@@ -212,6 +214,11 @@ func _process(delta: float) -> void:
 	var known: Node = world.get("known")
 	if known != null and you.distance_to(at) < SEEN_FROM: known.tell(id(), "you")
 	var notes: Node = world.get("notes")
+	# Version 2, day 2: GAR-Y's cradle, open and empty, and its tracks.
+	if notes != null and kind == "gary" and bool(field.get("gary_working")) and you.distance_to(pallet.global_position) < NEAR:
+		if not notes.is_settled("cradle_empty") and not notes.is_open("cradle_empty"): notes.think("cradle_empty")
+		var radio: Node = world.get("radio")
+		if radio != null: radio.ring("d2_cradle")
 	if notes != null and not pallet.opened and you.distance_to(pallet.global_position) < NEAR:
 		match kind:
 			"power": notes.think("power_pallet", "near")

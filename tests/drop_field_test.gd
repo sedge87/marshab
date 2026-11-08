@@ -39,6 +39,7 @@ func _open(pallet: Node) -> void:
 	await process_frame
 
 func _initialize() -> void:
+	load("res://scripts/opening_days.gd").new_games_version = 1   # the first opening (version 2: tests/guided_days_test.gd)
 	var world = await _new_world()
 	var field: Node = world.drop_field
 	_check(field != null and field.sites.size() == 3, "a new game has pallets 2-4")

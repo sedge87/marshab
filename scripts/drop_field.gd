@@ -14,6 +14,12 @@ extends Node3D
 ##
 ## It also keeps what they gave you: the field tools, and GAR-Y's first
 ## sunset with you (scripts/gary_sunset.gd).
+##
+## The guided days, version 2 (docs/opening-days.md): GAR-Y woke itself in
+## the storm and has been out working. Day 1 you see pallets 2 and 4 from the
+## ridge (Castellanos names them); pallet 3 stays out of sight. Day 2's call
+## brings it out: its cradle open and empty, and GAR-Y at work past it. Walk
+## up to it and it meets you ("field").
 
 const SITE := preload("res://scripts/drop_site.gd")
 const SUNSET := preload("res://scripts/gary_sunset.gd")
@@ -43,6 +49,9 @@ var meeting: Node
 var _holding := false
 var _tap := 2.0
 var _check := 0.0
+var gary_working := false        # version 2, day 2: GAR-Y out at work, waiting to be found
+const FIND_REACH := 9.0          # this close and it notices you
+const WORK_OUT := 140.0          # how far past its cradle it's working
 
 func setup(target_world: Node, saved: Dictionary) -> void:
 	world = target_world
@@ -82,6 +91,61 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	sunset = SUNSET.new()
 	add_child(sunset)
 	sunset.setup(world, saved.get("sunset", {}))
+	gary_working = bool(saved.get("gary_working", false))
+	if v2() and sites.has("gary"):
+		sites.gary.empty = true   # it let itself out in the storm
+		_show_cradle(gary_working or bool(world.get("gary_met")) or bool(sites.gary.pallet.opened))
+	if gary_working: _keep_working.call_deferred()
+
+func v2() -> bool:
+	return int(world.get("opening_version")) >= 2
+
+## Pallet 3 out of sight (day 1 of version 2) or there to be found.
+func _show_cradle(on: bool) -> void:
+	var site: Node3D = sites.get("gary")
+	if site == null: return
+	site.visible = on
+	site.set_process(on)
+	for body in site.find_children("*", "CollisionObject3D", true, false):
+		(body as CollisionObject3D).process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+
+## Day 2's call (data/radio/day2.txt "do gary_out"): its cradle shows, open
+## and empty, and GAR-Y is at work past it. Castellanos marks the movement.
+func gary_out() -> void:
+	if bool(world.get("gary_met")) or not sites.has("gary"): return
+	_show_cradle(true)
+	var site: Node = sites.gary
+	if not site.pallet.opened: site.pallet.open(false)
+	gary_working = true
+	_keep_working()
+	var known: Node = world.get("known")
+	var gary: Node3D = world.get("scout_rover")
+	if known != null and gary != null: known.learn("gary_moving", "find", region_at(gary.global_position), "Something moving", "you", "castellanos")
+
+## Where GAR-Y's working: past its cradle, away from the lander, on ground you can reach.
+func work_spot() -> Vector3:
+	var site: Node = sites.gary
+	var away: Vector3 = site.at - world.lander.global_position
+	away.y = 0.0
+	away = away.normalized() if away.length() > .1 else Vector3.FORWARD
+	for turn in [0.0, 30.0, -30.0, 60.0, -60.0, 90.0, -90.0]:
+		var p: Vector3 = site.at + away.rotated(Vector3.UP, deg_to_rad(turn)) * WORK_OUT
+		p = site._ground(p)
+		if reachable(p): return p
+	return site._ground(site.at + away * 20.0)
+
+## GAR-Y, held at its work, head down to the ground, till you come.
+func _keep_working() -> void:
+	if not gary_working: return
+	var gary: Node3D = world.get("scout_rover")
+	if gary == null or not is_instance_valid(gary):
+		gary = world.meet_gary(work_spot())
+		if gary == null: return
+	elif gary.global_position.distance_to(work_spot()) > 30.0: gary.global_position = work_spot()
+	gary.call("begin_rescue")   # held still
+	gary.set("staying", true)
+	var head: Node3D = gary.get("_head")
+	if head != null: head.rotation.x = deg_to_rad(-25.0)
 
 func _bearing(p: Vector3) -> float:
 	var home: Vector3 = world.lander.global_position
@@ -192,18 +256,32 @@ func _process(delta: float) -> void:
 	if not chutes_seen and drop != null and you.distance_to(drop.ridge) < RIDGE_VIEW: see_from_ridge()
 	_door_intro(delta + .5)
 	_keep_in_cradle()
+	_found_at_work()
 	var notes: Node = world.get("notes")
-	if notes != null and notes.is_open("chutes") and sites.power.pallet.opened and sites.gary.pallet.opened: notes.answer("chutes")
+	var second: String = "tools" if v2() else "gary"
+	if notes != null and notes.is_open("chutes") and sites.power.pallet.opened and sites[second].pallet.opened: notes.answer("chutes")
+
+## Day 2: close enough, GAR-Y looks up and comes to you.
+func _found_at_work() -> void:
+	if not gary_working or meeting != null: return
+	var gary: Node3D = world.get("scout_rover")
+	if gary == null or not is_instance_valid(gary): return
+	if (world.player as Node3D).global_position.distance_to(gary.global_position) > FIND_REACH: return
+	gary_working = false
+	_meet(gary, "field", gary.global_position)
 
 ## Up on the Parachute ridge: two more canopies in sight.
 func see_from_ridge() -> void:
 	chutes_seen = true
 	var known: Node = world.get("known")
-	for kind in ["power", "gary"]:
-		if known != null: known.learn(sites[kind].id(), "find", region_at(sites[kind].at), "Parachute", "you")
+	var second: String = "tools" if v2() else "gary"
+	for kind in ["power", second]:
+		if known != null: known.learn(sites[kind].id(), "find", region_at(sites[kind].at), "Parachute", "you", "castellanos" if v2() else "")
 	var notes: Node = world.get("notes")
 	var from: Vector3 = world.storm_drop.ridge
-	if notes != null: notes.think("chutes", "start", {"a": direction_word(sites.power.at - from), "b": direction_word(sites.gary.at - from)})
+	if notes != null: notes.think("chutes", "start", {"a": direction_word(sites.power.at - from), "b": direction_word(sites[second].at - from)})
+	var radio: Node = world.get("radio")
+	if v2() and radio != null: radio.ring("d1_ridge")
 
 func pallet_opened(_site: Node) -> void:
 	pass
@@ -260,7 +338,13 @@ func _met_scene(mode: String) -> void:
 	if mode == "pallet":
 		MHNotices.post("valid", "Pallet 3: GAR-Y", "GAR-Y is awake. It follows you, tows on its sled, and (hold G) takes orders.", "log")
 		_met("Woke GAR-Y in the boulder field. It looked at me for a long second, then beeped as if it had been waiting all along.")
+	elif mode == "field":
+		MHNotices.post("valid", "GAR-Y", "The scout rover from pallet 3. It follows you, and (hold G) takes orders.", "log")
+		_met("Found the thing that was moving: GAR-Y, the scout rover, out on its own since the storm, still doing its job. It came and bumped my boot like it had been expecting me.")
+		var radio: Node = world.get("radio")
+		if radio != null: radio.ring("d2_found")
 	else:
+		if v2(): _show_cradle(true)
 		intro_pending = false
 		_holding = false
 		var notes: Node = world.get("notes")
@@ -314,7 +398,7 @@ func _met(how: String) -> void:
 	if notes != null:
 		notes.answer("gary", {"how": how})
 		var tools_site: Node = sites.get("tools")
-		if tools_site != null and not tools_site.pallet.opened:
+		if tools_site != null and not tools_site.pallet.opened and not v2():
 			notes.think("tools", "start", {"dir": direction_word(tools_site.at - world.lander.global_position)})
 			var known: Node = world.get("known")
 			if known != null: known.learn(tools_site.id(), "find", region_at(tools_site.at), "Beacon", "you")
@@ -340,6 +424,6 @@ func _apply_tools() -> void:
 	lamp.spot_angle = minf(lamp.spot_angle + 10.0, 60.0)
 
 func export_state() -> Dictionary:
-	var out := {"tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "gary_in_cradle": gary_in_cradle, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}}
+	var out := {"gary_working": gary_working, "tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "gary_in_cradle": gary_in_cradle, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}}
 	for kind in sites: out.sites[kind] = sites[kind].export_state()
 	return out

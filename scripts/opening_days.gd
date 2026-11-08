@@ -15,6 +15,20 @@ extends Node
 ## open from inside at night: the day ends when you sleep. Once the module's
 ## fitted out, nights are yours again (docs/master-design.md §2).
 
+## The guided days, version 2 (docs/opening-days.md, 8 Nov redesign), for
+## new games: story time holds the sun until the day's beats are done, then
+## brings dusk and Castellanos's sunset call (data/radio/day1.txt, day2.txt).
+##   Day 1: pallets 1, 2 and 4 and the module's cargo carried home. No GAR-Y.
+##   Day 2: something moving out there; GAR-Y's empty cradle, then GAR-Y at
+##          work; its jobs (scripts/lifepod.gd) till the walker's due.
+##   Day 3 on: as version 1 for now (the walker, then the module).
+## Version 1 (the first opening) stays for older saves and older tests.
+static var new_games_version := 2
+const STORY_DAYS := 2           # days run on story time
+const HOLD_BEFORE_SUNSET := 2.0 # the sun waits here till the day's done
+const CALL_BEFORE_SUNSET := .6  # Castellanos's sunset call
+const DUSK_SPEED := 8.0         # the clock's pace to dusk once the day's done
+
 const STAGES := ["pallets", "lifepod", "walker", "module", "fit_out"]
 const FIT_OUT_PIECES := 3       # kit pieces placed: the module's lived in
 const LEAD_FROM := 30.0         # further than this from home at dusk: GAR-Y leads you in
@@ -27,6 +41,9 @@ var bed_sol := 0                # the sol "bed" last came
 var gary_waited_sol := 0        # the sol GAR-Y last waited at the ramp
 var arden_morning := false      # sol 2's morning check, said
 var nights := 0                 # nights slept: a new day starts when you wake (the sol rolls over at 06:00)
+var version := 1
+var sunset_called := 0          # the last day whose sunset call came
+var _fast := false
 var _was_asleep := false
 var _lead_again := 0.0
 var _check := 0.0
@@ -40,9 +57,11 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	gary_waited_sol = int(saved.get("gary_waited_sol", 0))
 	arden_morning = bool(saved.get("arden_morning", false))
 	nights = int(saved.get("nights", 0))
+	version = int(saved.get("version", world.get("opening_version") if world.get("opening_version") != null else 1))
+	sunset_called = int(saved.get("sunset_called", 0))
 
 func export_state() -> Dictionary:
-	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning, "nights": nights}
+	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning, "nights": nights, "version": version, "sunset_called": sunset_called}
 
 # ---------- where the days are ----------
 
@@ -143,15 +162,23 @@ func _process(delta: float) -> void:
 	var dusk := hour >= sunset - DUSK_EARLY and hour < sunset + 6.0
 	var late := hour >= sunset or hour < sunrise
 	var day := maxi(sol, nights + 1)
-	if bed_sol != day and ((dusk and now > dawn_stage) or late):
-		bed_sol = day
-		notes.think("bed", "start" if now > dawn_stage else "late", {"home": _home_name()})
+	if v2() and day <= STORY_DAYS:
+		_story_day(day, hour, sunrise, sunset)
+		if late and bed_sol != day:
+			bed_sol = day
+			notes.think("bed", "late", {"home": _home_name()})
+	else:
+		_story_clock(-1.0, false)
+		if bed_sol != day and ((dusk and now > dawn_stage) or late):
+			bed_sol = day
+			notes.think("bed", "start" if now > dawn_stage else "late", {"home": _home_name()})
 	_lead_again -= CHECK_EVERY
 	if notes.is_open("bed") and not _at_home() and _lead_again <= 0.0:   # again after the sunset, say
 		_lead_again = 30.0
 		_lead_home()
 	if notes.is_open("bed") and _at_home() and in_lander_days():
 		MHNotices.hint("Bed", "Look at a landing seat and press Z to sleep till morning.")
+	if v2(): return
 	# Sol 2's morning: GAR-Y's back from its night out, waiting at the ramp.
 	if nights >= 1 and gary_waited_sol < nights and hour >= sunrise - 1.0 and hour < sunset - 3.0:
 		var pod: Node = world.get("lifepod")
@@ -165,6 +192,92 @@ func _process(delta: float) -> void:
 		MHAudio.voice("cabin_morning_check")
 		var replies: Node = world.get("replies")
 		if replies != null: replies.offer_voice("cabin_morning_check")
+
+# ---------- version 2: story time and the radio ----------
+
+func v2() -> bool:
+	return version >= 2
+
+func _radio() -> Node:
+	return world.get("radio")
+
+## The radio's up (scripts/mars_world.gd): the cues its scripts call.
+func radio_ready() -> void:
+	var radio := _radio()
+	if radio == null: return
+	radio.handlers["bed"] = func(_args: Array) -> void: _bed_now()
+	radio.handlers["gary_out"] = func(_args: Array) -> void:
+		var field: Node = world.get("drop_field")
+		if field != null: field.gary_out()
+	radio.handlers["sunset_view"] = func(_args: Array) -> void: MHAudio.moment()
+
+## The day's beats are done and the call's over: time for bed.
+func _bed_now() -> void:
+	var notes: Node = world.get("notes")
+	if notes == null: return
+	bed_sol = maxi(int(notes.call("_sol")), nights + 1)
+	notes.think("bed", "start", {"home": _home_name()})
+
+## What has to happen before the sun may go down.
+func day_done(day: int) -> bool:
+	var pod: Node = world.get("lifepod")
+	match day:
+		1:
+			var drop: Node = world.get("storm_drop")
+			var field: Node = world.get("drop_field")
+			if drop != null and drop.pallet != null and not bool(drop.pallet.opened): return false
+			if field != null:
+				for kind in ["power", "tools"]:
+					if field.sites.has(kind) and not bool(field.sites[kind].pallet.opened): return false
+			return pod == null or (pod.jobs as Dictionary).has("tow")
+		2:
+			if not _gary_found(): return false
+			return pod == null or bool(pod.walker_due) or bool(pod.walker_moved)
+	return true
+
+func _story_day(day: int, hour: float, sunrise: float, sunset: float) -> void:
+	var radio := _radio()
+	_day_calls(day, hour, sunrise)
+	if not day_done(day):
+		# The sun waits for you; if it's already past the hold (an old save), let it go.
+		_story_clock(sunset - HOLD_BEFORE_SUNSET if hour >= sunrise - 1.0 and hour <= sunset - HOLD_BEFORE_SUNSET + .01 else -1.0, false)
+		return
+	var call_at := sunset - CALL_BEFORE_SUNSET
+	if hour >= sunrise - 1.0 and hour < call_at:
+		_story_clock(-1.0, true)   # done: the sun goes down a little quicker
+		return
+	_story_clock(-1.0, false)
+	if sunset_called < day and radio != null and hour >= call_at and hour < sunset + 3.0:
+		sunset_called = day
+		radio.ring("d%d_sunset" % day)
+
+## The calls that come as the day goes.
+func _day_calls(day: int, hour: float, sunrise: float) -> void:
+	var radio := _radio()
+	if radio == null: return
+	var field: Node = world.get("drop_field")
+	var drop: Node = world.get("storm_drop")
+	var pod: Node = world.get("lifepod")
+	if day == 1:
+		if drop != null and drop.pallet != null and bool(drop.pallet.opened): radio.ring("d1_pallet1")
+		if field != null and field.sites.has("power") and bool(field.sites.power.pallet.opened): radio.ring("d1_pallet2")
+		if field != null and field.sites.has("tools") and bool(field.sites.tools.pallet.opened): radio.ring("d1_pallet4")
+		if pod != null and (pod.jobs as Dictionary).has("tow"): radio.ring("d1_cargo")
+	elif day == 2 and hour >= sunrise - 1.0 and not bool(world.get("gary_met")):
+		radio.ring("d2_wake")
+
+## GAR-Y met for real (not just out at work, waiting to be found).
+func _gary_found() -> bool:
+	var field: Node = world.get("drop_field")
+	return bool(world.get("gary_met")) and (field == null or not bool(field.gary_working))
+
+func _story_clock(hold: float, fast: bool) -> void:
+	var clock: Node = world.get("day_night")
+	if clock == null: return
+	clock.hold_at = hold
+	if fast != _fast:
+		_fast = fast
+		clock.time_scale = DUSK_SPEED if fast else 1.0
 
 ## GAR-Y comes and leads you home, at your pace (scripts/companion_rover.gd).
 func _lead_home() -> void:

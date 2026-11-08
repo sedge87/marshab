@@ -12,6 +12,9 @@ var hour := 8.0
 # Debug controls: clock speed multiplier and a full stop.
 var time_scale := 1.0
 var frozen := false
+## Story time in the guided days (scripts/opening_days.gd): the sun won't pass
+## this hour until the day's beats are done. Needs and air still run.
+var hold_at := -1.0
 var _last_sunlight := -1.0
 var _since_power_refresh := 0.0
 
@@ -40,7 +43,9 @@ func _process(delta: float) -> void:
 	if builder != null: builder.advance_simulation(step_hours, hour)
 	# The new survival core (the lander cabin, scripts/lander_cabin_life.gd).
 	if is_inside_tree(): get_tree().call_group("survival_core", "advance", step_hours, hour)
-	hour = wrapf(hour + step_hours, 0.0, 24.0)
+	var next := hour + step_hours
+	if hold_at >= 0.0 and hour <= hold_at and next > hold_at: next = hold_at
+	hour = wrapf(next, 0.0, 24.0)
 	_apply_conditions()
 
 func restore_state(state: Dictionary) -> void:

@@ -103,6 +103,13 @@ var _days_state := {}
 var gary_met := true
 var orbiter_texts: Node  # scripts/orbiter_texts.gd: the orbiter crew's texts and photos (Comms)
 const REPLIES := preload("res://scripts/replies.gd")
+const RADIO := preload("res://scripts/radio.gd")
+var radio: Node        # scripts/radio.gd: Castellanos and you (docs/radio.md)
+var _radio_state := {}
+## Which opening this game plays: 2 is the guided days of docs/opening-days.md
+## (8 Nov redesign: no GAR-Y before day 2, Castellanos on the radio, story
+## time); 1 is the first version, kept for older saves.
+var opening_version := 1
 var replies: Node        # scripts/replies.gd: your short replies to ARDEN and the texts
 var _replies_state := {}
 var _texts_state := {}
@@ -241,6 +248,7 @@ func _ready() -> void:
 	notes.setup(self, _notes_state, _start_in_lander)
 	# The storm's cargo, for a new game on the revamp's rules (no old crates).
 	if MHChapterOne.new_rules() and not MHChapterOne.crates_landing and lander != null:
+		opening_version = int(_days_state.get("version", OPENING_DAYS.new_games_version if _start_in_lander else 1))
 		storm_drop = STORM_DROP.new()
 		add_child(storm_drop)
 		storm_drop.setup(self, _drop_state)
@@ -260,6 +268,11 @@ func _ready() -> void:
 	replies = REPLIES.new()
 	replies.setup(self, _replies_state)
 	add_child(replies)
+	if MHChapterOne.new_rules():
+		radio = RADIO.new()
+		add_child(radio)
+		radio.setup(self, _radio_state)
+		if opening_days != null: opening_days.radio_ready()
 	if MHChapterOne.new_rules():
 		orbiter_texts = ORBITER_TEXTS.new()
 		add_child(orbiter_texts)
@@ -576,7 +589,7 @@ func _begin_lander_intro() -> void:
 	get_tree().create_timer(SLATE_LIGHTS_AT).timeout.connect(_slate_lights_up)
 	# The link dropped at touchdown (scripts/descent.gd): ARDEN says why, after
 	# the static has died away. A skipped descent hears it too.
-	if MHChapterOne.new_rules():
+	if MHChapterOne.new_rules() and opening_version < 2:
 		get_tree().create_timer(4.0).timeout.connect(func() -> void: MHAudio.voice("link_lost"))
 	if pda != null: pda.lowered.connect(_after_slate, CONNECT_ONE_SHOT)
 	if pda != null and replies != null: pda.lowered.connect(replies.slate_lowered)
@@ -637,7 +650,9 @@ func _place_slate() -> void:
 func _after_slate() -> void:
 	if _after_slate_done: return
 	_after_slate_done = true
-	if MHChapterOne.new_rules():
+	if MHChapterOne.new_rules() and opening_version >= 2:
+		get_tree().create_timer(2.0).timeout.connect(func() -> void: if radio != null: radio.ring("d1_relock"))
+	elif MHChapterOne.new_rules():
 		get_tree().create_timer(2.0).timeout.connect(func() -> void:
 			MHAudio.voice("lander_brief")
 			if replies != null: replies.offer_voice("lander_brief"))
@@ -1155,6 +1170,7 @@ func current_state() -> Dictionary:
 		"gary_met": gary_met,
 		"orbiter_texts": orbiter_texts.export_state() if orbiter_texts != null else {},
 		"replies": replies.export_state() if replies != null else {},
+		"radio": radio.export_state() if radio != null else {},
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
 		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
 	}
@@ -1232,6 +1248,7 @@ func _restore_pending_habitat() -> void:
 	_module_life_state = state.get("module_life", {}) as Dictionary
 	_texts_state = state.get("orbiter_texts", {}) as Dictionary
 	_replies_state = state.get("replies", {}) as Dictionary
+	_radio_state = state.get("radio", {}) as Dictionary
 	if region_map != null: region_map.trail = PackedVector2Array(state.get("trail", PackedVector2Array()))
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()
 	player.global_position = state.get("player_position", player.global_position) as Vector3

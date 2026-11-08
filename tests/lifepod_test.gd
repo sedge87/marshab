@@ -41,6 +41,7 @@ func _carried(pod: Node) -> Node:
 	return null
 
 func _initialize() -> void:
+	load("res://scripts/opening_days.gd").new_games_version = 1   # the first opening (version 2: tests/guided_days_test.gd)
 	var world = await _new_world()
 	var pod: Node = world.lifepod
 	_check(pod != null, "a new game has the lifepod days")

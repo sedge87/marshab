@@ -1,0 +1,77 @@
+# Day 1: the cargo (docs/opening-days.md). Castellanos and you, on the radio.
+# How to write these: docs/radio.md, or the top of scripts/radio.gd.
+# Keep each [ID:...] unique; change the words freely, then regenerate the
+# voices: python tools/generate_voice.py --missing --only=orb_d1
+
+~ d1_relock
+Castellanos: Outpost One, orbit. Outpost One, do you read? [ID:d1_relock_01]
+Castellanos: There you are. The antenna lost lock right as you touched down. Rao nearly had a heart attack. [ID:d1_relock_02]
+- I'm down. I'm fine.
+	set calm
+	Castellanos: Good. Take a breath. You're the first person on the Reach. [ID:d1_relock_03a]
+- That was a rough landing.
+	set honest
+	Castellanos: It looked rough from up here too. You walked away from it. That counts. [ID:d1_relock_03b]
+Castellanos: Listen. That lander will keep one person going about as long as you like. Air, water, power: it looks after itself. [ID:d1_relock_04]
+Castellanos: It won't keep a crew. Five of us are waiting up here, and the base is out there in the pallets. [ID:d1_relock_05]
+Castellanos: Rao's photo is on your slate. Pallet one, under the parachute on the ridge. Life support. Start there. [ID:d1_relock_06]
+- On my way.
+- Five of you. No pressure, then.
+	set joker
+	Castellanos: None at all. [ID:d1_relock_07b]
+=> END
+
+~ d1_pallet1
+Castellanos: I see a lid open on the ridge. What have we got? [ID:d1_p1_01]
+- An air cartridge, a sample kit, rations.
+	Castellanos: The cartridge is the General Module's air plant. Heavy, but it'll carry. Bring it down and leave it by the lander. [ID:d1_p1_02a]
+- It's not for the lander, is it?
+	Castellanos: No. That's the module's air. Carry it home and park it by the lander, ready for when the module comes. [ID:d1_p1_02b]
+Castellanos: And stay up there a minute. You've got the best view for kilometres. [ID:d1_p1_03]
+=> END
+
+~ d1_ridge
+Castellanos: From up there you should see two more canopies. Rao's put them on your Map. [ID:d1_ridge_01]
+Castellanos: The one on the flat should be power: the module's solar blanket and battery. The one in the hollow is pinging a field kit beacon. [ID:d1_ridge_02]
+Castellanos: One at a time. Your suit won't stretch to both and back. [ID:d1_ridge_03]
+- Understood.
+- Yes, Commander.
+	set formal
+	Castellanos: Mira's fine. We're a long way from a parade ground. [ID:d1_ridge_04b]
+=> END
+
+~ d1_pallet2
+Castellanos: That's the module's power. Blanket and battery. It wants to come home too. [ID:d1_p2_01]
+=> END
+
+~ d1_pallet4
+Castellanos: Field kit. Hammer, headlamp, patch kit. Now you're dressed for Mars. [ID:d1_p4_01]
+=> END
+
+~ d1_cargo
+Castellanos: That's the module's air and power waiting by the lander. It'll breathe the day it lands. [ID:d1_cargo_01]
+Castellanos: Good work for a first day. The sun's getting low. Watch it go down. You've earned it. [ID:d1_cargo_02]
+=> END
+
+~ d1_sunset
+do sunset_view
+Castellanos: You seeing this? [ID:d1_sun_01]
+- The sky's gone blue round the sun.
+	set warm
+	Castellanos: Blue sunsets. We've all read about them. You're the first one to actually see one. [ID:d1_sun_02a]
+- It's getting cold fast.
+	set dry
+	Castellanos: Minus sixty tonight. That lander's a lot warmer than it looks. [ID:d1_sun_02b]
+Castellanos: Rao wants to know what it sounds like down there. [ID:d1_sun_03]
+- Nothing. Wind, maybe.
+	Castellanos: That sounds lonely. [ID:d1_sun_04a]
+- My own breathing, mostly.
+	Castellanos: Ha. Same up here. [ID:d1_sun_04b]
+? joker Castellanos: For what it's worth, you're funnier than your file said. [ID:d1_sun_05]
+Castellanos: We go behind the planet in a few minutes. Get inside and get some sleep. [ID:d1_sun_06]
+- Goodnight, orbit.
+	set goodnight
+- Talk tomorrow.
+Castellanos: Goodnight, Outpost One. Talk at sunrise. [ID:d1_sun_07]
+do bed
+=> END

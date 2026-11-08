@@ -33,6 +33,7 @@ func _until_shown(r: Node) -> bool:
 	return false
 
 func _initialize() -> void:
+	load("res://scripts/opening_days.gd").new_games_version = 1   # the first opening (version 2: tests/guided_days_test.gd)
 	var world = await _new_world()
 	var r: Node = world.replies
 	var notes: Node = world.notes

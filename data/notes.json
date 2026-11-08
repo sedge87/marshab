@@ -3,7 +3,7 @@
   "thoughts": {
     "air": {
       "stages": {
-        "start": "The lander will keep me going as long as I like, ARDEN says. It'll never hold a crew, though. The base is out there in the pallets."
+        "start": "The lander will keep me going as long as I like, Castellanos says. It'll never hold a crew, though. The base is out there in the pallets."
       },
       "journal": "The lander looks after me. The pallets are for the base: that's what I'm out here for."
     },
@@ -32,7 +32,7 @@
     },
     "module_air": {
       "stages": {
-        "carrying": "The General Module's air cartridge. Twenty kilos. It can wait by the lander till the module's down, or ride on GAR-Y's sled.",
+        "carrying": "The General Module's air cartridge. Twenty kilos, but it'll carry. It can wait by the lander till the module's down.",
         "staged": "The module's air cartridge is waiting by the lander. It plugs into the module's outside socket."
       },
       "journal": "Plugged pallet 1's air cartridge into the module's socket. Its tank's full: room to breathe for more than one."
@@ -132,7 +132,7 @@
     },
     "salvage": {
       "stages": {
-        "start": "The storm left good parts in this junk. The lander's little printer could make GAR-Y a sled hitch from them, and then it could tow the cargo home."
+        "start": "The storm left good parts in this junk. The lander's little printer could make something useful of them."
       },
       "journal": "Printed GAR-Y a sled hitch from storm junk. Small, but mine."
     },
@@ -207,7 +207,7 @@
     },
     "staging": {
       "stages": {
-        "start": "If the cargo's all waiting by the lander, the module can have it the moment it's down. GAR-Y's sled could bring it in."
+        "start": "If the cargo's all waiting by the lander, the module can have it the moment it's down."
       },
       "journal": "Pallets 1 and 2's cargo is waiting by the lander, ready for the module."
     },
@@ -234,6 +234,12 @@
         "start": "The module's running on its own battery and a strip of roof solar. Fine by day, but it won't see out a heated night. Pallet 2's solar blanket would keep it going: it goes on the socket outside."
       },
       "journal": "Moved the solar blanket over to the module's socket. It holds the night now."
+    },
+    "cradle_empty": {
+      "stages": {
+        "start": "A pallet, open and empty. The latches were undone from inside. Small tracks lead off from it: six wheels, close together."
+      },
+      "journal": "Pallet 3 was empty when I found it, opened from the inside. Whatever was in it let itself out in the storm."
     }
   }
 }

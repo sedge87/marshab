@@ -251,6 +251,22 @@ def main():
         person = crew[line["speaker"]]
         jobs.append((f"orb_{line['id']}", lambda path, t=line["text"], p=person: speak_cast(t, path, p),
                      orbiter(person.get("link", {}), bool(line.get("cut", False)))))
+    # The radio's call scripts (data/radio/*.txt, scripts/radio.gd): every
+    # "Who: words [ID:x]" line is orb_<x>.wav in that crew member's voice.
+    by_short = {str(p.get("short", p["name"])).lower(): p for p in ORBITER["people"] if "voice" in p}
+    for script in sorted((ROOT / "data" / "radio").glob("*.txt")):
+        for raw in script.read_text(encoding="utf-8").splitlines():
+            body = raw.strip()
+            if body.startswith("?"):
+                body = body.split(" ", 2)[2] if body.count(" ") >= 2 else ""
+            if "[ID:" not in body or ":" not in body.split("[ID:")[0]: continue
+            who, said = body.split(":", 1)
+            person = by_short.get(who.strip().lower())
+            if person is None: continue
+            text, tag = said.rsplit("[ID:", 1)
+            line_id = tag.strip().rstrip("]").strip()
+            jobs.append((f"orb_{line_id}", lambda path, t=text.strip(), p=person: speak_cast(t, path, p),
+                         orbiter(person.get("link", {}))))
     only = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--only=")]
     with tempfile.TemporaryDirectory() as scratch:
         for name, say, treatment in jobs:
