@@ -19,6 +19,7 @@ const NOTES := preload("res://scripts/notes.gd")
 const STORM_DROP := preload("res://scripts/storm_drop.gd")
 const DROP_FIELD := preload("res://scripts/drop_field.gd")
 const LIFEPOD := preload("res://scripts/lifepod.gd")
+const OPENING_DAYS := preload("res://scripts/opening_days.gd")
 const WALKER := preload("res://scripts/walker.gd")
 const MODULE_LIFE := preload("res://scripts/module_life.gd")
 const DESCENT_SEEN := 450.0   # metres round the landing the descent cameras saw
@@ -95,6 +96,8 @@ var module_life: Node   # scripts/module_life.gd: the General Module's own life 
 var _module_life_state := {}
 var _field_state := {}
 var _lifepod_state := {}
+var opening_days: Node   # scripts/opening_days.gd: the first days, each ending with sleep
+var _days_state := {}
 ## GAR-Y is met at its pallet (or finds you) in revamp games; it's there from
 ## the start otherwise.
 var gary_met := true
@@ -251,6 +254,9 @@ func _ready() -> void:
 		add_child(walker)
 		walker.setup(self, _walker_state)
 		if str(walker.state) == "done": start_module_life()
+		opening_days = OPENING_DAYS.new()
+		add_child(opening_days)
+		opening_days.setup(self, _days_state)
 	replies = REPLIES.new()
 	replies.setup(self, _replies_state)
 	add_child(replies)
@@ -550,6 +556,7 @@ func danger_level() -> float:
 	return clampf(level, 0.0, 1.0)
 
 func _begin_lander_intro() -> void:
+	_place_cabin_panel.call_deferred()
 	if not _start_in_lander:
 		# A loaded game: the hatch as it was saved (open in older saves). Shut,
 		# it's sealed at once (a close in progress finishes).
@@ -601,6 +608,17 @@ func _check_sol_card() -> void:
 	var card := SOL_CARD.new()
 	card.sol = sol
 	add_child(card)
+
+## The lander's status screen above the slate's dock (scripts/lander_panel.gd).
+const LANDER_PANEL := preload("res://scripts/lander_panel.gd")
+var cabin_panel: Node3D
+func _place_cabin_panel() -> void:
+	if lander == null or cabin_life == null or cabin_panel != null: return
+	for child in lander.get_children():
+		if str(child.name).begins_with("Cabin_mission_planning_console"):
+			cabin_panel = LANDER_PANEL.new()
+			cabin_panel.setup(self, child as Node3D)
+			return
 
 ## The slate on the console's worktop, for a new game in the lander.
 func _place_slate() -> void:
@@ -830,6 +848,7 @@ func _tick_chapter_one() -> void:
 	var hours := now - _chapter_hours
 	_chapter_hours = now
 	var messages := MHChapterOne.tick(hours, builder)
+	if not MHSamples.science_open and opening_part() >= 4 and _built_own(): MHSamples.science_open = true
 	messages.append_array(MHSamples.tick(hours, builder))
 	var sol := floori(now / 24.0) + 1
 	if now < 24.0: MHJournal.write("landed", sol, {"where": MHSamples.unit_label(MHSiteTerrain.geology_unit(0.0, 0.0)) if not MHSiteTerrain.geology_unit(0.0, 0.0).is_empty() else "red rock and dust"})
@@ -837,6 +856,20 @@ func _tick_chapter_one() -> void:
 		MHJournal.write("first_walk", sol)
 		for learned in MHChapterOne.learn_after("first_walk"): messages.append(MHChapterOne._plan_message(learned))
 	show_chapter_messages(messages)
+
+## Something of your own built past the General Module, its airlock and the
+## fit-out kit: a room or site part, any equipment, or furniture beyond the kit.
+func _built_own() -> bool:
+	if builder == null: return false
+	for zone in builder.zones:
+		if not bool(zone.get("carried", false)) and str(zone.get("kind", "")) != "airlock": return true
+	if not (builder.placed_equipment as Array).is_empty(): return true
+	var counted := {}
+	for item in builder.placed_interior:
+		var id := str(item.get("id", ""))
+		counted[id] = int(counted.get(id, 0)) + 1
+		if int(counted[id]) > int(MHChapterOne.stock.get(id, 0)): return true
+	return false
 
 ## Chapter-one news: the notice line, and the slate's Goals app.
 func show_chapter_messages(messages: Array) -> void:
@@ -1101,6 +1134,7 @@ func current_state() -> Dictionary:
 		"drop_field": drop_field.export_state() if drop_field != null else {},
 		"lifepod": lifepod.export_state() if lifepod != null else {},
 		"walker": walker.export_state() if walker != null else {},
+		"opening_days": opening_days.export_state() if opening_days != null else {},
 		"module_life": module_life.export_state() if module_life != null else {},
 		"gary_met": gary_met,
 		"orbiter_texts": orbiter_texts.export_state() if orbiter_texts != null else {},
@@ -1178,6 +1212,7 @@ func _restore_pending_habitat() -> void:
 	_field_state = state.get("drop_field", {}) as Dictionary
 	_lifepod_state = state.get("lifepod", {}) as Dictionary
 	_walker_state = state.get("walker", {}) as Dictionary
+	_days_state = state.get("opening_days", {}) as Dictionary
 	_module_life_state = state.get("module_life", {}) as Dictionary
 	_texts_state = state.get("orbiter_texts", {}) as Dictionary
 	_replies_state = state.get("replies", {}) as Dictionary

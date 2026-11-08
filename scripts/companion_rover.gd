@@ -251,6 +251,9 @@ func _physics_process(delta: float) -> void:
 		return
 	_think(delta)
 	var desired := global_position if (_busy or napping) else _follow_point()
+	# "Show me": it leads, and waits when you fall behind.
+	var waiting: bool = task_data.get("show", false) and target.global_position.distance_to(global_position) > SHOW_LEAD and target.global_position.distance_to(task_goal) > global_position.distance_to(task_goal)
+	if waiting: desired = global_position
 	var stop := _stop
 	var flat_delta := desired - global_position
 	flat_delta.y = 0.0
@@ -268,7 +271,7 @@ func _physics_process(delta: float) -> void:
 		_idle_time += delta
 		velocity.x = move_toward(velocity.x, 0.0, walk_speed * 5.0 * delta)
 		velocity.z = move_toward(velocity.z, 0.0, walk_speed * 5.0 * delta)
-		if task_goal != Vector3.INF and not _busy: _arrived()
+		if task_goal != Vector3.INF and not _busy and not waiting: _arrived()
 	if not is_on_floor():
 		velocity.y -= ProjectSettings.get_setting("physics/3d/default_gravity") * delta
 	else:
@@ -276,7 +279,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_try_step_over_threshold(flat_delta)
 	# Stuck against a wall: indoor roaming picks somewhere else; a task gives up.
-	if distance > stop and not _busy and not napping:
+	if distance > stop and not _busy and not napping and not waiting:
 		var progress := Vector2(global_position.x - before.x, global_position.z - before.z).length()
 		_stuck_timer = _stuck_timer + delta if progress < .01 else 0.0
 		if _stuck_timer > 2.0:
@@ -354,6 +357,7 @@ func _think(delta: float) -> void:
 
 func task_age_limit() -> float:
 	if task.is_empty(): return 0.0
+	if task_data.get("show", false): return 1200.0   # "Show me": a long lead, at your pace
 	return 150.0 if _ordered or task == "patrol" else 40.0   # per stop on an ice hunt (reset at each)
 
 func _start(kind: String, goal: Vector3, data := {}) -> void:
@@ -962,10 +966,46 @@ func end_rescue() -> void:
 ## The orders the menu offers right now (they depend on where GAR-Y is).
 func available_orders() -> Array:
 	if _self_indoors(): return ["come", "stay", "home", "fetch", "patrol"]
-	return ["come", "stay", "home", "survey", "find_ice", "core"]
+	var out := ["come", "stay", "home", "survey", "find_ice", "core"]
+	var pod := get_tree().get_first_node_in_group("lifepod")
+	if pod != null and pod.gary_mark_to_show(global_position) != null: out.push_front("show")
+	return out
 
+const SHOW_SHORT := 8.0          # "Show me" stops this far short of the find
+const SHOW_LEAD := 22.0          # and waits when you're further back than this
 const ORDER_LABELS := {"come": "Come here", "stay": "Stay here", "home": "Go home", "fetch": "Fetch", "patrol": "Patrol",
-	"survey": "Survey there", "core": "Core sample", "goto": "Go there", "find_ice": "Survey zone"}
+	"survey": "Survey there", "core": "Core sample", "goto": "Go there", "find_ice": "Survey zone", "show": "Show me"}
+
+## Leads you somewhere at your pace, and waits there ("Show me"; home at
+## dusk in the opening days, scripts/opening_days.gd).
+func lead_to(spot: Vector3) -> void:
+	if leading_to(spot): return
+	if napping: _wake()
+	if not task.is_empty():
+		_ordered = false
+		_end_task(true)
+	staying = false
+	spot.y = global_position.y
+	_start("goto", spot, {"show": true})
+	_ordered = true
+	_say("happy")
+
+func leading_to(spot: Vector3) -> bool:
+	return task == "goto" and task_data.get("show", false) and Vector2(task_goal.x - spot.x, task_goal.z - spot.z).length() < 1.0
+
+## Back from somewhere you didn't see it go: parked at `spot`, facing `look`.
+func wait_at(spot: Vector3, look: Vector3) -> void:
+	if not task.is_empty():
+		_ordered = false
+		_end_task(true)
+	napping = false
+	docked = false
+	_escort_until = 0
+	global_position = spot + Vector3(0, .15, 0)
+	velocity = Vector3.ZERO
+	rotation.y = atan2(-(look.x - spot.x), -(look.z - spot.z))
+	staying = true
+	_stay_point = global_position
 
 ## Carry out an order. point: where you're aiming (survey, core, goto); item:
 ## the placement you're looking at (fetch). Returns "" or why it can't.
@@ -1000,6 +1040,14 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 				_start("goto", wait)
 			_ordered = true
 			_say("happy")
+		"show":
+			# One of its night's finds you haven't been to: it leads, and waits there.
+			if indoors: return "GAR-Y shows you finds outside."
+			var pod := get_tree().get_first_node_in_group("lifepod")
+			var site: Node3D = pod.gary_mark_to_show(global_position) if pod != null else null
+			if site == null: return "You've seen everything GAR-Y found."
+			lead_to(site.global_position + (global_position - site.global_position).normalized() * SHOW_SHORT)
+			return ""
 		"survey", "goto", "core":
 			if point == Vector3.INF: return "Aim at the ground where you want GAR-Y to go."
 			var inside_point: bool = habitat.is_inside(point)
@@ -1174,6 +1222,7 @@ func interaction_prompt() -> Dictionary:
 	if has_meta("lift_out"): return {"label": NAME + " · folded in its cradle", "primary": "Lift it out"}
 	var pod := get_tree().get_first_node_in_group("lifepod")
 	if pod != null and pod.sled_ready(self): return {"label": "%s · %d kg of ice on its sled" % [NAME, roundi(float(pod.sled_kg))], "primary": "Melt the sled's ice", "info": "About"}
+	if pod != null and pod.gary_report_ready(): return {"label": NAME + " · out all night", "primary": "What did you find?", "info": "About"}
 	return {"label": "%s · %s" % [NAME, status_text()], "primary": "Ping", "info": "About"}
 
 func status_text() -> String:
@@ -1207,6 +1256,14 @@ func interact(_actor: Node = null) -> bool:
 	if pod != null and pod.sled_ready(self):
 		pod.unload_sled()
 		_say("happy")
+		return true
+	# Sol 2's dawn: it was out scouting all night (scripts/lifepod.gd).
+	if pod != null and pod.gary_report_ready():
+		pod.gary_report()
+		_say("tada")
+		if _visual != null:
+			var scan := create_tween().set_trans(Tween.TRANS_SINE)
+			for angle in [.6, -.6, .3, 0.0]: scan.tween_property(_visual, "rotation:y", angle, .35)
 		return true
 	# Its first sunset with you (scripts/gary_sunset.gd).
 	if has_meta("sunset_offer"):

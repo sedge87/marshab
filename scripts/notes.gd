@@ -26,6 +26,7 @@ const PRESSING := [
 	["thirsty", []],
 	["starving", []],
 	["hungry", ["hungry", "starving"]],
+	["bed", []],          # the opening days: after anything you need to live
 ]
 
 signal changed
@@ -264,7 +265,9 @@ func _process(delta: float) -> void:
 	# a sol. It passes when you sleep, or with the morning.
 	var sleep: Node = world.get("sleep")
 	var asleep: bool = sleep != null and bool(sleep.get("asleep"))
-	if cabin != null and cabin.player_inside() and not asleep and (hour >= sunset - 1.0 or hour < sunrise - 1.0) and _rest_offered != _sol():
+	var days: Node = world.get("opening_days")
+	var guided: bool = days != null and days.guided()   # the opening days have "bed" instead
+	if not guided and cabin != null and cabin.player_inside() and not asleep and (hour >= sunset - 1.0 or hour < sunrise - 1.0) and _rest_offered != _sol():
 		_rest_offered = _sol()
 		if think("rest") and MHGame.tutorial_mode != "off" and world.get("explore_hud") != null:
 			world.explore_hud.show_equipment_note("Rest", "Sleep until dawn? Look at a landing seat and press Z. Or don't: the night is yours too.")

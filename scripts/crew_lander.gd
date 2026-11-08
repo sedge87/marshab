@@ -274,11 +274,22 @@ func _furnish() -> void:
 
 func interaction_prompt() -> Dictionary:
 	var label := "Crew Lander · sealing…" if seal_state in ["closing", "latching", "pressurising"] else "Crew Lander"
+	var refusal := _night_refusal()
+	if not _open and not refusal.is_empty(): return {"label": "Crew Lander · night", "primary": refusal, "info": "About"}
 	return {"label": label, "primary": "Close hatch" if _open else "Open hatch", "info": "About"}
 
 func interact(_actor: Node = null) -> bool:
+	# The opening days: the day ends when you sleep (scripts/opening_days.gd).
+	var refusal := _night_refusal()
+	if not _open and not refusal.is_empty():
+		MHNotices.post("info", "Night", refusal, "", 1)
+		return true
 	set_hatch(not _open, true)
 	return true
+
+func _night_refusal() -> String:
+	var days := get_tree().get_first_node_in_group("opening_days")
+	return str(days.hatch_refusal()) if days != null else ""
 
 func interact_info(_actor: Node = null) -> bool:
 	var entry := EquipmentCatalog.get_entry("crew_lander")

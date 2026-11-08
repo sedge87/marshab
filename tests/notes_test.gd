@@ -97,9 +97,11 @@ func _initialize() -> void:
 	var sunrise := float(cycle.get("sunrise_hour", 5.0))
 	world.day_night.set_hour(sunset + 1.0)
 	notes._check = 0.0
+	if world.get("opening_days") != null: world.opening_days._check = 0.0
 	for i in 3: await process_frame
 	_check(notes.stage("power") == "night", "after dark the power thought turns to the night ahead")
-	_check(not world.cabin_life.player_inside() or notes.is_open("rest"), "in the cabin after dark, rest is offered")
+	# The opening days have "bed" instead (tests/opening_days_test.gd); past them, rest is offered.
+	_check(not world.cabin_life.player_inside() or notes.is_open("rest") or notes.is_open("bed"), "in the cabin after dark, rest (or, in the opening days, bed) is offered")
 	world.day_night.set_hour(sunrise + .5)
 	notes._check = 0.0
 	for i in 3: await process_frame

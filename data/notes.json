@@ -45,6 +45,13 @@
       },
       "journal": ""
     },
+    "bed": {
+      "stages": {
+        "start": "That's the day. Back to {home} and sleep.",
+        "late": "Getting dark. Whatever's left will keep till tomorrow. Back to {home} and sleep."
+      },
+      "journal": ""
+    },
     "cold": {
       "stages": {
         "start": "Cold in here. The heater's on the wall switch, if the battery can spare it."
@@ -80,6 +87,12 @@
     "sunset_gary": {
       "stages": {},
       "journal": "Watched the sun go down with GAR-Y. Neither of us made a sound. It's the first time it's felt like we live here."
+    },
+    "gary_scouted": {
+      "stages": {
+        "start": "GAR-Y's been out all night. It's marked frost in a hollow, something big and cold, and something metal. Hold G by it and it'll show me."
+      },
+      "journal": "GAR-Y spent the night scouting while I slept. Frost, ice and iron, all of it within a morning's walk. So that's what it's for."
     },
     "not_alone": {
       "stages": {

@@ -14,7 +14,7 @@ const HOLD := .25          # seconds: shorter is a tap (the item's G action)
 const RANGE := 30.0
 const RADIUS := 150.0
 const ICONS := {"come": "footprints", "stay": "map-pin", "home": "door-closed", "fetch": "package", "patrol": "clipboard-check",
-	"survey": "mountain-snow", "core": "flask-conical", "find_ice": "droplets"}
+	"survey": "mountain-snow", "core": "flask-conical", "find_ice": "droplets", "show": "search"}
 
 var world: Node
 var _held := 0.0
@@ -171,6 +171,7 @@ func _draw_menu() -> void:
 
 func _hint(kind: String) -> String:
 	match kind:
+		"show": return "Leads you to the nearest find it marked overnight, and waits there."
 		"come": return "Follows close behind you for a while (through airlocks you cycle)."
 		"stay": return "Waits right here until you give another order." if not bool(rover().staying) else "Back to pottering about."
 		"home": return "To its GAR-Y Dock to charge." if rover()._self_indoors() else "Waits outside the airlock."

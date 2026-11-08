@@ -21,6 +21,8 @@ const MHResources := preload("res://scripts/mh_resources.gd")
 var mode := "status"
 var sign_text := ""
 var suit: Node   # scripts/suit.gd, for the wrist pad
+var cabin: Node  # scripts/lander_cabin_life.gd, for the lander's panel ("cabin")
+var pod: Node    # scripts/lifepod.gd: the ration crate
 ## The rig (a Node3D on the wall): where the screen is and which way it faces.
 var mount: Node3D
 var viewport: SubViewport
@@ -59,6 +61,9 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("#0C1316"))
 	if mode == "suit":
 		_draw_suit()
+		return
+	if mode == "cabin":
+		_draw_cabin()
 		return
 	var builder := _builder()
 	if builder != null and not builder.grid_power_online():
@@ -102,6 +107,54 @@ func _draw_status() -> void:
 		_text(str(row[0]).to_upper(), at + Vector2(22 * u, 0), int(18 * u), MHStyle.TEXT_SECONDARY, 600)
 		_text(str(row[1]), at + Vector2(22 * u, 40 * u), int(38 * u), MHStyle.TEXT_PRIMARY if row[3] else MHStyle.DANGER, 700)
 	if bool(snap.storm): _text("DUST STORM · SOLAR POWER REDUCED", Vector2(24, size.y / u - 18) * u, int(15 * u), Color(1, .7, .45), 700)
+
+# ---------- the lander cabin (scripts/lander_panel.gd) ----------
+
+## Five tiles, read at a glance: an icon, a tall bar and one big number each.
+## Green is fine, amber low, red urgent. Dark when the cabin has no power.
+func _draw_cabin() -> void:
+	if cabin == null or cabin.get("core") == null: return
+	var core: RefCounted = cabin.core
+	if not core.powered(): return
+	var u := size.y / 400.0
+	var o2_hours := float(core.tank_o2_kg) / .035
+	var water_days := float(core.water_sols())
+	var solar := float((core.last as Dictionary).get("solar", 0.0))
+	var rations := int(pod.get("rations")) if pod != null and pod.get("rations") != null else -1
+	var temp := float(core.temp_c)
+	var tiles := [
+		["wind", "AIR", "%d h" % roundi(o2_hours) if o2_hours < 48.0 else "%d sol" % floori(o2_hours / 24.0), float(core.tank_o2_kg) / maxf(.01, float(core.tank_cap)), _level(o2_hours, 12.0, 4.0)],
+		["droplets", "WATER", "%.1f L" % float(core.water_l), float(core.water_l) / maxf(.01, float(core.water_cap)), _level(water_days, 1.0, .4)],
+		["zap", "POWER", "%d%%" % roundi(float(core.battery_pct())), float(core.battery_pct()) / 100.0, _level(float(core.battery_pct()), 35.0, 15.0)],
+		["thermometer", "HEAT", "%d°" % roundi(temp), clampf((temp + 10.0) / 35.0, 0.0, 1.0), _level(temp, 12.0, 5.0)],
+		["utensils", "FOOD", str(rations) if rations >= 0 else "–", clampf(float(rations) / 12.0, 0.0, 1.0), _level(float(rations), 4.0, 1.0)]]
+	var gap := 14.0 * u
+	var w := (size.x - gap * 6.0) / 5.0
+	for i in tiles.size():
+		var t: Array = tiles[i]
+		var colour: Color = [MHStyle.VALID, MHStyle.WARN, MHStyle.DANGER][int(t[4])]
+		var x := gap + i * (w + gap)
+		var tile := Rect2(Vector2(x, 18 * u), Vector2(w, size.y - 36 * u))
+		draw_rect(tile, Color(1, 1, 1, .04))
+		if int(t[4]) > 0: draw_rect(tile, Color(colour, .9), false, 3.0 * u)
+		var icon_size := int(44 * u)
+		draw_texture_rect(MHIcons.texture(str(t[0]), icon_size), Rect2(Vector2(x + (w - icon_size) / 2.0, 34 * u), Vector2(icon_size, icon_size)), false, colour)
+		_text(str(t[1]), Vector2(x, 114 * u), int(22 * u), MHStyle.TEXT_SECONDARY, 700, HORIZONTAL_ALIGNMENT_CENTER, w)
+		# The tall bar.
+		var bar := Rect2(Vector2(x + w * .3, 130 * u), Vector2(w * .4, 170 * u))
+		draw_rect(bar, Color(1, 1, 1, .08))
+		var share := clampf(float(t[3]), 0.0, 1.0)
+		draw_rect(Rect2(Vector2(bar.position.x, bar.end.y - bar.size.y * share), Vector2(bar.size.x, bar.size.y * share)), colour)
+		_text(str(t[2]), Vector2(x, 350 * u), int(34 * u), MHStyle.TEXT_PRIMARY if int(t[4]) == 0 else colour, 700, HORIZONTAL_ALIGNMENT_CENTER, w)
+	# Sun on the blanket: a small glyph and the kilowatts coming in now.
+	if solar > .02:
+		var at := Vector2(gap + 2.0 * (w + gap), 18 * u)
+		draw_texture_rect(MHIcons.texture("sun", int(20 * u)), Rect2(at + Vector2(6, 6) * u, Vector2(20, 20) * u), false, MHStyle.BEACON_YELLOW)
+		_text("%.1f kW" % solar, at + Vector2(30, 22) * u, int(15 * u), MHStyle.BEACON_YELLOW, 600)
+
+## 0 fine, 1 low, 2 urgent: `value` against its low and urgent marks.
+static func _level(value: float, low: float, urgent: float) -> int:
+	return 2 if value <= urgent else (1 if value <= low else 0)
 
 # ---------- the wrist pad ----------
 

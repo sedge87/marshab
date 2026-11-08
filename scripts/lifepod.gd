@@ -54,6 +54,7 @@ var _print_left := 0.0
 var _check := 0.0
 var _last_hour := -1.0
 var _photo_nudged := false
+var gary_reported := false     # sol 2's dawn: GAR-Y's night out (playtest 8 Nov)
 var rations := START_RATIONS    # packs in the cabin's ration crate (scripts/ration_crate.gd)
 var rations_carried := 0        # pallet 1's, in your pockets until you're back in the cabin
 
@@ -70,6 +71,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	walker_due = bool(saved.get("walker_due", false))
 	walker_moved = bool(saved.get("walker_moved", false))
 	_photo_nudged = bool(saved.get("photo_nudged", false))
+	gary_reported = bool(saved.get("gary_reported", false))
 	rations = int(saved.get("rations", START_RATIONS))
 	rations_carried = int(saved.get("rations_carried", 0))
 	# A save from before step 4a with pallet 1 already open: its rations are home.
@@ -250,13 +252,50 @@ func _ice_hint() -> String:
 		return " There was frost in that hollow by pallet 4: ice, just under the dust."
 	return " Frost forms in low ground at dawn. Ice under it, maybe."
 
+# ---------- GAR-Y's night out (sol 2's dawn) ----------
+
+## What GAR-Y calls a find before you've seen it.
+const GARY_NAMES := {"frost": "GAR-Y · frost", "ice_wall": "GAR-Y · something big and cold", "iron": "GAR-Y · something metal"}
+
+## Sol 2's morning, before it's told you: GAR-Y has finds to show.
+func gary_report_ready() -> bool:
+	if gary_reported or get_tree().get_first_node_in_group("gar_y") == null: return false
+	if not world.has_method("opening_part") or int(world.opening_part()) != 2: return false
+	return MHGame.sol_hour > 5.0 and MHGame.sol_hour < 18.0 and not _unseen().is_empty()
+
+## "What did you find?": its night's scouting goes on your map and compass.
+func gary_report() -> void:
+	gary_reported = true
+	var known: Node = world.get("known")
+	for site in _unseen():
+		if known != null: known.learn(site.id(), "find", region_at(site.global_position), str(GARY_NAMES.get(site.kind, "GAR-Y · a find")), "you", "gary")
+	var notes: Node = world.get("notes")
+	if notes != null: notes.think("gary_scouted")
+
+func _unseen() -> Array:
+	var out: Array = []
+	for kind in ["frost", "ice_wall", "iron"]:
+		if sites.has(kind) and not sites[kind].seen: out.append(sites[kind])
+	return out
+
+## "Show me": the nearest find GAR-Y marked that you haven't been to, or null.
+func gary_mark_to_show(from: Vector3) -> Node:
+	if not gary_reported: return null
+	var best: Node = null
+	for site in _unseen():
+		if best == null or from.distance_to(site.global_position) < from.distance_to(best.global_position): best = site
+	return best
+
 ## You come within sight of a thread: it joins Notes and your record.
 func see(site: Node) -> void:
 	site.seen = true
 	var known: Node = world.get("known")
-	if known != null: known.learn(site.id(), "find", region_at(site.global_position), str(SITE.NAMES.get(site.kind, "Find")), "you")
+	if known != null:
+		known.learn(site.id(), "find", region_at(site.global_position), str(SITE.NAMES.get(site.kind, "Find")), "you")
+		known.rename(site.id(), str(SITE.NAMES.get(site.kind, "Find")))
 	var notes: Node = world.get("notes")
 	if notes == null: return
+	if gary_reported and _unseen().is_empty() and notes.is_open("gary_scouted"): notes.answer("gary_scouted")
 	match str(site.kind):
 		"iron": notes.think("iron", "seen")
 		"ice_wall": notes.think("ice_wall", "seen")
@@ -445,4 +484,4 @@ func export_state() -> Dictionary:
 	for find in get_tree().get_nodes_in_group("carried_find"):
 		if not (find as Node).is_queued_for_deletion(): finds.append(find.export_state())
 	return {"parts": parts, "prints": prints.keys(), "jobs": jobs.keys(), "studied": studied.keys(), "stripped": stripped_keys.keys(),
-		"sled_kg": sled_kg, "walker_due": walker_due, "walker_moved": walker_moved, "photo_nudged": _photo_nudged, "rations": rations, "rations_carried": rations_carried, "sites": site_state, "finds": finds}
+		"sled_kg": sled_kg, "walker_due": walker_due, "walker_moved": walker_moved, "photo_nudged": _photo_nudged, "gary_reported": gary_reported, "rations": rations, "rations_carried": rations_carried, "sites": site_state, "finds": finds}

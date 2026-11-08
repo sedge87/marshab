@@ -21,6 +21,12 @@
     ],
     "silence_note": "power"
   },
+  "cabin_morning_check": {
+    "replies": [
+      {"text": "Ice first, then.", "note": "water", "said": "ARDEN says a day of water. Ice first: GAR-Y found frost, and there's the bench melter."},
+      {"text": "Parts, then.", "note": "salvage", "said": "The little printer wants parts from the storm junk. I'll strip some debris."}
+    ]
+  },
   "walker_photo": {
     "replies": [
       {"text": "Going to take a look.", "note": "tracks", "said": "Rao found Walker 1 at the end of the tracks, stopped. I'd better go and see what's wrong with it.", "answer": "Careful out there. Text us what you find."},
