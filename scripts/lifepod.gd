@@ -404,8 +404,16 @@ func _plan_cost(index: int) -> int:
 func _open_plans() -> Array:
 	var out: Array = []
 	for i in PLANS.size():
-		if not prints.has(str(PLANS[i][0])): out.append(i)
+		if prints.has(str(PLANS[i][0])): continue
+		if str(PLANS[i][0]) == "hitch" and not _gary_found(): continue   # nothing to hitch it to yet
+		out.append(i)
 	return out
+
+## GAR-Y met for real (not still out at work, waiting to be found on day 2).
+func _gary_found() -> bool:
+	if not bool(world.get("gary_met")): return false
+	var field: Node = world.get("drop_field")
+	return field == null or not bool(field.get("gary_working"))
 
 func next_plan() -> void:
 	var open := _open_plans()
