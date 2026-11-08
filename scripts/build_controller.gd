@@ -1576,7 +1576,7 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 		support = stack_support(id, world_position, rotation_y)
 		if support.is_empty(): return "Set this on a table, desk, counter, shelf or crate"
 		if world_position.y + _free_interior_size(entry).y > _headroom(support, world_position.y): return "Too tall for this shelf"
-	if _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if not _stock_covers(id) and _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	if _blocks_doorway(entry, world_position, rotation_y): return "Keep the doorway clear"
 	# A free-positioned item must fit wholly inside valid room cells. Checking the
 	# four footprint corners prevents a player from burying it in the shell wall
@@ -1858,7 +1858,7 @@ func equipment_invalid_reason(id: String, cell: Vector2i) -> String:
 	if not equipment_at(cell).is_empty(): return "This cell is already furnished"
 	var stock_reason := MHChapterOne.item_reason(id, self)
 	if not stock_reason.is_empty(): return stock_reason
-	if _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if not _stock_covers(id) and _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	return ""
 
 func equipment_at(cell: Vector2i) -> Dictionary:
@@ -5753,9 +5753,10 @@ func printable_cargo() -> int:
 	var total := 0
 	for zone in zones:
 		if not str(zone.kind) in PRINTABLE_ZONE_EXCLUDES: total += int(zone.cost)
+	var stocked := {}
 	for item in placed_interior:
 		var entry := EquipmentCatalog.get_entry(str(item.get("id", "")))
-		if bool(entry.get("printable", false)): total += int(entry.get("cargo_cost", 0))
+		if bool(entry.get("printable", false)) and not _from_stock(str(item.get("id", "")), stocked): total += int(entry.get("cargo_cost", 0))
 	total += partitions.size() * partition_cargo()
 	total += WALL_UPGRADES.cargo(self, true)
 	return total
@@ -5768,6 +5769,18 @@ func earth_cost(cost: int, printable: bool) -> int:
 	if not printable and MHChapterOne.on(): return 0   # stock, not cargo (scripts/chapter_one.gd)
 	return maxi(0, cost - mars_made_left()) if printable else cost
 
+## Chapter one: the first copies of an item, up to what's in stock (a kit
+## piece, an unpacked crate's), are already here: no cargo, printable or not.
+## `seen` counts the copies looked at so far in one pass.
+func _from_stock(id: String, seen: Dictionary) -> bool:
+	if not MHChapterOne.on(): return false
+	seen[id] = int(seen.get(id, 0)) + 1
+	return int(seen[id]) <= int(MHChapterOne.stock.get(id, 0))
+
+## A new copy of `id` would come from stock.
+func _stock_covers(id: String) -> bool:
+	return MHChapterOne.on() and MHChapterOne.available(id, self) > 0
+
 func zone_printable(zone_kind: String) -> bool: return not zone_kind in PRINTABLE_ZONE_EXCLUDES
 func item_printable(id: String) -> bool: return bool(EquipmentCatalog.get_entry(id).get("printable", false))
 
@@ -5777,10 +5790,10 @@ func _total_cargo() -> int:
 	var stock_rules := MHChapterOne.on()
 	for zone in zones:
 		if not (stock_rules and not zone_printable(str(zone.kind))): total+=int(zone.cost)
-	for item in placed_equipment:
-		if not (stock_rules and not item_printable(str(item.get("id", "")))): total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
-	for item in placed_interior:
-		if not (stock_rules and not item_printable(str(item.get("id", "")))): total += int(EquipmentCatalog.get_entry(str(item.get("id", ""))).get("cargo_cost", 0))
+	var stocked := {}
+	for item in placed_equipment + placed_interior:
+		var id := str(item.get("id", ""))
+		if not (stock_rules and not item_printable(id)) and not _from_stock(id, stocked): total += int(EquipmentCatalog.get_entry(id).get("cargo_cost", 0))
 	total += hull_windows.size() * window_cargo()
 	total += partitions.size() * partition_cargo()
 	total += WALL_UPGRADES.cargo(self)

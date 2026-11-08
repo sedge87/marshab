@@ -245,6 +245,16 @@ func _initialize() -> void:
 	_check(interior != null and interior._tab_ids() == [interior.UNPACKED_TAB], "inside, only the kit on the bar")
 	if interior != null and interior._catalog_items.is_empty(): interior._catalog_items.assign(interior._catalogue_ids())
 	_check(interior != null and interior._unpacked_ids().size() == 5, "all five pieces of it (%s)" % str(interior._unpacked_ids() if interior != null else []))
+	# The kit is already here: every piece goes in, one after another, with no
+	# cargo (8 Nov playtest: "not enough cargo" after the bunk; the table's printable).
+	var kit_ok := true
+	var before_kit: Array = builder.placed_interior.duplicate()
+	for id in RULES.KIT:
+		if not builder._stock_covers(str(id)): kit_ok = false
+		builder.placed_interior.append({"id": str(id)})
+		if builder._used_cargo() > MHGame.cargo_budget(): kit_ok = false
+	_check(kit_ok, "the whole fit-out kit places free, piece after piece (used %d of %d)" % [builder._used_cargo(), MHGame.cargo_budget()])
+	builder.placed_interior.assign(before_kit)
 	_check(MHChapterOne.known.has("ice_drill") and world.notes.is_open("module_plans") and world.notes.is_settled("walker_home"), "its plans: an ice extractor")
 
 	# The first night in a real room.
