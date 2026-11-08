@@ -19,12 +19,16 @@ const STAGES := ["pallets", "lifepod", "walker", "module", "fit_out"]
 const FIT_OUT_PIECES := 3       # kit pieces placed: the module's lived in
 const LEAD_FROM := 30.0         # further than this from home at dusk: GAR-Y leads you in
 const DUSK_EARLY := 1.5         # hours before sunset: bed, if the day's done
+const CHECK_EVERY := .5
 
 var world: Node
 var dawn_stage := -1            # the stage you woke into
 var bed_sol := 0                # the sol "bed" last came
 var gary_waited_sol := 0        # the sol GAR-Y last waited at the ramp
 var arden_morning := false      # sol 2's morning check, said
+var nights := 0                 # nights slept: a new day starts when you wake (the sol rolls over at 06:00)
+var _was_asleep := false
+var _lead_again := 0.0
 var _check := 0.0
 
 func setup(target_world: Node, saved: Dictionary) -> void:
@@ -35,9 +39,10 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	bed_sol = int(saved.get("bed_sol", 0))
 	gary_waited_sol = int(saved.get("gary_waited_sol", 0))
 	arden_morning = bool(saved.get("arden_morning", false))
+	nights = int(saved.get("nights", 0))
 
 func export_state() -> Dictionary:
-	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning}
+	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning, "nights": nights}
 
 # ---------- where the days are ----------
 
@@ -112,7 +117,7 @@ func _gary() -> Node:
 func _process(delta: float) -> void:
 	_check -= delta
 	if _check > 0.0 or world == null or world.get("player") == null or get_tree().paused: return
-	_check = .5
+	_check = CHECK_EVERY
 	if not guided(): return
 	var notes: Node = world.get("notes")
 	if notes == null: return
@@ -127,22 +132,31 @@ func _process(delta: float) -> void:
 	# Asleep: the day's over. Tomorrow starts with what's left.
 	if asleep:
 		if notes.is_open("bed"): notes.let_go("bed")
+		MHNotices.drop("Bed")
 		dawn_stage = now
+		_was_asleep = true
 		return
+	if _was_asleep:
+		_was_asleep = false
+		if hour >= sunrise - 2.0 and hour < 12.0: nights += 1
 	# Dusk: the day's done (or it's too late to finish it). Bed.
 	var dusk := hour >= sunset - DUSK_EARLY and hour < sunset + 6.0
 	var late := hour >= sunset or hour < sunrise
-	if bed_sol != sol and ((dusk and now > dawn_stage) or late):
-		bed_sol = sol
+	var day := maxi(sol, nights + 1)
+	if bed_sol != day and ((dusk and now > dawn_stage) or late):
+		bed_sol = day
 		notes.think("bed", "start" if now > dawn_stage else "late", {"home": _home_name()})
-	if notes.is_open("bed") and not _at_home(): _lead_home()   # again after the sunset, say
+	_lead_again -= CHECK_EVERY
+	if notes.is_open("bed") and not _at_home() and _lead_again <= 0.0:   # again after the sunset, say
+		_lead_again = 30.0
+		_lead_home()
 	if notes.is_open("bed") and _at_home() and in_lander_days():
 		MHNotices.hint("Bed", "Look at a landing seat and press Z to sleep till morning.")
 	# Sol 2's morning: GAR-Y's back from its night out, waiting at the ramp.
-	if sol >= 2 and gary_waited_sol < sol and hour >= sunrise - 1.0 and hour < sunset - 3.0:
+	if nights >= 1 and gary_waited_sol < nights and hour >= sunrise - 1.0 and hour < sunset - 3.0:
 		var pod: Node = world.get("lifepod")
 		if pod != null and pod.gary_report_ready() and _in_cabin():
-			gary_waited_sol = sol
+			gary_waited_sol = nights
 			var gary := _gary()
 			if gary != null: gary.wait_at(world.lander.ramp_foot(2.0), world.lander.global_position)
 	# ARDEN's morning check, in the cabin.
@@ -161,7 +175,7 @@ func _lead_home() -> void:
 	if gary == null or gary.has_meta("lift_out"): return
 	var field: Node = world.get("drop_field")
 	if field != null and field.get("sunset") != null and str(field.sunset.get("phase")) != "": return   # watching the sun first
-	if not gary.leading_to(spot): gary.lead_to(spot)
+	if not gary.leading_to(spot): gary.lead_to(spot, true)
 
 func _in_cabin() -> bool:
 	var lander: Node = world.get("lander")

@@ -228,12 +228,16 @@ func run() -> void:
 	if field.meeting != null: got_stuck("GAR-Y's wake-up never ended")
 	await wait(4.0)
 	if not known.knows(field.sites.tools.id()): got_stuck("pallet 4 not known after GAR-Y")
-	await refill("before pallet 4")
-	await go(field.sites.tools.pallet.global_position, "to pallet 4 (tools)")
-	step("Open pallet 4")
-	field.sites.tools.pallet.open(false)
-	await wait(5.0)
-	await go(lander.ramp_foot(4.0), "home to the lander", 0.0)
+	# Like a player: if it's bedtime already, pallet 4 waits for the morning.
+	var tools_tomorrow: bool = world.notes.is_open("bed") or MHGame.sol_hour >= 17.5
+	if not tools_tomorrow:
+		await refill("before pallet 4")
+		await go(field.sites.tools.pallet.global_position, "to pallet 4 (tools)")
+		step("Open pallet 4")
+		field.sites.tools.pallet.open(false)
+		await wait(5.0)
+		await go(lander.ramp_foot(4.0), "home to the lander", 0.0)
+	else: step("Bedtime before pallet 4: it can wait for the morning")
 
 	# The afternoon: wait about near GAR-Y for the sunset.
 	var sunset := float((MHGame.site().get("day_cycle", {}) as Dictionary).get("sunset_hour", 19.0))
@@ -259,6 +263,17 @@ func run() -> void:
 
 	# ---- Part 2: the lifepod days ----
 	var pod: Node = world.lifepod
+	if tools_tomorrow:
+		await wait(10.0)
+		lander.set_hatch(true)
+		player.global_position = ground(lander.ramp_foot(4.0))
+		await go(field.sites.tools.pallet.global_position, "to pallet 4 (tools), first thing")
+		step("Open pallet 4")
+		field.sites.tools.pallet.open(false)
+		await wait(5.0)
+		await go(lander.ramp_foot(4.0), "home to the lander", 0.0)
+		player.global_position = lander.to_global(Vector3(0, 1.2, .5))
+		lander.set_hatch(false, true)
 	step("Sol 2: GAR-Y's day")
 	await wait(12.0)
 	lander.set_hatch(true)
@@ -459,6 +474,9 @@ func run() -> void:
 		log_line("STATE", "kit left: %s" % str(RULES.kit_left(builder)))
 		step("Unpack the staged cargo at the module's socket")
 		var module: Node = world.module_life
+		if module == null:
+			got_stuck("no module life to unpack into")
+			return
 		var socket: Vector3 = module.socket_spot()
 		player.global_position = ground(socket + (socket - lander.global_position).normalized() * -2.0)
 		await wait(2.0)
@@ -505,7 +523,7 @@ func refill(why := "") -> void:
 
 ## Tops up first when the suit's under `need` of a tank.
 func ready_for(trip: String, need := .8) -> void:
-	if float(world.suit.o2) < need: await refill(trip)
+	if float(world.suit.o2) < need or float(world.suit.power) < .5: await refill(trip)
 
 ## The opening days: wait for "bed", go home, check the hatch holds at night, sleep.
 func _bed_and_sleep() -> void:

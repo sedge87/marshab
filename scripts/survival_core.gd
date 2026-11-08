@@ -83,6 +83,10 @@ func _init(room := "cabin") -> void:
 	battery_kwh = battery_cap
 	tank_cap = m("cabin_o2_tank_kg", 3.0)
 	tank_o2_kg = tank_cap
+	if self_sufficient:
+		# Robot run 3: suit refills (0.28 kg each) emptied the old 0.84 kg tank.
+		tank_cap = maxf(tank_cap, n("cabin_o2_store_kg", 3.0))
+		tank_o2_kg = tank_cap
 	water_cap = maxf(n("cabin_water_l", 7.5), 12.0)
 	water_l = n("cabin_water_l", 7.5)
 	air_kg = m("cabin_air_m3", 15.0) * AIR_DENSITY
@@ -171,7 +175,7 @@ func step(dt: float, outside: float, sun: float) -> void:
 	co2_kg += people * MHResources.setting("co2_per_person", 1.0) / 24.0 * dt
 	if on and scrubber_on:
 		co2_kg = maxf(air_kg * .0004 / CO2_VOL, co2_kg - m("cabin_scrub_kg_per_h", .1) * dt)
-	if self_sufficient and on: tank_o2_kg = minf(tank_cap, tank_o2_kg + n("cabin_o2_make_kg_per_h", .06) * dt)
+	if self_sufficient and on: tank_o2_kg = minf(tank_cap, tank_o2_kg + n("cabin_o2_make_kg_per_h", .25) * dt)
 	var short := air_kg * .209 / O2_VOL - o2_kg
 	if short > 0.0 and tank_o2_kg > 0.0:
 		var feed := minf(minf(short, .3 * dt), tank_o2_kg)

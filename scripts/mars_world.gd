@@ -592,6 +592,7 @@ func opening_part() -> int:
 	if walker == null or str(walker.state) == "done": return 4   # no walker (Creative, older saves): past the opening
 	if lifepod != null and bool(lifepod.walker_moved): return 3
 	if notes != null and int(notes.call("_sol")) >= 2: return 2
+	if opening_days != null and int(opening_days.nights) >= 1: return 2   # woke from the first night
 	return 1
 
 ## A new sol's card, once you're up and it's morning: "SOL 2".

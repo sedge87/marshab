@@ -372,7 +372,7 @@ func _start(kind: String, goal: Vector3, data := {}) -> void:
 ## Clears the current errand. failed: put back anything it was carrying.
 func _end_task(failed := false) -> void:
 	if failed and _carried != null: _put_down(str(task_data.get("placement_id", "")), task_data.get("from", Vector3.ZERO) as Vector3, float(task_data.get("from_yaw", 0.0)))
-	if failed and _ordered: _toast("GAR-Y couldn't finish", "It couldn't get there. Try a spot it can drive to.", MHStyle.WARN)
+	if failed and _ordered and not task_data.get("quiet", false): _toast("GAR-Y couldn't finish", "It couldn't get there. Try a spot it can drive to.", MHStyle.WARN)
 	task = ""
 	task_goal = Vector3.INF
 	task_data = {}
@@ -978,7 +978,7 @@ const ORDER_LABELS := {"come": "Come here", "stay": "Stay here", "home": "Go hom
 
 ## Leads you somewhere at your pace, and waits there ("Show me"; home at
 ## dusk in the opening days, scripts/opening_days.gd).
-func lead_to(spot: Vector3) -> void:
+func lead_to(spot: Vector3, quiet := false) -> void:
 	if leading_to(spot): return
 	if napping: _wake()
 	if not task.is_empty():
@@ -986,7 +986,7 @@ func lead_to(spot: Vector3) -> void:
 		_end_task(true)
 	staying = false
 	spot.y = global_position.y
-	_start("goto", spot, {"show": true})
+	_start("goto", spot, {"show": true, "quiet": quiet})
 	_ordered = true
 	_say("happy")
 
