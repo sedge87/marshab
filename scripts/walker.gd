@@ -396,7 +396,7 @@ func send_up() -> bool:
 	sent = true
 	_text_left = TEXT_DELAY
 	MHAudio.sfx("suit_beep", -6.0)
-	MHNotices.post("info", "Sent to the orbiter", "The picture goes up on the next pass.", "comms")
+	MHNotices.post("info", "Sent to the orbiter", "The picture goes up on the next pass.", "comms", -1, false)
 	return true
 
 func _orbiter_text() -> void:

@@ -44,6 +44,10 @@ While exploring, **only these**:
 2. **Captions**, for the voiced lines.
 3. **The compass**, top centre. It still carries the tutorial's target, the airlocks and the strongest uncored stake.
 4. **One notice line**, under the compass. All news goes through it: "Core 3: ice found · Map". Each notice stays about 4 s and names the app that has the details. Several notices queue; they never stack into a column.
+   - **Readable (playtest 8 Nov).** One box, heading 18 and body 17, wrapping to a few lines at 820 px instead of being cut off with "…". It holds about 4 s plus reading time (length/40 s, at most 10 s) and isn't hurried off because more is waiting (only a pressing one behind it, or a backlog of four, sends it after 4 s). While the slate is up the queue waits; a notice the slate covered before it was half read comes back after.
+   - **Who's talking, lightly.** The same box for everyone: a plain heading and an icon. Your own thoughts are "You think…" with a pencil; texts from orbit "Castellanos, from orbit" with a satellite; the habitat "ARDEN" with a speaker; everything else the tone's mark. No separate lanes or styles per speaker.
+   - **What matters.** A pressing notice (tone warn or danger, or a pressing thought: air, power, water, hunger) has an amber edge, goes ahead of ordinary news and stays 2 s longer. Chatter that only repeats something (e.g. "Sent to the orbiter") can go to the Log alone (`MHNotices.post(..., screen = false)`).
+   - **Notes say what and why.** The pressing early thoughts say the goal and the reason in your own hedged words ("Cabin air's good for about a sol… the rest of it is a fresh cartridge under there."). The Notes page lists the most pressing first; `notes.remind_top()` brings it back to mind once (stepping out of the lander).
 
 Plus the things that are already the suit and its visor: the visor brackets, the O₂ and power LEDs, the top-centre base-alert blink, frost, and the red edge glow for a critical alert.
 

@@ -138,7 +138,7 @@ func take() -> Dictionary:
 	_busy = false
 	var notes: Node = world.get("notes")
 	if notes != null: notes.answer("photo")
-	MHNotices.post("info", "Photo", words + " · in the journal (J).", "log")
+	MHNotices.post("info", "Photo", words + " · in the journal (J).", "log", -1, false)
 	return record
 
 ## A white flash across the screen.

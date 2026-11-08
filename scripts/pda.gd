@@ -133,7 +133,7 @@ func hand_over(raise := true) -> void:
 	if received: return
 	received = true
 	_handing = true
-	MHNotices.post("info", "Your slate", "Your notes, the map, the base, comms and a log of everything you're told. Tab raises and lowers it.", "log")
+	MHNotices.post("info", "Your slate", "Your notes, the map, the base, comms and a log of everything you're told. Tab raises and lowers it.", "log", -1, false)
 	var notes: Node = world.get("notes") if world != null else null
 	if notes != null: notes.answer("slate")
 	# Grabbed on the way out (the hatch): into your pocket, not up in your face.
