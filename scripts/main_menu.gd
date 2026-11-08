@@ -1229,11 +1229,8 @@ func _region_landing_screen() -> void:
 	# Every mode flies the descent; this box skips it.
 	var skip := CheckBox.new()
 	skip.text = "Skip the descent (the autopilot picks the spot)"
-	skip.button_pressed = bool(MHGame.setting("skip_descent"))
-	skip.toggled.connect(func(on: bool) -> void:
-		var values := MHGame.settings()
-		values["skip_descent"] = on
-		MHGame.save_settings(values))
+	skip.button_pressed = _skip_descent
+	skip.toggled.connect(func(on: bool) -> void: _skip_descent = on)
 	col.add_child(skip)
 	panel.add_child(col)
 	screen.add_child(panel)
@@ -1247,7 +1244,7 @@ func _region_landing_screen() -> void:
 	land.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	land.pressed.connect(func() -> void:
 		_landing_area = picker.centre
-		if bool(MHGame.setting("skip_descent")): _found_base(picker.touchdown())
+		if _skip_descent: _found_base(picker.touchdown())
 		else: show_screen("descent"))
 	bar.add_child(land)
 	var show_verdict := func(_centre: Vector2, verdict: Dictionary) -> void:
@@ -1278,6 +1275,9 @@ func _show_report(box: VBoxContainer, rows: Array) -> void:
 		box.add_child(line)
 
 var _landing_area := Vector2.INF   # the landing oval's centre (region metres)
+## Skip the descent this time only: unticked for every new game (8 Nov,
+## the remembered box caught a playtester out).
+var _skip_descent := false
 
 ## A story game on a region (docs/master-design.md §2): no landing map. You
 ## were to home in on the finished base's beacon; it's silent and the dusty
@@ -1320,11 +1320,8 @@ func _arrival_screen() -> void:
 	if _quick_start: col.add_child(_tutorial_choice())
 	var skip := CheckBox.new()
 	skip.text = "Skip the descent (the autopilot picks the spot)"
-	skip.button_pressed = bool(MHGame.setting("skip_descent"))
-	skip.toggled.connect(func(on: bool) -> void:
-		var values := MHGame.settings()
-		values["skip_descent"] = on
-		MHGame.save_settings(values))
+	skip.button_pressed = _skip_descent
+	skip.toggled.connect(func(on: bool) -> void: _skip_descent = on)
 	col.add_child(skip)
 	panel.add_child(col)
 	screen.add_child(panel)
@@ -1340,7 +1337,7 @@ func _arrival_screen() -> void:
 		var rng := RandomNumberGenerator.new()
 		rng.randomize()
 		_landing_area = entry_area(rng)
-		if bool(MHGame.setting("skip_descent")):
+		if _skip_descent:
 			var near := MHBaseSite.nearest_valid(_landing_area.x, _landing_area.y, 250.0)
 			_found_base(near if not is_inf(near.x) else _landing_area)
 		else: show_screen("descent"))
