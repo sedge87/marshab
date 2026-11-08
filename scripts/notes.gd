@@ -237,7 +237,10 @@ func _process(delta: float) -> void:
 	if _was_in_lander and not in_lander: remind_top()
 	_was_in_lander = in_lander
 	# The blue sunset: the wish comes as the afternoon goes, not at touchdown.
-	if hour >= sunset - 3.0 and hour <= sunset + .25 and not is_open("sunset") and not is_settled("sunset"): think("sunset")
+	# The guided days (version 2): Castellanos raises it instead (data/radio/day1.txt d1_cargo).
+	var story: Node = world.get("opening_days")
+	var told: bool = story != null and story.has_method("v2") and story.v2() and story.guided()
+	if not told and hour >= sunset - 3.0 and hour <= sunset + .25 and not is_open("sunset") and not is_settled("sunset"): think("sunset")
 	# The blue sunset: outside as the sun goes down.
 	if outside and hour >= sunset - 1.0 and hour <= sunset + .25 and answer("sunset"): MHAudio.moment()
 	# Night one's question: dark, then dawn.

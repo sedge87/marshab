@@ -240,6 +240,9 @@ func radio_ready() -> void:
 		var taken: bool = notes != null and MHJournal.photos_on(int(notes.call("_sol"))) > _photos_before
 		if taken: radio.flags["sunset_photo"] = true
 		return taken or _photo_wait >= PHOTO_WAIT or radio.fast
+	radio.handlers["parachute"] = func(_args: Array) -> void:
+		var drop: Node = world.get("storm_drop")
+		if drop != null: drop.parachute_thought()
 	radio.handlers["think"] = func(args: Array) -> void:
 		var notes: Node = world.get("notes")
 		if notes != null and not args.is_empty(): notes.think(str(args[0]))

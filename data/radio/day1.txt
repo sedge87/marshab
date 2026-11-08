@@ -27,11 +27,13 @@ Castellanos: Oh, thank God. There you are. We lost your antenna right as you tou
 	Castellanos: Are we okay? You're the one who just fell out of the sky. Yes, we're fine. Tupou's pressed against the window, Rao's pretending he wasn't worried, and Mwangi is taking everybody's pulse whether they want it or not. [ID:d1_relock_03c]
 Castellanos: Right. Business, before I get sentimental. That lander is better than it looks. It recycles its air and water so well it can keep one person alive for a long, long time, and its power cell doesn't care about the dark. [ID:d1_relock_04]
 Castellanos: But it'll never work for all of us. There's one seat, and you're in it. The base is out there in the pallets and on the walkers, and the storm has scattered the lot. [ID:d1_relock_05]
+do think air
 - So I go and find it.
 - No pressure, then.
 	set joker
 	Castellanos: None at all. Just the whole mission. You'll be fine, you were always the calm one on the ship. Apart from that one time with the coffee. [ID:d1_relock_06b]
 Castellanos: Rao got a photo of a parachute on the last pass. It's on your slate. Pallet one, up on the ridge, with the module's life support in it. That's where the base starts. Go and have a look, and talk to me while you walk if you like. [ID:d1_relock_07]
+do parachute
 => END
 
 ~ d1_pallet1
@@ -74,6 +76,7 @@ Castellanos: Tupou wants you to know that the hammer is for science and not for 
 ~ d1_cargo
 Castellanos: That's the module's air and power sitting by the lander. When the module turns up, it'll breathe the same day. That's a proper first day's work. [ID:d1_cargo_01]
 Castellanos: The sun's getting low. Do me a favour. Don't rush inside. Go and watch it go down. You've earned it, and I want to hear about it. [ID:d1_cargo_02]
+do think sunset
 do sunset_spot
 Castellanos: Rao's found you a spot. There's a little rise just towards the sun from you, it's on your compass now. Best seat on the Reach, he says, and he's been staring at it from orbit all afternoon. [ID:d1_cargo_03]
 - On my way.

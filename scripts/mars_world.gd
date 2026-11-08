@@ -651,7 +651,10 @@ func _after_slate() -> void:
 	if _after_slate_done: return
 	_after_slate_done = true
 	if MHChapterOne.new_rules() and opening_version >= 2:
+		# Version 2: the air and parachute thoughts come out of Castellanos's call
+		# (data/radio/day1.txt d1_relock: "do think air", "do parachute").
 		get_tree().create_timer(2.0).timeout.connect(func() -> void: if radio != null: radio.ring("d1_relock"))
+		return
 	elif MHChapterOne.new_rules():
 		get_tree().create_timer(2.0).timeout.connect(func() -> void:
 			MHAudio.voice("lander_brief")

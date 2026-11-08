@@ -52,6 +52,13 @@ func _initialize() -> void:
 	var known: Node = world.known
 	var pod: Node = world.lifepod
 
+	# Day 1: the first thoughts come out of Castellanos's first call, not before it.
+	_check(not notes.is_open("air") and not notes.is_open("parachute") and not notes.is_open("sunset"), "no thoughts about the lander or the parachute before anyone's spoken")
+	radio.ring("d1_relock")
+	await _settle(radio, .3)
+	_check(radio.heard.has("d1_relock") and notes.is_open("air") and notes.is_open("parachute"), "after the call: the lander and the parachute")
+	_check(not notes.is_open("sunset"), "the sunset thought waits for Castellanos too")
+
 	# Day 1: no GAR-Y anywhere.
 	_check(not bool(world.gary_met) and world.scout_rover == null, "no GAR-Y on day 1")
 	_check(not field.sites.gary.visible, "pallet 3 is out of sight on day 1")
