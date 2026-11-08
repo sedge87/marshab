@@ -176,6 +176,7 @@ func pallet_opened() -> void:
 	if known != null:
 		known.tell(id(), "you")
 		known.rename(id(), str(NAMES.get(kind, label())))
+		known.finish(id())
 	var notes: Node = world.get("notes")
 	match kind:
 		"power":

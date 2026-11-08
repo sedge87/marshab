@@ -73,6 +73,10 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 		var origin: Vector2 = region_at(Vector3.ZERO)
 		var at := Vector2(MHGame.spotted_chute.x, MHGame.spotted_chute.z) - origin
 		ridge = Vector3(at.x, MHSiteTerrain.height(at.x, at.y), at.y)
+		var home: Vector3 = world.lander.global_position
+		if not MHSiteTerrain.reachable_on_foot(Vector2(home.x, home.z), Vector2(ridge.x, ridge.z)):
+			ridge = Vector3.INF
+			_choose_ridge()
 		var back: Vector3 = world.lander.global_position - ridge
 		yaw = atan2(back.x, back.z)
 	else:
@@ -131,7 +135,7 @@ func _choose_ridge() -> void:
 				slope = maxf(slope, absf(MHSiteTerrain.height(at.x + d.x, at.z + d.y) - h))
 			if slope > 2.5: continue
 			var score := h - absf(float(step)) * .35 - absf(distance - RIDGE_DISTANCE) * .01
-			if score > best:
+			if score > best and MHSiteTerrain.reachable_on_foot(Vector2(home.x, home.z), Vector2(at.x, at.z)):
 				best = score
 				ridge = Vector3(at.x, h, at.z)
 	if is_inf(ridge.x):
@@ -288,6 +292,8 @@ func _process(delta: float) -> void:
 
 ## The pallet's latches are free (scripts/cargo_pallet.gd).
 func pallet_opened() -> void:
+	var known_now: Node = world.get("known")
+	if known_now != null: known_now.finish("find:parachute")
 	MHChapterOne.has_corer = true   # the sample kit: hand corer, scoop and bags (scripts/sample_tools.gd)
 	cartridge.reachable(true)
 	# Step 4a: ten ration packs, into your pockets; stowed in the cabin crate when you're home.

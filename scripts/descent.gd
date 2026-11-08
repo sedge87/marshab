@@ -230,7 +230,7 @@ static func pick_chute(from: Vector2) -> Vector3:
 				slope = maxf(slope, absf(MHSiteTerrain.height(at.x + d.x, at.y + d.y) - h))
 			if slope > 2.5: continue
 			var score := h - absf(float(step)) * .3 - absf(distance - 400.0) * .01
-			if score > best:
+			if score > best and MHSiteTerrain.reachable_on_foot(from, at):
 				best = score
 				spot = Vector3(at.x, h, at.y)
 	return spot

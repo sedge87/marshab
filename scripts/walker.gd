@@ -475,6 +475,8 @@ func recalibrated() -> void:
 	if calibrated: return
 	calibrated = true
 	if not seen: _see()
+	var known_now: Node = world.get("known")
+	if known_now != null: known_now.finish(ID)
 	if int(world.get("opening_version")) >= 2:
 		_coming()
 		return

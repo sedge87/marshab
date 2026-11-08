@@ -97,6 +97,35 @@ static func _mound_distance(point: Vector2) -> float:
 ## {floor: Rect2, ramp: Rect2, dir: Vector2i, depth}. The pad is level at 0.
 static var trench_areas: Array = []
 
+## Can you walk from `a` to `b` (site metres)? Every metre of the way, no
+## rise or drop steeper than CLIMB_DEG (the player climbs 52°; a little under
+## that, for the bumps). One riser is enough to block it: the layered mounds
+## alternate steep steps with flat ledges (8 Nov playtest: pallets on the
+## crater's mound, out of reach).
+const CLIMB_DEG := 44.0
+static func walk_clear(a: Vector2, b: Vector2) -> bool:
+	var flat := b - a
+	var steps := int(flat.length())
+	if steps < 2: return true
+	var dir := flat / float(steps)
+	var rise := tan(deg_to_rad(CLIMB_DEG)) * dir.length()
+	var last := height(a.x, a.y)
+	for i in range(1, steps + 1):
+		var p := a + dir * float(i)
+		var h := height(p.x, p.y)
+		if absf(h - last) > rise: return false
+		last = h
+	return true
+
+## A straight walk, or one with a single bend either side (a ramp round the side).
+static func reachable_on_foot(home: Vector2, p: Vector2) -> bool:
+	if walk_clear(home, p): return true
+	var half := (p - home) * .5
+	for turn in [30.0, -30.0, 55.0, -55.0]:
+		var bend := home + half.rotated(deg_to_rad(turn)) / cos(deg_to_rad(turn))
+		if walk_clear(home, bend) and walk_clear(bend, p): return true
+	return false
+
 static func height(x: float, z: float) -> float:
 	var p := Vector2(x, z)
 	if not trench_areas.is_empty():

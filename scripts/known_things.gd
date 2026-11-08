@@ -199,6 +199,16 @@ func tell(id: String, who: String) -> bool:
 	var thing: Dictionary = things[id]
 	return learn(id, str(thing.kind), thing.at, str(thing.name), who)
 
+## Used up: a pallet opened, a find dealt with. It stays on the Map but
+## leaves the compass (8 Nov playtest: marks you've no use for clutter it).
+func finish(id: String) -> void:
+	if not things.has(id) or bool(things[id].get("done", false)): return
+	things[id]["done"] = true
+	changed.emit()
+
+func finished(id: String) -> bool:
+	return things.has(id) and bool(things[id].get("done", false))
+
 func knows(id: String, who := "you") -> bool:
 	return things.has(id) and who in (things[id].who as Array)
 
@@ -258,7 +268,7 @@ func compass_markers(from_world: Vector3) -> Array:
 	var here := Vector2(from_world.x, from_world.z) + origin
 	for id in things:
 		var entry: Dictionary = things[id]
-		if not "you" in (entry.who as Array) or not COMPASS_KINDS.has(str(entry.kind)): continue
+		if not "you" in (entry.who as Array) or not COMPASS_KINDS.has(str(entry.kind)) or bool(entry.get("done", false)): continue
 		var offset: Vector2 = (entry.at as Vector2) - here
 		var distance := offset.length()
 		if distance > float(COMPASS_KINDS[str(entry.kind)]) or distance < 4.0: continue
@@ -278,7 +288,7 @@ func export_state() -> Dictionary:
 	var list: Array = []
 	for id in things:
 		var entry: Dictionary = things[id]
-		list.append({"id": id, "kind": entry.kind, "at": [entry.at.x, entry.at.y], "name": entry.name, "who": entry.who, "source": entry.source, "sol": entry.sol, "hour": entry.hour})
+		list.append({"id": id, "kind": entry.kind, "at": [entry.at.x, entry.at.y], "name": entry.name, "who": entry.who, "source": entry.source, "sol": entry.sol, "hour": entry.hour, "done": bool(entry.get("done", false))})
 	return {"fog": Marshalls.raw_to_base64(_seen.compress(FileAccess.COMPRESSION_DEFLATE)), "things": list, "pins": _pin_count}
 
 func load_state(state: Dictionary) -> void:
@@ -289,7 +299,7 @@ func load_state(state: Dictionary) -> void:
 		if raw.size() == GRID * GRID: _seen = raw
 	for entry in state.get("things", []):
 		var at: Array = entry.get("at", [0, 0])
-		things[str(entry.id)] = {"kind": str(entry.get("kind", "find")), "at": Vector2(float(at[0]), float(at[1])), "name": str(entry.get("name", "")), "who": Array(entry.get("who", ["you"])), "source": str(entry.get("source", "you")), "sol": float(entry.get("sol", 1)), "hour": float(entry.get("hour", 0))}
+		things[str(entry.id)] = {"kind": str(entry.get("kind", "find")), "at": Vector2(float(at[0]), float(at[1])), "name": str(entry.get("name", "")), "who": Array(entry.get("who", ["you"])), "source": str(entry.get("source", "you")), "sol": float(entry.get("sol", 1)), "hour": float(entry.get("hour", 0)), "done": bool(entry.get("done", false))}
 	_pin_count = int(state.get("pins", 0))
 	version += 1
 	_fog_image = null

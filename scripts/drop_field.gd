@@ -165,13 +165,12 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 			var h: float = MHSiteTerrain.height(p.x, p.z)
 			var slope := _slope(p, 6.0)
 			if slope > 2.5: continue
-			if not reachable(p): continue
 			var score := 0.0
 			match ground:
 				"flat": score = h * .1 - _roughness(p) * 4.0 - slope * 2.0 - absf(distance - 600.0) * .01
 				"rough": score = _roughness(p) * 2.0 - slope - absf(distance - 800.0) * .01
 				"low": score = (_ring_mean(p, 60.0) - h) * 1.5 - slope - absf(distance - 1000.0) * .01
-			if score > best:
+			if score > best and reachable(p):
 				best = score
 				out = Vector3(p.x, h, p.z)
 	if is_inf(out.x):
@@ -185,19 +184,7 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 ## Conservative: a spot with a ramp round the side may be refused too.
 func reachable(p: Vector3) -> bool:
 	var home: Vector3 = world.lander.global_position
-	var flat := Vector2(p.x - home.x, p.z - home.z)
-	var steps := int(flat.length() / 2.0)
-	if steps < 2: return true
-	var dir := flat / float(steps)
-	var last: float = MHSiteTerrain.height(home.x, home.z)
-	var steep := 0
-	for i in range(1, steps + 1):
-		var h: float = MHSiteTerrain.height(home.x + dir.x * i, home.z + dir.y * i)
-		if absf(h - last) > dir.length(): steep += 1
-		else: steep = 0
-		if steep >= 2: return false
-		last = h
-	return true
+	return MHSiteTerrain.reachable_on_foot(Vector2(home.x, home.z), Vector2(p.x, p.z))
 
 func _slope(p: Vector3, reach: float) -> float:
 	var h: float = MHSiteTerrain.height(p.x, p.z)
@@ -339,6 +326,8 @@ func _met_scene(mode: String) -> void:
 		MHNotices.post("valid", "Pallet 3: GAR-Y", "GAR-Y is awake. It follows you, tows on its sled, and (hold G) takes orders.", "log")
 		_met("Woke GAR-Y in the boulder field. It looked at me for a long second, then beeped as if it had been waiting all along.")
 	elif mode == "field":
+		var known_now: Node = world.get("known")
+		if known_now != null: known_now.finish("gary_moving")
 		MHNotices.post("valid", "GAR-Y", "The scout rover from pallet 3. It follows you, and (hold G) takes orders.", "log")
 		_met("Found the thing that was moving: GAR-Y, the scout rover, out on its own since the storm, still doing its job. It came and bumped my boot like it had been expecting me.")
 		var radio: Node = world.get("radio")
