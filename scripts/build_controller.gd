@@ -1467,7 +1467,7 @@ func _learn(id: String) -> void:
 
 func place_free_interior_equipment(id: String, position: Vector3, rotation_y: float, zone_cell: Vector2i, visual: Node3D, anchor_normal := Vector3.UP) -> bool:
 	var entry := EquipmentCatalog.get_entry(id)
-	if entry.is_empty() or _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget():
+	if entry.is_empty() or (not _stock_covers(id) and _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget()):
 		return false
 	var placement_id := "interior_%d" % Time.get_ticks_usec()
 	placed_interior.append({"placement_id": placement_id, "id": id, "position": position, "rotation_y": rotation_y, "zone_cell": zone_cell, "anchor_normal": anchor_normal})
@@ -6940,7 +6940,7 @@ func _update_hologram_ui(cells: Array,reason: String, angled_mount: Dictionary =
 	elif _pointer_over_ui():
 		placing_label.text="Placing %s" % placing_name; placing_delta.text=""
 	elif not equipment_id.is_empty():
-		var item_cost:=int(EquipmentCatalog.get_entry(equipment_id).get("cargo_cost",0))
+		var item_cost:=0 if _stock_covers(equipment_id) else int(EquipmentCatalog.get_entry(equipment_id).get("cargo_cost",0))
 		var left:=MHGame.cargo_budget()-_used_cargo()-earth_cost(item_cost, item_printable(equipment_id))
 		placing_label.text="Placing %s" % placing_name
 		placing_delta.text="−%s → %s" % [MHStyle.kg(item_cost),MHStyle.kg(left)] if not cells.is_empty() else ""
