@@ -2,7 +2,9 @@ extends SceneTree
 
 # Notes, your inner voice (scripts/notes.gd, data/notes.json; master-design §5):
 # - a new game's slate has Notes, not Goals, and the old crates don't land;
-# - the first thoughts come to mind: the cabin air, the blue sunset;
+# - touchdown is quiet; the first thoughts come in beats once the slate's
+#   down (the air, then the parachute; mars_world._after_slate), and the
+#   blue sunset waits for the afternoon;
 # - thoughts change as you act, even out of order, and stay few;
 # - an answered thought leaves the page for the journal and raises the next;
 # - what's watched: the blue sunset outside, a cold cabin, night then dawn;
@@ -28,7 +30,21 @@ func _initialize() -> void:
 	var notes = world.notes
 	notes._check = 0.0
 	for i in 3: await process_frame
-	_check(notes.is_open("air") and notes.is_open("sunset"), "the first thoughts: the cabin air and the blue sunset (%s)" % str(notes.thoughts()))
+	_check(not notes.is_open("air") and not notes.is_open("sunset") and not notes.is_open("parachute"), "touchdown is quiet: no thoughts piled up (%s)" % str(notes.thoughts()))
+	# The beats after the slate (timers in the game; straight through here).
+	notes.think("air")
+	world.storm_drop.parachute_thought()
+	_check(notes.is_open("air") and notes.is_open("parachute") and not notes.is_open("sunset"), "then the cabin air and the parachute; the sunset waits (%s)" % str(notes.thoughts()))
+	var touchdown_hour := MHGame.sol_hour
+	var inside_at: Vector3 = world.player.global_position
+	world.player.global_position = world.lander.global_position + Vector3(0, 0, 20)   # outside: ARDEN's not heard
+	MHGame.sol_hour = float(MHGame.site().get("day_cycle", {}).get("sunset_hour", 19.0)) - 2.0
+	notes._check = 0.0
+	await process_frame
+	await process_frame
+	_check(notes.is_open("sunset"), "late afternoon: the blue sunset wish")
+	MHGame.sol_hour = touchdown_hour
+	world.player.global_position = inside_at
 	_check(MHNotices.history.any(func(n): return str(n.app) == "notes"), "a new thought shows on the notice line, for the Notes app")
 
 	# The slate: Notes, not Goals.

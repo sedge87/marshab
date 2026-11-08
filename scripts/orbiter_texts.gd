@@ -30,6 +30,9 @@ func send(id: String, who: String, text: String, photo := "") -> void:
 	var person := person_of(who)
 	MHNotices.post("info", "%s, from orbit" % str(person.get("short", who)), text, "comms")
 	MHAudio.sfx("suit_beep", -10.0)
+	# Some texts want an answer (scripts/replies.gd).
+	var replies: Node = world.get("replies") if world != null else null
+	if replies != null: replies.offer(id, str(person.get("short", who)), text, true, who)
 
 func _sol() -> int:
 	var builder: Variant = world.get("builder") if world != null else null

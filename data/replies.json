@@ -1,0 +1,37 @@
+{
+  "_about": "Short replies (docs/systems-and-items.md §10e, §10f; scripts/replies.gd). Keyed by what's said to you: an ARDEN voice line id or an orbit text id. Two or three choices, keys 1-3, gone after a few seconds; silence is an answer. 'note' takes up a Notes thought in your own words ('said') and puts it at the top; 'answer' is the sender's reply on the next pass (texts only). Your words are written, never spoken.",
+  "lander_brief": {
+    "replies": [
+      {"text": "Then I'd better find that air.", "note": "air", "said": "ARDEN says the cabin's good for about a sol. The cartridge on pallet 1 is the rest of my air. That's first."},
+      {"text": "One night. Great.", "note": "air"}
+    ],
+    "silence_note": "air"
+  },
+  "parachute_photo": {
+    "replies": [
+      {"text": "On my way.", "note": "parachute", "said": "Castellanos found my first parachute from orbit. My air's under it. Get to the ridge.", "answer": "Good. Walk, don't run. Rao says the ridge is steeper than it looks."},
+      {"text": "What's in it?", "note": "parachute", "answer": "Pallet 1: your air cartridge, a sample kit, ten ration packs. Air first, the rest can wait."},
+      {"text": "Eleven more?", "answer": "Eleven more pallets, somewhere in the Reach. One thing at a time. Air first."}
+    ]
+  },
+  "cabin_battery_night": {
+    "replies": [
+      {"text": "I'll find the power pallet before dark.", "note": "power", "said": "ARDEN's right: the battery won't keep the cabin warm all night. The power pallet's out there. Find it before dark."},
+      {"text": "Can't we just turn the heater down?", "note": "power", "said": "Heater on low might nearly last the night. Nearly. Better to find the power pallet before dark."}
+    ],
+    "silence_note": "power"
+  },
+  "walker_photo": {
+    "replies": [
+      {"text": "Going to take a look.", "note": "tracks", "said": "Rao found Walker 1 at the end of the tracks, stopped. I'd better go and see what's wrong with it.", "answer": "Careful out there. Text us what you find."},
+      {"text": "Is it broken?", "note": "tracks", "answer": "Can't tell from up here. It's upright and its lamp's blinking. Might just be lost. Most things are, after that storm."}
+    ],
+    "silence_note": "tracks"
+  },
+  "walker_walking": {
+    "replies": [
+      {"text": "Riding it now.", "answer": "Show-off. Rao says wave."},
+      {"text": "I'll walk back."}
+    ]
+  }
+}

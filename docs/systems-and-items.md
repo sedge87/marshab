@@ -521,6 +521,7 @@ GAR-Y is found early, with its radar survey and the rescue. After that it learns
 **Earth is rare.** The Mission Control cast (docs/mission-control-voice.md) is still there, but with the light-minutes delay their messages are occasional and one-way, mostly through the orbiter.
 
 **You answer with short replies only.** At some lines you pick one of two or three short replies (a word or a sentence). There is no dialogue tree, and choosing nothing is fine.
+- **Built 8 Nov** (scripts/replies.gd, data/replies.json; the user: talk back like Firewatch, "okay, I better go check that out"): timed choices on a dark panel above the subtitles, keys 1–3, gone after 9 s. Your words are written, never spoken (a "You:" line). Saying what you'll do takes up the matching Notes thought in your own words and puts it first, so someone tells you, you acknowledge it, and it's your goal. Texts wait until you've had the slate up; Castellanos answers some on the next pass. In the opening: ARDEN's lander brief and night-power warning, the parachute text, the walker texts. A voiced player stays a later option.
 
 **ARDEN** (proposed) keeps to practical safety lines: the cabin air, the suit, the hatch. It isn't a story voice.
 

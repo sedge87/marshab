@@ -99,6 +99,9 @@ var _lifepod_state := {}
 ## the start otherwise.
 var gary_met := true
 var orbiter_texts: Node  # scripts/orbiter_texts.gd: the orbiter crew's texts and photos (Comms)
+const REPLIES := preload("res://scripts/replies.gd")
+var replies: Node        # scripts/replies.gd: your short replies to ARDEN and the texts
+var _replies_state := {}
 var _texts_state := {}
 var _danger_t := 0.0
 var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y orders
@@ -248,6 +251,9 @@ func _ready() -> void:
 		add_child(walker)
 		walker.setup(self, _walker_state)
 		if str(walker.state) == "done": start_module_life()
+	replies = REPLIES.new()
+	replies.setup(self, _replies_state)
+	add_child(replies)
 	if MHChapterOne.new_rules():
 		orbiter_texts = ORBITER_TEXTS.new()
 		add_child(orbiter_texts)
@@ -566,6 +572,7 @@ func _begin_lander_intro() -> void:
 	if MHChapterOne.new_rules():
 		get_tree().create_timer(4.0).timeout.connect(func() -> void: MHAudio.voice("link_lost"))
 	if pda != null: pda.lowered.connect(_after_slate, CONNECT_ONE_SHOT)
+	if pda != null and replies != null: pda.lowered.connect(replies.slate_lowered)
 	get_tree().create_timer(2.5 if not MHChapterOne.new_rules() else SLATE_LIGHTS_AT + 2.5).timeout.connect(func() -> void:
 		if _intro_stage == "inside":
 			if pda != null and not pda.received: explore_hud.show_equipment_note("Touchdown", "Your slate is lighting up on the console. Look at it and press E to pick it up.")
@@ -612,7 +619,9 @@ func _after_slate() -> void:
 	if _after_slate_done: return
 	_after_slate_done = true
 	if MHChapterOne.new_rules():
-		get_tree().create_timer(2.0).timeout.connect(func() -> void: MHAudio.voice("lander_brief"))
+		get_tree().create_timer(2.0).timeout.connect(func() -> void:
+			MHAudio.voice("lander_brief")
+			if replies != null: replies.offer_voice("lander_brief"))
 	get_tree().create_timer(9.0).timeout.connect(func() -> void:
 		if notes != null and not notes.is_open("air") and not notes.is_settled("air"): notes.think("air"))
 	get_tree().create_timer(16.0).timeout.connect(_parachute_beat)
@@ -1090,6 +1099,7 @@ func current_state() -> Dictionary:
 		"module_life": module_life.export_state() if module_life != null else {},
 		"gary_met": gary_met,
 		"orbiter_texts": orbiter_texts.export_state() if orbiter_texts != null else {},
+		"replies": replies.export_state() if replies != null else {},
 		"made_by": made_by if not made_by.is_empty() else MHGame.maker(),
 		"tutorial": tutorial.export_state() if tutorial != null else {"mode": str(_tutorial_state.get("mode", "off"))}
 	}
@@ -1165,6 +1175,7 @@ func _restore_pending_habitat() -> void:
 	_walker_state = state.get("walker", {}) as Dictionary
 	_module_life_state = state.get("module_life", {}) as Dictionary
 	_texts_state = state.get("orbiter_texts", {}) as Dictionary
+	_replies_state = state.get("replies", {}) as Dictionary
 	if region_map != null: region_map.trail = PackedVector2Array(state.get("trail", PackedVector2Array()))
 	made_by = (state.get("made_by", {}) as Dictionary).duplicate()
 	player.global_position = state.get("player_position", player.global_position) as Vector3

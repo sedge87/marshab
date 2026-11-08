@@ -101,12 +101,38 @@ func stage(id: String) -> String:
 func thoughts() -> Array:
 	var out: Array = []
 	for thought in open:
-		out.push_front({"id": thought.id, "text": text_of(thought), "sol": thought.sol})
+		var entry := {"id": thought.id, "text": text_of(thought), "sol": thought.sol}
+		# What you said you'd do comes first (scripts/replies.gd).
+		if bool((thought.fills as Dictionary).get("focus", false)): out.push_front(entry)
+		else: out.insert(1 if not out.is_empty() and _is_focus(out[0]) else 0, entry)
 	return out
 
+func _is_focus(entry: Dictionary) -> bool:
+	var at := _find(str(entry.id))
+	return at >= 0 and bool((open[at].fills as Dictionary).get("focus", false))
+
 func text_of(thought: Dictionary) -> String:
+	var fills: Dictionary = thought.fills
+	# Your own words, from a reply (scripts/replies.gd), while it's at that stage.
+	if fills.has("said") and str(fills.get("said_stage", "start")) == str(thought.stage): return str(fills.said)
 	var stages: Dictionary = _spec(str(thought.id)).get("stages", {})
-	return _fill(str(stages.get(str(thought.stage), "")), thought.fills)
+	return _fill(str(stages.get(str(thought.stage), "")), fills)
+
+## You answered someone and said what you'd do (scripts/replies.gd): the
+## thought comes to mind in your own words and goes to the top of Notes.
+func take_up(id: String, said := "", stage := "start") -> void:
+	if settled.has(id) or _spec(id).is_empty(): return
+	if _find(id) < 0: think(id, stage)
+	var at := _find(id)
+	if at < 0: return
+	for thought in open: (thought.fills as Dictionary).erase("focus")
+	var fills: Dictionary = open[at].fills
+	fills["focus"] = true
+	if not said.is_empty():
+		fills["said"] = said
+		fills["said_stage"] = str(open[at].stage)
+	_post(id)
+	changed.emit()
 
 func _find(id: String) -> int:
 	for i in open.size():
@@ -165,6 +191,8 @@ func _process(delta: float) -> void:
 		if is_settled("air"): _air_settled_for += CHECK
 		if not outside and (hour >= sunset - 5.0 or _air_settled_for >= AFTER_AIR):
 			MHAudio.voice("cabin_battery_night")
+			var replies: Node = world.get("replies")
+			if replies != null: replies.offer_voice("cabin_battery_night")
 			think("power")
 	# A cold cabin while you're in it.
 	var cabin: Node = world.get("cabin_life")
