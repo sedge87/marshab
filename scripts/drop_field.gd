@@ -50,6 +50,8 @@ var _holding := false
 var _tap := 2.0
 var _check := 0.0
 var gary_working := false        # version 2, day 2: GAR-Y out at work, waiting to be found
+var crate: Node3D                # version 2, day 2: the spares crate GAR-Y was circling (scripts/spares_crate.gd)
+const CRATE := preload("res://scripts/spares_crate.gd")
 const FIND_REACH := 9.0          # this close and it notices you
 const WORK_OUT := 140.0          # how far past its cradle it's working
 
@@ -96,6 +98,10 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 		sites.gary.empty = true   # it let itself out in the storm
 		_show_cradle(gary_working or bool(world.get("gary_met")) or bool(sites.gary.pallet.opened))
 	if gary_working: _keep_working.call_deferred()
+	var crate_state: Dictionary = saved.get("crate", {})
+	if crate_state.has("at"):
+		var c: Array = crate_state.at
+		_add_crate(Vector3(float(c[0]), float(c[1]), float(c[2])), crate_state)
 
 func v2() -> bool:
 	return int(world.get("opening_version")) >= 2
@@ -118,9 +124,18 @@ func gary_out() -> void:
 	if not site.pallet.opened: site.pallet.open(false)
 	gary_working = true
 	_keep_working()
+	if crate == null:
+		var spot := work_spot()
+		var side: Vector3 = (spot - world.lander.global_position).normalized().cross(Vector3.UP) * 3.5
+		_add_crate(spot + side, {})
 	var known: Node = world.get("known")
 	var gary: Node3D = world.get("scout_rover")
 	if known != null and gary != null: known.learn("gary_moving", "find", region_at(gary.global_position), "Something moving", "you", "castellanos")
+
+func _add_crate(at: Vector3, state: Dictionary) -> void:
+	crate = CRATE.new()
+	add_child(crate)
+	crate.setup(world, self, at, state)
 
 ## Where GAR-Y's working: past its cradle, away from the lander, on ground you can reach.
 func work_spot() -> Vector3:
@@ -413,6 +428,6 @@ func _apply_tools() -> void:
 	lamp.spot_angle = minf(lamp.spot_angle + 10.0, 60.0)
 
 func export_state() -> Dictionary:
-	var out := {"gary_working": gary_working, "tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "gary_in_cradle": gary_in_cradle, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}}
+	var out := {"gary_working": gary_working, "tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "gary_in_cradle": gary_in_cradle, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}, "crate": crate.export_state() if crate != null and is_instance_valid(crate) else {}}
 	for kind in sites: out.sites[kind] = sites[kind].export_state()
 	return out

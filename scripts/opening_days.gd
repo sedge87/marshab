@@ -217,6 +217,9 @@ func radio_ready() -> void:
 		var field: Node = world.get("drop_field")
 		if field != null: field.gary_out()
 	radio.handlers["sunset_view"] = func(_args: Array) -> void: MHAudio.moment()
+	radio.handlers["think"] = func(args: Array) -> void:
+		var notes: Node = world.get("notes")
+		if notes != null and not args.is_empty(): notes.think(str(args[0]))
 
 ## The day's beats are done and the call's over: time for bed.
 func _bed_now() -> void:
@@ -239,9 +242,12 @@ func day_done(day: int) -> bool:
 			return pod == null or (pod.jobs as Dictionary).has("tow")
 		2:
 			if not _gary_found(): return false
+			var crate: Node = field_crate()
+			if crate != null and not bool(crate.opened): return false   # the spares crate, towed home
 			return pod == null or bool(pod.walker_due) or bool(pod.walker_moved)
 		3:
 			var walker: Node = world.get("walker")
+			if walker != null and str(walker.state) == "coming" and pod != null and not (pod.prints as Dictionary).has("seal"): return false
 			return walker == null or bool(walker.marked) or str(walker.state) in ["parked", "carrying", "lowering", "done"]
 		4: return _done("module") and _done("fit_out")
 	return true
@@ -284,6 +290,11 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 		radio.ring("d4_wake")
 		if _done("module"): radio.ring("d4_down")
 		if _done("module") and _done("fit_out"): radio.ring("d4_home")
+
+func field_crate() -> Node:
+	var field: Node = world.get("drop_field")
+	var crate: Variant = field.get("crate") if field != null else null
+	return crate if crate != null and is_instance_valid(crate) else null
 
 ## GAR-Y met for real (not just out at work, waiting to be found).
 func _gary_found() -> bool:

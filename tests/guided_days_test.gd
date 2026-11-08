@@ -113,7 +113,16 @@ func _initialize() -> void:
 	_check(radio.heard.has("d2_found"), "Castellanos explains GAR-Y")
 	_check(days._gary_found() and not days.day_done(2), "found, but day 2 isn't done till the walker's due")
 	pod.walker_due = true
+	var crate: Node3D = field.crate
+	_check(crate != null and not days.day_done(2), "the spares crate waits to be towed home")
+	_check(notes.is_open("salvage"), "Castellanos's call starts the salvage thought")
+	pod.prints["hitch"] = true
+	gary.global_position = crate.global_position + Vector3(2, 0, 0)
+	_check(crate.interact(player) and str(crate.where) == "sled", "hitched to GAR-Y's sled")
+	pod.unload_cargo()
+	_check(crate.interact(player) and bool(crate.opened), "home and opened")
 	await _settle(radio)
+	_check(radio.heard.has("d2_crate"), "Castellanos on the crate")
 	_check(days.day_done(2) and float(world.day_night.hold_at) < 0.0, "jobs done: the sun goes")
 	MHGame.sol_hour = sunset - .5
 	await _settle(radio)
@@ -131,7 +140,12 @@ func _initialize() -> void:
 	_check(not days.day_done(3), "day 3 waits for the spot")
 	walker.mark({"cells": [Vector2i(3, 3), Vector2i(4, 3), Vector2i(3, 4), Vector2i(4, 4), Vector2i(3, 5), Vector2i(4, 5)]})
 	await _settle(radio)
-	_check(bool(walker.marked) and radio.heard.has("d3_marked") and days.day_done(3), "the spot's marked: day 3 done")
+	_check(bool(walker.marked) and radio.heard.has("d3_marked") and not days.day_done(3), "the spot's marked; the seal's still wanted")
+	_check(pod._open_plans().has(pod.PLANS.size() - 1), "the printer offers the wheel seal")
+	pod.printing = "seal"
+	pod._printed()
+	await _settle(radio)
+	_check(radio.heard.has("d3_seal") and days.day_done(3), "seal printed: day 3 done")
 	MHGame.sol_hour = sunset - .5
 	await _settle(radio)
 	_check(radio.heard.has("d3_sunset"), "day 3's sunset call")

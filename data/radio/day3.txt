@@ -18,15 +18,36 @@ Castellanos: This time I really, honestly think it's a walker. Big, slow, heavy.
 ~ d3_fixed
 Castellanos: Its nav screen just went green. You did it. You actually did it. Tupou is cheering and Mwangi is telling him to sit down before he hits his head. [ID:d3_fixed_01]
 Castellanos: Here's the thing, though. It doesn't trust the ground to tell it where it is any more, and I don't blame it. So it's going to crawl home, slowly, checking itself against the sky every few hundred metres. [ID:d3_fixed_02]
-Castellanos: Rao's done the sums. He says it'll be parked at your door by morning. So climb down off it, and head home. [ID:d3_fixed_03]
+Castellanos: Rao's done the sums. He says it'll be parked at your door by morning. [ID:d3_fixed_03]
+Castellanos: Oh. Hold on. Achterberg's reading its health check. The front left wheel is packed solid with grit, and the seal on that joint's split right through. [ID:d3_fixed_03b]
+Castellanos: It won't make it home on that. It'd grind the bearing to dust before midnight. [ID:d3_fixed_03c]
+- Can I fix it out here?
+	Castellanos: Not with a hammer and good intentions, no. It needs a new seal. A proper one. [ID:d3_fixed_03d]
+- So it's stuck again.
+	set worried
+	Castellanos: Not stuck. Not yet. Give me a second, Achterberg's waving at me. [ID:d3_fixed_03e]
+Castellanos: Here's the good news. Your printer has the pattern for that seal. It's one of the spares it was built to make. And you've got parts from the crate. [ID:d3_fixed_03f]
+Castellanos: So head home, print a new seal, and hand it to GAR-Y. It'll run it out to the walker tonight, and Walker 1 can fit it itself. That's what those little arms are for. [ID:d3_fixed_03g]
+Castellanos: That's what the printer is, really. Not a toy. Every time something breaks down there, and things will break, it's your first stop. [ID:d3_fixed_03h]
 - Why did it get lost in the first place?
 	set asked_why
 	Castellanos: Honestly? I don't know. The storm blinded it, sure. But the backup should have brought it home, and it didn't. Something out there fooled it. Nobody down here or up here can tell me what. [ID:d3_fixed_04a]
 	Castellanos: Put it on the list of things that keep me up at night. It's a long list. [ID:d3_fixed_04a2]
-- By morning. I can wait until morning.
+- A seal tonight, home by morning. Got it.
 	Castellanos: That's the spirit. You've waited seven months, what's one more night? [ID:d3_fixed_04b]
 Castellanos: And while you wait, you've got a job I'm properly jealous of. That module needs somewhere to live. You get to pick the spot. [ID:d3_fixed_05]
 Castellanos: Somewhere you'd want to wake up every morning. Flat, with good sun, near the ice if you can, and room to grow. We're going to be living there one day too, so no pressure. [ID:d3_fixed_06]
+=> END
+
+~ d3_seal
+set sealed
+Castellanos: Is that the seal? Achterberg wants to know if it came out clean. She's been watching the clock on it like a kettle. [ID:d3_seal_01]
+- Clean. It looks perfect.
+	Castellanos: She says perfect is a strong word, but she'll take it. That's practically a medal, coming from her. [ID:d3_seal_02a]
+- A bit rough round the edges.
+	Castellanos: Rough's fine. It only has to hold grit out, not win a beauty contest. [ID:d3_seal_02b]
+Castellanos: GAR-Y's beeping at it. I think it knows. Give it a few hours after dark and it'll take it out to the walker. You stay in the warm. [ID:d3_seal_03]
+?! marked_spot Castellanos: Now, the fun part. Go and choose where the module's going to live. [ID:d3_seal_04]
 => END
 
 ~ d3_marked
@@ -39,7 +60,9 @@ Castellanos: I can see your stakes on the long lens. Tiny little corners. So tha
 - It's got the best sunset I've found.
 	set chose_sunset
 	Castellanos: Of course it has. You and your sunsets. [ID:d3_marked_02c]
-Castellanos: Walker 1 knows where to put it now. So go home, have something to eat, and get a proper night's sleep. Tomorrow, you move in. [ID:d3_marked_03]
+set marked_spot
+?! sealed Castellanos: Walker 1 knows where to put it now. Just don't forget its seal. It's not walking anywhere on that split one. Print it, and then get some sleep. [ID:d3_marked_03b]
+? sealed Castellanos: Walker 1 knows where to put it now. So go home, have something to eat, and get a proper night's sleep. Tomorrow, you move in. [ID:d3_marked_03]
 => END
 
 ~ d3_sunset
@@ -48,7 +71,7 @@ Castellanos: Last night in the lander. How does that feel? [ID:d3_sun_01]
 	Castellanos: It kept you alive. You're allowed to miss it. I miss my bunk on the cruise, and that thing had a broken latch and smelled of Rao's socks. [ID:d3_sun_02a]
 - I can't wait to stand up straight.
 	Castellanos: Ha. Neither can my back. Seven months of floating and now I hunch over everything like a question mark. [ID:d3_sun_02b]
-Castellanos: The walker's moving. Slow, but moving. I'll watch it all night, I promise. If anything changes, you'll be the first to know. [ID:d3_sun_03]
+Castellanos: GAR-Y's heading out with the seal once it's properly dark. I'll watch the pair of them all night, I promise. If anything changes, you'll be the first to know. [ID:d3_sun_03]
 - Get some sleep yourself, Mira.
 	set kind
 	Castellanos: Ha. You sound like Mwangi. Fine. I'll get some sleep. After this pass. [ID:d3_sun_04a]

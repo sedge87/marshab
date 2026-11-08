@@ -30,7 +30,7 @@ const START_RATIONS := 2        # from the descent: a sol's food (step 4a)
 const PALLET_RATIONS := 10      # pallet 1's: about five sols, two a sol
 ## [kind, nearest, furthest, the ground it wants]
 const THREADS := [["iron", 1000.0, 1400.0, "rough"], ["ice_wall", 1000.0, 1500.0, "low"]]
-const PLANS := [["hitch", "the sled hitch", "print_hitch_parts", 3.0], ["pick", "an ice pick head", "print_pick_parts", 2.0], ["bladder", "a water bladder", "print_bladder_parts", 2.0]]
+const PLANS := [["hitch", "the sled hitch", "print_hitch_parts", 3.0], ["pick", "an ice pick head", "print_pick_parts", 2.0], ["bladder", "a water bladder", "print_bladder_parts", 2.0], ["seal", "a wheel seal for Walker 1", "print_seal_parts", 3.0]]
 const PRINT_SECONDS := 6.0
 ## GAR-Y's day (docs/opening-days.md): the hitch printed, the module's cargo
 ## staged by the lander, a survey or core by GAR-Y, a sample on the bench.
@@ -393,7 +393,14 @@ func stripped(piece: Node) -> void:
 	stripped_keys[str(piece.get_meta("key", ""))] = true
 	MHNotices.post("info", "Parts", "%d parts for the lander's printer." % parts, "log")
 	var notes: Node = world.get("notes")
-	if notes != null: notes.think("salvage")
+	if notes != null and _salvage_told(): notes.think("salvage")
+
+## Version 2: the thought about the printer waits for Castellanos to raise
+## it (day 2, the spares crate: data/radio/day2.txt d2_found).
+func _salvage_told() -> bool:
+	if int(world.get("opening_version")) < 2: return true
+	var radio: Node = world.get("radio")
+	return radio == null or (radio.heard as Dictionary).has("d2_found")
 
 # ---------- the tiny printer ----------
 
@@ -406,8 +413,14 @@ func _open_plans() -> Array:
 	for i in PLANS.size():
 		if prints.has(str(PLANS[i][0])): continue
 		if str(PLANS[i][0]) == "hitch" and not _gary_found(): continue   # nothing to hitch it to yet
+		if str(PLANS[i][0]) == "seal" and not _seal_wanted(): continue
 		out.append(i)
 	return out
+
+## Day 3 of version 2: Walker 1's split wheel seal, before it can walk home.
+func _seal_wanted() -> bool:
+	var walker: Node = world.get("walker")
+	return walker != null and str(walker.get("state")) == "coming"
 
 ## GAR-Y met for real (not still out at work, waiting to be found on day 2).
 func _gary_found() -> bool:
@@ -461,10 +474,16 @@ func _printed() -> void:
 	MHAudio.sfx("all_clear", -10.0)
 	match id:
 		"hitch":
-			MHNotices.post("valid", "Printed: sled hitch", "GAR-Y can tow now: carrying cargo, E on GAR-Y loads it on the sled. Ice you chip with it close by goes on too.", "log")
+			MHNotices.post("valid", "Printed: sled hitch", "GAR-Y can tow now. Anything too heavy to carry: bring GAR-Y close and E on it. Ice you chip with it close by goes on too.", "log")
 			var thinking: Node = world.get("notes")
 			if thinking != null and not (staged(_cartridge()) and staged(_pack())): thinking.think("staging")
 		"pick": MHNotices.post("valid", "Printed: ice pick head", "Ice comes away in bigger chunks now.", "log")
+		"seal":
+			MHNotices.post("valid", "Printed: wheel seal", "GAR-Y will run it out to Walker 1 tonight. The walker fits it itself.", "log")
+			var gary: Node3D = world.get("scout_rover")
+			if gary != null and is_instance_valid(gary): gary.call("_say", "happy")
+			var radio: Node = world.get("radio")
+			if radio != null: radio.ring("d3_seal")
 		"bladder":
 			_apply_bladder(true)
 			MHNotices.post("valid", "Printed: water bladder", "The lander keeps %d L more water." % roundi(n("water_bladder_l", 6.0)), "log")

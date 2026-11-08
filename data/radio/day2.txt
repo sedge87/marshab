@@ -39,12 +39,38 @@ Castellanos: I'm pulling up the manifest. Pallet three. Oh, of course. That's GA
 ? hopeful Castellanos: So, not a walker. I'm sorry. I really, really wanted it to be a walker. [ID:d2_found_04]
 Castellanos: It was meant to drive ahead of the walkers and map the ground for them. It must have woken itself up in the storm, and then just kept doing its job, all on its own, with nobody to report to. That's a bit heartbreaking, honestly. [ID:d2_found_05]
 Castellanos: Here's what it can do. It scouts, and it remembers what it finds. Its radar reads the ground for buried ice. It takes core samples. And if you print it a hitch, it'll tow things for you. [ID:d2_found_06]
-Castellanos: Ask it what it's found. I bet it's been very, very busy. [ID:d2_found_07]
 - Hello, GAR-Y.
 	set named
 	Castellanos: Did it beep at you? Tell me it beeped at you. [ID:d2_found_08a]
 - So I'm not alone out here after all.
 	Castellanos: No. Not alone. Small company, but company. [ID:d2_found_08b]
+Castellanos: Hang on. What's that box beside it? Rao, zoom in. That's a spares crate. It must have come off one of the pallets that broke up in the storm. [ID:d2_found_09]
+Castellanos: I bet that's what it's been circling all night. It knows that crate belongs to the base, and it can't do a thing about it. [ID:d2_found_10]
+- Can I carry it?
+	Castellanos: Seventy kilos? Not unless Mwangi's been hiding something in your rations. No. Leave your back out of this. [ID:d2_found_11a]
+- Can GAR-Y tow it?
+	set clever
+	Castellanos: That's exactly what I was going to say. Look at me, being beaten to it. [ID:d2_found_11b]
+Castellanos: GAR-Y's got a tow mount on its back, but no hitch. The hitches were all on the pallet that broke up. Typical. [ID:d2_found_12]
+Castellanos: But you've got a little printer in the lander. It eats scrap. And the storm's left scrap all over the Reach: bent panels, broken struts, bits of pallet. [ID:d2_found_13]
+Castellanos: Strip some of that junk on the way home, feed it to the printer, and print GAR-Y a hitch. Then bring it back out here and tow that crate home. [ID:d2_found_14]
+do think salvage
+- Making things out of junk. I can do that.
+	Castellanos: I know you can. I watched you fix the coffee machine with a hairband. [ID:d2_found_15a]
+- What's in the crate?
+	set curious
+	Castellanos: Spares, if the manifest's right. Seals, brackets, wiring, fasteners. Boring things. The boring things are what keep you alive. [ID:d2_found_15b]
+=> END
+
+~ d2_crate
+Castellanos: You got it home. Go on then, what's inside? [ID:d2_crate_01]
+- Spares. Seals, brackets, wiring.
+	Castellanos: Brilliant. Most of that will feed the printer, and the rest is going on a shelf for the module. Achterberg is doing a little dance. A small one. She'd deny it. [ID:d2_crate_02a]
+- Mostly packing foam.
+	set joker
+	Castellanos: Ha. It's always packing foam. Dig a bit deeper, there's good stuff under there. [ID:d2_crate_02b]
+Castellanos: And you've just learned the most important thing about living down there. Nothing gets thrown away. The storm broke things. You make things out of what it broke. [ID:d2_crate_03]
+? curious Castellanos: Told you. Boring things. Best things. [ID:d2_crate_04]
 => END
 
 ~ d2_sunset

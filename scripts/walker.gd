@@ -491,7 +491,7 @@ func _coming() -> void:
 	MHAudio.sfx_at("mode_build", self, -4.0, .6)
 	var notes: Node = world.get("notes")
 	if notes != null: notes.answer("walker_seen")
-	MHNotices.post("info", NAME + " knows where it is", "It'll crawl home overnight. Back at the lander, press B to mark where the General Module goes.", "", 1)
+	MHNotices.post("info", NAME + " knows where it is", "Its front wheel seal is split: print it a new one on the lander's printer. Then press B by the lander to mark where the General Module goes.", "", 1)
 	var radio: Node = world.get("radio")
 	if radio != null: radio.ring("d3_fixed")
 
@@ -499,6 +499,8 @@ func _coming() -> void:
 ## spot marked, it carries the module straight there.
 func arrive_overnight() -> void:
 	if state != "coming": return
+	var pod: Node = world.get("lifepod")
+	if pod != null and not (pod.prints as Dictionary).has("seal"): return   # it can't walk on a split seal
 	global_position = home
 	rotation.y = _face_yaw(world.lander.global_position - home)
 	_settle()
