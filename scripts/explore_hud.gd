@@ -531,6 +531,15 @@ func _update_prompt() -> void:
 			_prompt_keys.text = "E"
 			_prompt_verb.text = str(target.call("prompt_verb"))
 			_prompt_state.text = "· " + str(target.call("state_text"))
+	# Riding Walker 1: how to get down (or use its nav), wherever you look.
+	if not show:
+		var ride := get_tree().get_first_node_in_group("riding_prompt")
+		if ride != null and ride.has_method("ride_prompt"):
+			var line: Dictionary = ride.ride_prompt()
+			show = true
+			_prompt_keys.text = str(line.get("keys", ""))
+			_prompt_verb.text = str(line.get("verb", ""))
+			_prompt_state.text = ""
 	# Chapter one: outside with the hand corer and nothing in view.
 	if not show:
 		var corer := get_tree().get_first_node_in_group("hand_corer")

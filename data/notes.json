@@ -183,9 +183,9 @@
     },
     "walker_seen": {
       "stages": {
-        "start": "That's Walker 1, with the General Module slung under it. Its fault lamp's blinking. Something's wrong with one of its legs."
+        "start": "That's Walker 1, with the General Module slung under it. Fault lamp blinking, but nothing looks broken. Is it just lost? There's a seat and a screen up front."
       },
-      "journal": "Found Walker 1. Dug the dust out of its jammed wheel and it walked home."
+      "journal": "Found Walker 1. It wasn't broken, it was lost: its compass was way off. Gave it the sun and a few places I knew, and it walked home."
     },
     "walker_home": {
       "stages": {

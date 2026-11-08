@@ -124,6 +124,9 @@ var _intro_stage := "done"
 var _after_slate_done := false
 var slate_cradle: Node3D   # your slate on the console at touchdown (scripts/slate_cradle.gd)
 var _slate_state := {}     # the slate's key-label count (scripts/pda.gd)
+const SOL_CARD := preload("res://scripts/sol_card.gd")
+var sol_card_shown := 1     # the last sol whose card showed (scripts/sol_card.gd)
+var _sol_check := 0.0
 var _landing_miss := 0.0   # metres between the chosen target and the touchdown
 ## ARDEN's getting-started tutorial (scripts/tutorial.gd), when chosen.
 const TUTORIAL_SCRIPT := preload("res://scripts/tutorial.gd")
@@ -334,6 +337,10 @@ const AUTOSAVE_SECONDS := 600.0   # free play: every 10 minutes, once the base h
 
 func _process(delta: float) -> void:
 	_update_lander_intro()
+	_sol_check -= delta
+	if _sol_check <= 0.0:
+		_sol_check = 1.0
+		_check_sol_card()
 	_danger_t -= delta
 	if _danger_t <= 0.0:
 		_danger_t = 1.0
@@ -563,6 +570,30 @@ func _begin_lander_intro() -> void:
 		if _intro_stage == "inside":
 			if pda != null and not pda.received: explore_hud.show_equipment_note("Touchdown", "Your slate is lighting up on the console. Look at it and press E to pick it up.")
 			else: explore_hud.show_equipment_note("Touchdown", "You've landed on Mars. When you're ready, look at the hatch and press E to open it."))
+
+## The opening's three parts (docs/master-design.md §2; a working idea, never
+## shown): 1 Down (sol 1), 2 the lifepod days (sol 2 until the walker moves),
+## 3 Walker 1 (until the General Module's down), then 4.
+func opening_part() -> int:
+	if walker != null and str(walker.state) == "done": return 4
+	if lifepod != null and bool(lifepod.walker_moved): return 3
+	if notes != null and int(notes.call("_sol")) >= 2: return 2
+	return 1
+
+## A new sol's card, once you're up and it's morning: "SOL 2".
+func _check_sol_card() -> void:
+	if notes == null or MHGame.showcase: return
+	var sol := int(notes.call("_sol"))
+	if sol_card_shown < 0: sol_card_shown = sol
+	if sol <= sol_card_shown: return
+	var sleep_node: Node = get("sleep")
+	if sleep_node != null and bool(sleep_node.get("asleep")): return
+	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+	if MHGame.sol_hour < float(cycle.get("sunrise_hour", 5.0)) - 1.0: return
+	sol_card_shown = sol
+	var card := SOL_CARD.new()
+	card.sol = sol
+	add_child(card)
 
 ## The slate on the console's worktop, for a new game in the lander.
 func _place_slate() -> void:
@@ -1046,7 +1077,7 @@ func current_state() -> Dictionary:
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
 		"crew_rover": crew_rover.export_state() if crew_rover != null else {},
 		"suit": suit.export_state() if suit != null else {},
-		"slate": {"hint_uses": pda.hint_uses} if pda != null else {},
+		"slate": {"hint_uses": pda.hint_uses, "sol_card": sol_card_shown} if pda != null else {},
 		"cabin": cabin_life.export_state() if cabin_life != null else {},
 		"body": body.export_state() if body != null else {},
 		"trail": region_map.trail if region_map != null else PackedVector2Array(),
@@ -1122,6 +1153,8 @@ func _restore_pending_habitat() -> void:
 	_crew_rover_state = state.get("crew_rover", {}) as Dictionary
 	_suit_state = state.get("suit", {}) as Dictionary
 	_slate_state = state.get("slate", {}) as Dictionary
+	# A save from before the sol cards: no card for the sol it's on.
+	sol_card_shown = int(_slate_state.get("sol_card", -1))
 	_cabin_state = state.get("cabin", {}) as Dictionary
 	_body_state = state.get("body", {}) as Dictionary
 	_known_state = state.get("known", {}) as Dictionary

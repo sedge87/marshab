@@ -854,9 +854,10 @@ One Survival run should let you try every pillar:
          2. Photograph them and send them up from the slate.
          3. On the next pass, Castellanos texts back Rao's photo: the tracks lead to a big shape about 2 km out, by a landmark. The orbiter friends have a purpose.
          4. From high ground you see its lamp blinking yourself.
+         - **8 Nov:** until the night it moves it waits ~2.6 km out, hidden and unseeable (a playtest saw it on the Map after pallets 1–4).
        - **Bringing it home:**
          - split `build_controller.gd` first;
-         - clean the walker's dust-jammed leg;
+         - set its lost nav right from the front deck (8 Nov, replaces cleaning a dust-jammed leg): a sun sight for true north, then landmarks you've been to; the screen shows its compass error;
          - it walks home with GAR-Y leading;
          - the Plan view on explored ground;
          - the General Module set down.
@@ -951,7 +952,7 @@ One Survival run should let you try every pillar:
 - There are **3:** the General Module, the regolith printer and the power kit (solar and battery).
 - They move at a steady walking pace. One found 2 km out gets home within the sol while you do other things.
 - **Each one has one fault.** You spot it by looking (a blinking lamp on the bad part) and fix it by hand:
-  - a leg jammed with dust: clean it;
+  - lost nav (Walker 1): recalibrate it from the nav screen on its front deck;
   - a flat battery: charge it from a solar blanket or a spare cell;
   - a blind navigation camera: GAR-Y guides it home.
 

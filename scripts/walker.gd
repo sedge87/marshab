@@ -9,8 +9,14 @@ extends Node3D
 ##   send the picture up from the slate: on the next pass Castellanos texts
 ##   Rao's photo of where it stopped. Or follow them, or spot its lamp from
 ##   high ground.
-## - Dig the dust out (hold E at leg 4's wheel) and it walks home, parking by
-##   the lander.
+## - Until that night it waits out of sight, ~2.6 km out, hidden and not on any
+##   record (opening review, 8 Nov: part 1 must not show it); the night it
+##   moves it comes to where its tracks end.
+## - It's lost, not broken (master-design §2): its compass was bent by the
+##   Reach's crustal field. Climb its ladder, sit at the front, and set it
+##   right on the nav screen (scripts/walker_nav_screen.gd): a sun sight, then
+##   landmarks you know. Then it walks home with its headlights on, parking
+##   by the lander.
 ## - Then B opens the Site plan with only the module and its airlock
 ##   (scripts/build_rules.gd). Close the plan and it carries the module there,
 ##   stands over the spot and lowers it.
@@ -25,7 +31,9 @@ const ID := "find:walker"
 const NAME := "Walker 1"
 const SPEED := 3.0              # m/s, one steady pace (near real wheel-on-leg walkers' top speed): ~7 min home
 const TURN := .4                # rad/s
-const CLEAN_SECONDS := 4.0
+const NAV_SCRIPT := preload("res://scripts/walker_nav_screen.gd")
+const WAIT_OUT := 2600.0        # metres out, hidden, until the night it moves
+const STRANDED_ABOVE := 2.0     # standing on it this high, not riding: you're put down
 const SEE_NEAR := 700.0         # you see it this close
 const SEE_HIGH := 1000.0        # ... or this far from ground this much higher
 const HIGH_ABOVE := 10.0
@@ -38,9 +46,11 @@ const TEXT_DELAY := 75.0        # seconds to the orbiter's next pass
 const LOWER_SECONDS := 9.0
 const MODULE_BOTTOM := 1.25     # the carried module's floor above the ground
 const WHEEL_R := .62
-const FORK := Vector3(7.7, 1.17, -5.0)   # leg 4's wheel fork, in the model
 const LADDER := Vector3(0, 1.6, 5.74)   # the ladder up its back, in the model
-const DECK := Vector3(0, 5.67, 5.05)     # where you stand riding, on the rear deck
+## Where you ride: seated on the front deck facing forward (your feet; eyes
+## about 1.3 m over the deck), so you see where it's going (8 Nov playtest).
+const DECK := Vector3(0, 5.36, -3.15)
+const NAV_AT := Vector3(0, 6.26, -3.95)  # the nav screen before the seat, in the model
 const STEP_OFF := Vector3(0, 0, 7.4)     # the ladder's foot, where you climb down to
 const TALK_AFTER := 45.0        # seconds into the walk home: Castellanos's first text
 const TALK_AGAIN := 0.5         # ... and again this far along
@@ -57,7 +67,13 @@ var state := "stalled"          # stalled, walking, parked, carrying, lowering, 
 var home := Vector3.INF         # where it parks by the lander
 var target := Vector3.INF       # the module's spot
 var target_yaw := 0.0
-var cleaned := false
+var calibrated := false        # its nav set right (the old save field "cleaned")
+var nav_sight_done := false     # the nav screen's sun sight, kept if you close it
+var _nav: Node
+var _out := false               # waiting out of sight before its night
+var _headlights: Array = []
+var _nav_mat: StandardMaterial3D
+var _stranded := 0.0
 var seen := false
 var tracks_laid := false
 var sent := false
@@ -76,9 +92,6 @@ var _cables: Array = []
 var _module_shape: CollisionShape3D
 var _module_y0 := 0.0
 var _tracks: Node3D
-var _holding := false
-var _held := 0.0
-var _tick := 0
 var _gait := 0.0
 var _clock := 0.0
 var _check := 0.0
@@ -109,7 +122,8 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	world = target_world
 	_build()
 	state = str(saved.get("state", "stalled"))
-	cleaned = bool(saved.get("cleaned", false))
+	calibrated = bool(saved.get("calibrated", saved.get("cleaned", false)))
+	nav_sight_done = bool(saved.get("nav_sight", false))
 	seen = bool(saved.get("seen", false))
 	sent = bool(saved.get("sent", false))
 	first_night = bool(saved.get("first_night", false))
@@ -122,9 +136,9 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	global_position = at
 	rotation.y = float(saved.get("yaw", _face_yaw(world.lander.global_position - at)))
 	_settle()
-	if cleaned: _dust.visible = false
 	var pod: Node = world.get("lifepod")
 	if bool(saved.get("tracks", false)) or (pod != null and bool(pod.walker_moved)): lay_tracks()
+	elif not seen and not calibrated and state == "stalled": _wait_out_of_sight()
 	# Saved mid-delivery: it's down.
 	if state in ["carrying", "lowering"]: _finish_set_down.call_deferred()
 	elif state == "done": _module.visible = false; _module_shape.disabled = true
@@ -151,6 +165,33 @@ func _choose() -> Vector3:
 		for kind in pod.sites: taken.append(field._bearing(pod.sites[kind].global_position))
 	return field.choose("walker", 1300.0, 1500.0, "flat", taken, ridge)
 
+## Before its night: far out, unseen and out of reach (parts 1 and 2 of the
+## opening know nothing of it).
+func _wait_out_of_sight() -> void:
+	_out = true
+	var lander: Vector3 = world.lander.global_position
+	var out := Vector3(global_position.x - lander.x, 0, global_position.z - lander.z)
+	if out.length() < WAIT_OUT - 50.0:
+		global_position = lander + (out.normalized() if out.length() > 1.0 else Vector3(0, 0, -1)) * WAIT_OUT
+		_settle()
+	_show(false)
+
+## The night it moves: it comes to where its tracks will end, and shows.
+func _come_into_view() -> void:
+	_out = false
+	global_position = _choose()
+	rotation.y = _face_yaw(world.lander.global_position - global_position)
+	_settle()
+	_show(true)
+
+func hidden() -> bool:
+	return _out
+
+func _show(on: bool) -> void:
+	visible = on
+	for body in find_children("*", "StaticBody3D", true, false):
+		(body as StaticBody3D).collision_layer = 1 if on else 0
+
 func _face_yaw(direction: Vector3) -> float:
 	return atan2(-direction.x, -direction.z)   # the model's front is -Z
 
@@ -167,6 +208,8 @@ func _build() -> void:
 		var section := _model.find_child("Ladder_%d" % (i + 2), true, false) as Node3D
 		if section != null: _sections.append([section, section.position.y, float(LADDER_STOW[i])])
 	_dust = _model.find_child("Dust", true, false)
+	if _dust != null: _dust.visible = false   # older models: the dust's gone from the story
+	_build_lights()
 	if _module != null: _module_y0 = _module.position.y
 	for i in range(1, 7):
 		_wheels.append(_model.find_child("Wheel_%d" % i, true, false))
@@ -178,7 +221,7 @@ func _build() -> void:
 	_light.light_energy = 2.5
 	_light.omni_range = 14.0
 	if _lamp != null: _lamp.add_child(_light)
-	# Bodies: the six feet, the carried module, and the jammed wheel (E).
+	# Bodies: the six feet, the carried module, and the nav screen.
 	var body := StaticBody3D.new()
 	add_child(body)
 	for i in 6:
@@ -186,16 +229,11 @@ func _build() -> void:
 		var z: float = [-5.0, 0.0, 5.0][i % 3]
 		_shape(body, BoxShape3D.new(), Vector3(1.0, 1.6, 1.4), Vector3(s * 7.7, .8, z))
 	_module_shape = _shape(body, BoxShape3D.new(), Vector3(6.0, 3.3, 9.0), Vector3(0, MODULE_BOTTOM + 1.65, 0))
-	var fault := StaticBody3D.new()
-	fault.name = "FaultWheel"
-	fault.set_meta("interaction_target", self)
-	fault.position = FORK
-	add_child(fault)
-	var sphere := SphereShape3D.new()
-	sphere.radius = .9
-	var shape := CollisionShape3D.new()
-	shape.shape = sphere
-	fault.add_child(shape)
+	var nav := StaticBody3D.new()
+	nav.name = "NavScreen"
+	nav.position = NAV_AT
+	add_child(nav)
+	_shape(nav, BoxShape3D.new(), Vector3(.6, .4, .2), Vector3.ZERO)
 	var ladder: StaticBody3D = LADDER_SCRIPT.new()
 	ladder.name = "Ladder"
 	ladder.walker = self
@@ -205,6 +243,33 @@ func _build() -> void:
 	_ladder_shape = _shape(ladder, BoxShape3D.new(), Vector3(1.0, 3.2, .4), Vector3.ZERO)
 	ladder_out = 1.0 if _ladder_wanted() else 0.0
 	_place_ladder()
+
+## The nav screen's glow and the two headlamps (lit while it walks).
+func _build_lights() -> void:
+	_nav_mat = StandardMaterial3D.new()
+	_nav_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_nav_mat.albedo_color = Color(.55, .3, .08)
+	for mesh in _model.find_children("nav_face*", "MeshInstance3D", true, false):
+		(mesh as MeshInstance3D).material_override = _nav_mat
+	for side in ["L", "R"]:
+		var mount := _model.find_child("Headlamp_" + side, true, false) as Node3D
+		var light := SpotLight3D.new()
+		light.light_color = Color("#FFF1DC")
+		light.light_energy = 5.0
+		light.spot_range = 60.0
+		light.spot_angle = 30.0
+		light.spot_attenuation = .8
+		light.shadow_enabled = false
+		light.rotation_degrees.x = -9.0
+		light.visible = false
+		if mount != null: mount.add_child(light)
+		else:
+			light.position = Vector3(2.0 * (-1.0 if side == "L" else 1.0), 5.1, -5.7)
+			add_child(light)
+		_headlights.append(light)
+
+func headlights_on() -> bool:
+	return not _headlights.is_empty() and (_headlights[0] as SpotLight3D).visible
 
 func _shape(body: StaticBody3D, box: BoxShape3D, size: Vector3, at: Vector3) -> CollisionShape3D:
 	box.size = size
@@ -232,6 +297,7 @@ func _settle() -> void:
 ## panel by them, and photo marks along the way.
 func lay_tracks() -> void:
 	if tracks_laid: return
+	if _out: _come_into_view()
 	tracks_laid = true
 	_tracks = Node3D.new()
 	_tracks.name = "WalkerTracks"
@@ -323,7 +389,7 @@ func _see() -> void:
 
 ## The slate's Camera app: a picture of the tracks can go up to the orbiter.
 func can_send() -> bool:
-	return not sent and state == "stalled" and not knows() and MHJournal.photographed("walker_tracks")
+	return not _out and not sent and state == "stalled" and not knows() and MHJournal.photographed("walker_tracks")
 
 func send_up() -> bool:
 	if not can_send(): return false
@@ -369,38 +435,37 @@ func take_photo() -> void:
 	image.resize(PHOTO_SIZE.x, PHOTO_SIZE.y, Image.INTERPOLATE_CUBIC)
 	photo = ImageTexture.create_from_image(image)
 
-# ---------- the fault ----------
+# ---------- the fault: lost, not broken ----------
 
 func interaction_prompt() -> Dictionary:
 	match state:
-		"stalled":
-			if _holding: return {"label": NAME, "primary": "Digging the dust out…"}
-			return {"label": NAME + " · this wheel's packed solid with dust", "primary": "Hold to dig it out"}
+		"stalled": return {"label": NAME + " · lost: its nav screen's up on the front deck"}
 		"walking": return {"label": NAME + " · walking home"}
 		"parked": return {"label": NAME + " · carrying the General Module"}
 		"carrying", "lowering": return {"label": NAME + " · setting the module down"}
 	return {"label": NAME}
 
 func interact(_actor: Node = null) -> bool:
-	if state != "stalled": return false
-	_holding = true
-	_held = 0.0
-	_tick = 0
+	return false
+
+## Seated at the front: the nav screen (scripts/walker_nav_screen.gd).
+func open_nav() -> bool:
+	if calibrated or state != "stalled" or not riding or (_nav != null and is_instance_valid(_nav)): return false
+	_nav = NAV_SCRIPT.new()
+	_nav.setup(self)
+	world.add_child(_nav)
+	MHAudio.sfx("suit_beep", -10.0)
 	return true
 
-func dig_for(delta: float) -> bool:
-	_held += delta
-	var scoops := floori(_held / CLEAN_SECONDS * 6.0)
-	while _tick < scoops:
-		_tick += 1
-		MHAudio.sfx_at("place", self, -8.0, .4)
-	if _held < CLEAN_SECONDS: return false
-	_holding = false
-	cleaned = true
-	_dust.visible = false
+func nav_closed() -> void:
+	_nav = null
+
+## Set right on the nav screen: it knows where it is, and where home is.
+func recalibrated() -> void:
+	if calibrated: return
+	calibrated = true
 	if not seen: _see()
 	_wake()
-	return true
 
 func _wake() -> void:
 	state = "walking"
@@ -413,7 +478,7 @@ func _wake() -> void:
 	MHAudio.sfx_at("mode_build", self, 0.0, .6)
 	var notes: Node = world.get("notes")
 	if notes != null: notes.answer("walker_seen")
-	MHNotices.post("info", NAME + " is walking home", "GAR-Y's pinging it the way. It'll park by the lander. Climb the ladder on its back to ride along.", "")
+	MHNotices.post("info", NAME + " is walking home", "It knows where it is now. It'll park by the lander, with you aboard or not.", "")
 
 # ---------- the walk ----------
 
@@ -423,10 +488,12 @@ func _process(delta: float) -> void:
 	var blink := state == "stalled" and fmod(_clock, 1.2) < .55
 	if _lamp != null: _lamp.visible = blink
 	if _light != null: _light.visible = blink
-	if _holding:
-		var player: Node3D = world.get("player")
-		if player == null or not Input.is_key_pressed(KEY_E) or player.global_position.distance_to(to_global(FORK)) > 4.0: _holding = false
-		else: dig_for(delta)
+	# The nav screen: amber and pulsing while it's lost, steady green after.
+	if _nav_mat != null:
+		_nav_mat.albedo_color = Color(.35, .95, .6) if calibrated else Color(.95, .55, .12).lerp(Color(1.0, .8, .4), .5 + .5 * sin(_clock * 2.4))
+	# Headlights while it walks, carries, or you're aboard.
+	var lights := state in ["walking", "carrying", "lowering"] or riding
+	for light in _headlights: (light as SpotLight3D).visible = lights
 	if _text_left > 0.0:
 		_text_left -= delta
 		if _text_left <= 0.0: _orbiter_text()
@@ -478,7 +545,7 @@ func ladder_prompt() -> Dictionary:
 	if riding: return {"label": NAME, "primary": "Climb down"}
 	if state == "lowering": return {"label": NAME + " · setting the module down"}
 	if ladder_out < .95: return {"label": NAME + " · its ladder's packed away"}
-	return {"label": NAME + " · a ladder up to its rear deck", "primary": "Climb aboard"}
+	return {"label": NAME + " · a ladder up to its deck", "primary": "Climb aboard"}
 
 # ---------- the telescoping ladder ----------
 
@@ -524,6 +591,8 @@ func climb() -> bool:
 	var player: CharacterBody3D = world.get("player")
 	if player == null or riding or state == "lowering" or ladder_out < .95: return false
 	riding = true
+	add_to_group("riding_prompt")
+	_stranded = 0.0
 	_waiting = false
 	_ride_yaw = rotation.y
 	_ride_layers = Vector2i(player.collision_layer, player.collision_mask)
@@ -531,6 +600,8 @@ func climb() -> bool:
 	player.collision_mask = 0
 	player.set_meta("riding", true)
 	player.velocity = Vector3.ZERO
+	# Seated facing forward, the way it walks.
+	player.rotation.y = rotation.y
 	MHAudio.sfx_at("step_metal_1", self, -4.0, .1)
 	_ride()
 	return true
@@ -548,6 +619,8 @@ func _step_off() -> void:
 	var player: CharacterBody3D = world.get("player")
 	if player == null or not riding: return
 	riding = false
+	remove_from_group("riding_prompt")
+	if _nav != null and is_instance_valid(_nav): _nav.close()
 	_clear = state in ["walking", "carrying"]
 	var spot := to_global(STEP_OFF)
 	spot.y = MHSiteTerrain.height(spot.x, spot.z) + .1
@@ -567,10 +640,34 @@ func _ride() -> void:
 	_ride_yaw = rotation.y
 	player.velocity = Vector3.ZERO
 
-func _unhandled_input(event: InputEvent) -> void:
-	if riding and not _getting_off and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+## Riding: E on the nav screen opens it; E anywhere else, or Space, climbs
+## down. Caught here, ahead of anything else that wants E (8 Nov playtest:
+## stuck on the deck).
+func _input(event: InputEvent) -> void:
+	if not riding or _getting_off or (_nav != null and is_instance_valid(_nav)): return
+	if not (event is InputEventKey and event.pressed and not event.echo): return
+	var key := (event as InputEventKey).keycode
+	if key == KEY_E:
+		if not looking_at_nav() or not open_nav(): climb_down()
+		get_viewport().set_input_as_handled()
+	elif key == KEY_SPACE:
 		climb_down()
 		get_viewport().set_input_as_handled()
+
+## The line under the crosshair while you ride, wherever you look.
+func ride_prompt() -> Dictionary:
+	if _getting_off: return {"keys": "", "verb": "Stopping to let you down…"}
+	if state == "stalled" and not calibrated and looking_at_nav(): return {"keys": "E", "verb": "Use the nav screen"}
+	return {"keys": "E", "verb": "Climb down"}
+
+func looking_at_nav() -> bool:
+	var player: Node3D = world.get("player")
+	var camera := player.get_node_or_null("Head/Camera3D") as Camera3D if player != null else null
+	if camera == null or not camera.is_inside_tree(): return false
+	var from := camera.global_position
+	var query := PhysicsRayQueryParameters3D.create(from, from - camera.global_basis.z * 2.5)
+	var hit := camera.get_world_3d().direct_space_state.intersect_ray(query)
+	return not hit.is_empty() and str((hit.collider as Node).name) == "NavScreen"
 
 ## Castellanos keeps you company on the walk home: two short texts, the
 ## second well before it arrives (the talk never outlasts the walk).
@@ -598,11 +695,26 @@ func _roll(metres: float) -> void:
 		var lift := maxf(0.0, sin(_gait + (PI if i % 2 == 1 else 0.0))) * .09
 		knee.rotation.z = s * lift
 
+func _put_down(player: Node3D) -> void:
+	_stranded = 0.0
+	var spot := to_global(STEP_OFF)
+	spot.y = MHSiteTerrain.height(spot.x, spot.z) + .1
+	player.global_position = spot
+	if "safe_position" in player: player.safe_position = spot
+	if player is CharacterBody3D: (player as CharacterBody3D).velocity = Vector3.ZERO
+
 ## You see it close, or its lamp from high ground; the tracks start a thought.
 func _look() -> void:
 	var player: Node3D = world.get("player")
 	if player == null: return
 	var you := player.global_position
+	if _out: return
+	# Up on it without riding (a save made on the deck, a jump): put down at the ladder's foot.
+	var local := to_local(you)
+	if not riding and absf(local.x) < 5.0 and absf(local.z) < 6.5 and local.y > STRANDED_ABOVE:
+		_stranded += .5
+		if _stranded >= 1.0: _put_down(player)
+	else: _stranded = 0.0
 	var far := Vector2(you.x - global_position.x, you.z - global_position.z).length()
 	if not seen and (far < SEE_NEAR or (far < SEE_HIGH and you.y > global_position.y + HIGH_ABOVE)): _see()
 	if not seen and tracks_laid and near_tracks(you):
@@ -686,4 +798,4 @@ func _night_check(you: Vector3) -> void:
 
 func export_state() -> Dictionary:
 	return {"state": state, "at": _arr(global_position), "yaw": rotation.y, "home": _arr(home), "target": _arr(target), "target_yaw": target_yaw,
-		"cleaned": cleaned, "seen": seen, "tracks": tracks_laid, "sent": sent, "text_left": _text_left, "first_night": first_night}
+		"calibrated": calibrated, "nav_sight": nav_sight_done, "seen": seen, "tracks": tracks_laid, "sent": sent, "text_left": _text_left, "first_night": first_night}

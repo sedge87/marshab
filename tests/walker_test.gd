@@ -2,12 +2,18 @@ extends SceneTree
 
 # Step 3c, Walker 1 and the General Module (scripts/walker.gd,
 # scripts/build_rules.gd; systems-and-items §14 step 3c):
-# - the walker stands stalled about 1.4 km out, its fault lamp blinking;
+# - before its night it waits ~2.6 km out, hidden, unknown, unseeable;
+# - the night it moves it comes to ~1.4 km, stalled, its fault lamp blinking;
 # - B does nothing before the module's home;
 # - the night it moves it leaves tracks; near them, a Notes thought;
 # - a photo of the tracks sent up brings Castellanos's text and puts it on
 #   the orbiter's record (and the Cargo app's);
-# - digging the dust out wakes it; it walks home and parks by the lander;
+# - lost, not broken: climb aboard, sit at the front, and on the nav screen
+#   fix true north (a sun sight), match known landmarks (unknown ones can't
+#   be picked) and set the lander as home; it walks home with its headlights
+#   on and parks by the lander;
+# - riding: a climb-down line wherever you look; standing on it without
+#   riding (a save made on the deck) puts you down at the ladder's foot;
 # - the Site plan then offers only the module (a fixed 2 × 3 cells, free)
 #   and its airlock, only on explored ground;
 # - closing the plan sends it to carry and lower the module; the real rooms
@@ -84,8 +90,10 @@ func _initialize() -> void:
 	var lander: Vector3 = world.lander.global_position
 	var player: Node3D = world.player
 	var far := _flat(walker.global_position, lander)
-	_check(far > 1250.0 and far < 1550.0, "it stands about 1.4 km out (%.0f m)" % far)
-	_check(walker.state == "stalled" and walker._dust.visible, "stalled, its wheel packed with dust")
+	_check(walker.hidden() and not walker.visible and far > 2500.0, "before its night it waits out of sight (%.0f m)" % far)
+	player.global_position = walker.global_position + Vector3(0, 30.0, 300.0)
+	walker._look()
+	_check(not walker.seen and not world.known.knows(walker.ID) and world.opening_part() == 1, "and can't be seen, even close, from high ground: part 1 knows nothing of it")
 	var lit := false
 	for i in 30:
 		walker._process(.1)
@@ -97,8 +105,20 @@ func _initialize() -> void:
 	_press_b(builder)
 	_check(not builder.build_mode, "and the Site plan stays shut")
 
-	# The night it moves: tracks.
+	# Sol 2's dawn: the card, and part 2.
+	world.builder.simulation().hours_run = 30.0
+	MHGame.sol_hour = 8.0
+	world._check_sol_card()
+	var cards := world.get_children().filter(func(c): return c.get_script() == world.SOL_CARD)
+	_check(world.sol_card_shown == 2 and cards.size() == 1 and world.opening_part() == 2, "sol 2: its card shows once, part 2 (%d cards)" % cards.size())
+	world._check_sol_card()
+	_check(world.get_children().filter(func(c): return c.get_script() == world.SOL_CARD).size() == 1, "and only once")
+	_check(walker.hidden(), "the walker's still out of sight in part 2")
+	# The night it moves: it comes into view, and leaves tracks.
 	world.lifepod.walker_night()
+	far = _flat(walker.global_position, lander)
+	_check(not walker.hidden() and walker.visible and far > 1250.0 and far < 1550.0 and world.opening_part() == 3, "the night it moves it stops about 1.4 km out (%.0f m), part 3" % far)
+	_check(walker.state == "stalled" and not walker.calibrated, "stalled: lost, not broken")
 	var marks: Array = world.get_tree().get_nodes_in_group("walker_tracks")
 	_check(walker.tracks_laid and marks.size() > 15, "it left tracks (%d marks)" % marks.size())
 	var nearest: float = marks.map(func(m): return _flat(m.global_position, lander)).min()
@@ -119,19 +139,36 @@ func _initialize() -> void:
 	var walkers: Array = screen._manifest_data().walkers
 	_check(screen.cargo_state(walkers[0]) == "seen", "Cargo: Walker 1 seen")
 
-	# Finding it, digging it out.
+	# Finding it, and setting it right from its deck.
 	player.global_position = walker.global_position + Vector3(0, 1.5, 600.0)
 	walker._look()
 	_check(walker.seen and world.known.knows(walker.ID) and world.notes.is_open("walker_seen") and world.notes.is_settled("tracks"), "within sight: you see it")
-	player.global_position = walker.to_global(walker.FORK) + Vector3(0, 0, 1.0)
-	var prompt: Dictionary = walker.interaction_prompt()
-	_check(str(prompt.get("primary", "")).begins_with("Hold"), "the jammed wheel: hold to dig it out")
-	_check(not walker.dig_for(2.0), "it takes a while")
-	_check(walker.dig_for(2.5) and walker.state == "walking" and not walker._dust.visible, "dug out: it wakes and walks home")
+	var ladder: Node = walker.get_node("Ladder")
+	player.global_position = walker.to_global(walker.STEP_OFF) + Vector3(0, .1, 0)
+	_check(walker.ladder_out == 1.0 and str(ladder.interaction_prompt().get("primary", "")) == "Climb aboard" and ladder.interact(), "stalled, its ladder's down: climb aboard")
+	_check(walker.riding and player.global_position.distance_to(walker.to_global(walker.DECK)) < .1 and absf(angle_difference(player.rotation.y, walker.rotation.y)) < .01, "seated at the front, facing forward")
+	walker._process(.1)
+	_check(walker.headlights_on(), "its headlights come on with you aboard")
+	_check(str(walker.ride_prompt().get("verb", "")) == "Climb down", "a climb-down line wherever you look")
+	_check(walker.open_nav(), "the nav screen opens")
+	var nav: Node = walker._nav
+	world.known.learn("place:test_ridge@0,0", "place", Vector2(walker.global_position.x, walker.global_position.z) + world.known.origin + Vector2(400, 0), "Test ridge")
+	nav._gather_landmarks()
+	_check(nav.step == "sight" and nav.need == 2, "first, true north; then two landmarks")
+	nav.sight_fixed()
+	_check(nav.step == "fix" and walker.nav_sight_done and nav.error_deg >= 24, "true north fixed: its compass was off by %d°" % nav.error_deg)
+	var unknown := ""
+	for m in nav.landmarks: if not bool(m.known): unknown = str(m.id)
+	_check(unknown.is_empty() or not nav.pick(unknown), "a place you've never been can't be picked")
+	_check(nav.pick("lander") and nav.step == "fix" and nav.radius < nav.START_RADIUS, "the lander: the circle tightens")
+	_check(nav.pick("place:test_ridge@0,0") and nav.step == "home", "a second landmark you know: it locks")
+	nav.set_home()
+	_check(walker.calibrated and walker.state == "walking" and world.notes.is_settled("walker_seen"), "home set: it stands up and walks")
 	_check(screen.cargo_state(walkers[0]) == "recovered", "Cargo: Walker 1 recovered")
+	walker.climb_down()
+	_check(not walker.riding and _flat(player.global_position, walker.to_global(walker.STEP_OFF)) < .5, "and you can climb down before it goes")
 	_check(RULES.b_reason(builder) == "Nothing to build with yet", "still nothing to build with on the way")
 	# The telescoping ladder: packed away while it walks.
-	var ladder: Node = walker.get_node("Ladder")
 	player.global_position = walker.global_position + Vector3(0, 1.5, 300.0)
 	_run(walker, 4.0, func(): return false)
 	var section: Node3D = walker._sections[1][0]
@@ -143,13 +180,19 @@ func _initialize() -> void:
 	_check(walker._waiting and walker.ladder_out == 1.0 and walker.global_position.distance_to(stopped_at) < 1.0, "come up behind it: it stops and lowers its ladder")
 	_check(str(ladder.interaction_prompt().get("primary", "")) == "Climb aboard" and ladder.interact(), "the ladder: climb aboard")
 	_run(walker, 30.0, func(): return false)
-	_check(walker.riding and bool(player.get_meta("riding", false)) and walker.ladder_out == 0.0 and walker.global_position.distance_to(stopped_at) > 20.0 and player.global_position.distance_to(walker.to_global(walker.DECK)) < .1, "riding on the rear deck, the ladder packed, walking on")
+	_check(walker.riding and bool(player.get_meta("riding", false)) and walker.ladder_out == 0.0 and walker.global_position.distance_to(stopped_at) > 20.0 and player.global_position.distance_to(walker.to_global(walker.DECK)) < .1 and walker.headlights_on(), "riding at the front, the ladder packed, headlights on, walking on")
 	_run(walker, 30.0, func(): return false)
 	_check(walker._talk >= 1, "Castellanos texts on the walk home")
 	walker.climb_down()
 	_check(walker.riding and walker._getting_off, "E on the deck: it stops to let you down")
 	_run(walker, 3.0, func(): return false)
 	_check(not walker.riding and not bool(player.get_meta("riding", false)) and player.collision_mask != 0 and _flat(player.global_position, walker.to_global(walker.STEP_OFF)) < .5, "climbed down at the ladder's foot")
+	# Standing on top without riding (a save made on the deck): put down.
+	player.global_position = walker.to_global(Vector3(0, 6.0, 0))
+	walker._look()
+	walker._look()
+	_check(_flat(player.global_position, walker.to_global(walker.STEP_OFF)) < .5 and player.global_position.y < walker.global_position.y + 2.0, "stranded on top: put down at the ladder's foot")
+	player.global_position = walker.to_global(walker.STEP_OFF) + Vector3(0, .1, 0)
 	var left_at := walker.global_position
 	_run(walker, 6.0, func(): return false)
 	_check(walker.ladder_out == 0.0 and walker.global_position.distance_to(left_at) > 3.0, "then it packs the ladder and walks on, without stopping for you again")
@@ -255,5 +298,5 @@ func _initialize() -> void:
 	again.queue_free()
 	await process_frame
 	if failures == 0:
-		print("Walker test passed: stalled 1.4 km out, lamp blinking; B waits; tracks and their thought; the photo sent up and Castellanos's text; seen, dug out, walked home and parked; the plan's first lesson (the module and its airlock, explored ground, free); carried and lowered; the fit-out kit; its plans; the first night; saved and loaded.")
+		print("Walker test passed: hidden until its night, then stalled 1.4 km out, lamp blinking; B waits; tracks and their thought; the photo sent up and Castellanos's text; seen, set right on its nav screen (sun sight, known landmarks), walked home with its headlights on and parked; the climb-down line and the stranded rescue; the plan's first lesson (the module and its airlock, explored ground, free); carried and lowered; the fit-out kit; its plans; the first night; saved and loaded.")
 	quit(1 if failures > 0 else 0)

@@ -20,7 +20,11 @@ A hierarchy of pivots the game animates (scripts/walker.gd):
       Cable_1..Cable_4     winch cables (the game stretches them about Z)
       Lamp                 the fault lamp on leg 4 (the game blinks it)
       Ladder_1..Ladder_3   the telescoping ladder's sections (2 and 3 slide)
-    Dust                   the dust packed in leg 4's wheel fork (hidden once cleaned)
+      NavScreen            the nav screen in front of the rider's seat (the game lights its face)
+      Headlamp_L/R         the two headlamps on the front beam (the game hangs its lights here)
+
+The rider sits at the front, on a small deck where the front solar strip was,
+facing forward over the nav screen (8 Nov playtest: ride where you can see).
 
 Legs 1-3 on the left (-X), 4-6 on the right (+X), front to back. Metres,
 ground origin; the front faces -Z in glTF (Blender +Y here).
@@ -87,16 +91,41 @@ def build():
     for y in (-hy + 0.3, 0.0, hy - 0.3):
         frame.append(box("cross", -hx, hx, y - 0.25, y + 0.25, z0 + 0.08, z1 - 0.05, "warm_panel", 0.04))
     # The top deck: solar strips and the avionics box.
-    for y in (-3.6, -1.2, 1.2, 3.6):
+    for y in (-3.6, -1.2, 1.2):
         frame.append(box("solar", -hx + 0.5, hx - 0.5, y - 0.9, y + 0.9, z1, z1 + 0.06, "solar_cell", 0.0))
         frame.append(box("solar_rim", -hx + 0.45, hx - 0.45, y - 0.95, y + 0.95, z1 - 0.02, z1 + 0.02, "alloy", 0.0))
     frame.append(box("avionics", -1.0, 1.0, hy - 1.4, hy - 0.2, z1, z1 + 0.7, "warm_shell", 0.08))
     frame.append(box("avionics_vent", -0.8, 0.8, hy - 0.21, hy - 0.18, z1 + 0.15, z1 + 0.55, "graphite", 0.01))
-    # Its eyes: a stereo camera pair on a short mast at the front.
-    frame.append(rod("mast", (0, hy - 0.8, z1 + 0.7), (0, hy - 0.8, z1 + 1.5), 0.06, "dark_alloy", 12))
-    frame.append(box("cam_bar", -0.5, 0.5, hy - 0.95, hy - 0.65, z1 + 1.5, z1 + 1.7, "graphite", 0.03))
+    # Its eyes: a stereo camera pair on a short mast at the front right, off
+    # the rider's line of sight.
+    mx0 = 2.4
+    frame.append(rod("mast", (mx0, hy - 0.8, z1), (mx0, hy - 0.8, z1 + 1.5), 0.06, "dark_alloy", 12))
+    frame.append(box("cam_bar", mx0 - 0.5, mx0 + 0.5, hy - 0.95, hy - 0.65, z1 + 1.5, z1 + 1.7, "graphite", 0.03))
     for x in (-0.38, 0.38):
-        frame.append(cyl("cam_lens", (x, hy - 0.63, z1 + 1.6), 0.07, 0.05, "dark_glass", axis="y", verts=16))
+        frame.append(cyl("cam_lens", (mx0 + x, hy - 0.63, z1 + 1.6), 0.07, 0.05, "dark_glass", axis="y", verts=16))
+    # The rider's front deck where the front solar strip was: a grated floor,
+    # rails, a seat facing forward and the nav screen on a post before it.
+    fy0, fy1 = 2.75, 4.25
+    frame.append(box("front_deck", -1.5, 1.5, fy0, fy1, z1, z1 + 0.06, "dark_alloy", 0.01))
+    for x in (-1.5, 1.5):
+        frame.append(rod("front_rail", (x, fy0, z1 + 0.06), (x, fy0, z1 + 0.95), 0.03, "dark_alloy", 10))
+        frame.append(rod("front_rail", (x, fy1, z1 + 0.06), (x, fy1, z1 + 0.95), 0.03, "dark_alloy", 10))
+        frame.append(rod("front_rail", (x, fy0, z1 + 0.95), (x, fy1, z1 + 0.95), 0.03, "dark_alloy", 10))
+    sy = 3.2
+    frame.append(box("seat_frame", -0.32, 0.32, sy - 0.3, sy + 0.25, z1 + 0.06, z1 + 0.42, "graphite", 0.02))
+    frame.append(cushion("seat_pad", -0.28, 0.28, sy - 0.26, sy + 0.22, z1 + 0.42, z1 + 0.5))
+    frame.append(cushion("seat_pad", -0.28, 0.28, sy - 0.33, sy - 0.27, z1 + 0.5, z1 + 1.05))
+    # Low, like a dashboard: you look over it to see where you're going.
+    frame.append(rod("screen_post", (0, 3.95, z1 + 0.06), (0, 3.95, z1 + 0.5), 0.04, "dark_alloy", 10))
+    nav = empty("NavScreen", (0, 3.93, z1 + 0.66), body)
+    attach([box("nav_case_graphite", -0.26, 0.26, 3.93, 4.01, z1 + 0.5, z1 + 0.82, "graphite", 0.015),
+            box("nav_face_dark_glass", -0.23, 0.23, 3.915, 3.93, z1 + 0.53, z1 + 0.79, "dark_glass", 0.0)], nav)
+    # Two headlamps on the front cross beam, looking ahead.
+    for side, x in (("L", -2.0), ("R", 2.0)):
+        lamp_at = (x, hy + 0.02, z0 + 0.2)
+        head = empty("Headlamp_" + side, lamp_at, body)
+        attach([box("headlamp_case_graphite", x - 0.32, x + 0.32, hy - 0.1, hy + 0.08, z0 + 0.02, z0 + 0.38, "graphite", 0.03),
+                box("headlamp_lens_lamp_white", x - 0.26, x + 0.26, hy + 0.08, hy + 0.1, z0 + 0.08, z0 + 0.32, "lamp_white", 0.0)], head)
     # A ladder up the back and a small grated deck behind the solar strips,
     # with a rail, so you can ride it home (the game's Ladder body).
     dy0, dy1 = -hy, -hy + 1.1
@@ -132,7 +161,9 @@ def build():
     names = {"beam": "frame_rover_white", "beam_trim": "frame_trim_orange", "cross": "frame_cross_warm_panel", "solar": "deck_solar_cell",
              "solar_rim": "deck_rim_alloy", "avionics": "avionics_warm_shell", "avionics_vent": "avionics_vent_graphite", "mast": "mast_dark_alloy",
              "cam_bar": "cam_graphite", "cam_lens": "cam_lens_dark_glass", "winch": "winch_graphite",
-             "deck": "ride_deck_dark_alloy", "rail": "ride_rail_dark_alloy"}
+             "deck": "ride_deck_dark_alloy", "rail": "ride_rail_dark_alloy", "front_deck": "front_deck_dark_alloy",
+             "front_rail": "front_rail_dark_alloy", "seat_frame": "seat_frame_graphite", "seat_pad": "seat_pad_teal_soft",
+             "screen_post": "screen_post_dark_alloy"}
     attach([join(names[key], objs) for key, objs in groups.items()], body)
 
     # ---- the six legs ----
@@ -162,13 +193,8 @@ def build():
                              WHEEL_R + math.sin(a) * WHEEL_R - 0.035, WHEEL_R + math.sin(a) * WHEEL_R + 0.035, "black_rubber", 0.01))
         attach([join("wheel%d_black_rubber" % n, parts[:1] + parts[3:]), join("wheel%d_hub_alloy" % n, parts[1:2]), join("wheel%d_cap_orange" % n, parts[2:3])], wheel)
 
-    # ---- the fault: leg 4's wheel fork packed with dust, and its lamp ----
+    # ---- the fault lamp: its nav is lost (the game blinks it) ----
     s, y = LEGS[3]
-    fork_at = Vector((s * (HIP_X + FOOT_OUT), y, WHEEL_R + 0.55))
-    dust = empty("Dust", tuple(fork_at), root)
-    clods = [sphere("clod", tuple(fork_at + Vector(o)), r, "regolith_dust", scale=(1.2, 1.0, 0.8), segments=10)
-             for o, r in (((0.15, 0.35, 0.05), 0.26), ((-0.15, -0.3, 0.1), 0.24), ((0.2, 0.0, -0.25), 0.25), ((-0.05, 0.1, 0.25), 0.2), ((0.1, -0.5, -0.3), 0.18))]
-    attach([join("dust_regolith_dust", clods)], dust)
     lamp = empty("Lamp", (s * (HIP_X + 0.2), y + 0.5, FRAME_Z + 0.45), body)
     attach([cyl("lamp_base_graphite", (s * (HIP_X + 0.2), y + 0.5, FRAME_Z + 0.36), 0.14, 0.1, "graphite", verts=16),
             sphere("lamp_glow_lamp_amber", (s * (HIP_X + 0.2), y + 0.5, FRAME_Z + 0.48), 0.13, "lamp_amber", segments=14)], lamp)
