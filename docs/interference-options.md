@@ -16,6 +16,18 @@ Three options follow. **A leads**, as the user leaned towards "real, but unexpec
 
 ## A. The buried heart (real, but unexpected) · Recommended
 
+> **Science fixed, 8 Nov.** Two holes in the first version:
+> - **A warm body can't stay magnetised.** Rock loses its magnetism above its Curie point (about 580 °C for magnetite), and Mars has had no global field to magnetise new rock for about 4 billion years.
+> - **There's no global field to steer by,** so no walker would use "magnetic heading" on Mars.
+>
+> **The fix (the user's pick):**
+> - **The heart is old and cold:** an intrusion that cooled more than 4 billion years ago while the dynamo still ran, and locked that field in.
+> - **The heat is separate and young:** a much deeper magma pocket, like Mars's real recent volcanism at Cerberus Fossae, that rose along the old body's cracks. It sits below the magnetised layer, so the heart keeps its field, and it fed the hot springs.
+> - **The walkers fixed their position by magnetic map-matching** (matching the local field to the orbital magnetic map, a real technique on Earth) once the storm hid the sun and stars. The Reach's real field didn't match the coarse map, so their fixes jumped and they wandered off in curves. The pallets' guided descents used the same fix.
+> - **The clues change to fit.** No compass wobble: the HUD compass is sun- and inertia-based. Instead: the walker's nav log with jumping fixes, a magnetometer that disagrees with the orbital map, the aurora, and late on a thermal or seismic hint of the young pocket.
+>
+> Where the text below says otherwise, this box wins.
+
 **What it is.** Under the Reach lies a huge buried body of once-molten rock: an old magma intrusion, cooled billions of years ago into iron-rich rock that froze Mars's ancient magnetic field into itself. It makes the Reach one of the most strongly magnetised patches of ground on the planet, far stronger than the orbiters' coarse maps showed. It's also still faintly warm deep down. Long ago its heat drove hot springs into the crater lake.
 
 **Why it's real science.**
