@@ -70,14 +70,21 @@ func _initialize() -> void:
 	await _settle(radio)
 	_check(radio.heard.has("d1_pallet1") and radio.heard.has("d1_pallet2") and radio.heard.has("d1_pallet4"), "a call as each pallet opens")
 	_check(float(world.day_night.hold_at) >= 0.0, "still held with the cargo out there")
+	player.global_position = lander.global_position + lander.global_basis.z * -12.0 + Vector3(0, 1, 0)
 	pod.done("tow")
 	await _settle(radio)
 	_check(radio.heard.has("d1_cargo"), "a call when the cargo's home")
-	_check(float(world.day_night.hold_at) < 0.0 and float(world.day_night.time_scale) > 1.0, "day 1 done: the sun goes, a little quicker")
-	player.global_position = lander.cabin_start().position
+	_check(not is_inf(days.sunset_spot.x) and world.known.things.has("sunset_spot"), "Castellanos marks a rise to watch from")
+	_check(float(world.day_night.hold_at) >= 0.0 and float(world.day_night.time_scale) > 1.0, "the sun goes, a little quicker, then waits for you on the rise")
 	MHGame.sol_hour = sunset - .5
 	await _settle(radio)
-	_check(radio.heard.has("d1_sunset"), "the sunset call")
+	_check(not radio.heard.has("d1_sunset"), "no sunset call till you're there")
+	player.global_position = days.sunset_spot + Vector3(2, 1, 0)
+	await _settle(radio)
+	_check(radio.heard.has("d1_sunset") and bool(days.sunset_reached), "on the rise: the sunset call")
+	_check(radio.flag("on_the_rise") and world.known.finished("sunset_spot"), "the rise mark's done")
+	print("  the rise: %.0f m from the lander, %.1f m up" % [Vector2(days.sunset_spot.x - lander.global_position.x, days.sunset_spot.z - lander.global_position.z).length(), days.sunset_spot.y - lander.global_position.y])
+	player.global_position = lander.cabin_start().position
 	_check(notes.is_open("bed"), "it ends in bed")
 	_check(float(world.day_night.time_scale) == 1.0, "the clock's back to its pace")
 

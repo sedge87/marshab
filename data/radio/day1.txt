@@ -73,12 +73,20 @@ Castellanos: Tupou wants you to know that the hammer is for science and not for 
 
 ~ d1_cargo
 Castellanos: That's the module's air and power sitting by the lander. When the module turns up, it'll breathe the same day. That's a proper first day's work. [ID:d1_cargo_01]
-Castellanos: The sun's getting low. Do me a favour. Don't rush inside. Find somewhere to sit and watch it go down. You've earned it, and I want to hear about it. [ID:d1_cargo_02]
+Castellanos: The sun's getting low. Do me a favour. Don't rush inside. Go and watch it go down. You've earned it, and I want to hear about it. [ID:d1_cargo_02]
+do sunset_spot
+Castellanos: Rao's found you a spot. There's a little rise just towards the sun from you, it's on your compass now. Best seat on the Reach, he says, and he's been staring at it from orbit all afternoon. [ID:d1_cargo_03]
+- On my way.
+	Castellanos: Good. Take your time. The sun will wait for you, just this once. [ID:d1_cargo_04a]
+- Can't I just watch from the ramp?
+	set lazy
+	Castellanos: You could. But you'd be looking at it past a lander leg. Go on. It's a short walk, and you'll only see your first one once. [ID:d1_cargo_04b]
 => END
 
 ~ d1_sunset
 do sunset_view
 Castellanos: Are you seeing this? Tell me you're seeing this. [ID:d1_sun_01]
+? on_the_rise Castellanos: I can see you, you know. A tiny dot on top of Rao's rise. He's unbearably pleased with himself. [ID:d1_sun_01b]
 - The sky's gone blue around the sun.
 	set warm
 	Castellanos: Blue sunsets. We've all read about them, we've all seen the rover pictures. But you're the first person to actually stand there and watch one. Describe it to me. Properly. [ID:d1_sun_02a]
@@ -89,6 +97,11 @@ Castellanos: Are you seeing this? Tell me you're seeing this. [ID:d1_sun_01]
 - It's getting cold fast.
 	set dry
 	Castellanos: Minus sixty tonight. Well, minus something awful. That lander's a lot warmer than it looks, I promise. But look up for a second before you go in. Just once. [ID:d1_sun_02b]
+Castellanos: Oh, I have a favour to ask. Take a picture for me? Get your slate out, the camera's on it. I want to stick it on the wall up here, right next to Tupou's pictures of his dog. [ID:d1_sun_photo_01]
+do photo_ask
+wait photo
+? sunset_photo Castellanos: Got it. Oh, that's beautiful. That's going on the wall, and Mwangi's already asking for a copy. You've got a good eye, you know. [ID:d1_sun_photo_02a]
+?! sunset_photo Castellanos: No? That's okay. Some things you just want to look at. The camera's on your slate whenever you want it, and it all goes in your journal. [ID:d1_sun_photo_02b]
 Castellanos: Rao wants to know what it sounds like down there. He says he's been imagining it since training. [ID:d1_sun_03]
 - Nothing. Wind, maybe.
 	Castellanos: That sounds lonely. Is it lonely? You can tell me if it is. [ID:d1_sun_04a]

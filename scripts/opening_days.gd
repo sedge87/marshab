@@ -28,6 +28,7 @@ extends Node
 ##          The first night in the module. Then day 5 is yours.
 ## Version 1 (the first opening) stays for older saves and older tests.
 static var new_games_version := 2
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const STORY_DAYS := 4           # days run on story time; day 5 opens the game
 const HOLD_BEFORE_SUNSET := 2.0 # the sun waits here till the day's done
 const CALL_BEFORE_SUNSET := .6  # Castellanos's sunset call
@@ -47,6 +48,12 @@ var arden_morning := false      # sol 2's morning check, said
 var nights := 0                 # nights slept: a new day starts when you wake (the sol rolls over at 06:00)
 var version := 1
 var sunset_called := 0          # the last day whose sunset call came
+var sunset_spot := Vector3.INF   # day 1: the rise Castellanos sends you to, to watch the sun go down
+var sunset_reached := false
+var _photo_wait := 0.0           # the sunset call's "take a picture" wait
+var _photos_before := 0
+const SPOT_REACH := 18.0         # this close to the rise and you're there
+const PHOTO_WAIT := 50.0         # seconds Castellanos waits for the picture
 var _fast := false
 var _was_asleep := false
 var _lead_again := 0.0
@@ -63,9 +70,12 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	nights = int(saved.get("nights", 0))
 	version = int(saved.get("version", world.get("opening_version") if world.get("opening_version") != null else 1))
 	sunset_called = int(saved.get("sunset_called", 0))
+	var spot: Array = saved.get("sunset_spot", [])
+	if spot.size() == 3: sunset_spot = Vector3(float(spot[0]), float(spot[1]), float(spot[2]))
+	sunset_reached = bool(saved.get("sunset_reached", false))
 
 func export_state() -> Dictionary:
-	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning, "nights": nights, "version": version, "sunset_called": sunset_called}
+	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning, "nights": nights, "version": version, "sunset_called": sunset_called, "sunset_reached": sunset_reached, "sunset_spot": [] if is_inf(sunset_spot.x) else [sunset_spot.x, sunset_spot.y, sunset_spot.z]}
 
 # ---------- where the days are ----------
 
@@ -217,6 +227,19 @@ func radio_ready() -> void:
 		var field: Node = world.get("drop_field")
 		if field != null: field.gary_out()
 	radio.handlers["sunset_view"] = func(_args: Array) -> void: MHAudio.moment()
+	radio.handlers["sunset_spot"] = func(_args: Array) -> void: _mark_sunset_spot()
+	radio.handlers["photo_ask"] = func(_args: Array) -> void:
+		_photo_wait = 0.0
+		_photos_before = MHJournal.photos_on(int(world.notes.call("_sol"))) if world.get("notes") != null else 0
+		var notes: Node = world.get("notes")
+		if notes != null: notes.think("photo")
+		MHNotices.post("info", "The slate's camera", "Tab for the slate, then Camera. E takes the picture.", "", 1)
+	radio.checks["photo"] = func(_args: Array) -> bool:
+		_photo_wait += .25
+		var notes: Node = world.get("notes")
+		var taken: bool = notes != null and MHJournal.photos_on(int(notes.call("_sol"))) > _photos_before
+		if taken: radio.flags["sunset_photo"] = true
+		return taken or _photo_wait >= PHOTO_WAIT or radio.fast
 	radio.handlers["think"] = func(args: Array) -> void:
 		var notes: Node = world.get("notes")
 		if notes != null and not args.is_empty(): notes.think(str(args[0]))
@@ -260,6 +283,9 @@ func _story_day(day: int, hour: float, sunrise: float, sunset: float) -> void:
 		_story_clock(sunset - HOLD_BEFORE_SUNSET if hour >= sunrise - 1.0 and hour <= sunset - HOLD_BEFORE_SUNSET + .01 else -1.0, false)
 		return
 	var call_at := sunset - CALL_BEFORE_SUNSET
+	if _waiting_at_spot(day):
+		_story_clock(call_at - .05, true)   # the sun waits for you to reach the rise
+		return
 	if hour >= sunrise - 1.0 and hour < call_at:
 		_story_clock(-1.0, true)   # done: the sun goes down a little quicker
 		return
@@ -290,6 +316,45 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 		radio.ring("d4_wake")
 		if _done("module"): radio.ring("d4_down")
 		if _done("module") and _done("fit_out"): radio.ring("d4_home")
+
+## Day 1, the cargo home: a rise towards the sun, near enough to walk to
+## and back before dark, marked on your compass (data/radio/day1.txt).
+func _mark_sunset_spot() -> void:
+	if not is_inf(sunset_spot.x): return
+	var home: Vector3 = world.lander.global_position
+	var field: Node = world.get("drop_field")
+	var toward := Vector3(-1, 0, 0)
+	if field != null and field.get("sunset") != null: toward = field.sunset.sun_direction()
+	var best := -INF
+	for distance in range(70, 241, 20):
+		for turn in range(-40, 41, 10):
+			var d := toward.rotated(Vector3.UP, deg_to_rad(float(turn)))
+			var p := home + d * float(distance)
+			var h: float = MHSiteTerrain.height(p.x, p.z)
+			var score := h - float(distance) * .02 - absf(float(turn)) * .02
+			if score > best and MHSiteTerrain.reachable_on_foot(Vector2(home.x, home.z), Vector2(p.x, p.z)):
+				best = score
+				sunset_spot = Vector3(p.x, h, p.z)
+	if is_inf(sunset_spot.x): sunset_spot = home + toward * 40.0
+	var known: Node = world.get("known")
+	if known != null and field != null: known.learn("sunset_spot", "place", field.region_at(sunset_spot), "Sunset view", "you", "castellanos")
+
+## Day 1 only: the sun holds just short of the call till you're on the rise
+## (or you've gone in: then the call comes anyway).
+func _waiting_at_spot(day: int) -> bool:
+	if day != 1 or sunset_reached or sunset_called >= day: return false
+	if is_inf(sunset_spot.x):
+		var radio := _radio()
+		return radio != null and (radio.playing == "d1_cargo" or (radio.queue as Array).has("d1_cargo"))   # it's being marked now
+	var you: Vector3 = (world.player as Node3D).global_position
+	if Vector2(you.x - sunset_spot.x, you.z - sunset_spot.z).length() < SPOT_REACH:
+		sunset_reached = true
+		var radio := _radio()
+		if radio != null: radio.flags["on_the_rise"] = true
+		var known: Node = world.get("known")
+		if known != null: known.finish("sunset_spot")
+		return false
+	return not _in_cabin()
 
 func field_crate() -> Node:
 	var field: Node = world.get("drop_field")
