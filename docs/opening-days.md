@@ -1,4 +1,4 @@
-# The guided days (redesign, 8 Nov — for review, not built)
+# The guided days (redesign, 8 Nov — days 1–4 built; not playtested)
 
 The user, 8 Nov, stepping back: the first days are a **curated tutorial** that introduces nearly everything the game will be. It's hand-holdy on purpose, with moment-to-moment control over how things happen. On day 5 the game opens up: the four goals, base building, and later the buried heart.
 

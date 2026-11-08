@@ -1,0 +1,53 @@
+# Day 4: making it home (docs/opening-days.md). The guided days end tonight.
+# Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d4
+
+~ d4_wake
+Castellanos: Outpost One, look out of your window. [ID:d4_wake_01]
+Castellanos: It made it. Walker 1's parked right outside, and it's lifting the module now. [ID:d4_wake_02]
+? chose_home Castellanos: Straight for your mark. [ID:d4_wake_03]
+Castellanos: Go and watch. You've waited long enough. [ID:d4_wake_04]
+=> END
+
+~ d4_down
+Castellanos: It's down. Your first room on Mars. [ID:d4_down_01]
+- It's bigger than it looked.
+	Castellanos: Everything is, after a lander. [ID:d4_down_02a]
+- It's real.
+	set moved
+	Castellanos: It's real. [ID:d4_down_02b]
+Castellanos: Now bring it to life. The air cartridge goes in its outside socket, and the solar blanket gives it power. [ID:d4_down_03]
+Castellanos: Then unpack the fit-out kit inside and make it somewhere you'd want to live. [ID:d4_down_04]
+=> END
+
+~ d4_home
+Castellanos: Rao's flying over. He says it looks like a home. [ID:d4_home_01]
+- It feels like one.
+	set home
+- It's a start.
+	Castellanos: It's a good start. [ID:d4_home_02b]
+Castellanos: Call me at sunset. There's something I want to talk to you about. [ID:d4_home_03]
+=> END
+
+~ d4_sunset
+Castellanos: Sunset from your own window. How's the view? [ID:d4_sun_01]
+- Better than the lander's.
+- Worth the trip.
+	set worth_it
+Castellanos: Okay. Here's the rest of it. You weren't sent just to build a room. [ID:d4_sun_02]
+Castellanos: Four science teams on Earth have been waiting years for someone to stand where you're standing. [ID:d4_sun_03]
+Castellanos: Life: was anything ever alive here? Climate: where did the water go? Geology: what is this place made of? [ID:d4_sun_04]
+Castellanos: And Humans: can people actually live here? That one's you. [ID:d4_sun_05]
+- That's a lot for one person.
+	Castellanos: It is. You won't be one person forever. [ID:d4_sun_06a]
+- Where do I start?
+	Castellanos: Water. Your module's plans have an ice extractor in them. Water of your own changes everything. [ID:d4_sun_06b]
+Castellanos: And there are more walkers out there, with the rest of the base on them. We'll find them. [ID:d4_sun_07]
+Castellanos: Five of us are still up here, waiting for a base we can land to. Build it, and we'll come down. [ID:d4_sun_08]
+- I'll build it.
+	set promise
+- No pressure, then.
+	? joker Castellanos: None at all. You keep saying that. [ID:d4_sun_09b]
+	?! joker Castellanos: None at all. [ID:d4_sun_09c]
+Castellanos: Goodnight, Outpost One. Sleep well under a real roof. [ID:d4_sun_10]
+do bed
+=> END

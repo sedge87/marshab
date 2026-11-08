@@ -119,9 +119,35 @@ func _initialize() -> void:
 	await _settle(radio)
 	_check(radio.heard.has("d2_sunset"), "day 2's sunset call")
 
+	# Day 3: the walker set right crawls home overnight; you mark the spot.
+	var walker: Node3D = world.walker
+	days.nights = 2
+	MHGame.sol_hour = 6.5
+	await _settle(radio)
+	_check(radio.heard.has("d3_wake"), "day 3's morning call")
+	walker.recalibrated()
+	await _settle(radio)
+	_check(str(walker.state) == "coming" and radio.heard.has("d3_fixed"), "set right, it'll come overnight (%s)" % walker.state)
+	_check(not days.day_done(3), "day 3 waits for the spot")
+	walker.mark({"cells": [Vector2i(3, 3), Vector2i(4, 3), Vector2i(3, 4), Vector2i(4, 4), Vector2i(3, 5), Vector2i(4, 5)]})
+	await _settle(radio)
+	_check(bool(walker.marked) and radio.heard.has("d3_marked") and days.day_done(3), "the spot's marked: day 3 done")
+	MHGame.sol_hour = sunset - .5
+	await _settle(radio)
+	_check(radio.heard.has("d3_sunset"), "day 3's sunset call")
+	_check(days.in_lander_days(), "day 3's night is still in the lander")
+
+	# Day 4: it's home at dawn.
+	days.nights = 3
+	MHGame.sol_hour = 6.5
+	await _settle(radio)
+	_check(str(walker.state) in ["parked", "carrying"] and walker.global_position.distance_to(walker.home) < 30.0, "dawn: Walker 1 is home (%s)" % walker.state)
+	_check(radio.heard.has("d4_wake"), "day 4's morning call")
+	_check(days.guided() and not days.in_lander_days(), "day 4: still guided, not the lander")
+
 	# Saved.
 	var state: Dictionary = days.export_state()
-	_check(int(state.get("version", 0)) == 2 and int(state.get("sunset_called", 0)) == 2, "the version and the calls are saved")
+	_check(int(state.get("version", 0)) == 2 and int(state.get("sunset_called", 0)) == 3, "the version and the calls are saved")
 	_check((world.radio.export_state().heard as Dictionary).has("d2_found"), "the radio's heard calls are saved")
 
 	print("guided_days_test: %d failure(s)" % failures)

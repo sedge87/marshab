@@ -21,10 +21,14 @@ extends Node
 ##   Day 1: pallets 1, 2 and 4 and the module's cargo carried home. No GAR-Y.
 ##   Day 2: something moving out there; GAR-Y's empty cradle, then GAR-Y at
 ##          work; its jobs (scripts/lifepod.gd) till the walker's due.
-##   Day 3 on: as version 1 for now (the walker, then the module).
+##   Day 3: Walker 1 set right; it crawls home overnight; B marks the
+##          module's spot (scripts/walker.gd "coming").
+##   Day 4: at dawn it's parked and sets the module down on your mark; the
+##          cargo goes in, the kit's placed; the sunset talk: the four goals.
+##          The first night in the module. Then day 5 is yours.
 ## Version 1 (the first opening) stays for older saves and older tests.
 static var new_games_version := 2
-const STORY_DAYS := 2           # days run on story time
+const STORY_DAYS := 4           # days run on story time; day 5 opens the game
 const HOLD_BEFORE_SUNSET := 2.0 # the sun waits here till the day's done
 const CALL_BEFORE_SUNSET := .6  # Castellanos's sunset call
 const DUSK_SPEED := 8.0         # the clock's pace to dusk once the day's done
@@ -97,10 +101,13 @@ func _done(what: String) -> bool:
 
 ## Still in the opening's guided days.
 func guided() -> bool:
-	return world.get("walker") != null and stage() < STAGES.size()
+	if world.get("walker") == null: return false
+	if v2(): return nights < STORY_DAYS
+	return stage() < STAGES.size()
 
 ## Living in the lander still: its hatch won't open from inside at night.
 func in_lander_days() -> bool:
+	if v2(): return guided() and nights <= 2 and int(world.opening_part()) <= 3
 	return guided() and world.has_method("opening_part") and int(world.opening_part()) <= 2
 
 func _cycle() -> Dictionary:
@@ -233,6 +240,10 @@ func day_done(day: int) -> bool:
 		2:
 			if not _gary_found(): return false
 			return pod == null or bool(pod.walker_due) or bool(pod.walker_moved)
+		3:
+			var walker: Node = world.get("walker")
+			return walker == null or bool(walker.marked) or str(walker.state) in ["parked", "carrying", "lowering", "done"]
+		4: return _done("module") and _done("fit_out")
 	return true
 
 func _story_day(day: int, hour: float, sunrise: float, sunset: float) -> void:
@@ -265,6 +276,14 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 		if pod != null and (pod.jobs as Dictionary).has("tow"): radio.ring("d1_cargo")
 	elif day == 2 and hour >= sunrise - 1.0 and not bool(world.get("gary_met")):
 		radio.ring("d2_wake")
+	elif day == 3 and hour >= sunrise - 1.0:
+		radio.ring("d3_wake")
+	elif day == 4 and hour >= sunrise - 1.0:
+		var walker: Node = world.get("walker")
+		if walker != null and str(walker.state) == "coming": walker.arrive_overnight()
+		radio.ring("d4_wake")
+		if _done("module"): radio.ring("d4_down")
+		if _done("module") and _done("fit_out"): radio.ring("d4_home")
 
 ## GAR-Y met for real (not just out at work, waiting to be found).
 func _gary_found() -> bool:

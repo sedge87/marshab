@@ -1,0 +1,45 @@
+# Day 3: Walker 1, and choosing home (docs/opening-days.md).
+# Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d3
+
+~ d3_wake
+Castellanos: Morning. Did you hear that last night? About three o'clock. [ID:d3_wake_01]
+- A grinding. Out on the flats.
+	set heard_it
+	Castellanos: Rao heard it on the relay too. Something big, moving. [ID:d3_wake_02a]
+- I slept like a rock.
+	Castellanos: Lucky you. Something big was moving out there at three. [ID:d3_wake_02b]
+Castellanos: This time I really think it's a walker. Look for tracks. Wide ones. [ID:d3_wake_03]
+? letdown Castellanos: And yes, I know I said that yesterday. [ID:d3_wake_04]
+=> END
+
+~ d3_fixed
+Castellanos: Its nav's green. You did it. [ID:d3_fixed_01]
+Castellanos: It doesn't trust the ground to tell it where it is any more, so it'll crawl home, checking itself against the sky as it goes. [ID:d3_fixed_02]
+Castellanos: Rao says it'll be at your door by morning. Come down off it and head home. [ID:d3_fixed_03]
+- Why did it get lost in the first place?
+	set asked_why
+	Castellanos: The storm blinded it, and the ground out there fooled what it had left. Nobody's sure why yet. [ID:d3_fixed_04a]
+- Morning it is.
+Castellanos: And while you wait: that module needs somewhere to live. Pick the spot. [ID:d3_fixed_05]
+Castellanos: Somewhere you'd want to wake up every morning. Flat, with sun, and room to grow. [ID:d3_fixed_06]
+=> END
+
+~ d3_marked
+Castellanos: Got your mark on the long lens. That's home, then. [ID:d3_marked_01]
+- That's home.
+	set chose_home
+- Unless you've got a better idea.
+	Castellanos: It's your view, not mine. [ID:d3_marked_02b]
+Castellanos: Walker 1 knows where to put it. Get some sleep tonight. Tomorrow you move in. [ID:d3_marked_03]
+=> END
+
+~ d3_sunset
+Castellanos: Last night in the lander. How does it feel? [ID:d3_sun_01]
+- I'll miss it, a bit.
+	Castellanos: It kept you alive. You're allowed to miss it. [ID:d3_sun_02a]
+- I can't wait to stand up straight.
+	Castellanos: Ha. Neither can my back, up here. [ID:d3_sun_02b]
+Castellanos: The walker's moving. Slow, but moving. I'll keep an eye on it all night. [ID:d3_sun_03]
+Castellanos: Goodnight, Outpost One. [ID:d3_sun_04]
+do bed
+=> END

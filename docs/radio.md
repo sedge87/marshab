@@ -1,4 +1,4 @@
-# The radio: Castellanos and you (design, 8 Nov — for review, not built)
+# The radio: Castellanos and you (8 Nov — built: scripts/radio.gd, data/radio/day1-4.txt; Call orbit has no slate button yet)
 
 **Why it exists.** The user, 8 Nov: "less of the base talking and more of the back and forth between the player and the person on the orbiter." Castellanos is the one voice you get to know: the thread through design, live, work and survive (master-design §1, the spine). ARDEN goes quiet: alarm tones and the panels only.
 

@@ -36,6 +36,7 @@ static func stage(builder: Node) -> String:
 	match str(walker(builder).get("state")):
 		"stalled", "walking": return "waiting"
 		"parked": return "set_down"
+		"coming": return "delivering" if bool(walker(builder).get("marked")) else "set_down"   # v2: mark the spot while it crawls home
 		"carrying", "lowering": return "delivering"
 	return ""
 
@@ -43,13 +44,17 @@ static func stage(builder: Node) -> String:
 static func b_reason(builder: Node) -> String:
 	match stage(builder):
 		"waiting": return "Nothing to build with yet"
-		"delivering": return "The walker is setting the module down"
+		"delivering":
+			if str(walker(builder).get("state")) == "coming": return "The module's spot is marked"
+			return "The walker is setting the module down"
 	return ""
 
 static func b_detail(builder: Node) -> String:
 	match stage(builder):
 		"waiting": return "The base's first room is still out there on its walker."
-		"delivering": return "Watch it come down, then walk over and cycle in."
+		"delivering":
+			if str(walker(builder).get("state")) == "coming": return "Walker 1 brings it in overnight and sets it down on your mark."
+			return "Watch it come down, then walk over and cycle in."
 	return ""
 
 ## Whether a part is on the bar right now.
@@ -116,7 +121,8 @@ static func plan_closed(builder: Node) -> void:
 	if not has_airlock: return
 	# Set down for good: undo no longer takes the module or its airlock back.
 	builder.set("_history", (builder.get("_history") as Array).filter(func(step): return not (str(step.get("type", "")) == "zone" and (bool(step.zone.get("carried", false)) or str(step.zone.get("kind", "")) == "airlock"))))
-	walker(builder).deliver(module)
+	if str(walker(builder).get("state")) == "coming": walker(builder).mark(module)
+	else: walker(builder).deliver(module)
 
 ## The fit-out kit still to place: the only things on the Interior bar until
 ## it's all out of its crate.

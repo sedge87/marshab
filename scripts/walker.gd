@@ -22,6 +22,11 @@ extends Node3D
 ##   stands over the spot and lowers it.
 ## - Down: the fit-out kit is yours to place, the module's plans join your
 ##   own, and the first night in a real room follows.
+## The guided days, version 2 (docs/opening-days.md): set right, it doesn't
+## walk home now. It's "coming": it'll crawl home overnight, checking itself
+## as it goes. That afternoon B marks where the module goes (a footprint on
+## the ground); at dawn it's parked by the lander and sets the module down on
+## your mark while you watch.
 
 const MODEL := preload("res://assets/companions/walker.glb")
 const MHPalette := preload("res://scripts/mh_palette.gd")
@@ -63,7 +68,9 @@ const PHOTO_SIZE := Vector2i(480, 300)
 const PHOTO_METRES := 70.0
 
 var world: Node
-var state := "stalled"          # stalled, walking, parked, carrying, lowering, done
+var state := "stalled"          # stalled, walking, coming (v2: home overnight), parked, carrying, lowering, done
+var marked := false             # v2: the module's spot is marked, waiting for it
+var _mark: Node3D
 var home := Vector3.INF         # where it parks by the lander
 var target := Vector3.INF       # the module's spot
 var target_yaw := 0.0
@@ -140,6 +147,8 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	if bool(saved.get("tracks", false)) or (pod != null and bool(pod.walker_moved)): lay_tracks()
 	elif not seen and not calibrated and state == "stalled": _wait_out_of_sight()
 	# Saved mid-delivery: it's down.
+	marked = bool(saved.get("marked", false))
+	if marked and state == "coming": _show_mark.call_deferred()
 	if state in ["carrying", "lowering"]: _finish_set_down.call_deferred()
 	elif state == "done": _module.visible = false; _module_shape.disabled = true
 
@@ -441,6 +450,7 @@ func interaction_prompt() -> Dictionary:
 	match state:
 		"stalled": return {"label": NAME + " · lost: its nav screen's up on the front deck"}
 		"walking": return {"label": NAME + " · walking home"}
+		"coming": return {"label": NAME + " · set right: it'll crawl home overnight"}
 		"parked": return {"label": NAME + " · carrying the General Module"}
 		"carrying", "lowering": return {"label": NAME + " · setting the module down"}
 	return {"label": NAME}
@@ -465,7 +475,104 @@ func recalibrated() -> void:
 	if calibrated: return
 	calibrated = true
 	if not seen: _see()
+	if int(world.get("opening_version")) >= 2:
+		_coming()
+		return
 	_wake()
+
+## v2: set right, but it'll walk home tonight, not now. You climb down.
+func _coming() -> void:
+	state = "coming"
+	var lander: Vector3 = world.lander.global_position
+	var out := Vector3(global_position.x - lander.x, 0, global_position.z - lander.z).normalized()
+	home = lander + out * PARK_FROM_LANDER
+	MHAudio.sfx_at("mode_build", self, -4.0, .6)
+	var notes: Node = world.get("notes")
+	if notes != null: notes.answer("walker_seen")
+	MHNotices.post("info", NAME + " knows where it is", "It'll crawl home overnight. Back at the lander, press B to mark where the General Module goes.", "", 1)
+	var radio: Node = world.get("radio")
+	if radio != null: radio.ring("d3_fixed")
+
+## v2, dawn: it walked through the night and parked by the lander. With the
+## spot marked, it carries the module straight there.
+func arrive_overnight() -> void:
+	if state != "coming": return
+	global_position = home
+	rotation.y = _face_yaw(world.lander.global_position - home)
+	_settle()
+	if riding: _step_off()
+	ladder_out = 0.0
+	_place_ladder()
+	state = "parked"
+	MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit
+	if not marked:
+		MHNotices.post("info", NAME + " is home", "Press B to choose where the General Module goes.", "", 1)
+		return
+	var module: Dictionary = BUILD_RULES.module_zone(world.builder)
+	if module.is_empty():
+		marked = false
+		return
+	_clear_mark()
+	deliver(module)
+
+## v2: the plan closed with the module placed while it's still out there:
+## the spot's marked; the rooms wait hidden, a footprint shows where.
+func mark(zone: Dictionary) -> void:
+	if state != "coming": return
+	marked = true
+	_hide_base(true)
+	_show_mark(zone)
+	MHNotices.post("valid", "The module's spot is marked", "Walker 1 will set it down here when it comes in.", "log")
+	var radio: Node = world.get("radio")
+	if radio != null: radio.ring("d3_marked")
+
+## Four corner stakes and a line round the footprint.
+func _show_mark(zone: Dictionary = {}) -> void:
+	_clear_mark()
+	if zone.is_empty(): zone = BUILD_RULES.module_zone(world.builder)
+	if zone.is_empty(): return
+	var cell := float(world.builder.CELL)
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for c in zone.cells:
+		lo = Vector2(minf(lo.x, c.x), minf(lo.y, c.y))
+		hi = Vector2(maxf(hi.x, c.x + 1), maxf(hi.y, c.y + 1))
+	lo *= cell
+	hi *= cell
+	_mark = Node3D.new()
+	_mark.name = "ModuleMark"
+	world.add_child(_mark)
+	var stake := StandardMaterial3D.new()
+	stake.albedo_color = MHPalette.accent_colour()
+	stake.emission_enabled = true
+	stake.emission = MHPalette.accent_colour() * .4
+	var corners := [Vector2(lo.x, lo.y), Vector2(hi.x, lo.y), Vector2(hi.x, hi.y), Vector2(lo.x, hi.y)]
+	for i in 4:
+		var a: Vector2 = corners[i]
+		var b: Vector2 = corners[(i + 1) % 4]
+		var post := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = .04
+		cyl.bottom_radius = .05
+		cyl.height = 1.0
+		post.mesh = cyl
+		post.material_override = stake
+		post.position = Vector3(a.x, MHSiteTerrain.height(a.x, a.y) + .5, a.y)
+		_mark.add_child(post)
+		var line := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		var length := a.distance_to(b)
+		box.size = Vector3(.05, .03, length)
+		line.mesh = box
+		line.material_override = stake
+		var mid := (a + b) * .5
+		line.position = Vector3(mid.x, MHSiteTerrain.height(mid.x, mid.y) + .05, mid.y)
+		line.rotation.y = atan2(b.x - a.x, b.y - a.y)
+		_mark.add_child(line)
+
+func _clear_mark() -> void:
+	if _mark != null and is_instance_valid(_mark): _mark.queue_free()
+	_mark = null
 
 func _wake() -> void:
 	state = "walking"
@@ -803,4 +910,4 @@ func _night_check(you: Vector3) -> void:
 
 func export_state() -> Dictionary:
 	return {"state": state, "at": _arr(global_position), "yaw": rotation.y, "home": _arr(home), "target": _arr(target), "target_yaw": target_yaw,
-		"calibrated": calibrated, "nav_sight": nav_sight_done, "seen": seen, "tracks": tracks_laid, "sent": sent, "text_left": _text_left, "first_night": first_night}
+		"marked": marked, "calibrated": calibrated, "nav_sight": nav_sight_done, "seen": seen, "tracks": tracks_laid, "sent": sent, "text_left": _text_left, "first_night": first_night}
