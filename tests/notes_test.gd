@@ -2,7 +2,9 @@ extends SceneTree
 
 # Notes, your inner voice (scripts/notes.gd, data/notes.json; master-design §5):
 # - a new game's slate has Notes, not Goals, and the old crates don't land;
-# - the first thoughts come to mind: the cabin air, the blue sunset;
+# - the first thoughts come to mind: the cabin air (the blue sunset in the afternoon);
+# - the notice line: wraps, holds, waits for the slate, pressing first, Log-only chatter;
+# - the most pressing thought first on the page, and remind_top();
 # - thoughts change as you act, even out of order, and stay few;
 # - an answered thought leaves the page for the journal and raises the next;
 # - what's watched: the blue sunset outside, a cold cabin, night then dawn;
@@ -28,7 +30,13 @@ func _initialize() -> void:
 	var notes = world.notes
 	notes._check = 0.0
 	for i in 3: await process_frame
-	_check(notes.is_open("air") and notes.is_open("sunset"), "the first thoughts: the cabin air and the blue sunset (%s)" % str(notes.thoughts()))
+	# A new game in the lander: the air and the parachute come at their beats
+	# after the slate (mars_world._after_slate); stand in for those here.
+	if bool(world.get("_start_in_lander")):
+		_check(not notes.is_open("air"), "in the lander the air waits for its beat")
+		notes.think("air")
+		world._parachute_beat()
+	_check(notes.is_open("air") and not notes.is_open("sunset"), "the first thought is the cabin air; the blue sunset waits for the afternoon (%s)" % str(notes.thoughts()))
 	_check(MHNotices.history.any(func(n): return str(n.app) == "notes"), "a new thought shows on the notice line, for the Notes app")
 
 	# The slate: Notes, not Goals.
@@ -37,7 +45,7 @@ func _initialize() -> void:
 		_check("notes" in screen.apps() and not "goals" in screen.apps(), "the slate has Notes, not Goals (%s)" % str(screen.apps()))
 		var page: Control = screen._notes_page()
 		var texts: Array = page.find_children("*", "Label", true, false).map(func(l): return str(l.text))
-		_check(texts.any(func(t): return t.begins_with("The dial says")) and not texts.any(func(t): return t.contains("/") or t.contains("✓")), "the page is just your thoughts, no ticks or counts")
+		_check(texts.any(func(t): return t.begins_with("Cabin air's good")) and not texts.any(func(t): return t.contains("/") or t.contains("✓")), "the page is just your thoughts, no ticks or counts")
 		page.free()
 
 	# Out of order: you find the pallet without ever thinking about it.
@@ -109,12 +117,54 @@ func _initialize() -> void:
 	for i in 3: await process_frame
 	_check(notes.is_settled("cold"), "warm again settles it")
 
+	# The notice line (playtest 8 Nov): readable, waits for the slate, what matters first.
+	var line: MHNotices = MHNotices._line
+	line._queue.clear()
+	if line._shown != null: line._fade_out()
+	MHNotices.post("info", "Pallet 1: life support", "Inside: a fresh oxygen cartridge for the cabin, ten ration packs (you pocket them), and the sample kit (hand corer, scoop, bags). All of it is in the slate's Log too, with the rest of the day's news.", "log")
+	await process_frame
+	var body: Label = line._shown.find_child("Body", true, false) if line._shown != null else null
+	_check(body != null and body.autowrap_mode != TextServer.AUTOWRAP_OFF and not body.clip_text and body.text_overrun_behavior == TextServer.OVERRUN_NO_TRIMMING, "a long notice wraps, never clipped or cut off with …")
+	_check(MHNotices.hold_for(line._shown_entry) >= MHNotices.HOLD_MIN + 3.0, "and stays up long enough to read (%.1f s)" % MHNotices.hold_for(line._shown_entry))
+	MHNotices.post("info", "Ice melted", "2.0 L into the lander's tank.", "log")
+	line._age = 2.6
+	await process_frame
+	_check(str(line._shown_entry.get("heading", "")) == "Pallet 1: life support", "another waiting doesn't hurry it off")
+	MHNotices.hidden = true
+	MHNotices.post("info", "Parts", "3 parts for the lander's printer.", "log")
+	MHNotices.post("warn", "Dust storm", "A storm front by evening.", "site")
+	for i in 3: await process_frame
+	_check(line._shown == null and line._queue.size() >= 3, "with the slate up the queue waits instead of clearing (%d waiting)" % line._queue.size())
+	_check(bool(line._queue[0].pressing) and str(line._queue[0].heading) == "Dust storm", "a pressing notice jumps the queue")
+	MHNotices.post("info", "Sent to the orbiter", "The picture goes up on the next pass.", "comms", -1, false)
+	_check(str(MHNotices.history.back().heading) == "Sent to the orbiter" and not line._queue.any(func(e): return str(e.heading) == "Sent to the orbiter"), "chatter can go to the Log alone")
+	MHNotices.hidden = false
+	await process_frame
+	_check(line._shown != null and str(line._shown_entry.heading) == "Dust storm", "the slate down, the pressing one shows first")
+	_check(MHNotices.glyph_for({"heading": MHNotices.YOU_THINK}) == "pencil" and MHNotices.glyph_for({"heading": "Castellanos, from orbit"}) == "satellite" and MHNotices.glyph_for({"heading": MHGame.habitat_name}) == "volume-2", "who's talking: a heading and an icon")
+	line._queue.clear()
+	line._fade_out()
+
+	# What matters first on the page, and brought back to mind.
+	notes.settled.erase("water")
+	notes.think("photo")
+	notes.think("water", "low", {"where": ""})
+	notes.think("tired")
+	_check(str(notes.ordered()[0].id) == "water" and bool(notes.thoughts()[0].pressing), "the most pressing thought is first on the page (%s)" % str(notes.ordered().map(func(t): return t.id)))
+	_check(str(MHNotices.history.back().heading) == MHNotices.YOU_THINK, "a thought on the notice line is headed as your own")
+	_check(notes.is_open("water") and notes.text_of(notes.open[notes._find("water")]).contains("ice to melt"), "it says what to do and why")
+	var before: int = MHNotices.history.size()
+	_check(notes.remind_top() and MHNotices.history.size() == before + 1 and bool(MHNotices.history.back().pressing) and str(MHNotices.history.back().text).begins_with("Cabin water's"), "remind_top brings the most pressing thought back, amber-edged")
+	for id in ["iron", "ice_wall", "salvage", "rations_low", "dozed"]: notes.think(id, "seen" if id in ["iron", "ice_wall"] else "start")
+	_check(notes.is_open("water"), "a pressing thought doesn't drift out of mind when the page is full")
+	line._queue.clear()
+
 	# Saving.
 	var state: Dictionary = world.current_state()
 	var copy = load("res://scripts/notes.gd").new()
 	copy.setup(world, JSON.parse_string(JSON.stringify(state.notes)), false)
-	_check(copy.is_open("cargo") and copy.is_settled("parachute") and copy.thoughts().size() == notes.thoughts().size(), "open and settled thoughts are saved")
+	_check(copy.is_open("water") and copy.is_settled("parachute") and copy.thoughts().size() == notes.thoughts().size(), "open and settled thoughts are saved")
 	copy.free()
 	if failures == 0:
-		print("Notes test passed: Notes instead of Goals and no old crates in a new game, the first thoughts, fills, thoughts changing out of order, answers into the journal raising the next question, never more than five, ARDEN's afternoon warning, night and dawn, rest offered and passing, the blue sunset, a cold cabin, and saving.")
+		print("Notes test passed: the notice line (wrapping, holding, waiting for the slate, pressing first, Log-only chatter, who is talking), pressing thoughts first and remind_top, Notes instead of Goals and no old crates in a new game, the first thoughts, fills, thoughts changing out of order, answers into the journal raising the next question, never more than five, ARDEN's afternoon warning, night and dawn, rest offered and passing, the blue sunset, a cold cabin, and saving.")
 	quit(1 if failures > 0 else 0)

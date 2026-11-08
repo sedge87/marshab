@@ -3,17 +3,17 @@
   "thoughts": {
     "air": {
       "stages": {
-        "start": "The dial says the cabin air's good for about a sol. After that I'm living off the suit.",
-        "low": "Cabin air's getting thin. Whatever's under that parachute, I need it soon.",
-        "carrying": "Got the cartridge. Twenty kilos of it. Back to the cabin."
+        "start": "Cabin air's good for about a sol, the dial says. If that parachute is life support, the rest of it is a fresh cartridge under there.",
+        "low": "Cabin air's getting thin. If there's a cartridge under that parachute, I need it in the cabin soon.",
+        "carrying": "Got the cartridge. Twenty kilos of it. Back to the cabin and plug it in, and I can breathe for days."
       },
       "journal": "Plugged the new cartridge into the cabin. The needle swung right over. I can breathe for days now."
     },
     "parachute": {
       "stages": {
-        "start": "Parachute on the ridge {dir} of the hatch. Life support, I hope.",
-        "near": "It's ours. A pallet in the dust by the canopy, latches still shut.",
-        "open": "Pallet's open. The sample kit, ten ration packs, and a fresh oxygen cartridge for the cabin."
+        "start": "Parachute on the ridge {dir} of the hatch. Life support, I hope: the cabin's air won't last long on its own.",
+        "near": "It's ours. A pallet in the dust by the canopy, latches still shut. Open it and I'll know if the air's sorted.",
+        "open": "Pallet's open: the sample kit, ten ration packs, and a fresh oxygen cartridge. The cartridge goes in the cabin first."
       },
       "journal": "Found the first pallet under its parachute, right where the orbiter's photo said.",
       "next": [
@@ -34,8 +34,8 @@
     },
     "power": {
       "stages": {
-        "start": "ARDEN doesn't think the cabin battery lasts the night. There's a power pallet out there. Before dark would be better.",
-        "night": "Dark now. Heat or lights through the night: I don't think the battery gives me both."
+        "start": "ARDEN doesn't think the cabin battery lasts the night. There's a power pallet out there; find it before dark and the heater can run.",
+        "night": "Dark now. Heat or lights through the night: I don't think the battery gives me both. Warmth matters more."
       },
       "journal": "Made it to morning. {how}"
     },
@@ -95,8 +95,8 @@
     },
     "water": {
       "stages": {
-        "low": "Cabin water's lower than I thought. A day and a bit, maybe.{where}",
-        "empty": "The tank's dry. I need ice, and something to melt it in. The lander's bench has a melter."
+        "low": "Cabin water's lower than I thought. A day and a bit, maybe, so I'd better find ice to melt.{where}",
+        "empty": "The tank's dry, and I can't go long without a drink. Ice, melted in the lander's bench melter."
       },
       "journal": "Melted my first ice in the lander's melter. It came out cloudy and tasted of rust and nothing. Best drink I've ever had."
     },
@@ -138,9 +138,9 @@
     },
     "hungry": {
       "stages": {
-        "start": "Stomach's starting to talk. There are rations in the crate by the airlock.",
-        "hungry": "Properly hungry now. My hands feel slow. I should eat something.",
-        "starving": "I haven't eaten in days. Everything's an effort. Food, before anything else."
+        "start": "Stomach's starting to talk. There are rations in the crate by the airlock, if I want to keep my strength up.",
+        "hungry": "Properly hungry now, and my hands feel slow. A ration from the cabin crate would fix that.",
+        "starving": "I haven't eaten in days and everything's an effort. Food, before anything else, or nothing else gets done."
       },
       "journal": ""
     },

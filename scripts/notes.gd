@@ -14,6 +14,19 @@ extends Node
 const DATA_PATH := "res://data/notes.json"
 const MOST := 5            # open thoughts on the page at once
 const CHECK := 1.0         # seconds between looks round
+## Thoughts that matter now (playtest 8 Nov): id -> the stages that press
+## (empty: all of them), most pressing first. They go first on the page, get
+## the notice line's amber edge and jump its queue, and are what
+## remind_top() brings back to mind.
+const PRESSING := [
+	["air", []],
+	["power", []],
+	["water", []],
+	["water_low", []],
+	["thirsty", []],
+	["starving", []],
+	["hungry", ["hungry", "starving"]],
+]
 
 signal changed
 
@@ -58,7 +71,7 @@ func think(id: String, stage := "start", fills := {}) -> bool:
 		(thought.fills as Dictionary).merge(fills, true)
 	else:
 		open.append({"id": id, "stage": stage, "fills": fills.duplicate(), "sol": _sol()})
-		while open.size() > MOST: open.pop_front()   # the oldest drifts out of mind
+		while open.size() > MOST: _drift()   # the oldest drifts out of mind
 	_post(id)
 	changed.emit()
 	return true
@@ -97,12 +110,52 @@ func stage(id: String) -> String:
 	var at := _find(id)
 	return str(open[at].stage) if at >= 0 else ""
 
-## The page: [{id, text, sol}], newest first.
+## The page: [{id, text, sol, pressing}], the most pressing first, then
+## the rest newest first (scripts/pda_screen.gd lists them in this order).
 func thoughts() -> Array:
 	var out: Array = []
-	for thought in open:
-		out.push_front({"id": thought.id, "text": text_of(thought), "sol": thought.sol})
+	for thought in ordered():
+		out.append({"id": thought.id, "text": text_of(thought), "sol": thought.sol, "pressing": rank(thought) < PRESSING.size()})
 	return out
+
+## The open thoughts, most pressing first, then the rest newest first.
+func ordered() -> Array:
+	var newest: Array = open.duplicate()
+	newest.reverse()
+	var out: Array = []
+	for r in PRESSING.size():
+		for thought in newest:
+			if rank(thought) == r: out.append(thought)
+	for thought in newest:
+		if rank(thought) >= PRESSING.size(): out.append(thought)
+	return out
+
+## Where a thought stands in PRESSING (PRESSING.size() when it doesn't press).
+func rank(thought: Dictionary) -> int:
+	for r in PRESSING.size():
+		var stages: Array = PRESSING[r][1]
+		if str(thought.id) == str(PRESSING[r][0]) and (stages.is_empty() or str(thought.stage) in stages): return r
+	return PRESSING.size()
+
+func is_pressing(id: String) -> bool:
+	var at := _find(id)
+	return at >= 0 and rank(open[at]) < PRESSING.size()
+
+## Brings the most pressing open thought back to mind, once, on the notice
+## line (e.g. as you step out of the lander). False when nothing presses.
+func remind_top() -> bool:
+	var top: Array = ordered()
+	if top.is_empty() or rank(top[0]) >= PRESSING.size(): return false
+	_post(str(top[0].id))
+	return true
+
+## Too much on your mind: the oldest thought that isn't pressing goes.
+func _drift() -> void:
+	for i in open.size():
+		if rank(open[i]) >= PRESSING.size():
+			open.remove_at(i)
+			return
+	open.pop_front()
 
 func text_of(thought: Dictionary) -> String:
 	var stages: Dictionary = _spec(str(thought.id)).get("stages", {})
@@ -117,10 +170,11 @@ static func _fill(text: String, fills: Dictionary) -> String:
 	for key in fills: text = text.replace("{%s}" % key, str(fills[key]))
 	return text
 
-## One line under the compass, in your own words; the slate's Notes gets a dot.
+## Your own words on the notice line ("You think…", a pencil); a pressing
+## thought has the amber edge and goes first. The slate's Notes gets a dot.
 func _post(id: String) -> void:
 	var at := _find(id)
-	if at >= 0: MHNotices.post("info", "Notes", text_of(open[at]), "notes")
+	if at >= 0: MHNotices.post("info", MHNotices.YOU_THINK, text_of(open[at]), "notes", 1 if rank(open[at]) < PRESSING.size() else 0)
 
 func _sol() -> int:
 	var builder: Variant = world.get("builder") if world != null else null
