@@ -36,6 +36,10 @@ static var found: Dictionary = {}        # discovery id -> {hours, sol, sample, 
 static var replies: Array = []           # [{id, due}]
 static var chipped: Dictionary = {}      # "x,z" of rocks already chipped -> true
 static var readings: Dictionary = {}     # reading discovery id -> {"day": true, "night": true}
+## Science for the four goals starts once you're settled into building: the
+## General Module down and one thing of your own built (mars_world latches
+## it; playtest 8 Nov). Before that, no readings and no discoveries.
+static var science_open := false
 static var _data: Dictionary = {}
 
 static func on() -> bool:
@@ -43,12 +47,12 @@ static func on() -> bool:
 
 static func reset() -> void:
 	case_items = []; store = []; next_id = 1; jobs = {}; evidence = {}; leads = {}
-	found = {}; replies = []; chipped = {}; readings = {}
+	found = {}; replies = []; chipped = {}; readings = {}; science_open = false
 
 static func export_state() -> Dictionary:
 	return {"case": case_items.duplicate(true), "store": store.duplicate(true), "next_id": next_id, "jobs": jobs.duplicate(true),
 		"evidence": evidence.duplicate(true), "leads": leads.duplicate(), "found": found.duplicate(true), "replies": replies.duplicate(true),
-		"chipped": chipped.duplicate(), "readings": readings.duplicate(true)}
+		"chipped": chipped.duplicate(), "readings": readings.duplicate(true), "science_open": science_open}
 
 static func load_state(state: Dictionary) -> void:
 	reset()
@@ -62,6 +66,8 @@ static func load_state(state: Dictionary) -> void:
 	replies = (state.get("replies", []) as Array).duplicate(true)
 	chipped = (state.get("chipped", {}) as Dictionary).duplicate()
 	readings = (state.get("readings", {}) as Dictionary).duplicate(true)
+	# Older saves that already have science keep it.
+	science_open = bool(state.get("science_open", not found.is_empty() or not leads.is_empty()))
 
 # ---------- data ----------
 
@@ -299,7 +305,7 @@ static func _bound_water(record: Dictionary) -> bool:
 ## The suit logs its readings at a cave's reading spot (cave_climate), or out
 ## in the open air (mars_air): one by day and one by night confirm it. Returns messages.
 static func log_reading(id: String, daylight: bool, hours: float) -> Array:
-	if found.has(id) or discovery(id).is_empty(): return []
+	if not science_open or found.has(id) or discovery(id).is_empty(): return []
 	var seen: Dictionary = readings.get(id, {})
 	var when := "day" if daylight else "night"
 	if seen.has(when): return []
@@ -356,8 +362,8 @@ static func tick(hours: float, builder: Object) -> Array:
 	if not on() or builder == null: return out
 	var sim: Object = builder.call("simulation")
 	var now := float(sim.get("hours_run"))
-	# Chapter one's steps are field discoveries.
-	for entry in discoveries():
+	# Chapter one's steps are field discoveries (once science is open).
+	for entry in (discoveries() if science_open else []):
 		if entry.has("field") and MHChapterOne.steps.has(str(entry.field)) and not found.has(str(entry.id)):
 			out.append_array(discover(str(entry.id), now))
 	# The lab's jobs run on power.

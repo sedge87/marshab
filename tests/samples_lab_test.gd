@@ -54,6 +54,13 @@ func _initialize() -> void:
 	MHGame.game_mode = "survival"
 	MHChapterOne.reset()
 	_check(MHSamples.on(), "samples run under chapter rules")
+	# Science waits until you're settled into building (mars_world latches it).
+	_check(not MHSamples.science_open and MHSamples.log_reading("mars_air", true, 1.0).is_empty() and not MHSamples.readings.has("mars_air"), "before the first build: the suit logs nothing")
+	var closed_saved := MHSamples.export_state()
+	MHSamples.science_open = true
+	MHSamples.load_state(closed_saved)
+	_check(not MHSamples.science_open, "a closed state loads closed")
+	MHSamples.science_open = true
 
 	# ---- rocks come from the ground ----
 	var plains := MHSamples.rock_at(Vector3(10.0, 0.0, 10.0))

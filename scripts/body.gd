@@ -175,7 +175,7 @@ func _process(delta: float) -> void:
 		if _out_for >= COLLAPSE_HOURS: _wake()
 		return
 	if get_tree().paused: return
-	if hours > 0.0 and hours < 6.0: tick_needs(hours, _asleep())
+	if hours > 0.0 and hours < 6.0: tick_needs(hours, _asleep(), _out_cold())
 	_voice_in -= delta
 	if _voice_in <= 0.0:
 		_voice_in = 2.0
@@ -220,12 +220,20 @@ func _asleep() -> bool:
 	var sleep: Node = world.get("sleep") if world != null else null
 	return sleep != null and bool(sleep.asleep)
 
-## Game hours passing: hunger builds, and tiredness builds awake or clears asleep.
-func tick_needs(hours: float, asleep: bool) -> void:
+## Blacked out while GAR-Y brings you home: not awake, not rested.
+func _out_cold() -> bool:
+	var suit: Node = world.get("suit") if world != null else null
+	return suit != null and bool(suit.get("passed_out"))
+
+## Game hours passing: hunger builds, and tiredness builds awake or clears
+## asleep. Out cold, tiredness stays as it was (playtest 8 Nov: a blackout
+## left you tired and blinking for good).
+func tick_needs(hours: float, asleep: bool, out_cold := false) -> void:
 	if hunger_on(): fed_hours = minf(fed_hours + hours, 24.0 * 10.0)
 	if not tiredness_on():
 		awake_hours = 0.0
 		return
+	if out_cold: return
 	if asleep:
 		awake_hours = maxf(0.0, awake_hours - hours * SLEEP_CLEARS)
 	else:
@@ -287,7 +295,7 @@ func _tired_cues(delta: float, camera: Camera3D, k: float) -> void:
 	elif tired() and free:
 		_blink_in -= delta
 		if _blink_in <= 0.0:
-			_blink_in = randf_range(3.0, 7.0) if doze_risk() else randf_range(6.0, 12.0)
+			_blink_in = randf_range(8.0, 15.0) if doze_risk() else randf_range(15.0, 30.0)   # a cue, not a flicker
 			_lid = maxf(_lid, .95)
 		_yawn_in -= delta
 		if _yawn_in <= 0.0:

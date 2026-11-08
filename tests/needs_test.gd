@@ -63,6 +63,9 @@ func _initialize() -> void:
 	_check(body.doze_risk() and body.needs_words().has("exhausted"), "the doze risk after 49 h")
 	body.tick_needs(8.0, true)
 	_check(is_equal_approx(body.awake_hours, 33.0), "8 h asleep clears 16 h (%.1f left)" % body.awake_hours)
+	var fed_was := float(body.fed_hours)
+	body.tick_needs(3.0, false, true)
+	_check(is_equal_approx(body.awake_hours, 33.0) and float(body.fed_hours) > fed_was, "out cold for 3 h: no more tired, no less, but hungrier")
 	body.awake_hours = 0.0
 	body.slept(4.0)
 	_check(not body.rested(), "4 h isn't enough to wake rested")
