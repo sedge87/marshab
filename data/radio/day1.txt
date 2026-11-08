@@ -52,7 +52,7 @@ Castellanos: One at a time, please. Your suit won't stretch to both and back, an
 - Understood.
 - Yes, Commander.
 	set formal
-	Castellanos: Commander? We shared a bathroom the size of a phone box for seven months. It's Mira. It's been Mira since week two. [ID:d1_ridge_04b]
+	Castellanos: Commander? We shared a bathroom the size of a phone box for seven months. It's Castle. It's been Castle since week two. [ID:d1_ridge_04b]
 - What does it look like from up there?
 	set curious
 	Castellanos: Honestly? Like a dusty orange marble with a very small, very brave dot on it. Rao's going to try and photograph you waving next pass. [ID:d1_ridge_04c]
@@ -117,7 +117,7 @@ Castellanos: Rao wants to know what it sounds like down there. He says he's been
 Castellanos: We go behind the planet in a few minutes, so I'll lose you for a while. Get inside, eat something, and get some sleep. Tomorrow we start looking for the walkers. [ID:d1_sun_06]
 - Goodnight, orbit.
 	set goodnight
-- Goodnight, Mira.
+- Goodnight, Castle.
 	set first_name
 	Castellanos: Goodnight. I'm glad you're down there in one piece. We all are. [ID:d1_sun_06b]
 Castellanos: Talk at sunrise, Outpost One. Sleep well. [ID:d1_sun_07]

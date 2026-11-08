@@ -85,7 +85,7 @@ Castellanos: So. How's your new friend? [ID:d2_sun_01]
 Castellanos: Still no sign of the walkers, I'm afraid. We're looking on every pass. Tupou's taken over the night shift at the window. [ID:d2_sun_03]
 Castellanos: Get some sleep. Both of you. Does GAR-Y sleep? Ask it. Actually, don't, it'll only beep. [ID:d2_sun_04]
 - Goodnight, orbit.
-- Goodnight, Mira.
+- Goodnight, Castle.
 	set first_name
 	Castellanos: Goodnight. Thanks for today. It was a good one. [ID:d2_sun_05b]
 Castellanos: Talk at sunrise, Outpost One. [ID:d2_sun_06]

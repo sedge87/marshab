@@ -19,7 +19,35 @@ Castellanos: This time I really, honestly think it's a walker. Big, slow, heavy.
 Castellanos: Its nav screen just went green. You did it. You actually did it. Tupou is cheering and Mwangi is telling him to sit down before he hits his head. [ID:d3_fixed_01]
 Castellanos: Here's the thing, though. It doesn't trust the ground to tell it where it is any more, and I don't blame it. So it's going to crawl home, slowly, checking itself against the sky every few hundred metres. [ID:d3_fixed_02]
 Castellanos: Rao's done the sums. He says it'll be parked at your door by morning. [ID:d3_fixed_03]
-Castellanos: Oh. Hold on. Achterberg's reading its health check. The front left wheel is packed solid with grit, and the seal on that joint's split right through. [ID:d3_fixed_03b]
+Castellanos: Except. Hang on. It's not moving. Its nav's happy, but its legs are locked up tight. [ID:d3_fixed_07]
+Castellanos: And its health check's no use to us. The storm cooked half its sensors, so it knows something's wrong and it can't tell us what. [ID:d3_fixed_08]
+Castellanos: So I need your eyes. Climb down and take pictures for me with your slate. Close up, one part at a time, right in the middle of the shot. Achterberg and I will go through every one. [ID:d3_fixed_09]
+- Detective work. I like it.
+	Castellanos: Ha. You'll be the hands, I'll be the magnifying glass. [ID:d3_fixed_10a]
+- What am I looking for?
+	set asked_what
+	Castellanos: Honestly, I don't know yet. That's the fun part. Start with the knees. That's where these things usually go wrong. [ID:d3_fixed_10b]
+?! asked_what Castellanos: Start with the knees, I'd say. That's where these things usually go wrong. [ID:d3_fixed_11]
+=> END
+
+~ d3_photo_knee
+Castellanos: Knees. Okay. Clean joints, no cracks, no leaks. That's a healthy knee. Achterberg says try the wheels. The front ones take all the dust. [ID:d3_photo_knee_01]
+=> END
+
+~ d3_photo_wheel
+Castellanos: That wheel's dusty, but its seal looks fine. Achterberg's tapping the screen. She wants the front left. That's the side it's been leaning on. [ID:d3_photo_wheel_01]
+=> END
+
+~ d3_photo_lamp
+Castellanos: That's the fault lamp. Very bright. Very orange. Tells us absolutely nothing we didn't know. Get down to the legs and wheels. [ID:d3_photo_lamp_01]
+=> END
+
+~ d3_photo_none
+Castellanos: I can't make anything out in that one, sorry. Get in close to one part, and put it right in the middle of the picture. [ID:d3_photo_none_01]
+=> END
+
+~ d3_fault
+Castellanos: Stop. That one. Achterberg's zooming in. Oh, look at that. The front left wheel is packed solid with grit, and the seal on that joint's split right through. [ID:d3_fixed_03b]
 Castellanos: It won't make it home on that. It'd grind the bearing to dust before midnight. [ID:d3_fixed_03c]
 - Can I fix it out here?
 	Castellanos: Not with a hammer and good intentions, no. It needs a new seal. A proper one. [ID:d3_fixed_03d]
@@ -72,7 +100,7 @@ Castellanos: Last night in the lander. How does that feel? [ID:d3_sun_01]
 - I can't wait to stand up straight.
 	Castellanos: Ha. Neither can my back. Seven months of floating and now I hunch over everything like a question mark. [ID:d3_sun_02b]
 Castellanos: GAR-Y's heading out with the seal once it's properly dark. I'll watch the pair of them all night, I promise. If anything changes, you'll be the first to know. [ID:d3_sun_03]
-- Get some sleep yourself, Mira.
+- Get some sleep yourself, Castle.
 	set kind
 	Castellanos: Ha. You sound like Mwangi. Fine. I'll get some sleep. After this pass. [ID:d3_sun_04a]
 - Thanks. Goodnight.

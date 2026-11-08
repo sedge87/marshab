@@ -71,6 +71,11 @@ var world: Node
 var state := "stalled"          # stalled, walking, coming (v2: home overnight), parked, carrying, lowering, done
 var marked := false             # v2: the module's spot is marked, waiting for it
 var _mark: Node3D
+var fault_found := false         # v2, day 3: you photographed the split wheel seal
+var shots: Dictionary = {}       # v2, day 3: the parts you've photographed for Castellanos
+const FAULT := "fl_wheel"        # the front-left wheel: packed with grit, its seal split
+const SHOT_REACH := 9.0          # get this close to a part for her to see it
+const SHOT_AIM := 22.0           # degrees off the middle of the picture
 var home := Vector3.INF         # where it parks by the lander
 var target := Vector3.INF       # the module's spot
 var target_yaw := 0.0
@@ -148,6 +153,8 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	elif not seen and not calibrated and state == "stalled": _wait_out_of_sight()
 	# Saved mid-delivery: it's down.
 	marked = bool(saved.get("marked", false))
+	fault_found = bool(saved.get("fault_found", false))
+	for p in saved.get("shots", []): shots[str(p)] = true
 	if marked and state == "coming": _show_mark.call_deferred()
 	if state in ["carrying", "lowering"]: _finish_set_down.call_deferred()
 	elif state == "done": _module.visible = false; _module_shape.disabled = true
@@ -491,9 +498,53 @@ func _coming() -> void:
 	MHAudio.sfx_at("mode_build", self, -4.0, .6)
 	var notes: Node = world.get("notes")
 	if notes != null: notes.answer("walker_seen")
-	MHNotices.post("info", NAME + " knows where it is", "Its front wheel seal is split: print it a new one on the lander's printer. Then press B by the lander to mark where the General Module goes.", "", 1)
+	MHNotices.post("info", NAME + " knows where it is", "But it won't move. Climb down and photograph it for Castellanos: Tab for the slate, then Camera.", "", 1)
 	var radio: Node = world.get("radio")
 	if radio != null: radio.ring("d3_fixed")
+
+## v2, day 3: the hunt for the fault. Each photo near the walker (scripts/
+## slate_camera.gd) shows Castellanos the part in the middle of it; the
+## front-left wheel is the one.
+func photographed(eye: Camera3D) -> void:
+	if state != "coming" or fault_found or eye == null: return
+	var part := aimed_part(eye)
+	var radio: Node = world.get("radio")
+	if part == FAULT:
+		fault_found = true
+		if radio != null: radio.ring("d3_fault")
+		return
+	if global_position.distance_to(eye.global_position) > 40.0: return   # not a picture of the walker at all
+	var first := not shots.has(part)
+	shots[part] = true
+	if radio == null: return
+	if first and radio.has_section("d3_photo_" + part): radio.ring("d3_photo_" + part)
+	elif part == "none": MHNotices.post("info", "Too far off", "Get close to one part of the walker, and put it in the middle of the picture.", "", 1)
+	else: MHNotices.post("info", "Castellanos has seen that one", "Try another part of the walker.", "", 1)
+
+## The part of the walker in the middle of a picture from `eye`: a wheel,
+## knee or the fault lamp, close enough to see. "none" if there isn't one.
+func aimed_part(eye: Camera3D) -> String:
+	var parts: Array = []   # [id, global point]
+	for i in 6:
+		var s := -1.0 if i < 3 else 1.0
+		var z: float = [-5.0, 0.0, 5.0][i % 3]
+		var id := FAULT if i == 0 else "wheel"
+		parts.append([id, to_global(Vector3(s * 7.7, .8, z))])
+		var knee: Node3D = _knees[i] if i < _knees.size() else null
+		if knee != null: parts.append(["knee", knee.global_position])
+	if _lamp != null: parts.append(["lamp", _lamp.global_position])
+	var look := -eye.global_basis.z
+	var best := "none"
+	var best_angle := SHOT_AIM
+	for p in parts:
+		var at: Vector3 = p[1]
+		var to := at - eye.global_position
+		if to.length() > (SHOT_REACH * 1.8 if str(p[0]) == "lamp" else SHOT_REACH): continue
+		var angle := rad_to_deg(look.angle_to(to.normalized()))
+		if angle < best_angle:
+			best_angle = angle
+			best = str(p[0])
+	return best
 
 ## v2, dawn: it walked through the night and parked by the lander. With the
 ## spot marked, it carries the module straight there.
@@ -914,4 +965,4 @@ func _night_check(you: Vector3) -> void:
 
 func export_state() -> Dictionary:
 	return {"state": state, "at": _arr(global_position), "yaw": rotation.y, "home": _arr(home), "target": _arr(target), "target_yaw": target_yaw,
-		"marked": marked, "calibrated": calibrated, "nav_sight": nav_sight_done, "seen": seen, "tracks": tracks_laid, "sent": sent, "text_left": _text_left, "first_night": first_night}
+		"marked": marked, "fault_found": fault_found, "shots": shots.keys(), "calibrated": calibrated, "nav_sight": nav_sight_done, "seen": seen, "tracks": tracks_laid, "sent": sent, "text_left": _text_left, "first_night": first_night}

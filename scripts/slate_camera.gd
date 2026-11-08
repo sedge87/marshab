@@ -135,6 +135,8 @@ func take() -> Dictionary:
 		path = MHJournal.folder() + "photo_%03d_%d.png" % [sol, MHJournal.photos_on(sol)]
 		if image.save_png(path) != OK: path = ""
 	var record := MHJournal.add_photo(sol, path, words, found.map(func(s): return str(s.id)))
+	var walker: Node = world.get("walker")
+	if walker != null and is_instance_valid(walker) and walker.has_method("photographed"): walker.photographed(eye)
 	_busy = false
 	var notes: Node = world.get("notes")
 	if notes != null: notes.answer("photo")

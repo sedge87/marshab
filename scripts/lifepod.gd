@@ -420,7 +420,7 @@ func _open_plans() -> Array:
 ## Day 3 of version 2: Walker 1's split wheel seal, before it can walk home.
 func _seal_wanted() -> bool:
 	var walker: Node = world.get("walker")
-	return walker != null and str(walker.get("state")) == "coming"
+	return walker != null and str(walker.get("state")) == "coming" and bool(walker.get("fault_found"))
 
 ## GAR-Y met for real (not still out at work, waiting to be found on day 2).
 func _gary_found() -> bool:
