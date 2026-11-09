@@ -86,7 +86,7 @@ Castellanos: GAR-Y's beeping at it. I think it knows. Give it a few hours after 
 => END
 
 ~ d3_marked
-Castellanos: I can see your stakes on the long lens. Tiny little corners. So that's home, then? [ID:d3_marked_01]
+Castellanos: Your stakes just came up on my map. Tiny little corners. So that's home, then? [ID:d3_marked_01]
 - That's home.
 	set chose_home
 	Castellanos: Good choice. I mean it. Rao's already planning where his bunk goes. [ID:d3_marked_02a]

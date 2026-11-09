@@ -41,9 +41,10 @@ Castellanos: But it'll never work for all of us. There's one seat, and you're in
 - No pressure, then.
 	set joker
 	Castellanos: None at all. Just the whole mission. You'll be fine, you were always the calm one on the ship. Apart from that one time with the coffee. [ID:d1_relock_06b]
-Castellanos: We can't come down yet. You flew yours down by hand, by eye. Ours lands itself: it homes on the base's beacon and steers by the guided nav, and both went wrong in that storm. [ID:d1_relock_05c]
-Castellanos: And it's a bus, not a home. Air for the five of us for a day, no more. It needs a base to land beside, and a beacon we can trust. [ID:d1_relock_05d]
-Castellanos: So until then, we're up here, and you're our eyes. [ID:d1_relock_05e]
+Castellanos: We can't come down yet. Ours is built to set the rest of us down right beside a finished base, on its beacon. The beacon's dead, and there's no base. [ID:d1_relock_05c]
+Castellanos: And it's lean. A few days of air, that's all. Come down kilometres off target, the way you did, and we'd never reach shelter. [ID:d1_relock_05d]
+Castellanos: Yours was built for exactly that. One seat, but it'll keep you going for months wherever it lands. That's why you came first. [ID:d1_relock_05e]
+Castellanos: And until someone works out why every pallet came down wrong, flight rules keep us up here. So you're our eyes. [ID:d1_relock_05f]
 do think air
 Castellanos: Rao got a photo of a parachute on the last pass. It's on your slate. Pallet one, up on the ridge, with the module's life support in it. That's where the base starts. Go and have a look, and talk to me while you walk if you like. [ID:d1_relock_07]
 do parachute
@@ -51,7 +52,7 @@ do parachute
 
 ~ d1_blackout
 Castellanos: There you are. Oh, thank God. You went quiet, your air hit zero, and then your suit started moving. Towards the lander. On its own. [ID:d1_blackout_01]
-Castellanos: Something brought you in. Rao caught a little shape on the long lens, right beside you, and then the dust took it. [ID:d1_blackout_02]
+Castellanos: Something brought you in. Rao's pass caught a little shape right beside you, and then the dust took it. [ID:d1_blackout_02]
 - I didn't see anything. It was all dark.
 	Castellanos: I'm not surprised. You were out cold. Whatever it was, it was gentle about it. [ID:d1_blackout_03a]
 - I heard beeping.
@@ -69,7 +70,7 @@ Castellanos: Turn back sooner, okay? When I call, I mean it. [ID:d1_blackout_aga
 => END
 
 ~ d1_pallet1
-Castellanos: I can see the canopy moving on the long lens. Is that you up there? What have we got? [ID:d1_p1_01]
+Castellanos: Your suit's got you right at the canopy. Is that you up there? What have we got? [ID:d1_p1_01]
 - An air cartridge, a sample kit and some rations.
 	Castellanos: Oh, that's good. The cartridge is the General Module's air plant, the heart of the place. It's heavy, but you can carry it. Bring it down and leave it by the lander, and it'll be ready the day the module comes in. [ID:d1_p1_02a]
 - None of this is for the lander, is it?

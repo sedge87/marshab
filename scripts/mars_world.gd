@@ -938,7 +938,7 @@ func open_lander_comms() -> void:
 	if pda != null and bool(pda.get("received")):
 		pda.open("comms")
 		return
-	get_tree().call_group("explore_hud", "show_equipment_note", "Comms", "The orbiter's on the radio. Castle calls when she's overhead: answer her on the suit's talk switch.")
+	get_tree().call_group("explore_hud", "show_equipment_note", "Comms", "Castle's on the relay. She calls when she has something: answer her on the suit's talk switch.")
 
 func open_fabricator(printer := "") -> void:
 	_open_live_view(FABRICATOR_SCREEN.new().setup(self, printer))

@@ -119,7 +119,7 @@ Castellanos: And Mwangi's is Humans. Can a person really live here, day after da
 	Castellanos: It is. It really is. But you won't be one person forever. That's the other half of this. [ID:d4_sun_06a]
 - Where do I even start?
 	Castellanos: Water. Always water. Tomorrow. The rest grows from that. [ID:d4_sun_06d]
-Castellanos: And that's mine. The five of us are still up here, waiting. Build us a base we can land beside, and find out what fooled the nav, so ours can find its way down. Then we'll come down and join you. That's the deal. [ID:d4_sun_17]
+Castellanos: And that's mine. The five of us are still up here, waiting. Build us a base we can land beside, get its beacon talking, and find out what threw the cargo off. Then we come down. That's the deal. [ID:d4_sun_17]
 ? asked_hers Castellanos: Told you you'd see. [ID:d4_sun_18]
 Castellanos: They'll each send you a note tonight. Don't feel you have to answer them all at once. [ID:d4_sun_19]
 - I'll build it.
