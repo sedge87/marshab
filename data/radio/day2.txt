@@ -48,7 +48,7 @@ Castellanos: Here's what it can do. It scouts, and it remembers what it finds. I
 	Castellanos: Did it beep at you? Tell me it beeped at you. [ID:d2_found_08a]
 - So I'm not alone out here after all.
 	Castellanos: No. Not alone. Small company, but company. [ID:d2_found_08b]
-Castellanos: Hang on. What's that box beside it? Rao, zoom in. That's a spares crate. It must have come off one of the pallets that broke up in the storm. [ID:d2_found_09]
+Castellanos: Hang on. What's that box beside it? Hold still, I'm on your helmet cam. That's a spares crate. It must have come off one of the pallets that broke up in the storm. [ID:d2_found_09]
 Castellanos: I bet that's what it's been circling all night. It knows that crate belongs to the base, and it can't do a thing about it. [ID:d2_found_10]
 - Can I carry it?
 	Castellanos: Seventy kilos? Not unless Mwangi's been hiding something in your rations. No. Leave your back out of this. [ID:d2_found_11a]

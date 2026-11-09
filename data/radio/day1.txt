@@ -21,7 +21,7 @@ Castellanos: Oh, thank God. There you are. We lost your antenna right as you tou
 - I'm down. I'm fine. Honestly.
 	set calm
 	Castellanos: Good. Okay. Give me a second, I just need to breathe for a bit. Seven months of sims and none of them ended with ninety seconds of nothing. [ID:d1_relock_03a]
-	Castellanos: You're on Mars. You're actually standing on Mars. The first person on the Reach. How does that feel? [ID:d1_relock_03a2]
+	Castellanos: You're on Mars. You're actually standing on Mars. The first person on Mars. How does that feel? [ID:d1_relock_03a2]
 	- Like I should say something historic.
 		set joker
 		Castellanos: Please don't. Mwangi's had a speech ready for you since the cruise and if you steal his thunder he'll sulk until the finale. [ID:d1_relock_03a3]
@@ -34,7 +34,7 @@ Castellanos: Oh, thank God. There you are. We lost your antenna right as you tou
 - Is everyone up there okay?
 	set kind
 	Castellanos: Are we okay? You're the one who just fell out of the sky. Yes, we're fine. Tupou's pressed against the window, Rao's pretending he wasn't worried, and Mwangi is taking everybody's pulse whether they want it or not. [ID:d1_relock_03c]
-Castellanos: Right. Business, before I get sentimental. That lander is better than it looks. It recycles its air and water so well it can keep one person alive for a long, long time, and its power cell doesn't care about the dark. [ID:d1_relock_04]
+Castellanos: Right. Business, before I get sentimental. [ID:d1_relock_04]
 Castellanos: But it'll never work for all of us. There's one seat, and you're in it. The base is out there in the pallets and on the walkers, and the storm has scattered the lot. [ID:d1_relock_05]
 - When are the rest of you coming down?
 - So it's just me down here?
@@ -43,7 +43,8 @@ Castellanos: But it'll never work for all of us. There's one seat, and you're in
 	Castellanos: None at all. Just the whole mission. You'll be fine, you were always the calm one on the ship. Apart from that one time with the coffee. [ID:d1_relock_06b]
 Castellanos: We can't come down yet. Ours is built to set the rest of us down right beside a finished base, on its beacon. The beacon's dead, and there's no base. [ID:d1_relock_05c]
 Castellanos: And it's lean. A few days of air, that's all. Come down kilometres off target, the way you did, and we'd never reach shelter. [ID:d1_relock_05d]
-Castellanos: Yours was built for exactly that. One seat, but it'll keep you going for months wherever it lands. That's why you came first. [ID:d1_relock_05e]
+Castellanos: Yours was built for exactly that. It recycles its air and water, and its power cell doesn't care about the dark. It'll keep you going for months wherever it lands. [ID:d1_relock_05e]
+Castellanos: That's why you came first. And it's why Houston said go the moment the dust thinned. That's what a pathfinder's for. [ID:d1_relock_05g]
 Castellanos: And until someone works out why every pallet came down wrong, flight rules keep us up here. So you're our eyes. [ID:d1_relock_05f]
 do think air
 Castellanos: Rao got a photo of a parachute on the last pass. It's on your slate. Pallet one, up on the ridge, with the module's life support in it. That's where the base starts. Go and have a look, and talk to me while you walk if you like. [ID:d1_relock_07]
@@ -51,7 +52,7 @@ do parachute
 => END
 
 ~ d1_blackout
-Castellanos: There you are. Oh, thank God. You went quiet, your air hit zero, and then your suit started moving. Towards the lander. On its own. [ID:d1_blackout_01]
+Castellanos: There you are. Oh, thank God. You went quiet, your air dropped onto its last reserve, and then your suit started moving. Towards the lander. On its own. [ID:d1_blackout_01]
 Castellanos: Something brought you in. Rao's pass caught a little shape right beside you, and then the dust took it. [ID:d1_blackout_02]
 - I didn't see anything. It was all dark.
 	Castellanos: I'm not surprised. You were out cold. Whatever it was, it was gentle about it. [ID:d1_blackout_03a]
@@ -74,7 +75,7 @@ Castellanos: Your suit's got you right at the canopy. Is that you up there? What
 - An air cartridge, a sample kit and some rations.
 	Castellanos: Oh, that's good. The cartridge is the General Module's air plant, the heart of the place. It's heavy, but you can carry it. Bring it down and leave it by the lander, and it'll be ready the day the module comes in. [ID:d1_p1_02a]
 - None of this is for the lander, is it?
-	Castellanos: No. The lander was only ever meant to get you down. That cartridge is the module's air. Carry it home and park it by the ramp, so it's waiting when the module comes. [ID:d1_p1_02b]
+	Castellanos: No. The lander will keep you going, but it'll never be a base. That cartridge is the module's air. Carry it home and park it by the ramp, so it's waiting when the module comes. [ID:d1_p1_02b]
 - It's heavier than it looked in training.
 	Castellanos: Everything is. Mwangi says your legs will thank you in a week and hate you until then. Take it slowly, get it down to the lander, and leave it by the ramp for the module. [ID:d1_p1_02c]
 Castellanos: And while you're up there, look around for a minute. Seriously. Nobody has ever stood on that ridge. You've got the best view for kilometres and I'm jealous of every one of them. [ID:d1_p1_03]

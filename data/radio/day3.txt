@@ -5,12 +5,12 @@
 Castellanos: Morning. Quick question before you've even had breakfast. Did you hear that last night? About three o'clock? [ID:d3_wake_01]
 - A grinding. Out on the flats.
 	set heard_it
-	Castellanos: So it wasn't just us. Rao picked it up on the relay too: something big and mechanical, grinding along for about twenty minutes, then nothing. [ID:d3_wake_02a]
+	Castellanos: So it wasn't just us. Rao picked it up on the lander's mic, over the relay too: something big and mechanical, grinding along for about twenty minutes, then nothing. [ID:d3_wake_02a]
 - I slept like a rock.
-	Castellanos: Lucky you. Some of us were up at three listening to something very big moving around out there. Rao picked it up on the relay. Twenty minutes of grinding, then nothing. [ID:d3_wake_02b]
+	Castellanos: Lucky you. Some of us were up at three listening to something very big moving around out there. Rao picked it up on the lander's mic, over the relay. Twenty minutes of grinding, then nothing. [ID:d3_wake_02b]
 - GAR-Y was beeping at the hatch all night.
 	set gary_night
-	Castellanos: Then GAR-Y heard it too. Something big was moving out there around three. Rao picked it up on the relay. [ID:d3_wake_02c]
+	Castellanos: Then GAR-Y heard it too. Something big was moving out there around three. Rao picked it up on the lander's mic, over the relay. [ID:d3_wake_02c]
 Castellanos: This time I really, honestly think it's a walker. Big, slow, heavy. Look for tracks. Wide ones, much wider than GAR-Y's. [ID:d3_wake_03]
 ? hopeful Castellanos: And yes, I know I said that last time. Let me have this one. [ID:d3_wake_04]
 => END
@@ -19,7 +19,7 @@ Castellanos: This time I really, honestly think it's a walker. Big, slow, heavy.
 Castellanos: Its nav screen just went green. You did it. You actually did it. Tupou is cheering and Mwangi is telling him to sit down before he hits his head. [ID:d3_fixed_01]
 Castellanos: Here's the thing, though. It doesn't trust the ground to tell it where it is any more, and I don't blame it. So it's going to crawl home, slowly, checking itself against the sky every few hundred metres. [ID:d3_fixed_02]
 Castellanos: Rao's done the sums. He says it'll be parked at your door by morning. [ID:d3_fixed_03]
-Castellanos: Except. Hang on. It's not moving. Its nav's happy, but its legs are locked up tight. [ID:d3_fixed_07]
+Castellanos: Except. Hang on. It's not moving. Its nav's happy, but it's tripped its own safety lock. Something's wrong in its running gear. [ID:d3_fixed_07]
 Castellanos: And its health check's no use to us. The storm cooked half its sensors, so it knows something's wrong and it can't tell us what. [ID:d3_fixed_08]
 Castellanos: So I need your eyes. Climb down and take pictures for me with your slate. Close up, one part at a time, right in the middle of the shot. Achterberg and I will go through every one. [ID:d3_fixed_09]
 - Detective work. I like it.
@@ -106,7 +106,7 @@ Castellanos: Last night in the lander. How does that feel? [ID:d3_sun_01]
 - I'll miss it, a bit.
 	Castellanos: It kept you alive. You're allowed to miss it. I miss my bunk on the cruise, and that thing had a broken latch and smelled of Rao's socks. [ID:d3_sun_02a]
 - I can't wait to stand up straight.
-	Castellanos: Ha. Neither can my back. Seven months of floating and now I hunch over everything like a question mark. [ID:d3_sun_02b]
+	Castellanos: Ha. Neither can my back. Seven months of floating. I've forgotten which way my spine's supposed to go. [ID:d3_sun_02b]
 Castellanos: GAR-Y's heading out with the seal once it's properly dark. I'll watch the pair of them all night, I promise. If anything changes, you'll be the first to know. [ID:d3_sun_03]
 - Get some sleep yourself, Castle.
 	set kind

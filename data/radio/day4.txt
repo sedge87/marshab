@@ -24,7 +24,7 @@ Castellanos: It's down. It's actually down. Your first room on Mars. Everyone up
 	set joker
 	Castellanos: He's already drawn a floor plan. On the wall. In pen. Achterberg is furious. [ID:d4_down_02c]
 Castellanos: Okay, now the less romantic bit. It travelled empty and open, so right now it's as cold inside as it is out there, and there's no air in it at all. Keep your helmet on. [ID:d4_down_05]
-Castellanos: Two things bring it to life. The air cartridge you carried down on day one goes in the socket on the outside wall. And the solar blanket goes out next to it, for power. [ID:d4_down_06]
+Castellanos: Two things bring it to life. The air cartridge you brought down from the ridge goes in the socket on the outside wall. And the solar blanket goes out next to it, for power. [ID:d4_down_06]
 Castellanos: Do both and it'll seal itself and fill up. Then we'll see how it holds. [ID:d4_down_07]
 => END
 
@@ -89,6 +89,7 @@ Castellanos: Sunset from your own window. How's the view from in there? [ID:d4_s
 Castellanos: Okay. Here's the bit I wanted to say. I want to tell you where all this is going. Tomorrow, this season, and the whole mission. [ID:d4_sun_12]
 Castellanos: Tomorrow's easy. The extractor goes on your ice, and you'll have water of your own. That changes everything. [ID:d4_sun_13]
 Castellanos: This season, the other walkers. They're still out there somewhere, with more modules and more kit strapped to them. Rao's watching for them on every pass, and the moment he sees one, you'll know. [ID:d4_sun_14]
+Castellanos: One of them's carrying the ascent vehicle. Our ride home, one day. No hurry, though. This is an outpost, not a visit. We came to stay. [ID:d4_sun_14b]
 Castellanos: And the whole mission. You weren't sent all this way just to build a room, as lovely as the room is. There are four big questions, and each of us up here looks after one. [ID:d4_sun_15]
 - Which one's yours?
 	set asked_hers

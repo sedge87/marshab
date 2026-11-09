@@ -273,9 +273,9 @@ func _furnish() -> void:
 		add_child(holder)
 
 func interaction_prompt() -> Dictionary:
-	var label := "Crew Lander · sealing…" if seal_state in ["closing", "latching", "pressurising"] else "Crew Lander"
+	var label := "Pathfinder · sealing…" if seal_state in ["closing", "latching", "pressurising"] else "Pathfinder"
 	var refusal := _night_refusal()
-	if not _open and not refusal.is_empty(): return {"label": "Crew Lander", "primary": refusal, "info": "About"}
+	if not _open and not refusal.is_empty(): return {"label": "Pathfinder", "primary": refusal, "info": "About"}
 	return {"label": label, "primary": "Close hatch" if _open else "Open hatch", "info": "About"}
 
 func interact(_actor: Node = null) -> bool:
@@ -293,7 +293,7 @@ func _night_refusal() -> String:
 
 func interact_info(_actor: Node = null) -> bool:
 	var entry := EquipmentCatalog.get_entry("crew_lander")
-	get_tree().call_group("explore_hud", "show_equipment_note", "Crew Lander", str(entry.get("system_note", entry.get("description", ""))))
+	get_tree().call_group("explore_hud", "show_equipment_note", "Pathfinder", str(entry.get("system_note", entry.get("description", ""))))
 	return true
 
 ## A level, buildable spot about 20 m from the site centre, and a yaw that

@@ -2562,11 +2562,11 @@
     },
     {
       "id": "crew_lander",
-      "label": "Crew Lander",
+      "label": "Pathfinder",
       "group": "exterior",
       "status": "catalogue",
       "icon": "rocket",
-      "description": "The lander that brought the crew to Mars.",
+      "description": "The one-seat pathfinder lander that brought you down first.",
       "valid_zones": [],
       "placement": "floor",
       "effects": {},
@@ -2576,7 +2576,7 @@
         1
       ],
       "height": 4.7,
-      "system_note": "The spacecraft that brought you down to the surface: a small pressurised cabin on landing legs. It's always a safe place to shelter and save, but it's far too small to live in for long. That's why you need a habitat.",
+      "system_note": "The pathfinder that brought you down first: a small pressurised cabin on landing legs that recycles its air and water and can keep one person alive for months wherever it lands. It's always a safe place to shelter and save, but it's no home: one seat, no room to grow. That's why you need a habitat.",
       "system_links": [
         "Shelter"
       ],
@@ -2605,9 +2605,9 @@
         1
       ],
       "height": 1.22,
-      "system_note": "Touchdown on Mars can mean several g of deceleration and a hard jolt at the end. Each crew member rides it out strapped into a fixed, reclined couch: the pedestal's shock absorber takes the bump, and nothing in the cabin is loose.",
+      "system_note": "Touchdown on Mars can mean several g of deceleration and a hard jolt at the end. You ride it out strapped into a fixed, reclined couch: the pedestal's shock absorber takes the bump, and nothing in the cabin is loose.",
       "system_links": [
-        "Crew Lander"
+        "Pathfinder"
       ],
       "asset_scene": "res://assets/equipment/mars_lander_cabin_v1/landing_seat.tscn",
       "size_m": [
