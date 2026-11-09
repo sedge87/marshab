@@ -5,11 +5,21 @@ The user, 8 Nov, stepping back: the first days are a **curated tutorial** that i
 This replaces the first version below (built in 7cbce6e). That one was day 1 the cargo and GAR-Y, day 2 towing, day 3 the walker and the module.
 
 ## Rules for the guided days
-- **Story time.** The sun holds in each day's working hours and moves to dusk when the day's last beat is done, so night can't catch you out mid-job.
-  - Why: most robot-run failures were the real clock fighting the script. Sol 1 ran to 20:37, and the suit died at night.
-  - The normal clock starts on day 5.
-- **Each day ends in sleep.** Days 1–3 in the lander, day 4 in the module.
-- **Survival still counts, softly.** Suit air runs as normal. From day 2, a scripted rescue (GAR-Y drags you home) covers mistakes.
+- **Chapters on the real sun (9 Nov, replacing story time).** The sun never waits. The "days" below are four chapters (scripts/opening_days.gd `chapter`).
+  - Why: playtest. The held sun made a cage, and the day never ended unless you followed the script.
+  - The chapter's beats are done: its sunset call comes at dusk, and the next chapter starts the morning after. The nights carry the story: GAR-Y's night out, Walker 1 crawling home.
+  - Done early (2.5 h of light left): `dN_done` says the rest of the day's yours.
+  - Not done by dusk: `dN_dusk` says pick it up tomorrow. That morning `dN_still` recaps what's left (`left_*` flags). A chapter can take several sols.
+  - Nothing forces you; you just can't progress without the beats.
+- **Each chapter ends in sleep.** Chapters 1–3 in the lander (its hatch stays shut at night), chapter 4 in the module once it holds air.
+- **The first call:** the hatch stays shut until you answer Castle's "do you read me?". The reply has no timer and she keeps calling (`hold` / `nudge` in docs/radio.md's format, scripts/radio.gd).
+- **The blue sunset is optional.** Castle invites you to Rao's rise; it isn't required. In the cabin at dusk, she talks anyway, and the photo ask waits for another time.
+- **Survival still counts.** Suit air runs as normal, and Castle watches it from orbit (data/radio/air.txt):
+  - half an hour before your turn-back;
+  - at the turn-back;
+  - near empty.
+- **A blackout costs time, not harm.** You're dragged home and the hours pass, often the day, but there's no suit leak during the chapters.
+  - Before you've met GAR-Y, the rescuer is unseen: dark, beeping, dragging, drag scuffs from the ramp. Castle (`d1_blackout`): "Something brought you in." It's paid off when you find GAR-Y.
 - **The lander stays self-sufficient.** Only food runs down (see the first version below).
 - **Who talks:** Castellanos on the radio (docs/radio.md) and your Notes thoughts. ARDEN: alarm tones and panels only.
 - **Nothing early.** No GAR-Y anywhere before day 2: no pallet, no Notes, no slate page, no lines. No walker before day 3.

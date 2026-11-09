@@ -143,6 +143,8 @@ func _hook_seat() -> void:
 	var seat: Node = world.lander.get_node_or_null("Cabin_landing_seat_1")
 	if seat == null: return
 	seat.set_meta("interaction_target", self)
+	# Its model's bodies carry their own target, found first: take them over too.
+	for body in seat.find_children("*", "StaticBody3D", true, false): body.set_meta("interaction_target", self)
 	_seat_hooked = true
 
 func interaction_prompt() -> Dictionary:

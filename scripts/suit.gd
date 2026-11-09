@@ -30,6 +30,7 @@ extends Node
 
 const WRIST_PAD := preload("res://scripts/wrist_pad.gd")
 const RESCUE := preload("res://scripts/gar_y_rescue.gd")
+const AIR_WATCH_EARLY := .5     # game hours before the turn-back: Castle's first word
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
@@ -513,6 +514,14 @@ func _warnings() -> void:
 			_said[line[0]] = true
 			if line[0] != "suit_sealed": MHAudio.sfx("suit_alarm" if line[0] in ["suit_o2_critical", "suit_turn_back"] else "suit_beep", -4.0)
 			_say(str(line[0]))
+	# Castle watches your air from orbit (data/radio/air.txt), once each a trip.
+	var radio: Node = world.get("radio")
+	if radio == null or not radio.has_method("ring_urgent"): return
+	var turn := turn_back_hours()
+	for watch in [["air_watch_1", turn <= AIR_WATCH_EARLY and o2 < .9], ["air_watch_2", turn <= 0.0 and o2 < .9], ["air_watch_3", o2 <= .12]]:
+		if watch[1] and not _said.has(watch[0]):
+			_said[watch[0]] = true
+			radio.ring_urgent(str(watch[0]))
 
 ## Your own breathing: slow at rest, quick when sprinting or short of air.
 func _breathing(delta: float) -> void:
@@ -577,9 +586,14 @@ func pass_out() -> void:
 	passed_out = true
 	if bool(world.player.get_meta("driving", false)) and world.get("crew_rover") != null: world.crew_rover._get_out()
 	# Not met GAR-Y yet? It's been out looking for the lander, and finds you.
+	# The guided days: something does, unseen, and you meet it in its own time.
 	var field: Node = world.get("drop_field")
-	if field != null and not bool(world.get("gary_met")): field.gary_finds_you()
+	var unseen := false
+	if field != null and not bool(world.get("gary_met")):
+		if int(world.get("opening_version")) >= 2: unseen = true
+		else: field.gary_finds_you()
 	var rescue := RESCUE.new()
+	rescue.unseen = unseen
 	rescue.name = "Rescue"
 	add_child(rescue)
 	rescue.finished.connect(_come_round)
@@ -591,10 +605,13 @@ func _come_round(summary: Dictionary) -> void:
 	where = _where()
 	_said.clear()
 	var place := "the lander cabin" if not _has_airlock() else ("the medical bay" if _medical_cot() != null else "the airlock")
+	if bool(summary.get("unseen", false)):
+		_come_round_unseen(summary)
+		return
 	if not bool(summary.rescued):
 		get_tree().call_group("explore_hud", "show_equipment_note", "You blacked out", "Your suit ran out of oxygen and you came round in %s, groggy. Watch the turn-back time on your wrist (hold T)." % place)
 		return
-	leak = true
+	leak = not _guided()   # the guided days: no lasting harm, the hours are the cost
 	_patching = 0.0
 	var item: Dictionary = summary.dropped
 	if not item.is_empty(): dropped.append(item)
@@ -604,7 +621,7 @@ func _come_round(summary: Dictionary) -> void:
 		("%.1f km" % (metres / 1000.0)) if metres >= 1000.0 else "%d m" % roundi(metres), place, int(hours), int(fmod(hours, 1.0) * 60.0)]]
 	if not item.is_empty():
 		lines.append("You dropped the %s where you fell%s." % [str(item.label).to_lower(), " (it's on the region map, Tab)" if MHSiteTerrain.shape() == "region" else ""])
-	lines.append("The suit's seals took a knock: it leaks, so oxygen runs out faster, until you repair it at a suit service panel." if _has_panel else "The suit's seals took a knock: it leaks, so oxygen runs out faster, until you've patched it (an hour somewhere sealed).")
+	if leak: lines.append("The suit's seals took a knock: it leaks, so oxygen runs out faster, until you repair it at a suit service panel." if _has_panel else "The suit's seals took a knock: it leaks, so oxygen runs out faster, until you've patched it (an hour somewhere sealed).")
 	if world.get("crew_rover") != null and world.crew_rover.global_position.distance_to(world.player.global_position) > 30.0:
 		var rover_line: String = world.crew_rover.come_home_after_rescue()
 		if rover_line != "": lines.append(rover_line)
@@ -614,6 +631,52 @@ func _come_round(summary: Dictionary) -> void:
 	if field != null and bool(field.get("intro_pending")): lines.append("Something is waiting outside the hatch.")
 	else: lines.append("GAR-Y's beeps, roughly: " + remark)
 	get_tree().call_group("explore_hud", "show_equipment_note", "GAR-Y brought you home", " ".join(lines))
+
+func _guided() -> bool:
+	var days: Node = world.get("opening_days")
+	return days != null and days.has_method("v2") and days.v2() and days.guided()
+
+## Something brought you home in the dark (the guided days, before GAR-Y).
+func _come_round_unseen(summary: Dictionary) -> void:
+	var item: Dictionary = summary.dropped
+	if not item.is_empty(): dropped.append(item)
+	var hours := float(summary.hours)
+	var lines := ["Your suit ran out of oxygen and everything went dark. Something found you and dragged you all the way back to the lander: %d h %02d min went by." % [int(hours), int(fmod(hours, 1.0) * 60.0)]]
+	if not item.is_empty(): lines.append("You dropped the %s where you fell (it's on the map, Tab)." % str(item.label).to_lower())
+	get_tree().call_group("explore_hud", "show_equipment_note", "Something brought you home", " ".join(lines))
+	_drag_marks(summary.get("fell", world.player.global_position))
+	var radio: Node = world.get("radio")
+	if radio == null: return
+	if item.is_empty(): radio.flags.erase("dropped_cargo")
+	else: radio.flags["dropped_cargo"] = true
+	if not (radio.heard as Dictionary).has("d1_blackout"): radio.ring("d1_blackout")
+	else:
+		radio.heard.erase("d1_blackout_again")
+		radio.ring("d1_blackout_again")
+
+## Scuffs in the dust from the ramp out the way you were dragged in.
+func _drag_marks(fell: Vector3) -> void:
+	var lander: Node = world.get("lander")
+	if lander == null: return
+	var foot: Vector3 = lander.ramp_foot(3.0)
+	var out := Vector3(fell.x - foot.x, 0, fell.z - foot.z)
+	if out.length() < 2.0: return
+	out = out.normalized()
+	var mat := StandardMaterial3D.new()
+	mat.resource_name = "dust_scuff"
+	mat.albedo_color = Color(.32, .2, .14, .55)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	for i in 14:
+		for side in [-.35, .35]:
+			var at: Vector3 = foot + out * (1.5 + i * 1.6) + out.cross(Vector3.UP) * side
+			var scuff := MeshInstance3D.new()
+			var plane := PlaneMesh.new()
+			plane.size = Vector2(.18, 1.3)
+			plane.material = mat
+			scuff.mesh = plane
+			world.add_child(scuff)
+			scuff.global_position = Vector3(at.x, MHSiteTerrain.height(at.x, at.z) + .02, at.z)
+			scuff.rotation.y = atan2(out.x, out.z)
 
 func _has_airlock() -> bool:
 	return world.builder != null and world.builder.zones.any(func(z): return str(z.get("kind", "")) == "airlock")

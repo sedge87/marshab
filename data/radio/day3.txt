@@ -107,3 +107,26 @@ Castellanos: GAR-Y's heading out with the seal once it's properly dark. I'll wat
 Castellanos: Goodnight, Outpost One. Big day tomorrow. [ID:d3_sun_05]
 do bed
 => END
+
+# Done early, not done by dusk, and the morning after (scripts/opening_days.gd).
+~ d3_done
+Castellanos: That's it for today. Walker 1 will crawl in overnight, so there's nothing to do but wait. The rest of the day's yours. Be home by dark. [ID:d3_done_01]
+=> END
+
+~ d3_dusk
+Castellanos: The light's going. Head back to the lander, Outpost One. Walker 1 isn't going anywhere tonight. [ID:d3_dusk_01]
+? left_walker Castellanos: We'll get its nav sorted in the morning. [ID:d3_dusk_02a]
+? left_photo Castellanos: We'll find what's wrong with its legs tomorrow. More pictures in daylight. [ID:d3_dusk_02b]
+? left_seal Castellanos: The seal can print tomorrow. [ID:d3_dusk_02c]
+? left_mark Castellanos: And you can choose where home goes tomorrow, too. No rush. [ID:d3_dusk_02d]
+Castellanos: Talk at sunrise. [ID:d3_dusk_03]
+do bed
+=> END
+
+~ d3_still
+Castellanos: Morning. Walker 1's right where we left it, sulking. Let's get it home. [ID:d3_still_01]
+? left_walker Castellanos: Its nav's still confused. Go and set it right. [ID:d3_still_02a]
+? left_photo Castellanos: Its legs are still locked. Take me some pictures, one part at a time, and we'll find it. [ID:d3_still_02b]
+? left_seal Castellanos: It still needs that wheel seal. The printer's ready when you are. [ID:d3_still_02c]
+? left_mark Castellanos: And mark where you want the module, with B, so it knows where to put it. [ID:d3_still_02d]
+=> END

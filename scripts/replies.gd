@@ -123,7 +123,7 @@ func _process(delta: float) -> void:
 	if not _shown.is_empty():
 		_left -= delta
 		_bar.custom_minimum_size.x = 720.0 * clampf(_left / float(_shown.get("seconds", SHOW_SECONDS)), 0.0, 1.0)
-		if _left <= 0.0: choose(-1)
+		if _left <= 0.0 and float(_shown.get("seconds", SHOW_SECONDS)) > 0.0: choose(-1)   # 0: it waits for you
 		return
 	if _queue.is_empty(): return
 	var next: Dictionary = _queue[0]
@@ -164,12 +164,13 @@ func _show(entry: Dictionary) -> void:
 	_shown = entry.duplicate()
 	_shown["replies"] = replies
 	_left = float(entry.get("seconds", SHOW_SECONDS))
+	if _left <= 0.0: _left = 1.0   # no timer: the bar stays hidden
 	_context.text = "%s: %s" % [str(entry.who), str(entry.line)] if not str(entry.line).is_empty() else "Reply to %s" % str(entry.who)
 	for i in _rows.size():
 		var row: Label = _rows[i]
 		row.visible = i < replies.size()
 		if row.visible: row.text = "%d   %s" % [i + 1, str(replies[i].text)]
-	_bar.visible = true
+	_bar.visible = float(entry.get("seconds", SHOW_SECONDS)) > 0.0
 	_you.visible = false
 	_panel.visible = true
 	_panel.modulate.a = 0.0

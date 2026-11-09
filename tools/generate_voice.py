@@ -259,6 +259,7 @@ def main():
             body = raw.strip()
             if body.startswith("?"):
                 body = body.split(" ", 2)[2] if body.count(" ") >= 2 else ""
+            if body.startswith("nudge "): body = body[6:]   # said while you're quiet (scripts/radio.gd hold)
             if "[ID:" not in body or ":" not in body.split("[ID:")[0]: continue
             who, said = body.split(":", 1)
             person = by_short.get(who.strip().lower())

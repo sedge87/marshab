@@ -16,8 +16,11 @@ extends Node
 ## fitted out, nights are yours again (docs/master-design.md §2).
 
 ## The guided days, version 2 (docs/opening-days.md, 8 Nov redesign), for
-## new games: story time holds the sun until the day's beats are done, then
-## brings dusk and Castellanos's sunset call (data/radio/day1.txt, day2.txt).
+## new games: four chapters on the real sun (9 Nov). The sun never waits.
+## A chapter's beats done, its sunset call comes at dusk, and the next
+## chapter starts the morning after. Not done by dusk: Castle says pick it
+## up tomorrow, and that morning she recaps what's left (dN_dusk, dN_still).
+## The nights carry the story (GAR-Y's night out, Walker 1 crawling home).
 ##   Day 1: pallets 1, 2 and 4 and the module's cargo carried home. No GAR-Y.
 ##   Day 2: something moving out there; GAR-Y's empty cradle, then GAR-Y at
 ##          work; its jobs (scripts/lifepod.gd) till the walker's due.
@@ -33,9 +36,10 @@ extends Node
 static var new_games_version := 2
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const STORY_DAYS := 4           # days run on story time; day 5 opens the game
-const HOLD_BEFORE_SUNSET := 2.0 # the sun waits here till the day's done
 const CALL_BEFORE_SUNSET := .6  # Castellanos's sunset call
-const DUSK_SPEED := 8.0         # the clock's pace to dusk once the day's done
+const DUSK_SPEED := 8.0         # (no longer used: the sun runs freely)
+const MORNING_GAP := 14.0       # sim hours between mornings (a chapter turns over at most once a sol)
+const EARLY_HOURS := 2.5        # done with this much light left: "the rest of the day's yours"
 
 const STAGES := ["pallets", "lifepod", "walker", "module", "fit_out"]
 const FIT_OUT_PIECES := 3       # kit pieces placed: the module's lived in
@@ -57,6 +61,11 @@ var _photo_wait := 0.0           # the sunset call's "take a picture" wait
 var _photos_before := 0
 const SPOT_REACH := 18.0         # this close to the rise and you're there
 const PHOTO_WAIT := 50.0         # seconds Castellanos waits for the picture
+var chapter := 1                 # version 2: the guided chapter (1-4); 5 once they're over
+var last_morning := UNSET        # sim hours at the last morning
+const UNSET := -1.0e9
+var dusk_sol := 0                # the sol whose "pick it up tomorrow" call came
+var done_told := 0               # the last chapter whose "the rest of the day's yours" came
 var survey_from := -1            # day 4: cores taken from here on (MHChapterOne.cores) count for the module's ice
 var ice_spot := Vector3.INF      # day 4: the module's ice, found
 const ICE_REACH := 400.0         # this near the module, a core's the module's ice
@@ -89,11 +98,16 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	if spot.size() == 3: sunset_spot = Vector3(float(spot[0]), float(spot[1]), float(spot[2]))
 	sunset_reached = bool(saved.get("sunset_reached", false))
 	survey_from = int(saved.get("survey_from", -1))
+	chapter = int(saved.get("chapter", mini(nights + 1, STORY_DAYS + 1)))
+	last_morning = float(saved.get("last_morning", UNSET))
+	dusk_sol = int(saved.get("dusk_sol", 0))
+	done_told = int(saved.get("done_told", 0))
 	var ice: Array = saved.get("ice_spot", [])
 	if ice.size() == 3: ice_spot = Vector3(float(ice[0]), float(ice[1]), float(ice[2]))
 
 func export_state() -> Dictionary:
 	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning, "nights": nights, "version": version, "sunset_called": sunset_called, "sunset_reached": sunset_reached, "sunset_spot": [] if is_inf(sunset_spot.x) else [sunset_spot.x, sunset_spot.y, sunset_spot.z],
+		"chapter": chapter, "last_morning": last_morning, "dusk_sol": dusk_sol, "done_told": done_told,
 		"survey_from": survey_from, "ice_spot": [] if is_inf(ice_spot.x) else [ice_spot.x, ice_spot.y, ice_spot.z]}
 
 # ---------- where the days are ----------
@@ -131,12 +145,16 @@ func _done(what: String) -> bool:
 ## Still in the opening's guided days.
 func guided() -> bool:
 	if world.get("walker") == null: return false
-	if v2(): return nights < STORY_DAYS
+	if v2(): return chapter <= STORY_DAYS
 	return stage() < STAGES.size()
+
+## Version 2: a chapter's beats done (the same as its day's).
+func chapter_done(n: int) -> bool:
+	return day_done(n)
 
 ## Living in the lander still: its hatch won't open from inside at night.
 func in_lander_days() -> bool:
-	if v2(): return guided() and nights <= 2 and int(world.opening_part()) <= 3
+	if v2(): return guided() and chapter <= 3 and int(world.opening_part()) <= 3
 	return guided() and world.has_method("opening_part") and int(world.opening_part()) <= 2
 
 func _cycle() -> Dictionary:
@@ -148,6 +166,12 @@ func is_night() -> bool:
 
 ## Why the lander's hatch won't open for you now, or "" (scripts/crew_lander.gd).
 func hatch_refusal() -> String:
+	# The first call: answer Castle before you go anywhere.
+	var radio := _radio()
+	if v2() and radio != null and not radio.flag("answered") and (not (radio.heard as Dictionary).has("d1_relock") or radio.playing == "d1_relock"):
+		var cabin_lander: Node = world.get("lander")
+		var you: Node3D = world.get("player")
+		if cabin_lander != null and you != null and bool(cabin_lander.cabin_contains(you.global_position)): return "Castle's calling. I should answer her first."
 	if not in_lander_days() or not is_night(): return ""
 	var lander: Node = world.get("lander")
 	var player: Node3D = world.get("player")
@@ -156,11 +180,15 @@ func hatch_refusal() -> String:
 
 ## Home tonight: the lander, or the module once it's down.
 func _home_name() -> String:
-	return "the lander" if int(world.opening_part()) <= 3 else "the module"
+	return "the lander" if _lander_home() else "the module"
+
+## Still the lander tonight: before the module's down, or while it won't hold air.
+func _lander_home() -> bool:
+	return int(world.opening_part()) <= 3 or (v2() and not _commissioned())
 
 func _home_spot() -> Vector3:
 	var lander: Node = world.get("lander")
-	if int(world.opening_part()) <= 3 and lander != null: return lander.ramp_foot(3.0)
+	if _lander_home() and lander != null: return lander.ramp_foot(3.0)
 	var gary := _gary()
 	return gary._airlock_waiting_spot() if gary != null else Vector3.INF
 
@@ -198,12 +226,13 @@ func _process(delta: float) -> void:
 	var dusk := hour >= sunset - DUSK_EARLY and hour < sunset + 6.0
 	var late := hour >= sunset or hour < sunrise
 	var day := maxi(sol, nights + 1)
-	if v2() and day <= STORY_DAYS:
-		_story_day(day, hour, sunrise, sunset)
+	if v2():
+		_chapter_tick(sol, hour, sunrise, sunset)
+		if not guided(): return
 		var radio := _radio()
-		var sunset_due: bool = radio != null and (radio.on_air() or (radio.queue as Array).has("d%d_sunset" % day))
-		if late and bed_sol != day and not sunset_due:
-			bed_sol = day
+		var call_due: bool = radio != null and (radio.on_air() or not (radio.queue as Array).is_empty())
+		if late and bed_sol != sol and not call_due:
+			bed_sol = sol
 			notes.think("bed", "late", {"home": _home_name()})
 	else:
 		_story_clock(-1.0, false)
@@ -279,7 +308,7 @@ func radio_ready() -> void:
 func _bed_now() -> void:
 	var notes: Node = world.get("notes")
 	if notes == null: return
-	bed_sol = maxi(int(notes.call("_sol")), nights + 1)
+	bed_sol = int(notes.call("_sol")) if v2() else maxi(int(notes.call("_sol")), nights + 1)
 	notes.think("bed", "start", {"home": _home_name()})
 
 ## What has to happen before the sun may go down.
@@ -311,24 +340,91 @@ func _commissioned() -> bool:
 	var module: Node = world.get("module_life")
 	return module != null and bool(module.commissioned)
 
-func _story_day(day: int, hour: float, sunrise: float, sunset: float) -> void:
+## Version 2: the chapter, on the real sun.
+func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void:
 	var radio := _radio()
-	_day_calls(day, hour, sunrise)
-	if not day_done(day):
-		# The sun waits for you; if it's already past the hold (an old save), let it go.
-		_story_clock(sunset - HOLD_BEFORE_SUNSET if hour >= sunrise - 1.0 and hour <= sunset - HOLD_BEFORE_SUNSET + .01 else -1.0, false)
-		return
+	_story_clock(-1.0, false)   # the sun never waits (and an old save's hold lets go)
+	var run := _hours_run()
+	if last_morning <= UNSET: last_morning = run
+	# Morning: the next chapter if this one's done, else what's left of it.
+	var sunset_on: bool = radio != null and (radio.playing == "d%d_sunset" % chapter or (radio.queue as Array).has("d%d_sunset" % chapter))
+	if hour >= sunrise - 1.5 and hour < 12.0 and run - last_morning >= MORNING_GAP and not sunset_on:
+		last_morning = run
+		if chapter_done(chapter):
+			if chapter == STORY_DAYS and radio != null and not (radio.heard as Dictionary).has("d4_sunset_deal") and radio.handlers.has("owner_notes"):
+				(radio.handlers["owner_notes"] as Callable).call([])   # the talk was missed: the notes still come
+			chapter += 1
+			if not guided(): return   # day 5: yours
+		elif radio != null:
+			_leftover_flags(radio)
+			radio.heard.erase("d%d_still" % chapter)
+			radio.ring("d%d_still" % chapter)
+	_day_calls(chapter, hour, sunrise)
+	# Day 1: on Rao's rise.
+	if chapter == 1 and not sunset_reached and not is_inf(sunset_spot.x):
+		var you: Vector3 = (world.player as Node3D).global_position
+		if Vector2(you.x - sunset_spot.x, you.z - sunset_spot.z).length() < SPOT_REACH:
+			sunset_reached = true
+			if radio != null: radio.flags["on_the_rise"] = true
+			var known: Node = world.get("known")
+			if known != null: known.finish("sunset_spot")
+	if radio == null: return
 	var call_at := sunset - CALL_BEFORE_SUNSET
-	if _waiting_at_spot(day):
-		_story_clock(call_at - .05, true)   # the sun waits for you to reach the rise
-		return
-	if hour >= sunrise - 1.0 and hour < call_at:
-		_story_clock(-1.0, true)   # done: the sun goes down a little quicker
-		return
-	_story_clock(-1.0, false)
-	if sunset_called < day and radio != null and hour >= call_at and hour < sunset + 3.0:
-		sunset_called = day
-		radio.ring("d%d_sunset" % day)
+	var evening := hour >= call_at or hour < sunrise - 1.5
+	if chapter_done(chapter):
+		if sunset_called < chapter and evening:
+			sunset_called = chapter
+			if chapter == 1:
+				# Entirely optional: a talk wherever you are; a picture only if you're out.
+				if _in_cabin(): radio.flags["indoors"] = true
+				elif not is_inf(sunset_spot.x) and not sunset_reached: radio.flags["missed_rise"] = true
+			radio.ring("d%d_sunset" % chapter)
+		elif done_told < chapter and hour >= sunrise and hour < call_at - EARLY_HOURS:
+			done_told = chapter
+			radio.ring("d%d_done" % chapter)
+	elif dusk_sol != sol and hour >= call_at and hour < sunset + 3.0:
+		dusk_sol = sol
+		_leftover_flags(radio)
+		radio.heard.erase("d%d_dusk" % chapter)
+		radio.ring("d%d_dusk" % chapter)
+
+func _hours_run() -> float:
+	var builder: Node = world.get("builder")
+	return float(builder.simulation().hours_run) if builder != null and builder.has_method("simulation") else 0.0
+
+## What's still to do in this chapter, for Castle's recap (left_* flags).
+func _leftover_flags(radio: Node) -> void:
+	for key in (radio.flags as Dictionary).keys():
+		if str(key).begins_with("left_"): radio.flags.erase(key)
+	var field: Node = world.get("drop_field")
+	var drop: Node = world.get("storm_drop")
+	var pod: Node = world.get("lifepod")
+	var walker: Node = world.get("walker")
+	var left := []
+	match chapter:
+		1:
+			if drop != null and drop.pallet != null and not bool(drop.pallet.opened): left.append("left_air")
+			if field != null and field.sites.has("power") and not bool(field.sites.power.pallet.opened): left.append("left_power")
+			if field != null and field.sites.has("tools") and not bool(field.sites.tools.pallet.opened): left.append("left_tools")
+			if left.is_empty(): left.append("left_cargo")
+		2:
+			var crate: Node = field_crate()
+			if not _gary_found(): left.append("left_gary")
+			elif crate != null and not bool(crate.opened):
+				left.append("left_crate" if pod != null and (pod.prints as Dictionary).has("hitch") else "left_hitch")
+		3:
+			var state := str(walker.state) if walker != null else "done"
+			if state not in ["coming", "parked", "carrying", "lowering", "done"]: left.append("left_walker")
+			elif state == "coming":
+				if not bool(walker.get("fault_found")): left.append("left_photo")
+				elif pod != null and not (pod.prints as Dictionary).has("seal"): left.append("left_seal")
+				if not bool(walker.marked): left.append("left_mark")
+		4:
+			if not _done("module"): left.append("left_down")
+			elif not _commissioned(): left.append("left_leak")
+			elif not _done("fit_out"): left.append("left_fit")
+			elif is_inf(ice_spot.x): left.append("left_ice")
+	for f in left: radio.flags[f] = true
 
 ## The calls that come as the day goes.
 func _day_calls(day: int, hour: float, sunrise: float) -> void:
@@ -361,6 +457,12 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 ## and back before dark, marked on your compass (data/radio/day1.txt).
 func _mark_sunset_spot() -> void:
 	if not is_inf(sunset_spot.x): return
+	var radio := _radio()
+	var light_left := float(_cycle().get("sunset_hour", 19.0)) - MHGame.sol_hour
+	if radio != null:
+		for f in ["cargo_early", "cargo_mid", "late_cargo"]: radio.flags.erase(f)
+		radio.flags["cargo_early" if light_left > 4.0 else ("late_cargo" if light_left < 1.2 else "cargo_mid")] = true
+	if light_left < 1.2: return   # no time to walk to the rise: watch it from the ramp
 	var home: Vector3 = world.lander.global_position
 	var field: Node = world.get("drop_field")
 	var toward := Vector3(-1, 0, 0)
@@ -378,23 +480,6 @@ func _mark_sunset_spot() -> void:
 	if is_inf(sunset_spot.x): sunset_spot = home + toward * 40.0
 	var known: Node = world.get("known")
 	if known != null and field != null: known.learn("sunset_spot", "place", field.region_at(sunset_spot), "Sunset view", "you", "castellanos")
-
-## Day 1 only: the sun holds just short of the call till you're on the rise
-## (or you've gone in: then the call comes anyway).
-func _waiting_at_spot(day: int) -> bool:
-	if day != 1 or sunset_reached or sunset_called >= day: return false
-	if is_inf(sunset_spot.x):
-		var radio := _radio()
-		return radio != null and (radio.playing == "d1_cargo" or (radio.queue as Array).has("d1_cargo"))   # it's being marked now
-	var you: Vector3 = (world.player as Node3D).global_position
-	if Vector2(you.x - sunset_spot.x, you.z - sunset_spot.z).length() < SPOT_REACH:
-		sunset_reached = true
-		var radio := _radio()
-		if radio != null: radio.flags["on_the_rise"] = true
-		var known: Node = world.get("known")
-		if known != null: known.finish("sunset_spot")
-		return false
-	return not _in_cabin()
 
 ## Day 4: where you put the bunk, for Castle's say on it.
 func _bunk_flags(radio: Node) -> void:

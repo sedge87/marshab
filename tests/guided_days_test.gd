@@ -4,8 +4,12 @@ extends SceneTree
 # drop_field.gd, radio.gd):
 # - a new game plays version 2: no GAR-Y on day 1, its pallet out of sight;
 # - from the ridge Castellanos names pallets 2 and 4 (not 3);
-# - story time: the sun holds at sunset - 2 h till day 1's done (pallets 1,
-#   2, 4 open and the cargo home), then goes; the sunset call ends in bed;
+# - the first call: the hatch stays shut till you answer Castle;
+# - chapters on the real sun: never held; not done by dusk, Castle says
+#   tomorrow (d1_dusk) and recaps in the morning (d1_still); done, the
+#   sunset call, and the next chapter the morning after;
+# - a blackout before GAR-Y: something unseen brings you home, no leak;
+# - the landing seat takes Z;
 # - day 2's wake call brings GAR-Y out at work past its empty cradle; the
 #   cradle rings Castellanos; walk up and GAR-Y meets you; d2_found plays;
 # - day 2 holds till GAR-Y's found and the walker's due; then its sunset call;
@@ -15,6 +19,7 @@ extends SceneTree
 # godot --headless --path . --script res://tests/guided_days_test.gd
 var failures := 0
 const BUILD_RULES_ZONE := preload("res://scripts/build_rules.gd")
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 func _check(ok: bool, what: String) -> void:
 	if not ok:
@@ -31,6 +36,12 @@ func _new_world(state := {}) -> Node:
 	world._intro_stage = "done"
 	world.day_night.frozen = true
 	return world
+
+## The next morning: a sol's gone by.
+func _morning(world: Node, radio: Node) -> void:
+	world.opening_days.last_morning = world.opening_days._hours_run() - 20.0
+	MHGame.sol_hour = 6.5
+	await _settle(radio)
 
 func _settle(radio: Node, seconds := 1.0) -> void:
 	await create_timer(seconds).timeout
@@ -57,8 +68,17 @@ func _initialize() -> void:
 
 	# Day 1: the first thoughts come out of Castellanos's first call, not before it.
 	_check(not notes.is_open("air") and not notes.is_open("parachute") and not notes.is_open("sunset"), "no thoughts about the lander or the parachute before anyone's spoken")
+	player.global_position = lander.cabin_start().position
+	MHGame.sol_hour = 9.0
+	_check(days.hatch_refusal().contains("answer"), "the hatch stays shut till you answer Castle (%s)" % days.hatch_refusal())
 	radio.ring("d1_relock")
 	await _settle(radio, .3)
+	_check(radio.flag("answered") and days.hatch_refusal() == "", "answered: the hatch opens")
+	var seat: Node = lander.get_node_or_null("Cabin_landing_seat_1")
+	var seat_ok := seat != null
+	if seat != null:
+		for body in seat.find_children("*", "StaticBody3D", true, false): seat_ok = seat_ok and body.get_meta("interaction_target", null) == world.cabin_life
+	_check(seat_ok, "the landing seat takes Z, all of it")
 	_check(radio.heard.has("d1_relock") and notes.is_open("air") and notes.is_open("parachute"), "after the call: the lander and the parachute")
 	_check(not notes.is_open("sunset"), "the sunset thought waits for Castellanos too")
 
@@ -70,43 +90,61 @@ func _initialize() -> void:
 	_check(known.knows(field.sites.tools.id()) and not known.knows(field.sites.gary.id()), "from the ridge: pallet 4 named, pallet 3 not")
 	_check(radio.heard.has("d1_ridge"), "Castellanos calls about the ridge")
 
-	# Story time: the sun waits.
+	# The real sun: it never waits.
 	MHGame.sol_hour = 10.0
 	await _settle(radio)
-	_check(is_equal_approx(float(world.day_night.hold_at), sunset - 2.0), "the sun holds at sunset - 2 h while day 1's undone (%.2f)" % world.day_night.hold_at)
+	_check(float(world.day_night.hold_at) < 0.0, "the sun never waits (%.2f)" % world.day_night.hold_at)
+	# Not done by dusk: pick it up tomorrow.
+	player.global_position = lander.global_position + Vector3(150, 0, 0)
+	player.global_position.y = MHSiteTerrain.height(player.global_position.x, player.global_position.z) + 1.0
+	MHGame.sol_hour = sunset - .5
+	await _settle(radio)
+	_check(radio.heard.has("d1_dusk") and radio.flag("left_air") and not radio.heard.has("d1_sunset"), "dusk with day 1 undone: Castle says tomorrow")
+	await _morning(world, radio)
+	_check(radio.heard.has("d1_still") and int(days.chapter) == 1 and not radio.heard.has("d2_wake"), "the next morning: what's left, still chapter 1")
+	# Blacking out before GAR-Y: something unseen brings you home.
+	MHGame.sol_hour = 10.0
+	world.suit.pass_out()
+	for i in 80:
+		if not bool(world.suit.passed_out): break
+		await create_timer(.5).timeout
+	await _settle(radio)
+	_check(not bool(world.suit.passed_out) and lander.cabin_contains(player.global_position), "you come round in the cabin")
+	_check(not bool(world.gary_met) and world.scout_rover == null, "nobody's met: GAR-Y waits for day 2")
+	_check(radio.heard.has("d1_blackout") and radio.flag("dragged"), "Castle: something brought you in")
+	_check(not bool(world.suit.leak), "no lasting harm in the guided days")
+	MHGame.sol_hour = 10.0
 	world.storm_drop.pallet.opened = true
 	field.sites.power.pallet.opened = true
 	field.sites.tools.pallet.opened = true
 	await _settle(radio)
 	_check(radio.heard.has("d1_pallet1") and radio.heard.has("d1_pallet2") and radio.heard.has("d1_pallet4"), "a call as each pallet opens")
-	_check(float(world.day_night.hold_at) >= 0.0, "still held with the cargo out there")
 	player.global_position = lander.global_position + lander.global_basis.z * -12.0 + Vector3(0, 1, 0)
 	pod.done("tow")
 	await _settle(radio)
 	_check(radio.heard.has("d1_cargo"), "a call when the cargo's home")
-	_check(not is_inf(days.sunset_spot.x) and world.known.things.has("sunset_spot"), "Castellanos marks a rise to watch from")
-	_check(float(world.day_night.hold_at) >= 0.0 and float(world.day_night.time_scale) > 1.0, "the sun goes, a little quicker, then waits for you on the rise")
-	MHGame.sol_hour = sunset - .5
-	await _settle(radio)
-	_check(not radio.heard.has("d1_sunset"), "no sunset call till you're there")
+	_check(not is_inf(days.sunset_spot.x) and world.known.things.has("sunset_spot") and radio.flag("cargo_early"), "Castellanos marks a rise, and the rest of the day's yours")
+	_check(not radio.heard.has("d1_sunset"), "no sunset call before dusk")
 	player.global_position = days.sunset_spot + Vector3(2, 1, 0)
 	await _settle(radio)
-	_check(radio.heard.has("d1_sunset") and bool(days.sunset_reached), "on the rise: the sunset call")
+	_check(bool(days.sunset_reached), "on the rise")
+	MHGame.sol_hour = sunset - .5
+	await _settle(radio)
+	_check(radio.heard.has("d1_sunset"), "dusk: the sunset call")
 	_check(radio.flag("on_the_rise") and world.known.finished("sunset_spot"), "the rise mark's done")
 	print("  the rise: %.0f m from the lander, %.1f m up" % [Vector2(days.sunset_spot.x - lander.global_position.x, days.sunset_spot.z - lander.global_position.z).length(), days.sunset_spot.y - lander.global_position.y])
 	player.global_position = lander.cabin_start().position
 	_check(notes.is_open("bed"), "it ends in bed")
-	_check(float(world.day_night.time_scale) == 1.0, "the clock's back to its pace")
+	_check(float(world.day_night.time_scale) == 1.0, "the clock's at its own pace")
 
 	# Night, then day 2.
 	days.nights = 1
-	MHGame.sol_hour = 6.5
-	await _settle(radio)
+	await _morning(world, radio)
+	_check(int(days.chapter) == 2, "chapter 2 the morning after")
 	_check(radio.heard.has("d2_wake"), "Castellanos wakes you: something's moving")
 	_check(bool(field.gary_working) and world.scout_rover != null, "GAR-Y is out at work")
 	_check(field.sites.gary.visible and bool(field.sites.gary.pallet.opened), "its cradle is there now, open")
 	_check(known.knows("gary_moving"), "the movement is on your Map")
-	_check(is_equal_approx(float(world.day_night.hold_at), sunset - 2.0), "day 2 holds the sun too")
 	var gary: Node3D = world.scout_rover
 	var work: Vector3 = gary.global_position
 	_check(work.distance_to(field.sites.gary.at) > 60.0, "it's working out past its cradle (%.0f m)" % work.distance_to(field.sites.gary.at))
@@ -140,7 +178,7 @@ func _initialize() -> void:
 	_check(crate.interact(player) and bool(crate.opened), "home and opened")
 	await _settle(radio)
 	_check(radio.heard.has("d2_crate"), "Castellanos on the crate")
-	_check(days.day_done(2) and float(world.day_night.hold_at) < 0.0, "jobs done: the sun goes")
+	_check(days.day_done(2), "jobs done")
 	MHGame.sol_hour = sunset - .5
 	await _settle(radio)
 	_check(radio.heard.has("d2_sunset"), "day 2's sunset call")
@@ -148,8 +186,7 @@ func _initialize() -> void:
 	# Day 3: the walker set right crawls home overnight; you mark the spot.
 	var walker: Node3D = world.walker
 	days.nights = 2
-	MHGame.sol_hour = 6.5
-	await _settle(radio)
+	await _morning(world, radio)
 	_check(radio.heard.has("d3_wake"), "day 3's morning call")
 	walker.recalibrated()
 	await _settle(radio)
@@ -189,8 +226,7 @@ func _initialize() -> void:
 
 	# Day 4: it's home at dawn.
 	days.nights = 3
-	MHGame.sol_hour = 6.5
-	await _settle(radio)
+	await _morning(world, radio)
 	_check(str(walker.state) in ["parked", "carrying"] and walker.global_position.distance_to(walker.home) < 30.0, "dawn: Walker 1 is home (%s)" % walker.state)
 	_check(radio.heard.has("d4_wake"), "day 4's morning call")
 	_check(days.guided() and not days.in_lander_days(), "day 4: still guided, not the lander")
@@ -237,10 +273,13 @@ func _initialize() -> void:
 		_check(radio.heard.has("goal_humans") and radio.heard.has("d4_sunset_deal"), "the talk goes round the room")
 		var texts: Node = world.orbiter_texts
 		_check(texts != null and texts.has("d4_note_tupou") and texts.has("d4_note_mwangi") and texts.has("d4_note_rao") and texts.has("d4_note_achterberg"), "each owner sends a note")
+		days.nights = 4
+		await _morning(world, radio)
+		_check(not days.guided(), "the morning after: the guided chapters are over")
 
 	# Saved.
 	var state: Dictionary = days.export_state()
-	_check(int(state.get("version", 0)) == 2 and int(state.get("sunset_called", 0)) == 3, "the version and the calls are saved")
+	_check(int(state.get("version", 0)) == 2 and int(state.get("sunset_called", 0)) >= 3 and state.has("chapter"), "the version, the chapter and the calls are saved")
 	_check((world.radio.export_state().heard as Dictionary).has("d2_found"), "the radio's heard calls are saved")
 
 	print("guided_days_test: %d failure(s)" % failures)

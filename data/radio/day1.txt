@@ -7,7 +7,16 @@
 
 ~ d1_relock
 Castellanos: Outpost One, orbit. Outpost One, do you read me? [ID:d1_relock_01]
-Castellanos: Come on. Come on, talk to me. [ID:d1_relock_01b]
+Castellanos: If you can hear me, answer on the comms. Your suit's talk switch. Anything. [ID:d1_relock_01c]
+hold
+nudge Castellanos: Come on. Come on, talk to me. [ID:d1_relock_01b]
+nudge Castellanos: Outpost One, please. Just key the mic. Give me a click, anything. [ID:d1_relock_01d]
+nudge Castellanos: Outpost One, orbit. Still listening. I'm not going anywhere. [ID:d1_relock_01e]
+- Outpost One. I read you.
+	set answered
+- I'm here. I'm alive.
+	set answered
+	set alive
 Castellanos: Oh, thank God. There you are. We lost your antenna right as you touched down, and all we had was static and a dust cloud. Rao went completely white. I've never seen him go that colour, and I've seen him eat Achterberg's curry. [ID:d1_relock_02]
 - I'm down. I'm fine. Honestly.
 	set calm
@@ -36,6 +45,25 @@ Castellanos: Rao got a photo of a parachute on the last pass. It's on your slate
 do parachute
 => END
 
+~ d1_blackout
+Castellanos: There you are. Oh, thank God. You went quiet, your air hit zero, and then your suit started moving. Towards the lander. On its own. [ID:d1_blackout_01]
+Castellanos: Something brought you in. Rao caught a little shape on the long lens, right beside you, and then the dust took it. [ID:d1_blackout_02]
+- I didn't see anything. It was all dark.
+	Castellanos: I'm not surprised. You were out cold. Whatever it was, it was gentle about it. [ID:d1_blackout_03a]
+- I heard beeping.
+	set heard_beeps
+	Castellanos: Beeping. Okay. That's either very good news or very strange news. Tupou says both. [ID:d1_blackout_03b]
+set dragged
+? dropped_cargo Castellanos: And what you were carrying is where you fell. It's on your map. It'll keep. [ID:d1_blackout_04]
+Castellanos: Please keep an eye on your air. I'll be watching it too. You scared the life out of me. [ID:d1_blackout_05]
+=> END
+
+~ d1_blackout_again
+Castellanos: Again. It brought you in again, whatever it is. I'm very grateful to it and I'd like to stop needing it. [ID:d1_blackout_again_01]
+? dropped_cargo Castellanos: What you were carrying is where you fell. It's on your map. [ID:d1_blackout_again_02]
+Castellanos: Turn back sooner, okay? When I call, I mean it. [ID:d1_blackout_again_03]
+=> END
+
 ~ d1_pallet1
 Castellanos: I can see the canopy moving on the long lens. Is that you up there? What have we got? [ID:d1_p1_01]
 - An air cartridge, a sample kit and some rations.
@@ -45,6 +73,9 @@ Castellanos: I can see the canopy moving on the long lens. Is that you up there?
 - It's heavier than it looked in training.
 	Castellanos: Everything is. Mwangi says your legs will thank you in a week and hate you until then. Take it slowly, get it down to the lander, and leave it by the ramp for the module. [ID:d1_p1_02c]
 Castellanos: And while you're up there, look around for a minute. Seriously. Nobody has ever stood on that ridge. You've got the best view for kilometres and I'm jealous of every one of them. [ID:d1_p1_03]
+Castellanos: Oh, and one more thing. The storm's left scrap all over the place up there. Bent panels, broken struts. Strip anything that comes loose as you go. The little printer in the lander eats it, and you'll want it. [ID:d1_p1_04]
+set scrap_told
+do think salvage
 => END
 
 ~ d1_ridge
@@ -75,21 +106,27 @@ Castellanos: Tupou wants you to know that the hammer is for science and not for 
 
 ~ d1_cargo
 Castellanos: That's the module's air and power sitting by the lander. When the module turns up, it'll breathe the same day. That's a proper first day's work. [ID:d1_cargo_01]
-Castellanos: The sun's getting low. Do me a favour. Don't rush inside. Go and watch it go down. You've earned it, and I want to hear about it. [ID:d1_cargo_02]
-do think sunset
 do sunset_spot
-Castellanos: Rao's found you a spot. There's a little rise just towards the sun from you, it's on your compass now. Best seat on the Reach, he says, and he's been staring at it from orbit all afternoon. [ID:d1_cargo_03]
-- On my way.
-	Castellanos: Good. Take your time. The sun will wait for you, just this once. [ID:d1_cargo_04a]
+? cargo_early Castellanos: And there's plenty of daylight left. The rest of today's yours. Have a wander, strip some scrap, sit on the ramp. And if you fancy it later, the sunset's worth seeing. Your first one. [ID:d1_cargo_02e]
+? cargo_mid Castellanos: The sun's getting low. If you've got a minute before you go in, it's worth watching it go down. Your first one. [ID:d1_cargo_02]
+? late_cargo Castellanos: And look, the sun's nearly gone already. If you want to see it go, the ramp will do just fine. [ID:d1_cargo_02l]
+do think sunset
+?! late_cargo Castellanos: Rao's found you a spot. There's a little rise just towards the sun from you, it's on your compass now. Best seat on the Reach, he says. Only if you want it. He's been staring at it from orbit all afternoon. [ID:d1_cargo_03]
+? late_cargo => END
+- Maybe I will.
+	? cargo_early Castellanos: No rush. It goes down around seven. [ID:d1_cargo_04c]
+	?! cargo_early Castellanos: Don't dawdle, though. It won't wait for you. [ID:d1_cargo_04d]
 - Can't I just watch from the ramp?
 	set lazy
-	Castellanos: You could. But you'd be looking at it past a lander leg. Go on. It's a short walk, and you'll only see your first one once. [ID:d1_cargo_04b]
+	Castellanos: Course you can. The ramp's a fine seat too. Rao will sulk, but he'll live. [ID:d1_cargo_04b]
 => END
 
 ~ d1_sunset
 do sunset_view
-Castellanos: Are you seeing this? Tell me you're seeing this. [ID:d1_sun_01]
+?! indoors Castellanos: Are you seeing this? Tell me you're seeing this. [ID:d1_sun_01]
+? indoors Castellanos: The sun's going down. If you can see out of that little window, have a look. It goes blue. [ID:d1_sun_01i]
 ? on_the_rise Castellanos: I can see you, you know. A tiny dot on top of Rao's rise. He's unbearably pleased with himself. [ID:d1_sun_01b]
+? missed_rise Castellanos: You didn't make it up the rise? Doesn't matter. Look west, wherever you are. It's the same sun. [ID:d1_sun_01c]
 - The sky's gone blue around the sun.
 	set warm
 	Castellanos: Blue sunsets. We've all read about them, we've all seen the rover pictures. But you're the first person to actually stand there and watch one. Describe it to me. Properly. [ID:d1_sun_02a]
@@ -100,11 +137,20 @@ Castellanos: Are you seeing this? Tell me you're seeing this. [ID:d1_sun_01]
 - It's getting cold fast.
 	set dry
 	Castellanos: Minus sixty tonight. Well, minus something awful. That lander's a lot warmer than it looks, I promise. But look up for a second before you go in. Just once. [ID:d1_sun_02b]
+? indoors Castellanos: Next time you're out, take me a picture of something, would you? The camera's on your slate. It all goes in your journal. [ID:d1_sun_photo_01i]
+? indoors => d1_sun_after
+=> d1_sun_photo
+
+# Only if you're out there to see it.
+~ d1_sun_photo
 Castellanos: Oh, I have a favour to ask. Take a picture for me? Get your slate out, the camera's on it. I want to stick it on the wall up here, right next to Tupou's pictures of his dog. [ID:d1_sun_photo_01]
 do photo_ask
 wait photo
 ? sunset_photo Castellanos: Got it. Oh, that's beautiful. That's going on the wall, and Mwangi's already asking for a copy. You've got a good eye, you know. [ID:d1_sun_photo_02a]
 ?! sunset_photo Castellanos: No? That's okay. Some things you just want to look at. The camera's on your slate whenever you want it, and it all goes in your journal. [ID:d1_sun_photo_02b]
+=> d1_sun_after
+
+~ d1_sun_after
 Castellanos: Rao wants to know what it sounds like down there. He says he's been imagining it since training. [ID:d1_sun_03]
 - Nothing. Wind, maybe.
 	Castellanos: That sounds lonely. Is it lonely? You can tell me if it is. [ID:d1_sun_04a]
@@ -125,4 +171,25 @@ Castellanos: We go behind the planet in a few minutes, so I'll lose you for a wh
 	Castellanos: Goodnight. I'm glad you're down there in one piece. We all are. [ID:d1_sun_06b]
 Castellanos: Talk at sunrise, Outpost One. Sleep well. [ID:d1_sun_07]
 do bed
+=> END
+
+# Not done by dusk: pick it up tomorrow (scripts/opening_days.gd _chapter_tick).
+~ d1_dusk
+Castellanos: Outpost One, it's getting dark down there. Time to head home. [ID:d1_dusk_01]
+? left_air Castellanos: The air cartridge can wait on its ridge till morning. It's not going anywhere. [ID:d1_dusk_02a]
+? left_power Castellanos: The power pallet will keep till tomorrow. Out on the flat, where it fell. [ID:d1_dusk_02b]
+? left_tools Castellanos: And the field kit's still in its hollow. Tomorrow. [ID:d1_dusk_02c]
+? left_cargo Castellanos: Leave whatever's not home yet. We'll get it all to the lander tomorrow. [ID:d1_dusk_02d]
+Castellanos: You did plenty for a first day. Get inside before the cold does. Talk at sunrise. [ID:d1_dusk_03]
+do bed
+=> END
+
+# A morning with yesterday's jobs still out there.
+~ d1_still
+Castellanos: Morning, Outpost One. Sleep okay? Right. Let's finish what we started yesterday. [ID:d1_still_01]
+? left_air Castellanos: Pallet one first, up on the ridge. The module's air cartridge is still in it. [ID:d1_still_02a]
+? left_power Castellanos: The power pallet's still out on the flat. Solar blanket and battery. [ID:d1_still_02b]
+? left_tools Castellanos: And the field kit's waiting in its hollow. You'll want that hammer. [ID:d1_still_02c]
+? left_cargo Castellanos: The pallets are open, so it's just carrying now. Air and power, home to the lander. [ID:d1_still_02d]
+Castellanos: It's all on your map. Keep an eye on your air, and talk to me while you walk. [ID:d1_still_03]
 => END

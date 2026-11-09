@@ -22,6 +22,11 @@ extends Node
 ## - GAR-Y remembers: a count on its card.
 ##
 ## Without GAR-Y (some Missions) you just come round inside.
+##
+## Unseen (the guided days, before you've met GAR-Y): it stays dark the whole
+## way. You hear something beeping and dragging you, a lamp swims past your
+## eyelids, and you come round in the cabin. Nobody's met; GAR-Y itself is
+## left where it is (scripts/suit.gd, data/radio/day1.txt d1_blackout).
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const APPROACH := 7.0          # m: where GAR-Y comes into view
@@ -53,6 +58,7 @@ var hours := 0.0               # how long you're out, in game hours
 var home_distance := 0.0
 var dropped := {}              # what you were carrying, left where you fell
 var phase := ""
+var unseen := false            # set before start(): the rescuer stays out of sight
 var _t := 0.0
 var _player: CharacterBody3D
 var _head: Node3D
@@ -99,6 +105,13 @@ func start(target_world: Node, target_suit: Node) -> void:
 		hours = clampf(SEARCH_HOURS + reach / 1000.0 / GARY_KMH + home_distance / 1000.0 / DRAG_KMH, MIN_HOURS, MAX_HOURS)
 		gary.begin_rescue()
 		gary.visible = false
+	elif unseen:
+		if world.get("carry") != null and not (world.carry.carrying as Dictionary).is_empty():
+			var label := str(EquipmentCatalog.get_entry(str(world.carry.carrying.id)).get("label", "kit"))
+			var spot := _ground(_fell + _dir.rotated(Vector3.UP, 1.3) * .8, 0.0)
+			var record: Dictionary = world.carry.drop_at(spot)
+			if not record.is_empty(): dropped = {"placement_id": str(record.placement_id), "label": label, "position": spot}
+		hours = clampf(SEARCH_HOURS + home_distance / 1000.0 / DRAG_KMH, MIN_HOURS, MAX_HOURS)
 	elif world.get("carry") != null:
 		world.carry.put_back()
 	_build_overlay()
@@ -203,7 +216,8 @@ func _process(delta: float) -> void:
 			if _t >= FALL: _next("dark")
 		"dark":
 			if _t >= DARK:
-				if gary == null: _next("out")
+				if unseen: _next("unseen")
+				elif gary == null: _next("out")
 				else:
 					gary.visible = true
 					_lie(_fell, deg_to_rad(8.0), deg_to_rad(14.0))
@@ -243,6 +257,21 @@ func _process(delta: float) -> void:
 			if _t >= DRAG:
 				_drag_sound.stop()
 				_next("out")
+		"unseen":
+			# Dark. Something close, beeping; the ground scraping under you; a
+			# lamp swimming past your eyelids now and then.
+			var glow := .08 * maxf(0.0, sin(_t * 1.7)) * maxf(0.0, sin(_t * .6 + 1.0))
+			_shade_to(1.0, .97 - glow, 4.0)
+			if _drag_sound.stream == null and MHAudio.director() != null: _drag_sound.stream = MHAudio.director()._stream("sfx/suit_drag")
+			if _drag_sound.stream != null and not _drag_sound.playing and _t > 1.0: _drag_sound.play()
+			_beep -= delta
+			if _beep <= 0.0:
+				_beep = randf_range(1.4, 2.6)
+				MHAudio.sfx("gary_worried" if randf() < .6 else "gary_curious", -16.0, .1)
+			_caption.text = "‹something beeping, close by›" if _t < DRAG else "‹scraping, and beeping, further off›"
+			if _t >= ARRIVE + DRAG:
+				_drag_sound.stop()
+				_next("out")
 		"out":
 			# The hours pass: the clock runs and the habitat lives through them.
 			var hour: float = world.day_night.hour
@@ -250,7 +279,8 @@ func _process(delta: float) -> void:
 			_last_hour = hour
 			var left := maxf(0.0, hours - _passed)
 			_clock.text = "%02d:%02d" % [int(hour), int(fmod(hour, 1.0) * 60.0)]
-			if gary != null and hours > 0.0:
+			if unseen: _status.text = ""
+			elif gary != null and hours > 0.0:
 				var to_go := home_distance * left / hours
 				_status.text = "GAR-Y is bringing you home · %s to go" % (("%.1f km" % (to_go / 1000.0)) if to_go >= 1000.0 else "%d m" % roundi(to_go))
 			if _passed >= hours or world.day_night.frozen:
@@ -327,9 +357,9 @@ func _next(next_phase: String) -> void:
 				var side: Vector3 = _player.global_transform.basis.x * 1.3
 				gary.global_position = _wake.position + side + Vector3(0, -.1, 0)
 				gary.rotation.y = _player.rotation.y + PI * .5
-		if gary != null:
+		if gary != null or unseen:
 			_clock.visible = true
-			_status.visible = true
+			_status.visible = not unseen
 			_last_hour = world.day_night.hour
 			world.day_night.time_scale = CLOCK_SPEED
 
@@ -338,7 +368,7 @@ func _finish() -> void:
 	_player.set_meta("ui_freeze", false)
 	for hud in _huds: hud.visible = true
 	if gary != null: gary.end_rescue()
-	var summary := {"rescued": gary != null, "hours": _passed, "distance": home_distance, "dropped": dropped,
+	var summary := {"rescued": gary != null or unseen, "unseen": unseen, "hours": _passed, "distance": home_distance, "dropped": dropped, "fell": _fell,
 		"rescues": int(gary.get("rescues")) if gary != null else 0}
 	finished.emit(summary)
 	queue_free()

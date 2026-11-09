@@ -131,3 +131,21 @@ Castellanos: Right. That's enough serious talk for one day. Goodnight, Outpost O
 do owner_notes
 do bed
 => END
+
+# Not done by dusk, and the morning after (scripts/opening_days.gd).
+~ d4_dusk
+Castellanos: It's getting dark, Outpost One. Let's leave the rest for tomorrow. [ID:d4_dusk_01]
+? left_down Castellanos: Walker 1 can set the module down in the morning. Lander again tonight. Sorry. [ID:d4_dusk_02a]
+? left_leak Castellanos: The leak'll keep till morning. Sleep in the lander tonight. The module's no use until it holds air. [ID:d4_dusk_02b]
+? left_fit Castellanos: The fit-out can wait. You've got a roof. [ID:d4_dusk_02c]
+? left_ice Castellanos: The ice will still be there tomorrow. That's rather the point of ice. [ID:d4_dusk_02d]
+do bed
+=> END
+
+~ d4_still
+Castellanos: Morning, Outpost One. Let's finish making that place a home. [ID:d4_still_01]
+? left_down Castellanos: Walker 1's waiting for you to come out and watch it set the module down. [ID:d4_still_02a]
+? left_leak Castellanos: First the leak. Go in and listen for the hiss. The patch kit will do it. [ID:d4_still_02b]
+? left_fit Castellanos: The fit-out kit's still in its crates. Make it somewhere you'd want to live. [ID:d4_still_02c]
+? left_ice Castellanos: And Achterberg still wants her ice. GAR-Y's Survey zone, then core the best stake. [ID:d4_still_02d]
+=> END

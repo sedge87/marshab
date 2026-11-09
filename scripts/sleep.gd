@@ -47,9 +47,6 @@ func blocked_reason() -> String:
 	var in_cabin: bool = world.lander != null and bool(world.lander.cabin_contains(player.global_position))
 	if not world.builder.is_inside(player.global_position) and not in_cabin: return "You can only sleep inside: the habitat or the lander cabin."
 	if in_cabin and world.lander.has_method("sealed_cabin") and not world.lander.sealed_cabin(): return "Close the hatch and let it seal first."
-	var days: Node = world.get("opening_days")
-	if days != null and days.has_method("v2") and days.v2() and days.guided() and float(world.day_night.hold_at) >= 0.0:
-		return "Not yet. There's still today's work, and it's light out."
 	return ""
 
 # ---------- the panel ----------

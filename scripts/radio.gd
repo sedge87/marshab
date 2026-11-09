@@ -18,6 +18,9 @@ extends Node
 ##   ?! flag_name Castellanos: ...        ... or only if it isn't
 ##   => other_section                     jump on to another section
 ##   => END                               the call ends
+##   hold                                 the next replies wait for you, no timer;
+##   nudge Castellanos: ... [ID:x]        and while you're quiet, these are said
+##                                        (one every NUDGE_EVERY seconds)
 ##
 ## Calls queue and never interrupt danger: they wait while your suit's in
 ## trouble, you're out cold or a storm is on you. Each section plays once,
@@ -31,6 +34,7 @@ const FOLDER := "res://data/radio/"
 const WHO := "Castellanos"
 const REPLY_SECONDS := 20.0
 const GAP_AFTER_LINE := .5
+const NUDGE_EVERY := 18.0
 
 var world: Node
 var flags: Dictionary = {}       # flag -> true
@@ -105,6 +109,8 @@ static func _steps(rows: Array) -> Array:
 	if rows.is_empty(): return steps
 	var base := int(rows[0][0])
 	var i := 0
+	var hold := false
+	var nudges: Array = []
 	while i < rows.size():
 		var indent := int(rows[i][0])
 		var body := str(rows[i][1])
@@ -120,7 +126,20 @@ static func _steps(rows: Array) -> Array:
 				while i < rows.size() and int(rows[i][0]) > base: i += 1
 				option.steps = _steps(rows.slice(start, i))
 				choice.options.append(option)
+			if hold:
+				choice["hold"] = true
+				choice["nudges"] = nudges
+				hold = false
+				nudges = []
 			steps.append(choice)
+			continue
+		if body == "hold":
+			hold = true
+			i += 1
+			continue
+		if body.begins_with("nudge "):
+			nudges.append(_step(body.substr(6).strip_edges()))
+			i += 1
 			continue
 		steps.append(_step(body))
 		i += 1
@@ -165,6 +184,7 @@ static func _collect(steps: Array, out: Array) -> void:
 	for step in steps:
 		if str(step.type) == "line" and not str(step.id).is_empty(): out.append([str(step.id), str(step.who), str(step.text)])
 		elif str(step.type) == "choice":
+			_collect(step.get("nudges", []), out)
 			for option in step.options: _collect(option.steps, out)
 
 # ---------- calls ----------
@@ -176,6 +196,16 @@ func has_section(section: String) -> bool:
 func ring(section: String) -> void:
 	if not _sections.has(section) or heard.has(section) or queue.has(section) or playing == section: return
 	queue.append(section)
+
+## A call about your safety (Castle watching your air): it comes even when
+## you're in danger, first in line, and can come again.
+var _urgent := {}
+func ring_urgent(section: String) -> void:
+	if not _sections.has(section) or playing == section: return
+	heard.erase(section)
+	queue.erase(section)
+	queue.push_front(section)
+	_urgent[section] = true
 
 ## Something new you could raise yourself with Call orbit.
 func add_topic(section: String) -> void:
@@ -195,18 +225,19 @@ func flag(f: String) -> bool:
 	return flags.has(f)
 
 func _process(_delta: float) -> void:
-	if not playing.is_empty() or queue.is_empty() or not _safe(): return
+	if not playing.is_empty() or queue.is_empty() or not _safe(_urgent.has(str(queue[0]))): return
 	var section := str(queue.pop_front())
+	_urgent.erase(section)
 	if heard.has(section): return
 	_play(section)
 
 ## Never over danger, a blackout, another voice or a pause.
-func _safe() -> bool:
+func _safe(urgent := false) -> bool:
 	if world == null or world.get_tree().paused: return false
 	if not fast and MHAudio.voice_busy(): return false
 	var suit: Node = world.get("suit")
 	if suit != null and bool(suit.get("passed_out")): return false
-	if world.has_method("danger_level") and float(world.danger_level()) >= .3: return false
+	if not urgent and world.has_method("danger_level") and float(world.danger_level()) >= .3: return false
 	var sleep: Node = world.get("sleep")
 	return sleep == null or not bool(sleep.get("asleep"))
 
@@ -264,8 +295,19 @@ func _ask(step: Dictionary) -> void:
 	if fast or replies == null or not replies.has_method("ask"):
 		_choice = 0   # tests and a missing panel: the first reply
 	else:
-		replies.ask(WHO, texts, REPLY_SECONDS, func(index: int) -> void: _choice = index)
-		while _choice == -2: await get_tree().create_timer(.1).timeout
+		var hold := bool(step.get("hold", false))
+		replies.ask(WHO, texts, 0.0 if hold else REPLY_SECONDS, func(index: int) -> void: _choice = index)
+		var nudges: Array = step.get("nudges", [])
+		var quiet := 0.0
+		var said := 0
+		while _choice == -2:
+			await get_tree().create_timer(.1).timeout
+			quiet += .1
+			# Held: they keep calling till you answer.
+			if hold and not nudges.is_empty() and quiet >= NUDGE_EVERY and not MHAudio.voice_busy():
+				quiet = 0.0
+				await _say(nudges[mini(said, nudges.size() - 1)] if said < nudges.size() else nudges[said % nudges.size()])
+				said += 1
 		# Your words stay up a moment: the next line waits till they've gone.
 		while replies.has_method("saying") and replies.saying(): await get_tree().create_timer(.1).timeout
 	if _choice >= 0 and _choice < options.size(): await _run(options[_choice].steps)

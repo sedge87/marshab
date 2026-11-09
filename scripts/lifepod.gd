@@ -400,7 +400,7 @@ func stripped(piece: Node) -> void:
 func _salvage_told() -> bool:
 	if int(world.get("opening_version")) < 2: return true
 	var radio: Node = world.get("radio")
-	return radio == null or (radio.heard as Dictionary).has("d2_found")
+	return radio == null or (radio.heard as Dictionary).has("d2_found") or radio.flag("scrap_told")
 
 # ---------- the tiny printer ----------
 
