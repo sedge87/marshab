@@ -3027,7 +3027,7 @@
       {
         "key": "primary",
         "type": "terminal",
-        "label": "Use the comms terminal"
+        "label": "Messages from orbit"
       },
       {
         "key": "secondary",

@@ -1352,6 +1352,7 @@ def write_control(h, masks):
     blend = np.clip((smoothstep(0.45, 0.95, slope) + crest * (slope > 0.12)) * 255.0, 0, 255).astype(np.uint32)
     soft = (base == SAND) | (base == FROST) | (base == ICE)
     blend[soft & (slope < 1.1)] = 0   # dunes and ice stay sand and frost unless it's a real scarp
+    blend[base == overlay] = 0   # same rock both ways: Terrain3D's height blend of a texture with itself goes dark in patches (the mound)
     masks["_base"] = base.astype(np.int64)
     control = (base << np.uint32(27)) | (overlay << np.uint32(22)) | (blend << np.uint32(14))
     data = gzip.compress(control.astype("<u4").tobytes(), compresslevel=9)

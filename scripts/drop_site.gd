@@ -118,8 +118,8 @@ func _build(saved: Dictionary) -> void:
 			rock.add_to_group("drop_debris")
 	pallet = PALLET.new()
 	add_child(pallet)
-	pallet.global_position = pallet_spot() + Vector3(0, -.04, 0)
-	pallet.global_basis = _on_ground(pallet.global_position, yaw + .35)
+	pallet.global_basis = _on_ground(pallet_spot(), yaw + .35)
+	pallet.global_position = Vector3(pallet_spot().x, _footprint_height(pallet_spot()) - .04, pallet_spot().z)
 	pallet.setup(self, bool(saved.get("opened", false)), label())
 	if kind == "power":
 		pack = POWER_PACK.new()
@@ -133,13 +133,25 @@ func _build(saved: Dictionary) -> void:
 			pack.laid_at = str(saved.get("pack_laid_at", "lander"))
 			pack.setup(self, where if where == "laid" else "pallet")
 
+## Tilted to the ground under its whole footprint (not just the middle),
+## and never more than about 10°, so it lies on the ground, not in it.
 func _on_ground(p: Vector3, turn: float) -> Basis:
-	var dx: float = MHSiteTerrain.height(p.x + .8, p.z) - MHSiteTerrain.height(p.x - .8, p.z)
-	var dz: float = MHSiteTerrain.height(p.x, p.z + .8) - MHSiteTerrain.height(p.x, p.z - .8)
-	var up := Vector3(-dx / 1.6, 1.0, -dz / 1.6).normalized()
+	var dx: float = MHSiteTerrain.height(p.x + 1.6, p.z) - MHSiteTerrain.height(p.x - 1.6, p.z)
+	var dz: float = MHSiteTerrain.height(p.x, p.z + 1.6) - MHSiteTerrain.height(p.x, p.z - 1.6)
+	var tilt := Vector2(-dx / 3.2, -dz / 3.2).limit_length(tan(deg_to_rad(10.0)))
+	var up := Vector3(tilt.x, 1.0, tilt.y).normalized()
 	var forward := Basis(Vector3.UP, turn).z
 	var right := up.cross(forward).normalized()
 	return Basis(right, up, right.cross(up).normalized())
+
+## Mean height under the pallet's middle and corners, but no lower than the
+## middle less a hand: so a hump under one end doesn't swallow the other.
+func _footprint_height(p: Vector3) -> float:
+	var middle: float = MHSiteTerrain.height(p.x, p.z)
+	var total := middle
+	for d in [Vector2(1.6, 1.6), Vector2(-1.6, 1.6), Vector2(1.6, -1.6), Vector2(-1.6, -1.6)]:
+		total += MHSiteTerrain.height(p.x + d.x, p.z + d.y)
+	return maxf(total / 5.0, middle - .1)
 
 ## The canopy's heights are offsets above the ground: lay each vertex on it.
 func _drape(mesh_instance: MeshInstance3D) -> void:

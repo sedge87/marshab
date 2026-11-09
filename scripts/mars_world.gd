@@ -928,6 +928,15 @@ func show_chapter_messages(messages: Array) -> void:
 func open_terminal() -> void:
 	_open_mission_control()
 
+## The lander console's comms: Castle's texts and the orbit photos, on the
+## slate (the same Comms page). Before you've picked the slate up, the
+## console's only the radio she calls you on.
+func open_lander_comms() -> void:
+	if pda != null and bool(pda.get("received")):
+		pda.open("comms")
+		return
+	get_tree().call_group("explore_hud", "show_equipment_note", "Comms", "The orbiter's on the radio. Castle calls when she's overhead: answer her on the suit's talk switch.")
+
 func open_fabricator(printer := "") -> void:
 	_open_live_view(FABRICATOR_SCREEN.new().setup(self, printer))
 

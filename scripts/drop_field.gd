@@ -77,7 +77,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 			where = Vector3(float(p[0]), float(p[1]), float(p[2]))
 			yaw = float(state.get("yaw", 0.0))
 			# Older saves could strand an unopened pallet on a mesa top: move it.
-			if not bool(state.get("opened", false)) and not reachable(where):
+			if not bool(state.get("opened", false)) and (not reachable(where) or not _sound(where) or not _sound(_pallet_at(where))):
 				where = Vector3.INF
 				state = {}
 		if is_inf(where.x):
@@ -185,7 +185,8 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 				"flat": score = h * .1 - _roughness(p) * 4.0 - slope * 2.0 - absf(distance - 600.0) * .01
 				"rough": score = _roughness(p) * 2.0 - slope - absf(distance - 800.0) * .01
 				"low": score = (_ring_mean(p, 60.0) - h) * 1.5 - slope - absf(distance - 1000.0) * .01
-			if score > best and reachable(p):
+			if not _sound(p) or not _sound(_pallet_at(p)): score -= 1000.0   # only if there's nowhere better
+			if score > best and reachable(p) and reachable(_pallet_at(p)):
 				best = score
 				out = Vector3(p.x, h, p.z)
 	if is_inf(out.x):
@@ -200,6 +201,20 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 func reachable(p: Vector3) -> bool:
 	var home: Vector3 = world.lander.global_position
 	return MHSiteTerrain.reachable_on_foot(Vector2(home.x, home.z), Vector2(p.x, p.z))
+
+## Ground a pallet can sit on and you can walk to: not up on the layered
+## mound, a mesa, the canyon's layers or a scree slope, and gentle (under
+## about 12° over 6 m, and no step or hump under its feet).
+const NOT_ON := ["mound_sulfates", "mesa_caprock", "canyon_layers", "talus_debris"]
+func _sound(p: Vector3) -> bool:
+	if MHSiteTerrain.geology_unit(p.x, p.z) in NOT_ON: return false
+	return _slope(p, 6.0) <= 1.3 and _slope(p, 2.5) <= .6
+
+## Where a site's pallet lies, for a site at p (it faces the lander).
+func _pallet_at(p: Vector3) -> Vector3:
+	var back: Vector3 = world.lander.global_position - p
+	var p2: Vector3 = p + Basis(Vector3.UP, atan2(back.x, back.z)) * SITE.PALLET_LOCAL
+	return Vector3(p2.x, MHSiteTerrain.height(p2.x, p2.z), p2.z)
 
 func _slope(p: Vector3, reach: float) -> float:
 	var h: float = MHSiteTerrain.height(p.x, p.z)

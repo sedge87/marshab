@@ -177,7 +177,8 @@ func _run(key: String, _actor: Node) -> bool:
 				get_tree().call_group("habitat_world", "open_monitor")
 				return true
 			"terminal":
-				get_tree().call_group("habitat_world", "open_terminal")
+				# The lander's console is only a radio and a message log: no Mission Control screen.
+				get_tree().call_group("habitat_world", "open_lander_comms" if equipment_id == "mission_planning_console" else "open_terminal")
 				return true
 			"suit_refill":
 				# A full suit refill from the habitat's oxygen and batteries (scripts/suit.gd).
