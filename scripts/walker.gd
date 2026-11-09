@@ -492,6 +492,7 @@ func recalibrated() -> void:
 ## v2: set right, but it'll walk home tonight, not now. You climb down.
 func _coming() -> void:
 	state = "coming"
+	MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit, for the mark
 	var lander: Vector3 = world.lander.global_position
 	var out := Vector3(global_position.x - lander.x, 0, global_position.z - lander.z).normalized()
 	home = lander + out * PARK_FROM_LANDER
@@ -558,11 +559,15 @@ func arrive_overnight() -> void:
 	if riding: _step_off()
 	ladder_out = 0.0
 	_place_ladder()
-	state = "parked"
-	MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit
+	state = "parked"   # (its airlock kit came with "coming", for the mark)
 	if not marked:
 		MHNotices.post("info", NAME + " is home", "Press B to choose where the General Module goes.", "", 1)
 		return
+	# Marked: it waits by the lander till you come out to watch (opening_days day 4).
+
+## v2, day 4: you're out of the lander: it carries the module to your mark.
+func deliver_marked() -> void:
+	if state != "parked" or not marked: return
 	var module: Dictionary = BUILD_RULES.module_zone(world.builder)
 	if module.is_empty():
 		marked = false

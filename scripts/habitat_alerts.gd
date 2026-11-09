@@ -91,6 +91,8 @@ func _process(delta: float) -> void:
 	_remark()
 	_record_day()
 	var found := evaluate()
+	var walker: Node = world.get("walker")
+	if walker != null and is_instance_valid(walker) and str(walker.get("state")) in ["coming", "parked", "delivering", "carrying", "lowering"]: found = []
 	if not bool(MHGame.setting("alert_advisories")): found = found.filter(func(a): return str(a.level) != "advisory")
 	_update(found)
 
@@ -107,6 +109,7 @@ func _record_day() -> void:
 ## sunrise and sunset once a sol, otherwise a remark every 7 to 14 minutes.
 func _remark() -> void:
 	_remark_wait -= .5
+	if int(world.get("opening_version")) >= 2: return   # ARDEN cut right back (docs/opening-days.md)
 	if not _active.is_empty() or not _was_inside: return
 	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
 	var sunrise := float(cycle.get("sunrise_hour", 5.0))
@@ -129,7 +132,7 @@ func _welcome() -> void:
 	if player == null or world.builder == null: return
 	var inside: bool = world.builder.is_inside(player.global_position)
 	_welcome_wait -= .5
-	if inside and not _was_inside and _welcome_wait <= 0.0:
+	if inside and not _was_inside and _welcome_wait <= 0.0 and int(world.get("opening_version")) < 2:
 		MHAudio.voice("welcome_home" if _welcomed else "welcome_aboard")
 		_welcomed = true
 		_welcome_wait = 60.0

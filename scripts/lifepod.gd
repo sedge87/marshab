@@ -428,6 +428,18 @@ func _gary_found() -> bool:
 	var field: Node = world.get("drop_field")
 	return field == null or not bool(field.get("gary_working"))
 
+## A plan Castellanos has just asked for (the hitch, the seal) comes up
+## first on the printer, once; Next plan still cycles after that.
+var _brought_up := {}
+func _bring_up(open: Array) -> void:
+	for id in ["hitch", "seal"]:
+		if _brought_up.has(id): continue
+		for i in open:
+			if str(PLANS[int(i)][0]) == id:
+				_brought_up[id] = true
+				plan = int(i)
+				return
+
 func next_plan() -> void:
 	var open := _open_plans()
 	if open.is_empty(): return
@@ -439,6 +451,7 @@ func printer_prompt() -> Dictionary:
 	var open := _open_plans()
 	if printing != "": return {"label": "Tiny printer · printing %s" % _plan_name(printing)}
 	if open.is_empty(): return {"label": "Tiny printer · %d parts · nothing left to print" % parts}
+	_bring_up(open)
 	if not open.has(plan): plan = int(open[0])
 	var cost := _plan_cost(plan)
 	var out := {"label": "Tiny printer · %d parts" % parts}
@@ -456,6 +469,7 @@ func print_now() -> bool:
 	if printing != "": return false
 	var open := _open_plans()
 	if open.is_empty(): return false
+	_bring_up(open)
 	if not open.has(plan): plan = int(open[0])
 	var cost := _plan_cost(plan)
 	if parts < cost: return false
@@ -532,7 +546,9 @@ func _check_staging() -> void:
 	if notes != null and cart != null and staged(cart) and notes.is_open("module_air"): notes.think("module_air", "staged")
 	if staged(cart) and staged(_pack()):
 		done("tow")
-		if notes != null: notes.answer("staging")
+		if notes != null:
+			notes.answer("staging")
+			notes.answer("power_pallet")   # the power's home: that thought's done
 		MHNotices.post("valid", "Cargo staged", "The module's air cartridge and power pack are waiting by the lander.", "log")
 
 ## Carrying cargo, E on a hitched GAR-Y: onto its sled (scripts/o2_cartridge.gd, power_pack.gd).

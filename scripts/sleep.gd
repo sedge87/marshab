@@ -47,6 +47,9 @@ func blocked_reason() -> String:
 	var in_cabin: bool = world.lander != null and bool(world.lander.cabin_contains(player.global_position))
 	if not world.builder.is_inside(player.global_position) and not in_cabin: return "You can only sleep inside: the habitat or the lander cabin."
 	if in_cabin and world.lander.has_method("sealed_cabin") and not world.lander.sealed_cabin(): return "Close the hatch and let it seal first."
+	var days: Node = world.get("opening_days")
+	if days != null and days.has_method("v2") and days.v2() and days.guided() and float(world.day_night.hold_at) >= 0.0:
+		return "Not yet. There's still today's work, and it's light out."
 	return ""
 
 # ---------- the panel ----------
@@ -129,7 +132,7 @@ func sleep(hours: float) -> void:
 	var alerts: Node = world.get("alerts")
 	_start = {"battery": float(snap.battery_pct), "storm": float(sim.storm_hours_left) > 0.0, "alerts": (alerts.history as Array).size() if alerts != null else 0}
 	_freeze(true)
-	MHAudio.voice("goodnight")
+	if not _quiet_lander(): MHAudio.voice("goodnight")
 	_dark = ColorRect.new()
 	_dark.color = Color(0, 0, 0, 0)
 	_dark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -191,10 +194,12 @@ func wake(why: String) -> void:
 	var body: Node = world.get("body")
 	if body != null: body.slept(_slept)
 	var sunrise := float(MHGame.site().get("day_cycle", {}).get("sunrise_hour", 5.0))
-	match why:
-		"alert": MHAudio.voice("wake_alert")
-		"storm": MHAudio.voice("wake_storm")
-		_: MHAudio.voice("wake_morning" if MHGame.sol_hour >= sunrise and MHGame.sol_hour < sunrise + 3.0 else "wake_normal")
+	if _quiet_lander() and why != "alert" and why != "storm": pass
+	else:
+		match why:
+			"alert": MHAudio.voice("wake_alert")
+			"storm": MHAudio.voice("wake_storm")
+			_: MHAudio.voice("wake_morning" if MHGame.sol_hour >= sunrise and MHGame.sol_hour < sunrise + 3.0 else "wake_normal")
 	if world.get("weather") != null: world.weather.toast(_headline(why), summary(), MHStyle.DANGER if why == "alert" else (MHStyle.WARN if why == "storm" else MHStyle.INFO))
 	var dark := _dark
 	_dark = null
@@ -240,3 +245,12 @@ func _time(hour: float) -> String:
 
 func _span(hours: float) -> String:
 	return "%d h %02d m" % [int(hours), int(fmod(hours, 1.0) * 60.0)] if hours >= 1.0 else "%d m" % int(hours * 60.0)
+
+## The guided days (version 2) in the lander: ARDEN's goodnight and good
+## morning stay unspoken; Castellanos says goodnight and wakes you.
+func _quiet_lander() -> bool:
+	if int(world.get("opening_version")) >= 2: return true   # ARDEN cut right back, everywhere
+	var days: Node = world.get("opening_days")
+	if days == null or not days.has_method("v2") or not days.v2() or not days.guided(): return false
+	var lander: Node = world.get("lander")
+	return lander != null and lander.has_method("cabin_contains") and bool(lander.cabin_contains((world.player as Node3D).global_position))

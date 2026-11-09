@@ -114,7 +114,9 @@ func _open() -> void:
 	_open_lid()
 	MHAudio.sfx_at("suit_clamp", self, -4.0, .9)
 	var pod := _lifepod()
-	if pod != null: pod.parts = int(pod.parts) + PARTS
+	if pod != null:
+		pod.parts = int(pod.parts) + PARTS
+		pod.walker_due = true   # day 2's work done: the walker moves tonight
 	MHChapterOne.stock["spares_kit"] = int(MHChapterOne.stock.get("spares_kit", 0)) + SPARES
 	MHNotices.post("valid", "Spares crate", "Wiring, brackets, seals and fasteners: %d parts for the lander's printer, and %d spares kits put by for the module." % [PARTS, SPARES], "log")
 	MHAudio.moment()

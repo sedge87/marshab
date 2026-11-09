@@ -133,7 +133,7 @@ func hatch_refusal() -> String:
 	var lander: Node = world.get("lander")
 	var player: Node3D = world.get("player")
 	if lander == null or player == null or not bool(lander.cabin_contains(player.global_position)): return ""
-	return "Not in the dark yet. Sleep first."
+	return "Not out there in the dark. Sleep first, and go at sunrise."
 
 ## Home tonight: the lander, or the module once it's down.
 func _home_name() -> String:
@@ -181,7 +181,9 @@ func _process(delta: float) -> void:
 	var day := maxi(sol, nights + 1)
 	if v2() and day <= STORY_DAYS:
 		_story_day(day, hour, sunrise, sunset)
-		if late and bed_sol != day:
+		var radio := _radio()
+		var sunset_due: bool = radio != null and (radio.on_air() or (radio.queue as Array).has("d%d_sunset" % day))
+		if late and bed_sol != day and not sunset_due:
 			bed_sol = day
 			notes.think("bed", "late", {"home": _home_name()})
 	else:
@@ -269,7 +271,7 @@ func day_done(day: int) -> bool:
 		2:
 			if not _gary_found(): return false
 			var crate: Node = field_crate()
-			if crate != null and not bool(crate.opened): return false   # the spares crate, towed home
+			if crate != null: return bool(crate.opened)   # the spares crate, towed home and opened
 			return pod == null or bool(pod.walker_due) or bool(pod.walker_moved)
 		3:
 			var walker: Node = world.get("walker")
@@ -316,6 +318,7 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 	elif day == 4 and hour >= sunrise - 1.0:
 		var walker: Node = world.get("walker")
 		if walker != null and str(walker.state) == "coming": walker.arrive_overnight()
+		if walker != null and str(walker.state) == "parked" and bool(walker.marked) and not _in_cabin(): walker.deliver_marked()
 		radio.ring("d4_wake")
 		if _done("module"): radio.ring("d4_down")
 		if _done("module") and _done("fit_out"): radio.ring("d4_home")

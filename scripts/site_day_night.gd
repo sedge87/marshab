@@ -44,7 +44,12 @@ func _process(delta: float) -> void:
 	# The new survival core (the lander cabin, scripts/lander_cabin_life.gd).
 	if is_inside_tree(): get_tree().call_group("survival_core", "advance", step_hours, hour)
 	var next := hour + step_hours
-	if hold_at >= 0.0 and hour <= hold_at and next > hold_at: next = hold_at
+	if hold_at >= 0.0 and hour <= hold_at and next > hold_at:
+		next = hold_at
+		# Held: things still run, but the sol count stays with the sun.
+		if builder != null:
+			var sim: RefCounted = builder.simulation()
+			sim.hours_run = maxf(0.0, float(sim.hours_run) - (step_hours - (next - hour)))
 	hour = wrapf(next, 0.0, 24.0)
 	_apply_conditions()
 
