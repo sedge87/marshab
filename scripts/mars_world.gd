@@ -644,6 +644,9 @@ func _place_slate() -> void:
 		if str(child.name).begins_with("Cabin_mission_planning_console"):
 			slate_cradle = SLATE_CRADLE.new()
 			slate_cradle.setup(self, child as Node3D)
+			# She's calling anyway: the slate can wait on the console.
+			if MHChapterOne.new_rules() and opening_version >= 2:
+				get_tree().create_timer(20.0).timeout.connect(func() -> void: if radio != null: radio.ring("d1_relock"))
 			return
 	# No console to lie on: ARDEN hands it over as before.
 	get_tree().create_timer(9.0).timeout.connect(_hand_over_slate)

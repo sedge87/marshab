@@ -12,7 +12,7 @@ Castellanos: Morning. Quick question before you've even had breakfast. Did you h
 	set gary_night
 	Castellanos: Then GAR-Y heard it too. Something big was moving out there around three. Rao picked it up on the relay. [ID:d3_wake_02c]
 Castellanos: This time I really, honestly think it's a walker. Big, slow, heavy. Look for tracks. Wide ones, much wider than GAR-Y's. [ID:d3_wake_03]
-? hopeful Castellanos: And yes, I know I said that yesterday. Let me have this one. [ID:d3_wake_04]
+? hopeful Castellanos: And yes, I know I said that last time. Let me have this one. [ID:d3_wake_04]
 => END
 
 ~ d3_fixed
@@ -65,6 +65,7 @@ Castellanos: That's what the printer is, really. Not a toy. Every time something
 	Castellanos: That's the spirit. You've waited seven months, what's one more night? [ID:d3_fixed_04b]
 Castellanos: And while you wait, you've got a job I'm properly jealous of. That module needs somewhere to live. You get to pick the spot. [ID:d3_fixed_05]
 Castellanos: Somewhere you'd want to wake up every morning. Flat, with good sun, near the ice if you can, and room to grow. We're going to be living there one day too, so no pressure. [ID:d3_fixed_06]
+?! surveyed Castellanos: And for the ice, ask GAR-Y. Hold G by it and pick Survey zone. Its stakes go blue where there's ice under you. Put the module near the blue ones. [ID:d3_fixed_06b]
 => END
 
 ~ d3_seal
@@ -75,7 +76,13 @@ Castellanos: Is that the seal? Achterberg wants to know if it came out clean. Sh
 - A bit rough round the edges.
 	Castellanos: Rough's fine. It only has to hold grit out, not win a beauty contest. [ID:d3_seal_02b]
 Castellanos: GAR-Y's beeping at it. I think it knows. Give it a few hours after dark and it'll take it out to the walker. You stay in the warm. [ID:d3_seal_03]
-?! marked_spot Castellanos: Now, the fun part. Go and choose where the module's going to live. [ID:d3_seal_04]
+?! marked_spot => d3_choose
+=> END
+
+# After the seal, if the spot's not chosen yet: water first, then home.
+~ d3_choose
+? surveyed Castellanos: Now, the fun part. Go and choose where the module's going to live. Somewhere near GAR-Y's blue stakes. [ID:d3_seal_04]
+?! surveyed Castellanos: Now, the fun part. Get GAR-Y to find you some ice first, Survey zone, then choose where the module's going to live, near its blue stakes. [ID:d3_seal_04b]
 => END
 
 ~ d3_marked
@@ -89,6 +96,7 @@ Castellanos: I can see your stakes on the long lens. Tiny little corners. So tha
 	set chose_sunset
 	Castellanos: Of course it has. You and your sunsets. [ID:d3_marked_02c]
 set marked_spot
+? surveyed Castellanos: Right by GAR-Y's stakes, too. Achterberg says you're her favourite now. [ID:d3_marked_04]
 ?! sealed Castellanos: Walker 1 knows where to put it now. Just don't forget its seal. It's not walking anywhere on that split one. Print it, and then get some sleep. [ID:d3_marked_03b]
 ? sealed Castellanos: Walker 1 knows where to put it now. So go home, have something to eat, and get a proper night's sleep. Tomorrow, you move in. [ID:d3_marked_03]
 => END

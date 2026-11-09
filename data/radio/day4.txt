@@ -16,7 +16,7 @@ Castellanos: Go outside and watch it. You've waited long enough for this. We all
 ~ d4_down
 Castellanos: It's down. It's actually down. Your first room on Mars. Everyone up here is shouting at once and I can't hear myself think. [ID:d4_down_01]
 - It's bigger than it looked.
-	Castellanos: Everything is, after three nights in a lander. You're going to feel like you're rattling round a cathedral. [ID:d4_down_02a]
+	Castellanos: Everything is, after nights in a lander. You're going to feel like you're rattling round a cathedral. [ID:d4_down_02a]
 - It's real.
 	set moved
 	Castellanos: It's real. It's really real. Give me a second. [ID:d4_down_02b]
@@ -61,8 +61,10 @@ Castellanos: Your food's all still in the lander's crate, by the way. It's a sho
 ~ d4_survey
 do survey_start
 Castellanos: One more job before the sun goes, and it's a big one. Achterberg's been at me all afternoon about it. [ID:d4_survey_01]
-Castellanos: She says the module's plans have an ice extractor in them, and that's no use without ice to put it on. She wants to know where your water is. [ID:d4_survey_02]
-Castellanos: Ask GAR-Y to find you some. Hold G by it and pick Survey zone. It'll stake out anywhere that looks icy, then you core the best stake to be sure. [ID:d4_survey_03]
+?! surveyed Castellanos: She says the module's plans have an ice extractor in them, and that's no use without ice to put it on. She wants to know where your water is. [ID:d4_survey_02]
+?! surveyed Castellanos: Ask GAR-Y to find you some. Hold G by it and pick Survey zone. It'll stake out anywhere that looks icy, then you core the best stake to be sure. [ID:d4_survey_03]
+? surveyed Castellanos: She says GAR-Y's radar is all very well, but she wants that ice in a tube before she believes it. The extractor's going on it. [ID:d4_survey_02s]
+? surveyed Castellanos: Take your corer to the best blue stake near the module and core it, to be sure. [ID:d4_survey_03s]
 - Water's everything, isn't it?
 	Castellanos: Drinking, air, growing things. Even fuel, one day. Yes. It's everything. [ID:d4_survey_04a]
 - Leave it to me.
@@ -117,7 +119,7 @@ Castellanos: And Mwangi's is Humans. Can a person really live here, day after da
 	Castellanos: It is. It really is. But you won't be one person forever. That's the other half of this. [ID:d4_sun_06a]
 - Where do I even start?
 	Castellanos: Water. Always water. Tomorrow. The rest grows from that. [ID:d4_sun_06d]
-Castellanos: And that's mine. The five of us are still up here, waiting. Build us a base we can land at, and we'll come down and join you. That's the deal. [ID:d4_sun_17]
+Castellanos: And that's mine. The five of us are still up here, waiting. Build us a base we can land beside, and find out what fooled the nav, so ours can find its way down. Then we'll come down and join you. That's the deal. [ID:d4_sun_17]
 ? asked_hers Castellanos: Told you you'd see. [ID:d4_sun_18]
 Castellanos: They'll each send you a note tonight. Don't feel you have to answer them all at once. [ID:d4_sun_19]
 - I'll build it.

@@ -36,11 +36,15 @@ Castellanos: Oh, thank God. There you are. We lost your antenna right as you tou
 	Castellanos: Are we okay? You're the one who just fell out of the sky. Yes, we're fine. Tupou's pressed against the window, Rao's pretending he wasn't worried, and Mwangi is taking everybody's pulse whether they want it or not. [ID:d1_relock_03c]
 Castellanos: Right. Business, before I get sentimental. That lander is better than it looks. It recycles its air and water so well it can keep one person alive for a long, long time, and its power cell doesn't care about the dark. [ID:d1_relock_04]
 Castellanos: But it'll never work for all of us. There's one seat, and you're in it. The base is out there in the pallets and on the walkers, and the storm has scattered the lot. [ID:d1_relock_05]
-do think air
-- So I go and find it.
+- When are the rest of you coming down?
+- So it's just me down here?
 - No pressure, then.
 	set joker
 	Castellanos: None at all. Just the whole mission. You'll be fine, you were always the calm one on the ship. Apart from that one time with the coffee. [ID:d1_relock_06b]
+Castellanos: We can't come down yet. You flew yours down by hand, by eye. Ours lands itself: it homes on the base's beacon and steers by the guided nav, and both went wrong in that storm. [ID:d1_relock_05c]
+Castellanos: And it's a bus, not a home. Air for the five of us for a day, no more. It needs a base to land beside, and a beacon we can trust. [ID:d1_relock_05d]
+Castellanos: So until then, we're up here, and you're our eyes. [ID:d1_relock_05e]
+do think air
 Castellanos: Rao got a photo of a parachute on the last pass. It's on your slate. Pallet one, up on the ridge, with the module's life support in it. That's where the base starts. Go and have a look, and talk to me while you walk if you like. [ID:d1_relock_07]
 do parachute
 => END
@@ -105,7 +109,7 @@ Castellanos: Tupou wants you to know that the hammer is for science and not for 
 => END
 
 ~ d1_cargo
-Castellanos: That's the module's air and power sitting by the lander. When the module turns up, it'll breathe the same day. That's a proper first day's work. [ID:d1_cargo_01]
+Castellanos: That's the module's air and power sitting by the lander. When the module turns up, it'll breathe the same day. That's a proper day's work. [ID:d1_cargo_01]
 do sunset_spot
 ? cargo_early Castellanos: And there's plenty of daylight left. The rest of today's yours. Have a wander, strip some scrap, sit on the ramp. And if you fancy it later, the sunset's worth seeing. Your first one. [ID:d1_cargo_02e]
 ? cargo_mid Castellanos: The sun's getting low. If you've got a minute before you go in, it's worth watching it go down. Your first one. [ID:d1_cargo_02]
@@ -180,7 +184,7 @@ Castellanos: Outpost One, it's getting dark down there. Time to head home. [ID:d
 ? left_power Castellanos: The power pallet will keep till tomorrow. Out on the flat, where it fell. [ID:d1_dusk_02b]
 ? left_tools Castellanos: And the field kit's still in its hollow. Tomorrow. [ID:d1_dusk_02c]
 ? left_cargo Castellanos: Leave whatever's not home yet. We'll get it all to the lander tomorrow. [ID:d1_dusk_02d]
-Castellanos: You did plenty for a first day. Get inside before the cold does. Talk at sunrise. [ID:d1_dusk_03]
+Castellanos: You did plenty for a start. Get inside before the cold does. Talk at sunrise. [ID:d1_dusk_03]
 do bed
 => END
 

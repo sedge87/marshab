@@ -344,6 +344,7 @@ func _commissioned() -> bool:
 func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void:
 	var radio := _radio()
 	_story_clock(-1.0, false)   # the sun never waits (and an old save's hold lets go)
+	if radio != null and chapter >= 3 and not radio.flag("surveyed") and _surveyed_near_home(): radio.flags["surveyed"] = true
 	var run := _hours_run()
 	if last_morning <= UNSET: last_morning = run
 	# Morning: the next chapter if this one's done, else what's left of it.
@@ -452,6 +453,18 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 			_bunk_flags(radio)
 			radio.ring("d4_home")
 		if survey_from >= 0 and is_inf(ice_spot.x): _look_for_ice(radio)
+
+## GAR-Y's ice stakes out round the lander (chapter 3: find the water, then
+## choose where the module goes).
+const SURVEY_NEAR := 600.0
+func _surveyed_near_home() -> bool:
+	var stakes: Node = world.get("survey_stakes")
+	if stakes == null or world.get("lander") == null: return false
+	var home: Vector3 = world.lander.global_position
+	for stake in stakes.get("_stakes"):
+		var at: Vector3 = stake.at
+		if Vector2(at.x - home.x, at.z - home.z).length() < SURVEY_NEAR: return true
+	return false
 
 ## Day 1, the cargo home: a rise towards the sun, near enough to walk to
 ## and back before dark, marked on your compass (data/radio/day1.txt).

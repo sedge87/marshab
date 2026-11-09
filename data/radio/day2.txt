@@ -38,6 +38,7 @@ Castellanos: Talk to me. I can see you've stopped next to something. What is it?
 	Castellanos: Okay, that's either adorable or terrifying, and I genuinely can't tell which. [ID:d2_found_02c]
 Castellanos: I'm pulling up the manifest. Pallet three. Oh, of course. That's GAR-Y. The scout rover. [ID:d2_found_03]
 ? dragged Castellanos: Wait. That's what dragged you home! That little thing hauled you all that way. [ID:d2_found_03b]
+? dragged Castellanos: By your suit's drag loop, I bet. Every suit has one, for exactly that. [ID:d2_found_03d]
 ? heard_beeps Castellanos: Beeping. You said beeping. Of course it was. [ID:d2_found_03c]
 ? hopeful Castellanos: So, not a walker. I'm sorry. I really, really wanted it to be a walker. [ID:d2_found_04]
 Castellanos: It was meant to drive ahead of the walkers and map the ground for them. It must have woken itself up in the storm, and then just kept doing its job, all on its own, with nobody to report to. That's a bit heartbreaking, honestly. [ID:d2_found_05]
@@ -55,6 +56,7 @@ Castellanos: I bet that's what it's been circling all night. It knows that crate
 	set clever
 	Castellanos: That's exactly what I was going to say. Look at me, being beaten to it. [ID:d2_found_11b]
 Castellanos: GAR-Y's got a tow mount on its back, but no hitch. The hitches were all on the pallet that broke up. Typical. [ID:d2_found_12]
+? dragged Castellanos: You came with a handle. That crate's got nothing to grab. [ID:d2_found_12b]
 ?! scrap_told Castellanos: But you've got a little printer in the lander. It eats scrap. And the storm's left scrap all over the Reach: bent panels, broken struts, bits of pallet. [ID:d2_found_13]
 ?! scrap_told Castellanos: Strip some of that junk on the way home, feed it to the printer, and print GAR-Y a hitch. Then bring it back out here and tow that crate home. [ID:d2_found_14]
 ? scrap_told Castellanos: But that little printer of yours can make one. That's what all the scrap was for. [ID:d2_found_13b]
