@@ -23,8 +23,11 @@ extends Node
 ##          work; its jobs (scripts/lifepod.gd) till the walker's due.
 ##   Day 3: Walker 1 set right; it crawls home overnight; B marks the
 ##          module's spot (scripts/walker.gd "coming").
-##   Day 4: at dawn it's parked and sets the module down on your mark; the
-##          cargo goes in, the kit's placed; the sunset talk: the four goals.
+##   Day 4: at dawn it's parked and sets the module down on your mark,
+##          cold and open to Mars. Air and power in, a seam won't hold: find
+##          the hiss and patch it (scripts/module_leak.gd). The kit's placed;
+##          then GAR-Y finds its ice. The sunset talk: tomorrow, this season,
+##          the mission (each goal from its owner up there, and their notes).
 ##          The first night in the module. Then day 5 is yours.
 ## Version 1 (the first opening) stays for older saves and older tests.
 static var new_games_version := 2
@@ -54,6 +57,18 @@ var _photo_wait := 0.0           # the sunset call's "take a picture" wait
 var _photos_before := 0
 const SPOT_REACH := 18.0         # this close to the rise and you're there
 const PHOTO_WAIT := 50.0         # seconds Castellanos waits for the picture
+var survey_from := -1            # day 4: cores taken from here on (MHChapterOne.cores) count for the module's ice
+var ice_spot := Vector3.INF      # day 4: the module's ice, found
+const ICE_REACH := 400.0         # this near the module, a core's the module's ice
+const THIN_AFTER := 3            # cores with no good ice: the best of them will do
+const BUNK_BY_DOOR := 4.5        # metres from the airlock: the bunk's "by the door"
+## Day 4's notes from the crew, each from the goal's owner (data/orbiter_crew.json).
+const OWNER_NOTES := [
+	["d4_note_tupou", "tupou", "Life's mine, then. If you see anything at all that looks odd, layered, crusty, a funny colour, photograph it before you touch it. Please. I'll explain why later. At length."],
+	["d4_note_rao", "rao", "Climate. Every pass, I'm looking at your sky as well as for walkers. Tell me when the dust is up and when the frost is down. That's half my data, from you."],
+	["d4_note_achterberg", "achterberg", "Geology, and building with it. Your printer eats regolith. Find me good dirt and I'll find you things to make out of it. Also: well done on the seam."],
+	["d4_note_mwangi", "mwangi", "Humans, which means you. Eat, drink, sleep, in that order, and tell me honestly how you're feeling. I'd rather hear 'lonely' than 'fine'."],
+]
 var _fast := false
 var _was_asleep := false
 var _lead_again := 0.0
@@ -73,9 +88,13 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	var spot: Array = saved.get("sunset_spot", [])
 	if spot.size() == 3: sunset_spot = Vector3(float(spot[0]), float(spot[1]), float(spot[2]))
 	sunset_reached = bool(saved.get("sunset_reached", false))
+	survey_from = int(saved.get("survey_from", -1))
+	var ice: Array = saved.get("ice_spot", [])
+	if ice.size() == 3: ice_spot = Vector3(float(ice[0]), float(ice[1]), float(ice[2]))
 
 func export_state() -> Dictionary:
-	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning, "nights": nights, "version": version, "sunset_called": sunset_called, "sunset_reached": sunset_reached, "sunset_spot": [] if is_inf(sunset_spot.x) else [sunset_spot.x, sunset_spot.y, sunset_spot.z]}
+	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning, "nights": nights, "version": version, "sunset_called": sunset_called, "sunset_reached": sunset_reached, "sunset_spot": [] if is_inf(sunset_spot.x) else [sunset_spot.x, sunset_spot.y, sunset_spot.z],
+		"survey_from": survey_from, "ice_spot": [] if is_inf(ice_spot.x) else [ice_spot.x, ice_spot.y, ice_spot.z]}
 
 # ---------- where the days are ----------
 
@@ -245,6 +264,13 @@ func radio_ready() -> void:
 	radio.handlers["parachute"] = func(_args: Array) -> void:
 		var drop: Node = world.get("storm_drop")
 		if drop != null: drop.parachute_thought()
+	radio.handlers["survey_start"] = func(_args: Array) -> void:
+		if survey_from < 0: survey_from = MHChapterOne.cores.size()
+	radio.handlers["ice_spot"] = func(_args: Array) -> void: _mark_ice_spot()
+	radio.handlers["owner_notes"] = func(_args: Array) -> void:
+		var texts: Node = world.get("orbiter_texts")
+		if texts == null: return
+		for note in OWNER_NOTES: texts.send(str(note[0]), str(note[1]), str(note[2]))
 	radio.handlers["think"] = func(args: Array) -> void:
 		var notes: Node = world.get("notes")
 		if notes != null and not args.is_empty(): notes.think(str(args[0]))
@@ -277,8 +303,13 @@ func day_done(day: int) -> bool:
 			var walker: Node = world.get("walker")
 			if walker != null and str(walker.state) == "coming" and pod != null and not (pod.prints as Dictionary).has("seal"): return false
 			return walker == null or bool(walker.marked) or str(walker.state) in ["parked", "carrying", "lowering", "done"]
-		4: return _done("module") and _done("fit_out")
+		4: return _done("module") and _commissioned() and _done("fit_out") and not is_inf(ice_spot.x)
 	return true
+
+## Day 4: the module's leak patched and it's holding (scripts/module_life.gd).
+func _commissioned() -> bool:
+	var module: Node = world.get("module_life")
+	return module != null and bool(module.commissioned)
 
 func _story_day(day: int, hour: float, sunrise: float, sunset: float) -> void:
 	var radio := _radio()
@@ -321,7 +352,10 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 		if walker != null and str(walker.state) == "parked" and bool(walker.marked) and not _in_cabin(): walker.deliver_marked()
 		radio.ring("d4_wake")
 		if _done("module"): radio.ring("d4_down")
-		if _done("module") and _done("fit_out"): radio.ring("d4_home")
+		if _done("module") and _commissioned() and _done("fit_out") and not (radio.heard as Dictionary).has("d4_home"):
+			_bunk_flags(radio)
+			radio.ring("d4_home")
+		if survey_from >= 0 and is_inf(ice_spot.x): _look_for_ice(radio)
 
 ## Day 1, the cargo home: a rise towards the sun, near enough to walk to
 ## and back before dark, marked on your compass (data/radio/day1.txt).
@@ -361,6 +395,51 @@ func _waiting_at_spot(day: int) -> bool:
 		if known != null: known.finish("sunset_spot")
 		return false
 	return not _in_cabin()
+
+## Day 4: where you put the bunk, for Castle's say on it.
+func _bunk_flags(radio: Node) -> void:
+	var builder: Node = world.get("builder")
+	if builder == null: return
+	var doors: Array = []
+	for z in builder.zones:
+		if str(z.get("kind", "")) == "airlock":
+			for c in z.cells: doors.append(Vector3(c.x * builder.CELL, 0, c.y * builder.CELL))
+	for item in builder.placed_interior:
+		if str(item.get("id", "")) != "crew_bunk" or doors.is_empty(): continue
+		var at: Vector3 = item.get("position", Vector3.ZERO)
+		var near := INF
+		for d in doors: near = minf(near, Vector2(at.x - d.x, at.z - d.z).length())
+		radio.flags["bunk_by_door" if near < BUNK_BY_DOOR else "bunk_quiet"] = true
+		return
+
+## Day 4: a good core near the module since Castle asked (or, after a few
+## dry ones, the best of them) is its ice.
+func _look_for_ice(radio: Node) -> void:
+	var module: Node = world.get("module_life")
+	if module == null or (module.zone() as Dictionary).is_empty(): return
+	var centre: Vector3 = module._centre()
+	var tried: Array = []
+	for i in range(clampi(survey_from, 0, MHChapterOne.cores.size()), MHChapterOne.cores.size()):
+		var core: Dictionary = MHChapterOne.cores[i]
+		if Vector2(float(core.x) - centre.x, float(core.z) - centre.z).length() > ICE_REACH: continue
+		if bool(core.get("good", false)):
+			ice_spot = Vector3(float(core.x), 0, float(core.z))
+			break
+		tried.append(core)
+	if is_inf(ice_spot.x) and tried.size() >= THIN_AFTER:
+		var best: Dictionary = tried[0]
+		for core in tried:
+			if float(core.purity) > float(best.purity): best = core
+		ice_spot = Vector3(float(best.x), 0, float(best.z))
+		radio.flags["thin_ice"] = true
+	if not is_inf(ice_spot.x):
+		ice_spot.y = MHSiteTerrain.height(ice_spot.x, ice_spot.z)
+		radio.ring("d4_ice")
+
+func _mark_ice_spot() -> void:
+	var known: Node = world.get("known")
+	var field: Node = world.get("drop_field")
+	if known != null and field != null and not is_inf(ice_spot.x): known.learn("ice_spot", "place", field.region_at(ice_spot), "Ice extractor spot", "you", "castellanos")
 
 func field_crate() -> Node:
 	var field: Node = world.get("drop_field")

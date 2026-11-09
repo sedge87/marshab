@@ -9,9 +9,12 @@ extends SceneTree
 # - day 2's wake call brings GAR-Y out at work past its empty cradle; the
 #   cradle rings Castellanos; walk up and GAR-Y meets you; d2_found plays;
 # - day 2 holds till GAR-Y's found and the walker's due; then its sunset call;
+# - day 4: the module down cold and vented; cartridge and blanket bring the
+#   leak; patched, the fit-out, the ice survey; the talk and the owners' notes;
 # - saved: the version and the calls.
 # godot --headless --path . --script res://tests/guided_days_test.gd
 var failures := 0
+const BUILD_RULES_ZONE := preload("res://scripts/build_rules.gd")
 
 func _check(ok: bool, what: String) -> void:
 	if not ok:
@@ -191,6 +194,49 @@ func _initialize() -> void:
 	_check(str(walker.state) in ["parked", "carrying"] and walker.global_position.distance_to(walker.home) < 30.0, "dawn: Walker 1 is home (%s)" % walker.state)
 	_check(radio.heard.has("d4_wake"), "day 4's morning call")
 	_check(days.guided() and not days.in_lander_days(), "day 4: still guided, not the lander")
+
+	# Day 4: down cold and open to Mars; air and power in, a seam won't hold.
+	if BUILD_RULES_ZONE.module_zone(world.builder).is_empty():   # the test's mark has no plan behind it
+		world.builder.zones.append({"kind": "general", "cells": [Vector2i(3, 3), Vector2i(4, 3), Vector2i(3, 4), Vector2i(4, 4), Vector2i(3, 5), Vector2i(4, 5)], "carried": true, "cost": 0})
+		world.builder.zones.append({"kind": "airlock", "cells": [Vector2i(3, 6)], "cost": 0})
+	if str(walker.state) != "done": walker._finish_set_down()
+	await _settle(radio)
+	var module: Node = world.module_life
+	_check(module != null and bool(module.core.vented) and not bool(module.commissioned) and float(module.core.temp_c) < 0.0, "the module comes down cold and unpressurised")
+	_check(radio.heard.has("d4_down"), "Castle: air and power")
+	if module != null:
+		var cartridge: Node = root.get_tree().get_first_node_in_group("o2_cartridge")
+		if cartridge != null:
+			cartridge.where = "plugged"
+			cartridge.plugged_into = "module"
+		module.add_cartridge(1.0)
+		_check(module.leak == null, "no leak till the blanket's in too")
+		module.blanket(true)
+		await _settle(radio)
+		_check(module.leak != null and radio.heard.has("d4_leak"), "air and power in: a seam hisses, Castle calls")
+		_check(not days.day_done(4), "day 4 waits for the leak")
+		field.tools = true
+		if module.leak != null: module.leak.interact()
+		await _settle(radio)
+		_check(not bool(module.core.vented) and bool(module.commissioned) and radio.heard.has("d4_patched"), "patched: it holds")
+		_check(not radio.heard.has("d4_home"), "the fit-out isn't done yet")
+		var b: Node = world.builder
+		var cells: Array = module.zone().get("cells", [])
+		var spot: Vector3 = Vector3(cells[0].x * b.CELL, b.habitat_base_y, cells[0].y * b.CELL) if not cells.is_empty() else Vector3.ZERO
+		for id in ["crew_bunk", "galley", "desk"]: b.placed_interior.append({"id": id, "position": spot, "placement_id": "t_" + id})
+		await _settle(radio)
+		_check(radio.heard.has("d4_home") and int(days.survey_from) >= 0, "fitted out: Castle's home call, then the survey ask")
+		_check(not days.day_done(4), "day 4 waits for the ice")
+		var centre: Vector3 = module._centre()
+		MHChapterOne.record_core({"x": centre.x + 40.0, "z": centre.z, "purity": .6, "dry": false, "depth_m": 1.0, "good": true})
+		await _settle(radio)
+		_check(radio.heard.has("d4_ice") and not is_inf(days.ice_spot.x) and known.things.has("ice_spot"), "good ice near the module: its spot, marked")
+		_check(days.day_done(4), "day 4 done: down, patched, fitted, ice")
+		radio.ring("d4_sunset")
+		await _settle(radio, 2.0)
+		_check(radio.heard.has("goal_humans") and radio.heard.has("d4_sunset_deal"), "the talk goes round the room")
+		var texts: Node = world.orbiter_texts
+		_check(texts != null and texts.has("d4_note_tupou") and texts.has("d4_note_mwangi") and texts.has("d4_note_rao") and texts.has("d4_note_achterberg"), "each owner sends a note")
 
 	# Saved.
 	var state: Dictionary = days.export_state()

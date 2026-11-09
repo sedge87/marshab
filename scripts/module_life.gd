@@ -19,6 +19,8 @@ const SWITCH := preload("res://scripts/cabin_switch.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const SOCKET_REACH := 16.0       # the blanket lays out this near the socket
 const RACK := "general_module_rack"
+const LEAK := preload("res://scripts/module_leak.gd")
+const COLD_START_C := -30.0      # version 2: set down cold, open to Mars, dark
 ## The switches on the rack's front (its local frame), left to right.
 const SWITCH_SPOTS := {"heater": Vector3(-.3, 1.45, .36), "lights": Vector3(-.08, 1.45, .36), "scrubber": Vector3(.14, 1.45, .36)}
 
@@ -30,6 +32,11 @@ var ahead := {}
 var _since_runway := 99.0
 var _socket_lamp: StandardMaterial3D
 var _rack: Node3D
+## Version 2, day 4: it comes down unpressurised. Cartridge and blanket in,
+## it tries to pressurise, a seam won't hold; patched, it's commissioned.
+var commissioned := true
+var leak_found := false
+var leak: Node3D
 
 func setup(target_world: Node, state: Dictionary = {}) -> void:
 	world = target_world
@@ -40,8 +47,17 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 	if state.is_empty():
 		core.heater_mode = "low"
 		core.temp_c = 12.0
+		if int(world.get("opening_version")) >= 2:
+			commissioned = false
+			core.vented = true
+			core.temp_c = COLD_START_C
+			core.heater_mode = "off"
+			core.lights_on = false
 	core.load_state(state)
+	commissioned = bool(state.get("commissioned", commissioned))
+	leak_found = bool(state.get("leak_found", false))
 	_build_socket.call_deferred()
+	if not commissioned and leak_found: _spawn_leak.call_deferred()
 
 ## The carried zone (scripts/build_rules.gd), or {}.
 func zone() -> Dictionary:
@@ -85,7 +101,7 @@ func conditions() -> Dictionary:
 	return core.conditions()
 
 func alerts() -> Array:
-	if not running(): return []
+	if not running() or not commissioned: return []   # still being brought to life: Castle talks you through it
 	return core.alerts(ahead)
 
 ## Pallet 2's blanket laid out here, or taken away again.
@@ -100,6 +116,7 @@ func blanket(on: bool, charge := .5) -> float:
 	world.builder.refresh_power_grid()
 	var notes: Node = world.get("notes")
 	if on and notes != null: notes.answer("module_power")
+	if on: pressurise_try()
 	return share
 
 ## Pallet 1's air cartridge on the socket: the module's tank grows by its oxygen, full.
@@ -107,6 +124,7 @@ func add_cartridge(oxygen_kg: float) -> void:
 	core.tank_cap += oxygen_kg
 	core.tank_o2_kg = core.tank_cap
 	_since_runway = 99.0
+	pressurise_try()
 
 func has_cartridge() -> bool:
 	var cartridge := get_tree().get_first_node_in_group("o2_cartridge")
@@ -237,5 +255,76 @@ func _hook_rack() -> void:
 			s.position = SWITCH_SPOTS[kind]
 		return
 
+# ---------- commissioning (version 2, day 4) ----------
+
+## Air and power both in: it tries to pressurise, and a seam won't hold.
+func pressurise_try() -> void:
+	if commissioned or leak_found or not has_cartridge() or not has_blanket(): return
+	leak_found = true
+	MHAudio.sfx("suit_fill", -6.0)
+	_spawn_leak()
+	var radio: Node = world.get("radio")
+	if radio != null: radio.ring("d4_leak")
+
+## The hissing seam: on an inside wall away from the airlock, about 1.2 m up.
+func _spawn_leak() -> void:
+	if leak != null and is_instance_valid(leak): return
+	var spot := leak_spot()
+	if spot.is_empty(): return
+	leak = LEAK.new()
+	leak.setup(self, spot.at, spot.facing)
+
+## {at, facing} for the leak: a wall edge of the carried zone with nothing
+## beyond it (not the airlock's side), the furthest from the airlock.
+func leak_spot() -> Dictionary:
+	var b: Node = world.builder
+	var cells: Array = zone().get("cells", [])
+	if cells.is_empty(): return {}
+	var others := {}
+	var away_from := Vector2.ZERO
+	var n := 0
+	for z in b.zones:
+		if bool(z.get("carried", false)): continue
+		for c in z.cells:
+			others[c] = true
+			away_from += Vector2(c.x, c.y)
+			n += 1
+	if n > 0: away_from /= float(n)
+	else: away_from = Vector2(_centre().x, _centre().z) / float(b.CELL)
+	var best := {}
+	var best_d := -1.0
+	for c in cells:
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var beyond: Vector2i = c + d
+			if cells.has(beyond) or others.has(beyond): continue
+			var edge := Vector2(c.x, c.y) + Vector2(d.x, d.y) * .5
+			var dist := edge.distance_to(away_from)
+			if dist > best_d:
+				best_d = dist
+				var cell := float(b.CELL)
+				var at := Vector3(edge.x * cell - d.x * .22, float(b.habitat_base_y) + 1.2, edge.y * cell - d.y * .22)
+				best = {"at": at, "facing": Vector3(-d.x, 0, -d.y)}
+	return best
+
+## Pallet 4's patch kit on the seam: it holds. Air in, heater up, lights on.
+func patched() -> void:
+	if commissioned: return
+	commissioned = true
+	if leak != null and is_instance_valid(leak): leak.queue_free()
+	leak = null
+	core.repressurise()
+	core.heater_mode = "warm"
+	core.lights_on = true
+	MHAudio.sfx("suit_clamp", -4.0)
+	MHAudio.sfx("suit_fill", -8.0)
+	_since_runway = 99.0
+	for s in switches.values(): s.refresh()
+	world.builder.refresh_power_grid()
+	var radio: Node = world.get("radio")
+	if radio != null: radio.ring("d4_patched")
+
 func export_state() -> Dictionary:
-	return core.export_state()
+	var out: Dictionary = core.export_state()
+	out["commissioned"] = commissioned
+	out["leak_found"] = leak_found
+	return out

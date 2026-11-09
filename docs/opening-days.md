@@ -50,13 +50,34 @@ This replaces the first version below (built in 7cbce6e). That one was day 1 the
 
 ## Day 4: making it home
 1. **Dawn.** Walker 1 is parked beside the lander. It sets the General Module down on your marks; you watch.
-2. **Commissioning.** The cargo goes into its sockets. Learn the module's power, air and Print Shop.
-3. **Furnishing** with the fit-out kit.
-4. **Dusk: the long radio talk.**
-   - Castellanos introduces the four goals (Life, Climate, Geology, Humans).
-   - The other walkers are still out there, with the rest of the base's cargo.
-   - What to try tomorrow.
-5. **The first night in the module.** The guided days end.
+2. **Cold and dark (rethought 9 Nov).**
+   - It comes down unpressurised, about −30 °C inside, with its lights off. Its alerts stay quiet until it's commissioned.
+   - Castle: plug the air cartridge into the outside socket and lay the solar blanket.
+3. **The leak.**
+   - With both in, it tries to fill and won't hold (`d4_leak`).
+   - A seam on an inside wall, away from the airlock, hisses and puffs frost (scripts/module_leak.gd).
+   - Pallet 4's patch kit seals it. Then it repressurises, the heater goes to warm and the lights come on (`d4_patched`).
+4. **Moving in** with the fit-out kit.
+   - Castle reacts to where the bunk went: by the airlock, or in the quiet corner.
+   - Food stays in the lander's crate for now.
+5. **The afternoon: water.**
+   - Achterberg, through Castle, wants the module's ice: GAR-Y's Survey zone, then core the best stake.
+   - Any good core within 400 m counts. After three cores with no good ice, the best of them "will do to start".
+   - The spot is marked "Ice extractor spot".
+6. **Dusk: the three horizons** (`d4_sunset`):
+   - tomorrow, the extractor;
+   - this season, the other walkers, which Rao watches for;
+   - the mission, the four goals, each with an owner in orbit:
+     - Tupou: Life;
+     - Rao: Climate;
+     - Achterberg: Geology, "what can we build with it";
+     - Mwangi: Humans;
+     - Castle: the base and the landing, "the deal".
+   - Each goal's lines sit in its own `goal_*` section, so an owner can get their own voice later.
+   - Afterwards each owner sends a slate note.
+7. **The first night in the module.** The guided days end.
+
+Day 4 is done when the module is down, the leak is patched, the fit-out is placed and the ice spot is found.
 
 ## Day 5: open
 - The normal clock, free nights, free building.

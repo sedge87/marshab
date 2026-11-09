@@ -1,4 +1,9 @@
 # Day 4: making it home (docs/opening-days.md). The guided days end tonight.
+# Morning: the module's down, cold and open to Mars; air and power in, a seam
+# won't hold; patched. Midday: the fit-out. Afternoon: find its ice. Dusk:
+# the three horizons, each goal passed on from the crew member who owns it.
+# The goal_* sections hold each owner's words, so they can get their own
+# voices later (change "Castellanos: Tupou says" to "Tupou:" and regenerate).
 # Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d4
 
 ~ d4_wake
@@ -18,17 +23,57 @@ Castellanos: It's down. It's actually down. Your first room on Mars. Everyone up
 - Does Rao still want the bunk by the window?
 	set joker
 	Castellanos: He's already drawn a floor plan. On the wall. In pen. Achterberg is furious. [ID:d4_down_02c]
-Castellanos: Okay. Now let's bring it to life. The air cartridge you carried down on day one goes in the socket on the outside. Then the solar blanket goes on its mount, and it's got power. [ID:d4_down_03]
-Castellanos: And then go in, unpack the fit-out kit and make it somewhere you'd actually want to live. Not a lab. A home. [ID:d4_down_04]
+Castellanos: Okay, now the less romantic bit. It travelled empty and open, so right now it's as cold inside as it is out there, and there's no air in it at all. Keep your helmet on. [ID:d4_down_05]
+Castellanos: Two things bring it to life. The air cartridge you carried down on day one goes in the socket on the outside wall. And the solar blanket goes out next to it, for power. [ID:d4_down_06]
+Castellanos: Do both and it'll seal itself and fill up. Then we'll see how it holds. [ID:d4_down_07]
+=> END
+
+~ d4_leak
+Castellanos: Hang on. It's filling, and it's losing it again. The pressure won't hold. [ID:d4_leak_01]
+Castellanos: Achterberg says a panel seam's probably opened up on the walk home. All that rocking. Something's open to the outside. [ID:d4_leak_02]
+- How do I find it?
+	Castellanos: Go in and listen. A leak hisses, and you'll see a little frost puffing out of it where the air freezes. Walk the walls. [ID:d4_leak_03a]
+- Is it dangerous?
+	set worried
+	Castellanos: Not to you, not in your suit. It's only dangerous to the module. It can't keep air in until that's sealed. Go in and listen for it. It'll hiss, and it'll be frosting up. [ID:d4_leak_03b]
+Castellanos: The patch kit from pallet four will do it. That's what it's for. [ID:d4_leak_04]
+=> END
+
+~ d4_patched
+Castellanos: And it's holding. Pressure's steady. Achterberg just let out a breath she's been holding since dawn. [ID:d4_patched_01]
+? worried Castellanos: See? Not dangerous. Just a bit of a scare, for us mostly. [ID:d4_patched_02]
+Castellanos: The heater's on full now and the lights are up. It's going to take a while to warm through, so don't take your helmet off just yet. [ID:d4_patched_03]
+Castellanos: While it does, unpack the fit-out kit and make it somewhere you'd actually want to live. Not a lab. A home. Your choice where everything goes. [ID:d4_patched_04]
 => END
 
 ~ d4_home
 Castellanos: Rao just flew over and got a picture. He says it looks like a home. He's a bit choked up about it, honestly. We all are. [ID:d4_home_01]
+? bunk_by_door Castellanos: Bunk right by the door, I see. You'll hear the airlock every time it cycles. Well. You'll know if anyone's coming. [ID:d4_home_04a]
+? bunk_quiet Castellanos: And you put the bunk in the quiet corner, away from the airlock. Good choice. That's what I'd have done. [ID:d4_home_04b]
 - It feels like one.
 	set home
 	Castellanos: Good. That was the whole point. [ID:d4_home_02a]
 - It's a start.
 	Castellanos: It's a very good start. Better than any of us thought we'd get, after that storm. [ID:d4_home_02b]
+Castellanos: Your food's all still in the lander's crate, by the way. It's a short walk to breakfast, for now. [ID:d4_home_05]
+=> d4_survey
+
+~ d4_survey
+do survey_start
+Castellanos: One more job before the sun goes, and it's a big one. Achterberg's been at me all afternoon about it. [ID:d4_survey_01]
+Castellanos: She says the module's plans have an ice extractor in them, and that's no use without ice to put it on. She wants to know where your water is. [ID:d4_survey_02]
+Castellanos: Ask GAR-Y to find you some. Hold G by it and pick Survey zone. It'll stake out anywhere that looks icy, then you core the best stake to be sure. [ID:d4_survey_03]
+- Water's everything, isn't it?
+	Castellanos: Drinking, air, growing things. Even fuel, one day. Yes. It's everything. [ID:d4_survey_04a]
+- Leave it to me.
+	Castellanos: Thank you. She'll stop pacing, then. [ID:d4_survey_04b]
+=> END
+
+~ d4_ice
+Castellanos: That's ice. Good, clean ice, right on your doorstep. Achterberg is doing a little dance. I can't unsee it. [ID:d4_ice_01]
+? thin_ice Castellanos: Well, it's thin. But it'll do to start, and there'll be better further out. [ID:d4_ice_02]
+do ice_spot
+Castellanos: That's your well. I've marked it on your compass. Tomorrow you build the extractor right there. [ID:d4_ice_03]
 Castellanos: Call me at sunset, okay? There's something I want to talk to you about properly. Nothing bad. I promise it's nothing bad. [ID:d4_home_03]
 => END
 
@@ -39,19 +84,42 @@ Castellanos: Sunset from your own window. How's the view from in there? [ID:d4_s
 - Worth the trip.
 	set worth_it
 	Castellanos: I was hoping you'd say that. [ID:d4_sun_01b]
-Castellanos: Okay. Here's the bit I wanted to say. You weren't sent all this way just to build a room, as lovely as the room is. [ID:d4_sun_02]
-Castellanos: There are four science teams back on Earth who've been waiting their whole careers for someone to stand where you're standing right now. [ID:d4_sun_03]
-Castellanos: Life: was anything ever alive here? Climate: where did all the water go? Geology: what is this place actually made of? [ID:d4_sun_04]
-Castellanos: And Humans. Can people really live here, day after day? That one's you. You're the experiment. Sorry. [ID:d4_sun_05]
+Castellanos: Okay. Here's the bit I wanted to say. I want to tell you where all this is going. Tomorrow, this season, and the whole mission. [ID:d4_sun_12]
+Castellanos: Tomorrow's easy. The extractor goes on your ice, and you'll have water of your own. That changes everything. [ID:d4_sun_13]
+Castellanos: This season, the other walkers. They're still out there somewhere, with more modules and more kit strapped to them. Rao's watching for them on every pass, and the moment he sees one, you'll know. [ID:d4_sun_14]
+Castellanos: And the whole mission. You weren't sent all this way just to build a room, as lovely as the room is. There are four big questions, and each of us up here looks after one. [ID:d4_sun_15]
+- Which one's yours?
+	set asked_hers
+	Castellanos: None of them. Mine's getting all five of us down to you in one piece. You'll see. Let me go round the room. [ID:d4_sun_16a]
+- Go on, then.
+	Castellanos: Right. Let me go round the room. [ID:d4_sun_16b]
+=> goal_life
+
+~ goal_life
+Castellanos: Tupou first, because he's waving at me. Life. Was anything ever alive here? He wants every odd-looking rock you find. [ID:d4_goal_life_01]
+? kind Castellanos: He's been making lists since day one. Long ones. Laminated. I've hidden the laminator. [ID:d4_sun_06c]
+=> goal_climate
+
+~ goal_climate
+Castellanos: Rao's is Climate. Where did all the water go? There was a lot of it once. He'd like to know where it went, and how much is left. [ID:d4_goal_climate_01]
+=> goal_geology
+
+~ goal_geology
+Castellanos: Achterberg's is Geology. What is this place actually made of? And her favourite part: what can we build with it? [ID:d4_goal_geology_01]
+=> goal_humans
+
+~ goal_humans
+Castellanos: And Mwangi's is Humans. Can a person really live here, day after day? That one's you. You're the experiment. Sorry. He says sorry too. [ID:d4_goal_humans_01]
+=> d4_sunset_deal
+
+~ d4_sunset_deal
 - That's a lot for one person.
 	Castellanos: It is. It really is. But you won't be one person forever. That's the other half of this. [ID:d4_sun_06a]
 - Where do I even start?
-	Castellanos: Water. Your module's plans have an ice extractor in them. Water of your own changes everything: drinking, air, growing things, all of it. [ID:d4_sun_06b]
-- Tupou must be beside himself.
-	set kind
-	Castellanos: He's been making lists since day one. Long ones. Laminated. I've hidden the laminator. [ID:d4_sun_06c]
-Castellanos: There are more walkers out there too, with the rest of the base strapped to them. We'll keep looking on every pass, and when we find one, you'll be the first to know. [ID:d4_sun_07]
-Castellanos: And the five of us are still up here. Waiting. Build us a base we can land to, and we'll come down and join you. That's the deal. [ID:d4_sun_08]
+	Castellanos: Water. Always water. Tomorrow. The rest grows from that. [ID:d4_sun_06d]
+Castellanos: And that's mine. The five of us are still up here, waiting. Build us a base we can land at, and we'll come down and join you. That's the deal. [ID:d4_sun_17]
+? asked_hers Castellanos: Told you you'd see. [ID:d4_sun_18]
+Castellanos: They'll each send you a note tonight. Don't feel you have to answer them all at once. [ID:d4_sun_19]
 - I'll build it.
 	set promise
 	Castellanos: I know you will. You always finish what you start. Even the jigsaw. Even the one with all the sky. [ID:d4_sun_09a]
@@ -60,5 +128,6 @@ Castellanos: And the five of us are still up here. Waiting. Build us a base we c
 	?! joker Castellanos: None at all. Well. A little. [ID:d4_sun_09c]
 Castellanos: Right. That's enough serious talk for one day. Goodnight, Outpost One. Sleep well under a real roof. [ID:d4_sun_10]
 ? first_name Castellanos: And, hey. I'm really proud of you. [ID:d4_sun_11]
+do owner_notes
 do bed
 => END
