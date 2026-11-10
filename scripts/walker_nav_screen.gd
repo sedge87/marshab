@@ -7,9 +7,10 @@ extends CanvasLayer
 ## 1. Sight: steer its mast camera onto the sun (Phobos at night) and hold it
 ##    there. True north is fixed, and the screen shows how far off its compass
 ##    was: a quiet seed for the buried heart.
-## 2. Fix: match landmarks you've been to against its own blurry scan. Each
-##    one tightens its position circle until it locks. Places you've never
-##    been to can't be picked: what you explored pays off.
+## 2. Fix: send it your suit's position (the relay tracks your suit; you're
+##    standing on its deck). Its position circle closes from where it thought
+##    it was to where it is: the jump is the nav error, another quiet clue.
+##    (10 Nov playtest: matching landmarks by name was hard to follow.)
 ## 3. Home: mark the lander as home, and it stands up and walks.
 ## Text is fine here: it's a working display (no lettering on the model).
 ## Esc closes it; a fixed sight is kept.
@@ -21,19 +22,17 @@ const SCAN := 320.0            # the terrain scan, pixels across
 const SCAN_METRES := 3600.0    # metres across the scan
 const START_RADIUS := 1200.0   # its position circle before any landmark, metres
 const LOCK_RADIUS := 100.0
-const ALONE_SECONDS := 4.0     # one landmark only: it takes longer to settle
+const SEND_SECONDS := 2.5      # your position in: the circle closes this fast
 
 var walker: Node
 var world: Node
 var step := "sight"
 var error_deg := 0
-var landmarks: Array = []      # {id, name, at: Vector2 (region m), known: bool}
-var picks: Array = []
-var need := 2
 var radius := START_RADIUS
 var _held := 0.0
 var _clock := 0.0
-var _alone := -1.0
+var _sending := -1.0           # seconds since your position went in, or -1
+var _thought := Vector2.ZERO   # where it thought it was (region m): the nav error, on its scan
 var _target := Vector2(96, -64)
 var _body_name := "the sun"
 var _mouse_before := Input.MOUSE_MODE_CAPTURED
@@ -56,7 +55,7 @@ func setup(target_walker: Node) -> void:
 	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
 	var hour := MHGame.sol_hour
 	if hour < float(cycle.get("sunrise_hour", 5.0)) or hour > float(cycle.get("sunset_hour", 19.0)): _body_name = "Phobos"
-	_gather_landmarks()
+	_thought_at()
 
 func _ready() -> void:
 	_mouse_before = Input.mouse_mode
@@ -128,7 +127,7 @@ func _show_step() -> void:
 			_area.add_child(_sky)
 		"fix":
 			_title.text = "2 · Where is it?"
-			_status.text = "True north fixed. Its magnetic compass was off by %d°. Now match landmarks you know to its scan. %s" % [error_deg, _fix_text()]
+			_status.text = "True north fixed. Its magnetic compass was off by %d°. It has no idea where it is: the amber circle is its guess. Your suit knows where you are, and you're standing on it." % error_deg
 			var row := MHStyle.hbox(16)
 			_area.add_child(row)
 			_scan = Control.new()
@@ -136,28 +135,17 @@ func _show_step() -> void:
 			_scan.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			_scan.draw.connect(_draw_scan)
 			row.add_child(_scan)
-			var list := MHStyle.vbox(6)
-			list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			row.add_child(list)
-			for mark in landmarks:
-				var picked: bool = str(mark.id) in picks
-				var text: String = str(mark.name) if bool(mark.known) else "Unknown: you've never been there"
-				var button := MHStyle.button(text + ("  ✓" if picked else ""), "secondary", "", 40)
-				button.disabled = picked or not bool(mark.known) or picks.size() >= need
-				var id := str(mark.id)
-				button.pressed.connect(func() -> void: pick(id))
-				list.add_child(button)
+			var send := MHStyle.button("Send it your position" if _sending < 0.0 else "Position from your suit…", "primary", "", 52)
+			send.disabled = _sending >= 0.0
+			send.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			send.pressed.connect(send_position)
+			row.add_child(send)
 		"home":
 			_title.text = "3 · Home"
 			_status.text = "Position locked. Its compass was off by %d°, and nobody expected the ground here to pull it that far. It's ready to walk." % error_deg
 			var go := MHStyle.button("Set home: the lander", "primary", "", 52)
 			go.pressed.connect(set_home)
 			_area.add_child(go)
-
-func _fix_text() -> String:
-	if picks.size() >= need: return ""
-	if need == 1: return "You only know the lander well enough. It'll take a little longer."
-	return "%d more." % (need - picks.size())
 
 func _process(delta: float) -> void:
 	_clock += delta
@@ -173,12 +161,13 @@ func _process(delta: float) -> void:
 			_held = maxf(0.0, _held - delta * 2.0)
 		_sky.queue_redraw()
 	elif step == "fix":
-		if _alone >= 0.0:
-			_alone += delta
-			radius = lerpf(START_RADIUS * .25, LOCK_RADIUS, clampf(_alone / ALONE_SECONDS, 0.0, 1.0))
-			if _alone >= ALONE_SECONDS:
-				_alone = -1.0
+		if _sending >= 0.0:
+			_sending += delta
+			radius = lerpf(START_RADIUS, LOCK_RADIUS, clampf(_sending / SEND_SECONDS, 0.0, 1.0))
+			if _sending >= SEND_SECONDS:
+				_sending = -1.0
 				_locked()
+				return
 		if _scan != null: _scan.queue_redraw()
 
 ## Where the body sits in the viewfinder (from its centre): the mast sways.
@@ -192,23 +181,11 @@ func sight_fixed() -> void:
 	step = "fix"
 	_show_step()
 
-## A landmark you know, matched to its scan: the circle tightens.
-func pick(id: String) -> bool:
-	if step != "fix" or id in picks or picks.size() >= need: return false
-	var mark: Dictionary = {}
-	for m in landmarks: if str(m.id) == id: mark = m
-	if mark.is_empty() or not bool(mark.known): return false
-	picks.append(id)
-	MHAudio.sfx("place", -8.0)
-	if picks.size() >= need:
-		if need == 1:
-			radius = START_RADIUS * .25
-			_alone = 0.0
-		else:
-			_locked()
-			return true
-	else:
-		radius = START_RADIUS * pow(.25, picks.size())
+## Your suit's position, sent across: its circle closes on where it really is.
+func send_position() -> bool:
+	if step != "fix" or _sending >= 0.0: return false
+	_sending = 0.0
+	MHAudio.sfx("suit_beep", -8.0)
 	_show_step()
 	return true
 
@@ -225,36 +202,16 @@ func set_home() -> void:
 
 # ---------- what it can match ----------
 
-## Landmarks: the lander, and what you've been to yourself (the known-things
-## record); a few of the region's places you haven't, greyed out.
-func _gather_landmarks() -> void:
-	landmarks.clear()
+## Where it thought it was: off by its compass error, the length of its walk
+## out (a guess, drawn on its scan against where it really is).
+func _thought_at() -> void:
 	var known: Node = world.get("known")
-	var lander: Vector3 = world.lander.global_position
 	var origin: Vector2 = known.origin if known != null else Vector2.ZERO
-	landmarks.append({"id": "lander", "name": "The lander", "at": Vector2(lander.x, lander.z) + origin, "known": true})
-	var names := {}
-	if known != null:
-		for id in known.things:
-			var thing: Dictionary = known.things[id]
-			if str(id) == str(walker.ID) or not ("you" in (thing.who as Array)): continue
-			if str(thing.get("kind", "")) not in ["find", "place"]: continue
-			var thing_name := str(thing.name)
-			if names.has(thing_name): continue
-			names[thing_name] = true
-			landmarks.append({"id": str(id), "name": thing_name, "at": thing.at, "known": true})
-	var unknown := 0
-	for feature in RegionTerrain.meta().get("features", []):
-		if unknown >= 2 or names.has(str(feature.name)): continue
-		var spot := Vector2(float(feature.position[0]), float(feature.position[1]))
-		if known != null and known.knows(known.place_id(str(feature.name), spot)): continue
-		landmarks.append({"id": "unknown_%d" % unknown, "name": str(feature.name), "at": spot, "known": false})
-		unknown += 1
-	var count := 0
-	for m in landmarks: if bool(m.known): count += 1
-	need = mini(2, count)
+	var here := Vector2(walker.global_position.x, walker.global_position.z) + origin
+	var lander: Vector3 = world.lander.global_position
+	var out := here - (Vector2(lander.x, lander.z) + origin)
+	_thought = (Vector2(lander.x, lander.z) + origin) + out.rotated(deg_to_rad(float(error_deg)))
 
-const RegionTerrain := preload("res://scripts/region_terrain.gd")
 const KNOWN := preload("res://scripts/known_things.gd")
 
 # ---------- drawing ----------
@@ -297,9 +254,10 @@ func _draw_scan() -> void:
 	_scan.draw_rect(Rect2(Vector2.ZERO, Vector2(SCAN, SCAN)), MHStyle.BORDER_STRONG, false, 1.0)
 	var to_screen := func(region: Vector2) -> Vector2: return (region - centre) * scale + Vector2(SCAN, SCAN) * .5
 	var here: Vector2 = Vector2(walker.global_position.x, walker.global_position.z) + origin
-	for mark in landmarks:
-		if not (str(mark.id) in picks): continue
-		var p: Vector2 = to_screen.call(mark.at)
-		_scan.draw_line(p, to_screen.call(here), Color(MHStyle.accent, .5), 1.5)
-		_scan.draw_circle(p, 5.0, MHStyle.accent)
-	_scan.draw_arc(to_screen.call(here), maxf(4.0, radius * scale), 0.0, TAU, 48, MHStyle.VALID if radius <= LOCK_RADIUS else MHStyle.WARN, 2.0)
+	# Its guess, and once your position's in, the line to where it really is.
+	var sure := clampf(1.0 - (radius - LOCK_RADIUS) / (START_RADIUS - LOCK_RADIUS), 0.0, 1.0)
+	var centre_now: Vector2 = _thought.lerp(here, sure)
+	if sure > 0.0:
+		_scan.draw_line(to_screen.call(_thought), to_screen.call(centre_now), Color(MHStyle.accent, .6), 1.5)
+		_scan.draw_circle(to_screen.call(_thought), 4.0, MHStyle.WARN)
+	_scan.draw_arc(to_screen.call(centre_now), maxf(4.0, radius * scale), 0.0, TAU, 48, MHStyle.VALID if radius <= LOCK_RADIUS else MHStyle.WARN, 2.0)

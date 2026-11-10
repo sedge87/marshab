@@ -15,7 +15,7 @@ extends Node3D
 ## - It's lost, not broken (master-design §2): its compass was bent by the
 ##   Reach's crustal field. Climb its ladder, sit at the front, and set it
 ##   right on the nav screen (scripts/walker_nav_screen.gd): a sun sight, then
-##   landmarks you know. Then it walks home with its headlights on, parking
+##   your suit's position. Then it walks home with its headlights on, parking
 ##   by the lander.
 ## - Then B opens the Site plan with only the module and its airlock
 ##   (scripts/build_rules.gd). Close the plan and it carries the module there,

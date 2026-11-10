@@ -396,12 +396,9 @@ func run() -> void:
 	await wait(3.0)
 	nav.sight_fixed()
 	await wait(3.0)
-	for m in nav.landmarks:
-		if str(nav.step) != "fix": break
-		if bool(m.known):
-			nav.pick(str(m.id))
-			await wait(2.0)
-	if str(nav.step) != "home": got_stuck("the nav never locked (%d known landmarks)" % nav.landmarks.filter(func(m): return bool(m.known)).size())
+	nav.send_position()
+	await wait(nav.SEND_SECONDS + 1.0)
+	if str(nav.step) != "home": got_stuck("the nav never locked")
 	else: nav.set_home()
 	await wait(3.0)
 	if str(walker.state) != "coming": got_stuck("set right, but not 'coming' (%s)" % str(walker.state))

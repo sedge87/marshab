@@ -408,15 +408,11 @@ func run() -> void:
 	if not walker.open_nav(): got_stuck("the nav screen didn't open")
 	var nav: Node = walker._nav
 	await wait(3.0)
-	log_line("NAV", "need %d landmarks; known: %s" % [nav.need, str(nav.landmarks.filter(func(m): return bool(m.known)).map(func(m): return str(m.get("name", m.id))))])
 	nav.sight_fixed()
 	await wait(3.0)
-	for m in nav.landmarks:
-		if str(nav.step) != "fix": break
-		if bool(m.known):
-			nav.pick(str(m.id))
-			await wait(2.0)
-	if str(nav.step) != "home": got_stuck("the nav never locked (%d known landmarks)" % nav.landmarks.filter(func(m): return bool(m.known)).size())
+	nav.send_position()
+	await wait(nav.SEND_SECONDS + 1.0)
+	if str(nav.step) != "home": got_stuck("the nav never locked")
 	else: nav.set_home()
 	step("Riding it home")
 	t = 0.0
