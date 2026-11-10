@@ -13,6 +13,16 @@ Castellanos: Morning. Quick question before you've even had breakfast. Did you h
 	Castellanos: Then GAR-Y heard it too. Something big was moving out there around three. Rao picked it up on the lander's mic, over the relay. [ID:d3_wake_02c]
 Castellanos: This time I really, honestly think it's a walker. Big, slow, heavy. Look for tracks. Wide ones, much wider than GAR-Y's. [ID:d3_wake_03]
 ? hopeful Castellanos: And yes, I know I said that last time. Let me have this one. [ID:d3_wake_04]
+Castellanos: And Rao's dawn pass caught fresh scuffing in the dust, not far from you. I've put where it starts on your compass. [ID:d3_wake_05]
+do walker_tracks
+Castellanos: One more thing. If it went the way it sounded, it's a long way out, near the edge of what your suit can do and get you home. Top your air up before you go, and if I say turn back, you turn back. [ID:d3_wake_06]
+=> END
+
+# At the tracks (scripts/walker.gd _look): how to find the rest.
+~ d3_tracks
+Castellanos: That's a walker, all right. Look at the width of that. [ID:d3_tracks_01]
+Castellanos: They'll fade out where the ground goes hard. Keep heading the same way. [ID:d3_tracks_02]
+Castellanos: Or take a picture of them with your slate and send it up. Rao will follow them on the next pass and find it for you. [ID:d3_tracks_03]
 => END
 
 ~ d3_fixed

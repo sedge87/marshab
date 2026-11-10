@@ -312,6 +312,7 @@ func radio_ready() -> void:
 				radio.flags["cored_already"] = true
 				break
 	radio.handlers["ice_spot"] = func(_args: Array) -> void: _mark_ice_spot()
+	radio.handlers["walker_tracks"] = func(_args: Array) -> void: _mark_tracks()
 	radio.handlers["owner_notes"] = func(_args: Array) -> void:
 		var texts: Node = world.get("orbiter_texts")
 		if texts == null: return
@@ -554,6 +555,15 @@ func _mark_ice_spot() -> void:
 	var known: Node = world.get("known")
 	var field: Node = world.get("drop_field")
 	if known != null and field != null and not is_inf(ice_spot.x): known.learn("ice_spot", "place", field.region_at(ice_spot), "Ice extractor spot", "you", "castellanos")
+
+## Day 3: where Walker 1's tracks start, on the Map and compass (Rao's dawn pass).
+func _mark_tracks() -> void:
+	var walker: Node = world.get("walker")
+	var known: Node = world.get("known")
+	var field: Node = world.get("drop_field")
+	if walker == null or known == null or field == null or bool(walker.get("seen")): return
+	walker.lay_tracks()
+	known.learn("walker_tracks_start", "find", field.region_at(walker.tracks_start()), "Fresh tracks", "you", "castellanos")
 
 func field_crate() -> Node:
 	var field: Node = world.get("drop_field")

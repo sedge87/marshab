@@ -222,6 +222,11 @@ func _initialize() -> void:
 	days.nights = 2
 	await _morning(world, radio)
 	_check(radio.heard.has("d3_wake"), "day 3's morning call")
+	var walker_seen_before := bool(walker.seen)   # (seen already, she has no need to mark the tracks)
+	_check(walker_seen_before or (bool(walker.tracks_laid) and known.things.has("walker_tracks_start")), "she marks where the tracks start")
+	player.global_position = walker.tracks_start()
+	await _settle(radio)
+	_check(walker_seen_before or radio.heard.has("d3_tracks"), "at the tracks, she says how to find the rest")
 	walker.recalibrated()
 	await _settle(radio)
 	_check(str(walker.state) == "coming" and radio.heard.has("d3_fixed"), "set right, it'll come overnight (%s)" % walker.state)

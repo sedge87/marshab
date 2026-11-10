@@ -49,6 +49,7 @@ This replaces the first version below (built in 7cbce6e). That one was day 1 the
 
 ## Day 3: the walker, and choosing home
 1. **The 03:00 grinding,** then Castellanos's morning call. You and GAR-Y follow the tracks to Walker 1, stalled and lost.
+   - Finding it (10 Nov playtest): Rao's dawn pass saw fresh scuffing, so Castle marks where the tracks start on the compass ("Fresh tracks"), and warns it's near the edge of the suit's air: top up, turn back when told. At the tracks (`d3_tracks`) she says they fade on hard ground: keep the same heading, or photograph them and send them up for Rao to follow.
 2. **Fix its nav.** Fix your position from the sun and landmarks; its magnetic map-matching was fooled (the buried heart's first seed).
    - It's slow and kilometres out, so it says it'll walk home overnight. Robot run 5's ride took about 8 game hours.
    - You head home with GAR-Y.

@@ -377,6 +377,14 @@ func lay_tracks() -> void:
 	_tracks.add_child(panel)
 	MHPalette.apply(_tracks)
 
+## Where the tracks start, nearest the lander (the same line lay_tracks draws).
+func tracks_start() -> Vector3:
+	var lander: Vector3 = world.lander.global_position
+	var along := Vector3(global_position.x - lander.x, 0, global_position.z - lander.z).normalized()
+	var side := Vector3(along.z, 0, -along.x)
+	var p := lander + along * TRACKS_FROM + side * sin(TRACKS_FROM / 90.0) * 6.0
+	return Vector3(p.x, MHSiteTerrain.height(p.x, p.z), p.z)
+
 func near_tracks(at: Vector3, reach := 25.0) -> bool:
 	if _tracks == null: return false
 	for mark in get_tree().get_nodes_in_group("walker_tracks"):
@@ -893,6 +901,10 @@ func _look() -> void:
 	if not seen and tracks_laid and near_tracks(you):
 		var notes: Node = world.get("notes")
 		if notes != null: notes.think("tracks")
+		var radio: Node = world.get("radio")
+		if radio != null and int(world.get("opening_version")) >= 2: radio.ring("d3_tracks")
+		var known: Node = world.get("known")
+		if known != null: known.finish("walker_tracks_start")
 	if state == "done" and not first_night: _night_check(you)
 
 # ---------- setting it down ----------
