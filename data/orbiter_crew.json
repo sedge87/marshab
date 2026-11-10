@@ -21,7 +21,7 @@
     "events": {
       "lock": {"id": "descent_locked", "speaker": "rao", "text": "Locked. The computer has the last hundred metres. Hands off, breathe."},
       "divert": {"id": "descent_divert", "speaker": "rao", "text": "Not there, it's too rough. The computer's moving you somewhere flatter."},
-      "contact": {"id": "descent_contact", "speaker": "castellanos", "text": "Contact light. Welcome to Mars. First one d", "caption": "Contact light. Welcome to Mars. First one d—", "cut": true}
+      "contact": {"id": "descent_contact", "speaker": "rao", "text": "Contact light. Welcome to Mars. We've got you on the", "caption": "Contact light. Welcome to Mars. We've got you on the— [static]", "cut": true}
     }
   }
 }

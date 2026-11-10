@@ -26,7 +26,7 @@ This replaces the first version below (built in 7cbce6e). That one was day 1 the
 - **Time budget:** about 15 minutes a day, under an hour in total. "Skip the guided days" is in Custom rules.
 
 ## Day 1: the cargo
-1. **The descent** and touchdown. Castellanos's "First one d-" cuts into static.
+1. **The descent** and touchdown. Rao, who talked you down, gets as far as "We've got you on the-" and the link drops into static (10 Nov: it was Castle's "First one d-", which read as a glitch).
 2. **The link re-locks.** Castellanos is back: what the lander is for, and that the base is out in the pallets and walkers.
 3. **Castellanos guides you** from the orbiter's camera to pallets 1, 2 and 4 (life support, power, field tools). One at a time: the suit won't stretch to all of them.
 4. **You carry the module's cargo home** to the staging spot by the lander. The air cartridge and the power pack are heavy and slow, but they can be carried.

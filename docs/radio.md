@@ -14,7 +14,7 @@
 - **Talk earns its keep only if it's about what you just did.** No generic chatter: every call has a trigger from play or from their own timeline.
 
 ## The link
-- At touchdown, Castellanos's "First one d-" still cuts into static.
+- At touchdown, Rao's "We've got you on the-" cuts into static.
 - A few minutes later the lander's antenna re-locks, and voice is back. The old idea that the orbiter can send only text is dropped.
 - Texts stay for long reads, such as photos with captions and letters from Earth.
 
