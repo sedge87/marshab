@@ -166,7 +166,9 @@ func _process(delta: float) -> void:
 		var mouse := _sky.get_local_mouse_position() - Vector2(SKY, SKY) * .5
 		if mouse.distance_to(at) <= SIGHT_ON:
 			_held += delta
-			if _held >= SIGHT_HOLD: sight_fixed()
+			if _held >= SIGHT_HOLD:
+				sight_fixed()   # the next step's screen replaces the sky: nothing left to redraw
+				return
 		else:
 			_held = maxf(0.0, _held - delta * 2.0)
 		_sky.queue_redraw()
