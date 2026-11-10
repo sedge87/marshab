@@ -52,7 +52,7 @@ This replaces the first version below (built in 7cbce6e). That one was day 1 the
    - It's slow and kilometres out, so it says it'll walk home overnight. Robot run 5's ride took about 8 game hours.
    - You head home with GAR-Y.
 3. **The afternoon: choose where you'll live.** This is the first design choice.
-   - GAR-Y's radar surveys the ground round the lander.
+   - Water first (10 Nov): Castle has you ask GAR-Y for a Survey zone round the lander (`d3_fixed_06b`, `d3_choose`). Its blue stakes show the ice, and Castle notices if you build by them (the `surveyed` flag, set from stakes within 600 m). It's advice; marking the footprint is still the gate.
    - You walk the spots. Castellanos weighs in on sun, ice, shelter and room to grow.
    - **Mark the module's footprint** with the build ghost. This is a new mechanic: the placement is saved, and the walker reads it on arrival.
    - **Print the footing anchors** on the lander's printer. This teaches the printer.
@@ -71,7 +71,7 @@ This replaces the first version below (built in 7cbce6e). That one was day 1 the
    - Castle reacts to where the bunk went: by the airlock, or in the quiet corner.
    - Food stays in the lander's crate for now.
 5. **The afternoon: water.**
-   - Achterberg, through Castle, wants the module's ice: GAR-Y's Survey zone, then core the best stake.
+   - Achterberg, through Castle, wants the module's ice in a tube: core the best of GAR-Y's stakes near the module. If you skipped the survey in chapter 3, she asks for the Survey zone first.
    - Any good core within 400 m counts. After three cores with no good ice, the best of them "will do to start".
    - The spot is marked "Ice extractor spot".
 6. **Dusk: the three horizons** (`d4_sunset`):
