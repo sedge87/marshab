@@ -1,6 +1,7 @@
 extends CharacterBody3D
 
 const WALK_SPEED := 5.0
+const SLATE_WALK := .55   # of walking pace, with the slate up
 const SPRINT_SPEED := 8.0
 const MOUSE_SENSITIVITY := 0.0025
 # Tunable Martian movement values. 5.3 m/s against 14 m/s² reaches roughly 1 m.
@@ -77,7 +78,7 @@ func _physics_process(delta: float) -> void:
 	# Exterior construction uses the same movement keys to pan its bird's-eye
 	# camera. Freeze the character in place so panning never changes the real
 	# player cell represented by the build-mode marker.
-	if bool(get_meta("build_mode_active", false)) or bool(get_meta("ui_freeze", false)) or bool(get_meta("driving", false)) or bool(get_meta("riding", false)):
+	if bool(get_meta("build_mode_active", false)) or bool(get_meta("ui_freeze", false)) or bool(get_meta("driving", false)) or bool(get_meta("riding", false)) or bool(get_meta("slate_still", false)):
 		velocity = Vector3.ZERO
 		return
 	if bool(get_meta("debug_fly", false)):
@@ -85,7 +86,8 @@ func _physics_process(delta: float) -> void:
 		return
 	var grounded := is_on_floor()
 	_crouch(delta)
-	var jump_pressed := Input.is_action_pressed("jump") or Input.is_key_pressed(KEY_SPACE)
+	var slate_up := bool(get_meta("slate_up", false))   # walking with the slate up: no jumping, no running
+	var jump_pressed := not slate_up and (Input.is_action_pressed("jump") or Input.is_key_pressed(KEY_SPACE))
 	if grounded and jump_pressed and not _jump_was_pressed and not crouching:
 		velocity.y = JUMP_VELOCITY
 		MHAudio.sfx("jump")
@@ -102,7 +104,8 @@ func _physics_process(delta: float) -> void:
 	)
 	input_vector = input_vector.limit_length(1.0)
 	var direction := (transform.basis * Vector3(input_vector.x, 0.0, input_vector.y)).normalized()
-	var speed := CROUCH_SPEED if crouching else SPRINT_SPEED if Input.is_action_pressed("sprint") or Input.is_key_pressed(KEY_SHIFT) else WALK_SPEED
+	var speed := CROUCH_SPEED if crouching else SPRINT_SPEED if not slate_up and (Input.is_action_pressed("sprint") or Input.is_key_pressed(KEY_SHIFT)) else WALK_SPEED
+	if slate_up: speed *= SLATE_WALK
 	speed *= float(get_meta("body_speed", 1.0))   # the cold and low oxygen slow you (scripts/body.gd)
 	speed *= float(get_meta("load_speed", 1.0))   # carrying something heavy (scripts/o2_cartridge.gd)
 	velocity.x = direction.x * speed

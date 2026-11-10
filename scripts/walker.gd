@@ -522,7 +522,7 @@ func photographed(eye: Camera3D) -> void:
 		fault_found = true
 		if radio != null: radio.ring("d3_fault")
 		return
-	if global_position.distance_to(eye.global_position) > 40.0: return   # not a picture of the walker at all
+	if global_position.distance_to(eye.global_position) > 40.0 * float(eye.get_meta("zoom", 1.0)): return   # not a picture of the walker at all
 	var first := not shots.has(part)
 	shots[part] = true
 	if radio == null: return
@@ -544,11 +544,12 @@ func aimed_part(eye: Camera3D) -> String:
 	if _lamp != null: parts.append(["lamp", _lamp.global_position])
 	var look := -eye.global_basis.z
 	var best := "none"
-	var best_angle := SHOT_AIM
+	var zoom := float(eye.get_meta("zoom", 1.0))   # the slate camera zoomed in: further off, a tighter aim
+	var best_angle := SHOT_AIM / zoom
 	for p in parts:
 		var at: Vector3 = p[1]
 		var to := at - eye.global_position
-		if to.length() > (SHOT_REACH * 1.8 if str(p[0]) == "lamp" else SHOT_REACH): continue
+		if to.length() > (SHOT_REACH * 1.8 if str(p[0]) == "lamp" else SHOT_REACH) * zoom: continue
 		var angle := rad_to_deg(look.angle_to(to.normalized()))
 		if angle < best_angle:
 			best_angle = angle

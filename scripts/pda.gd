@@ -6,7 +6,8 @@ extends Node3D
 ## live 2D page (pda_screen.gd) drawn into a SubViewport on the model
 ## (asset_packs/mars_slate_v1), and the mouse works on that screen directly:
 ## a cursor appears, clicks land where it points. The world keeps running
-## while it's up (you stand still, and outside your oxygen keeps going).
+## while it's up: you can walk with it, slowly (not while typing), and
+## outside your oxygen keeps going.
 ## A child of the first-person camera, like the wrist pad (wrist_pad.gd).
 
 const PDA_SCREEN := preload("res://scripts/pda_screen.gd")
@@ -152,8 +153,8 @@ func open(app := "") -> void:
 	is_open = true
 	_mouse_before = Input.mouse_mode
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	_freeze_before = bool(world.player.get_meta("ui_freeze", false))
-	world.player.set_meta("ui_freeze", true)
+	# You can walk with it up (playtest 10 Nov), slowly: scripts/player.gd slate_up.
+	world.player.set_meta("slate_up", true)
 	# The HUD steps aside: the explore HUD, the checklist and its highlights,
 	# a mission's panel and the alert icon row (the red edge glow stays). They
 	# come back as they were.
@@ -186,7 +187,8 @@ func close() -> void:
 	_handing = false
 	hint_uses += 1
 	Input.mouse_mode = _mouse_before
-	world.player.set_meta("ui_freeze", _freeze_before)
+	world.player.set_meta("slate_up", false)
+	world.player.set_meta("slate_still", false)
 	for entry in _hidden:
 		if is_instance_valid(entry[0]): entry[0].visible = bool(entry[1])
 	_hidden.clear()
@@ -197,7 +199,8 @@ func close() -> void:
 
 func _process(delta: float) -> void:
 	# Dropped if something else takes over: a rescue, sleep, a cutscene, pause.
-	if is_open and (get_tree().paused or bool(world.player.get_meta("driving", false))): close()
+	if is_open and (get_tree().paused or bool(world.player.get_meta("driving", false)) or bool(world.player.get_meta("ui_freeze", false))): close()
+	if is_open: world.player.set_meta("slate_still", bool(screen.typing()))   # typing a note: stand still
 	raised = move_toward(raised, 1.0 if is_open else 0.0, delta * SPEED)
 	visible = raised > 0.0
 	if not visible:
@@ -229,8 +232,13 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouse and _camera:
 		# Looking round passes through to the player; a click is the shutter.
-		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-			screen.shutter()
+		if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+			var button := (event as InputEventMouseButton).button_index
+			var lens: Node = world.get("slate_camera")
+			if button == MOUSE_BUTTON_LEFT: screen.shutter()
+			elif button == MOUSE_BUTTON_WHEEL_UP and lens != null: lens.zoom_by(1)
+			elif button == MOUSE_BUTTON_WHEEL_DOWN and lens != null: lens.zoom_by(-1)
+			else: return
 			get_viewport().set_input_as_handled()
 	elif event is InputEventMouse:
 		var at := _screen_point((event as InputEventMouse).position)

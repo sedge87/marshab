@@ -1010,6 +1010,12 @@ func _camera_page() -> Control:
 	view.custom_minimum_size = Vector2(880, 495)
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(view)
+	# The reticle: corner brackets and a centre mark, green when it's on something.
+	_reticle = Control.new()
+	_reticle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_reticle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_reticle.draw.connect(_draw_reticle)
+	view.add_child(_reticle)
 	var row := MHStyle.hbox(16)
 	_camera_hint = MHStyle.body("", 17, MHStyle.TEXT_SECONDARY)
 	_camera_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1027,16 +1033,59 @@ func _camera_page() -> Control:
 		send.pressed.connect(func() -> void:
 			if walker.send_up(): send.disabled = true; send.text = "Sent: it goes up on the next pass")
 		page.add_child(send)
+	# The last few shots, so you can see they took.
+	_roll = MHStyle.hbox(10)
+	page.add_child(_roll)
+	_shown_roll = -1
 	_camera_words()
 	if pda != null: pda.camera_mode(true)
 	return page
+
+var _reticle: Control
+var _roll: HBoxContainer
+var _shown_roll := -1
+var _aimed := false
+
+func _draw_reticle() -> void:
+	var size := _reticle.size
+	var mid := size * .5
+	var colour := MHStyle.VALID if _aimed else Color(1, 1, 1, .8)
+	var arm := 22.0
+	_reticle.draw_line(mid - Vector2(arm, 0), mid - Vector2(6, 0), colour, 2.0)
+	_reticle.draw_line(mid + Vector2(6, 0), mid + Vector2(arm, 0), colour, 2.0)
+	_reticle.draw_line(mid - Vector2(0, arm), mid - Vector2(0, 6), colour, 2.0)
+	_reticle.draw_line(mid + Vector2(0, 6), mid + Vector2(0, arm), colour, 2.0)
+	var box := Vector2(size.y * .28, size.y * .28)
+	for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+		var c: Vector2 = mid + box * corner
+		_reticle.draw_line(c, c - Vector2(corner.x * 18.0, 0), colour, 2.0)
+		_reticle.draw_line(c, c - Vector2(0, corner.y * 18.0), colour, 2.0)
 
 func _camera_words() -> void:
 	var camera := _camera()
 	if _camera_hint == null or camera == null: return
 	var found: Array = camera.subjects()
-	var framed := ("In frame: " + ", ".join(found.map(func(s): return str(s.name)))) if not found.is_empty() else "Move the mouse to frame the shot."
-	_camera_hint.text = framed if camera.can_take() else "Today's journal page is full of pictures."
+	var on: Dictionary = camera.aimed(found)
+	var zoom := "  ·  zoom %.1f×" % float(camera.zoom) if float(camera.zoom) > 1.01 else ""
+	if not on.is_empty(): _camera_hint.text = "On: %s%s" % [str(on.name), zoom]
+	elif not found.is_empty(): _camera_hint.text = "In frame: %s%s" % [", ".join(found.map(func(s): return str(s.name))), zoom]
+	else: _camera_hint.text = "Aim the reticle at something. Wheel to zoom.%s" % zoom
+	if _reticle != null and is_instance_valid(_reticle):
+		_aimed = not on.is_empty()
+		_reticle.queue_redraw()
+	if _roll != null and is_instance_valid(_roll) and _shown_roll != int(camera.shots):
+		_shown_roll = int(camera.shots)
+		for child in _roll.get_children(): child.queue_free()
+		for shot in camera.roll:
+			var thumb := TextureRect.new()
+			thumb.texture = shot.texture
+			thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			thumb.custom_minimum_size = Vector2(200, 112)
+			thumb.tooltip_text = str(shot.caption)
+			thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_roll.add_child(thumb)
+		if not camera.roll.is_empty(): _roll.add_child(MHStyle.body("Also in your journal: J, indoors.", 15, MHStyle.TEXT_SECONDARY))
 
 func shutter() -> void:
 	var camera := _camera()
