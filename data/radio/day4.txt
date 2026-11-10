@@ -60,6 +60,7 @@ Castellanos: Your food's all still in the lander's crate, by the way. It's a sho
 
 ~ d4_survey
 do survey_start
+? cored_already => d4_cored
 Castellanos: One more job before the sun goes, and it's a big one. Achterberg's been at me all afternoon about it. [ID:d4_survey_01]
 ?! surveyed Castellanos: She says the module's plans have an ice extractor in them, and that's no use without ice to put it on. She wants to know where your water is. [ID:d4_survey_02]
 ?! surveyed Castellanos: Ask GAR-Y to find you some. Hold G by it and pick Survey zone. It'll stake out anywhere that looks icy, then you core the best stake to be sure. [ID:d4_survey_03]
@@ -69,6 +70,14 @@ Castellanos: One more job before the sun goes, and it's a big one. Achterberg's 
 	Castellanos: Drinking, air, growing things. Even fuel, one day. Yes. It's everything. [ID:d4_survey_04a]
 - Leave it to me.
 	Castellanos: Thank you. She'll stop pacing, then. [ID:d4_survey_04b]
+=> END
+
+# You'd already cored good ice by the module before she asked (scripts/opening_days.gd survey_start).
+~ d4_cored
+Castellanos: I had one more job for you. Achterberg wants the module's ice in a tube before she'll believe in it. Then she pulled up the core you took earlier. That's ice, right on your doorstep. You're ahead of us. [ID:d4_cored_01]
+do ice_spot
+Castellanos: So that's your well. I've marked it on your compass. Tomorrow you build the extractor right there. [ID:d4_cored_02]
+Castellanos: Call me at sunset, okay? There's something I want to talk to you about properly. Nothing bad. I promise it's nothing bad. [ID:d4_cored_03]
 => END
 
 ~ d4_ice

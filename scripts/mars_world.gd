@@ -338,11 +338,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		if pause_menu == null: _show_pause()
 		else: _resume()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
-		# M raises the slate on Comms.
+		# M raises the slate on Base. The new rules have no Mission Control to fall back on.
 		if pda != null and pda.can_open(): pda.open("base")
-		else: _open_mission_control()
+		elif not MHChapterOne.new_rules(): _open_mission_control()
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_C and not event.ctrl_pressed and not bool(player.get_meta("build_mode_active", false)) and not bool(player.get_meta("driving", false)):
-		# C: straight to the Crew screen (in Mission Control).
+		# C raises the slate on Comms (the new rules: your crew's in orbit).
+		if MHChapterOne.new_rules():
+			if pda != null and pda.can_open(): pda.open("comms")
+			return
+		# The older rules: straight to the Crew screen (in Mission Control).
 		_open_mission_control()
 		if mission_control != null:
 			mission_control.call_deferred("_show_crew")

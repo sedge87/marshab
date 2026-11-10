@@ -294,7 +294,17 @@ func radio_ready() -> void:
 		var drop: Node = world.get("storm_drop")
 		if drop != null: drop.parachute_thought()
 	radio.handlers["survey_start"] = func(_args: Array) -> void:
-		if survey_from < 0: survey_from = MHChapterOne.cores.size()
+		if survey_from >= 0: return
+		survey_from = MHChapterOne.cores.size()
+		# Cored good ice by the module before she asked? That's the module's ice.
+		var module: Node = world.get("module_life")
+		if not is_inf(ice_spot.x) or module == null or (module.zone() as Dictionary).is_empty(): return
+		var centre: Vector3 = module._centre()
+		for core in MHChapterOne.cores:
+			if bool(core.get("good", false)) and Vector2(float(core.x) - centre.x, float(core.z) - centre.z).length() <= ICE_REACH:
+				ice_spot = Vector3(float(core.x), MHSiteTerrain.height(float(core.x), float(core.z)), float(core.z))
+				radio.flags["cored_already"] = true
+				break
 	radio.handlers["ice_spot"] = func(_args: Array) -> void: _mark_ice_spot()
 	radio.handlers["owner_notes"] = func(_args: Array) -> void:
 		var texts: Node = world.get("orbiter_texts")

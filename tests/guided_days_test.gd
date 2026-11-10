@@ -298,6 +298,11 @@ func _initialize() -> void:
 		await _settle(radio)
 		_check(radio.heard.has("d4_ice") and not is_inf(days.ice_spot.x) and known.things.has("ice_spot"), "good ice near the module: its spot, marked")
 		_check(days.day_done(4), "day 4 done: down, patched, fitted, ice")
+		# A good core taken by the module before she asked counts: you're ahead of them.
+		days.survey_from = -1
+		days.ice_spot = Vector3.INF
+		(radio.handlers["survey_start"] as Callable).call([])
+		_check(radio.flag("cored_already") and not is_inf(days.ice_spot.x) and radio.has_section("d4_cored"), "a core taken before the ask is the module's ice")
 		radio.ring("d4_sunset")
 		await _settle(radio, 2.0)
 		_check(radio.heard.has("goal_humans") and radio.heard.has("d4_sunset_deal"), "the talk goes round the room")

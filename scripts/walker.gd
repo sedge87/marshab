@@ -569,8 +569,10 @@ func arrive_overnight() -> void:
 func deliver_marked() -> void:
 	if state != "parked" or not marked: return
 	var module: Dictionary = BUILD_RULES.module_zone(world.builder)
-	if module.is_empty():
+	if module.is_empty():   # the module was taken out of the plan after the mark: choose again
 		marked = false
+		_clear_mark()
+		MHNotices.post("info", NAME + " is home", "Press B to choose where the General Module goes.", "", 1)
 		return
 	_clear_mark()
 	deliver(module)

@@ -73,6 +73,7 @@ This replaces the first version below (built in 7cbce6e). That one was day 1 the
 5. **The afternoon: water.**
    - Achterberg, through Castle, wants the module's ice in a tube: core the best of GAR-Y's stakes near the module. If you skipped the survey in chapter 3, she asks for the Survey zone first.
    - Any good core within 400 m counts. After three cores with no good ice, the best of them "will do to start".
+   - A good core you'd already taken there before she asked counts too: Castle says you're ahead of them (`d4_cored`).
    - The spot is marked "Ice extractor spot".
 6. **Dusk: the three horizons** (`d4_sunset`):
    - tomorrow, the extractor;
