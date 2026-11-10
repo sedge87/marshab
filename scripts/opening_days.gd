@@ -11,9 +11,9 @@ extends Node
 ## to tomorrow, and the clock never stops.
 ##
 ## At dusk Notes says it's time for bed, and GAR-Y leads you home if you're
-## out. While you live in the lander (opening parts 1-2), its hatch won't
-## open from inside at night: the day ends when you sleep. Once the module's
-## fitted out, nights are yours again (docs/master-design.md §2).
+## out. Version 2 never locks the hatch at night (10 Nov): going out in the
+## dark just gets a word of caution (night_caution). Version 1 kept it shut
+## from inside at night while you lived in the lander.
 
 ## The guided days, version 2 (docs/opening-days.md, 8 Nov redesign), for
 ## new games: four chapters on the real sun (9 Nov). The sun never waits.
@@ -152,7 +152,7 @@ func guided() -> bool:
 func chapter_done(n: int) -> bool:
 	return day_done(n)
 
-## Living in the lander still: its hatch won't open from inside at night.
+## Living in the lander still (chapters 1-3): bed is a landing seat.
 func in_lander_days() -> bool:
 	if v2(): return guided() and chapter <= 3 and int(world.opening_part()) <= 3
 	return guided() and world.has_method("opening_part") and int(world.opening_part()) <= 2
@@ -172,11 +172,17 @@ func hatch_refusal() -> String:
 		var cabin_lander: Node = world.get("lander")
 		var you: Node3D = world.get("player")
 		if cabin_lander != null and you != null and bool(cabin_lander.cabin_contains(you.global_position)): return "Castle's calling. I should answer her first."
-	if not in_lander_days() or not is_night(): return ""
+	if v2() or not in_lander_days() or not is_night(): return ""   # version 1 (old saves) still locks it
 	var lander: Node = world.get("lander")
 	var player: Node3D = world.get("player")
 	if lander == null or player == null or not bool(lander.cabin_contains(player.global_position)): return ""
 	return "Not out there in the dark. Sleep first, and go at sunrise."
+
+## Opening the hatch at night in the lander days: no lock (playtest 10 Nov,
+## "I thought we weren't locking the player in"), just a word of caution.
+func night_caution() -> String:
+	if not v2() or not in_lander_days() or not is_night(): return ""
+	return "It's dark and very cold out there. Keep it short, mind your air, and get some sleep: the day starts at sunrise."
 
 ## Home tonight: the lander, or the module once it's down.
 func _home_name() -> String:

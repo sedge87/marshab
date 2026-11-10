@@ -284,6 +284,10 @@ func interact(_actor: Node = null) -> bool:
 	if not _open and not refusal.is_empty():
 		MHNotices.post("info", "Not yet", refusal, "", 1)
 		return true
+	if not _open:
+		var days := get_tree().get_first_node_in_group("opening_days")
+		var caution: String = str(days.night_caution()) if days != null and days.has_method("night_caution") else ""
+		if not caution.is_empty(): MHNotices.post("info", "Night", caution, "", 1)
 	set_hatch(not _open, true)
 	return true
 

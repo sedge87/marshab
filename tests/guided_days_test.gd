@@ -104,6 +104,10 @@ func _initialize() -> void:
 	radio.ring("d1_relock")
 	await _settle(radio, .3)
 	_check(radio.flag("answered") and days.hatch_refusal() == "", "answered: the hatch opens")
+	var hour_was := MHGame.sol_hour
+	MHGame.sol_hour = 23.0
+	_check(days.hatch_refusal() == "" and not str(days.night_caution()).is_empty(), "no night lock, just a caution")
+	MHGame.sol_hour = hour_was
 	var seat: Node = lander.get_node_or_null("Cabin_landing_seat_1")
 	var seat_ok := seat != null
 	if seat != null:

@@ -11,7 +11,8 @@ This replaces the first version below (built in 7cbce6e). That one was day 1 the
   - Done early (2.5 h of light left): `dN_done` says the rest of the day's yours.
   - Not done by dusk: `dN_dusk` says pick it up tomorrow. That morning `dN_still` recaps what's left (`left_*` flags). A chapter can take several sols.
   - Nothing forces you; you just can't progress without the beats.
-- **Each chapter ends in sleep.** Chapters 1–3 in the lander (its hatch stays shut at night), chapter 4 in the module once it holds air.
+- **Each chapter ends in sleep.** Chapters 1–3 in the lander, chapter 4 in the module once it holds air.
+  - **No night lock (10 Nov playtest).** The hatch always opens. At night in chapters 1–3 a caution notice says keep it short and mind your air (`night_caution`). The night's events run on the clock either way, and Walker 1 only arrives at dawn.
 - **The first call:** the hatch stays shut until you answer Castle's "do you read me?". The reply has no timer and she keeps calling (`hold` / `nudge` in docs/radio.md's format, scripts/radio.gd).
 - **The blue sunset is optional.** Castle invites you to Rao's rise; it isn't required. In the cabin at dusk, she talks anyway, and the photo ask waits for another time.
 - **Survival still counts.** Suit air runs as normal, and Castle watches it from orbit (data/radio/air.txt):
