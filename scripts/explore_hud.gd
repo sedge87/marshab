@@ -103,7 +103,9 @@ func _ready() -> void:
 	_minimal_nodes.append(_readiness_slot)
 	# The old Classic HUD panels stay hidden: the slate has all of it
 	# (docs/pda.md §4). They go with the old sim (docs/systems-and-items.md §14).
-	for node in [sol_clock, _chip_slot, telemetry, _readiness_slot]: (node as CanvasItem).visible = false
+	# The sol clock stays (playtest 10 Nov: it vanished after loading a save,
+	# since only stepping out of the lander at the start ever showed it).
+	for node in [_chip_slot, telemetry, _readiness_slot]: (node as CanvasItem).visible = false
 	# Crosshair + interact prompt in the centre.
 	var centre := CenterContainer.new()
 	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
