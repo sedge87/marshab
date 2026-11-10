@@ -77,6 +77,30 @@ func _initialize() -> void:
 	_check(not radio.in_contact() and str(radio.link_line()).contains("back at"), "behind Mars after dark: no contact (%s)" % radio.link_line())
 	MHGame.sol_hour = 9.0
 	_check(radio.in_contact(), "in touch in the morning (%s)" % radio.link_line())
+	# A call on air when she goes is finished, not cut off.
+	MHGame.sol_hour = window.x + .5
+	radio.playing = "d1_sunset"
+	_check(radio.in_contact(), "a call on air holds the link past the far side")
+	radio.playing = ""
+	# The heads-up is dropped once she's gone; the hello, long after she's back.
+	_check(radio._stale("los_soon"), "the heads-up is stale once she's gone")
+	MHGame.sol_hour = window.x - .2
+	_check(not radio._stale("los_soon"), "the heads-up is good just before she goes")
+	MHGame.sol_hour = window.y + .3
+	_check(not radio._stale("los_back"), "the hello is good just after she's back")
+	MHGame.sol_hour = 6.0
+	_check(radio._stale("los_back"), "the hello is stale by morning")
+	# Waking lets go of last night's calls, but not day 4's sunset talk.
+	radio.queue = ["los_back", "d2_dusk", "d1_sunset", "d4_sunset"]
+	radio.woke()
+	_check(radio.queue == ["d4_sunset"], "waking drops last night's calls (%s)" % str(radio.queue))
+	radio.queue.clear()
+	# A call cut off by a save plays again.
+	var loaded: Node = radio.get_script().new()
+	loaded.setup(world, {"heard": {"d2_wake": true}, "playing": "d2_wake"})
+	_check(not loaded.heard.has("d2_wake") and loaded.queue == ["d2_wake"], "a call cut off by a save plays again")
+	loaded.free()
+	MHGame.sol_hour = 9.0
 	radio.ring("d1_relock")
 	await _settle(radio, .3)
 	_check(radio.flag("answered") and days.hatch_refusal() == "", "answered: the hatch opens")

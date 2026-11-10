@@ -61,7 +61,9 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	for t in saved.get("topics", []): topics.append(str(t))
 	for q in saved.get("queue", []): queue.append(str(q))
 	var cut := str(saved.get("playing", ""))
-	if not cut.is_empty() and not queue.has(cut): queue.push_front(cut)   # a call cut off by a save plays again
+	if not cut.is_empty():   # a call cut off by a save plays again, from the top (its cues are safe to run twice)
+		heard.erase(cut)
+		if not queue.has(cut): queue.push_front(cut)
 	_sections = sections()
 
 func export_state() -> Dictionary:
@@ -246,16 +248,22 @@ static func clock(hour: float) -> String:
 	var h := fmod(hour, 24.0)
 	return "%02d:%02d" % [int(h), int(fmod(h, 1.0) * 60.0)]
 
+## Gone behind Mars, as far as you can tell. A call already on air is never
+## cut off: calls only start in contact, so she finishes what she's saying
+## and the link drops when the call's over.
+func gone() -> bool:
+	return behind_mars() and playing.is_empty()
+
 ## Can Castle hear you, and you her?
 func in_contact() -> bool:
-	if behind_mars(): return false
+	if gone(): return false
 	var player: Node3D = world.get("player") if world != null else null
 	return player == null or MHCaves.cave_at(player.global_position).is_empty()
 
 ## For the slate: when she's gone, or when she'll go.
 func link_line() -> String:
 	var w := los_window()
-	if behind_mars(): return "Orbit behind Mars · back at %s" % clock(w.y)
+	if gone(): return "Orbit behind Mars · back at %s" % clock(w.y)
 	if not in_contact(): return "No link underground"
 	return "Orbit in touch · behind Mars %s–%s" % [clock(w.x), clock(w.y)]
 
@@ -276,7 +284,7 @@ func _sol() -> int:
 ## The heads-up before she goes, and the hello when she's back.
 func _watch_link() -> void:
 	if world == null or fast: return
-	var out := behind_mars()
+	var out := gone()
 	var hour := fmod(MHGame.sol_hour, 24.0)
 	var w := los_window()
 	if not out and hour >= w.x - LOS_WARN and hour < w.x and _warned_sol != _sol() and _outside():
@@ -291,13 +299,46 @@ func flag(f: String) -> bool:
 
 func _process(_delta: float) -> void:
 	_watch_link()
+	_watch_sleep()
 	if not playing.is_empty() or queue.is_empty() or not _safe(_urgent.has(str(queue[0]))): return
 	var section := str(queue.pop_front())
 	_urgent.erase(section)
-	if heard.has(section): return
-	# An air warning held over the far side means nothing once you're home.
-	if section.begins_with("air_watch") and not _outside(): return
+	if heard.has(section) or _stale(section): return
+	if section.begins_with("air_watch"):
+		# An air warning held over the far side means nothing once you're home.
+		if not _outside(): return
+		# Several held up: the latest is first in line, and the only one worth saying.
+		for other in queue.duplicate():
+			if str(other).begins_with("air_watch"):
+				queue.erase(other)
+				_urgent.erase(str(other))
 	_play(section)
+
+## The heads-up after she's already gone, or the hello long after she's back.
+func _stale(section: String) -> bool:
+	var hour := fmod(MHGame.sol_hour, 24.0)
+	var w := los_window()
+	match section:
+		"los_soon": return fposmod(w.x - hour, 24.0) > LOS_WARN + .1
+		"los_back": return fposmod(hour - w.y, 24.0) > 1.0
+	return false
+
+## Awake again: last night's calls that never got through are let go (the
+## far-side notes, "pick it up tomorrow", a goodnight chat). Day 4's sunset
+## talk is kept: it carries the goals.
+var _slept := false
+func _watch_sleep() -> void:
+	var sleep: Node = world.get("sleep") if world != null else null
+	var asleep: bool = sleep != null and bool(sleep.get("asleep"))
+	if _slept and not asleep: woke()
+	_slept = asleep
+
+func woke() -> void:
+	for section in queue.duplicate():
+		var s := str(section)
+		if s in ["los_soon", "los_back"] or s.ends_with("_dusk") or (s.ends_with("_sunset") and s != "d4_sunset"):
+			queue.erase(section)
+			_urgent.erase(s)
 
 ## Never over danger, a blackout, another voice or a pause.
 func _safe(urgent := false) -> bool:

@@ -52,6 +52,7 @@ Subnautica wrote down three pillars, each tied to an emotion, but built only one
     - It carries Castle's voice and your suit's telemetry (position, air, helmet cam) all day, which is how she watches your air. The lander's mic carries night sounds too, like the walker's grinding.
     - The crew's ship is in NASA's one-sol elliptical parking orbit: high over the Reach most of the sol, in touch through the relay, and one close pass a sol, when Rao's long lens gets close-up photos. Once a sol, from an hour after sunset for two hours, it's behind the planet and there's no radio (built 10 Nov, scripts/radio.gd `los_window`):
       - Calls wait, Castle's air warnings included; your suit's own alarms still sound.
+      - A call already on air is never cut off: she finishes, and the link drops when the call's over (`gone`). Of several held air warnings only the latest is said. Calls that never got through are let go when you wake, except day 4's sunset talk.
       - If you're outside, Castle gives you a heads-up beforehand (`los_soon`) and checks in when she's back (`los_back`).
       - The slate's status bar shows ORBIT BACK hh:mm, and its Comms page shows the window.
       - There's no radio in caves either.
