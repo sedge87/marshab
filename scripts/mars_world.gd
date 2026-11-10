@@ -1048,6 +1048,7 @@ func _show_pause() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	get_tree().paused = true
 	MHAudio.muffle(true)
+	MHAudio.pause_voice(true)
 	MHAudio.sfx("ui_back", 0.0, 0.0)
 	pause_menu = MHPauseMenu.new()
 	pause_menu.resumed.connect(_resume)
@@ -1084,6 +1085,7 @@ func _resume() -> void:
 func _unpause() -> void:
 	get_tree().paused = false
 	MHAudio.muffle(false)
+	MHAudio.pause_voice(false)
 	var needs_cursor := builder.build_mode or (interior_builder != null and interior_builder.wants_cursor())
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if needs_cursor else Input.MOUSE_MODE_CAPTURED
 

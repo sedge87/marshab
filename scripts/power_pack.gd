@@ -183,7 +183,7 @@ func pick_up() -> void:
 	MHAudio.sfx("suit_clamp", -6.0)
 	var hud: Node = world.get("explore_hud")
 	if hud != null:
-		if near_lander() or _module() == null: hud.show_equipment_note("Carrying the power pack", "Q puts it down by the lander for the module. E on GAR-Y loads it on its sled, once it has a hitch." if _module() == null else "Q puts it down. Set it down near the lander, then E lays out the blanket.")
+		if near_lander() or _module() == null: hud.show_equipment_note("Carrying the power pack", ("Q puts it down by the lander for the module." + (" E on GAR-Y loads it on its sled, once it has a hitch." if bool(world.get("gary_met")) else "")) if _module() == null else "Q puts it down. Set it down near the lander, then E lays out the blanket.")
 		else: hud.show_equipment_note("Carrying the power pack", "Set it down by the module's outside socket, then E lays out the blanket.")
 
 func put_down() -> void:

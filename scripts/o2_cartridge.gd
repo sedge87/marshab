@@ -85,7 +85,7 @@ func pick_up() -> void:
 	if hud != null:
 		if _cabin_takes_it(): hud.show_equipment_note("Carrying the cartridge", "E on the cabin's oxygen port plugs it in. Q puts it down.")
 		elif _module_socket() != null: hud.show_equipment_note("Carrying the cartridge", "E on the module's outside socket plugs it in. Q puts it down.")
-		else: hud.show_equipment_note("Carrying the cartridge", "Q puts it down by the lander for the module. E on GAR-Y loads it on its sled, once it has a hitch.")
+		else: hud.show_equipment_note("Carrying the cartridge", "Q puts it down by the lander for the module." + (" E on GAR-Y loads it on its sled, once it has a hitch." if bool(drop.world.get("gary_met")) else ""))   # no GAR-Y before you've met it
 
 ## Q: down at your feet.
 func put_down() -> void:

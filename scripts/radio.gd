@@ -376,7 +376,7 @@ func _run(steps: Array) -> void:
 				var args: Array = step.args
 				var check: Callable = checks.get(str(args[0]), Callable())
 				while check.is_valid() and not bool(check.call(args.slice(1))):
-					await get_tree().create_timer(.25).timeout
+					await get_tree().create_timer(.25, false).timeout
 			"choice": await _ask(step)
 			"goto":
 				var to := str(step.to)
@@ -392,9 +392,9 @@ func _say(step: Dictionary) -> void:
 	await get_tree().process_frame
 	var file := "res://assets/audio/voice/orb_%s.wav" % id
 	if id.is_empty() or not ResourceLoader.exists(file):
-		await get_tree().create_timer(2.0 + str(step.text).length() * .055).timeout
-	while MHAudio.voice_busy(): await get_tree().create_timer(.1).timeout
-	await get_tree().create_timer(GAP_AFTER_LINE).timeout
+		await get_tree().create_timer(2.0 + str(step.text).length() * .055, false).timeout
+	while MHAudio.voice_busy(): await get_tree().create_timer(.1, false).timeout
+	await get_tree().create_timer(GAP_AFTER_LINE, false).timeout
 
 func _ask(step: Dictionary) -> void:
 	var options: Array = step.options
@@ -411,7 +411,7 @@ func _ask(step: Dictionary) -> void:
 		var quiet := 0.0
 		var said := 0
 		while _choice == -2:
-			await get_tree().create_timer(.1).timeout
+			await get_tree().create_timer(.1, false).timeout
 			quiet += .1
 			# Held: they keep calling till you answer.
 			if hold and not nudges.is_empty() and quiet >= NUDGE_EVERY and not MHAudio.voice_busy():
@@ -419,7 +419,7 @@ func _ask(step: Dictionary) -> void:
 				await _say(nudges[mini(said, nudges.size() - 1)] if said < nudges.size() else nudges[said % nudges.size()])
 				said += 1
 		# Your words stay up a moment: the next line waits till they've gone.
-		while replies.has_method("saying") and replies.saying(): await get_tree().create_timer(.1).timeout
+		while replies.has_method("saying") and replies.saying(): await get_tree().create_timer(.1, false).timeout
 	if _choice >= 0 and _choice < options.size(): await _run(options[_choice].steps)
 
 ## Tests: pick a reply for the choice on screen.

@@ -173,6 +173,11 @@ static func hush() -> void:
 	var d := director()
 	if d != null: d._run("_hush", [])
 
+# The pause menu: whoever's talking stops mid-word, and carries on after.
+static func pause_voice(on: bool) -> void:
+	var d := director()
+	if d != null and d._voice != null: d._voice.stream_paused = on
+
 # Whether anyone is talking (or waiting to): Mission Control holds its
 # messages until the voice is free.
 static func voice_busy() -> bool:
