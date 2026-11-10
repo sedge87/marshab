@@ -50,7 +50,11 @@ Subnautica wrote down three pillars, each tied to an emotion, but built only one
   - **Their ship can wait.** It's stocked for the whole mission and an abort-to-orbit stay.
   - **Radio.** A relay satellite, landed in the plan with the cargo, hangs over the Reach.
     - It carries Castle's voice and your suit's telemetry (position, air, helmet cam) all day, which is how she watches your air. The lander's mic carries night sounds too, like the walker's grinding.
-    - The crew's ship is in NASA's one-sol elliptical parking orbit: high over the Reach most of the sol, in touch through the relay, and one close pass a sol, when Rao's long lens gets close-up photos. Once a sol it goes behind the planet for a while.
+    - The crew's ship is in NASA's one-sol elliptical parking orbit: high over the Reach most of the sol, in touch through the relay, and one close pass a sol, when Rao's long lens gets close-up photos. Once a sol, from an hour after sunset for two hours, it's behind the planet and there's no radio (built 10 Nov, scripts/radio.gd `los_window`):
+      - Calls wait, Castle's air warnings included; your suit's own alarms still sound.
+      - If you're outside, Castle gives you a heads-up beforehand (`los_soon`) and checks in when she's back (`los_back`).
+      - The slate's status bar shows ORBIT BACK hh:mm, and its Comms page shows the window.
+      - There's no radio in caves either.
   - **Why you landed anyway.** When the dust thinned, Houston said go: that's what a pathfinder is for (d1_relock).
   - **The way home (10 Nov).** Outpost One is a long stay: the crew came to live there for years, with later crews on later windows. The ascent vehicle was in the cargo and is out there with one of the lost walkers (d4_sunset). Finding it can be later content; "go home" is still not an ending.
   - **In game, your lander is called the Pathfinder** (scripts/crew_lander.gd, data/equipment_catalog.json; the code keeps crew_lander ids).

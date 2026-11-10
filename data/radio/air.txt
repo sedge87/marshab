@@ -2,6 +2,18 @@
 # once a trip, even in danger (radio.ring_urgent).
 # Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_air
 
+# The crew's ship goes behind Mars once a sol (scripts/radio.gd los_window).
+# The heads-up comes only if you're outside; the hello if you were, or are.
+~ los_soon
+Castellanos: Heads-up, Outpost One. We go behind the planet in a few minutes, and you'll lose me for a couple of hours. [ID:los_soon_01]
+Castellanos: Mind your suit's alarms while I'm gone. If you're not sure about your air, head in now. [ID:los_soon_02]
+=> END
+
+~ los_back
+Castellanos: Outpost One, orbit. We're back round. Still with me? [ID:los_back_01]
+Castellanos: I've got your numbers again. I'll shout if anything looks off. [ID:los_back_02]
+=> END
+
 ~ air_watch_1
 Castellanos: Outpost One, I'm watching your suit numbers from up here. You've got about half an hour before you need to start back. Just so you know. [ID:air_watch_1_01]
 => END

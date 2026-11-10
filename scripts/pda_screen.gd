@@ -235,8 +235,10 @@ func _update_status() -> void:
 	_clock.text = text
 	_clock.add_theme_color_override("font_color", MHStyle.INFO if daytime else MHStyle.TEXT_MUTED)
 	var linked := _linked()
-	_link.text = "LINK" if linked else "NO LINK"
-	_link.add_theme_color_override("font_color", MHStyle.VALID if linked else MHStyle.WARN)
+	var radio: Node = world.get("radio") if world != null else null
+	var orbit_gone: bool = linked and radio != null and radio.has_method("in_contact") and not bool(radio.in_contact())
+	_link.text = ("ORBIT BACK %s" % radio.clock(radio.los_window().y)) if orbit_gone else ("LINK" if linked else "NO LINK")
+	_link.add_theme_color_override("font_color", MHStyle.WARN if orbit_gone or not linked else MHStyle.VALID)
 	for key in _rail_buttons:
 		(_rail_buttons[key].dot as Control).visible = key != app and int(MHNotices.unread.get(key, 0)) > 0
 
@@ -622,6 +624,9 @@ func _comms_page() -> Control:
 	if link != null: top.add_child(MHStyle.mono(str(link.rota_line()), 15, MHStyle.INFO))
 	page.add_child(top)
 	if not _linked(): page.add_child(MHStyle.body("No link down here: new messages wait until you're back under the sky.", 16, MHStyle.WARN))
+	var radio: Node = world.get("radio") if world != null else null
+	if radio != null and radio.has_method("link_line"):
+		page.add_child(MHStyle.mono(str(radio.link_line()), 15, MHStyle.INFO if bool(radio.in_contact()) else MHStyle.WARN))
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -869,7 +874,9 @@ func _comms_signature() -> String:
 	var link: Node = get_tree().get_first_node_in_group("mission_control_link") if is_inside_tree() else null
 	var texts: Node = get_tree().get_first_node_in_group("orbiter_texts") if is_inside_tree() else null
 	var photo_in: bool = texts != null and not texts.latest_photo().is_empty() and texts.photo(str(texts.latest_photo().photo)) != null
-	return "%d|%d|%d|%s|%d|%s" % [(link.messages as Array).size() if link != null else 0, MHSamples.found.size(), MHSamples.leads.size(), _linked(), int(texts.version) + (texts.messages as Array).size() if texts != null else 0, photo_in]
+	var radio: Node = world.get("radio") if world != null else null
+	var contact: bool = radio == null or not radio.has_method("in_contact") or bool(radio.in_contact())
+	return "%s|%d|%d|%d|%s|%d|%s" % [contact, (link.messages as Array).size() if link != null else 0, MHSamples.found.size(), MHSamples.leads.size(), _linked(), int(texts.version) + (texts.messages as Array).size() if texts != null else 0, photo_in]
 
 ## Map: the region map itself, lent to the screen (region_map.gd embed):
 ## wheel zoom, drag, Z, Space, L for the ice survey and G to send GAR-Y.

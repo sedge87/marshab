@@ -107,7 +107,7 @@ Castellanos: Last night in the lander. How does that feel? [ID:d3_sun_01]
 	Castellanos: It kept you alive. You're allowed to miss it. I miss my bunk on the cruise, and that thing had a broken latch and smelled of Rao's socks. [ID:d3_sun_02a]
 - I can't wait to stand up straight.
 	Castellanos: Ha. Neither can my back. Seven months of floating. I've forgotten which way my spine's supposed to go. [ID:d3_sun_02b]
-Castellanos: GAR-Y's heading out with the seal once it's properly dark. I'll watch the pair of them all night, I promise. If anything changes, you'll be the first to know. [ID:d3_sun_03]
+Castellanos: GAR-Y's heading out with the seal once it's properly dark. I'll watch the pair of them all night, once we're back round from the far side. I promise. If anything changes, you'll be the first to know. [ID:d3_sun_03]
 - Get some sleep yourself, Castle.
 	set kind
 	Castellanos: Ha. You sound like Mwangi. Fine. I'll get some sleep. After this pass. [ID:d3_sun_04a]

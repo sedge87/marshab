@@ -71,6 +71,12 @@ func _initialize() -> void:
 	player.global_position = lander.cabin_start().position
 	MHGame.sol_hour = 9.0
 	_check(days.hatch_refusal().contains("answer"), "the hatch stays shut till you answer Castle (%s)" % days.hatch_refusal())
+	# The crew's ship behind Mars: once a sol, an hour after sunset, for two hours.
+	var window: Vector2 = radio.los_window()
+	MHGame.sol_hour = window.x + .5
+	_check(not radio.in_contact() and str(radio.link_line()).contains("back at"), "behind Mars after dark: no contact (%s)" % radio.link_line())
+	MHGame.sol_hour = 9.0
+	_check(radio.in_contact(), "in touch in the morning (%s)" % radio.link_line())
 	radio.ring("d1_relock")
 	await _settle(radio, .3)
 	_check(radio.flag("answered") and days.hatch_refusal() == "", "answered: the hatch opens")

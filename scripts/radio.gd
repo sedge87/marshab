@@ -23,7 +23,9 @@ extends Node
 ##                                        (one every NUDGE_EVERY seconds)
 ##
 ## Calls queue and never interrupt danger: they wait while your suit's in
-## trouble, you're out cold or a storm is on you. Each section plays once,
+## trouble, you're out cold or a storm is on you. They also wait while the
+## crew's ship is behind Mars (its one-sol orbit takes it round the far side
+## at the same hour every sol: in_contact()), or you're down a cave. Each section plays once,
 ## unless it's a topic you raise yourself (Call orbit on the slate).
 ## Your replies are written, never spoken (scripts/replies.gd shows them).
 
@@ -221,19 +223,86 @@ func call_orbit() -> bool:
 func on_air() -> bool:
 	return not playing.is_empty()
 
+# ---------- the link: the crew's ship goes behind Mars once a sol ----------
+
+const LOS_AFTER_SUNSET := 1.0   # hours after sunset it goes behind the planet
+const LOS_HOURS := 2.0          # and is gone this long
+const LOS_WARN := .4            # Castle's heads-up, this long before, if you're out
+var _warned_sol := -1
+var _was_out := false           # behind the planet last frame
+var _out_when_lost := false     # you were outside when she went
+
+## The hours (start, end) the ship is behind Mars, every sol.
+static func los_window() -> Vector2:
+	var start := float(MHGame.site().get("day_cycle", {}).get("sunset_hour", 19.0)) + LOS_AFTER_SUNSET
+	return Vector2(start, start + LOS_HOURS)
+
+static func behind_mars() -> bool:
+	var w := los_window()
+	var hour := fmod(MHGame.sol_hour, 24.0)
+	return hour >= w.x and hour < w.y
+
+static func clock(hour: float) -> String:
+	var h := fmod(hour, 24.0)
+	return "%02d:%02d" % [int(h), int(fmod(h, 1.0) * 60.0)]
+
+## Can Castle hear you, and you her?
+func in_contact() -> bool:
+	if behind_mars(): return false
+	var player: Node3D = world.get("player") if world != null else null
+	return player == null or MHCaves.cave_at(player.global_position).is_empty()
+
+## For the slate: when she's gone, or when she'll go.
+func link_line() -> String:
+	var w := los_window()
+	if behind_mars(): return "Orbit behind Mars · back at %s" % clock(w.y)
+	if not in_contact(): return "No link underground"
+	return "Orbit in touch · behind Mars %s–%s" % [clock(w.x), clock(w.y)]
+
+func _outside() -> bool:
+	var player: Node3D = world.get("player")
+	if player == null: return false
+	var at := player.global_position
+	var lander: Node = world.get("lander")
+	if lander != null and lander.has_method("cabin_contains") and bool(lander.cabin_contains(at)): return false
+	var builder: Node = world.get("builder")
+	if builder != null and builder.has_method("is_inside") and bool(builder.is_inside(at)): return false
+	return not bool(player.get_meta("driving", false))
+
+func _sol() -> int:
+	var builder: Node = world.get("builder")
+	return floori(float(builder.simulation().hours_run) / 24.0) if builder != null and builder.has_method("simulation") else 0
+
+## The heads-up before she goes, and the hello when she's back.
+func _watch_link() -> void:
+	if world == null or fast: return
+	var out := behind_mars()
+	var hour := fmod(MHGame.sol_hour, 24.0)
+	var w := los_window()
+	if not out and hour >= w.x - LOS_WARN and hour < w.x and _warned_sol != _sol() and _outside():
+		_warned_sol = _sol()
+		ring_urgent("los_soon")
+	if out and not _was_out: _out_when_lost = _outside()
+	if not out and _was_out and (_out_when_lost or _outside()): ring_urgent("los_back")
+	_was_out = out
+
 func flag(f: String) -> bool:
 	return flags.has(f)
 
 func _process(_delta: float) -> void:
+	_watch_link()
 	if not playing.is_empty() or queue.is_empty() or not _safe(_urgent.has(str(queue[0]))): return
 	var section := str(queue.pop_front())
 	_urgent.erase(section)
 	if heard.has(section): return
+	# An air warning held over the far side means nothing once you're home.
+	if section.begins_with("air_watch") and not _outside(): return
 	_play(section)
 
 ## Never over danger, a blackout, another voice or a pause.
 func _safe(urgent := false) -> bool:
 	if world == null or world.get_tree().paused: return false
+	if not fast and not in_contact(): return false
 	if not fast and MHAudio.voice_busy(): return false
 	var suit: Node = world.get("suit")
 	if suit != null and bool(suit.get("passed_out")): return false
