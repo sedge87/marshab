@@ -22,6 +22,7 @@ const LOPE_TAP_AFTER := .18     # this long after
 const LOPE_TOO_EARLY := .3      # a tap this soon after push-off just doesn't count
 const STUMBLE_TIME := 1.0
 const STUMBLE_SPEED := .45      # of your pace, while you find your feet
+const AIR_STEER := 2.5          # m/s² of steering in the air: a nudge, not a turn
 const HARD_LANDING := 7.0       # m/s: a drop of about 4.5 m
 # Hold Ctrl to crouch: lower eyes, a shorter body, a slow walk.
 const CROUCH_SPEED := 2.4
@@ -137,8 +138,17 @@ func _physics_process(delta: float) -> void:
 	if slate_up: speed *= SLATE_WALK
 	speed *= float(get_meta("body_speed", 1.0))   # the cold and low oxygen slow you (scripts/body.gd)
 	speed *= float(get_meta("load_speed", 1.0))   # carrying something heavy (scripts/o2_cartridge.gd)
-	velocity.x = direction.x * speed
-	velocity.z = direction.z * speed
+	if grounded:
+		velocity.x = direction.x * speed
+		velocity.z = direction.z * speed
+	else:
+		# In the air you keep the momentum you left the ground with: thin air
+		# doesn't slow you, and you can only nudge your line a little.
+		var flat := Vector2(velocity.x, velocity.z)
+		if direction != Vector3.ZERO:
+			flat = flat.move_toward(Vector2(direction.x, direction.z) * maxf(flat.length(), WALK_SPEED * .5), AIR_STEER * delta)
+		velocity.x = flat.x
+		velocity.z = flat.y
 	move_and_slide()
 	if is_on_floor() and global_position.y > -10.0:
 		safe_position = global_position

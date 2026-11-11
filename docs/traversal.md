@@ -60,6 +60,7 @@ The game's distances and speeds are already stretched for play (a 600 m pallet i
 - A tap counts from 0.4 s before landing to 0.18 s after.
 - Air use: ×1.3 with no flow, down to ×1.0 at full flow (a run was ×1.6).
 - A drop of about 4.5 m still trips you for a second; that's falling, not rhythm.
+- **Momentum in the air (11 Nov):** off the ground you keep the speed and direction you left with. You can't stop or turn mid-air, only nudge your line a little (2.5 m/s²). You steer the lope at each landing.
 - Outside only: indoors, sprint is still a plain run.
 - Not built yet: dust puffs, and the turn-back time learning your loped ground.
 
