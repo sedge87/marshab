@@ -39,6 +39,7 @@ const O2_HOURS := 8.0            # game hours of oxygen at a walk: about 10 real
 const POWER_HOURS := 8.0         # by day; the heater doubles the draw at night
 const SCRUBBER_HOURS := 10.0
 const SPRINT := 1.6              # breathing harder
+const LOPE := 1.3                # the lope with no rhythm; in full flow it's a walk's worth
 const CARRYING := 1.3
 const COLD := 1.25               # a flat battery: no heater, more oxygen burned
 const STALE := 1.5               # a spent scrubber: CO2 builds up
@@ -297,7 +298,8 @@ func dose(hours: float) -> void:
 func breathing_rate() -> float:
 	var rate := 1.0
 	var player: CharacterBody3D = world.player
-	if Vector2(player.velocity.x, player.velocity.z).length() > 5.5 and not (bool(player.get_meta("loping", false)) and int(player.get("lope_bounds")) >= 2): rate *= SPRINT   # faster than a walk, unless you're loping in rhythm (docs/traversal.md)
+	if bool(player.get_meta("loping", false)): rate *= lerpf(LOPE, 1.0, clampf(float(player.get("lope_flow")) / 3.0, 0.0, 1.0))   # the lope: easier the better your rhythm (docs/traversal.md)
+	elif Vector2(player.velocity.x, player.velocity.z).length() > 5.5: rate *= SPRINT   # faster than a walk
 	if world.get("carry") != null and not (world.carry.carrying as Dictionary).is_empty(): rate *= CARRYING
 	if power <= 0.0: rate *= COLD
 	if scrubber <= 0.0: rate *= STALE

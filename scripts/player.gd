@@ -8,18 +8,20 @@ const MOUSE_SENSITIVITY := 0.0025
 # falls. 3.6 m/s against 5.5 m/s² reaches about 1.2 m, with 1.3 s in the air.
 const GRAVITY := 5.5
 const JUMP_VELOCITY := 3.6
-# The lope (docs/traversal.md, phase 1): outside, holding sprint pushes you off
-# into a bound; tap jump as you land to keep the rhythm. In rhythm you're fast
-# and breathe like a walk (scripts/suit.gd); miss it and you're walking again.
-const LOPE_SPEED := 8.5
-const LOPE_UP := 2.2            # each bound's lift: about .8 s in the air, 7 m a bound
+# The lope (docs/traversal.md, phase 1): outside, holding sprint bounds you
+# along on its own. Tapping jump as you land is never needed and never
+# punished: each tap in time builds your flow, and flow makes you faster,
+# your bounds longer and your breathing easier (scripts/suit.gd).
+const LOPE_SPEED := 7.5
+const LOPE_FLOW_SPEED := .7     # more m/s for each step of flow
+const LOPE_UP := 2.2            # each bound's lift: about .8 s in the air
+const LOPE_FLOW_UP := .06       # a longer bound for each step of flow
+const LOPE_FLOW_MAX := 3
 const LOPE_TAP_BEFORE := .4     # tap this long before you land, or
 const LOPE_TAP_AFTER := .18     # this long after
-const LOPE_TOO_EARLY := .3      # a tap this soon after push-off spoils the bound (no mashing)
-const LOPE_RECOVER := .5        # back at a walk this long after a miss
+const LOPE_TOO_EARLY := .3      # a tap this soon after push-off just doesn't count
 const STUMBLE_TIME := 1.0
 const STUMBLE_SPEED := .45      # of your pace, while you find your feet
-const STUMBLE_SLOPE := 14.0     # a miss on ground steeper than this trips you
 const HARD_LANDING := 7.0       # m/s: a drop of about 4.5 m
 # Hold Ctrl to crouch: lower eyes, a shorter body, a slow walk.
 const CROUCH_SPEED := 2.4
@@ -38,12 +40,10 @@ var _step_index := 0
 var _flashlight_enabled := false
 var crouching := false
 var loping := false            # in the bounding gait
-var lope_bounds := 0           # bounds in a row, in rhythm
-var _tap_age := 99.0           # since the last jump tap
+var lope_flow := 0             # 0 to LOPE_FLOW_MAX: taps in time, in a row
+var _tap_age := 99.0           # since the last jump tap that could count
 var _air_age := 0.0            # since this bound's push-off
-var _ground_age := 0.0         # since this bound landed
-var _spoiled := false          # tapped too early this bound
-var _lope_rest := 0.0          # no new lope until this runs out
+var _rewarded := false         # this landing's tap has been counted
 var _stumble := 0.0
 @onready var _body_shape: CollisionShape3D = $CollisionShape3D
 
@@ -132,7 +132,7 @@ func _physics_process(delta: float) -> void:
 	_lope(delta, grounded, jump_tapped, can_lope)
 	var direction := (transform.basis * Vector3(input_vector.x, 0.0, input_vector.y)).normalized()
 	# Indoors sprint is a plain run; outside it's the lope.
-	var speed := CROUCH_SPEED if crouching else LOPE_SPEED if loping else SPRINT_SPEED if sprint_held and indoors else WALK_SPEED
+	var speed := CROUCH_SPEED if crouching else (LOPE_SPEED + LOPE_FLOW_SPEED * lope_flow) if loping else SPRINT_SPEED if sprint_held and indoors else WALK_SPEED
 	if _stumble > 0.0: speed *= STUMBLE_SPEED
 	if slate_up: speed *= SLATE_WALK
 	speed *= float(get_meta("body_speed", 1.0))   # the cold and low oxygen slow you (scripts/body.gd)
@@ -144,67 +144,65 @@ func _physics_process(delta: float) -> void:
 		safe_position = global_position
 	_footsteps(speed, delta)
 
-## The lope: push off, and tap jump as you land to bound again.
+## The lope: hold sprint and you bound along. A tap in time builds flow.
 func _lope(delta: float, grounded: bool, tapped: bool, can_lope: bool) -> void:
 	_tap_age += delta
-	_lope_rest = maxf(0.0, _lope_rest - delta)
 	if _stumble > 0.0:
 		_stumble = maxf(0.0, _stumble - delta)
 		head.rotation.z = move_toward(head.rotation.z, 0.0, delta * .25)
 	if not loping:
 		set_meta("loping", false)
-		if grounded and can_lope and _lope_rest <= 0.0: _bound(true)
+		if grounded and can_lope: _bound(true)
 		return
 	if not grounded:
 		_air_age += delta
-		_ground_age = 0.0
 		if tapped:
-			if _air_age < LOPE_TOO_EARLY: _spoiled = true
-			else: _tap_age = 0.0
+			# Just after landing still counts for the landing you've just made.
+			if _air_age <= LOPE_TAP_AFTER and not _rewarded: _flow(true)
+			elif _air_age >= LOPE_TOO_EARLY: _tap_age = 0.0
 		return
 	# Landed.
-	if tapped: _tap_age = 0.0
 	if not can_lope:
-		_end_lope(false)   # you let go: back to a walk, no harm
+		_end_lope()   # you let go: back to a walk
 		return
-	var laden := float(get_meta("load_speed", 1.0)) < .999
-	var window := LOPE_TAP_BEFORE * (.6 if laden else 1.0)
-	var auto := bool(MHGame.setting("auto_lope"))
-	if auto or (not _spoiled and _tap_age <= window + _ground_age):
-		_bound(false)
-		return
-	_ground_age += delta
-	if _ground_age > LOPE_TAP_AFTER or _spoiled: _end_lope(true)
+	if tapped: _tap_age = 0.0
+	var in_time := _tap_age <= LOPE_TAP_BEFORE
+	_bound(false)
+	if in_time: _flow(true)
+	else: _rewarded = false   # still open for a tap just after
+
+## A tap in time: one more step of flow. A landing with no tap lets one go.
+func _flow(up: bool) -> void:
+	if up:
+		_rewarded = true
+		lope_flow = mini(lope_flow + 1, LOPE_FLOW_MAX)
+		MHAudio.sfx("suit_beep", -26.0 + 2.0 * lope_flow, .0)   # the suit's soft tick
+	else: lope_flow = maxi(lope_flow - 1, 0)
 
 func _bound(first: bool) -> void:
+	# The last landing went by with no tap: flow eases off, nothing worse.
+	if not first and not _rewarded: _flow(false)
 	loping = true
 	set_meta("loping", true)
-	lope_bounds = 1 if first else lope_bounds + 1
-	velocity.y = LOPE_UP * (.85 if float(get_meta("load_speed", 1.0)) < .999 else 1.0)
+	if first: lope_flow = 0
+	var laden := float(get_meta("load_speed", 1.0)) < .999
+	velocity.y = LOPE_UP * (1.0 + LOPE_FLOW_UP * lope_flow) * (.85 if laden else 1.0)
 	_air_age = 0.0
-	_ground_age = 0.0
 	_tap_age = 99.0
-	_spoiled = false
+	_rewarded = false
 	_step_index = (_step_index + 1 + randi() % 3) % 4
 	MHAudio.sfx("step_dirt_%d" % _step_index, -5.0, .06)
-	if not first: MHAudio.sfx("suit_beep", -24.0, .0)   # the suit's soft tick: a clean landing
 
-func _end_lope(missed: bool) -> void:
+func _end_lope() -> void:
 	loping = false
 	set_meta("loping", false)
-	lope_bounds = 0
-	if not missed: return
-	_lope_rest = LOPE_RECOVER
-	# A miss on a slope, or with a load in your arms, trips you.
-	if rad_to_deg(get_floor_angle()) > STUMBLE_SLOPE or float(get_meta("load_speed", 1.0)) < .999: stumble()
+	lope_flow = 0
 
 ## You lose your footing: slow for a moment, and the view lurches.
 func stumble() -> void:
 	if _stumble > 0.0: return
 	_stumble = STUMBLE_TIME
-	_lope_rest = STUMBLE_TIME
-	loping = false
-	set_meta("loping", false)
+	_end_lope()
 	head.rotation.z = .09 if randf() < .5 else -.09
 	MHAudio.sfx("land", -2.0)
 

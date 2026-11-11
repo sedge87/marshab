@@ -30,8 +30,8 @@ Real figures beside game figures. Game figures are starting points for playtest.
 | Gravity | 3.71 m/s² (38% of Earth) | 14 (game units) | about 5.5 |
 | Jump height in a suit | roughly half a metre | about 1 m | about 1.2 m, 1.3 s in the air |
 | Walk | about 1 m/s in a suit | 5 m/s | 5 m/s |
-| Lope | Apollo crews loped at up to about 2 m/s | sprint 8 m/s | 8 to 9 m/s in rhythm |
-| Air while moving fast | higher | ×1.6 above 5.5 m/s | lope in rhythm ×1.0; out of rhythm ×1.6 |
+| Lope | Apollo crews loped at up to about 2 m/s | sprint 8 m/s | 7.5 m/s, up to 9.6 at full flow |
+| Air while moving fast | higher | ×1.6 above 5.5 m/s | lope ×1.3, down to ×1.0 at full flow |
 | Slope limit on foot | Apollo worked slopes of about 20 to 25° | walks up to 52° | 25° rule; scramble to 45°; 60° after the waiver |
 
 The game's distances and speeds are already stretched for play (a 600 m pallet in a 15-minute day), so the lope stays fast.
@@ -40,26 +40,28 @@ The game's distances and speeds are already stretched for play (a 600 m pallet i
 
 **Gravity.** Down to about 5.5, so jumps are long and floaty and falls are slow. A hard landing stumbles you; it doesn't hurt you.
 
-**The lope.** Sprint becomes a bounding gait, the way Apollo crews moved.
-- Each bound is a push-off. Press jump again as you land, inside a timing window, and you keep the rhythm.
-- **In rhythm:** faster than a walk and no more air than a walk. This is the reward.
-- **Out of rhythm:** you drop back to a walk. No punishment on good ground.
-- **A miss on bad ground or a steep downhill:** a stumble. You slow, the view lurches, and a heavy load can slip out of your hands.
-- **With a load:** the window is tighter and the bounds are shorter.
+**The lope (changed 11 Nov: automatic, and rhythm is only ever rewarded).** Sprint becomes a bounding gait, the way Apollo crews moved.
+- Hold sprint outside and you bound along on your own. Nothing else is needed.
+- **Tap jump as you land** and you build flow, up to three steps. Each step makes you faster, your bounds longer and your breathing easier. At full flow the lope costs no more air than a walk.
+- **A landing with no tap** lets one step of flow go. That's all: no stumble, no slowing below the plain lope, nothing dropped.
+- A tap too soon after push-off just doesn't count, so mashing gains nothing and costs nothing.
+- **With a load:** the bounds are shorter.
 
 **How you feel the rhythm.** No meter.
 - Footfalls and your breathing keep the beat.
-- A soft suit tick on a clean landing.
+- A soft suit tick on each tap in time, a little brighter with each step of flow.
 - Dust puffs under your boots.
 
 **The suit's turn-back time** stays cautious. It only counts on lope speed over ground you've loped before.
 
-**Built 11 Nov (not playtested).** In `scripts/player.gd` (`_lope`, `_bound`, `stumble`), `scripts/suit.gd` and Settings ("Automatic lope").
+**Built 11 Nov (not playtested).** In `scripts/player.gd` (`_lope`, `_bound`, `_flow`) and `scripts/suit.gd`.
 - Gravity 5.5, jump 3.6 m/s.
-- The lope is 8.5 m/s, about 0.8 s and 7 m a bound. Tap within 0.4 s before landing or 0.18 s after; a tap in the first 0.3 s of a bound spoils it, so mashing doesn't work.
-- A miss on a slope over 14°, or with a load, trips you for a second. A drop of about 4.5 m trips you too.
+- The lope is 7.5 m/s, rising to 9.6 m/s at full flow; about 0.8 s a bound.
+- A tap counts from 0.4 s before landing to 0.18 s after.
+- Air use: ×1.3 with no flow, down to ×1.0 at full flow (a run was ×1.6).
+- A drop of about 4.5 m still trips you for a second; that's falling, not rhythm.
 - Outside only: indoors, sprint is still a plain run.
-- Not built yet: dropping your load on a stumble, dust puffs, and the turn-back time learning your loped ground.
+- Not built yet: dust puffs, and the turn-back time learning your loped ground.
 
 ## Phase 2: ground that costs
 
@@ -159,7 +161,7 @@ A separate terrain project with its own design doc (`tools/generate_region.py`, 
 - The chapters' pallet distances and the suit's turn-back maths need re-tuning after phases 1 and 2.
 
 ## Decided (the user, 11 Nov)
-- **The lope's keys:** hold sprint to push off, tap jump on each landing. A Settings switch, "Automatic lope", has the suit keep the rhythm for you.
+- **The lope's keys:** hold sprint and it's automatic. Tapping jump on each landing is a reward, never a need (no Settings switch).
 - **Stakes:** six in the lander's locker at the start; more printed from scrap.
 - **The waiver:** after the guided chapters, as an early high point of open play. The four chapters stay inside the rules: scrambles and ropes only.
 - **Build order:** phase 1 first, then a playtest of the feel. Each later phase waits for a go-ahead.
