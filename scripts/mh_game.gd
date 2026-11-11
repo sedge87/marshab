@@ -835,6 +835,7 @@ static func defaults() -> Dictionary:
 	d["mc_chatter"] = "normal"   # Mission Control small talk: log, quiet, normal, chatty (scripts/mission_control_link.gd)
 	d["rover_radio"] = true      # the rover radio starts on (O while driving)
 	# The compass strip is always on screen; these choose what's marked on it.
+	d["auto_lope"] = false       # the suit keeps the lope's rhythm for you (docs/traversal.md)
 	d["compass_home"] = true     # the lander, airlocks and landmarks
 	d["compass_pins"] = true     # your own pins (scripts/known_things.gd)
 	d["compass_finds"] = true    # things you've found

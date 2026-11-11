@@ -297,7 +297,7 @@ func dose(hours: float) -> void:
 func breathing_rate() -> float:
 	var rate := 1.0
 	var player: CharacterBody3D = world.player
-	if Vector2(player.velocity.x, player.velocity.z).length() > 5.5: rate *= SPRINT   # faster than a walk
+	if Vector2(player.velocity.x, player.velocity.z).length() > 5.5 and not (bool(player.get_meta("loping", false)) and int(player.get("lope_bounds")) >= 2): rate *= SPRINT   # faster than a walk, unless you're loping in rhythm (docs/traversal.md)
 	if world.get("carry") != null and not (world.carry.carrying as Dictionary).is_empty(): rate *= CARRYING
 	if power <= 0.0: rate *= COLD
 	if scrubber <= 0.0: rate *= STALE

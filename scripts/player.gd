@@ -4,9 +4,23 @@ const WALK_SPEED := 5.0
 const SLATE_WALK := .55   # of walking pace, with the slate up
 const SPRINT_SPEED := 8.0
 const MOUSE_SENSITIVITY := 0.0025
-# Tunable Martian movement values. 5.3 m/s against 14 m/s² reaches roughly 1 m.
-const GRAVITY := 14.0
-const JUMP_VELOCITY := 5.3
+# Mars's pull is 38% of Earth's (docs/traversal.md): long, floaty jumps and slow
+# falls. 3.6 m/s against 5.5 m/s² reaches about 1.2 m, with 1.3 s in the air.
+const GRAVITY := 5.5
+const JUMP_VELOCITY := 3.6
+# The lope (docs/traversal.md, phase 1): outside, holding sprint pushes you off
+# into a bound; tap jump as you land to keep the rhythm. In rhythm you're fast
+# and breathe like a walk (scripts/suit.gd); miss it and you're walking again.
+const LOPE_SPEED := 8.5
+const LOPE_UP := 2.2            # each bound's lift: about .8 s in the air, 7 m a bound
+const LOPE_TAP_BEFORE := .4     # tap this long before you land, or
+const LOPE_TAP_AFTER := .18     # this long after
+const LOPE_TOO_EARLY := .3      # a tap this soon after push-off spoils the bound (no mashing)
+const LOPE_RECOVER := .5        # back at a walk this long after a miss
+const STUMBLE_TIME := 1.0
+const STUMBLE_SPEED := .45      # of your pace, while you find your feet
+const STUMBLE_SLOPE := 14.0     # a miss on ground steeper than this trips you
+const HARD_LANDING := 7.0       # m/s: a drop of about 4.5 m
 # Hold Ctrl to crouch: lower eyes, a shorter body, a slow walk.
 const CROUCH_SPEED := 2.4
 const STAND_HEIGHT := 1.8
@@ -23,6 +37,14 @@ var _fall_speed := 0.0
 var _step_index := 0
 var _flashlight_enabled := false
 var crouching := false
+var loping := false            # in the bounding gait
+var lope_bounds := 0           # bounds in a row, in rhythm
+var _tap_age := 99.0           # since the last jump tap
+var _air_age := 0.0            # since this bound's push-off
+var _ground_age := 0.0         # since this bound landed
+var _spoiled := false          # tapped too early this bound
+var _lope_rest := 0.0          # no new lope until this runs out
+var _stumble := 0.0
 @onready var _body_shape: CollisionShape3D = $CollisionShape3D
 
 func _ready() -> void:
@@ -88,13 +110,7 @@ func _physics_process(delta: float) -> void:
 	_crouch(delta)
 	var slate_up := bool(get_meta("slate_up", false))   # walking with the slate up: no jumping, no running
 	var jump_pressed := not slate_up and (Input.is_action_pressed("jump") or Input.is_key_pressed(KEY_SPACE))
-	if grounded and jump_pressed and not _jump_was_pressed and not crouching:
-		velocity.y = JUMP_VELOCITY
-		MHAudio.sfx("jump")
-	elif not grounded:
-		velocity.y -= GRAVITY * delta
-	else:
-		velocity.y = -0.1
+	var jump_tapped := jump_pressed and not _jump_was_pressed
 	_jump_was_pressed = jump_pressed
 	# Input actions are retained for remapping. Direct key checks are a reliable
 	# fallback if a Project Settings input map is unavailable or damaged.
@@ -103,8 +119,21 @@ func _physics_process(delta: float) -> void:
 		_axis_pressed("move_back", KEY_S) - _axis_pressed("move_forward", KEY_W)
 	)
 	input_vector = input_vector.limit_length(1.0)
+	var sprint_held := not slate_up and (Input.is_action_pressed("sprint") or Input.is_key_pressed(KEY_SHIFT))
+	var indoors := _indoors()
+	var can_lope := sprint_held and not crouching and not indoors and input_vector.length() > .1 and _stumble <= 0.0
+	if grounded and jump_tapped and not crouching and not loping and not can_lope:
+		velocity.y = JUMP_VELOCITY
+		MHAudio.sfx("jump")
+	elif not grounded:
+		velocity.y -= GRAVITY * delta
+	else:
+		velocity.y = -0.1
+	_lope(delta, grounded, jump_tapped, can_lope)
 	var direction := (transform.basis * Vector3(input_vector.x, 0.0, input_vector.y)).normalized()
-	var speed := CROUCH_SPEED if crouching else SPRINT_SPEED if not slate_up and (Input.is_action_pressed("sprint") or Input.is_key_pressed(KEY_SHIFT)) else WALK_SPEED
+	# Indoors sprint is a plain run; outside it's the lope.
+	var speed := CROUCH_SPEED if crouching else LOPE_SPEED if loping else SPRINT_SPEED if sprint_held and indoors else WALK_SPEED
+	if _stumble > 0.0: speed *= STUMBLE_SPEED
 	if slate_up: speed *= SLATE_WALK
 	speed *= float(get_meta("body_speed", 1.0))   # the cold and low oxygen slow you (scripts/body.gd)
 	speed *= float(get_meta("load_speed", 1.0))   # carrying something heavy (scripts/o2_cartridge.gd)
@@ -114,6 +143,70 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor() and global_position.y > -10.0:
 		safe_position = global_position
 	_footsteps(speed, delta)
+
+## The lope: push off, and tap jump as you land to bound again.
+func _lope(delta: float, grounded: bool, tapped: bool, can_lope: bool) -> void:
+	_tap_age += delta
+	_lope_rest = maxf(0.0, _lope_rest - delta)
+	if _stumble > 0.0:
+		_stumble = maxf(0.0, _stumble - delta)
+		head.rotation.z = move_toward(head.rotation.z, 0.0, delta * .25)
+	if not loping:
+		set_meta("loping", false)
+		if grounded and can_lope and _lope_rest <= 0.0: _bound(true)
+		return
+	if not grounded:
+		_air_age += delta
+		_ground_age = 0.0
+		if tapped:
+			if _air_age < LOPE_TOO_EARLY: _spoiled = true
+			else: _tap_age = 0.0
+		return
+	# Landed.
+	if tapped: _tap_age = 0.0
+	if not can_lope:
+		_end_lope(false)   # you let go: back to a walk, no harm
+		return
+	var laden := float(get_meta("load_speed", 1.0)) < .999
+	var window := LOPE_TAP_BEFORE * (.6 if laden else 1.0)
+	var auto := bool(MHGame.setting("auto_lope"))
+	if auto or (not _spoiled and _tap_age <= window + _ground_age):
+		_bound(false)
+		return
+	_ground_age += delta
+	if _ground_age > LOPE_TAP_AFTER or _spoiled: _end_lope(true)
+
+func _bound(first: bool) -> void:
+	loping = true
+	set_meta("loping", true)
+	lope_bounds = 1 if first else lope_bounds + 1
+	velocity.y = LOPE_UP * (.85 if float(get_meta("load_speed", 1.0)) < .999 else 1.0)
+	_air_age = 0.0
+	_ground_age = 0.0
+	_tap_age = 99.0
+	_spoiled = false
+	_step_index = (_step_index + 1 + randi() % 3) % 4
+	MHAudio.sfx("step_dirt_%d" % _step_index, -5.0, .06)
+	if not first: MHAudio.sfx("suit_beep", -24.0, .0)   # the suit's soft tick: a clean landing
+
+func _end_lope(missed: bool) -> void:
+	loping = false
+	set_meta("loping", false)
+	lope_bounds = 0
+	if not missed: return
+	_lope_rest = LOPE_RECOVER
+	# A miss on a slope, or with a load in your arms, trips you.
+	if rad_to_deg(get_floor_angle()) > STUMBLE_SLOPE or float(get_meta("load_speed", 1.0)) < .999: stumble()
+
+## You lose your footing: slow for a moment, and the view lurches.
+func stumble() -> void:
+	if _stumble > 0.0: return
+	_stumble = STUMBLE_TIME
+	_lope_rest = STUMBLE_TIME
+	loping = false
+	set_meta("loping", false)
+	head.rotation.z = .09 if randf() < .5 else -.09
+	MHAudio.sfx("land", -2.0)
 
 ## Ctrl held: crouch. Letting go stands you up once there's headroom.
 func _crouch(delta: float) -> void:
@@ -159,6 +252,7 @@ func _footsteps(speed: float, delta: float) -> void:
 	if grounded and not _was_grounded and _fall_speed > 3.5:
 		MHAudio.sfx("land", -2.0 if _on_deck() else 0.0)
 		_stride = 0.0
+		if _fall_speed > HARD_LANDING: stumble()   # slow falls on Mars: it trips you, no more
 	_fall_speed = maxf(0.0, -velocity.y) if not grounded else 0.0
 	_was_grounded = grounded
 	if not grounded or bool(get_meta("build_mode_active", false)): return
@@ -171,6 +265,13 @@ func _footsteps(speed: float, delta: float) -> void:
 		_stride = 0.0
 		_step_index = (_step_index + 1 + randi() % 3) % 4
 		MHAudio.sfx(("step_metal_%d" if _on_deck() else "step_dirt_%d") % _step_index, -8.0, .06)
+
+## Inside the lander, a room or a vehicle (the suit knows: scripts/suit.gd).
+var _suit: Node
+func _indoors() -> bool:
+	if _suit == null or not is_instance_valid(_suit): _suit = get_tree().get_first_node_in_group("suit")
+	if _suit != null: return str(_suit.get("where")) != "outside"
+	return _on_deck()
 
 func _on_deck() -> bool:
 	for i in get_slide_collision_count():

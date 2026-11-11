@@ -299,6 +299,20 @@ func _audio() -> Control:
 		compass_grid.add_child(row)
 	screen_group.add_child(compass_grid)
 	form.add_child(screen_group)
+	# Moving: the lope's rhythm, kept by you or by the suit (docs/traversal.md).
+	var move_group := MHStyle.vbox(10)
+	move_group.add_child(MHStyle.label("Moving", 19, MHStyle.TEXT_PRIMARY, 600))
+	var lope_row := MHStyle.hbox(12)
+	var lope_toggle := MHWidgets.Switch.new()
+	lope_toggle.button_pressed = bool(_values.get("auto_lope", false))
+	lope_toggle.toggled.connect(func(on: bool) -> void: _values["auto_lope"] = on)
+	lope_row.add_child(lope_toggle)
+	var lope_text := MHStyle.body("Automatic lope: outside, hold sprint and the suit keeps the bounding rhythm for you. Off: tap jump as you land to keep it yourself.", 15, MHStyle.TEXT_SECONDARY)
+	lope_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lope_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lope_row.add_child(lope_text)
+	move_group.add_child(lope_row)
+	form.add_child(move_group)
 	var side := MHStyle.vbox(14)
 	side.custom_minimum_size.x = 460
 	side.add_child(MHStyle.eyebrow("Listening", MHStyle.TEXT_MUTED, 14))

@@ -54,7 +54,12 @@ The game's distances and speeds are already stretched for play (a 600 m pallet i
 
 **The suit's turn-back time** stays cautious. It only counts on lope speed over ground you've loped before.
 
-Files: `scripts/player.gd`, `scripts/suit.gd`, `scripts/mh_audio.gd`.
+**Built 11 Nov (not playtested).** In `scripts/player.gd` (`_lope`, `_bound`, `stumble`), `scripts/suit.gd` and Settings ("Automatic lope").
+- Gravity 5.5, jump 3.6 m/s.
+- The lope is 8.5 m/s, about 0.8 s and 7 m a bound. Tap within 0.4 s before landing or 0.18 s after; a tap in the first 0.3 s of a bound spoils it, so mashing doesn't work.
+- A miss on a slope over 14°, or with a load, trips you for a second. A drop of about 4.5 m trips you too.
+- Outside only: indoors, sprint is still a plain run.
+- Not built yet: dropping your load on a stumble, dust puffs, and the turn-back time learning your loped ground.
 
 ## Phase 2: ground that costs
 
