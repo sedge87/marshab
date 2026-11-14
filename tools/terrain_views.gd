@@ -2,7 +2,8 @@ extends SceneTree
 
 ## Screenshots of the region's landforms from fixed viewpoints (terrain
 ## overhaul, docs/terrain-overhaul.md), for checking the ground by eye.
-##   godot --path . --script res://tools/terrain_views.gd -- [out_dir] [site=<id>] [view names...]
+##   godot --path . --script res://tools/terrain_views.gd -- [out_dir] [site=<id>] [hud=off] [view names...]
+## walk_01 to walk_20 are a walk through the lava tube and the deep, mouth to heart.
 ## Also "rover_ground" (the debug overlay from above the pad's edge), "map"
 ## and "map_zoom" (the region map, with the Rover ground layer).
 ## base=x,z founds the base there (region metres) instead of the site's zone.
@@ -71,6 +72,7 @@ func _initialize() -> void:
 	for arg in args.slice(1):
 		if str(arg).begins_with("site="): site = str(arg).trim_prefix("site=")
 		elif str(arg).begins_with("base="): base = str(arg).trim_prefix("base=").split(",")
+		elif str(arg) == "hud=off": pass
 		else: wanted.append(str(arg))
 	var views := VIEWS.duplicate()
 	MHGame.site_id = site
@@ -87,6 +89,7 @@ func _initialize() -> void:
 	root.add_child(world)
 	for i in 10: await process_frame
 	world.set_tutorial_mode("off")
+	if args.has("hud=off") and world.get("explore_hud") != null: world.explore_hud.visible = false
 	world.day_night.set_hour(15.5); world.day_night.frozen = true
 	var zone := MHSiteTerrain.region_zone()
 	var origin := Vector2(float(zone.centre[0]), float(zone.centre[1]))
@@ -154,6 +157,14 @@ func _tube_views() -> Dictionary:
 			out["pitch_foot"] = [at.call(foot).x, at.call(foot).y, yaw.call(foot) + 180.0, 28.0, 0.0, "cave"]
 			var low := int(pitches[pitches.size() - 1].foot) + 40
 			out["lower_level"] = [at.call(low).x, at.call(low).y, yaw.call(low), 0.0, 0.0, "cave"]
+		# A walk through the whole cave, mouth to heart: [point, pitch (degrees), look back?].
+		var number := 1
+		for stop: Array in [[20, 0.0, false], [110, 6.0, false], [150, 14.0, true], [300, 0.0, false], [380, 10.0, false], [560, 0.0, false], [700, 0.0, false],
+				[815, 0.0, false], [866, -24.0, false], [888, 30.0, true], [920, 0.0, false], [948, -24.0, false], [969, 30.0, true], [1000, 0.0, false],
+				[1029, -24.0, false], [1050, 30.0, true], [1120, 0.0, false], [1195, 2.0, false], [1238, 6.0, false], [1262, 8.0, true]]:
+			var k := int(stop[0])
+			out["walk_%02d" % number] = [at.call(k).x, at.call(k).y, yaw.call(k) + (180.0 if stop[2] else 0.0), float(stop[1]), 0.0, "cave"]
+			number += 1
 		var heart := int(deep.get("heart", {}).get("point", points.size() - 10)) - 22
 		out["heart"] = [at.call(heart).x, at.call(heart).y, yaw.call(heart), 4.0, 0.0, "cave"]
 	return out
