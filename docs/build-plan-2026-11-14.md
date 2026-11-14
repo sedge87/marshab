@@ -185,6 +185,17 @@ See `docs/terrain-design.md` §11 for what was built, what the checks say and wh
 - **Crew asks,** folded into the goal trails.
 - **Ropes,** including down skylights and across fissures; the waiver; GAR-Y's winch.
 
+### B4. Caves: kit, hazards and the dark (after B3; added 15 Nov)
+The user (15 Nov): caves and lava tubes should be a wonder to explore, and risky, with a little fear. The maze and the plug that shuts the deep are built (`docs/terrain-design.md` §12). This section makes them dangerous and kit-gated.
+- **Physical gates that need kit:** each obstacle already in the cave gets the tool that passes it (ropes for skylights and pitches, boot spikes for the ice, a ladder for pits, GAR-Y's winch for a choke).
+- **Forced darkness:** a lamp battery that runs down, light stakes you leave behind, and a Map that draws only what your lamp has shown.
+- **Hazards:** rockfalls when a quake comes, thin floors, the ice, the cold, falls that hurt, getting lost.
+- **No radio:** relay beacons carry it down as far as the plug, and nothing past it.
+- **Reveals:** the marsquake that opens the deep, and the other quake and storm reveals in `region.json`.
+- **Looks:** the maze walls and the plug as broken rock, not slabs.
+
+**Explain this one to the user before building it.** §12 ends with a starting list; none of it is agreed.
+
 ## Track C: content and story (after A4 and B2)
 
 ### C1. Laying out the range ladder
