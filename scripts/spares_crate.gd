@@ -111,6 +111,8 @@ func interact(_player: Node = null) -> bool:
 
 func _open() -> void:
 	opened = true
+	var known: Node = world.get("known")
+	if known != null: known.finish("spares_crate")
 	_open_lid()
 	MHAudio.sfx_at("suit_clamp", self, -4.0, .9)
 	var pod := _lifepod()

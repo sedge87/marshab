@@ -131,6 +131,9 @@ func gary_out() -> void:
 		var side: Vector3 = (spot - world.lander.global_position).normalized().cross(Vector3.UP) * 3.5
 		_add_crate(spot + side, {})
 	var known: Node = world.get("known")
+	# The spares crate on the compass and Map, so you can find it again after
+	# going home for the hitch (playtest 14 Nov).
+	if known != null and crate != null and not bool(crate.opened): known.learn("spares_crate", "find", region_at(crate.global_position), "Spares crate", "you", "")
 	var gary: Node3D = world.get("scout_rover")
 	if known != null and gary != null: known.learn("gary_moving", "find", region_at(gary.global_position), "Something moving", "you", "castellanos")
 

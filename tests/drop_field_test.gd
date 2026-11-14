@@ -48,7 +48,7 @@ func _initialize() -> void:
 		return
 	var lander: Node3D = world.lander
 	var ridge: Vector3 = world.storm_drop.ridge
-	var ranges := {"power": [500.0, 700.0], "gary": [700.0, 920.0], "tools": [880.0, 1170.0]}
+	var ranges := {"power": [420.0, 600.0], "gary": [700.0, 920.0], "tools": [740.0, 980.0]}   # 14 Nov: power and tools come in for the bare suit
 	for kind in ranges:
 		var d := _flat(field.sites[kind].at, lander.global_position)
 		_check(d >= ranges[kind][0] and d <= ranges[kind][1], "%s is %.0f-%.0f m out (%.0f m)" % [kind, ranges[kind][0], ranges[kind][1], d])

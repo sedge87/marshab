@@ -697,8 +697,9 @@ static func ice_found(now: float) -> Array:
 	if steps.has("ice"): return []
 	steps["ice"] = now
 	learn_after("ice")
-	return [{"id": "step", "title": "Water ice confirmed", "text": "A good core. Plan: Ice Extractor, and the first one is ready on the build bar. Place it within 7 m of a core that found ice.", "tone": "valid"},
-		{"id": "rover", "title": "The crew rover is on its way", "text": "Mission Control: it lands with the next cargo and waits in your vehicle bay once you build one.", "tone": "info"}]
+	return [{"id": "step", "title": "Water ice confirmed", "text": "A good core. Plan: Ice Extractor, and the first one is ready on the build bar. Place it within 7 m of a core that found ice.", "tone": "valid"}]
+	# (14 Nov: the "crew rover is on its way" notice went: no Earth resupply,
+	# and the rovers are found in wrecks, docs/bases-and-vehicles.md.)
 
 ## The soft net (question 3): no game over from the stores alone.
 static func _check_stores(sim: Object, crew: int, now: float) -> Array:
