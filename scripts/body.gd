@@ -124,10 +124,16 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 func comfort() -> float:
 	return float(COMFORT.get(str(MHGame.setting("body_cues")), 1.0))
 
+## Suited up indoors: the suit keeps the room off you.
+func suited_indoors() -> bool:
+	var suit: Node = world.get("suit") if world != null else null
+	return suit != null and bool(suit.get("helmet")) and str(suit.get("where")) != "outside"
+
 ## What the air around you is like, or {} where the body isn't acted on
 ## (outside, the rover, or modes without the simulation).
 func surroundings() -> Dictionary:
 	if not MHGame.simulation_on() or world.player == null: return {}
+	if suited_indoors(): return {}   # on the suit's own air and heat (scripts/suit.gd)
 	var cabin: Node = world.get("cabin_life")
 	if cabin != null and cabin.running() and cabin.player_inside() and cabin.breathable(): return cabin.conditions()
 	# The General Module (3c): its own life support (scripts/module_life.gd).
@@ -198,7 +204,7 @@ func _process(delta: float) -> void:
 		harm = {"rate": maxf(float(harm.rate), 0.0) + STARVING_HARM, "causes": (harm.causes as Array) + ["hunger"]}
 	# Radiation only hurts in a solar storm, and only out in the open
 	# (docs/hab-supply.md): the lander, the module, the base and the rover all shelter you.
-	if solar_storm() and air.is_empty():
+	if solar_storm() and air.is_empty() and not suited_indoors():
 		harm = {"rate": maxf(float(harm.rate), 0.0) + STORM_HARM, "causes": (harm.causes as Array) + ["solar storm"]}
 	causes = harm.causes
 	if MHGame.crew_can_be_harmed() and hours > 0.0 and hours < 6.0:

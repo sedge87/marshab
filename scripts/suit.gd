@@ -109,6 +109,16 @@ const SEAL_CHECK_SECONDS := 4.5
 var seal_checked := false        # (saved)
 var wrist_hint_uses := 0         # times you've raised it yourself (saved)
 var seal_banner := false         # the check is on the pad now
+## Putting it on and taking it off (docs/hab-supply.md, 14 Nov). At the airlock
+## it's a couple of seconds as you pass: a clunk and the visor lighting up, or
+## the reverse. Indoors, K suits you up from wherever you stand: you breathe
+## the suit's air (and its heat), so a cold or stale module can't hurt you
+## while it lasts. K again takes it off; an empty suit comes off by itself.
+const DON_SECONDS := 2.0
+var helmet := false              # suited up indoors (saved)
+var _don := 0.0                  # seconds of the don/doff moment left
+var _don_on := true
+var _prev_where := ""
 
 func setup(target_world: Node) -> void:
 	world = target_world
@@ -152,6 +162,8 @@ func _process(delta: float) -> void:
 		# was (and the rooms being edited aren't a fair test of "inside"), so
 		# you keep breathing whatever you were breathing.
 		if world.builder == null or not world.builder.build_mode: where = _where()
+		_track_airlock()
+		_suit_up_hint()
 		_has_panel = world.builder != null and (world.builder.placed_interior as Array).any(func(item): return str(item.get("id", "")) == "suit_service_panel")
 		_prune_dropped()
 	if not active():
@@ -168,6 +180,13 @@ func _process(delta: float) -> void:
 			var notes: Node = world.get("notes")
 			if notes != null: notes.think("wrist")
 		if _patch_kit(): _patch_by_hand(hours)   # pallet 4's patch kit works out here too
+	elif helmet:
+		# Suited indoors: on the suit's own air, and nothing tops it up.
+		if not passed_out: step(hours)
+		if o2 <= 0.0 or power <= 0.0:
+			suit_off()
+			var weather: Node = world.get("weather")
+			if weather != null and weather.has_method("toast"): weather.toast("Suit's empty", "The helmet's off: you're breathing the room again. Get the power back, or get to the lander.", MHStyle.DANGER)
 	else:
 		_top_up(delta)
 		_patch_by_hand(hours)
@@ -176,7 +195,10 @@ func _process(delta: float) -> void:
 		_warnings()
 		_breathing(delta)
 	_blink += delta
-	_set_visor_visible(where == "outside" and not bool(world.player.get_meta("build_mode_active", false)))
+	_don = maxf(0.0, _don - delta)
+	var wearing := where == "outside" or helmet or (_don > 0.0 and not _don_on)
+	_set_visor_visible(wearing and not bool(world.player.get_meta("build_mode_active", false)))
+	_visor.modulate.a = 1.0 if _don <= 0.0 else (1.0 - _don / DON_SECONDS if _don_on else _don / DON_SECONDS)
 	_visor.queue_redraw()
 	if o2 <= 0.0 and where == "outside" and MHGame.crew_can_be_harmed() and not passed_out: pass_out()
 
@@ -593,7 +615,7 @@ func _warnings() -> void:
 
 ## Your own breathing: slow at rest, quick when sprinting or short of air.
 func _breathing(delta: float) -> void:
-	if where != "outside":
+	if where != "outside" and not helmet:
 		return
 	_breath_wait -= delta
 	if _breath_wait > 0.0: return
@@ -609,6 +631,57 @@ func _breathing(delta: float) -> void:
 	_breath_in = not _breath_in
 
 # ---------- the visor ----------
+
+## Through the airlock: suit on as you go out, off as you come in.
+func _track_airlock() -> void:
+	if where == _prev_where: return
+	var was_out := _prev_where == "outside"
+	var now_out := where == "outside"
+	if _prev_where != "" and was_out != now_out and active() and not helmet: _don_moment(now_out)
+	if now_out: helmet = false   # outside, it's simply on
+	_prev_where = where
+
+func _don_moment(on: bool) -> void:
+	_don = DON_SECONDS
+	_don_on = on
+	MHAudio.sfx("suit_clamp", -8.0)
+	if on: get_tree().create_timer(DON_SECONDS * .6).timeout.connect(func() -> void: MHAudio.sfx("suit_beep", -10.0))
+
+## Indoors: whether K can suit you up now.
+func can_suit_up() -> bool:
+	return active() and where != "outside" and not helmet and o2 > .05 and power > .05
+
+func suit_up() -> void:
+	if not can_suit_up(): return
+	helmet = true
+	_don_moment(true)
+
+func suit_off() -> void:
+	if not helmet: return
+	helmet = false
+	_don_moment(false)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey) or not event.pressed or event.echo or event.physical_keycode != KEY_K: return
+	if get_tree().paused or world == null or world.player == null: return
+	if world.builder != null and world.builder.build_mode: return
+	if bool(world.player.get_meta("ui_freeze", false)): return
+	if helmet: suit_off()
+	elif can_suit_up(): suit_up()
+	else: return
+	get_viewport().set_input_as_handled()
+
+## The first time the room turns on you, a nudge: you can suit up in here.
+func _suit_up_hint() -> void:
+	if helmet or where == "outside" or _said.has("suit_up_hint") or not active(): return
+	var body: Node = world.get("body")
+	if body == null or not body.has_method("surroundings"): return
+	var air: Dictionary = body.surroundings()
+	if air.is_empty(): return
+	if float(air.get("co2_pct", 0.0)) < 1.5 and float(air.get("temp_c", 20.0)) > 4.0 and float(air.get("o2_pct", 21.0)) > 18.0: return
+	_said["suit_up_hint"] = true
+	var weather: Node = world.get("weather")
+	if weather != null and weather.has_method("toast"): weather.toast("The room's turning on you", "Press K to suit up and breathe from the suit while you sort it out. K again takes it off.", MHStyle.WARN)
 
 func _set_visor_visible(on: bool) -> void:
 	if _visor.visible != on: _visor.visible = on
@@ -779,7 +852,7 @@ func wake_spot() -> Dictionary:
 
 func export_state() -> Dictionary:
 	return {"o2": o2, "power": power, "scrubber": scrubber, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv,
-		"drink_l": drink_l, "food_bar": food_bar, "dry_hours": dry_hours, "seal_checked": seal_checked, "wrist_hint_uses": wrist_hint_uses, "addons": addons, "waiting": waiting,
+		"drink_l": drink_l, "food_bar": food_bar, "dry_hours": dry_hours, "seal_checked": seal_checked, "wrist_hint_uses": wrist_hint_uses, "addons": addons, "waiting": waiting, "helmet": helmet,
 		"dropped": dropped.map(func(d): return {"placement_id": d.placement_id, "label": d.label, "position": [d.position.x, d.position.y, d.position.z]})}
 
 func restore_state(state: Dictionary) -> void:
@@ -798,4 +871,5 @@ func restore_state(state: Dictionary) -> void:
 	# Saves from before the bare suit had the old suit: air pack, battery and heater.
 	addons = (state.get("addons", [] if state.is_empty() else ["air_pack", "battery", "heater"]) as Array).duplicate()
 	waiting = (state.get("waiting", []) as Array).duplicate()
+	helmet = bool(state.get("helmet", false))
 	dropped = (state.get("dropped", []) as Array).map(func(d): return {"placement_id": str(d.placement_id), "label": str(d.label), "position": Vector3(float(d.position[0]), float(d.position[1]), float(d.position[2]))})

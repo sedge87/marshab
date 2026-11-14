@@ -101,6 +101,20 @@ func _initialize() -> void:
 	await create_timer(3.0).timeout
 	_check(suit.where == "habitat" and suit.full(), "in the airlock the suit fills (%s, o2 %.2f, power %.2f)" % [suit.where, suit.o2, suit.power])
 	_check(sim.o2_reserve_kg < reserve and sim.battery_kwh < kwh, "from the habitat's oxygen and batteries (%.3f kg, %.2f kWh)" % [reserve - sim.o2_reserve_kg, kwh - sim.battery_kwh])
+	# Suiting up indoors (14 Nov): K puts it on; the room can't reach you; the suit drains; empty, it comes off.
+	_check(suit._don > 0.0 or not suit._don_on, "coming in, the suit comes off with a moment (don %.2f)" % suit._don)
+	_check(suit.can_suit_up(), "indoors you can suit up")
+	suit.suit_up()
+	_check(suit.helmet and world.body.surroundings().is_empty(), "suited indoors, the room's air can't reach you")
+	var before: float = suit.o2
+	for i in 6:   # the clock in tests barely moves: nudge it on
+		MHGame.sol_hour = wrapf(MHGame.sol_hour + .2, 0.0, 24.0)
+		await create_timer(.3).timeout
+	_check(suit.o2 < before, "suited indoors you breathe the suit's own air (%.3f to %.3f)" % [before, suit.o2])
+	suit.o2 = 0.0
+	await create_timer(1.0).timeout
+	_check(not suit.helmet, "an empty suit comes off by itself")
+	await create_timer(3.0).timeout
 	# A suit service panel: a full refill at once.
 	suit.o2 = .3; suit.power = .3
 	await _put(world, Vector3(1.5, y + .3, 0))
