@@ -25,8 +25,6 @@ def read_dtm(path):
     a[a < -1e30] = np.nan
     return a
 
-sys.path.insert(0, __file__.rsplit('\\', 1)[0].rsplit('/', 1)[0])
-from dtm_read import read_dtm
 
 
 def blur(a, r):

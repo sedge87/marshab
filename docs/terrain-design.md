@@ -355,3 +355,67 @@ Everything else in the overhaul (the geology at three scales, textures from the 
   - picking placed kit up again;
   - GAR-Y's ground scan, viewpoints and the contour Map.
 - **C1 (laying out the range ladder):** the wrecks, the walkers, the deposits and the goal trails, placed using this doc's map. The walker spots here are only suggestions.
+
+## 11. As built (B2, 14–15 Nov)
+
+B2 reshaped the region in three commits (`eaf75d7`, `0a317b6`, `3b32c78`). All of §3 to §8 is in the land. The old map is kept in `docs/terrain/before-b2/` (with `old-vs-new.png`). Not playtested yet.
+
+### What's there
+- **Home and the rings** are in `region.json` (`home`, `rings`).
+- **The east:**
+  - the young lava plain, with the east mesa standing out of it as an island;
+  - the platy belt along its west edge, with three safe lines (`platy_lanes`);
+  - the lava tube, 1.7 km long, its floor about 40 m down, with six skylights and hollow ground along it;
+  - two fissures; the main one is up to 52 m wide and 90 m deep, with one bridge crossing;
+  - chaos blocks;
+  - a ripple belt.
+- **The deep:** past the tube's upstream end the passage goes on for 856 m, down three steep pitches (26, 30 and 26 m) to a lower level and the heart's chamber, about 155 m under the land. The pitches are about 70° slopes, not sheer drops: a swept cave mesh can't go straight down. They need ropes (B3).
+- **Ring 2:**
+  - the yardang maze, **made from a real HiRISE elevation model** (see below);
+  - the raised riverbeds over a sand sheet;
+  - the buried glacier with open and roofed pits;
+  - a fresh crater with rays;
+  - the far mesa's 58 m cliff;
+  - a ripple belt round the dune sea.
+- **Ring 1:**
+  - the frost hollow;
+  - the dry channel with two low crossings;
+  - a sand sheet;
+  - a scree gully up the near mesa;
+  - the three kit places (`kit_places`): the ledge-topped outcrop, the collapse pit and the cracked sliver.
+- **No straight lines:** two step lines with passes (`step_lines`), ledges 1–4 m high, 34 small cracks and boulder clusters.
+- **The canyon:** five more ways out on foot, about every 600–750 m.
+- **`ground.png`:** the ground kind, the hidden layer (hollow ground and roofed sinkholes) and shallow ice, ready for `scripts/ground.gd` in B3.
+- **Looks:**
+  - two new ground textures (young lava, pale ripple sand);
+  - darker lava sheets with pale dust in their hollows;
+  - dust devil tracks;
+  - layer bands on the yardangs, chaos blocks, fissure walls and step fronts.
+
+### What the generator's checks say (`region.json` `checks`)
+- **Straight lines from home:** a choice about every 209 m in ring 1, 149 m in ring 2 and 146 m in ring 3. The targets were 150–300 m and 50–150 m, so rings 2 and 3 are at the sparse end.
+- **On foot:** all walkable ground is reached from home, including the whole canyon floor. This check works at 10 m, so it can't see a pit smaller than that.
+- **The canyon floor by rover:** only by the ramp.
+- **Rover routes:** all 27 drivable.
+
+### Where it differs from the plan above
+- **The three landing pads are still there.** The game and its tests still use the crater-floor and riverbed sites. They go when the landing is reworked.
+- **Places moved to fit:**
+  - the heart is at (2895, 225);
+  - the main fissure runs from (1290, 640) to (3040, 70), south-east of the crater, not through it;
+  - the raised riverbeds are at about x −100 to 50, west of the far mesa;
+  - the chaos blocks are at (2560, 2100);
+  - the buried glacier's mesa is at (−2120, −760).
+- **"Sink the ground only near the surface" (§10) can't be done.** Terrain3D's ground is one sheet, so a passage that left the sunk strip would have to pass through it. The ground is sunk under the whole tube and the deep, with the copy laid over the top, as before. It works, and the world still loads in about 15 s.
+- **The fissures are not a hard gate for the far north-east.** A rover can also get there through the crater's east breach. The bridge is a short cut. If the heart's ground should be gated, close that breach in C1.
+- **The collapse pit near home is sheer on every side,** so it's the one place that breaks "nothing traps you" if you jump in without a rope. It has a rubble lip so you can't walk in by accident, and it's flagged `rope_only` for the game to handle (GAR-Y's rescue).
+- **The step lines are gentle.** The north scarp is 18 m in two ledges and the east front is 11 m. They may need to be taller after a playtest.
+- **Only the yardangs use real elevation data so far.** The fissure, raised-riverbed and other models (§10, source data) are 200–350 MB each and are left for a later pass.
+
+### Real data
+- **Yardangs:** `assets/terrain/patches/yardangs_arabia.npz`, cut by `tools/hirise_patch.py` from HiRISE DTM DTEED_061610_1895_061887_1895_A01 (Arabia Terra, 2 m a point; NASA/JPL-Caltech/UArizona/USGS). The plain under the ridges is taken off. The patch is turned to our wind, shrunk to 55 %, stood 1.5 times taller and mirror-tiled, so it makes a maze up to 43 m tall.
+- The raw download (51 MB) is in `.claude_tmp/dtm/`, which isn't committed.
+
+### Tools
+- `python tools/generate_region.py [--quick] [--debug-routes]`: about 2.5 minutes (it was 2). `--debug-routes` writes pictures of where a rover and a walker can go to `.claude_tmp/`.
+- `tools/terrain_views.gd`: screenshots of the new places; the tube's and the deep's views are worked out from `region.json`.

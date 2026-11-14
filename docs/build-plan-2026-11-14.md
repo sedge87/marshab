@@ -168,7 +168,9 @@ A new doc, taking over from `docs/terrain-overhaul.md` where they disagree. It c
 
 **Explain this one to the user before building it.**
 
-### B2. Reshape the region
+### B2. Reshape the region · Built 15 Nov, not playtested
+See `docs/terrain-design.md` §11 for what was built, what the checks say and where it differs from the plan. The old map is in `docs/terrain/before-b2/`.
+
 - `tools/generate_region.py`, the caves, the lava tube and its skylights, plus a first pass on the deep.
 
 ### B3. Traversal phases 2 to 5 (`docs/traversal.md`)
