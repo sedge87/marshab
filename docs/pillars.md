@@ -69,7 +69,7 @@ Examples: a suit-port airlock (faster turnaround), a garage (rover charging and 
 **Walkers seed bases. One walker, one base.**
 - Each walker carries a **base core**: an airlock, a life-support node and a power hub.
 - At the spot you choose, the walker kneels, sets the core down and folds its legs into it. The walker *becomes* that base's heart, so nothing is left standing on the build site.
-- Walker 1 seeds the main base, where the crew land.
+- Walker 1 seeds the first base, beside the lander. You choose which base becomes the main base, where the crew land (`docs/bases-and-vehicles.md`).
 - Each walker you find and fix later lets you start an outpost: an ice-wall camp, a cave refuge, a station at the life find.
 - The number of bases depends on how many walkers you find, not on a timer.
 - This is NASA-plausible: JPL's ATHLETE concept is a six-legged robot that carries habitat modules.
@@ -108,6 +108,7 @@ The robots do the heavy work; you do the fine work (cores, photos, anchors, firs
 | **Walkers** | carry a base core to a spot and become that base |
 | **GAR-Y** (he/him) | as now: companion, scout, "Show me", radar survey, cores, the blackout rescue and his personality. He **grows with upgrades** from found plans: deeper radar (and the magnetic layer for the heart), a winch, a longer battery, a second sample arm. He doesn't ferry materials. |
 | **Hauler carts** | ferry materials from the machines at deposits to the store, each along one route |
+| **Scout buggy** | open and quick: you stay suited; about 2 km of charge; found in a ring 1 wreck |
 | **Pressurised rover** | the big range unlock: a mobile safe pocket with its own air, where you sleep on long trips |
 | **Scout drone** (Ingenuity-like) | flies ahead and drops markers to plan routes, feeding the stake trails (traversal phase 3) |
 
@@ -149,8 +150,10 @@ Keep the four chapters, rewritten to match:
 1. ~~**The range ladder**~~ done 14 Nov: `docs/range-ladder.md`.
 2. ~~**The room and equipment list**~~ done 14 Nov: `docs/rooms-and-equipment.md`.
 3. ~~**The hab's supply chain**~~ done 14 Nov: `docs/hab-supply.md` (it also keeps thirst as a body need and makes the mission an international agency's).
-4. **The walker core:** its contents and upgrades are settled in `docs/rooms-and-equipment.md`. Still open: how outposts differ from the main base, and the walk-and-kneel moment.
+4. ~~**The walker core and outposts**~~ done 14 Nov: `docs/bases-and-vehicles.md`.
 5. ~~**The build feel**~~ done 14 Nov: instant, with a short "watch it build" moment (`docs/rooms-and-equipment.md`).
-6. **Automation:** extractor and miner output, hauler carts, how routes are set, and what a cart does when it hits trouble.
-7. **The scout drone and the pressurised rover rework.**
-8. **The blackout rule** outside the chapters, now that survival is strict outside.
+6. ~~**Automation**~~ done 14 Nov: `docs/bases-and-vehicles.md`.
+7. ~~**The drone and the rovers**~~ done 14 Nov: `docs/bases-and-vehicles.md`.
+8. ~~**The blackout rule**~~ done 14 Nov: `docs/bases-and-vehicles.md`.
+
+**All eight talks are done.** Next comes the build plan.
