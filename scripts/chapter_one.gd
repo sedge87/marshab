@@ -107,6 +107,7 @@ static func reset() -> void:
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
 	crates_landing = false
 	MHSamples.reset()   # step 5's samples and journal start with the chapter
+	MHRoomTypes.reset() # no core upgrades fitted yet
 	MHCrewPlan.reset()  # you're alone; Earth's crew plan comes when the chapter ends
 	MHJournal.reset()
 
@@ -116,13 +117,16 @@ static func export_state() -> Dictionary:
 		"made": made.duplicate(), "paid": paid.duplicate(),
 		"has_corer": has_corer, "has_hammer": has_hammer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
 		"stores_landed": stores_landed, "reserve_used": reserve_used, "emergency_eta": emergency_eta, "said": said.duplicate(),
-		"water_hours": water_hours, "soil": soil, "soil_potted_at": soil_potted_at, "lander_spots": lander_spots.duplicate(true), "crew_plan": MHCrewPlan.export_state()}
+		"water_hours": water_hours, "soil": soil, "soil_potted_at": soil_potted_at, "lander_spots": lander_spots.duplicate(true), "crew_plan": MHCrewPlan.export_state(), "rooms": MHRoomTypes.export_state()}
 
 ## A loaded save. One from before step 4 has no "chapter_one" and plays as
 ## already supplied: every plan known, no crates, the old cargo budget.
 static func load_state(state: Dictionary, has_section: bool) -> void:
 	reset()
 	MHCrewPlan.load_state(state.get("crew_plan", {}))   # older chapter saves: the bunk-based crew, no plan
+	MHRoomTypes.load_state(state.get("rooms", {}))
+	# Saved before the core upgrades (A3, 14 Nov): every room type stays open.
+	if has_section and not state.has("rooms"): MHRoomTypes.fit_all()
 	if not has_section:
 		older_rules = true
 		return
@@ -250,14 +254,24 @@ static func placed_count(id: String, builder: Object) -> int:
 			if str(item.get("id", "")) == id: count += 1
 	return count
 
-## Free copies (from crates, or the fabricator's first) not yet placed.
+## Free copies: from crates, the fabricator's first, and the key piece each
+## new room brings (scripts/room_types.gd; worked out from the rooms, so
+## removing a room takes its key piece back).
+static func free_copies(id: String, builder: Object) -> int:
+	return int(stock.get(id, 0)) + MHRoomTypes.key_grants(id, builder)
+
+## Free copies not yet placed.
 static func available(id: String, builder: Object) -> int:
-	return maxi(0, int(stock.get(id, 0)) - placed_count(id, builder))
+	return maxi(0, free_copies(id, builder) - placed_count(id, builder))
 
 ## Free copies ready to place: {id: count}.
 static func ready_to_place(builder: Object) -> Dictionary:
 	var out := {}
-	for id in stock:
+	var ids: Array = stock.keys()
+	for kind in MHRoomTypes.ROOMS:
+		var key := MHRoomTypes.key_of(str(kind))
+		if not ids.has(key) and MHRoomTypes.key_grants(key, builder) > 0: ids.append(key)
+	for id in ids:
 		var left := available(str(id), builder)
 		if left > 0: out[str(id)] = left
 	return out
@@ -278,7 +292,7 @@ static func settle(builder: Object) -> void:
 	for id in paid:
 		if not ids.has(id): ids.append(id)
 	for id in ids:
-		var want := maxi(0, placed_count(str(id), builder) - int(stock.get(id, 0)))
+		var want := maxi(0, placed_count(str(id), builder) - free_copies(str(id), builder))
 		var diff := want - int(paid.get(id, 0))
 		if diff == 0: continue
 		var cost := plan_cost(str(id))
@@ -388,14 +402,14 @@ static func fabricators(builder: Object) -> Array:
 	if builder == null: return []
 	return (builder.get("placed_interior") as Array).filter(func(i): return str(i.get("id", "")) == "fabricator")
 
-## Work speed: Power & Engineering at full rate, the General Module at 75 %
-## (as other work there). For one printer, or the best of them.
+## Work speed: full rate anywhere, faster in a Workshop (its key piece is the
+## Print Shop itself; rooms only help, 14 Nov). For one printer, or the best.
 static func fabricator_speed(builder: Object, printer := "") -> float:
 	var best := 0.0
 	for item in fabricators(builder):
 		if not printer.is_empty() and str(item.get("placement_id", "")) != printer: continue
 		var zone: Dictionary = builder.call("_zone_at_point", Vector2((item.position as Vector3).x, (item.position as Vector3).z)) if item.has("position") else {}
-		best = maxf(best, .75 if str(zone.get("kind", "")) == "general" else 1.0)
+		best = maxf(best, MHRoomTypes.WORKSHOP_PRINT if str(zone.get("kind", "")) == "engineering" else 1.0)
 	return best
 
 ## The printer a call means: the one named, or the first placed.
@@ -601,6 +615,10 @@ static func tick(hours: float, builder: Object) -> Array:
 	return out
 
 static func _plan_message(id: String) -> Dictionary:
+	if bool(plan(id).get("upgrade", false)):
+		for up in MHRoomTypes.UPGRADES:
+			if str(MHRoomTypes.UPGRADES[up].plan) == id:
+				return {"id": "plan", "title": "New core upgrade: %s" % str(MHRoomTypes.UPGRADES[up].label), "text": "Castle sent the plan. Fit it at the core's rack (%s feedstock) and you can build %s." % [MHStyle.kg(roundi(MHRoomTypes.cost(str(up)))), MHRoomTypes.opens_text(str(up))], "tone": "info"}
 	return {"id": "plan", "title": "New plan: %s" % label(id), "text": "Mission Control sent the plan, and the first one is printed: it's ready on the build bar's Unpacked tab.", "tone": "info"}
 
 static func _count(builder: Object, kind: String) -> int:

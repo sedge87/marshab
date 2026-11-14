@@ -127,3 +127,38 @@ The science instruments:
 - Upgrade and room costs in materials.
 - The add-on list per slot (suit, GAR-Y, drone, rover).
 - Which plans sit in which wreck, by ring (with the range ladder).
+
+## As built (A3, 14 Nov 2026)
+
+*What the builder decided where this doc left things open. Code: `scripts/room_types.gd` (the room model), `scripts/core_upgrades_screen.gd` and `scripts/core_panel.gd` (fitting upgrades), `scripts/room_build_moment.gd` (the build moment).*
+
+- **The ids stay, so saves keep working.** `general` is now the walker core ("Walker Core" on the bar), `engineering` the Workshop, `science` the Lab, `living` Quarters, `hydroponics` the Greenhouse, `medical` the Shelter, `vehicle_bay` the Garage; `galley` and `storage` keep their names.
+- **Cut room types:** Life Support, Hygiene and Mission Operations (and Waste Management, cut on 31 Oct). Their kit moved:
+  - life-support kit fits the core and the Workshop;
+  - hygiene kit fits Quarters (the toilet and washbasin also fit the core);
+  - comms kit fits the Lab (the comms station also fits the core);
+  - older saves turn those rooms into the Workshop, Quarters and the Lab.
+- **The core** is the carried module of the opening, unchanged in shape and in how it's set down, with the same fit-out kit (its rack holds the life-support and power switches). Once there's a walker in the world, the core can't be drawn by hand; Creative still can. Its bunk is the "poor" one: no penalty, but Quarters sleep better.
+- **Key pieces:** Workshop, the Print Shop; Lab, the Science Workbench; Quarters, a bunk; Galley, the kitchenette; Greenhouse, a planter; Storage, a cargo rack; Garage, the rover charger; Shelter, a bunk (the "shielded bunk"). A new room places its key piece itself: a bunk or counter against a wall, a bench or planter near the middle. It's free, worked out from the rooms like the crate copies. Remove it and it waits on the Unpacked tab, to put back wherever you like; remove the room and the free copy goes with it.
+- **Bonuses built now:**
+  - the Workshop's Print Shop prints 1.5 times as fast; the core's prints at full speed (the old 75 % was a penalty);
+  - a night in Quarters (bunk inside) leaves you rested 1.5 times as long;
+  - the Shelter (bunk inside) has twice the hull's shielding and counts as a storm shelter without a locker;
+  - the Lab is where finds are analysed, and the Greenhouse grows food, as before.
+  - **Later:** the Galley's food-bar packer and longer trips (A5), Storage holding more (with the shared store, A4), the Garage's faster turnaround (A7). Their cards show no bonus until then.
+- **No noise or cramped penalties:** the noisy-room and noisy-item lists are empty, and the core gives the crew somewhere to work at full speed.
+- **Core upgrades** are fitted with E on the panel beside the core rack's switches (its lamp is amber while a plan waits). Each costs feedstock as it's fitted; it isn't printed. Until wrecks hold plans (the range ladder), they come as story beats:
+
+| Upgrade | Opens | Plan arrives | Feedstock |
+|---|---|---|---|
+| Water loop | Galley, Greenhouse | the water step (water of your own) | 180 kg |
+| Heavy power | Workshop | your first Print Shop job | 220 kg |
+| Lab services | Lab | science opens (in the opening, the ice extractor) | 120 kg |
+| Vehicle charging | Garage | sol 10 | 200 kg |
+| Shielding | Shelter | sol 10 | 250 kg |
+
+  - Quarters and Storage are open from the start.
+  - Locked room types stay on the Rooms tab, greyed, marked CORE UPGRADE, with the reason.
+  - The upgrades apply under chapter one's rules (new Survival and Freedom games). Creative and older saves have every room type open; a save from before A3 loads with every upgrade fitted.
+  - Upgrades are kept per base ("main" for now), ready for A4.
+- **The build moment:** placing a liner room (not the Garage's hangar) plays about three seconds over it: the liner inflates off the floor, then a crawler passes over the roof laying a regolith skin, and it fades. The room works at once.

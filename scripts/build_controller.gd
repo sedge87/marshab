@@ -2,6 +2,7 @@ class_name BuildController
 extends Node
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const HOW_IT_WORKS := preload("res://scripts/how_it_works.gd")
+const ROOM_BUILD_MOMENT := preload("res://scripts/room_build_moment.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 # One floorplan is the source of truth for plan tiles, visible shell and collision.
@@ -81,7 +82,7 @@ const BUILD_RULES := preload("res://scripts/build_rules.gd")   # step 3c: the ga
 const FLOOR_PLAN := preload("res://scripts/floor_plan.gd")
 var plan_legend: Control
 # What each room shows on its roof. 31 Oct (room changes): the General Module
-# takes the comms mast; Sleeping Quarters, the Day Room and Storage &
+# takes the comms mast; Quarters, the Galley and Storage &
 # Recycling got their own (asset_packs/mars_roof_fittings_v2).
 const ROOF_ACCESSORY_SCENES := {
 	"general": preload("res://assets/structural_kit/roof_living_comms_mast.glb"),
@@ -110,24 +111,27 @@ const REACTOR_OUTPUT := 360
 const CREW_TARGET := 6
 const RESEARCH_TARGET := 6
 const ZONE_TYPES := {
-	# Room changes (docs/room-changes.md, 31 Oct): the ids stay so saves and
-	# Missions keep working; living is Sleeping Quarters, galley the Day Room,
-	# engineering the Workshop. Waste Management merged into Storage.
-	"general":{"label":"General Module","colour":Color(.47,.53,.58),"cost":CELL_COST},
-	"living":{"label":"Sleeping Quarters","colour":Color(.22,.48,.78),"cost":CELL_COST},
-	"science":{"label":"Science Lab","colour":Color(.55,.26,.74),"cost":CELL_COST},
-	"storage":{"label":"Storage & Recycling","colour":Color(.62,.46,.18),"cost":CELL_COST},
-	"hydroponics":{"label":"Hydroponics","colour":Color(.18,.62,.31),"cost":CELL_COST},
+	# The ids stay so saves keep working; the names are the 14 Nov room model
+	# (docs/rooms-and-equipment.md, scripts/room_types.gd): general is the
+	# walker's core (once the General Module), living Quarters, science the
+	# Lab, hydroponics the Greenhouse, engineering the Workshop, medical the
+	# Shelter, vehicle_bay the Garage. Life Support, Hygiene, Mission
+	# Operations and Waste Management were cut (CUT_ROOMS).
+	"general":{"label":"Walker Core","colour":Color(.47,.53,.58),"cost":CELL_COST},
+	"living":{"label":"Quarters","colour":Color(.22,.48,.78),"cost":CELL_COST},
+	"science":{"label":"Lab","colour":Color(.55,.26,.74),"cost":CELL_COST},
+	"storage":{"label":"Storage","colour":Color(.62,.46,.18),"cost":CELL_COST},
+	"hydroponics":{"label":"Greenhouse","colour":Color(.18,.62,.31),"cost":CELL_COST},
 	"life_support":{"label":"Life Support","colour":Color(.12,.63,.67),"cost":CELL_COST},
-	"engineering":{"label":"Power & Engineering","colour":Color(.88,.30,.16),"cost":CELL_COST},
-	"galley":{"label":"Day Room","colour":Color(.90,.53,.16),"cost":CELL_COST},
+	"engineering":{"label":"Workshop","colour":Color(.88,.30,.16),"cost":CELL_COST},
+	"galley":{"label":"Galley","colour":Color(.90,.53,.16),"cost":CELL_COST},
 	"hygiene":{"label":"Hygiene","colour":Color(.18,.56,.75),"cost":CELL_COST},
-	"medical":{"label":"Medical Bay","colour":Color(.78,.26,.34),"cost":CELL_COST},
-	"waste_management":{"label":"Storage & Recycling","colour":Color(.38,.45,.27),"cost":CELL_COST},
+	"medical":{"label":"Shelter","colour":Color(.78,.26,.34),"cost":CELL_COST},
+	"waste_management":{"label":"Storage","colour":Color(.38,.45,.27),"cost":CELL_COST},
 	"communications":{"label":"Mission Operations","colour":Color(.25,.45,.80),"cost":CELL_COST},
 	"corridor":{"label":"Corridor","colour":Color(.76,.30,.08),"plan_colour":Color("#8FA3AD"),"cost":CELL_COST},
 	"airlock":{"label":"Airlock","colour":Color(.95,.43,.08),"cost":CELL_COST},
-	"vehicle_bay":{"label":"Vehicle Bay","colour":Color(.88,.62,.12),"cost":CELL_COST},
+	"vehicle_bay":{"label":"Garage","colour":Color(.88,.62,.12),"cost":CELL_COST},
 	"solar":{"label":"Solar Array","colour":Color(.18,.64,.94),"cost":CELL_COST},
 	"reactor":{"label":"Compact Reactor","colour":Color(.88,.30,.16),"cost":1200},
 	"ice_extractor":{"label":"Ice Extractor","colour":Color(.20,.82,.92),"cost":450},
@@ -144,17 +148,17 @@ const ZONE_TYPES := {
 
 # Catalogue metadata for the build HUD. Gameplay values stay in ZONE_TYPES.
 const ZONE_INFO := {
-	"general":{"cat":"rooms","icon":"box","rule":"Drag an area","desc":"Takes the basics of everything: bunks, a kitchenette, a toilet, life support, a tool bench, the comms station. Cramped and noisy: sleep is poor and work slower. Advanced kit needs its own room."},
-	"living":{"cat":"rooms","icon":"bed-double","rule":"Drag an area","desc":"Bunks, lockers and personal things. Keep it away from noisy rooms (or insulate the wall) for a good night's sleep."},
-	"science":{"cat":"rooms","icon":"flask-conical","rule":"Drag an area","desc":"Makes space for benches and instruments. Furnish it to conduct research."},
-	"storage":{"cat":"rooms","icon":"package","rule":"Drag an area","desc":"Racks for spares, tools and supplies, and the waste sorter and recycling hoppers that turn rubbish into feedstock and compost."},
-	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Makes space for grow equipment. Furnish it to produce food."},
+	"general":{"cat":"rooms","icon":"box","rule":"Drag an area","desc":"The walker's core: the airlock and suit rack, life support (ice melter, water, oxygen), the power hub and a poor bunk. The only rigid module; every other room is a liner. Its upgrades, fitted at its rack, open room types."},
+	"living":{"cat":"rooms","icon":"bed-double","rule":"Drag an area","desc":"Bunks, lockers and the things you've found. Key piece: a bunk. A night here is a full night's sleep: you're rested for longer than after the core's bunk."},
+	"science":{"cat":"rooms","icon":"flask-conical","rule":"Drag an area","desc":"Put a find through the stations and it tells you what it is and where to go next. Key piece: the Science Workbench (the analyser). Opened by the core's Lab services upgrade."},
+	"storage":{"cat":"rooms","icon":"package","rule":"Drag an area","desc":"Racks for spares, tools and supplies, and the recycling hoppers that turn rubbish into feedstock. Key piece: a cargo rack."},
+	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Plant and harvest by hand. Key piece: a planter. Grows food and a little oxygen. Opened by the core's water loop."},
 	"life_support":{"cat":"rooms","icon":"wind","rule":"Drag an area","desc":"Makes space for air and water recyclers. Furnish it to support crew."},
-	"engineering":{"cat":"rooms","icon":"wrench","rule":"Drag an area","desc":"Repairs at full speed, the tool bench, batteries and power panels, and the regolith printer. Noisy: keep it away from Sleeping Quarters."},
-	"galley":{"cat":"rooms","icon":"utensils","rule":"Drag an area","desc":"The shared room: the kitchen and tables, sofas, games and the exercise station. Lively but not noisy, so it can sit next to Sleeping Quarters."},
+	"engineering":{"cat":"rooms","icon":"wrench","rule":"Drag an area","desc":"Print add-ons, kit and adapters, and mend worn kit with spares. Key piece: the Print Shop, which prints faster here. Opened by the core's heavy power upgrade."},
+	"galley":{"cat":"rooms","icon":"utensils","rule":"Drag an area","desc":"The kitchen and the table, where you eat properly. Key piece: the kitchenette. Opened by the core's water loop."},
 	"hygiene":{"cat":"rooms","icon":"droplets","rule":"Drag an area","desc":"A private washroom for hygiene and daily routines."},
-	"medical":{"cat":"rooms","icon":"heart-pulse","rule":"Drag an area","desc":"A small clinical bay for examination and medical supplies."},
-	"waste_management":{"cat":"rooms","icon":"recycle","rule":"Merged into Storage & Recycling","desc":"Merged into Storage & Recycling (31 Oct); older saves convert on load."},
+	"medical":{"cat":"rooms","icon":"heart-pulse","rule":"Drag an area","desc":"Sit out solar storms and treat injuries. Key piece: a shielded bunk. With it in, the room has twice the hull's shielding. Opened by the core's shielding upgrade."},
+	"waste_management":{"cat":"rooms","icon":"recycle","rule":"Merged into Storage","desc":"Merged into Storage (31 Oct); older saves convert on load."},
 	"communications":{"cat":"rooms","icon":"radio","rule":"Drag an area","desc":"Plan missions, map the site and keep in touch with Earth and the rovers."},
 	"corridor":{"cat":"structure","icon":"move-vertical","rule":"Click to start · click each bend · R flips · T 45°","desc":"A sealed passage. Click to start (on a room to leave from it), click to place each leg, and click a room to finish: it gets a hatch there. T while drawing makes the next leg 45°. Right-click ends it anywhere. Click an exact 45° free-form wall for a rotated connector."},
 	"airlock":{"cat":"structure","icon":"door-closed","rule":"1–3 cells · R rotates · click 45° wall","desc":"The way in and out. Click an exact 45° free-form wall for a rotated airlock; otherwise the inner end must touch a room."},
@@ -163,7 +167,7 @@ const ZONE_INFO := {
 	"shield_roof":{"cat":"structure","icon":"house","rule":"Click a room","desc":"Regolith over a room's whole roof: most radiation comes from overhead. You can also add it from inside: Furnish room, aim at the ceiling."},
 	"trench":{"cat":"structure","icon":"shovel","rule":"Drag an area · R turns the ramp","desc":"Dig the base into the ground: a trench a room deep, with retaining walls and a ramp. Rooms built in it have earth against their outside walls, a free radiation shield; add Roof Shielding to bury them completely. The whole base goes in, or stays on top. Region sites only, for now."},
 	"ladder":{"cat":"structure","icon":"arrow-up","rule":"Click an outside wall","desc":"A ladder up an outside wall to the roof, with a safety rail round the edge. Outside, look at it and press E to climb."},
-	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"A hangar for rovers. Its wide door must face outside."},
+	"vehicle_bay":{"cat":"structure","icon":"truck","rule":"2–4 cells · R rotates","desc":"The Garage: charge, repair and fit add-ons to the rover and the drone. Key piece: the rover dock (charger). Its wide door must face outside. Opened by the core's vehicle charging upgrade."},
 	"solar":{"cat":"power","icon":"sun","rule":"One cell, or a roof · R turns","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
 	"reactor":{"cat":"power","icon":"atom","rule":"One cell · R turns","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
 	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell on ice · R turns","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
@@ -992,15 +996,19 @@ func reassign_reason(zone: Dictionary) -> String:
 	if str(ZONE_INFO.get(str(zone.kind), {}).get("cat", "")) != "rooms" or str(zone.kind) == "vehicle_bay": return "Only rooms can be reassigned"
 	if str(zone.kind) == kind: return "It's already %s" % str(ZONE_TYPES[kind].label)
 	if not zone_offered(kind): return "No longer made"
+	if not MHRoomTypes.locked_reason(kind).is_empty(): return MHRoomTypes.locked_reason(kind)
 	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
 	if _used_cargo() - int(zone.cost) + _reassigned_cost(zone, kind) > MHGame.cargo_budget(): return "Not enough cargo left"
 	return ""
 
-## Whether a room or site kind is still offered (Waste Management merged
-## into Storage & Recycling on 31 Oct; trenches dropped 7 Nov, though older
-## saves keep the ones they dug).
+## Room kinds cut on 14 Nov (docs/rooms-and-equipment.md): their kit moved to
+## the core and the eight rooms, and older saves convert them on load.
+const CUT_ROOMS := {"life_support": "engineering", "hygiene": "living", "communications": "science", "waste_management": "storage"}
+
+## Whether a room or site kind is still offered (the cut rooms above;
+## trenches dropped 7 Nov, though older saves keep the ones they dug).
 static func zone_offered(kind: String) -> bool:
-	return kind != "waste_management" and kind != "trench"
+	return not CUT_ROOMS.has(kind) and kind != "trench"
 
 ## A room's cargo as another room type (same size).
 func _reassigned_cost(zone: Dictionary, new_kind: String) -> int:
@@ -1563,7 +1571,7 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 	var valid_zones: Array = entry.get("valid_zones", [])
 	if not valid_zones.has(str(zone.get("kind", ""))): return "Fits in %s" % _zone_list_text(valid_zones)
 	if id == "crew_bunk" and str(zone.get("kind", "")) == "general" and _bunks_in(zone) >= GENERAL_MODULE_BUNKS:
-		return "A General Module takes %d bunks: build Sleeping Quarters for more" % GENERAL_MODULE_BUNKS
+		return "The core takes %d bunks: build Quarters for more" % GENERAL_MODULE_BUNKS
 	var placement := str(entry.get("placement", "floor"))
 	if placement == "floor" and surface_normal.dot(Vector3.UP) < .82: return "Place this on the floor"
 	if placement == "wall" and absf(surface_normal.dot(Vector3.UP)) > .28: return "Mount this on an interior wall"
@@ -2389,6 +2397,7 @@ func _invalid_reason(cells: Array) -> String:
 		var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
 		if not site_reason.is_empty(): return site_reason
 	if not zone_offered(kind): return "No longer made"
+	if not MHRoomTypes.locked_reason(kind).is_empty(): return MHRoomTypes.locked_reason(kind)
 	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
 	var rules_reason := BUILD_RULES.zone_reason(self, kind, cells)
 	if not rules_reason.is_empty(): return rules_reason
@@ -4883,6 +4892,8 @@ func _door_target_on_wall(from: Vector2, to: Vector2) -> Dictionary:
 func _after_room_placed() -> void:
 	if _history.is_empty(): return
 	var placed: Dictionary = _history.back().get("zone", {})
+	_place_key_piece(placed)
+	_play_build_moment(placed)
 	var joined := _hatch_corridor_ends(placed)
 	for label in _add_doors_for_new_room(placed):
 		if not joined.has(label): joined.append(label)
@@ -5779,7 +5790,64 @@ func _from_stock(id: String, seen: Dictionary) -> bool:
 
 ## A new copy of `id` would come from stock.
 func _stock_covers(id: String) -> bool:
+	if _placing_key: return true   # a room's key piece arrives with it
 	return MHChapterOne.on() and MHChapterOne.available(id, self) > 0
+
+# ---------- the room model (scripts/room_types.gd) ----------
+
+var _placing_key := false
+
+## A new room's key piece arrives with it, in a sensible spot: a bunk or
+## counter against a wall, a bench or planter near the middle. It's free (the
+## room brought it: zone.key_piece); remove it and it waits on the Unpacked
+## tab, to put back wherever you like. The room's bonus works while it's in.
+func _place_key_piece(zone: Dictionary) -> void:
+	var id := MHRoomTypes.key_of(str(zone.get("kind", "")))
+	if id.is_empty() or display_only: return
+	zone["key_piece"] = true
+	var entry := EquipmentCatalog.get_entry(id)
+	if entry.is_empty(): return
+	var spot := _key_spot(zone, id, str(entry.get("placement", "floor")) == "floor_wall")
+	if spot.is_empty(): return
+	var at: Vector3 = spot.position
+	_placing_key = true
+	place_free_interior_equipment(id, at, float(spot.yaw), Vector2i(roundi(at.x / CELL), roundi(at.z / CELL)), free_interior_visual(id, at, float(spot.yaw)))
+	_placing_key = false
+
+## {position, yaw} for a key piece in the room, or {} when nothing fits.
+func _key_spot(zone: Dictionary, id: String, against_wall: bool) -> Dictionary:
+	var outline := zone_outline(zone)
+	if outline.size() < 3: return {}
+	var centre := Vector2.ZERO
+	for p in outline: centre += p
+	centre /= float(outline.size())
+	var points: Array = []
+	for cell in zone.get("cells", []):
+		for ox in [-.75, 0.0, .75]:
+			for oz in [-.75, 0.0, .75]:
+				var p := Vector2(cell) * CELL + Vector2(ox, oz)
+				var edge := INF
+				for i in outline.size():
+					edge = minf(edge, p.distance_to(Geometry2D.get_closest_point_to_segment(p, outline[i], outline[(i + 1) % outline.size()])))
+				points.append({"p": p, "score": edge if against_wall else p.distance_to(centre)})
+	points.sort_custom(func(a, b): return float(a.score) < float(b.score))
+	_placing_key = true
+	var found := {}
+	for point in points:
+		var p: Vector2 = point.p
+		for yaw in [0.0, PI * .5, PI, -PI * .5]:
+			if free_interior_invalid_reason(id, Vector3(p.x, habitat_base_y, p.y), Vector3.UP, yaw).is_empty():
+				found = {"position": Vector3(p.x, habitat_base_y, p.y), "yaw": yaw}
+				break
+		if not found.is_empty(): break
+	_placing_key = false
+	return found
+
+## The liner inflates and the crawler lays the shell: a few seconds, for show.
+func _play_build_moment(zone: Dictionary) -> void:
+	if display_only or not is_inside_tree() or not MHRoomTypes.ROOMS.has(str(zone.get("kind", ""))): return
+	if str(zone.kind) == "vehicle_bay": return   # a hangar, not a liner
+	root.add_child(ROOM_BUILD_MOMENT.new().setup(zone_outline(zone), habitat_base_y, ROOM_HEIGHT))
 
 func zone_printable(zone_kind: String) -> bool: return not zone_kind in PRINTABLE_ZONE_EXCLUDES
 func item_printable(id: String) -> bool: return bool(EquipmentCatalog.get_entry(id).get("printable", false))
@@ -6078,13 +6146,13 @@ func restore_habitat_state(state: Dictionary) -> void:
 		var saved_zone: Dictionary = zones[index] as Dictionary
 		# Glass Greenhouse has been retired: Mars-facing transparent walls are not
 		# credible pressure-habitat construction. Preserve a player's layout by
-		# turning older saves into sealed Hydroponics instead of dropping cells.
+		# turning older saves into sealed Greenhouse instead of dropping cells.
 		if str(saved_zone.get("kind", "")) == "glass_room":
 			saved_zone["kind"] = "hydroponics"
-		# Waste Management merged into Storage & Recycling (31 Oct); all its
-		# kit is allowed there.
-		if str(saved_zone.get("kind", "")) == "waste_management":
-			saved_zone["kind"] = "storage"
+		# Cut room types (Waste Management on 31 Oct, Life Support, Hygiene
+		# and Mission Operations on 14 Nov) become the room their kit moved to.
+		if CUT_ROOMS.has(str(saved_zone.get("kind", ""))):
+			saved_zone["kind"] = CUT_ROOMS[str(saved_zone.kind)]
 		if not saved_zone.has("door_direction"):
 			saved_zone["door_direction"] = Vector2i(0, -1)
 		_recompute_zone_cost(saved_zone)
@@ -6180,7 +6248,7 @@ func readiness() -> Array:
 	if MHSamples.on():
 		# Chapter rules: science is samples analysed at a Science Workbench (step 5).
 		var benches := MHSamples.benches(self).size()
-		items.append({"id": "research", "label": "Science", "detail": ("%d discoveries · %d bench%s" % [MHSamples.found.size(), benches, "" if benches == 1 else "es"]) if benches > 0 else "Build a Science Lab with a Science Workbench to analyse samples", "status": "met" if benches > 0 else "partial", "icon": "flask-conical"})
+		items.append({"id": "research", "label": "Science", "detail": ("%d discoveries · %d bench%s" % [MHSamples.found.size(), benches, "" if benches == 1 else "es"]) if benches > 0 else "Build a Lab with a Science Workbench to analyse samples", "status": "met" if benches > 0 else "partial", "icon": "flask-conical"})
 	else: items.append(_fitted_target_item("research","Research capability",int(systems.research),int(systems.research_capacity),RESEARCH_TARGET,"flask-conical"))
 	var power_status := "met"
 	var power_detail := "Unlimited in Creative"
@@ -6233,11 +6301,11 @@ func suggestion() -> String:
 			"shelter":
 				if item.status=="unmet": return "Add an Airlock beside a room. Its inner end must touch the room and its outer end must face Mars. You have %s left." % left
 				return "Some rooms aren't connected to an airlock. Join them with a Corridor. You have %s left." % left
-			"beds": return "Build enough Sleeping Quarters (or a General Module, for two), then add Sleep Stations from the Interior tab. You have %s left." % left
-			"food": return "Build Hydroponics, then add Grow Trays from the Interior tab to produce food. You have %s left." % left
+			"beds": return "Build enough Quarters (or the core, for two), then add Sleep Stations from the Interior tab. You have %s left." % left
+			"food": return "Build a Greenhouse, then add Grow Trays from the Interior tab to produce food. You have %s left." % left
 			"water": return "Choose Ice Extractor in Resources, then place it over a blue subsurface-ice survey area. You have %s left." % left
 			"life": return "Build Life Support, then add an Air Recycler from the Interior tab. You have %s left." % left
-			"research": return "Build a Science Lab, then add a Science Workbench from the Interior tab. You have %s left." % left
+			"research": return "Build a Lab, then add a Science Workbench from the Interior tab. You have %s left." % left
 			"power": return "Add Solar Arrays on open ground. Aim them north (R) for full output. You have %s left." % left
 	return "Every system is ready for a crew of %d. Spend spare cargo on science or storage — %s left." % [CREW_TARGET,left]
 
@@ -6675,9 +6743,9 @@ func _refresh_catalogue() -> void:
 	else:
 		var shown:=0
 		# Never leave a retired part selected.
-		if not zone_offered(kind) and equipment_id.is_empty():
+		if (not zone_offered(kind) or not BUILD_RULES.offered(self, kind)) and equipment_id.is_empty():
 			for id in ZONE_TYPES:
-				if str(ZONE_INFO[id].cat)==category and zone_offered(id): kind=id; break
+				if str(ZONE_INFO[id].cat)==category and zone_offered(id) and BUILD_RULES.offered(self, id): kind=id; break
 		# Rooms in alphabetical order; the other tabs keep their own order.
 		var ids:=ZONE_TYPES.keys()
 		if category=="rooms": ids.sort_custom(func(a,b): return str(ZONE_TYPES[a].label).naturalnocasecmp_to(str(ZONE_TYPES[b].label))<0)
@@ -6783,6 +6851,12 @@ func _part_card(id: String,selected: bool,unaffordable: bool) -> Button:
 		if not MHChapterOne.zone_reason(id, self).is_empty():
 			card.tooltip_text = MHChapterOne.zone_reason(id, self)
 			mass.add_theme_color_override("font_color", MHStyle.TEXT_MUTED)
+	# A room type the core hasn't opened yet (scripts/room_types.gd).
+	if not MHRoomTypes.locked_reason(id).is_empty():
+		mass.text = "CORE UPGRADE"
+		card.tooltip_text = MHRoomTypes.locked_reason(id)
+		mass.add_theme_color_override("font_color", MHStyle.TEXT_MUTED)
+		name_label.add_theme_color_override("font_color", MHStyle.TEXT_SECONDARY)
 	card.set_meta("number_label",mass)
 	return card
 
@@ -6853,6 +6927,11 @@ func _part_chips(id: String) -> Array:
 		chips.append(["earth shields outside walls",MHStyle.VALID])
 		chips.append(["Ramp facing %s" % _facing_name(),MHStyle.TEXT_SECONDARY])
 		return chips
+	if MHRoomTypes.ROOMS.has(id):
+		chips.append(["Key piece: %s" % MHRoomTypes.key_label(id),MHStyle.INFO])
+		var bonus := str(MHRoomTypes.ROOMS[id].bonus)
+		if not bonus.is_empty(): chips.append([bonus,MHStyle.VALID])
+		if not MHRoomTypes.locked_reason(id).is_empty(): chips.append([MHRoomTypes.locked_reason(id),MHStyle.WARN])
 	if zone_printable(id) and str(ZONE_INFO[id].cat)!="power": chips.append(["can be printed",MHStyle.VALID])
 	if id == "airlock": chips.append(["unheated",MHStyle.INFO])
 	if id in ["airlock","vehicle_bay","solar","corridor"]: chips.append(["Facing %s" % _facing_name(),MHStyle.TEXT_SECONDARY])

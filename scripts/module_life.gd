@@ -23,6 +23,9 @@ const LEAK := preload("res://scripts/module_leak.gd")
 const COLD_START_C := -30.0      # version 2: set down cold, open to Mars, dark
 ## The switches on the rack's front (its local frame), left to right.
 const SWITCH_SPOTS := {"heater": Vector3(-.3, 1.45, .36), "lights": Vector3(-.08, 1.45, .36), "scrubber": Vector3(.14, 1.45, .36)}
+## The core's upgrade panel, right of the switches (scripts/core_panel.gd).
+const PANEL := preload("res://scripts/core_panel.gd")
+const PANEL_SPOT := Vector3(.42, 1.45, .36)
 
 var world: Node
 var core: RefCounted
@@ -32,6 +35,7 @@ var ahead := {}
 var _since_runway := 99.0
 var _socket_lamp: StandardMaterial3D
 var _rack: Node3D
+var _panel: StaticBody3D
 ## Version 2, day 4: it comes down unpressurised. Cartridge and blanket in,
 ## it tries to pressurise, a seam won't hold; patched, it's commissioned.
 var commissioned := true
@@ -141,6 +145,7 @@ func _process(delta: float) -> void:
 		var was_lit := lit()
 		ahead = core.runway(MHGame.sol_hour)
 		for s in switches.values(): s.refresh()
+		if _panel != null and is_instance_valid(_panel): _panel.refresh()
 		_refresh_socket()
 		if was_lit != lit() or randf() < .1: world.builder.refresh_power_grid()
 		if _rack == null or not is_instance_valid(_rack): _hook_rack()
@@ -253,6 +258,12 @@ func _hook_rack() -> void:
 				s.setup(self, kind)
 				switches[kind] = s
 			s.position = SWITCH_SPOTS[kind]
+		# The core's upgrades (A3, scripts/room_types.gd): a panel beside the switches.
+		if _panel == null or not is_instance_valid(_panel):
+			_panel = PANEL.new()
+			_rack.add_child(_panel)
+			_panel.setup(world)
+		_panel.position = PANEL_SPOT
 		return
 
 # ---------- commissioning (version 2, day 4) ----------

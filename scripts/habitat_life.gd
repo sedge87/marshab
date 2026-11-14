@@ -206,6 +206,9 @@ func shield_rating(inv: Dictionary, room_index: int) -> float:
 	if room_index < 0 or room_index >= (inv.rooms as Array).size(): return hull
 	var points: Dictionary = value("radiation", "shield_points", {})
 	var room: Dictionary = inv.rooms[room_index]
+	# A Shelter with its shielded bunk in is built heavier: twice the hull's
+	# shielding (scripts/room_types.gd; rooms only help).
+	if str(room.get("kind", "")) == "medical" and _ids_in(inv, room_index).has(MHRoomTypes.key_of("medical")): hull *= 2.0
 	var shielding := float(room.get("shield_upgrades", 0.0))
 	for id in _ids_in(inv, room_index): shielding += float(points.get(id, 0.0))
 	return hull + shielding * float(value("radiation", "coverage_factor", 1.5)) / maxf(1.0, float(room.cells))
@@ -215,7 +218,7 @@ func shield_rating(inv: Dictionary, room_index: int) -> float:
 func shelter(inv: Dictionary) -> Dictionary:
 	var best := {}
 	for index in range((inv.rooms as Array).size()):
-		if not _ids_in(inv, index).has("storm_shelter_locker"): continue
+		if not _ids_in(inv, index).has("storm_shelter_locker") and not (str(inv.rooms[index].get("kind", "")) == "medical" and _ids_in(inv, index).has(MHRoomTypes.key_of("medical"))): continue
 		var rating := shield_rating(inv, index)
 		if not best.is_empty() and rating <= float(best.rating): continue
 		var room: Dictionary = inv.rooms[index]
@@ -306,8 +309,8 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 	var poor := float(c.get("general_sleep", .5))
 	var sleep := minf(1.0, float(bunks) / n) * (poor if noisy or cramped else 1.0)
 	var why_sleep := "Not everyone has a bunk"
-	if cramped: why_sleep = "Bunks in the General Module: build Sleeping Quarters for a proper night's sleep"
-	elif noisy: why_sleep = "Sleeping Quarters is next to a noisy room: add a sound insulation panel to the wall between them, or put a corridor between"
+	if cramped: why_sleep = "The core's bunk is a poor night: Quarters sleep better"
+	elif noisy: why_sleep = "Quarters is next to a noisy room: add a sound insulation panel to the wall between them, or put a corridor between"
 	out.append({"id": "sleep", "label": "Sleep and privacy", "score": sleep, "missing": "" if sleep >= .99 else why_sleep})
 	# 2. Space.
 	var living_cells := 0.0
@@ -341,22 +344,22 @@ func needs(inv: Dictionary, tiers: Dictionary) -> Array:
 		var r := role(str(crew[i].role)) if i < crew.size() else (data().crew.roles[i] as Dictionary)
 		if rooms.any(func(room): return str(room.kind) == str(r.room)): have_room += 1
 		elif general:
-			# The General Module gives everyone somewhere to work, slower.
+			# The core gives everyone somewhere to work. Rooms only ever help
+			# (docs/rooms-and-equipment.md): no slower speed here.
 			have_room += 1
-			room_speed[str(r.id)] = float(c.get("general_work_speed", .75))
 		else: no_room.append("%s (%s)" % [str(r.label), str(BuildController.ZONE_TYPES.get(str(r.room), {}).get("label", r.room))])
 	var work := float(have_room) / n
 	out.append({"id": "work", "label": "Meaningful work", "score": work, "missing": "" if no_room.is_empty() else "No work room for: " + ", ".join(no_room)})
-	# 6. Contact with Earth: the mast outside and a communications station in
-	# Mission Operations (the "communications" room), both powered.
+	# 6. Contact with Earth: the mast outside and a communications station
+	# indoors (the core or the Lab; Mission Operations was cut 14 Nov), both powered.
 	var antenna := (inv.items as Array).any(func(i): return str(i.id) == "comms_antenna") and bool(tiers.get(4, false))
 	var station := false
 	for index in range(rooms.size()):
-		if str(rooms[index].kind) == "communications" and _ids_in(inv, index).has("communications_station"): station = true
+		if _ids_in(inv, index).has("communications_station"): station = true
 	var contact := 1.0 if antenna and station and blackout_hours_left <= 0.0 else 0.0
 	var why := "Blackout: the Sun is between Mars and Earth"
 	if not antenna: why = "No powered Communications Mast outside"
-	elif not station: why = "No communications station in Mission Operations"
+	elif not station: why = "No communications station indoors"
 	out.append({"id": "contact", "label": "Contact with Earth", "score": contact, "missing": "" if contact > 0.0 else why})
 	# 7. Washing and the toilet (docs/survival-systems.md §4): a toilet, and a
 	# shower with water in the tank. Without one the crew make do, unhappily.
@@ -382,7 +385,7 @@ func wellbeing_target(need_list: Array, p: Dictionary, inv: Dictionary) -> float
 	if float(p.injured_h) > 0.0: target -= float(value("wellbeing", "injured_penalty", 15.0))
 	return clampf(target, 0.0, 100.0)
 
-## A Medical Bay that can treat someone: a powered exam cot and a medical cabinet.
+## A Shelter that can treat someone: a powered exam cot and a medical cabinet.
 func medical_ready(inv: Dictionary, tiers: Dictionary) -> bool:
 	for index in range((inv.rooms as Array).size()):
 		if str(inv.rooms[index].kind) != "medical": continue
@@ -456,7 +459,7 @@ func start_breach(inv: Dictionary, room_key: String) -> bool:
 			return true
 	return false
 
-## Where a breach would hit by default: Sleeping Quarters, else the biggest room.
+## Where a breach would hit by default: Quarters, else the biggest room.
 static func default_breach_room(inv: Dictionary) -> String:
 	var best := {}
 	for room in inv.rooms:

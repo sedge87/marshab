@@ -189,7 +189,9 @@ func wake(why: String) -> void:
 	world.day_night.time_scale = 1.0
 	# Step 4a: a long enough sleep leaves you well rested (scripts/body.gd).
 	var body: Node = world.get("body")
-	if body != null: body.slept(_slept)
+	# Quarters (its bunk inside) is a full night's sleep: rested for longer.
+	var quarters: bool = MHRoomTypes.bonus_room_at(world.builder, world.player.global_position) == "living"
+	if body != null: body.slept(_slept, MHRoomTypes.QUARTERS_REST if quarters else 1.0)
 	var sunrise := float(MHGame.site().get("day_cycle", {}).get("sunrise_hour", 5.0))
 	if _quiet_lander() and why != "alert" and why != "storm": pass
 	else:

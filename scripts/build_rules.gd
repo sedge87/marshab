@@ -2,7 +2,9 @@ extends RefCounted
 
 ## The builder's rules for step 3c (docs/systems-and-items.md §14, "Setting
 ## it down"), split out of scripts/build_controller.gd so the first lesson
-## lives in one place:
+## lives in one place. Since 14 Nov (A3) the carried module is the walker's
+## core (zone kind "general"): airlock, life support and the power hub on its
+## rack, and a poor bunk. "Module" below means the core.
 ## - B does nothing before the General Module is home ("Nothing to build with
 ##   yet"). Creative stays open.
 ## - With the walker parked, the Site plan offers only the General Module
@@ -60,6 +62,9 @@ static func b_detail(builder: Node) -> String:
 ## Whether a part is on the bar right now.
 static func offered(builder: Node, kind: String) -> bool:
 	if stage(builder) == "set_down": return kind in ["general", "airlock"]
+	# The core comes only on a walker (one walker, one base; A3, 14 Nov):
+	# never drawn by hand once there's a walker in the world. Creative still can.
+	if kind == "general" and active(builder): return false
 	return true
 
 ## The carried module, once placed in the plan (or {}).
@@ -89,7 +94,7 @@ static func cost(builder: Node, kind: String) -> int:
 static func zone_reason(builder: Node, kind: String, cells: Array) -> String:
 	if not active(builder): return ""
 	if stage(builder) == "set_down":
-		if not offered(builder, kind): return "Only the General Module and its airlock for now"
+		if not offered(builder, kind): return "Only the core and its airlock for now"
 		if kind == "general" and not module_zone(builder).is_empty(): return "There's only the one module: undo it to move it"
 		if kind == "airlock" and module_zone(builder).is_empty(): return "Set the module down first"
 	if kind != "trench":

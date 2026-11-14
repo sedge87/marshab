@@ -1,5 +1,5 @@
 {
-  "_comment": "Plans for the fabricator (docs/start-and-chapter-one.md §4). Every piece of equipment that isn't printable needs a plan, except the free groups. Anything not listed is brought from Earth (known from the start). Sources: brought, sent (Mission Control sends it when 'after' happens), discovered (a self-sufficiency step, 'after' names it). Cost defaults from the item's cargo mass: feedstock = mass x feedstock_per_kg, hours = mass / kg_per_hour (clamped); any of them can be set per plan.",
+  "_comment": "Plans for the fabricator (docs/start-and-chapter-one.md §4). Every piece of equipment that isn't printable needs a plan, except the free groups. Anything not listed is brought from Earth (known from the start). Core upgrades (\"upgrade\": true, scripts/room_types.gd) are fitted at the core, not printed. Sources: brought, sent (Mission Control sends it when 'after' happens), discovered (a self-sufficiency step, 'after' names it). Cost defaults from the item's cargo mass: feedstock = mass x feedstock_per_kg, hours = mass / kg_per_hour (clamped); any of them can be set per plan.",
   "free_groups": ["odds_and_ends", "exterior", "lander"],
   "defaults": {"feedstock_per_kg": 0.6, "kg_per_hour": 25, "min_hours": 1, "max_hours": 20},
   "plans": {
@@ -24,6 +24,11 @@
     "urine_processor": {"source": "discovered", "after": "water", "feedstock_kg": 100, "hours": 8},
     "sabatier_reactor": {"source": "discovered", "after": "oxygen", "feedstock_kg": 120, "hours": 8},
     "methane_tank": {"source": "discovered", "after": "oxygen", "feedstock_kg": 80, "hours": 4},
-    "atmosphere_processor": {"source": "discovered", "after": "discovery:mars_air", "feedstock_kg": 300, "hours": 16}
+    "atmosphere_processor": {"source": "discovered", "after": "discovery:mars_air", "feedstock_kg": 300, "hours": 16},
+    "core_water_loop": {"source": "discovered", "after": "water", "feedstock_kg": 180, "upgrade": true},
+    "core_heavy_power": {"source": "sent", "after": "first_job", "feedstock_kg": 220, "upgrade": true},
+    "core_lab_services": {"source": "sent", "after": "science_open", "feedstock_kg": 120, "upgrade": true},
+    "core_vehicle_charging": {"source": "sent", "after": "sol_10", "feedstock_kg": 200, "upgrade": true},
+    "core_shielding": {"source": "sent", "after": "sol_10", "feedstock_kg": 250, "upgrade": true}
   }
 }

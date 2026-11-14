@@ -71,7 +71,7 @@ func _initialize() -> void:
 	# ---- a fabricator job ----
 	_check(MHChapterOne.job_reason("crew_bunk", b) == "Place the Print Shop first", "no job without a fabricator")
 	_add(b, "fabricator", Vector2i(1, 1))
-	_check(is_equal_approx(MHChapterOne.fabricator_speed(b), .75), "the General Module runs it at 75 %")
+	_check(is_equal_approx(MHChapterOne.fabricator_speed(b), 1.0), "the core runs it at full speed (rooms only help, A3)")
 	var cost := MHChapterOne.plan_cost("crew_bunk")
 	_check(MHChapterOne.start_job("crew_bunk", b).is_empty(), "a job starts")
 	_check(MHChapterOne.start_job("crew_bunk", b) == "Already printing", "a plan prints once at a time")

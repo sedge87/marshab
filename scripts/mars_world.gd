@@ -881,6 +881,7 @@ func _tick_chapter_one() -> void:
 	if not MHSamples.science_open and opening_part() >= 4 and _science_build():
 		MHSamples.science_open = true
 		if notes != null: notes.answer("module_plans")
+		for learned in MHChapterOne.learn_after("science_open"): messages.append(MHChapterOne._plan_message(learned))   # the core's Lab services (scripts/room_types.gd)
 		# The game opens up: the four goals arrive (docs/opening-days.md).
 		if orbiter_texts != null:
 			orbiter_texts.send("science_open", "castellanos", "Water of your own. Houston's whole floor cheered. The science teams have been waiting for this: Life, Climate, Geology and Humans. Anything odd you find out there, a rock, a reading, a hollow, put it on the bench and send it up. Discoveries is on your slate.")
@@ -956,6 +957,10 @@ func open_tiny_printer() -> void:
 
 func open_suit_rack() -> void:
 	_open_live_view(load("res://scripts/suit_rack_screen.gd").new().setup(self))
+
+## The core's upgrades, on the panel on its rack (scripts/core_panel.gd).
+func open_core_upgrades() -> void:
+	_open_live_view(load("res://scripts/core_upgrades_screen.gd").new().setup(self))
 
 ## The lab screen for one Science Workbench (its placement id).
 func open_lab(bench: String) -> void:

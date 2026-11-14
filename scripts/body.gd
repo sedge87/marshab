@@ -268,8 +268,9 @@ func eat() -> void:
 	fed_hours = 0.0
 
 ## You slept `hours` (scripts/sleep.gd, on waking).
-func slept(hours: float) -> void:
-	if tiredness_on() and hours >= RESTED_SLEEP_H: rested_hours = RESTED_FOR_H
+## `longer`: Quarters' full night (scripts/room_types.gd) stretches it.
+func slept(hours: float, longer := 1.0) -> void:
+	if tiredness_on() and hours >= RESTED_SLEEP_H: rested_hours = RESTED_FOR_H * longer
 
 func peckish() -> bool: return hunger_on() and fed_hours >= PECKISH_H
 func hungry() -> bool: return hunger_on() and fed_hours >= HUNGRY_H

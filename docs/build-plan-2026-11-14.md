@@ -70,6 +70,7 @@
 - **Core upgrades open room types,** with no limit.
 - **The eight rooms with their key pieces.** Bonuses only.
 - Files: `build_controller.gd`, `surface_build_controller.gd`, `interior_build_controller.gd`, `floor_plan.gd`, `room_identity.gd`, `habitat_piece.gd`, `equipment_catalog.gd`, `data/equipment_catalog.json`.
+- **Built 14 Nov** (not playtested). What was decided is in `docs/rooms-and-equipment.md`, "As built (A3)". The opening still sets the core down as before; its rewrite is A6.
 
 ### A4. Building, part 2: several bases (`docs/bases-and-vehicles.md`)
 - **The builder holds several bases,** each starting at its core's height.
