@@ -75,3 +75,20 @@ The spine (8 Nov) is the tagline **design, live, work and survive on Mars**, wit
   - one ending (the buried heart, then the crew land);
   - Castle as the one near voice;
   - no text on models.
+
+## 6. What the pillar rethink changes (14 Nov, `docs/pillars.md`)
+
+- **The spine** is now "Go further. Make it home.", with three pillars: Go further, Mars sets the margin and Make it home. `docs/master-design.md` §1 is marked superseded.
+- **Build anywhere** is unparked and decided in outline: one walker, one base. Each walker folds into a base core, and outposts are separate bases. The details (the core, its ports, floor heights) are designed next.
+- **Traversal phases 2–5** are unblocked. Phase 3's stake trails gain the scout drone, which drops markers ahead. Phase 4's crew asks fold into "science points further".
+- **Walkers** need reworking: they fold into the core rather than standing on the site.
+- **Rooms:** rigid Earth modules plus liners under printed regolith shells.
+- **Plans** come from found cartridges, the story and the core's ports. The Engineering Bench study step is cut. There is no Earth resupply.
+- **Materials:** the four from master-design §4 stay. Getting water home is decided: machines dig and hauler carts ferry. The heated pipe is cut.
+- **Survival** has three clear states: in the hab, in the rover, suited on foot. The hab is safe only while its supplies last. The suit goes on and off quickly. Hunger and tiredness stay as a pull home. The hab's systems are to be redone.
+- **GAR-Y** stays as he is, with upgrades over the game. New: hauler carts and a scout drone. The pressurised rover is reworked as the main range unlock.
+- **Science:** finds point onward, and the four goals become four trails of places.
+- **Story:** unchanged, but the heart's clues are laid outward.
+- **The guided chapters** stay. Chapters 3 and 4 get rewritten for the walker core and the first liner.
+- **The open game feeling empty** is answered by the range ladder (next to design), the outward clue trail and finds that point onward.
+- **Still parked:** camera vs journal, the slate's clutter, the air budget for the walk to Walker 1, and the 12 Nov playtest notes. The air budget becomes part of the range ladder.

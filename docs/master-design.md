@@ -9,6 +9,8 @@
 
 ## 1. Pillars
 
+> **Superseded 14 Nov 2026 by `docs/pillars.md`** ("Go further. Make it home."). The pillars below are history. Where they disagree with `docs/pillars.md`, that doc wins. That includes §4 (walkers, rooms, materials collection), §5 (plans) and §7 (the clues lead outward).
+
 **The spine · Decided 8 Nov** (the user, stepping back after the game drifted from builder to survival to story: the tagline is *design, live, work and survive on Mars*). Every feature serves at least one verb, or it waits.
 
 | Verb | What it is in play | Systems |
