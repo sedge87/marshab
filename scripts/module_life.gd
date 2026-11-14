@@ -28,6 +28,7 @@ const PANEL := preload("res://scripts/core_panel.gd")
 const PANEL_SPOT := Vector3(.42, 1.45, .36)
 
 var world: Node
+var base_id := "w1"      # its base (A4): one core per base, scripts/mars_world.gd cores
 var core: RefCounted
 var switches := {}
 var socket: StaticBody3D
@@ -51,7 +52,9 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 	if state.is_empty():
 		core.heater_mode = "low"
 		core.temp_c = 12.0
-		if int(world.get("opening_version")) >= 2:
+		# Only Walker 1's comes down cold, in the opening; a later walker's core
+		# arrives commissioned (its kit's been through this once).
+		if int(world.get("opening_version")) >= 2 and base_id == "w1":
 			commissioned = false
 			core.vented = true
 			core.temp_c = COLD_START_C
@@ -63,11 +66,15 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 	_build_socket.call_deferred()
 	if not commissioned and leak_found: _spawn_leak.call_deferred()
 
-## The carried zone (scripts/build_rules.gd), or {}.
+## Its base's carried zone (scripts/build_rules.gd), or {}.
 func zone() -> Dictionary:
 	for z in world.builder.zones:
-		if bool(z.get("carried", false)): return z
+		if bool(z.get("carried", false)) and str(z.get("base", "w1")) == base_id and not bool(z.get("arriving", false)): return z
 	return {}
+
+func _floor() -> float:
+	var z := zone()
+	return float(z.get("y", world.builder.habitat_base_y))
 
 func running() -> bool:
 	return MHGame.simulation_on() and not zone().is_empty()
@@ -199,7 +206,7 @@ func _centre() -> Vector3:
 	var sum := Vector2.ZERO
 	for c in cells: sum += Vector2(c.x, c.y)
 	sum = sum / maxf(1.0, cells.size()) * float(world.builder.CELL)
-	return Vector3(sum.x, float(world.builder.habitat_base_y), sum.y)
+	return Vector3(sum.x, _floor(), sum.y)
 
 ## The middle of the module's wall facing the lander, just outside it.
 func socket_spot() -> Vector3:
@@ -222,7 +229,7 @@ func socket_spot() -> Vector3:
 		spot.x = (mx.x + .25) if to.x > 0.0 else (mn.x - .25)
 	else:
 		spot.y = (mx.y + .25) if to.y > 0.0 else (mn.y - .25)
-	return Vector3(spot.x, float(b.habitat_base_y) + 1.0, spot.y)
+	return Vector3(spot.x, _floor() + 1.0, spot.y)
 
 func near_socket(at: Vector3) -> bool:
 	if zone().is_empty(): return false
@@ -249,6 +256,8 @@ func interact(_actor: Node = null) -> bool:
 func _hook_rack() -> void:
 	for node in world.builder.root.find_children("Interior_*", "Node3D", true, false):
 		if str(node.get_meta("equipment_id", "")) != RACK: continue
+		var at: Vector3 = (node as Node3D).global_position
+		if not (zone().get("cells", []) as Array).has(Vector2i(roundi(at.x / world.builder.CELL), roundi(at.z / world.builder.CELL))): continue
 		_rack = node
 		for kind in SWITCH_SPOTS:
 			var s: StaticBody3D = switches.get(kind)
@@ -336,6 +345,13 @@ func patched() -> void:
 	world.builder.refresh_power_grid()
 	var radio: Node = world.get("radio")
 	if radio != null: radio.ring("d4_patched")
+
+## Refolded (A4): its outside socket packs away with it.
+func _exit_tree() -> void:
+	if socket != null and is_instance_valid(socket): socket.queue_free()
+	if _panel != null and is_instance_valid(_panel): _panel.queue_free()
+	for s in switches.values():
+		if is_instance_valid(s): s.queue_free()
 
 func export_state() -> Dictionary:
 	var out: Dictionary = core.export_state()

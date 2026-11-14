@@ -297,6 +297,7 @@ func _input(event: InputEvent) -> void:
 					survey_layer = not survey_layer
 					_say("Ice survey layer on." if survey_layer else "Ice survey layer off.")
 				KEY_G: _send_gar_y()
+				KEY_W: mark_walker_spot(_mouse())
 		get_viewport().set_input_as_handled()   # nothing else hears keys while it's open
 
 ## Where the mouse is over the map square, in map px.
@@ -386,8 +387,64 @@ func slate_key(keycode: int) -> bool:
 			survey_layer = not survey_layer
 			_say("Ice survey layer on." if survey_layer else "Ice survey layer off.")
 		KEY_G: _send_gar_y()
+		KEY_W: mark_walker_spot(_cursor_at if _cursor_at.x >= 0.0 else Vector2(SIZE, SIZE) * .5)
 		_: return false
 	return true
+
+# ---------- A4: a spot for a walker's core ----------
+
+## The spot checked last (site metres), waiting for a second W to send it.
+var walker_spot := Vector2.INF
+const SPOT_AGAIN_PX := 18.0
+
+## A walker that's free to walk (refolded, or fixed and waiting), or null.
+func ready_walker() -> Node:
+	var walkers: Dictionary = world.get("walkers") if world.get("walkers") != null else {}
+	for id in walkers:
+		var w: Node = walkers[id]
+		if is_instance_valid(w) and str(w.state) == "ready": return w
+	return null
+
+## W on the map: the first press checks the spot under the cursor (sun, ice,
+## shelter, slope) and Castle weighs in; W again on the same spot sends the
+## walker there. Returns what it said.
+func mark_walker_spot(at: Vector2) -> String:
+	var walker := ready_walker()
+	if walker == null:
+		_say("No walker is free to walk.")
+		return ""
+	if not Rect2(Vector2.ZERO, Vector2(SIZE, SIZE)).has_point(at): at = Vector2(SIZE, SIZE) * .5
+	var site := _map_to_region(at) - _origin
+	if not is_inf(walker_spot.x) and _region_to_map(walker_spot + _origin).distance_to(at) <= SPOT_AGAIN_PX:
+		if walker.send_to(walker_spot):
+			_say("%s is on its way." % str(walker.walker_name))
+			walker_spot = Vector2.INF
+			return "sent"
+	var why: String = walker.spot_reason(site)
+	if not why.is_empty():
+		walker_spot = Vector2.INF
+		_say(why + ".")
+		return why
+	walker_spot = site
+	var check := site_check(site)
+	_say("%s · W again to send %s." % [check.words, str(walker.walker_name)])
+	MHNotices.post("info", "Castle on the spot", str(check.castle), "")
+	return str(check.words)
+
+## A spot's trade-offs for a base: {words, castle}.
+func site_check(site: Vector2) -> Dictionary:
+	var r := site + _origin
+	var c: Dictionary = MHBaseSite.conditions(r.x, r.y)
+	var sun: float = float(MHBaseSite.sunshine(c.horizon).share)
+	var grade := float(MHBaseSite._grade(r.x, r.y))
+	var words := "Sun %d%% · nights %+d °C · ice %d%% near · slope %d°" % [roundi(sun * 100.0), roundi(float(c.shelter_c)), roundi(float(c.ice) * 100.0), roundi(rad_to_deg(atan(grade)))]
+	var castle := "Looks workable. Your call."
+	if float(c.ice) > .3: castle = "Ice in the ground right there. That's what makes a camp worth having."
+	elif sun < .7: castle = "Walls on the skyline. Warmer nights, but the panels will hate it."
+	elif float(c.shelter_c) >= 3.0: castle = "Sheltered. The nights won't bite as hard."
+	elif float(c.dunes) > .25: castle = "Dunes upwind. You'll be sweeping panels."
+	elif float(c.room) < .5: castle = "Tight ground. Not much room to grow."
+	return {"words": words, "castle": castle}
 
 ## Readouts for the slate's Map app: [you, cursor or note].
 func readouts() -> Array:
@@ -517,6 +574,18 @@ func _draw_markers() -> void:
 	_draw_trail()
 	_draw_known()
 	if world.lander != null and world.lander.visible: _marker(world.lander.global_position, "Lander", Color("#F2C35A"), "square")
+	# A4: each base and each walker on the move; the spot being checked.
+	if world.builder != null:
+		for id in world.builder.bases:
+			var b: Dictionary = world.builder.bases[id]
+			var centre = b.get("centre", Vector2.INF)
+			if not (centre is Vector2) or is_inf((centre as Vector2).x) or bool(b.get("landing", false)): continue
+			_marker(Vector3((centre as Vector2).x, 0, (centre as Vector2).y), str(b.get("name", id)) + (" · main" if str(world.builder.main_base) == str(id) else ""), Color("#F2F3F0"), "square")
+	var walkers: Dictionary = world.get("walkers") if world.get("walkers") != null else {}
+	for id in walkers:
+		var w: Node3D = walkers[id]
+		if is_instance_valid(w) and str(w.state) in ["ready", "travelling", "parked"]: _marker(w.global_position, str(w.walker_name), Color("#F2C35A"), "circle")
+	if not is_inf(walker_spot.x): _marker(Vector3(walker_spot.x, 0, walker_spot.y), "Spot", MHStyle.accent, "circle")
 	for rover in world.get_tree().get_nodes_in_group("crew_rover"): _marker((rover as Node3D).global_position, "Rover", Color("#8CC3CB"), "circle")
 	for gary in world.get_tree().get_nodes_in_group("gar_y"): _marker((gary as Node3D).global_position, "GAR-Y", Color("#8CC3CB"), "circle")
 	# What you dropped when you blacked out (scripts/suit.gd).

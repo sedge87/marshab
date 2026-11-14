@@ -92,8 +92,14 @@ var drop_field: Node3D  # scripts/drop_field.gd: pallets 2-4 round the landing, 
 var lifepod: Node3D     # scripts/lifepod.gd: the lifepod days (water, threads, salvage, the tiny printer)
 var walker: Node3D      # scripts/walker.gd: Walker 1 and the General Module (step 3c)
 var _walker_state := {}
-var module_life: Node   # scripts/module_life.gd: the General Module's own life support (3c)
+var module_life: Node   # scripts/module_life.gd: the General Module's own life support (3c); Walker 1's core
 var _module_life_state := {}
+## Several bases (A4): each core's life support, by base id ("w1" is
+## module_life), and the walkers after Walker 1 (C1 places them).
+var cores: Dictionary = {}
+var _cores_state := {}
+var walkers: Dictionary = {}
+var _walkers_state := {}
 var _field_state := {}
 var _lifepod_state := {}
 var opening_days: Node   # scripts/opening_days.gd: the first days, each ending with sleep
@@ -262,7 +268,12 @@ func _ready() -> void:
 		walker = WALKER.new()
 		add_child(walker)
 		walker.setup(self, _walker_state)
-		if str(walker.state) == "done": start_module_life()
+		walkers[str(walker.base_id)] = walker
+		if str(walker.state) == "done": start_core(str(walker.base_id))
+		for id in _walkers_state:
+			if walkers.has(str(id)): continue
+			var more: Node3D = add_walker(str(id), Vector3.INF, _walkers_state[id] as Dictionary)
+			if str(more.state) == "done": start_core(str(id))
 		opening_days = OPENING_DAYS.new()
 		add_child(opening_days)
 		opening_days.setup(self, _days_state)
@@ -610,7 +621,7 @@ func _begin_lander_intro() -> void:
 ## shown): 1 Down (sol 1), 2 the lifepod days (sol 2 until the walker moves),
 ## 3 Walker 1 (until the General Module's down), then 4.
 func opening_part() -> int:
-	if walker == null or str(walker.state) == "done": return 4   # no walker (Creative, older saves): past the opening
+	if walker == null or str(walker.state) == "done" or bool(walker.kit_given): return 4   # no walker (Creative, older saves): past the opening
 	if lifepod != null and bool(lifepod.walker_moved): return 3
 	if notes != null and int(notes.call("_sol")) >= 2: return 2
 	if opening_days != null and int(opening_days.nights) >= 1: return 2   # woke from the first night
@@ -1206,6 +1217,8 @@ func current_state() -> Dictionary:
 		"walker": walker.export_state() if walker != null else {},
 		"opening_days": opening_days.export_state() if opening_days != null else {},
 		"module_life": module_life.export_state() if module_life != null else {},
+		"cores": _export_cores(),
+		"walkers": _export_walkers(),
 		"gary_met": gary_met,
 		"orbiter_texts": orbiter_texts.export_state() if orbiter_texts != null else {},
 		"replies": replies.export_state() if replies != null else {},
@@ -1285,6 +1298,8 @@ func _restore_pending_habitat() -> void:
 	_walker_state = state.get("walker", {}) as Dictionary
 	_days_state = state.get("opening_days", {}) as Dictionary
 	_module_life_state = state.get("module_life", {}) as Dictionary
+	_cores_state = (state.get("cores", {}) as Dictionary).duplicate(true)
+	_walkers_state = (state.get("walkers", {}) as Dictionary).duplicate(true)
 	_texts_state = state.get("orbiter_texts", {}) as Dictionary
 	_replies_state = state.get("replies", {}) as Dictionary
 	_radio_state = state.get("radio", {}) as Dictionary
@@ -1322,7 +1337,66 @@ func _play_intro() -> void:
 
 ## The General Module is down (scripts/walker.gd): its own life support starts.
 func start_module_life() -> void:
-	if module_life != null: return
-	module_life = MODULE_LIFE.new()
-	add_child(module_life)
-	module_life.setup(self, _module_life_state)
+	start_core("w1")
+
+## A base's core is down: its own life support starts (or carries on where
+## it was when it was refolded).
+func start_core(id: String) -> void:
+	if cores.has(id) and is_instance_valid(cores[id]): return
+	var life: Node = MODULE_LIFE.new()
+	life.base_id = id
+	add_child(life)
+	var saved: Dictionary = _cores_state.get(id, _module_life_state if id == "w1" else {}) as Dictionary
+	life.setup(self, saved)
+	cores[id] = life
+	if id == "w1": module_life = life
+
+## Refolded: its life support packs away with it, its state kept.
+func fold_core(id: String) -> void:
+	var life: Node = cores.get(id)
+	if life == null or not is_instance_valid(life): return
+	_cores_state[id] = life.export_state()
+	if id == "w1": _module_life_state = _cores_state[id]
+	cores.erase(id)
+	if is_same(life, module_life): module_life = null
+	life.queue_free()
+
+## The core of the base you're at (or nearest), or null.
+func core_here() -> Node:
+	if builder == null: return module_life
+	var life: Node = cores.get(str(builder.active_base))
+	return life if life != null and is_instance_valid(life) else null
+
+## The core whose rooms hold a point, or null.
+func core_at(point: Vector3) -> Node:
+	if builder == null or not builder.is_inside(point): return null
+	var zone: Dictionary = builder._zone_at_point(Vector2(point.x, point.z))
+	var life: Node = cores.get(str(zone.get("base", "w1")))
+	return life if life != null and is_instance_valid(life) else null
+
+## Another walker (C1 lays out Walkers 2–4; tests and Creative use this).
+func add_walker(id: String, at: Vector3, saved: Dictionary = {}) -> Node3D:
+	var more: Node3D = WALKER.new()
+	more.base_id = id
+	more.walker_name = "Walker %s" % id.trim_prefix("w")
+	add_child(more)
+	var state := saved.duplicate(true)
+	if state.is_empty():
+		state = {"state": "ready", "calibrated": true, "seen": true, "base_id": id, "name": more.walker_name}
+		if not is_inf(at.x): state["at"] = [at.x, at.y, at.z]
+	more.setup(self, state)
+	walkers[id] = more
+	return more
+
+func _export_cores() -> Dictionary:
+	var out := _cores_state.duplicate(true)
+	for id in cores:
+		if is_instance_valid(cores[id]): out[id] = cores[id].export_state()
+	return out
+
+func _export_walkers() -> Dictionary:
+	var out := {}
+	for id in walkers:
+		if is_same(walkers[id], walker) or not is_instance_valid(walkers[id]): continue
+		out[id] = walkers[id].export_state()
+	return out

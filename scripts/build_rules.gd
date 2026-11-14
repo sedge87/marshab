@@ -14,6 +14,9 @@ extends RefCounted
 ##   module there and lowers it (scripts/walker.gd).
 ## - Inside, the Interior view offers only the fit-out kit until it's placed.
 ## No walker in the world (Creative, older saves, tests): no rules.
+## Several bases (A4): each walker seeds its own base (its id is the base's).
+## These rules are about the base the Site plan is on (builder.active_base):
+## its walker, its core.
 
 const CELL := 3.0
 ## The module as the walker carries it: 2 × 3 cells (6 × 9 m).
@@ -23,20 +26,25 @@ const EXPLORED := .5
 ## The fit-out kit that rides with the module: unfolded where you put it.
 const KIT := {"crew_bunk": 1, "general_module_rack": 1, "common_table": 1, "crew_chair": 1, "portable_interior_work_light": 1}
 
+## The walker of the base the plan is on, or null.
 static func walker(builder: Node) -> Node:
 	if builder == null or not builder.is_inside_tree(): return null
-	return builder.get_tree().get_first_node_in_group("walker")
+	var base := str(builder.get("active_base"))
+	for node in builder.get_tree().get_nodes_in_group("walker"):
+		if str(node.get("base_id")) == base: return node
+	return null
 
+## Any walker in the world: the core comes only on one.
 static func active(builder: Node) -> bool:
-	return MHGame.game_mode != "creative" and walker(builder) != null
+	return MHGame.game_mode != "creative" and builder != null and builder.is_inside_tree() and builder.get_tree().get_first_node_in_group("walker") != null
 
 ## "" (no rules, or the module is down), "waiting" (still out there),
 ## "set_down" (parked: place the module and its airlock), "delivering"
 ## (carrying it to the spot and lowering it).
 static func stage(builder: Node) -> String:
-	if not active(builder): return ""
+	if not active(builder) or walker(builder) == null: return ""
 	match str(walker(builder).get("state")):
-		"stalled", "walking": return "waiting"
+		"stalled", "walking", "ready", "travelling": return "waiting"
 		"parked": return "set_down"
 		"coming": return "delivering" if bool(walker(builder).get("marked")) else "set_down"   # v2: mark the spot while it crawls home
 		"carrying", "lowering": return "delivering"
@@ -45,7 +53,7 @@ static func stage(builder: Node) -> String:
 ## Why B can't open the Site plan now ("" when it can).
 static func b_reason(builder: Node) -> String:
 	match stage(builder):
-		"waiting": return "Nothing to build with yet"
+		"waiting": return "Nothing to build with yet" if str(walker(builder).get("state")) != "travelling" else "The walker is still on its way"
 		"delivering":
 			if str(walker(builder).get("state")) == "coming": return "The module's spot is marked"
 			return "The walker is setting the module down"
@@ -67,10 +75,12 @@ static func offered(builder: Node, kind: String) -> bool:
 	if kind == "general" and active(builder): return false
 	return true
 
-## The carried module, once placed in the plan (or {}).
-static func module_zone(builder: Node) -> Dictionary:
+## A base's carried core, once placed in the plan (or {}): the plan's base
+## unless one's named.
+static func module_zone(builder: Node, base := "") -> Dictionary:
+	if base.is_empty(): base = str(builder.get("active_base"))
 	for zone in builder.get("zones"):
-		if bool(zone.get("carried", false)): return zone
+		if bool(zone.get("carried", false)) and str(zone.get("base", "w1")) == base: return zone
 	return {}
 
 ## The General Module's fixed footprint at `at`, or [] when it isn't fixed.
@@ -117,13 +127,20 @@ static func placed(builder: Node, zone: Dictionary) -> void:
 
 ## The plan closed: with the module and an airlock placed, the walker goes.
 static func plan_closed(builder: Node) -> void:
+	# The crew's pad, once the plan closes on it, is down for good (A4).
+	for zone in builder.get("zones"):
+		if str(zone.get("kind", "")) == "landing_pad" and not bool(zone.get("down", false)):
+			zone["down"] = true
+			builder.set("_history", (builder.get("_history") as Array).filter(func(step): return not (str(step.get("type", "")) == "zone" and is_same(step.zone, zone))))
+			MHNotices.post("valid", "The landing pad is down", "%s is the main base now: the crew will land here." % MHBases.label_for(str(zone.get("base", "w1"))), "log")
 	if stage(builder) != "set_down": return
 	var module := module_zone(builder)
 	if module.is_empty(): return
 	var has_airlock := false
 	for zone in builder.get("zones"):
-		if str(zone.kind) == "airlock": has_airlock = true
+		if str(zone.kind) == "airlock" and str(zone.get("base", "w1")) == str(builder.get("active_base")): has_airlock = true
 	if not has_airlock: return
+	module = module_zone(builder)
 	# Set down for good: undo no longer takes the module or its airlock back.
 	builder.set("_history", (builder.get("_history") as Array).filter(func(step): return not (str(step.get("type", "")) == "zone" and (bool(step.zone.get("carried", false)) or str(step.zone.get("kind", "")) == "airlock"))))
 	if str(walker(builder).get("state")) == "coming": walker(builder).mark(module)

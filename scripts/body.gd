@@ -136,8 +136,9 @@ func surroundings() -> Dictionary:
 	if suited_indoors(): return {}   # on the suit's own air and heat (scripts/suit.gd)
 	var cabin: Node = world.get("cabin_life")
 	if cabin != null and cabin.running() and cabin.player_inside() and cabin.breathable(): return cabin.conditions()
-	# The General Module (3c): its own life support (scripts/module_life.gd).
-	var module: Node = world.get("module_life")
+	# The General Module (3c): its own life support (scripts/module_life.gd);
+	# with several bases (A4), the core of the rooms you're in.
+	var module: Node = world.core_at(world.player.global_position) if world.has_method("core_at") else world.get("module_life")
 	if module != null and module.running() and module.player_inside():
 		# Not commissioned, or no air in it: you're on your suit, and the suit
 		# keeps the cold off (playtest 14 Nov).

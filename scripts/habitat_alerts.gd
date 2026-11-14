@@ -154,6 +154,17 @@ func evaluate(test_sim: RefCounted = null, test_hour := -1.0) -> Array:
 	# The General Module (3c) runs on its own core too: while it's the base,
 	# its alerts are the base's.
 	var module: Node = world.get("module_life") if world != null and test_sim == null else null
+	# Several bases (A4): every core's alerts, each named by its base once
+	# there's more than one.
+	var cores: Array = (world.get("cores") as Dictionary).values().filter(func(c): return is_instance_valid(c) and c.running()) if world != null and test_sim == null and world.get("cores") != null else []
+	if cores.size() > 1:
+		for c in cores:
+			for alert in c.alerts():
+				var named: Dictionary = (alert as Dictionary).duplicate()
+				named["title"] = "%s: %s" % [MHBases.label_for(str(c.base_id)), str(named.get("title", ""))]
+				named["id"] = "%s:%s" % [str(c.base_id), str(named.get("id", ""))]
+				out.append(named)
+		return out
 	if module != null and module.running():
 		out.append_array(module.alerts())
 		return out

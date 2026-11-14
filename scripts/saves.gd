@@ -24,7 +24,12 @@ extends RefCounted
 
 const EXTENSION := "save"
 const FORMAT := "outpost_one_save"
-const VERSION := 2
+## 3 (A4, 14 Nov): several bases. The builder's state carries "bases" (each
+## base's centre and floor), "main_base" and "traces", and every zone its
+## "base" and "y"; the world's carries "cores" (each core's life support) and
+## "walkers". A version 2 file loads as one base, Walker 1's, every room at
+## its one floor (BuildController.restore_habitat_state, scripts/bases.gd).
+const VERSION := 3
 const THUMB_SIZE := Vector2i(480, 270)
 const KEEP_BACKUPS := 5
 const TAG_LETTERS := "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -79,7 +84,7 @@ static func make_header(name: String, state: Dictionary, id: String, extra := {}
 	var builder: Dictionary = state.get("builder", {})
 	var rooms := 0
 	for zone in builder.get("zones", []):
-		if not str((zone as Dictionary).get("kind", "")) in ["solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor", "corridor", "airlock"]: rooms += 1
+		if not str((zone as Dictionary).get("kind", "")) in ["solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor", "corridor", "airlock", "landing_pad"]: rooms += 1
 	var made_by: Dictionary = state.get("made_by", {})
 	var header := {"format": FORMAT, "version": VERSION, "id": id, "name": name,
 		"saved_at": Time.get_datetime_string_from_system(false), "saved_unix": Time.get_unix_time_from_system(),
@@ -89,7 +94,7 @@ static func make_header(name: String, state: Dictionary, id: String, extra := {}
 		# Survival or Freedom from before chapter one (docs/start-and-chapter-one.md §8).
 		"older_rules": str(state.get("game_mode", "")) in ["survival", "freedom"] and bool((state.get("chapter_one", {"older_rules": true}) as Dictionary).get("older_rules", false)),
 		"site_id": str(state.get("site_id", "")), "site_name": str(state.get("site_name", "Mars")),
-		"game_mode": str(state.get("game_mode", "survival")), "rooms": rooms,
+		"game_mode": str(state.get("game_mode", "survival")), "rooms": rooms, "bases": maxi(1, (builder.get("bases", {}) as Dictionary).size()),
 		"challenge": MHGame.challenge_from_state(state),
 		"items": (builder.get("placed_interior", []) as Array).size()}
 	header.merge(extra, true)

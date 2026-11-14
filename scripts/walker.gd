@@ -27,6 +27,13 @@ extends Node3D
 ## as it goes. That afternoon B marks where the module goes (a footprint on
 ## the ground); at dawn it's parked by the lander and sets the module down on
 ## your mark while you watch.
+## Several bases (A4, 14 Nov; docs/bases-and-vehicles.md): each walker's id
+## is its base's (base_id, "w1" for Walker 1). Set down, it kneels and folds
+## into its core: nothing's left standing. Refolded from the core's panel
+## (as often as you like), it stands up again, "ready": mark a spot on the
+## Map and it walks there on its own ("travelling", about a sol across the
+## Reach), and waits ("parked") for you to come and choose where its core
+## goes, as on day 4.
 
 const MODEL := preload("res://assets/companions/walker.glb")
 const MHPalette := preload("res://scripts/mh_palette.gd")
@@ -68,7 +75,13 @@ const PHOTO_SIZE := Vector2i(480, 300)
 const PHOTO_METRES := 70.0
 
 var world: Node
-var state := "stalled"          # stalled, walking, coming (v2: home overnight), parked, carrying, lowering, done
+var base_id := "w1"              # its base's id (A4): Walker n seeds base "wn"
+var walker_name := NAME
+var kit_given := false           # its airlock and fit-out kit joined the stock (once)
+var spot := Vector3.INF          # A4: the spot marked on the Map it's walking to
+const TRAVEL_SOL := 1.0          # sols to cross the Reach (docs: "about a sol")
+var _folded := 0.0               # 0 standing, 1 folded into its core
+var state := "stalled"          # stalled, walking, coming (v2: home overnight), parked, carrying, lowering, done; A4: ready, travelling
 var marked := false             # v2: the module's spot is marked, waiting for it
 var _mark: Node3D
 var fault_found := false         # v2, day 3: you photographed the split wheel seal
@@ -132,8 +145,12 @@ func _ready() -> void:
 
 func setup(target_world: Node, saved: Dictionary) -> void:
 	world = target_world
+	base_id = str(saved.get("base_id", base_id))
+	walker_name = str(saved.get("name", walker_name))
 	_build()
 	state = str(saved.get("state", "stalled"))
+	kit_given = bool(saved.get("kit_given", state == "done"))
+	spot = _vec(saved.get("spot", []))
 	calibrated = bool(saved.get("calibrated", saved.get("cleaned", false)))
 	nav_sight_done = bool(saved.get("nav_sight", false))
 	seen = bool(saved.get("seen", false))
@@ -149,15 +166,16 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	rotation.y = float(saved.get("yaw", _face_yaw(world.lander.global_position - at)))
 	_settle()
 	var pod: Node = world.get("lifepod")
-	if bool(saved.get("tracks", false)) or (pod != null and bool(pod.walker_moved)): lay_tracks()
+	if base_id != "w1": pass   # the opening's tracks are Walker 1's
+	elif bool(saved.get("tracks", false)) or (pod != null and bool(pod.walker_moved)): lay_tracks()
 	elif not seen and not calibrated and state == "stalled": _wait_out_of_sight()
 	# Saved mid-delivery: it's down.
 	marked = bool(saved.get("marked", false))
 	fault_found = bool(saved.get("fault_found", false))
 	for p in saved.get("shots", []): shots[str(p)] = true
 	if marked and state == "coming": _show_mark.call_deferred()
-	if state in ["carrying", "lowering"]: _finish_set_down.call_deferred()
-	elif state == "done": _module.visible = false; _module_shape.disabled = true
+	if state in ["carrying", "lowering"]: _finish_set_down.call_deferred(false)
+	elif state == "done": _module.visible = false; _module_shape.disabled = true; _fold(1.0)
 
 static func _vec(a: Variant) -> Vector3:
 	if a is Array and (a as Array).size() == 3: return Vector3(float(a[0]), float(a[1]), float(a[2]))
@@ -466,9 +484,11 @@ func interaction_prompt() -> Dictionary:
 		"stalled": return {"label": NAME + " · lost: its nav screen's up on the front deck"}
 		"walking": return {"label": NAME + " · walking home"}
 		"coming": return {"label": NAME + " · set right: it'll crawl home overnight"}
-		"parked": return {"label": NAME + " · carrying the core"}
-		"carrying", "lowering": return {"label": NAME + " · setting the module down"}
-	return {"label": NAME}
+		"parked": return {"label": walker_name + " · carrying the core"}
+		"carrying", "lowering": return {"label": walker_name + " · setting the module down"}
+		"ready": return {"label": walker_name + " · ready: mark a spot for it on the Map (W)"}
+		"travelling": return {"label": walker_name + " · walking to its spot"}
+	return {"label": walker_name}
 
 func interact(_actor: Node = null) -> bool:
 	return false
@@ -689,9 +709,16 @@ func _process(delta: float) -> void:
 				var notes: Node = world.get("notes")
 				if notes != null: notes.think("walker_home")
 				MHNotices.post("info", NAME + " is home", "Press B to choose where the core goes.", "", 1)   # what to do next: ahead of the queue
+		"travelling":
+			_watch_for_you()
+			var hours := fposmod(MHGame.sol_hour - _last_hour, 24.0) if _last_hour >= 0.0 else 0.0
+			if hours > 2.0: hours = 0.0
+			var metres := hours * travel_per_hour()
+			if _can_move() and metres > 0.0 and _drive(spot, delta, INF, metres / maxf(delta, .0001)): _arrive()
 		"carrying":
 			if _can_move() and _drive(target, delta, target_yaw): _start_lowering()
 		"lowering": _lower(delta)
+	_last_hour = MHGame.sol_hour
 	_run_ladder(delta)
 	if _getting_off and ladder_out >= 1.0: _step_off()
 	if riding: _ride()
@@ -731,7 +758,7 @@ func ladder_prompt() -> Dictionary:
 ## stopped for you to climb on or off.
 func _ladder_wanted() -> bool:
 	if _getting_off: return true
-	if state in ["stalled", "parked", "done"]: return true
+	if state in ["stalled", "parked", "done", "ready"]: return true
 	return _waiting and not riding
 
 func _run_ladder(delta: float) -> void:
@@ -928,16 +955,23 @@ func deliver(zone: Dictionary) -> void:
 	state = "carrying"
 	_hide_base(true)
 
-## The real rooms wait out of sight (and out of reach) until it's down.
+## Its base's pieces (the core and its airlock) wait unbuilt until it's down
+## (A4: the other bases stay as they are).
 func _hide_base(hidden: bool) -> void:
-	var root: Node3D = world.builder.root
-	root.visible = not hidden
-	root.position.y = 500.0 if hidden else 0.0
+	var builder: Node = world.builder
+	var changed := false
+	for zone in builder.zones:
+		if str(zone.get("base", "w1")) != base_id and not (hidden and not zone.has("base")): continue
+		if hidden and not bool(zone.get("arriving", false)): zone["arriving"] = true; changed = true
+		elif not hidden and zone.has("arriving"): zone.erase("arriving"); changed = true
+	if changed: builder._rebuild()
 
 func _start_lowering() -> void:
 	state = "lowering"
 	_lowered = 0.0
-	_drop = maxf(.2, global_position.y + MODULE_BOTTOM - float(world.builder.habitat_base_y) + .35)
+	var core: Dictionary = BUILD_RULES.module_zone(world.builder, base_id)
+	var floor_y := float(core.get("y", world.builder.habitat_base_y))
+	_drop = maxf(.2, global_position.y + MODULE_BOTTOM - floor_y + .35)
 	MHAudio.sfx_at("mode_build", self, -2.0, .5)
 
 func _lower(delta: float) -> void:
@@ -946,8 +980,9 @@ func _lower(delta: float) -> void:
 	_cable_length(_lowered)
 	if _lowered >= _drop: _finish_set_down()
 
-## Down: the real module takes over, the kit and plans are yours.
-func _finish_set_down() -> void:
+## Down: the real core takes over and the walker kneels and folds into it
+## (A4: nothing's left standing); the kit and plans are yours.
+func _finish_set_down(animate := true) -> void:
 	ladder_out = 1.0
 	_place_ladder()
 	if riding: _step_off()
@@ -956,11 +991,19 @@ func _finish_set_down() -> void:
 	if _module != null: _module.visible = false
 	_module_shape.disabled = true
 	_cable_length(0.0)
-	# Out of the way: a few metres on past it.
-	global_position += -global_basis.z * 20.0
-	_settle()
-	BUILD_RULES.give_kit()
-	if world.has_method("start_module_life"): world.start_module_life()
+	if animate and is_inside_tree():
+		MHAudio.sfx_at("mode_build", self, -4.0, .4)
+		create_tween().tween_method(_fold, 0.0, 1.0, FOLD_SECONDS).set_trans(Tween.TRANS_SINE)
+	else: _fold(1.0)
+	var refolded := kit_given
+	if not kit_given:
+		kit_given = true
+		BUILD_RULES.give_kit()
+	if world.has_method("start_core"): world.start_core(base_id)
+	elif world.has_method("start_module_life"): world.start_module_life()
+	if refolded:
+		MHNotices.post("info", "The core is down", "%s is folded in again: everything you had is in the store, ready to build." % walker_name, "", 1)
+		return
 	if not MHChapterOne.known.has("ice_drill"): MHChapterOne.known["ice_drill"] = "module"
 	MHChapterOne.learn_after("module_down")
 	var notes: Node = world.get("notes")
@@ -983,6 +1026,103 @@ func _night_check(you: Vector3) -> void:
 			notes.think("first_room")
 			notes.answer("first_room")
 
+# ---------- A4: kneeling, folding, refolding and walking to a spot ----------
+
+const FOLD_SECONDS := 3.5
+const KNEEL := 3.2               # metres the body comes down as it kneels
+
+## 0 standing, 1 folded into the core: it kneels, then draws in, then it's
+## part of the core (hidden, no collision).
+func _fold(t: float) -> void:
+	_folded = t
+	if _model == null: return
+	var kneel := smoothstep(0.0, .5, t)
+	var fold := smoothstep(.4, 1.0, t)
+	_model.position.y = -KNEEL * kneel
+	_model.scale = Vector3(lerpf(1.0, .35, fold), lerpf(1.0, .25, fold), lerpf(1.0, .7, fold))
+	var gone := t >= 1.0
+	visible = not gone
+	for body in find_children("*", "StaticBody3D", true, false):
+		(body as StaticBody3D).collision_layer = 0 if gone else 1
+	if _ladder_shape != null and gone: _ladder_shape.disabled = true
+
+## Refolded (scripts/core_panel.gd): it stands up where its core was, ready.
+func refold() -> void:
+	if state != "done": return
+	var builder: Node = world.builder
+	var core: Dictionary = BUILD_RULES.module_zone(builder, base_id)
+	if not core.is_empty():
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for c in core.cells:
+			lo = Vector2(minf(lo.x, c.x), minf(lo.y, c.y))
+			hi = Vector2(maxf(hi.x, c.x), maxf(hi.y, c.y))
+		var centre: Vector2 = (lo + hi) * .5 * float(builder.CELL)
+		global_position = Vector3(centre.x, 0, centre.y)
+		rotation.y = target_yaw
+	var why: String = builder.refold_base(base_id)
+	if not why.is_empty():
+		MHNotices.post("invalid", "It won't refold", why + ".")
+		return
+	if world.has_method("fold_core"): world.fold_core(base_id)
+	state = "ready"
+	spot = Vector3.INF
+	if _module != null:
+		_module.visible = true
+		_module.position.y = _module_y0
+	_module_shape.disabled = false
+	_settle()
+	visible = true
+	create_tween().tween_method(_fold, 1.0, 0.0, FOLD_SECONDS).set_trans(Tween.TRANS_SINE)
+	ladder_out = 1.0
+	_place_ladder()
+	MHNotices.post("info", walker_name + " is up", "Its core's folded away with everything in the store. Mark a spot for it on the Map (W).", "", 1)
+
+## Metres an hour: about a sol to cross the Reach.
+func travel_per_hour() -> float:
+	var half := float(MHSiteTerrain.RegionTerrain.meta().get("half", 4000.0)) if MHSiteTerrain.RegionTerrain != null else 4000.0
+	return 2.0 * half / (24.65 * TRAVEL_SOL)
+
+## Why it can't go to a spot (site metres; "" when it can): ground you've
+## explored, flat enough, and clear of the other bases.
+func spot_reason(at: Vector2) -> String:
+	if state != "ready": return "%s isn't free to walk" % walker_name
+	var builder: Node = world.builder
+	var known: Node = world.get("known")
+	if known != null and float(known.seen_at(at + known.origin)) < BUILD_RULES.EXPLORED: return "Only ground you've explored"
+	for id in builder.bases:
+		if str(id) == base_id: continue
+		var c = builder.bases[id].get("centre", Vector2.INF)
+		if c is Vector2 and not is_inf((c as Vector2).x) and (c as Vector2).distance_to(at) < MHBases.APART: return "Too close to %s" % MHBases.label_for(str(id))
+	var origin: Vector2 = known.origin if known != null else Vector2.ZERO
+	var ground := MHBaseSite.reason(at.x + origin.x, at.y + origin.y, 24.0)
+	if not ground.is_empty(): return "Not there: " + ground
+	return ""
+
+## Send it to a spot marked on the Map (scripts/region_map.gd).
+func send_to(at: Vector2) -> bool:
+	if not spot_reason(at).is_empty(): return false
+	world.builder.found_base(base_id, at)
+	spot = Vector3(at.x, MHSiteTerrain.height(at.x, at.y), at.y)
+	state = "travelling"
+	ladder_out = 0.0 if not riding else ladder_out
+	_last_hour = MHGame.sol_hour
+	MHNotices.post("info", walker_name + " is on its way", "It walks there on its own: about %s. Follow it, or ride it." % _eta(), "")
+	return true
+
+func _eta() -> String:
+	var metres := Vector2(spot.x - global_position.x, spot.z - global_position.z).length()
+	var hours := metres / maxf(1.0, travel_per_hour())
+	return "%d hours" % maxi(1, roundi(hours)) if hours >= 1.5 else "an hour"
+
+## There: it parks and waits for you to choose where its core goes.
+func _arrive() -> void:
+	state = "parked"
+	ladder_out = 0.0
+	_place_ladder()
+	if not kit_given: MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its airlock
+	MHNotices.post("info", walker_name + " is at its spot", "Go there and press B to choose where the core goes.", "", 1)
+
 func export_state() -> Dictionary:
-	return {"state": state, "at": _arr(global_position), "yaw": rotation.y, "home": _arr(home), "target": _arr(target), "target_yaw": target_yaw,
+	return {"base_id": base_id, "name": walker_name, "kit_given": kit_given, "spot": _arr(spot), "state": state, "at": _arr(global_position), "yaw": rotation.y, "home": _arr(home), "target": _arr(target), "target_yaw": target_yaw,
 		"marked": marked, "fault_found": fault_found, "shots": shots.keys(), "calibrated": calibrated, "nav_sight": nav_sight_done, "seen": seen, "tracks": tracks_laid, "sent": sent, "text_left": _text_left, "first_night": first_night}

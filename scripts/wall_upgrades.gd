@@ -220,6 +220,7 @@ static func build(builder: Node) -> void:
 	_roof_rails(builder)
 	for record in builder.wall_upgrades:
 		var kind := str(record.kind)
+		base_y = MHBases.floor_at(builder, Vector2(record.cell) * cell_size if kind == "roof" else (record.get("mid", Vector2.ZERO) as Vector2) - (record.get("outward", Vector2.ZERO) as Vector2) * .5)   # A4
 		if kind == "roof":
 			var centre := Vector3(record.cell.x * cell_size, base_y + 2.975, record.cell.y * cell_size)
 			var patches := roof_patches(builder, record.cell)
@@ -374,6 +375,7 @@ static func _roof_rails(builder: Node) -> void:
 		var length := a.distance_to(b)
 		var tangent := (b - a) / length
 		var mid := (a + b) * .5
+		top = MHBases.floor_at(builder, mid - out * .5) + 2.975   # each room's own roof (A4)
 		# Runs along this edge, [from, to] from its middle; split round a ladder.
 		var runs := [[-length * .5, length * .5]]
 		for ladder in ladders:

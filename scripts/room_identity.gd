@@ -88,8 +88,8 @@ static func build(builder: Node) -> void:
 		var outline := _straight_walls(builder.zone_outline(zone))
 		if outline.size() < 3: continue
 		var colour: Color = builder.ZONE_TYPES.get(kind, {}).get("colour", Color.WHITE)
-		_band(builder, holder, zone, outline, base_y, colour)
-		_kit(holder, outline, base_y, KITS.get(kind, []))
+		_band(builder, holder, zone, outline, MHBases.zone_y(builder, zone), colour)
+		_kit(holder, outline, MHBases.zone_y(builder, zone), KITS.get(kind, []))
 	_door_signs(builder, holder, base_y)
 	_emblems(builder, holder, base_y)
 
@@ -255,8 +255,8 @@ static func _door_signs(builder: Node, holder: Node3D, base_y: float) -> void:
 			if not there.is_empty() and is_same(here, there): continue
 			var at := Vector2(position.x, position.z) + normal * side * .17
 			var yaw := atan2(normal.x * side, normal.y * side)
-			_box(holder, Vector3(1.7, .2, .02), Vector3(at.x, base_y + 2.58, at.y), yaw, plate)
-			_box(holder, Vector3(.12, .12, .022), Vector3(at.x, base_y + 2.58, at.y) + Basis(Vector3.UP, yaw) * Vector3(-.72, 0, .002), yaw, _material(colour, .6))
+			_box(holder, Vector3(1.7, .2, .02), Vector3(at.x, MHBases.zone_y(builder, here) + 2.58, at.y), yaw, plate)
+			_box(holder, Vector3(.12, .12, .022), Vector3(at.x, MHBases.zone_y(builder, here) + 2.58, at.y) + Basis(Vector3.UP, yaw) * Vector3(-.72, 0, .002), yaw, _material(colour, .6))
 			var label := Label3D.new()
 			label.text = text
 			label.font = MHStyle.font(800, false, 2)
@@ -266,7 +266,7 @@ static func _door_signs(builder: Node, holder: Node3D, base_y: float) -> void:
 			label.outline_size = 0
 			label.double_sided = false
 			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			label.position = Vector3(at.x, base_y + 2.58, at.y) + Basis(Vector3.UP, yaw) * Vector3(.08, 0, .015)
+			label.position = Vector3(at.x, MHBases.zone_y(builder, here) + 2.58, at.y) + Basis(Vector3.UP, yaw) * Vector3(.08, 0, .015)
 			label.rotation.y = yaw
 			holder.add_child(label)
 
@@ -291,7 +291,7 @@ static func _emblems(builder: Node, holder: Node3D, base_y: float) -> void:
 		if builder._window_index_at(mid, builder._canonical_wall_dir(bay.tangent)) >= 0: continue
 		done[key] = true
 		var at := mid + outward * .2
-		_tattoo(holder, Vector3(at.x, base_y + 1.7, at.y), atan2(outward.x, outward.y), .9, MHGame.colony_name.to_upper())
+		_tattoo(holder, Vector3(at.x, MHBases.zone_y(builder, zone) + 1.7, at.y), atan2(outward.x, outward.y), .9, MHGame.colony_name.to_upper())
 	# Airlocks (their walls never take windows, so they aren't hull bays): a
 	# side wall that faces Mars, on the cell nearest the outer door.
 	var cell_size: float = builder.CELL
@@ -303,7 +303,7 @@ static func _emblems(builder: Node, holder: Node3D, base_y: float) -> void:
 			if builder._is_habitat_zone(builder._zone_across(cell, side)): continue
 			var normal := Vector2(side.x, side.y)
 			var at := Vector2(cell.x, cell.y) * cell_size + normal * (cell_size * .5 + .2)
-			_tattoo(holder, Vector3(at.x, base_y + 1.7, at.y), atan2(normal.x, normal.y), .8, "")
+			_tattoo(holder, Vector3(at.x, MHBases.zone_y(builder, zone) + 1.7, at.y), atan2(normal.x, normal.y), .8, "")
 			break
 
 const TATTOO_SHADER := """

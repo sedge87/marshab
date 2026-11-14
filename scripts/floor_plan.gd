@@ -172,6 +172,7 @@ static func _walls(builder: Node, layer: Node3D, base_y: float) -> void:
 	for zone_index in range(builder.zones.size()):
 		var zone: Dictionary = builder.zones[zone_index]
 		if not builder._is_habitat_zone(zone): continue
+		base_y = MHBases.zone_y(builder, zone)   # each room at its own floor (A4)
 		var sides: Array = []
 		var outline := PackedVector2Array()
 		if zone.has("angled_mount"): outline = builder._angled_mount_outline(zone.angled_mount)
@@ -221,6 +222,8 @@ static func _upgrades(builder: Node, layer: Node3D, base_y: float) -> void:
 	var roofed := {}
 	for record in builder.wall_upgrades:
 		var kind := str(record.kind)
+		base_y = MHBases.floor_at(builder, Vector2(record.cell) * cell_size if kind == "roof" else (record.get("mid", Vector2.ZERO) as Vector2) - (record.get("outward", Vector2.ZERO) as Vector2) * .5)
+		y = base_y + Y_SYMBOLS
 		if kind == "roof":
 			var c: Vector2 = Vector2(record.cell) * cell_size
 			var hatch := _pattern(Color(1, 1, 1, .5), Color(1, 1, 1, 0), 3, Vector2(cell_size, cell_size))

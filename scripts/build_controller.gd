@@ -26,12 +26,12 @@ const MODEL_PREVIEW := preload("res://scripts/model_preview.gd")
 ## Site-plan parts that have a real model (for thumbnails and the 3D preview).
 const PART_MODELS := {"reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake", "atmosphere_processor": "atmosphere_processor"}
 ## Single-cell outdoor machines (not rooms): power sources, drills, intakes.
-const SITE_MACHINES := ["solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor"]
+const SITE_MACHINES := ["solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor", "landing_pad"]
 ## Not ordinary rooms: connectors, the bay, and the outdoor machines.
-const NON_ROOM_KINDS := ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor"]
+const NON_ROOM_KINDS := ["airlock", "corridor", "vehicle_bay", "solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor", "landing_pad"]
 ## Room shells Mars-made (printed) material can pay for. Airlocks keep
 ## Earth-made seals and mechanisms; outdoor machines are all Earth-made.
-const PRINTABLE_ZONE_EXCLUDES := ["airlock", "solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor", "ladder", "shield_water"]
+const PRINTABLE_ZONE_EXCLUDES := ["airlock", "solar", "reactor", "ice_extractor", "regolith_intake", "atmosphere_processor", "ladder", "shield_water"]   # the landing pad is printed
 ## Site machines placed freely (not snapped to the grid) and turned to any
 ## angle; solar can also go on a room's roof. Footprint radius in metres.
 const FREE_SITE_KINDS := {"solar": 1.25, "reactor": 1.45, "ice_extractor": 1.25, "regolith_intake": 1.35, "atmosphere_processor": 1.35}
@@ -137,6 +137,8 @@ const ZONE_TYPES := {
 	"ice_extractor":{"label":"Ice Extractor","colour":Color(.20,.82,.92),"cost":450},
 	"regolith_intake":{"label":"Regolith Intake","colour":Color(.78,.48,.28),"cost":900},
 	"atmosphere_processor":{"label":"Atmosphere Processor","colour":Color(.62,.80,.92),"cost":600},
+	# A4: the crew's landing pad and beacon. Where it goes is the main base.
+	"landing_pad":{"label":"Landing Pad","colour":Color(.86,.80,.70),"plan_colour":Color("#C9BBA4"),"cost":20},
 	# Not a zone: a ladder up an outside wall (a wall upgrade, scripts/wall_upgrades.gd).
 	"ladder":{"label":"Roof Ladder","colour":Color(.85,.58,.30),"cost":60},
 	"shield_regolith":{"label":"Regolith Shielding","colour":Color(.60,.42,.30),"cost":900},
@@ -172,7 +174,8 @@ const ZONE_INFO := {
 	"reactor":{"cat":"power","icon":"atom","rule":"One cell · R turns","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
 	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell on ice · R turns","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
 	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil: it makes Print Shop feedstock while it runs (about 150 kg a sol), and feeds a regolith printer indoors, which turns it into building material."},
-	"atmosphere_processor":{"cat":"power","icon":"wind","rule":"Anywhere · R turns","desc":"Splits oxygen out of the Mars air, like NASA's MOXIE scaled up. No water needed, but 2.5 kW."}
+	"atmosphere_processor":{"cat":"power","icon":"wind","rule":"Anywhere · R turns","desc":"Splits oxygen out of the Mars air, like NASA's MOXIE scaled up. No water needed, but 2.5 kW."},
+	"landing_pad":{"cat":"structure","icon":"rocket","rule":"18 m square · one only","desc":"A printed pad for the crew's lander, with edge lights and a beacon mast. The base you build it at becomes the main base, where the crew will land. Once it's down it stays, and that base can't be refolded."}
 }
 # Exterior construction deliberately excludes furnishing. Interior equipment is
 # selected only through the first-person construction controller.
@@ -292,6 +295,17 @@ var player_marker: Node3D
 var player_marker_label: Label3D
 var zoom := 54.0
 var habitat_base_y := 0.35
+## Several bases (A4, 14 Nov; scripts/bases.gd, docs/bases-and-vehicles.md).
+## Each zone has its base and its own floor; habitat_base_y is the floor where
+## you are (the room you're in, or your nearest base's core, or the base the
+## Site plan is on), and while the habitat is rebuilt, the piece being built's.
+const BASES := preload("res://scripts/bases.gd")
+const BASE_PIECES := preload("res://scripts/base_pieces.gd")
+var bases: Dictionary = {}
+var active_base := "w1"
+var main_base := ""      # the base with the crew's landing pad ("" until it's down)
+var traces: Array = []   # what refolded bases left behind: [{"cells": [...], "y": float}]
+var _here_refresh := 0.0
 var ui: Control
 var hud_layer: CanvasLayer
 var cargo_meter: MHWidgets.Meter
@@ -343,6 +357,106 @@ func _site_build_limit() -> float:
 	# Most regions retain the standard 120 m-wide construction area. Individual
 	# maps can offer a different surveyed landing field without changing cell size.
 	return float(MHGame.site().get("build_limit", LIMIT))
+
+# ---------- several bases (A4, scripts/bases.gd) ----------
+
+## Where you are: the base you're at (or nearest) and the floor under you. In
+## the Site plan, the base it's on.
+func refresh_here(_force := false) -> void:
+	BASES.ensure(self)
+	var player := world.get_node_or_null("Player") as Node3D if world != null and is_inside_tree() else null
+	if build_mode or player == null:
+		habitat_base_y = BASES.base_y(self, active_base)
+	else:
+		var p := Vector2(player.global_position.x, player.global_position.z)
+		var id := BASES.at(self, p)
+		active_base = id if not id.is_empty() else BASES.nearest(self, p)
+		habitat_base_y = BASES.floor_at(self, p)
+	MHRoomTypes.here = active_base
+	if grid != null: grid.position.y = BASES.base_y(self, active_base) + .09
+
+## Opening the Site plan: it's on the base you're at (or nearest), its grid
+## and camera over that base's build area.
+func _plan_at_base() -> void:
+	BASES.ensure(self)
+	var player := world.get_node_or_null("Player") as Node3D
+	var middle := BASES.centre(self, active_base)
+	if player != null:
+		var p := Vector2(player.global_position.x, player.global_position.z)
+		var id := BASES.at(self, p)
+		active_base = id if not id.is_empty() else BASES.nearest(self, p)
+		middle = BASES.centre(self, active_base)
+		var reach := _site_build_limit() if bool(bases.get(active_base, {}).get("landing", false)) else BASES.REACH
+		if is_inf(middle.x): middle = p
+		if absf(pivot.position.x - middle.x) > reach or absf(pivot.position.z - middle.y) > reach:
+			pivot.position.x = clampf(p.x, middle.x - reach, middle.x + reach)
+			pivot.position.z = clampf(p.y, middle.y - reach, middle.y + reach)
+	habitat_base_y = BASES.base_y(self, active_base)
+	pivot.position.y = 0.0 if bool(bases.get(active_base, {}).get("landing", false)) else habitat_base_y
+	MHRoomTypes.here = active_base
+	if grid != null and not is_inf(middle.x):
+		grid.position = Vector3(snappedf(middle.x, CELL), habitat_base_y + .09, snappedf(middle.y, CELL))
+		for overlay in get_tree().get_nodes_in_group("site_plan_overlay"):
+			if overlay is Node3D and overlay.name == "UnbuildableOverlay": (overlay as Node3D).visible = bool(bases.get(active_base, {}).get("landing", false)) and build_mode
+
+## A point the active base can build on ("" when it can).
+func _point_site_reason(point: Vector2) -> String:
+	if BASES.in_area(self, active_base, point): return ""
+	if bool(bases.get(active_base, {}).get("landing", false)):
+		var site := MHSiteTerrain.unbuildable_reason(point)
+		return site if not site.is_empty() else "Outside the surveyed build area"
+	return "Too far from the base's core: build within %d m of it" % roundi(BASES.REACH)
+
+## The floor an interior door stands on.
+func _door_floor(door_data: Dictionary) -> float:
+	for key in ["cell", "outline_grid_cell"]:
+		if door_data.has(key):
+			var cell: Vector2i = door_data[key]
+			return BASES.floor_at(self, Vector2(cell.x * CELL, cell.y * CELL))
+	if door_data.get("wall_a") is Vector2: return BASES.floor_at(self, door_data.wall_a as Vector2)
+	return habitat_base_y
+
+## A new base for a walker's core: its build area round centre (site metres).
+func found_base(id: String, centre: Vector2) -> void:
+	BASES.ensure(self)
+	var y := _proposed_base_y([Vector2i(roundi(centre.x / CELL), roundi(centre.y / CELL))]) if is_inside_tree() else .35
+	var record := BASES.record(id, BASES.label_for(id), centre, y)
+	if bases.has(id): record["name"] = str(bases[id].get("name", record.name))
+	bases[id] = record
+
+## Refold a base's core (scripts/core_panel.gd): everything comes along, back
+## into the shared store (liners, kit, materials); the printed pads and the
+## rooms' footprints stay on the ground. The walker stands up again, ready
+## for a new spot. Returns why not ("" when it went).
+func refold_reason(id: String) -> String:
+	if not bases.has(id): return "No base here"
+	if main_base == id: return "The crew's landing pad is down here: this is the main base now"
+	if BASES.zones_of(self, id).is_empty(): return "Nothing set down here"
+	return ""
+
+func refold_base(id: String) -> String:
+	var why := refold_reason(id)
+	if not why.is_empty(): return why
+	var middle := BASES.centre(self, id)
+	for index in range(zones.size() - 1, -1, -1):
+		var zone: Dictionary = zones[index]
+		if BASES.base_of(zone) != id: continue
+		if BASES.is_room(zone) and not zone.has("outline") and not zone.has("angled_mount"):
+			traces.append({"cells": (zone.get("cells", []) as Array).duplicate(), "y": BASES.zone_y(self, zone), "base": id})
+		zones.remove_at(index)
+	_history = _history.filter(func(step): return not (str(step.get("type", "")) == "zone" and BASES.base_of(step.zone) == id))
+	# Outdoor kit round the base comes too.
+	for index in range(placed_surface.size() - 1, -1, -1):
+		if index >= placed_surface.size(): continue
+		var at: Vector3 = placed_surface[index].get("position", Vector3.ZERO)
+		if not is_inf(middle.x) and absf(at.x - middle.x) <= BASES.REACH and absf(at.z - middle.y) <= BASES.REACH:
+			remove_surface_equipment(str(placed_surface[index].get("placement_id", "")))
+	_prune_equipment()
+	bases[id]["centre"] = Vector2.INF
+	bases[id]["landing"] = false
+	bases[id]["refolds"] = int(bases[id].get("refolds", 0)) + 1
+	_rebuild()
+	return ""
 
 func _ready() -> void:
 	add_to_group("habitat_builder")
@@ -494,6 +608,10 @@ var _r_repeat := 0.0
 var _budget_refresh := 0.0
 
 func _process(delta: float) -> void:
+	_here_refresh -= delta
+	if _here_refresh <= 0.0:
+		_here_refresh = .25
+		refresh_here()
 	if not build_mode:
 		corridor_drawing = false
 		return
@@ -522,8 +640,9 @@ func _process(delta: float) -> void:
 		# Faster when zoomed out; Shift doubles it.
 		var pan_speed:=28.0*zoom/54.0*(2.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0)
 		pivot.position+=pivot.basis*move.normalized()*pan_speed*delta
-		var site_limit := _site_build_limit()
-		pivot.position.x=clampf(pivot.position.x,-site_limit,site_limit); pivot.position.z=clampf(pivot.position.z,-site_limit,site_limit)
+		var site_limit := _site_build_limit() if bool(bases.get(active_base, {}).get("landing", false)) else BASES.REACH
+		var middle := BASES.centre(self, active_base)
+		pivot.position.x=clampf(pivot.position.x,middle.x-site_limit,middle.x+site_limit); pivot.position.z=clampf(pivot.position.z,middle.y-site_limit,middle.y+site_limit)
 	_update_player_marker()
 	if not kind in SITE_UPGRADES or tool=="remove" or not equipment_id.is_empty(): _hide_ladder_ghost()
 	if not kind in FREE_SITE_KINDS or tool=="remove" or not equipment_id.is_empty(): _hide_free_ghost()
@@ -612,6 +731,7 @@ func _toggle() -> void:
 	_hide_ladder_ghost()
 	_hide_free_ghost()
 	build_mode=!build_mode; ui.visible=build_mode; grid.visible=build_mode; camera.current=build_mode
+	if build_mode: _plan_at_base()
 	MHAudio.sfx("mode_build" if build_mode else "mode_explore",0.0,0.0); MHAudio.build_layer(build_mode)
 	world.get_node("Player/Head/Camera3D").current=!build_mode
 	var explore_hud:=world.get_node_or_null("ExploreHUD") as CanvasLayer
@@ -738,6 +858,7 @@ func _cells(a: Vector2i,b: Vector2i) -> Array:
 		for x in range(mini(a.x,b.x),maxi(a.x,b.x)+1):
 			for z in range(mini(a.y,b.y),maxi(a.y,b.y)+1): out.append(Vector2i(x,z))
 		return out
+	if kind == "landing_pad": return BASE_PIECES.pad_cells(b)
 	if kind in SITE_MACHINES: return [b]
 	if kind=="corridor" and a.x!=b.x and a.y!=b.y: return out
 	for x in range(mini(a.x,b.x),maxi(a.x,b.x)+1):
@@ -1151,7 +1272,7 @@ func _angled_outline_mount_invalid_reason(mount: Dictionary) -> String:
 	var mount_cost := cell_cost(kind) * (_angled_corridor_bays(mount_length) if kind == "corridor" else 1)
 	if _used_cargo() + earth_cost(mount_cost, zone_printable(kind)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	for sample in _outline_site_samples(_angled_mount_outline(mount)):
-		var site_reason := MHSiteTerrain.unbuildable_reason(sample)
+		var site_reason := _point_site_reason(sample)
 		if not site_reason.is_empty(): return site_reason
 	var host_index := int(mount.get("host_zone", -1))
 	if host_index < 0 or host_index >= zones.size(): return "No room to attach to"
@@ -1364,7 +1485,7 @@ func freeform_invalid_reason(points: PackedVector2Array) -> String:
 	var area := _freeform_area(points)
 	if area < 9.0: return "Room must be at least 9 m²"
 	for sample in _outline_site_samples(points):
-		var site_reason := MHSiteTerrain.unbuildable_reason(sample)
+		var site_reason := _point_site_reason(sample)
 		if not site_reason.is_empty(): return site_reason
 	var player := world.get_node_or_null("Player") as Node3D
 	if player != null and Geometry2D.is_point_in_polygon(Vector2(roundi(player.global_position.x / CELL) * CELL, roundi(player.global_position.z / CELL) * CELL), points): return "Move clear of the player before building"
@@ -1380,7 +1501,7 @@ func freeform_invalid_reason(points: PackedVector2Array) -> String:
 				if _polygons_overlap_area(points, _freeform_cell_polygon(cell)): return "Overlaps existing habitat"
 	if _used_cargo() + earth_cost(_freeform_cost(points), zone_printable(kind)) > MHGame.cargo_budget(): return "Not enough cargo left"
 	if is_inside_tree():
-		var base_y := habitat_base_y if not zones.is_empty() else _proposed_freeform_base_y(points)
+		var base_y := BASES.base_y(self, active_base) if not BASES.zones_of(self, active_base).is_empty() else _proposed_freeform_base_y(points)
 		var samples := points.duplicate()
 		var centre := Vector2.ZERO
 		for point in points: centre += point
@@ -2269,16 +2390,15 @@ func _footprint_add_reason(cell: Vector2i) -> String:
 		if cell + side in zone.get("cells", []):
 			connected = true
 	if not connected: return "New cells must touch the selected room"
-	var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
+	var site_reason := BASES.cell_reason(self, cell)
 	if not site_reason.is_empty(): return site_reason
 	if _used_cargo() + earth_cost(cell_cost(str(zone.kind)), zone_printable(str(zone.kind))) > MHGame.cargo_budget(): return "Not enough cargo left"
 	var player := world.get_node_or_null("Player") as Node3D
 	if player != null and cell == Vector2i(roundi(player.global_position.x / CELL), roundi(player.global_position.z / CELL)):
 		return "Move clear of the player before building"
 	if is_inside_tree() and not zones.is_empty():
-		var terrain := _cell_highest_terrain(cell)
-		if terrain > habitat_base_y + .12: return "Ground is too high here"
-		if terrain < habitat_base_y - 1.85: return "Ground drops away too far"
+		var ground := BASES.ground_reason(self, cell, BASES.zone_y(self, zone))
+		if not ground.is_empty(): return ground
 	return ""
 
 func _remove_footprint_cell(cell: Vector2i) -> void:
@@ -2394,11 +2514,13 @@ func _invalid_reason(cells: Array) -> String:
 		if kind=="corridor": return "Corridors run in straight lines"
 		return "Point at the ground"
 	for cell in cells:
-		var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
+		var site_reason := BASES.cell_reason(self, cell)
 		if not site_reason.is_empty(): return site_reason
 	if not zone_offered(kind): return "No longer made"
-	if not MHRoomTypes.locked_reason(kind).is_empty(): return MHRoomTypes.locked_reason(kind)
+	if not MHRoomTypes.locked_reason(kind, active_base).is_empty(): return MHRoomTypes.locked_reason(kind, active_base)
 	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
+	var pad_reason := BASE_PIECES.pad_reason(self, kind, cells)
+	if not pad_reason.is_empty(): return pad_reason
 	var rules_reason := BUILD_RULES.zone_reason(self, kind, cells)
 	if not rules_reason.is_empty(): return rules_reason
 	for cell in cells:
@@ -2427,15 +2549,13 @@ func _invalid_reason(cells: Array) -> String:
 	if _used_cargo()+earth_cost(_zone_cost(cells), zone_printable(kind))>MHGame.cargo_budget(): return "Not enough cargo left"
 	# Build on a local, reasonably flat patch. A short foundation can bridge a
 	# shallow dip, but we reject hills and deep drops instead of making towers.
-	if is_inside_tree() and not zones.is_empty():
-		for cell in cells:
-			var terrain:=_cell_highest_terrain(cell)
-			# The habitat deck is deliberately raised above the initial survey point.
-			# Permit shallow undulations beneath its skirt; only reject a terrain
-			# ridge that would visibly break through the finished floor.
-			# A trench keeps the base on one level: all in it, or all on top.
-			if terrain > habitat_base_y + .12: return "The base is in a trench: build in the trench too" if habitat_base_y < -1.0 else "Ground is too high here"
-			if terrain < habitat_base_y - 1.85: return "That's in a trench: the base is up on the surface" if TRENCHES.in_trench(trenches, cell) else "Ground drops away too far"
+	# The floor follows the ground: the rooms it touches decide its level, and
+	# a step of up to a storey goes through a corridor (scripts/bases.gd). The
+	# deck may ride over shallow undulations under its skirt, but not a ridge
+	# that would break through it or a drop too deep for its supports.
+	if is_inside_tree() and not kind in SITE_MACHINES:
+		var level := BASES.level_for(self, cells, kind)
+		if not str(level.reason).is_empty(): return str(level.reason)
 	return ""
 
 # A cell sharing only an edge with an outline is adjacent, not overlapping.
@@ -2905,6 +3025,7 @@ func _label3d(text: String,size: int,colour: Color,weight := 800) -> Label3D:
 func _rebuild() -> void:
 	MHSiteTerrain.trench_areas = TRENCHES.areas(trenches)   # before anything reads the ground
 	_merge_touching_same_type_rooms()
+	BASES.settle(self)   # every piece gets its base and its floor (A4)
 	# Solar on a roof comes down with the room under it (cargo back).
 	zones = zones.filter(func(z): return not z.get("roof", false) or _roof_under(z.at))
 	_prune_angled_outline_connectors()
@@ -2924,7 +3045,17 @@ func _rebuild() -> void:
 	_bay_hangars = []
 	_airlock_inner_doors = {}
 	_ensure_bay_doors()
+	# A walker's core on its way down (and its airlock) isn't built yet.
+	var all_zones := zones
+	zones = zones.filter(func(z): return not bool(z.get("arriving", false)))
 	for zone in zones:
+		habitat_base_y = BASES.zone_y(self, zone)
+		if zone.has("rise"):
+			BASE_PIECES.build_climbing_corridor(self, zone)
+			continue
+		if str(zone.kind) == "landing_pad":
+			BASE_PIECES.build_landing_pad(self, zone)
+			continue
 		if zone.has("angled_mount"):
 			_build_angled_outline_connector(zone)
 			continue
@@ -2945,6 +3076,7 @@ func _rebuild() -> void:
 		else:
 			for cell in zone.cells: _cell_walls(cell,zone)
 	for door_data in interior_doors:
+		habitat_base_y = _door_floor(door_data)
 		if door_data.has("wall_a"):
 			var door_transform := interior_door_target_transform(door_data)
 			_add_angled_door(door_transform.origin, door_transform.basis, "INTERIOR", true)
@@ -2978,8 +3110,12 @@ func _rebuild() -> void:
 	TRENCHES.build(self, root)   # trench walls, ramps, rims, and the cut in the ground
 	FLOOR_PLAN.build(self)   # walls and symbols on the Site plan
 	_build_foundation_supports()
-	if grid!=null: grid.position.y=habitat_base_y+.09
-	for zone in zones: _add_zone_label(zone)
+	for zone in zones:
+		habitat_base_y = BASES.zone_y(self, zone)
+		_add_zone_label(zone)
+	zones = all_zones
+	BASE_PIECES.build_traces(self)
+	refresh_here(true)
 	_set_build_view(build_mode); _update_budget(); _update_summary(); _update_systems(); _apply_grid_power()
 	update_room_lights(true)
 	habitat_changed.emit()
@@ -3026,6 +3162,7 @@ func _fill_spots(zone: Dictionary) -> Array:
 func _add_room_fills() -> void:
 	for zone in zones:
 		if not _is_habitat_zone(zone): continue
+		habitat_base_y = BASES.zone_y(self, zone)
 		var key: String = simulation()._room_key(zone)
 		for spot in _fill_spots(zone):
 			var light := OmniLight3D.new()
@@ -3049,6 +3186,7 @@ func _add_reflection_probes() -> void:
 	if str(MHGame.setting("reflections")) == "off": return
 	for zone in zones:
 		if not _is_habitat_zone(zone) or str(zone.kind) in ["airlock"]: continue
+		habitat_base_y = BASES.zone_y(self, zone)
 		var lo := Vector2(INF, INF)
 		var hi := Vector2(-INF, -INF)
 		if zone.has("outline"):
@@ -3077,7 +3215,7 @@ func _add_dust_decals() -> void:
 		if str(zone.get("kind", "")) != "airlock" or (zone.get("cells", []) as Array).is_empty(): continue
 		var cell: Vector2i = zone.cells[0]
 		var outward: Vector2i = zone.get("door_direction", Vector2i(0, -1))
-		var inside := Vector3(cell.x * CELL, habitat_base_y, cell.y * CELL)
+		var inside := Vector3(cell.x * CELL, BASES.zone_y(self, zone), cell.y * CELL)
 		_dust_decal(inside, Vector3(2.4, .8, 2.4), atan2(-outward.x, -outward.y), .75)
 		var out := inside + Vector3(outward.x, 0, outward.y) * CELL * 1.05
 		out.y = _terrain_height(out)
@@ -3198,6 +3336,7 @@ func _merge_touching_same_type_rooms() -> void:
 			for second_index in range(first_index + 1, zones.size()):
 				var second: Dictionary = zones[second_index]
 				if str(first.kind) != str(second.kind) or not _mergeable_room(second): continue
+				if BASES.base_of(first) != BASES.base_of(second) or absf(BASES.zone_y(self, first) - BASES.zone_y(self, second)) > BASES.SAME: continue
 				var combined := _merged_room(first, second)
 				if combined.is_empty(): continue
 				# Undo of the later placement restores the earlier room as it was.
@@ -4343,7 +4482,7 @@ func _free_site_reason(target: Dictionary) -> String:
 		for record in wall_upgrades:
 			if str(record.kind) == "ladder" and (record.mid as Vector2).distance_to(at) < radius + .6: return "Too close to the roof ladder"
 	else:
-		var site_reason := MHSiteTerrain.cell_unbuildable_reason(cell, CELL)
+		var site_reason := BASES.cell_reason(self, cell)
 		if not site_reason.is_empty(): return site_reason
 		if lander != null and lander.keeps_clear(at, radius): return "Too close to the lander"
 		for point in [at] + corners:
@@ -4677,7 +4816,7 @@ func partition_transform(segment: Dictionary) -> Transform3D:
 	var b: Vector2 = segment.b
 	var mid := (a + b) * .5
 	var along := b - a
-	return Transform3D(Basis(Vector3.UP, -atan2(along.y, along.x)), Vector3(mid.x, habitat_base_y, mid.y))
+	return Transform3D(Basis(Vector3.UP, -atan2(along.y, along.x)), Vector3(mid.x, BASES.floor_at(self, mid), mid.y))
 
 ## Partitions whose room has gone (or changed shape) are removed.
 func _prune_partitions() -> void:
@@ -5580,6 +5719,11 @@ func _build_foundation_supports() -> void:
 		if count==1 or count==3:
 			var position:=Vector3(point.x*CELL*.5,0,point.y*CELL*.5)
 			var ground:=_terrain_height(position)
+			habitat_base_y = -INF
+			for cell in around:
+				var over := _zone_at(cell)
+				if not over.is_empty() and not over.has("rise"): habitat_base_y = maxf(habitat_base_y, BASES.zone_y(self, over))
+			if is_inf(habitat_base_y): continue
 			if habitat_base_y-ground>.42: _add_support(position,ground)
 
 func _add_support(point: Vector3,ground: float) -> void:
@@ -5628,7 +5772,10 @@ func _remove_at(cell: Vector2i) -> void:
 	for index in range(zones.size()-1,-1,-1):
 		if zones[index] == selected_zone:
 			if bool(zones[index].get("carried", false)) and BUILD_RULES.stage(self) != "set_down":
-				_flash_notice("invalid", "The module stays", "It's the base's first room, set down whole.")
+				_flash_notice("invalid", "The core stays", "It's the base's heart, set down whole. Refold it from its panel to move the base.")
+				return
+			if str(zones[index].kind) == "landing_pad" and bool(zones[index].get("down", false)):
+				_flash_notice("invalid", "The pad stays", "The crew's landing pad is down: this is the main base.")
 				return
 			var refund:=int(zones[index].cost)
 			zones.remove_at(index)
@@ -5979,6 +6126,7 @@ func grid_power_online() -> bool:
 	if not MHGame.simulation_on(): return true
 	# The General Module's own power (3c, scripts/module_life.gd).
 	var module: Node = world.get("module_life") if world != null else null
+	if world != null and world.has_method("core_here") and world.core_here() != null: module = world.core_here()   # A4: the base you're at
 	if module != null and module.running(): return module.lit()
 	return simulation().tier_powered(HABITAT_SIM.TIER_LIGHT, MHGame.sol_hour)
 
@@ -6130,7 +6278,10 @@ func export_habitat_state() -> Dictionary:
 		"partitions": partitions.duplicate(true),
 		"placed_surface": placed_surface.duplicate(true),
 		"simulation": simulation().save(),
-		"habitat_base_y": habitat_base_y,
+		"habitat_base_y": BASES.base_y(self, BASES.FIRST),
+		"bases": BASES.export_state(self),
+		"main_base": main_base,
+		"traces": traces.duplicate(true),
 		"kind": kind,
 		"airlock_direction": airlock_direction
 	}
@@ -6169,6 +6320,16 @@ func restore_habitat_state(state: Dictionary) -> void:
 	# deliberately ignored so those saves load as ordinary modular rooms.
 	placed_surface.clear()
 	habitat_base_y = float(state.get("habitat_base_y", habitat_base_y))
+	# Several bases (A4): an older save is one base, Walker 1's, at its one floor.
+	if state.has("bases"): BASES.load_state(self, state.get("bases", {}) as Dictionary)
+	else:
+		bases.clear()
+		BASES.ensure(self)
+		for saved_zone in zones:
+			if not saved_zone.has("base"): saved_zone["base"] = BASES.FIRST
+			if not saved_zone.has("y"): saved_zone["y"] = habitat_base_y
+	main_base = str(state.get("main_base", ""))
+	traces = (state.get("traces", []) as Array).duplicate(true)
 	kind = str(state.get("kind", kind))
 	airlock_direction = state.get("airlock_direction", airlock_direction) as Vector2i
 	for raw_item in state.get("placed_interior", []) as Array:
@@ -6376,18 +6537,21 @@ func zone_outline(zone: Dictionary) -> PackedVector2Array:
 
 # True when a world point is on the deck of a habitat zone (drives the interior hum).
 func is_inside(point: Vector3) -> bool:
-	# Up on the roof (above the ceiling) is outside.
-	if point.y<habitat_base_y-.6 or point.y>habitat_base_y+ROOM_HEIGHT+.02: return false
 	var cell:=Vector2i(roundi(point.x/CELL),roundi(point.z/CELL))
 	for zone in zones:
 		var zone_kind := str(zone.kind)
+		if bool(zone.get("arriving", false)) or zone_kind == "landing_pad": continue
+		var within := false
 		if zone.has("angled_mount"):
-			if _point_in_angled_mount(Vector2(point.x, point.z), zone.get("angled_mount", {})): return true
+			within = _point_in_angled_mount(Vector2(point.x, point.z), zone.get("angled_mount", {}))
 		elif zone_kind in NON_ROOM_KINDS:
-			if zone_kind not in SITE_MACHINES and cell in zone.cells:
-				return true
-		elif Geometry2D.is_point_in_polygon(Vector2(point.x, point.z), zone_outline(zone)):
-			return true
+			within = zone_kind not in SITE_MACHINES and cell in zone.cells
+		else:
+			within = Geometry2D.is_point_in_polygon(Vector2(point.x, point.z), zone_outline(zone))
+		if not within: continue
+		# Each room at its own floor (A4); up on the roof is outside.
+		var floor_y := BASES.corridor_point_y(self, zone, Vector2(point.x, point.z)) if zone.has("rise") else BASES.zone_y(self, zone)
+		if point.y >= floor_y - .6 and point.y <= floor_y + ROOM_HEIGHT + .02: return true
 	return false
 
 func run_zone_outline_self_test() -> bool:

@@ -462,11 +462,14 @@ func _base_page() -> Control:
 	var builder: Node = world.builder
 	var sim: RefCounted = builder.simulation() if builder != null else null
 	var cabin: Node = world.get("cabin_life")
-	var module: Node = world.get("module_life")
+	var module: Node = _shown_core()
+	# Several bases (A4): a switcher, the one you're at first.
+	var switcher := _base_switcher()
+	if switcher != null: left.add_child(switcher)
 	# Three readings per base (docs/hab-supply.md): power, heat and air. The
 	# base's core (the General Module) first, the lander as the backup.
 	if module != null and module.running() and bool(module.commissioned):
-		left.add_child(_heading("Base", "Power, heat and air, and how long each lasts as things are set. With no power it gets cold first, then the air goes stale."))
+		left.add_child(_heading(_base_title(), "Power, heat and air, and how long each lasts as things are set. With no power it gets cold first, then the air goes stale."))
 		for entry in READINGS: left.add_child(_gauge(str(entry[1]), str(entry[2]), _cabin_rows(module)[entry[0]]))
 		if cabin != null and cabin.running():
 			left.add_child(_heading("Lander", "Your lifepod: it looks after itself."))
@@ -576,6 +579,61 @@ func _alert_card(alert: Dictionary) -> Control:
 	card.add_child(column)
 	return card
 
+# ---------- A4: several bases ----------
+
+## The base the page shows: picked on the switcher, else the one you're at.
+var _base_pick := ""
+
+## The bases with a core down (or on its way): [id, ...], the first base first.
+func _bases_listed() -> Array:
+	var builder: Node = world.builder if world != null else null
+	if builder == null: return []
+	var ids: Array = (builder.bases as Dictionary).keys().filter(func(id): return not MHBases.zones_of(builder, str(id)).is_empty())
+	ids.sort()
+	return ids
+
+func _base_choice() -> String:
+	var ids := _bases_listed()
+	if ids.has(_base_pick): return _base_pick
+	var here := str(world.builder.active_base) if world != null and world.builder != null else MHBases.FIRST
+	return here if ids.has(here) or ids.is_empty() else str(ids[0])
+
+func _shown_core() -> Node:
+	var cores: Dictionary = world.get("cores") if world != null and world.get("cores") != null else {}
+	var life: Node = cores.get(_base_choice())
+	if life != null and is_instance_valid(life): return life
+	return world.get("module_life") if world != null and _bases_listed().size() <= 1 else null
+
+func _base_title() -> String:
+	var id := _base_choice()
+	var builder: Node = world.builder
+	var name := str((builder.bases as Dictionary).get(id, {}).get("name", MHBases.label_for(id)))
+	if str(builder.main_base) == id: name += " · main base"
+	return name if _bases_listed().size() > 1 or str(builder.main_base) == id else "Base"
+
+## One chip per base, the shown one lit; nothing with only one base.
+func _base_switcher() -> Control:
+	var ids := _bases_listed()
+	if ids.size() < 2: return null
+	var row := MHStyle.hbox(8)
+	var builder: Node = world.builder
+	for id in ids:
+		var label := str((builder.bases as Dictionary)[id].get("name", MHBases.label_for(str(id))))
+		if str(builder.main_base) == str(id): label += " ★"
+		if str(builder.active_base) == str(id): label += " · here"
+		var chip := Button.new()
+		chip.text = label
+		chip.toggle_mode = true
+		chip.button_pressed = str(id) == _base_choice()
+		chip.focus_mode = Control.FOCUS_NONE
+		chip.pressed.connect(func() -> void:
+			_base_pick = str(id)
+			_shown_base = ""
+			for child in _page.get_children(): child.queue_free()
+			_page.add_child(_base_page()))
+		row.add_child(chip)
+	return row
+
 ## Changes when the Base page would look different.
 ## The cabin's three gauges: {battery, warmth, air} → {tone, fraction, text}.
 const READINGS := [["battery", "Power", "zap"], ["warmth", "Heat", "thermometer"], ["air", "Air", "wind"]]
@@ -605,8 +663,9 @@ func _base_signature() -> String:
 	var stock := _feedstock_words(sim) if MHChapterOne.on() and sim != null else ""
 	var cabin: Node = world.get("cabin_life") if world != null else null
 	if cabin != null and cabin.running() and rows.is_empty(): stock += str(_cabin_rows(cabin).values().map(func(r): return str(r.text)))
-	var module: Node = world.get("module_life") if world != null else null
+	var module: Node = _shown_core() if world != null else null
 	if module != null and module.running() and bool(module.commissioned): stock += str(_cabin_rows(module).values().map(func(r): return str(r.text)))
+	stock += "|%s|%s" % [_base_choice(), str(_bases_listed())]
 	return "%s|%s|%s|%d" % [str(words), stock, str(alerts.active_alerts().map(func(a): return "%s%s" % [a.id, a.level])) if alerts != null else "", alerts.history.size() if alerts != null else 0]
 
 ## Redraws the open app in place.
@@ -914,7 +973,7 @@ func _map_page() -> Control:
 	_map_cursor = MHStyle.body("", 16, MHStyle.TEXT_MUTED)
 	_map_cursor.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	side.add_child(_map_cursor)
-	side.add_child(GUIDE.keys_box([[["Wheel"], "Zoom"], [["Drag"], "Move"], [["Z"], "Region / 1 km"], [["Space"], "You"], [["Click"], "Drop or lift a pin"], [["L"], "Ice survey"], [["G"], "GAR-Y: survey the zone"]]))
+	side.add_child(GUIDE.keys_box([[["Wheel"], "Zoom"], [["Drag"], "Move"], [["Z"], "Region / 1 km"], [["Space"], "You"], [["Click"], "Drop or lift a pin"], [["L"], "Ice survey"], [["G"], "GAR-Y: survey the zone"], [["W"], "Walker: check a spot, again to send"]]))
 	holder.ready.connect(func() -> void: region.embed.call_deferred(holder, MAP_FIT), CONNECT_ONE_SHOT)
 	return page
 

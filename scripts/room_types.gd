@@ -48,20 +48,30 @@ const QUARTERS_REST := 1.5
 ## The Workshop's Print Shop prints this much faster.
 const WORKSHOP_PRINT := 1.5
 
-## Upgrades fitted, by base. One base until A4: "main".
+## Upgrades fitted, by base: the walker's id ("w1" is Walker 1), so they go
+## with the core when it's refolded (A4). Before A4 there was one, "main".
 static var fitted: Dictionary = {}
+## The base you're at (the builder keeps it): "" below means this one.
+static var here := "w1"
 
 static func reset() -> void:
 	fitted = {}
+	here = "w1"
+
+static func _base(base: String) -> String:
+	return here if base.is_empty() else base
 
 static func export_state() -> Dictionary:
 	return {"fitted": fitted.duplicate(true)}
 
 static func load_state(state: Dictionary) -> void:
 	fitted = (state.get("fitted", {}) as Dictionary).duplicate(true)
+	if fitted.has("main"):
+		fitted["w1"] = fitted["main"]
+		fitted.erase("main")
 
 ## Every upgrade on (a save from before the upgrades existed).
-static func fit_all(base := "main") -> void:
+static func fit_all(base := "w1") -> void:
 	fitted[base] = {}
 	for id in UPGRADES: fitted[base][id] = true
 
@@ -86,8 +96,8 @@ static func upgrade_for(kind: String) -> String:
 		if (UPGRADES[id].opens as Array).has(kind): return str(id)
 	return ""
 
-static func is_fitted(id: String, base := "main") -> bool:
-	return bool((fitted.get(base, {}) as Dictionary).get(id, false))
+static func is_fitted(id: String, base := "") -> bool:
+	return bool((fitted.get(_base(base), {}) as Dictionary).get(id, false))
 
 static func plan_known(id: String) -> bool:
 	return MHChapterOne.plan_known(str(UPGRADES[id].plan))
@@ -96,7 +106,7 @@ static func cost(id: String) -> float:
 	return float(MHChapterOne.plan(str(UPGRADES[id].plan)).get("feedstock_kg", 100.0))
 
 ## Whether this room type is open at the base ("" if it is, or why not).
-static func locked_reason(kind: String, base := "main") -> String:
+static func locked_reason(kind: String, base := "") -> String:
 	if not gated(): return ""
 	var up := upgrade_for(kind)
 	if up.is_empty() or is_fitted(up, base): return ""
@@ -104,15 +114,16 @@ static func locked_reason(kind: String, base := "main") -> String:
 	return "Needs the core's %s upgrade: fit it at the core's rack" % str(UPGRADES[up].label).to_lower()
 
 ## Why an upgrade can't be fitted now ("" when it can).
-static func fit_reason(id: String, base := "main") -> String:
+static func fit_reason(id: String, base := "") -> String:
 	if is_fitted(id, base): return "Fitted"
 	if not plan_known(id): return "No plan yet"
 	if MHChapterOne.feedstock_kg < cost(id) - .001: return "Needs %s feedstock (you have %s)" % [MHStyle.kg(roundi(cost(id))), MHStyle.kg(floori(MHChapterOne.feedstock_kg))]
 	return ""
 
 ## Fit an upgrade at the core: pays its feedstock. True when it went on.
-static func fit(id: String, base := "main") -> bool:
+static func fit(id: String, base := "") -> bool:
 	if not fit_reason(id, base).is_empty(): return false
+	base = _base(base)
 	MHChapterOne.feedstock_kg = maxf(0.0, MHChapterOne.feedstock_kg - cost(id))
 	if not fitted.has(base): fitted[base] = {}
 	fitted[base][id] = true

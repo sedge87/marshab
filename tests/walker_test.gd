@@ -228,7 +228,7 @@ func _initialize() -> void:
 	builder._toggle()
 	_check(builder.build_mode, "the plan opens")
 	builder._toggle()
-	_check(walker.state == "carrying" and not builder.root.visible, "plan closed: it picks the module up; the rooms wait")
+	_check(walker.state == "carrying" and bool(module.get("arriving", false)), "plan closed: it picks the module up; its pieces wait unbuilt")
 	_check(RULES.b_reason(builder) != "", "B waits while it works")
 	var down := _run(walker, 600.0, func(): return walker.state == "done")
 	_check(down, "it carries it there and lowers it")
