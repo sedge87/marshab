@@ -97,6 +97,14 @@
 - **Chapter 3:** fix Walker 1 and choose home.
 - **Chapter 4:** Walker 1 kneels and folds into the core, you fit the first liner and watch its shell print, and you sleep in.
 - **Update the robot run and tests.**
+- **The 14 Nov playtest: rethink the landing and every guided day's pacing.**
+  - Each day's work ran out by early afternoon:
+    - day 1: all three pallets home by 13:30 from a 06:00 landing; it now lands at 09:00 as a stopgap;
+    - day 2: GAR-Y's day done by about 13:30;
+    - the Walker 1 seal was printed by about 12:30, but you're told to wait until morning to take it out.
+  - **Rule for the rewrite:** when the work is done early, let the player carry on (take the seal out now). Don't hold the story for the clock. Size each day's work to fill it, or let days run together.
+  - The opening exposition was too long to finish before pallet 1. It's now reordered, but keep calls short and walk-friendly.
+  - The gates the player hits go here as they're found.
 - Files: `opening_days.gd`, `data/radio/*`, `tests/guided_*`.
 
 ▶ **Playtest build:** the whole opening and the new building.
