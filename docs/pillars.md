@@ -31,8 +31,10 @@ Every feature serves one of the three pillars below, or it waits.
   - sol 6, about 1 km on foot;
   - better suit packs and stake trails, 2 km;
   - ropes open a cliff route;
-  - the pressurised rover reaches the lava tube 8 km out;
-  - an outpost at the ice wall gets you past it.
+  - the pressurised rover reaches the far side (4 km), and an outpost lets you stay there;
+  - ropes through a skylight take you down into the lava tube.
+  
+  The ladder is in `docs/range-ladder.md`.
 - **Science points further.** Analysing a find tells you where to go next: layered clay suggests an old lakebed downstream, and then you find it. Finds also unlock plans. The four goals become **four trails of places** across the map, each with its owner in orbit. The Journal records each trail.
 - **The story pulls outward.** The buried heart's clues sit past your current reach, so following the story means equipping to go further. Examples:
   - a crashed lander's descent log 3 km out;
@@ -144,7 +146,7 @@ Keep the four chapters, rewritten to match:
 
 ## Still to design (each its own talk, before building)
 
-1. **The range ladder:** what pushes you from 1 km to the far Reach, in order, and where each walker, cartridge and clue sits.
+1. ~~**The range ladder**~~ done 14 Nov: `docs/range-ladder.md`.
 2. **The room and equipment list:** which rigid modules, which liner rooms, which core-port adapters, and what you can *do* with each piece of equipment.
 3. **The hab's supply chain in numbers:** power, then air, then heat, and how long a cabin lasts when each fails.
 4. **The walker core:** what's in it, how many ports it has, and how outposts differ from the main base.
