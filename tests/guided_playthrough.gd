@@ -568,7 +568,14 @@ func _bed_and_sleep() -> void:
 	var days: Node = world.get("opening_days")
 	if days != null and days.is_night():
 		lander.interact()
-		log_line("STATE", "hatch at night from inside: %s" % ("held shut" if not lander.hatch_open() else "OPENED"))
+		log_line("STATE", "hatch at night from inside: %s" % ("held shut" if not lander.hatch_open() else "opens, with a caution (no night lock since 8f3bf9e)"))
+		# No night lock any more: shut it again and let it seal before bed.
+		if lander.hatch_open():
+			lander.interact()
+			var shut_for := 0.0
+			while shut_for < 60.0 and (lander.hatch_open() or not world.get("sleep").blocked_reason().is_empty()):
+				await wait(1.0)
+				shut_for += 1.0
 	await _sleep_to_dawn()
 
 func _sleep_to_dawn() -> void:

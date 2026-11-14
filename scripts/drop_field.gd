@@ -28,7 +28,9 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const RIDGE_VIEW := 45.0          # this close to the first canopy, you see the next two
 
 ## [kind, nearest, furthest, the ground it wants]
-const KINDS := [["power", 520.0, 680.0, "flat"], ["gary", 720.0, 900.0, "rough"], ["tools", 900.0, 1150.0, "low"]]
+## 14 Nov: pallets 2 and 4 come in about 15% for the bare suit (docs/range-ladder.md),
+## so day 1 still ends before dusk; the chapter rewrite (A6) sets them properly.
+const KINDS := [["power", 440.0, 580.0, "flat"], ["gary", 720.0, 900.0, "rough"], ["tools", 760.0, 960.0, "low"]]
 const APART_DEG := 50.0           # bearings at least this far apart, from the lander
 const DOOR_WAIT := 3.0            # GAR-Y waits this far out from the ramp's foot
 const DOOR_REACH := 4.2           # step out this close and it introduces itself
@@ -182,9 +184,9 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 			if slope > 2.5: continue
 			var score := 0.0
 			match ground:
-				"flat": score = h * .1 - _roughness(p) * 4.0 - slope * 2.0 - absf(distance - 600.0) * .01
+				"flat": score = h * .1 - _roughness(p) * 4.0 - slope * 2.0 - absf(distance - 510.0) * .01
 				"rough": score = _roughness(p) * 2.0 - slope - absf(distance - 800.0) * .01
-				"low": score = (_ring_mean(p, 60.0) - h) * 1.5 - slope - absf(distance - 1000.0) * .01
+				"low": score = (_ring_mean(p, 60.0) - h) * 1.5 - slope - absf(distance - 860.0) * .01
 			if not _sound(p) or not _sound(_pallet_at(p)): score -= 1000.0   # only if there's nowhere better
 			if score > best and reachable(p) and reachable(_pallet_at(p)):
 				best = score
