@@ -37,6 +37,7 @@ static var new_games_version := 2
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const STORY_DAYS := 4           # days run on story time; day 5 opens the game
 const CALL_BEFORE_SUNSET := .6  # Castellanos's sunset call
+const DAY1_SUN_EARLIER := .7    # day 1's photo call: about 1.3 h before sunset, before the hills take the sun
 const DUSK_SPEED := 8.0         # (no longer used: the sun runs freely)
 const MORNING_GAP := 14.0       # sim hours between mornings (a chapter turns over at most once a sol)
 const EARLY_HOURS := 2.5        # done with this much light left: "the rest of the day's yours"
@@ -387,7 +388,9 @@ func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void
 			var known: Node = world.get("known")
 			if known != null: known.finish("sunset_spot")
 	if radio == null: return
-	var call_at := sunset - CALL_BEFORE_SUNSET
+	# Day 1 asks for a photo of the sun going down: call while it's still above
+	# the hills (playtest 14 Nov: it had gone behind them by the time she asked).
+	var call_at := sunset - (CALL_BEFORE_SUNSET + DAY1_SUN_EARLIER if chapter == 1 else CALL_BEFORE_SUNSET)
 	var evening := hour >= call_at or hour < sunrise - 1.5
 	if chapter_done(chapter):
 		if sunset_called < chapter and evening:
