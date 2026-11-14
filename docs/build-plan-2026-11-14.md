@@ -151,7 +151,9 @@
 
 ## Track B: the land (can run beside Track A)
 
-### B1. Terrain design doc
+### B1. Terrain design doc · Done 14 Nov: `docs/terrain-design.md`
+Agreed with the user: home is the plains, the skeleton is kept and everything rebuilt, there are two far sides, the deep is 150 m down by rope pitches, and there are no straight lines (§6).
+
 A new doc, taking over from `docs/terrain-overhaul.md` where they disagree. It covers:
 - the 6 × 6 km region, deeper rather than wider;
 - the four rings;
