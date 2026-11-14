@@ -55,8 +55,9 @@ func _initialize() -> void:
 	MHGame.debug_free_power = true
 
 	# ---- names and kit ----
-	_check(str(BuildController.ZONE_TYPES.living.label) == "Sleeping Quarters" and str(BuildController.ZONE_TYPES.galley.label) == "Day Room", "Living Quarters is Sleeping Quarters, the Galley the Day Room")
-	_check(str(BuildController.ZONE_TYPES.engineering.label) == "Power & Engineering" and str(BuildController.ZONE_TYPES.storage.label) == "Storage & Recycling", "Power & Engineering, and Storage & Recycling")
+	# Renamed again on 14 Nov (A3, docs/rooms-and-equipment.md).
+	_check(str(BuildController.ZONE_TYPES.living.label) == "Quarters" and str(BuildController.ZONE_TYPES.galley.label) == "Galley", "living is Quarters, galley the Galley")
+	_check(str(BuildController.ZONE_TYPES.engineering.label) == "Workshop" and str(BuildController.ZONE_TYPES.storage.label) == "Storage", "the Workshop and Storage")
 	_check(not BuildController.zone_offered("waste_management"), "Waste Management is off the build menu")
 	_check(BuildController.zone_offered("general"), "the General Module is on it")
 	for id in ["crew_bunk", "galley_kitchenette", "hygiene_toilet", "air_recycler", "oxygen_generator", "tool_bench", "communications_station", "grow_tray", "battery_bank"]:
@@ -73,12 +74,12 @@ func _initialize() -> void:
 	g.simulation().life.ensure_crew(2)
 	_add(g, "crew_bunk", "general", 2)
 	var sleep := _need(g, "sleep")
-	_check(is_equal_approx(float(sleep.score), .5) and str(sleep.missing).contains("Sleeping Quarters"), "bunks in a General Module sleep at half (%.2f)" % float(sleep.score))
+	_check(is_equal_approx(float(sleep.score), .5) and str(sleep.missing).contains("Quarters sleep better"), "the core's bunks are a poor night: Quarters sleep better (%.2f, %s)" % [float(sleep.score), sleep.missing])
 	g._rebuild()
 	_check(g.free_interior_invalid_reason("crew_bunk", Vector3(3, 0, 3), Vector3.UP).contains("takes 2 bunks"), "a third bunk doesn't fit")
 	var work := _need(g, "work")
 	_check(float(work.score) >= .99, "everyone has somewhere to work")
-	_check(is_equal_approx(float(g.simulation().life.room_speed.get("commander", 1.0)), .75), "but at 75 %")
+	_check(is_equal_approx(float(g.simulation().life.room_speed.get("commander", 1.0)), 1.0), "at full speed: rooms only help (A3)")
 	# Six crew need 12 squares: 9 of General Module count as 4.5.
 	var big_g := _builder([_room("general", _block(0, 0, 3, 3))])
 	big_g.simulation().life.ensure_crew(6)
@@ -96,7 +97,7 @@ func _initialize() -> void:
 	noisy.simulation().life.ensure_crew(2)
 	_add(noisy, "crew_bunk", "living", 2)
 	noisy._rebuild()
-	_check(float(_need(noisy, "sleep").score) < .99, "Sleeping Quarters next to the Vehicle Bay sleep badly")
+	_check(float(_need(noisy, "sleep").score) >= .99, "no noise penalty: Quarters next to the Garage sleep well (A3)")
 
 	# ---- the crew's day ----
 	var day := _builder([_room("general", _block(0, 0, 2, 2)), _room("science", _block(2, 0, 2, 2))])

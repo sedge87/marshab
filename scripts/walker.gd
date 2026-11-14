@@ -434,7 +434,7 @@ func _orbiter_text() -> void:
 	var offset := global_position - lander
 	var km := Vector2(offset.x, offset.z).length() / 1000.0
 	var dir: String = preload("res://scripts/storm_drop.gd").direction_word(offset)
-	texts.send("walker_photo", "castellanos", "Rao followed your tracks on this pass. They end at a walker, %.1f km %s of you, stopped. That's Walker 1, with the General Module on board. Its fault lamp's on. It's on your Map." % [km, dir], "walker")
+	texts.send("walker_photo", "castellanos", "Rao followed your tracks on this pass. They end at a walker, %.1f km %s of you, stopped. That's Walker 1, with the base's core on board. Its fault lamp's on. It's on your Map." % [km, dir], "walker")
 
 ## Straight down from orbit, soft, like the parachute's (scripts/storm_drop.gd).
 func take_photo() -> void:
@@ -466,7 +466,7 @@ func interaction_prompt() -> Dictionary:
 		"stalled": return {"label": NAME + " · lost: its nav screen's up on the front deck"}
 		"walking": return {"label": NAME + " · walking home"}
 		"coming": return {"label": NAME + " · set right: it'll crawl home overnight"}
-		"parked": return {"label": NAME + " · carrying the General Module"}
+		"parked": return {"label": NAME + " · carrying the core"}
 		"carrying", "lowering": return {"label": NAME + " · setting the module down"}
 	return {"label": NAME}
 
@@ -570,7 +570,7 @@ func arrive_overnight() -> void:
 	_place_ladder()
 	state = "parked"   # (its airlock kit came with "coming", for the mark)
 	if not marked:
-		MHNotices.post("info", NAME + " is home", "Press B to choose where the General Module goes.", "", 1)
+		MHNotices.post("info", NAME + " is home", "Press B to choose where the core goes.", "", 1)
 		return
 	# Marked: it waits by the lander till you come out to watch (opening_days day 4).
 
@@ -581,7 +581,7 @@ func deliver_marked() -> void:
 	if module.is_empty():   # the module was taken out of the plan after the mark: choose again
 		marked = false
 		_clear_mark()
-		MHNotices.post("info", NAME + " is home", "Press B to choose where the General Module goes.", "", 1)
+		MHNotices.post("info", NAME + " is home", "Press B to choose where the core goes.", "", 1)
 		return
 	_clear_mark()
 	deliver(module)
@@ -688,7 +688,7 @@ func _process(delta: float) -> void:
 				MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit
 				var notes: Node = world.get("notes")
 				if notes != null: notes.think("walker_home")
-				MHNotices.post("info", NAME + " is home", "Press B to choose where the General Module goes.", "", 1)   # what to do next: ahead of the queue
+				MHNotices.post("info", NAME + " is home", "Press B to choose where the core goes.", "", 1)   # what to do next: ahead of the queue
 		"carrying":
 			if _can_move() and _drive(target, delta, target_yaw): _start_lowering()
 		"lowering": _lower(delta)
@@ -863,7 +863,7 @@ func _walk_texts(delta: float) -> void:
 		texts.send("walker_walking", "castellanos", "It's moving! Rao has it on the long camera, a little dust plume heading your way. At that pace it's about %d minutes out. Ride it if you can, the view from up there must be something." % maxi(1, roundi(left / SPEED / 60.0)))
 	elif _talk == 1 and _walk_from > 0.0 and left < _walk_from * TALK_AGAIN:
 		_talk = 2
-		texts.send("walker_halfway", "castellanos", "Halfway. When it parks, it'll ask where the General Module goes. Pick somewhere you'd want to wake up every morning.")
+		texts.send("walker_halfway", "castellanos", "Halfway. When it parks, it'll ask where the core goes. Pick somewhere you'd want to wake up every morning.")
 
 ## Wheels turn with the ground covered; a tripod gait lifts alternate legs.
 func _roll(metres: float) -> void:
@@ -970,7 +970,7 @@ func _finish_set_down() -> void:
 		notes.think("module_power")
 		var drop: Node = world.get("storm_drop")
 		if drop != null and drop.cartridge != null and str(drop.cartridge.where) == "ground": notes.think("module_air", "staged")
-	MHNotices.post("info", "The General Module is down", "Walk over and cycle in. Inside, B unpacks its fit-out kit.", "", 1)
+	MHNotices.post("info", "The core is down", "Walk over and cycle in. Inside, B unpacks its fit-out kit.", "", 1)
 
 ## The first night under a real roof: after dark, inside the module.
 func _night_check(you: Vector3) -> void:

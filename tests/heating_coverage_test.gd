@@ -56,8 +56,8 @@ func _initialize() -> void:
 
 	# Lots of heaters in one room: the far room stays cold and heat is wasted.
 	var piled = _run(_base({"living": ["wall_cabin_heater", 60]}))
-	_check((piled.cold_spots as Array).has("Hydroponics"), "heaters piled in Living Quarters leave Hydroponics a cold spot (%s)" % [piled.cold_spots])
-	_check(not (piled.cold_spots as Array).has("Living Quarters"), "but Living Quarters itself is warm")
+	_check((piled.cold_spots as Array).has("Greenhouse"), "heaters piled in Living Quarters leave Hydroponics a cold spot (%s)" % [piled.cold_spots])
+	_check(not (piled.cold_spots as Array).has("Quarters"), "but Living Quarters itself is warm")
 	_check(float(piled.last.get("heat_wasted_kw", 0.0)) > 0.0, "and some of their heat is wasted (%.1f kW)" % float(piled.last.get("heat_wasted_kw", 0.0)))
 
 	# The same heaters spread out: no cold spots.
@@ -73,7 +73,7 @@ func _initialize() -> void:
 	for i in range(rooms.size()):
 		if str(rooms[i].kind) == "galley": galley = i
 	var next_labels: Array = (rooms[galley].next as Array).map(func(r): return str(rooms[r].label))
-	_check(next_labels.has("Living Quarters") and next_labels.has("Science Lab") and not next_labels.has("Hydroponics"), "the Galley's neighbours are Living Quarters and the Lab, not Hydroponics (%s)" % [next_labels])
+	_check(next_labels.has("Quarters") and next_labels.has("Lab") and not next_labels.has("Greenhouse"), "the Galley's neighbours are Living Quarters and the Lab, not Hydroponics (%s)" % [next_labels])
 
 	# The thermal control unit alone reaches every room.
 	var central = _run(_base({"living": ["thermal_control_unit", 2]}))

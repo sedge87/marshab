@@ -233,7 +233,7 @@
       "lines": [
         "The crew each eat about 1.8 kg of food a sol.",
         "Food brought from Earth runs out one day, and the next delivery is a long way off.",
-        "Grow trays in Hydroponics grow food. They need power, water and light.",
+        "Grow trays in the Greenhouse grow food. They need power, water and light.",
         "The more food you grow, the longer the base can last on its own."
       ],
       "remember": "Bring food to start, then grow more of it yourself.",
@@ -291,7 +291,7 @@
       "picture": "research",
       "lines": [
         "Research is why the crew came to Mars.",
-        "A Science Lab with a workbench lets the crew do experiments every sol.",
+        "A Lab with a workbench lets the crew do experiments every sol.",
         "Equipment in the lab adds more research, if it has power.",
         "GAR-Y can bring a core sample from outside for a boost."
       ],
@@ -299,7 +299,7 @@
       "check": {
         "question": "What does the crew need to start research?",
         "options": [
-          "A Science Lab with a workbench",
+          "A Lab with a workbench",
           "A bigger airlock",
           "More solar arrays"
         ],
@@ -352,10 +352,10 @@
       "lines": [
         "Mars gravity is only 38% of Earth's. Without exercise, bones and muscles slowly get weaker.",
         "Each powered exercise station keeps about 3 crew fit. Six crew need two.",
-        "If someone gets hurt, they get better in a Medical Bay with an exam cot and a medical cabinet.",
+        "If someone gets hurt, they get better in a Shelter with an exam cot and a medical cabinet.",
         "Tired or hurt crew work slower, so less research and food gets done."
       ],
-      "remember": "Exercise every sol, and keep a Medical Bay ready.",
+      "remember": "Exercise every sol, and keep a Shelter ready.",
       "check": {
         "question": "How many exercise stations do six crew need?",
         "options": [

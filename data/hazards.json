@@ -5,7 +5,7 @@
       {
         "id": "commander",
         "label": "Commander",
-        "room": "communications"
+        "room": "science"
       },
       {
         "id": "engineer",
@@ -30,7 +30,7 @@
       {
         "id": "systems",
         "label": "Systems specialist",
-        "room": "life_support"
+        "room": "general"
       }
     ],
     "default_names": [
@@ -89,18 +89,11 @@
       "galley_oven",
       "galley_kitchenette"
     ],
-    "noisy_rooms": [
-      "engineering",
-      "life_support",
-      "general",
-      "vehicle_bay"
-    ],
+    "noisy_rooms": [],
     "general_sleep": 0.5,
     "general_space_share": 0.5,
     "general_work_speed": 0.75,
-    "noisy_items": [
-      "regolith_printer"
-    ],
+    "noisy_items": [],
     "living_cells_per_person": 2.0
   },
   "fitness": {

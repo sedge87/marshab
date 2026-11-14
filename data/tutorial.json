@@ -160,8 +160,8 @@
     {
       "id": "living",
       "goal": "module",
-      "text": "Lay out a General Module",
-      "how": "In the Rooms tab pick General Module, then drag a rectangle on flat ground: 2 by 2 cells is plenty. It takes the basics of everything to start with. Right-click cancels.",
+      "text": "Lay out the Walker Core",
+      "how": "In the Rooms tab pick Walker Core, then drag a rectangle on flat ground: 2 by 2 cells is plenty. It takes the basics of everything to start with. Right-click cancels.",
       "keys": [
         [
           [
@@ -284,32 +284,6 @@
       "rules": "classic"
     },
     {
-      "id": "life_support",
-      "goal": "module",
-      "text": "Add a Life Support room",
-      "how": "Rooms tab: drag a Life Support room right next to your General Module so they share a wall. A door is added between them by itself.",
-      "keys": [
-        [
-          [
-            "LMB"
-          ],
-          "Drag a room"
-        ]
-      ],
-      "check": {
-        "type": "zone",
-        "kind": "life_support"
-      },
-      "highlight": [
-        "part:life_support",
-        "tab:rooms"
-      ],
-      "marker": "base",
-      "clip": "life_support",
-      "said": "tut_life_support",
-      "rules": "classic"
-    },
-    {
       "id": "go_in",
       "goal": "module",
       "text": "Go inside through the airlock",
@@ -339,7 +313,7 @@
       "id": "heat",
       "goal": "home",
       "text": "Heat the base",
-      "how": "Inside the General Module, press B and place the Thermal Control Unit from the Unpacked tab. It came in the Life support crate, runs as soon as it's placed and keeps the whole base warm through the night.",
+      "how": "Inside the core, press B and place the Thermal Control Unit from the Unpacked tab. It came in the Life support crate, runs as soon as it's placed and keeps the whole base warm through the night.",
       "keys": [
         [
           [
@@ -369,8 +343,8 @@
     {
       "id": "bunk",
       "goal": "home",
-      "text": "Furnish your General Module",
-      "how": "Stand in the General Module and press B: you furnish the room in first person. Pick a Sleep Station, aim at the floor by a wall and click.",
+      "text": "Furnish your core",
+      "how": "Stand in the core and press B: you furnish the room in first person. Pick a Sleep Station, aim at the floor by a wall and click.",
       "keys": [
         [
           [
@@ -410,7 +384,7 @@
       "goal": "home",
       "rules": "chapter",
       "text": "Place the Print Shop",
-      "how": "In the General Module press B and open the Unpacked tab. Place the Print Shop: it prints equipment from plans, out of feedstock. It works faster in Power & Engineering.",
+      "how": "In the core press B and open the Unpacked tab. Place the Print Shop: it prints equipment from plans, out of feedstock. It prints faster in a Workshop.",
       "keys": [
         [
           [

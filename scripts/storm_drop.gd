@@ -307,7 +307,7 @@ func pallet_opened() -> void:
 	if notes != null:
 		notes.answer("parachute")
 		notes.answer("air")
-	MHNotices.post("valid", "Pallet 1: life support", "Inside: the General Module's air cartridge, ten ration packs (you pocket them), the sample kit (hand corer, scoop, bags) and a bigger air pack, which clips straight onto your suit.", "log")
+	MHNotices.post("valid", "Pallet 1: life support", "Inside: the core's air cartridge, ten ration packs (you pocket them), the sample kit (hand corer, scoop, bags) and a bigger air pack, which clips straight onto your suit.", "log")
 	# The bare suit's first add-on (docs/range-ladder.md): it clips on here, at the life-support pallet.
 	var suit: Node = world.get("suit")
 	if suit != null and suit.has_method("give_addon"): suit.give_addon("air_pack", true)

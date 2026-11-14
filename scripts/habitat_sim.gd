@@ -29,7 +29,7 @@ const LIGHT_ITEMS := ["task_light", "corridor_light_strip", "high_light_post"]
 ## Set true to let each air recycler also make oxygen (used before the Oxygen
 ## Generator model existed).
 const RECYCLER_MAKES_OXYGEN := false
-const WORK_ROOMS := ["science", "hydroponics", "engineering", "communications", "life_support", "medical", "storage", "vehicle_bay", "general"]
+const WORK_ROOMS := ["science", "hydroponics", "engineering", "medical", "storage", "vehicle_bay", "general"]
 const AIR_DENSITY := 1.2      # kg per m3 of cabin air
 const CELL_VOLUME := 26.1     # m3: 3 x 3 x 2.9 m
 const THERMAL_MASS_KWH_PER_C := 0.07  # per cell: air, structure and contents
@@ -93,7 +93,7 @@ var hours_run := 0.0
 var weather_wear := false
 var panel_dust := {}
 var hull_dust := 0.0
-## A core sample in the Science Lab (GAR-Y, Mission 6): research +20% while this lasts.
+## A core sample in the Lab (GAR-Y, Mission 6): research +20% while this lasts.
 var research_boost_hours := 0.0
 var _known_capacity := {"kwh": 0.0, "water": 0.0, "o2": 0.0}
 var _food_delivered := false
@@ -780,7 +780,7 @@ func _sync_room_temps(rooms: Array, outside: float) -> void:
 	for room in rooms:
 		room_temp[room.key] = habitat_temp if _heated(room) else (habitat_temp + outside) * .5
 
-## Crew positions by hour: asleep in Sleeping Quarters at night, in the Day Room at
+## Crew positions by hour: asleep in Quarters at night, in the Galley at
 ## mealtimes, spread over the work rooms in the day.
 func _crew_by_room(rooms: Array, crew: int, hour: float) -> Array:
 	var people: Array = []
@@ -800,7 +800,7 @@ func _crew_by_room(rooms: Array, crew: int, hour: float) -> Array:
 	var choices: Array = []
 	for index in range(rooms.size()):
 		if str(rooms[index].kind) in wanted: choices.append(index)
-	# No Sleeping Quarters or Day Room yet: the General Module does for both.
+	# No Quarters or Galley yet: the General Module does for both.
 	if choices.is_empty():
 		for index in range(rooms.size()):
 			if str(rooms[index].kind) == "general": choices.append(index)

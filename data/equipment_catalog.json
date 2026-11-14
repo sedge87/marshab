@@ -3,7 +3,7 @@
   "groups": [
     {
       "id": "living",
-      "label": "Sleeping Quarters",
+      "label": "Quarters",
       "icon": "bed-double"
     },
     {
@@ -13,17 +13,17 @@
     },
     {
       "id": "science",
-      "label": "Science Laboratory",
+      "label": "Lab",
       "icon": "flask-conical"
     },
     {
       "id": "hydroponics",
-      "label": "Hydroponics",
+      "label": "Greenhouse",
       "icon": "sprout"
     },
     {
       "id": "galley",
-      "label": "Day Room",
+      "label": "Galley",
       "icon": "utensils"
     },
     {
@@ -33,7 +33,7 @@
     },
     {
       "id": "medical",
-      "label": "Medical Bay",
+      "label": "Shelter",
       "icon": "heart-pulse"
     },
     {
@@ -43,7 +43,7 @@
     },
     {
       "id": "communications",
-      "label": "Mission Operations",
+      "label": "Comms",
       "icon": "radio"
     },
     {
@@ -53,12 +53,12 @@
     },
     {
       "id": "storage",
-      "label": "Storage & Recycling",
+      "label": "Storage",
       "icon": "package"
     },
     {
       "id": "vehicle_bay",
-      "label": "Vehicle Bay",
+      "label": "Garage",
       "icon": "truck"
     },
     {
@@ -73,7 +73,7 @@
     },
     {
       "id": "power",
-      "label": "Power & Engineering",
+      "label": "Power",
       "icon": "zap"
     },
     {
@@ -107,7 +107,8 @@
       "cargo_cost": 100,
       "valid_zones": [
         "living",
-        "general"
+        "general",
+        "medical"
       ],
       "footprint": [
         2,
@@ -146,7 +147,6 @@
       "valid_zones": [
         "living",
         "corridor",
-        "hygiene",
         "medical",
         "storage",
         "airlock",
@@ -188,7 +188,6 @@
       "valid_zones": [
         "science",
         "galley",
-        "communications",
         "medical",
         "general"
       ],
@@ -234,13 +233,10 @@
         "hydroponics",
         "corridor",
         "storage",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
-        "medical",
-        "communications",
-        "general"
+        "medical"
       ],
       "footprint": [
         1,
@@ -277,7 +273,6 @@
       "valid_zones": [
         "living",
         "medical",
-        "hygiene",
         "general"
       ],
       "footprint": [
@@ -630,7 +625,7 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/air_recycler.tscn",
       "cargo_cost": 160,
       "valid_zones": [
-        "life_support",
+        "engineering",
         "general"
       ],
       "footprint": [
@@ -667,7 +662,7 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/water_reclaimer.tscn",
       "cargo_cost": 170,
       "valid_zones": [
-        "life_support",
+        "engineering",
         "general"
       ],
       "footprint": [
@@ -702,12 +697,11 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/oxygen_reserve_tank.tscn",
       "cargo_cost": 140,
       "valid_zones": [
-        "life_support",
-        "airlock",
         "engineering",
+        "general",
+        "airlock",
         "storage",
-        "medical",
-        "general"
+        "medical"
       ],
       "footprint": [
         1,
@@ -740,7 +734,7 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/thermal_control_unit.tscn",
       "cargo_cost": 150,
       "valid_zones": [
-        "life_support",
+        "engineering",
         "general"
       ],
       "footprint": [
@@ -817,7 +811,6 @@
         "storage",
         "vehicle_bay",
         "engineering",
-        "life_support",
         "general"
       ],
       "footprint": [
@@ -990,16 +983,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -1031,16 +1021,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -1075,12 +1062,11 @@
       "valid_zones": [
         "corridor",
         "storage",
-        "life_support",
         "engineering",
+        "general",
         "hydroponics",
         "vehicle_bay",
-        "airlock",
-        "general"
+        "airlock"
       ],
       "footprint": [
         2,
@@ -1199,16 +1185,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -1246,9 +1229,8 @@
         "engineering",
         "storage",
         "corridor",
-        "life_support",
-        "vehicle_bay",
-        "general"
+        "general",
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -1283,9 +1265,8 @@
       "valid_zones": [
         "engineering",
         "storage",
-        "life_support",
-        "vehicle_bay",
-        "general"
+        "general",
+        "vehicle_bay"
       ],
       "footprint": [
         2,
@@ -1425,7 +1406,7 @@
       "asset_scene": "res://assets/equipment/mars_hq_v1/hygiene_shower.tscn",
       "cargo_cost": 140,
       "valid_zones": [
-        "hygiene"
+        "living"
       ],
       "footprint": [
         1,
@@ -1460,7 +1441,7 @@
       "asset_scene": "res://assets/equipment/mars_crew_hygiene_repack/hygiene_toilet.tscn",
       "cargo_cost": 115,
       "valid_zones": [
-        "hygiene",
+        "living",
         "general"
       ],
       "footprint": [
@@ -1594,7 +1575,7 @@
       "asset_scene": "res://assets/equipment/mars_mission_operations_repack/communications_station.tscn",
       "cargo_cost": 145,
       "valid_zones": [
-        "communications",
+        "science",
         "general"
       ],
       "footprint": [
@@ -1653,7 +1634,7 @@
         "Food"
       ],
       "retired": true,
-      "retired_note": "Replaced by the Day Room's dining table"
+      "retired_note": "Replaced by the Galley's dining table"
     },
     {
       "id": "first_aid_kit",
@@ -1674,16 +1655,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "placement": "floor",
       "icon": "plus",
@@ -1719,16 +1697,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "placement": "wall",
       "icon": "plus",
@@ -1769,16 +1744,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "placement": "floor",
       "icon": "lightbulb",
@@ -1813,16 +1785,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "placement": "floor",
       "icon": "package",
@@ -1861,16 +1830,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "placement": "floor",
       "icon": "package",
@@ -1909,16 +1875,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "placement": "floor",
       "icon": "package",
@@ -1953,7 +1916,6 @@
       "label": "Mission Planning Console",
       "group": "communications",
       "valid_zones": [
-        "communications",
         "science"
       ],
       "placement": "floor",
@@ -1991,7 +1953,6 @@
       "label": "Mars Survey Board",
       "group": "communications",
       "valid_zones": [
-        "communications",
         "science",
         "living"
       ],
@@ -2027,16 +1988,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -2083,16 +2041,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -2537,7 +2492,7 @@
       "role": "Makes breathable oxygen",
       "cargo_cost": 300,
       "valid_zones": [
-        "life_support",
+        "engineering",
         "general"
       ],
       "footprint": [
@@ -2703,7 +2658,7 @@
       "cargo_cost": 70,
       "valid_zones": [
         "galley",
-        "communications"
+        "science"
       ],
       "footprint": [
         2,
@@ -2818,7 +2773,7 @@
       ],
       "placement": "floor",
       "effects": {},
-      "system_note": "Keeps fresh food from Hydroponics and frozen meals safe. It runs all day and night, so it's a steady load on the power system.",
+      "system_note": "Keeps fresh food from the Greenhouse and frozen meals safe. It runs all day and night, so it's a steady load on the power system.",
       "system_links": [
         "Food",
         "Power"
@@ -2916,7 +2871,7 @@
       ],
       "placement": "floor",
       "effects": {},
-      "system_note": "Organic waste breaks down into nutrients for the grow trays, closing the loop between the galley and Hydroponics.",
+      "system_note": "Organic waste breaks down into nutrients for the grow trays, closing the loop between the galley and the Greenhouse.",
       "system_links": [
         "Waste",
         "Food"
@@ -2972,7 +2927,7 @@
       "cargo_cost": 15,
       "valid_zones": [
         "medical",
-        "communications"
+        "science"
       ],
       "footprint": [
         1,
@@ -3073,16 +3028,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3118,16 +3070,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3163,13 +3112,11 @@
       "valid_zones": [
         "living",
         "science",
-        "communications",
         "medical",
         "engineering",
         "storage",
         "galley",
         "hydroponics",
-        "life_support",
         "general"
       ],
       "footprint": [
@@ -3205,13 +3152,10 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
-        "medical",
-        "communications",
-        "general"
+        "medical"
       ],
       "footprint": [
         1,
@@ -3257,14 +3201,11 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
-        "corridor",
-        "general"
+        "corridor"
       ],
       "footprint": [
         1,
@@ -3301,13 +3242,11 @@
       "valid_zones": [
         "living",
         "science",
-        "communications",
         "medical",
         "engineering",
         "storage",
         "galley",
         "hydroponics",
-        "life_support",
         "general"
       ],
       "footprint": [
@@ -3344,16 +3283,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3390,16 +3326,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3485,7 +3418,7 @@
         1.46,
         0.93
       ],
-      "system_note": "Shipping every spare from Earth takes months. A Print Shop turns a plan, some feedstock and a few Earth-made parts into equipment here; recycling tops the feedstock up. It works best in Power & Engineering (75 % speed in the General Module).",
+      "system_note": "Shipping every spare from Earth takes months. A Print Shop turns a plan, some feedstock and a few Earth-made parts into equipment here; recycling tops the feedstock up. It prints faster in a Workshop.",
       "system_links": [
         "Plans",
         "Recycling",
@@ -3536,16 +3469,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3579,16 +3509,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3622,16 +3549,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3665,16 +3589,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3712,16 +3633,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3759,16 +3677,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3807,16 +3722,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3854,16 +3766,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3901,16 +3810,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3944,16 +3850,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -3987,16 +3890,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -4030,16 +3930,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -4073,16 +3970,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -4116,16 +4010,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -4162,16 +4053,13 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
         "airlock",
-        "vehicle_bay",
-        "general"
+        "vehicle_bay"
       ],
       "footprint": [
         1,
@@ -4210,14 +4098,11 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
-        "corridor",
-        "general"
+        "corridor"
       ],
       "footprint": [
         1,
@@ -4256,14 +4141,11 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
-        "corridor",
-        "general"
+        "corridor"
       ],
       "footprint": [
         1,
@@ -4299,14 +4181,11 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
-        "corridor",
-        "general"
+        "corridor"
       ],
       "footprint": [
         1,
@@ -4342,15 +4221,12 @@
         "science",
         "storage",
         "hydroponics",
-        "life_support",
         "engineering",
+        "general",
         "galley",
-        "hygiene",
         "medical",
-        "communications",
         "corridor",
-        "airlock",
-        "general"
+        "airlock"
       ],
       "footprint": [
         1,
@@ -4382,12 +4258,11 @@
       "description": "Four tanks of stored air (nitrogen and oxygen) with a manifold, to refill a section after a breach.",
       "role": "60 kg of stored air for repressurising",
       "valid_zones": [
-        "life_support",
         "engineering",
+        "general",
         "storage",
         "airlock",
-        "corridor",
-        "general"
+        "corridor"
       ],
       "footprint": [
         2,
@@ -4421,9 +4296,8 @@
       "valid_zones": [
         "storage",
         "engineering",
-        "life_support",
-        "corridor",
-        "general"
+        "general",
+        "corridor"
       ],
       "footprint": [
         1,
@@ -4626,7 +4500,6 @@
       "cargo_cost": 12,
       "valid_zones": [
         "science",
-        "communications",
         "galley"
       ],
       "footprint": [
@@ -4905,7 +4778,6 @@
         "living",
         "galley",
         "hydroponics",
-        "communications",
         "science"
       ],
       "footprint": [
@@ -5016,8 +4888,7 @@
       "valid_zones": [
         "living",
         "galley",
-        "science",
-        "communications"
+        "science"
       ],
       "footprint": [
         2,
@@ -5186,7 +5057,7 @@
       "status": "catalogue",
       "icon": "box",
       "height": 2.08,
-      "description": "Everything for the first sols in one wall unit: a fold-out toilet cubicle, a pull-out galley shelf under a rehydration nozzle, and the water panel.",
+      "description": "The core's utility rack: the life-support and power switches, a fold-out toilet cubicle, a pull-out galley shelf under a rehydration nozzle, and the water panel.",
       "role": "Basic hygiene, meals and water in one rack",
       "asset_scene": "res://assets/equipment/mars_hq_v1/general_module_rack.tscn",
       "cargo_cost": 150,
@@ -5228,7 +5099,7 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/water_reclaimer.tscn",
       "cargo_cost": 250,
       "valid_zones": [
-        "life_support",
+        "engineering",
         "general"
       ],
       "footprint": [
@@ -5264,12 +5135,11 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/oxygen_reserve_tank.tscn",
       "cargo_cost": 150,
       "valid_zones": [
-        "life_support",
-        "airlock",
         "engineering",
+        "general",
+        "airlock",
         "storage",
-        "medical",
-        "general"
+        "medical"
       ],
       "footprint": [
         1,
@@ -5334,7 +5204,7 @@
       "asset_scene": "res://assets/equipment/mars_habitat_martian_hailmary_room_refresh_v2/thermal_control_unit.tscn",
       "cargo_cost": 200,
       "valid_zones": [
-        "life_support",
+        "engineering",
         "general"
       ],
       "footprint": [

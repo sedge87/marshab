@@ -108,7 +108,7 @@ const MAX_SAMPLES := 80
 var flags: Array = []          # flag positions (Vector3), saved
 ## Orders (hold G, or the Mission Control map): see order().
 var staying := false           # "Stay": waits here until told otherwise
-var has_core := false          # carrying a core sample for the Science Lab (saved)
+var has_core := false          # carrying a core sample for the Lab (saved)
 var _core_spot := Vector2.INF   # where it was drilled (step 5's sample record)
 ## Step 5: each of GAR-Y's named rocks as a sample's rock type (data/discoveries.json).
 const ROCK_TYPES := ["basalt", "hematite", "olivine", "gypsum", "vesicular", "conglomerate", "mudstone", "sulfur", "clay", "meteorite", "dusty", "perchlorate_crust"]
@@ -323,7 +323,7 @@ func _think(delta: float) -> void:
 	elif task.is_empty() and dark and not _escorting() and _idle_time > (6.0 if indoors else NAP_AFTER):
 		if indoors and autonomy and _start_charge(): pass
 		else: _nap()
-	# Back inside with a core sample: take it to the Science Lab (checked every few seconds).
+	# Back inside with a core sample: take it to the Lab (checked every few seconds).
 	_core_check -= delta
 	if has_core and indoors and task.is_empty() and not _busy and not napping and _core_check <= 0.0:
 		_core_check = 3.0
@@ -1033,7 +1033,7 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 		"home":
 			staying = false
 			if indoors:
-				if not _start_charge(): return "There's no GAR-Y Dock inside yet. Build one in the Vehicle Bay, Storage & Recycling or Power & Engineering."
+				if not _start_charge(): return "There's no GAR-Y Dock inside yet. Build one in the Garage, Storage or the Workshop."
 			else:
 				var wait := _airlock_waiting_spot()
 				if wait == Vector3.INF: return "There's no airlock to wait at."
@@ -1054,7 +1054,7 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 			if inside_point != indoors: return "GAR-Y can't use the airlock on its own. Ping it (E) so it comes through with you."
 			if Vector2(point.x - global_position.x, point.z - global_position.z).length() > 60.0: return "That's too far for GAR-Y (over 60 m)."
 			if kind != "goto" and inside_point: return "Surveys and core samples are for outside."
-			if kind == "core" and has_core: return "GAR-Y is already carrying a core sample. Bring it inside to the Science Lab."
+			if kind == "core" and has_core: return "GAR-Y is already carrying a core sample. Bring it inside to the Lab."
 			if kind == "survey" and MHChapterOne.on() and not MHSiteTerrain.is_buildable(Vector2(point.x, point.z)): return OFF_PAD
 			staying = false
 			point.y = global_position.y
@@ -1156,7 +1156,7 @@ func _scouted() -> void:
 	var pod := get_tree().get_first_node_in_group("lifepod")
 	if pod != null: pod.done("scout")
 
-# ---- core sample: drill outside, carry it in, deliver to the Science Lab ----
+# ---- core sample: drill outside, carry it in, deliver to the Lab ----
 
 func _core_here() -> void:
 	_busy = true
@@ -1169,13 +1169,13 @@ func _core_here() -> void:
 	_core_spot = Vector2(global_position.x, global_position.z)
 	_scouted()
 	_say("tada")
-	_toast("GAR-Y took a core sample", "A tube of layered regolith from below the surface. Bring GAR-Y inside (ping it so it follows you through the airlock) and it'll take the core to the Science Lab.", MHStyle.INFO)
+	_toast("GAR-Y took a core sample", "A tube of layered regolith from below the surface. Bring GAR-Y inside (ping it so it follows you through the airlock) and it'll take the core to the Lab.", MHStyle.INFO)
 	_end_task()
 
 func _start_core_delivery() -> void:
 	var labs: Array = habitat.zones.filter(func(z): return str(z.get("kind", "")) == "science")
 	if labs.is_empty():
-		if not _told_no_lab: _toast("GAR-Y has a core sample", "There's no Science Lab to take it to yet. It'll keep it safe until there is.", MHStyle.WARN)
+		if not _told_no_lab: _toast("GAR-Y has a core sample", "There's no Lab to take it to yet. It'll keep it safe until there is.", MHStyle.WARN)
 		_told_no_lab = true
 		return
 	var cell: Vector2i = (labs[0].cells as Array)[0]
@@ -1204,7 +1204,7 @@ func _core_delivered() -> void:
 	habitat.simulation().research_boost_hours = 240.0
 	await _arm_move("stow", .6)
 	_say("tada")
-	_toast("Core sample delivered", "The Science Lab is studying GAR-Y's core: research +20% for the next 10 sols.", MHStyle.VALID)
+	_toast("Core sample delivered", "The Lab is studying GAR-Y's core: research +20% for the next 10 sols.", MHStyle.VALID)
 	_end_task()
 
 # ---- patrol: every room in turn, then a report ----

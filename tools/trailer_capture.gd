@@ -87,7 +87,7 @@ func _build_base() -> void:
 	_put("galley_rehydration_station", o + Vector3(2.2, y, -7.0), PI)
 	_put("plant_pot", o + Vector3(6.9, y, -6.9), 0.0)
 	_put("wall_whiteboard", o + Vector3(4.6, y + 1.5, -7.37), PI, Vector3(0, 0, 1))
-	# Hydroponics (x 7.5..16.5).
+	# Greenhouse (x 7.5..16.5).
 	for i in 4: _put("grow_tray", o + Vector3(9.5 + i * 1.9, y, -5.5), 0.0)
 	# Living (x -10.5..-1.5).
 	_put("integrated_mess_booth", o + Vector3(-6.0, y, -4.5), 0.0)

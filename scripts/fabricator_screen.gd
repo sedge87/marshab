@@ -193,7 +193,7 @@ func _update_status() -> void:
 		return
 	var done := 1.0 - float(job.hours_left) / maxf(.01, float(job.hours))
 	var speed := MHChapterOne.fabricator_speed(_builder(), printer)
-	_job.text = "PRINTING %s · %d%% · %s left%s%s" % [MHChapterOne.label(str(job.id)).to_upper(), roundi(done * 100.0), duration(float(job.hours_left) / maxf(.01, speed)).to_upper(), "  ·  %d QUEUED" % waiting if waiting > 0 else "", "  (General Module: 75 % speed)" if speed < 1.0 else ""]
+	_job.text = "PRINTING %s · %d%% · %s left%s%s" % [MHChapterOne.label(str(job.id)).to_upper(), roundi(done * 100.0), duration(float(job.hours_left) / maxf(.01, speed)).to_upper(), "  ·  %d QUEUED" % waiting if waiting > 0 else "", "  (Workshop: faster)" if speed > 1.0 else ""]
 	_job_bar.value = done * 100.0
 
 # ---------- what goes where ----------

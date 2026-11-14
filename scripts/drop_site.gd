@@ -194,7 +194,7 @@ func pallet_opened() -> void:
 		"power":
 			pack.reachable(true)
 			if notes != null: notes.think("power_pallet", "open")
-			MHNotices.post("valid", "Pallet 2: power", "A rolled solar blanket and a battery pack: the General Module's power. It waits by the lander, packed, until the module's down.", "log")
+			MHNotices.post("valid", "Pallet 2: power", "A rolled solar blanket and a battery pack: the core's power. It waits by the lander, packed, until the core's down.", "log")
 		"gary":
 			if empty and int(world.get("opening_version")) >= 2:
 				pass   # it opened itself in the storm (scripts/drop_field.gd gary_out)

@@ -77,7 +77,7 @@
      "lead": "Possible perchlorate in the soil",
      "text": "The soil holds perchlorate salts: toxic to people, but they wash out, and they can even be a source of oxygen.",
      "reply": "Confirmed across the site. The Life team has tuned the washing: growing beds do better.",
-     "bonus": {"food": 1.1}, "unlock_text": "Hydroponics grow 10% more"},
+     "bonus": {"food": 1.1}, "unlock_text": "Greenhouses grow 10% more"},
     {"id": "iron_dust", "label": "Iron-oxide dust", "section": "climate", "kind": "regolith", "need": 3,
      "lead": "The dust may be mostly iron oxide",
      "text": "The fine dust is mostly iron oxide, finer than flour, and it clings with static.",

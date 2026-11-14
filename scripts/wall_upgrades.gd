@@ -13,7 +13,7 @@ extends RefCounted
 ##                       (scripts/roof_ladder.gd: E climbs up and down).
 ##   Sound insulation    Padded panels on a wall shared by two rooms, so a noisy
 ##                       neighbour (the Workshop, Life Support, a
-##                       printer) doesn't keep Sleeping Quarters awake.
+##                       printer) doesn't keep Quarters awake.
 ## A room's shield points: 5 for the hull, plus its upgrades' points spread
 ## over its floor squares (habitat_life.gd), so small rooms are easier to make
 ## into a storm shelter. Outside upgrades can't share a bay with a window.

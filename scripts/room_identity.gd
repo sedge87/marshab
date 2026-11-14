@@ -8,7 +8,7 @@ extends RefCounted
 ##   - overhead detail that matches the room's job: ducts, pipes, cable trays,
 ##     grow-light rails, a curtain track... all above the 2.46 m door opening,
 ##     so nothing blocks walking or furniture. (31 Oct: kits for the General
-##     Module, Sleeping Quarters, Day Room and Storage & Recycling.)
+##     Module, Quarters, Galley and Storage.)
 ## Built by BuildController._rebuild into its `root`; purely visual.
 
 const BAND_Y := 2.26           # band centre above the floor, just under the wall kit's top beam
@@ -31,7 +31,7 @@ const KITS := {
 		{"shape": "lights", "side": 0, "off": 1.0, "y": 2.66, "w": .14, "h": .05, "colour": "#D77BFF"},
 		{"shape": "lights", "side": 0, "off": 2.0, "y": 2.66, "w": .14, "h": .05, "colour": "#D77BFF"},
 		{"shape": "pipe", "side": 1, "off": .25, "y": 2.68, "r": .035, "colour": "#6FAF6F", "drips": true}],
-	# The Day Room (was the Galley): the kitchen's extract duct, and a warm
+	# The Galley (the Day Room until 14 Nov): the kitchen's extract duct, and a warm
 	# light bar over the tables and sofas on the far wall.
 	"galley": [
 		{"shape": "duct", "side": 0, "off": .55, "y": 2.62, "w": .6, "h": .28, "colour": "#C8CCD0", "vents": true},
@@ -49,7 +49,7 @@ const KITS := {
 		{"shape": "duct", "side": 0, "off": .45, "y": 2.62, "w": .36, "h": .36, "colour": "#E2E4E6", "vents": true},
 		{"shape": "pipe", "side": 1, "off": .2, "y": 2.72, "r": .025, "colour": "#E8C547"},
 		{"shape": "pipe", "side": 1, "off": .3, "y": 2.72, "r": .025, "colour": "#4F86B0"}],
-	# Storage & Recycling: load rails over the racks, and the waste sorter's
+	# Storage: load rails over the racks, and the waste sorter's
 	# extract duct and drain (from the old Waste Management room).
 	"storage": [
 		{"shape": "rail", "side": 0, "off": .3, "y": 2.7, "w": .08, "h": .08, "colour": "#6E7478"},
@@ -61,7 +61,7 @@ const KITS := {
 	"waste_management": [
 		{"shape": "duct", "side": 0, "off": .5, "y": 2.58, "w": .45, "h": .45, "colour": "#8C8F84", "vents": true},
 		{"shape": "pipe", "side": 1, "off": .3, "y": 2.68, "r": .07, "colour": "#5E5A52"}],
-	# Sleeping Quarters: privacy curtains along the bunk wall, and a slim,
+	# Quarters: privacy curtains along the bunk wall, and a slim,
 	# quiet supply duct (no machinery overhead).
 	"living": [
 		{"shape": "rail", "side": 0, "off": .95, "y": 2.8, "w": .05, "h": .04, "colour": "#E6E2D8", "curtain": true},

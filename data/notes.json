@@ -32,7 +32,7 @@
     },
     "module_air": {
       "stages": {
-        "carrying": "The General Module's air cartridge. Twenty kilos, but it'll carry. It can wait by the lander till the module's down.",
+        "carrying": "The core's air cartridge. Twenty kilos, but it'll carry. It can wait by the lander till the core's down.",
         "staged": "The module's air cartridge is waiting by the lander. It plugs into the module's outside socket."
       },
       "journal": "Plugged pallet 1's air cartridge into the module's socket. Its tank's full: room to breathe for more than one."
@@ -72,7 +72,7 @@
     "power_pallet": {
       "stages": {
         "near": "This pallet's flat and wide. The power kit, maybe.",
-        "open": "A rolled solar blanket and a battery pack: the module's power. It'll keep, packed, till the module's down."
+        "open": "A rolled solar blanket and a battery pack: the module's power. It'll keep, packed, till the core's down."
       },
       "journal": "Laid pallet 2's solar blanket out at the module's socket. The module holds the night now."
     },
@@ -201,7 +201,7 @@
     },
     "walker_seen": {
       "stages": {
-        "start": "That's Walker 1, with the General Module slung under it. Fault lamp blinking, but nothing looks broken. Is it just lost? There's a seat and a screen up front."
+        "start": "That's Walker 1, with the base's core slung under it. Fault lamp blinking, but nothing looks broken. Is it just lost? There's a seat and a screen up front."
       },
       "journal": "Found Walker 1. It wasn't broken, it was lost: its compass was way off. Gave it the sun and a few places I knew, and it walked home."
     },
@@ -215,7 +215,7 @@
       "stages": {
         "start": "Walker 1's parked by the lander with the module. Now, where do I want to live? Somewhere I've walked, flat, with room to grow."
       },
-      "journal": "Chose where the General Module goes. Watched the walker lower it."
+      "journal": "Chose where the core goes. Watched the walker lower it."
     },
     "module_plans": {
       "stages": {
@@ -227,7 +227,7 @@
       "stages": {
         "start": "First night under a real roof. It's quiet in here. I can hear my own breathing."
       },
-      "journal": "First night in the General Module. A real room."
+      "journal": "First night in the core. A real room."
     },
     "module_power": {
       "stages": {

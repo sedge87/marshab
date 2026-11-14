@@ -97,7 +97,7 @@ func _person_card(p: Dictionary, life: RefCounted, inv: Dictionary) -> Control:
 	var has_fav := (inv.all_items as Array).any(func(i): return str(i.id) == fav)
 	col.add_child(MHStyle.label("Favourite thing: %s %s" % [fav_label, "✓" if has_fav else "(not in the base)"], 14, MHStyle.VALID if has_fav else MHStyle.TEXT_MUTED))
 	if float(p.injured_h) > 0.0:
-		col.add_child(MHStyle.label("Injured: %d sols to recover in the Medical Bay" % ceili(float(p.injured_h) / 24.0), 15, MHStyle.DANGER, 600))
+		col.add_child(MHStyle.label("Injured: %d sols to recover in the Shelter" % ceili(float(p.injured_h) / 24.0), 15, MHStyle.DANGER, 600))
 	return card
 
 func _bar(label: String, value: float, danger: float) -> Control:

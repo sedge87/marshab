@@ -305,8 +305,8 @@ func _life_alerts(s: RefCounted, inv: Dictionary, out: Array) -> void:
 	for p in life.injured():
 		var ready: bool = life.medical_ready(inv, s.last.get("tiers", {4: true}))
 		out.append({"id": "injury", "level": "warning" if not ready else "advisory", "title": "%s is injured" % str(p.name),
-			"text": "Recovering in the Medical Bay: %s left." % _sols(float(p.injured_h) / 24.0) if ready else "They can't recover without a Medical Bay with an exam cot and a medical cabinet.",
-			"chain": [["heart-pulse", "%s (%s)" % [str(p.name), str(life.role(str(p.role)).get("label", ""))], false], ["heart-pulse", "Medical Bay ready" if ready else "No Medical Bay", not ready]]})
+			"text": "Recovering in the Shelter: %s left." % _sols(float(p.injured_h) / 24.0) if ready else "They can't recover without a Shelter with an exam cot and a medical cabinet.",
+			"chain": [["heart-pulse", "%s (%s)" % [str(p.name), str(life.role(str(p.role)).get("label", ""))], false], ["heart-pulse", "Shelter ready" if ready else "No Shelter", not ready]]})
 		break
 	var fitness: float = life.lowest_fitness()
 	if fitness < 78.0:
@@ -344,7 +344,7 @@ const EXPLAIN := {
 	"worn": "Filters clog, brine bags fill and catalysts tire. Servicing a machine by hand takes a spares kit, which the Print Shop prints from feedstock. Left fully worn for two sols, a machine breaks.",
 	"breakdown": "Machines wear out. Each repair uses a spare part. Having two of every life-critical machine (redundancy) keeps the crew safe while one is fixed.",
 	"blackout": "Every two years Mars passes behind the Sun from Earth, and for about two weeks no messages get through. Crews have to manage on their own.",
-	"injury": "With Earth up to 24 minutes away by message, the crew's doctor treats injuries here, in the Medical Bay.",
+	"injury": "With Earth up to 24 minutes away by message, the crew's doctor treats injuries here, in the Shelter.",
 	"fitness": "In 38% gravity bones and muscles slowly weaken. Each powered exercise station keeps about three crew fit.",
 	"wellbeing": "Wellbeing depends on six needs: sleep, space, meals together, a bit of home, meaningful work and contact with Earth.",
 }

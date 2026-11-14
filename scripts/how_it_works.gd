@@ -550,7 +550,7 @@ class Picture extends Control:
 		_arrow(Vector2(207, 78), Vector2(358, 115), BAD, "down")
 		_arrow(Vector2(207, 172), Vector2(358, 135), GOOD, "up")
 		_node(Vector2(740, 70), "heart-pulse", "Hurt: needs care", BAD, 180)
-		_node(Vector2(740, 180), "heart-pulse", "Medical Bay", GOOD, 180)
+		_node(Vector2(740, 180), "heart-pulse", "Shelter", GOOD, 180)
 		_arrow(Vector2(740, 146), Vector2(740, 106), GOOD, "")
 		_text("cot + cabinet + power", Vector2(740, 236), 12, GOOD)
 
@@ -662,7 +662,7 @@ class Picture extends Control:
 		_text("Blackout: about two weeks with no contact", Vector2(440, 225), 13, BAD)
 
 	func _research() -> void:
-		_node(Vector2(140, 120), "flask-conical", "Science Lab", COOL, 160)
+		_node(Vector2(140, 120), "flask-conical", "Lab", COOL, 160)
 		_node(Vector2(400, 120), "wrench", "Workbench", COOL, 150)
 		_node(Vector2(690, 120), "atom", "Research every sol", GOOD, 210)
 		_arrow(Vector2(222, 120), Vector2(323, 120), COOL)

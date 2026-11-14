@@ -137,7 +137,7 @@ func _base(furnish := true) -> void:
 	_put("medical_exam_cot", Vector3(31.5, y, -6.4), PI)
 	_put("iv_drip_stand", Vector3(30.0, y, -6.6), 0.0)
 	_put("crew_vitals_monitor", Vector3(32.8, y + 1.6, -7.37), PI, Vector3(0, 0, 1))
-	# Hydroponics x 28.5..34.5, z -1.5..4.5
+	# Greenhouse x 28.5..34.5, z -1.5..4.5
 	for i in 3: _put("grow_tray", Vector3(29.8 + i * 1.9, y, 0.2), 0.0)
 	# Engineering
 	_put("battery_bank", Vector3(20.5, y, 3.8), 0.0)
