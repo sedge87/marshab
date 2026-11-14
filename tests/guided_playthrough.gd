@@ -134,6 +134,12 @@ func _watch(delta: float) -> void:
 
 # ---------- moving about ----------
 
+## A screen opened by E (the tiny printer): close it, as a player would.
+func _close_screen() -> void:
+	var monitor: Node = world.get("monitor")
+	if monitor != null and monitor.has_method("_close"): monitor._close()
+	else: got_stuck("E on the printer didn't open its screen")
+
 func wait(seconds: float) -> void:
 	var left := seconds
 	while left > 0.0:
@@ -338,7 +344,10 @@ func run() -> void:
 	await go(lander.global_position, "back to the printer", 4.0)
 	var printer: Node = pod.bench.stations.printer
 	log_line("STATE", "printer says: %s" % str(pod.printer_prompt()))
-	printer.interact(player)
+	printer.interact(player)   # opens the printer's screen (14 Nov)
+	await wait(1.0)
+	_close_screen()
+	pod.print_plan("hitch")
 	if str(pod.printing) != "hitch": got_stuck("the printer didn't start the hitch (%s, %d parts)" % [str(pod.printing), pod.parts])
 	t = 0.0
 	while str(pod.printing) != "" and t < 600.0:
@@ -425,6 +434,9 @@ func run() -> void:
 	await go(lander.global_position, "to the printer", 4.0)
 	log_line("STATE", "printer says: %s" % str(pod.printer_prompt()))
 	printer.interact(player)
+	await wait(1.0)
+	_close_screen()
+	pod.print_plan("seal")
 	if str(pod.printing) != "seal": got_stuck("the printer didn't start the seal (%s)" % str(pod.printing))
 	t = 0.0
 	while str(pod.printing) != "" and t < 600.0:

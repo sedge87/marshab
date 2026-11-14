@@ -4,7 +4,9 @@ extends StaticBody3D
 ## - "melter": a small heated hopper. Carrying ice: "Melt the ice" fills the
 ##   lander's water tank.
 ## - "printer": the lander's tiny printer. Salvage parts in, small things out.
-##   E prints the plan shown; I shows the next plan.
+##   E opens its screen (scripts/tiny_printer_screen.gd).
+## - "rack": the suit rack on the bench's back panel. E opens it
+##   (scripts/suit_rack_screen.gd): choose what's in the suit's three slots.
 ## - "study": the fold-down bench with a hand lens. Carrying a sample or ice:
 ##   "Look closer", and it becomes a Journal page.
 
@@ -30,16 +32,20 @@ func interaction_prompt() -> Dictionary:
 			return {"label": "Ice melter · tank %.1f of %.0f L" % [lifepod.water_l(), lifepod.water_cap()]}
 		"printer":
 			return lifepod.printer_prompt()
+		"rack":
+			var suit: Node = lifepod.world.get("suit")
+			var fitted := (suit.addons as Array).size() if suit != null else 0
+			return {"label": "Suit rack · %d of 3 slots fitted" % fitted, "primary": "Choose add-ons"}
 		_:
 			return {"label": "Bench · a hand lens and a lamp"}
 
 func interact(_player: Node = null) -> bool:
-	if kind == "printer": return lifepod.print_now()
-	return false
-
-func interact_info(_player: Node = null) -> bool:
-	if kind == "printer":
-		lifepod.next_plan()
+	var world: Node = lifepod.world
+	if kind == "printer" and world.has_method("open_tiny_printer"):
+		world.open_tiny_printer()
+		return true
+	if kind == "rack" and world.has_method("open_suit_rack"):
+		world.open_suit_rack()
 		return true
 	return false
 

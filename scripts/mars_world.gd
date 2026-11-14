@@ -950,6 +950,13 @@ func open_lander_comms() -> void:
 func open_fabricator(printer := "") -> void:
 	_open_live_view(FABRICATOR_SCREEN.new().setup(self, printer))
 
+## The lander's tiny printer and its suit rack (playtest 14 Nov: menus).
+func open_tiny_printer() -> void:
+	_open_live_view(load("res://scripts/tiny_printer_screen.gd").new().setup(self))
+
+func open_suit_rack() -> void:
+	_open_live_view(load("res://scripts/suit_rack_screen.gd").new().setup(self))
+
 ## The lab screen for one Science Workbench (its placement id).
 func open_lab(bench: String) -> void:
 	_open_live_view(LAB_SCREEN.new().setup(self, bench))

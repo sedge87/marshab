@@ -470,10 +470,9 @@ func printer_prompt() -> Dictionary:
 	_bring_up(open)
 	if not open.has(plan): plan = int(open[0])
 	var cost := _plan_cost(plan)
-	var out := {"label": "Tiny printer · %d parts" % parts}
-	if parts >= cost: out["primary"] = "Print %s · %d parts" % [str(PLANS[plan][1]), cost]
-	else: out["label"] += " · %s needs %d" % [str(PLANS[plan][1]), cost]
-	if open.size() > 1: out["info"] = "Next plan"
+	# E opens its screen (playtest 14 Nov); "plan" is what's first on it.
+	var out := {"label": "Tiny printer · %d parts" % parts, "primary": "Choose what to print"}
+	out["plan"] = ("Print %s · %d parts" % [str(PLANS[plan][1]), cost]) if parts >= cost else ""
 	return out
 
 static func _plan_name(id: String) -> String:
@@ -487,6 +486,30 @@ func print_now() -> bool:
 	if open.is_empty(): return false
 	_bring_up(open)
 	if not open.has(plan): plan = int(open[0])
+	return print_plan(str(PLANS[plan][0]))
+
+## The printer's screen (scripts/tiny_printer_screen.gd): what it can make.
+## Each: {id, name, cost, state}: "ready", "short" (not enough parts),
+## "locked" (a suit add-on whose cartridge you haven't found) or "printing".
+func printer_rows() -> Array:
+	var out: Array = []
+	var open := _open_plans()
+	_bring_up(open)
+	for i in open: out.append({"id": str(PLANS[i][0]), "name": str(PLANS[i][1]), "cost": _plan_cost(i), "state": "printing" if printing == str(PLANS[i][0]) else ("ready" if parts >= _plan_cost(i) else "short")})
+	var suit: Node = world.get("suit")
+	for id in ADDON_PLANS:
+		if cartridges.has(id) or prints.has(id): continue
+		if suit != null and (suit.addons.has(id) or suit.waiting.has(id) or (suit.get("stowed") as Array).has(id)): continue
+		var i := PLANS.map(func(spec): return str(spec[0])).find(id)
+		out.append({"id": id, "name": str(PLANS[i][1]), "cost": _plan_cost(i), "state": "locked"})
+	return out
+
+## Print one plan by id, if it's open and there are parts for it.
+func print_plan(id: String) -> bool:
+	if printing != "": return false
+	var index := PLANS.map(func(spec): return str(spec[0])).find(id)
+	if index < 0 or not _open_plans().has(index): return false
+	plan = index
 	var cost := _plan_cost(plan)
 	if parts < cost: return false
 	parts -= cost

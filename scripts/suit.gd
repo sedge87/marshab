@@ -101,6 +101,7 @@ var food_bar := true             # (saved)
 var dry_hours := 0.0             # out here with the bag dry (saved)
 var addons: Array = []           # fitted, at most SLOTS (saved)
 var waiting: Array = []          # found or printed, fitted at the next refill (saved)
+var stowed: Array = []           # taken off at the suit rack: stays there till you fit it (saved)
 ## The wrist pad's introduction (docs/pda.md §8): the first time the hatch
 ## opens, the suit runs a seal check and lifts your arm to show it. Its screen
 ## names the key (HOLD T) the first few times; a working display, so text is fine.
@@ -419,6 +420,43 @@ func give_addon(id: String, fit_now := false) -> void:
 	waiting.append(id)
 	if fit_now or where != "outside": fit_waiting()
 	else: MHNotices.post("info", "Suit add-on: " + str(ADDONS[id].name), "It goes on at the next refill.", "log")
+
+## The suit rack (scripts/suit_rack_screen.gd): take one off. It stays on the
+## rack; the air or charge it held goes with it.
+func take_off(id: String) -> void:
+	if not addons.has(id): return
+	var air := o2 * o2_hours()
+	var charge := power * power_hours()
+	addons.erase(id)
+	if id == "air_pack": o2 = clampf((air - AIR_PACK_HOURS) / o2_hours(), 0.0, 1.0)
+	if id == "battery": power = clampf((charge - BATTERY_HOURS) / power_hours(), 0.0, 1.0)
+	if not stowed.has(id): stowed.append(id)
+	MHAudio.sfx("suit_clamp", -10.0)
+	_sync_lamp()
+
+## The suit rack: fit one from the rack into a free slot.
+func fit_from_rack(id: String) -> bool:
+	if addons.size() >= SLOTS or addons.has(id) or not (stowed.has(id) or waiting.has(id)): return false
+	stowed.erase(id)
+	if not waiting.has(id): waiting.append(id)
+	var others := waiting.filter(func(w): return w != id)
+	waiting = [id]
+	fit_waiting()
+	waiting = others + waiting
+	return true
+
+## The lamp add-on brightens the suit lamp; taken off, it's back to the bare one.
+func _sync_lamp() -> void:
+	var player: Node = world.get("player") if world != null else null
+	var lamp: SpotLight3D = player.get("flashlight") if player != null else null
+	if lamp == null: return
+	if stowed.has("lamp") and not addons.has("lamp") and lamp.has_meta("headlamp"):
+		lamp.remove_meta("headlamp")
+		lamp.light_energy /= 1.4
+		lamp.spot_range /= 1.8
+		lamp.spot_angle = maxf(lamp.spot_angle - 10.0, 10.0)
+	elif addons.has("lamp") and not lamp.has_meta("headlamp"):
+		_brighten_lamp()
 
 ## Fits what's waiting into free slots; keeps what doesn't fit for later.
 func fit_waiting() -> void:
@@ -852,7 +890,7 @@ func wake_spot() -> Dictionary:
 
 func export_state() -> Dictionary:
 	return {"o2": o2, "power": power, "scrubber": scrubber, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv,
-		"drink_l": drink_l, "food_bar": food_bar, "dry_hours": dry_hours, "seal_checked": seal_checked, "wrist_hint_uses": wrist_hint_uses, "addons": addons, "waiting": waiting, "helmet": helmet,
+		"drink_l": drink_l, "food_bar": food_bar, "dry_hours": dry_hours, "seal_checked": seal_checked, "wrist_hint_uses": wrist_hint_uses, "addons": addons, "waiting": waiting, "stowed": stowed, "helmet": helmet,
 		"dropped": dropped.map(func(d): return {"placement_id": d.placement_id, "label": d.label, "position": [d.position.x, d.position.y, d.position.z]})}
 
 func restore_state(state: Dictionary) -> void:
@@ -872,4 +910,6 @@ func restore_state(state: Dictionary) -> void:
 	addons = (state.get("addons", [] if state.is_empty() else ["air_pack", "battery", "heater"]) as Array).duplicate()
 	waiting = (state.get("waiting", []) as Array).duplicate()
 	helmet = bool(state.get("helmet", false))
+	stowed = (state.get("stowed", []) as Array).duplicate()
+	if is_inside_tree(): _sync_lamp.call_deferred()
 	dropped = (state.get("dropped", []) as Array).map(func(d): return {"placement_id": str(d.placement_id), "label": str(d.label), "position": Vector3(float(d.position[0]), float(d.position[1]), float(d.position[2]))})

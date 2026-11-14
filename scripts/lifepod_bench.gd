@@ -94,8 +94,17 @@ func _build() -> void:
 	_print_lamp.omni_range = .6
 	_print_lamp.position = Vector3(0, .17, -.05)
 	printer.add_child(_print_lamp)
-	# The three stations, each taking E for itself.
-	for spec in [["melter", melter, Vector3(.3, .3, .34)], ["study", study, Vector3(.3, .3, .34)], ["printer", printer, Vector3(.3, .34, .34)]]:
+	# The suit rack (14 Nov): a plate on the back panel above the melter with
+	# three add-on clips, where you choose what the suit carries.
+	var rack := Node3D.new()
+	rack.position = Vector3(-.32, TOP + .36, .2)
+	add_child(rack)
+	_block(Vector3(.3, .13, .02), Vector3(0, .065, 0), "graphite", rack)
+	for x in [-.09, 0.0, .09]:
+		_block(Vector3(.05, .07, .03), Vector3(x, .065, -.02), "metal", rack)
+	_block(Vector3(.26, .012, .025), Vector3(0, .005, -.02), "orange", rack)
+	# The four stations, each taking E for itself.
+	for spec in [["melter", melter, Vector3(.3, .3, .34)], ["study", study, Vector3(.3, .3, .34)], ["printer", printer, Vector3(.3, .34, .34)], ["rack", rack, Vector3(.3, .14, .08)]]:
 		var station: StaticBody3D = STATION.new()
 		(spec[1] as Node3D).add_child(station)
 		station.setup(lifepod, str(spec[0]), spec[2])

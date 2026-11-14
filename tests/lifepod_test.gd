@@ -146,8 +146,9 @@ func _initialize() -> void:
 	_check(pod.parts == 8 and handles[0].stripped and not handles[0].interact(player), "four pieces: 8 parts; each once")
 	_check(world.notes.is_open("salvage"), "salvage in Notes")
 	var printer: Node = pod.bench.stations.printer
-	_check(str(printer.interaction_prompt().get("primary", "")).contains("hitch"), "the printer offers the hitch first")
-	printer.interact(player)
+	world.gary_met = true   # the hitch waits for GAR-Y (2c0b854)
+	_check(str(pod.printer_prompt().get("plan", "")).contains("hitch") and str(pod.printer_rows()[0].id) == "hitch", "the printer offers the hitch first")
+	pod.print_now()
 	_check(pod.printing == "hitch" and pod.parts == 5, "printing the hitch: 3 parts")
 	pod._print_left = 0.0
 	await process_frame
@@ -155,19 +156,19 @@ func _initialize() -> void:
 	_check(pod.prints.has("hitch") and pod.jobs.has("print"), "the hitch is printed")
 	pod.done("scout")   # a GAR-Y survey (tests/opening_days_test.gd runs the real one)
 	_check(pod.walker_due, "three jobs done (%s): the walker is due" % str(pod.jobs.keys()))
-	printer.interact_info(player)
-	var plan_name: String = str(printer.interaction_prompt().get("primary", ""))
-	printer.interact(player)
+	pod.next_plan()
+	var plan_name: String = str(pod.printer_prompt().get("plan", ""))
+	pod.print_now()
 	pod._print_left = 0.0
 	await process_frame
 	await process_frame
-	printer.interact(player)
+	pod.print_now()
 	pod._print_left = 0.0
 	await process_frame
 	await process_frame
 	_check(pod.prints.has("pick") and pod.prints.has("bladder") and pod.parts == 1, "pick head and bladder printed too (%s; %d parts left)" % [plan_name, pod.parts])
 	_check(is_equal_approx(float(core.water_cap), 18.0), "the bladder: 18 L kept (%.1f)" % float(core.water_cap))
-	_check(not printer.interaction_prompt().has("primary"), "nothing left to print")
+	_check(pod.printer_rows().filter(func(r): return str(r.state) != "locked").is_empty(), "nothing left to print")
 
 	# GAR-Y's sled.
 	var gary: Node3D = world.meet_gary(frost.global_position + Vector3(3.0, .3, 0))
@@ -208,6 +209,29 @@ func _initialize() -> void:
 	_check(MHJournal.photographed(pod2.sites.iron.id()), "the photo is kept")
 	var kept := MHJournal.entries.filter(func(e): return str(e.get("own", "")).begins_with("Beads"))
 	_check(kept.size() == 1 and str((kept[0].photos as Array)[0].caption) == "The iron, from the south", "your note and caption are kept")
+	# The tiny printer's screen and the suit rack (14 Nov).
+	pod2.bench.stations.printer.interact(null)
+	await process_frame
+	_check(again.monitor != null and is_instance_valid(again.monitor), "E on the printer opens its screen")
+	if again.monitor != null: again.monitor._close()
+	await process_frame
+	var rack: Node = pod2.bench.stations.get("rack")
+	_check(rack != null and str(rack.interaction_prompt().get("primary", "")) == "Choose add-ons", "the bench has a suit rack")
+	if rack != null:
+		rack.interact(null)
+		await process_frame
+		_check(again.monitor != null, "E on the rack opens its screen")
+		if again.monitor != null: again.monitor._close()
+	var suit: Node = again.suit
+	suit.addons = ["air_pack", "battery", "heater"]
+	suit.waiting = ["lamp"]
+	suit.o2 = .5
+	suit.take_off("air_pack")
+	_check(not suit.addons.has("air_pack") and suit.stowed.has("air_pack") and suit.o2 < .45, "taking the air pack off keeps it on the rack, and its air goes with it (o2 %.2f)" % suit.o2)
+	_check(suit.fit_from_rack("lamp") and suit.addons.has("lamp") and not suit.waiting.has("lamp"), "the lamp fits into the free slot")
+	_check(not suit.fit_from_rack("air_pack"), "full slots: nothing more fits")
+	suit.fit_waiting()
+	_check(not suit.addons.has("air_pack"), "a refill doesn't put back what you took off")
 	again.queue_free()
 	await process_frame
 	if failures == 0:
