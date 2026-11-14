@@ -142,7 +142,7 @@ FISSURES = [
     {"id": "north_fissure", "from": (2360.0, -110.0), "to": (3050.0, -390.0), "half_width": 14.0, "depth": 50.0, "bridge": None},
 ]
 # The yardang maze between home and the crater: its long axis lies along the wind.
-YARDANGS = {"centre": (-450.0, -250.0), "length": 1000.0, "width": 600.0, "count": 44}
+YARDANGS = {"centre": (-450.0, -250.0), "length": 1000.0, "width": 600.0, "count": 44, "real_scale": 1.5, "real_shrink": 0.55}
 DRONE_WRECK = (-650.0, -50.0)
 # Ripple belts beside the one round the dune sea: centre, length across the wind, width along it.
 RIPPLE_BELTS = [(2650.0, -900.0, 520.0, 240.0)]
@@ -1068,8 +1068,23 @@ def add_yardangs(h, x, z, masks, medium):
     h -= field * (2.5 + 1.2 * np.sin(across / 9.0 + 2.0 * medium))
     body = np.zeros_like(h)
     placed = []
+    patch_path = os.path.join(ROOT, "assets", "terrain", "patches", "yardangs_arabia.npz")
+    if os.path.exists(patch_path):
+        # Real yardangs: a patch of a HiRISE elevation model (Arabia Terra, 2 m a point), with the
+        # plain under them taken off, turned so its ridges lie along our wind and stood a little taller.
+        relief = np.load(patch_path)["relief"].astype(np.float32)
+        rows, cols = relief.shape
+        # Laid at a smaller scale (more, narrower ridges: a maze) and mirrored where it repeats, so no seam shows.
+        def mirror(t, n):
+            t = np.mod(t, 2.0 * (n - 1.001))
+            return np.where(t > n - 1.001, 2.0 * (n - 1.001) - t, t)
+        u = mirror(along / (SPACING * c["real_shrink"]) + cols / 2.0, cols); v = mirror(across / (SPACING * c["real_shrink"]) + rows / 2.0, rows)
+        i0 = np.floor(u).astype(int); j0 = np.floor(v).astype(int); fu = u - i0; fv = v - j0
+        real = (relief[j0, i0] * (1 - fu) * (1 - fv) + relief[j0, i0 + 1] * fu * (1 - fv) + relief[j0 + 1, i0] * (1 - fu) * fv + relief[j0 + 1, i0 + 1] * fu * fv)
+        body = c["real_scale"] * real * field
+        placed = ["real"]
     for _ in range(6000):
-        if len(placed) >= c["count"]:
+        if len(placed) >= c["count"] or placed[:1] == ["real"]:
             break
         a0 = rng.uniform(-0.56, 0.5) * c["length"]; c0 = rng.uniform(-0.5, 0.5) * c["width"]
         if (a0 / (c["length"] * 0.5)) ** 2 + (c0 / (c["width"] * 0.5)) ** 2 > 1.0:
@@ -1094,9 +1109,9 @@ def add_yardangs(h, x, z, masks, medium):
     # Hard beds stand out as ledges on the flanks.
     stepped = np.floor(body / 6.0) * 6.0 + 6.0 * smoothstep(0.35, 1.0, (body % 6.0) / 6.0)
     h += 0.4 * body + 0.6 * stepped
-    masks["yardangs"] = (body > 1.5).astype(np.float32)
+    masks["yardangs"] = (body > (4.0 if placed[:1] == ["real"] else 1.5)).astype(np.float32)
     masks["yardang_field"] = field
-    print(f"  yardangs: {len(placed)} ridges, to {float(body.max()):.0f} m")
+    print(f"  yardangs: {'from the HiRISE patch' if placed[:1] == ['real'] else str(len(placed)) + ' ridges'}, to {float(body.max()):.0f} m")
 
 
 def add_ripple_belts(h, x, z, masks, medium):
@@ -1359,7 +1374,7 @@ def add_step_lines(h, x, z, masks, medium, lobes_field, ragged_field):
             front = 0.55 * smoothstep(0.0, 1.0, s / run) + 0.45 * smoothstep(0.0, 1.0, (s - 26.0 - 0.3 * run) / run)
         else:
             front = smoothstep(0.0, 1.0, s / run)
-        lift = height * front * behind
+        lift = height * front * behind * (d < 960.0)   # nothing at the edge of the worked window, where the fields are blended
         h += lift
         masks["step_front"] = np.maximum(masks["step_front"], ((s > -4.0) & (s < 40.0) & (height > 3.0)).astype(np.float32))
         report.append({"id": c["id"], "kind": c["kind"], "height": c["height"],
@@ -1931,7 +1946,7 @@ def save_heights(h):
 
 # ---------- ground textures ----------
 # Terrain3D texture slots (the control map refers to these numbers).
-DUST, BEDROCK, SAND, FROST, CLAY, GRAVEL, STRATA, TALUS, ICE, LAVA = range(10)
+DUST, BEDROCK, SAND, FROST, CLAY, GRAVEL, STRATA, TALUS, ICE, LAVA, PALE_SAND = range(11)
 MATERIALS = [
     # name, base colour, dark colour, roughness, features, colour on the region map
     ("dust", (178, 126, 96), (150, 102, 78), 0.93, {"ripples": (7, 0.05), "pebbles": (500, 2, 5)}, (196, 140, 104)),
@@ -1948,6 +1963,8 @@ MATERIALS = [
     ("ice", (196, 166, 146), (170, 140, 122), 0.8, {"cracks": (60, 0.01, 0.3), "ripples": (5, 0.03)}, (190, 160, 138)),
     # Young lava: dark, ropy, cracked into slabs, only thinly dusted.
     ("lava", (104, 78, 68), (70, 54, 50), 0.78, {"cracks": (90, 0.008, 0.4), "blocks": 0.22, "ripples": (9, 0.07)}, (112, 84, 72)),
+    # The ripple belts' sand: pale, coarse-grained, in small ripples on the big ones.
+    ("pale_sand", (204, 164, 130), (176, 136, 106), 0.92, {"ripples": (17, 0.16), "pebbles": (900, 1, 3)}, (212, 174, 140)),
 ]
 
 
@@ -2116,7 +2133,8 @@ def write_control(h, masks):
     base[ice & ((masks["polygons"] > 0.85) | (gz > 0.16 + 0.05 * masks["noise"]))] = FROST   # in the troughs, and on slopes facing the pole
     base[masks["ice_scarp"] > 0.5] = FROST
     base[masks["mound"] > 0.5] = STRATA
-    base[(masks["ripples"] + dither > 0.5) | (masks["sand_sheet"] + dither > 0.5)] = SAND
+    base[masks["sand_sheet"] + dither > 0.5] = SAND
+    base[masks["ripples"] + dither > 0.5] = PALE_SAND
     base[masks["yardang_field"] + dither > 0.6] = GRAVEL        # scoured lag between the ridges
     base[masks["yardangs"] > 0.5] = STRATA
     base[masks["inverted"] > 0.5] = GRAVEL                      # cemented river gravel on the raised beds
@@ -2133,7 +2151,7 @@ def write_control(h, masks):
     overlay = np.where(layered, STRATA, BEDROCK).astype(np.uint32)
     crest = smoothstep(0.004, 0.02, -curvature) * 0.45   # rock through the dust on crests and rims
     blend = np.clip((smoothstep(0.45, 0.95, slope) + crest * (slope > 0.12)) * 255.0, 0, 255).astype(np.uint32)
-    soft = (base == SAND) | (base == FROST) | (base == ICE)
+    soft = (base == SAND) | (base == FROST) | (base == ICE) | (base == PALE_SAND)
     blend[soft & (slope < 1.1)] = 0   # dunes and ice stay sand and frost unless it's a real scarp
     blend[base == overlay] = 0   # same rock both ways: Terrain3D's height blend of a texture with itself goes dark in patches (the mound)
     masks["_base"] = base.astype(np.int64)
@@ -2176,6 +2194,27 @@ def write_map(h, masks):
     write_file(os.path.join(OUT, "map_detail.jpg"), lambda path: detail.save(path, quality=88))
 
 
+def add_surface_marks(masks):
+    """Marks that are only colour: dust devil tracks across the open plains
+    and the fresh crater's rays."""
+    x, z = grid()
+    rng = np.random.default_rng(SEED + 240)
+    tracks = np.zeros((N, N), dtype=np.float32)
+    for _ in range(46):
+        start = (rng.uniform(-2300.0, 2300.0), rng.uniform(-1600.0, 2300.0))
+        line = wander(start, rng.normal(math.atan2(DUNE_WIND[1], DUNE_WIND[0]), 0.7), rng.uniform(400.0, 1500.0), rng, step=18.0, turn=0.22)
+        width = rng.uniform(3.0, 8.0)
+        d, _, _ = polyline_field(line, 30.0, step=1)
+        tracks = np.maximum(tracks, (1.0 - smoothstep(width * 0.5, width, d)) * rng.uniform(0.5, 1.0))
+    masks["devil_tracks"] = tracks * masks["open_ground"]
+    cx, cz, r = FRESH_CRATER
+    dd = dist(x, z, (cx, cz)) / r
+    ang = np.arctan2(z - cz, x - cx)
+    spokes = np.clip(np.sin(ang * 11.0 + 2.0 * np.sin(ang * 3.0)) * 1.6 - 0.5, 0.0, 1.0) + 0.6 * np.clip(np.sin(ang * 23.0 + 1.0) - 0.6, 0.0, 1.0)
+    masks["rays"] = (np.clip(spokes, 0.0, 1.0) * np.clip(1.0 - (dd - 1.0) / 6.0, 0.0, 1.0) ** 1.5 * (dd > 1.0) + np.clip(1.0 - (dd - 1.0) / 1.3, 0.0, 1.0) * (dd > 0.9)).astype(np.float32)
+    masks["rays"] *= 1.0 - np.clip(masks["mesa_body"] + masks["sand_sheet"], 0.0, 1.0)
+
+
 def write_colour(masks, h=None):
     """Terrain3D colour map at half resolution (the game scales it up):
     gentle large-scale darkening and hue shifts, like Mars's albedo patches,
@@ -2191,13 +2230,33 @@ def write_colour(masks, h=None):
     if h is not None:
         hs = h[::2, ::2]
         canyon_wall = smoothstep(-130.0, -90.0, masks["canyon_u"][::2, ::2]) * (1.0 - smoothstep(-5.0, 5.0, masks["canyon_u"][::2, ::2]))
-        layered = np.clip(masks["mound"][::2, ::2] + masks["mesa_body"][::2, ::2] + canyon_wall, 0, 1)
+        steep = smoothstep(0.5, 0.9, masks["_slope"][::2, ::2])
+        layered = np.clip(masks["mound"][::2, ::2] + masks["mesa_body"][::2, ::2] + canyon_wall + masks["yardangs"][::2, ::2] + masks["chaos"][::2, ::2]
+                          + steep * np.clip(masks["fissure_near"][::2, ::2] + masks["step_front"][::2, ::2], 0, 1), 0, 1)
         bands = 0.5 + 0.5 * np.sin(hs / 5.2 * math.pi + 0.8 * masks["medium"][::2, ::2])
         shade = 1.0 - layered * (0.06 + 0.12 * bands)
         red *= shade; green *= shade * 0.99; blue *= shade * 0.97
         # Pale dust settles on the high ground.
         pale = 0.06 * smoothstep(np.percentile(hs, 70), np.percentile(hs, 97), hs)
         red += pale * (1 - red); green += pale * (1 - green) * 0.9; blue += pale * (1 - blue) * 0.8
+    # The young lava: darker where the last sheets ran, with pale dust drifted into its hollows.
+    lava = masks["lava"][::2, ::2]
+    sheet = 0.5 + 0.5 * np.clip(np.roll(masks["large"], (640, 380), (0, 1))[::2, ::2] + 0.6 * medium, -1.0, 1.0)
+    dark = lava * (0.05 + 0.1 * sheet)
+    red *= 1.0 - dark; green *= 1.0 - dark; blue *= 1.0 - dark * 0.9
+    drift = lava * smoothstep(0.004, 0.02, masks["_curvature"][::2, ::2]) * 0.16
+    red += drift * (1 - red); green += drift * (1 - green) * 0.85; blue += drift * (1 - blue) * 0.7
+    # Dust devil tracks: thin dark lines where a whirlwind lifted the pale dust (they mark loose ground).
+    tracks = masks["devil_tracks"][::2, ::2]
+    red *= 1.0 - 0.1 * tracks; green *= 1.0 - 0.09 * tracks; blue *= 1.0 - 0.07 * tracks
+    # Bright rays thrown out from the fresh crater.
+    rays = masks["rays"][::2, ::2]
+    red += 0.1 * rays * (1 - red); green += 0.09 * rays * (1 - green); blue += 0.08 * rays * (1 - blue)
+    # The glacier's rubble is a shade paler along its flow lines; the raised riverbeds' gravel is greyer.
+    pale2 = 0.05 * masks["glacier"][::2, ::2] + 0.04 * masks["yardang_field"][::2, ::2]
+    red += pale2 * (1 - red); green += pale2 * (1 - green); blue += pale2 * (1 - blue)
+    grey = 0.06 * masks["inverted"][::2, ::2]
+    red *= 1.0 - grey
     streaks = masks["_streaks"][::2, ::2]
     red *= 1.0 - 0.13 * streaks; green *= 1.0 - 0.12 * streaks; blue *= 1.0 - 0.1 * streaks
     dunes = masks["dunes"][::2, ::2]
@@ -2300,11 +2359,10 @@ def write_ground(h, masks):
     near the surface ice lies (for frost, fresh ice in new craters, and
     GAR-Y's radar)."""
     base = masks["_base"]
-    kind_of = {DUST: 0, BEDROCK: 1, SAND: 2, FROST: 7, CLAY: 8, GRAVEL: 4, STRATA: 1, TALUS: 5, ICE: 6, LAVA: 9}
+    kind_of = {DUST: 0, BEDROCK: 1, SAND: 2, FROST: 7, CLAY: 8, GRAVEL: 4, STRATA: 1, TALUS: 5, ICE: 6, LAVA: 9, PALE_SAND: 3}
     kind = np.zeros(h.shape, dtype=np.uint8)
     for texture, k in kind_of.items():
         kind[base == texture] = k
-    kind[(masks["ripples"] > 0.5) & (kind == 2)] = 3
     kind[masks["platy"] > 0.35] = 10
     kind[(masks["_slope"] > 0.8) & (kind != 6) & (kind != 7)] = 1   # steep ground is rock, whatever lies round it
     x, z = grid()
@@ -2455,6 +2513,7 @@ def main():
     routes = check_routes(h, masks, fix=False)   # the fissures are hard gates: nothing is graded across them
     lo, hi = save_heights(h); lap("save_heights")
     write_control(h, masks); lap("write_control")
+    add_surface_marks(masks)
     write_colour(masks, h); lap("write_colour")
     write_map(h, masks); lap("write_map")
     write_rocks(h, masks); lap("write_rocks")
