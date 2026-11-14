@@ -826,24 +826,8 @@ func _colony_screen() -> void:
 	name_hint.add_child(counter)
 	name_box.add_child(name_hint)
 	name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# Beside it: what the habitat itself is called (it speaks under this name).
-	var name_row := MHStyle.hbox(16)
-	name_row.add_child(name_box)
-	var voice_box := MHStyle.vbox(8)
-	voice_box.custom_minimum_size.x = 200
-	voice_box.add_child(MHStyle.eyebrow("Habitat's name"))
-	var voice_field := LineEdit.new()
-	voice_field.max_length = 12
-	voice_field.placeholder_text = "ARDEN"
-	voice_field.text = MHGame.habitat_name
-	voice_field.custom_minimum_size.y = 56
-	voice_field.tooltip_text = "Your habitat talks to you. This is what it's called."
-	voice_field.text_changed.connect(func(text: String) -> void:
-		MHGame.habitat_name = text.strip_edges().to_upper() if text.strip_edges().length() > 0 else "ARDEN")
-	voice_box.add_child(voice_field)
-	voice_box.add_child(MHStyle.body("It talks to you.", 15, MHStyle.TEXT_MUTED))
-	name_row.add_child(voice_box)
-	form.add_child(name_row)
+	# The habitat's own name (ARDEN) went with its voice on 8 Nov; old saves keep theirs.
+	form.add_child(name_box)
 	# Who's building: on every save's card and in Tour ("Designed by").
 	# Remembered for next time.
 	var maker := MHGame.maker()
