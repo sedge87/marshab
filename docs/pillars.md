@@ -75,7 +75,7 @@ Examples: a suit-port airlock (faster turnaround), a garage (rover charging and 
 - This is NASA-plausible: JPL's ATHLETE concept is a six-legged robot that carries habitat modules.
 
 **Rooms come in two kinds.**
-- **Rigid modules from Earth** are few. They are the base's core and hold the complex kit.
+- **The only rigid Earth module is the walker's core** (airlock, life support, power hub), one per base.
 - **Inflatable liners under a printed regolith shell** add living space and shielding. Real studies pair these two because printed regolith alone can't reliably hold air.
 - Base size grows with what you build locally, not up to a fixed cap.
 
@@ -84,7 +84,7 @@ Examples: a suit-port airlock (faster turnaround), a garage (rover charging and 
 **Plans are things you find, then you need the materials to build them.** They come from three sources:
 1. **Plan cartridges:** data modules in crashed cargo and wrecks, each holding a plan. For example, the greenhouse cartridge is in a lander's nose.
 2. **The story:** a find makes Earth's engineers draw you a plan, and Castle relays it ("Achterberg's team drew you a smelter").
-3. **The core's ports:** each base core has a few ports. Fitting an adapter to a port opens a room type at that base.
+3. **Core upgrades:** fitting an upgrade (a found plan plus materials) to a base's core opens room types at that base, with no limit (`docs/rooms-and-equipment.md`).
 
 What you can build always follows where you've been. The Engineering Bench "study damaged kit" step is cut.
 
@@ -147,10 +147,10 @@ Keep the four chapters, rewritten to match:
 ## Still to design (each its own talk, before building)
 
 1. ~~**The range ladder**~~ done 14 Nov: `docs/range-ladder.md`.
-2. **The room and equipment list:** which rigid modules, which liner rooms, which core-port adapters, and what you can *do* with each piece of equipment.
+2. ~~**The room and equipment list**~~ done 14 Nov: `docs/rooms-and-equipment.md`.
 3. **The hab's supply chain in numbers:** power, then air, then heat, and how long a cabin lasts when each fails.
-4. **The walker core:** what's in it, how many ports it has, and how outposts differ from the main base.
-5. **The build feel:** which pieces appear at once and which the robots finish, and how long that takes.
+4. **The walker core:** its contents and upgrades are settled in `docs/rooms-and-equipment.md`. Still open: how outposts differ from the main base, and the walk-and-kneel moment.
+5. ~~**The build feel**~~ done 14 Nov: instant, with a short "watch it build" moment (`docs/rooms-and-equipment.md`).
 6. **Automation:** extractor and miner output, hauler carts, how routes are set, and what a cart does when it hits trouble.
 7. **The scout drone and the pressurised rover rework.**
 8. **The blackout rule** outside the chapters, now that survival is strict outside.
