@@ -5877,6 +5877,7 @@ func _zone_cost(cells: Array) -> int:
 ## reactor or ice extractor, from the balance spreadsheet.
 func cell_cost(zone_kind: String) -> int:
 	if zone_kind == "trench": return 0   # dug on site, nothing from Earth
+	if zone_kind == "landing_pad": return int(ZONE_TYPES.landing_pad.cost)   # printed regolith, a little Earth binder
 	if zone_kind in SITE_UPGRADES: return int(WALL_UPGRADES.spec(str(SITE_UPGRADES[zone_kind])).cargo)
 	var site_item: String = {"solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake", "atmosphere_processor": "atmosphere_processor"}.get(zone_kind, "")
 	if not site_item.is_empty(): return int(MHResources.item_value(site_item, "cargo_kg", 300.0))

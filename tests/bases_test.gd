@@ -17,6 +17,7 @@ extends SceneTree
 #   refold;
 # - saved and loaded; an older save loads as one base.
 # godot --headless --path . --script res://tests/bases_test.gd
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const RULES := preload("res://scripts/build_rules.gd")
 var failures := 0
 
@@ -66,7 +67,7 @@ func _set_down(world: Node, walker: Node, at: Vector3) -> bool:
 	var cells: Array = []
 	for r in [0.0, 6.0, 12.0, 18.0]:
 		for k in 8:
-			var p := at + Vector3(cos(k * TAU / 8.0), 0, sin(k * TAU / 8.0)) * r
+			var p: Vector3 = at + Vector3(cos(k * TAU / 8.0), 0, sin(k * TAU / 8.0)) * r
 			var c := Vector2i(roundi(p.x / builder.CELL), roundi(p.z / builder.CELL))
 			var try: Array = builder._cells(c, c)
 			if builder._invalid_reason(try).is_empty(): cells = try
@@ -124,7 +125,7 @@ func _initialize() -> void:
 	_check(mid_y > y0 + .8 and mid_y < y0 + 1.6, "half way up, the floor's half way up (%.2f)" % (mid_y - y0))
 	_check(builder.is_inside(Vector3(30.0, mid_y + 1.0, 6.0)) and not builder.is_inside(Vector3(30.0, y0 + 2.4 + 3.2, 6.0)), "inside the ramp at its floor's height, not above its roof")
 	_check(builder.is_inside(Vector3(31.5, y0 + 2.4 + 1.0, 12.0)) and not builder.is_inside(Vector3(31.5, y0 + 1.0, 12.0)), "the upper room is inside at its own floor")
-	var ramp_bodies := builder.root.find_children("*", "StaticBody3D", true, false).filter(func(n): return n.get_child_count() > 0 and n.get_child(0) is MeshInstance3D and (n.get_child(0) as MeshInstance3D).mesh is ArrayMesh)
+	var ramp_bodies: Array = builder.root.find_children("*", "StaticBody3D", true, false).filter(func(n): return n.get_child_count() > 0 and n.get_child(0) is MeshInstance3D and (n.get_child(0) as MeshInstance3D).mesh is ArrayMesh)
 	_check(ramp_bodies.size() >= 4, "the climbing corridor is built (%d pieces)" % ramp_bodies.size())
 	# Clear the test rooms.
 	builder.zones.clear()
@@ -134,10 +135,10 @@ func _initialize() -> void:
 	# ---------- a second walker ----------
 	var lander: Vector3 = world.lander.global_position
 	var known: Node = world.known
-	var region := Vector2(lander.x + 420.0, lander.z) + known.origin
+	var region: Vector2 = Vector2(lander.x + 420.0, lander.z) + known.origin
 	var ok_spot: Vector2 = MHBaseSite.nearest_valid(region.x, region.y, 300.0, 24.0)
 	_check(not is_inf(ok_spot.x), "there's a spot a few hundred metres out")
-	var spot := ok_spot - known.origin
+	var spot: Vector2 = ok_spot - known.origin
 	var w2: Node3D = world.add_walker("w2", lander + Vector3(30.0, 0, 30.0))
 	_check(w2 != null and w2.state == "ready" and w2.base_id == "w2", "a second walker, ready")
 	_check(w2.spot_reason(spot).begins_with("Only ground you've explored"), "not to ground you haven't explored")
@@ -153,7 +154,6 @@ func _initialize() -> void:
 	_check(_set_down(world, w2, target), "there, its core and airlock go down on its own base")
 	var core2: Dictionary = RULES.module_zone(builder, "w2")
 	_check(not core2.is_empty() and str(core2.base) == "w2" and absf(float(core2.y) - B.base_y(builder, "w2")) < .01, "the core sets the base's height (%.1f m)" % B.base_y(builder, "w2"))
-	_check(not w2.visible and w2._folded >= .99 or true, "it kneels and folds in")
 	await create_timer(4.0).timeout
 	_check(not w2.visible, "folded into its core: nothing left standing")
 	_check(world.cores.has("w2") and world.cores.w2.running() and bool(world.cores.w2.commissioned), "its core runs its own life support, commissioned")
@@ -166,14 +166,14 @@ func _initialize() -> void:
 	_check(MHRoomTypes.is_fitted("water_loop", "w2") and not MHRoomTypes.is_fitted("water_loop", "w1"), "upgrades are fitted per base")
 
 	# ---------- refolding ----------
-	var before := builder.zones.size()
+	var before: int = builder.zones.size()
 	MHRoomTypes.here = "w2"
 	w2.refold()
 	_check(RULES.module_zone(builder, "w2").is_empty() and builder.zones.size() < before, "refolded: its pieces pack away")
 	_check(builder.traces.size() >= 1, "the printed footprints stay behind")
 	_check(w2.state == "ready" and not world.cores.has("w2"), "the walker stands up, ready; its core's life support packs with it")
 	_check(MHRoomTypes.is_fitted("water_loop", "w2"), "its upgrades go with it")
-	var spot2 := spot + Vector2(0, 200.0)
+	var spot2: Vector2 = spot + Vector2(0, 200.0)
 	var valid2: Vector2 = MHBaseSite.nearest_valid(spot2.x + known.origin.x, spot2.y + known.origin.y, 300.0, 24.0) - known.origin
 	known.reveal(valid2 + known.origin, 200.0)
 	_check(w2.send_to(valid2), "it can go again: %s" % w2.spot_reason(valid2))
@@ -184,6 +184,7 @@ func _initialize() -> void:
 	builder.refresh_here()
 	builder.active_base = "w2"
 	builder.kind = "landing_pad"
+	builder.simulation().printed_kg += 2000.0   # printed regolith to pay for it
 	var pad_cells: Array = []
 	for r in [24.0, 33.0, 42.0]:
 		for k in 8:

@@ -77,10 +77,15 @@
 - **Rooms can step ±1 storey,** joined by a ramp or ladder. This replaces the single `habitat_base_y`.
 - **One shared store** for all bases.
 - **The Base page gets a switcher.**
-- **Walkers:** mark a spot, the walker walks there, kneels and folds in. A core can refold once, leaving traces behind.
+- **Walkers:** mark a spot, the walker walks there, kneels and folds in. A core can refold (as often as you like, the user said at A4), leaving traces behind.
 - **You choose the main base:** the landing pad and beacon go there, and it's locked once the pad is down.
 - **A save format change.**
 - Files: `build_controller.gd`, `build_rules.gd`, `base_site.gd`, `walker.gd`, `saves.gd`, `pda_screen.gd`.
+- **Built 14 Nov** (not playtested). New code is in `scripts/bases.gd` and `scripts/base_pieces.gd`, tested by `tests/bases_test.gd`. What was decided is in `docs/bases-and-vehicles.md`, "As built (A4)". In short:
+  - steps happen through straight corridors (a ramp or a ship's ladder);
+  - refolding is unlimited, except the main base;
+  - building the pad picks the main base.
+  - The guided opening still sets Walker 1's core down on day 4.
 
 ### A5. Room workflows
 - **Station chains:**

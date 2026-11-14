@@ -266,6 +266,11 @@ static func settle(builder: Object) -> void:
 		var level := level_for(builder, zone.get("cells", []), str(zone.kind), zone)
 		zone["y"] = float(level.y)
 		if (level.get("rise", []) as Array).size() == 2: zone["rise"] = level.rise
+	# The main base is where the landing pad is (none until it's built).
+	var main := ""
+	for zone in builder.get("zones"):
+		if str(zone.kind) == "landing_pad": main = base_of(zone)
+	builder.set("main_base", main)
 	# Each base stands at its core's height (its first room's, without one).
 	for id in builder.get("bases"):
 		var mine := zones_of(builder, str(id))

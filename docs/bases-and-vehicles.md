@@ -12,8 +12,8 @@
 - **The walker walks there on its own,** slowly: about a sol across the Reach, and you can follow it.
 - When you arrive, it **kneels, sets the core down and folds in.** It's a big moment every time.
 
-### Moving a base: once per core
-- **A core can be refolded once** and walked to a new spot.
+### Moving a base
+- **A core can be refolded** and walked to a new spot, as often as you like (the user, 14 Nov, at A4: not limited to once).
 - **Everything comes along:** liners, equipment and materials go back into the shared store, ready for the new site.
 - **Some evidence stays behind:** the printed pad, the footprints of the rooms and the walker's tracks, as a trace of where you've been.
 
@@ -38,6 +38,43 @@
 - You walk or drive, so distance is real.
 - Trails, the drone's markers and the rovers make known routes quicker and safer over time: the second trip is easier than the first.
 - Sleeping in a bunk at any base wakes you there.
+
+### As built (A4, 14 Nov)
+*Built, not playtested. Decided with the user at A4: steps go through corridors, the Map picks the spot and the plan fits the core there, refolding is unlimited, and building the pad is the main-base choice. The rest below was left open by this doc and settled in the build. Code: `scripts/bases.gd`, `scripts/base_pieces.gd`, `walker.gd`, `build_controller.gd`; test `tests/bases_test.gd`.*
+- **Bases.** The builder keeps one record per base, keyed by its walker (`w1` is Walker 1's, beside the lander), and every room records its base and its floor height.
+  - **Build area:** you build within 60 m of a base's core. Walker 1's base keeps the landing-site pad rules.
+  - **Spacing:** base centres are at least 150 m apart.
+  - **Which base you're at:** the base whose area you stand in, else the nearest. The build plan, the grid and the core panel follow it.
+- **Levels.**
+  - Rooms that touch share a floor.
+  - A room on its own takes an existing level if the ground allows, else its own ground height. The ground may sit up to 0.12 m above a floor or 1.85 m below it.
+  - A room that would touch two levels is refused: "link them with a corridor".
+  - **Steps happen only in corridors.** A corridor between two levels climbs up to one storey (3 m) and must run straight.
+    - Up to 1.1 m of rise per 3 m cell, it's a ramp.
+    - Steeper than that, it's a ship's ladder: steep printed steps with rails that you walk up. A ladder you climb with a key is not built.
+- **Walkers.**
+  - **Marking a spot:** a free walker (state "ready") is sent from the Map. The first W checks the spot under the cursor: sun %, night shelter, ice nearby and slope, with a line from Castle. W again on the same spot sends it.
+  - **Spot rules:** the spot must be explored, flat, and away from other bases.
+  - **The walk:** the walker walks there on game time, about a sol across the Reach, and shows on the Map.
+  - **Setting down:** there, the plan offers its core and airlock, as Walker 1's does. When the core is down, the walker kneels and folds into it.
+  - **While it sets down,** only that base's pieces are hidden ("arriving"), so other bases stay in place.
+- **Refolding.**
+  - **Where:** the core's upgrade panel has a "Refold this core" row (press twice).
+  - **What happens:** the base's rooms pack away and the walker stands up ready.
+  - **Kept:** the core's upgrades go with it. The room footprints stay on the ground as traces.
+  - **Limits:** you can refold as often as you like, but never the main base.
+- **The landing pad** is a 6 × 6-cell (18 m) printed pad with edge lights and a beacon mast.
+  - It costs 20 kg a cell of printed regolith, and you can build only one.
+  - **Main base:** the base you build it at becomes the main base. A new game has none until you build the pad.
+  - **Locked:** once the plan closes, the pad is down. It can't be removed, and its base can't refold.
+- **Per-base cores.** Each core runs its own life support. The world keeps `cores[id]`, and `module_life` stays Walker 1's.
+  - Body, suit and power read the core of the base you're at.
+  - Upgrades are fitted per base.
+  - With more than one core, alerts carry the base's name.
+- **The Base page** has a chip per base, marked ★ for the main base and "here" for the one you're at, and shows the chosen base's readings.
+- **One shared store:** the existing global stock and feedstock serve every base. Hauler carts are not built yet (A8).
+- **Saves:** version 3. Older saves load as one base, Walker 1's, with every room at the old single floor height.
+- **Not yet:** Walkers 2–4 out in the land (C1), hauler carts (A8), and Creative mode starting a second base without a walker.
 
 ## Automation
 
