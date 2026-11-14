@@ -29,6 +29,16 @@
 - **It keeps going while you're away.** If it fails, you hear it on the radio, and you come back to a cold, stale outpost, never a dead one.
 - There are no cables or pipes between bases.
 
+## Radiation: storms are the danger
+
+- **Radiation is not a fourth reading** on the base panel.
+- **It hurts you only during solar storms.**
+  - The green aurora and the radiation monitor warn you.
+  - You then have a few hours to get under shielding: a finished printed shell, the Shelter, a cave or the rover.
+  - **A liner without its shell isn't safe** in a storm.
+- **The everyday background dose never harms you.** Your wrist dosimeter shows your running dose for the Humans goal and the Journal.
+- That gives shielding, caves and the Shelter a real job.
+
 ## Your body
 
 There are four needs. Each is felt on your body, not shown as a meter.
@@ -48,5 +58,11 @@ There are four needs. Each is felt on your body, not shown as a meter.
 
 - **The mission belongs to an international Mars agency.** It's public, run by several nations, and NASA-like but fictional. That makes the flight rules, the science goals and "land the crew safely" feel natural.
 - **Castle and the crew in orbit are its astronauts.**
-- **The name is still to choose.** Ideas so far: "the Mars Accord", "Joint Mars Office", "the Aeolis Programme".
+- **The name is still being decided,** and we'll come back to it now and then. Our own ideas:
+  - **Meridian** ("the Meridian Programme"): the user likes this one so far. Mars's prime meridian runs through the small crater Airy-0.
+  - the Tellus Agency;
+  - Hesperia Joint Agency;
+  - First Light.
+  
+  Earlier ideas: the Mars Accord, Joint Mars Office, the Aeolis Programme.
 - Whether a company is involved (for example, one that built the cargo landers and walkers under contract) is left for later.
