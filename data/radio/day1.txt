@@ -34,8 +34,11 @@ Castellanos: Oh, thank God. There you are. We lost your antenna right as you tou
 - Is everyone up there okay?
 	set kind
 	Castellanos: Are we okay? You're the one who just fell out of the sky. Yes, we're fine. Tupou's pressed against the window, Rao's pretending he wasn't worried, and Mwangi is taking everybody's pulse whether they want it or not. [ID:d1_relock_03c]
+# 14 Nov playtest: you were at pallet 1 before she'd told you where it was.
+# The pallet first; why they can't come down follows while you walk.
 Castellanos: Right. Business, before I get sentimental. [ID:d1_relock_04]
-Castellanos: But it'll never work for all of us. There's one seat, and you're in it. The base is out there in the pallets and on the walkers, and the storm has scattered the lot. [ID:d1_relock_05]
+Castellanos: Rao got a photo of a parachute on the last pass. It's on your slate. Pallet one, up on the ridge, with the module's life support in it. That's where the base starts. Go and have a look, and talk to me while you walk if you like. [ID:d1_relock_07]
+do parachute
 - When are the rest of you coming down?
 - So it's just me down here?
 - No pressure, then.
@@ -44,11 +47,8 @@ Castellanos: But it'll never work for all of us. There's one seat, and you're in
 Castellanos: We can't come down yet. Ours is built to set the rest of us down right beside a finished base, on its beacon. The beacon's dead, and there's no base. [ID:d1_relock_05c]
 Castellanos: And it's lean. A few days of air, that's all. Come down kilometres off target, the way you did, and we'd never reach shelter. [ID:d1_relock_05d]
 Castellanos: Yours was built for exactly that. It recycles its air and water, and its power cell doesn't care about the dark. It'll keep you going for months wherever it lands. [ID:d1_relock_05e]
-Castellanos: That's why you came first. And it's why Houston said go the moment the dust thinned. That's what a pathfinder's for. [ID:d1_relock_05g]
 Castellanos: And until someone works out why every pallet came down wrong, flight rules keep us up here. So you're our eyes. [ID:d1_relock_05f]
 do think air
-Castellanos: Rao got a photo of a parachute on the last pass. It's on your slate. Pallet one, up on the ridge, with the module's life support in it. That's where the base starts. Go and have a look, and talk to me while you walk if you like. [ID:d1_relock_07]
-do parachute
 => END
 
 ~ d1_blackout
