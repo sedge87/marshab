@@ -91,6 +91,10 @@ func _initialize() -> void:
 	_add(b, "microscope_station", Vector2i(1, 1))
 	_check(bool(MHSamples.benches(b)[0].microscope), "a microscope in the same room helps")
 	_check(MHSamples.analysis_hours("regolith", true) < MHSamples.analysis_hours("regolith", false), "the microscope speeds up soil")
+	# A5: soil needs the spectrometer for perchlorate, and the bench runs a kind
+	# by itself once it's been done by hand (tests/room_workflows_test.gd).
+	_add(b, "spectrometer", Vector2i(2, 1))
+	MHSamples.learned["regolith"] = true
 	var first := int(MHSamples.waiting()[0].id)
 	_check(MHSamples.start_job(bench, first, true).is_empty(), "an analysis starts")
 	_check(not MHSamples.start_job(bench, int(MHSamples.waiting()[0].id), true).is_empty(), "one job per bench")

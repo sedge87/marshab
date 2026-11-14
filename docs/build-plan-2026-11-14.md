@@ -97,6 +97,12 @@
 - **Hands-on the first time for each new kind of find, then automatic.**
 - **The orbit owners send station plans after finds.**
 - Files: `lab_screen.gd`, `samples.gd`, `habitat_food.gd`, `fabricator.gd`, the equipment interactables.
+- **Built 15 Nov** (not playtested). New code is in `scripts/materials.gd`, `scripts/greenhouse.gd` and `scripts/station_model.gd`, tested by `tests/room_workflows_test.gd`. What was decided is in `docs/rooms-and-equipment.md`, "As built (A5)". In short:
+  - **The four materials were added here** (the user's choice): regolith as feedstock, ice as water, metal from iron-rich rock through the smelter, and salvage from debris and pallets. Plans mix them.
+  - **The Lab starts with the saw.** A partial read brings Tupou's microscope or spectrometer plan; Achterberg's smelter plan follows an iron find.
+  - **Hands-on the first time:** E at each station, then the bench, the washer or the smelter runs it by itself. The first harvest of a crop is by hand.
+  - **The repair bench** services kinds of machine you've serviced by hand once.
+  - **Models are simple built-in ones** for now. Ore is carried by hand until A8.
 
 ### A6. The guided chapters, rewritten (`docs/opening-days.md`)
 - **The bare suit,** with the pallet distances to match.

@@ -162,3 +162,77 @@ The science instruments:
   - The upgrades apply under chapter one's rules (new Survival and Freedom games). Creative and older saves have every room type open; a save from before A3 loads with every upgrade fitted.
   - Upgrades are kept per base ("main" for now), ready for A4.
 - **The build moment:** placing a liner room (not the Garage's hangar) plays about three seconds over it: the liner inflates off the floor, then a crawler passes over the roof laying a regolith skin, and it fades. The room works at once.
+
+## As built (A5, 15 Nov 2026)
+
+*What the builder decided for room workflows and the four materials. Code: `scripts/materials.gd` (metal, salvage, ore, the smelter), `scripts/greenhouse.gd` (washed soil, the washer, the first harvest), `scripts/samples.gd` (the Lab's chain, by hand, partial reads), `scripts/habitat_wear.gd` (the repair bench), `scripts/station_model.gd` (the new stations' models). Test: `tests/room_workflows_test.gd`. Not playtested.*
+
+### The four materials (the user chose to build them in A5)
+- **Regolith = feedstock,** as before: the intake makes it (still 150 kg a sol; tune in playtest).
+- **Ice = water,** as before.
+- **Metal** comes from iron-rich rock through the Workshop's smelter.
+- **Salvage** is Earth-made parts: 6 kg for each piece of lander debris you strip, 25 kg for each cargo pallet opened by hand.
+- **Plans mix them.** Every plan in `data/plans.json` now has `metal_kg` and `salvage_kg` beside its feedstock (for example the airlock is 60 metal and 20 salvage, the surface reactor 120 and 80). Core upgrades and room fits pay metal and salvage too.
+- The Print Shop takes them when a job starts, gives them back if it's cancelled, and charges extra copies when they settle. Short of one, the card says what's missing and what you have.
+- **The store** shows feedstock, metal and salvage on the Print Shop, the build bar and the Slate's Base page. The Slate also shows ore at base and ore in the suit.
+- **Starting stock:** 60 kg of metal and 60 kg of salvage, in the Print Shop's crate. A save from before A5 loads with 400 kg of each, so nothing stalls.
+
+### Iron-rich rock
+- **It can be broken off only once the Lab has named it:** a full read of hematite or an iron meteorite in the archive.
+- **Hold E on a chipped rock of that kind** for 1.8 seconds to break off 10 kg. That's three break-offs a rock, and up to 30 kg in the suit.
+- **Carried by hand until A8.** Inside a base, it goes into the store.
+- **What it yields:** hematite gives half its weight in metal, a meteorite 0.8.
+
+### The Lab: saw → microscope → spectrometer
+- **New stations:** the Rock Saw and the Spectrometer, with code-built models in the house style (no text on them; a screen and a status light).
+- **The rock saw is a brought plan,** 40 feedstock and 15 metal. The microscope and spectrometer plans come from finds.
+- **What each kind needs.** A full read needs every station on its list:
+  - **rock:** saw and microscope;
+  - **soil:** microscope;
+  - **ice core:** saw and microscope;
+  - **each find:** its own `stations` list in `data/discoveries.json`. For example, perchlorate needs the microscope and spectrometer; hematite needs all three.
+- **Partial reads.** With fewer stations, you get the findings the stations you have can see. The read is marked partial and says what it needs ("It needs a spectrometer"). It waits in the store to go again.
+- **Tupou sends the plans.** The first partial read short of a station brings Tupou's plan for it, with a note: "Look at it properly, please." The first copy is printed free.
+- **Hands-on the first time for each kind** (rock by its rock type, soil, ice core):
+  - the Lab screen marks it "new kind" and offers "Do this one by hand";
+  - you walk it round the stations in order, pressing E at each one ("Cut the sample", "Look at the grains", "Read the spectrum"), then E at the workbench: "Put the analysis together";
+  - doing the stations out of order is refused;
+  - from then on, the bench runs that kind by itself;
+  - "Put the sample in hand back" cancels it.
+- **Older saves** count every kind they've already analysed as learned, and get the microscope and spectrometer plans.
+
+### The Workshop: smelter → Print Shop → repair bench
+- **The smelter plan:**
+  - Achterberg sends it after a hematite, meteorite or iron-dust find;
+  - it costs 150 feedstock and 20 salvage;
+  - it fits only the Workshop.
+- **The first batch is smelted by hand:** E on the smelter melts 10 kg of ore, or 60 kg of regolith if there's no ore.
+- **After that it smelts by itself** while powered: 40 kg of ore a sol.
+- **With no ore, it smelts regolith** at 80 kg a sol and a low yield (0.08), but never takes the printers' last 300 kg.
+- **The repair bench is the Engineering Bench** (`tool_bench`):
+  - service a kind of machine by hand once (E with a spares kit);
+  - after that, a bench in a Workshop services that kind on its rounds, from 50 % wear, using a kit each time.
+
+### The Greenhouse: washer → planters → harvest
+- **Planters need washed soil** under chapter rules: 40 kg each, once. Until then their status says "Waiting for washed soil". Older trays already have theirs.
+- **The Regolith Washer plan:** Tupou sends it after the food step. It goes in the Greenhouse.
+- **The washer by hand, then by itself:**
+  - E on the washer washes the first 40 kg by hand: 40 kg of feedstock and about 10 L of water;
+  - after that it keeps up to 80 kg ready, washing 60 kg a sol;
+  - chapter one's food step ("Wash the regolith sample") also works at the washer.
+- **The first harvest of each crop is by hand** ("First … harvested"). After that the harvest cart picks it.
+
+### The core: melter → water → oxygen
+- **Already a working chain:** the ice melter, the water tank and the oxygen generator, in the existing life-support loop. A5 doesn't change it.
+
+### On the Slate
+- The Base page lists each room's chain for the chosen base, with a tick for each station that's there:
+  - Lab: saw → microscope → spectrometer;
+  - Workshop: smelter → Print Shop → repair bench;
+  - Greenhouse: washer → planter → cart.
+
+### Not done in A5
+- Real Blender models for the four new stations: they're simple built-in ones for now.
+- Plans in wrecks (the range ladder, C1).
+- Automated ore hauling (A8).
+- Balancing the costs and rates against playtest.
