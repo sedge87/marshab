@@ -121,6 +121,9 @@ How knowledge grows:
 
 ## 4. Materials and building
 
+> **14 Nov:** where this section disagrees, `docs/rooms-and-equipment.md` (rooms, the walker core, building) and `docs/bases-and-vehicles.md` (several bases, automation, getting materials home) win.
+
+
 ### Materials
 
 | Material | Where from | What it's for |
@@ -147,6 +150,9 @@ Two options, still open: **a heated pipe** you lay point to point (it costs per 
 - **Building can happen anywhere you've explored,** including outposts away from the base.
 
 ## 5. Progression
+
+> **14 Nov:** plans now come from found cartridges, the story and core upgrades (`docs/pillars.md`, `docs/rooms-and-equipment.md`). The Engineering Bench study step is cut, and there's no Earth resupply.
+
 
 **Plans come from four places:**
 1. **Pallets:** each one brings the plans for its kit (the mission's manifest, piece by piece).
@@ -186,6 +192,9 @@ The pressures change in kind as you go, and each fades once a machine takes it o
 - **The deep chains stay in the sim** (urine processor, waste sorter and so on), as "closing the loop" upgrades unlocked later, not day-one chores.
 
 ## 7. The story
+
+> **14 Nov:** the heart's clues are laid outward across the Reach, and the ending happens in the deep: you make it out, barely (`docs/range-ladder.md`).
+
 
 The story is several separate threads, each started by something you do or by a timer, so every run gets its own slice through them:
 1. **The storm:** what happened to the cargo, and Earth's apologetic search. Starts at landing.

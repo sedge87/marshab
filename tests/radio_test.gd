@@ -9,7 +9,21 @@ extends SceneTree
 # - saved and loaded.
 # godot --headless --path . --script res://tests/radio_test.gd
 const RADIO := preload("res://scripts/radio.gd")
-const CUES := ["bed", "gary_out", "sunset_view"]
+# Every cue a script registers (radio.handlers["x"] anywhere in scripts/),
+# read from the source so the list never goes stale.
+var CUES: Array = []
+
+func _known_cues() -> Array:
+	var out: Array = []
+	var re := RegEx.new()
+	re.compile("handlers\\[\"([a-z_0-9]+)\"\\]")
+	var dir := DirAccess.open("res://scripts")
+	for f in dir.get_files():
+		if not f.ends_with(".gd"): continue
+		var text := FileAccess.get_file_as_string("res://scripts/" + f)
+		for m in re.search_all(text):
+			if not out.has(m.get_string(1)): out.append(m.get_string(1))
+	return out
 var failures := 0
 
 func _check(ok: bool, what: String) -> void:
@@ -31,6 +45,7 @@ func _all_steps(steps: Array, out: Array) -> void:
 			for option in step.options: _all_steps(option.steps, out)
 
 func _initialize() -> void:
+	CUES = _known_cues()
 	# The files themselves.
 	var sections: Dictionary = RADIO.sections()
 	for need in ["d1_relock", "d1_pallet1", "d1_ridge", "d1_pallet2", "d1_pallet4", "d1_cargo", "d1_sunset", "d2_wake", "d2_cradle", "d2_found", "d2_sunset"]:
