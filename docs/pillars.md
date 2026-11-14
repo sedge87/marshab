@@ -54,7 +54,7 @@ Survival is strict outside, and the line between inside and outside is clear. Th
 
 - **You can suffocate at home,** but never at random. The hab is only as safe as its supplies. Random faults (CHAPEA-style surprises) can be added later.
 - **The suit is light touch.** It goes on and off at the airlock in a couple of seconds. No suiting-up chores.
-- **Hunger and tiredness stay, as a pull home.** They set how long a trip can be: you pack food bars, and you sleep before a long trip.
+- **Hunger, thirst and tiredness stay, as a pull home.** They set how long a trip can be: you pack food bars, and you sleep before a long trip.
 - **The lander stays a lifepod** you can always fall back to.
 
 ### 3. Make it home: a foothold (a home and launch pad built from Mars)
@@ -148,7 +148,7 @@ Keep the four chapters, rewritten to match:
 
 1. ~~**The range ladder**~~ done 14 Nov: `docs/range-ladder.md`.
 2. ~~**The room and equipment list**~~ done 14 Nov: `docs/rooms-and-equipment.md`.
-3. **The hab's supply chain in numbers:** power, then air, then heat, and how long a cabin lasts when each fails.
+3. ~~**The hab's supply chain**~~ done 14 Nov: `docs/hab-supply.md` (it also keeps thirst as a body need and makes the mission an international agency's).
 4. **The walker core:** its contents and upgrades are settled in `docs/rooms-and-equipment.md`. Still open: how outposts differ from the main base, and the walk-and-kneel moment.
 5. ~~**The build feel**~~ done 14 Nov: instant, with a short "watch it build" moment (`docs/rooms-and-equipment.md`).
 6. **Automation:** extractor and miner output, hauler carts, how routes are set, and what a cart does when it hits trouble.
