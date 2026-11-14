@@ -189,6 +189,7 @@ func _flow(up: bool) -> void:
 		MHAudio.sfx("suit_beep", -26.0 + 2.0 * lope_flow, .0)   # the suit's soft tick
 	else: lope_flow = maxi(lope_flow - 1, 0)
 
+var _bound_sound_ms := 0   # when the last push-off sound played
 func _bound(first: bool) -> void:
 	# The last landing went by with no tap: flow eases off, nothing worse.
 	if not first and not _rewarded: _flow(false)
@@ -201,7 +202,12 @@ func _bound(first: bool) -> void:
 	_tap_age = 99.0
 	_rewarded = false
 	_step_index = (_step_index + 1 + randi() % 3) % 4
-	MHAudio.sfx("step_dirt_%d" % _step_index, -5.0, .06)
+	# Uphill the slope cuts each arc short and the bounds come in a stutter
+	# (playtest 14 Nov video): a push-off sound at most every 0.45 s.
+	var now := Time.get_ticks_msec()
+	if first or now - _bound_sound_ms >= 450:
+		_bound_sound_ms = now
+		MHAudio.sfx("step_dirt_%d" % _step_index, -5.0, .06)
 
 func _end_lope() -> void:
 	loping = false
