@@ -328,6 +328,22 @@ Everything else in the overhaul (the geology at three scales, textures from the 
 - **`floor_at()` used everywhere:** GAR-Y, the rover, dropped items and the corer must all use the cave floor, not the surface, once caves are 150 m down. This was "not built yet" in the overhaul §9.
 - **Build only near you, as now.** The tube plus the deep is about 3 km of passage, so it's built in sections.
 
+### Source data (the user approved the downloads, 14 Nov)
+**HiRISE elevation models (DTMs)** give real heights at 1–2 m, the same spacing as our heightmap.
+- **How B2 uses them:** cut small patches of real shape and stamp them into the generator. They're scaled, rotated and blended at the edges, so the land is real Mars in miniature, not a copy of one place.
+- **Where to find them:** the index is at [uahirise.org/hiwish/maps/dtms.jsp](https://www.uahirise.org/hiwish/maps/dtms.jsp). Candidates found on 14 Nov:
+
+| Landform | DTM |
+|---|---|
+| Yardangs | [DTEEC_075319_1715](https://www.uahirise.org/dtm/dtm.php?ID=ESP_075319_1715) (Memnonia Sulci, 1 m); [DTEED_061610_1895](https://www.uahirise.org/dtm/ESP_061610_1895) (Arabia Terra, 2 m); DTEED_007460_1675_060021_1675_A01 (large yardangs cut by smaller ones) |
+| Fissures | [DTEEC_035006_1875_034716_1875_A01](https://www.uahirise.org/dtm/dtm.php?ID=ESP_035006_1875) (a fissure near Cerberus Fossae, 1 m, 353 MB); DTEEC_017719_1890_017218_1890_A01 (a Cerberus Fossae wall) |
+| Raised riverbeds | DTEED_002424_1765_019803_1765_A01 (inverted streams, Aeolis); [ESP_019394_1745](https://www.uahirise.org/dtm/ESP_019394_1745) (an inverted channel floor, 2 m) |
+| Dunes, platy lava, debris aprons, skylights, the canyon wall | B2 looks these up in the index. A skylight pit is unlikely to have a DTM; ESP_037232_1770 is a stereo pair over a possible Arsia tube. |
+
+**NASA rover images** (public domain) are references for the new ground textures (ripples, platy lava, ice regolith, sharp rock) and for the ground's look up close. Sources: Curiosity's and Perseverance's raw images, and Opportunity's.
+
+**Keep the raw downloads out of git** (in a folder git ignores); commit only the small patches and textures made from them. The generator must still run from the repo alone.
+
 ### Elsewhere (named for their own sections, not B2)
 - **The landing and intro** (`scripts/drop_site.gd`, the chapters): one home area. The user wants this reworked later.
 - **The rover's speed** (`scripts/crew_rover.gd`), and the matching cost in `scripts/rover_route.gd`.
