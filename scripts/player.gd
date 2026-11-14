@@ -26,6 +26,13 @@ const AIR_STEER := 2.5          # m/s² of steering in the air: a nudge, not a t
 const HARD_LANDING := 7.0       # m/s: a drop of about 4.5 m
 # Hold Ctrl to crouch: lower eyes, a shorter body, a slow walk.
 const CROUCH_SPEED := 2.4
+## Up a steep slope the lope gives way to a driving climbing stride (playtest
+## 14 Nov: uphill, each bound was cut short into a stutter). Like Apollo
+## crews on crater walls: short, quick steps, no bounding. It starts above
+## CLIMB_FROM and ends below CLIMB_UNTIL, so it doesn't flicker.
+const CLIMB_SPEED := 6.0
+const CLIMB_FROM := 12.0          # degrees, going uphill
+const CLIMB_UNTIL := 8.0
 const STAND_HEIGHT := 1.8
 const CROUCH_HEIGHT := 1.15
 const STAND_EYES := 1.6
@@ -123,6 +130,8 @@ func _physics_process(delta: float) -> void:
 	var sprint_held := not slate_up and (Input.is_action_pressed("sprint") or Input.is_key_pressed(KEY_SHIFT))
 	var indoors := _indoors()
 	var can_lope := sprint_held and not crouching and not indoors and input_vector.length() > .1 and _stumble <= 0.0
+	_update_climb(grounded, (transform.basis * Vector3(input_vector.x, 0.0, input_vector.y)).normalized(), can_lope)
+	if climbing: can_lope = false
 	if grounded and jump_tapped and not crouching and not loping and not can_lope:
 		velocity.y = JUMP_VELOCITY
 		MHAudio.sfx("jump")
@@ -133,7 +142,7 @@ func _physics_process(delta: float) -> void:
 	_lope(delta, grounded, jump_tapped, can_lope)
 	var direction := (transform.basis * Vector3(input_vector.x, 0.0, input_vector.y)).normalized()
 	# Indoors sprint is a plain run; outside it's the lope.
-	var speed := CROUCH_SPEED if crouching else (LOPE_SPEED + LOPE_FLOW_SPEED * lope_flow) if loping else SPRINT_SPEED if sprint_held and indoors else WALK_SPEED
+	var speed := CROUCH_SPEED if crouching else (LOPE_SPEED + LOPE_FLOW_SPEED * lope_flow) if loping else CLIMB_SPEED if climbing else SPRINT_SPEED if sprint_held and indoors else WALK_SPEED
 	if _stumble > 0.0: speed *= STUMBLE_SPEED
 	if slate_up: speed *= SLATE_WALK
 	speed *= float(get_meta("body_speed", 1.0))   # the cold and low oxygen slow you (scripts/body.gd)
@@ -153,6 +162,19 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor() and global_position.y > -10.0:
 		safe_position = global_position
 	_footsteps(speed, delta)
+
+var climbing := false   # the climbing stride (see CLIMB_SPEED)
+
+## Sprinting up a steep slope: the climbing stride instead of the lope.
+func _update_climb(grounded: bool, direction: Vector3, wants_lope: bool) -> void:
+	if not wants_lope:
+		climbing = false
+	elif grounded and direction != Vector3.ZERO:
+		var normal := get_floor_normal()
+		var slope := rad_to_deg(acos(clampf(normal.y, -1.0, 1.0)))
+		var uphill := Vector2(normal.x, normal.z).dot(Vector2(direction.x, direction.z)) < 0.0
+		climbing = uphill and slope > (CLIMB_UNTIL if climbing else CLIMB_FROM)
+	set_meta("climbing", climbing)
 
 ## The lope: hold sprint and you bound along. A tap in time builds flow.
 func _lope(delta: float, grounded: bool, tapped: bool, can_lope: bool) -> void:
@@ -280,7 +302,7 @@ func _footsteps(speed: float, delta: float) -> void:
 		_stride = 0.0
 		return
 	_stride += moved
-	if _stride >= (2.6 if speed > WALK_SPEED else 2.0):
+	if _stride >= (2.2 if climbing else 2.6 if speed > WALK_SPEED else 2.0):   # climbing: quick, steady steps
 		_stride = 0.0
 		_step_index = (_step_index + 1 + randi() % 3) % 4
 		MHAudio.sfx(("step_metal_%d" if _on_deck() else "step_dirt_%d") % _step_index, -8.0, .06)
