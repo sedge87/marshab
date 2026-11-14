@@ -208,7 +208,7 @@ func _site_telemetry() -> PanelContainer:
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var column := MHStyle.vbox(5)
 	column.add_child(MHStyle.eyebrow("Site telemetry", MHStyle.accent, 10))
-	var location := str(site.get("based_on", site.get("name", "Mars")))
+	var location := str(site.get("name", site.get("based_on", "Mars")))   # the region's own name (14 Nov: "Gale Crater" read as the wrong place)
 	column.add_child(MHStyle.mono(location, 13, MHStyle.TEXT_PRIMARY, 600))
 	_telemetry_context = MHStyle.eyebrow("Outside · EVA exposure", MHStyle.TEXT_MUTED, 9)
 	column.add_child(_telemetry_context)

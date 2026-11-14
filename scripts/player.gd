@@ -158,7 +158,9 @@ func _physics_process(delta: float) -> void:
 			flat = flat.move_toward(Vector2(direction.x, direction.z) * maxf(flat.length(), WALK_SPEED * .5), AIR_STEER * delta)
 		velocity.x = flat.x
 		velocity.z = flat.y
+	var meant := Vector3(velocity.x, 0.0, velocity.z)
 	move_and_slide()
+	_step_up(meant, delta)
 	if is_on_floor() and global_position.y > -10.0:
 		safe_position = global_position
 	_footsteps(speed, delta)
@@ -175,6 +177,24 @@ func _update_climb(grounded: bool, direction: Vector3, wants_lope: bool) -> void
 		var uphill := Vector2(normal.x, normal.z).dot(Vector2(direction.x, direction.z)) < 0.0
 		climbing = uphill and slope > (CLIMB_UNTIL if climbing else CLIMB_FROM)
 	set_meta("climbing", climbing)
+
+## Walking into a low ledge (the lander's airlock sill, a doorway, a rock
+## step) lifts you onto it instead of stopping you dead (playtest 14 Nov:
+## you had to jump into the airlock).
+const STEP_UP := .3
+func _step_up(meant: Vector3, delta: float) -> void:
+	if not is_on_floor() or not is_on_wall() or meant.length() < .5: return
+	var ahead := meant.normalized() * maxf(.15, meant.length() * delta)
+	var up := Vector3.UP * STEP_UP
+	if test_move(global_transform, up): return              # no headroom
+	var raised := global_transform.translated(up)
+	if test_move(raised, ahead): return                      # a real wall, not a ledge
+	# Down onto the ledge's top from there.
+	var probe := KinematicCollision3D.new()
+	if not test_move(raised.translated(ahead), -up, probe): return
+	var rise := STEP_UP - probe.get_travel().length()
+	if rise <= .01: return
+	global_position += Vector3.UP * (rise + .01) + ahead
 
 ## The lope: hold sprint and you bound along. A tap in time builds flow.
 func _lope(delta: float, grounded: bool, tapped: bool, can_lope: bool) -> void:

@@ -313,6 +313,9 @@ func patched() -> void:
 	if leak != null and is_instance_valid(leak): leak.queue_free()
 	leak = null
 	core.repressurise()
+	# The fill air comes in through the life support's heat exchanger, so the
+	# module's livable at once (playtest 14 Nov: hours of frost after the patch).
+	core.temp_c = maxf(float(core.temp_c), 14.0)
 	core.heater_mode = "warm"
 	core.lights_on = true
 	MHAudio.sfx("suit_clamp", -4.0)
