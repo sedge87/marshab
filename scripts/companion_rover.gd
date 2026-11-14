@@ -156,7 +156,7 @@ var _wheels: Array[Node3D] = []
 var _mast: Node3D
 var _head: Node3D
 ## The fold (asset_packs/gar_y_v1/source/build_gar_y.py): how it ships in
-## pallet 3. See set_fold.
+## pallet 4. See set_fold.
 var _body: Node3D
 var _panel: Node3D
 var _legs: Array[Node3D] = []   # left, right
@@ -1254,7 +1254,7 @@ func status_text() -> String:
 
 ## A ping: it wakes, chirps and wiggles. Three pings in a row: a spin.
 func interact(_actor: Node = null) -> bool:
-	# Folded in pallet 3: you lift it out, and it wakes (scripts/drop_field.gd).
+	# Folded in pallet 4: you lift it out, and it wakes (scripts/drop_field.gd).
 	if has_meta("lift_out"):
 		var field := get_tree().get_first_node_in_group("drop_field")
 		if field != null: field.lift_gary()

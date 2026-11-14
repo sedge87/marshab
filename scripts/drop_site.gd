@@ -5,8 +5,8 @@ extends Node3D
 ## pallet beside its hem, and a short trail of debris leading in. What's
 ## inside depends on the kind:
 ## - "power" (pallet 2): the solar blanket and battery (scripts/power_pack.gd);
-## - "gary" (pallet 3, in a boulder field): GAR-Y, folded up and asleep;
-## - "tools" (pallet 4, in a frost hollow): the rock hammer, a headlamp and a
+## - "gary" (pallet 4, in a boulder field): GAR-Y, folded up and asleep;
+## - "tools" (pallet 3, in a frost hollow): the rock hammer, a headlamp and a
 ##   patch kit.
 
 const PARACHUTE := preload("res://assets/models/storm_cargo/parachute.glb")
@@ -33,8 +33,8 @@ const PALLET_LOCAL := Vector3(-11.0, 0, 1.4)
 const DEBRIS_STOPS := [-120.0, -85.0, -55.0, -30.0]   # metres out from the pallet, towards home
 const SEEN_FROM := 200.0
 const NEAR := 25.0
-const LABELS := {"power": "Pallet 2", "gary": "Pallet 3", "tools": "Pallet 4"}
-const NAMES := {"power": "Pallet 2 · power", "gary": "Pallet 3 · GAR-Y", "tools": "Pallet 4 · field tools"}
+const LABELS := {"power": "Pallet 2", "tools": "Pallet 3", "gary": "Pallet 4"}   # 14 Nov: tools 3, GAR-Y 4
+const NAMES := {"power": "Pallet 2 · power", "tools": "Pallet 3 · field tools", "gary": "Pallet 4 · GAR-Y"}
 
 var field: Node
 var world: Node
@@ -43,7 +43,7 @@ var at := Vector3.INF          # the canopy's crown, world
 var yaw := 0.0
 var pallet: StaticBody3D
 var pack: StaticBody3D         # pallet 2's power pack
-var empty := false             # pallet 3 after GAR-Y left it to look for you
+var empty := false             # pallet 4 after GAR-Y left it to look for you
 var _check := 0.0
 
 func setup(target_field: Node, site_kind: String, where: Vector3, turn: float, saved: Dictionary) -> void:
@@ -199,13 +199,13 @@ func pallet_opened() -> void:
 			if empty and int(world.get("opening_version")) >= 2:
 				pass   # it opened itself in the storm (scripts/drop_field.gd gary_out)
 			elif empty:
-				MHNotices.post("info", "Pallet 3", "GAR-Y's cradle, empty. It came looking for you.", "log")
+				MHNotices.post("info", "Pallet 4", "GAR-Y's cradle, empty. It came looking for you.", "log")
 			else:
 				field.wake_gary(self)
 		"tools":
 			field.got_tools()
 			if notes != null: notes.answer("tools")
-			MHNotices.post("valid", "Pallet 4: field tools", "A rock hammer, a headlamp (F: brighter and wider than the suit lamp), a patch kit for suit seals, and two plan cartridges for the lander's printer: a spare suit battery and a heater pack.", "log")
+			MHNotices.post("valid", "Pallet 3: field tools", "A rock hammer, a headlamp (F: brighter and wider than the suit lamp), a patch kit for suit seals, and two plan cartridges for the lander's printer: a spare suit battery and a heater pack.", "log")
 			var suit: Node = world.get("suit")
 			if suit != null and suit.has_method("give_addon"): suit.give_addon("lamp")
 			var pod: Node = world.get("lifepod")

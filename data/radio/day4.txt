@@ -36,7 +36,7 @@ Castellanos: Achterberg says a panel seam's probably opened up on the walk home.
 - Is it dangerous?
 	set worried
 	Castellanos: Not to you, not in your suit. It's only dangerous to the module. It can't keep air in until that's sealed. Go in and listen for it. It'll hiss, and it'll be frosting up. [ID:d4_leak_03b]
-Castellanos: The patch kit from pallet four will do it. That's what it's for. [ID:d4_leak_04]
+Castellanos: The patch kit from pallet three will do it. That's what it's for. [ID:d4_leak_04]
 => END
 
 ~ d4_patched

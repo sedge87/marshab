@@ -36,7 +36,7 @@ Castellanos: Talk to me. I can see you've stopped next to something. What is it?
 	Castellanos: It what? It headbutted you? Hang on, Rao's laughing so hard he's going to pull a muscle. [ID:d2_found_02b]
 - It's looking at me. Like, actually looking at me.
 	Castellanos: Okay, that's either adorable or terrifying, and I genuinely can't tell which. [ID:d2_found_02c]
-Castellanos: I'm pulling up the manifest. Pallet three. Oh, of course. That's GAR-Y. The scout rover. [ID:d2_found_03]
+Castellanos: I'm pulling up the manifest. Pallet four. Oh, of course. That's GAR-Y. The scout rover. [ID:d2_found_03]
 ? dragged Castellanos: Wait. That's what dragged you home! That little thing hauled you all that way. [ID:d2_found_03b]
 ? dragged Castellanos: By your suit's drag loop, I bet. Every suit has one, for exactly that. [ID:d2_found_03d]
 ? heard_beeps Castellanos: Beeping. You said beeping. Of course it was. [ID:d2_found_03c]

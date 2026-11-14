@@ -1,10 +1,10 @@
 {
-  "_about": "The mission's cargo manifest on the slate (scripts/pda_screen.gd Cargo app; docs/master-design.md §2, systems-and-items §15). Twelve pallets and the three walking carriers that went down ahead of you. Paperwork, not a quest list: each line is greyed out until you find it, and says nothing about where it is. 'source' tells the slate how to check it: storm_drop (pallet 1), drop_field:<kind> (pallets 2-4); the rest come with later steps.",
+  "_about": "The mission's cargo manifest on the slate (scripts/pda_screen.gd Cargo app; docs/master-design.md §2, systems-and-items §15). Twelve pallets and the three walking carriers that went down ahead of you. Paperwork, not a quest list: each line is greyed out until you find it, and says nothing about where it is. 'source' tells the slate how to check it: storm_drop (pallet 1), drop_field:<kind> (pallets 2-4; since 14 Nov tools are 3 and GAR-Y 4); the rest come with later steps.",
   "pallets": [
-    {"id": "life", "name": "Pallet 1 · Life support", "holds": "An oxygen cartridge for the lander, a portable heater, food and water for about five sols, the hand corer, scoop and sample case.", "source": "storm_drop"},
+    {"id": "life", "name": "Pallet 1 · Life support", "holds": "The General Module's air cartridge, ten ration packs, the sample kit (hand corer, scoop and bags) and a bigger air pack for the suit.", "source": "storm_drop"},
     {"id": "power", "name": "Pallet 2 · Field power", "holds": "A rolled solar blanket and a battery pack.", "source": "drop_field:power"},
-    {"id": "gary", "name": "Pallet 3 · GAR-Y", "holds": "GAR-Y, the commissioning rover, folded for the trip.", "source": "drop_field:gary"},
-    {"id": "tools", "name": "Pallet 4 · Field tools", "holds": "A rock hammer, a headlamp and a suit patch kit.", "source": "drop_field:tools"},
+    {"id": "tools", "name": "Pallet 3 · Field tools", "holds": "A rock hammer, a bright lamp, a suit patch kit, and plan cartridges for a suit battery and a heater pack.", "source": "drop_field:tools"},
+    {"id": "gary", "name": "Pallet 4 · GAR-Y", "holds": "GAR-Y, the commissioning rover, folded for the trip.", "source": "drop_field:gary"},
     {"id": "rover", "name": "Pallet 5 · Scout rover", "holds": "A two-seat open rover, folded."},
     {"id": "print_shop", "name": "Pallet 6 · Print Shop", "holds": "The base's printer and its regolith intake."},
     {"id": "comms", "name": "Pallet 7 · Comms", "holds": "The high-gain antenna's spares and the base's long-range radio."},

@@ -135,7 +135,7 @@ func _place_sites(saved: Dictionary) -> void:
 		if is_inf(where.x): continue
 		if field != null: taken.append(field._bearing(where))
 		_add_site(kind, where, yaw, bool(state.get("seen", false)))
-	# The frost hollow round pallet 4 (clear of its canopy): the nearest ice.
+	# The frost hollow round pallet 3 (clear of its canopy): the nearest ice.
 	if field != null and field.sites.has("tools"):
 		var tools: Node = field.sites.tools
 		var state: Dictionary = saved.get("frost", {})
@@ -259,7 +259,7 @@ func _ice_hint() -> String:
 	var known: Node = world.get("known")
 	var field: Node = world.get("drop_field")
 	if field != null and field.sites.has("tools") and known != null and known.knows(field.sites.tools.id()):
-		return " There was frost in that hollow by pallet 4: ice, just under the dust."
+		return " There was frost in that hollow by pallet 3: ice, just under the dust."
 	return " Frost forms in low ground at dawn. Ice under it, maybe."
 
 # ---------- GAR-Y's night out (sol 2's dawn) ----------

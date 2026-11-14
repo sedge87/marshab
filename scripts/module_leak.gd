@@ -3,7 +3,7 @@ extends StaticBody3D
 ## Day 4 (docs/opening-days.md): the General Module won't hold pressure.
 ## A seam on one inside wall has opened on the walk home. It hisses (a
 ## soft noise made here, louder as you close in) and breathes a faint puff
-## of frost, so you can find it by ear or by eye. Pallet 4's patch kit
+## of frost, so you can find it by ear or by eye. Pallet 3's patch kit
 ## seals it (scripts/module_life.gd patched()).
 
 const RATE := 22050.0

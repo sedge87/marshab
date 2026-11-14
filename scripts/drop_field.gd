@@ -6,18 +6,18 @@ extends Node3D
 ## clear of the first parachute and of each other.
 ## - Pallet 2, power: about 0.6 km out, off to one side of the ridge, on flat
 ##   open ground.
-## - Pallet 3, GAR-Y: about 0.8 km, the roughest walkable ground (a boulder
+## - Pallet 4, GAR-Y: about 0.8 km, the roughest walkable ground (a boulder
 ##   field is laid round it).
-## - Pallet 4, field tools: about 1 km, a low hollow.
+## - Pallet 3, field tools: about 1 km, a low hollow.
 ## From the Parachute ridge you can see pallets 2 and 3; waking GAR-Y points
-## you to pallet 4. The rest of the near ring comes later.
+## you to pallet 3. The rest of the near ring comes later.
 ##
 ## It also keeps what they gave you: the field tools, and GAR-Y's first
 ## sunset with you (scripts/gary_sunset.gd).
 ##
 ## The guided days, version 2 (docs/opening-days.md): GAR-Y woke itself in
 ## the storm and has been out working. Day 1 you see pallets 2 and 4 from the
-## ridge (Castellanos names them); pallet 3 stays out of sight. Day 2's call
+## ridge (Castellanos names them); pallet 4 (GAR-Y) stays out of sight. Day 2's call
 ## brings it out: its cradle open and empty, and GAR-Y at work past it. Walk
 ## up to it and it meets you ("field").
 
@@ -38,13 +38,13 @@ const TAP_EVERY := 7.0            # seconds between its taps on the hull
 
 var world: Node
 var sites := {}                   # kind → scripts/drop_site.gd
-var tools := false                # pallet 4 opened: hammer, headlamp, patch kit
+var tools := false                # pallet 3 opened: hammer, headlamp, patch kit
 var chutes_seen := false
 var sunset: Node
 ## It found you before you found it, and waits at the ramp to say hello
 ## (scripts/gary_meeting.gd "door").
 var intro_pending := false
-## Pallet 3 is open and GAR-Y lies folded in it, waiting to be lifted out.
+## Pallet 4 is open and GAR-Y lies folded in it, waiting to be lifted out.
 var gary_in_cradle := false
 var _cradled := false
 var meeting: Node
@@ -108,7 +108,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 func v2() -> bool:
 	return int(world.get("opening_version")) >= 2
 
-## Pallet 3 out of sight (day 1 of version 2) or there to be found.
+## Pallet 4 out of sight (day 1 of version 2) or there to be found.
 func _show_cradle(on: bool) -> void:
 	var site: Node3D = sites.get("gary")
 	if site == null: return
@@ -307,7 +307,7 @@ func pallet_opened(_site: Node) -> void:
 
 # ---------- GAR-Y ----------
 
-## Pallet 3 opened: GAR-Y lies folded in its cradle, dark. You lift it out
+## Pallet 4 opened: GAR-Y lies folded in its cradle, dark. You lift it out
 ## (E on it), and it wakes and unfolds while you watch (scripts/gary_meeting.gd
 ## "pallet").
 func wake_gary(_site: Node) -> void:
@@ -355,12 +355,12 @@ func _meet(gary: Node3D, mode: String, from: Vector3) -> void:
 func _met_scene(mode: String) -> void:
 	meeting = null
 	if mode == "pallet":
-		MHNotices.post("valid", "Pallet 3: GAR-Y", "GAR-Y is awake. It follows you, tows on its sled, and (hold G) takes orders.", "log")
+		MHNotices.post("valid", "Pallet 4: GAR-Y", "GAR-Y is awake. It follows you, tows on its sled, and (hold G) takes orders.", "log")
 		_met("Woke GAR-Y in the boulder field. It looked at me for a long second, then beeped as if it had been waiting all along.")
 	elif mode == "field":
 		var known_now: Node = world.get("known")
 		if known_now != null: known_now.finish("gary_moving")
-		MHNotices.post("valid", "GAR-Y", "The scout rover from pallet 3. It follows you, and (hold G) takes orders.", "log")
+		MHNotices.post("valid", "GAR-Y", "The scout rover from pallet 4. It follows you, and (hold G) takes orders.", "log")
 		_met("Found the thing that was moving: GAR-Y, the scout rover, out on its own since the storm, still doing its job. It came and bumped my boot like it had been expecting me.")
 		var radio: Node = world.get("radio")
 		if radio != null: radio.ring("d2_found")
@@ -424,7 +424,7 @@ func _met(how: String) -> void:
 			var known: Node = world.get("known")
 			if known != null: known.learn(tools_site.id(), "find", region_at(tools_site.at), "Beacon", "you")
 	var known_now: Node = world.get("known")
-	if known_now != null and sites.has("gary"): known_now.rename(sites.gary.id(), "Pallet 3 · GAR-Y's cradle")
+	if known_now != null and sites.has("gary"): known_now.rename(sites.gary.id(), "Pallet 4 · GAR-Y's cradle")
 
 # ---------- the field tools ----------
 

@@ -87,7 +87,7 @@
         "start": "GAR-Y keeps turning towards the {dir}. A pallet beacon, maybe, too faint for my suit.",
         "near": "Frost on the ground in this hollow, and a pallet sitting in it."
       },
-      "journal": "Pallet 4, in the frost hollow: a rock hammer, a headlamp and a patch kit. The headlamp throws a lot more light than the suit lamp."
+      "journal": "Pallet 3, in the frost hollow: a rock hammer, a headlamp and a patch kit. The headlamp throws a lot more light than the suit lamp."
     },
     "sunset_gary": {
       "stages": {},
@@ -239,7 +239,7 @@
       "stages": {
         "start": "A pallet, open and empty. The latches were undone from inside. Small tracks lead off from it: six wheels, close together."
       },
-      "journal": "Pallet 3 was empty when I found it, opened from the inside. Whatever was in it let itself out in the storm."
+      "journal": "Pallet 4 was empty when I found it, opened from the inside. Whatever was in it let itself out in the storm."
     }
   }
 }

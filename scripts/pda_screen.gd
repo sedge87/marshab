@@ -962,7 +962,11 @@ func cargo_state(entry: Dictionary) -> String:
 		var kind := source.trim_prefix("drop_field:")
 		if field != null and field.sites.has(kind):
 			var site: Node = field.sites[kind]
-			if (site.pallet != null and bool(site.pallet.opened)) or bool(site.get("empty")): return "recovered"
+			# GAR-Y's pallet: recovered once you've met it, not when it let itself
+			# out in the storm (playtest 14 Nov: "recovered" on day 1).
+			if kind == "gary":
+				if bool(world.get("gary_met")): return "recovered"
+			elif (site.pallet != null and bool(site.pallet.opened)) or bool(site.get("empty")): return "recovered"
 			if known != null and (known.knows(site.id()) or known.knows(site.id(), "orbiter")): return "seen"
 	return "missing"
 
@@ -986,7 +990,7 @@ func _cargo_page() -> Control:
 	scroll.add_child(list)
 	for entry in pallets: list.add_child(_cargo_row(entry, cargo_state(entry)))
 	list.add_child(MHStyle.eyebrow("WALKING CARRIERS", MHStyle.TEXT_MUTED, 13))
-	for entry in data.get("walkers", []): list.add_child(_cargo_row(entry, "missing"))
+	for entry in data.get("walkers", []): list.add_child(_cargo_row(entry, cargo_state(entry)))
 	return page
 
 func _cargo_row(entry: Dictionary, state: String) -> Control:
@@ -995,8 +999,12 @@ func _cargo_row(entry: Dictionary, state: String) -> Control:
 	row.add_child(MHStyle.icon({"recovered": "circle-check", "seen": "eye"}.get(state, "circle-dashed"), 20, colour))
 	var words := MHStyle.vbox(2)
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.add_child(MHStyle.label(str(entry.name), 18, MHStyle.TEXT_PRIMARY if state != "missing" else MHStyle.TEXT_SECONDARY, 700))
-	var holds := MHStyle.body(str(entry.holds), 15, MHStyle.TEXT_SECONDARY if state != "missing" else MHStyle.TEXT_MUTED)
+	# No spoilers (playtest 14 Nov): what a pallet holds shows once it's
+	# found; until it's seen, only its number.
+	var title := str(entry.name) if state != "missing" else str(entry.name).get_slice(" · ", 0)
+	var what := str(entry.holds) if state == "recovered" else ("Seen, not opened yet." if state == "seen" else "No signal yet.")
+	words.add_child(MHStyle.label(title, 18, MHStyle.TEXT_PRIMARY if state != "missing" else MHStyle.TEXT_SECONDARY, 700))
+	var holds := MHStyle.body(what, 15, MHStyle.TEXT_SECONDARY if state != "missing" else MHStyle.TEXT_MUTED)
 	holds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	words.add_child(holds)
 	row.add_child(words)

@@ -3,7 +3,7 @@ extends Node
 ## Meeting GAR-Y (master-design "Meeting GAR-Y", decided 7 Nov): the moment
 ## you learn you're not alone on Mars. Through your own eyes, held: the HUD
 ## fades, you can't walk, and your view is drawn gently to GAR-Y.
-## - "pallet": it lay folded in pallet 3's cradle and you've chosen to lift it
+## - "pallet": it lay folded in pallet 4's cradle and you've chosen to lift it
 ##   out. You set it down in front of you; a lamp flickers; it unfolds part by
 ##   part (the panel flips back, the legs swing in and the body rises, the
 ##   mast lifts); the head scans the dunes, finds you and stops; a questioning
