@@ -13,7 +13,8 @@ const SAVE_DIRECTORY := "user://habitats"
 # Tests point this at their own folder so they never overwrite real saves.
 static var save_directory := SAVE_DIRECTORY
 const SAVE_SLOT_COUNT := 6
-const EMBLEMS := ["rocket", "orbit", "satellite", "mountain-snow", "sun", "atom"]
+## Two rows of six in the colony screen; new ones go on the end so saves keep theirs.
+const EMBLEMS := ["rocket", "orbit", "satellite", "mountain-snow", "sun", "atom", "moon", "sparkles", "sprout", "droplets", "flame", "footprints"]
 
 # Lighting presets from the reference scene (mars-scene.js PAL). sun is the
 # direction towards the sun.

@@ -39,7 +39,14 @@ const COLONY_ACCENTS := [
 	{"id": "signal", "label": "Signal green", "colour": Color("#3EE58A")},
 	{"id": "beacon", "label": "Beacon yellow", "colour": Color("#F5C542")},
 	{"id": "rover", "label": "Rover red", "colour": Color("#E5484D")},
-	{"id": "steel", "label": "Steel", "colour": Color("#B4BEC2")}
+	{"id": "steel", "label": "Steel", "colour": Color("#B4BEC2")},
+	# 14 Nov: a second row. Saves keep the index, so new ones go on the end.
+	{"id": "dusk", "label": "Sunset blue", "colour": Color("#6E8EF7")},
+	{"id": "aurora", "label": "Aurora violet", "colour": Color("#A88BF5")},
+	{"id": "rose", "label": "Dust rose", "colour": Color("#E58FA0")},
+	{"id": "regolith", "label": "Regolith tan", "colour": Color("#D8A56B")},
+	{"id": "lichen", "label": "Lichen", "colour": Color("#A8C256")},
+	{"id": "ice", "label": "Ice teal", "colour": Color("#5FE3D6")}
 ]
 
 # ---------- semantic (tokens/semantic.css) ----------

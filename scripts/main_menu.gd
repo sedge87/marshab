@@ -874,6 +874,7 @@ func _colony_screen() -> void:
 	var emblems := GridContainer.new()
 	emblems.columns = 6
 	emblems.add_theme_constant_override("h_separation", 12)
+	emblems.add_theme_constant_override("v_separation", 12)
 	for emblem in MHGame.EMBLEMS:
 		var tile := Button.new()
 		tile.custom_minimum_size = Vector2(64, 64)
@@ -897,7 +898,10 @@ func _colony_screen() -> void:
 	accent_head.add_child(MHStyle.eyebrow("Colony accent"))
 	accent_head.add_child(MHStyle.mono(str(MHStyle.COLONY_ACCENTS[MHGame.accent_index].label), 13, MHStyle.TEXT_SECONDARY))
 	accent_box.add_child(accent_head)
-	var swatches := MHStyle.hbox(12)
+	var swatches := GridContainer.new()   # two rows of six, lined up with the emblems
+	swatches.columns = 6
+	swatches.add_theme_constant_override("h_separation", 12)
+	swatches.add_theme_constant_override("v_separation", 12)
 	for index in MHStyle.COLONY_ACCENTS.size():
 		var swatch := Button.new()
 		swatch.custom_minimum_size = Vector2(56, 56)
