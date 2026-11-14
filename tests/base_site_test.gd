@@ -72,7 +72,8 @@ func _initialize() -> void:
 	var crater := MHBaseSite.science(1580.0, -320.0)
 	var plains := MHBaseSite.science(-1400.0, 1000.0)
 	assert((crater.rocks as Array).size() > (plains.rocks as Array).size(), "The crater has more to study than the plains.")
-	assert(float(plains.cave_m) < MHBaseSite.CAVE_REACH and str(plains.cave) == "Lava tube", "The lava tube is a drive from the plains zone.")
+	# Home ground has no cave of its own: the lava tube is on the far side, under the east lava plain (docs/terrain-design.md).
+	assert(float(plains.cave_m) > 2000.0, "No cave within 2 km of the plains zone (%.0f m to %s)." % [float(plains.cave_m), str(plains.cave)])
 	var night := float(MHGame.site().day_cycle.night_temp_c)
 	MHGame.base_site = walled
 	assert(is_equal_approx(float(MHGame.site().day_cycle.night_temp_c), night + float(walled.conditions.shelter_c)), "The founded site's nights are the base's own.")

@@ -25,20 +25,40 @@ const VIEWS := {
 	"mound": [1180.0, -260.0, -39.0, 6.0, 2.0],
 	# A base founded away from the named zones (run with base=-715,442).
 	"base_pad": [-640.0, 380.0, -130.0, -14.0, 14.0],
-	# Caves (stage 5); "cave" stands on a cave's floor (the eye is the player's, about
-	# 1.6 m up), with the suit lamp on.
-	"tube_mouth": [-1200.5, 1252.0, 160.0, -4.0, 1.8],
-	"tube_inside": [-1178.0, 1312.0, 160.0, 0.0, 0.0, "cave"],
-	"skylight_below": [-1113.0, 1469.0, 160.0, 28.0, 0.0, "cave"],
-	"skylight_above": [-1132.0, 1470.0, 112.0, -30.0, 1.8],
-	"tube_across": [-1085.0, 1555.0, 70.0, -22.0, 1.8],
-	"tube_top": [-1150.0, 1470.0, 90.0, -60.0, 45.0],
-	"tube_ground": [-1075.0, 1560.0, 160.0, -12.0, 2.0],
+	# The reshaped region (B2, docs/terrain-design.md).
+	"home": [-1400.0, 1000.0, 45.0, -2.0, 2.0],
+	"outcrop": [-1165.0, 745.0, 125.0, 0.0, 1.8],
+	"pit": [-1065.0, 1355.0, 45.0, -25.0, 1.8],
+	"sliver": [-1400.0, 185.0, 0.0, -12.0, 2.5],
+	"frost_hollow": [-1400.0, 470.0, 0.0, -6.0, 2.0],
+	"channel": [-905.0, 1260.0, 330.0, -10.0, 2.0],
+	"mesa_gully": [-930.0, 575.0, 48.0, 8.0, 2.0],
+	"north_scarp": [-1700.0, 20.0, 0.0, 2.0, 2.0],
+	"east_front": [-480.0, 1300.0, 90.0, 2.0, 2.0],
+	"ledges": [-1900.0, 1100.0, 200.0, -4.0, 2.0],
+	"yardangs": [-900.0, -150.0, 80.0, 0.0, 2.0],
+	"yardang_corridor": [-450.0, -250.0, 76.0, 2.0, 1.8],
+	"raised_riverbed": [-250.0, 1650.0, 90.0, -3.0, 2.0],
+	"riverbed_top": [-20.0, 1640.0, 0.0, -6.0, 2.0],
+	"far_mesa_cliff": [120.0, 1500.0, 90.0, 8.0, 2.0],
+	"fresh_crater": [-225.0, 2180.0, 270.0, -12.0, 2.0],
+	"glacier": [-1700.0, -1000.0, 270.0, -3.0, 2.0],
+	"lava_front": [1150.0, 1500.0, 90.0, 0.0, 2.0],
+	"platy": [1450.0, 1400.0, 90.0, -8.0, 2.0],
+	"lava_plain": [2000.0, 1300.0, 60.0, -3.0, 2.0],
+	"fissure": [2350.0, 345.0, 350.0, -18.0, 2.0],
+	"fissure_end": [1350.0, 660.0, 72.0, -8.0, 2.0],
+	"chaos": [2300.0, 2100.0, 90.0, 0.0, 2.0],
+	"ripples": [2500.0, -900.0, 90.0, -5.0, 2.0],
+	"canyon_chute": [-800.0, -1960.0, 0.0, -15.0, 2.0],
+	# Caves; "cave" stands on a cave's floor (the eye is the player's, about 1.6 m
+	# up), with the suit lamp on. The lava tube's own views are worked out from
+	# region.json (see _tube_views): tube_mouth, tube_inside, skylight_below,
+	# skylight_above, cold_trap, pitch_top, pitch_foot, lower_level, heart.
 	"canyon_cave": [-1200.0, -2309.0, 180.0, 2.0, 1.7],
 	"canyon_inside": [-1200.0, -2282.0, 180.0, 0.0, 0.0, "cave"],
 	"ice_cave": [-1571.3, -1297.0, 167.0, 2.0, 1.7],
 	"ice_inside": [-1564.4, -1268.0, 167.0, -5.0, 0.0, "cave"],
-	"tube_deep": [-1031.0, 1683.0, 160.0, 0.0, 0.0, "cave"],
 }
 
 func _initialize() -> void:
@@ -52,7 +72,11 @@ func _initialize() -> void:
 		if str(arg).begins_with("site="): site = str(arg).trim_prefix("site=")
 		elif str(arg).begins_with("base="): base = str(arg).trim_prefix("base=").split(",")
 		else: wanted.append(str(arg))
-	if wanted.is_empty(): wanted = VIEWS.keys()
+	var views := VIEWS.duplicate()
+	MHGame.site_id = site
+	MHSiteTerrain.region_zone()
+	views.merge(_tube_views())
+	if wanted.is_empty(): wanted = views.keys()
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	MHGame.site_id = site; MHGame.game_mode = "creative"; MHGame.base_site = {}
 	if base.size() == 2:
@@ -72,8 +96,8 @@ func _initialize() -> void:
 		if view == "rover_ground" or view == "map" or view == "map_zoom":
 			await _special(world, str(view), out_dir)
 			continue
-		if not VIEWS.has(view): continue
-		var v: Array = VIEWS[view]
+		if not views.has(view): continue
+		var v: Array = views[view]
 		var x := float(v[0]) - origin.x
 		var z := float(v[1]) - origin.y
 		var ground := MHSiteTerrain.height(x, z)
@@ -95,6 +119,44 @@ func _initialize() -> void:
 		root.get_texture().get_image().save_png(out_dir + "%s.png" % view)
 		print("VIEW %s at (%d, %d): %s" % [view, roundi(v[0]), roundi(v[1]), MHSiteTerrain.geology_unit(x, z)])
 	quit()
+
+## The lava tube's views, from where region.json says it runs (region metres).
+func _tube_views() -> Dictionary:
+	var out := {}
+	for data in MHSiteTerrain.RegionTerrain.meta().get("caves", []):
+		if str(data.kind) != "lava_tube": continue
+		var points: Array = data.points
+		var at := func(k: int) -> Vector2: return Vector2(float(points[clampi(k, 0, points.size() - 1)][0]), float(points[clampi(k, 0, points.size() - 1)][1]))
+		var yaw := func(k: int) -> float:
+			var d: Vector2 = at.call(k + 5) - at.call(k)
+			return rad_to_deg(atan2(d.x, -d.y))
+		var forward := func(k: int) -> Vector2: return (at.call(k + 5) - at.call(k)).normalized()
+		var mouth: Vector2 = at.call(0) - forward.call(0) * 14.0
+		out["tube_mouth"] = [mouth.x, mouth.y, yaw.call(0), -4.0, 1.8]
+		out["tube_inside"] = [at.call(40).x, at.call(40).y, yaw.call(40), 0.0, 0.0, "cave"]
+		var deep: Dictionary = data.get("deep", {})
+		var upper := int(deep.get("from", points.size()))
+		var skies: Array = data.get("skylights", [])
+		if skies.size() > 2:
+			var k := int(float(upper) * .47)
+			var sky := Vector2(float(skies[2].position[0]), float(skies[2].position[1]))
+			var below: Vector2 = sky - forward.call(k) * 16.0
+			out["skylight_below"] = [below.x, below.y, yaw.call(k), 28.0, 0.0, "cave"]
+			var above: Vector2 = sky - forward.call(k) * 26.0
+			out["skylight_above"] = [above.x, above.y, yaw.call(k), -30.0, 1.8]
+		if deep.is_empty(): continue
+		out["cold_trap"] = [at.call(upper - 24).x, at.call(upper - 24).y, yaw.call(upper - 24), 0.0, 0.0, "cave"]
+		var pitches: Array = deep.get("pitches", [])
+		if not pitches.is_empty():
+			var top := int(pitches[0].top) - 7
+			out["pitch_top"] = [at.call(top).x, at.call(top).y, yaw.call(top), -22.0, 0.0, "cave"]
+			var foot := int(pitches[0].foot) + 9
+			out["pitch_foot"] = [at.call(foot).x, at.call(foot).y, yaw.call(foot) + 180.0, 28.0, 0.0, "cave"]
+			var low := int(pitches[pitches.size() - 1].foot) + 40
+			out["lower_level"] = [at.call(low).x, at.call(low).y, yaw.call(low), 0.0, 0.0, "cave"]
+		var heart := int(deep.get("heart", {}).get("point", points.size() - 10)) - 22
+		out["heart"] = [at.call(heart).x, at.call(heart).y, yaw.call(heart), 4.0, 0.0, "cave"]
+	return out
 
 func _special(world: Node, view: String, out_dir: String) -> void:
 	var p: Node3D = world.player

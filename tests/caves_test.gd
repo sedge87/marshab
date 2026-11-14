@@ -42,6 +42,19 @@ func _initialize() -> void:
 		var b := a - axis * 4.0
 		worst = maxf(worst, absf(MHSiteTerrain.height(b.x, b.y) - MHSiteTerrain.height(a.x, a.y)) / 4.0)
 	assert(worst < tan(deg_to_rad(20.0)), "The tube's ramp is under 20 degrees (worst %.1f)." % rad_to_deg(atan(worst)))
+	# The deep (docs/terrain-design.md §3): past the upper tube the passage goes down three rope
+	# pitches to the heart's chamber, about 150 m under the land, and it's a floor all the way.
+	assert(int(tube.deep_from) < points.size() - 100 and (tube.pitches as Array).size() == 3, "The tube goes on into the deep, by three pitches.")
+	var heart: int = tube.heart_point
+	var over_heart := MHSiteTerrain.height(points[heart].x, points[heart].z) - points[heart].y
+	assert(over_heart > 130.0 and over_heart < 175.0, "The heart is about 150 m down (%.0f)." % over_heart)
+	assert(float(tube.half[heart]) > float(tube.half[int(tube.deep_from) + 60]) * 2.0, "The heart's chamber is wide.")
+	for pitch in tube.pitches:
+		var top: Vector3 = points[int(pitch.top)]
+		var foot: Vector3 = points[int(pitch.foot)]
+		assert(top.y - foot.y > float(pitch.drop) * .8, "A pitch drops (%.0f m)." % (top.y - foot.y))
+		assert(not is_nan(MHCaves.floor_at(foot + Vector3.UP)), "A floor at the foot of a pitch.")
+	assert(MHCaves.darkness(points[heart] + Vector3.UP) > .9, "Dark at the heart.")
 	# A skylight lets the light in.
 	for sky in tube.skylights:
 		var floor_here := MHCaves._floor(tube, sky.centre, MHCaves._locate(tube, sky.centre))

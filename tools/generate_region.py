@@ -9,7 +9,9 @@ polygon-cracked ice fields in the north-west, and ragged hills framing the edge.
 Writes assets/terrain/<id>/:
   height.r16.gz   heights, 16-bit unsigned little-endian, rows = +Z, gzip; point (i, j)
                   is at x = -half + i * spacing, z = -half + j * spacing
-  region.json     size, spacing, height range, landing zones
+  region.json     size, spacing, height range, landing zones, home and the rings, caves, fissures,
+                  step lines, kit places, viewpoints and the design's checks
+  ground.png      red the ground kind, green the hidden layer (hollow ground), blue shallow ice
   control.u32.gz  Terrain3D control map: base texture by zone, bedrock on slopes
   colour.png      Terrain3D colour map (half resolution): large-scale tint
   ground_*.png    Terrain3D textures: albedo + height (alpha), normal + roughness (alpha)
@@ -171,7 +173,7 @@ STEP_LINES = [
      "up": -1.0, "height": 11.0, "passes": [0.25, 0.6, 0.85]},
 ]
 MINOR_CRACKS = 34
-HEART = (2700.0, 250.0)   # where the tube's lower level meets the old magnetised body, about 150 m down
+HEART = (2895.0, 225.0)   # where the tube's lower level meets the old magnetised body, about 150 m down (the last point of DEEP's course)
 ICE_SCARPS = [((-1760.0, -1240.0), (-1380.0, -1330.0), 10.0), ((-1990.0, -700.0), (-1760.0, -610.0), 8.0)]
 
 
@@ -875,8 +877,11 @@ def add_lava_plain(h, x, z, masks, medium, small, lobes_field, ragged_field):
     tumuli = 1.4 * np.clip(spectral_noise(2.6, SEED + 120, k_low=0.02, k_high=0.07) - 0.9, 0.0, None)
     # Inflated lobes: the surface steps down a metre or two from sheet to sheet.
     sheets = spectral_noise(3.2, SEED + 121, k_low=0.004, k_high=0.02) * 2.2
-    stepped = np.floor(sheets) + smoothstep(0.82, 1.0, sheets - np.floor(sheets))
-    top = buried + thick + 0.35 * medium + tumuli + 1.3 * stepped
+    sgz, sgx = np.gradient(sheets, SPACING)
+    edge = np.clip(3.0 * np.sqrt(sgx * sgx + sgz * sgz), 0.004, 0.5)   # each sheet ends in a face about 3 m across
+    part = sheets - np.floor(sheets)
+    stepped = smoothstep(1.0 - edge, 1.0, part) - part
+    top = buried + thick + 0.35 * medium + tumuli + 2.6 * stepped
     front = smoothstep(0.0, 10.0, sd)
     h += (np.maximum(h, top) - h) * front
     masks["lava"] = front * (h <= top + 0.5)
@@ -1009,7 +1014,7 @@ def add_hollow_ground(h, x, z, masks, tube):
     already fallen in (small collapse pits); the rest only show to radar,
     and are written to the hidden layer of the ground map."""
     rng = np.random.default_rng(SEED + 150)
-    pts = np.array([[q[0], q[1]] for q in tube["points"]])
+    pts = np.array([[q[0], q[1]] for q in tube["points"][:tube["deep"]["from"]]])   # over the upper tube only: the deep lies far below
     hidden = np.zeros_like(h)
     pits = []
     for _ in range(400):
@@ -1389,7 +1394,7 @@ def add_ledges(h, x, z, masks, medium):
     total = np.zeros_like(h)
     faces = np.zeros_like(h)
     for index, (k_low, k_high, levels, far) in enumerate(((0.0022, 0.011, 1.5, 0.0), (0.008, 0.028, 1.4, 1.0))):
-        v = spectral_noise(3.0, SEED + 200 + index, k_low=k_low, k_high=k_high) * levels
+        v = spectral_noise(3.0, SEED + 200 + index, k_low=k_low, k_high=k_high) * levels * (1.0 + 0.7 * smoothstep(1600.0, 3000.0, home))
         gz, gx = np.gradient(v, SPACING)
         steep = np.clip(3.2 * np.sqrt(gx * gx + gz * gz), 0.004, 0.5)   # so every face is about 3 m across, however gentle the field
         f = v - np.floor(v)
@@ -1594,6 +1599,19 @@ LAVA_TUBE = {
     # Skylights: how far along, radius, which side of the passage the fallen roof lies.
     "skylights": [(0.16, 9.0, 1.0), (0.33, 7.0, -1.0), (0.47, 11.0, 1.0), (0.66, 8.0, -1.0), (0.82, 12.0, 1.0), (0.93, 7.0, -1.0)],
 }
+# The deep (docs/terrain-design.md §3): past the upper tube's upstream end the passage goes on, down three
+# steep pitches (old lava falls: rope work, on foot only) to a lower level and the heart's chamber, about
+# 150 m under the plain. It never crosses itself on the map, so a place on the map is one place underground.
+DEEP = {
+    "course": [(2700.0, 350.0), (2770.0, 400.0), (2800.0, 470.0), (2800.0, 560.0), (2850.0, 610.0), (2930.0, 600.0), (2960.0, 530.0),
+               (2955.0, 440.0), (2925.0, 350.0), (2900.0, 270.0), (2895.0, 225.0)],
+    "pitches": [(0, 26.0), (2, 30.0), (4, 26.0)],   # just past this course point, this far down
+    "pitch_run": 16.0,                              # metres along, for each drop
+    "grade": 0.01,                                  # the passages between fall gently
+    # Half width and height: the passage past the upper tube, on the pitches, on the lower level, in the chamber.
+    "sizes": {"mid": (7.0, 10.0), "pitch": (6.0, 9.0), "lower": (5.5, 8.0), "chamber": (21.0, 17.0)},
+    "chamber": 56.0,                                # the last stretch opens into the heart's chamber
+}
 # Natural caves, found on foot: where you walk up from, the way in, and size.
 NATURAL_CAVES = [
     {"id": "canyon_cave", "name": "Canyon wall cave", "kind": "cave", "approach": (-1200.0, -2318.0),
@@ -1683,10 +1701,49 @@ def add_lava_tube(h, x, z, masks):
     print(f"  lava tube: {len(p) * CAVE_STEP:.0f} m, floor {floor.min():.1f}..{floor.max():.1f} m (worst grade {grade:.3f}), "
           f"ramp grade {ramp_grade:.2f}, cover at least {float((low - floor - ht).min()):.1f} m")
     k_mid = len(p) // 2
+    n_upper = len(p)
+    # The deep: on from the upper end, down the pitches to the heart's chamber.
+    d = DEEP
+    control = np.array([p[-1]] + d["course"], dtype=float)
+    q = resample(control, CAVE_STEP)
+    for _ in range(4):
+        q[1:-1] = (q[:-2] + 2.0 * q[1:-1] + q[2:]) / 4.0
+    q = q[1:]
+    along = (np.arange(len(q)) + 1) * CAVE_STEP
+    marks = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(control, axis=0).T))])
+    deep_floor = floor[-1] - d["grade"] * along
+    size = np.tile(np.array(d["sizes"]["mid"]), (len(q), 1))
+    pitches = []
+    for index, (at, drop) in enumerate(d["pitches"]):
+        s0 = marks[at + 1] + 4.0
+        fall = smoothstep(s0, s0 + d["pitch_run"], along)
+        deep_floor = deep_floor - drop * fall
+        on_pitch = (along > s0 - 6.0) & (along < s0 + d["pitch_run"] + 6.0)
+        size[on_pitch] = d["sizes"]["pitch"]
+        if index == len(d["pitches"]) - 1:
+            size[along >= s0 + d["pitch_run"] + 6.0] = d["sizes"]["lower"]
+        k0 = int(np.searchsorted(along, s0)); k1 = int(np.searchsorted(along, s0 + d["pitch_run"]))
+        pitches.append((k0, k1, drop))
+    size[along > along[-1] - d["chamber"]] = d["sizes"]["chamber"]
+    for column in range(2):   # ease from one size to the next
+        size[:, column] = run_filter(size[:, column], 6, np.mean)
+    size[:8] = np.linspace(0.0, 1.0, 8)[:, None] * size[:8] + np.linspace(1.0, 0.0, 8)[:, None] * np.array([hw, ht])
+    profile = [[hw, ht]] * n_upper + [[round(float(a), 2), round(float(b), 2)] for a, b in size]
+    surface = np.array([sample(h, v[0], v[1]) for v in q])
+    print(f"  the deep: {along[-1]:.0f} m more, {len(pitches)} pitches, its floor {float((surface - deep_floor).max()):.0f} m under the land at the heart "
+          f"(steepest {float(np.abs(np.diff(deep_floor)).max() / CAVE_STEP):.2f})")
+    p_all = np.concatenate([p, q]); floor_all = np.concatenate([floor, deep_floor])
+    deep = {"from": n_upper,
+            "pitches": [{"top": n_upper + k0, "foot": n_upper + k1, "drop": drop,
+                         "anchor": [round(float(q[max(k0 - 2, 0)][0]), 2), round(float(q[max(k0 - 2, 0)][1]), 2), round(float(deep_floor[max(k0 - 2, 0)]), 2)]} for k0, k1, drop in pitches],
+            "cold_trap": n_upper - 30,
+            "heart": {"point": len(p_all) - int(d["chamber"] / CAVE_STEP / 2), "position": [round(float(q[-1][0]), 1), round(float(q[-1][1]), 1)],
+                      "floor": round(float(deep_floor[-1]), 1), "depth": round(float(surface[-1] - deep_floor[-1]), 1)}}
     foot = mouth - axis * 25.0
     EXTRA_ROUTE_TARGETS.append(("lava tube", float(foot[0]), float(foot[1]), 15.0))
     return {"id": c["id"], "name": c["name"], "kind": c["kind"], "half_width": hw, "height": ht, "seed": SEED + 300,
-            "points": [[round(float(q[0]), 2), round(float(q[1]), 2), round(float(f), 2)] for q, f in zip(p, floor)],
+            "points": [[round(float(v[0]), 2), round(float(v[1]), 2), round(float(f), 2)] for v, f in zip(p_all, floor_all)],
+            "profile": profile, "deep": deep,
             "mouth": [round(float(mouth[0]), 2), round(float(mouth[1]), 2)],
             "ramp_top": [round(float(v_), 2) for v_ in mouth - axis * c["ramp"]],
             "skylights": skylights,
@@ -2230,6 +2287,154 @@ def write_geology(h, masks):
     write_file(os.path.join(OUT, "geology.png"), Image.fromarray(unit[::step, ::step], "L").save)
 
 
+
+# ---------- the ground map and the design's checks (B2, docs/terrain-design.md §10) ----------
+# What's under your boots, for traversal phase 2 (scripts/ground.gd reads ground.png).
+GROUND_KINDS = ["dust", "rock", "sand", "ripples", "gravel", "scree", "ice", "frost", "clay", "lava", "platy_lava", "sharp_boulders"]
+
+
+def write_ground(h, masks):
+    """The ground map (1024 px): red is the ground kind (its index in
+    GROUND_KINDS), green the hidden layer (hollow ground and roofed
+    sinkholes: nothing on the surface shows them, radar does), blue how
+    near the surface ice lies (for frost, fresh ice in new craters, and
+    GAR-Y's radar)."""
+    base = masks["_base"]
+    kind_of = {DUST: 0, BEDROCK: 1, SAND: 2, FROST: 7, CLAY: 8, GRAVEL: 4, STRATA: 1, TALUS: 5, ICE: 6, LAVA: 9}
+    kind = np.zeros(h.shape, dtype=np.uint8)
+    for texture, k in kind_of.items():
+        kind[base == texture] = k
+    kind[(masks["ripples"] > 0.5) & (kind == 2)] = 3
+    kind[masks["platy"] > 0.35] = 10
+    kind[(masks["_slope"] > 0.8) & (kind != 6) & (kind != 7)] = 1   # steep ground is rock, whatever lies round it
+    x, z = grid()
+    for index in SHARP_BOULDERS:
+        bx, bz, br = BOULDER_FIELDS[index]
+        kind[(dist(x, z, (bx, bz)) / br + 0.25 * masks["medium"] < 0.85) & (masks["_slope"] < 0.8)] = 11
+    hidden = np.maximum(masks["hollow"], masks["sinkholes"])
+    ice = np.clip(masks["ice"] * 0.6 + masks["polygons"] * 0.2 + masks["glacier"] + masks["frost_hollow"] + masks["ice_scarp"], 0.0, 1.0)
+    step = N // 1024
+
+    def block_max(a):
+        return a[:1024 * step, :1024 * step].reshape(1024, step, 1024, step).max(axis=(1, 3))
+
+    img = np.dstack([kind[::step, ::step], (block_max(hidden) * 255).astype(np.uint8), (block_max(ice) * 255).astype(np.uint8)])
+    write_file(os.path.join(OUT, "ground.png"), Image.fromarray(img, "RGB").save)
+    masks["_kind"] = kind
+    share = {GROUND_KINDS[k]: round(float((kind == k).mean()), 3) for k in range(len(GROUND_KINDS))}
+    print("  ground: " + ", ".join(f"{name} {100 * v:.0f}%" for name, v in share.items() if v >= 0.005))
+    return share
+
+
+def find_viewpoints(h, masks):
+    """High ground that shows you the routes: the mesa tops, the top of each
+    step, the crater's rim, and a lookout on the south ridge (the aurora
+    is seen only from up there)."""
+    out = []
+
+    def highest(name, x0, z0, x1, z1):
+        i0, i1 = int((x0 + HALF) / SPACING), int((x1 + HALF) / SPACING); j0, j1 = int((z0 + HALF) / SPACING), int((z1 + HALF) / SPACING)
+        part = h[j0:j1, i0:i1]
+        j, i = np.unravel_index(int(np.argmax(part)), part.shape)
+        out.append({"name": name, "position": [round((i0 + i) * SPACING - HALF, 1), round((j0 + j) * SPACING - HALF, 1)], "height": round(float(part[j, i]), 1)})
+
+    for index, (mx, mz, mr, mh) in enumerate(MESAS):
+        out.append({"name": f"Mesa {index + 1}", "position": [mx, mz], "height": round(sample(h, mx, mz), 1)})
+    highest("South ridge lookout", -1900.0, 2350.0, -500.0, 2700.0)
+    highest("Crater rim, south-west", 150.0, -300.0, 600.0, 250.0)
+    highest("Crater rim, north", 800.0, -1950.0, 1400.0, -1700.0)
+    highest("Mound top", MOUND["centre"][0] - 150.0, MOUND["centre"][1] - 150.0, MOUND["centre"][0] + 150.0, MOUND["centre"][1] + 150.0)
+    for step_line in masks["step_lines"]:
+        mid = step_line["points"][len(step_line["points"]) // 2]
+        highest("Step: " + step_line["id"].replace("_", " "), mid[0] - 120.0, mid[1] - 120.0, mid[0] + 120.0, mid[1] + 120.0)
+    return out
+
+
+def check_design(h, masks):
+    """The design's own checks (docs/terrain-design.md §6, §8 and §10):
+    how often a straight line meets a choice in each ring, that no step
+    line is ring-shaped, that nothing you can walk into traps you, and
+    that the canyon floor is only driven into by the ramp."""
+    checks = {}
+    home = np.array(HOME["centre"])
+    # 1. Straight lines from home: a "choice" is ground too steep to walk straight up
+    #    (over 25 degrees across 4 m), a crack, or ground that costs (sand, ripples,
+    #    scree, platy lava, sharp boulders).
+    costly = np.isin(masks["_kind"], [2, 3, 5, 10, 11])
+    events = [0, 0, 0]; lengths = [0.0, 0.0, 0.0]
+    for a in np.linspace(0.0, math.tau, 72, endpoint=False):
+        d = np.arange(60.0, RINGS[2], 2.0)
+        px = home[0] + np.cos(a) * d; pz = home[1] + np.sin(a) * d
+        inside = (np.abs(px) < HALF - 700.0) & (pz < HALF - 700.0) & (pz > -1950.0)
+        if not inside.any():
+            continue
+        last = int(np.argmin(inside)) if not inside.all() else len(d)
+        if last < 4:
+            continue
+        d, px, pz = d[:last], px[:last], pz[:last]
+        i = ((px + HALF) / SPACING).astype(int); j = ((pz + HALF) / SPACING).astype(int)
+        ground = h[j, i]
+        steep = np.zeros(len(d), dtype=bool)
+        steep[:-2] = np.abs(ground[2:] - ground[:-2]) / 4.0 > math.tan(math.radians(25.0))
+        hard = steep | costly[j, i] | (masks["fissure"][j, i] > 0.5)
+        hard = np.convolve(hard.astype(float), np.ones(10), mode="same") > 0   # things within 20 m of each other are one choice
+        starts = np.flatnonzero(hard[1:] & ~hard[:-1])
+        for ring in range(3):
+            lo = 0.0 if ring == 0 else RINGS[ring - 1]
+            in_ring = (d >= lo) & (d < RINGS[ring])
+            lengths[ring] += float(in_ring.sum()) * 2.0
+            events[ring] += int(((d[starts] >= lo) & (d[starts] < RINGS[ring])).sum())
+    checks["straight_lines"] = [{"ring": k + 1, "metres_between_choices": round(lengths[k] / max(events[k], 1), 0)} for k in range(3)]
+    print("  straight lines from home: a choice every " + ", ".join(f"{c['metres_between_choices']:.0f} m in ring {c['ring']}" for c in checks["straight_lines"]))
+    # 2. No step line is a ring round home.
+    spans = []
+    for step_line in masks["step_lines"]:
+        dd = [math.hypot(p[0] - home[0], p[1] - home[1]) for p in step_line["points"]]
+        spans.append({"id": step_line["id"], "nearest": round(min(dd)), "furthest": round(max(dd)), "passes": len(step_line["passes"])})
+    checks["step_lines"] = spans
+    for s in spans:
+        if s["furthest"] - s["nearest"] < 300:
+            print(f"  WARNING: step line {s['id']} keeps a near-constant distance from home ({s['nearest']}..{s['furthest']} m)")
+    # 3. Walk-out: everything inside the edges is reached on foot from home (a
+    #    scramble, 40 degrees across 10 m, is the limit), bar the places that are
+    #    meant to need a rope.
+    step = int(ROUTE_CELL / SPACING)
+    g = h[::step, ::step]
+    # A cell is walkable if any way off it is a scramble or less: use the gentlest neighbour, not the steepest.
+    gentle = np.full_like(g, np.inf)
+    for axis in (0, 1):
+        diff = np.abs(np.diff(g, axis=axis)) / ROUTE_CELL
+        lo = [slice(None), slice(None)]; hi = [slice(None), slice(None)]
+        lo[axis] = slice(0, -1); hi[axis] = slice(1, None)
+        gentle[tuple(lo)] = np.minimum(gentle[tuple(lo)], diff); gentle[tuple(hi)] = np.minimum(gentle[tuple(hi)], diff)
+    walk = gentle <= math.tan(math.radians(40.0))
+    reach = flood(walk, disc_cells(walk.shape, step, home[0], home[1], 40.0))
+    coords = np.arange(g.shape[0]) * SPACING * step - HALF
+    gx, gz = np.meshgrid(coords, coords)
+    inside = (gx > -HALF + 760.0) & (gx < HALF - 100.0) & (gz < HALF - 760.0) & (gz > CANYON_FAR_EDGE + 120.0)
+    lost = inside & walk & ~reach
+    checks["walk_out"] = {"reached_share": round(float((reach & inside).sum() / max((walk & inside).sum(), 1)), 4), "unreached_cells": int(lost.sum())}
+    floor_cells = masks["canyon_floor"][::step, ::step] > 0.9
+    checks["walk_out"]["canyon_floor_reached_share"] = round(float((reach & floor_cells & inside).sum() / max((floor_cells & inside & walk).sum(), 1)), 4)
+    print(f"  on foot from home: {100 * checks['walk_out']['reached_share']:.1f}% of walkable ground reached, the canyon floor {100 * checks['walk_out']['canyon_floor_reached_share']:.1f}%")
+    if "--debug-routes" in sys.argv:
+        img = np.zeros(walk.shape + (3,), dtype=np.uint8)
+        img[walk] = (90, 90, 90); img[reach] = (80, 220, 80); img[lost] = (240, 60, 60)
+        Image.fromarray(img).resize((walk.shape[1] * 2, walk.shape[0] * 2), Image.NEAREST).save(os.path.join(ROOT, ".claude_tmp", "walk.png"))
+    # 4. The canyon floor is only driven into by the ramp.
+    ok, _ = route_grid(h, masks)
+    start = disc_cells(ok.shape, step, home[0], home[1], 40.0)
+    goal = disc_cells(ok.shape, step, -1200.0, -2400.0, 60.0)
+    by_ramp = bool((flood(ok, start) & goal).any())
+    shut = ok & ~((np.abs(gx + 2050.0) < 260.0) & (gz < -1250.0) & (gz > -2150.0))
+    without = bool((flood(shut, start) & goal).any())
+    checks["canyon_gate"] = {"driven_by_ramp": by_ramp, "driven_without_ramp": without}
+    print(f"  canyon floor by rover: by the ramp {by_ramp}, without it {without}")
+    # 5. The edges: past this line Castle and the suit call you back.
+    checks["callback"] = {"x_min": -HALF + 420.0, "x_max": HALF - 160.0, "z_min": CANYON_FAR_EDGE - 60.0, "z_max": HALF - 420.0}
+    return checks
+
+
 _clock = [time.time()]
 
 
@@ -2254,6 +2459,9 @@ def main():
     write_map(h, masks); lap("write_map")
     write_rocks(h, masks); lap("write_rocks")
     write_geology(h, masks)
+    ground_share = write_ground(h, masks)
+    viewpoints = find_viewpoints(h, masks)
+    checks = check_design(h, masks); lap("ground map and checks")
     for index, (name, base, dark, rough, features, _) in enumerate(MATERIALS if not QUICK else []):
         material_texture(name, base, dark, rough, dict(features), SEED + 20 + index)
     meta = {
@@ -2276,6 +2484,10 @@ def main():
         "fissures": fissures,
         "hollow_ground": hollow,
         "platy_lanes": masks["platy_lanes"],
+        "ground_kinds": GROUND_KINDS,
+        "ground_share": ground_share,
+        "viewpoints": viewpoints,
+        "checks": checks,
         "step_lines": masks["step_lines"],
         "minor_cracks": masks["minor_cracks"],
         "yardangs": {"centre": list(YARDANGS["centre"]), "length": YARDANGS["length"], "width": YARDANGS["width"], "wind": list(DUNE_WIND)},

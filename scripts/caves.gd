@@ -12,6 +12,10 @@ extends Node3D
 ## and a copy of it, read from Terrain3D before the sinking and drawn with
 ## its own textures, is laid back over the top, so the seam can't show.
 ## Everything has collision. Region metres in the file; site metres here.
+##
+## The ground is sunk under the whole cave however deep it lies, the deep
+## included (150 m down). It has to be: Terrain3D's ground is one sheet, so
+## a passage that left the sunk strip would have to pass through it.
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const FLOOR_POINTS := 16      # across a cross-section's floor
@@ -46,16 +50,27 @@ static func caves() -> Array:
 		var half := PackedFloat32Array()
 		var heights := PackedFloat32Array()
 		var lava := str(data.kind) == "lava_tube"
+		# A cave may give its own size at each point (the deep: narrow on the
+		# pitches and the lower level, wide in the heart's chamber).
+		var profile: Array = data.get("profile", [])
+		var widest := float(data.half_width)
 		for k in points.size():
 			var ease_in := smoothstep(0.0, 6.0, float(k))   # the mouth keeps its size, for the portal
+			var wide := float(profile[k][0]) if k < profile.size() else float(data.half_width)
+			var tall := float(profile[k][1]) if k < profile.size() else float(data.height)
 			# Wider chambers and narrows along the way, the roof rising and falling.
-			half.append(float(data.half_width) * (1.0 + (.3 if lava else .35) * noise.get_noise_1d(k * 2.2) * ease_in))
-			heights.append(float(data.height) * (1.0 + .2 * noise.get_noise_1d(k * 2.2 + 500.0) * ease_in))
+			half.append(wide * (1.0 + (.3 if lava else .35) * noise.get_noise_1d(k * 2.2) * ease_in))
+			heights.append(tall * (1.0 + .2 * noise.get_noise_1d(k * 2.2 + 500.0) * ease_in))
+			widest = maxf(widest, wide)
 		var bounds := Rect2(Vector2(points[0].x, points[0].z), Vector2.ZERO)
 		for p in points: bounds = bounds.expand(Vector2(p.x, p.z))
+		var deep: Dictionary = data.get("deep", {})
 		var cave := {"id": str(data.id), "name": str(data.name), "kind": str(data.kind), "points": points,
 			"half": half, "height": heights, "finds": data.get("finds", []), "noise": noise,
-			"bounds": bounds.grow(float(data.half_width) * 1.4 + MARGIN + 4.0),
+			# The deep (docs/terrain-design.md): the point where the passage goes on past the upper tube, the
+			# rope pitches (point indices of each top and foot) and the point at the heart. Empty for other caves.
+			"deep_from": int(deep.get("from", points.size())), "pitches": deep.get("pitches", []), "heart_point": int(deep.get("heart", {}).get("point", -1)),
+			"bounds": bounds.grow(widest * 1.4 + MARGIN + 4.0),
 			"length": (points.size() - 1) * Vector2(points[1].x - points[0].x, points[1].z - points[0].z).length() if points.size() > 1 else 0.0,
 			"skylights": [], "piles": []}
 		for sky in data.get("skylights", []):
@@ -469,7 +484,9 @@ func _lid(cave: Dictionary, terrain: Terrain3D, sunk: Dictionary) -> SurfaceTool
 					flag = 1 if at.along >= 0.0 else -1
 				var y := terrain.data.get_height(Vector3(p.x, 0, p.y))
 				if flag == 1:
-					sunk[Vector3(p.x, 0, p.y)] = minf(float(sunk.get(Vector3(p.x, 0, p.y), INF)), points[near].y - SINK)
+					# On a steep pitch the floor falls metres between points: sink the ground that much further.
+					var fall := absf(points[mini(near + 2, points.size() - 1)].y - points[maxi(near - 2, 0)].y)
+					sunk[Vector3(p.x, 0, p.y)] = minf(float(sunk.get(Vector3(p.x, 0, p.y), INF)), points[near].y - SINK - fall)
 					y = maxf(y, _roof(cave, near)) + .03
 				flags[key] = flag
 				heights[key] = y
