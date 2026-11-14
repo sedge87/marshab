@@ -3,7 +3,7 @@ extends SceneTree
 ## Screenshots of the region's landforms from fixed viewpoints (terrain
 ## overhaul, docs/terrain-overhaul.md), for checking the ground by eye.
 ##   godot --path . --script res://tools/terrain_views.gd -- [out_dir] [site=<id>] [hud=off] [view names...]
-## walk_01 to walk_20 are a walk through the lava tube and the deep, mouth to heart.
+## walk_01 to walk_28 are a walk through the lava tube and the deep, mouth to heart.
 ## Also "rover_ground" (the debug overlay from above the pad's edge), "map"
 ## and "map_zoom" (the region map, with the Rover ground layer).
 ## base=x,z founds the base there (region metres) instead of the site's zone.
@@ -108,9 +108,10 @@ func _initialize() -> void:
 		if in_cave:
 			for cave in MHCaves.caves():
 				var at := MHCaves._locate(cave, Vector2(x, z))
-				if absf(at.lateral) < float(cave.half[0]) and at.along >= 0.0:
+				if absf(at.lateral) < float(cave.half[clampi(roundi(float(at.k)), 0, (cave.half as PackedFloat32Array).size() - 1)]) + 2.0 and at.along >= 0.0:
 					# Near the middle, where a player walks (the walls wander).
 					var keep := clampf(float(at.lateral), -.3 * float(cave.half[0]), .3 * float(cave.half[0]))
+					if v.size() > 6: keep = float(at.lateral)   # "exact": stand just where the view says
 					var moved := Vector2(x, z) - MHCaves._normal(cave, roundi(float(at.k))) * (float(at.lateral) - keep)
 					x = moved.x; z = moved.y
 					ground = MHCaves._floor(cave, moved, MHCaves._locate(cave, moved))
@@ -157,13 +158,20 @@ func _tube_views() -> Dictionary:
 			out["pitch_foot"] = [at.call(foot).x, at.call(foot).y, yaw.call(foot) + 180.0, 28.0, 0.0, "cave"]
 			var low := int(pitches[pitches.size() - 1].foot) + 40
 			out["lower_level"] = [at.call(low).x, at.call(low).y, yaw.call(low), 0.0, 0.0, "cave"]
-		# A walk through the whole cave, mouth to heart: [point, pitch (degrees), look back?].
+		# A walk through the whole cave, mouth to heart: [point, pitch (degrees), look back?, how far
+		# across (-1 the left wall, 1 the right)]. Points past the upper tube are counted from the mouth too.
+		var profile: Array = data.get("profile", [])
 		var number := 1
-		for stop: Array in [[20, 0.0, false], [110, 6.0, false], [150, 14.0, true], [300, 0.0, false], [380, 10.0, false], [560, 0.0, false], [700, 0.0, false],
-				[815, 0.0, false], [866, -24.0, false], [888, 30.0, true], [920, 0.0, false], [948, -24.0, false], [969, 30.0, true], [1000, 0.0, false],
-				[1029, -24.0, false], [1050, 30.0, true], [1120, 0.0, false], [1195, 2.0, false], [1238, 6.0, false], [1262, 8.0, true]]:
+		for stop: Array in [[20, 0.0, false, 0.0], [176, 0.0, false, 0.0], [214, 0.0, false, -0.5], [234, -8.0, false, 0.55], [370, 6.0, false, 0.0], [399, 22.0, false, -0.5],
+				[606, 0.0, false, 0.0], [648, -6.0, false, 0.04], [655, 0.0, false, -0.65], [800, 0.0, false, 0.0], [843, 0.0, false, 0.0],
+				[866, -24.0, false, 0.0], [888, 30.0, true, 0.0], [890, 0.0, false, 0.0], [905, 0.0, false, 0.05], [916, -6.0, false, -0.62],
+				[951, -24.0, false, 0.0], [969, 30.0, true, 0.0], [972, 0.0, false, -0.45], [991, -10.0, false, 0.6], [1031, -24.0, false, 0.0], [1050, 30.0, true, 0.0],
+				[1094, 0.0, false, 0.0], [1125, -6.0, false, 0.65], [1146, 0.0, false, 0.0], [1172, 0.0, false, -0.65], [1226, 4.0, false, 0.0], [1262, 8.0, true, 0.0]]:
 			var k := int(stop[0])
-			out["walk_%02d" % number] = [at.call(k).x, at.call(k).y, yaw.call(k) + (180.0 if stop[2] else 0.0), float(stop[1]), 0.0, "cave"]
+			var f: Vector2 = forward.call(k)
+			var wide := float(profile[k][0]) if k < profile.size() else float(data.half_width)
+			var spot: Vector2 = at.call(k) + Vector2(-f.y, f.x) * float(stop[3]) * wide
+			out["walk_%02d" % number] = [spot.x, spot.y, yaw.call(k) + (180.0 if stop[2] else 0.0), float(stop[1]), 0.0, "cave", "exact"]
 			number += 1
 		var heart := int(deep.get("heart", {}).get("point", points.size() - 10)) - 22
 		out["heart"] = [at.call(heart).x, at.call(heart).y, yaw.call(heart), 4.0, 0.0, "cave"]

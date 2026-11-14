@@ -1627,6 +1627,32 @@ DEEP = {
     "sizes": {"mid": (7.0, 10.0), "pitch": (6.0, 9.0), "lower": (5.5, 8.0), "chamber": (21.0, 17.0)},
     "chamber": 56.0,                                # the last stretch opens into the heart's chamber
 }
+# The maze (15 Nov): the tube braids. In places it widens and walls of rock left standing between
+# the old lava streams split it into lanes; some lanes are choked by fallen roof (dead ends), gaps in
+# the walls let you change lane, and there are pits in the floor where lava drained away. Everything
+# is inside the one passage, so a place on the map is still one place underground.
+# from/to/at are point numbers (2 m apart), counted from the mouth, or from where the deep begins
+# when "deep" is set. side is across the passage: -1 the left wall, 1 the right (looking in).
+# walls: from, to, side, the gaps in it. chokes: at, from side, to side. pits: at, side, radius, depth.
+# The left lane of the upper tube's braids is always clear: it's the rover's road.
+MAZE = [
+    {"name": "The Braids", "from": 180, "to": 272, "half": 24.0, "height": 15.0,
+     "walls": [(190, 262, 0.05, [(222, 229)])], "chokes": [(252, 0.05, 1.3)], "pits": [(241, 0.55, 4.0, 4.5)]},
+    {"name": "The Hall", "from": 372, "to": 420, "half": 27.0, "height": 14.0, "walls": [], "chokes": [], "pits": []},
+    {"name": "Three Ways", "from": 600, "to": 705, "half": 25.0, "height": 15.0,
+     "walls": [(610, 676, -0.3, [(640, 646)]), (618, 672, 0.38, [(655, 661)])],   # they stop short of the skylight
+     "chokes": [(668, -0.3, 0.38), (630, 0.38, 1.3)], "pits": [(663, 0.04, 3.5, 4.0), (624, 0.7, 3.0, 3.5)]},
+    {"name": "The First Labyrinth", "deep": True, "from": 46, "to": 108, "half": 15.0, "height": 9.0,
+     "walls": [(50, 104, -0.25, [(72, 76)]), (56, 100, 0.35, [(60, 63), (88, 91)])],
+     "chokes": [(84, -0.25, 0.35), (66, -1.3, -0.25)], "pits": [(80, 0.05, 2.5, 4.0), (62, -0.65, 2.5, 4.5)]},
+    {"name": "The Second Labyrinth", "deep": True, "from": 127, "to": 189, "half": 14.0, "height": 9.0,
+     "walls": [(131, 185, 0.1, [(150, 154), (172, 175)])], "chokes": [(162, 0.1, 1.3), (142, -1.3, 0.1)],
+     "pits": [(158, 0.6, 2.5, 5.0), (138, -0.5, 2.5, 4.0)]},
+    {"name": "The Last Maze", "deep": True, "from": 250, "to": 360, "half": 15.0, "height": 9.0,
+     "walls": [(254, 356, -0.3, [(280, 284), (322, 326)]), (262, 350, 0.3, [(300, 304), (338, 341)])],
+     "chokes": [(310, -1.3, -0.3), (292, -0.3, 0.3), (332, -0.3, 0.3), (318, 0.3, 1.3)],
+     "pits": [(305, -0.65, 2.5, 5.0), (288, 0.0, 2.5, 4.5), (314, 0.65, 2.5, 5.0)]},
+]
 # Natural caves, found on foot: where you walk up from, the way in, and size.
 NATURAL_CAVES = [
     {"id": "canyon_cave", "name": "Canyon wall cave", "kind": "cave", "approach": (-1200.0, -2318.0),
@@ -1743,11 +1769,63 @@ def add_lava_tube(h, x, z, masks):
     for column in range(2):   # ease from one size to the next
         size[:, column] = run_filter(size[:, column], 6, np.mean)
     size[:8] = np.linspace(0.0, 1.0, 8)[:, None] * size[:8] + np.linspace(1.0, 0.0, 8)[:, None] * np.array([hw, ht])
-    profile = [[hw, ht]] * n_upper + [[round(float(a), 2), round(float(b), 2)] for a, b in size]
+    sizes = np.concatenate([np.tile(np.array([hw, ht]), (n_upper, 1)), size])
     surface = np.array([sample(h, v[0], v[1]) for v in q])
     print(f"  the deep: {along[-1]:.0f} m more, {len(pitches)} pitches, its floor {float((surface - deep_floor).max()):.0f} m under the land at the heart "
           f"(steepest {float(np.abs(np.diff(deep_floor)).max() / CAVE_STEP):.2f})")
     p_all = np.concatenate([p, q]); floor_all = np.concatenate([floor, deep_floor])
+    # The maze: wide chambers, the walls that split them into lanes, chokes and pits.
+    for chamber in MAZE:
+        base = n_upper if chamber.get("deep") else 0
+        sizes[base + chamber["from"]:base + chamber["to"] + 1] = (chamber["half"], chamber["height"])
+    for column in range(2):
+        sizes[:, column] = run_filter(sizes[:, column], 7, np.mean)
+    sizes[:8] = (hw, ht)   # the mouth keeps its size, for the portal
+    profile = [[round(float(a), 2), round(float(b), 2)] for a, b in sizes]
+    _, normals = line_frames(p_all)
+    walls = []; pits = []; places = []
+
+    def across(k, side):
+        return p_all[k] + normals[k] * side * sizes[k, 0]
+
+    for chamber in MAZE:
+        base = n_upper if chamber.get("deep") else 0
+        mid = base + (chamber["from"] + chamber["to"]) // 2
+        places.append({"name": chamber["name"], "from": base + chamber["from"], "to": base + chamber["to"],
+                       "position": [round(float(p_all[mid][0]), 1), round(float(p_all[mid][1]), 1)]})
+        for index, (k0, k1, side, gaps) in enumerate(chamber["walls"]):
+            piece = []
+            for k in range(base + k0, base + k1 + 1):
+                if any(base + g0 <= k <= base + g1 for g0, g1 in gaps):
+                    if len(piece) > 3:
+                        walls.append({"points": piece, "thick": 4.5})
+                    piece = []
+                    continue
+                v = across(k, side + 0.05 * math.sin(k * 0.21 + index * 2.0))
+                piece.append([round(float(v[0]), 2), round(float(v[1]), 2)])
+            if len(piece) > 3:
+                walls.append({"points": piece, "thick": 4.5})
+        for k, a, b in chamber["chokes"]:
+            k += base
+            steps = max(3, int(abs(b - a) * sizes[k, 0] / 2.0))
+            walls.append({"points": [[round(float(v[0]), 2), round(float(v[1]), 2)] for v in (across(k, a + (b - a) * i / steps) for i in range(steps + 1))],
+                          "thick": 5.5, "choke": True})
+        for k, side, radius, depth in chamber["pits"]:
+            v = across(base + k, side)
+            pits.append({"position": [round(float(v[0]), 2), round(float(v[1]), 2)], "radius": radius, "depth": depth})
+    # How the rock looks along the way: frost at the cold trap (the upper tube's end), and the deep's
+    # own rock, more so further down, most of all in the heart's chamber.
+    index = np.arange(len(p_all))
+    frost = smoothstep(n_upper - 120.0, n_upper - 70.0, index) * (1.0 - smoothstep(n_upper + 2.0, n_upper + 16.0, index))
+    deepness = 0.4 * smoothstep(n_upper + 20.0, n_upper + 60.0, index) + 0.15 * smoothstep(n_upper + 120.0, n_upper + 150.0, index) \
+        + 0.15 * smoothstep(n_upper + 200.0, n_upper + 240.0, index) + 0.3 * smoothstep(len(p_all) - 44.0, len(p_all) - 20.0, index)
+    tint = [[round(float(a), 2), round(float(b), 2)] for a, b in zip(frost, deepness)]
+    # The way on into the deep is shut at first: a plug of fallen roof past the cold trap. A
+    # marsquake late in the story shakes it loose (the user, 15 Nov: quakes and storms reveal places).
+    plug = n_upper + 12
+    gates = [{"id": "deep_plug", "opens": "marsquake", "point": plug, "thick": 7.0,
+              "points": [[round(float(v[0]), 2), round(float(v[1]), 2)] for v in (across(plug, -1.35 + 2.7 * i / 12) for i in range(13))]}]
+    print(f"  the maze: {len(MAZE)} chambers, {len(walls)} walls and chokes, {len(pits)} pits, {len(gates)} gate")
     deep = {"from": n_upper,
             "pitches": [{"top": n_upper + k0, "foot": n_upper + k1, "drop": drop,
                          "anchor": [round(float(q[max(k0 - 2, 0)][0]), 2), round(float(q[max(k0 - 2, 0)][1]), 2), round(float(deep_floor[max(k0 - 2, 0)]), 2)]} for k0, k1, drop in pitches],
@@ -1758,7 +1836,11 @@ def add_lava_tube(h, x, z, masks):
     EXTRA_ROUTE_TARGETS.append(("lava tube", float(foot[0]), float(foot[1]), 15.0))
     return {"id": c["id"], "name": c["name"], "kind": c["kind"], "half_width": hw, "height": ht, "seed": SEED + 300,
             "points": [[round(float(v[0]), 2), round(float(v[1]), 2), round(float(f), 2)] for v, f in zip(p_all, floor_all)],
-            "profile": profile, "deep": deep,
+            "profile": profile, "deep": deep, "walls": walls, "pits": pits, "tint": tint, "places": places, "gates": gates,
+            # For the systems that make it risky (later sections): where the floor is ice, where roof has fallen and may again.
+            "hazards": [{"kind": "ice_floor", "from": n_upper - 90, "to": n_upper + 6}]
+            + [{"kind": "rockfall", "point": n_upper + k0} for k0, _, _ in pitches]
+            + [{"kind": "pit", "position": pit["position"], "depth": pit["depth"]} for pit in pits],
             "mouth": [round(float(mouth[0]), 2), round(float(mouth[1]), 2)],
             "ramp_top": [round(float(v_), 2) for v_ in mouth - axis * c["ramp"]],
             "skylights": skylights,
@@ -2556,6 +2638,13 @@ def main():
         "home_ground": {"frost_hollow": list(HOME_GROUND["frost_hollow"]), "channel": masks["home_channel"], "crossings": masks["home_crossings"],
                         "sand_sheet": list(HOME_GROUND["sand_sheet"])},
         # Places the land locks until you have the kit (docs/terrain-design.md §6).
+        # Places that an event opens or uncovers later in the game (the story decides when).
+        "reveals": [
+            {"id": "deep_plug", "by": "marsquake", "what": "the rockfall past the lava tube's cold trap comes down: the way into the deep", "position": caves[0]["mouth"], "cave": "lava_tube"},
+            {"id": "north_fissure_wall", "by": "marsquake", "what": "a slab falls from the north fissure's wall, baring a pale mineral vein", "position": list(FISSURES[1]["to"])},
+            {"id": "sand_sheet_bed", "by": "dust storm", "what": "the storm strips the sand off the old riverbed's lower reach, baring its layered bed", "position": list(INVERTED_CHANNELS["sand_centre"])},
+            {"id": "dune_wreck", "by": "dust storm", "what": "the dunes march on and uncover something they had buried", "position": [DUNES[0] + 300.0, DUNES[1] + 60.0]},
+        ],
         "kit_places": [
             {"kit": "ladder", "ring": 1, "position": list(HOME_GROUND["outcrop"][:2]), "what": "ledge-topped outcrop"},
             {"kit": "rope", "ring": 1, "position": list(HOME_GROUND["pit"][:2]), "what": "collapse pit", "rope_only": True},

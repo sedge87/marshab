@@ -20,12 +20,17 @@ extends Node3D
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const FLOOR_POINTS := 16      # across a cross-section's floor
 const ARCH_POINTS := 28       # round its walls and roof
-const SINK := 3.0             # Terrain3D's ground goes this far under a cave's floor
+const SINK := 7.0             # Terrain3D's ground goes this far under a cave's floor (under its deepest pits too)
 const LID_GAP := .9           # the ground over a cave stays this far over its roof
 const MARGIN := 3.5           # ground sunk this far past a cave's walls (more than a vertex past
                               # the alcoves, so the ground's slope back up never shows through)
 
 static var _caves: Array = []
+## Gates that have opened (ids from region.json's caves[].gates): a rockfall
+## plug a marsquake has shaken loose, a mouth a storm has dug out. The story
+## sets this (and calls open_gate on the built caves); a gate not listed here
+## is built shut.
+static var open_gates: Array = []
 static var _key := ""
 
 ## The caves of this site, in site metres: each {id, name, kind, points
@@ -72,7 +77,19 @@ static func caves() -> Array:
 			"deep_from": int(deep.get("from", points.size())), "pitches": deep.get("pitches", []), "heart_point": int(deep.get("heart", {}).get("point", -1)),
 			"bounds": bounds.grow(widest * 1.4 + MARGIN + 4.0),
 			"length": (points.size() - 1) * Vector2(points[1].x - points[0].x, points[1].z - points[0].z).length() if points.size() > 1 else 0.0,
-			"skylights": [], "piles": []}
+			"skylights": [], "piles": [], "walls": [], "tint": data.get("tint", []), "places": data.get("places", []), "hazards": data.get("hazards", [])}
+		# The maze (docs/terrain-design.md §12): walls of rock that split the passage into lanes, and
+		# the chokes that close some of them, each a line of points with a thickness.
+		for wall in data.get("walls", []):
+			var line := PackedVector2Array()
+			for p in wall.points: line.append(Vector2(float(p[0]) - origin.x, float(p[1]) - origin.z))
+			cave.walls.append({"points": line, "thick": float(wall.get("thick", 4.5)), "choke": bool(wall.get("choke", false))})
+		# Gates: a wall across the whole passage that stays until something opens it.
+		cave["gates"] = []
+		for gate in data.get("gates", []):
+			var line := PackedVector2Array()
+			for p in gate.points: line.append(Vector2(float(p[0]) - origin.x, float(p[1]) - origin.z))
+			cave.gates.append({"id": str(gate.id), "opens": str(gate.get("opens", "")), "points": line, "thick": float(gate.get("thick", 7.0))})
 		for sky in data.get("skylights", []):
 			var centre := Vector2(float(sky.position[0]) - origin.x, float(sky.position[1]) - origin.z)
 			var radius := float(sky.radius)
@@ -97,6 +114,10 @@ static func caves() -> Array:
 				piles.append({"mound": Vector2(points[k].x, points[k].z) + _normal(cave, k) * side * half[k] * rng.randf_range(.4, .62),
 					"mound_radius": radius, "mound_height": radius * rng.randf_range(.25, .45)})
 			along += (38.0 if lava else 14.0) * rng.randf_range(.6, 1.4)
+		# Pits where lava drained away: a pile turned upside down.
+		for pit in data.get("pits", []):
+			piles.append({"mound": Vector2(float(pit.position[0]) - origin.x, float(pit.position[1]) - origin.z),
+				"mound_radius": float(pit.radius) * 1.25, "mound_height": -float(pit.depth)})
 		cave.piles = piles
 		_caves.append(cave)
 	return _caves
@@ -229,6 +250,9 @@ func build(terrain: Terrain3D, environment: Node) -> void:
 		material.set_shader_parameter("strata", 1.0 if cave.kind == "cave" else 0.0)
 		material.set_shader_parameter("ice", 1.0 if cave.kind == "ice_cave" else 0.0)
 		_add_mesh(_tunnel(cave), material)
+		_add_mesh(_walls(cave, cave.walls), material)
+		for gate in cave.gates:
+			if not open_gates.has(gate.id): _add_gate(cave, gate, material)
 		_add_mesh(_portal(cave, terrain), material)
 		_add_mesh(_lid(cave, terrain, sunk), ground, false)
 		_add_rubble(cave, environment)
@@ -343,8 +367,8 @@ func _tunnel(cave: Dictionary) -> SurfaceTool:
 	var last := _ring(cave, 0)
 	for k in range(1, points.size()):
 		var ring := _ring(cave, k)
-		# Red: how far in, for the shader (the ice cave's ice thickens towards the back).
-		var depth := [Color(float(k - 1) / (points.size() - 1), 0, 0), Color(float(k) / (points.size() - 1), 0, 0)]
+		# Red: how far in, for the shader (the ice cave's ice thickens towards the back); green and blue: the rock's look here.
+		var depth := [_tint(cave, k - 1), _tint(cave, k)]
 		for j in ring.size():
 			var a := last[j]
 			var b := last[(j + 1) % ring.size()]
@@ -380,6 +404,93 @@ func _tunnel(cave: Dictionary) -> SurfaceTool:
 				_quad(surface, previous[1], edge[1], edge[2], previous[2])
 			previous = edge
 	return surface
+
+## The vertex colour at point k: red how far in, green frost (the cold
+## trap), blue the deep's own rock (most in the heart's chamber).
+func _tint(cave: Dictionary, k: int) -> Color:
+	var points: PackedVector3Array = cave.points
+	var tint: Array = cave.tint
+	var here: Array = tint[k] if k < tint.size() else [0.0, 0.0]
+	return Color(float(k) / (points.size() - 1), float(here[0]), float(here[1]))
+
+## The maze's walls: each a rough slab of rock from under the floor up into
+## the roof, thinner at its ends, bulging and pinching along the way.
+func _walls(cave: Dictionary, walls: Array) -> SurfaceTool:
+	if walls.is_empty(): return null
+	var points: PackedVector3Array = cave.points
+	var noise: FastNoiseLite = cave.noise
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rows := 5
+	for wall in walls:
+		var line: PackedVector2Array = wall.points
+		var sides: Array = [[], []]   # each side's columns of points, bottom to top
+		for i in line.size():
+			var a := line[maxi(i - 1, 0)]
+			var b := line[mini(i + 1, line.size() - 1)]
+			var across := (b - a).normalized().orthogonal()
+			var at := _locate(cave, line[i])
+			var k := clampi(roundi(float(at.k)), 0, points.size() - 1)
+			var colour := _tint(cave, k)
+			var bottom := _floor(cave, line[i], at) - 1.6
+			var top := points[k].y + float(cave.height[k]) + LID_GAP - .25
+			var ends := minf(1.0, minf(i, line.size() - 1 - i) / 3.0)
+			var thick := float(wall.thick) * (.35 + .65 * ends) * (1.0 + .3 * noise.get_noise_1d(i * 5.0 + line[0].x))
+			for side in 2:
+				var column: Array = []
+				for r in rows + 1:
+					var y := lerpf(bottom, top, float(r) / rows)
+					var out := (thick * .5 + 1.1 * noise.get_noise_3d(line[i].x * .8, y * .8 + side * 40.0, line[i].y * .8) + .5 * smoothstep(.6, 1.0, float(r) / rows)) * (1.0 if side == 0 else -1.0)
+					var p := line[i] + across * out
+					column.append([Vector3(p.x, y, p.y), colour])
+				sides[side].append(column)
+		for side in 2:
+			var columns: Array = sides[side]
+			for i in columns.size() - 1:
+				for r in rows:
+					var a: Array = columns[i][r]
+					var b: Array = columns[i + 1][r]
+					var c: Array = columns[i + 1][r + 1]
+					var d: Array = columns[i][r + 1]
+					_quad(surface, a[0], b[0], c[0], d[0], [a[1], b[1], c[1], d[1]])
+		# Its two ends.
+		for i: int in [0, line.size() - 1]:
+			for r in rows:
+				var a: Array = sides[0][i][r]
+				var b: Array = sides[1][i][r]
+				var c: Array = sides[1][i][r + 1]
+				var d: Array = sides[0][i][r + 1]
+				_quad(surface, a[0], b[0], c[0], d[0], [a[1], b[1], c[1], d[1]])
+	return surface
+
+## A gate: a plug of fallen rock across the passage, built as a body of its
+## own so that it can be taken away when it opens.
+func _add_gate(cave: Dictionary, gate: Dictionary, material: Material) -> void:
+	var surface := _walls(cave, [gate])
+	surface.index()
+	surface.generate_normals()
+	var mesh := surface.commit()
+	var body := StaticBody3D.new()
+	body.name = "Gate_" + str(gate.id)
+	body.collision_layer = 1
+	body.collision_mask = 0
+	var instance := MeshInstance3D.new()
+	instance.mesh = mesh
+	instance.material_override = material
+	body.add_child(instance)
+	var shape := ConcavePolygonShape3D.new()
+	shape.backface_collision = true
+	shape.set_faces(mesh.get_faces())
+	var holder := CollisionShape3D.new()
+	holder.shape = shape
+	body.add_child(holder)
+	add_child(body)
+
+## Opens a gate for good: the plug goes, and it stays gone when the caves are built again.
+func open_gate(id: String) -> void:
+	if not open_gates.has(id): open_gates.append(id)
+	var body := get_node_or_null("Gate_" + id)
+	if body != null: body.queue_free()
 
 ## The ground's height before it's sunk (from the terrain when there is one).
 func _ground(p: Vector2) -> float:

@@ -48,7 +48,19 @@ func _initialize() -> void:
 	var heart: int = tube.heart_point
 	var over_heart := MHSiteTerrain.height(points[heart].x, points[heart].z) - points[heart].y
 	assert(over_heart > 130.0 and over_heart < 175.0, "The heart is about 150 m down (%.0f)." % over_heart)
-	assert(float(tube.half[heart]) > float(tube.half[int(tube.deep_from) + 60]) * 2.0, "The heart's chamber is wide.")
+	assert(float(tube.half[heart]) > 13.0, "The heart's chamber is wide (%.1f)." % float(tube.half[heart]))
+	# The maze: walls that split the passage into lanes, pits in the floor, and the plug that shuts the deep.
+	assert((tube.walls as Array).size() > 20 and (tube.gates as Array).size() == 1, "The tube has its maze walls and the deep's plug.")
+	var built_walls := MHCaves.new()
+	assert((built_walls._walls(tube, tube.walls) as SurfaceTool).commit().get_faces().size() > 3000, "The maze walls build.")
+	built_walls.free()
+	var pit_floor := INF
+	for pile in tube.piles:
+		if float(pile.mound_height) < 0.0:
+			var here := Vector2(pile.mound)
+			var at := MHCaves._locate(tube, here)
+			pit_floor = minf(pit_floor, MHCaves._floor(tube, here, at) - points[int(at.k)].y)
+	assert(pit_floor < -2.5, "There are pits in the floor (%.1f)." % pit_floor)
 	for pitch in tube.pitches:
 		var top: Vector3 = points[int(pitch.top)]
 		var foot: Vector3 = points[int(pitch.foot)]

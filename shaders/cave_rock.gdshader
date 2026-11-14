@@ -18,11 +18,15 @@ uniform float bump = 0.14;    // metres of surface relief
 varying vec3 world_pos;
 varying vec3 world_normal;
 varying float depth;   // how far in (vertex colour red: 0 at the mouth, 1 at the back)
+varying float frost;   // the cold trap (green): frost and ice on the rock
+varying float deep;    // the deep's own rock (blue): dark and dense, veined and stained by old hot water, most at the heart
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	depth = COLOR.r;
+	frost = COLOR.g;
+	deep = COLOR.b;
 }
 
 float hash(vec3 p) {
@@ -58,6 +62,12 @@ void fragment() {
 	float band = sin(world_pos.y * 4.4 + noise3(world_pos * 0.25) * 4.0);
 	float h = lumps - pits * 0.5 - crack * 0.6 + ropes * 0.6 + strata * smoothstep(-0.3, 0.3, band) * 0.5;
 	h *= mix(1.0, 0.35, ice * depth);   // ice smooths it over
+	h *= mix(1.0, 0.5, frost);
+	// The deep: veins of pale mineral stand a little proud of the rock.
+	// Thin, and only in swarms here and there.
+	float swarm = smoothstep(0.5, 0.68, noise3(world_pos * 0.22 + 60.0));
+	float vein = (1.0 - smoothstep(0.0, 0.012, abs(noise3(world_pos * 1.1 + 9.0) - 0.5))) * swarm * smoothstep(0.15, 0.6, deep);
+	h += vein * 0.4;
 	// Bump mapping from the relief's screen-space slope.
 	float hb = h * bump;
 	vec3 dpdx = dFdx(VERTEX);
@@ -69,7 +79,9 @@ void fragment() {
 	NORMAL = normalize(abs(det) * NORMAL - grad);
 
 	float mottle = noise3(world_pos * 1.1) * 0.6 + noise3(world_pos * 4.2) * 0.4;
-	vec3 colour = rock_colour * mix(0.68, 1.18, mottle);
+	// Down in the deep the rock is the old magnetised body: dark, dense, grey-brown.
+	vec3 rock = mix(rock_colour, vec3(0.075, 0.07, 0.075), min(deep * 1.15, 0.95));
+	vec3 colour = rock * mix(0.68, 1.18, mottle);
 	// Hollows, pits and cracks hold shadow.
 	colour *= mix(0.6, 1.08, smoothstep(0.15, 0.75, lumps)) * mix(1.0, 0.7, pits) * mix(1.0, 0.45, crack);
 	// Layers: pale and dark bands.
@@ -80,13 +92,24 @@ void fragment() {
 	colour *= 1.0 - (1.0 - strata) * (1.0 - ice) * wall * 0.12 * smoothstep(0.6, 1.0, sin(world_pos.y * 9.0 + noise3(world_pos * 0.5) * 3.0));
 	// Floors: dust in the low parts, ropes dark in their troughs.
 	colour = mix(colour, colour * 0.8, ropes * 0.5);
-	colour = mix(colour, dust_colour * mix(0.75, 1.05, mottle), up * (0.3 + 0.35 * (1.0 - lumps)));
+	colour = mix(colour, dust_colour * mix(0.75, 1.05, mottle), up * (0.3 + 0.35 * (1.0 - lumps)) * (1.0 - 0.85 * deep));   // no dust blows this far down
+	// Old hot water left its marks in the deep: rust and ochre stains in broad patches, yellow
+	// sulfur in spots, and pale sinter banked in steps where it ran over the floor.
+	float stain = smoothstep(0.58, 0.8, noise3(world_pos * 0.3 + 50.0) * 0.7 + noise3(world_pos * 1.7) * 0.3) * deep;
+	colour = mix(colour, vec3(0.36, 0.17, 0.07) * mix(0.75, 1.15, mottle), stain * 0.5);
+	float sulfur = smoothstep(0.8, 0.88, noise3(world_pos * 2.6 + 80.0)) * swarm * smoothstep(0.55, 1.0, deep);
+	colour = mix(colour, vec3(0.7, 0.62, 0.22), sulfur * 0.6);
+	float sinter = up * smoothstep(0.6, 1.0, deep) * smoothstep(0.35, 0.6, sin(world_pos.y * 7.0 + noise3(world_pos * 0.3) * 5.0) * 0.5 + 0.5 + noise3(world_pos * 0.6) - 0.6);
+	colour = mix(colour, vec3(0.8, 0.76, 0.66) * mix(0.8, 1.0, mottle), sinter * 0.7);
+	colour = mix(colour, vec3(0.82, 0.8, 0.74), clamp(vein, 0.0, 1.0) * 0.8);
 	// Mineral crusts on the walls and roof, in patches, more further in.
-	float crust = (1.0 - ice) * (1.0 - up) * smoothstep(0.8, 0.88, noise3(world_pos * 2.2 + 31.0) * 0.7 + noise3(world_pos * 0.4) * 0.3 + depth * 0.15);
+	float crust = (1.0 - ice) * (1.0 - up) * smoothstep(0.8, 0.88, noise3(world_pos * 2.2 + 31.0) * 0.7 + noise3(world_pos * 0.4) * 0.3 + depth * 0.15 + deep * 0.14);
 	crust *= smoothstep(0.35, 0.7, lumps);   // on the raised bits, broken up
 	colour = mix(colour, crust_colour * mix(0.75, 1.0, mottle), crust * 0.4);
 	// Ice: a glassy coat in patches from a few metres in, all over at the back.
 	float frozen = ice * smoothstep(0.35, 0.75, noise3(world_pos * 0.7) * 0.6 + depth * 0.8 - 0.35);
+	// The cold trap: frost on everything, ice pooled on the floor and run down the walls.
+	frozen = max(frozen, frost * smoothstep(0.25, 0.6, noise3(world_pos * 0.6 + 3.0) * 0.5 + frost * 0.45 + up * 0.25));
 	// Dirty ice: grey-blue, the rock showing through where it is thin.
 	vec3 ice_colour = vec3(0.5, 0.55, 0.6) * mix(0.75, 1.05, mottle) * mix(0.8, 1.0, smoothstep(0.2, 0.7, lumps));
 	colour = mix(colour, ice_colour, frozen * mix(0.65, 0.92, noise3(world_pos * 2.6 + 7.0)));

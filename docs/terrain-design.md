@@ -419,3 +419,55 @@ B2 reshaped the region in three commits (`eaf75d7`, `0a317b6`, `3b32c78`). All o
 ### Tools
 - `python tools/generate_region.py [--quick] [--debug-routes]`: about 2.5 minutes (it was 2). `--debug-routes` writes pictures of where a rover and a walker can go to `.claude_tmp/`.
 - `tools/terrain_views.gd`: screenshots of the new places; the tube's and the deep's views are worked out from `region.json`.
+
+## 12. The cave as a maze, and what opens when (15 Nov)
+
+The user (15 Nov): caves and lava tubes should be a wonder to explore, and risky. Exploring them should feel like going into the unknown, with a little fear. Marsquakes and storms can reveal places later in the game. Built the same day; not playtested.
+
+### The maze (built)
+The lava tube is still one passage, so a place on the map is one place underground. Inside it, the tube **braids**: it widens into chambers, and walls of rock split each chamber into lanes.
+- **Walls** run along the passage. **Gaps** in them let you change lane.
+- **Chokes** of fallen roof close some lanes, so there are dead ends and loops.
+- **Pits** where lava drained away sit in the floor, mostly in the dead ends. They're 3.5 to 5 m deep.
+
+| Chamber | Where | What it is |
+|---|---|---|
+| **The Braids** | upper tube, 360–540 m in | one wall, two lanes; the right lane has a pit and then a dead end. The left lane is the rover's road. |
+| **The Hall** | upper tube, under the big skylight | a wide skylit hall with the fallen roof heaped in the middle |
+| **Three Ways** | upper tube, 1.2–1.4 km in | two walls, three lanes; the middle and right lanes are choked. The left lane is the rover's road. |
+| **The First Labyrinth** | the deep, after pitch 1 | three lanes on foot, two chokes, two pits |
+| **The Second Labyrinth** | the deep, after pitch 2 | two lanes; each is choked once, so you must change lane |
+| **The Last Maze** | the lower level, before the heart | three lanes and four chokes. One way through: right lane, middle, then left. |
+
+### How it looks (built)
+- **The cold trap** (the last 200 m of the upper tube): frost on the rock and ice on the floor.
+- **The deep:** dark, dense grey rock, with rust stains and thin pale mineral veins in swarms. No dust.
+- **The heart's chamber:** the same, plus yellow sulfur spots and pale sinter banked on the floor, where the hot springs ran.
+
+### What opens when (built: the plug; the rest are hooks)
+- **The deep is shut at first.** A plug of fallen rock closes the passage just past the cold trap. The story opens it with a marsquake (`MHCaves.open_gates`, `open_gate("deep_plug")`). Until then nobody can go down, with or without ropes.
+- **`region.json` `reveals`** lists four places for events to open or uncover later: the plug, a slab falling from the north fissure's wall, a storm stripping the sand off the old riverbed, and the dunes uncovering something buried. Only the plug is real geometry so far.
+
+### What the data offers the later systems
+The tube's entry in `region.json` now has `walls`, `gates`, `pits`, `places` (the chamber names, for the Map and Castle), `tint` and `hazards` (the ice floor, a rockfall spot at each pitch, the pits).
+
+### Still to design: getting in, down and through (not built)
+The user wants **physical gates that need the right kit**, hazards and forced darkness, possibly in a later build phase. Nothing below is agreed. It's a starting list for that talk.
+
+| Obstacle (already in the land) | Kit that would get you past it |
+|---|---|
+| A skylight, 23 m down to the roof and more to the floor | a rope and anchors |
+| The three pitches (26 to 30 m, about 70°) | ropes; a fall should hurt, and today it doesn't |
+| The cold trap's ice floor | boot spikes, or you slip |
+| A pit | a ladder to get out with what's at the bottom |
+| A choke | GAR-Y's winch to pull one block and open a crawl |
+| The dark | the lamp, its battery, and light stakes you leave behind |
+| No radio | relay beacons, down to the plug; nothing past it |
+| The maze | the Map draws only what your lamp has shown; light stakes mark your way out |
+
+- **Darkness today:** deep in a cave the sky's light is already cut to 3 % and the sun to nothing, so it's black without the lamp. What's missing is a lamp battery that runs down and anything that happens in the dark.
+- **Hazards wanted:** rockfalls when a quake comes, thin floors, the ice, the cold, getting lost.
+- **Known faults in the build:**
+  - the walls are plain slabs with sharp ends;
+  - the plug is a slab, not a heap of rubble;
+  - a pitch is a slope you can slide down, and nothing brings you back up.
