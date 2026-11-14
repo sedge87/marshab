@@ -102,6 +102,8 @@
     - day 1: all three pallets home by 13:30 from a 06:00 landing; it now lands at 09:00 as a stopgap;
     - day 2: GAR-Y's day done by about 13:30;
     - the Walker 1 seal was printed by about 12:30, but you're told to wait until morning to take it out.
+    - day 4 (the module down, patched and moved into) was done by 09:00.
+  - The user wants the whole intro revamped, including the General Module's part in it. That fits A3, where the walker core replaces the General Module.
   - **Rule for the rewrite:** when the work is done early, let the player carry on (take the seal out now). Don't hold the story for the clock. Size each day's work to fill it, or let days run together.
   - The opening exposition was too long to finish before pallet 1. It's now reordered, but keep calls short and walk-friendly.
   - The gates the player hits go here as they're found.
