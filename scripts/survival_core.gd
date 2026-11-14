@@ -64,6 +64,10 @@ var pack_kwh := 0.0              # and its battery, added to the cabin's
 var water_cap := 7.5             # the lander's water tank (L); a printed bladder adds to it
 var water_l := 7.5
 var dry_hours := 0.0             # hours with nothing to drink
+## With the power out the fans stop, and your own breath pools round you (a
+## real ISS hazard): the CO₂ you feel climbs well before the room's average
+## does. Docs/hab-supply.md: stale air about half a sol after the power goes.
+var still_co2_pct := 0.0
 ## Which room this core runs (3c): "cabin" (the lander) or "module" (the
 ## General Module). The module reads its own numbers (module_*, falling back
 ## to the cabin's), and doesn't drink: the water is the lander's one tank.
@@ -125,7 +129,7 @@ func heater_target() -> float:
 ## What the body feels in here.
 func conditions() -> Dictionary:
 	if vented: return {"temp_c": temp_c, "o2_pct": 0.0, "co2_pct": 0.0, "powered": powered(), "lit": powered() and lights_on, "vented": true}
-	return {"temp_c": temp_c, "o2_pct": o2_pct(), "co2_pct": co2_pct(), "powered": powered(), "lit": powered() and lights_on}
+	return {"temp_c": temp_c, "o2_pct": o2_pct(), "co2_pct": co2_pct() + still_co2_pct, "powered": powered(), "lit": powered() and lights_on}
 
 # ---------- the flows ----------
 
@@ -171,6 +175,8 @@ func step(dt: float, outside: float, sun: float) -> void:
 	if vented:
 		last = {"solar": solar, "draw": draw, "heater": heater, "loss": loss}
 		return
+	if on or people <= 0.0: still_co2_pct = maxf(0.0, still_co2_pct - n("still_air_clear_pct_per_h", 10.0) * dt)
+	else: still_co2_pct = minf(8.0, still_co2_pct + people * n("still_air_co2_pct_per_h", .25) * dt)
 	o2_kg = maxf(0.0, o2_kg - people * MHResources.setting("o2_per_person", .84) / 24.0 * dt)
 	co2_kg += people * MHResources.setting("co2_per_person", 1.0) / 24.0 * dt
 	if on and scrubber_on:
@@ -269,7 +275,7 @@ func runway(start_hour: float, horizon := 24.0) -> Dictionary:
 		hour = wrapf(hour + .25, 0.0, 24.0)
 		t += .25
 		if out.power < 0.0 and not copy.powered(): out.power = t
-		if out.air < 0.0 and copy.co2_pct() >= CO2_LIMITS[0]: out.air = t
+		if out.air < 0.0 and copy.co2_pct() + copy.still_co2_pct >= CO2_LIMITS[0]: out.air = t
 		if out.oxygen < 0.0 and copy.o2_pct() < O2_LIMITS[0]: out.oxygen = t
 		if out.cold < 0.0 and copy.temp_c < COLD_LIMITS[0]: out.cold = t
 	return out
@@ -280,10 +286,10 @@ func runway(start_hour: float, horizon := 24.0) -> Dictionary:
 ## chain}. `ahead` is a runway() result (optional): it adds the times.
 func alerts(ahead: Dictionary = {}) -> Array:
 	var out: Array = []
-	var co2 := co2_pct()
+	var co2 := co2_pct() + still_co2_pct
 	if co2 >= CO2_LIMITS[0]:
 		out.append({"id": prefix + "_co2", "level": "critical" if co2 >= CO2_LIMITS[1] else "warning", "title": room_name + " air going stale",
-			"text": "CO₂ at %.1f%%. The scrubber needs power and switching on." % co2,
+			"text": ("CO₂ at %.1f%% round you: with the fans off, your breath pools. Suit up, or get the power back." if still_co2_pct > .3 else "CO₂ at %.1f%%. The scrubber needs power and switching on.") % co2,
 			"chain": [["wind", "Scrubber " + ("on" if scrubber_on and powered() else "off"), scrubber_on and powered()], ["heart-pulse", "You", false]]})
 	var o2 := o2_pct()
 	if o2 < O2_LIMITS[0]:
@@ -308,7 +314,7 @@ func alerts(ahead: Dictionary = {}) -> Array:
 			"text": "%.1f L left: under a sol." % water_l, "chain": [["droplet", "Tank %.1f L" % water_l, false]]})
 	if not powered():
 		out.append({"id": prefix + "_power", "level": "warning", "title": room_name + " battery flat",
-			"text": "Lights, scrubber and heater are off until the sun charges it.", "chain": [["zap", "Battery 0%", false], ["sun", "Waiting for the sun", true]]})
+			"text": "Lights, fans, scrubber and heater are off until the sun charges it. It'll get cold first, then the air goes stale.", "chain": [["zap", "Battery 0%", false], ["sun", "Waiting for the sun", true]]})
 	elif float(ahead.get("power", -1.0)) >= 0.0 and float(ahead.power) <= 4.0:
 		out.append({"id": prefix + "_power", "level": "advisory", "title": room_name + " battery runs out at %s" % _clock_after(float(ahead.power)),
 			"text": "At this rate. The heater is the biggest load.", "chain": [["zap", "Battery %d%%" % roundi(battery_pct()), false], ["flame", "Heater " + heater_mode, true]]})
@@ -323,7 +329,7 @@ static func _clock_after(hours: float) -> String:
 func export_state() -> Dictionary:
 	return {"battery_kwh": battery_kwh, "tank_cap": tank_cap, "tank_o2_kg": tank_o2_kg, "o2_kg": o2_kg, "co2_kg": co2_kg, "temp_c": temp_c,
 		"heater": heater_mode, "lights": lights_on, "scrubber": scrubber_on, "people": people, "vented": vented, "pack_kw": pack_kw, "pack_kwh": pack_kwh,
-		"water_cap": water_cap, "water_l": water_l, "dry_hours": dry_hours}
+		"water_cap": water_cap, "water_l": water_l, "dry_hours": dry_hours, "still_co2_pct": still_co2_pct}
 
 func load_state(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -344,3 +350,4 @@ func load_state(state: Dictionary) -> void:
 	water_cap = maxf(water_cap, float(state.get("water_cap", water_cap)))
 	water_l = clampf(float(state.get("water_l", water_l)), 0.0, water_cap)
 	dry_hours = float(state.get("dry_hours", 0.0))
+	still_co2_pct = float(state.get("still_co2_pct", 0.0))

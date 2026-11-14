@@ -462,10 +462,19 @@ func _base_page() -> Control:
 	var builder: Node = world.builder
 	var sim: RefCounted = builder.simulation() if builder != null else null
 	var cabin: Node = world.get("cabin_life")
-	if rows.is_empty() and cabin != null and cabin.running():
-		left.add_child(_heading("Lander cabin", "Your first base: its battery, warmth and air, and how long each lasts as things are set."))
-		for entry in [["battery", "Battery", "zap"], ["warmth", "Warmth", "thermometer"], ["air", "Air", "wind"]]:
-			left.add_child(_gauge(str(entry[1]), str(entry[2]), _cabin_rows(cabin)[entry[0]]))
+	var module: Node = world.get("module_life")
+	# Three readings per base (docs/hab-supply.md): power, heat and air. The
+	# base's core (the General Module) first, the lander as the backup.
+	if module != null and module.running() and bool(module.commissioned):
+		left.add_child(_heading("Base", "Power, heat and air, and how long each lasts as things are set. With no power it gets cold first, then the air goes stale."))
+		for entry in READINGS: left.add_child(_gauge(str(entry[1]), str(entry[2]), _cabin_rows(module)[entry[0]]))
+		if cabin != null and cabin.running():
+			left.add_child(_heading("Lander", "Your lifepod: it looks after itself."))
+			for entry in READINGS: left.add_child(_gauge(str(entry[1]), str(entry[2]), _cabin_rows(cabin)[entry[0]]))
+		rows = {}
+	elif rows.is_empty() and cabin != null and cabin.running():
+		left.add_child(_heading("Lander cabin", "Your first base: its power, heat and air, and how long each lasts as things are set."))
+		for entry in READINGS: left.add_child(_gauge(str(entry[1]), str(entry[2]), _cabin_rows(cabin)[entry[0]]))
 		rows = {}
 	elif rows.is_empty():
 		left.add_child(_heading("Base", "No habitat yet: its systems show here once the first module stands." if MHGame.simulation_on() else "Creative mode: no simulation to watch."))
@@ -569,6 +578,8 @@ func _alert_card(alert: Dictionary) -> Control:
 
 ## Changes when the Base page would look different.
 ## The cabin's three gauges: {battery, warmth, air} → {tone, fraction, text}.
+const READINGS := [["battery", "Power", "zap"], ["warmth", "Heat", "thermometer"], ["air", "Air", "wind"]]
+
 func _cabin_rows(cabin: Node) -> Dictionary:
 	var core: RefCounted = cabin.core
 	var ahead: Dictionary = cabin.ahead
@@ -577,7 +588,7 @@ func _cabin_rows(cabin: Node) -> Dictionary:
 		return ok if h < 0.0 else "until %s" % core._clock_after(h)
 	var charging: bool = float(core.last.get("solar", 0.0)) > float(core.last.get("draw", 0.0))
 	var battery_text := "%d%% · %s · heater %s" % [roundi(core.battery_pct()), "charging" if charging else when.call("power", "lasts the day"), core.heater_mode]
-	var co2: float = core.co2_pct()
+	var co2: float = core.co2_pct() + float(core.still_co2_pct)
 	var air_text := "CO₂ %.1f%% · O₂ tank %.1f kg · %s" % [co2, core.tank_o2_kg, "fresh " + when.call("air", "all day") if co2 < 1.0 else "stale"]
 	var warm_text := "%d °C · %s" % [roundi(core.temp_c), "warm " + when.call("cold", "all day") if core.temp_c >= 12.0 else "cold"]
 	var tone := func(bad: bool, worse: bool) -> Color: return MHStyle.DANGER if worse else (MHStyle.WARN if bad else MHStyle.VALID)
@@ -594,6 +605,8 @@ func _base_signature() -> String:
 	var stock := _feedstock_words(sim) if MHChapterOne.on() and sim != null else ""
 	var cabin: Node = world.get("cabin_life") if world != null else null
 	if cabin != null and cabin.running() and rows.is_empty(): stock += str(_cabin_rows(cabin).values().map(func(r): return str(r.text)))
+	var module: Node = world.get("module_life") if world != null else null
+	if module != null and module.running() and bool(module.commissioned): stock += str(_cabin_rows(module).values().map(func(r): return str(r.text)))
 	return "%s|%s|%s|%d" % [str(words), stock, str(alerts.active_alerts().map(func(a): return "%s%s" % [a.id, a.level])) if alerts != null else "", alerts.history.size() if alerts != null else 0]
 
 ## Redraws the open app in place.

@@ -37,6 +37,7 @@ const RESTED_FOR_H := 16.0
 const RESTED_WORK := 1.1
 const RESTED_WALK := 1.05
 const RESTED_O2 := .9
+const STORM_HARM := 4.0          # health an hour, out in the open during a solar storm
 
 var world: Node
 var health := 100.0
@@ -195,11 +196,23 @@ func _process(delta: float) -> void:
 		harm = {"rate": maxf(float(harm.rate), 0.0) + 3.0, "causes": (harm.causes as Array) + ["thirst"]}
 	if starving():
 		harm = {"rate": maxf(float(harm.rate), 0.0) + STARVING_HARM, "causes": (harm.causes as Array) + ["hunger"]}
+	# Radiation only hurts in a solar storm, and only out in the open
+	# (docs/hab-supply.md): the lander, the module, the base and the rover all shelter you.
+	if solar_storm() and air.is_empty():
+		harm = {"rate": maxf(float(harm.rate), 0.0) + STORM_HARM, "causes": (harm.causes as Array) + ["solar storm"]}
 	causes = harm.causes
 	if MHGame.crew_can_be_harmed() and hours > 0.0 and hours < 6.0:
 		health = clampf(health - float(harm.rate) * hours, 0.0, 100.0)
 		if health <= 0.0 and not causes.is_empty(): _collapse()
 	_show(delta, air)
+
+## A solar storm (a solar particle event, scripts/habitat_life.gd) is on.
+func solar_storm() -> bool:
+	var builder: Node = world.get("builder")
+	if builder == null or not builder.has_method("simulation"): return false
+	var sim: RefCounted = builder.simulation()
+	if sim == null or sim.get("life") == null: return false
+	return bool(sim.life.spe_active()) and bool(sim.life.radiation_on)
 
 ## Speed while you walk: cold and low oxygen slow you; hunger a little; rest quickens you.
 func speed_factor() -> float:
