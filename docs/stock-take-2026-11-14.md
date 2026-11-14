@@ -92,3 +92,15 @@ The spine (8 Nov) is the tagline **design, live, work and survive on Mars**, wit
 - **The guided chapters** stay. Chapters 3 and 4 get rewritten for the walker core and the first liner.
 - **The open game feeling empty** is answered by the range ladder (next to design), the outward clue trail and finds that point onward.
 - **Still parked:** camera vs journal, the slate's clutter, the air budget for the walk to Walker 1, and the 12 Nov playtest notes. The air budget becomes part of the range ladder.
+
+### Later on 14 Nov: all eight design talks done
+
+- **The design** is in `docs/range-ladder.md`, `docs/rooms-and-equipment.md`, `docs/hab-supply.md` and `docs/bases-and-vehicles.md`.
+- **The order to build it** is in `docs/build-plan-2026-11-14.md`.
+- **What changed from the outline above:**
+  - you choose which base is the main base;
+  - a base core can be moved once;
+  - thirst stays as a body need;
+  - radiation hurts only in solar storms;
+  - there's an open buggy before the pressurised rover;
+  - stuck carts are freed by GAR-Y, or by you for a reward.

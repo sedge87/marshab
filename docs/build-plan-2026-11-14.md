@@ -1,0 +1,184 @@
+# Build plan after the pillar rethink (14 Nov 2026)
+
+*The order to build the design agreed on 14 Nov. The design is in five docs:*
+- *`docs/pillars.md`*
+- *`docs/range-ladder.md`*
+- *`docs/rooms-and-equipment.md`*
+- *`docs/hab-supply.md`*
+- *`docs/bases-and-vehicles.md`*
+
+*Each phase below is playable on its own and gets its own commits. Numbers in the design docs are starting points, and the builder may tune them. Anything the docs leave open is for the builder to decide sensibly and write down in the phase's doc section, without stopping to ask, unless it changes a pillar.*
+
+## Rules for every phase
+
+- **Keep the settled rules:**
+  - NASA-plausible and diegetic;
+  - no text on models;
+  - MHPalette materials and the house style;
+  - the compass is always on;
+  - Notes are your inner voice;
+  - Castle is the one near voice.
+- **Never commit** `export_presets.cfg`, `project.godot`, `scenes/*.tscn`, `Builds/` or `Game Design Documents/`. Never use bare `git stash`. Push only when asked.
+- **Test lightly:** test only what changed, with no full suite or renders for small fixes.
+- **Make a playtest build at the marked points (▶),** so the user can play before the next big step.
+
+## Track A: the game's systems (in order)
+
+### A0. Housekeeping (small)
+- Fix the stale tests:
+  - `tests/radio_test.gd`, whose cue list is out of date;
+  - `tests/opening_days_test.gd`, which still tests the v1 days.
+- Run the walker and playthrough tests.
+- Point `docs/master-design.md` §4, §5 and §7 at the new docs where they disagree.
+
+### A1. Survival states and the body (`docs/hab-supply.md`)
+- **Three states:**
+  - in a hab, safe while it's supplied;
+  - in a rover, safe while its own supplies last;
+  - on foot, on the suit's own supplies.
+- **Each base shows three readings:** power, air and heat.
+  - When power runs out it fails slowly and loudly: heat goes in about a quarter of a sol, the air goes stale in about half a sol, and you suit up indoors.
+- **The suit goes on and off at the airlock in a couple of seconds.**
+- **Your body:**
+  - thirst, kept as a need: the Galley or the core's tap indoors, the suit's 1-litre drink bag outside;
+  - hunger: food bars outside;
+  - tiredness.
+- **Radiation** hurts only during solar storms. The dosimeter tracks your dose, but the background dose never harms you.
+- Files: `survival_core.gd`, `habitat_sim.gd`, `habitat_life.gd`, `habitat_chains.gd`, `body.gd`, `suit.gd`, `airlock_door.gd`, `wrist_pad.gd`.
+
+### A2. The bare suit, add-ons and found plans
+- **The suit starts bare:**
+  - about a 600 m round trip of air;
+  - a dim lamp;
+  - no heater pack.
+- **Add-on slots** are fitted at the suit rack.
+- **Plan cartridges** are items you find. The Print Shop prints from known plans plus materials.
+- **Plans also arrive as story beats** from the orbit owners.
+- **The Engineering Bench "study" step is cut.**
+- Files: `suit.gd`, `fabricator.gd`, `fabricator_screen.gd`, `data/plans.json`, `salvage_piece.gd`.
+
+▶ **Playtest build:** the new survival feel and the bare suit, inside the current opening.
+
+### A3. Building, part 1: one base, the new room model (`docs/rooms-and-equipment.md`)
+- **The walker core** (airlock, life support, power hub, a poor bunk) replaces the General Module.
+- **Plan by type, place freely:**
+  - the room type is chosen in Plan view and drawn in its colour;
+  - the key piece arrives in a movable spot;
+  - you place the rest freely;
+  - the bonus works while the key piece is inside.
+- **Liner rooms:** instant, with a short "watch it build" moment. The crawler's shell gives the shielding.
+- **Core upgrades open room types,** with no limit.
+- **The eight rooms with their key pieces.** Bonuses only.
+- Files: `build_controller.gd`, `surface_build_controller.gd`, `interior_build_controller.gd`, `floor_plan.gd`, `room_identity.gd`, `habitat_piece.gd`, `equipment_catalog.gd`, `data/equipment_catalog.json`.
+
+### A4. Building, part 2: several bases (`docs/bases-and-vehicles.md`)
+- **The builder holds several bases,** each starting at its core's height.
+- **Rooms can step ±1 storey,** joined by a ramp or ladder. This replaces the single `habitat_base_y`.
+- **One shared store** for all bases.
+- **The Base page gets a switcher.**
+- **Walkers:** mark a spot, the walker walks there, kneels and folds in. A core can refold once, leaving traces behind.
+- **You choose the main base:** the landing pad and beacon go there, and it's locked once the pad is down.
+- **A save format change.**
+- Files: `build_controller.gd`, `build_rules.gd`, `base_site.gd`, `walker.gd`, `saves.gd`, `pda_screen.gd`.
+
+### A5. Room workflows
+- **Station chains:**
+  - Lab: saw, then microscope, then spectrometer;
+  - Greenhouse: washer, then planters, then harvest;
+  - Workshop: smelter, then Print Shop, then repair bench;
+  - Core: melter, then water, then oxygen.
+- **Each job needs the stations it needs;** with fewer, you get a partial read.
+- **Hands-on the first time for each new kind of find, then automatic.**
+- **The orbit owners send station plans after finds.**
+- Files: `lab_screen.gd`, `samples.gd`, `habitat_food.gd`, `fabricator.gd`, the equipment interactables.
+
+### A6. The guided chapters, rewritten (`docs/opening-days.md`)
+- **The bare suit,** with the pallet distances to match.
+- **Chapter 3:** fix Walker 1 and choose home.
+- **Chapter 4:** Walker 1 kneels and folds into the core, you fit the first liner and watch its shell print, and you sleep in.
+- **Update the robot run and tests.**
+- Files: `opening_days.gd`, `data/radio/*`, `tests/guided_*`.
+
+▶ **Playtest build:** the whole opening and the new building.
+
+### A7. Vehicles and the drone
+- **The scout buggy:** today's `crew_rover.gd` reworked, about 2 km of charge, found in a ring 1 wreck.
+- **The pressurised rover:**
+  - about 3 m/s;
+  - you can sleep, eat and refill inside;
+  - add-ons;
+  - it can bog down, and its wheels wear;
+  - found in a big wreck at the edge of ring 2.
+- **The scout drone:**
+  - you fly it through the slate camera;
+  - it sharpens the Map;
+  - it drops route markers;
+  - wind can crash it.
+- **The Garage** gets its rover dock and drone dock.
+
+### A8. Automation
+- **Extractor and miner** on cored deposits, each with its own solar panel and hopper.
+- **Deposits run low slowly;** richer ones sit further out.
+- **Hauler carts:** one per machine; they follow your trail to the nearest base.
+- **Storms pause the carts.**
+- **Stuck carts:** GAR-Y frees them, or you go yourself, sometimes for a reward.
+
+### A9. GAR-Y's upgrades and the blackout rule
+- **GAR-Y's add-ons:** deeper radar (and the magnetic layer), a winch, a longer battery, a second arm.
+- **The blackout:**
+  - GAR-Y drags you to the nearest base or rover, with your finds dropped and marked and your suit damaged;
+  - where he can't reach you, the game rewinds to the automatic save made when you last left a base or rover.
+- **Mode differences** go in the modes table.
+
+### A10. Events and the radio
+- **Solar storms:** the aurora warns you, and you get under shielding.
+- **Dust storms**, including the storm's return later.
+- **Marsquakes and rockfalls.**
+- **Fresh impacts** with ice.
+- **Radio shadow** and relay beacons.
+- **Dust devils.**
+
+## Track B: the land (can run beside Track A)
+
+### B1. Terrain design doc
+A new doc, taking over from `docs/terrain-overhaul.md` where they disagree. It covers:
+- the 6 × 6 km region, deeper rather than wider;
+- the four rings;
+- the vertical layers (the canyon floor, caves, the lava tube, the deep);
+- every obstacle from `docs/range-ladder.md`, with a HiRISE reference for each;
+- the route choices in each ring.
+
+**Explain this one to the user before building it.**
+
+### B2. Reshape the region
+- `tools/generate_region.py`, the caves, the lava tube and its skylights, plus a first pass on the deep.
+
+### B3. Traversal phases 2 to 5 (`docs/traversal.md`)
+- **Ground costs,** including the new kinds: ripple belts, boulder fields, platy lava, frost and hollow ground.
+- **Stake trails,** with the drone's markers.
+- **Crew asks,** folded into the goal trails.
+- **Ropes,** including down skylights and across fissures; the waiver; GAR-Y's winch.
+
+## Track C: content and story (after A4 and B2)
+
+### C1. Laying out the range ladder
+- The wrecks and their plan cartridges, ring by ring.
+- Walkers 2, 3 and 4, each lost in its own way.
+- The buggy, the rover and the drone.
+- Deposits, with richer ones further out.
+
+### C2. The goal trails and the heart's clues, laid outward
+- The nav pockets.
+- The magnetometer and the magnetic Map layer.
+
+### C3. The deep and the ending
+- The last magnetometer.
+- The climb out ("you make it, barely") and the storm's return.
+- The crew land at the main base.
+
+## Not in this plan (parked)
+- Body and kit hazards: toxic dust indoors, dust wearing seals, the cold sapping batteries, long shadows.
+- Random faults at home.
+- The agency's name (Meridian leads).
+- Whether a company is involved in the mission.
+- From the stock-take: camera vs journal, the slate's clutter, the 12 Nov playtest notes.
