@@ -455,7 +455,8 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 		if drop != null and drop.pallet != null and bool(drop.pallet.opened): radio.ring("d1_pallet1")
 		if field != null and field.sites.has("power") and bool(field.sites.power.pallet.opened): radio.ring("d1_pallet2")
 		if field != null and field.sites.has("tools") and bool(field.sites.tools.pallet.opened): radio.ring("d1_pallet4")
-		if pod != null and (pod.jobs as Dictionary).has("tow"): radio.ring("d1_cargo")
+		# "A proper day's work" only once pallet 4's been opened too (playtest 14 Nov).
+		if pod != null and (pod.jobs as Dictionary).has("tow") and day_done(1): radio.ring("d1_cargo")
 	elif day == 2 and hour >= sunrise - 1.0 and not bool(world.get("gary_met")):
 		radio.ring("d2_wake")
 	elif day == 3 and hour >= sunrise - 1.0:

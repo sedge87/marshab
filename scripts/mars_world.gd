@@ -192,9 +192,10 @@ func _ready() -> void:
 	day_night = DAY_NIGHT_SCRIPT.new()
 	add_child(day_night)
 	day_night.setup(environment, builder)
-	# A new game lands an hour after sunrise, so the first sunset comes about
-	# 20 real minutes in, just after the first pallet (docs/systems-and-items.md §14 step 1).
-	if _start_in_lander: day_night.set_hour(float(MHGame.site().get("day_cycle", {}).get("sunrise_hour", 5.0)) + 1.0)
+	# A new game lands mid-morning, three hours after sunrise (playtest 14 Nov:
+	# landing at 06:00, the three pallets were home by early afternoon and the
+	# sunset talk was hours away), so day 1's walks end near dusk.
+	if _start_in_lander: day_night.set_hour(float(MHGame.site().get("day_cycle", {}).get("sunrise_hour", 5.0)) + 3.0)
 	_restore_pending_habitat()
 	_land_precursor_cargo()
 	_sync_crew_rover()

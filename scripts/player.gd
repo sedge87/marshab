@@ -255,10 +255,15 @@ func set_debug_fly(enabled: bool) -> void:
 	velocity = Vector3.ZERO
 
 # Suit footsteps: regolith crunch outside, deck plate inside the habitat.
+var _land_quiet := 0.0   # seconds before the next landing thud
 func _footsteps(speed: float, delta: float) -> void:
 	var grounded := is_on_floor()
-	if grounded and not _was_grounded and _fall_speed > 3.5:
-		MHAudio.sfx("land", -2.0 if _on_deck() else 0.0)
+	_land_quiet = maxf(0.0, _land_quiet - delta)
+	# Loping, every bound lands: only a real drop thuds, and never twice in a
+	# breath (playtest 14 Nov: uphill, the short bounds thudded nonstop).
+	if grounded and not _was_grounded and _fall_speed > (6.0 if loping else 3.5):
+		if _land_quiet <= 0.0: MHAudio.sfx("land", -2.0 if _on_deck() else 0.0)
+		_land_quiet = .8
 		_stride = 0.0
 		if _fall_speed > HARD_LANDING: stumble()   # slow falls on Mars: it trips you, no more
 	_fall_speed = maxf(0.0, -velocity.y) if not grounded else 0.0
