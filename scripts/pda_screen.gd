@@ -3,7 +3,7 @@ extends Control
 ## The slate's screen (scripts/pda.gd, docs/pda.md §3): drawn into its
 ## SubViewport at 1280 x 800. A status bar along the top (time, day or night,
 ## the resupply countdown, the link), a rail of apps down the left with an
-## unread dot on each, and the open app filling the rest. 1–6 switch apps.
+## unread dot on each, and the open app filling the rest. 1–9 switch apps.
 ##
 ## Apps arrive one at a time (docs/pda.md §9); the rail shows those built.
 
