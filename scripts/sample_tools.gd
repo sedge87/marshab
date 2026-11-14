@@ -107,12 +107,16 @@ func _scoop_target() -> Vector3:
 	if not world.builder.zones.is_empty() and world.builder.call("_zone_at_point", Vector2(at.x, at.z)).size() > 0: return Vector3.INF
 	return at
 
-## What E would do now: "chip", "cut" (cave ice), "chipped", "scoop" or "".
+## What E would do now: "chip", "cut" (cave ice), "chipped", "ore" (A5:
+## break off iron-rich rock the Lab has named), "scoop" or "".
 func prompt() -> String:
 	if not _outside_free(): return ""
 	var rock := _rock_target()
 	if not rock.is_empty():
-		if MHSamples.chipped.has(str(rock.key)): return "chipped"
+		if MHSamples.chipped.has(str(rock.key)):
+			var kind := MHSamples.rock_at(rock.point)
+			if MHMaterials.iron_rich(kind) and MHMaterials.known_rock(kind): return "ore"
+			return "chipped"
 		return "cut" if _ice_wall(rock) else "chip"
 	return "scoop" if _scoop_target() != Vector3.INF else ""
 
@@ -121,6 +125,10 @@ func prompt_text() -> String:
 		"chip": return "Hold to chip a rock sample"
 		"cut": return "Hold to cut an ice sample"
 		"chipped": return "Already sampled"
+		"ore":
+			var rock := _rock_target()
+			var why := MHMaterials.pull_reason(MHSamples.rock_at(rock.point), str(rock.key))
+			return "Hold to break off iron-rich rock (%s)" % MHStyle.kg(roundi(MHMaterials.PULL_KG)) if why.is_empty() else why
 		"scoop": return "Hold to scoop regolith"
 	return ""
 
@@ -134,9 +142,9 @@ func _process(delta: float) -> void:
 	_pips.queue_redraw()
 	var mode := prompt()
 	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not get_tree().paused
-	var holding := captured and Input.is_physical_key_pressed(KEY_E) and mode in ["chip", "cut", "scoop"]
+	var holding := captured and Input.is_physical_key_pressed(KEY_E) and mode in ["chip", "cut", "scoop", "ore"]
 	_held = _held + delta if holding else 0.0
-	var need: float = {"chip": CHIP_SECONDS, "cut": CUT_SECONDS}.get(mode, SCOOP_SECONDS)
+	var need: float = {"chip": CHIP_SECONDS, "cut": CUT_SECONDS, "ore": MHMaterials.PULL_SECONDS}.get(mode, SCOOP_SECONDS)
 	_ring.visible = _held > .15
 	_ring.set_meta("fraction", clampf(_held / need, 0.0, 1.0))
 	_ring.queue_redraw()
@@ -144,6 +152,9 @@ func _process(delta: float) -> void:
 		_held = 0.0
 		_ring.visible = false
 		_take(mode)
+	# A5: back inside a base, the suit's rock goes into the store.
+	if not MHMaterials.carried.is_empty() and world.player != null and world.builder.is_inside(world.player.global_position):
+		world.call("show_chapter_messages", MHMaterials.unload())
 	# The suit logs its readings at a cave's reading spot.
 	_reading_check -= delta
 	if _reading_check <= 0.0 and MHSamples.on() and world.player != null:
@@ -168,7 +179,11 @@ func _now() -> float:
 
 func _take(mode: String) -> void:
 	var message := {}
-	if mode == "chip" or mode == "cut":
+	if mode == "ore":
+		var target := _rock_target()
+		if target.is_empty(): return
+		message = MHMaterials.pull(MHSamples.rock_at(target.point), str(target.key))
+	elif mode == "chip" or mode == "cut":
 		var rock := _rock_target()
 		if rock.is_empty(): return
 		var point: Vector3 = rock.point
@@ -219,13 +234,31 @@ func claim_label(target: Node) -> String:
 	if not MHSamples.on() or target == null: return ""
 	var id: String = _equipment(target)[0]
 	if id in ["science_workbench", "sample_storage_cabinet"] and not MHSamples.case_items.is_empty(): return "Unload the sample case (%d)" % MHSamples.case_items.size()
+	# A5: a sample being done by hand, station by station, then the workbench.
+	if not MHSamples.hand.is_empty():
+		if id == "science_workbench": return "Put the analysis together"
+		if id in MHSamples.CHAIN: return MHSamples.step_action(id)
 	if id == "science_workbench": return "Open the lab"
+	# A5: the Workshop's smelter and the Greenhouse's washer, by hand the first time.
+	if id == "smelter": return MHMaterials.smelter_action()
+	if id == "regolith_washer": return MHGreenhouse.washer_action(world.builder)
 	return ""
 
 func claim(target: Node, method_name: String) -> bool:
 	if method_name != "interact" or claim_label(target).is_empty(): return false
 	var found := _equipment(target)
 	MHAudio.sfx("ui_click")
+	var id := str(found[0])
+	if MHSamples.case_items.is_empty() and not MHSamples.hand.is_empty() and (id == "science_workbench" or id in MHSamples.CHAIN):
+		if id == "science_workbench": world.call("show_chapter_messages", MHSamples.finish_hand(_now()))
+		else: world.call("show_chapter_messages", MHSamples.do_step(id, MHSamples.bench_stations(world.builder, str(MHSamples.hand.get("bench", "")))))
+		return true
+	if id == "smelter":
+		world.call("show_chapter_messages", [MHMaterials.smelt_by_hand()].filter(func(m): return not m.is_empty()))
+		return true
+	if id == "regolith_washer":
+		world.call("show_chapter_messages", MHGreenhouse.washer_use(world.builder))
+		return true
 	if not MHSamples.case_items.is_empty():
 		var count := MHSamples.unload()
 		world.call("show_chapter_messages", [{"id": "unloaded", "title": "Sample case unloaded", "text": "%d sample%s in the lab's store. Analyse them at a Science Workbench." % [count, "" if count == 1 else "s"], "tone": "valid"}])

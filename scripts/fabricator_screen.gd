@@ -67,7 +67,7 @@ static func duration(hours: float) -> String:
 
 func _signature() -> String:
 	var work := _work()
-	return "%s|%s|%d|%d|%d" % [str((work.current as Dictionary).get("id", "")), str(work.queue), roundi(MHChapterOne.feedstock_kg), 0, MHChapterOne.made.size()]
+	return "%s|%s|%d|%d|%d" % [str((work.current as Dictionary).get("id", "")), str(work.queue), roundi(MHChapterOne.feedstock_kg), roundi(MHMaterials.metal_kg * 1000.0 + MHMaterials.salvage_kg), MHChapterOne.made.size()]
 
 func _builder() -> BuildController:
 	return world.builder
@@ -183,7 +183,7 @@ func _close() -> void:
 	queue_free()
 
 func _update_status() -> void:
-	_stock.text = "FEEDSTOCK %s" % MHStyle.kg(roundi(MHChapterOne.feedstock_kg))
+	_stock.text = MHMaterials.store_line().to_upper()
 	var work := _work()
 	var job: Dictionary = work.current
 	var waiting := (work.queue as Array).size()
@@ -322,7 +322,7 @@ func _card(id: String, needed: bool) -> Control:
 	name_label.max_lines_visible = 2
 	col.add_child(name_label)
 	var cost := MHChapterOne.plan_cost(id)
-	col.add_child(MHStyle.mono("%s · %s" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), duration(float(cost.hours))], 12, MHStyle.TEXT_SECONDARY))
+	col.add_child(MHStyle.mono("%s · %s" % [MHMaterials.cost_line(cost), duration(float(cost.hours))], 12, MHStyle.TEXT_SECONDARY))
 	var state := _state(id)
 	var state_label := MHStyle.mono(str(state[0]), 12, state[1])
 	state_label.clip_text = true
@@ -370,7 +370,12 @@ func _render_detail() -> void:
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail.add_child(about)
 	var rows := MHStyle.vbox(6)
-	for row in [["layers", "Feedstock", MHStyle.kg(roundi(float(cost.feedstock_kg))), MHChapterOne.feedstock_kg >= float(cost.feedstock_kg)], ["clock", "Time", duration(float(cost.hours)) + " (game time)", true], ["zap", "Power", "1.2 kW while it prints", true]]:
+	var list: Array = [["layers", "Feedstock", MHStyle.kg(roundi(float(cost.feedstock_kg))), MHChapterOne.feedstock_kg >= float(cost.feedstock_kg)]]
+	# A5: metal (the Workshop's smelter) and salvage (debris, pallets, wrecks).
+	if float(cost.get("metal_kg", 0.0)) > 0.0: list.append(["hammer", "Metal", "%s (you have %s)" % [MHStyle.kg(roundi(float(cost.metal_kg))), MHStyle.kg(floori(MHMaterials.metal_kg))], MHMaterials.metal_kg >= float(cost.metal_kg)])
+	if float(cost.get("salvage_kg", 0.0)) > 0.0: list.append(["package", "Salvage", "%s (you have %s)" % [MHStyle.kg(roundi(float(cost.salvage_kg))), MHStyle.kg(floori(MHMaterials.salvage_kg))], MHMaterials.salvage_kg >= float(cost.salvage_kg)])
+	list.append_array([["clock", "Time", duration(float(cost.hours)) + " (game time)", true], ["zap", "Power", "1.2 kW while it prints", true]])
+	for row in list:
 		var line := MHStyle.hbox(10)
 		line.add_child(MHStyle.icon(str(row[0]), 16, MHStyle.TEXT_SECONDARY if bool(row[3]) else MHStyle.WARN))
 		var what := MHStyle.mono(str(row[1]), 13, MHStyle.TEXT_MUTED)

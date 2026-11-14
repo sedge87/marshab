@@ -5224,6 +5224,147 @@
         "Water"
       ],
       "stand_in_model": true
+    },
+    {
+      "id": "rock_saw",
+      "label": "Rock Saw",
+      "group": "science",
+      "icon": "hammer",
+      "height": 1.2,
+      "role": "Lab chain, step 1: cuts a sample to show a fresh face",
+      "primary_action": "Cut a sample",
+      "cargo_cost": 70,
+      "valid_zones": [
+        "science"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {
+        "power_draw": 1
+      },
+      "size_m": [
+        1.04,
+        1.2,
+        0.76
+      ],
+      "description": "A guarded diamond saw that cuts a sample open.",
+      "system_note": "A diamond saw cuts a rock open so its fresh inside shows, free of the dust and weathering on the outside. Rover teams on Earth cut every sample before looking closer.",
+      "system_links": [
+        "Research",
+        "Rover samples"
+      ],
+      "status": "catalogue",
+      "placement": "floor",
+      "pack": "outpost_stations_a5",
+      "asset_scene": "res://assets/equipment/outpost_stations_a5/rock_saw.tscn"
+    },
+    {
+      "id": "spectrometer",
+      "label": "Spectrometer",
+      "group": "science",
+      "icon": "flask-conical",
+      "height": 1.6,
+      "role": "Lab chain, step 3: reads what a sample is made of",
+      "primary_action": "Read the spectrum",
+      "cargo_cost": 90,
+      "valid_zones": [
+        "science"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {
+        "power_draw": 2
+      },
+      "size_m": [
+        0.86,
+        1.6,
+        0.66
+      ],
+      "description": "Reads the minerals and salts in a sample from the light it gives back.",
+      "system_note": "Every mineral reflects and absorbs light in its own pattern. A spectrometer reads that pattern to name salts, clays and sulfur that look alike to the eye, as the rovers' instruments do on Mars.",
+      "system_links": [
+        "Research",
+        "Rover samples",
+        "Power"
+      ],
+      "status": "catalogue",
+      "placement": "floor",
+      "pack": "outpost_stations_a5",
+      "asset_scene": "res://assets/equipment/outpost_stations_a5/spectrometer.tscn"
+    },
+    {
+      "id": "regolith_washer",
+      "label": "Regolith Washer",
+      "group": "hydroponics",
+      "icon": "droplets",
+      "height": 1.6,
+      "role": "Greenhouse chain, step 1: washes the perchlorate out of soil for the planters",
+      "primary_action": "Wash a batch",
+      "cargo_cost": 120,
+      "valid_zones": [
+        "hydroponics"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "effects": {
+        "power_draw": 1
+      },
+      "size_m": [
+        1.0,
+        1.6,
+        0.8
+      ],
+      "description": "A drum washer that rinses toxic salts out of Mars soil.",
+      "system_note": "Mars soil holds perchlorate salts that are toxic to plants and people. Rinsing it with water washes them out, so the soil can grow food. Most of the water is cleaned and used again.",
+      "system_links": [
+        "Food",
+        "Water"
+      ],
+      "status": "catalogue",
+      "placement": "floor",
+      "pack": "outpost_stations_a5",
+      "asset_scene": "res://assets/equipment/outpost_stations_a5/regolith_washer.tscn"
+    },
+    {
+      "id": "smelter",
+      "label": "Smelter",
+      "group": "storage",
+      "icon": "flame",
+      "height": 2.1,
+      "role": "Workshop chain, step 1: turns iron-rich rock (or regolith, slowly) into metal",
+      "primary_action": "Smelt",
+      "cargo_cost": 400,
+      "valid_zones": [
+        "engineering"
+      ],
+      "footprint": [
+        2,
+        1
+      ],
+      "effects": {
+        "power_draw": 3
+      },
+      "size_m": [
+        1.8,
+        2.1,
+        0.96
+      ],
+      "description": "An electric furnace that melts iron out of rock.",
+      "system_note": "Iron-rich rock like hematite is heated with a reducing gas until the iron comes out as metal, a process studied for Mars and the Moon. Plain soil holds iron too, but far less, so it's slow going.",
+      "system_links": [
+        "Materials",
+        "Power"
+      ],
+      "status": "catalogue",
+      "placement": "floor",
+      "pack": "outpost_stations_a5",
+      "asset_scene": "res://assets/equipment/outpost_stations_a5/smelter.tscn"
     }
   ]
 }

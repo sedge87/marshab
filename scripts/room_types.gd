@@ -105,6 +105,12 @@ static func plan_known(id: String) -> bool:
 static func cost(id: String) -> float:
 	return float(MHChapterOne.plan(str(UPGRADES[id].plan)).get("feedstock_kg", 100.0))
 
+## Everything fitting it takes: {feedstock_kg, metal_kg, salvage_kg} (A5).
+static func full_cost(id: String) -> Dictionary:
+	var out := MHMaterials.plan_mix(str(UPGRADES[id].plan))
+	out["feedstock_kg"] = cost(id)
+	return out
+
 ## Whether this room type is open at the base ("" if it is, or why not).
 static func locked_reason(kind: String, base := "") -> String:
 	if not gated(): return ""
@@ -117,14 +123,14 @@ static func locked_reason(kind: String, base := "") -> String:
 static func fit_reason(id: String, base := "") -> String:
 	if is_fitted(id, base): return "Fitted"
 	if not plan_known(id): return "No plan yet"
-	if MHChapterOne.feedstock_kg < cost(id) - .001: return "Needs %s feedstock (you have %s)" % [MHStyle.kg(roundi(cost(id))), MHStyle.kg(floori(MHChapterOne.feedstock_kg))]
-	return ""
+	return MHMaterials.short_of(full_cost(id))
 
 ## Fit an upgrade at the core: pays its feedstock. True when it went on.
 static func fit(id: String, base := "") -> bool:
 	if not fit_reason(id, base).is_empty(): return false
 	base = _base(base)
 	MHChapterOne.feedstock_kg = maxf(0.0, MHChapterOne.feedstock_kg - cost(id))
+	MHMaterials.pay(full_cost(id))
 	if not fitted.has(base): fitted[base] = {}
 	fitted[base][id] = true
 	return true

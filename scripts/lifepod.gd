@@ -395,6 +395,7 @@ static func _study_line(source: String) -> String:
 ## Debris stripped (scripts/salvage_piece.gd).
 func stripped(piece: Node) -> void:
 	parts += int(n("salvage_per_piece", 2.0))
+	MHMaterials.add_salvage(MHMaterials.SALVAGE_PER_DEBRIS)   # A5: and salvage for the Print Shop
 	stripped_keys[str(piece.get_meta("key", ""))] = true
 	MHNotices.post("info", "Parts", "%d parts for the lander's printer." % parts, "log")
 	var notes: Node = world.get("notes")

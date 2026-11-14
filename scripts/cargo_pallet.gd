@@ -85,7 +85,12 @@ func _process(delta: float) -> void:
 	while _freed < now:
 		_freed += 1
 		MHAudio.sfx_at("suit_clamp", self, -4.0, .9)
-	if _held >= HOLD: open()
+	if _held >= HOLD:
+		# A5: the pallet's own frame and packing are salvage (opened by hand, once).
+		if not opened and MHMaterials.on():
+			MHMaterials.add_salvage(MHMaterials.SALVAGE_PER_PALLET)
+			MHNotices.post("info", "Salvage", "%s of Earth-made parts from the pallet's frame and packing." % MHStyle.kg(roundi(MHMaterials.SALVAGE_PER_PALLET)), "log")
+		open()
 
 ## All four latches free: the lid swings up and back.
 func open(animate := true) -> void:

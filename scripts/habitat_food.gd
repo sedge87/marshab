@@ -60,8 +60,22 @@ func _growers(inv: Dictionary) -> Array:
 	return (inv.items as Array).filter(func(i): return GROWERS.has(str(i.id)) and not str(i.get("pid", "")).is_empty())
 
 func tray(pid: String) -> Dictionary:
-	if not trays.has(pid): trays[pid] = {"crop": "greens", "next": "greens", "growth": 0.0, "ripe_h": 0.0}
+	if not trays.has(pid):
+		trays[pid] = {"crop": "greens", "next": "greens", "growth": 0.0, "ripe_h": 0.0}
+		if MHGreenhouse.on(): trays[pid]["new"] = true   # a planter waits for its soil
 	return trays[pid]
+
+## A5: a planter under chapter rules grows once it has its washed soil
+## (MHGreenhouse); trays saved before that have theirs.
+func _soiled(item: Dictionary) -> bool:
+	if not MHGreenhouse.needs_soil(str(item.id)): return true
+	var t := tray(str(item.pid))
+	if bool(t.get("soil", not t.has("new"))): return true
+	if MHGreenhouse.fill_planter():
+		t.soil = true
+		t.erase("new")
+		return true
+	return false
 
 func _has(inv: Dictionary, id: String, powered: Dictionary = {}) -> bool:
 	return (inv.items as Array).any(func(i): return str(i.id) == id and bool(i.on) and (powered.is_empty() or bool(powered.get(int(i.tier), true)) or float(i.power) <= 0.0))
@@ -92,6 +106,7 @@ func step(dt: float, inv: Dictionary, powered: Dictionary, crew: int) -> Diction
 		var compost := minf(float(sim.stores.compost_kg), MIXER_KG * 2.0 * per_sol)
 		sim.stores.compost_kg = float(sim.stores.compost_kg) - compost
 		sim.stores.nutrients_kg = float(sim.stores.nutrients_kg) + compost * .5
+	MHGreenhouse.step(dt, sim, inv, powered)
 	var pace: float = speed(inv, powered) * sim.life.food_speed()
 	var carts := {}
 	for item in inv.items:
@@ -101,7 +116,7 @@ func step(dt: float, inv: Dictionary, powered: Dictionary, crew: int) -> Diction
 		var t := tray(str(item.pid))
 		var crop: Dictionary = CROPS[str(t.crop)]
 		if float(t.growth) >= 1.0:
-			if carts.has(int(item.room)):
+			if carts.has(int(item.room)) and MHGreenhouse.cart_picks(str(t.crop)):
 				picked += _pick(str(item.pid), float(GROWERS[str(item.id)]))
 				continue
 			t.ripe_h = float(t.ripe_h) + dt
@@ -111,6 +126,7 @@ func step(dt: float, inv: Dictionary, powered: Dictionary, crew: int) -> Diction
 				_replant(t, inv)
 			continue
 		if not (bool(item.on) and bool(powered.get(int(item.tier), true))): continue
+		if not _soiled(item): continue
 		var grown := minf(1.0 - float(t.growth), per_sol / float(crop.sols) * pace)
 		t.growth = float(t.growth) + grown
 		sim.stores.nutrients_kg = maxf(0.0, float(sim.stores.nutrients_kg) - grown * float(crop.kg) * float(GROWERS[str(item.id)]) * NUTRIENT_PER_KG)
@@ -177,7 +193,10 @@ func harvest(pid: String) -> Dictionary:
 	var t := tray(pid)
 	if float(t.growth) < 1.0: return {}
 	var crop := str(t.crop)
+	var first := MHGreenhouse.on() and not MHGreenhouse.picked_by_hand.has(crop)
+	MHGreenhouse.picked_by_hand[crop] = true
 	var kg := _pick(pid, float(GROWERS[str(item.id)]))
+	if first: return {"title": "First %s harvested: %.1f kg" % [CROPS[crop].label, kg], "text": "Picked by hand. From now on a harvest cart in the room picks them as they ripen, to the Galley's stores."}
 	return {"title": "Harvested %.1f kg of %s" % [kg, CROPS[crop].label], "text": "Fresh food keeps %d sols (%d in a freezer). %s planted next." % [roundi(SHELF_SOLS), roundi(FREEZER_SOLS), str(CROPS[str(t.crop)].label).capitalize()]}
 
 ## G on a tray: the crop it grows next.
@@ -193,6 +212,8 @@ func status(pid: String) -> String:
 	var crop: Dictionary = CROPS[str(t.crop)]
 	if float(t.growth) >= 1.0:
 		return "Harvest %s (ripe, %d sols before it goes over)" % [crop.label, maxi(0, ceili(RIPE_SOLS - float(t.ripe_h) / 24.0))]
+	if t.has("new") and not bool(t.get("soil", false)) and (_growers(sim.inventory()) as Array).any(func(i): return str(i.pid) == pid and MHGreenhouse.needs_soil(str(i.id))):
+		return "Waiting for washed soil (a regolith washer in the Greenhouse)"
 	return "%s · %d%% grown" % [str(crop.label).capitalize(), floori(float(t.growth) * 100.0)]
 
 func next_label(pid: String) -> String:

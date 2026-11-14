@@ -98,9 +98,14 @@ func _close() -> void:
 	queue_free()
 
 func _update_status() -> void:
+	if not MHSamples.hand.is_empty():
+		_job.text = "BY HAND · %s · %s" % [MHSamples.sample_label(MHSamples.hand_record()).to_upper(), _hand_line()]
+		return
 	var job: Dictionary = MHSamples.jobs.get(bench, {})
 	if job.is_empty():
-		_job.text = "This bench is free. Pick a sample and analyse it; it runs on the habitat's power.%s" % ("  A microscope in the room speeds up rock and soil." if _microscope() else "")
+		var have: Array = MHSamples.bench_stations(world.builder, bench)
+		var chain: Array = MHSamples.CHAIN.map(func(s): return ("%s ✓" if have.has(s) else "%s ·") % MHSamples.station_label(str(s)))
+		_job.text = "This bench is free. Pick a sample and analyse it; it runs on the habitat's power.  In this room: %s" % "  ".join(chain)
 		return
 	var record := MHSamples.sample(int(job.sample))
 	var done := 1.0 - float(job.hours_left) / maxf(.01, float(job.hours))
@@ -124,7 +129,8 @@ func _render() -> void:
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		row.clip_text = true
 		row.custom_minimum_size = Vector2(0, 40)
-		row.text = "  %s%s     %s" % [MHSamples.sample_label(record).capitalize(), " (GAR-Y)" if str(record.get("by", "")) == "gar_y" else "", MHSamples.where_line(record)]
+		var tag := " · partial read" if MHSamples.is_partial(record) else (" · new kind" if MHSamples.needs_hands(record) else "")
+		row.text = "  %s%s%s     %s" % [MHSamples.sample_label(record).capitalize(), " (GAR-Y)" if str(record.get("by", "")) == "gar_y" else "", tag, MHSamples.where_line(record)]
 		var picked: bool = id == _selected
 		row.add_theme_stylebox_override("normal", MHStyle.box(MHStyle.tint(MHStyle.accent, .18) if picked else MHStyle.SURFACE_CONTROL, MHStyle.accent if picked else MHStyle.BORDER_SUBTLE, 6, 1, Vector4(10, 6, 10, 6)))
 		row.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, 6, 1, Vector4(10, 6, 10, 6)))
@@ -150,6 +156,24 @@ func _render_detail() -> void:
 	_detail.add_child(MHStyle.title(MHSamples.sample_label(record).capitalize(), 26))
 	_detail.add_child(MHStyle.mono(MHSamples.where_line(record), 14, MHStyle.TEXT_SECONDARY))
 	if record.has("name"): _detail.add_child(MHStyle.body("GAR-Y calls it %s." % str(record.name), 15, MHStyle.TEXT_SECONDARY))
+	if MHSamples.is_partial(record):
+		var need: Array = (record.partial as Array).map(func(s): return MHSamples.station_label(str(s)).to_lower())
+		var note := MHStyle.body("A partial read: something's there that needs a %s. With one in this room it can go again." % " and a ".join(need), 15, MHStyle.TEXT_SECONDARY)
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_detail.add_child(note)
+	# A5: a new kind of find goes round the stations by hand the first time.
+	if MHSamples.needs_hands(record):
+		var why := MHStyle.body("A new kind of sample. Take it round the stations yourself this time: %s, then back here. After that the bench does it." % ", then ".join((MHSamples.KIND_STEPS.get(str(record.kind), []) as Array).map(func(s): return MHSamples.station_label(str(s)).to_lower())), 15, MHStyle.TEXT_SECONDARY)
+		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_detail.add_child(why)
+		var by_hand := MHStyle.button("Do this one by hand", "primary", "play", 48)
+		by_hand.disabled = not MHSamples.hand.is_empty()
+		by_hand.pressed.connect(func() -> void:
+			if MHSamples.start_hand(bench, _selected).is_empty():
+				MHAudio.sfx("ui_click")
+				_close())
+		_detail.add_child(by_hand)
+		return
 	var hours := MHSamples.analysis_hours(str(record.kind), _microscope())
 	_detail.add_child(MHStyle.mono("Analysis: %s game hours · part of the sample is used up" % ("%.1f" % hours if hours < 10.0 else str(roundi(hours))), 14, MHStyle.TEXT_MUTED))
 	var busy := MHSamples.jobs.has(bench)
@@ -165,9 +189,24 @@ func _render_detail() -> void:
 		cancel.pressed.connect(func() -> void: MHSamples.cancel_job(bench); _render())
 		_detail.add_child(cancel)
 
+## The stations done so far for the sample in hand.
+func _hand_line() -> String:
+	var have: Array = MHSamples.bench_stations(world.builder, str(MHSamples.hand.get("bench", bench)))
+	var bits: Array = []
+	for s in MHSamples.hand_steps():
+		var label := MHSamples.station_label(str(s))
+		if (MHSamples.hand.done as Array).has(s): bits.append(label + " ✓")
+		elif have.has(s): bits.append(label)
+		else: bits.append(label + " (not in the Lab)")
+	return " · ".join(bits) + " · then the workbench"
+
 ## The leads being followed: how many more samples, from where.
 func _render_leads() -> void:
 	for child in _leads.get_children(): child.queue_free()
+	if not MHSamples.hand.is_empty():
+		var stop := MHStyle.button("Put the sample in hand back", "secondary", "x", 40)
+		stop.pressed.connect(func() -> void: MHSamples.drop_hand(); _render())
+		_leads.add_child(stop)
 	if MHSamples.leads.is_empty(): return
 	_leads.add_child(MHStyle.eyebrow("LEADS", MHStyle.accent, 12))
 	for id in MHSamples.leads:

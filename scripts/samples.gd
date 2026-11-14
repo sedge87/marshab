@@ -25,6 +25,20 @@ const MICROSCOPE_SPEED := 1.0 / .6
 ## plus a team reading it).
 const REPLY_HOURS := .5
 const KIND_LABELS := {"regolith": "regolith", "rock": "rock", "ice_core": "ice core"}
+## The Lab's chain (A5, docs/rooms-and-equipment.md "Workflows"): a find
+## goes saw, then microscope, then spectrometer, in the workbench's room.
+## Each discovery needs the stations it lists ("stations" in discoveries.json,
+## else STATION_NEEDS by kind); with fewer you get a partial read, and the
+## first one short of a station brings Tupou's plan for it.
+const CHAIN := ["rock_saw", "microscope_station", "spectrometer"]
+const STATION_NEEDS := {"rock": ["rock_saw", "microscope_station"], "regolith": ["microscope_station"], "ice_core": ["rock_saw", "microscope_station"]}
+## The steps a sample of each kind goes through by hand.
+const KIND_STEPS := {"rock": ["rock_saw", "microscope_station", "spectrometer"], "regolith": ["microscope_station", "spectrometer"], "ice_core": ["rock_saw", "microscope_station", "spectrometer"]}
+const STEP_WORDS := {
+	"rock_saw": {"prompt": "Cut the sample", "title": "Cut open", "text": "The saw takes the weathered skin off: a clean, fresh face."},
+	"microscope_station": {"prompt": "Look at the grains", "title": "Under the microscope", "text": "The grains up close: their shape, their size, what's holding them together."},
+	"spectrometer": {"prompt": "Read the spectrum", "title": "The spectrum", "text": "The peaks come up one by one. Each mineral has its own."},
+}
 
 static var case_items: Array = []        # samples carried: records (see _record)
 static var store: Array = []             # samples at base, analysed or not
@@ -36,6 +50,11 @@ static var found: Dictionary = {}        # discovery id -> {hours, sol, sample, 
 static var replies: Array = []           # [{id, due}]
 static var chipped: Dictionary = {}      # "x,z" of rocks already chipped -> true
 static var readings: Dictionary = {}     # reading discovery id -> {"day": true, "night": true}
+## A5: kinds of find done by hand once (hands_key -> true): after that the
+## workbench runs them by itself. `hand` is the sample being walked round
+## the stations now: {sample, bench, done: [station ids]}.
+static var learned: Dictionary = {}
+static var hand: Dictionary = {}
 ## Science for the four goals starts once you're settled into building: the
 ## General Module down and one thing of your own built (mars_world latches
 ## it; playtest 8 Nov). Before that, no readings and no discoveries.
@@ -48,11 +67,13 @@ static func on() -> bool:
 static func reset() -> void:
 	case_items = []; store = []; next_id = 1; jobs = {}; evidence = {}; leads = {}
 	found = {}; replies = []; chipped = {}; readings = {}; science_open = false
+	learned = {}; hand = {}
 
 static func export_state() -> Dictionary:
 	return {"case": case_items.duplicate(true), "store": store.duplicate(true), "next_id": next_id, "jobs": jobs.duplicate(true),
 		"evidence": evidence.duplicate(true), "leads": leads.duplicate(), "found": found.duplicate(true), "replies": replies.duplicate(true),
-		"chipped": chipped.duplicate(), "readings": readings.duplicate(true), "science_open": science_open}
+		"chipped": chipped.duplicate(), "readings": readings.duplicate(true), "science_open": science_open,
+		"learned": learned.duplicate(), "hand": hand.duplicate(true)}
 
 static func load_state(state: Dictionary) -> void:
 	reset()
@@ -68,6 +89,12 @@ static func load_state(state: Dictionary) -> void:
 	readings = (state.get("readings", {}) as Dictionary).duplicate(true)
 	# Older saves that already have science keep it.
 	science_open = bool(state.get("science_open", not found.is_empty() or not leads.is_empty()))
+	# Saved before A5's chain: every kind they've analysed counts as learned.
+	learned = (state.get("learned", {}) as Dictionary).duplicate()
+	if not state.has("learned"):
+		for record in store:
+			if bool(record.get("analysed", false)): learned[hands_key(record)] = true
+	hand = (state.get("hand", {}) as Dictionary).duplicate(true)
 
 # ---------- data ----------
 
@@ -217,11 +244,15 @@ static func add_to_store(kind: String, point: Vector2, hours: float, extra := {}
 	store.append(record)
 	return record
 
+## Samples to analyse: not yet, or only partly read (they can go again).
 static func waiting() -> Array:
-	return store.filter(func(r): return not bool(r.get("analysed", false)) and not _in_job(int(r.id)))
+	return store.filter(func(r): return (not bool(r.get("analysed", false)) or is_partial(r)) and not _in_job(int(r.id)) and int(hand.get("sample", -1)) != int(r.id))
 
 static func archive() -> Array:
 	return store.filter(func(r): return bool(r.get("analysed", false)))
+
+static func is_partial(record: Dictionary) -> bool:
+	return not (record.get("partial", []) as Array).is_empty()
 
 static func sample(id: int) -> Dictionary:
 	for record in store:
@@ -244,7 +275,8 @@ static func analysis_hours(kind: String, microscope: bool) -> float:
 static func start_job(bench: String, sample_id: int, microscope: bool) -> String:
 	if jobs.has(bench): return "This bench is busy."
 	var record := sample(sample_id)
-	if record.is_empty() or bool(record.get("analysed", false)): return "Pick a sample to analyse."
+	if record.is_empty() or (bool(record.get("analysed", false)) and not is_partial(record)): return "Pick a sample to analyse."
+	if needs_hands(record): return "A new kind of sample: do this one by hand first."
 	var hours := analysis_hours(str(record.kind), microscope)
 	jobs[bench] = {"sample": sample_id, "hours_left": hours, "hours": hours}
 	return ""
@@ -252,19 +284,111 @@ static func start_job(bench: String, sample_id: int, microscope: bool) -> String
 static func cancel_job(bench: String) -> void:
 	jobs.erase(bench)
 
-## The lab's benches: Science Workbenches placed, with whether a Microscope
-## Station shares their room. [{key, microscope}]
+## The lab's benches: Science Workbenches placed, with the chain's stations
+## in their room. [{key, microscope, stations: [ids in chain order]}]
 static func benches(builder: Object) -> Array:
 	var out: Array = []
 	var placed: Array = builder.get("placed_interior")
 	for item in placed:
 		if str(item.get("id", "")) != "science_workbench": continue
 		var room := Vector2i(item.get("zone_cell", Vector2i.ZERO))
-		var scope := false
+		var here := {}
 		for other in placed:
-			if str(other.get("id", "")) == "microscope_station" and _same_room(builder, room, Vector2i(other.get("zone_cell", Vector2i.ZERO))): scope = true
-		out.append({"key": str(item.placement_id), "microscope": scope})
+			var id := str(other.get("id", ""))
+			if id in CHAIN and _same_room(builder, room, Vector2i(other.get("zone_cell", Vector2i.ZERO))): here[id] = true
+		out.append({"key": str(item.placement_id), "microscope": here.has("microscope_station"), "stations": CHAIN.filter(func(s): return here.has(s))})
 	return out
+
+static func bench_stations(builder: Object, bench: String) -> Array:
+	for entry in benches(builder):
+		if str(entry.key) == bench: return entry.stations
+	return []
+
+static func station_label(id: String) -> String:
+	return str(EquipmentCatalog.get_entry(id).get("label", id.capitalize()))
+
+# ---------- the chain, and hands-on the first time ----------
+
+## Which kind of find a sample is, for "done by hand once": its kind, and
+## its rock for rocks (and cave ice apart from ground ice).
+static func hands_key(record: Dictionary) -> String:
+	match str(record.get("kind", "")):
+		"rock": return "rock:" + str(record.get("rock", "basalt"))
+		"ice_core": return "ice_core:cave" if bool(record.get("in_cave", false)) else "ice_core"
+	return str(record.get("kind", ""))
+
+static func needs_hands(record: Dictionary) -> bool:
+	return on() and not learned.has(hands_key(record))
+
+## The stations a discovery needs.
+static func needs_for(id: String) -> Array:
+	var entry := discovery(id)
+	if entry.has("stations"): return entry.stations
+	var ways: Array = entry.get("match", [entry])
+	return STATION_NEEDS.get(str((ways[0] as Dictionary).get("kind", entry.get("kind", "rock"))), [])
+
+## What the stations `have` show of a sample: {findings, missing}. A find
+## needing a station that isn't there is a partial read, with what it needed.
+static func read(record: Dictionary, have: Array) -> Dictionary:
+	var shown: Array = []
+	var missing: Array = []
+	for id in findings_for(record):
+		var short: Array = needs_for(str(id)).filter(func(s): return not have.has(s))
+		if short.is_empty(): shown.append(id)
+		for s in short:
+			if not missing.has(s): missing.append(s)
+	missing.sort_custom(func(a, b): return CHAIN.find(a) < CHAIN.find(b))
+	return {"findings": shown, "missing": missing}
+
+## Start walking a sample round the stations (from the Lab screen).
+static func start_hand(bench: String, sample_id: int) -> String:
+	if not hand.is_empty(): return "You're already working one by hand."
+	var record := sample(sample_id)
+	if record.is_empty(): return "Pick a sample."
+	hand = {"sample": sample_id, "bench": bench, "done": []}
+	return ""
+
+static func hand_record() -> Dictionary:
+	return sample(int(hand.get("sample", -1))) if not hand.is_empty() else {}
+
+## The steps this sample goes through by hand, in order.
+static func hand_steps() -> Array:
+	return KIND_STEPS.get(str(hand_record().get("kind", "rock")), [])
+
+## What E does at a chain station now ("" for nothing).
+static func step_action(station: String) -> String:
+	if hand.is_empty() or not hand_steps().has(station): return ""
+	if (hand.done as Array).has(station): return "Done: %s" % str(STEP_WORDS[station].title).to_lower()
+	# In chain order: an earlier step still waiting (at a station that's there) comes first.
+	return str(STEP_WORDS[station].prompt)
+
+## E at a chain station with the sample in hand. `have` is what's in the
+## bench's room. Returns messages.
+static func do_step(station: String, have: Array) -> Array:
+	if step_action(station).is_empty() or (hand.done as Array).has(station): return []
+	for earlier in hand_steps():
+		if earlier == station: break
+		if have.has(earlier) and not (hand.done as Array).has(earlier):
+			return [{"id": "step", "title": "%s first" % station_label(earlier), "text": "The chain runs saw, then microscope, then spectrometer.", "tone": "warn"}]
+	(hand.done as Array).append(station)
+	var words: Dictionary = STEP_WORDS[station]
+	var left: Array = hand_steps().filter(func(s): return have.has(s) and not (hand.done as Array).has(s))
+	var next := ("Next: %s." % station_label(str(left[0]))) if not left.is_empty() else "Back to the workbench to put it together."
+	return [{"id": "step", "title": str(words.title), "text": "%s %s" % [str(words.text), next], "tone": "info"}]
+
+## E at the workbench with the sample in hand: the read, at once.
+static func finish_hand(now: float) -> Array:
+	var record := hand_record()
+	var done: Array = hand.get("done", [])
+	hand = {}
+	if record.is_empty(): return []
+	learned[hands_key(record)] = true
+	var out := finish_analysis(record, now, done)
+	out.append({"id": "learned", "title": "Done by hand once", "text": "Next time a sample like this comes in, the workbench runs it through the stations by itself.", "tone": "info"})
+	return out
+
+static func drop_hand() -> void:
+	hand = {}
 
 static func _same_room(builder: Object, a: Vector2i, b: Vector2i) -> bool:
 	for zone in builder.get("zones"):
@@ -317,15 +441,28 @@ static func log_reading(id: String, daylight: bool, hours: float) -> Array:
 	var text := str(entry.get("reading_text", "The suit logged the temperature and radiation here. Come back at %s to compare."))
 	return [{"id": "lead", "title": "Lead: %s" % str(entry.get("lead", entry.label)), "text": text % ("night" if daylight else "midday"), "tone": "info"}]
 
-## A finished analysis: findings onto the record, then evidence. Messages.
-static func finish_analysis(record: Dictionary, hours: float) -> Array:
+## A finished analysis with the stations `have` (null: every station):
+## findings onto the record, then evidence; a partial read names what it
+## needed, and the first time short of a station brings its plan. Messages.
+static func finish_analysis(record: Dictionary, hours: float, have = null) -> Array:
 	var out: Array = []
+	var before: Array = record.get("findings", []) if bool(record.get("analysed", false)) else []
+	var result := read(record, CHAIN if have == null else have)
 	record.analysed = true
-	record.findings = findings_for(record)
+	record.findings = result.findings
+	record.partial = result.missing
 	var names: Array = []
-	for id in record.findings: names.append(str(discovery(id).get("label", id)))
-	out.append({"id": "analysed", "title": "Analysed: %s" % sample_label(record), "text": ("Found: %s." % ", ".join(names)) if not names.is_empty() else "Nothing new in this one.", "tone": "info"})
-	for id in record.findings: out.append_array(_add_evidence(str(id), record, hours))
+	for id in record.findings:
+		if not before.has(id): names.append(str(discovery(id).get("label", id)))
+	var text := ("Found: %s." % ", ".join(names)) if not names.is_empty() else "Nothing new in this one."
+	if not (result.missing as Array).is_empty():
+		var need: Array = (result.missing as Array).map(func(s): return station_label(str(s)).to_lower())
+		text += " And something more: it's there, but I can't tell what. It needs a %s." % " and a ".join(need)
+	out.append({"id": "partial" if not (result.missing as Array).is_empty() else "analysed", "title": ("Partial read: %s" if not (result.missing as Array).is_empty() else "Analysed: %s") % sample_label(record), "text": text, "tone": "info"})
+	for id in record.findings:
+		if not before.has(id): out.append_array(_add_evidence(str(id), record, hours))
+	for s in result.missing:
+		for plan in MHChapterOne.learn_after("partial:" + str(s)): out.append(MHChapterOne._plan_message(str(plan)))
 	return out
 
 static func _add_evidence(id: String, record: Dictionary, hours: float) -> Array:
@@ -378,7 +515,7 @@ static func tick(hours: float, builder: Object) -> Array:
 			if float(jobs[key].hours_left) <= 0.0:
 				var record := sample(int(jobs[key].sample))
 				jobs.erase(key)
-				if not record.is_empty(): out.append_array(finish_analysis(record, now))
+				if not record.is_empty(): out.append_array(finish_analysis(record, now, bench_stations(builder, str(key))))
 	# Earth's replies.
 	for reply in replies.duplicate():
 		if now < float(reply.due): continue

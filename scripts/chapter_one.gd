@@ -107,6 +107,8 @@ static func reset() -> void:
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
 	crates_landing = false
 	MHSamples.reset()   # step 5's samples and journal start with the chapter
+	MHMaterials.reset() # A5: metal and salvage come with the Print Shop's stock crate
+	MHGreenhouse.reset()
 	MHRoomTypes.reset() # no core upgrades fitted yet
 	MHCrewPlan.reset()  # you're alone; Earth's crew plan comes when the chapter ends
 	MHJournal.reset()
@@ -117,7 +119,8 @@ static func export_state() -> Dictionary:
 		"made": made.duplicate(), "paid": paid.duplicate(),
 		"has_corer": has_corer, "has_hammer": has_hammer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
 		"stores_landed": stores_landed, "reserve_used": reserve_used, "emergency_eta": emergency_eta, "said": said.duplicate(),
-		"water_hours": water_hours, "soil": soil, "soil_potted_at": soil_potted_at, "lander_spots": lander_spots.duplicate(true), "crew_plan": MHCrewPlan.export_state(), "rooms": MHRoomTypes.export_state()}
+		"water_hours": water_hours, "soil": soil, "soil_potted_at": soil_potted_at, "lander_spots": lander_spots.duplicate(true), "crew_plan": MHCrewPlan.export_state(), "rooms": MHRoomTypes.export_state(),
+		"materials": MHMaterials.export_state(), "greenhouse": MHGreenhouse.export_state()}
 
 ## A loaded save. One from before step 4 has no "chapter_one" and plays as
 ## already supplied: every plan known, no crates, the old cargo budget.
@@ -170,6 +173,12 @@ static func load_state(state: Dictionary, has_section: bool) -> void:
 	soil = str(state.get("soil", ""))
 	soil_potted_at = float(state.get("soil_potted_at", -1.0))
 	lander_spots = (state.get("lander_spots", []) as Array).duplicate(true)
+	# A5: metal and salvage (a save from before them gets a full store of each,
+	# and keeps the Lab's microscope and spectrometer plans).
+	MHMaterials.load_state(state.get("materials", {}))
+	MHGreenhouse.load_state(state.get("greenhouse", {}))
+	if not state.has("materials"):
+		for id in ["microscope_station", "spectrometer"]: known[id] = "sent"
 
 # ---------- the crates ----------
 
@@ -195,6 +204,8 @@ static func manifest_lines(crate_id: String) -> Array:
 		match str(key):
 			"_shell_kg": lines.append("Hull kit · %s" % MHStyle.kg(int(contents[key])))
 			"_feedstock_kg": lines.append("Feedstock · %s" % MHStyle.kg(int(contents[key])))
+			"_metal_kg": lines.append("Metal stock · %s" % MHStyle.kg(int(contents[key])))
+			"_salvage_kg": lines.append("Salvage · %s" % MHStyle.kg(int(contents[key])))
 			"_hand_corer": lines.append("Sampling kit (corer, scoop, sample case)")
 			_: lines.append("%s%s" % [label(str(key)), " ×%d" % int(contents[key]) if int(contents[key]) > 1 else ""])
 	return lines
@@ -207,6 +218,8 @@ static func unpack(crate_id: String) -> bool:
 		match str(key):
 			"_shell_kg": shell_kg += int(contents[key])
 			"_feedstock_kg": feedstock_kg += float(contents[key])
+			"_metal_kg": MHMaterials.metal_kg += float(contents[key])
+			"_salvage_kg": MHMaterials.salvage_kg += float(contents[key])
 			"_hand_corer": has_corer = true
 			_: stock[str(key)] = int(stock.get(str(key), 0)) + int(contents[key])
 	return true
@@ -297,6 +310,7 @@ static func settle(builder: Object) -> void:
 		if diff == 0: continue
 		var cost := plan_cost(str(id))
 		feedstock_kg = maxf(0.0, feedstock_kg - float(cost.feedstock_kg) * diff)
+		MHMaterials.pay(cost, diff)
 		if want > 0: paid[id] = want
 		else: paid.erase(id)
 
@@ -307,9 +321,7 @@ static func item_reason(id: String, builder: Object) -> String:
 	if available(id, builder) > 0: return ""
 	if not plan_known(id): return plan_hint(id)
 	if not made.has(id): return "Print the first one at the Print Shop"
-	var cost := plan_cost(id)
-	if feedstock_kg < float(cost.feedstock_kg) - .001: return "Needs %s feedstock (you have %s)" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), MHStyle.kg(floori(feedstock_kg))]
-	return ""
+	return MHMaterials.short_of(plan_cost(id))
 
 static func zone_reason(kind: String, builder: Object) -> String:
 	if not on() or not ZONE_STOCK.has(kind): return ""
@@ -321,8 +333,7 @@ static func card_line(id: String, builder: Object) -> String:
 	var left := available(id, builder)
 	if left > 0: return "×%d ready" % left
 	if made.has(id):
-		var cost := plan_cost(id)
-		return MHStyle.kg(roundi(float(cost.feedstock_kg)))
+		return MHMaterials.cost_line(plan_cost(id))
 	if not plan_known(id): return "NO PLAN"
 	return "MAKE FIRST"
 
@@ -350,6 +361,8 @@ static func plan_hint(id: String) -> String:
 	if plan_source(id) == "discovered":
 		return {"ice": "Plan: find ice (GAR-Y's survey, then a core)", "water": "Plan: test the ice extractor's water",
 			"oxygen": "Plan: make enough water to split", "food": "Plan: wash regolith of perchlorate"}.get(after, "Plan: a discovery")
+	if after.begins_with("partial:"): return "Plan: Tupou sends it when the Lab can't fully read a find"
+	if after.begins_with("discovery:"): return "Plan: %s sends it after a find" % str(plan(id).get("owner", "Mission Control"))
 	match after:
 		"first_walk": return "Plan: Mission Control sends it after your first walk outside"
 		"first_job": return "Plan: Mission Control sends it after your first print job"
@@ -361,7 +374,8 @@ static func learn_after(event: String) -> Array:
 	var learned: Array = []
 	var all: Dictionary = plans_data().get("plans", {})
 	for id in all:
-		if str(all[id].get("after", "")) == event and not known.has(id):
+		var hit: bool = str(all[id].get("after", "")) == event or (all[id].get("after_any", []) as Array).has(event)
+		if hit and not known.has(id):
 			known[id] = str(all[id].get("source", "sent"))
 			_give_first(str(id))
 			learned.append(str(id))
@@ -381,6 +395,7 @@ static func plan_cost(id: String) -> Dictionary:
 	var d: Dictionary = plans_data().get("defaults", {})
 	var mass := float(p.get("cargo_kg", EquipmentCatalog.get_entry(id).get("cargo_cost", 50)))
 	return {"feedstock_kg": float(p.get("feedstock_kg", roundf(mass * float(d.get("feedstock_per_kg", .6))))),
+		"metal_kg": float(p.get("metal_kg", 0.0)), "salvage_kg": float(p.get("salvage_kg", 0.0)),
 		"hours": maxf(MIN_PRINT_HOURS, PRINT_PACE * float(p.get("hours", clampf(roundf(mass / float(d.get("kg_per_hour", 25))), float(d.get("min_hours", 1)), float(d.get("max_hours", 20))))))}
 
 ## Everything the fabricator could make now (known plans), in catalogue order.
@@ -447,6 +462,8 @@ static func job_reason(id: String, builder: Object, printer := "") -> String:
 	if (work.current as Dictionary).is_empty():
 		var cost := plan_cost(id)
 		if feedstock_kg < float(cost.feedstock_kg): return "Not enough feedstock"
+		var short := MHMaterials.short_of(cost)
+		if not short.is_empty(): return short
 	return ""
 
 ## Prints it now on an idle printer, or adds it to that printer's queue.
@@ -461,6 +478,7 @@ static func start_job(id: String, builder: Object, printer := "") -> String:
 static func _begin(work: Dictionary, id: String, builder: Object) -> void:
 	var cost := plan_cost(id)
 	feedstock_kg -= float(cost.feedstock_kg)
+	MHMaterials.pay(cost)
 	work.current = {"id": id, "hours_left": float(cost.hours), "hours": float(cost.hours)}
 	_power_changed(builder)
 
@@ -471,6 +489,7 @@ static func cancel_job(builder: Object = null, printer := "") -> void:
 	if current.is_empty(): return
 	var cost := plan_cost(str(current.id))
 	feedstock_kg += float(cost.feedstock_kg)
+	MHMaterials.pay(cost, -1.0)
 	work.current = {}
 	_power_changed(builder)
 
@@ -508,7 +527,7 @@ static func _run_printers(hours: float, builder: Object, sim: Object) -> Array:
 		if current.is_empty() and not (work.queue as Array).is_empty():
 			var next := str(work.queue[0])
 			var cost := plan_cost(next)
-			if feedstock_kg >= float(cost.feedstock_kg):
+			if MHMaterials.short_of(cost).is_empty():
 				(work.queue as Array).pop_front()
 				_begin(work, next, builder)
 				current = work.current
@@ -603,6 +622,8 @@ static func tick(hours: float, builder: Object) -> Array:
 	var powered := float(last.get("generation_kw", 0.0)) > 0.0 or float(sim.get("battery_kwh")) > .5
 	# The Print Shops' jobs.
 	if powered: out.append_array(_run_printers(hours, builder, sim))
+	# A5: the Workshop's smelters turn stored rock (or spare regolith) into metal.
+	out.append_array(MHMaterials.tick(hours, builder, powered))
 	# Recycling tops the feedstock up from what the crew throw away (habitat_waste.gd).
 	# Plans Mission Control sends on a given sol.
 	var sol := floori(now / 24.0) + 1
@@ -619,6 +640,11 @@ static func _plan_message(id: String) -> Dictionary:
 		for up in MHRoomTypes.UPGRADES:
 			if str(MHRoomTypes.UPGRADES[up].plan) == id:
 				return {"id": "plan", "title": "New core upgrade: %s" % str(MHRoomTypes.UPGRADES[up].label), "text": "Castle sent the plan. Fit it at the core's rack (%s feedstock) and you can build %s." % [MHStyle.kg(roundi(MHRoomTypes.cost(str(up)))), MHRoomTypes.opens_text(str(up))], "tone": "info"}
+	# A5: a station plan from one of the crew in orbit, relayed by Castle.
+	var owner := str(plan(id).get("owner", ""))
+	if not owner.is_empty():
+		var note := str(plan(id).get("note", ""))
+		return {"id": "plan", "title": "New plan: %s" % label(id), "text": "Castle: %s's team drew you one.%s The first is printed and on the build bar's Unpacked tab." % [owner, (" \"%s\"" % note) if not note.is_empty() else ""], "tone": "info"}
 	return {"id": "plan", "title": "New plan: %s" % label(id), "text": "Mission Control sent the plan, and the first one is printed: it's ready on the build bar's Unpacked tab.", "tone": "info"}
 
 static func _count(builder: Object, kind: String) -> int:

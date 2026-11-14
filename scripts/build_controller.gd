@@ -6043,7 +6043,7 @@ func _update_budget() -> void:
 		chapter_label.visible = MHChapterOne.on()
 		if chapter_label.visible:
 			var ready: int = MHChapterOne.ready_to_place(self).values().reduce(func(a, b): return a + b, 0)
-			chapter_label.text = "UNPACKED %d · FEEDSTOCK %s" % [ready, MHStyle.kg(roundi(MHChapterOne.feedstock_kg))]
+			chapter_label.text = "UNPACKED %d · %s" % [ready, MHMaterials.store_line().to_upper()]
 	cargo_meter.value=remaining
 	cargo_meter.tone="accent" if remaining>MHGame.cargo_budget()*.1 else "warn"
 	if mars_made_label != null:

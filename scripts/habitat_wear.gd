@@ -34,17 +34,24 @@ var sim: RefCounted
 var wear := {}              # placement id -> 0-1
 var worn_h := {}            # placement id -> hours spent fully worn
 var kits_landed := false
+## A5: kinds of machine serviced by hand once (id -> true). After that a
+## repair bench (the Engineering Bench) in a Workshop services them by itself
+## when they're due on the rounds, from the spares kits.
+var by_hand := {}
+const BENCHES := ["tool_bench"]
+const BENCH_ROOMS := ["engineering"]
 
 func _init(owner: RefCounted) -> void:
 	sim = owner
 
 func save() -> Dictionary:
-	return {"wear": wear.duplicate(), "worn_h": worn_h.duplicate(), "kits_landed": kits_landed}
+	return {"wear": wear.duplicate(), "worn_h": worn_h.duplicate(), "kits_landed": kits_landed, "by_hand": by_hand.duplicate()}
 
 func load(state: Dictionary) -> void:
 	wear = (state.get("wear", {}) as Dictionary).duplicate()
 	worn_h = (state.get("worn_h", {}) as Dictionary).duplicate()
 	kits_landed = bool(state.get("kits_landed", false))
+	by_hand = (state.get("by_hand", {}) as Dictionary).duplicate()
 
 static func on() -> bool:
 	return MHChapterOne.on()
@@ -85,6 +92,24 @@ func step(dt: float, inv: Dictionary, powered: Dictionary) -> void:
 			worn_h.erase(pid)
 	for pid in wear.keys():
 		if not live.has(pid): wear.erase(pid); worn_h.erase(pid)
+	# The repair bench's own rounds.
+	if bench_here(inv):
+		for item in inv.items:
+			var id := str(item.id)
+			var pid := str(item.get("pid", ""))
+			if not by_hand.has(id) or pid.is_empty() or sim.life.broken.has(pid) or level(pid) < ROUND_FROM or int(sim.life.spares) <= 0: continue
+			sim.life.spares = int(sim.life.spares) - 1
+			wear[pid] = 0.0
+			worn_h.erase(pid)
+
+## Whether a repair bench stands in a Workshop.
+func bench_here(inv: Dictionary) -> bool:
+	var rooms: Array = inv.get("rooms", [])
+	for item in inv.get("all_items", []):   # every placed thing, with or without a power balance
+		if not str(item.id) in BENCHES: continue
+		var room := int(item.get("room", -1))
+		if room >= 0 and room < rooms.size() and str(rooms[room].kind) in BENCH_ROOMS: return true
+	return false
 
 ## E on the machine (or its filter or hatch): a spares kit makes it as new.
 ## Returns {title, text}.
@@ -98,7 +123,10 @@ func service(pid: String, id: String) -> Dictionary:
 	sim.life.spares = int(sim.life.spares) - 1
 	wear[pid] = 0.0
 	worn_h.erase(pid)
-	return {"title": "%s: %s" % [name, str(MACHINES[id].job).to_lower()], "text": "As new. %d spares kit%s left." % [int(sim.life.spares), "" if int(sim.life.spares) == 1 else "s"]}
+	var first := not by_hand.has(id)
+	by_hand[id] = true
+	var then := " Done by hand once: a repair bench in the Workshop will see to it from now on." if first else ""
+	return {"title": "%s: %s" % [name, str(MACHINES[id].job).to_lower()], "text": "As new. %d spares kit%s left.%s" % [int(sim.life.spares), "" if int(sim.life.spares) == 1 else "s", then]}
 
 ## A repair (habitat_life.gd) leaves the machine as new.
 func repaired(pid: String) -> void:

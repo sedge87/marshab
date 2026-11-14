@@ -527,7 +527,42 @@ func _feedstock_block(sim: RefCounted) -> Control:
 	top.add_child(MHStyle.label("Feedstock", 19, MHStyle.TEXT_PRIMARY, 700))
 	box.add_child(top)
 	box.add_child(MHStyle.body(_feedstock_words(sim), 17, MHStyle.TEXT_SECONDARY))
+	# A5: the other materials, and each room's chain at this base.
+	var more := "Metal %s · salvage %s" % [MHStyle.kg(floori(MHMaterials.metal_kg)), MHStyle.kg(floori(MHMaterials.salvage_kg))]
+	if MHMaterials.ore_kg() > 0.0: more += " · iron-rich rock %s for the smelter" % MHStyle.kg(floori(MHMaterials.ore_kg()))
+	if MHMaterials.carried_kg() > 0.0: more += " · %s in the suit" % MHStyle.kg(floori(MHMaterials.carried_kg()))
+	box.add_child(MHStyle.body(more, 17, MHStyle.TEXT_SECONDARY))
+	var chains := _chains_words()
+	if not chains.is_empty():
+		var words := MHStyle.body(chains, 15, MHStyle.TEXT_MUTED)
+		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(words)
 	return box
+
+## Each room's chain at the shown base, A5: "Lab: Rock Saw ✓ → Microscope ·".
+const ROOM_CHAINS := [
+	["science", "Lab", ["rock_saw", "microscope_station", "spectrometer"]],
+	["engineering", "Workshop", ["smelter", "fabricator", "tool_bench"]],
+	["hydroponics", "Greenhouse", ["regolith_washer", "greenhouse_planter", "harvest_cart"]],
+]
+
+func _chains_words() -> String:
+	var builder: Node = world.builder if world != null else null
+	if builder == null: return ""
+	var base := _base_choice()
+	var have := {}
+	for item in builder.placed_interior:
+		var cell := Vector2i(item.get("zone_cell", Vector2i.ZERO))
+		for zone in builder.zones:
+			if (zone.get("cells", []) as Array).has(cell) and MHBases.base_of(zone) == base:
+				have["%s:%s" % [str(zone.kind), str(item.id)]] = true
+	var lines: Array = []
+	for chain in ROOM_CHAINS:
+		if not builder.zones.any(func(z): return str(z.kind) == str(chain[0]) and MHBases.base_of(z) == base): continue
+		var bits: Array = (chain[2] as Array).map(func(id): return "%s %s" % [str(EquipmentCatalog.get_entry(str(id)).get("label", id)), "✓" if have.has("%s:%s" % [str(chain[0]), str(id)]) else "·"])
+		lines.append("%s: %s" % [str(chain[1]), " → ".join(bits)])
+	return "
+".join(lines)
 
 func _feedstock_words(sim: RefCounted) -> String:
 	var intakes := int(sim.inventory().get("intakes", 0))
@@ -665,7 +700,7 @@ func _base_signature() -> String:
 	if cabin != null and cabin.running() and rows.is_empty(): stock += str(_cabin_rows(cabin).values().map(func(r): return str(r.text)))
 	var module: Node = _shown_core() if world != null else null
 	if module != null and module.running() and bool(module.commissioned): stock += str(_cabin_rows(module).values().map(func(r): return str(r.text)))
-	stock += "|%s|%s" % [_base_choice(), str(_bases_listed())]
+	stock += "|%s|%s|%s" % [_base_choice(), str(_bases_listed()), MHMaterials.store_line()]
 	return "%s|%s|%s|%d" % [str(words), stock, str(alerts.active_alerts().map(func(a): return "%s%s" % [a.id, a.level])) if alerts != null else "", alerts.history.size() if alerts != null else 0]
 
 ## Redraws the open app in place.
