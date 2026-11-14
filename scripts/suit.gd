@@ -377,18 +377,25 @@ func has_addon(id: String) -> bool:
 func o2_hours() -> float:
 	return O2_HOURS - (0.0 if has_addon("air_pack") else AIR_PACK_HOURS)
 
+## The guided chapters were tuned for the old battery and heater: the bare
+## battery and the heater pack only matter once they're over (until the
+## chapter rewrite, docs/build-plan-2026-11-14.md A6).
 func power_hours() -> float:
-	return POWER_HOURS - (0.0 if has_addon("battery") else BATTERY_HOURS)
+	return POWER_HOURS - (0.0 if has_addon("battery") or _chapters_kit() else BATTERY_HOURS)
 
 func night_power() -> float:
-	return NIGHT_POWER if has_addon("heater") else BARE_NIGHT_POWER
+	return NIGHT_POWER if has_addon("heater") or _chapters_kit() else BARE_NIGHT_POWER
+
+func _chapters_kit() -> bool:
+	return world != null and is_inside_tree() and _guided()
 
 ## An add-on found or printed: it's fitted at the next refill (the lander,
-## an airlock, a suit rack or the rover).
-func give_addon(id: String) -> void:
+## an airlock, a suit rack or the rover), or at once where there's a way to
+## fit it (pallet 1 is the life-support pallet: it clips on there).
+func give_addon(id: String, fit_now := false) -> void:
 	if not ADDONS.has(id) or addons.has(id) or waiting.has(id): return
 	waiting.append(id)
-	if where != "outside": fit_waiting()
+	if fit_now or where != "outside": fit_waiting()
 	else: MHNotices.post("info", "Suit add-on: " + str(ADDONS[id].name), "It goes on at the next refill.", "log")
 
 ## Fits what's waiting into free slots; keeps what doesn't fit for later.
@@ -396,8 +403,12 @@ func fit_waiting() -> void:
 	var left: Array = []
 	for id in waiting:
 		if addons.size() >= SLOTS: left.append(id); continue
-		# The share you have stays the same; the new air and charge come from the refill.
+		# A new pack comes full: what you had, plus its own.
+		var air_before := o2 * o2_hours()
+		var charge_before := power * power_hours()
 		addons.append(id)
+		if id == "air_pack": o2 = minf(1.0, (air_before + AIR_PACK_HOURS) / o2_hours())
+		if id == "battery": power = minf(1.0, (charge_before + BATTERY_HOURS) / power_hours())
 		MHAudio.sfx("suit_clamp", -8.0)
 		MHNotices.post("valid", "Fitted: " + str(ADDONS[id].name), str(ADDONS[id].says), "log")
 		if id == "lamp": _brighten_lamp()
