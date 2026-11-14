@@ -53,6 +53,19 @@ const LOW := 0.25
 const LEAK := 1.5                # a damaged seal: oxygen goes this much faster
 const PATCH_HOURS := 1.0         # patching a seal by hand, with no service panel
 const DRINK_L := 1.0             # the in-suit drink bag (step 4a): about 8 game hours of sipping
+## Add-ons (docs/range-ladder.md, 14 Nov): the suit starts bare (about a 600 m
+## reach from a refill, no heater pack) and takes add-ons in a few slots. The
+## old suit's numbers are the bare suit plus its air pack, battery and heater.
+const SLOTS := 3
+const AIR_PACK_HOURS := 3.0      # the bare suit holds O2_HOURS less this
+const BATTERY_HOURS := 2.0       # the bare suit's battery holds POWER_HOURS less this
+const BARE_NIGHT_POWER := 1.7    # no heater pack: the night costs more battery
+const ADDONS := {
+	"air_pack": {"name": "bigger air pack", "says": "About three more hours of air."},
+	"battery": {"name": "spare battery", "says": "A longer charge, for the heater and the lamp."},
+	"heater": {"name": "heater pack", "says": "Nights cost the battery much less."},
+	"lamp": {"name": "bright lamp", "says": "A wider, brighter beam."},
+}
 
 var world: Node
 ## Each store as a share of a full suit (0 to 1).
@@ -86,6 +99,8 @@ var today_msv := 0.0             # since local midnight (saved)
 var drink_l := DRINK_L           # (saved)
 var food_bar := true             # (saved)
 var dry_hours := 0.0             # out here with the bag dry (saved)
+var addons: Array = []           # fitted, at most SLOTS (saved)
+var waiting: Array = []          # found or printed, fitted at the next refill (saved)
 ## The wrist pad's introduction (docs/pda.md §8): the first time the hatch
 ## opens, the suit runs a seal check and lifts your arm to show it. Its screen
 ## names the key (HOLD T) the first few times; a working display, so text is fine.
@@ -195,8 +210,8 @@ func step(hours: float) -> void:
 	hours *= pace()
 	var body: Node = world.get("body")
 	var rested := float(body.o2_factor()) if body != null else 1.0   # well rested: a little less (scripts/body.gd)
-	o2 = maxf(0.0, o2 - hours * breathing_rate() * rested * (LEAK if leak else 1.0) / O2_HOURS)
-	power = maxf(0.0, power - hours * (NIGHT_POWER if MHGame.sunlight_fraction < .1 else 1.0) / POWER_HOURS)
+	o2 = maxf(0.0, o2 - hours * breathing_rate() * rested * (LEAK if leak else 1.0) / o2_hours())
+	power = maxf(0.0, power - hours * (night_power() if MHGame.sunlight_fraction < .1 else 1.0) / power_hours())
 	scrubber = maxf(0.0, scrubber - hours / SCRUBBER_HOURS)
 
 ## The hatch opens for the first time: the suit checks its seals and lifts
@@ -314,6 +329,7 @@ func full() -> bool:
 func _top_up(delta: float) -> void:
 	var refills := where == "lander" or where == "rover" or where == "walker" or (where == "habitat" and _in_airlock())
 	var was := _filling
+	if refills and not waiting.is_empty(): fit_waiting()
 	_filling = refills and not full()
 	if _filling: fill(FILL_PER_S * delta, where)
 	if _filling and not was:
@@ -333,19 +349,19 @@ func fill(share: float, source: String) -> bool:
 		"habitat":
 			var sim := _sim()
 			if sim != null and MHGame.simulation_on():
-				got_o2 = sim.take_oxygen(want_o2 * O2_HOURS * O2_KG_PER_HOUR) / (O2_HOURS * O2_KG_PER_HOUR)
+				got_o2 = sim.take_oxygen(want_o2 * o2_hours() * O2_KG_PER_HOUR) / (o2_hours() * O2_KG_PER_HOUR)
 				got_power = sim.take_energy(want_power * FULL_KWH) / FULL_KWH
 		"lander":
 			# The cabin's own tank and battery (scripts/lander_cabin_life.gd).
 			var cabin: Node = world.get("cabin_life")
 			if cabin != null and MHGame.simulation_on():
-				got_o2 = cabin.core.take_oxygen(want_o2 * O2_HOURS * O2_KG_PER_HOUR) / (O2_HOURS * O2_KG_PER_HOUR)
+				got_o2 = cabin.core.take_oxygen(want_o2 * o2_hours() * O2_KG_PER_HOUR) / (o2_hours() * O2_KG_PER_HOUR)
 				got_power = cabin.core.take_energy(want_power * FULL_KWH) / FULL_KWH
 		"rover":
 			var rover: Node = world.get("crew_rover")
 			if rover == null: return false
-			var given: Vector2 = rover.supply_suit(want_o2 * O2_HOURS, want_power)
-			got_o2 = given.x / O2_HOURS
+			var given: Vector2 = rover.supply_suit(want_o2 * o2_hours(), want_power)
+			got_o2 = given.x / o2_hours()
 			got_power = given.y
 	o2 = minf(1.0, o2 + got_o2)
 	power = minf(1.0, power + got_power)
@@ -353,12 +369,51 @@ func fill(share: float, source: String) -> bool:
 	if got_power > 0.0 or want_power <= 0.0: scrubber = minf(1.0, scrubber + share)
 	return got_o2 > 0.0 or got_power > 0.0 or (want_o2 <= 0.0 and want_power <= 0.0)
 
+# ---------- add-ons ----------
+
+func has_addon(id: String) -> bool:
+	return addons.has(id)
+
+func o2_hours() -> float:
+	return O2_HOURS - (0.0 if has_addon("air_pack") else AIR_PACK_HOURS)
+
+func power_hours() -> float:
+	return POWER_HOURS - (0.0 if has_addon("battery") else BATTERY_HOURS)
+
+func night_power() -> float:
+	return NIGHT_POWER if has_addon("heater") else BARE_NIGHT_POWER
+
+## An add-on found or printed: it's fitted at the next refill (the lander,
+## an airlock, a suit rack or the rover).
+func give_addon(id: String) -> void:
+	if not ADDONS.has(id) or addons.has(id) or waiting.has(id): return
+	waiting.append(id)
+	if where != "outside": fit_waiting()
+	else: MHNotices.post("info", "Suit add-on: " + str(ADDONS[id].name), "It goes on at the next refill.", "log")
+
+## Fits what's waiting into free slots; keeps what doesn't fit for later.
+func fit_waiting() -> void:
+	var left: Array = []
+	for id in waiting:
+		if addons.size() >= SLOTS: left.append(id); continue
+		# The share you have stays the same; the new air and charge come from the refill.
+		addons.append(id)
+		MHAudio.sfx("suit_clamp", -8.0)
+		MHNotices.post("valid", "Fitted: " + str(ADDONS[id].name), str(ADDONS[id].says), "log")
+		if id == "lamp": _brighten_lamp()
+	waiting = left
+
+func _brighten_lamp() -> void:
+	var field: Node = world.get("drop_field") if world != null else null
+	if field != null and field.has_method("give_headlamp"): field.give_headlamp()
+
 ## A suit service panel or suit rack: a full refill from the habitat, now,
 ## and a leaking seal repaired.
 func refill_at_panel() -> void:
 	if not active():
 		get_tree().call_group("explore_hud", "show_equipment_note", "Suit", "Suit life support only runs in Survival and Freedom.")
 		return
+	if not waiting.is_empty(): fit_waiting()
 	if leak:
 		leak = false
 		MHAudio.sfx("suit_clamp", -8.0)
@@ -425,7 +480,7 @@ func _prune_dropped() -> void:
 
 ## Game hours of oxygen left at the current rate.
 func o2_hours_left() -> float:
-	return o2 * O2_HOURS / (breathing_rate() * (LEAK if leak else 1.0) * pace())
+	return o2 * o2_hours() / (breathing_rate() * (LEAK if leak else 1.0) * pace())
 
 ## Game hours left before you must turn back for the nearest refill, with a
 ## margin (negative: you're already past it).
@@ -713,7 +768,7 @@ func wake_spot() -> Dictionary:
 
 func export_state() -> Dictionary:
 	return {"o2": o2, "power": power, "scrubber": scrubber, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv,
-		"drink_l": drink_l, "food_bar": food_bar, "dry_hours": dry_hours, "seal_checked": seal_checked, "wrist_hint_uses": wrist_hint_uses,
+		"drink_l": drink_l, "food_bar": food_bar, "dry_hours": dry_hours, "seal_checked": seal_checked, "wrist_hint_uses": wrist_hint_uses, "addons": addons, "waiting": waiting,
 		"dropped": dropped.map(func(d): return {"placement_id": d.placement_id, "label": d.label, "position": [d.position.x, d.position.y, d.position.z]})}
 
 func restore_state(state: Dictionary) -> void:
@@ -729,4 +784,7 @@ func restore_state(state: Dictionary) -> void:
 	# Older saves were past the hatch long ago.
 	seal_checked = bool(state.get("seal_checked", not state.is_empty()))
 	wrist_hint_uses = int(state.get("wrist_hint_uses", 0))
+	# Saves from before the bare suit had the old suit: air pack, battery and heater.
+	addons = (state.get("addons", [] if state.is_empty() else ["air_pack", "battery", "heater"]) as Array).duplicate()
+	waiting = (state.get("waiting", []) as Array).duplicate()
 	dropped = (state.get("dropped", []) as Array).map(func(d): return {"placement_id": str(d.placement_id), "label": str(d.label), "position": Vector3(float(d.position[0]), float(d.position[1]), float(d.position[2]))})

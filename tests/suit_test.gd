@@ -54,6 +54,17 @@ func _put(world: Node, at: Vector3) -> void:
 func _initialize() -> void:
 	var world: Node = await _world("survival", {"site_id": "plains", "builder": {}})
 	var suit = world.suit
+	# The bare suit (14 Nov) holds less; these numbers are the full kit's.
+	_check(suit.o2_hours() < suit.O2_HOURS and suit.power_hours() < suit.POWER_HOURS and suit.night_power() > suit.NIGHT_POWER, "a new suit starts bare")
+	suit.give_addon("air_pack")
+	suit.give_addon("battery")
+	suit.give_addon("heater")
+	suit.fit_waiting()
+	_check(suit.addons.size() == 3 and is_equal_approx(suit.o2_hours(), suit.O2_HOURS), "add-ons fit at a refill, and the air pack brings it to full")
+	suit.give_addon("lamp")
+	suit.fit_waiting()
+	_check(suit.addons.size() == suit.SLOTS and suit.waiting == ["lamp"], "no free slot: the lamp waits")
+	suit.waiting.clear()
 	var b = world.builder
 	var sim = b.simulation()
 	var y: float = b.habitat_base_y

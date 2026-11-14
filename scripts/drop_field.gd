@@ -431,6 +431,10 @@ func got_tools() -> void:
 	MHChapterOne.has_hammer = true
 	_apply_tools()
 
+## The suit's bright-lamp add-on (scripts/suit.gd): the headlamp's beam.
+func give_headlamp() -> void:
+	_apply_tools()
+
 ## The headlamp: a wider, brighter, longer beam than the suit lamp.
 func _apply_tools() -> void:
 	MHChapterOne.has_hammer = true

@@ -30,7 +30,10 @@ const START_RATIONS := 2        # from the descent: a sol's food (step 4a)
 const PALLET_RATIONS := 10      # pallet 1's: about five sols, two a sol
 ## [kind, nearest, furthest, the ground it wants]
 const THREADS := [["iron", 1000.0, 1400.0, "rough"], ["ice_wall", 1000.0, 1500.0, "low"]]
-const PLANS := [["hitch", "the sled hitch", "print_hitch_parts", 3.0], ["pick", "an ice pick head", "print_pick_parts", 2.0], ["bladder", "a water bladder", "print_bladder_parts", 2.0], ["seal", "a wheel seal for Walker 1", "print_seal_parts", 3.0]]
+const PLANS := [["hitch", "the sled hitch", "print_hitch_parts", 3.0], ["pick", "an ice pick head", "print_pick_parts", 2.0], ["bladder", "a water bladder", "print_bladder_parts", 2.0], ["seal", "a wheel seal for Walker 1", "print_seal_parts", 3.0], ["battery", "a spare suit battery", "print_battery_parts", 3.0], ["heater", "a suit heater pack", "print_heater_parts", 3.0], ["air_pack", "a bigger air pack", "print_air_pack_parts", 4.0]]
+## Suit add-ons (scripts/suit.gd): printable once you hold the plan's
+## cartridge (docs/pillars.md: plans are things you find).
+const ADDON_PLANS := ["battery", "heater", "air_pack"]
 const PRINT_SECONDS := 6.0
 ## GAR-Y's day (docs/opening-days.md): the hitch printed, the module's cargo
 ## staged by the lander, a survey or core by GAR-Y, a sample on the bench.
@@ -45,6 +48,7 @@ var sites := {}                 # kind → scripts/thread_site.gd
 var bench: Node3D
 var parts := 0
 var prints := {}                # plan id → true
+var cartridges := {}            # plan cartridges found: plan id → true (saved)
 var jobs := {}                  # job → true
 var sled_kg := 0.0
 var sled_cargo: Array = []      # the module's cargo riding GAR-Y's sled (saved where it lies)
@@ -68,6 +72,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	add_to_group("lifepod")
 	parts = int(saved.get("parts", 0))
 	for id in saved.get("prints", []): prints[str(id)] = true
+	for id in saved.get("cartridges", []): cartridges[str(id)] = true
 	for id in saved.get("jobs", []): jobs[str(id)] = true
 	for id in saved.get("studied", []): studied[str(id)] = true
 	for key in saved.get("stripped", []): stripped_keys[str(key)] = true
@@ -404,6 +409,12 @@ func _salvage_told() -> bool:
 
 # ---------- the tiny printer ----------
 
+## A plan cartridge found (a pallet, a wreck): its plan comes up on the printer.
+func learn_cartridge(id: String) -> void:
+	if cartridges.has(id): return
+	cartridges[id] = true
+	MHNotices.post("info", "Plan cartridge", "The lander's printer can make %s now, from parts." % _plan_name(id), "log")
+
 func _plan_cost(index: int) -> int:
 	var spec: Array = PLANS[index]
 	return int(n(str(spec[2]), float(spec[3])))
@@ -414,6 +425,11 @@ func _open_plans() -> Array:
 		if prints.has(str(PLANS[i][0])): continue
 		if str(PLANS[i][0]) == "hitch" and not _gary_found(): continue   # nothing to hitch it to yet
 		if str(PLANS[i][0]) == "seal" and not _seal_wanted(): continue
+		if ADDON_PLANS.has(str(PLANS[i][0])):
+			if not cartridges.has(str(PLANS[i][0])): continue
+			# The suit already has it, or one's waiting to go on.
+			var suit: Node = world.get("suit")
+			if suit != null and (suit.addons.has(str(PLANS[i][0])) or suit.waiting.has(str(PLANS[i][0]))): continue
 		out.append(i)
 	return out
 
@@ -498,6 +514,9 @@ func _printed() -> void:
 			if gary != null and is_instance_valid(gary): gary.call("_say", "happy")
 			var radio: Node = world.get("radio")
 			if radio != null: radio.ring("d3_seal")
+		"battery", "heater", "air_pack":
+			var suit: Node = world.get("suit")
+			if suit != null: suit.give_addon(id)
 		"bladder":
 			_apply_bladder(true)
 			MHNotices.post("valid", "Printed: water bladder", "The lander keeps %d L more water." % roundi(n("water_bladder_l", 6.0)), "log")
@@ -606,5 +625,5 @@ func export_state() -> Dictionary:
 	var finds: Array = []
 	for find in get_tree().get_nodes_in_group("carried_find"):
 		if not (find as Node).is_queued_for_deletion(): finds.append(find.export_state())
-	return {"parts": parts, "prints": prints.keys(), "jobs": jobs.keys(), "studied": studied.keys(), "stripped": stripped_keys.keys(),
+	return {"parts": parts, "prints": prints.keys(), "cartridges": cartridges.keys(), "jobs": jobs.keys(), "studied": studied.keys(), "stripped": stripped_keys.keys(),
 		"sled_kg": sled_kg, "walker_due": walker_due, "walker_moved": walker_moved, "photo_nudged": _photo_nudged, "gary_reported": gary_reported, "rations": rations, "rations_carried": rations_carried, "sites": site_state, "finds": finds}

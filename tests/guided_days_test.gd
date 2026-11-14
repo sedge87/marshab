@@ -231,7 +231,7 @@ func _initialize() -> void:
 	await _settle(radio)
 	_check(str(walker.state) == "coming" and radio.heard.has("d3_fixed"), "set right, it'll come overnight (%s)" % walker.state)
 	_check(not days.day_done(3), "day 3 waits for the spot")
-	_check(not pod._open_plans().has(pod.PLANS.size() - 1), "no seal on the printer before the fault's found")
+	_check(not pod._open_plans().has(pod.PLANS.map(func(p): return str(p[0])).find("seal")), "no seal on the printer before the fault's found")
 	var cam := Camera3D.new()
 	world.add_child(cam)
 	var knee: Node3D = walker._knees[3]
@@ -253,7 +253,7 @@ func _initialize() -> void:
 	walker.mark({"cells": [Vector2i(3, 3), Vector2i(4, 3), Vector2i(3, 4), Vector2i(4, 4), Vector2i(3, 5), Vector2i(4, 5)]})
 	await _settle(radio)
 	_check(bool(walker.marked) and radio.heard.has("d3_marked") and not days.day_done(3), "the spot's marked; the seal's still wanted")
-	_check(pod._open_plans().has(pod.PLANS.size() - 1), "the printer offers the wheel seal")
+	_check(pod._open_plans().has(pod.PLANS.map(func(p): return str(p[0])).find("seal")), "the printer offers the wheel seal")
 	pod.printing = "seal"
 	pod._printed()
 	await _settle(radio)
