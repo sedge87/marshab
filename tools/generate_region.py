@@ -88,19 +88,29 @@ _wide = int(round(RIVER_WIDE_AT * 360))
 ZONES["riverbed"] = {"centre": (float(RIVER_POINTS[_wide][0]), float(RIVER_POINTS[_wide][1])), "flat_radius": 50.0, "blend": 1.15, "label": "The old riverbed"}
 FEATURES += [("Ancient river", tuple(float(v) for v in RIVER_POINTS[110])), ("Delta", tuple(float(v) for v in RIVER_POINTS[-12]))]
 FEATURES += [("Wrinkle ridge", (-1650.0, 1900.0)), ("Wrinkle ridge", (-600.0, 1900.0)), ("Side canyon", (-2050.0, -1700.0))]
+FEATURES += [("Lava plain", (2350.0, 1500.0)), ("Platy lava", (1480.0, 1400.0)), ("Fissure", (2200.0, 360.0)), ("Yardangs", (-450.0, -250.0)),
+             ("Raised riverbeds", (-40.0, 1600.0)), ("Buried glacier", (-1940.0, -970.0)), ("Chaos blocks", (2560.0, 2100.0))]
 
-MESAS = [(-760.0, 420.0, 170.0, 48.0), (-2050.0, 1650.0, 240.0, 62.0), (300.0, 1500.0, 140.0, 40.0), (-1950.0, 380.0, 110.0, 34.0), (2100.0, 1700.0, 260.0, 70.0)]
+# Ring 1's three are low, with scree you can scramble; the far mesa (300, 1500) has a real cliff, the first
+# rope face; the east one stands as an island in the lava plain; the last is the glacier's mesa in the ice fields.
+MESAS = [(-760.0, 420.0, 170.0, 48.0), (-2050.0, 1650.0, 240.0, 50.0), (300.0, 1500.0, 140.0, 58.0), (-1950.0, 380.0, 110.0, 34.0), (2100.0, 1700.0, 260.0, 70.0),
+         (-2120.0, -760.0, 125.0, 45.0)]
 
 
 # Mesas with a ramp of fallen wall the rover can climb: mesa index -> the ramp's direction (radians).
-MESA_RAMPS = {1: 0.0, 4: math.pi}
+MESA_RAMPS = {1: 0.0, 2: -0.9, 4: 0.0}
+# A scree gully up a mesa's flank (a steep short cut on foot): mesa index -> direction.
+MESA_GULLIES = {0: 2.4}
 # The big crater's breaches: (direction from its centre, angular width, how much of the rim is gone).
 CRATER_BREACHES = [(-1.2, 0.34, 0.6), (0.25, 0.26, 0.72)]
 CANYON_DEPTH = 170.0
 CANYON_FAR_EDGE = -2820.0   # the canyon's far (north) wall
 # Side canyons biting back into the plateau: (x, length, half width, ramp up from the floor?).
 SIDE_RAMP_LENGTH = 700.0
-SIDE_CANYONS = [(-250.0, 420.0, 75.0, False), (-2050.0, SIDE_RAMP_LENGTH, 85.0, True), (2050.0, 500.0, 70.0, False), (-1450.0, 230.0, 45.0, False)]
+# The long ramp is the rover's way; the short ones are chutes of fallen rock, ways out on foot
+# (nothing traps you: every stretch of the floor is within about 600 m of one).
+SIDE_CANYONS = [(-250.0, 420.0, 75.0, False), (-2050.0, SIDE_RAMP_LENGTH, 85.0, True), (2050.0, 500.0, 70.0, False), (-1450.0, 230.0, 45.0, True),
+                (-800.0, 170.0, 30.0, True), (350.0, 170.0, 30.0, True), (1850.0, 170.0, 30.0, True), (2550.0, 170.0, 30.0, True)]
 CANYON_LANDSLIDES = [(-950.0, 420.0, 260.0), (1250.0, 380.0, 220.0)]   # x, run-out, half width
 # Wrinkle ridges on the plains: control points, and where along them (0..1) the passes are.
 WRINKLE_RIDGES = [
@@ -109,7 +119,59 @@ WRINKLE_RIDGES = [
 ]
 # Scarps in the ice fields where clean ice shows: from, to, drop (m).
 # Boulder fields (x, z, radius), each crossed by a few clear corridors.
-BOULDER_FIELDS = [(2150.0, -1450.0, 240.0), (-2350.0, 1950.0, 200.0), (1500.0, 2150.0, 220.0)]
+BOULDER_FIELDS = [(2150.0, -1450.0, 240.0), (-2350.0, 1950.0, 200.0), (1750.0, 1150.0, 200.0)]
+SHARP_BOULDERS = [0, 2]   # which of them are wind-sharpened rock that wears wheels (docs/terrain-design.md)
+
+# Home (docs/terrain-design.md, 14 Nov): you always land on the plains, within
+# `radius` of this centre. The rings are distances from it, for pacing; the
+# land never draws them.
+HOME = {"centre": (-1400.0, 1000.0), "radius": 750.0}
+RINGS = [1000.0, 2500.0, 4000.0]
+
+# The young lava plain in the east: it flowed in from a vent beyond the map's
+# edge, flooded the low ground south and east of the crater and stopped in a
+# lobate front. Its west margin is the platy belt.
+LAVA_PLAIN = {"west": 1280.0, "north": 420.0, "strip_west": 2420.0, "strip_north": -1150.0, "thickness": 8.0}
+PLATY_BELT = {"width": 320.0, "east": 1760.0, "plate": 55.0, "lanes": 3}
+# Fissures (Cerberus Fossae, scaled down): from the narrow end to the wide end,
+# widest half-width (m), deepest (m). They lead towards the heart.
+FISSURES = [
+    {"id": "main_fissure", "from": (1290.0, 640.0), "to": (3040.0, 70.0), "half_width": 26.0, "depth": 90.0, "bridge": 0.2},
+    {"id": "north_fissure", "from": (2360.0, -110.0), "to": (3050.0, -390.0), "half_width": 14.0, "depth": 50.0, "bridge": None},
+]
+# The yardang maze between home and the crater: its long axis lies along the wind.
+YARDANGS = {"centre": (-450.0, -250.0), "length": 1000.0, "width": 600.0, "count": 44}
+DRONE_WRECK = (-650.0, -50.0)
+# Ripple belts beside the one round the dune sea: centre, length across the wind, width along it.
+RIPPLE_BELTS = [(2650.0, -900.0, 520.0, 240.0)]
+# The raised riverbeds, and the sand that has gathered on the plain beside them.
+INVERTED_CHANNELS = {"points": [(-40.0, 2120.0), (-120.0, 1880.0), (-20.0, 1640.0), (-100.0, 1400.0), (-10.0, 1180.0), (50.0, 1040.0)],
+                     "tributaries": [(0.35, 0.7), (0.6, -0.8)],
+                     "sand_centre": (-70.0, 1650.0), "sand_radius": 430.0}
+# The buried glacier: a lobe of rubble-covered ice from the foot of the last mesa.
+GLACIER = {"from": (-2060.0, -810.0), "flow": (0.6, -0.8), "length": 400.0, "width": 300.0, "thickness": 24.0, "pits": 16}
+CHAOS_BLOCKS = (2560.0, 2100.0, 330.0, 120.0)   # centre, radius, block size
+FRESH_CRATER = (-380.0, 2180.0, 150.0)
+# Ring 1 (docs/terrain-design.md).
+HOME_GROUND = {
+    "frost_hollow": (-1400.0, 300.0, 130.0, 7.0),          # x, z, radius, depth
+    "channel": {"points": [(-900.0, 1750.0), (-850.0, 1480.0), (-930.0, 1200.0), (-870.0, 950.0), (-950.0, 720.0)], "depth": 5.0, "crossings": [0.3, 0.68]},
+    "sand_sheet": (-1640.0, 330.0, 150.0),
+    "outcrop": (-1130.0, 720.0, 15.0, 5.5),               # the ladder's place: x, z, radius, height
+    "pit": (-1050.0, 1340.0, 7.0, 10.0),                  # the rope's place: x, z, radius, depth
+    "sliver": {"from": (-1760.0, 150.0), "to": (-1040.0, 40.0), "split": (0.3, 0.7), "bulge": 42.0, "half_width": 8.0, "depth": 14.0},   # the bridge's
+}
+# Step lines: where the land steps up from the home plain to the Reach. Each follows the geology and
+# fades at its ends; `up` says which side of the line (as drawn) is high (+1 left of travel on the map,
+# which is south for a line drawn eastward); `passes` are where a rover can climb.
+STEP_LINES = [
+    {"id": "north_scarp", "kind": "caprock", "points": [(-2400.0, -150.0), (-2050.0, -230.0), (-1700.0, -170.0), (-1350.0, -290.0), (-1050.0, -230.0)],
+     "up": -1.0, "height": 18.0, "passes": [0.3, 0.75]},
+    {"id": "east_front", "kind": "flow_front", "points": [(-330.0, 480.0), (-250.0, 900.0), (-330.0, 1300.0), (-230.0, 1700.0), (-300.0, 2150.0)],
+     "up": -1.0, "height": 11.0, "passes": [0.25, 0.6, 0.85]},
+]
+MINOR_CRACKS = 34
+HEART = (2700.0, 250.0)   # where the tube's lower level meets the old magnetised body, about 150 m down
 ICE_SCARPS = [((-1760.0, -1240.0), (-1380.0, -1330.0), 10.0), ((-1990.0, -700.0), (-1760.0, -610.0), 8.0)]
 
 
@@ -234,6 +296,10 @@ def add_small_craters(h, x, z, rng, count, keep_out, masks):
         age = rng.random()
         if any(math.hypot(cx - kx, cz - kz) < kr + r * 2.5 for kx, kz, kr in keep_out):
             continue
+        if "lava" in masks and masks["lava"][int((cz + HALF) / SPACING), int((cx + HALF) / SPACING)] > 0.5:
+            if rng.random() < 0.85:   # young lava: few craters yet, and those fresh
+                continue
+            age *= 0.4
         add_crater(h, x, z, cx, cz, r, age, rng)
         placed.append((cx, cz, r, age))
     masks["craters"] = placed
@@ -396,12 +462,16 @@ def add_canyon(h, x, z, masks, medium):
     plateau = z > edge
     bay_wobble = 22.0 * spectral_noise(3.0, SEED + 5, k_low=0.004, k_high=0.03)
     ramp_bay = np.zeros(h.shape, dtype=bool)
+    ramp_len = np.full(h.shape, SIDE_RAMP_LENGTH, dtype=np.float32); ramp_off = np.full(h.shape, 240.0, dtype=np.float32)
     for sx, length, width, is_ramp in SIDE_CANYONS:
         q = np.clip((z - base_edge[None, :]) / length, 0.0, 1.0)
         bay = (np.abs(x - sx + bay_wobble) < width * (1.0 - (0.15 if is_ramp else 0.45) * q)) & (z < base_edge[None, :] + length + 30.0 * spurs)
         plateau &= ~bay
         if is_ramp:
             ramp_bay |= bay
+            if length < SIDE_RAMP_LENGTH:   # a chute: short and steep, on foot
+                band = np.abs(x - sx) < width * 2.5 + 60.0
+                ramp_len[band] = length; ramp_off[band] = 110.0
     u = box_blur(signed_distance(plateau), 8)   # > 0 on the plateau (smoothed: the chamfer distance is a little angular)
     # The cliff in three layers (hard caps over softer beds), talus below.
     v = np.clip((u + 90.0) / 90.0, 0.0, 1.0) * 3.0 + 0.15 * medium
@@ -410,7 +480,7 @@ def add_canyon(h, x, z, masks, medium):
                        0.45 * np.clip((u + 240.0) / 150.0, 0.0, 1.0) ** 1.6)
     profile = np.where(u >= 0.0, 1.0, profile)
     # The ramp canyon: its floor climbs steadily from the canyon floor to the plateau.
-    into = np.clip((z - base_edge[None, :] + 240.0) / (SIDE_RAMP_LENGTH + 120.0), 0.0, 1.0)   # level with the plateau 120 m before the head
+    into = np.clip((z - base_edge[None, :] + ramp_off) / (ramp_len + ramp_off * 0.5), 0.0, 1.0)   # level with the plateau 120 m before the head
     bay_depth = box_blur(signed_distance(ramp_bay), 6)   # metres into the bay (negative outside)
     in_bay = smoothstep(4.0, 30.0, bay_depth)
     profile = profile * (1.0 - in_bay) + into * in_bay   # the bay's floor is the ramp
@@ -457,8 +527,12 @@ def add_mesas(h, x, z, masks, medium, edge_warp):
     masks["mesa_body"] = np.zeros_like(h)
     masks["talus"] = np.zeros_like(h)
     bodies = []
+    gullies = {}
+    masks["scree"] = np.zeros_like(h)
     for index, (mx, mz, mr, mh) in enumerate(MESAS):
         bodies.append((mx, mz, mr, mh, MESA_RAMPS.get(index)))
+        if index in MESA_GULLIES:
+            gullies[(mx, mz)] = MESA_GULLIES[index]
         for _ in range(2):
             a = rng.uniform(-math.pi, math.pi)
             br = mr * rng.uniform(0.2, 0.3)
@@ -484,6 +558,14 @@ def add_mesas(h, x, z, masks, medium, edge_warp):
             ramp = mh * np.clip(1.0 - (plain - 0.78) / run, 0.0, 1.0)
             # The fallen wall replaces the cliff there: flat top, then the ramp down.
             lift = lift * (1.0 - wb) + np.maximum(ramp, np.where(plain < 0.78, mh, 0.0)) * wb
+        if (mx, mz) in gullies:
+            # A gully of loose scree cut back into the cliff: steep, but a way up.
+            wg = 1.0 - smoothstep(0.05, 0.11, np.abs(np.angle(np.exp(1j * (ang - gullies[(mx, mz)])))))
+            plain = np.sqrt(dx * dx + dz * dz) / mr
+            run = mh / (0.68 * mr)
+            chute = mh * np.clip(1.0 - (plain - 0.55) / run, 0.0, 1.0)
+            lift = lift * (1.0 - wg) + np.minimum(lift, chute) * wg
+            masks["scree"][win] = np.maximum(masks["scree"][win], wg * (plain > 0.5) * (plain < 0.6 + run))
         h[win] += lift
         masks["mesa_body"][win] = np.maximum(masks["mesa_body"][win], 1.0 - smoothstep(0.88, 0.96, md))
         masks["talus"][win] = np.maximum(masks["talus"][win], smoothstep(0.9, 0.96, md) * (1.0 - smoothstep(1.2, 1.65, md)))
@@ -578,6 +660,9 @@ def add_valley_network(h, x, z, masks, trunk_floor):
             return True
         if p[1] < -1850.0:
             return True
+        pj = int(np.clip((p[1] + HALF) / SPACING, 0, N - 1)); pi = int(np.clip((p[0] + HALF) / SPACING, 0, N - 1))
+        if masks["lava_sd"][pj, pi] > -30.0 or masks["sand_sheet"][pj, pi] > 0.2 or masks["yardang_field"][pj, pi] > 0.1:
+            return True
         for mx, mz, mr, mh, _ in masks["mesa_list"]:
             if math.hypot(p[0] - mx, p[1] - mz) < mr * 1.25:
                 return True
@@ -650,6 +735,7 @@ def add_dunes(h, x, z, masks, medium, edge_warp, lobes_field):
     dd = np.sqrt((along / (DUNES_RADIUS * 1.8)) ** 2 + (across / DUNES_RADIUS) ** 2) + edge_warp(410, 0.18, 0.09) + 0.08 * np.sin(across / DUNES_RADIUS * 9.0 + 3.0 * lobes_field)
     field = 1.0 - smoothstep(0.7, 1.0, dd)
     field *= 1.0 - masks["ramp_canyon"]
+    masks["dune_dd"] = dd
     # Transverse ridges, about 65 m apart.
     phase = along / 65.0 + 0.25 * np.sin(across / 140.0 + 0.6 * medium) + 0.12 * medium
     f = phase - np.floor(phase)
@@ -761,6 +847,598 @@ def add_ice_ground(h, x, z, masks, medium, small, edge_warp):
         masks["ice_scarp"] = np.maximum(masks["ice_scarp"], (np.abs(s) < 7.0) * ends)
 
 
+
+# ---------- the young lava plain, its platy belt and the fissures (B2) ----------
+
+def add_lava_plain(h, x, z, masks, medium, small, lobes_field, ragged_field):
+    """Young lava floods the low ground in the east: a nearly level surface
+    over the (smoothed) buried land, older ground standing out of it as
+    islands, ending in a lobate front a few metres high. Inflated lobes and
+    low pressure ridges roughen it."""
+    c = LAVA_PLAIN
+    lob = np.roll(lobes_field, (500, 900), (0, 1)); lob2 = np.roll(lobes_field, (-700, 300), (0, 1))
+    rag = np.roll(ragged_field, (300, 700), (0, 1))
+    south = (x > c["west"] + 170.0 * lob + 45.0 * rag) & (z > c["north"] + 130.0 * lob2 + 40.0 * rag)
+    strip = (x > c["strip_west"] + 140.0 * lob2 + 40.0 * rag) & (z > c["strip_north"] + 120.0 * lob)
+    inside = (south | strip) & (masks["crater_d"] > 1.2 + 0.05 * lob) & (z + 160.0 * masks["large"] < HALF - 600.0)
+    sd = box_blur(signed_distance(inside), 3)
+    # Lava finds its level: the plain falls gently south-south-west, away
+    # from the vent, and the old land's broad swells are buried under it
+    # (they're eased towards that level well back from the front).
+    buried = box_blur(h, 70)
+    level = float(np.median(buried[inside]))
+    plane = level - 0.008 * ((x - 2250.0) * -0.47 + (z - 1050.0) * 0.88)
+    ease = smoothstep(-350.0, 150.0, sd)
+    h -= 0.9 * ease * (buried - plane)
+    buried = buried - 0.9 * ease * (buried - plane)
+    thick = c["thickness"] * (1.0 + 0.45 * np.roll(lob, (-300, 400), (0, 1)))
+    tumuli = 1.4 * np.clip(spectral_noise(2.6, SEED + 120, k_low=0.02, k_high=0.07) - 0.9, 0.0, None)
+    # Inflated lobes: the surface steps down a metre or two from sheet to sheet.
+    sheets = spectral_noise(3.2, SEED + 121, k_low=0.004, k_high=0.02) * 2.2
+    stepped = np.floor(sheets) + smoothstep(0.82, 1.0, sheets - np.floor(sheets))
+    top = buried + thick + 0.35 * medium + tumuli + 1.3 * stepped
+    front = smoothstep(0.0, 10.0, sd)
+    h += (np.maximum(h, top) - h) * front
+    masks["lava"] = front * (h <= top + 0.5)
+    masks["lava_sd"] = sd
+
+
+def voronoi_edges(px, pz, salt):
+    """For points in cell units: distance to the nearest cell point, how far
+    it is to the edge between the two nearest (cell units), and the nearest
+    cell's indices."""
+    ci = np.floor(px); cj = np.floor(pz)
+    f1 = np.full(px.shape, 9.0); f2 = np.full(px.shape, 9.0)
+    ni = np.zeros(px.shape); nj = np.zeros(px.shape)
+    for di in (-1, 0, 1):
+        for dj in (-1, 0, 1):
+            sx = ci + di + 0.1 + 0.8 * cell_hash(ci + di, cj + dj, salt)
+            sz = cj + dj + 0.1 + 0.8 * cell_hash(ci + di, cj + dj, salt + 1.0)
+            dd = np.sqrt((px - sx) ** 2 + (pz - sz) ** 2)
+            closer = dd < f1
+            f2 = np.where(closer, f1, np.minimum(f2, dd))
+            ni = np.where(closer, ci + di, ni); nj = np.where(closer, cj + dj, nj)
+            f1 = np.minimum(f1, dd)
+    return f1, f2 - f1, ni, nj
+
+
+def add_platy_belt(h, x, z, masks, medium):
+    """The platy belt along the lava plain's west margin: the crust broke
+    into plates tens of metres across that rafted apart, tilted and jammed,
+    with pressure ridges where they met and rough gaps between. A few lines
+    of smoother lava wind through it: the safe ways across."""
+    c = PLATY_BELT
+    sd = masks["lava_sd"]
+    belt = smoothstep(14.0, 40.0, sd) * (1.0 - smoothstep(c["width"] - 40.0, c["width"], sd)) * (1.0 - smoothstep(c["east"] - 60.0, c["east"], x)) * (masks["lava"] > 0.5)
+    rows = np.where(belt.max(axis=1) > 0.01)[0]; cols = np.where(belt.max(axis=0) > 0.01)[0]
+    win = (slice(rows[0], rows[-1] + 1), slice(cols[0], cols[-1] + 1))
+    size = c["plate"]
+    px = (x[win] + 9.0 * medium[win]) / size; pz = (z[win] - 9.0 * medium[win]) / size
+    f1, edge, ni, nj = voronoi_edges(px, pz, 11.0)
+    edge_m = edge * size
+    tilt_x = (cell_hash(ni, nj, 13.0) - 0.5) * 0.11; tilt_z = (cell_hash(ni, nj, 14.0) - 0.5) * 0.11
+    raft = (cell_hash(ni, nj, 15.0) - 0.5) * 2.4
+    slab = raft + ((px - ni - 0.5) * tilt_x + (pz - nj - 0.5) * tilt_z) * size
+    jammed = cell_hash(ni, nj, 16.0) > 0.35
+    ridge = 2.6 * (1.0 - smoothstep(0.0, 5.0, edge_m)) * jammed
+    gap = -1.8 * (1.0 - smoothstep(0.0, 3.0, edge_m)) * (~jammed)
+    rough = np.zeros_like(h)
+    rough[win] = slab + ridge + gap
+    # The safe lines: smoother lava from the front through to the plain.
+    rng = np.random.default_rng(SEED + 130)
+    zs = np.where(belt.max(axis=1) > 0.5)[0]
+    z_lo, z_hi = float(z[zs[0], 0]) + 150.0, float(z[zs[-1], 0]) - 150.0
+    lanes = np.ones_like(h)
+    lines = []
+    for k in range(c["lanes"]):
+        start = (LAVA_PLAIN["west"] - 320.0, z_lo + (z_hi - z_lo) * (k + 0.5) / c["lanes"] + rng.uniform(-120.0, 120.0))
+        line = wander(start, 0.0, c["width"] + 760.0, rng, step=14.0, turn=0.2)
+        d, _, _ = polyline_field(line, 40.0, step=1)
+        lanes = np.minimum(lanes, smoothstep(5.0, 16.0, d))
+        lines.append([[round(float(q[0]), 1), round(float(q[1]), 1)] for q in line[::4]])
+    amount = belt * lanes
+    h += rough * amount
+    masks["platy"] = amount
+    masks["platy_belt"] = belt
+    masks["platy_lanes"] = lines
+
+
+def plan_fissures(masks):
+    """Each fissure's line, and its width and depth along it. Where one is
+    too wide or deep to drive, the route check is told the ground is closed,
+    so rover routes go round and no track is ever graded across."""
+    plans = []
+    block = np.zeros((N, N), dtype=bool)
+    rng = np.random.default_rng(SEED + 140)
+    for f in FISSURES:
+        a = np.array(f["from"]); b = np.array(f["to"])
+        length = float(np.linalg.norm(b - a))
+        n = int(length / 20.0) + 1
+        t = np.linspace(0.0, 1.0, n)
+        line = a[None, :] + (b - a)[None, :] * t[:, None]
+        across = np.array([-(b - a)[1], (b - a)[0]]) / length
+        # En echelon: straight stretches that step sideways a little.
+        offset = np.cumsum(rng.normal(0.0, 1.0, n)); offset -= np.linspace(offset[0], offset[-1], n)
+        offset = 14.0 * offset / max(1.0, float(np.abs(offset).max())) + 9.0 * np.tanh(4.0 * np.sin(np.linspace(0.0, 21.0, n)))
+        line = line + across[None, :] * offset[:, None]
+        grow = smoothstep(0.0, 0.35, t)   # from nothing at the narrow end
+        half_width = 1.0 + (f["half_width"] - 1.0) * grow * (0.8 + 0.2 * np.sin(t * 37.0))
+        depth = f["depth"] * smoothstep(0.0, 0.3, t) * (0.85 + 0.15 * np.sin(t * 23.0 + 1.0))
+        d, tt, _ = polyline_field(line, 90.0, t, step=1)
+        width_at = np.interp(tt, t, half_width)
+        block |= (d < width_at + 8.0) & (np.interp(tt, t, depth) > 1.5)
+        plans.append({"f": f, "line": line, "t": t, "half_width": half_width, "depth": depth, "length": length, "d": d, "tt": tt, "width_at": width_at})
+    plan_cracks(masks, plans, block)
+    plan_minor_cracks(masks, plans, block)
+    masks["route_block"] = block
+    return plans
+
+
+def carve_fissures(h, x, z, masks, plans):
+    """Fissures: the crust pulled apart along a line. Sheer walls, a rubble
+    floor, widest and deepest in the east and pinching out to nothing at the
+    west end, where the floor climbs back to the land (the way out on foot)."""
+    out = []
+    masks["fissure"] = np.zeros_like(h)
+    masks["fissure_near"] = np.zeros_like(h)
+    for plan in plans:
+        f, line, t, half_width, depth, length = plan["f"], plan["line"], plan["t"], plan["half_width"], plan["depth"], plan["length"]
+        d, tt, width_at = plan["d"], plan["tt"], plan["width_at"]
+        n = len(line)
+        land = np.array([sample(h, q[0], q[1]) for q in line])
+        land = run_filter(land, 6, np.min)
+        floor = land - depth
+        wall_run = np.full(n, plan.get("wall_run", 3.0))
+        mask = carve_channel(h, line, floor, half_width, depth, wall_run, reach_extra=20.0, step=1, params=t)
+        masks["fissure"] = np.maximum(masks["fissure"], mask * (np.interp(tt, t, depth) > 3.0))
+        masks["fissure_near"] = np.maximum(masks["fissure_near"], 1.0 - smoothstep(width_at + 4.0, width_at + 40.0, d))
+        entry = {"id": f["id"], "half_width": f["half_width"], "depth": f["depth"],
+                 "points": [[round(float(q[0]), 1), round(float(q[1]), 1), round(float(w), 1), round(float(dp), 1)] for q, w, dp in zip(line[::3], half_width[::3], depth[::3])]}
+        if f["id"] in ("home_crack", "crack"):
+            continue
+        if f["bridge"] is not None:
+            k = int(f["bridge"] * (n - 1))
+            entry["bridge"] = {"position": [round(float(line[k][0]), 1), round(float(line[k][1]), 1)], "span": round(float(half_width[k] * 2.0 + 6.0), 1)}
+        out.append(entry)
+        print(f"  {f['id']}: {length:.0f} m, to {half_width.max() * 2:.0f} m wide and {depth.max():.0f} m deep")
+    return out
+
+
+def add_hollow_ground(h, x, z, masks, tube):
+    """Hollow ground along the lava tube: a thin crust over voids. A few have
+    already fallen in (small collapse pits); the rest only show to radar,
+    and are written to the hidden layer of the ground map."""
+    rng = np.random.default_rng(SEED + 150)
+    pts = np.array([[q[0], q[1]] for q in tube["points"]])
+    hidden = np.zeros_like(h)
+    pits = []
+    for _ in range(400):
+        if len(pits) >= 46:
+            break
+        k = int(rng.integers(20, len(pts) - 20))
+        side = rng.choice([-1.0, 1.0]) * rng.uniform(26.0, 120.0)
+        tangent = pts[min(k + 4, len(pts) - 1)] - pts[max(k - 4, 0)]; tangent /= np.linalg.norm(tangent)
+        q = pts[k] + np.array([-tangent[1], tangent[0]]) * side
+        r = rng.uniform(2.5, 6.0)
+        if any(math.hypot(q[0] - p[0], q[1] - p[1]) < r + p[2] + 14.0 for p in pits):
+            continue
+        if any(math.hypot(q[0] - s["position"][0], q[1] - s["position"][1]) < s["radius"] * 4.0 + r for s in tube["skylights"]):
+            continue
+        fallen = len(pits) % 3 == 0
+        pits.append((float(q[0]), float(q[1]), r, fallen))
+        i0 = max(0, int((q[0] - r * 3 + HALF) / SPACING)); i1 = min(N, int((q[0] + r * 3 + HALF) / SPACING) + 1)
+        j0 = max(0, int((q[1] - r * 3 + HALF) / SPACING)); j1 = min(N, int((q[1] + r * 3 + HALF) / SPACING) + 1)
+        win = (slice(j0, j1), slice(i0, i1))
+        d = np.hypot(x[win] - q[0], z[win] - q[1])
+        if fallen:   # a pit with a rubble slope you can scramble out of
+            h[win] -= rng.uniform(2.0, 3.6) * (1.0 - smoothstep(r * 0.5, r * 1.5, d))
+        else:
+            h[win] -= 0.35 * (1.0 - smoothstep(r * 0.6, r * 2.2, d))   # a faint sag is the only sign
+            hidden[win] = np.maximum(hidden[win], (d < r).astype(np.float32))
+    masks["hollow"] = hidden
+    return [{"position": [round(p[0], 1), round(p[1], 1)], "radius": round(p[2], 1), "fallen": bool(p[3])} for p in pits]
+
+
+
+# ---------- yardangs, ripple belts, raised riverbeds, the buried glacier (B2) ----------
+
+def window(cx, cz, reach):
+    i0 = max(0, int((cx - reach + HALF) / SPACING)); i1 = min(N, int((cx + reach + HALF) / SPACING) + 1)
+    j0 = max(0, int((cz - reach + HALF) / SPACING)); j1 = min(N, int((cz + reach + HALF) / SPACING) + 1)
+    return (slice(j0, j1), slice(i0, i1))
+
+
+def add_yardangs(h, x, z, masks, medium):
+    """A yardang maze: soft layered rock carved by one wind into streamlined
+    ridges, each blunt and tall at its upwind end and tapering downwind,
+    with scoured corridors between. No straight line leads through."""
+    c = YARDANGS
+    wind = np.array(DUNE_WIND)
+    rng = np.random.default_rng(SEED + 160)
+    along = (x - c["centre"][0]) * wind[0] + (z - c["centre"][1]) * wind[1]
+    across = -(x - c["centre"][0]) * wind[1] + (z - c["centre"][1]) * wind[0]
+    dd = np.sqrt((along / (c["length"] * 0.5)) ** 2 + (across / (c["width"] * 0.5)) ** 2) + 0.12 * medium
+    field = 1.0 - smoothstep(0.85, 1.15, dd)
+    # The wind has scoured the whole patch down a little, in grooves.
+    h -= field * (2.5 + 1.2 * np.sin(across / 9.0 + 2.0 * medium))
+    body = np.zeros_like(h)
+    placed = []
+    for _ in range(6000):
+        if len(placed) >= c["count"]:
+            break
+        a0 = rng.uniform(-0.56, 0.5) * c["length"]; c0 = rng.uniform(-0.5, 0.5) * c["width"]
+        if (a0 / (c["length"] * 0.5)) ** 2 + (c0 / (c["width"] * 0.5)) ** 2 > 1.0:
+            continue
+        length = rng.uniform(110.0, 360.0); width = rng.uniform(13.0, 30.0) + length * 0.03
+        height = min(48.0, rng.uniform(0.7, 1.25) * width)
+        # Leave corridors: no other ridge within a corridor's width to either side.
+        if any(abs(c0 - pc) < (width + pw) + rng.uniform(7.0, 16.0) and a0 < pa + pl + 16.0 and pa < a0 + length + 16.0 for pa, pc, pl, pw in placed):
+            continue
+        placed.append((a0, c0, length, width))
+        mid = np.array(c["centre"]) + wind * (a0 + length * 0.5) + np.array([-wind[1], wind[0]]) * c0
+        win = window(mid[0], mid[1], length * 0.5 + width * 2.0)
+        u = (along[win] - a0) / length
+        bend = 0.18 * width * np.sin(u * 5.0 + c0)
+        v = np.abs(across[win] - c0 - bend)
+        taper = smoothstep(-0.02, 0.1, u) * (1.0 - 0.72 * np.clip(u, 0.0, 1.0) ** 1.4) * (u < 1.0)
+        crest = smoothstep(-0.02, 0.08, u) * (1.0 - 0.8 * smoothstep(0.25, 1.0, u))
+        w = np.maximum(width * taper, 0.01)
+        shape = np.clip(1.0 - (v / w) ** 2.6, 0.0, 1.0) ** 0.6
+        layers = 1.0 + 0.05 * np.sin(u * 60.0)
+        body[win] = np.maximum(body[win], height * crest * shape * layers * (u > -0.02))
+    # Hard beds stand out as ledges on the flanks.
+    stepped = np.floor(body / 6.0) * 6.0 + 6.0 * smoothstep(0.35, 1.0, (body % 6.0) / 6.0)
+    h += 0.4 * body + 0.6 * stepped
+    masks["yardangs"] = (body > 1.5).astype(np.float32)
+    masks["yardang_field"] = field
+    print(f"  yardangs: {len(placed)} ridges, to {float(body.max()):.0f} m")
+
+
+def add_ripple_belts(h, x, z, masks, medium):
+    """Ripple belts: bands of big, pale sand ripples (transverse aeolian
+    ridges) a metre or three tall and a few tens of metres apart, across
+    the wind. Rovers bog in them. One rings the dune sea, others lie in
+    low ground on their own."""
+    wind = np.array(DUNE_WIND)
+    along = x * wind[0] + z * wind[1]
+    across = -x * wind[1] + z * wind[0]
+    belt = smoothstep(0.98, 1.06, masks["dune_dd"]) * (1.0 - smoothstep(1.22, 1.4, masks["dune_dd"]))
+    belt *= 0.5 + 0.5 * smoothstep(-0.3, 0.3, np.roll(medium, (211, 97), (0, 1)))   # it comes and goes
+    for cx, cz, length, width in RIPPLE_BELTS:
+        a = (x - cx) * wind[0] + (z - cz) * wind[1]; c = -(x - cx) * wind[1] + (z - cz) * wind[0]
+        # Belts lie across the wind: long across it, short along it.
+        dd = np.sqrt((a / (width * 0.5)) ** 2 + (c / (length * 0.5)) ** 2) + 0.15 * medium
+        belt = np.maximum(belt, 1.0 - smoothstep(0.8, 1.05, dd))
+    belt *= (masks["canyon_u"] > 40.0) * (1.0 - masks["mesa_body"]) * (masks["crater_d"] > 1.04)
+    phase = along / 26.0 + 0.3 * np.sin(across / 60.0 + 0.5 * medium) + 0.1 * medium
+    f = phase - np.floor(phase)
+    crest = np.where(f < 0.55, smoothstep(0.0, 1.0, f / 0.55), 1.0 - smoothstep(0.0, 1.0, (f - 0.55) / 0.45))
+    tall = 1.6 + 0.9 * np.sin(across / 45.0 + 1.3 * medium)
+    h += belt * (tall * crest ** 1.3 + 0.4)
+    masks["ripples"] = belt
+
+
+def raised_channel(h, line, top, half_width, masks, side_run=9.0):
+    """Lay a raised riverbed along `line`: a flat-topped ridge of cemented
+    gravel standing `top` (per point) over the land beside it."""
+    params = np.arange(len(line), dtype=float)
+    reach = float(np.max(half_width)) + side_run + 30.0
+    d, t, _ = polyline_field(line, reach, params, step=1)
+    near = d < reach
+    top_at = np.interp(t[near], params, top)
+    width_at = np.interp(t[near], params, half_width)
+    s = np.maximum(0.0, d[near] - width_at)
+    lift = top_at * (1.0 - smoothstep(0.0, side_run, s))
+    h[near] += lift
+    masks["inverted"][near] = np.maximum(masks["inverted"][near], (s < 1.0).astype(np.float32))
+    masks["inverted_side"][near] = np.maximum(masks["inverted_side"][near], ((s >= 1.0) & (s < side_run)).astype(np.float32))
+
+
+def add_inverted_channels(h, x, z, masks, medium):
+    """Raised old riverbeds: an older river than the valley network. Its
+    gravel bed set hard, the soft plain round it blew away, and the channel
+    was left standing as a sinuous ridge with tributaries joining it. Sand
+    has gathered on the plain beside it, so the ridge top is the firm way."""
+    c = INVERTED_CHANNELS
+    rng = np.random.default_rng(SEED + 170)
+    masks["inverted"] = np.zeros_like(h); masks["inverted_side"] = np.zeros_like(h)
+    sheet = 1.0 - smoothstep(0.75, 1.05, dist(x, z, c["sand_centre"]) / c["sand_radius"] + 0.2 * medium)
+    sheet *= 1.0 - smoothstep(0.85, 1.0, masks["mesa_body"] + masks["talus"])
+    h += sheet * (0.9 + 0.5 * np.sin((x * 0.6 + z) / 11.0 + medium))
+    masks["sand_sheet"] = np.maximum(masks.get("sand_sheet", 0.0), sheet)
+    lines = []
+    main = smooth_line(c["points"], 16.0, 30.0, rng)
+    n = len(main)
+    ends = np.clip(np.minimum(np.arange(n), n - 1 - np.arange(n)) / 6.0, 0.0, 1.0)
+    raised_channel(h, main, (6.0 + 6.0 * np.linspace(0.0, 1.0, n)) * ends, 16.0 + 14.0 * np.linspace(0.0, 1.0, n), masks)
+    lines.append(main)
+    for at, turn in c["tributaries"]:
+        k = int(at * (n - 1))
+        back = main[k - 2] - main[k + 2]
+        heading = math.atan2(back[1], back[0]) + turn
+        branch = wander(main[k], heading, rng.uniform(320.0, 520.0), rng, step=16.0, turn=0.08)
+        m = len(branch)
+        fade = np.clip((m - 1 - np.arange(m)) / 6.0, 0.0, 1.0)
+        raised_channel(h, branch, (4.0 + 4.0 * np.linspace(1.0, 0.0, m)) * fade, 8.0 + 8.0 * np.linspace(1.0, 0.0, m), masks)
+        lines.append(branch)
+    masks["inverted_lines"] = [[[round(float(q[0]), 1), round(float(q[1]), 1)] for q in line[::3]] for line in lines]
+
+
+def add_buried_glacier(h, x, z, masks, medium):
+    """A buried glacier: ice under a few metres of rubble, flowed out from a
+    mesa's foot as a lobate apron with a steep convex front, ridges along
+    the flow, and pits where the ice has sublimated away. Some pits are
+    still roofed over: those go on the hidden layer for radar to find."""
+    c = GLACIER
+    rng = np.random.default_rng(SEED + 180)
+    axis = np.array(c["flow"]); axis = axis / np.linalg.norm(axis)
+    origin = np.array(c["from"])
+    win = window(origin[0] + axis[0] * c["length"] * 0.5, origin[1] + axis[1] * c["length"] * 0.5, c["length"])
+    u = ((x[win] - origin[0]) * axis[0] + (z[win] - origin[1]) * axis[1]) / c["length"]
+    v = (-(x[win] - origin[0]) * axis[1] + (z[win] - origin[1]) * axis[0]) / (c["width"] * 0.5)
+    spread = 0.55 + 0.45 * smoothstep(0.0, 0.6, u)   # it fans out as it flows
+    r = np.sqrt(np.clip(u, 0.0, None) ** 2 + (v / spread) ** 2) + 0.1 * medium[win] + 0.05 * np.sin(np.arctan2(v, u) * 7.0)
+    lobe = np.clip(1.0 - r ** 4, 0.0, 1.0) ** 0.5 * (u > -0.1) * smoothstep(-0.1, 0.05, u)
+    lines = 0.7 * np.sin(v * 26.0 + 2.0 * medium[win]) * lobe
+    arcs = 0.9 * np.sin(r * 40.0) * smoothstep(0.55, 0.9, r) * lobe   # ridges bowed round the front
+    h[win] += c["thickness"] * lobe + lines + arcs
+    body = np.zeros_like(h); body[win] = (lobe > 0.25)
+    masks["glacier"] = body
+    hidden = masks.setdefault("sinkholes", np.zeros_like(h))
+    pits = []
+    for _ in range(600):
+        if len(pits) >= c["pits"]:
+            break
+        pu = rng.uniform(0.15, 0.85); pv = rng.uniform(-0.6, 0.6) * (0.55 + 0.45 * pu)
+        q = origin + axis * pu * c["length"] + np.array([-axis[1], axis[0]]) * pv * c["width"] * 0.5
+        pr = rng.uniform(5.0, 18.0)
+        if any(math.hypot(q[0] - p[0], q[1] - p[1]) < pr + p[2] + 10.0 for p in pits):
+            continue
+        roofed = len(pits) % 4 == 3
+        pits.append((float(q[0]), float(q[1]), pr, roofed))
+        w2 = window(q[0], q[1], pr * 2.2)
+        d = np.hypot(x[w2] - q[0], z[w2] - q[1])
+        if roofed:
+            hidden[w2] = np.maximum(hidden[w2], (d < pr * 0.8).astype(np.float32))
+            h[w2] -= 0.3 * (1.0 - smoothstep(pr * 0.5, pr * 1.6, d))
+        else:   # an open pit, steeper on its pole-facing side, always with a slope you can climb
+            h[w2] -= rng.uniform(2.0, 5.0) * (1.0 - smoothstep(pr * 0.35, pr * 1.25, d))
+    masks["glacier_pits"] = [{"position": [round(p[0], 1), round(p[1], 1)], "radius": round(p[2], 1), "roofed": bool(p[3])} for p in pits]
+
+
+def add_chaos_blocks(h, x, z, masks, medium):
+    """Chaos blocks: the ground broke into flat-topped blocks tens of metres
+    across when what lay under it gave way, leaving a maze of troughs."""
+    cx, cz, radius, size = CHAOS_BLOCKS
+    win = window(cx, cz, radius * 1.4)
+    px = (x[win] + 14.0 * medium[win]) / size; pz = (z[win] - 14.0 * medium[win]) / size
+    f1, edge, ni, nj = voronoi_edges(px, pz, 31.0)
+    field = 1.0 - smoothstep(0.7, 1.05, np.hypot(x[win] - cx, z[win] - cz) / radius + 0.15 * medium[win])
+    height = 18.0 + 38.0 * cell_hash(ni, nj, 33.0)
+    gap = (12.0 + 16.0 * cell_hash(ni, nj, 34.0)) / size
+    block = smoothstep(gap * 0.5, gap * 0.5 + 0.09, edge)   # sheer-sided, flat-topped
+    tilt = ((px - ni - 0.5) * (cell_hash(ni, nj, 35.0) - 0.5) + (pz - nj - 0.5) * (cell_hash(ni, nj, 36.0) - 0.5)) * 9.0
+    keep = cell_hash(ni, nj, 37.0) > 0.12   # a few have gone altogether
+    h[win] += field * block * keep * (height + tilt)
+    body = np.zeros_like(h); body[win] = field * block * keep
+    masks["chaos"] = body
+
+
+def add_home_ground(h, x, z, masks, medium):
+    """Ring 1's own landforms (docs/terrain-design.md §3 and §6): the frost
+    hollow with its shallow ice, a dry channel with two low crossings, a
+    sand sheet in a mesa's lee, and the places the land locks until you
+    have the kit: a ledge-topped outcrop (a ladder) and a collapse pit (a
+    rope). The cracked sliver (a bridge) is carved with the fissures."""
+    rng = np.random.default_rng(SEED + 190)
+    c = HOME_GROUND
+    # The frost hollow.
+    fx, fz, fr, fd = c["frost_hollow"]
+    w = window(fx, fz, fr * 2.0)
+    d = np.hypot(x[w] - fx, z[w] - fz) / fr + 0.12 * medium[w]
+    bowl = 1.0 - smoothstep(0.25, 1.25, d)
+    h[w] -= fd * bowl
+    hollow = np.zeros_like(h); hollow[w] = (bowl > 0.45)
+    masks["frost_hollow"] = hollow
+    # The dry channel: steep banks, a gravel floor, two low crossings.
+    line = smooth_line(c["channel"]["points"], 14.0, 22.0, rng)
+    n = len(line)
+    t = np.linspace(0.0, 1.0, n)
+    ends = smoothstep(0.0, 0.08, t) * smoothstep(1.0, 0.92, t)
+    low = np.ones(n)
+    for p in c["channel"]["crossings"]:
+        low -= 0.8 * np.exp(-((t - p) / 0.035) ** 2)
+    low = np.clip(low, 0.2, 1.0)
+    depth = c["channel"]["depth"] * ends * low
+    floor = np.empty(n)
+    for k in range(n):
+        ground = sample(h, line[k][0], line[k][1]) - depth[k]
+        floor[k] = ground if k == 0 else min(ground, floor[k - 1] - 0.01)
+    wall_run = np.where(low < 0.6, 16.0, 4.0) * np.ones(n)
+    mask = carve_channel(h, line, floor, np.full(n, 8.0) * (0.5 + 0.5 * ends), np.maximum(depth, 0.3), wall_run, step=1)
+    masks["channels"] = np.maximum(masks["channels"], mask) if "channels" in masks else mask
+    masks["home_channel"] = [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in line[::3]]
+    masks["home_crossings"] = [[round(float(line[int(p * (n - 1))][0]), 1), round(float(line[int(p * (n - 1))][1]), 1)] for p in c["channel"]["crossings"]]
+    # A sand sheet in the lee of a mesa.
+    sx, sz, sr = c["sand_sheet"]
+    wind = np.array(DUNE_WIND)
+    a = (x - sx) * wind[0] + (z - sz) * wind[1]; b = -(x - sx) * wind[1] + (z - sz) * wind[0]
+    sheet = 1.0 - smoothstep(0.7, 1.05, np.sqrt((a / (sr * 1.6)) ** 2 + (b / sr) ** 2) + 0.2 * medium)
+    sheet *= 1.0 - smoothstep(0.85, 1.0, masks["mesa_body"] + masks["talus"])
+    h += sheet * (1.0 + 0.6 * np.sin(a / 9.0 + medium))
+    masks["sand_sheet"] = np.maximum(masks.get("sand_sheet", 0.0), sheet)
+    # The ledge-topped outcrop: a knob of hard rock, sheer all round.
+    ox, oz, orad, oh = c["outcrop"]
+    w = window(ox, oz, orad * 2.5)
+    ang = np.arctan2(z[w] - oz, x[w] - ox)
+    d = np.hypot(x[w] - ox, z[w] - oz) / (orad * (1.0 + 0.14 * np.sin(ang * 3.0 + 1.0) + 0.08 * np.sin(ang * 5.0)))
+    top = sample(h, ox, oz) + oh
+    knob = 1.0 - smoothstep(1.0, 1.0 + 2.2 / orad, d)
+    h[w] = h[w] * (1.0 - knob) + (top + 0.25 * medium[w]) * knob
+    h[w] += 1.2 * np.clip(1.0 - (d - 1.1) / 0.9, 0.0, 1.0) * (d > 1.1)   # a little fallen rubble at its foot
+    # The collapse pit: sheer, with a low rubble lip, so nobody walks in by accident.
+    px, pz, prad, pdepth = c["pit"]
+    w = window(px, pz, prad * 3.0)
+    d = np.hypot(x[w] - px, z[w] - pz) / prad
+    h[w] += 0.9 * np.exp(-((d - 1.35) / 0.25) ** 2)
+    h[w] -= pdepth * (1.0 - smoothstep(0.86, 1.0, d))
+    clear = masks.setdefault("kit_clear", np.zeros_like(h))
+    for qx, qz, qr in ((ox, oz, orad * 2.2), (px, pz, prad * 2.5)):
+        w = window(qx, qz, qr)
+        clear[w] = np.maximum(clear[w], (np.hypot(x[w] - qx, z[w] - qz) < qr).astype(np.float32))
+
+
+def plan_cracks(masks, plans, block):
+    """The cracked sliver near home: the westmost arm of the fissures. One
+    crack that splits in two round a sliver of ground and joins again, so
+    the sliver is cut off on every side until you can span a crack."""
+    c = HOME_GROUND["sliver"]
+    a = np.array(c["from"]); b = np.array(c["to"])
+    length = float(np.linalg.norm(b - a))
+    along = (b - a) / length; across = np.array([-along[1], along[0]])
+    n = int(length / 6.0) + 1
+    t = np.linspace(0.0, 1.0, n)
+    s0, s1 = c["split"]
+    bulge = np.sin(np.pi * np.clip((t - s0) / (s1 - s0), 0.0, 1.0)) * c["bulge"]
+    taper = smoothstep(0.0, 0.16, t) * smoothstep(1.0, 0.84, t)
+    half_width = 0.8 + (c["half_width"] - 0.8) * taper
+    depth = c["depth"] * taper
+    for sign in (1.0, -1.0):
+        line = a[None, :] + (b - a)[None, :] * t[:, None] + across[None, :] * (sign * bulge)[:, None]
+        d, tt, _ = polyline_field(line, 60.0, t, step=1)
+        width_at = np.interp(tt, t, half_width)
+        block |= (d < width_at + 6.0) & (np.interp(tt, t, depth) > 1.5)
+        plans.append({"f": {"id": "home_crack", "half_width": c["half_width"], "depth": c["depth"], "bridge": None}, "line": line, "t": t,
+                      "half_width": half_width, "depth": depth, "length": length, "d": d, "tt": tt, "width_at": width_at, "wall_run": 2.0})
+    mid = a + (b - a) * (s0 + s1) * 0.5
+    masks["sliver"] = [round(float(mid[0]), 1), round(float(mid[1]), 1)]
+
+
+
+# ---------- no straight lines: step lines and broken ground (B2, docs/terrain-design.md §6) ----------
+
+def smooth_line(control, step=16.0, wiggle=0.0, rng=None):
+    """A smooth line through control points, with a meander of `wiggle` metres."""
+    p = resample(control, step)
+    for _ in range(6):
+        p[1:-1] = (p[:-2] + 2.0 * p[1:-1] + p[2:]) / 4.0
+    if wiggle > 0.0:
+        _, n = line_frames(p)
+        s = np.arange(len(p)) * step
+        ends = np.clip(np.minimum(s, s[-1] - s) / 80.0, 0.0, 1.0)
+        p = p + n * (ends * (wiggle * np.sin(s / 90.0 + rng.uniform(0, 6.3)) + 0.4 * wiggle * np.sin(s / 37.0 + rng.uniform(0, 6.3))))[:, None]
+    return p
+
+
+def add_step_lines(h, x, z, masks, medium, lobes_field, ragged_field):
+    """The land steps up from the home plain to the Reach, but never in a
+    ring: each step follows the geology (an old lava flow's lobate front, a
+    caprock edge with spurs and re-entrants), fades out at its ends, and has
+    a few passes where fallen rock makes a ramp a rover can climb."""
+    masks["step_front"] = np.zeros_like(h)
+    report = []
+    for index, c in enumerate(STEP_LINES):
+        line = smooth_line(c["points"], 20.0)
+        d, t, side = polyline_field(line, 1000.0, step=2)
+        lob = np.roll(lobes_field, (137 * (index + 1), 71 * (index + 1)), (0, 1)); rag = np.roll(ragged_field, (53 * (index + 1), 211 * (index + 1)), (0, 1))
+        warp = (95.0 * lob + 22.0 * rag) if c["kind"] == "flow_front" else (50.0 * rag + 40.0 * lob + 14.0 * medium)
+        s = d * side * c["up"] + warp   # > 0 on the high side
+        ends = smoothstep(0.0, 0.1, t) * smoothstep(1.0, 0.9, t)
+        height = c["height"] * ends * (0.8 + 0.3 * np.sin(t * 9.0 + index * 2.0))
+        behind = 1.0 - smoothstep(350.0, 900.0, s)
+        pass_w = np.zeros_like(t)
+        for p in c["passes"]:
+            pass_w = np.maximum(pass_w, np.exp(-((t - p) / 0.035) ** 2))
+        run = 6.0 + 95.0 * smoothstep(0.25, 0.8, pass_w)   # sheer, or eased to a ramp at a pass
+        if c["kind"] == "caprock":   # two beds: a ledge, a bench, a second ledge
+            front = 0.55 * smoothstep(0.0, 1.0, s / run) + 0.45 * smoothstep(0.0, 1.0, (s - 26.0 - 0.3 * run) / run)
+        else:
+            front = smoothstep(0.0, 1.0, s / run)
+        lift = height * front * behind
+        h += lift
+        masks["step_front"] = np.maximum(masks["step_front"], ((s > -4.0) & (s < 40.0) & (height > 3.0)).astype(np.float32))
+        report.append({"id": c["id"], "kind": c["kind"], "height": c["height"],
+                       "points": [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in line[::4]],
+                       "passes": [[round(float(line[int(p * (len(line) - 1))][0]), 1), round(float(line[int(p * (len(line) - 1))][1]), 1)] for p in c["passes"]]})
+    masks["step_lines"] = report
+
+
+def open_ground(x, z, masks):
+    """Where the plains are plain: not a pad, dune, ice, crater, canyon, mesa,
+    lava or any other landform with a surface of its own."""
+    keep = np.ones(x.shape, dtype=np.float32)
+    for zone in ZONES.values():
+        keep *= smoothstep(zone["flat_radius"] * 1.3, zone["flat_radius"] * 2.6, dist(x, z, zone["centre"]))
+    keep *= 1.0 - np.clip(masks["dunes"] + masks["ice"] + masks["mound"] + masks["mesa_body"] + masks["talus"] + masks["lava"] + masks["yardang_field"]
+                          + masks["glacier"] + masks["sand_sheet"] + masks["ripples"] + masks["frost_hollow"] + masks["chaos"] + masks["inverted"]
+                          + masks["inverted_side"] + masks["river_floor"] + masks["channels"] + masks["kit_clear"], 0.0, 1.0)
+    keep *= smoothstep(1.08, 1.3, masks["crater_d"]) * smoothstep(40.0, 160.0, masks["canyon_u"])
+    keep *= 1.0 - np.clip(masks["ejecta"] * 4.0, 0.0, 1.0)   # the crater's blanket is broken ground of its own
+    keep *= 1.0 - smoothstep(HALF - 760.0, HALF - 600.0, np.maximum(-x, z) + 160.0 * masks["large"])
+    return box_blur(keep, 4, 1)
+
+
+def add_ledges(h, x, z, masks, medium):
+    """Broken ground: low ledges where hard beds and old lava lobes end, a
+    metre or four high, each a gentle back slope up to a steep face. They
+    wander, fade out in places (the ways through) and lie closer together
+    further from home, so a straight line always meets a choice."""
+    keep = open_ground(x, z, masks)
+    masks["open_ground"] = keep
+    home = dist(x, z, HOME["centre"])
+    total = np.zeros_like(h)
+    faces = np.zeros_like(h)
+    for index, (k_low, k_high, levels, far) in enumerate(((0.0022, 0.011, 1.5, 0.0), (0.008, 0.028, 1.4, 1.0))):
+        v = spectral_noise(3.0, SEED + 200 + index, k_low=k_low, k_high=k_high) * levels
+        gz, gx = np.gradient(v, SPACING)
+        steep = np.clip(3.2 * np.sqrt(gx * gx + gz * gz), 0.004, 0.5)   # so every face is about 3 m across, however gentle the field
+        f = v - np.floor(v)
+        riser = smoothstep(1.0 - steep, 1.0, f)
+        gaps = smoothstep(-0.35, 0.2, spectral_noise(3.0, SEED + 210 + index, k_low=0.004, k_high=0.02))
+        tall = 2.3 + 1.1 * np.roll(medium, (400 + 90 * index, 250), (0, 1)).clip(-1.0, 1.5)
+        amount = keep * gaps * (1.0 if far == 0.0 else smoothstep(900.0, 1500.0, home))
+        total += amount * tall * (riser - f)
+        faces = np.maximum(faces, amount * (riser > 0.05) * (riser < 0.95))
+    h += total
+    masks["ledges"] = faces
+
+
+def plan_minor_cracks(masks, plans, block):
+    """Small cracks in the open ground, a few metres wide and deep, running
+    with the fissures' trend: jump one, or walk to its end. More of them
+    towards the east, where the ground has pulled apart most."""
+    rng = np.random.default_rng(SEED + 220)
+    trend = np.array(FISSURES[0]["to"]) - np.array(FISSURES[0]["from"]); trend = trend / np.linalg.norm(trend)
+    placed = []
+    for _ in range(4000):
+        if len(placed) >= MINOR_CRACKS:
+            break
+        cx = rng.uniform(-2300.0, 2900.0); cz = rng.uniform(-1700.0, 2300.0)
+        if rng.random() > 0.25 + 0.75 * smoothstep(-2300.0, 2400.0, cx):
+            continue
+        j = int((cz + HALF) / SPACING); i = int((cx + HALF) / SPACING)
+        if masks["open_ground"][j, i] < 0.9 or math.hypot(cx - HOME["centre"][0], cz - HOME["centre"][1]) < 420.0:
+            continue
+        if any(math.hypot(cx - px, cz - pz) < 260.0 for px, pz in placed):
+            continue
+        placed.append((cx, cz))
+        length = rng.uniform(90.0, 260.0)
+        a = np.array([cx, cz]) - trend * length * 0.5
+        heading = math.atan2(trend[1], trend[0]) + rng.normal(0.0, 0.12)
+        line = wander(a, heading, length, rng, step=6.0, turn=0.05)
+        n = len(line)
+        t = np.linspace(0.0, 1.0, n)
+        taper = np.sin(np.pi * t) ** 0.6
+        half_width = 0.6 + rng.uniform(1.3, 2.4) * taper
+        depth = rng.uniform(3.0, 5.0) * taper
+        d, tt, _ = polyline_field(line, 30.0, t, step=1)
+        width_at = np.interp(tt, t, half_width)
+        block |= (d < width_at + 5.0) & (np.interp(tt, t, depth) > 1.5)
+        plans.append({"f": {"id": "crack", "half_width": float(half_width.max()), "depth": float(depth.max()), "bridge": None}, "line": line, "t": t,
+                      "half_width": half_width, "depth": depth, "length": length, "d": d, "tt": tt, "width_at": width_at, "wall_run": 1.5})
+    masks["minor_cracks"] = [[round(px, 1), round(pz, 1)] for px, pz in placed]
+
+
 # ---------- the whole region ----------
 
 def build_heights():
@@ -778,8 +1456,8 @@ def build_heights():
 
     fine = 2.6 * medium + 0.22 * small
     masks = {"noise": small, "large": large, "medium": medium}
-    add_canyon(h, x, z, masks, medium)
-    add_big_crater(h, x, z, masks, medium, lobes_field, ragged_field)
+    add_canyon(h, x, z, masks, medium); lap("add_canyon")
+    add_big_crater(h, x, z, masks, medium, lobes_field, ragged_field); lap("add_big_crater")
 
     # The mound: layered, terraced, like a small Mount Sharp.
     mangle = np.arctan2(z - MOUND["centre"][1], x - MOUND["centre"][0])
@@ -790,17 +1468,27 @@ def build_heights():
     terraces = np.floor(rise / 11.0) * 11.0
     h += 0.35 * rise + 0.65 * (terraces + 4.0 * smoothstep(0.55, 1.0, (rise % 11.0) / 11.0))   # benches and steps
 
-    add_mesas(h, x, z, masks, medium, edge_warp)
-    add_wrinkle_ridges(h, x, z, masks, medium)
-    add_dunes(h, x, z, masks, medium, edge_warp, lobes_field)
-    add_ice_ground(h, x, z, masks, medium, small, edge_warp)
+    add_mesas(h, x, z, masks, medium, edge_warp); lap("add_mesas")
+    add_wrinkle_ridges(h, x, z, masks, medium); lap("add_wrinkle_ridges")
+    add_step_lines(h, x, z, masks, medium, lobes_field, ragged_field); lap("add_step_lines")
+    add_dunes(h, x, z, masks, medium, edge_warp, lobes_field); lap("add_dunes")
+    add_ice_ground(h, x, z, masks, medium, small, edge_warp); lap("add_ice_ground")
+    add_chaos_blocks(h, x, z, masks, medium)
+    add_lava_plain(h, x, z, masks, medium, small, lobes_field, ragged_field); lap("add_lava_plain")
+    add_yardangs(h, x, z, masks, medium)
+    add_ripple_belts(h, x, z, masks, medium)
+    add_buried_glacier(h, x, z, masks, medium)
+    add_inverted_channels(h, x, z, masks, medium); lap("yardangs, ripples, glacier, raised riverbeds")
 
-    # Hills framing the edge of the region, ragged rather than square.
-    ring = np.maximum(np.abs(x), z) + 160.0 * large   # the canyon's far wall is the northern edge
+    # Hills framing the west and south edges, ragged rather than square. The
+    # canyon's far wall is the northern edge; in the east the lava plain runs on.
+    ring = np.maximum(-x, z) + 160.0 * large
     h += (240.0 + 80.0 * large) * smoothstep(HALF - 650.0, HALF - 80.0, ring)
 
     trunk_floor = carve_river(h, x, z, masks, medium, lobes_field)
-    add_valley_network(h, x, z, masks, trunk_floor)
+    add_valley_network(h, x, z, masks, trunk_floor); lap("add_valley_network")
+    add_home_ground(h, x, z, masks, medium); lap("add_home_ground")
+    add_ledges(h, x, z, masks, medium); lap("add_ledges")
 
     # Small craters of every age, except on the landing zones, the mound, the
     # mesas and the dunes.
@@ -808,7 +1496,18 @@ def build_heights():
     keep.append((MOUND["centre"][0], MOUND["centre"][1], MOUND["radius"]))
     keep += [(mx, mz, mr * 1.3) for mx, mz, mr, mh, _ in masks["mesa_list"]]
     keep.append((DUNES[0], DUNES[1], DUNES_RADIUS * 1.2))
+    keep.append((YARDANGS["centre"][0], YARDANGS["centre"][1], YARDANGS["length"] * 0.55))
+    keep.append((GLACIER["from"][0] + GLACIER["flow"][0] * 200.0, GLACIER["from"][1] + GLACIER["flow"][1] * 200.0, 260.0))
+    keep.append((CHAOS_BLOCKS[0], CHAOS_BLOCKS[1], CHAOS_BLOCKS[2]))
+    keep.append((FRESH_CRATER[0], FRESH_CRATER[1], FRESH_CRATER[2] * 1.5))
+    keep += [(HOME_GROUND[k][0], HOME_GROUND[k][1], 60.0) for k in ("outcrop", "pit")]
+    keep.append((HOME_GROUND["frost_hollow"][0], HOME_GROUND["frost_hollow"][1], 150.0))
+    keep.append((-1400.0, 95.0, 380.0))   # the cracked sliver
     add_small_craters(h, x, z, np.random.default_rng(SEED + 9), 900, keep, masks)
+    # One big fresh crater in the south: a sharp rim, a rocky blanket, a bowl you can walk into and out of.
+    add_crater(h, x, z, FRESH_CRATER[0], FRESH_CRATER[1], FRESH_CRATER[2], 0.04, np.random.default_rng(SEED + 10))
+    masks["craters"].append((FRESH_CRATER[0], FRESH_CRATER[1], FRESH_CRATER[2], 0.04))
+    add_platy_belt(h, x, z, masks, medium); lap("add_platy_belt")
 
     # Landing zones: a level pad that blends into the land around it.
     for zone in ZONES.values():
@@ -886,13 +1585,14 @@ ROUTE_MAX_GRADE = 0.4  # rise over run, about 22 degrees: steeper than rover_rou
 # ground under them and lays a copy of it back over the top.
 LAVA_TUBE = {
     "id": "lava_tube", "name": "Lava tube", "kind": "lava_tube",
-    "course": [(-1190.0, 1280.0), (-1148.0, 1392.0), (-1100.0, 1500.0), (-1066.0, 1612.0), (-1012.0, 1722.0),
-               (-962.0, 1832.0), (-912.0, 1948.0)],
-    "half_width": 9.0, "height": 12.0,
-    "depth": 18.0,    # its floor this far under the (smoothed) land
-    "ramp": 130.0,    # the ramp pit's length, from the land down to the mouth
+    # Under the east lava plain, from the ramp pit (downstream) up towards the heart.
+    "course": [(1850.0, 1800.0), (1960.0, 1560.0), (2040.0, 1330.0), (2190.0, 1110.0), (2280.0, 880.0),
+               (2420.0, 680.0), (2520.0, 500.0), (2640.0, 330.0)],
+    "half_width": 10.0, "height": 14.0,
+    "depth": 40.0,    # its floor this far under the (smoothed) land
+    "ramp": 230.0,    # the ramp pit's length, from the land down to the mouth
     # Skylights: how far along, radius, which side of the passage the fallen roof lies.
-    "skylights": [(0.3, 6.5, 1.0), (0.52, 5.5, -1.0), (0.7, 7.0, 1.0), (0.88, 6.0, -1.0)],
+    "skylights": [(0.16, 9.0, 1.0), (0.33, 7.0, -1.0), (0.47, 11.0, 1.0), (0.66, 8.0, -1.0), (0.82, 12.0, 1.0), (0.93, 7.0, -1.0)],
 }
 # Natural caves, found on foot: where you walk up from, the way in, and size.
 NATURAL_CAVES = [
@@ -983,6 +1683,8 @@ def add_lava_tube(h, x, z, masks):
     print(f"  lava tube: {len(p) * CAVE_STEP:.0f} m, floor {floor.min():.1f}..{floor.max():.1f} m (worst grade {grade:.3f}), "
           f"ramp grade {ramp_grade:.2f}, cover at least {float((low - floor - ht).min()):.1f} m")
     k_mid = len(p) // 2
+    foot = mouth - axis * 25.0
+    EXTRA_ROUTE_TARGETS.append(("lava tube", float(foot[0]), float(foot[1]), 15.0))
     return {"id": c["id"], "name": c["name"], "kind": c["kind"], "half_width": hw, "height": ht, "seed": SEED + 300,
             "points": [[round(float(q[0]), 2), round(float(q[1]), 2), round(float(f), 2)] for q, f in zip(p, floor)],
             "mouth": [round(float(mouth[0]), 2), round(float(mouth[1]), 2)],
@@ -1045,7 +1747,7 @@ def route_targets():
     return targets
 
 
-EXTRA_ROUTE_TARGETS = [("lava tube", -1199.0, 1256.0, 15.0)]   # the foot of the tube's ramp pit (caves are on foot)
+EXTRA_ROUTE_TARGETS = []   # the foot of the tube's ramp pit is added once the tube is laid (caves are on foot)
 
 
 def route_grid(h, masks):
@@ -1059,6 +1761,8 @@ def route_grid(h, masks):
     grade[:-1, :] = np.maximum(grade[:-1, :], np.abs(np.diff(g, axis=0)) / ROUTE_CELL)
     grade[1:, :] = np.maximum(grade[1:, :], np.abs(np.diff(g, axis=0)) / ROUTE_CELL)
     ok = (grade <= ROUTE_MAX_GRADE) & (masks["dunes"][::step, ::step] < 0.5)
+    if "route_block" in masks:
+        ok &= ~box_blur(masks["route_block"].astype(np.float32), 2, 1)[::step, ::step].astype(bool)
     return ok, step
 
 
@@ -1095,7 +1799,7 @@ def carve_ramp(h, a, b, width=14.0):
     h[near] = h[near] * (1.0 - w) + track * w
 
 
-def check_routes(h, masks):
+def check_routes(h, masks, fix=True):
     """Every landing zone must reach every destination by rover. Where one
     can't, the nearest gap between what it can reach and the destination is
     bridged with a graded track, and the check runs again. Returns a report."""
@@ -1113,7 +1817,7 @@ def check_routes(h, masks):
                     continue
                 goal = disc_cells(ok.shape, step, x, z, r)
                 good = bool((reach & goal).any())
-                if not good and attempt < 3 and name not in tried:
+                if not good and fix and attempt < 3 and name not in tried:
                     tried.add(name)
                     # Bridge the closest gap between where it can get and where it must.
                     pa = None
@@ -1141,6 +1845,15 @@ def check_routes(h, masks):
                 report.append({"from": zone_name, "to": name, "ok": good})
         if not fixed:
             break
+    if "--debug-routes" in sys.argv:
+        # Where a rover can go: black closed, grey open, and what each start reaches (plains green, crater blue, both cyan).
+        ok, step = route_grid(h, masks)
+        img = np.zeros(ok.shape + (3,), dtype=np.uint8)
+        img[ok] = (90, 90, 90)
+        for name, channel in (("plains", 1), ("crater", 2)):
+            reach = flood(ok, disc_cells(ok.shape, step, ZONES[name]["centre"][0], ZONES[name]["centre"][1], 40.0))
+            img[..., channel][reach] = 230
+        Image.fromarray(img).resize((ok.shape[1] * 2, ok.shape[0] * 2), Image.NEAREST).save(os.path.join(ROOT, ".claude_tmp", f"routes_{'fix' if fix else 'final'}.png"))
     bad = [f"{r['from']} -> {r['to']}" for r in report if not r["ok"]]
     print(f"  routes: {len(report) - len(bad)} of {len(report)} drivable" + (f"; NOT: {', '.join(bad)}" if bad else ""))
     return report
@@ -1161,7 +1874,7 @@ def save_heights(h):
 
 # ---------- ground textures ----------
 # Terrain3D texture slots (the control map refers to these numbers).
-DUST, BEDROCK, SAND, FROST, CLAY, GRAVEL, STRATA, TALUS, ICE = range(9)
+DUST, BEDROCK, SAND, FROST, CLAY, GRAVEL, STRATA, TALUS, ICE, LAVA = range(10)
 MATERIALS = [
     # name, base colour, dark colour, roughness, features, colour on the region map
     ("dust", (178, 126, 96), (150, 102, 78), 0.93, {"ripples": (7, 0.05), "pebbles": (500, 2, 5)}, (196, 140, 104)),
@@ -1176,6 +1889,8 @@ MATERIALS = [
     ("talus", (140, 100, 82), (104, 74, 62), 0.88, {"cracks": (420, 0.006, 0.35), "blocks": 0.35, "pebbles": (500, 2, 6)}, (132, 96, 80)),
     # Ice-rich ground: pale, fine, cracked.
     ("ice", (196, 166, 146), (170, 140, 122), 0.8, {"cracks": (60, 0.01, 0.3), "ripples": (5, 0.03)}, (190, 160, 138)),
+    # Young lava: dark, ropy, cracked into slabs, only thinly dusted.
+    ("lava", (104, 78, 68), (70, 54, 50), 0.78, {"cracks": (90, 0.008, 0.4), "blocks": 0.22, "ripples": (9, 0.07)}, (112, 84, 72)),
 ]
 
 
@@ -1344,9 +2059,20 @@ def write_control(h, masks):
     base[ice & ((masks["polygons"] > 0.85) | (gz > 0.16 + 0.05 * masks["noise"]))] = FROST   # in the troughs, and on slopes facing the pole
     base[masks["ice_scarp"] > 0.5] = FROST
     base[masks["mound"] > 0.5] = STRATA
+    base[(masks["ripples"] + dither > 0.5) | (masks["sand_sheet"] + dither > 0.5)] = SAND
+    base[masks["yardang_field"] + dither > 0.6] = GRAVEL        # scoured lag between the ridges
+    base[masks["yardangs"] > 0.5] = STRATA
+    base[masks["inverted"] > 0.5] = GRAVEL                      # cemented river gravel on the raised beds
+    base[masks["inverted_side"] > 0.5] = TALUS
+    base[masks["glacier"] > 0.5] = TALUS                        # rubble over the ice
+    base[(masks["frost_hollow"] > 0.5)] = ICE
+    base[(masks["frost_hollow"] > 0.5) & (gz > 0.02)] = FROST
+    base[masks["scree"] > 0.5] = TALUS
+    base[masks["lava"] + dither * 0.5 > 0.5] = LAVA
+    base[(masks["fissure"] > 0.5)] = TALUS      # rubble on the fissure floors
     base[masks["river_floor"] > 0.5] = GRAVEL   # rounded river pebbles
     base[masks["delta"] > 0.5] = CLAY           # fine layered sediment
-    layered = (masks["mound"] > 0.5) | (masks["mesa_body"] > 0.5) | ((masks["canyon_u"] > -110.0) & (masks["canyon_u"] < 5.0))
+    layered = (masks["mound"] > 0.5) | (masks["mesa_body"] > 0.5) | ((masks["canyon_u"] > -110.0) & (masks["canyon_u"] < 5.0)) | (masks["yardangs"] > 0.5) | (masks["chaos"] > 0.3)
     overlay = np.where(layered, STRATA, BEDROCK).astype(np.uint32)
     crest = smoothstep(0.004, 0.02, -curvature) * 0.45   # rock through the dust on crests and rims
     blend = np.clip((smoothstep(0.45, 0.95, slope) + crest * (slope > 0.12)) * 255.0, 0, 255).astype(np.uint32)
@@ -1459,9 +2185,16 @@ def write_rocks(h, masks):
         density = np.maximum(density, 0.95 * field * lanes) * np.where(field > 0, lanes, 1.0)
         size = np.maximum(size, 0.8 * field)
         masks.setdefault("boulder_fields", []).append((bx, bz, br))
+    density = np.where(masks["lava"] > 0.5, np.minimum(density, 0.12 + 0.5 * masks["platy"]), density)   # young lava: few loose rocks off the plates
+    density = np.maximum(density, 0.8 * masks["fissure"])
+    # Boulder clusters on the open ground: knots of rock to go round.
+    clusters = smoothstep(1.15, 1.6, spectral_noise(2.6, SEED + 230, k_low=0.015, k_high=0.05)) * masks["open_ground"]
+    density = np.maximum(density, 0.85 * clusters); size = np.maximum(size, 0.65 * clusters)
     density *= np.where(slope > 1.3, 0.25, 1.0)   # rocks don't sit on cliffs
     density *= 1.0 - smoothstep(0.2, 0.5, masks["dunes"])
     density *= 1.0 - masks["cave_clear"]   # the ramp pit and the caves' notches are cleared
+    density *= 1.0 - np.clip(masks["ripples"] + masks["sand_sheet"] + masks["kit_clear"] + masks["yardangs"] + masks["inverted"], 0.0, 1.0)
+    density = np.maximum(density, 0.55 * masks["glacier"])
     density *= np.where((curvature > 0.01) & (masks["ice"] < 0.5), 0.5, 1.0)   # dust fills the hollows
     for zone in ZONES.values():
         density *= smoothstep(zone["flat_radius"] * 1.1, zone["flat_radius"] * 1.6, dist(x, z, zone["centre"]))
@@ -1473,7 +2206,7 @@ def write_rocks(h, masks):
 
 # Geology units for samples (step 5): the rock and soil you'd find there.
 GEOLOGY = ["plains_basalt", "ejecta_breccia", "crater_lakebed", "mound_sulfates", "canyon_layers",
-           "valley_conglomerate", "dune_sand", "ice_mantle", "mesa_caprock", "talus_debris", "delta_clays"]
+           "valley_conglomerate", "dune_sand", "ice_mantle", "mesa_caprock", "talus_debris", "delta_clays", "young_lava", "yardang_ash", "river_gravel_ridge", "glacier_ice"]
 
 
 def write_geology(h, masks):
@@ -1488,21 +2221,38 @@ def write_geology(h, masks):
     unit[(masks["channels"] > 0.5) | (masks["river_floor"] > 0.5)] = 5
     unit[masks["delta"] > 0.5] = 10
     unit[masks["dunes"] > 0.5] = 6
+    unit[masks["lava"] > 0.5] = 11
+    unit[masks["yardangs"] > 0.5] = 12
+    unit[masks["inverted"] > 0.5] = 13
+    unit[masks["glacier"] > 0.5] = 14
     unit[masks["ice"] > 0.5] = 7
     step = N // 512
     write_file(os.path.join(OUT, "geology.png"), Image.fromarray(unit[::step, ::step], "L").save)
 
 
+_clock = [time.time()]
+
+
+def lap(name):
+    now = time.time()
+    print(f"  [{now - _clock[0]:5.1f} s] {name}")
+    _clock[0] = now
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     h, masks = build_heights()
-    caves = add_caves(h, *grid(), masks)
-    routes = check_routes(h, masks)
-    lo, hi = save_heights(h)
-    write_control(h, masks)
-    write_colour(masks, h)
-    write_map(h, masks)
-    write_rocks(h, masks)
+    caves = add_caves(h, *grid(), masks); lap("add_caves")
+    hollow = add_hollow_ground(h, *grid(), masks, caves[0])
+    plans = plan_fissures(masks)
+    routes = check_routes(h, masks); lap("check_routes")
+    fissures = carve_fissures(h, *grid(), masks, plans); lap("carve_fissures")
+    routes = check_routes(h, masks, fix=False)   # the fissures are hard gates: nothing is graded across them
+    lo, hi = save_heights(h); lap("save_heights")
+    write_control(h, masks); lap("write_control")
+    write_colour(masks, h); lap("write_colour")
+    write_map(h, masks); lap("write_map")
+    write_rocks(h, masks); lap("write_rocks")
     write_geology(h, masks)
     for index, (name, base, dark, rough, features, _) in enumerate(MATERIALS if not QUICK else []):
         material_texture(name, base, dark, rough, dict(features), SEED + 20 + index)
@@ -1519,6 +2269,27 @@ def main():
         "routes": routes,
         "caves": caves,
         "boulder_fields": [list(b) for b in BOULDER_FIELDS],
+        "sharp_boulder_fields": [list(BOULDER_FIELDS[k]) for k in SHARP_BOULDERS],
+        "home": {"centre": list(HOME["centre"]), "radius": HOME["radius"]},
+        "rings": RINGS,
+        "heart": list(HEART),
+        "fissures": fissures,
+        "hollow_ground": hollow,
+        "platy_lanes": masks["platy_lanes"],
+        "step_lines": masks["step_lines"],
+        "minor_cracks": masks["minor_cracks"],
+        "yardangs": {"centre": list(YARDANGS["centre"]), "length": YARDANGS["length"], "width": YARDANGS["width"], "wind": list(DUNE_WIND)},
+        "drone_wreck": list(DRONE_WRECK),
+        "raised_riverbeds": masks["inverted_lines"],
+        "glacier": {"from": list(GLACIER["from"]), "flow": list(GLACIER["flow"]), "length": GLACIER["length"], "pits": masks["glacier_pits"]},
+        "home_ground": {"frost_hollow": list(HOME_GROUND["frost_hollow"]), "channel": masks["home_channel"], "crossings": masks["home_crossings"],
+                        "sand_sheet": list(HOME_GROUND["sand_sheet"])},
+        # Places the land locks until you have the kit (docs/terrain-design.md §6).
+        "kit_places": [
+            {"kit": "ladder", "ring": 1, "position": list(HOME_GROUND["outcrop"][:2]), "what": "ledge-topped outcrop"},
+            {"kit": "rope", "ring": 1, "position": list(HOME_GROUND["pit"][:2]), "what": "collapse pit", "rope_only": True},
+            {"kit": "bridge", "ring": 1, "position": masks["sliver"], "what": "cracked sliver"},
+        ],
     }
     with open(os.path.join(OUT, "region.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
