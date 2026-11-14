@@ -205,13 +205,10 @@ func _initialize() -> void:
 	world = await _world("survival", saved)
 	_check(is_equal_approx(world.suit.o2, .42) and world.suit.leak and world.suit.dropped.size() == 1, "and load back, leak and dropped jar too (%.2f %s %s jar %s)" % [world.suit.o2, world.suit.leak, world.suit.dropped, world.builder.placed_interior.filter(func(i): return str(i.id) == "sample_jars")])
 	_check(world.scout_rover.rescues == 1, "GAR-Y's rescue count is saved")
-	# Freedom: warnings, never blacking out.
+	# Freedom (docs/game-modes.md, 2 Nov): no food or water, but air, cold
+	# and radiation still hurt, so the suit runs and you can black out.
 	MHGame.game_mode = "freedom"
-	await _put(world, Vector3(-30, MHSiteTerrain_height(-30, -30) + 1.0, -30))
-	await process_frame
-	world.suit.o2 = 0.0
-	for i in 30: await process_frame
-	_check(not world.suit.passed_out, "Freedom never lets you black out")
+	_check(world.suit.active() and MHGame.suit_o2_on(), "Freedom runs the suit")
 	# Creative: no suit to run.
 	MHGame.game_mode = "creative"
 	world.suit.o2 = .2
