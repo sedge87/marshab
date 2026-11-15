@@ -466,7 +466,7 @@ func _build_region_terrain() -> void:
 	var names: Array = MHSiteTerrain.RegionTerrain.texture_names()
 	for index in names.size():
 		var texture_name := str(names[index])
-		assets.set_texture_asset(index, _region_texture(texture_name.capitalize(), folder + "ground_" + texture_name, {"bedrock": .14, "talus": .18}.get(texture_name, .22)))
+		assets.set_texture_asset(index, _region_texture(texture_name.capitalize(), folder + "ground_" + texture_name, {"bedrock": .14, "strata": .11, "talus": .18}.get(texture_name, .22)))
 	for index in MHSiteTerrain.ROCK_MODELS.size():
 		var rock := Terrain3DMeshAsset.new()
 		rock.name = str(MHSiteTerrain.ROCK_MODELS[index])
@@ -559,8 +559,19 @@ func _scatter_region_rocks(terrain: Terrain3D, area: Rect2) -> void:
 		var size := rng.randf_range(.35, 1.1) * (1.0 + 1.2 * here.y * rng.randf()) * (2.2 if rng.randf() < .03 + .08 * here.y else 1.0)
 		var basis := Basis.from_euler(Vector3(rng.randf_range(-.25, .25), rng.randf() * TAU, rng.randf_range(-.25, .25))).scaled(Vector3.ONE * size)
 		var mesh_index := rng.randi() % by_mesh.size()
-		(by_mesh[mesh_index] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y - .15 * size, z)))
 		var radius: float = (reach[mesh_index] as Vector2).x * size
+		# Seated on the lowest ground under it, so none hangs off a slope;
+		# and none on a cliff face, where a rock couldn't rest (B-fix).
+		var foot := maxf(radius, .4)
+		var low := y
+		var high := y
+		for offset in [Vector2(foot, 0), Vector2(-foot, 0), Vector2(0, foot), Vector2(0, -foot)]:
+			var ground := MHSiteTerrain.height(x + offset.x, z + offset.y)
+			low = minf(low, ground)
+			high = maxf(high, ground)
+		if high - low > 2.2 * foot: continue   # steeper than about 48 degrees
+		y = low
+		(by_mesh[mesh_index] as Array[Transform3D]).append(Transform3D(basis, Vector3(x, y - .15 * size, z)))
 		if radius > .3: solid.append(Vector4(x, y - .15 * size + (reach[mesh_index] as Vector2).y * size, z, radius))
 	for index in by_mesh.size():
 		terrain.instancer.add_transforms(index, by_mesh[index])
@@ -575,7 +586,9 @@ func _region_texture(texture_name: String, path: String, uv_scale: float) -> Ter
 	asset.albedo_texture = _mipmapped(path + "_albedo_height.png")
 	asset.normal_texture = _mipmapped(path + "_normal_roughness.png")
 	asset.uv_scale = uv_scale
-	asset.detiling_rotation = .3
+	# Layered rock keeps its layers level: spun tiles turned the strata on
+	# cliffs, chutes and fissure walls into herringbone streaks (B-fix).
+	asset.detiling_rotation = 0.0 if texture_name in ["Bedrock", "Strata"] else .3
 	asset.detiling_shift = .3
 	return asset
 
