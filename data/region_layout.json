@@ -307,13 +307,16 @@
     [-2250.0, 150.0]
    ],
    "passes": [0.3, 0.72],
-   "arch": 9.0,
-   "crest": 15.0,
-   "arch_width": 170.0,
-   "crest_at": 25.0,
-   "steep_side": 16.0,
+   "arch": 15.0,
+   "crest": 30.0,
+   "arch_width": 200.0,
+   "crest_at": 28.0,
+   "steep_side": 22.0,
    "gentle_side": 55.0,
-   "wiggle": 30.0
+   "wiggle": 30.0,
+   "pass_width": 70.0,
+   "pass_depth": 0.9,
+   "gully_spacing": 160.0
   },
   {
    "id": "east_ridge",
@@ -322,13 +325,16 @@
    "seed": 2047,
    "points": [[-650.0, 2500.0], [-560.0, 2050.0], [-700.0, 1600.0], [-620.0, 1150.0], [-450.0, 800.0]],
    "passes": [0.45],
-   "arch": 9.0,
-   "crest": 15.0,
-   "arch_width": 170.0,
-   "crest_at": 25.0,
-   "steep_side": 16.0,
+   "arch": 15.0,
+   "crest": 30.0,
+   "arch_width": 200.0,
+   "crest_at": 28.0,
+   "steep_side": 22.0,
    "gentle_side": 55.0,
-   "wiggle": 30.0
+   "wiggle": 30.0,
+   "pass_width": 70.0,
+   "pass_depth": 0.9,
+   "gully_spacing": 160.0
   },
   {
    "id": "north_scarp",
@@ -337,10 +343,16 @@
    "style": "caprock",
    "points": [[-2400.0, -150.0], [-2050.0, -230.0], [-1700.0, -170.0], [-1350.0, -290.0], [-1050.0, -230.0]],
    "up": -1.0,
-   "height": 18.0,
+   "height": 32.0,
    "passes": [0.3, 0.75],
    "sheer": 6.0,
-   "pass_run": 95.0
+   "pass_run": 130.0,
+   "pass_width": 90.0,
+   "ledge_gap": 14.0,
+   "spurs": 4,
+   "bays": 4,
+   "apron": 40.0,
+   "apron_height": 4.5
   },
   {
    "id": "east_front",
@@ -349,10 +361,17 @@
    "style": "flow_front",
    "points": [[-330.0, 480.0], [-250.0, 900.0], [-330.0, 1300.0], [-230.0, 1700.0], [-300.0, 2150.0]],
    "up": -1.0,
-   "height": 11.0,
+   "height": 22.0,
    "passes": [0.25, 0.6, 0.85],
-   "sheer": 6.0,
-   "pass_run": 95.0
+   "sheer": 5.0,
+   "pass_run": 110.0,
+   "pass_width": 90.0,
+   "lobes": 7,
+   "lobe_size": 70.0,
+   "breakouts": 4,
+   "apron": 35.0,
+   "apron_height": 3.0,
+   "warp": 0.3
   },
   {
    "id": "dune_sea",
@@ -442,6 +461,24 @@
    "lanes": 3
   },
   {
+   "id": "boulder_field_4",
+   "kind": "boulder_field",
+   "label": "Boulder field below the north scarp",
+   "centre": [-1000.0, -30.0],
+   "radius": 150.0,
+   "sharp": false,
+   "lanes": 3
+  },
+  {
+   "id": "boulder_field_5",
+   "kind": "boulder_field",
+   "label": "Boulder field off the east front",
+   "centre": [-250.0, 250.0],
+   "radius": 160.0,
+   "sharp": false,
+   "lanes": 3
+  },
+  {
    "id": "lava_plain",
    "kind": "lava_plain",
    "label": "The young lava plain",
@@ -490,9 +527,14 @@
    "centre": [-450.0, -250.0],
    "length": 1000.0,
    "width": 600.0,
-   "count": 44,
-   "real_scale": 1.5,
-   "real_shrink": 0.55
+   "ridge_height": 55.0,
+   "ridge_width": [44.0, 78.0],
+   "corridor": [12.0, 22.0],
+   "ridge_length": [200.0, 360.0],
+   "gap_share": 0.35,
+   "joins": 0.0045,
+   "real_detail": 0.18,
+   "through_lanes": 2
   },
   {
    "id": "ripple_belt_1",
@@ -573,7 +615,12 @@
    "depth": 5.0,
    "crossings": [0.3, 0.68],
    "half_width": 8.0,
-   "wiggle": 22.0
+   "wiggle": 22.0,
+   "bench": 0.5,
+   "bench_width": 1.9,
+   "inner_depth": 1.2,
+   "tributaries": 4,
+   "tributary_depth": 2.2
   },
   {
    "id": "sand_sheet",

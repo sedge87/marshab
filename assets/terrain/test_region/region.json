@@ -12,7 +12,7 @@
         1000.0
       ],
       "flat_radius": 95.0,
-      "height": -28.1714751065916,
+      "height": -28.060591724298064,
       "label": "The plains"
     },
     "crater": {
@@ -20054,6 +20054,16 @@
       1750.0,
       1150.0,
       200.0
+    ],
+    [
+      -1000.0,
+      -30.0,
+      150.0
+    ],
+    [
+      -250.0,
+      250.0,
+      160.0
     ]
   ],
   "sharp_boulder_fields": [
@@ -21004,12 +21014,12 @@
     "sharp_boulders"
   ],
   "ground_share": {
-    "dust": 0.446,
-    "rock": 0.115,
+    "dust": 0.437,
+    "rock": 0.126,
     "sand": 0.033,
     "ripples": 0.015,
-    "gravel": 0.172,
-    "scree": 0.074,
+    "gravel": 0.167,
+    "scree": 0.078,
     "ice": 0.026,
     "frost": 0.005,
     "clay": 0.025,
@@ -21032,7 +21042,7 @@
         -2050.0,
         1650.0
       ],
-      "height": 74.0
+      "height": 74.2
     },
     {
       "name": "Mesa 3",
@@ -21040,7 +21050,7 @@
         300.0,
         1500.0
       ],
-      "height": 94.3
+      "height": 100.8
     },
     {
       "name": "Mesa 4",
@@ -21048,7 +21058,7 @@
         -1950.0,
         380.0
       ],
-      "height": 16.9
+      "height": 18.8
     },
     {
       "name": "Mesa 5",
@@ -21064,7 +21074,7 @@
         -2120.0,
         -760.0
       ],
-      "height": 22.7
+      "height": 33.1
     },
     {
       "name": "South ridge lookout",
@@ -21101,29 +21111,29 @@
     {
       "name": "Step: north scarp",
       "position": [
-        -1784.0,
-        -242.0
+        -1810.0,
+        -240.0
       ],
-      "height": -16.6
+      "height": -6.1
     },
     {
       "name": "Step: east front",
       "position": [
-        -202.0,
-        1386.0
+        -222.0,
+        1388.0
       ],
-      "height": 18.6
+      "height": 31.5
     }
   ],
   "checks": {
     "straight_lines": [
       {
         "ring": 1,
-        "metres_between_choices": 209.0
+        "metres_between_choices": 225.0
       },
       {
         "ring": 2,
-        "metres_between_choices": 149.0
+        "metres_between_choices": 158.0
       },
       {
         "ring": 3,
@@ -21153,6 +21163,46 @@
       "driven_by_ramp": true,
       "driven_without_ramp": false
     },
+    "rover_crossings": {
+      "west_ridge": {
+        "label": "Wrinkle ridge",
+        "at_passes": true,
+        "only_at_passes": true,
+        "at": null,
+        "detail": "crossed only at its passes"
+      },
+      "east_ridge": {
+        "label": "Wrinkle ridge",
+        "at_passes": true,
+        "only_at_passes": true,
+        "at": null,
+        "detail": "crossed only at its passes"
+      },
+      "north_scarp": {
+        "label": "North scarp",
+        "at_passes": true,
+        "only_at_passes": true,
+        "at": null,
+        "detail": "crossed only at its passes"
+      },
+      "east_front": {
+        "label": "East front",
+        "at_passes": true,
+        "only_at_passes": true,
+        "at": null,
+        "detail": "crossed only at its passes"
+      }
+    },
+    "maze": {
+      "through": true,
+      "ratio": 2.37,
+      "along_ratio": 1.01,
+      "dead_ends": 16,
+      "at": [
+        -954.8,
+        -125.1
+      ]
+    },
     "callback": {
       "x_min": -2652.0,
       "x_max": 2912.0,
@@ -21160,9 +21210,91 @@
       "z_max": 2652.0
     },
     "anchors": {
-      "count": 109,
-      "moved": [],
-      "gone_since_last_build": [],
+      "count": 127,
+      "moved": [
+        {
+          "id": "yardangs.dead_end_1",
+          "metres": 181.3
+        },
+        {
+          "id": "yardangs.dead_end_2",
+          "metres": 590.8
+        },
+        {
+          "id": "yardangs.dead_end_3",
+          "metres": 544.8
+        },
+        {
+          "id": "yardangs.dead_end_4",
+          "metres": 305.3
+        },
+        {
+          "id": "yardangs.dead_end_5",
+          "metres": 329.0
+        },
+        {
+          "id": "yardangs.dead_end_6",
+          "metres": 547.8
+        },
+        {
+          "id": "yardangs.dead_end_7",
+          "metres": 687.1
+        },
+        {
+          "id": "yardangs.dead_end_8",
+          "metres": 363.5
+        },
+        {
+          "id": "yardangs.dead_end_9",
+          "metres": 398.2
+        },
+        {
+          "id": "yardangs.dead_end_10",
+          "metres": 528.1
+        },
+        {
+          "id": "yardangs.dead_end_11",
+          "metres": 268.4
+        },
+        {
+          "id": "yardangs.dead_end_12",
+          "metres": 257.7
+        },
+        {
+          "id": "yardangs.dead_end_13",
+          "metres": 348.8
+        },
+        {
+          "id": "yardangs.dead_end_14",
+          "metres": 240.5
+        },
+        {
+          "id": "yardangs.dead_end_15",
+          "metres": 434.8
+        },
+        {
+          "id": "yardangs.dead_end_16",
+          "metres": 663.3
+        }
+      ],
+      "gone_since_last_build": [
+        "yardangs.dead_end_17",
+        "yardangs.dead_end_18",
+        "yardangs.dead_end_19",
+        "yardangs.dead_end_20",
+        "yardangs.dead_end_21",
+        "yardangs.dead_end_22",
+        "yardangs.dead_end_23",
+        "yardangs.dead_end_24",
+        "yardangs.dead_end_25",
+        "yardangs.dead_end_26",
+        "yardangs.dead_end_27",
+        "yardangs.dead_end_28",
+        "yardangs.dead_end_29",
+        "yardangs.dead_end_30",
+        "yardangs.dead_end_31",
+        "yardangs.dead_end_32"
+      ],
       "missing_in_data": []
     },
     "list": [
@@ -21188,12 +21320,12 @@
       {
         "name": "A choice every so often, ring 1",
         "status": "PASS",
-        "detail": "a choice every 209 m in a straight line (target 260 m or less)"
+        "detail": "a choice every 225 m in a straight line (target 260 m or less)"
       },
       {
         "name": "A choice every so often, ring 2",
         "status": "PASS",
-        "detail": "a choice every 149 m in a straight line (target 200 m or less)"
+        "detail": "a choice every 158 m in a straight line (target 200 m or less)"
       },
       {
         "name": "A choice every so often, ring 3",
@@ -21211,9 +21343,38 @@
         "detail": "3 passes; 1108..1579 m from home"
       },
       {
-        "name": "Anchors",
+        "name": "Wrinkle ridge: rover only at the passes",
         "status": "PASS",
-        "detail": "109 anchors"
+        "detail": "crossed only at its passes"
+      },
+      {
+        "name": "Wrinkle ridge: rover only at the passes",
+        "status": "PASS",
+        "detail": "crossed only at its passes"
+      },
+      {
+        "name": "North scarp: rover only at the passes",
+        "status": "PASS",
+        "detail": "crossed only at its passes"
+      },
+      {
+        "name": "East front: rover only at the passes",
+        "status": "PASS",
+        "detail": "crossed only at its passes"
+      },
+      {
+        "name": "The yardang maze",
+        "status": "PASS",
+        "detail": "way through on foot 2.4x the straight line (2x or more), 16 dead ends (3 or more)",
+        "at": [
+          -954.8,
+          -125.1
+        ]
+      },
+      {
+        "name": "Anchors",
+        "status": "WARN",
+        "detail": "127 anchors; moved over 50 m: yardangs.dead_end_1 (181 m), yardangs.dead_end_2 (591 m), yardangs.dead_end_3 (545 m), yardangs.dead_end_4 (305 m), yardangs.dead_end_5 (329 m), yardangs.dead_end_6 (548 m), yardangs.dead_end_7 (687 m), yardangs.dead_end_8 (364 m); gone since the last build: yardangs.dead_end_17, yardangs.dead_end_18, yardangs.dead_end_19, yardangs.dead_end_20, yardangs.dead_end_21, yardangs.dead_end_22, yardangs.dead_end_23, yardangs.dead_end_24"
       }
     ]
   },
@@ -21254,7 +21415,7 @@
         -2050.0,
         1650.0
       ],
-      "height": 74.03,
+      "height": 74.18,
       "ring": 1,
       "landform": "west_mesa"
     },
@@ -21264,7 +21425,7 @@
         300.0,
         1500.0
       ],
-      "height": 94.3,
+      "height": 100.78,
       "ring": 2,
       "landform": "far_mesa"
     },
@@ -21274,7 +21435,7 @@
         -1950.0,
         380.0
       ],
-      "height": 16.89,
+      "height": 18.78,
       "ring": 1,
       "landform": "small_mesa"
     },
@@ -21294,7 +21455,7 @@
         -2120.0,
         -760.0
       ],
-      "height": 22.75,
+      "height": 33.13,
       "ring": 2,
       "landform": "glacier_mesa"
     },
@@ -21304,7 +21465,7 @@
         -1733.4,
         1253.3
       ],
-      "height": 18.83,
+      "height": 28.74,
       "ring": 1,
       "landform": "west_ridge"
     },
@@ -21314,7 +21475,7 @@
         -1750.0,
         2450.0
       ],
-      "height": 1.29,
+      "height": 2.11,
       "ring": 2,
       "landform": "west_ridge"
     },
@@ -21324,7 +21485,7 @@
         -2250.0,
         150.0
       ],
-      "height": -14.13,
+      "height": -13.82,
       "ring": 2,
       "landform": "west_ridge"
     },
@@ -21334,7 +21495,7 @@
         -687.5,
         1640.1
       ],
-      "height": 6.92,
+      "height": 9.97,
       "ring": 1,
       "landform": "east_ridge"
     },
@@ -21344,7 +21505,7 @@
         -650.0,
         2500.0
       ],
-      "height": 27.19,
+      "height": 29.18,
       "ring": 2,
       "landform": "east_ridge"
     },
@@ -21364,7 +21525,7 @@
         -1716.8,
         -172.9
       ],
-      "height": -34.78,
+      "height": -33.41,
       "ring": 2,
       "landform": "north_scarp"
     },
@@ -21374,7 +21535,7 @@
         -2400.0,
         -150.0
       ],
-      "height": -20.12,
+      "height": -20.13,
       "ring": 2,
       "landform": "north_scarp"
     },
@@ -21394,7 +21555,7 @@
         -325.6,
         1317.6
       ],
-      "height": -0.25,
+      "height": 20.14,
       "ring": 2,
       "landform": "east_front"
     },
@@ -21404,7 +21565,7 @@
         -330.0,
         480.0
       ],
-      "height": -28.91,
+      "height": -28.92,
       "ring": 2,
       "landform": "east_front"
     },
@@ -21414,7 +21575,7 @@
         -300.0,
         2150.0
       ],
-      "height": -9.03,
+      "height": -7.11,
       "ring": 2,
       "landform": "east_front"
     },
@@ -21434,7 +21595,7 @@
         -1500.0,
         -1100.0
       ],
-      "height": -35.94,
+      "height": -37.33,
       "ring": 2,
       "landform": "ice_field_1"
     },
@@ -21444,7 +21605,7 @@
         -1870.0,
         -640.0
       ],
-      "height": -13.75,
+      "height": -1.57,
       "ring": 2,
       "landform": "ice_field_2"
     },
@@ -21504,7 +21665,7 @@
         -1873.1,
         -654.3
       ],
-      "height": -19.98,
+      "height": -7.92,
       "ring": 2,
       "landform": "ice_scarp_2"
     },
@@ -21514,7 +21675,7 @@
         -1990.0,
         -700.0
       ],
-      "height": -0.24,
+      "height": 11.31,
       "ring": 2,
       "landform": "ice_scarp_2"
     },
@@ -21524,7 +21685,7 @@
         -1760.0,
         -610.0
       ],
-      "height": -33.37,
+      "height": -21.56,
       "ring": 2,
       "landform": "ice_scarp_2"
     },
@@ -21534,7 +21695,7 @@
         2150.0,
         -1450.0
       ],
-      "height": 33.97,
+      "height": 33.96,
       "ring": 0,
       "landform": "boulder_field_1"
     },
@@ -21554,9 +21715,29 @@
         1750.0,
         1150.0
       ],
-      "height": 13.7,
+      "height": 13.69,
       "ring": 3,
       "landform": "boulder_field_3"
+    },
+    {
+      "id": "boulder_field_4.centre",
+      "position": [
+        -1000.0,
+        -30.0
+      ],
+      "height": -55.43,
+      "ring": 2,
+      "landform": "boulder_field_4"
+    },
+    {
+      "id": "boulder_field_5.centre",
+      "position": [
+        -250.0,
+        250.0
+      ],
+      "height": -40.76,
+      "ring": 2,
+      "landform": "boulder_field_5"
     },
     {
       "id": "main_fissure.centre",
@@ -21564,7 +21745,7 @@
         2165.0,
         355.0
       ],
-      "height": -73.92,
+      "height": -73.93,
       "ring": 3,
       "landform": "main_fissure"
     },
@@ -21574,7 +21755,7 @@
         1290.0,
         640.0
       ],
-      "height": 22.47,
+      "height": 22.46,
       "ring": 3,
       "landform": "main_fissure"
     },
@@ -21614,7 +21795,7 @@
         3050.0,
         -390.0
       ],
-      "height": -8.35,
+      "height": -8.34,
       "ring": 0,
       "landform": "north_fissure"
     },
@@ -21644,7 +21825,7 @@
         -40.6,
         1578.3
       ],
-      "height": 37.55,
+      "height": 48.49,
       "ring": 2,
       "landform": "raised_riverbeds"
     },
@@ -21654,7 +21835,7 @@
         -40.0,
         2120.0
       ],
-      "height": 18.74,
+      "height": 22.07,
       "ring": 2,
       "landform": "raised_riverbeds"
     },
@@ -21664,7 +21845,7 @@
         50.0,
         1040.0
       ],
-      "height": 0.05,
+      "height": 8.86,
       "ring": 2,
       "landform": "raised_riverbeds"
     },
@@ -21684,7 +21865,7 @@
         -380.0,
         2180.0
       ],
-      "height": -21.91,
+      "height": -18.66,
       "ring": 2,
       "landform": "fresh_crater"
     },
@@ -21694,7 +21875,7 @@
         -1400.0,
         300.0
       ],
-      "height": -39.1,
+      "height": -39.11,
       "ring": 1,
       "landform": "frost_hollow"
     },
@@ -21704,7 +21885,7 @@
         -921.0,
         1231.3
       ],
-      "height": -36.11,
+      "height": -34.4,
       "ring": 1,
       "landform": "channel"
     },
@@ -21714,7 +21895,7 @@
         -900.0,
         1750.0
       ],
-      "height": -20.83,
+      "height": -20.19,
       "ring": 1,
       "landform": "channel"
     },
@@ -21724,7 +21905,7 @@
         -950.0,
         720.0
       ],
-      "height": -40.58,
+      "height": -39.11,
       "ring": 1,
       "landform": "channel"
     },
@@ -21734,7 +21915,7 @@
         -1640.0,
         330.0
       ],
-      "height": -32.77,
+      "height": -32.76,
       "ring": 1,
       "landform": "sand_sheet"
     },
@@ -21754,7 +21935,7 @@
         -1050.0,
         1340.0
       ],
-      "height": -45.87,
+      "height": -45.42,
       "ring": 1,
       "landform": "collapse_pit"
     },
@@ -21774,7 +21955,7 @@
         -1760.0,
         150.0
       ],
-      "height": -29.95,
+      "height": -29.94,
       "ring": 1,
       "landform": "sliver"
     },
@@ -21804,7 +21985,7 @@
         -650.0,
         -50.0
       ],
-      "height": -33.78,
+      "height": -16.8,
       "ring": 2,
       "landform": "drone_wreck"
     },
@@ -21824,7 +22005,7 @@
         -881.0,
         530.8
       ],
-      "height": -30.66,
+      "height": -30.67,
       "ring": 1,
       "landform": "near_mesa"
     },
@@ -21834,7 +22015,7 @@
         -2050.0,
         1650.0
       ],
-      "height": 74.03,
+      "height": 74.18,
       "ring": 1,
       "landform": "west_mesa"
     },
@@ -21844,7 +22025,7 @@
         -1529.5,
         1650.0
       ],
-      "height": -3.1,
+      "height": 2.86,
       "ring": 1,
       "landform": "west_mesa"
     },
@@ -21854,7 +22035,7 @@
         300.0,
         1500.0
       ],
-      "height": 94.3,
+      "height": 100.78,
       "ring": 2,
       "landform": "far_mesa"
     },
@@ -21864,7 +22045,7 @@
         608.2,
         1111.6
       ],
-      "height": 4.34,
+      "height": 7.55,
       "ring": 2,
       "landform": "far_mesa"
     },
@@ -21874,7 +22055,7 @@
         -1950.0,
         380.0
       ],
-      "height": 16.89,
+      "height": 18.78,
       "ring": 1,
       "landform": "small_mesa"
     },
@@ -21904,7 +22085,7 @@
         -2120.0,
         -760.0
       ],
-      "height": 22.75,
+      "height": 33.13,
       "ring": 2,
       "landform": "glacier_mesa"
     },
@@ -21934,7 +22115,7 @@
         -255.5,
         893.3
       ],
-      "height": 2.94,
+      "height": 3.93,
       "ring": 2,
       "landform": "east_front"
     },
@@ -21944,7 +22125,7 @@
         -284.8,
         1480.9
       ],
-      "height": 3.19,
+      "height": 3.37,
       "ring": 2,
       "landform": "east_front"
     },
@@ -21954,7 +22135,7 @@
         -260.0,
         1892.6
       ],
-      "height": -2.83,
+      "height": -1.87,
       "ring": 2,
       "landform": "east_front"
     },
@@ -21964,7 +22145,7 @@
         -1605.4,
         1754.9
       ],
-      "height": 0.24,
+      "height": 2.81,
       "ring": 1,
       "landform": "west_ridge"
     },
@@ -21974,17 +22155,17 @@
         -2003.3,
         864.4
       ],
-      "height": -24.25,
+      "height": -22.45,
       "ring": 1,
       "landform": "west_ridge"
     },
     {
       "id": "east_ridge.pass_1",
       "position": [
-        -686.6,
-        1719.2
+        -680.6,
+        1717.3
       ],
-      "height": -2.57,
+      "height": -0.6,
       "ring": 2,
       "landform": "east_ridge"
     },
@@ -21994,7 +22175,7 @@
         -872.8,
         1450.3
       ],
-      "height": -22.87,
+      "height": -20.21,
       "ring": 1,
       "landform": "channel"
     },
@@ -22004,7 +22185,7 @@
         -890.2,
         1055.5
       ],
-      "height": -40.34,
+      "height": -38.44,
       "ring": 1,
       "landform": "channel"
     },
@@ -22014,7 +22195,7 @@
         -2060.0,
         -810.0
       ],
-      "height": 42.88,
+      "height": 51.02,
       "ring": 2,
       "landform": "glacier"
     },
@@ -22024,7 +22205,7 @@
         -1820.0,
         -1130.0
       ],
-      "height": -46.92,
+      "height": -46.93,
       "ring": 2,
       "landform": "glacier"
     },
@@ -22064,7 +22245,7 @@
         -1050.0,
         1340.0
       ],
-      "height": -45.87,
+      "height": -45.42,
       "ring": 1,
       "landform": "collapse_pit"
     },
@@ -22074,7 +22255,7 @@
         -1400.0,
         1000.0
       ],
-      "height": -28.17,
+      "height": -28.06,
       "ring": 1,
       "landform": "zone"
     },
@@ -22094,7 +22275,7 @@
         809.2,
         1740.0
       ],
-      "height": -11.92,
+      "height": -11.91,
       "ring": 2,
       "landform": "zone"
     },
@@ -22104,7 +22285,7 @@
         -1400.0,
         1000.0
       ],
-      "height": -28.17,
+      "height": -28.06,
       "ring": 1,
       "landform": "home"
     },
@@ -22114,7 +22295,7 @@
         1850.0,
         1800.0
       ],
-      "height": -19.72,
+      "height": -19.73,
       "ring": 3,
       "landform": "lava_tube"
     },
@@ -22204,7 +22385,7 @@
         2799.7,
         470.9
       ],
-      "height": 16.18,
+      "height": 16.19,
       "ring": 0,
       "landform": "lava_tube"
     },
@@ -22304,16 +22485,176 @@
         -1567.8,
         -1282.5
       ],
-      "height": -34.29,
+      "height": -34.25,
       "ring": 2,
       "landform": "ice_cave"
+    },
+    {
+      "id": "yardangs.dead_end_1",
+      "position": [
+        -618.4,
+        -428.4
+      ],
+      "height": -3.05,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_2",
+      "position": [
+        -887.9,
+        -290.4
+      ],
+      "height": -7.75,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_3",
+      "position": [
+        -82.4,
+        -330.7
+      ],
+      "height": 47.45,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_4",
+      "position": [
+        -182.3,
+        -222.3
+      ],
+      "height": 32.01,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_5",
+      "position": [
+        -365.3,
+        -177.0
+      ],
+      "height": 29.06,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_6",
+      "position": [
+        -17.7,
+        -263.0
+      ],
+      "height": 64.96,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_7",
+      "position": [
+        -181.7,
+        -222.4
+      ],
+      "height": 32.21,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_8",
+      "position": [
+        -562.6,
+        -128.2
+      ],
+      "height": 8.98,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_9",
+      "position": [
+        -315.3,
+        -7.7
+      ],
+      "height": 3.59,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_10",
+      "position": [
+        -458.4,
+        27.7
+      ],
+      "height": -2.98,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_11",
+      "position": [
+        -46.1,
+        -74.3
+      ],
+      "height": 27.01,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_12",
+      "position": [
+        -517.1,
+        105.9
+      ],
+      "height": -20.0,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_13",
+      "position": [
+        -372.4,
+        70.1
+      ],
+      "height": -36.5,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_14",
+      "position": [
+        -275.5,
+        46.1
+      ],
+      "height": -31.5,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_15",
+      "position": [
+        -548.5,
+        113.7
+      ],
+      "height": -36.68,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "yardangs.dead_end_16",
+      "position": [
+        -603.5,
+        127.3
+      ],
+      "height": -32.58,
+      "ring": 2,
+      "landform": "yardangs"
     }
   ],
   "step_lines": [
     {
       "id": "north_scarp",
       "kind": "caprock",
-      "height": 18.0,
+      "height": 32.0,
       "points": [
         [
           -2400.0,
@@ -22402,7 +22743,7 @@
     {
       "id": "east_front",
       "kind": "flow_front",
-      "height": 11.0,
+      "height": 22.0,
       "points": [
         [
           -330.0,

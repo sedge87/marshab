@@ -170,7 +170,7 @@ FISSURES = [{"id": e["id"], "from": _xz(e["points"][0]), "to": _xz(e["points"][-
             for e in landforms("fissure")]
 # The yardang maze between home and the crater: its long axis lies along the wind.
 _y = landform("yardangs")
-YARDANGS = {"centre": _xz(_y["centre"]), "length": _y["length"], "width": _y["width"], "count": _y["count"], "real_scale": _y["real_scale"], "real_shrink": _y["real_shrink"]}
+YARDANGS = {"centre": _xz(_y["centre"]), "length": _y["length"], "width": _y["width"]}
 DRONE_WRECK = _xz(landform("drone_wreck")["centre"])
 # Ripple belts beside the one round the dune sea: centre, length across the wind, width along it.
 RIPPLE_BELTS = [(e["centre"][0], e["centre"][1], e["length"], e["width"]) for e in landforms("ripple_belt")]
@@ -606,13 +606,17 @@ def add_mesas(h, x, z, masks, medium, edge_warp):
 # ---------- wrinkle ridges ----------
 
 def add_wrinkle_ridges(h, x, z, masks, medium):
-    """Wrinkle ridges on the lava plains: a broad arch with a narrow crest
-    on top, steep on one side, crenulated along its length, with a few low
-    saddles (passes) where a rover can get over."""
+    """Wrinkle ridges on the lava plains (T3, docs/terrain-design.md §13): a broad arch with a tall,
+    lumpy crest on top, one side steep and broken into ledges and gullies (too steep for a rover; the
+    gullies are scrambles on foot), the other gentler but still too steep to drive, and a few low
+    saddles (passes): the only places a rover gets over."""
     masks["ridges"] = np.zeros_like(h)
-    rng = np.random.default_rng(kind_seed("wrinkle_ridge", SEED + 60))
-    for (control, passes), r in zip(WRINKLE_RIDGES, landforms("wrinkle_ridge")):
-        control = np.array(control, dtype=float)
+    masks.setdefault("no_grade", np.zeros_like(h))
+    masks.setdefault("obstacle_lines", [])
+    lumps = np.roll(masks["noise"], (300, 700), (0, 1))
+    for r in landforms("wrinkle_ridge"):
+        rng = np.random.default_rng(seed_of(r))
+        control = np.array(r["points"], dtype=float)
         # A smooth, sinuous line through the control points.
         fine = []
         for k in range(len(control) - 1):
@@ -623,20 +627,42 @@ def add_wrinkle_ridges(h, x, z, masks, medium):
         normal = np.gradient(fine, axis=0)[:, ::-1] * np.array([1.0, -1.0])
         normal /= np.linalg.norm(normal, axis=1, keepdims=True)
         fine += normal * (r["wiggle"] * np.sin(np.linspace(0, 9.0, len(fine)) + rng.uniform(0, 6))[:, None])
-        d, t, side = polyline_field(fine, 420.0, step=2)
+        reach = max(420.0, r["arch_width"] * 2.6)
+        d, t, side = polyline_field(fine, reach, step=2)
         s = d * side   # signed: > 0 on the steep side
+        length = float(np.sum(np.hypot(*np.diff(fine, axis=0).T)))
         taper = np.clip(np.sin(np.pi * np.clip(t, 0.0, 1.0)), 0.0, 1.0) ** 0.4
-        low = np.ones_like(t)
-        for p in passes:
-            low -= 0.88 * np.exp(-((t - p) / 0.028) ** 2)
+        pass_w = np.zeros_like(t)
+        width_t = r.get("pass_width", 70.0) / length   # a pass's half width, as a share of the length
+        for p in r["passes"]:
+            pass_w = np.maximum(pass_w, np.exp(-((t - p) / width_t) ** 2))
+        low = 1.0 - r.get("pass_depth", 0.9) * pass_w
         crest_at = r["crest_at"]
-        crest = np.where(s - crest_at > 0.0, np.exp(-((s - crest_at) / r["steep_side"]) ** 2), np.exp(-((s - crest_at) / r["gentle_side"]) ** 2))
-        crest *= 0.78 + 0.22 * np.sin(t * 140.0 + 2.0 * medium)
+        u = (s - crest_at) / r["steep_side"]
+        # The steep side: a face broken into ledges, with gullies cut into it every so often (eased: scrambles).
+        gully = 1.0 - smoothstep(0.0, 0.25, np.abs(np.sin(t * length / r.get("gully_spacing", 160.0) * math.pi + 1.3)))
+        u = u / (1.0 + 1.3 * gully)
+        face = np.exp(-np.maximum(u, 0.0) ** 2)
+        ledges = (np.floor(face * 3.0) + smoothstep(0.55, 1.0, face * 3.0 - np.floor(face * 3.0))) / 3.0
+        steep = 0.45 * face + 0.55 * ledges
+        gentle = np.exp(-((s - crest_at) / r["gentle_side"]) ** 2)
+        crest = np.where(s - crest_at > 0.0, steep, gentle)
+        # A lumpy, crenulated crest.
+        crest *= 0.74 + 0.18 * np.sin(t * length / 55.0 + 2.0 * medium) + 0.14 * np.clip(lumps, -1.5, 1.5)
         arch = np.exp(-(s / r["arch_width"]) ** 2)
-        lift = (r["arch"] * arch + r["crest"] * crest) * taper * np.clip(low, 0.06, 1.0)
+        lift = (r["arch"] * arch + r["crest"] * crest) * taper * np.clip(low, 0.05, 1.0)
+        # Fallen rubble at the foot of the steep side.
+        foot = np.clip(1.0 - np.abs(s - crest_at - r["steep_side"] * 1.6) / 22.0, 0.0, 1.0) * taper * (1.0 - pass_w)
+        lift += 1.6 * foot * (0.6 + 0.4 * np.abs(lumps))
         h += lift
-        masks["ridges"] = np.maximum(masks["ridges"], lift / 24.0)
-        masks.setdefault("ridge_passes", {})[r["id"]] = [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in (fine[int(p * (len(fine) - 1))] for p in passes)]
+        top = r["arch"] + r["crest"]
+        masks["ridges"] = np.maximum(masks["ridges"], lift / top)
+        masks["no_grade"] = np.maximum(masks["no_grade"], ((lift > 0.25 * top) & (pass_w < 0.3)).astype(np.float32))
+        passes = [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in (fine[int(p * (len(fine) - 1))] for p in r["passes"])]
+        masks.setdefault("ridge_passes", {})[r["id"]] = passes
+        masks["obstacle_lines"].append({"id": r["id"], "label": r.get("label", r["id"]), "line": fine, "passes": passes, "reach": 350.0,
+                                        "s": s[::5, ::5], "t": t[::5, ::5], "low": -(r["gentle_side"] * 2.2 + 20.0), "high": crest_at + r["steep_side"] * 2.6 + 20.0,
+                                        "pass_radius": r.get("pass_width", 70.0) * 1.6 + 40.0})
 
 
 # ---------- valleys ----------
@@ -1083,64 +1109,118 @@ def window(cx, cz, reach):
 
 
 def add_yardangs(h, x, z, masks, medium):
-    """A yardang maze: soft layered rock carved by one wind into streamlined
-    ridges, each blunt and tall at its upwind end and tapering downwind,
-    with scoured corridors between. No straight line leads through."""
-    c = YARDANGS
-    wind = np.array(DUNE_WIND)
-    rng = np.random.default_rng(kind_seed("yardang_field", SEED + 160))
-    along = (x - c["centre"][0]) * wind[0] + (z - c["centre"][1]) * wind[1]
-    across = -(x - c["centre"][0]) * wind[1] + (z - c["centre"][1]) * wind[0]
-    dd = np.sqrt((along / (c["length"] * 0.5)) ** 2 + (across / (c["width"] * 0.5)) ** 2) + 0.12 * medium
-    field = 1.0 - smoothstep(0.85, 1.15, dd)
-    # The wind has scoured the whole patch down a little, in grooves.
-    h -= field * (2.5 + 1.2 * np.sin(across / 9.0 + 2.0 * medium))
-    body = np.zeros_like(h)
-    placed = []
+    """A yardang maze (T3, in the style of the Medusae Fossae yardangs): long, sharp-crested,
+    steep-sided ridges of soft rock, 3 to 5 times longer than wide and taller than you can see over,
+    lying along the wind in lanes, with narrow corridors between. Here and there two ridges join across
+    a corridor and close it (a dead end); gaps in the ridges let you change lane. Only a few ways lead
+    through. The real HiRISE yardangs (Arabia Terra) give the ridges their surface detail."""
+    c = landform("yardangs")
+    rng = np.random.default_rng(seed_of(c))
+    wind = np.array(DUNE_WIND) / np.linalg.norm(DUNE_WIND)
+    side_dir = np.array([-wind[1], wind[0]])
+    centre = np.array(c["centre"])
+    L, W = c["length"], c["width"]
+    win = window(centre[0], centre[1], max(L, W) * 0.62)
+    X, Z = x[win], z[win]
+    along = (X - centre[0]) * wind[0] + (Z - centre[1]) * wind[1]
+    across = -(X - centre[0]) * wind[1] + (Z - centre[1]) * wind[0]
+    shape_p = 4.0   # a rounded block, not an oval: every lane runs most of the field's length (an oval's outer lanes are short and easy to walk round)
+    dd = ((np.abs(along) / (L * 0.5)) ** shape_p + (np.abs(across) / (W * 0.5)) ** shape_p) ** (1.0 / shape_p) + 0.06 * medium[win]
+    field = 1.0 - smoothstep(0.9, 1.08, dd)
+    h[win] -= field * (2.5 + 1.2 * np.sin(across / 9.0 + 2.0 * medium[win]))   # the wind has scoured the patch down, in grooves
+    H = c.get("ridge_height", 55.0)
+    wmin, wmax = c.get("ridge_width", [44.0, 78.0])
+    cmin, cmax = c.get("corridor", [12.0, 22.0])
+    lmin, lmax = c.get("ridge_length", [200.0, 360.0])
+    gap_share = c.get("gap_share", 0.45)    # how often a ridge ends in a gap you can walk through (else the next one overlaps it)
+    joins_per = c.get("joins", 0.0045)     # joins across a corridor, per metre along it
+    # Lanes across the field, ridges along each lane.
+    lanes = []
+    v = -W * 0.62
+    while v < W * 0.62:
+        w = rng.uniform(wmin, wmax)
+        lanes.append((v + w * 0.5, w))
+        v += w + rng.uniform(cmin, cmax)
+    ridges = []
+    for v0, w in lanes:
+        u = -L * 0.62 - rng.uniform(0.0, 120.0)
+        while u < L * 0.62:
+            length = rng.uniform(lmin, lmax)
+            ridges.append((u, v0 + rng.normal(0.0, 3.0), length, w * rng.uniform(0.85, 1.1), H * rng.uniform(0.9, 1.08), rng.uniform(0, 6.3)))
+            u += length + (rng.uniform(16.0, 30.0) if rng.random() < gap_share else -length * rng.uniform(0.1, 0.25))
+    joins = []
+    corridors = len(lanes) - 1
+    through = set(rng.choice(corridors, size=min(int(c.get("through_lanes", 2)), corridors), replace=False).tolist()) if corridors > 0 else set()
+    for k in range(corridors):
+        (va, wa), (vb, wb) = lanes[k], lanes[k + 1]
+        if k in through:   # one of the few lanes that lead all the way through (it still has to be found)
+            continue
+        n = max(1, rng.poisson(joins_per * L))
+        for _ in range(n):
+            joins.append((rng.uniform(-L * 0.45, L * 0.45), 0.5 * (va + wa * 0.5 + vb - wb * 0.5), (vb - wb * 0.5) - (va + wa * 0.5) + 30.0, rng.uniform(16.0, 26.0)))
+    ridge_body = np.zeros_like(X)
+    for u0, v0, length, w, height, ph in ridges:
+        un = (along - u0) / length
+        near = (un > -0.05) & (un < 1.05) & (np.abs(across - v0) < w)
+        if not near.any():
+            continue
+        unn = un[near]
+        half = 0.5 * w * smoothstep(-0.02, 0.12, unn) * (1.0 - 0.55 * np.clip(unn, 0.0, 1.0) ** 1.6)   # blunt upwind, tapering downwind
+        bend = 0.12 * w * np.sin(unn * 4.0 + ph)
+        dv = np.abs(across[near] - v0 - bend)
+        crest = height * smoothstep(-0.02, 0.08, unn) * (1.0 - 0.4 * smoothstep(0.45, 1.0, unn))
+        ridge_body[near] = np.maximum(ridge_body[near], crest * np.clip(1.0 - dv / np.maximum(half, 0.5), 0.0, 1.0) ** c.get("crest_sharpness", 0.9) * (unn < 1.0))
+
+    def join_body(keep):
+        out = np.zeros_like(X)
+        for j, (uj, vj, span, thick) in enumerate(joins):
+            if not keep[j]:
+                continue
+            du = np.abs(along - uj) / (thick * 0.5); dv = np.abs(across - vj) / (span * 0.5)
+            near = (du < 1.0) & (dv < 1.0)
+            out[near] = np.maximum(out[near], 0.85 * H * np.clip(1.0 - du[near], 0.0, 1.0) ** 0.5 * (1.0 - smoothstep(0.85, 1.0, dv[near])))
+        return out
+
+    entry = centre - wind * (L * 0.5 + 20.0); exit_ = centre + wind * (L * 0.5 + 20.0)       # along the wind: the through-lanes
+    side_a = centre - side_dir * (W * 0.5 + 20.0); side_b = centre + side_dir * (W * 0.5 + 20.0)   # across it: the hard way
+    dd0 = ((np.abs(along) / (L * 0.5)) ** shape_p + (np.abs(across) / (W * 0.5)) ** shape_p) ** (1.0 / shape_p)   # the walked region (no wobble, so the ends always meet it)
+    # Across the wind the way is measured through the field, not round its ends (walking round is allowed in
+    # the game, but it isn't the maze): a band over the middle of the field's length.
+    across_region = (np.abs(along) < L * 0.4) & (np.abs(across) < W * 0.5 + 40.0)
+    keep = [True] * len(joins)
+    for attempt in range(40):   # a way must lead through: take joins away (at random) until one does
+        body = np.maximum(ridge_body, join_body(keep)) * field
+        result = maze_paths(body, win, entry, exit_, (dd0 < 1.15), 4)
+        across_result = maze_paths(body, win, side_a, side_b, across_region, 4)
+        if (result["through"] and across_result["through"]) or not any(keep):
+            break
+        on = [j for j, k_ in enumerate(keep) if k_]
+        keep[on[int(rng.integers(len(on)))]] = False
+    stepped = np.floor(body / 6.0) * 6.0 + 6.0 * smoothstep(0.35, 1.0, (body % 6.0) / 6.0)   # hard beds stand out as ledges on the flanks
+    lift = 0.4 * body + 0.6 * stepped
     patch_path = os.path.join(ROOT, "assets", "terrain", "patches", "yardangs_arabia.npz")
     if os.path.exists(patch_path):
-        # Real yardangs: a patch of a HiRISE elevation model (Arabia Terra, 2 m a point), with the
-        # plain under them taken off, turned so its ridges lie along our wind and stood a little taller.
         relief = np.load(patch_path)["relief"].astype(np.float32)
         rows, cols = relief.shape
-        # Laid at a smaller scale (more, narrower ridges: a maze) and mirrored where it repeats, so no seam shows.
-        def mirror(t, n):
-            t = np.mod(t, 2.0 * (n - 1.001))
-            return np.where(t > n - 1.001, 2.0 * (n - 1.001) - t, t)
-        u = mirror(along / (SPACING * c["real_shrink"]) + cols / 2.0, cols); v = mirror(across / (SPACING * c["real_shrink"]) + rows / 2.0, rows)
-        i0 = np.floor(u).astype(int); j0 = np.floor(v).astype(int); fu = u - i0; fv = v - j0
+
+        def mirror(tt, n):
+            tt = np.mod(tt, 2.0 * (n - 1.001))
+            return np.where(tt > n - 1.001, 2.0 * (n - 1.001) - tt, tt)
+        uu = mirror(along / SPACING + cols / 2.0, cols); vv = mirror(across / SPACING + rows / 2.0, rows)
+        i0 = np.floor(uu).astype(int); j0 = np.floor(vv).astype(int); fu = uu - i0; fv = vv - j0
         real = (relief[j0, i0] * (1 - fu) * (1 - fv) + relief[j0, i0 + 1] * fu * (1 - fv) + relief[j0 + 1, i0] * (1 - fu) * fv + relief[j0 + 1, i0 + 1] * fu * fv)
-        body = c["real_scale"] * real * field
-        placed = ["real"]
-    for _ in range(6000):
-        if len(placed) >= c["count"] or placed[:1] == ["real"]:
-            break
-        a0 = rng.uniform(-0.56, 0.5) * c["length"]; c0 = rng.uniform(-0.5, 0.5) * c["width"]
-        if (a0 / (c["length"] * 0.5)) ** 2 + (c0 / (c["width"] * 0.5)) ** 2 > 1.0:
-            continue
-        length = rng.uniform(110.0, 360.0); width = rng.uniform(13.0, 30.0) + length * 0.03
-        height = min(48.0, rng.uniform(0.7, 1.25) * width)
-        # Leave corridors: no other ridge within a corridor's width to either side.
-        if any(abs(c0 - pc) < (width + pw) + rng.uniform(7.0, 16.0) and a0 < pa + pl + 16.0 and pa < a0 + length + 16.0 for pa, pc, pl, pw in placed):
-            continue
-        placed.append((a0, c0, length, width))
-        mid = np.array(c["centre"]) + wind * (a0 + length * 0.5) + np.array([-wind[1], wind[0]]) * c0
-        win = window(mid[0], mid[1], length * 0.5 + width * 2.0)
-        u = (along[win] - a0) / length
-        bend = 0.18 * width * np.sin(u * 5.0 + c0)
-        v = np.abs(across[win] - c0 - bend)
-        taper = smoothstep(-0.02, 0.1, u) * (1.0 - 0.72 * np.clip(u, 0.0, 1.0) ** 1.4) * (u < 1.0)
-        crest = smoothstep(-0.02, 0.08, u) * (1.0 - 0.8 * smoothstep(0.25, 1.0, u))
-        w = np.maximum(width * taper, 0.01)
-        shape = np.clip(1.0 - (v / w) ** 2.6, 0.0, 1.0) ** 0.6
-        layers = 1.0 + 0.05 * np.sin(u * 60.0)
-        body[win] = np.maximum(body[win], height * crest * shape * layers * (u > -0.02))
-    # Hard beds stand out as ledges on the flanks.
-    stepped = np.floor(body / 6.0) * 6.0 + 6.0 * smoothstep(0.35, 1.0, (body % 6.0) / 6.0)
-    h += 0.4 * body + 0.6 * stepped
-    masks["yardangs"] = (body > (4.0 if placed[:1] == ["real"] else 1.5)).astype(np.float32)
-    masks["yardang_field"] = field
-    print(f"  yardangs: {'from the HiRISE patch' if placed[:1] == ['real'] else str(len(placed)) + ' ridges'}, to {float(body.max()):.0f} m")
+        lift += c.get("real_detail", 0.18) * real * smoothstep(2.0, 12.0, body)   # surface grooves and knobs on the ridges, not on the corridor floors
+    h[win] += lift
+    full = np.zeros_like(h); full[win] = (body > 4.0)
+    masks["yardangs"] = full.astype(np.float32)
+    f = np.zeros_like(h); f[win] = field
+    masks["yardang_field"] = f
+    jpos = [(centre + wind * uj + side_dir * vj) for (uj, vj, _, _), k_ in zip(joins, keep) if k_]
+    masks["maze_plan"] = {"win": win, "entry": entry, "exit": exit_, "side_a": side_a, "side_b": side_b, "region": (dd0 < 1.15), "across_region": across_region, "joins": jpos}
+    no = np.zeros_like(h); no[win] = (body > 6.0)
+    masks["no_grade"] = np.maximum(masks.setdefault("no_grade", np.zeros_like(h)), no)
+    print(f"  yardangs: {len(ridges)} ridges in {len(lanes)} lanes, {sum(keep)} joins, to {float(body.max()):.0f} m; "
+          f"along the wind {result['ratio']:.1f}x the straight line, across it {across_result['ratio']:.1f}x" + ("" if result["through"] and across_result["through"] else " (NO WAY THROUGH)"))
 
 
 def add_ripple_belts(h, x, z, masks, medium):
@@ -1275,11 +1355,10 @@ def add_chaos_blocks(h, x, z, masks, medium):
 
 def add_home_ground(h, x, z, masks, medium):
     """Ring 1's own landforms (docs/terrain-design.md §3 and §6): the frost
-    hollow with its shallow ice, a dry channel with two low crossings, a
+    hollow with its shallow ice, dry channels with low crossings, a
     sand sheet in a mesa's lee, and the places the land locks until you
     have the kit: a ledge-topped outcrop (a ladder) and a collapse pit (a
     rope). The cracked sliver (a bridge) is carved with the fissures."""
-    rng = np.random.default_rng(kind_seed("channel", SEED + 190))
     c = HOME_GROUND
     # The frost hollow.
     fx, fz, fr, fd = c["frost_hollow"]
@@ -1289,25 +1368,8 @@ def add_home_ground(h, x, z, masks, medium):
     h[w] -= fd * bowl
     hollow = np.zeros_like(h); hollow[w] = (bowl > 0.45)
     masks["frost_hollow"] = hollow
-    # The dry channel: steep banks, a gravel floor, two low crossings.
-    line = smooth_line(c["channel"]["points"], 14.0, landform("channel").get("wiggle", 22.0), rng)
-    n = len(line)
-    t = np.linspace(0.0, 1.0, n)
-    ends = smoothstep(0.0, 0.08, t) * smoothstep(1.0, 0.92, t)
-    low = np.ones(n)
-    for p in c["channel"]["crossings"]:
-        low -= 0.8 * np.exp(-((t - p) / 0.035) ** 2)
-    low = np.clip(low, 0.2, 1.0)
-    depth = c["channel"]["depth"] * ends * low
-    floor = np.empty(n)
-    for k in range(n):
-        ground = sample(h, line[k][0], line[k][1]) - depth[k]
-        floor[k] = ground if k == 0 else min(ground, floor[k - 1] - 0.01)
-    wall_run = np.where(low < 0.6, 16.0, 4.0) * np.ones(n)
-    mask = carve_channel(h, line, floor, np.full(n, landform("channel").get("half_width", 8.0)) * (0.5 + 0.5 * ends), np.maximum(depth, 0.3), wall_run, step=1)
-    masks["channels"] = np.maximum(masks["channels"], mask) if "channels" in masks else mask
-    masks["home_channel"] = [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in line[::3]]
-    masks["home_crossings"] = [[round(float(line[int(p * (n - 1))][0]), 1), round(float(line[int(p * (n - 1))][1]), 1)] for p in c["channel"]["crossings"]]
+    for k, e in enumerate(landforms("channel")):
+        add_dry_channel(h, x, z, masks, medium, e, first=(k == 0))
     # A sand sheet in the lee of a mesa.
     sx, sz, sr = c["sand_sheet"]
     wind = np.array(DUNE_WIND)
@@ -1335,6 +1397,136 @@ def add_home_ground(h, x, z, masks, medium):
     for qx, qz, qr in ((ox, oz, orad * 2.2), (px, pz, prad * 2.5)):
         w = window(qx, qz, qr)
         clear[w] = np.maximum(clear[w], (np.hypot(x[w] - qx, z[w] - qz) < qr).astype(np.float32))
+
+
+def maze_paths(hh, win, entry, exit_, region, cell):
+    """On foot through a patch: is there a way from entry to exit (no step steeper than 40 degrees, staying in
+    `region`), how long is it against the straight line, and which cells can you reach. Heights `hh` are the
+    window `win` of the region grid (2 m), worked on a `cell`-metre grid."""
+    k = int(cell / SPACING)
+    g = hh[::k, ::k]; allowed = region[::k, ::k].copy()
+    j0, i0 = win[0].start, win[1].start
+
+    def at(p):
+        return int(round((p[1] + HALF) / SPACING - j0)) // k, int(round((p[0] + HALF) / SPACING - i0)) // k
+
+    rows, cols = g.shape
+    ej, ei = at(entry); xj, xi = at(exit_)
+    ej, ei, xj, xi = min(max(ej, 0), rows - 1), min(max(ei, 0), cols - 1), min(max(xj, 0), rows - 1), min(max(xi, 0), cols - 1)
+    for (pj, pi) in ((ej, ei), (xj, xi)):   # a pad at each end, outside the field
+        allowed[max(pj - 6, 0):pj + 7, max(pi - 6, 0):pi + 7] = True
+    limit = math.tan(math.radians(40.0))
+    shifts = [(-1, 0, 1.0), (1, 0, 1.0), (0, -1, 1.0), (0, 1, 1.0), (-1, -1, 1.414), (-1, 1, 1.414), (1, -1, 1.414), (1, 1, 1.414)]
+    moves = []
+    for dj, di, dist_ in shifts:
+        src = (slice(max(-dj, 0), rows - max(dj, 0)), slice(max(-di, 0), cols - max(di, 0)))
+        dst = (slice(max(dj, 0), rows - max(-dj, 0)), slice(max(di, 0), cols - max(-di, 0)))
+        ok = (np.abs(g[dst] - g[src]) <= limit * cell * dist_) & allowed[src] & allowed[dst]
+        moves.append((src, dst, ok))
+    steps = np.full(g.shape, -1, dtype=np.int32)
+    steps[ej, ei] = 0
+    front = np.zeros(g.shape, dtype=bool); front[ej, ei] = True
+    n = 0
+    while front.any() and steps[xj, xi] < 0 and n < 4000:
+        n += 1
+        new = np.zeros_like(front)
+        for src, dst, ok in moves:
+            new[dst] |= front[src] & ok
+        new &= steps < 0
+        steps[new] = n
+        front = new
+    if steps[xj, xi] < 0:   # finish the flood, for what can be reached at all
+        while front.any() and n < 4000:
+            n += 1
+            new = np.zeros_like(front)
+            for src, dst, ok in moves:
+                new[dst] |= front[src] & ok
+            new &= steps < 0
+            steps[new] = n
+            front = new
+    straight = max(abs(xj - ej), abs(xi - ei))
+    through = bool(steps[xj, xi] >= 0)
+    return {"through": through, "ratio": (float(steps[xj, xi]) / max(straight, 1)) if through else 0.0, "reached": steps >= 0, "cell": cell}
+
+
+def add_dry_channel(h, x, z, masks, medium, e, first):
+    """A dry channel (T3, after HiRISE ESP_088471_1750): terraced banks down to a gravel floor, a narrower
+    inner channel meandering in it, gravel bars beside that, low crossings where the banks ease, and a
+    little network of V-shaped tributaries branching off upstream."""
+    rng = np.random.default_rng(seed_of(e))
+    line = smooth_line(e["points"], 14.0, e.get("wiggle", 22.0), rng)
+    n = len(line)
+    t = np.linspace(0.0, 1.0, n)
+    ends = smoothstep(0.0, 0.08, t) * smoothstep(1.0, 0.92, t)
+    low = np.ones(n)
+    for p in e["crossings"]:
+        low -= 0.8 * np.exp(-((t - p) / 0.035) ** 2)
+    low = np.clip(low, 0.2, 1.0)
+    depth = e["depth"] * ends * low
+    floor = np.empty(n)
+    for k in range(n):
+        ground = sample(h, line[k][0], line[k][1]) - depth[k]
+        floor[k] = ground if k == 0 else min(ground, floor[k - 1] - 0.01)
+    hw = np.full(n, e.get("half_width", 8.0)) * (0.5 + 0.5 * ends)
+    at_crossing = low < 0.6
+    # Terraced banks: a bench half way up, then the inner bank down to the floor.
+    bench = e.get("bench", 0.5)
+    carve_channel(h, line, floor + depth * bench, hw * e.get("bench_width", 1.9), np.maximum(depth * (1.0 - bench), 0.2),
+                  np.where(at_crossing, 16.0, 3.5) * np.ones(n), step=1)
+    mask = carve_channel(h, line, floor, hw, np.maximum(depth * bench, 0.3), np.where(at_crossing, 16.0, 3.0) * np.ones(n), step=1)
+    # The inner channel: narrow, a metre or so deeper, meandering across the floor (not at the crossings).
+    _, nrm = line_frames(line)
+    s = np.arange(n) * 14.0
+    offset = hw * 0.45 * np.sin(s / 41.0 + rng.uniform(0, 6.3))
+    inner = line + nrm * offset[:, None]
+    inner_depth = e.get("inner_depth", 1.2) * ends * (1.0 - 0.85 * (1.0 - low) / 0.8)
+    carve_channel(h, inner, floor - inner_depth, hw * 0.28, np.maximum(inner_depth, 0.05), np.full(n, 1.5), step=1)
+    # Gravel bars on the floor, on the inside of the bends, opposite the inner channel.
+    floor_mask = np.zeros_like(h)
+    for k in range(3, n - 3, 5):
+        if at_crossing[k]:
+            continue
+        q = line[k] - nrm[k] * np.sign(offset[k]) * hw[k] * 0.45
+        tangent = line[min(k + 1, n - 1)] - line[k - 1]; tangent /= np.linalg.norm(tangent)
+        w2 = window(q[0], q[1], 22.0)
+        du = ((x[w2] - q[0]) * tangent[0] + (z[w2] - q[1]) * tangent[1]) / 18.0
+        dv = (-(x[w2] - q[0]) * tangent[1] + (z[w2] - q[1]) * tangent[0]) / (hw[k] * 0.35)
+        h[w2] += 0.55 * np.clip(1.0 - du * du - dv * dv, 0.0, 1.0) ** 0.7
+    # Tributaries: V-shaped, branching off upstream and climbing away from it.
+    tribs = []
+    count = int(e.get("tributaries", 4))
+    starts = sorted(rng.uniform(0.06, 0.48, count))
+    clear_of = [(HOME_GROUND["pit"][0], HOME_GROUND["pit"][1], 70.0), (HOME_GROUND["outcrop"][0], HOME_GROUND["outcrop"][1], 70.0)]
+    for j, at in enumerate(starts):
+        k = int(at * (n - 1))
+        if any(abs(at - p) < 0.07 for p in e["crossings"]):
+            continue
+        back = line[max(k - 2, 0)] - line[min(k + 2, n - 1)]
+        heading = math.atan2(back[1], back[0]) + (1.0 if j % 2 == 0 else -1.0) * rng.uniform(0.7, 1.15)
+        branch = wander(line[k] + nrm[k] * (1.0 if j % 2 == 0 else -1.0) * hw[k], heading, rng.uniform(140.0, 320.0), rng, step=10.0, turn=0.12)
+        keep = 1
+        while keep < len(branch) and not any(math.hypot(branch[keep][0] - cx, branch[keep][1] - cz) < cr for cx, cz, cr in clear_of):
+            keep += 1
+        branch = branch[:keep]
+        m = len(branch)
+        if m < 6:
+            continue
+        f = np.linspace(1.0, 0.0, m)   # 1 at the junction, 0 at the head
+        tdepth = 0.4 + e.get("tributary_depth", 2.2) * f
+        tfloor = np.empty(m)
+        for q in range(m - 1, -1, -1):
+            ground = sample(h, branch[q][0], branch[q][1]) - tdepth[q]
+            tfloor[q] = ground if q == m - 1 else min(ground, tfloor[q + 1] - 0.03)
+        tfloor = np.maximum(tfloor, floor[k] + inner_depth[k] * 0.0)
+        mask = np.maximum(mask, carve_channel(h, branch, tfloor, 0.4 + 1.2 * f, tdepth, 3.5 + 4.0 * f, step=1))
+        tribs.append([[round(float(p[0]), 1), round(float(p[1]), 1)] for p in branch[::3]])
+    floor_mask = np.maximum(floor_mask, mask)
+    masks["channels"] = np.maximum(masks["channels"], floor_mask) if "channels" in masks else floor_mask
+    masks["channel_floor"] = np.maximum(masks.get("channel_floor", np.zeros_like(h)), floor_mask)
+    if first:
+        masks["home_channel"] = [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in line[::3]]
+        masks["home_crossings"] = [[round(float(line[int(p * (n - 1))][0]), 1), round(float(line[int(p * (n - 1))][1]), 1)] for p in e["crossings"]]
+        masks["home_tributaries"] = tribs
 
 
 def plan_cracks(masks, plans, block):
@@ -1380,35 +1572,80 @@ def smooth_line(control, step=16.0, wiggle=0.0, rng=None):
 
 
 def add_step_lines(h, x, z, masks, medium, lobes_field, ragged_field):
-    """The land steps up from the home plain to the Reach, but never in a
-    ring: each step follows the geology (an old lava flow's lobate front, a
-    caprock edge with spurs and re-entrants), fades out at its ends, and has
-    a few passes where fallen rock makes a ramp a rover can climb."""
+    """The land steps up from the home plain to the Reach, but never in a ring (T3, §13): each step
+    follows the geology and fades out at its ends. A caprock scarp stands in three ledges with spurs
+    pushed out and dead-end bays cut back into it, and a fallen-rock apron at its foot; a lava flow's
+    front pushes out in lobes, with small breakouts ahead of it and rough ground at its foot. A few
+    passes, where fallen rock makes a ramp a rover can climb, are the only ways up by rover."""
     masks["step_front"] = np.zeros_like(h)
+    masks["step_apron"] = np.zeros_like(h)
+    masks.setdefault("no_grade", np.zeros_like(h))
+    masks.setdefault("obstacle_lines", [])
+    rough = np.abs(np.roll(masks["noise"], (900, 200), (0, 1)))
     report = []
-    for index, c in enumerate(STEP_LINES):
+    entries = landforms("step_line")
+    for index, (c, e) in enumerate(zip(STEP_LINES, entries)):
+        rng = np.random.default_rng(seed_of(e))
         line = smooth_line(c["points"], 20.0)
+        length = float(np.sum(np.hypot(*np.diff(line, axis=0).T)))
         d, t, side = polyline_field(line, 1000.0, step=2)
         lob = np.roll(lobes_field, (137 * (index + 1), 71 * (index + 1)), (0, 1)); rag = np.roll(ragged_field, (53 * (index + 1), 211 * (index + 1)), (0, 1))
-        warp = (95.0 * lob + 22.0 * rag) if c["kind"] == "flow_front" else (50.0 * rag + 40.0 * lob + 14.0 * medium)
+        flow = c["kind"] == "flow_front"
+        warp = e.get("warp", 0.5) * ((95.0 * lob + 22.0 * rag) if flow else (50.0 * rag + 40.0 * lob + 14.0 * medium))   # wander off the drawn line
         s = d * side * c["up"] + warp   # > 0 on the high side
-        ends = smoothstep(0.0, 0.1, t) * smoothstep(1.0, 0.9, t)
-        height = c["height"] * ends * (0.8 + 0.3 * np.sin(t * 9.0 + index * 2.0))
-        behind = 1.0 - smoothstep(350.0, 900.0, s)
         pass_w = np.zeros_like(t)
+        pass_t = e.get("pass_width", 90.0) / length
         for p in c["passes"]:
-            pass_w = np.maximum(pass_w, np.exp(-((t - p) / 0.035) ** 2))
+            pass_w = np.maximum(pass_w, np.exp(-((t - p) / pass_t) ** 2))
+        far_from_pass = lambda tb: all(abs(tb - p) > 2.2 * pass_t for p in c["passes"])
+        if flow:
+            # Lobes pushing out like a real lava flow's edge (convex outward), and breakouts ahead of it.
+            n_lobes = e.get("lobes", 7)
+            s += e.get("lobe_size", 70.0) * (0.5 + 0.5 * np.cos(math.tau * t * n_lobes + rng.uniform(0, 6.3))) ** 2.5
+        else:
+            # Spurs pushed out, and dead-end bays cut back into the scarp: slots a rover drives into and must back out of.
+            for _ in range(int(e.get("spurs", 4))):
+                tb = rng.uniform(0.12, 0.88)
+                if far_from_pass(tb):
+                    wt = rng.uniform(35.0, 60.0) / length
+                    s += rng.uniform(70.0, 140.0) * (1.0 - smoothstep(0.5, 1.0, np.abs(t - tb) / wt)) * smoothstep(-400.0, -50.0, s)
+            for _ in range(int(e.get("bays", 4))):
+                tb = rng.uniform(0.1, 0.9)
+                if far_from_pass(tb):
+                    wt = rng.uniform(22.0, 38.0) / length   # 45-75 m wide
+                    s -= rng.uniform(120.0, 220.0) * (1.0 - smoothstep(0.55, 1.0, np.abs(t - tb) / wt)) * smoothstep(-60.0, 40.0, s)
+        ends = smoothstep(0.0, 0.1, t) * smoothstep(1.0, 0.9, t)
+        height = c["height"] * ends * (0.85 + 0.2 * np.sin(t * 9.0 + index * 2.0))
+        behind = 1.0 - smoothstep(350.0, 900.0, s)
         run = c["sheer"] + c["pass_run"] * smoothstep(0.25, 0.8, pass_w)   # sheer, or eased to a ramp at a pass
-        if c["kind"] == "caprock":   # two beds: a ledge, a bench, a second ledge
-            front = 0.55 * smoothstep(0.0, 1.0, s / run) + 0.45 * smoothstep(0.0, 1.0, (s - 26.0 - 0.3 * run) / run)
+        if not flow:   # three beds: ledge, bench, ledge, bench, ledge
+            gap = e.get("ledge_gap", 24.0)
+            front = sum(smoothstep(0.0, 1.0, (s - k * (gap + 0.3 * run)) / run) for k in range(3)) / 3.0
         else:
             front = smoothstep(0.0, 1.0, s / run)
         lift = height * front * behind * (d < 960.0)   # nothing at the edge of the worked window, where the fields are blended
+        # Fallen rock at the foot (a scarp's apron of blocks; a flow's rubbly toe), and the breakouts.
+        apron_w = e.get("apron", 40.0)
+        apron = np.clip(1.0 + s / apron_w, 0.0, 1.0) * (s < 0.0) * ends * (1.0 - pass_w) * (d < 960.0)
+        lift += apron ** 1.5 * (e.get("apron_height", 4.0) * (0.55 + 0.45 * rough)) * np.clip(height / max(c["height"], 1.0), 0.0, 1.0)
+        if flow:
+            for _ in range(int(e.get("breakouts", 4))):
+                tb = rng.uniform(0.12, 0.88)
+                if far_from_pass(tb):
+                    wt = rng.uniform(25.0, 45.0) / length; reach = rng.uniform(70.0, 140.0)
+                    tongue = (1.0 - smoothstep(0.4, 1.0, np.abs(t - tb) / wt)) * np.clip(1.0 + s / reach, 0.0, 1.0) * (s < 2.0)
+                    lift = np.maximum(lift, tongue ** 0.6 * rng.uniform(4.0, 7.0) * ends)
         h += lift
-        masks["step_front"] = np.maximum(masks["step_front"], ((s > -4.0) & (s < 40.0) & (height > 3.0)).astype(np.float32))
+        masks["step_front"] = np.maximum(masks["step_front"], ((s > -4.0) & (s < 40.0 + (60.0 if not flow else 0.0)) & (height > 3.0)).astype(np.float32))
+        masks["step_apron"] = np.maximum(masks["step_apron"], apron)
+        masks["no_grade"] = np.maximum(masks["no_grade"], ((front > 0.05) & (front < 0.97) & (pass_w < 0.3) & (height > 0.3 * c["height"]) & (d < 960.0)).astype(np.float32))
+        pass_points = [[round(float(line[int(p * (len(line) - 1))][0]), 1), round(float(line[int(p * (len(line) - 1))][1]), 1)] for p in c["passes"]]
         report.append({"id": c["id"], "kind": c["kind"], "height": c["height"],
-                       "points": [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in line[::4]],
-                       "passes": [[round(float(line[int(p * (len(line) - 1))][0]), 1), round(float(line[int(p * (len(line) - 1))][1]), 1)] for p in c["passes"]]})
+                       "points": [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in line[::4]], "passes": pass_points})
+        top = (2.0 * (e.get("ledge_gap", 24.0) + 0.3 * c["sheer"]) + c["sheer"]) if not flow else c["sheer"]
+        masks["obstacle_lines"].append({"id": c["id"], "label": e.get("label", c["id"]), "line": line, "passes": pass_points, "reach": 450.0,
+                                        "s": s[::5, ::5], "t": t[::5, ::5], "low": -(apron_w + 25.0), "high": top + 25.0,
+                                        "pass_radius": e.get("pass_width", 90.0) * 1.6 + c["pass_run"] + 40.0})
     masks["step_lines"] = report
 
 
@@ -1993,6 +2230,11 @@ def check_routes(h, masks, fix=True):
                         if rise > 0.3:
                             print(f"  route {zone_name} -> {name}: no graded track can bridge the gap at ({pa[0]:.0f}, {pa[1]:.0f})")
                             pa = None
+                    if pa is not None and "no_grade" in masks:
+                        seg = np.linspace(0.0, 1.0, 40)
+                        if any(masks["no_grade"][int((pa[1] + (pb[1] - pa[1]) * u + HALF) / SPACING), int((pa[0] + (pb[0] - pa[0]) * u + HALF) / SPACING)] > 0.5 for u in seg):
+                            print(f"  route {zone_name} -> {name}: the gap at ({pa[0]:.0f}, {pa[1]:.0f}) is an obstacle meant as a detour; not graded")
+                            pa = None
                     if pa is not None:
                         print(f"  route {zone_name} -> {name}: bridging {math.hypot(pb[0] - pa[0], pb[1] - pa[1]):.0f} m at ({pa[0]:.0f}, {pa[1]:.0f})")
                         carve_ramp(h, pa, pb)
@@ -2367,6 +2609,8 @@ def write_rocks(h, masks):
     density = np.maximum(density, 0.85 * talus); size = np.maximum(size, 0.9 * talus)
     density = np.maximum(density, 0.6 * smoothstep(0.2, 0.5, masks["landslide"]))
     density = np.maximum(density, 0.3 * masks["channels"])   # cobbles on the valley floors
+    density = np.maximum(density, 0.5 * masks.get("channel_floor", 0.0)); size = np.maximum(size, 0.35 * masks.get("channel_floor", 0.0))
+    density = np.maximum(density, 0.9 * masks["step_apron"]); size = np.maximum(size, 0.85 * masks["step_apron"])   # fallen blocks below the scarps
     density = np.where(masks["ice"] > 0.5, np.maximum(density, 0.22), density)   # a rock-strewn polygon plain
     # Boulder fields with corridors.
     x, z = grid()
@@ -2573,8 +2817,87 @@ def check_design(h, masks):
     checks["canyon_gate"] = {"driven_by_ramp": by_ramp, "driven_without_ramp": without}
     print(f"  canyon floor by rover: by the ramp {by_ramp}, without it {without}")
     # 5. The edges: past this line Castle and the suit call you back.
+    # 6. Ring 2's obstacles: the rover crosses only at the passes; 7. the maze on foot.
+    checks["rover_crossings"] = check_rover_crossings(h, masks)
+    maze = check_maze(h, masks)
+    if maze is not None:
+        checks["maze"] = maze
     checks["callback"] = {"x_min": -HALF + 420.0, "x_max": HALF - 160.0, "z_min": CANYON_FAR_EDGE - 60.0, "z_max": HALF - 420.0}
     return checks
+
+
+def line_coords(line, px, pz):
+    """For points (arrays): distance to a polyline, how far along it (0..1) and which side (+1 left of travel)."""
+    best = np.full(px.shape, np.inf); bt = np.zeros(px.shape); side = np.zeros(px.shape)
+    seg = np.hypot(*np.diff(line, axis=0).T); cum = np.concatenate([[0.0], np.cumsum(seg)]); total = max(cum[-1], 1e-6)
+    for k in range(len(line) - 1):
+        a = line[k]; b = line[k + 1]
+        sx = b[0] - a[0]; sz = b[1] - a[1]; l2 = max(sx * sx + sz * sz, 1e-6)
+        u = np.clip(((px - a[0]) * sx + (pz - a[1]) * sz) / l2, 0.0, 1.0)
+        d = np.hypot(px - a[0] - u * sx, pz - a[1] - u * sz)
+        closer = d < best
+        best[closer] = d[closer]; bt[closer] = ((cum[k] + u * seg[k]) / total)[closer]
+        side[closer] = np.sign(sx * (pz - a[1]) - sz * (px - a[0]))[closer]
+    return best, bt, side
+
+
+def check_rover_crossings(h, masks):
+    """Ring 2's obstacles are real detours (§13): along the middle of each wrinkle ridge and step line, a
+    rover gets from one side to the other at its passes, and nowhere else."""
+    ok, step = route_grid(h, masks)
+    coords = np.arange(ok.shape[0]) * SPACING * step - HALF
+    gx, gz = np.meshgrid(coords, coords)
+    out = {}
+    for ob in masks.get("obstacle_lines", []):
+        line = np.array(ob["line"], dtype=float)
+        lo = line.min(axis=0) - ob["reach"]; hi = line.max(axis=0) + ob["reach"]
+        box = (gx > lo[0]) & (gx < hi[0]) & (gz > lo[1]) & (gz < hi[1])
+        d = np.full(gx.shape, np.inf); t = np.zeros(gx.shape); sd = np.zeros(gx.shape)
+        d[box], t[box], sd[box] = line_coords(line, gx[box], gz[box])
+        so, to = ob["s"][:ok.shape[0], :ok.shape[1]], ob["t"][:ok.shape[0], :ok.shape[1]]   # the obstacle's own signed distance (warp, spurs and bays included)
+        band = (d < ob["reach"]) & (to > 0.12) & (to < 0.88)
+        a_side = band & (so < ob["low"]); b_side = band & (so > ob["high"])
+        blocked = np.zeros_like(ok)
+        for p in ob["passes"]:
+            blocked |= disc_cells(ok.shape, step, p[0], p[1], ob.get("pass_radius", 110.0))
+        with_passes = flood(ok & band, a_side & ok)
+        without = flood(ok & band & ~blocked, a_side & ok & ~blocked)
+        crosses = bool((with_passes & b_side).any())
+        elsewhere = bool((without & b_side).any())
+        where = None
+        if elsewhere:
+            cells = np.argwhere(without & b_side & (d < 120.0))
+            if len(cells):
+                where = (float(coords[cells[0][1]]), float(coords[cells[0][0]]))
+        out[ob["id"]] = {"label": ob["label"], "at_passes": crosses, "only_at_passes": not elsewhere, "at": where,
+                         "detail": ("crossed only at its passes" if crosses and not elsewhere else
+                                    ("a rover can cross away from the passes" if elsewhere else "a rover can't cross even at the passes"))}
+        print(f"  {ob['id']}: rover crosses at the passes {crosses}, elsewhere {elsewhere}")
+    return out
+
+
+def check_maze(h, masks):
+    """The yardang maze (§13): on foot the way through is at least twice the straight line, and there are
+    at least 3 dead ends (joins you can walk up to)."""
+    plan = masks.get("maze_plan")
+    if plan is None:
+        return None
+    win = plan["win"]
+    # On the full 2 m grid: a coarser one lets the walk slip between the thin tips of ridges and joins.
+    along = maze_paths(h[win], win, plan["entry"], plan["exit"], plan["region"], 2)
+    result = maze_paths(h[win], win, plan["side_a"], plan["side_b"], plan["across_region"], 2)   # across the wind: the hard way, the one that counts
+    reached = result["reached"] | along["reached"]; k = int(result["cell"] / SPACING)
+    j0, i0 = win[0].start, win[1].start
+    dead = []
+    for p in plan["joins"]:
+        cj = int(round((p[1] + HALF) / SPACING - j0)) // k; ci = int(round((p[0] + HALF) / SPACING - i0)) // k
+        r = 4
+        if reached[max(cj - r, 0):cj + r + 1, max(ci - r, 0):ci + r + 1].any():
+            dead.append([round(float(p[0]), 1), round(float(p[1]), 1)])
+    masks["yardang_dead_ends"] = dead
+    print(f"  the maze on foot: across the wind {result['ratio']:.2f}x the straight line, along it (the through-lanes) {along['ratio']:.2f}x, {len(dead)} dead ends")
+    return {"through": result["through"] and along["through"], "ratio": round(result["ratio"], 2), "along_ratio": round(along["ratio"], 2), "dead_ends": len(dead),
+            "at": [round(float(plan["entry"][0]), 1), round(float(plan["entry"][1]), 1)]}
 
 
 # ---------- named anchors (B5, docs/terrain-design.md §13) ----------
