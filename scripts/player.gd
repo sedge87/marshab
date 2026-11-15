@@ -233,9 +233,18 @@ func _lope(delta: float, grounded: bool, tapped: bool, can_lope: bool) -> void:
 func _flow(up: bool) -> void:
 	if up:
 		_rewarded = true
-		lope_flow = mini(lope_flow + 1, LOPE_FLOW_MAX)
+		lope_flow = mini(lope_flow + 1, _flow_max())
 		MHAudio.sfx("suit_beep", -26.0 + 2.0 * lope_flow, .0)   # the suit's soft tick
 	else: lope_flow = maxi(lope_flow - 1, 0)
+
+## Tired, the lope loses its spring (15 Nov: fatigue is felt, not a meter):
+## a sol awake caps the rhythm at 2, two sols at 1. Sleep gives it back.
+func _flow_max() -> int:
+	var body := get_tree().get_first_node_in_group("body")
+	if body == null: return LOPE_FLOW_MAX
+	if bool(body.call("doze_risk")): return 1
+	if bool(body.call("tired")): return 2
+	return LOPE_FLOW_MAX
 
 var _bound_sound_ms := 0   # when the last push-off sound played
 func _bound(first: bool) -> void:

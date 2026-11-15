@@ -409,3 +409,26 @@ One part means you get by on reserves and a lot of ice; every part means you cou
 - **When it's built:**
   - the runway and the pings come with phase 7 (the Chains view and readouts);
   - remote switching comes with the rover terminal work.
+
+## 13. The suit and the body: what the player watches (15 Nov 2026)
+*Agreed with the user after the 15 Nov playtest. Built 15 Nov, not playtested.*
+
+**The rule:** not a simulator. Out on the surface the player watches two things and one number. At home, the body's needs are felt, not metered.
+
+**The suit: Air and Power** (`scripts/suit.gd`, the wrist pad in `scripts/info_screen.gd`):
+- **Air.** Real suits last 6 to 8 hours (the user's research, 15 Nov). Ours: 5 game hours bare, 8 with the air pack. Hard work burns it faster: loping (`LOPE` 1.6, easing to `LOPE_FLOW` 1.3 in rhythm), running, and a heavy load in your arms (`HEAVY_LOAD`, up to 1.7 for 40 kg; the cargo used to slow you without costing air). The CO2 scrubber is folded into Air: it isn't a separate limit, and its bar is gone from the wrist.
+- **Power.** The heater draws more as the light goes: dusk, shade and night (`power_rate`, from `COLD_SUN`). A flat battery means a cold suit, and the air goes faster (`COLD`).
+- **Turn back in m:ss** counts both (`trip_hours_left`): a low battery on a cold evening brings it in, because once the battery's flat the air goes faster.
+- **The wrist says why:** "AIR DRAINING FAST: LOPE, LOAD" and "POWER DRAINING FAST: COLD" or "NIGHT HEATER", so the player knows what's costing them.
+- **The emergency reserve** (`RESERVE_HOURS` 0.5, about 30 real seconds). When the air runs out you're on the reserve, not out cold. The alarm sounds, the wrist shows "RESERVE m:ss Â· GET TO AIR", and the body feels the air thinning and going stale (grey edges, a headache, heavier legs, some health lost: `scripts/body.gd` reads `reserve_air`). At its end you black out and GAR-Y drags you home. Back on air, it's full again.
+- **Fatigue isn't a meter.** Tired, the lope loses its spring: a sol awake caps its rhythm at 2 of 3, two sols at 1 (`player.gd` `_flow_max`). Sleep gives it back.
+
+**How each limit is beaten** (upgrades stretch a limit, never remove it):
+
+| Limit | Early | Later |
+|---|---|---|
+| Air | Refill at the lander; the air pack in GAR-Y's spares crate | GAR-Y and the sled carry the heavy loads; rhythm in the lope; supply caches, the rover as a mobile refill |
+| Power, cold | Go out by day, keep to the sun | Battery and heater add-ons (found plans, when nights start to matter); recharge at the rover or the base |
+| Fatigue | Sleep | Quarters (a full night lasts longer), the Galley's food for trips |
+
+**The body: food, water and rest, shown diegetically** (`scripts/body.gd`, unchanged). No HUD bars: they're felt through body cues (a lazier camera, slower hands and walk, yawns, a drifting view, a rare doze) and the inner voice's notes. They harm slowly: past 72 hours without food you lose 1 health an hour, and thirst costs 3 an hour. At zero health you collapse and wake hours later where you fell, weak, with the problem still there. The suit's drink bag and food bar show on the wrist because they're suit kit.

@@ -133,6 +133,25 @@ func _initialize() -> void:
 	_check(radio.heard.has("d1_relock") and notes.is_open("air") and notes.is_open("parachute"), "after the call: the lander and the parachute")
 	_check(not notes.is_open("sunset"), "the sunset thought waits for Castellanos too")
 
+	# 15 Nov: Air and Power, and the wrist says what's draining them.
+	var suit: Node = world.suit
+	player.set_meta("load_speed", .8)
+	_check(suit.load_factor() > 1.3 and (suit.drains().air as Array).has("LOAD"), "a heavy load: air goes faster, and the wrist says why (%.2f)" % suit.load_factor())
+	player.set_meta("load_speed", 1.0)
+	var sun_was := MHGame.sunlight_fraction
+	var power_was := float(suit.power)
+	MHGame.sunlight_fraction = .05
+	_check(suit.power_rate() > 1.2 and not (suit.drains().power as Array).is_empty(), "cold: the heater drains power faster, and the wrist says why")
+	suit.power = .03
+	_check(suit.trip_hours_left() < suit.o2_hours_left(), "a nearly flat battery in the cold brings the turn-back in")
+	MHGame.sunlight_fraction = sun_was
+	suit.power = power_was
+	var body: Node = world.get("body")
+	if body != null:
+		var awake_was := float(body.awake_hours)
+		body.awake_hours = body.TIRED_H + 1.0
+		_check(int(player._flow_max()) < int(player.LOPE_FLOW_MAX), "tired: the lope loses its spring")
+		body.awake_hours = awake_was
 	# Day 1: no GAR-Y anywhere.
 	_check(not bool(world.gary_met) and world.scout_rover == null, "no GAR-Y on day 1")
 	_check(not field.sites.gary.visible, "pallet 4 (GAR-Y) is out of sight in chapter 1")

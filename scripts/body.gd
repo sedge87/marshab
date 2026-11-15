@@ -134,6 +134,9 @@ func suited_indoors() -> bool:
 func surroundings() -> Dictionary:
 	if not MHGame.simulation_on() or world.player == null: return {}
 	if suited_indoors(): return {}   # on the suit's own air and heat (scripts/suit.gd)
+	# Outside on the suit's emergency reserve: the air thins and goes stale (15 Nov).
+	var suit: Node = world.get("suit")
+	if suit != null and suit.has_method("reserve_air") and not (suit.reserve_air() as Dictionary).is_empty(): return suit.reserve_air()
 	var cabin: Node = world.get("cabin_life")
 	if cabin != null and cabin.running() and cabin.player_inside() and cabin.breathable(): return cabin.conditions()
 	# The General Module (3c): its own life support (scripts/module_life.gd);

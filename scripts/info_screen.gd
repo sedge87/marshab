@@ -197,13 +197,18 @@ func _draw_suit() -> void:
 	_text("OXYGEN", Vector2(22, 72) * u, int(18 * u), MHStyle.TEXT_SECONDARY)
 	_text(_clock(float(r.o2_hours)), Vector2(22, 128) * u, int(60 * u), tone.call(o2), 800)
 	_bar(Vector2(22, 138) * u, 200 * u, o2, tone.call(o2), u)
-	# Power and scrubber, smaller, on the right.
+	# Power, smaller, on the right.
 	var x := 252 * u
-	_text("POWER%s" % ("  · HEATER" if bool(r.night) else ""), Vector2(x, 72 * u), int(18 * u), MHStyle.TEXT_SECONDARY)
+	_text("POWER", Vector2(x, 72 * u), int(18 * u), MHStyle.TEXT_SECONDARY)
 	_text("%d%%" % roundi(float(r.power) * 100.0), Vector2(x, 104 * u), int(30 * u), tone.call(float(r.power)), 700)
 	_bar(Vector2(x, 112 * u), 200 * u, float(r.power), tone.call(float(r.power)), u)
-	_text("CO2 SCRUBBER", Vector2(x, 146 * u), int(18 * u), MHStyle.TEXT_SECONDARY)
-	_bar(Vector2(x, 154 * u), 200 * u, float(r.scrubber), tone.call(float(r.scrubber)), u)
+	# 15 Nov: why the air or the battery is going faster, in plain words.
+	var drains: Dictionary = r.get("drains", {})
+	if str(r.where) == "outside":
+		var air_why: Array = drains.get("air", [])
+		var power_why: Array = drains.get("power", [])
+		if not air_why.is_empty(): _text("AIR DRAINING FAST: %s" % ", ".join(air_why), Vector2(x, 140 * u), int(14 * u), MHStyle.WARN, 700)
+		if not power_why.is_empty(): _text("POWER DRAINING FAST: %s" % ", ".join(power_why), Vector2(x, 160 * u), int(14 * u), MHStyle.INFO, 700)
 	# Step 4a: the drink bag (a drop that empties) and the food bar (lit while it's there).
 	if bool(r.get("needs", false)):
 		var drink := float(r.get("drink", 1.0))
@@ -227,7 +232,7 @@ func _draw_suit() -> void:
 	match str(r.where):
 		"outside":
 			var left := float(r.turn_back)
-			if o2 <= 0.0: line = "NO OXYGEN"; colour = MHStyle.DANGER
+			if o2 <= 0.0: line = "RESERVE %s · GET TO AIR" % _clock(float(r.get("reserve_hours", 0.0))); colour = MHStyle.DANGER
 			elif left <= 0.0: line = "TURN BACK NOW"; colour = MHStyle.DANGER
 			else:
 				line = "TURN BACK IN %s" % _clock(left)

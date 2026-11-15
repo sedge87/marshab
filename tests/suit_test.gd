@@ -160,8 +160,13 @@ func _initialize() -> void:
 	world.day_night.frozen = false
 	var hour_before: float = world.day_night.hour
 	suit.o2 = 0.0
-	for i in 30: await process_frame
-	_check(suit.passed_out, "with no oxygen you black out")
+	for i in 10: await process_frame
+	# 15 Nov: first the emergency reserve, stale and thin; then you black out.
+	_check(not suit.passed_out and float(suit.reserve) <= 1.0 and not (suit.reserve_air() as Dictionary).is_empty(), "out of air: on the reserve first, not out cold")
+	_check(not (world.body.surroundings() as Dictionary).is_empty(), "on the reserve the body feels the air going stale")
+	suit.reserve = 0.0
+	for i in 20: await process_frame
+	_check(suit.passed_out, "with no oxygen and the reserve gone you black out")
 	var rescue = suit.get_node_or_null("Rescue")
 	_check(rescue != null and rescue.hours >= 1.5, "GAR-Y comes for you, and it'll take a while (%.1f h)" % (rescue.hours if rescue != null else 0.0))
 	var saw_gary_close := false

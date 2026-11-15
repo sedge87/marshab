@@ -178,7 +178,7 @@ func go(to: Vector3, what: String, stop_short := 2.5) -> void:
 		if gary != null and is_instance_valid(gary) and not bool(gary.get("rescuing")) and (gary as Node3D).global_position.distance_to(player.global_position) > 40.0:
 			(gary as Node3D).global_position = ground(player.global_position + Vector3(4, 0, 4))
 		player.look_at(Vector3(to.x, player.global_position.y, to.z), Vector3.UP)
-		await wait(hop / (LOPE if lope else WALK))
+		await wait(hop / ((LOPE if lope else WALK) * float(player.get_meta("load_speed", 1.0))))
 	if lope:
 		player.set_meta("slate_still", false)
 		player.set_meta("loping", false)

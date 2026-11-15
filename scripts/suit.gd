@@ -42,6 +42,13 @@ const SPRINT := 1.6              # breathing harder
 const LOPE := 1.6                # the lope with no rhythm (15 Nov playtest: it was 1.3, easing to a walk's worth,
 const LOPE_FLOW := 1.3           # and at twice a walk's speed air never mattered); in full flow it's still harder than a walk
 const CARRYING := 1.3
+## 15 Nov: two things on the wrist, Air and Power, and the turn-back from
+## whichever ends your trip first. Hard work (loping, a heavy load) makes you
+## breathe harder; cold (dusk, night, no sun) makes the heater draw harder.
+## The wrist says which, so you know why. The CO2 scrubber is folded into
+## Air: it isn't a separate limit any more.
+const HEAVY_LOAD := 1.7          # breathing with a 40 kg load in your arms (the cargo); 20 kg is about 1.35
+const COLD_SUN := .35            # below this much sunlight the heater starts to work (dusk, shade, night)
 const COLD := 1.25               # a flat battery: no heater, more oxygen burned
 const STALE := 1.5               # a spent scrubber: CO2 builds up
 const NIGHT_POWER := 1.4         # the heater works harder at night: felt, never crippling
@@ -76,6 +83,13 @@ var scrubber := 1.0
 ## Where you are: "outside", "habitat", "lander", "rover" or "walker" (its seat's suit line).
 var where := "habitat"
 var passed_out := false
+## 15 Nov: the emergency reserve. When the main air runs out the suit goes
+## onto a small reserve; as it runs down the air goes stale and thin (grey
+## edges, a headache, heavier legs: scripts/body.gd), and only at its end do
+## you black out. Topped up the moment you're back on air.
+const RESERVE_HOURS := .5        # game hours of reserve at a walk (about 30 real seconds by day)
+var reserve := 1.0
+var _reserve_alarm := 0.0
 var leak := false                # the seals took a knock (saved)
 ## Things you dropped when you blacked out: {placement_id, label, position}.
 var dropped: Array = []
@@ -202,7 +216,19 @@ func _process(delta: float) -> void:
 	_set_visor_visible(wearing and not bool(world.player.get_meta("build_mode_active", false)))
 	_visor.modulate.a = 1.0 if _don <= 0.0 else (1.0 - _don / DON_SECONDS if _don_on else _don / DON_SECONDS)
 	_visor.queue_redraw()
-	if o2 <= 0.0 and where == "outside" and MHGame.crew_can_be_harmed() and not passed_out: pass_out()
+	if o2 > 0.0 or where != "outside": reserve = 1.0
+	if o2 <= 0.0 and where == "outside" and not passed_out:
+		_reserve_alarm -= delta
+		if _reserve_alarm <= 0.0:
+			_reserve_alarm = 2.5
+			MHAudio.sfx("suit_alarm", -6.0)
+	if o2 <= 0.0 and reserve <= 0.0 and where == "outside" and MHGame.crew_can_be_harmed() and not passed_out: pass_out()
+
+## On reserve: the air you're breathing, as the body reads it (scripts/body.gd),
+## getting thin and stale as the reserve runs down; {} when you're not on it.
+func reserve_air() -> Dictionary:
+	if o2 > 0.0 or where != "outside" or passed_out: return {}
+	return {"temp_c": 12.0, "o2_pct": lerpf(14.0, 19.0, reserve), "co2_pct": lerpf(3.5, .8, reserve), "powered": true, "lit": true}
 
 ## Where you're breathing from. The habitat counts only while its air is fit
 ## to breathe; the rover's cab only while its tank has oxygen; the lander
@@ -234,9 +260,12 @@ func step(hours: float) -> void:
 	hours *= pace()
 	var body: Node = world.get("body")
 	var rested := float(body.o2_factor()) if body != null else 1.0   # well rested: a little less (scripts/body.gd)
-	o2 = maxf(0.0, o2 - hours * breathing_rate() * rested * (LEAK if leak else 1.0) / o2_hours())
-	power = maxf(0.0, power - hours * (night_power() if MHGame.sunlight_fraction < .1 else 1.0) / power_hours())
-	scrubber = maxf(0.0, scrubber - hours / SCRUBBER_HOURS)
+	if o2 > 0.0: reserve = 1.0
+	var burn := hours * breathing_rate() * rested * (LEAK if leak else 1.0)
+	if o2 <= 0.0: reserve = maxf(0.0, reserve - burn / RESERVE_HOURS)
+	o2 = maxf(0.0, o2 - burn / o2_hours())
+	power = maxf(0.0, power - hours * power_rate() / power_hours())
+	scrubber = 1.0   # folded into Air (15 Nov): hard work shows as faster air, not a third limit
 
 ## The hatch opens for the first time: the suit checks its seals and lifts
 ## the wrist pad into view to show you, then lowers it.
@@ -340,6 +369,7 @@ func breathing_rate() -> float:
 	if bool(player.get_meta("loping", false)): rate *= lerpf(LOPE, LOPE_FLOW, clampf(float(player.get("lope_flow")) / 3.0, 0.0, 1.0))   # the lope: easier the better your rhythm (docs/traversal.md)
 	elif Vector2(player.velocity.x, player.velocity.z).length() > 5.5: rate *= SPRINT   # faster than a walk
 	if world.get("carry") != null and not (world.carry.carrying as Dictionary).is_empty(): rate *= CARRYING
+	rate *= load_factor()
 	if power <= 0.0: rate *= COLD
 	if scrubber <= 0.0: rate *= STALE
 	return rate
@@ -406,6 +436,37 @@ func o2_hours() -> float:
 ## chapter rewrite, docs/build-plan-2026-11-14.md A6).
 func power_hours() -> float:
 	return POWER_HOURS - (0.0 if has_addon("battery") or _chapters_kit() else BATTERY_HOURS)
+
+## A heavy load in your arms (the cargo: scripts/o2_cartridge.gd, power_pack.gd):
+## you breathe harder carrying it.
+func load_factor() -> float:
+	var player: Node = world.player if world != null else null
+	var load := float(player.get_meta("load_speed", 1.0)) if player != null else 1.0
+	return lerpf(1.0, HEAVY_LOAD, clampf((1.0 - load) / .4, 0.0, 1.0))
+
+## How hard the battery works: 1 in sun; the heater draws more as the light
+## goes (dusk, shade, night), up to the night's rate.
+func power_rate() -> float:
+	var sun := MHGame.sunlight_fraction
+	return lerpf(night_power(), 1.0, smoothstep(0.0, COLD_SUN, sun))
+
+func cold() -> bool:
+	return MHGame.sunlight_fraction < COLD_SUN
+
+## What's making the air or the battery go faster right now, for the wrist
+## pad: short words, most important first.
+func drains() -> Dictionary:
+	var air: Array = []
+	var player: Node = world.player if world != null else null
+	if leak: air.append("LEAK")
+	if power <= 0.0: air.append("NO HEAT")
+	if player != null and bool(player.get_meta("loping", false)): air.append("LOPE")
+	elif player != null and Vector2(player.velocity.x, player.velocity.z).length() > 5.5: air.append("RUN")
+	if load_factor() > 1.05 or (world.get("carry") != null and not (world.carry.carrying as Dictionary).is_empty()): air.append("LOAD")
+	var power_why: Array = []
+	if MHGame.sunlight_fraction < .1: power_why.append("NIGHT HEATER")
+	elif cold(): power_why.append("COLD")
+	return {"air": air, "power": power_why}
 
 func night_power() -> float:
 	return NIGHT_POWER if has_addon("heater") or _chapters_kit() else BARE_NIGHT_POWER
@@ -558,8 +619,18 @@ func o2_hours_left() -> float:
 ## margin (negative: you're already past it).
 func turn_back_hours() -> float:
 	var refill := nearest_refill()
-	if refill.is_empty(): return o2_hours_left()
-	return o2_hours_left() - float(refill.distance) / WALK * MARGIN / real_seconds_per_hour()
+	if refill.is_empty(): return trip_hours_left()
+	return trip_hours_left() - float(refill.distance) / WALK * MARGIN / real_seconds_per_hour()
+
+## Game hours left out here at this rate, counting the battery: once it's
+## flat the suit runs cold and the air goes faster (COLD), so a low battery
+## on a cold evening brings the turn-back in too.
+func trip_hours_left() -> float:
+	var air := o2_hours_left()
+	if power <= 0.0: return air
+	var heat := power * power_hours() / maxf(.01, power_rate()) / pace()
+	if heat >= air: return air
+	return heat + (air - heat) / COLD
 
 ## Real seconds the clock takes for one game hour now (sols run faster at night).
 static func real_seconds_per_hour() -> float:
@@ -597,7 +668,8 @@ func readout() -> Dictionary:
 		var player: Node3D = world.player
 		var to: Vector3 = refill.position - player.global_position
 		bearing = wrapf(atan2(-to.x, -to.z) - player.rotation.y, -PI, PI)
-	return {"o2": o2, "power": power, "scrubber": scrubber, "where": where, "active": active(), "filling": _filling,
+	return {"o2": o2, "power": power, "scrubber": scrubber, "where": where, "active": active(), "filling": _filling, "drains": drains(), "reserve": reserve,
+	"reserve_hours": reserve * RESERVE_HOURS / maxf(.01, breathing_rate() * pace()),
 		"o2_hours": o2_hours_left(), "turn_back": turn_back_hours(), "refill": refill, "bearing": bearing,
 		"night": MHGame.sunlight_fraction < .1, "leak": leak, "dose_msv": dose_msv, "today_msv": today_msv, "dose_rate": dose_rate(),
 		"base_alert": base_alert(), "runway": _runway(),
@@ -782,6 +854,7 @@ func pass_out() -> void:
 func _come_round(summary: Dictionary) -> void:
 	passed_out = false
 	o2 = maxf(o2, .1)
+	reserve = 1.0
 	where = _where()
 	_said.clear()
 	var place := "the lander cabin" if not _has_airlock() else ("the medical bay" if _medical_cot() != null else "the airlock")
