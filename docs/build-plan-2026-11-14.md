@@ -127,6 +127,14 @@
 ▶ **Playtest build:** the whole opening and the new building.
 
 ### A7. Vehicles and the drone
+- **Built 15 Nov** (not playtested). What was decided is in `docs/bases-and-vehicles.md`, "As built (A7)". In short:
+  - one driving script for the buggy (open, 5 m/s, 2 km) and the pressurised rover (sealed, 3 m/s, sleep and eat aboard, bogging, wheel wear, dune wheels and traction mats);
+  - a cockpit dashboard plus a chase view (the user's choice: both);
+  - the drone lives at a Garage's dock and you fly it from the dock's console (the user's choice); it clears the Map, logs route markers and is thrown down by dawn gusts;
+  - the Garage is the rover dock and gets a drone dock outside;
+  - wrecks are A7 test spawns, pinned on the Map, which C1 places for real.
+  
+  Test: `tests/vehicles_test.gd`.
 - **The scout buggy:** today's `crew_rover.gd` reworked, about 2 km of charge, found in a ring 1 wreck.
 - **The pressurised rover:**
   - about 3 m/s;

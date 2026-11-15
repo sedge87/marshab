@@ -124,6 +124,96 @@
 - He's unchanged from `docs/pillars.md`: companion, scout, survey, cores, the rescue, and upgrades over the game.
 - New: he frees stuck carts.
 
+### As built (A7, 15 Nov)
+*Built, not playtested. Decided with the user at A7:*
+- *the drone lives at a dock and you fly it from there, not from your pocket ("a small pocket drone would be impacted by the weather too much");*
+- *vehicles get both views: a diegetic cockpit and a chase camera;*
+- *bases charge vehicles slowly and the Garage charges them fast.*
+
+*The rest below was left open by this doc and settled in the build.*
+
+*Code:*
+- *`scripts/crew_rover.gd` (both vehicles), `scripts/scout_drone.gd`, `scripts/drone_dock.gd`;*
+- *`scripts/vehicle_model.gd` (code-built models), `scripts/vehicle_dash.gd` (the dashboard screen), `scripts/ground.gd` (ground kinds from `ground.png`);*
+- *`mars_world.gd` (spawns, docks, saves).*
+
+*Test: `tests/vehicles_test.gd`.*
+
+- **One driving script, two kinds.** `crew_rover.gd` drives both vehicles. The world keeps `crew_rover` (the pressurised rover, so the suit, radio and Mission Control code still find it) and `buggy`.
+- **Both views.** V switches between them.
+  - **Cockpit view (the default):** you look at the dashboard, a working screen in the cab. It shows speed, battery and range, home distance and bearing, and, in the rover, cab air, water, meals, wheels and add-ons. Warnings show in amber or red.
+  - **Chase view:** shows the same screen small in the lower left (the dashboard's echo, not a separate readout).
+  - The old floating readout panel is gone. The compass strip and key hints stay in both views.
+  - *To revisit when the vehicle models change* (the user): the cockpits should become more like a real cab, perhaps one you can walk round inside the rover.
+- **The scout buggy.**
+  - **Driving:** 5 m/s, 2 km to a charge plus a 300 m reserve. It's open, so you breathe your suit's air. G beside it charges your suit from its battery (it carries no air).
+  - **Model:** code-built, Apollo LRV-like: four mesh wheels, two seats, a roll hoop, a rear locker, a solar mast and a dashboard on the control column.
+  - **The wreck:** a flat battery and a sheared steering link.
+    - E with a spares kit fits a new link.
+    - E again bridges its battery from your suit (30% of your suit power), which wakes it at 30%.
+- **The pressurised rover** (the EVA-6 model).
+  - **Driving:** 3 m/s, 6 km to a charge plus a 600 m reserve.
+  - **Its stores:** an oxygen tank of 36 suit-hours (a night out and two days), 20 L of water and 6 meals.
+  - **The sealed cab** counts as "rover" for the suit while the tank has air. Your suit tops up from it.
+  - **Parked:** Z sleeps (the sleep panel, as at a bunk), and X eats a meal, fills the suit's drink bag and packs a food bar.
+  - **The wreck:** E with 2 spares kits, 20 kg metal and 10 kg salvage repairs it. It comes back with 40% charge, a near-empty tank, worn wheels (60%) and the dune-wheel plan from its manifest.
+- **Bogging (the rover).**
+  - **How it bogs:** on sand and ripple ground (`ground.png`), driving faster than 1 m/s builds slip. Over half, the dashboard warns "WHEELS SLIPPING". Full slip: bogged, and it sinks a little.
+  - **Getting free:** L lays a traction mat (it's free at once), or you get out and press G beside it five times to dig. Digging costs 0.4 hours of suit air.
+  - **Not R:** R and a recall refuse while it's bogged.
+- **Wheel wear (the rover).**
+  - **Where:** sharp boulders and platy lava cut the tread, at up to 0.05% a metre at full speed and less when you go slowly. A little wear comes everywhere.
+  - **What it costs:** below 40% it's three-quarters speed, and below 15% just under half.
+  - **Fixing it:** G beside it with a spares kit gives back 50%. The Garage's wheel bench (3) refits the wheels fully for a kit.
+- **Add-ons (the rover).** These are fitted in a Garage, from the cab:
+  - **1, dune wheels:** 30 kg metal and 10 kg salvage; the plan comes from the wreck. No bogging on dune sand, and 30% of the slip on ripples. This is the dune sea's gate (landmark 24).
+  - **2, traction mats:** 20 kg feedstock and 4 kg salvage for a rack of 3. Press 2 again to refill the rack.
+- **Charging.**
+  - **The Garage's rover dock** (parked in a Garage): 150% an hour, about 40 minutes. It also refills the rover's air from the base, its water, and its meals from your rations.
+  - **Parked within 30 m of the lander or a base's core:** 30% an hour.
+  - **Solar, anywhere by day:** 6% an hour for the rover, 4% for the buggy.
+  - All rates are in game time. Creative never runs down.
+- **The scout drone.**
+  - **Model:** code-built, Ingenuity's layout: a cube body, four legs, counter-rotating rotors and a solar panel.
+  - **Flying it:** at a Garage's drone dock, E at the console. Your view becomes the drone's feed, framed as the console's screen (battery, link, height, distance, a windsock gauge, marker count), with the compass on. W/S/A/D move, Space and Shift climb and descend, the mouse turns, F logs a route marker, and E, R or Esc hand it to the autopilot, which flies it home.
+  - **Limits:**
+    - 3 real minutes of battery; it turns home itself at 15%.
+    - 800 m of link from the dock: past 650 m the feed breaks up, and at 800 m it turns home.
+    - A ceiling of 60 m above the ground.
+  - **The Map:** it clears the fog in a 110 m circle, plus 2 m for every metre of height.
+  - **Route markers** are known things of kind "marker": teal triangles on the Map and marks on the compass within 600 m. **B3 joins them to the stake trails.** They aren't objects on the ground.
+  - **Wind:**
+    - Gusts rise from 05:00 to 09:00 and peak at 07:00 (InSight), and are stronger higher up.
+    - A dust storm grounds it on the cradle.
+    - "GUSTING" warns at 0.55. Above 0.82 and over 3 m up, it's thrown down after 2 seconds.
+    - Down, it's pinned on the Map ("Drone down"). E there with a spares kit fixes it, and it flies itself home.
+  - **Flat away from the dock:** it lands, and its solar panel brings it back to 40%, then it flies home.
+  - **The wreck:** a spares kit fixes it. It then flies to the nearest dock, or waits ("waiting for a dock") until a Garage is built.
+- **The Garage.**
+  - **Rover dock:** parking inside it is the dock (charging, restocking, the wheel bench and the add-on bench).
+  - **Drone dock:** every Garage gets one automatically, outside, 6 m beside the hangar door. It's a printed pad with a charging cradle, a windsock and a pilot's console (code-built).
+  - Its build-bar card now says what it does. The charger's recall sends both vehicles home.
+- **Where they're found (test spawns; C1 places them for real):**
+  - **When:** on a region site, once the guided chapters are over.
+  - **Placement:**
+    - the buggy's wreck 600 m from the lander;
+    - the rover's wreck 2.4 km out (the edge of ring 2), towards the region's middle;
+    - the drone at `region.json` "drone_wreck" (by the yardang maze);
+    - each on the nearest flat ground, with scattered wreck debris beside the two vehicles.
+  - **On the Map:** all three are pinned so a playtest can find them. The pins come off once each is fixed.
+  - **C1:** put the buggy into a ring 1 cargo wreck that you find by sight. Put the rover into the big hard-landed cargo lander, with Castle's manifest line. Give the drone its wreck by the maze. Make the pins come from seeing them or from Castle.
+- **Other sites and Creative.** Off the region, the old rule stands: the rover appears in the Garage, already working. On a region in Creative, the buggy and rover start parked by the lander, and the drone flies to a dock or waits.
+- **Saves:** `buggy` and `drone` sit beside `crew_rover`. A vehicle saves its kind, wreck state, stores, wheels, add-ons, mats and bogging. The drone saves its state, battery and marker count.
+- **Not yet:**
+  - a printable rover dock away from a Garage;
+  - the drone's auto-route add-on and its range add-ons;
+  - GAR-Y's winch for bogging (A9);
+  - Blender models for the buggy, the drone and the dock;
+  - a walk-round rover interior;
+  - the buggy's locker holding things;
+  - Settings switches for marker compass marks;
+  - remote switching from the rover terminal (survival-systems §12.5).
+
 ## The blackout rule (outside the guided chapters)
 
 At zero health outside:
