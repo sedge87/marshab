@@ -21158,8 +21158,1157 @@
       "x_max": 2912.0,
       "z_min": -2880.0,
       "z_max": 2652.0
-    }
+    },
+    "anchors": {
+      "count": 109,
+      "moved": [],
+      "gone_since_last_build": [],
+      "missing_in_data": []
+    },
+    "list": [
+      {
+        "name": "Rover routes",
+        "status": "PASS",
+        "detail": "all 27 drivable"
+      },
+      {
+        "name": "Walking out from home",
+        "status": "PASS",
+        "detail": "100.0% of walkable ground reached on foot (0 cells not), canyon floor 100.0%"
+      },
+      {
+        "name": "The canyon gate",
+        "status": "PASS",
+        "detail": "the rover reaches the canyon floor only by the ramp",
+        "at": [
+          -2050.0,
+          -1700.0
+        ]
+      },
+      {
+        "name": "A choice every so often, ring 1",
+        "status": "PASS",
+        "detail": "a choice every 209 m in a straight line (target 260 m or less)"
+      },
+      {
+        "name": "A choice every so often, ring 2",
+        "status": "PASS",
+        "detail": "a choice every 149 m in a straight line (target 200 m or less)"
+      },
+      {
+        "name": "A choice every so often, ring 3",
+        "status": "PASS",
+        "detail": "a choice every 146 m in a straight line (target 200 m or less)"
+      },
+      {
+        "name": "Passes on north scarp",
+        "status": "PASS",
+        "detail": "2 passes; 1213..1524 m from home"
+      },
+      {
+        "name": "Passes on east front",
+        "status": "PASS",
+        "detail": "3 passes; 1108..1579 m from home"
+      },
+      {
+        "name": "Anchors",
+        "status": "PASS",
+        "detail": "109 anchors"
+      }
+    ]
   },
+  "anchors": [
+    {
+      "id": "big_crater.centre",
+      "position": [
+        1100.0,
+        -700.0
+      ],
+      "height": -96.2,
+      "ring": 3,
+      "landform": "big_crater"
+    },
+    {
+      "id": "mound.centre",
+      "position": [
+        920.0,
+        -580.0
+      ],
+      "height": 50.21,
+      "ring": 3,
+      "landform": "mound"
+    },
+    {
+      "id": "near_mesa.centre",
+      "position": [
+        -760.0,
+        420.0
+      ],
+      "height": 16.45,
+      "ring": 1,
+      "landform": "near_mesa"
+    },
+    {
+      "id": "west_mesa.centre",
+      "position": [
+        -2050.0,
+        1650.0
+      ],
+      "height": 74.03,
+      "ring": 1,
+      "landform": "west_mesa"
+    },
+    {
+      "id": "far_mesa.centre",
+      "position": [
+        300.0,
+        1500.0
+      ],
+      "height": 94.3,
+      "ring": 2,
+      "landform": "far_mesa"
+    },
+    {
+      "id": "small_mesa.centre",
+      "position": [
+        -1950.0,
+        380.0
+      ],
+      "height": 16.89,
+      "ring": 1,
+      "landform": "small_mesa"
+    },
+    {
+      "id": "east_mesa.centre",
+      "position": [
+        2100.0,
+        1700.0
+      ],
+      "height": 42.06,
+      "ring": 3,
+      "landform": "east_mesa"
+    },
+    {
+      "id": "glacier_mesa.centre",
+      "position": [
+        -2120.0,
+        -760.0
+      ],
+      "height": 22.75,
+      "ring": 2,
+      "landform": "glacier_mesa"
+    },
+    {
+      "id": "west_ridge.centre",
+      "position": [
+        -1733.4,
+        1253.3
+      ],
+      "height": 18.83,
+      "ring": 1,
+      "landform": "west_ridge"
+    },
+    {
+      "id": "west_ridge.start",
+      "position": [
+        -1750.0,
+        2450.0
+      ],
+      "height": 1.29,
+      "ring": 2,
+      "landform": "west_ridge"
+    },
+    {
+      "id": "west_ridge.end",
+      "position": [
+        -2250.0,
+        150.0
+      ],
+      "height": -14.13,
+      "ring": 2,
+      "landform": "west_ridge"
+    },
+    {
+      "id": "east_ridge.centre",
+      "position": [
+        -687.5,
+        1640.1
+      ],
+      "height": 6.92,
+      "ring": 1,
+      "landform": "east_ridge"
+    },
+    {
+      "id": "east_ridge.start",
+      "position": [
+        -650.0,
+        2500.0
+      ],
+      "height": 27.19,
+      "ring": 2,
+      "landform": "east_ridge"
+    },
+    {
+      "id": "east_ridge.end",
+      "position": [
+        -450.0,
+        800.0
+      ],
+      "height": -9.0,
+      "ring": 1,
+      "landform": "east_ridge"
+    },
+    {
+      "id": "north_scarp.centre",
+      "position": [
+        -1716.8,
+        -172.9
+      ],
+      "height": -34.78,
+      "ring": 2,
+      "landform": "north_scarp"
+    },
+    {
+      "id": "north_scarp.start",
+      "position": [
+        -2400.0,
+        -150.0
+      ],
+      "height": -20.12,
+      "ring": 2,
+      "landform": "north_scarp"
+    },
+    {
+      "id": "north_scarp.end",
+      "position": [
+        -1050.0,
+        -230.0
+      ],
+      "height": -46.7,
+      "ring": 2,
+      "landform": "north_scarp"
+    },
+    {
+      "id": "east_front.centre",
+      "position": [
+        -325.6,
+        1317.6
+      ],
+      "height": -0.25,
+      "ring": 2,
+      "landform": "east_front"
+    },
+    {
+      "id": "east_front.start",
+      "position": [
+        -330.0,
+        480.0
+      ],
+      "height": -28.91,
+      "ring": 2,
+      "landform": "east_front"
+    },
+    {
+      "id": "east_front.end",
+      "position": [
+        -300.0,
+        2150.0
+      ],
+      "height": -9.03,
+      "ring": 2,
+      "landform": "east_front"
+    },
+    {
+      "id": "dune_sea.centre",
+      "position": [
+        -650.0,
+        -1640.0
+      ],
+      "height": 7.02,
+      "ring": 3,
+      "landform": "dune_sea"
+    },
+    {
+      "id": "ice_field_1.centre",
+      "position": [
+        -1500.0,
+        -1100.0
+      ],
+      "height": -35.94,
+      "ring": 2,
+      "landform": "ice_field_1"
+    },
+    {
+      "id": "ice_field_2.centre",
+      "position": [
+        -1870.0,
+        -640.0
+      ],
+      "height": -13.75,
+      "ring": 2,
+      "landform": "ice_field_2"
+    },
+    {
+      "id": "ice_field_3.centre",
+      "position": [
+        -1120.0,
+        -1480.0
+      ],
+      "height": -28.8,
+      "ring": 2,
+      "landform": "ice_field_3"
+    },
+    {
+      "id": "ice_field_4.centre",
+      "position": [
+        -1950.0,
+        -1350.0
+      ],
+      "height": -27.06,
+      "ring": 2,
+      "landform": "ice_field_4"
+    },
+    {
+      "id": "ice_scarp_1.centre",
+      "position": [
+        -1568.0,
+        -1285.5
+      ],
+      "height": -40.59,
+      "ring": 2,
+      "landform": "ice_scarp_1"
+    },
+    {
+      "id": "ice_scarp_1.start",
+      "position": [
+        -1760.0,
+        -1240.0
+      ],
+      "height": -32.66,
+      "ring": 2,
+      "landform": "ice_scarp_1"
+    },
+    {
+      "id": "ice_scarp_1.end",
+      "position": [
+        -1380.0,
+        -1330.0
+      ],
+      "height": -22.16,
+      "ring": 2,
+      "landform": "ice_scarp_1"
+    },
+    {
+      "id": "ice_scarp_2.centre",
+      "position": [
+        -1873.1,
+        -654.3
+      ],
+      "height": -19.98,
+      "ring": 2,
+      "landform": "ice_scarp_2"
+    },
+    {
+      "id": "ice_scarp_2.start",
+      "position": [
+        -1990.0,
+        -700.0
+      ],
+      "height": -0.24,
+      "ring": 2,
+      "landform": "ice_scarp_2"
+    },
+    {
+      "id": "ice_scarp_2.end",
+      "position": [
+        -1760.0,
+        -610.0
+      ],
+      "height": -33.37,
+      "ring": 2,
+      "landform": "ice_scarp_2"
+    },
+    {
+      "id": "boulder_field_1.centre",
+      "position": [
+        2150.0,
+        -1450.0
+      ],
+      "height": 33.97,
+      "ring": 0,
+      "landform": "boulder_field_1"
+    },
+    {
+      "id": "boulder_field_2.centre",
+      "position": [
+        -2350.0,
+        1950.0
+      ],
+      "height": 27.24,
+      "ring": 2,
+      "landform": "boulder_field_2"
+    },
+    {
+      "id": "boulder_field_3.centre",
+      "position": [
+        1750.0,
+        1150.0
+      ],
+      "height": 13.7,
+      "ring": 3,
+      "landform": "boulder_field_3"
+    },
+    {
+      "id": "main_fissure.centre",
+      "position": [
+        2165.0,
+        355.0
+      ],
+      "height": -73.92,
+      "ring": 3,
+      "landform": "main_fissure"
+    },
+    {
+      "id": "main_fissure.start",
+      "position": [
+        1290.0,
+        640.0
+      ],
+      "height": 22.47,
+      "ring": 3,
+      "landform": "main_fissure"
+    },
+    {
+      "id": "main_fissure.end",
+      "position": [
+        3040.0,
+        70.0
+      ],
+      "height": -40.2,
+      "ring": 0,
+      "landform": "main_fissure"
+    },
+    {
+      "id": "north_fissure.centre",
+      "position": [
+        2705.0,
+        -250.0
+      ],
+      "height": -8.11,
+      "ring": 0,
+      "landform": "north_fissure"
+    },
+    {
+      "id": "north_fissure.start",
+      "position": [
+        2360.0,
+        -110.0
+      ],
+      "height": -3.07,
+      "ring": 3,
+      "landform": "north_fissure"
+    },
+    {
+      "id": "north_fissure.end",
+      "position": [
+        3050.0,
+        -390.0
+      ],
+      "height": -8.35,
+      "ring": 0,
+      "landform": "north_fissure"
+    },
+    {
+      "id": "yardangs.centre",
+      "position": [
+        -450.0,
+        -250.0
+      ],
+      "height": -27.65,
+      "ring": 2,
+      "landform": "yardangs"
+    },
+    {
+      "id": "ripple_belt_1.centre",
+      "position": [
+        2650.0,
+        -900.0
+      ],
+      "height": 41.09,
+      "ring": 0,
+      "landform": "ripple_belt_1"
+    },
+    {
+      "id": "raised_riverbeds.centre",
+      "position": [
+        -40.6,
+        1578.3
+      ],
+      "height": 37.55,
+      "ring": 2,
+      "landform": "raised_riverbeds"
+    },
+    {
+      "id": "raised_riverbeds.start",
+      "position": [
+        -40.0,
+        2120.0
+      ],
+      "height": 18.74,
+      "ring": 2,
+      "landform": "raised_riverbeds"
+    },
+    {
+      "id": "raised_riverbeds.end",
+      "position": [
+        50.0,
+        1040.0
+      ],
+      "height": 0.05,
+      "ring": 2,
+      "landform": "raised_riverbeds"
+    },
+    {
+      "id": "chaos_blocks.centre",
+      "position": [
+        2560.0,
+        2100.0
+      ],
+      "height": 53.41,
+      "ring": 0,
+      "landform": "chaos_blocks"
+    },
+    {
+      "id": "fresh_crater.centre",
+      "position": [
+        -380.0,
+        2180.0
+      ],
+      "height": -21.91,
+      "ring": 2,
+      "landform": "fresh_crater"
+    },
+    {
+      "id": "frost_hollow.centre",
+      "position": [
+        -1400.0,
+        300.0
+      ],
+      "height": -39.1,
+      "ring": 1,
+      "landform": "frost_hollow"
+    },
+    {
+      "id": "channel.centre",
+      "position": [
+        -921.0,
+        1231.3
+      ],
+      "height": -36.11,
+      "ring": 1,
+      "landform": "channel"
+    },
+    {
+      "id": "channel.start",
+      "position": [
+        -900.0,
+        1750.0
+      ],
+      "height": -20.83,
+      "ring": 1,
+      "landform": "channel"
+    },
+    {
+      "id": "channel.end",
+      "position": [
+        -950.0,
+        720.0
+      ],
+      "height": -40.58,
+      "ring": 1,
+      "landform": "channel"
+    },
+    {
+      "id": "sand_sheet.centre",
+      "position": [
+        -1640.0,
+        330.0
+      ],
+      "height": -32.77,
+      "ring": 1,
+      "landform": "sand_sheet"
+    },
+    {
+      "id": "outcrop.centre",
+      "position": [
+        -1130.0,
+        720.0
+      ],
+      "height": -26.5,
+      "ring": 1,
+      "landform": "outcrop"
+    },
+    {
+      "id": "collapse_pit.centre",
+      "position": [
+        -1050.0,
+        1340.0
+      ],
+      "height": -45.87,
+      "ring": 1,
+      "landform": "collapse_pit"
+    },
+    {
+      "id": "sliver.centre",
+      "position": [
+        -1400.0,
+        95.0
+      ],
+      "height": -45.82,
+      "ring": 1,
+      "landform": "sliver"
+    },
+    {
+      "id": "sliver.start",
+      "position": [
+        -1760.0,
+        150.0
+      ],
+      "height": -29.95,
+      "ring": 1,
+      "landform": "sliver"
+    },
+    {
+      "id": "sliver.end",
+      "position": [
+        -1040.0,
+        40.0
+      ],
+      "height": -46.9,
+      "ring": 2,
+      "landform": "sliver"
+    },
+    {
+      "id": "heart.centre",
+      "position": [
+        2895.0,
+        225.0
+      ],
+      "height": 22.33,
+      "ring": 0,
+      "landform": "heart"
+    },
+    {
+      "id": "drone_wreck.centre",
+      "position": [
+        -650.0,
+        -50.0
+      ],
+      "height": -33.78,
+      "ring": 2,
+      "landform": "drone_wreck"
+    },
+    {
+      "id": "near_mesa.top",
+      "position": [
+        -760.0,
+        420.0
+      ],
+      "height": 16.45,
+      "ring": 1,
+      "landform": "near_mesa"
+    },
+    {
+      "id": "near_mesa.gully_foot",
+      "position": [
+        -881.0,
+        530.8
+      ],
+      "height": -30.66,
+      "ring": 1,
+      "landform": "near_mesa"
+    },
+    {
+      "id": "west_mesa.top",
+      "position": [
+        -2050.0,
+        1650.0
+      ],
+      "height": 74.03,
+      "ring": 1,
+      "landform": "west_mesa"
+    },
+    {
+      "id": "west_mesa.ramp_foot",
+      "position": [
+        -1529.5,
+        1650.0
+      ],
+      "height": -3.1,
+      "ring": 1,
+      "landform": "west_mesa"
+    },
+    {
+      "id": "far_mesa.top",
+      "position": [
+        300.0,
+        1500.0
+      ],
+      "height": 94.3,
+      "ring": 2,
+      "landform": "far_mesa"
+    },
+    {
+      "id": "far_mesa.ramp_foot",
+      "position": [
+        608.2,
+        1111.6
+      ],
+      "height": 4.34,
+      "ring": 2,
+      "landform": "far_mesa"
+    },
+    {
+      "id": "small_mesa.top",
+      "position": [
+        -1950.0,
+        380.0
+      ],
+      "height": 16.89,
+      "ring": 1,
+      "landform": "small_mesa"
+    },
+    {
+      "id": "east_mesa.top",
+      "position": [
+        2100.0,
+        1700.0
+      ],
+      "height": 42.06,
+      "ring": 3,
+      "landform": "east_mesa"
+    },
+    {
+      "id": "east_mesa.ramp_foot",
+      "position": [
+        2769.5,
+        1700.0
+      ],
+      "height": 19.2,
+      "ring": 0,
+      "landform": "east_mesa"
+    },
+    {
+      "id": "glacier_mesa.top",
+      "position": [
+        -2120.0,
+        -760.0
+      ],
+      "height": 22.75,
+      "ring": 2,
+      "landform": "glacier_mesa"
+    },
+    {
+      "id": "north_scarp.pass_1",
+      "position": [
+        -2006.7,
+        -221.9
+      ],
+      "height": -25.28,
+      "ring": 2,
+      "landform": "north_scarp"
+    },
+    {
+      "id": "north_scarp.pass_2",
+      "position": [
+        -1403.6,
+        -271.2
+      ],
+      "height": -48.73,
+      "ring": 2,
+      "landform": "north_scarp"
+    },
+    {
+      "id": "east_front.pass_1",
+      "position": [
+        -255.5,
+        893.3
+      ],
+      "height": 2.94,
+      "ring": 2,
+      "landform": "east_front"
+    },
+    {
+      "id": "east_front.pass_2",
+      "position": [
+        -284.8,
+        1480.9
+      ],
+      "height": 3.19,
+      "ring": 2,
+      "landform": "east_front"
+    },
+    {
+      "id": "east_front.pass_3",
+      "position": [
+        -260.0,
+        1892.6
+      ],
+      "height": -2.83,
+      "ring": 2,
+      "landform": "east_front"
+    },
+    {
+      "id": "west_ridge.pass_1",
+      "position": [
+        -1605.4,
+        1754.9
+      ],
+      "height": 0.24,
+      "ring": 1,
+      "landform": "west_ridge"
+    },
+    {
+      "id": "west_ridge.pass_2",
+      "position": [
+        -2003.3,
+        864.4
+      ],
+      "height": -24.25,
+      "ring": 1,
+      "landform": "west_ridge"
+    },
+    {
+      "id": "east_ridge.pass_1",
+      "position": [
+        -686.6,
+        1719.2
+      ],
+      "height": -2.57,
+      "ring": 2,
+      "landform": "east_ridge"
+    },
+    {
+      "id": "channel.crossing_1",
+      "position": [
+        -872.8,
+        1450.3
+      ],
+      "height": -22.87,
+      "ring": 1,
+      "landform": "channel"
+    },
+    {
+      "id": "channel.crossing_2",
+      "position": [
+        -890.2,
+        1055.5
+      ],
+      "height": -40.34,
+      "ring": 1,
+      "landform": "channel"
+    },
+    {
+      "id": "glacier.alcove",
+      "position": [
+        -2060.0,
+        -810.0
+      ],
+      "height": 42.88,
+      "ring": 2,
+      "landform": "glacier"
+    },
+    {
+      "id": "glacier.toe",
+      "position": [
+        -1820.0,
+        -1130.0
+      ],
+      "height": -46.92,
+      "ring": 2,
+      "landform": "glacier"
+    },
+    {
+      "id": "main_fissure.bridge",
+      "position": [
+        1633.2,
+        531.1
+      ],
+      "height": -38.89,
+      "ring": 3,
+      "landform": "main_fissure"
+    },
+    {
+      "id": "sliver.bridge",
+      "position": [
+        -1400.0,
+        95.0
+      ],
+      "height": -45.82,
+      "ring": 1,
+      "landform": "sliver"
+    },
+    {
+      "id": "outcrop.ladder",
+      "position": [
+        -1130.0,
+        720.0
+      ],
+      "height": -26.5,
+      "ring": 1,
+      "landform": "outcrop"
+    },
+    {
+      "id": "collapse_pit.rope",
+      "position": [
+        -1050.0,
+        1340.0
+      ],
+      "height": -45.87,
+      "ring": 1,
+      "landform": "collapse_pit"
+    },
+    {
+      "id": "zone.plains",
+      "position": [
+        -1400.0,
+        1000.0
+      ],
+      "height": -28.17,
+      "ring": 1,
+      "landform": "zone"
+    },
+    {
+      "id": "zone.crater",
+      "position": [
+        1580.0,
+        -320.0
+      ],
+      "height": -98.06,
+      "ring": 3,
+      "landform": "zone"
+    },
+    {
+      "id": "zone.riverbed",
+      "position": [
+        809.2,
+        1740.0
+      ],
+      "height": -11.92,
+      "ring": 2,
+      "landform": "zone"
+    },
+    {
+      "id": "home.centre",
+      "position": [
+        -1400.0,
+        1000.0
+      ],
+      "height": -28.17,
+      "ring": 1,
+      "landform": "home"
+    },
+    {
+      "id": "tube.mouth",
+      "position": [
+        1850.0,
+        1800.0
+      ],
+      "height": -19.72,
+      "ring": 3,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.ramp_top",
+      "position": [
+        1754.2,
+        2009.1
+      ],
+      "height": 17.2,
+      "ring": 3,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.skylight_1",
+      "position": [
+        1961.4,
+        1556.1
+      ],
+      "height": -1.84,
+      "ring": 3,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.skylight_2",
+      "position": [
+        2065.2,
+        1293.0
+      ],
+      "height": -4.32,
+      "ring": 3,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.skylight_3",
+      "position": [
+        2195.3,
+        1096.4
+      ],
+      "height": -6.37,
+      "ring": 3,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.skylight_4",
+      "position": [
+        2329.2,
+        809.7
+      ],
+      "height": -8.56,
+      "ring": 3,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.skylight_5",
+      "position": [
+        2473.3,
+        584.0
+      ],
+      "height": -18.79,
+      "ring": 3,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.skylight_6",
+      "position": [
+        2571.9,
+        426.4
+      ],
+      "height": -24.02,
+      "ring": 0,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.pitch_1",
+      "position": [
+        2700.6,
+        350.7
+      ],
+      "height": -0.43,
+      "ring": 0,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.pitch_2",
+      "position": [
+        2799.7,
+        470.9
+      ],
+      "height": 16.18,
+      "ring": 0,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.pitch_3",
+      "position": [
+        2852.4,
+        609.4
+      ],
+      "height": 16.46,
+      "ring": 0,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.heart",
+      "position": [
+        2895.0,
+        225.0
+      ],
+      "height": 22.33,
+      "ring": 0,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.the_braids",
+      "position": [
+        2021.8,
+        1382.2
+      ],
+      "height": 18.19,
+      "ring": 3,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.the_hall",
+      "position": [
+        2196.8,
+        1092.6
+      ],
+      "height": -6.37,
+      "ring": 3,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.three_ways",
+      "position": [
+        2439.3,
+        645.2
+      ],
+      "height": 13.41,
+      "ring": 3,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.the_first_labyrinth",
+      "position": [
+        2772.7,
+        406.4
+      ],
+      "height": 6.96,
+      "ring": 0,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.the_second_labyrinth",
+      "position": [
+        2802.2,
+        562.0
+      ],
+      "height": 17.39,
+      "ring": 0,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "tube.the_last_maze",
+      "position": [
+        2956.1,
+        460.3
+      ],
+      "height": 19.69,
+      "ring": 0,
+      "landform": "lava_tube"
+    },
+    {
+      "id": "canyon_cave.mouth",
+      "position": [
+        -1200.0,
+        -2294.0
+      ],
+      "height": -173.85,
+      "ring": 3,
+      "landform": "canyon_cave"
+    },
+    {
+      "id": "ice_cave.mouth",
+      "position": [
+        -1567.8,
+        -1282.5
+      ],
+      "height": -34.29,
+      "ring": 2,
+      "landform": "ice_cave"
+    }
+  ],
   "step_lines": [
     {
       "id": "north_scarp",

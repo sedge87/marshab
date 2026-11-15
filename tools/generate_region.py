@@ -636,6 +636,7 @@ def add_wrinkle_ridges(h, x, z, masks, medium):
         lift = (r["arch"] * arch + r["crest"] * crest) * taper * np.clip(low, 0.06, 1.0)
         h += lift
         masks["ridges"] = np.maximum(masks["ridges"], lift / 24.0)
+        masks.setdefault("ridge_passes", {})[r["id"]] = [[round(float(q[0]), 1), round(float(q[1]), 1)] for q in (fine[int(p * (len(fine) - 1))] for p in passes)]
 
 
 # ---------- valleys ----------
@@ -2572,6 +2573,190 @@ def check_design(h, masks):
     return checks
 
 
+# ---------- named anchors (B5, docs/terrain-design.md §13) ----------
+
+def _slug(name):
+    return "".join(ch if ch.isalnum() else "_" for ch in name.lower()).strip("_").replace("__", "_")
+
+
+def sample_bilinear(h, px, pz):
+    """Height between points, as the game reads it (scripts/region_terrain.gd height())."""
+    gx = min(max((px + HALF) / SPACING, 0.0), N - 1.001); gz = min(max((pz + HALF) / SPACING, 0.0), N - 1.001)
+    i, j = int(gx), int(gz); tx, tz = gx - i, gz - j
+    top = h[j, i] * (1 - tx) + h[j, i + 1] * tx; bottom = h[j + 1, i] * (1 - tx) + h[j + 1, i + 1] * tx
+    return float(top * (1 - tz) + bottom * tz)
+
+
+def build_anchors(h, masks, caves, fissures):
+    """Every landform's centre and its useful points, on the final ground: [{id, position, height, ring, landform}].
+    C1 places story things by these ids, so they follow the land when the editor moves it."""
+    out = []
+    seen = set()
+    home = HOME["centre"]
+
+    def add(aid, px, pz, landform_id):
+        if aid in seen:
+            raise ValueError(f"anchor {aid} twice")
+        seen.add(aid)
+        d = math.hypot(px - home[0], pz - home[1])
+        ring = next((k + 1 for k, r in enumerate(RINGS) if d < r), 0)
+        out.append({"id": aid, "position": [round(float(px), 1), round(float(pz), 1)], "height": round(sample_bilinear(h, px, pz), 2),
+                    "ring": ring, "landform": landform_id})
+
+    for e in LAYOUT["landforms"]:
+        if "centre" in e:
+            add(e["id"] + ".centre", e["centre"][0], e["centre"][1], e["id"])
+        elif "points" in e:
+            pts = resample(e["points"], 4.0)
+            mid = pts[len(pts) // 2]
+            add(e["id"] + ".centre", mid[0], mid[1], e["id"])
+            add(e["id"] + ".start", pts[0][0], pts[0][1], e["id"])
+            add(e["id"] + ".end", pts[-1][0], pts[-1][1], e["id"])
+    for e in landforms("mesa"):
+        mx, mz = e["centre"]; mr, mh = e["radius"], e["height"]
+        add(e["id"] + ".top", mx, mz, e["id"])
+        if e.get("ramp") is not None:
+            reach = mr * (0.78 + mh / (0.15 * mr))
+            add(e["id"] + ".ramp_foot", mx + math.cos(e["ramp"]) * reach, mz + math.sin(e["ramp"]) * reach, e["id"])
+        if e.get("gully") is not None:
+            reach = mr * (0.55 + mh / (0.68 * mr))
+            add(e["id"] + ".gully_foot", mx + math.cos(e["gully"]) * reach, mz + math.sin(e["gully"]) * reach, e["id"])
+    for line in masks["step_lines"]:
+        for k, p in enumerate(line["passes"]):
+            add(f"{line['id']}.pass_{k + 1}", p[0], p[1], line["id"])
+    for rid, passes in masks.get("ridge_passes", {}).items():
+        for k, p in enumerate(passes):
+            add(f"{rid}.pass_{k + 1}", p[0], p[1], rid)
+    for k, p in enumerate(masks["home_crossings"]):
+        add(f"channel.crossing_{k + 1}", p[0], p[1], "channel")
+    g = GLACIER
+    add("glacier.alcove", g["from"][0], g["from"][1], "glacier")
+    flow = np.array(g["flow"]) / np.linalg.norm(g["flow"])
+    add("glacier.toe", g["from"][0] + flow[0] * g["length"], g["from"][1] + flow[1] * g["length"], "glacier")
+    for f in fissures:
+        if "bridge" in f:
+            add(f"{f['id']}.bridge", *f["bridge"]["position"], f["id"])
+    add("sliver.bridge", masks["sliver"][0], masks["sliver"][1], "sliver")
+    add("outcrop.ladder", HOME_GROUND["outcrop"][0], HOME_GROUND["outcrop"][1], "outcrop")
+    add("collapse_pit.rope", HOME_GROUND["pit"][0], HOME_GROUND["pit"][1], "collapse_pit")
+    for name, zone in ZONES.items():
+        add(f"zone.{name}", zone["centre"][0], zone["centre"][1], "zone")
+    add("home.centre", home[0], home[1], "home")
+    tube = caves[0]
+    add("tube.mouth", *tube["mouth"], "lava_tube")
+    add("tube.ramp_top", *tube["ramp_top"], "lava_tube")
+    for k, s in enumerate(tube["skylights"]):
+        add(f"tube.skylight_{k + 1}", *s["position"], "lava_tube")
+    for k, p in enumerate(tube["deep"]["pitches"]):
+        add(f"tube.pitch_{k + 1}", p["anchor"][0], p["anchor"][1], "lava_tube")
+    add("tube.heart", *tube["deep"]["heart"]["position"], "lava_tube")
+    for place in tube["places"]:
+        add("tube." + _slug(place["name"]), *place["position"], "lava_tube")
+    for cave in caves[1:]:
+        add(f"{cave['id']}.mouth", *cave["mouth"], cave["id"])
+    for v in masks.get("yardang_dead_ends", []):
+        add(f"yardangs.dead_end_{len([a for a in out if a['id'].startswith('yardangs.dead_end_')]) + 1}", v[0], v[1], "yardangs")
+    return out
+
+
+def anchor_checks(anchors, previous):
+    """WARN when an anchor moved more than 50 m since the last build; FAIL when data in data/ names an anchor that's gone."""
+    before = {a["id"]: a["position"] for a in previous.get("anchors", [])}
+    now = {a["id"]: a["position"] for a in anchors}
+    moved = [{"id": k, "metres": round(math.hypot(now[k][0] - p[0], now[k][1] - p[1]), 1)} for k, p in before.items()
+             if k in now and math.hypot(now[k][0] - p[0], now[k][1] - p[1]) > 50.0]
+    gone_since = sorted(k for k in before if k not in now)
+    named = set()
+
+    def walk(v):
+        if isinstance(v, dict):
+            for key, item in v.items():
+                if key == "anchor" and isinstance(item, str):
+                    named.add(item)
+                elif key == "anchors" and isinstance(item, list):
+                    named.update(i for i in item if isinstance(i, str))
+                else:
+                    walk(item)
+        elif isinstance(v, list):
+            for item in v:
+                walk(item)
+
+    data = os.path.join(ROOT, "data")
+    for name in sorted(os.listdir(data)):
+        if name.endswith(".json") and name != "region_layout.json":
+            try:
+                walk(json.load(open(os.path.join(data, name), encoding="utf-8")))
+            except (OSError, ValueError):
+                pass
+    walk(LAYOUT.get("surprises", []))
+    missing = sorted(a for a in named if a not in now)
+    for m in moved:
+        print(f"  WARNING: anchor {m['id']} moved {m['metres']:.0f} m since the last build")
+    for a in missing:
+        print(f"  FAIL: data names anchor {a}, which no longer exists")
+    return {"count": len(anchors), "moved": moved, "gone_since_last_build": gone_since, "missing_in_data": missing}
+
+# What a choice every so many metres should be at most, ring by ring (docs/terrain-design.md §6).
+CHOICE_TARGET = [260.0, 200.0, 200.0]
+
+
+def checks_list(checks, routes):
+    """The checks as one list for the land editor: {name, status PASS/WARN/FAIL, detail, at (optional [x, z])}."""
+    out = []
+
+    def add(name, status, detail="", at=None):
+        item = {"name": name, "status": status, "detail": detail}
+        if at is not None:
+            item["at"] = [round(float(at[0]), 1), round(float(at[1]), 1)]
+        out.append(item)
+
+    bad = [f"{r['from']} to {r['to']}" for r in routes if not r["ok"]]
+    add("Rover routes", "FAIL" if bad else "PASS", ("not drivable: " + ", ".join(bad)) if bad else f"all {len(routes)} drivable")
+    w = checks["walk_out"]
+    share = w["reached_share"]
+    add("Walking out from home", "PASS" if share >= 0.995 else ("WARN" if share >= 0.98 else "FAIL"),
+        f"{100 * share:.1f}% of walkable ground reached on foot ({w['unreached_cells']} cells not), canyon floor {100 * w['canyon_floor_reached_share']:.1f}%")
+    g = checks["canyon_gate"]
+    ok = g["driven_by_ramp"] and not g["driven_without_ramp"]
+    add("The canyon gate", "PASS" if ok else "FAIL",
+        "the rover reaches the canyon floor only by the ramp" if ok else f"by the ramp {g['driven_by_ramp']}, without it {g['driven_without_ramp']}", (-2050.0, -1700.0))
+    for c in checks["straight_lines"]:
+        target = CHOICE_TARGET[c["ring"] - 1]
+        add(f"A choice every so often, ring {c['ring']}", "PASS" if c["metres_between_choices"] <= target else "WARN",
+            f"a choice every {c['metres_between_choices']:.0f} m in a straight line (target {target:.0f} m or less)")
+    for s in checks["step_lines"]:
+        ring_shaped = s["furthest"] - s["nearest"] < 300
+        status = "FAIL" if s["passes"] == 0 else ("WARN" if ring_shaped else "PASS")
+        add(f"Passes on {s['id'].replace('_', ' ')}", status, f"{s['passes']} passes; {s['nearest']}..{s['furthest']} m from home"
+            + ("; it keeps a near-constant distance from home" if ring_shaped else ""))
+    for name, c in checks.get("rover_crossings", {}).items():
+        add(f"{c['label']}: rover only at the passes", "PASS" if c["only_at_passes"] and c["at_passes"] else ("FAIL" if not c["at_passes"] else "WARN"),
+            c["detail"], c.get("at"))
+    if "maze" in checks:
+        m = checks["maze"]
+        ok = m["ratio"] >= 2.0 and m["dead_ends"] >= 3 and m["through"]
+        add("The yardang maze", "PASS" if ok else ("FAIL" if not m["through"] else "WARN"),
+            f"way through on foot {m['ratio']:.1f}x the straight line (2x or more), {m['dead_ends']} dead ends (3 or more)", m.get("at"))
+    a = checks.get("anchors")
+    if a is not None:
+        status = "FAIL" if a["missing_in_data"] else ("WARN" if a["moved"] or a["gone_since_last_build"] else "PASS")
+        detail = f"{a['count']} anchors"
+        if a["moved"]:
+            detail += "; moved over 50 m: " + ", ".join(f"{m['id']} ({m['metres']:.0f} m)" for m in a["moved"][:8])
+        if a["gone_since_last_build"]:
+            detail += "; gone since the last build: " + ", ".join(a["gone_since_last_build"][:8])
+        if a["missing_in_data"]:
+            detail += "; named in data/ but missing: " + ", ".join(a["missing_in_data"])
+        add("Anchors", status, detail)
+    s = checks.get("sameness")
+    if s is not None:
+        add("Something new every few minutes", "WARN" if s["dull"] else "PASS",
+            f"{len(s['dull'])} dull stretches (over {s['foot_minutes']:.0f} min on foot or {s['rover_minutes']:.0f} min by rover with nothing new); "
+            f"longest {s['longest_foot']:.1f} min on foot, {s['longest_rover']:.1f} min by rover",
+            s["dull"][0]["from"] if s["dull"] else None)
+    return out
+
+
 _clock = [time.time()]
 
 
@@ -2583,6 +2768,11 @@ def lap(name):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
+    try:
+        with open(os.path.join(OUT, "region.json"), encoding="utf-8") as f:
+            previous = json.load(f)   # for the anchor check: what moved since the last build
+    except (OSError, ValueError):
+        previous = {}
     h, masks = build_heights()
     caves = add_caves(h, *grid(), masks); lap("add_caves")
     hollow = add_hollow_ground(h, *grid(), masks, caves[0])
@@ -2599,7 +2789,13 @@ def main():
     write_geology(h, masks)
     ground_share = write_ground(h, masks)
     viewpoints = find_viewpoints(h, masks)
-    checks = check_design(h, masks); lap("ground map and checks")
+    checks = check_design(h, masks)
+    anchors = build_anchors(h, masks, caves, fissures)
+    checks["anchors"] = anchor_checks(anchors, previous)
+    checks["list"] = checks_list(checks, routes); lap("ground map, anchors and checks")
+    for c in checks["list"]:
+        if c["status"] != "PASS":
+            print(f"  {c['status']}: {c['name']}: {c['detail']}")
     for index, (name, base, dark, rough, features, _) in enumerate(MATERIALS if not QUICK else []):
         material_texture(name, base, dark, rough, dict(features), SEED + 20 + index)
     meta = {
@@ -2626,6 +2822,7 @@ def main():
         "ground_share": ground_share,
         "viewpoints": viewpoints,
         "checks": checks,
+        "anchors": anchors,
         "step_lines": masks["step_lines"],
         "minor_cracks": masks["minor_cracks"],
         "yardangs": {"centre": list(YARDANGS["centre"]), "length": YARDANGS["length"], "width": YARDANGS["width"], "wind": list(DUNE_WIND)},
