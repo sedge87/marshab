@@ -25,7 +25,13 @@ const ROLES := {
 	"orange": [Color("#E98A45"), 0.0, .5],     # the house accent
 	"amber": [Color("#F2C35A"), 0.0, .5],      # caution yellow
 	"teal": [Color("#8CC3CB"), 0.0, .5],       # soft trim
+	# Rocks on the land (B5): not a StandardMaterial3D but the shared
+	# ground_rock shader (ground_rock_material), picked by a material named
+	# "ground_rock" in the model, and for the region's scattered rocks and the
+	# rock paths (scripts/tools/rock_path.gd). The colour here is its default.
+	"ground_rock": [Color("#73412A"), 0.0, 1.0],
 }
+const GROUND_ROCK_SHADER := preload("res://shaders/ground_rock.gdshader")
 ## First match wins; checked against the lower-case material name.
 const ROLE_WORDS := [
 	["glass", ["blackglass", "black_glass", "dark_glass", "darkglass"]],
@@ -54,6 +60,8 @@ static var _cache: Dictionary = {}   # source material id -> house material
 static var _made: Dictionary = {}    # house material ids (never re-mapped)
 static var _accented: Array = []     # orange-role materials: they follow the colony accent
 static var enabled := true
+static var _ground_rock: ShaderMaterial
+static var _ground_colour := Color("#A9603E")
 
 ## Map every surface of every mesh under `root` onto the house materials.
 static func apply(root: Node) -> void:
@@ -70,6 +78,9 @@ static func apply(root: Node) -> void:
 		for surface in mesh.mesh.get_surface_count():
 			var source := mesh.get_active_material(surface) as StandardMaterial3D
 			if source == null: continue
+			if source.resource_name.to_lower().contains("ground_rock"):
+				mesh.set_surface_override_material(surface, ground_rock_material())
+				continue
 			mesh.set_surface_override_material(surface, material(source))
 
 ## The house version of one material (cached and shared).
@@ -103,6 +114,22 @@ static func material(source: StandardMaterial3D) -> StandardMaterial3D:
 	_cache[key] = out
 	_made[out.get_instance_id()] = true
 	return out
+
+## The shared material for rocks on the land ("ground_rock" role): darker
+## than the site's ground, dusty on top, its foot blended into the ground.
+## Pass the site's ground colour (MHSiteTerrain.settings().ground) once the
+## site is known; later calls without one reuse it.
+static func ground_rock_material(ground := Color(0, 0, 0, 0)) -> ShaderMaterial:
+	if ground.a > 0.0 and (ground != _ground_colour or _ground_rock == null):
+		_ground_colour = ground
+		_ground_rock = null
+	if _ground_rock == null:
+		_ground_rock = ShaderMaterial.new()
+		_ground_rock.shader = GROUND_ROCK_SHADER
+		_ground_rock.set_shader_parameter("rock_colour", _ground_colour.darkened(.28))
+		_ground_rock.set_shader_parameter("dust_colour", _ground_colour.lightened(.06))
+		_ground_rock.set_shader_parameter("ground_colour", _ground_colour)
+	return _ground_rock
 
 ## Equipment accents: the colony accent, a touch softer so small parts don't glare.
 static func accent_colour() -> Color:

@@ -1,6 +1,9 @@
 class_name OriginalMarsEnvironment
 extends Node3D
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
+const HORIZON_LANDMARKS := preload("res://scripts/horizon_landmarks.gd")
+const MHPalette := preload("res://scripts/mh_palette.gd")
+const ROCK_PATHS := "res://scenes/terrain/rock_paths.tscn"
 
 # Sky, lighting and the selected site's generated landscape (MHSiteTerrain).
 # This node owns only scenery, lighting and collision; gameplay systems
@@ -228,6 +231,8 @@ func _update_interior_fills(strength: float) -> void:
 ## sky the colour of the ground and thick ochre fog. Set by MHWeather (only
 ## when Weather effects are on; the storm itself happens either way).
 var storm := 0.0
+var _area_haze_now := 1.0       # the region area's haze (MHRegion.area_at), eased as you walk between areas
+var _area_t := 0.0
 var _indoor_blend := 0.0      # 0 outdoors, 1 indoors; eases across the threshold
 var _cabin_blend := 0.0
 var _indoor_energy := INTERIOR_FILL_ENERGY
@@ -283,6 +288,7 @@ func apply_daylight(sunlight: float) -> void:
 		# Regions are kilometres across: thinner haze, so far landforms read as
 		# silhouettes instead of vanishing (storms still thicken it).
 		var fog_scale := .3 if MHSiteTerrain.shape() == "region" else 1.0
+		if fog_scale < 1.0: fog_scale *= _area_haze()
 		world_environment.environment.fog_density = lerpf(.0008, float(_palette_values.get("fog_density", .0024)), level) * fog_scale
 	# When the base grid is online its window strips are deliberately brighter at
 	# night, providing a clear warm navigational cue without lifting the sky.
@@ -291,6 +297,26 @@ func apply_daylight(sunlight: float) -> void:
 	MHGame.set_window_glow(float(_palette_values.get("window", .9)) * lerpf(1.75, .9, level))
 	_update_volumetric_fog(eased)
 	_update_celestial_bodies(level)
+
+## Each region area has its own haze (B5, T4: ice country is mistier, the pale
+## layers clearer) and its own sound (MHAudio.area_sound). Looked up about
+## twice a second at the camera, and eased over a few seconds.
+func _area_haze() -> float:
+	var delta := get_process_delta_time() if is_inside_tree() else 1.0
+	_area_t -= delta
+	var target := _area_haze_now
+	if _area_t <= 0.0:
+		_area_t = .5
+		var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
+		if camera != null:
+			var p := camera.global_position
+			var area := MHSiteTerrain.area_at(p.x, p.z)
+			var w := float(area.get("weight", 0.0))
+			set_meta("area_haze_target", lerpf(1.0, float(area.get("haze", 1.0)), w))
+			MHAudio.area_sound = str(area.get("sound", "")) if w > .5 else ""
+	target = float(get_meta("area_haze_target", 1.0))
+	_area_haze_now = move_toward(_area_haze_now, target, delta * .08)
+	return _area_haze_now
 
 ## Volumetric dust: a light haze outside that thickens into a wall of dust in
 ## a storm, and thins indoors. Settings: on, storms only, or off.
@@ -504,6 +530,15 @@ func _build_region_terrain() -> void:
 		terrain.collision_radius = 256   # vertices (2 m apart)
 		_scatter_region_rocks(terrain, MHSiteTerrain.RegionTerrain.world_bounds(origin).grow(-500.0)), CONNECT_ONE_SHOT)
 	_site_root.add_child(terrain)
+	# The far skyline: a volcano and a great crater's rim past the region's edge (B5).
+	if not preview and not (MHSiteTerrain.RegionTerrain.meta().get("horizon", []) as Array).is_empty():
+		var horizon: Node3D = HORIZON_LANDMARKS.new()
+		horizon.build(MHSiteTerrain.RegionTerrain.meta(), 0.0)
+		_site_root.add_child(horizon)
+	# Rocks laid along the scarps' feet, the moraines and the ice scarps (B5,
+	# tools/make_rock_paths.py): each path re-anchors and builds on this ground.
+	if not preview and region_id == "test_region" and ResourceLoader.exists(ROCK_PATHS):
+		_site_root.add_child((load(ROCK_PATHS) as PackedScene).instantiate())
 
 ## Terrain3D's ground over a dynamic base site's pad and apron, from
 ## MHSiteTerrain.height (which levels them), so both agree.
@@ -703,13 +738,10 @@ func _build_pebbles() -> void:
 	instance.material_override = _rock_material()
 	_site_root.add_child(instance)
 
+## The rocks' material: MHPalette's "ground_rock" role (shaders/ground_rock.gdshader),
+## so the scattered rocks, the rock paths and any model's "ground_rock" material match.
 func _rock_material() -> ShaderMaterial:
-	var ground := Color(str(MHSiteTerrain.settings().get("ground", "#A9603E")))
-	var material := ShaderMaterial.new()
-	material.shader = preload("res://shaders/mars_rock.gdshader")
-	material.set_shader_parameter("rock_colour", ground.darkened(.28))
-	material.set_shader_parameter("dust_colour", ground.lightened(.06))
-	return material
+	return MHPalette.ground_rock_material(Color(str(MHSiteTerrain.settings().get("ground", "#A9603E"))))
 
 func _load_model_mesh(model_name: String) -> Mesh:
 	var scene_path := MODEL_DIRECTORY + model_name + ".glb"
