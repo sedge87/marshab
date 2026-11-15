@@ -49,6 +49,11 @@ extends Node
 static var new_games_version := 2
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const STORY_DAYS := 4           # days run on story time; day 5 opens the game
+## Chapter 5 (15 Nov, docs/opening-days.md "Chapter 5"): the Print Shop.
+## Lighter than 1-4: no forced bed, and guided() is already false, so the
+## night and the rest of the game are yours. It ends with the ice extractor
+## set down; then chapter is 6 and Castle's morning calls say what's next.
+const PRINT_CHAPTER := 5
 const CALL_BEFORE_SUNSET := .6  # Castellanos's sunset call
 const DAY1_SUN_EARLIER := .7    # day 1's photo call: about 1.3 h before sunset, before the hills take the sun
 const DUSK_SPEED := 8.0         # (no longer used: the sun runs freely)
@@ -150,6 +155,7 @@ func _done(what: String) -> bool:
 			if drop != null and drop.pallet != null and not bool(drop.pallet.opened): return false
 			if field != null:
 				for kind in field.sites:
+					if kind == "print_shop": continue   # chapter 5's
 					var site: Node = field.sites[kind]
 					if site.pallet != null and not bool(site.pallet.opened): return false
 			return true
@@ -236,7 +242,9 @@ func _process(delta: float) -> void:
 	_check -= delta
 	if _check > 0.0 or world == null or world.get("player") == null or get_tree().paused: return
 	_check = CHECK_EVERY
-	if not guided(): return
+	if not guided():
+		_after_chapters()
+		return
 	var notes: Node = world.get("notes")
 	if notes == null: return
 	var sol := int(notes.call("_sol"))
@@ -355,6 +363,7 @@ func radio_ready() -> void:
 		var texts: Node = world.get("orbiter_texts")
 		if texts == null: return
 		for note in OWNER_NOTES: texts.send(str(note[0]), str(note[1]), str(note[2]))
+	radio.handlers["pallet6"] = func(_args: Array) -> void: _drop_pallet6()
 	radio.handlers["think"] = func(args: Array) -> void:
 		var notes: Node = world.get("notes")
 		if notes != null and not args.is_empty(): notes.think(str(args[0]))
@@ -542,6 +551,126 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 		if _done("module") and _commissioned() and quarters_built() and not (radio.heard as Dictionary).has("d4_quarters"):
 			_bunk_flags(radio)
 			radio.ring("d4_quarters")
+
+# ---------- chapter 5 and after ----------
+
+## Chapter 5's beats and, after it, the morning "what's next" (not guided:
+## the night is free).
+func _after_chapters() -> void:
+	if not v2() or chapter < PRINT_CHAPTER or world.get("walker") == null: return
+	var radio := _radio()
+	var notes: Node = world.get("notes")
+	if radio == null or notes == null: return
+	var hour := MHGame.sol_hour
+	var sunrise := float(_cycle().get("sunrise_hour", 5.0))
+	var sunset := float(_cycle().get("sunset_hour", 19.0))
+	var busy: bool = radio.on_air() or not (radio.queue as Array).is_empty()
+	var run := _hours_run()
+	if last_morning <= UNSET: last_morning = run
+	var morning: bool = hour >= sunrise - 1.5 and hour < 12.0 and run - last_morning >= MORNING_GAP and not busy
+	if morning: last_morning = run
+	_next_thoughts(notes)
+	if chapter == PRINT_CHAPTER:
+		_chapter_five(radio, hour, sunrise, sunset, busy, morning)
+	elif morning:
+		_morning_next(radio)
+
+func _print_shop_placed() -> bool:
+	return not MHChapterOne.fabricators(world.get("builder")).is_empty()
+
+func _zone_placed(kind: String) -> bool:
+	var builder: Node = world.get("builder")
+	if builder == null: return false
+	for z in builder.zones:
+		if str(z.get("kind", "")) == kind and not bool(z.get("arriving", false)): return true
+	return false
+
+func _chapter_five(radio: Node, hour: float, sunrise: float, sunset: float, busy: bool, morning: bool) -> void:
+	var heard: Dictionary = radio.heard
+	# An older save that had a Print Shop already: nothing to find.
+	if not heard.has("d5_wake") and _print_shop_placed():
+		chapter += 1
+		return
+	if not heard.has("d5_wake"):
+		if not busy and hour >= sunrise - 1.0 and hour < sunset - LATE_START: radio.ring("d5_wake")
+		return
+	if _zone_placed("ice_extractor"):
+		if not heard.has("d5_water"): radio.ring("d5_water")
+		chapter += 1
+		return
+	if _print_shop_placed() and _zone_placed("regolith_intake"): radio.ring("d5_printing")
+	if MHChapterOne.available("ice_drill", world.get("builder")) > 0: radio.ring("d5_extractor")
+	if morning:
+		for key in (radio.flags as Dictionary).keys():
+			if str(key).begins_with("left_"): radio.flags.erase(key)
+		radio.flags[_chapter_five_left()] = true
+		heard.erase("d5_still")
+		radio.ring("d5_still")
+
+## What's left of chapter 5, for the morning recap.
+func _chapter_five_left() -> String:
+	var field: Node = world.get("drop_field")
+	var site: Node = field.sites.get("print_shop") if field != null else null
+	if site != null and not bool(site.pallet.opened): return "left_pallet"
+	var crate: Node = field.get("print_crate") if field != null else null
+	if crate != null and is_instance_valid(crate) and not bool(crate.opened): return "left_tow"
+	if not (_print_shop_placed() and _zone_placed("regolith_intake")): return "left_place"
+	if MHChapterOne.available("ice_drill", world.get("builder")) > 0: return "left_extractor"
+	return "left_print"
+
+## Castle's d5_wake: pallet 6 comes down on Rao's pass, on the map.
+func _drop_pallet6() -> void:
+	var field: Node = world.get("drop_field")
+	if field == null or not field.has_method("add_print_shop"): return
+	var site: Node = field.add_print_shop()
+	var known: Node = world.get("known")
+	if known != null and site != null: known.learn(site.id(), "find", field.region_at(site.at), "Pallet 6", "you", "castellanos")
+
+## After the chapters: one short "what I'd do next" each morning, the first
+## that fits and hasn't been said (each is said once, so it never nags).
+func _morning_next(radio: Node) -> void:
+	for id in _next_steps():
+		if not (radio.heard as Dictionary).has(id):
+			radio.ring(id)
+			return
+
+## The next steps that fit the base now, most useful first.
+func _next_steps() -> Array:
+	var out: Array = []
+	if not MHRoomTypes.is_fitted("water_loop"):
+		out.append("next_water_loop" if MHRoomTypes.plan_known("water_loop") else "next_water_wait")
+	if MHRoomTypes.plan_known("heavy_power") and not MHRoomTypes.is_fitted("heavy_power"): out.append("next_heavy_power")
+	if MHMaterials.metal_kg < 30.0 and not MHChapterOne.plan_known("smelter"): out.append("next_metal")
+	if MHChapterOne.feedstock_kg < 60.0: out.append("next_feedstock")
+	if out.is_empty(): out.append("next_explore")
+	return out
+
+## The inner voice on what the base is short of (data/notes.json next_*):
+## each a thought while it's true, answered once it isn't.
+const NEXT_THOUGHTS := {
+	"next_feedstock": "_short_feedstock",
+	"next_metal": "_short_metal",
+	"next_rack": "_upgrade_waiting",
+}
+func _next_thoughts(notes: Node) -> void:
+	if chapter < PRINT_CHAPTER: return
+	var builder: Node = world.get("builder")
+	if builder == null or not _print_shop_placed(): return
+	for id in NEXT_THOUGHTS:
+		var now: bool = call(str(NEXT_THOUGHTS[id]))
+		if now and not notes.is_open(id): notes.think(id)
+		elif not now and notes.is_open(id): notes.answer(id)
+
+func _short_feedstock() -> bool:
+	return MHChapterOne.feedstock_kg < 30.0 and not MHChapterOne.printing()
+
+func _short_metal() -> bool:
+	return MHMaterials.metal_kg < 15.0
+
+func _upgrade_waiting() -> bool:
+	for up in MHRoomTypes.UPGRADES:
+		if MHRoomTypes.plan_known(str(up)) and not MHRoomTypes.is_fitted(str(up)) and MHRoomTypes.fit_reason(str(up)).is_empty(): return true
+	return false
 
 ## GAR-Y's ice stakes out round the lander (chapter 3: find the water, then
 ## choose where the module goes).

@@ -116,7 +116,8 @@ static func locked_reason(kind: String, base := "") -> String:
 	if not gated(): return ""
 	var up := upgrade_for(kind)
 	if up.is_empty() or is_fitted(up, base): return ""
-	if not plan_known(up): return "Needs the core's %s upgrade: no plan yet" % str(UPGRADES[up].label).to_lower()
+	# 15 Nov: say where the plan comes from, not just that there isn't one.
+	if not plan_known(up): return "Needs the core's %s upgrade. %s" % [str(UPGRADES[up].label).to_lower(), MHChapterOne.plan_hint(str(UPGRADES[up].plan))]
 	return "Needs the core's %s upgrade: fit it at the core's rack" % str(UPGRADES[up].label).to_lower()
 
 ## Why an upgrade can't be fitted now ("" when it can).

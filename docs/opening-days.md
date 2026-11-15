@@ -293,3 +293,24 @@ The user, 8 Nov: the first days are "baby steps", the game at a small scale. Eac
 - **Day 2's jobs:** print, tow (both items staged), scout (a GAR-Y survey or core) and sample. Three of four.
 - **Science** opens on an ice extractor (`mars_world._science_build`). Castellanos's "science_open" text names the four goals.
 - **Tests:** `tests/opening_days_test.gd`. The robot run (`tests/opening_playthrough.gd`) follows this route.
+
+## Chapter 5: the Print Shop (15 Nov)
+After chapter 4 the game was stuck, and nothing said so:
+- there was no Print Shop and no feedstock;
+- the extractor, intake and solar all said "print the first one at the Print Shop";
+- the Workshop needs heavy power, and its plan only came after a print job.
+
+Chapter 5 fixes that. It's lighter than chapters 1–4: there's no forced bed, and the night is yours.
+- **Morning** (`d5_wake`): Rao spots pallet 6's parachute, 380–520 m from the core, and it goes on the map (`drop_field.add_print_shop`).
+- **Pallet 6 opened** (`d5_pallet`): its crate is too heavy to carry. GAR-Y tows it on the sled, and it comes off by the core (`spares_crate.gd`, kind `print_shop`).
+- **The crate opened at home** (`d5_unpacked`): the Print Shop, a regolith intake and 250 kg of feedstock go into the store.
+- **Both placed** (`d5_printing`): the intake goes outside and the Print Shop in any room. Its first job is the ice extractor. That first job also sends the heavy power plan.
+- **Extractor printed** (`d5_extractor`): set it on GAR-Y's ice spot.
+- **Extractor down** (`d5_water`): chapter 5 is over and the chapter becomes 6. The Lab services plan follows, as before.
+- **Missed a beat:** the next morning `d5_still` recaps what's left.
+
+After the chapters:
+- **Castle's morning call** (`next_*` in `data/radio/day5.txt`): one short "what I'd do next" each morning. She picks the first that fits: water loop, water test, heavy power, metal, feedstock, then explore. Each is said only once.
+- **Inner voice** (`next_feedstock`, `next_metal`, `next_rack`): open while true, answered when it stops being true.
+- **Locked rooms** now say where their upgrade's plan comes from, not "no plan yet".
+- Castle's sunset talk now says "Tomorrow, the Print Shop… then water".

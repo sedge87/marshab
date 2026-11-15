@@ -54,7 +54,7 @@ Castellanos: Sunset from your own place. How's the view from in there? [ID:d4_su
 	set worth_it
 	Castellanos: I was hoping you'd say that. [ID:d4_sun_01b]
 Castellanos: Okay. Here's the bit I wanted to say. I want to tell you where all this is going. Tomorrow, this season, and the whole mission. [ID:d4_sun_12]
-Castellanos: Tomorrow, water. An extractor on the ice nearest home, and you'll have water of your own. That changes everything. [ID:d4_sun_a6_13]
+Castellanos: Tomorrow, the Print Shop. Rao thinks he saw its parachute. Then water: an extractor on the ice nearest home, and you'll have water of your own. That changes everything. [ID:d4_sun_c5_13]
 Castellanos: This season, the other walkers. They're still out there somewhere, each with a core of its own. Rao's watching for them on every pass, and the moment he sees one, you'll know. [ID:d4_sun_a6_14]
 Castellanos: And the whole mission. You weren't sent all this way just to build a room, as lovely as the room is. There are four big questions, and each of us up here looks after one. [ID:d4_sun_15]
 - Which one's yours?
@@ -85,7 +85,7 @@ Castellanos: And Mwangi's is Humans. Can a person really live here, day after da
 - That's a lot for one person.
 	Castellanos: It is. It really is. But you won't be one person forever. That's the other half of this. [ID:d4_sun_06a]
 - Where do I even start?
-	Castellanos: Water. Always water. Tomorrow. The rest grows from that. [ID:d4_sun_06d]
+	Castellanos: The Print Shop, tomorrow. Then water. The rest grows from that. [ID:d4_sun_c5_06d]
 Castellanos: And that's mine. The five of us are still up here, waiting. Build us a base we can land beside, get its beacon talking, and find out what threw the cargo off. Then we come down. That's the deal. [ID:d4_sun_17]
 ? asked_hers Castellanos: Told you you'd see. [ID:d4_sun_18]
 Castellanos: They'll each send you a note tonight. Don't feel you have to answer them all at once. [ID:d4_sun_19]

@@ -366,6 +366,7 @@ static func plan_hint(id: String) -> String:
 	match after:
 		"first_walk": return "Plan: Mission Control sends it after your first walk outside"
 		"first_job": return "Plan: Mission Control sends it after your first print job"
+		"science_open": return "Plan: Tupou sends it once the ice extractor's built"
 	if after.begins_with("sol_"): return "Plan: Mission Control sends it on sol %s" % after.trim_prefix("sol_")
 	return "Plan: Mission Control will send it"
 

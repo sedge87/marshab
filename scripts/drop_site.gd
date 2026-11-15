@@ -33,8 +33,8 @@ const PALLET_LOCAL := Vector3(-11.0, 0, 1.4)
 const DEBRIS_STOPS := [-120.0, -85.0, -55.0, -30.0]   # metres out from the pallet, towards home
 const SEEN_FROM := 200.0
 const NEAR := 25.0
-const LABELS := {"power": "Pallet 2", "tools": "Pallet 3", "gary": "Pallet 4"}   # 14 Nov: tools 3, GAR-Y 4
-const NAMES := {"power": "Pallet 2 · power", "tools": "Pallet 3 · field tools", "gary": "Pallet 4 · GAR-Y"}
+const LABELS := {"power": "Pallet 2", "tools": "Pallet 3", "gary": "Pallet 4", "print_shop": "Pallet 6"}   # 14 Nov: tools 3, GAR-Y 4; chapter 5: 6
+const NAMES := {"power": "Pallet 2 · power", "tools": "Pallet 3 · field tools", "gary": "Pallet 4 · GAR-Y", "print_shop": "Pallet 6 · Print Shop"}
 
 var field: Node
 var world: Node
@@ -86,7 +86,7 @@ func _build(saved: Dictionary) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(Vector2i(roundi(at.x), roundi(at.z)))
 	# The trail in, from the way home.
-	var home: Vector3 = world.lander.global_position
+	var home: Vector3 = field.home_for(kind) if field.has_method("home_for") else world.lander.global_position
 	var towards := (home - at) * Vector3(1, 0, 1)
 	towards = towards.normalized() if towards.length() > 1.0 else Vector3.BACK
 	var across := towards.cross(Vector3.UP)
@@ -210,6 +210,10 @@ func pallet_opened() -> void:
 			if suit != null and suit.has_method("give_addon"): suit.give_addon("lamp")
 			# 15 Nov playtest: no plan cartridges here any more. The battery and
 			# heater plans are found later, when the cold starts to push.
+		"print_shop":
+			MHNotices.post("valid", "Pallet 6: the Print Shop", "Its crate's too heavy to carry. Bring GAR-Y close and hitch it to the sled.", "log")
+			var radio: Node = world.get("radio")
+			if radio != null: radio.ring("d5_pallet")
 	field.pallet_opened(self)
 	MHAudio.moment()
 

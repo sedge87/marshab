@@ -58,6 +58,11 @@ var gary_working := false        # version 2, day 2: GAR-Y out at work, waiting 
 var crate: Node3D                # version 2, day 2: the spares crate GAR-Y was circling (scripts/spares_crate.gd)
 const CRATE := preload("res://scripts/spares_crate.gd")
 const FIND_REACH := 9.0          # this close and it notices you
+## Chapter 5 (docs/opening-days.md): pallet 6, the Print Shop, comes down on
+## Rao's pass the morning after the first night in Quarters, this far from
+## the core, and its crate (scripts/spares_crate.gd "print_shop") is towed home.
+const PRINT_SHOP_RANGE := [380.0, 520.0]
+var print_crate: Node3D
 const WORK_OUT := 130.0          # how far past its cradle it's working (A6: ~580 m out, the suit's edge)
 
 func setup(target_world: Node, saved: Dictionary) -> void:
@@ -107,6 +112,11 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	if crate_state.has("at"):
 		var c: Array = crate_state.at
 		_add_crate(Vector3(float(c[0]), float(c[1]), float(c[2])), crate_state)
+	if saved_sites.has("print_shop"): _add_print_site(saved_sites.print_shop)
+	var print_state: Dictionary = saved.get("print_crate", {})
+	if print_state.has("at"):
+		var pc: Array = print_state.at
+		_add_print_crate(Vector3(float(pc[0]), float(pc[1]), float(pc[2])), print_state)
 
 func v2() -> bool:
 	return int(world.get("opening_version")) >= 2
@@ -139,6 +149,44 @@ func gary_out() -> void:
 	if known != null and crate != null and not bool(crate.opened): known.learn("spares_crate", "find", region_at(crate.global_position), "Spares crate", "you", "")
 	var gary: Node3D = world.get("scout_rover")
 	if known != null and gary != null: known.learn("gary_moving", "find", region_at(gary.global_position), "Something moving", "you", "castellanos")
+
+## Home for a kind of pallet: the lander, but the core (once there is one)
+## for pallet 6.
+func home_for(kind: String) -> Vector3:
+	var module: Node = world.get("module_life")
+	if kind == "print_shop" and module != null and not (module.zone() as Dictionary).is_empty(): return module._centre()
+	return world.lander.global_position
+
+## Chapter 5: pallet 6 on the ground (once); returns its site.
+func add_print_shop() -> Node:
+	if sites.has("print_shop"): return sites.print_shop
+	return _add_print_site({})
+
+func _add_print_site(state: Dictionary) -> Node:
+	var centre := home_for("print_shop")
+	var where := Vector3.INF
+	if state.has("at"):
+		var p: Array = state.at
+		where = Vector3(float(p[0]), float(p[1]), float(p[2]))
+	var yaw := float(state.get("yaw", 0.0))
+	if is_inf(where.x):
+		var taken: Array = []
+		for k in sites: taken.append(atan2(sites[k].at.x - centre.x, sites[k].at.z - centre.z))
+		where = choose("print_shop", float(PRINT_SHOP_RANGE[0]), float(PRINT_SHOP_RANGE[1]), "flat", taken, Vector3.INF, centre)
+		var back: Vector3 = centre - where
+		yaw = atan2(back.x, back.z)
+	var site: Node3D = SITE.new()
+	add_child(site)
+	site.setup(self, "print_shop", where, yaw, state)
+	sites["print_shop"] = site
+	return site
+
+func _add_print_crate(at: Vector3, state: Dictionary) -> void:
+	print_crate = CRATE.new()
+	add_child(print_crate)
+	var s := state.duplicate()
+	s["kind"] = "print_shop"
+	print_crate.setup(world, self, at, s)
 
 func _add_crate(at: Vector3, state: Dictionary) -> void:
 	crate = CRATE.new()
@@ -175,8 +223,8 @@ func _bearing(p: Vector3) -> float:
 	return atan2(p.x - home.x, p.z - home.z)
 
 ## The best spot for a kind of pallet, round the lander.
-func choose(kind: String, nearest: float, furthest: float, ground: String, taken: Array, ridge: Vector3) -> Vector3:
-	var home: Vector3 = world.lander.global_position
+func choose(kind: String, nearest: float, furthest: float, ground: String, taken: Array, ridge: Vector3, from := Vector3.INF) -> Vector3:
+	var home: Vector3 = world.lander.global_position if is_inf(from.x) else from
 	var best := -INF
 	var out := Vector3.INF
 	for distance in range(int(nearest), int(furthest) + 1, 40):
@@ -194,7 +242,7 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 				"rough": score = _roughness(p) * 2.0 - slope - absf(distance - float(AIM.rough)) * .01
 				"low": score = (_ring_mean(p, 60.0) - h) * 1.5 - slope - absf(distance - float(AIM.low)) * .01
 			if not _sound(p) or not _sound(_pallet_at(p)): score -= 1000.0   # only if there's nowhere better
-			if score > best and reachable(p) and reachable(_pallet_at(p)):
+			if score > best and reachable(p, home) and reachable(_pallet_at(p), home):
 				best = score
 				out = Vector3(p.x, h, p.z)
 	if is_inf(out.x):
@@ -206,8 +254,8 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 ## steps; a cliff (two steps in a row steeper than 45°) rules the spot out,
 ## so nothing lands on a mesa top or a crater floor you can't climb from.
 ## Conservative: a spot with a ramp round the side may be refused too.
-func reachable(p: Vector3) -> bool:
-	var home: Vector3 = world.lander.global_position
+func reachable(p: Vector3, from := Vector3.INF) -> bool:
+	var home: Vector3 = world.lander.global_position if is_inf(from.x) else from
 	return MHSiteTerrain.reachable_on_foot(Vector2(home.x, home.z), Vector2(p.x, p.z))
 
 ## Ground a pallet can sit on and you can walk to: not up on the layered
@@ -308,8 +356,11 @@ func see_from_ridge() -> void:
 	var radio: Node = world.get("radio")
 	if v2() and radio != null: radio.ring("d1_ridge")
 
-func pallet_opened(_site: Node) -> void:
-	pass
+func pallet_opened(site: Node) -> void:
+	# Chapter 5: pallet 6's crate, set beside it, waiting for GAR-Y's sled.
+	if str(site.get("kind")) == "print_shop" and (print_crate == null or not is_instance_valid(print_crate)):
+		var p: Vector3 = site.local_to_world(SITE.PALLET_LOCAL + Vector3(2.6, 0, 1.2))
+		_add_print_crate(p, {})
 
 # ---------- GAR-Y ----------
 
@@ -455,6 +506,7 @@ func _apply_tools() -> void:
 	lamp.spot_angle = minf(lamp.spot_angle + 10.0, 60.0)
 
 func export_state() -> Dictionary:
-	var out := {"gary_working": gary_working, "tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "gary_in_cradle": gary_in_cradle, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}, "crate": crate.export_state() if crate != null and is_instance_valid(crate) else {}}
+	var out := {"gary_working": gary_working, "tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "gary_in_cradle": gary_in_cradle, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}, "crate": crate.export_state() if crate != null and is_instance_valid(crate) else {},
+		"print_crate": print_crate.export_state() if print_crate != null and is_instance_valid(print_crate) else {}}
 	for kind in sites: out.sites[kind] = sites[kind].export_state()
 	return out

@@ -26,6 +26,7 @@ const FIND := preload("res://scripts/carried_find.gd")
 const SALVAGE := preload("res://scripts/salvage_piece.gd")
 const BENCH := preload("res://scripts/lifepod_bench.gd")
 const RATION_CRATE := preload("res://scripts/ration_crate.gd")
+const SPARES_CRATE := preload("res://scripts/spares_crate.gd")
 const START_RATIONS := 2        # from the descent: a sol's food (step 4a)
 const PALLET_RATIONS := 10      # pallet 1's: about five sols, two a sol
 ## [kind, nearest, furthest, the ground it wants]
@@ -620,17 +621,23 @@ func load_on_sled(item: Node3D, gary: Node3D) -> void:
 	MHNotices.post("info", "On GAR-Y's sled", "GAR-Y tows it now. At the lander, E on GAR-Y unloads it.", "log")
 
 func cargo_ready(gary: Node3D) -> bool:
-	return not sled_cargo.is_empty() and gary != null and gary.global_position.distance_to(world.lander.global_position) < SLED_REACH
+	if sled_cargo.is_empty() or gary == null: return false
+	if gary.global_position.distance_to(world.lander.global_position) < SLED_REACH: return true
+	# Chapter 5: the Print Shop crate comes off at a base's core too.
+	return sled_cargo.any(func(item): return is_instance_valid(item) and str(item.get("kind")) == "print_shop") and SPARES_CRATE.near_a_core(world, gary.global_position)
 
 ## E on GAR-Y by the lander: the cargo comes off, set down side by side.
 func unload_cargo() -> void:
 	var i := 0
+	var gary: Node3D = sled_cargo[0].get_parent() as Node3D if not sled_cargo.is_empty() and is_instance_valid(sled_cargo[0]) else null
+	var at_lander: bool = gary == null or gary.global_position.distance_to(world.lander.global_position) < SLED_REACH or not SPARES_CRATE.near_a_core(world, gary.global_position)
 	for item in sled_cargo:
 		if item == null or not is_instance_valid(item): continue
 		var home: Node = item.get("drop") if item.get("drop") != null else item.get("site")
+		var behind: Vector3 = gary.global_position + gary.global_basis.z * (2.2 + 1.6 * i) if gary != null else Vector3.ZERO
 		item.get_parent().remove_child(item)
 		home.add_child(item)
-		var at: Vector3 = world.lander.to_global(Vector3(-3.4 - 1.6 * i, 0, -6.6))
+		var at: Vector3 = world.lander.to_global(Vector3(-3.4 - 1.6 * i, 0, -6.6)) if at_lander else behind
 		item.global_position = Vector3(at.x, MHSiteTerrain.height(at.x, at.z), at.z)
 		item.rotation = Vector3(0, world.lander.rotation.y, 0)
 		item.where = "ground"

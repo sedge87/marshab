@@ -378,6 +378,49 @@ func _initialize() -> void:
 		await _settle(radio)
 		_check(not days.guided(), "the morning after the first night: the guided chapters are over")
 
+		# Chapter 5 (15 Nov): the Print Shop. Before it, nothing can be made.
+		_check(MHChapterOne.item_reason("ice_drill", b) != "" and MHRoomTypes.locked_reason("galley").contains("Plan:"), "before pallet 6: no extractor, and a locked room says where its plan comes from")
+		days.last_morning = days._hours_run() - 20.0
+		await _settle(radio, 2.0)
+		var site6: Node = field.sites.get("print_shop")
+		_check(int(days.chapter) == 5 and radio.heard.has("d5_wake") and site6 != null, "chapter 5: Rao spots pallet 6")
+		if site6 != null:
+			var core_at: Vector3 = module._centre()
+			var away6 := Vector2(site6.at.x - core_at.x, site6.at.z - core_at.z).length()
+			_check(away6 > 300.0 and away6 < 600.0, "pallet 6 lies a walk from the core (%.0f m)" % away6)
+			_check(known.knows(site6.id()), "pallet 6 is on the map")
+			site6.pallet.opened = true
+			site6.pallet_opened()
+			await _settle(radio)
+			var crate6: Node = field.print_crate
+			_check(crate6 != null and radio.heard.has("d5_pallet"), "its crate waits by the pallet")
+			if crate6 != null:
+				_check(not crate6.interact(player), "too heavy to open out there or carry")
+				var gary6: Node3D = world.scout_rover
+				gary6.global_position = crate6.global_position + Vector3(2, 0, 0)
+				pod.prints["hitch"] = true
+				pod.load_on_sled(crate6, gary6)
+				gary6.global_position = core_at + Vector3(6, 0, 6)
+				_check(pod.cargo_ready(gary6), "towed home: it comes off by the core")
+				pod.unload_cargo()
+				var fab_before := int(MHChapterOne.stock.get("fabricator", 0))
+				_check(crate6.interact(player) and int(MHChapterOne.stock.get("fabricator", 0)) == fab_before + 1 and MHChapterOne.available("regolith_intake", b) > 0 and MHChapterOne.feedstock_kg >= 200.0, "opened at home: the Print Shop, an intake and feedstock")
+				await _settle(radio)
+				_check(radio.heard.has("d5_unpacked"), "Castle: intake outside, Print Shop in")
+				b.placed_interior.append({"id": "fabricator", "position": Vector3(q.x * b.CELL + 1.0, b.habitat_base_y, q.y * b.CELL), "placement_id": "t_fab"})
+				b.zones.append({"kind": "regolith_intake", "cells": [c + Vector2i(-4, 0)], "cost": 0, "base": "w1"})
+				await _settle(radio)
+				_check(radio.heard.has("d5_printing") and MHChapterOne.job_reason("ice_drill", b) == "", "both in: the extractor can be printed now")
+				MHChapterOne.stock["ice_drill"] = int(MHChapterOne.stock.get("ice_drill", 0)) + 1
+				await _settle(radio)
+				_check(radio.heard.has("d5_extractor"), "printed: take it to the ice")
+				b.zones.append({"kind": "ice_extractor", "cells": [c + Vector2i(-6, 0)], "cost": 0, "base": "w1"})
+				await _settle(radio, 2.0)
+				_check(radio.heard.has("d5_water") and int(days.chapter) == 6, "the extractor down: chapter 5's over")
+				days.last_morning = days._hours_run() - 20.0
+				await _settle(radio, 2.0)
+				_check((radio.heard as Dictionary).keys().any(func(k): return str(k).begins_with("next_")), "the next morning: Castle says what she'd do next")
+
 	# Saved.
 	var state: Dictionary = days.export_state()
 	_check(int(state.get("version", 0)) == 2 and int(state.get("sunset_called", 0)) >= 1 and state.has("chapter") and state.has("done_at"), "the version, the chapter and the calls are saved")

@@ -1,0 +1,94 @@
+# Chapter 5: the Print Shop (docs/opening-days.md, "Chapter 5"). The morning
+# after the first night in Quarters. Rao spots pallet 6's parachute; GAR-Y tows
+# its crate home; the intake goes outside and the Print Shop in; the first
+# print is the ice extractor; set on the ice, the base makes water and the
+# guided chapters are over. No forced bed: the night is yours.
+# Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d5
+# (and --only=orb_next for the morning calls at the bottom).
+
+~ d5_wake
+Castellanos: Morning, Outpost One. How was a real bed? [ID:d5_wake_01]
+- Like sleeping on a cloud.
+	Castellanos: A cloud with a camp mattress. I'll take your word for it. [ID:d5_wake_02a]
+- Short.
+	Castellanos: They always are, the good ones. [ID:d5_wake_02b]
+Castellanos: News. Rao caught a parachute on his dawn pass. Pallet six. The Print Shop, and its regolith intake. [ID:d5_wake_03]
+Castellanos: That's the one that makes everything else. Rooms, the extractor, all of it. It's on your map now. [ID:d5_wake_04]
+do pallet6
+Castellanos: The crate's far too heavy to carry. Take GAR-Y. It tows. [ID:d5_wake_05]
+=> END
+
+# Pallet 6 opened (scripts/drop_site.gd).
+~ d5_pallet
+Castellanos: That's it. That's the Print Shop. Achterberg's actually crying, and she'd like me to say she isn't. [ID:d5_pallet_01]
+Castellanos: Bring GAR-Y close, hitch the crate to its sled, and tow it home. Open it by the core. [ID:d5_pallet_02]
+=> END
+
+# The crate opened at home (scripts/spares_crate.gd "print_shop").
+~ d5_unpacked
+Castellanos: Okay. Two pieces. The intake goes outside, on loose ground. It digs regolith and turns it into feedstock, all day, every day. [ID:d5_unpacked_01]
+Castellanos: The Print Shop goes indoors. Any room will do. Press B: they're both on the Unpacked tab. [ID:d5_unpacked_02]
+=> END
+
+# Intake and Print Shop both placed (scripts/opening_days.gd).
+~ d5_printing
+Castellanos: Both in. Now give it its first job. The core came with the ice extractor's plan. [ID:d5_printing_01]
+Castellanos: Walk up to the Print Shop and pick the extractor. The sack in the crate is just enough feedstock for it. [ID:d5_printing_02]
+- How long will it take?
+	Castellanos: A while. Watch it if you like. I always do. [ID:d5_printing_03a]
+- Then what?
+	Castellanos: Then water. Your own. [ID:d5_printing_03b]
+=> END
+
+# The extractor printed, not yet placed.
+~ d5_extractor
+Castellanos: The extractor's printed. Take it to the ice GAR-Y found. B, then the Unpacked tab, and set it right on the spot. [ID:d5_extractor_01]
+=> END
+
+# The extractor set down: the chapters are over (scripts/opening_days.gd).
+~ d5_water
+Castellanos: It's drilling. Outpost One, you're making your own water. On Mars. [ID:d5_water_01]
+- We did it.
+	set did_it
+	Castellanos: You did it. We just shouted at a screen. [ID:d5_water_02a]
+- Is that it?
+	Castellanos: That's the start of it. [ID:d5_water_02b]
+Castellanos: From here on it's your call. I'll check in each morning with what I'd do next, but you don't have to listen. [ID:d5_water_03]
+Castellanos: The intake keeps digging feedstock. The Print Shop makes what you have plans for. And plans come from what you find out there. [ID:d5_water_04]
+=> END
+
+# Chapter 5 not done by morning.
+~ d5_still
+Castellanos: Morning, Outpost One. The Print Shop's still waiting on you. [ID:d5_still_01]
+? left_pallet Castellanos: Pallet six is on your map. Take GAR-Y; the crate needs towing. [ID:d5_still_02a]
+? left_tow Castellanos: The crate's out by pallet six. Hitch it to GAR-Y and bring it home. [ID:d5_still_02b]
+? left_place Castellanos: The intake goes outside, the Print Shop indoors. Both on the Unpacked tab. [ID:d5_still_02c]
+? left_print Castellanos: The Print Shop's ready for the extractor. [ID:d5_still_02d]
+? left_extractor Castellanos: The extractor's waiting. Set it on the ice GAR-Y found. [ID:d5_still_02e]
+=> END
+
+# After the chapters: one short "what I'd do next" each morning, each said
+# once (scripts/opening_days.gd _morning_next).
+~ next_water_loop
+Castellanos: Morning. The water loop plan came through overnight. Fit it at the core's rack, and you can have a Galley. Real meals. [ID:next_water_loop_01]
+=> END
+
+~ next_water_wait
+Castellanos: Morning. The extractor needs a few hours of clean water before Houston signs off the water loop plan. It'll come. [ID:next_water_wait_01]
+=> END
+
+~ next_heavy_power
+Castellanos: Morning. You've got the heavy power plan. Fit it at the core's rack and you can build a proper Workshop. The Print Shop runs faster in one. [ID:next_heavy_power_01]
+=> END
+
+~ next_metal
+Castellanos: Morning. You're nearly out of metal. Achterberg says iron-rich rock, dark and heavy, and a smelter. Bring her a sample and she'll send the plan. [ID:next_metal_01]
+=> END
+
+~ next_feedstock
+Castellanos: Morning. The Print Shop's hungry. One intake is slow. A second one doubles it, if you can spare the power. [ID:next_feedstock_01]
+=> END
+
+~ next_explore
+Castellanos: Morning. The base can look after itself for a bit. Rao says there's plenty out there nobody's ever seen. Go and see it. [ID:next_explore_01]
+=> END

@@ -229,6 +229,24 @@
       },
       "journal": "First night in the core. A real room."
     },
+    "next_feedstock": {
+      "stages": {
+        "start": "The Print Shop's nearly out of feedstock. The intake digs it, slowly. Another intake would dig faster, if I print one."
+      },
+      "journal": "Got the feedstock flowing again."
+    },
+    "next_metal": {
+      "stages": {
+        "start": "Hardly any metal left. Dark, heavy iron-rich rock and a smelter would make more. Achterberg would know."
+      },
+      "journal": "Found a way to make metal."
+    },
+    "next_rack": {
+      "stages": {
+        "start": "A plan for the core's rack, and enough to fit it. That's a new kind of room, once it's on."
+      },
+      "journal": "Fitted a new upgrade at the core's rack."
+    },
     "module_power": {
       "stages": {
         "start": "The module's running on its own battery and a strip of roof solar. Fine by day, but it won't see out a heated night. Pallet 2's solar blanket would keep it going: it goes on the socket outside."
