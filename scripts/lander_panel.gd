@@ -2,7 +2,7 @@ extends Node3D
 
 ## The lander cabin's status screen (playtest 8 Nov: "some sort of visual
 ## inside showing its power, water, air", diegetic and visual). A live
-## screen above the slate's dock on the console: five tiles (air, water,
+## screen on the side wall by the water dispenser (16 Nov: it hid the slate on the console): five tiles (air, water,
 ## power, heat, food), each an icon, a bar and one big number, amber when
 ## low, red when urgent (info_screen.gd "cabin" mode). A working display, so
 ## its text is fine; nothing is lettered on the model. Dark without power.
@@ -11,8 +11,11 @@ const INFO_SCREEN := preload("res://scripts/info_screen.gd")
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const SIZE := Vector2(.5, .3125)        # metres (16:10)
 const PIXELS := Vector2i(640, 400)
-const ABOVE := .34                      # over the slate's dock
+const ABOVE := .34                      # (no longer used: it sat over the slate's dock)
 const LEAN := -10.0
+## 16 Nov playtest: off the console, where it hid the slate, onto the side
+## wall by the water dispenser at standing eye height (lander space).
+const ON_WALL := Vector3(2.16, 1.62, .78)
 
 var world: Node
 var _view: SubViewport
@@ -23,15 +26,9 @@ func setup(target_world: Node, console: Node3D) -> void:
 	name = "CabinPanel"
 	add_to_group("cabin_panel")
 	world.lander.add_child(self)
-	var panel: MeshInstance3D = null
-	for mesh in console.find_children("*", "MeshInstance3D", true, false):
-		if str(mesh.name).begins_with("static_back"): panel = mesh
-	if panel != null:
-		var box := panel.get_aabb()
-		global_position = panel.global_transform * Vector3(box.get_center().x, box.end.y + ABOVE, box.get_center().z)
-		global_basis = panel.global_basis.orthonormalized() * Basis(Vector3.UP, PI) * Basis(Vector3.RIGHT, deg_to_rad(LEAN))
-	else:
-		global_position = console.global_position + Vector3(0, 1.75, 0)
+	var outward := Vector3(ON_WALL.x, 0, ON_WALL.z).normalized()
+	position = ON_WALL + Vector3(0, float(world.lander.DECK), 0)
+	basis = Basis.looking_at(outward, Vector3.UP)   # its face (+Z) towards the cabin
 	_view = SubViewport.new()
 	_view.size = PIXELS
 	_view.transparent_bg = false

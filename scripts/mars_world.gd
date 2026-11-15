@@ -688,7 +688,7 @@ func _check_sol_card() -> void:
 	card.sol = sol
 	add_child(card)
 
-## The lander's status screen above the slate's dock (scripts/lander_panel.gd).
+## The lander's status screen, on the side wall by the water dispenser (scripts/lander_panel.gd).
 const LANDER_PANEL := preload("res://scripts/lander_panel.gd")
 var cabin_panel: Node3D
 func _place_cabin_panel() -> void:
