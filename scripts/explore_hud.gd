@@ -481,7 +481,8 @@ func compass_markers() -> Array:
 	var known := get_tree().get_first_node_in_group("known_things")
 	if known != null:
 		for marker in known.compass_markers(player.global_position):
-			if bool(MHGame.setting("compass_" + str(marker.kind) + "s")): out.append(marker)
+			var shown: Variant = MHGame.setting("compass_" + str(marker.kind) + "s")   # no setting yet (the drone's markers, A7): shown
+			if shown == null or bool(shown): out.append(marker)
 	return out
 
 func _home_markers(out: Array) -> void:

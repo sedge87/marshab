@@ -126,10 +126,28 @@ var gar_y_orders: CanvasLayer   # scripts/gar_y_orders.gd: hold G to give GAR-Y 
 var monitor: Control            # the open live view (habitat_monitor.gd or habitat_cameras.gd)
 var showcase: Node              # scripts/showcase.gd, in Showcase mode
 var scout_rover: Node3D
-## The crew rover (scripts/crew_rover.gd): it appears in the vehicle bay once
-## the base has one, and is saved with the base.
+## The vehicles (scripts/crew_rover.gd; A7, docs/bases-and-vehicles.md
+## "As built (A7)"): the pressurised rover (crew_rover) and the scout buggy,
+## and the scout drone (scripts/scout_drone.gd) with a drone dock at every
+## Garage (scripts/drone_dock.gd). On a region site they're found as wrecks
+## out in the land once the guided chapters are over (A7 test spawns; C1
+## places the wrecks for real). Elsewhere the rover appears in the Garage
+## (the old rule). All saved with the base.
 const CREW_ROVER_SCRIPT := preload("res://scripts/crew_rover.gd")
+const SCOUT_DRONE_SCRIPT := preload("res://scripts/scout_drone.gd")
+const DRONE_DOCK_SCRIPT := preload("res://scripts/drone_dock.gd")
+const VEHICLE_MODEL := preload("res://scripts/vehicle_model.gd")
+const RegionTerrain := preload("res://scripts/region_terrain.gd")
+## A7 test spawns, from the lander: [kind, metres out, degrees off the way
+## to the region's middle]. C1 moves them: the buggy into a ring 1 cargo
+## wreck, the rover into a big wreck at the edge of ring 2.
+const WRECK_SPAWNS := [["buggy", 600.0, 40.0], ["rover", 2400.0, -10.0]]
 var crew_rover: CharacterBody3D
+var buggy: CharacterBody3D
+var drone: Node3D
+var _buggy_state := {}
+var _drone_state := {}
+var _vehicle_check := 0.0
 var pda: MHPda   # the slate (scripts/pda.gd, docs/pda.md): Tab
 var region_map: CanvasLayer   # scripts/region_map.gd (region sites only): Tab, and your trail since the airlock
 var _crew_rover_state := {}
@@ -383,6 +401,10 @@ const AUTOSAVE_SECONDS := 600.0   # free play: every 10 minutes, once the base h
 
 func _process(delta: float) -> void:
 	_update_lander_intro()
+	_vehicle_check -= delta
+	if _vehicle_check <= 0.0:
+		_vehicle_check = 2.0
+		if builder != null and MHSiteTerrain.shape() == "region": _sync_region_vehicles()
 	_sol_check -= delta
 	if _sol_check <= 0.0:
 		_sol_check = 1.0
@@ -833,7 +855,12 @@ func meet_gary(at: Vector3) -> Node3D:
 ## The crew rover: a saved one comes back where it was left; otherwise it
 ## appears in the first vehicle bay, facing the hangar door.
 func _sync_crew_rover() -> void:
-	if crew_rover != null or builder == null: return
+	if builder == null: return
+	_sync_drone_docks()
+	if MHSiteTerrain.shape() == "region":
+		_sync_region_vehicles()
+		return
+	if crew_rover != null: return
 	var bay: Dictionary = {}
 	for zone in builder.zones:
 		if str(zone.get("kind", "")) == "vehicle_bay": bay = zone
@@ -852,6 +879,144 @@ func _sync_crew_rover() -> void:
 	var outside: Vector2i = bay.get("door_direction", Vector2i(0, -1))
 	crew_rover.global_position = Vector3(centre.x, builder.habitat_base_y + 0.05, centre.y)
 	crew_rover.rotation.y = builder._direction_yaw(outside)
+
+## Region sites: the buggy, the rover and the drone, as wrecks out in the
+## land (or, saved, where you left them). Not during the guided chapters.
+## Creative: fixed, and parked by the lander.
+func _sync_region_vehicles() -> void:
+	var guided: bool = opening_days != null and opening_days.has_method("guided") and opening_days.guided()
+	var creative := not MHGame.simulation_on()
+	if crew_rover == null and (not _crew_rover_state.is_empty() or not guided):
+		crew_rover = _spawn_vehicle("rover", _crew_rover_state, creative)
+		_crew_rover_state = {}
+	if buggy == null and (not _buggy_state.is_empty() or not guided):
+		buggy = _spawn_vehicle("buggy", _buggy_state, creative)
+		_buggy_state = {}
+	if drone == null and (not _drone_state.is_empty() or not guided):
+		drone = SCOUT_DRONE_SCRIPT.new()
+		drone.setup(self)
+		add_child(drone)
+		if not _drone_state.is_empty():
+			drone.restore_state(_drone_state)
+			_drone_state = {}
+		else:
+			var spot := _drone_wreck_spot() if not creative else _flat_spot(Vector3(-14, 0, 8))
+			drone.global_position = spot
+			if creative: drone.interact()   # Creative: no wreck, it flies to a dock or waits
+		drone.dock_built()
+	# The wrecks' pins (known things may not be set up yet on the first pass).
+	if known != null:
+		for vehicle in [crew_rover, buggy]:
+			if vehicle != null and vehicle.wrecked and not known.things.has("wreck:" + str(vehicle.kind)):
+				_mark_wreck(str(vehicle.kind), vehicle.global_position, "Rover wreck" if vehicle.kind == "rover" else "Buggy wreck")
+		if drone != null and str(drone.state) == "wrecked" and not known.things.has("wreck:drone"): _mark_wreck("drone", drone.global_position, "Drone wreck")
+
+func _spawn_vehicle(kind: String, saved: Dictionary, creative: bool) -> CharacterBody3D:
+	var vehicle: CharacterBody3D = CREW_ROVER_SCRIPT.new()
+	vehicle.setup(builder, kind)
+	add_child(vehicle)
+	if not saved.is_empty():
+		vehicle.restore_state(saved)
+		if bool(saved.get("wrecked", false)): _add_debris(kind, vehicle.global_position)
+		return vehicle
+	if creative:
+		vehicle.global_position = _flat_spot(Vector3(12.0 if kind == "rover" else -10.0, 0, 14.0)) + Vector3.UP * .05
+		return vehicle
+	for spawn in WRECK_SPAWNS:
+		if str(spawn[0]) != kind: continue
+		var spot := _wreck_spot(float(spawn[1]), float(spawn[2]))
+		vehicle.global_position = spot + Vector3.UP * .05
+		vehicle.rotation.y = fmod(spot.x * .37 + spot.z * .11, TAU)
+		vehicle.make_wreck()
+		_add_debris(kind, spot)
+	return vehicle
+
+## The wreck's scattered pieces beside it (they stay once it's fixed: a trace).
+func _add_debris(kind: String, spot: Vector3) -> void:
+	var debris := VEHICLE_MODEL.new()
+	debris.kind = "wreck_big" if kind == "rover" else "wreck_small"
+	add_child(debris)
+	var at := spot + Vector3(6.0 if kind == "rover" else 4.0, 0, 4.0)
+	debris.global_position = Vector3(at.x, MHSiteTerrain.height(at.x, at.z), at.z)
+
+## A test spawn's spot: `metres` out from the lander, turned `degrees` off
+## the way to the region's middle (so it stays inside the region).
+func _wreck_spot(metres: float, degrees: float) -> Vector3:
+	var origin := _region_origin()
+	var inward := (-origin).normalized() if origin.length() > 1.0 else Vector2(1, 0)
+	var way := inward.rotated(deg_to_rad(degrees)) * metres
+	var half := float(RegionTerrain.meta().get("half", 3000.0)) - 250.0
+	var region := (origin + way).clamp(Vector2(-half, -half), Vector2(half, half))
+	return _flat_spot(Vector3(region.x - origin.x, 0, region.y - origin.y))
+
+## The drone's wreck: region.json "drone_wreck", by the first yardang maze.
+func _drone_wreck_spot() -> Vector3:
+	var origin := _region_origin()
+	var at: Array = RegionTerrain.meta().get("drone_wreck", [])
+	if at.size() < 2: return _wreck_spot(1500.0, 20.0)
+	return _flat_spot(Vector3(float(at[0]) - origin.x, 0, float(at[1]) - origin.y))
+
+## Where the site's origin sits in the region (region metres).
+func _region_origin() -> Vector2:
+	var zone := MHSiteTerrain.region_zone()
+	return Vector2(float(zone.centre[0]), float(zone.centre[1])) if not zone.is_empty() else Vector2.ZERO
+
+## The nearest fairly flat ground to `near` (site metres), within about 80 m.
+func _flat_spot(near: Vector3) -> Vector3:
+	for ring in range(0, 9):
+		var steps := maxi(1, ring * 6)
+		for i in steps:
+			var a := TAU * float(i) / float(steps)
+			var p := Vector2(near.x, near.z) + Vector2(cos(a), sin(a)) * ring * 10.0
+			var h := MHSiteTerrain.height(p.x, p.y)
+			var rough := 0.0
+			for d in [Vector2(3, 0), Vector2(-3, 0), Vector2(0, 3), Vector2(0, -3)]:
+				rough = maxf(rough, absf(MHSiteTerrain.height(p.x + d.x, p.y + d.y) - h))
+			if rough < .5: return Vector3(p.x, h, p.y)
+	return Vector3(near.x, MHSiteTerrain.height(near.x, near.z), near.z)
+
+## The A7 test spawns are marked on the Map so a playtest can find them.
+## (C1: found by seeing them, or from Castle's manifest for the rover.)
+func _mark_wreck(kind: String, spot: Vector3, wreck_name: String) -> void:
+	if known == null: return
+	known.learn("wreck:" + kind, "pin", Vector2(spot.x, spot.z) + _region_origin(), wreck_name)
+
+## Called by a vehicle once it's fixed: its wreck pin comes off the Map.
+func vehicle_fixed(vehicle: Node) -> void:
+	if known == null: return
+	var id := "wreck:" + str(vehicle.get("kind"))
+	if known.things.has(id):
+		known.things.erase(id)
+		known.changed.emit()
+
+## Every Garage gets a drone dock, on the ground beside its hangar door.
+func _sync_drone_docks() -> void:
+	var wanted := {}
+	for zone in builder.zones:
+		if str(zone.get("kind", "")) != "vehicle_bay": continue
+		var key := str((zone.cells as Array)[0])
+		var outside: Vector2i = zone.get("door_direction", Vector2i(0, -1))
+		var face: Dictionary = builder._zone_face(zone, outside)
+		var door: Vector3 = face.position
+		var out := Vector3(outside.x, 0, outside.y)
+		var side := Vector3(-out.z, 0, out.x)
+		var at := door + out * 4.0 + side * 6.0
+		wanted[key] = Transform3D(Basis(Vector3.UP, atan2(out.x, out.z)), Vector3(at.x, MHSiteTerrain.height(at.x, at.z), at.z))
+	var have := {}
+	for dock in get_tree().get_nodes_in_group("drone_dock"):
+		if not wanted.has(str(dock.zone_key)):
+			dock.queue_free()
+			continue
+		have[str(dock.zone_key)] = dock
+	var added := false
+	for key in wanted:
+		if have.has(key): continue
+		var dock := DRONE_DOCK_SCRIPT.new()
+		dock.zone_key = key
+		add_child(dock)
+		dock.global_transform = wanted[key]
+		added = true
+	if added and drone != null: drone.dock_built.call_deferred()
 
 # ---------- chapter one (docs/start-and-chapter-one.md) ----------
 
@@ -1217,6 +1382,8 @@ func current_state() -> Dictionary:
 		"mission_control": earth_link.export_state() if earth_link != null else _earth_link_state,
 		"gary": scout_rover.call("export_state") if scout_rover != null and scout_rover.has_method("export_state") else {},
 		"crew_rover": crew_rover.export_state() if crew_rover != null else {},
+		"buggy": buggy.export_state() if buggy != null else _buggy_state,
+		"drone": drone.export_state() if drone != null else _drone_state,
 		"suit": suit.export_state() if suit != null else {},
 		"slate": {"hint_uses": pda.hint_uses, "sol_card": sol_card_shown} if pda != null else {},
 		"cabin": cabin_life.export_state() if cabin_life != null else {},
@@ -1297,6 +1464,8 @@ func _restore_pending_habitat() -> void:
 	_earth_link_state = state.get("mission_control", {}) as Dictionary
 	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
 	_crew_rover_state = state.get("crew_rover", {}) as Dictionary
+	_buggy_state = state.get("buggy", {}) as Dictionary
+	_drone_state = state.get("drone", {}) as Dictionary
 	_suit_state = state.get("suit", {}) as Dictionary
 	_slate_state = state.get("slate", {}) as Dictionary
 	# A save from before the sol cards: no card for the sol it's on.

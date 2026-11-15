@@ -586,7 +586,11 @@ func _draw_markers() -> void:
 		var w: Node3D = walkers[id]
 		if is_instance_valid(w) and str(w.state) in ["ready", "travelling", "parked"]: _marker(w.global_position, str(w.walker_name), Color("#F2C35A"), "circle")
 	if not is_inf(walker_spot.x): _marker(Vector3(walker_spot.x, 0, walker_spot.y), "Spot", MHStyle.accent, "circle")
-	for rover in world.get_tree().get_nodes_in_group("crew_rover"): _marker((rover as Node3D).global_position, "Rover", Color("#8CC3CB"), "circle")
+	# The vehicles and the drone (A7, scripts/crew_rover.gd, scripts/scout_drone.gd); wrecks are pins.
+	for vehicle in world.get_tree().get_nodes_in_group("vehicle"):
+		if not bool(vehicle.get("wrecked")): _marker((vehicle as Node3D).global_position, "Rover" if str(vehicle.get("kind")) == "rover" else "Buggy", Color("#8CC3CB"), "circle")
+	for drone in world.get_tree().get_nodes_in_group("scout_drone"):
+		if str(drone.get("state")) in ["flying", "returning", "landed", "waiting"]: _marker((drone as Node3D).global_position, "Drone", Color("#8CC3CB"), "circle")
 	for gary in world.get_tree().get_nodes_in_group("gar_y"): _marker((gary as Node3D).global_position, "GAR-Y", Color("#8CC3CB"), "circle")
 	# What you dropped when you blacked out (scripts/suit.gd).
 	var suit: Node = world.get("suit")
@@ -633,9 +637,15 @@ func _draw_known() -> void:
 	var font := ThemeDB.fallback_font
 	for entry in known.known("you"):
 		var kind := str(entry.kind)
-		if kind != "pin" and kind != "find": continue
+		if kind != "pin" and kind != "find" and kind != "marker": continue
 		var at := _region_to_map(entry.at as Vector2)
 		if at.x < -30 or at.y < -30 or at.x > SIZE + 30 or at.y > SIZE + 30: continue
+		if kind == "marker":
+			# The drone's route markers (A7): small teal triangles; B3 joins them to your trails.
+			var tri := PackedVector2Array([at + Vector2(0, -6), at + Vector2(5, 4), at + Vector2(-5, 4)])
+			_markers.draw_colored_polygon(tri, Color("#8CC3CB"))
+			_markers.draw_string(font, at + Vector2(8, 4), str(entry.name), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("#8CC3CB"))
+			continue
 		if kind == "pin":
 			_markers.draw_line(at, at + Vector2(0, -14), Color(0, 0, 0, .8), 3.0, true)
 			_markers.draw_line(at, at + Vector2(0, -14), MHStyle.accent, 1.5, true)

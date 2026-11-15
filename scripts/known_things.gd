@@ -260,7 +260,7 @@ func pin_near(at: Vector2, reach: float) -> String:
 
 # ---------- the compass ----------
 
-const COMPASS_KINDS := {"pin": 3000.0, "find": 1500.0, "place": 1200.0}
+const COMPASS_KINDS := {"pin": 3000.0, "find": 1500.0, "place": 1200.0, "marker": 600.0}   # marker: the drone's route markers (A7)
 
 ## Your pins, finds and nearby places for a compass: [{bearing, label, distance, colour}].
 func compass_markers(from_world: Vector3) -> Array:
@@ -272,7 +272,7 @@ func compass_markers(from_world: Vector3) -> Array:
 		var offset: Vector2 = (entry.at as Vector2) - here
 		var distance := offset.length()
 		if distance > float(COMPASS_KINDS[str(entry.kind)]) or distance < 4.0: continue
-		var colour := MHStyle.accent if str(entry.kind) == "pin" else (MHStyle.WARN if str(entry.kind) == "find" else MHStyle.INK_100)
+		var colour := MHStyle.accent if str(entry.kind) == "pin" else (MHStyle.WARN if str(entry.kind) == "find" else (Color("#8CC3CB") if str(entry.kind) == "marker" else MHStyle.INK_100))
 		out.append({"bearing": wrapf(rad_to_deg(atan2(offset.x, -offset.y)), 0.0, 360.0), "label": str(entry.name), "distance": distance, "colour": colour, "kind": str(entry.kind)})
 	return out
 
