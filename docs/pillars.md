@@ -117,6 +117,7 @@ The robots do the heavy work; you do the fine work (cores, photos, anchors, firs
 - The buried heart is the only ending: the crew are held in orbit until it's understood, and you land them safely at the main base. The game doesn't carry on after it.
 - Castle is the one near voice.
 - New: the heart's clue trail is laid outward across the Reach (see pillar 1).
+- **15 Nov:** the high-level narrative structure is in docs/master-design.md §7, "Narrative structure". The four goals, the Heart and the base run side by side, and they converge when the beacon (re-sited by the Heart's map) and the pad are both ready.
 
 ## The guided chapters
 

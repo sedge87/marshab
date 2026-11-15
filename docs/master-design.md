@@ -49,6 +49,7 @@ Subnautica wrote down three pillars, each tied to an emotion, but built only one
     - no base to land beside;
     - a dead beacon;
     - flight rules: no crewed landing until someone explains why every cargo landing went wrong. That's NASA's anomaly-resolution habit, and it's the buried heart.
+    - **In the narrative structure (§7, 15 Nov):** the pad answers the first, and the Heart answers the other two. Its map re-sites the beacon and explains the anomaly.
   - **Their ship can wait.** It's stocked for the whole mission and an abort-to-orbit stay.
   - **Radio.** A relay satellite, landed in the plan with the cargo, hangs over the Reach.
     - It carries Castle's voice and your suit's telemetry (position, air, helmet cam) all day, which is how she watches your air. The lander's mic carries night sounds too, like the walker's grinding.
@@ -195,6 +196,45 @@ The pressures change in kind as you go, and each fades once a machine takes it o
 
 > **14 Nov:** the heart's clues are laid outward across the Reach, and the ending happens in the deep: you make it out, barely (`docs/range-ladder.md`).
 
+### Narrative structure · Decided 15 Nov
+
+The user's high-level shape for the whole game:
+
+```mermaid
+flowchart TD
+    Start["Guided start · Land, survive, establish a starter base"] --> Open["Open exploration"]
+
+    Open --> Science["Mars goals · Life, climate, geology, human exploration"]
+    Open --> Heart["A-story · Investigate the Heart"]
+    Open --> Base["Develop the base"]
+
+    Science <-->|"Clues and leads"| Heart
+    Science <-->|"Discoveries and equipment"| Base
+
+    Heart --> Discovery["Discover the Heart"]
+    Discovery -.->|"Heart's map: re-site the beacon safely; crew nav loads the map"| Beacon["Restore the landing beacon"]
+    Base --> Pad["Prepare the landing pad"]
+
+    Beacon --> Ready["Beacon and pad both ready"]
+    Pad --> Ready
+    Ready --> Crew["Crew lands from orbit"]
+```
+
+- **After the guided opening, the four Mars goals are open objectives** (docs/mars-science-goals.md), taken in any order.
+- **The Heart is the main story thread (the A-story).** It weaves through the goals: exploring turns up clues, and the clues give you new reasons to explore.
+- **Base development feeds the same loop.** It extends what you can reach and investigate.
+- **Human exploration ties straight into the base,** and into getting the pad ready for the crew.
+- **The threads converge at the crew's landing.** The crew come down once the beacon works and the pad is ready at the main base.
+
+Decided in the 15 Nov talk:
+- **How the Heart helps restore the beacon (the dashed arrow).**
+  - The beacon was fried by a solar storm that the Heart's field funnelled down (§2), so rebuilding it where it stood would only fail again.
+  - Discovering the Heart gives you its magnetic map. The map shows where the field funnels storms, so you rebuild the beacon somewhere safe or shielded.
+  - The crew lander's navigation loads your map, so its fixes no longer jump as the walkers' did.
+  - The same discovery explains the cargo anomaly, which meets the flight rules. All three of the crew's reasons to wait (§2) are covered by the chart's two branches.
+- **The Heart's timing is unchanged.** The thread runs from day 5, but its early clues stay small and deniable, and it's only named as the main goal late (see "One ending" below). The chart shows the story's shape, not when each part gets loud.
+- **The finale is still open.** The storm's return and the last push in the deep ("you make it out, barely") stay candidates for the final act. They aren't placed in the chart yet.
+
 
 The story is several separate threads, each started by something you do or by a timer, so every run gets its own slice through them:
 1. **The storm:** what happened to the cargo, and Earth's apologetic search. Starts at landing.
@@ -203,12 +243,12 @@ The story is several separate threads, each started by something you do or by a 
 4. **The wonder:** discoveries that lead from an ancient lakebed to a lava tube and end in strong evidence of ancient microbial life. Real science only.
    - **The buried heart · Decided 7 Nov** (docs/interference-options.md, A): the interference that wrecked the landing is a huge, ancient, cold, magnetised intrusion under the Reach, with a much younger, deeper magma pocket beneath it (science fixed 8 Nov). Clues from sol 1 (Walker 1's nav log with jumping fixes, its curving tracks, a rare green aurora, Castellanos's radio-noise jokes), a trail through the walkers' nav logs, a placed magnetometer and a magnetic Map layer, then the reveal: the young pocket's heat, rising through the old body's cracks, fed the hot springs behind the life find. In the storm's return the aurora warns of a solar storm; in the ending the crew land by your magnetic map.
 5. **The crew:** the people who were meant to land wait in the orbiter and talk to you while you work and drive. They come down only in the ending, once the heart is understood and the way down is safe (docs/systems-and-items.md §10e).
-6. **The storm returns:** the next dust season, the big late test.
+6. **The storm returns:** the next dust season, the big late test. (15 Nov: whether this is part of the final act is still open.)
 
 **One ending · Decided 7 Nov** (replaces the two endings; the user: make the buried heart "the only ending and really something that would become the player's goal"):
 - **The goal is to bring the crew down safely.** You were always the commissioner, sent first on a small lander. After every cargo landing went wrong in a way the storm doesn't explain, the flight rules hold the crew in orbit until someone on the ground works out why. The mystery is the blocker.
 - **It becomes the main goal late,** not after the first clues. First you set up, build the base, work the other goals and live and work on Mars; the early clues stay small and deniable, and Notes doesn't sum them up until the late game.
-- **The end avoids a catastrophe rather than escaping one:** solve the heart, make the way down safe, survive the storm's return, and the crew land. "Go home" is cut.
+- **The end avoids a catastrophe rather than escaping one:** solve the heart, make the way down safe (the beacon re-sited by the Heart's map, the pad ready), and the crew land. "Go home" is cut. **15 Nov:** surviving the storm's return is now one candidate for the final act, not a fixed step (see "Narrative structure" above).
 - **The game doesn't carry on open-ended after it.** How the final act plays is designed when we get there.
 - Grounded in Schell's "Multiple Endings Disappoint", Lens #25 Goals, #66 Obstacle and #9 Unification, and the design talks' "the story is the goal".
 
