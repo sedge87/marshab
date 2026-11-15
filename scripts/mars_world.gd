@@ -148,6 +148,7 @@ var drone: Node3D
 var _buggy_state := {}
 var _drone_state := {}
 var _vehicle_check := 0.0
+var debug_vehicles_now := false   # the debug panel: wrecks out now, chapters or not
 var pda: MHPda   # the slate (scripts/pda.gd, docs/pda.md): Tab
 var region_map: CanvasLayer   # scripts/region_map.gd (region sites only): Tab, and your trail since the airlock
 var _crew_rover_state := {}
@@ -884,7 +885,7 @@ func _sync_crew_rover() -> void:
 ## land (or, saved, where you left them). Not during the guided chapters.
 ## Creative: fixed, and parked by the lander.
 func _sync_region_vehicles() -> void:
-	var guided: bool = opening_days != null and opening_days.has_method("guided") and opening_days.guided()
+	var guided: bool = not debug_vehicles_now and opening_days != null and opening_days.has_method("guided") and opening_days.guided()
 	var creative := not MHGame.simulation_on()
 	if crew_rover == null and (not _crew_rover_state.is_empty() or not guided):
 		crew_rover = _spawn_vehicle("rover", _crew_rover_state, creative)
