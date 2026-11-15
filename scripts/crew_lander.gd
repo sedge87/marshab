@@ -160,6 +160,7 @@ func _build_cabin() -> void:
 	# A soffit over the airlock just inside the shut door: the hull's lip there showed its dark inside.
 	_wall(deck_body, Vector3(-1.0, 5.28, -2.258), Vector3(1.0, CEILING, FRONT_WALL))
 	_build_seal_lamp()
+	_build_porthole()
 	# A round ceiling lamp, a downlight under it and a soft fill.
 	var lamp := MeshInstance3D.new()
 	var lamp_disc := CylinderMesh.new()
@@ -193,6 +194,68 @@ func _build_cabin() -> void:
 	for light in [down, fill]: light.set_meta("full_energy", light.light_energy)
 	cabin_lights = [down, fill]
 	cabin_glow = glow
+
+## 16 Nov playtest: a small sealed porthole in the cabin wall, beside the
+## landing seat, within reach of a strapped-in look (scripts/wake_up.gd).
+## "The size of a dinner plate" (Castle, d4_sunset). The hull model has no
+## opening, so the glass shows a small camera's view from just outside it,
+## looking the same way: it only renders while it's on screen.
+const PORTHOLE_AT := Vector3(-2.24, 1.4, .4)   # lander space, above the deck
+const PORTHOLE_RADIUS := .2
+var _porthole_view: SubViewport
+
+func _build_porthole() -> void:
+	var at := PORTHOLE_AT + Vector3(0, DECK, 0)
+	var outward := Vector3(at.x, 0, at.z).normalized()
+	var holder := Node3D.new()
+	holder.name = "Porthole"
+	add_child(holder)
+	holder.position = at
+	holder.basis = Basis.looking_at(-outward, Vector3.UP)   # its -Z points into the cabin
+	# The frame: a ring in the house shell's trim, and a darker gasket.
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = PORTHOLE_RADIUS
+	torus.outer_radius = PORTHOLE_RADIUS + .07
+	torus.rings = 24
+	torus.ring_segments = 8
+	var trim := StandardMaterial3D.new()
+	trim.resource_name = "frame_trim"
+	torus.material = MHPalette.material(trim)
+	ring.mesh = torus
+	ring.rotation.x = PI * .5
+	holder.add_child(ring)
+	# The glass: the view outside, a little blue-grey, on a disc.
+	_porthole_view = SubViewport.new()
+	_porthole_view.size = Vector2i(256, 256)
+	_porthole_view.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+	holder.add_child(_porthole_view)
+	var eye := Camera3D.new()
+	eye.fov = 70.0
+	eye.near = .05
+	_porthole_view.add_child(eye)
+	var glass := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE * (PORTHOLE_RADIUS + .01) * 2.0
+	glass.mesh = quad
+	glass.rotation.y = PI   # its face towards the cabin (the holder's -Z)
+	glass.position = Vector3(0, 0, -.01)
+	var shader := Shader.new()
+	shader.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nuniform sampler2D view : source_color, filter_linear;\nvoid fragment() {\n\tif (distance(UV, vec2(.5)) > .5) discard;\n\tvec3 c = texture(view, vec2(1.0 - UV.x, UV.y)).rgb;\n\tALBEDO = c * vec3(.94, .96, 1.0) + vec3(.02);\n}\n"
+	var look := ShaderMaterial.new()
+	look.shader = shader
+	look.set_shader_parameter("view", _porthole_view.get_texture())
+	glass.material_override = look
+	holder.add_child(glass)
+	# Just outside the hull, looking out the same way.
+	_place_porthole_eye.call_deferred(eye, at + outward * 1.4, outward)
+
+func _place_porthole_eye(eye: Camera3D, local_at: Vector3, outward: Vector3) -> void:
+	if not is_inside_tree(): return
+	eye.global_position = to_global(local_at)
+	var out_world := global_basis * outward
+	eye.look_at(eye.global_position + out_world + Vector3(0, -.12, 0), Vector3.UP)   # a touch down: ground and horizon
+	_porthole_view.world_3d = get_viewport().world_3d
 
 ## A box mesh between two corners (lander space), in the house shell, not yet added.
 func _box(corner_a: Vector3, corner_b: Vector3) -> MeshInstance3D:
@@ -272,7 +335,54 @@ func _furnish() -> void:
 			(body as StaticBody3D).collision_layer = 1 if present else 0
 		add_child(holder)
 
+## 16 Nov: the first time the hatch opens in a new game, the cabin vents
+## first (a hiss, amber light, dust lifting off the deck), then the ramp
+## swings down onto daylight (scripts/first_step.gd whites the view out).
+const VENT_SECONDS := 3.0
+var first_open_vent := false      # set for a new story game (scripts/mars_world.gd)
+var _venting := false
+
+func _vent_then_open() -> void:
+	_venting = true
+	_set_seal("working")
+	MHAudio.sfx("suit_fill", 0.0, .0)
+	MHAudio.sfx("suit_beep", -8.0)
+	var dust := CPUParticles3D.new()
+	dust.name = "VentDust"
+	dust.amount = 90
+	dust.lifetime = 2.4
+	dust.one_shot = true
+	dust.explosiveness = .2
+	dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	dust.emission_box_extents = Vector3(.8, .1, .8)
+	dust.direction = Vector3(0, 1, -1)
+	dust.spread = 50.0
+	dust.initial_velocity_min = .3
+	dust.initial_velocity_max = 1.2
+	dust.gravity = Vector3(0, -.4, -.6)
+	dust.scale_amount_min = .02
+	dust.scale_amount_max = .06
+	var mote := SphereMesh.new()
+	mote.radius = .5
+	mote.height = 1.0
+	mote.radial_segments = 4
+	mote.rings = 2
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(.78, .55, .38, .55)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mote.material = m
+	dust.mesh = mote
+	dust.position = Vector3(0, DECK + .3, -1.4)
+	add_child(dust)
+	dust.emitting = true
+	await get_tree().create_timer(VENT_SECONDS).timeout
+	_venting = false
+	set_hatch(true, true)
+	get_tree().create_timer(4.0).timeout.connect(dust.queue_free)
+
 func interaction_prompt() -> Dictionary:
+	if _venting: return {"label": "Pathfinder · venting the cabin…"}
 	var label := "Pathfinder · sealing…" if seal_state in ["closing", "latching", "pressurising"] else "Pathfinder"
 	var refusal := _night_refusal()
 	if not _open and not refusal.is_empty(): return {"label": "Pathfinder", "primary": refusal, "info": "About"}
@@ -288,6 +398,11 @@ func interact(_actor: Node = null) -> bool:
 		var days := get_tree().get_first_node_in_group("opening_days")
 		var caution: String = str(days.night_caution()) if days != null and days.has_method("night_caution") else ""
 		if not caution.is_empty(): MHNotices.post("info", "Night", caution, "", 1)
+	if _venting: return true
+	if not _open and first_open_vent:
+		first_open_vent = false
+		_vent_then_open()
+		return true
 	set_hatch(not _open, true)
 	return true
 

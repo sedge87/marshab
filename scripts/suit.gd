@@ -780,6 +780,13 @@ func suit_up() -> void:
 	if not can_suit_up(): return
 	helmet = true
 	_don_moment(true)
+	# 16 Nov: the first seal, in the lander before the hatch, is the suit's
+	# check (it used to come at the hatch): the wrist pad lifts and shows you.
+	if not seal_checked:
+		get_tree().create_timer(DON_SECONDS).timeout.connect(seal_check)
+		MHNotices.drop("Helmet")
+		var radio: Node = world.get("radio")
+		if radio != null and _guided(): radio.ring("d1_helmet")
 
 func suit_off() -> void:
 	if not helmet: return

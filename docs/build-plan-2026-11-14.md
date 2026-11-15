@@ -107,6 +107,7 @@
 ### A6. The guided chapters, rewritten (`docs/opening-days.md`)
 - **Built 15 Nov** (not playtested). What was decided is in `docs/opening-days.md`, "As built (A6)". In short: a briefing Land step and a steered descent in a 750 m circle round home; chapters run together after a breather; Walker 1 patched on the spot and sent home from the Map; the core brought alive (no leak) and a Quarters liner; crater-floor and riverbed sites removed.
 - **15 Nov playtest, chapter 1:** you come to in the landing seat; you can land anywhere sensible; no air pack on day 1 and the lope costs air; the printer offers only story prints; the orbiter at twilight. See `docs/opening-days.md`, "After the 15 Nov playtest".
+- **16 Nov playtest, the cabin:** four hands-on steps (unbuckle, slate, helmet, a vented hatch) in about a minute, and the first step on Mars as a short reveal with the first-person talk. See `docs/opening-days.md`, "After the 15 Nov playtest, part 2".
 - **Chapter 5, the Print Shop (15 Nov):** after chapter 4 nothing could be made. Pallet 6 is towed home, then the intake, the Print Shop and the extractor; after that, Castle's morning "what's next" calls and inner-voice hints. See `docs/opening-days.md`, "Chapter 5".
 - **The bare suit,** with the pallet distances to match.
 - **Chapter 3:** fix Walker 1 and choose home.

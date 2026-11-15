@@ -10,6 +10,7 @@ const SLEEP := preload("res://scripts/sleep.gd")
 const SLATE_CRADLE := preload("res://scripts/slate_cradle.gd")
 const WAKE_UP := preload("res://scripts/wake_up.gd")
 const ORBITER_SKY := preload("res://scripts/orbiter_sky.gd")
+const FIRST_STEP := preload("res://scripts/first_step.gd")
 ## Seconds after touchdown that the text from orbit lights the slate.
 const SLATE_LIGHTS_AT := 10.0
 const CARRY := preload("res://scripts/carry.gd")
@@ -103,6 +104,8 @@ var _cores_state := {}
 var walkers: Dictionary = {}
 var _walkers_state := {}
 var _field_state := {}
+var _first_step_state := {}
+var first_step: Node             # the first step on Mars and its boot print (scripts/first_step.gd)
 var _lifepod_state := {}
 var opening_days: Node   # scripts/opening_days.gd: the first days, each ending with sleep
 var _days_state := {}
@@ -283,6 +286,9 @@ func _ready() -> void:
 		drop_field = DROP_FIELD.new()
 		add_child(drop_field)
 		drop_field.setup(self, _field_state)
+		first_step = FIRST_STEP.new()
+		first_step.setup(self, _first_step_state)
+		add_child(first_step)
 		lifepod = LIFEPOD.new()
 		add_child(lifepod)
 		lifepod.setup(self, _lifepod_state)
@@ -634,6 +640,9 @@ func _begin_lander_intro() -> void:
 		var wake := WAKE_UP.new()
 		wake.setup(self)
 		add_child(wake)
+		# 16 Nov: the hatch vents first, and the first step is a moment.
+		lander.first_open_vent = true
+		if first_step != null: first_step.arm()
 	# What the lander's cameras saw coming down is sharp on the Map (master-design §2).
 	if known != null: known.reveal(Vector2(lander.global_position.x, lander.global_position.z) + known.origin, known.CAMERA_PATCH)
 	# Your slate lies on the console; a text from orbit lights it up (docs/pda.md §8).
@@ -712,6 +721,9 @@ func _after_slate() -> void:
 		# the suit and the first job (data/radio/day1.txt d1_slate, which has
 		# "do think air" and "do parachute"). The hatch waits for it.
 		get_tree().create_timer(1.0).timeout.connect(func() -> void: if radio != null: radio.ring("d1_slate"))
+		# 16 Nov: K seals the helmet next (scripts/suit.gd suit_up).
+		get_tree().create_timer(5.0).timeout.connect(func() -> void:
+			if _intro_stage == "inside" and suit != null and not bool(suit.seal_checked) and not bool(suit.helmet): MHNotices.hint("Helmet", "Press K to seal your helmet."))
 		return
 	elif MHChapterOne.new_rules():
 		get_tree().create_timer(2.0).timeout.connect(func() -> void:
@@ -760,9 +772,10 @@ func _update_lander_intro() -> void:
 		elif pda != null and not pda.received: pda.hand_over(false)
 		# The suit checks its seals and shows you on the wrist pad (scripts/suit.gd).
 		if suit != null: suit.seal_check()
-		# The hatch open: the opening's beats go on, and the parachute's in view.
+		# The hatch open: the opening's beats go on, and the parachute's in view
+		# (16 Nov: a first step still to come brings it, with Castle's d1_first_step).
 		_after_slate()
-		_parachute_beat()
+		if first_step == null or not bool(first_step.armed) or bool(first_step.done): _parachute_beat()
 	elif _intro_stage == "open" and not lander.cabin_contains(player.global_position):
 		_intro_stage = "done"
 		if pda != null: pda.received = true   # however they got out (a save, a skipped intro)
@@ -1394,6 +1407,7 @@ func current_state() -> Dictionary:
 		"notes": notes.export_state() if notes != null else {},
 		"storm_drop": storm_drop.export_state() if storm_drop != null else {},
 		"drop_field": drop_field.export_state() if drop_field != null else {},
+		"first_step": first_step.export_state() if first_step != null else {},
 		"lifepod": lifepod.export_state() if lifepod != null else {},
 		"walker": walker.export_state() if walker != null else {},
 		"opening_days": opening_days.export_state() if opening_days != null else {},
@@ -1477,6 +1491,7 @@ func _restore_pending_habitat() -> void:
 	_notes_state = state.get("notes", {}) as Dictionary
 	_drop_state = state.get("storm_drop", {}) as Dictionary
 	_field_state = state.get("drop_field", {}) as Dictionary
+	_first_step_state = state.get("first_step", {}) as Dictionary
 	_lifepod_state = state.get("lifepod", {}) as Dictionary
 	_walker_state = state.get("walker", {}) as Dictionary
 	_days_state = state.get("opening_days", {}) as Dictionary

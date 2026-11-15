@@ -67,7 +67,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Build modes reuse E (orbit) and other keys; explore actions must not fire
 	# behind the build camera, so only mouse-look below is shared.
 	# Driving the crew rover (scripts/crew_rover.gd): it takes the keys.
-	var exploring := not _any_build_mode_active() and not bool(get_meta("driving", false)) and not bool(get_meta("riding", false)) and not bool(get_meta("strapped", false))
+	var exploring := not _any_build_mode_active() and not bool(get_meta("driving", false)) and not bool(get_meta("riding", false)) and not bool(get_meta("strapped", false)) and not bool(get_meta("first_step", false))
 	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		# With the wrist pad up (T held), E eats the suit's food bar (scripts/suit.gd).
 		var suit := get_tree().get_first_node_in_group("suit")
@@ -90,6 +90,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_use_looked_at_interactable("interact_sleep")
 	# G: a tap is the looked-at item's third action, holding it opens GAR-Y's
 	# orders. Both are handled by scripts/gar_y_orders.gd.
+	# The first step on Mars (scripts/first_step.gd) drives the view for a few seconds.
+	if bool(get_meta("first_step", false)): return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var look := float(get_meta("look_speed", 1.0))   # a lazier look when hungry (scripts/body.gd)
 		rotate_y(-event.relative.x * MOUSE_SENSITIVITY * look)
@@ -114,7 +116,7 @@ func _physics_process(delta: float) -> void:
 	# Exterior construction uses the same movement keys to pan its bird's-eye
 	# camera. Freeze the character in place so panning never changes the real
 	# player cell represented by the build-mode marker.
-	if bool(get_meta("build_mode_active", false)) or bool(get_meta("ui_freeze", false)) or bool(get_meta("driving", false)) or bool(get_meta("riding", false)) or bool(get_meta("slate_still", false)) or bool(get_meta("strapped", false)):
+	if bool(get_meta("build_mode_active", false)) or bool(get_meta("ui_freeze", false)) or bool(get_meta("driving", false)) or bool(get_meta("riding", false)) or bool(get_meta("slate_still", false)) or bool(get_meta("strapped", false)) or bool(get_meta("first_step", false)):
 		velocity = Vector3.ZERO
 		return
 	if bool(get_meta("debug_fly", false)):

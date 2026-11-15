@@ -17,38 +17,26 @@ nudge Castellanos: Outpost One, orbit. Still listening. I'm not going anywhere. 
 - I'm here. I'm alive.
 	set answered
 	set alive
-Castellanos: Oh, thank God. There you are. We lost your antenna right as you touched down, and all we had was static and a dust cloud. Rao went completely white. I've never seen him go that colour, and I've seen him eat Achterberg's curry. [ID:d1_relock_02]
-- I'm down. I'm fine. Honestly.
+# 16 Nov playtest: shorter, and it talks over what you're doing (unbuckle,
+# slate, helmet, hatch). Nothing waits on it.
+Castellanos: Oh, thank God. There you are. We lost you right at touchdown. Ninety seconds of static. [ID:d1_relock_c1_02]
+- I'm down. I'm fine.
 	set calm
-	Castellanos: Good. Okay. Give me a second, I just need to breathe for a bit. Seven months of sims and none of them ended with ninety seconds of nothing. [ID:d1_relock_03a]
-- That landing was rougher than the sims.
+	Castellanos: Good. Give me a second to breathe. [ID:d1_relock_c1_03a]
+- That was rougher than the sims.
 	set honest
-	Castellanos: It looked rough from up here too. The dust threw you long, the beacon never answered, and you still put it down on flat ground. You walked away from it. That counts for everything. [ID:d1_relock_03b]
+	Castellanos: It looked it. And you still put it down on flat ground. [ID:d1_relock_c1_03b]
 - Is everyone up there okay?
 	set kind
-	Castellanos: Are we okay? You're the one who just fell out of the sky. Yes, we're fine. Tupou's pressed against the window, Rao's pretending he wasn't worried, and Mwangi is taking everybody's pulse whether they want it or not. [ID:d1_relock_03c]
-# 15 Nov playtest: you came to in the seat. She knows you were out.
-Castellanos: Your suit says you were out cold for a few minutes after touchdown. Mwangi wants you to sit still and breathe. Humour him. [ID:d1_relock_b1_01]
-Castellanos: And then, when you're ready, have a think about where you're sitting. You're on Mars. The first person on Mars. Ever. How does that feel? [ID:d1_relock_b1_02]
-- Like I should say something historic.
-	set joker
-	Castellanos: Please don't. Mwangi's had a speech ready for you since the cruise and if you steal his thunder he'll sulk until the finale. [ID:d1_relock_03a3]
-- Small. Very, very small.
-	set honest
-	Castellanos: Yeah. I think that's the right answer, actually. [ID:d1_relock_03a4]
-- I'll tell you when my head stops spinning.
-	Castellanos: Fair. It'll still be true in ten minutes. [ID:d1_relock_b1_03c]
-Castellanos: Right. Business, before I get sentimental. [ID:d1_relock_04]
-Castellanos: Unclip, and grab your slate off the console. Rao got a photo on the last pass and it's on there. Have a look. [ID:d1_relock_b1_05]
-do slate_light
+	Castellanos: You're asking us? Yes. Rao's gone a funny colour, but yes. [ID:d1_relock_c1_03c]
+Castellanos: Your suit says you were out cold for a few minutes. Take it slow. Unclip when you're ready, and grab your slate off the console. [ID:d1_relock_c1_04]
 => END
 
 # The slate's first look (scripts/mars_world.gd _after_slate). The hatch waits
 # for this (scripts/opening_days.gd hatch_refusal).
 ~ d1_slate
-Castellanos: See it? A parachute, up on the ridge. Pallet one, with the module's life support in it. That's where the base starts. [ID:d1_slate_b1_01]
-Castellanos: Before you open that hatch, look at your wrist. Hold T. That's your air, your power, and how long till you need to turn back. [ID:d1_slate_b1_02]
-Castellanos: The suit's small. A few minutes of air out there, not much more. The ridge and back is fine. Further than that, you come home and refill, and you watch that wrist. [ID:d1_slate_b1_03]
+Castellanos: See it? Rao's photo. A parachute, up on the ridge. Pallet one, the module's life support. That's where the base starts. [ID:d1_slate_c1_01]
+Castellanos: Seal your helmet, and then the hatch is yours. [ID:d1_slate_c1_02]
 do think air
 # A6: why the crew can't land yet waits for the first dusk talk (d1_sun_after).
 - When are the rest of you coming down?
@@ -57,7 +45,33 @@ do think air
 - No pressure, then.
 	set joker
 	Castellanos: None at all. Just the whole mission. You'll be fine, you were always the calm one on the ship. Apart from that one time with the coffee. [ID:d1_relock_06b]
-Castellanos: First job, the ridge. Open the hatch, go and have a look, and talk to me while you walk if you like. [ID:d1_slate_b1_04]
+=> END
+
+# The helmet sealed in the cabin (scripts/suit.gd suit_up): the wrist pad lifts.
+~ d1_helmet
+Castellanos: That's your air and power on your wrist. The suit's small: the ridge and back is fine. When it says turn back, you turn back. [ID:d1_helmet_c1_01]
+=> END
+
+# The first step on Mars (scripts/first_step.gd), after the moment and a beat
+# of silence. The first-person talk lives here now, not in the cabin.
+~ d1_first_step
+Castellanos: Outpost One? You've gone quiet. Are you on the ground? [ID:d1_first_step_01]
+- I'm standing on it.
+	Castellanos: You're standing on Mars. [ID:d1_first_step_02a]
+- Give me a second.
+	Castellanos: Take all the seconds you want. [ID:d1_first_step_02b]
+Castellanos: The first person on Mars. Ever. How does it feel? [ID:d1_first_step_03]
+- Like I should say something historic.
+	set joker
+	Castellanos: Please don't. Mwangi's had a speech ready since the cruise, and he'll sulk till the finale. [ID:d1_first_step_04a]
+- Small. Very, very small.
+	set honest
+	Castellanos: Yeah. I think that's the right answer, actually. [ID:d1_first_step_04b]
+- I can't stop looking at it.
+	set moved
+	Castellanos: Don't. Not yet. [ID:d1_first_step_04c]
+Castellanos: Houston's floor went completely silent when your boot came down. Then everyone stood up at once. [ID:d1_first_step_05]
+Castellanos: Right. Before I get sentimental. First job, the ridge. Talk to me while you walk, if you like. [ID:d1_first_step_06]
 do parachute
 => END
 

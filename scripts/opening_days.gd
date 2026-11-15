@@ -193,20 +193,16 @@ func is_night() -> bool:
 
 ## Why the lander's hatch won't open for you now, or "" (scripts/crew_lander.gd).
 func hatch_refusal() -> String:
-	# The first call: answer Castle before you go anywhere.
-	var radio := _radio()
-	if v2() and radio != null and not radio.flag("answered") and (not (radio.heard as Dictionary).has("d1_relock") or radio.playing == "d1_relock"):
-		var cabin_lander: Node = world.get("lander")
-		var you: Node3D = world.get("player")
-		if cabin_lander != null and you != null and bool(cabin_lander.cabin_contains(you.global_position)): return "Castle's calling. I should answer her first."
-	# 15 Nov playtest: the slate first, and hear her out before stepping outside.
-	if v2() and radio != null and int(chapter) <= 1 and (radio.heard as Dictionary).has("d1_relock") and (not (radio.heard as Dictionary).has("d1_slate") or radio.playing == "d1_slate"):
+	# 16 Nov playtest: the first time out, only what you need: the slate and a
+	# sealed helmet. Nothing waits on Castle's talking.
+	if v2() and int(chapter) <= 1 and str(world.get("_intro_stage")) == "inside":
 		var in_lander: Node = world.get("lander")
 		var me: Node3D = world.get("player")
 		if in_lander != null and me != null and bool(in_lander.cabin_contains(me.global_position)):
 			var pda: Node = world.get("pda")
 			if pda != null and not bool(pda.received): return "My slate's on the console. I'm not going out there without it."
-			return "Castle's still talking me through it. Hear her out first."
+			var suit: Node = world.get("suit")
+			if suit != null and not bool(suit.seal_checked) and not bool(suit.helmet): return "Helmet first. K seals it."
 	if v2() or not in_lander_days() or not is_night(): return ""   # version 1 (old saves) still locks it
 	var lander: Node = world.get("lander")
 	var player: Node3D = world.get("player")

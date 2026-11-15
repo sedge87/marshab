@@ -314,3 +314,24 @@ After the chapters:
 - **Inner voice** (`next_feedstock`, `next_metal`, `next_rack`): open while true, answered when it stops being true.
 - **Locked rooms** now say where their upgrade's plan comes from, not "no plan yet".
 - Castle's sunset talk now says "Tomorrow, the Print Shop… then water".
+
+## After the 15 Nov playtest, part 2: the cabin and the first step (16 Nov)
+**What the user found:** the cabin took about 2 minutes of listening, and "first person on Mars" belonged at the first step. They wanted a moment of awe for player and character alike.
+
+**The cabin is now four hands-on steps, about a minute.** Castle talks over them, and nothing waits on her.
+1. **Unbuckle:** E, once your eyes are open (`wake_up.gd`). There's a hint, and it unbuckles itself after 60 s. The slate lights up as you stand.
+2. **The slate:** take it from the console. Castle shows Rao's photo of the parachute (`d1_slate`, trimmed).
+3. **Seal the helmet:** K (`suit.gd suit_up`). The first seal is the suit's check: the wrist pad lifts and Castle gives one line (`d1_helmet`). This replaces "hold T".
+4. **The hatch:** the lock is only the slate and the sealed helmet (`opening_days.gd hatch_refusal`). The first opening vents the cabin for about 3 s, with a hiss, an amber lamp and dust lifting (`crew_lander.gd _vent_then_open`). Then the ramp swings down, and the view whites out into daylight.
+
+**The first step** (`scripts/first_step.gd`) comes the first time your boot is on the regolith, off the ramp:
+- You stop, and the HUD goes, compass included, for this moment only.
+- The view eases down to your boot print, then lifts and pans slowly towards the sun (or pallet 1's ridge).
+- Music swells, and "I'm standing on Mars." fades in.
+- About 8 s later control is back. After 3 s of quiet comes Castle's `d1_first_step`: "Are you on the ground?", then the first-person-on-Mars talk and Houston standing up. Then the ridge, and the parachute thought.
+
+The boot print stays (saved) and is "First step" on the Map.
+
+**The lander, same day:**
+- You come to in the seat facing the console and the slate. The waking now turns you from the lander's own layout, since the furniture isn't placed yet when you wake. You sit in the seat, not behind it.
+- A small sealed porthole is on the wall to your right, within a strapped-in look (`crew_lander.gd _build_porthole`). The hull model has no opening, so the glass shows a small camera's view from just outside it, and it renders only while it's on screen. It's "the size of a dinner plate", as Castle says on day 4.
