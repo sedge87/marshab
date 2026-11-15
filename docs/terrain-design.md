@@ -471,3 +471,180 @@ The user wants **physical gates that need the right kit**, hazards and forced da
   - the walls are plain slabs with sharp ends;
   - the plug is a slab, not a heap of rubble;
   - a pitch is a slope you can slide down, and nothing brings you back up.
+
+## 13. B5: terrain tools and the land fixes (agreed 15 Nov)
+
+The user wants control over the land, and isn't a sculptor, so the land editor is the main tool. The user's choices (15 Nov):
+- hand edits are made with **Terrain3D's brushes** (a sculpt layer, not custom sculpting code);
+- ring 2's obstacles are **real detours** for the rover;
+- the editor runs **only in the PC's browser**;
+- the **three HiRISE downloads** are approved.
+
+The user's own outline for the tools (lightweight, non-destructive, Godot's own nodes) is folded in below: the scatter tool and the rock shader are in B5, and the modular cave rock meshes are in B6.
+
+Nothing here is built yet.
+
+### The land editor: the user's side
+`tools/edit_land.bat` starts `tools/region_editor.py`, a small local server on 127.0.0.1 that only this PC can reach, and opens the page in the browser. A mock-up of the page was shown to the user on 15 Nov.
+
+1. **The map** is the shaded heights from the last build. Every landform is drawn on it as an outline, coloured by kind. Home and the rings are faint circles. There are layers you can switch on: caves (dashed), rings and anchors.
+2. **Tap a landform.** A panel opens with its name and plain sliders for its numbers (height, roughness at the foot, lobes, passes and so on).
+   - Drag the landform to move it.
+   - The corner dot resizes it and the round dot turns it.
+   - A line (ridge, scarp or channel) has dots to drag, and tapping the line adds a dot.
+3. **+ Add** places a new mesa, crater, boulder field, ridge, scarp, channel or glacier. **Delete** removes one.
+4. **Undo**, and **Save**. Every save is kept in `data/region_layout_history/`, so any earlier land can come back.
+5. **Regenerate** runs the generator with `--quick` (heights, maps and preview).
+   - The map refreshes, and **Before / after** slides between the old land and the new.
+   - The **checks** show as a list, PASS / WARN / FAIL:
+     - rover routes;
+     - walking out from home;
+     - the canyon gate;
+     - a choice every so many metres in each ring;
+     - passes on each step line;
+     - the maze check (below);
+     - anchors that moved or went missing.
+6. **Full build** makes the textures too (about 2.5 minutes). Then you walk it in the game.
+
+Each landform's random seed comes from its `id`, so moving or deleting one never reshuffles the others.
+
+### The layout file: `data/region_layout.json`
+- **What it holds:**
+  - **the region:** size, spacing, seed, home, rings, the wind;
+  - **every landform:** `id`, `kind`, `label`, where it is (a centre, size and turn, or the points of a line), and its kind's numbers. These are today's constants in `tools/generate_region.py`: `CRATER`, `MOUND`, `MESAS` (with `MESA_RAMPS` and `MESA_GULLIES` folded into each mesa), `STEP_LINES`, `WRINKLE_RIDGES`, `BOULDER_FIELDS`, `YARDANGS`, `GLACIER`, `ICE_PATCHES`, `ICE_SCARPS`, `INVERTED_CHANNELS`, `HOME_GROUND`, `FISSURES`, `LAVA_PLAIN`, `PLATY_BELT`, the canyon and its side canyons and landslides, the river, the dunes, the ripple belts, `CHAOS_BLOCKS`, `FRESH_CRATER`, `HEART`, `DRONE_WRECK` and the landing zones;
+  - **the shape numbers buried inside the recipes,** where the user would want to tune them (for example a wrinkle ridge's 9 m arch and 15 m crest). They move into each landform's entry as named numbers, with today's values as defaults;
+  - **`caves`:** `LAVA_TUBE`, `DEEP`, `MAZE` and `NATURAL_CAVES` as they are today (their points and numbers). In B5 the editor shows them and can move their ways in. B6 turns this section into passages and junctions.
+- **What stays in the script:** how each kind is made (its recipe), the ground textures, the checks.
+- **The proof step comes first.** The switched generator must make the same `height.r16.gz`, `control.u32.gz`, `colour.png`, `ground.png` and `region.json` (apart from the new `anchors`) byte for byte. A small script compares the hashes. Only then do the fixes start.
+- **Seeds by id.** Today each landform's seed is a fixed `SEED + n`. The file keeps those numbers for the landforms that exist (so the proof holds); new landforms get a seed made from their `id`.
+
+### Named anchors (`region.json` `anchors`)
+- **Each anchor has:** `id`, `position` [x, z], `height` (on the ground after the build), `ring`, `landform`.
+- **Every landform gives** a centre anchor plus its useful points. For example:
+  - `far_mesa.top`, `far_mesa.ramp_foot`;
+  - `east_front.pass_2`;
+  - `glacier.toe`, `glacier.alcove`;
+  - `channel.crossing_1`;
+  - `tube.skylight_3`, `tube.mouth`;
+  - `yardangs.dead_end_2`;
+  - `fissure.bridge`.
+- **The game** gets one lookup, `MHRegion.anchor(id)`, and a test.
+- **C1 places everything by anchor.**
+  - A check warns when an anchor moves more than 50 m since the last build.
+  - It fails when data in `data/` names an anchor that no longer exists.
+
+### The sculpt layer (Terrain3D)
+- `tools/sculpt_region.tscn` (a @tool scene) loads the generated land into a Terrain3D in the Godot editor, with editor collision on. You sculpt with Terrain3D's raise, lower, smooth and flatten brushes.
+- **Save sculpt** stores only the difference from the generated land, as `data/region_sculpt.exr` (float heights, 2 m a point).
+- The generator adds it **last**, after the caves and fissures and before the checks, so it survives every Regenerate and the checks see it.
+- It's masked to zero over every cave's footprint and its cover, so it can't open a roof.
+- The sculpt stays fixed on the map. The land editor shades sculpted patches, so you can see when a landform has been moved away from one.
+
+### Rock scatter along a path (B5; the user's outline)
+- `scripts/tools/rock_path.gd`, a `@tool` script on a `Path3D`. Its Inspector has:
+  - the rock scenes to use (an array);
+  - spacing / density;
+  - a random scale range;
+  - random turn and tilt;
+  - how far from the curve rocks spread;
+  - which ones get collision;
+  - a **Regenerate** button.
+- **Snapping:** each rock is dropped onto the ground with a `PhysicsDirectSpaceState3D` ray cast downward, then tilted part of the way towards the ground's normal.
+- **Big rocks** that need collision are single nodes. **Small rocks and pebbles** go into one `MultiMeshInstance3D` per path, for speed.
+- **The paths live in their own scene** (`scenes/terrain/rock_paths.tscn`), loaded with the region. Each path can name an **anchor**: it's stored relative to that anchor, so it follows its landform when the land editor moves it. After a Regenerate, the paths re-snap.
+- **Where it's used first:** boulder trains along the north scarp and east front, the glacier's moraines, the caprock rubble at the foot of the raised riverbeds, and the ice scarps' fallen blocks.
+- **Rocks follow the house style:** Blender models with MHPalette role materials, no lettering.
+
+### The rock blend shader (B5)
+- A reusable spatial shader with **triplanar mapping** and **world-space slope and height blending**, so a placed rock picks up the ground's dust on its upper faces and near its base, and no texture seams show. It's built from the terrain shader's triplanar fix (e9aea1c).
+- It becomes a new **MHPalette role** ("ground rock"), so every rock model uses it.
+
+### Left for B6 (cave networks)
+- **Modular rock meshes** for cave ceilings, walls and overhangs (the T2 fix): broken-rock pieces kitbashed over the swept passages, and cave mouths sunk into the slope.
+- **A cave preview in the Godot editor,** so the rock scatter tool can ray cast onto cave floors (the caves are only built when the game runs today).
+- **The `caves` section** of the layout file becomes passages and junctions, with the editor's cave layer able to edit them.
+
+### The land fixes
+Each fix is a better recipe. Its numbers show up as sliders in the editor.
+
+**T3: too gentle to be an obstacle.** The rover gets **real detours**: steep sides it can't climb, passes it must find, and bays or corridors that dead-end and cost minutes to back out of. On foot most of it can be scrambled. The checks keep everything reachable.
+- **Dry channel (3):**
+  - the floor gets gravel bars, a narrower inner channel cut into it, terraced banks and cobbles (the rock path tool);
+  - 3 to 5 smaller V-shaped tributaries branch off upstream into a little network;
+  - the two crossings stay.
+  - Reference: HiRISE ESP_088471_1750, "Wrinkle Ridge and Valley Network Intersection".
+- **Wrinkle ridges (9):**
+  - from a 9 m arch with a 15 m crest to about 45 m in all;
+  - one side steep and broken, too steep for the rover;
+  - a lumpy, crenulated crest;
+  - the rover crosses only at the passes.
+- **North scarp (10):**
+  - from 18 m to 30–35 m, in three ledges;
+  - a fallen-rock apron and boulder trains at its foot;
+  - spurs and dead-end bays, so finding a pass is a small puzzle.
+- **East front (11):**
+  - from 11 m to 20–25 m;
+  - lobes pushing out like a real lava flow's edge, with breakouts;
+  - rough ground at its foot.
+  - New ring 2 boulder fields with corridors go between the scarp and the front.
+- **Yardang maze (12):** in the style of the Medusae Fossae yardangs:
+  - long, sharp-crested, steep-sided ridges, 3 to 5 times longer than wide, about 50–60 m tall so you can't see over them;
+  - narrow corridors, some closed where two ridges join;
+  - only a few through-lanes.
+  - The Arabia Terra patch is kept for the ridges' surface detail, no longer for their layout.
+  - **New check:** the way through on foot is at least twice the straight-line distance, and there are at least 3 dead ends.
+
+**T4: real Mars references.** Downloads are kept in `.claude_tmp/dtm/` and not committed. Patches are cut with `tools/hirise_patch.py` (made general for any DTM) into `assets/terrain/patches/`. Credit: NASA/JPL-Caltech/UArizona.
+- **Raised riverbeds (13):**
+  - **Data:** DTM DTEEC_007627_1765_008563_1765_U01, "Inverted Valleys near Juventae Chasma" (1 m a point, 460 MB): branching, flat-topped ridges, the old valley floors left standing.
+  - **Change:**
+    - a patch laid along our riverbed lines, with the plain under it taken off;
+    - flat tops and layered sides;
+    - broken caprock boulders at the foot;
+    - branches that cross.
+  - **Image reference:** ESP_020528_1750 (Aeolis/Zephyria sinuous ridges).
+- **Buried glacier (16):** real Mars "glacier-like forms" start in an **alcove** cut into a mesa or valley wall and run out as a **tongue**:
+  - lines along the flow;
+  - bowed ridges across it near the end;
+  - **moraine ridges** past the toe;
+  - grey rubble with lumpy "brain terrain";
+  - pits where the ice has sublimated.
+  - **Data:** DTM DTEED_009455_2215_008809_2215_A01, "Tributary Glacier-Like Feature with Parallel Lineations on Valley Wall" (Protonilus Mensae, 2 m, 250 MB). It's the same place as HiRISE's "The Life of a Glacier on Mars" (PSP_008809_2215).
+  - **Change:**
+    - an alcove cut into the glacier's mesa;
+    - the tongue 2 to 3 times longer than today's lobe (400 m);
+    - moraines at the toe;
+    - the pits kept, with roofed ones still hidden.
+- **Ice fields and scarps (17):** Mars's known clean ice shows at **ice scarps** (Dundas et al. 2018, *Science* 359:199): steep cliffs (up to about 55°) on the pole-facing side of pits, cutting 100 m or more of layered, cracked ice under a dusty cap, with boulders melted out at the foot.
+  - The ice is pale and banded. It's blue only in HiRISE's false colour.
+  - Around them: scalloped hollows and polygon-cracked ground.
+  - **Data:** DTM DTEEC_021466_1230_021954_1230_A01, "Terrain in Promethei Terra" (199 MB).
+  - **Change:**
+    - the two ice scarps become pole-facing pit walls 20–30 m high (from 8–10 m), with a pale banded ice face and a rubble foot;
+    - scallops and polygon cracks on the ice fields.
+
+### Order of work
+1. **The layout file** and the byte-for-byte proof.
+2. **Anchors** in `region.json`, `MHRegion.anchor()` and a test.
+3. **The land editor:**
+   - first: view, select, move, sliders, Save, Regenerate, checks;
+   - then: add, delete, undo, history, before/after.
+4. **The T3 fixes:** channel, wrinkle ridges, scarp and front, maze (with its check).
+5. **The T4 fixes:** download, cut the patches, then the riverbeds, glacier and ice.
+6. **The sculpt layer** (Terrain3D).
+7. **The rock blend shader**, then the **rock path tool**, laid along the T3/T4 places.
+8. ▶ **Playtest build.** The user then tunes the land in the editor.
+
+### Sources
+- HiRISE DTMs:
+  - [Juventae inverted valleys](https://www.uahirise.org/dtm/PSP_007627_1765);
+  - [Protonilus Mensae glacier-like feature](https://www.uahirise.org/dtm/PSP_009455_2215);
+  - [Promethei Terra ice scarp](https://www.uahirise.org/dtm/ESP_021466_1230).
+- HiRISE images:
+  - [The Life of a Glacier on Mars](https://www.uahirise.org/PSP_008809_2215);
+  - [Lineated Valley Fill and Lobate Debris Aprons](https://www.uahirise.org/PSP_009799_2205);
+  - [Glacier-like landform surface patterns](https://www.uahirise.org/ESP_046039_2295);
+  - [Inverted Streams in the Aeolis Region](https://www.uahirise.org/PSP_002424_1765);
+  - [Sinuous Ridges in Aeolis/Zephyria](https://www.uahirise.org/ESP_020528_1750);
+  - [Wrinkle Ridge and Valley Network Intersection](https://www.uahirise.org/ESP_088471_1750).
+- Paper: Dundas et al. (2018), "Exposed subsurface ice sheets in the Martian mid-latitudes", *Science* 359(6372):199–201.
