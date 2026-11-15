@@ -52,6 +52,24 @@ const VIEWS := {
 	"chaos": [2300.0, 2100.0, 90.0, 0.0, 2.0],
 	"ripples": [2500.0, -900.0, 90.0, -5.0, 2.0],
 	"canyon_chute": [-800.0, -1960.0, 0.0, -15.0, 2.0],
+	# More of the landmarks, for the review page (docs/terrain/landmarks.md).
+	"home_plain": [-1460.0, 1060.0, 45.0, -2.0, 2.5],
+	"sand_sheet": [-1640.0, 520.0, 0.0, -5.0, 2.5],
+	"near_mesa": [-1180.0, 750.0, 52.0, 2.0, 2.5],
+	"wrinkle_ridge": [-1500.0, 1300.0, 270.0, 2.0, 2.0],
+	"outcrop_close": [-1172.0, 762.0, 45.0, 2.0, 1.8],
+	"pit_close": [-1050.0, 1356.0, 0.0, -78.0, 16.0],
+	"yardangs_far": [-1000.0, -120.0, 80.0, 0.0, 4.0],
+	"far_mesa": [40.0, 1570.0, 76.0, 10.0, 2.0],
+	"ice_scarp": [-1570.0, -1400.0, 180.0, 0.0, 2.0],
+	"canyon_rim": [-300.0, -1900.0, 0.0, -8.0, 6.0],
+	"fissure_edge": [2200.0, 420.0, 350.0, -20.0, 8.0],
+	"fissure_along": [2000.0, 440.0, 72.0, -10.0, 4.0],
+	"north_fissure": [2700.0, -200.0, 20.0, -22.0, 6.0],
+	"chaos_close": [2330.0, 2100.0, 90.0, 2.0, 3.0],
+	"dune_sea": [-650.0, -1050.0, 0.0, -4.0, 5.0],
+	"ripple_belt": [2650.0, -690.0, 0.0, -8.0, 3.0],
+	"crater_from_rim": [333.0, -255.0, 70.0, -8.0, 3.0],
 	# Caves; "cave" stands on a cave's floor (the eye is the player's, about 1.6 m
 	# up), with the suit lamp on. The lava tube's own views are worked out from
 	# region.json (see _tube_views): tube_mouth, tube_inside, skylight_below,
@@ -89,7 +107,11 @@ func _initialize() -> void:
 	root.add_child(world)
 	for i in 10: await process_frame
 	world.set_tutorial_mode("off")
-	if args.has("hud=off") and world.get("explore_hud") != null: world.explore_hud.visible = false
+	var clean := args.has("hud=off")
+	if clean:
+		# Nothing but the land: no HUD, no messages, no GAR-Y trundling into shot.
+		if world.get("explore_hud") != null: world.explore_hud.visible = false
+		if world.get("scout_rover") != null and world.scout_rover != null: world.scout_rover.queue_free()
 	world.day_night.set_hour(15.5); world.day_night.frozen = true
 	var zone := MHSiteTerrain.region_zone()
 	var origin := Vector2(float(zone.centre[0]), float(zone.centre[1]))
@@ -120,9 +142,17 @@ func _initialize() -> void:
 		p.rotation.y = deg_to_rad(-float(v[2]))
 		(p.get_node("Head") as Node3D).rotation.x = deg_to_rad(float(v[3]))
 		for i in 90: await process_frame   # let the terrain and rocks round the new spot load
+		if clean: _hide_layers(root)
+		for i in 3: await process_frame
 		root.get_texture().get_image().save_png(out_dir + "%s.png" % view)
 		print("VIEW %s at (%d, %d): %s" % [view, roundi(v[0]), roundi(v[1]), MHSiteTerrain.geology_unit(x, z)])
 	quit()
+
+## Hides every layer of interface (messages, compass, slate) under a node.
+func _hide_layers(node: Node) -> void:
+	for child in node.get_children():
+		if child is CanvasLayer: (child as CanvasLayer).visible = false
+		else: _hide_layers(child)
 
 ## The lava tube's views, from where region.json says it runs (region metres).
 func _tube_views() -> Dictionary:

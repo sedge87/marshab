@@ -185,7 +185,7 @@ See `docs/terrain-design.md` §11 for what was built, what the checks say and wh
 - **Crew asks,** folded into the goal trails.
 - **Ropes,** including down skylights and across fissures; the waiver; GAR-Y's winch.
 
-### B4. Caves: kit, hazards and the dark (after B3; added 15 Nov)
+### B4. Caves: kit, hazards and the dark (after B3 and B6; added 15 Nov)
 The user (15 Nov): caves and lava tubes should be a wonder to explore, and risky, with a little fear. The maze and the plug that shuts the deep are built (`docs/terrain-design.md` §12). This section makes them dangerous and kit-gated.
 - **Physical gates that need kit:** each obstacle already in the cave gets the tool that passes it (ropes for skylights and pitches, boot spikes for the ice, a ladder for pits, GAR-Y's winch for a choke).
 - **Forced darkness:** a lamp battery that runs down, light stakes you leave behind, and a Map that draws only what your lamp has shown.
@@ -195,6 +195,28 @@ The user (15 Nov): caves and lava tubes should be a wonder to explore, and risky
 - **Looks:** the maze walls and the plug as broken rock, not slabs.
 
 **Explain this one to the user before building it.** §12 ends with a starting list; none of it is agreed.
+
+### B5. Terrain tools: layout file, map editor and sculpt layer (before C1; added 15 Nov)
+The user isn't happy with all of the land yet and wants control over it. The land is cheap to change (one script, about 2.5 minutes); the cost is in things placed on it. So this comes before C1.
+- **Layout file:** every landform constant moves out of `tools/generate_region.py` into `data/region_layout.json`. The generator loads it. The heights must come out byte-identical.
+- **Named anchors:** `region.json` gets `anchors` (id, position, ring) for every landform. C1 places story things by anchor, never by raw coordinates, so they follow the land.
+- **Map editor:** `tools/region_editor.py` serves one page. Drag, resize, turn, delete or add a landform, then Save and Regenerate. The generator's checks show as a pass or fail list.
+- **Sculpt layer:** hand brush work in the Godot editor (Terrain3D's brushes), saved as a height difference that's added last and survives regenerating. It can't reach caves.
+- **Start from the user's landmark review** (`docs/terrain/landmarks.md`): what they marked Keep, Change, Move or Cut.
+
+### B6. Cave networks (before B4 and C1; added 15 Nov)
+The user wants a real underground, with lessons from The Forest, Skyrim and Subnautica. Today a cave is one swept passage and can't branch.
+- **Design talk first,** with pictures:
+  - many entrances that link far-apart places (skylights, fissure walls, canyon caves, the ice cave);
+  - each depth with its own look, sound and danger;
+  - a short cut back to the surface at the far end;
+  - one set-piece room per cave;
+  - getting lost as the real threat.
+- **`scripts/caves.gd` rebuilt** so a cave is a network: passages joined at junction chambers, able to cross over and under each other, with several entrances.
+- The braided walls, pits, gates and looks from `docs/terrain-design.md` §12 carry over.
+- Cave networks live in the layout file, so the map editor can move them.
+
+**Explain B5 and B6 to the user before building them.**
 
 ## Track C: content and story (after A4 and B2)
 
