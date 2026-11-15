@@ -105,6 +105,7 @@
   - **Models are simple built-in ones** for now. Ore is carried by hand until A8.
 
 ### A6. The guided chapters, rewritten (`docs/opening-days.md`)
+- **Built 15 Nov** (not playtested). What was decided is in `docs/opening-days.md`, "As built (A6)". In short: a briefing Land step and a steered descent in a 750 m circle round home; chapters run together after a breather; Walker 1 patched on the spot and sent home from the Map; the core brought alive (no leak) and a Quarters liner; crater-floor and riverbed sites removed.
 - **The bare suit,** with the pallet distances to match.
 - **Chapter 3:** fix Walker 1 and choose home.
 - **Chapter 4:** Walker 1 kneels and folds into the core, you fit the first liner and watch its shell print, and you sleep in.

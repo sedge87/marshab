@@ -277,14 +277,11 @@ func _hook_rack() -> void:
 
 # ---------- commissioning (version 2, day 4) ----------
 
-## Air and power both in: it tries to pressurise, and a seam won't hold.
+## Air and power both in: it fills and comes alive. The A6 rewrite (15 Nov,
+## docs/opening-days.md) cut the leaking seam; an older save mid-leak keeps it.
 func pressurise_try() -> void:
 	if commissioned or leak_found or not has_cartridge() or not has_blanket(): return
-	leak_found = true
-	MHAudio.sfx("suit_fill", -6.0)
-	_spawn_leak()
-	var radio: Node = world.get("radio")
-	if radio != null: radio.ring("d4_leak")
+	patched()
 
 ## The hissing seam: on an inside wall away from the airlock, about 1.2 m up.
 func _spawn_leak() -> void:
@@ -326,7 +323,7 @@ func leak_spot() -> Dictionary:
 				best = {"at": at, "facing": Vector3(-d.x, 0, -d.y)}
 	return best
 
-## Pallet 4's patch kit on the seam: it holds. Air in, heater up, lights on.
+## Commissioned: air in, heater up, lights on (and an old save's seam patched).
 func patched() -> void:
 	if commissioned: return
 	commissioned = true

@@ -48,7 +48,7 @@ func _initialize() -> void:
 	CUES = _known_cues()
 	# The files themselves.
 	var sections: Dictionary = RADIO.sections()
-	for need in ["d1_relock", "d1_pallet1", "d1_ridge", "d1_pallet2", "d1_pallet4", "d1_cargo", "d1_sunset", "d2_wake", "d2_cradle", "d2_found", "d2_sunset"]:
+	for need in ["d1_relock", "d1_pallet1", "d1_ridge", "d1_pallet2", "d1_pallet4", "d1_cargo", "d1_sunset", "d2_wake", "d2_cradle", "d2_found", "d3_wake", "d3_patched", "d3_home", "d3_sent", "d4_arrived", "d4_down", "d4_patched", "d4_quarters", "d4_sunset"]:
 		_check(sections.has(need) and not (sections[need] as Array).is_empty(), "the scripts have %s" % need)
 	var ids := {}
 	for line in RADIO.all_lines():

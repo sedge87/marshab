@@ -1,21 +1,13 @@
-# Day 3: Walker 1, and choosing home (docs/opening-days.md).
+# Chapter 3: Walker 1, and choosing home (docs/opening-days.md, A6 rewrite).
+# Calls on the move stay short: three lines, then a reply that never blocks.
 # Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d3
 
 ~ d3_wake
-Castellanos: Morning. Quick question before you've even had breakfast. Did you hear that last night? About three o'clock? [ID:d3_wake_01]
-- A grinding. Out on the flats.
-	set heard_it
-	Castellanos: So it wasn't just us. Rao picked it up on the lander's mic, over the relay too: something big and mechanical, grinding along for about twenty minutes, then nothing. [ID:d3_wake_02a]
-- I slept like a rock.
-	Castellanos: Lucky you. Some of us were up at three listening to something very big moving around out there. Rao picked it up on the lander's mic, over the relay. Twenty minutes of grinding, then nothing. [ID:d3_wake_02b]
-- GAR-Y was beeping at the hatch all night.
-	set gary_night
-	Castellanos: Then GAR-Y heard it too. Something big was moving out there around three. Rao picked it up on the lander's mic, over the relay. [ID:d3_wake_02c]
-Castellanos: This time I really, honestly think it's a walker. Big, slow, heavy. Look for tracks. Wide ones, much wider than GAR-Y's. [ID:d3_wake_03]
+Castellanos: Outpost One, Rao's pass just came in. Fresh tracks in the dust, not far from you. Wide ones, much wider than GAR-Y's. [ID:d3_wake_a6_01]
+Castellanos: I think it's a walker. I really do. Where they start is on your compass. [ID:d3_wake_a6_02]
 ? hopeful Castellanos: And yes, I know I said that last time. Let me have this one. [ID:d3_wake_04]
-Castellanos: And Rao's dawn pass caught fresh scuffing in the dust, not far from you. I've put where it starts on your compass. [ID:d3_wake_05]
 do walker_tracks
-Castellanos: One more thing. If it went the way it sounded, it's a long way out, near the edge of what your suit can do and get you home. Top your air up before you go, and if I say turn back, you turn back. [ID:d3_wake_06]
+Castellanos: It's inside your suit's reach, just. Top your air up first, and if I say turn back, you turn back. [ID:d3_wake_a6_03]
 => END
 
 # At the tracks (scripts/walker.gd _look): how to find the rest.
@@ -26,17 +18,14 @@ Castellanos: Or take a picture of them with your slate and send it up. Rao will 
 => END
 
 ~ d3_fixed
-Castellanos: Its nav screen just went green. You did it. You actually did it. Tupou is cheering and Mwangi is telling him to sit down before he hits his head. [ID:d3_fixed_01]
-Castellanos: Here's the thing, though. It doesn't trust the ground to tell it where it is any more, and I don't blame it. So it's going to crawl home, slowly, checking itself against the sky every few hundred metres. [ID:d3_fixed_02]
-Castellanos: Rao's done the sums. He says it'll be parked at your door by morning. [ID:d3_fixed_03]
+Castellanos: Its nav screen just went green. You did it. Tupou is cheering and Mwangi is telling him to sit down before he hits his head. [ID:d3_fixed_01]
 Castellanos: Except. Hang on. It's not moving. Its nav's happy, but it's tripped its own safety lock. Something's wrong in its running gear. [ID:d3_fixed_07]
-Castellanos: And its health check's no use to us. The storm cooked half its sensors, so it knows something's wrong and it can't tell us what. [ID:d3_fixed_08]
-Castellanos: So I need your eyes. Climb down and take pictures for me with your slate. Close up, one part at a time, right in the middle of the shot. Achterberg and I will go through every one. [ID:d3_fixed_09]
+Castellanos: Its health check's no use to us. The storm cooked half its sensors. So I need your eyes: climb down and take pictures for me with your slate. One part at a time, right in the middle of the shot. [ID:d3_fixed_a6_09]
 - Detective work. I like it.
 	Castellanos: Ha. You'll be the hands, I'll be the magnifying glass. [ID:d3_fixed_10a]
 - What am I looking for?
 	set asked_what
-	Castellanos: Honestly, I don't know yet. That's the fun part. Start with the knees. That's where these things usually go wrong. [ID:d3_fixed_10b]
+	Castellanos: Honestly, I don't know yet. Start with the knees. That's where these things usually go wrong. [ID:d3_fixed_10b]
 ?! asked_what Castellanos: Start with the knees, I'd say. That's where these things usually go wrong. [ID:d3_fixed_11]
 => END
 
@@ -57,46 +46,37 @@ Castellanos: I can't make anything out in that one, sorry. Get in close to one p
 => END
 
 ~ d3_fault
-Castellanos: Stop. That one. Achterberg's zooming in. Oh, look at that. The front left wheel is packed solid with grit, and the seal on that joint's split right through. [ID:d3_fixed_03b]
-Castellanos: It won't make it home on that. It'd grind the bearing to dust before midnight. [ID:d3_fixed_03c]
-- Can I fix it out here?
-	Castellanos: Not with a hammer and good intentions, no. It needs a new seal. A proper one. [ID:d3_fixed_03d]
-- So it's stuck again.
-	set worried
-	Castellanos: Not stuck. Not yet. Give me a second, Achterberg's waving at me. [ID:d3_fixed_03e]
-Castellanos: Here's the good news. Your printer has the pattern for that seal. It's one of the spares it was built to make. And you've got parts from the crate. [ID:d3_fixed_03f]
-Castellanos: So head home, print a new seal, and hand it to GAR-Y. It'll run it out to the walker tonight, and Walker 1 can fit it itself. That's what those little arms are for. [ID:d3_fixed_03g]
-Castellanos: That's what the printer is, really. Not a toy. Every time something breaks down there, and things will break, it's your first stop. [ID:d3_fixed_03h]
+Castellanos: Stop. That one. The front left wheel is packed solid with grit, and the seal on that joint's split right through. [ID:d3_fixed_03b]
+Castellanos: Achterberg says your patch kit will close it. It's made for suits, but it'll hold a wheel seal long enough to get it home. Get right up by that wheel and patch it. [ID:d3_fault_a6_02]
+- Patching a robot with a suit patch. Very Mars.
+	set joker
+	Castellanos: Very Mars. Nothing gets thrown away, and everything's a spare for something. [ID:d3_fault_a6_03a]
 - Why did it get lost in the first place?
 	set asked_why
-	Castellanos: Honestly? I don't know. The storm blinded it, sure. But the backup should have brought it home, and it didn't. Something out there fooled it. Nobody down here or up here can tell me what. [ID:d3_fixed_04a]
+	Castellanos: Honestly? I don't know. The storm blinded it, sure. But the backup should have brought it home, and it didn't. Something out there fooled it. [ID:d3_fixed_04a]
 	Castellanos: Put it on the list of things that keep me up at night. It's a long list. [ID:d3_fixed_04a2]
-- A seal tonight, home by morning. Got it.
-	Castellanos: That's the spirit. You've waited seven months, what's one more night? [ID:d3_fixed_04b]
-Castellanos: And while you wait, you've got a job I'm properly jealous of. That module needs somewhere to live. You get to pick the spot. [ID:d3_fixed_05]
-Castellanos: Somewhere you'd want to wake up every morning. Flat, with good sun, near the ice if you can, and room to grow. We're going to be living there one day too, so no pressure. [ID:d3_fixed_06]
-?! surveyed Castellanos: And for the ice, ask GAR-Y. Hold G by it and pick Survey zone. Its stakes go blue where there's ice under you. Put the module near the blue ones. [ID:d3_fixed_06b]
 => END
 
-~ d3_seal
-set sealed
-Castellanos: Is that the seal? Achterberg wants to know if it came out clean. She's been watching the clock on it like a kettle. [ID:d3_seal_01]
-- Clean. It looks perfect.
-	Castellanos: She says perfect is a strong word, but she'll take it. That's practically a medal, coming from her. [ID:d3_seal_02a]
-- A bit rough round the edges.
-	Castellanos: Rough's fine. It only has to hold grit out, not win a beauty contest. [ID:d3_seal_02b]
-Castellanos: GAR-Y's beeping at it. I think it knows. Give it a few hours after dark and it'll take it out to the walker. You stay in the warm. [ID:d3_seal_03]
-?! marked_spot => d3_choose
+~ d3_patched
+Castellanos: Its lock's cleared. It's moving! It's going home. [ID:d3_patched_01]
+Castellanos: Climb the ladder at the back and sit up front if you want a lift. Or walk alongside. It's not fast. [ID:d3_patched_02]
+- I'm riding.
+	set rode
+	Castellanos: Of course you are. Rao says wave on the next pass. [ID:d3_patched_03a]
+- I'll walk with it.
+	Castellanos: Fair. Keep an eye on your air, then. [ID:d3_patched_03b]
 => END
 
-# After the seal, if the spot's not chosen yet: water first, then home.
-~ d3_choose
-? surveyed Castellanos: Now, the fun part. Go and choose where the module's going to live. Somewhere near GAR-Y's blue stakes. [ID:d3_seal_04]
-?! surveyed Castellanos: Now, the fun part. Get GAR-Y to find you some ice first, Survey zone, then choose where the module's going to live, near its blue stakes. [ID:d3_seal_04b]
+~ d3_home
+Castellanos: It's parked by the lander, and it's carrying the base's core. So now the fun part: you get to choose where home goes. [ID:d3_home_01]
+Castellanos: Open your Map. W on a spot checks it, sun, shelter, ice and slope. W again on the same spot sends Walker 1. [ID:d3_home_02]
+? surveyed Castellanos: Somewhere near GAR-Y's blue stakes, if you can. That's water. [ID:d3_home_03s]
+?! surveyed Castellanos: And ask GAR-Y about ice first, if you like. Hold G by him and pick Survey zone. Home wants to be near water. [ID:d3_home_03]
 => END
 
-~ d3_marked
-Castellanos: Your stakes just came up on my map. Tiny little corners. So that's home, then? [ID:d3_marked_01]
+# Walker 1 sent to the spot you chose on the Map (scripts/walker.gd send_to).
+~ d3_sent
+Castellanos: It's on its way. So that's home, then? [ID:d3_sent_01]
 - That's home.
 	set chose_home
 	Castellanos: Good choice. I mean it. Rao's already planning where his bunk goes. [ID:d3_marked_02a]
@@ -105,46 +85,26 @@ Castellanos: Your stakes just came up on my map. Tiny little corners. So that's 
 - It's got the best sunset I've found.
 	set chose_sunset
 	Castellanos: Of course it has. You and your sunsets. [ID:d3_marked_02c]
-set marked_spot
 ? surveyed Castellanos: Right by GAR-Y's stakes, too. Achterberg says you're her favourite now. [ID:d3_marked_04]
-?! sealed Castellanos: Walker 1 knows where to put it now. Just don't forget its seal. It's not walking anywhere on that split one. Print it, and then get some sleep. [ID:d3_marked_03b]
-? sealed Castellanos: Walker 1 knows where to put it now. So go home, have something to eat, and get a proper night's sleep. Tomorrow, you move in. [ID:d3_marked_03]
 => END
 
-~ d3_sunset
-Castellanos: Last night in the lander. How does that feel? [ID:d3_sun_01]
-- I'll miss it, a bit.
-	Castellanos: It kept you alive. You're allowed to miss it. I miss my bunk on the cruise, and that thing had a broken latch and smelled of Rao's socks. [ID:d3_sun_02a]
-- I can't wait to stand up straight.
-	Castellanos: Ha. Neither can my back. Seven months of floating. I've forgotten which way my spine's supposed to go. [ID:d3_sun_02b]
-Castellanos: GAR-Y's heading out with the seal once it's properly dark. I'll watch the pair of them all night, once we're back round from the far side. I promise. If anything changes, you'll be the first to know. [ID:d3_sun_03]
-- Get some sleep yourself, Castle.
-	set kind
-	Castellanos: Ha. You sound like Mwangi. Fine. I'll get some sleep. After this pass. [ID:d3_sun_04a]
-- Thanks. Goodnight.
-Castellanos: Goodnight, Outpost One. Big day tomorrow. [ID:d3_sun_05]
-do bed
-=> END
-
-# Done early, not done by dusk, and the morning after (scripts/opening_days.gd).
-~ d3_done
-Castellanos: That's it for today. Walker 1 will crawl in overnight, so there's nothing to do but wait. The rest of the day's yours. Be home by dark. [ID:d3_done_01]
-=> END
-
+# Dusk with chapter 3 still going, and the morning after (scripts/opening_days.gd).
 ~ d3_dusk
-Castellanos: The light's going. Head back to the lander, Outpost One. Walker 1 isn't going anywhere tonight. [ID:d3_dusk_01]
+Castellanos: The light's going. Head back to the lander, Outpost One. [ID:d3_dusk_01]
 ? left_walker Castellanos: We'll get its nav sorted in the morning. [ID:d3_dusk_02a]
 ? left_photo Castellanos: We'll find what's wrong with its legs tomorrow. More pictures in daylight. [ID:d3_dusk_02b]
-? left_seal Castellanos: The seal can print tomorrow. [ID:d3_dusk_02c]
-? left_mark Castellanos: And you can choose where home goes tomorrow, too. No rush. [ID:d3_dusk_02d]
+? left_patch Castellanos: The wheel seal can wait for daylight. [ID:d3_dusk_a6_02c]
+? left_ride Castellanos: It'll walk itself home. You don't need to babysit it in the dark. [ID:d3_dusk_a6_02e]
+? left_home Castellanos: And you can choose where home goes tomorrow. No rush. [ID:d3_dusk_02d]
 Castellanos: Talk at sunrise. [ID:d3_dusk_03]
 do bed
 => END
 
 ~ d3_still
-Castellanos: Morning. Walker 1's right where we left it, sulking. Let's get it home. [ID:d3_still_01]
+Castellanos: Morning. Let's get that walker sorted. [ID:d3_still_a6_01]
 ? left_walker Castellanos: Its nav's still confused. Go and set it right. [ID:d3_still_02a]
 ? left_photo Castellanos: Its legs are still locked. Take me some pictures, one part at a time, and we'll find it. [ID:d3_still_02b]
-? left_seal Castellanos: It still needs that wheel seal. The printer's ready when you are. [ID:d3_still_02c]
-? left_mark Castellanos: And mark where you want the module, with B, so it knows where to put it. [ID:d3_still_02d]
+? left_patch Castellanos: That front-left wheel seal still needs your patch kit. [ID:d3_still_a6_02c]
+? left_ride Castellanos: It's still walking home. Go and meet it. [ID:d3_still_a6_02e]
+? left_home Castellanos: And choose where home goes. Map, W on a spot, W again to send it. [ID:d3_still_a6_02d]
 => END

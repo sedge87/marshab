@@ -32,7 +32,7 @@ const CARTRIDGE := preload("res://scripts/o2_cartridge.gd")
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
-const RIDGE_DISTANCE := 400.0
+const RIDGE_DISTANCE := 260.0          # A6: pallet 1, about 250 m out on a rise (the bare suit)
 const RIDGE_SPREAD := 35.0            # degrees either side of the hatch
 ## The canopy is scaled to a real one's size (Mars 2020's was 21.5 m across).
 const CANOPY_SCALE := 1.5
@@ -124,7 +124,7 @@ func _choose_ridge() -> void:
 	forward = forward.normalized()
 	var home := lander.global_position
 	var best := -INF
-	for distance in range(340, 461, 20):
+	for distance in range(220, 301, 20):
 		for step in range(-7, 8):
 			var angle := deg_to_rad(step * RIDGE_SPREAD / 7.0)
 			var dir := forward.rotated(Vector3.UP, angle)

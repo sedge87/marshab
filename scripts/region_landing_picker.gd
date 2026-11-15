@@ -15,7 +15,10 @@ const SAMPLE := 70.0                  # metres between the points checked for ba
 ## Rocks that formed in or were changed by water (data/discoveries.json rock types).
 const WATER_ROCKS := ["hematite", "gypsum", "conglomerate", "sandstone", "mudstone", "clay", "sulfur", "perchlorate_crust"]
 ## Mission Control's word on each suggested zone, from orbit.
-const HINTS := {"plains": "Open ground, strong sun", "crater": "Layered outcrop nearby", "riverbed": "Old river deposits"}
+## Only the plains are a landing site now (A6, docs/opening-days.md): the
+## crater floor and the riverbed went; their zones stay in region.json until
+## the next region rebuild, but aren't shown.
+const HINTS := {"plains": "Open ground, strong sun"}
 
 signal area_changed(centre: Vector2, verdict: Dictionary)
 
@@ -27,6 +30,15 @@ var _half := 3072.0
 var _zoomed := true
 var _view := Rect2()   # the part of the region shown (region metres)
 var _dragging := false
+## The story game's Arrive step (A6): a fixed view of the home area, the
+## circle you can steer the descent in, and its landmarks. Nothing moves.
+var _home_radius := 0.0
+
+## Show the home area round centre, radius metres, for looking at only.
+## Call before adding it to the tree.
+func home_view(at: Vector2, radius: float) -> void:
+	_home_radius = radius
+	centre = at
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -35,6 +47,11 @@ func _ready() -> void:
 	_half = float(RT.meta().get("half", 3072.0))
 	_map = load(RT.DIRECTORY + str(RT.meta().get("id", "")) + "/map.png") as Texture2D
 	_detail = load(RT.DIRECTORY + str(RT.meta().get("id", "")) + "/map_detail.jpg") as Texture2D
+	if _home_radius > 0.0:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view = Rect2(centre - Vector2.ONE * _home_radius * 1.3, Vector2.ONE * _home_radius * 2.6)
+		queue_redraw()
+		return
 	var zone := RT.zone(str(MHSiteTerrain.settings().get("zone", "")))
 	var start := Vector2(float(zone.centre[0]), float(zone.centre[1])) if not zone.is_empty() else Vector2.ZERO
 	_look_at(start)
@@ -176,9 +193,13 @@ func _draw() -> void:
 		draw_texture_rect_region(image, square, Rect2((_view.position + Vector2(_half, _half)) * per_metre, _view.size * per_metre))
 	var font := ThemeDB.fallback_font
 	var scale := square.size.x / _view.size.x
+	if _home_radius > 0.0:
+		_draw_home(font, scale)
+		return
 	# The suggested zones: known-good ground, with Mission Control's hint.
 	var zones: Dictionary = MHSiteTerrain.RegionTerrain.meta().get("zones", {})
 	for zone_id in zones:
+		if not HINTS.has(zone_id): continue
 		var zone: Dictionary = zones[zone_id]
 		var at := _to_map(Vector2(float(zone.centre[0]), float(zone.centre[1])))
 		if not square.grow(-8.0).has_point(at): continue
@@ -214,6 +235,46 @@ func _draw() -> void:
 	draw_line(foot, foot + Vector2(bar, 0), Color("#F2F4F5"), 3.0)
 	_text(font, "%d m" % roundi(metres) if metres < 1000.0 else "1 km", foot + Vector2(bar + 6, 5), 13, Color("#F2F4F5"))
 	_text(font, "Scroll to zoom %s" % ("out" if _zoomed else "in"), square.position + Vector2(square.size.x - 130, square.size.y - 13), 12, Color("#C9D2D6"))
+
+## The home area: the steering circle, home, and ring 1's landmarks
+## (region.json "home_ground").
+func _draw_home(font: Font, scale: float) -> void:
+	var white := Color("#F2F4F5")
+	var soft := Color("#C9D2D6")
+	var ground: Dictionary = MHSiteTerrain.RegionTerrain.meta().get("home_ground", {})
+	var channel: Array = ground.get("channel", [])
+	if channel.size() > 1:
+		var line := PackedVector2Array()
+		for p in channel: line.append(_to_map(Vector2(float(p[0]), float(p[1]))))
+		draw_polyline(line, Color("#7FB3D5", .8), 2.0)
+		var mid: Array = channel[channel.size() / 2]
+		_text(font, "Dry channel", _to_map(Vector2(float(mid[0]), float(mid[1]))) + Vector2(8, 0), 12, soft)
+	for c in ground.get("crossings", []):
+		draw_circle(_to_map(Vector2(float(c[0]), float(c[1]))), 4.0, Color("#7FB3D5"))
+	for item in [["frost_hollow", "Frost hollow: shallow ice", Color("#BFE3F2")], ["sand_sheet", "Sand sheet", Color("#D9B38C")]]:
+		var spec: Array = ground.get(str(item[0]), [])
+		if spec.size() < 3: continue
+		var at := _to_map(Vector2(float(spec[0]), float(spec[1])))
+		draw_arc(at, float(spec[2]) * scale, 0.0, TAU, 32, item[2], 1.5)
+		_text(font, str(item[1]), at + Vector2(float(spec[2]) * scale + 6, 4), 12, item[2])
+	var points := PackedVector2Array()
+	for i in 65:
+		var a := TAU * i / 64.0
+		points.append(_to_map(centre + Vector2(cos(a), sin(a)) * _home_radius))
+	draw_colored_polygon(points, Color(MHStyle.VALID, .10))
+	draw_polyline(points, MHStyle.VALID, 2.5)
+	var at := _to_map(centre)
+	draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), MHStyle.accent)
+	draw_rect(Rect2(at - Vector2(5, 5), Vector2(10, 10)), Color.WHITE, false, 1.5)
+	_text(font, "The cargo's target", at + Vector2(-50, 22), 12, white)
+	_text(font, "You can steer anywhere in the circle", _to_map(centre + Vector2(-_home_radius * .8, _home_radius * 1.15)), 13, white)
+	var square := _square()
+	var north := square.position + Vector2(square.size.x - 26, 30)
+	draw_colored_polygon(PackedVector2Array([north + Vector2(0, -14), north + Vector2(7, 6), north + Vector2(-7, 6)]), white)
+	_text(font, "N", north + Vector2(-5, 24), 14, white)
+	var foot := square.position + Vector2(16, square.size.y - 18)
+	draw_line(foot, foot + Vector2(500.0 * scale, 0), white, 3.0)
+	_text(font, "500 m", foot + Vector2(500.0 * scale + 6, 5), 13, white)
 
 func _text(font: Font, text: String, at: Vector2, font_size: int, colour: Color) -> void:
 	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, Color(0, 0, 0, .8))

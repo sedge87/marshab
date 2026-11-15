@@ -39,15 +39,13 @@ Castellanos: Oh, thank God. There you are. We lost your antenna right as you tou
 Castellanos: Right. Business, before I get sentimental. [ID:d1_relock_04]
 Castellanos: Rao got a photo of a parachute on the last pass. It's on your slate. Pallet one, up on the ridge, with the module's life support in it. That's where the base starts. Go and have a look, and talk to me while you walk if you like. [ID:d1_relock_07]
 do parachute
+# A6: why the crew can't land yet waits for the first dusk talk (d1_sun_after).
 - When are the rest of you coming down?
-- So it's just me down here?
+	set asked_landing
+	Castellanos: Not yet. Long story. I'll tell you properly tonight. Go and look at that pallet. [ID:d1_relock_a6_06a]
 - No pressure, then.
 	set joker
 	Castellanos: None at all. Just the whole mission. You'll be fine, you were always the calm one on the ship. Apart from that one time with the coffee. [ID:d1_relock_06b]
-Castellanos: We can't come down yet. Ours is built to set the rest of us down right beside a finished base, on its beacon. The beacon's dead, and there's no base. [ID:d1_relock_05c]
-Castellanos: And it's lean. A few days of air, that's all. Come down kilometres off target, the way you did, and we'd never reach shelter. [ID:d1_relock_05d]
-Castellanos: Yours was built for exactly that. It recycles its air and water, and its power cell doesn't care about the dark. It'll keep you going for months wherever it lands. [ID:d1_relock_05e]
-Castellanos: And until someone works out why every pallet came down wrong, flight rules keep us up here. So you're our eyes. [ID:d1_relock_05f]
 do think air
 => END
 
@@ -113,7 +111,7 @@ Castellanos: Tupou wants you to know that the hammer is for science and not for 
 ~ d1_cargo
 Castellanos: That's the module's air and power sitting by the lander. When the module turns up, it'll breathe the same day. That's a proper day's work. [ID:d1_cargo_01]
 do sunset_spot
-? cargo_early Castellanos: And there's plenty of daylight left. The rest of today's yours. Have a wander, strip some scrap, sit on the ramp. And if you fancy it later, the sunset's worth seeing. Your first one. [ID:d1_cargo_02e]
+? cargo_early Castellanos: And there's plenty of daylight left. Catch your breath. Rao's next pass is due soon, and he's been squinting at something out by the boulders. I'll call you. [ID:d1_cargo_a6_02e]
 ? cargo_mid Castellanos: The sun's getting low. If you've got a minute before you go in, it's worth watching it go down. Your first one. [ID:d1_cargo_02]
 ? late_cargo Castellanos: And look, the sun's nearly gone already. If you want to see it go, the ramp will do just fine. [ID:d1_cargo_02l]
 do think sunset
@@ -169,7 +167,11 @@ Castellanos: Rao wants to know what it sounds like down there. He says he's been
 	Castellanos: Ha. Same up here, except with five people and a fan that rattles. Achterberg's been trying to fix it for a month. [ID:d1_sun_04b]
 ? joker Castellanos: For the record, you're funnier than your file says. Your file says you're very serious. Someone should update it. [ID:d1_sun_05]
 ? kind Castellanos: And thanks for asking about us earlier. You fell out of the sky and asked if we were okay. That's very you. [ID:d1_sun_05b]
-Castellanos: We go behind the planet in a few minutes, so I'll lose you for a while. Get inside, eat something, and get some sleep. Tomorrow we start looking for the walkers. [ID:d1_sun_06]
+? asked_landing Castellanos: You asked earlier when we're coming down. Here's the long story, short. [ID:d1_sun_a6_why0]
+Castellanos: We can't come down yet. Ours is built to set the rest of us down right beside a finished base, on its beacon. The beacon's dead, and there's no base. [ID:d1_relock_05c]
+Castellanos: And it's lean. A few days of air, that's all. Come down kilometres off target, the way you did, and we'd never reach shelter. Yours was built for exactly that. [ID:d1_sun_a6_why2]
+Castellanos: And until someone works out why every pallet came down wrong, flight rules keep us up here. So you're our eyes. [ID:d1_relock_05f]
+Castellanos: We go behind the planet in a few minutes, so I'll lose you for a while. Get inside, eat something, and get some sleep. [ID:d1_sun_a6_06]
 - Goodnight, orbit.
 	set goodnight
 - Goodnight, Castle.

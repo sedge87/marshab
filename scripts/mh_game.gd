@@ -403,9 +403,14 @@ static func picker_sites() -> Array:
 static var _founded_site := {}     # site() for a base founded away from the named zones
 static var _founded_from := {}     # the base_site it was made from
 
+## Landing sites that went (A6, docs/opening-days.md): an old save there loads
+## with the plains' settings, on the same region.
+const GONE_SITES := {"region_crater": "region_plains", "region_riverbed": "region_plains"}
+
 static func site() -> Dictionary:
+	var wanted: String = GONE_SITES.get(site_id, site_id)
 	for entry in sites():
-		if str(entry.get("id", "")) != site_id: continue
+		if str(entry.get("id", "")) != wanted: continue
 		# A base founded where the lander came down has its own ice round it
 		# (MHBaseSite.ice_deposits) and its own conditions from the ground
 		# (MHBaseSite.conditions): the skyline that hides a low sun, warmer

@@ -1275,36 +1275,52 @@ var _skip_descent := false
 func _arrives() -> bool:
 	return MHChapterOne.new_rules() and MHGame.game_mode != "creative" and MHSiteTerrain.shape() == "region"
 
-## Where the entry carries you: near one of the region's landing zones,
-## off by up to half a kilometre, on ground with room for a base.
-static func entry_area(rng: RandomNumberGenerator) -> Vector2:
+## Where the entry carries you (A6, docs/opening-days.md): always the plains
+## round home (region.json "home"; docs/terrain-design.md §1). You steer the
+## rest in the descent, up to DESCENT_SCRIPT.HOME_RADIUS from it. The crater
+## floor and the riverbed are no longer landing sites.
+static func entry_area(_rng: RandomNumberGenerator = null) -> Vector2:
+	return home_centre()
+
+## Home's centre on the region, region metres.
+static func home_centre() -> Vector2:
 	MHSiteTerrain.region_zone()
-	var zones: Dictionary = MHSiteTerrain.RegionTerrain.meta().get("zones", {})
-	var ids := zones.keys()
-	for attempt in 24:
-		var zone: Dictionary = zones[ids[rng.randi() % ids.size()]] if not ids.is_empty() else {"centre": [0.0, 0.0]}
-		var at := Vector2(float(zone.centre[0]), float(zone.centre[1])) + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, 500.0)
-		if str(REGION_LANDING_PICKER_SCRIPT.evaluate(at).level) == "green" or attempt == 23: return at
-	return Vector2.ZERO
+	var meta: Dictionary = MHSiteTerrain.RegionTerrain.meta()
+	var home: Dictionary = meta.get("home", {})
+	if home.has("centre"): return Vector2(float(home.centre[0]), float(home.centre[1]))
+	var plains: Dictionary = (meta.get("zones", {}) as Dictionary).get("plains", {})
+	return Vector2(float(plains.centre[0]), float(plains.centre[1])) if plains.has("centre") else Vector2.ZERO
 
 ## The Arrive step: the briefing, then the descent.
 func _arrival_screen() -> void:
 	_scrim("right", .62, .95, .4)
 	_stepper("Arrive")
 	_place(MHStyle.display("Arrival", 64), Vector2(120, 120))
+	# The home area (A6): the plains round home, the circle you can steer in,
+	# its landmarks and the orbit report. Nothing here moves.
+	var home := home_centre()
+	var picker := REGION_LANDING_PICKER_SCRIPT.new()
+	picker.home_view(home, DESCENT_SCRIPT.HOME_RADIUS)
+	picker.position = Vector2(120, 230)
+	picker.custom_minimum_size = Vector2(640, 640)
+	picker.size = Vector2(640, 640)
+	screen.add_child(picker)
 	var panel := MHStyle.hud_panel(24, false, true)
-	panel.position = Vector2(120, 240)
-	panel.custom_minimum_size = Vector2(760, 0)
+	panel.position = Vector2(800, 230)
+	panel.custom_minimum_size = Vector2(640, 0)
 	var col := MHStyle.vbox(14)
 	col.add_child(MHStyle.eyebrow("%s · %s" % [MHGame.site_name(), str(MHGame.GAME_MODES.get(MHGame.game_mode, ""))], MHStyle.accent))
 	col.add_child(MHStyle.title("Seven months out", 28))
 	for text in [
-		"The cargo went ahead of you. Its walkers were to gather the pallets and build the base, and you'd land beside it, walk in and commission it.",
-		"Halfway through your cruise a planet-wide dust storm swallowed the Reach. The walkers and the cargo beacons went quiet. There's no turning back mid-transfer.",
-		"Now you're coming down. The base's landing beacon is silent and the dusty air will carry you long. The lander's cameras will find you safe ground on the way down: steer for it, or let the autopilot choose."]:
-		var line := MHStyle.body(text, 18)
+		"The cargo went ahead of you, to the plains. Its walkers were to gather the pallets and build the base, and you'd land beside it.",
+		"Halfway through your cruise a dust storm swallowed the Reach. The walkers and the cargo beacons went quiet.",
+		"The landing beacon is silent, so you'll come down by eye. Steer anywhere inside the circle: near the frost hollow for water, out on the open plain for sun. Or let the autopilot choose."]:
+		var line := MHStyle.body(text, 17)
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		col.add_child(line)
+	var report := MHStyle.vbox(6)
+	col.add_child(report)
+	_show_report(report, REGION_LANDING_PICKER_SCRIPT.report(home))
 	if _quick_start: col.add_child(_tutorial_choice())
 	var skip := CheckBox.new()
 	skip.text = "Skip the descent (the autopilot picks the spot)"
@@ -1326,7 +1342,7 @@ func _arrival_screen() -> void:
 		rng.randomize()
 		_landing_area = entry_area(rng)
 		if _skip_descent:
-			var near := MHBaseSite.nearest_valid(_landing_area.x, _landing_area.y, 250.0)
+			var near := MHBaseSite.nearest_valid(_landing_area.x, _landing_area.y, DESCENT_SCRIPT.HOME_RADIUS)
 			_found_base(near if not is_inf(near.x) else _landing_area)
 		else: show_screen("descent"))
 	bar.add_child(land)
@@ -1334,7 +1350,9 @@ func _arrival_screen() -> void:
 ## The descent into the landing oval, in the backdrop (scripts/descent.gd).
 func _descent_screen() -> void:
 	var descent := DESCENT_SCRIPT.new()
-	descent.setup(camera, environment, _landing_area)
+	# A story game steers inside the home circle; Creative's map keeps its oval.
+	var half: Vector2 = Vector2.ONE * DESCENT_SCRIPT.HOME_RADIUS if _arrives() else DESCENT_SCRIPT.OVAL
+	descent.setup(camera, environment, _landing_area, half)
 	descent.finished.connect(func(touchdown: Vector2) -> void:
 		descent.queue_free()
 		# Never ticks "Skip the descent" for you: it stays as you left it

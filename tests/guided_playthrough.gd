@@ -1,9 +1,11 @@
 extends SceneTree
 
-# A robot run through the guided days, version 2 (docs/opening-days.md):
-# day 1 the cargo and the sunset rise, day 2 GAR-Y and the spares crate,
-# day 3 Walker 1's photo hunt, the seal and the module's mark, day 4 the
-# module set down and furnished, then day 5 opens. Real systems, the clock
+# A robot run through the guided chapters, version 2 as rewritten in A6
+# (docs/opening-days.md): chapter 1 the cargo, 2 GAR-Y and the spares crate,
+# 3 Walker 1's photo hunt, its seal patched on the spot, the walk home and
+# home chosen on the Map, 4 the core set down there, brought alive and a
+# Quarters liner, then the first night ends the chapters. Chapters run
+# together; nights come when they come. Real systems, the clock
 # sped up, logging what a player would see: notices, captions, Castellanos's
 # calls, replies, thoughts. Not pass/fail: it writes a timeline to
 # .claude_tmp/guided_playthrough_log.txt, with STUCK lines for anything that
@@ -190,8 +192,8 @@ func _initialize() -> void:
 	else: await run()
 	Engine.time_scale = 1.0
 	lines.append("")
-	lines.append("DAYS (play minutes):")
-	for day in day_start: lines.append("  day %d started at %.1f min" % [int(day), float(day_start[day]) / 60.0])
+	lines.append("CHAPTERS (play minutes):")
+	for day in day_start: lines.append("  chapter %d started at %.1f min" % [int(day), float(day_start[day]) / 60.0])
 	lines.append("  ended at %.1f min" % (play_s / 60.0))
 	lines.append("")
 	lines.append("STUCK (%d):" % stuck.size())
@@ -296,23 +298,12 @@ func run() -> void:
 	await wait(4.0)
 	await go(lander.ramp_foot(4.0), "home", 0.0)
 	await call_done("d1_cargo")
-	if is_inf(days.sunset_spot.x): got_stuck("no sunset rise marked")
-	else:
-		log_line("STATE", "the rise: %.0f m out" % lander.global_position.distance_to(days.sunset_spot))
-		await go(days.sunset_spot, "to Rao's sunset rise", 3.0)
-	var t := 0.0
-	while not (str(radio.playing) == "d1_sunset" and notes.is_open("photo")) and t < 600.0 and not radio.heard.has("d2_wake"):
-		await wait(1.0)
-		t += 1.0
-	if notes.is_open("photo"):
-		await photo(player.global_position + field.sunset.sun_direction() * 50.0, "the sunset", .05)
-	else: got_stuck("Castellanos never asked for the sunset photo")
-	await call_done("d1_sunset", 400.0)
-	if radio.flag("sunset_photo"): log_line("STATE", "she got the photo")
-	else: got_stuck("the sunset photo didn't count")
-	await _bed_and_sleep()
+	log_line("STATE", "chapter 1 done at %02d:%02d" % [int(MHGame.sol_hour), int(fmod(MHGame.sol_hour, 1.0) * 60)])
 
-	# ---------------- Day 2 ----------------
+	# ---------------- Chapter 2 ----------------
+	# A6: it follows after a breather, the same sol if there's light; nights
+	# come whenever they come (await_call sleeps through them).
+	await await_call("d2_wake", 2400.0)
 	_day(2, "GAR-Y")
 	lander.set_hatch(true)
 	player.global_position = ground(lander.ramp_foot(4.0))
@@ -323,9 +314,9 @@ func run() -> void:
 	await go(field.sites.gary.pallet.global_position, "to the open cradle", 4.0)
 	await wait(4.0)
 	if not radio.heard.has("d2_cradle"): got_stuck("no call at the empty cradle")
+	var t := 0.0
 	if gary != null:
 		await go(gary.global_position, "following the tracks to GAR-Y", 6.0)
-		t = 0.0
 		while (field.gary_working or field.meeting != null) and t < 200.0:
 			await wait(1.0)
 			t += 1.0
@@ -362,30 +353,22 @@ func run() -> void:
 		await go(lander.ramp_foot(4.0), "home with the crate", 0.0)
 		gary.global_position = lander.ramp_foot(3.0)
 		await wait(2.0)
-		log_line("STATE", "GAR-Y says: %s" % str(gary.interaction_prompt()))
 		gary.interact(player)
 		await wait(2.0)
-		log_line("STATE", "crate says: %s" % str(crate.interaction_prompt()))
 		if not crate.interact(player): got_stuck("couldn't open the crate at home (%s)" % str(crate.where))
 		await call_done("d2_crate")
-	if gary != null and not pod.walker_due:
-		step("GAR-Y: survey there")
+	if gary != null:
+		step("GAR-Y: survey round the lander (for choosing home)")
 		var why: String = gary.order("survey", lander.global_position + Vector3(0, 0, 25))
 		if why != "": got_stuck("survey refused: %s" % why)
-		t = 0.0
-		while not pod.walker_due and t < 400.0:
-			await wait(5.0)
-			t += 5.0
-	log_line("STATE", "jobs %s, walker due %s, day 2 done %s" % [str(pod.jobs), str(pod.walker_due), str(days.day_done(2))])
-	await call_done("d2_sunset", 900.0)
-	await _bed_and_sleep()
+	log_line("STATE", "chapter 2 done %s at %02d:%02d" % [str(days.day_done(2)), int(MHGame.sol_hour), int(fmod(MHGame.sol_hour, 1.0) * 60)])
 
-	# ---------------- Day 3 ----------------
+	# ---------------- Chapter 3 ----------------
+	await await_call("d3_wake", 2400.0)
 	_day(3, "Walker 1")
 	var walker: Node3D = world.walker
-	lander.set_hatch(true)
-	player.global_position = ground(lander.ramp_foot(4.0))
 	await call_done("d3_wake")
+	log_line("STATE", "Walker 1 is %.0f m from the lander" % Vector2(walker.global_position.x - lander.global_position.x, walker.global_position.z - lander.global_position.z).length())
 	await refill("before the walker")
 	var target: Vector3 = walker.global_position
 	var hops := 0
@@ -421,33 +404,54 @@ func run() -> void:
 	else:
 		player.global_position = ground(knee.global_position + walker.global_basis.x * 5.0)
 		face(knee.global_position)
-		log_line("STATE", "aiming at: %s" % walker.aimed_part(_eye()))
 		await photo(knee.global_position, "a knee", -.3)
 		await call_done("d3_photo_knee", 120.0)
-	var wheel: Vector3 = walker.to_global(Vector3(-7.7, .8, -5.0))
+	var wheel: Vector3 = walker.fault_spot()
 	player.global_position = ground(wheel + walker.global_basis.x * -4.5)
 	face(wheel)
 	await photo(wheel, "the front-left wheel", -.35)
 	if not walker.fault_found: got_stuck("the front-left wheel photo didn't find the fault (aimed at %s)" % walker.aimed_part(_eye()))
 	await call_done("d3_fault", 400.0)
-	await refill("home to print the seal")
-	await go(lander.global_position, "to the printer", 4.0)
-	log_line("STATE", "printer says: %s" % str(pod.printer_prompt()))
-	printer.interact(player)
-	await wait(1.0)
-	_close_screen()
-	pod.print_plan("seal")
-	if str(pod.printing) != "seal": got_stuck("the printer didn't start the seal (%s)" % str(pod.printing))
+	# A6: patched on the spot with pallet 3's kit, then it walks home.
+	player.global_position = ground(wheel + walker.global_basis.x * -1.5)
+	log_line("STATE", "wheel says: %s" % str(walker.interaction_prompt()))
+	if not walker.interact(player): got_stuck("couldn't patch the wheel seal (%s)" % str(walker.interaction_prompt()))
+	await call_done("d3_patched")
 	t = 0.0
-	while str(pod.printing) != "" and t < 600.0:
+	while str(walker.state) == "walking" and t < 900.0:
+		player.global_position = ground(walker.global_position + walker.global_basis.x * 14.0)   # walking alongside
 		await wait(5.0)
 		t += 5.0
-	await call_done("d3_seal")
+	log_line("STATE", "the walk home took %.0f s of play (%s)" % [t, str(walker.state)])
+	await call_done("d3_home")
+	step("Map: W on a spot, W again to send Walker 1")
+	var spot := Vector2.INF
+	for k in 60:
+		var at := Vector2(lander.global_position.x, lander.global_position.z) + Vector2.from_angle(k * .7) * (70.0 + k * 5.0)
+		var reason: String = walker.spot_reason(at)
+		if reason.is_empty():
+			spot = at
+			break
+	if is_inf(spot.x): got_stuck("no spot for home near the lander")
+	elif not walker.send_to(spot): got_stuck("Walker 1 wouldn't go (%s)" % walker.spot_reason(spot))
+	else: log_line("STATE", "home chosen %.0f m from the lander" % Vector2(spot.x - lander.global_position.x, spot.y - lander.global_position.z).length())
+	await call_done("d3_sent")
+
+	# ---------------- Chapter 4 ----------------
+	_day(4, "making it home")
+	t = 0.0
+	while str(walker.state) == "travelling" and t < 1500.0:
+		if notes.is_open("bed") and days.is_night(): await _bed_and_sleep()
+		await wait(5.0)
+		t += 5.0
+	log_line("STATE", "Walker 1 at its spot after %.0f s of play (%s)" % [t, str(walker.state)])
+	await call_done("d4_arrived")
 	var builder: Node = world.builder
-	step("B: mark the module's spot")
+	if not is_inf(spot.x): await go(Vector3(spot.x, 0, spot.y), "to Walker 1 at home", 12.0)
+	step("B: set the core down")
 	log_line("STATE", "B says: '%s'" % RULES.b_reason(builder))
-	var cells := _module_spot(builder, lander.global_position)
-	if cells.is_empty(): got_stuck("no spot for the module near the lander")
+	var cells := _module_spot(builder, Vector3(spot.x, 0, spot.y) if not is_inf(spot.x) else lander.global_position)
+	if cells.is_empty(): got_stuck("no spot for the core")
 	else:
 		builder._toggle()
 		_place(builder, cells)
@@ -460,79 +464,95 @@ func run() -> void:
 				if builder._invalid_reason([c + d]).is_empty():
 					_place(builder, [c + d])
 					placed_airlock = true
-		if not placed_airlock: got_stuck("no airlock spot on the module (%s)" % builder._invalid_reason([cells[0] + Vector2i(1, 0)]))
+		if not placed_airlock: got_stuck("no airlock spot on the core (%s)" % builder._invalid_reason([cells[0] + Vector2i(1, 0)]))
 		await wait(3.0)
 		builder._toggle()
 		await wait(2.0)
-		if not walker.marked: got_stuck("closing the plan didn't mark the spot")
-	await call_done("d3_marked")
-	await call_done("d3_sunset", 900.0)
-	await _bed_and_sleep()
-
-	# ---------------- Day 4 ----------------
-	_day(4, "making it home")
-	await call_done("d4_wake")
-	log_line("STATE", "walker at dawn: %s" % str(walker.state))
-	lander.set_hatch(true)
-	player.global_position = ground(lander.ramp_foot(4.0))
-	await wait(20.0)
-	log_line("STATE", "walker 20 s after you step out: %s" % str(walker.state))
 	t = 0.0
 	while str(walker.state) != "done" and t < 900.0:
 		await wait(5.0)
 		t += 5.0
-	if str(walker.state) != "done": got_stuck("the module never came down (%s)" % str(walker.state))
+	if str(walker.state) != "done": got_stuck("the core never came down (%s)" % str(walker.state))
 	log_line("STATE", "set-down took %.0f s of play" % t)
 	await call_done("d4_down")
-	if not cells.is_empty():
-		var module: Node = world.module_life
-		if module == null: got_stuck("no module life")
-		else:
-			var socket: Vector3 = module.socket_spot()
-			player.global_position = ground(drop.cartridge.global_position)
-			drop.cartridge.interact(player)
-			if str(drop.cartridge.where) == "carried":
-				await go(socket, "the cartridge to the socket", 1.5)
-				if not drop.cartridge.claim(module, "interact"): got_stuck("the socket wouldn't take the cartridge")
-			else: got_stuck("couldn't pick up the staged cartridge (%s)" % str(drop.cartridge.where))
-			var pack: Node = field.sites.power.pack
-			player.global_position = ground(pack.global_position)
+	var module: Node = world.module_life
+	if module == null: got_stuck("no core life")
+	else:
+		var socket: Vector3 = module.socket_spot()
+		log_line("STATE", "the cargo is %.0f m from the socket" % drop.cartridge.global_position.distance_to(socket))
+		player.global_position = ground(drop.cartridge.global_position)
+		drop.cartridge.interact(player)
+		if str(drop.cartridge.where) == "carried":
+			await go(socket, "the cartridge to the socket", 1.5)
+			if not drop.cartridge.claim(module, "interact"): got_stuck("the socket wouldn't take the cartridge")
+		else: got_stuck("couldn't pick up the staged cartridge (%s)" % str(drop.cartridge.where))
+		var pack: Node = field.sites.power.pack
+		player.global_position = ground(pack.global_position)
+		if str(pack.where) == "laid": log_line("STATE", "Walker 1 laid the staged blanket at the socket")
+		else: pack.interact(player)
+		if str(pack.where) == "laid": pass
+		elif str(pack.where) == "carried":
+			await go(socket, "the power pack to the socket", 3.0)
+			pack.put_down()
 			pack.interact(player)
-			if str(pack.where) == "carried":
-				await go(socket, "the power pack to the socket", 3.0)
-				pack.put_down()
-				pack.interact(player)
-				if str(pack.where) != "laid": got_stuck("the blanket wasn't laid (%s)" % str(pack.where))
-			else: got_stuck("couldn't pick up the staged pack (%s)" % str(pack.where))
-		step("Into the module: the fit-out kit")
-		var inside: Vector2i = cells[2]
-		player.global_position = Vector3(inside.x * builder.CELL, builder.habitat_base_y + 1.0, inside.y * builder.CELL)
+			if str(pack.where) != "laid": got_stuck("the blanket wasn't laid (%s)" % str(pack.where))
+		else: got_stuck("couldn't pick up the staged pack (%s)" % str(pack.where))
+		await call_done("d4_patched")
+		if not bool(module.commissioned): got_stuck("air and power in, but the core isn't alive")
+	step("B: the first Quarters liner")
+	var quarters := _room_spot(builder, "living", cells)
+	if quarters.is_empty(): got_stuck("no room for Quarters beside the core (%s)" % builder._invalid_reason([cells[0] + Vector2i(2, 0), cells[0] + Vector2i(3, 0), cells[0] + Vector2i(2, 1), cells[0] + Vector2i(3, 1)]))
+	else:
+		builder._toggle()
+		_place(builder, quarters)
+		builder._after_room_placed()
 		await wait(4.0)
-		for id in RULES.KIT:
-			var spot := _free_spot(builder, str(id), cells)
-			if spot.is_empty():
-				got_stuck("no spot for %s: %s" % [id, _why(builder, str(id), cells)])
-				continue
-			var visual := Node3D.new()
-			if builder.place_free_interior_equipment(str(id), spot.at, spot.rot, spot.cell, visual): log_line("PLACED", str(id))
-			else: got_stuck("placing %s refused" % id)
-			await wait(2.0)
-	await call_done("d4_home", 300.0)
-	await call_done("d4_sunset", 900.0)
-	step("Bed in the module")
-	if not cells.is_empty():
-		var inside: Vector2i = cells[2]
+		builder._toggle()
+		await wait(2.0)
+		if not days.quarters_built(): got_stuck("Quarters placed, but no bunk in it")
+	await call_done("d4_quarters", 300.0)
+	log_line("STATE", "chapter 4 done %s at %02d:%02d" % [str(days.day_done(4)), int(MHGame.sol_hour), int(fmod(MHGame.sol_hour, 1.0) * 60)])
+	await call_done("d4_sunset", 2400.0)
+	step("Bed in Quarters")
+	if not quarters.is_empty():
+		var inside: Vector2i = quarters[0]
 		player.global_position = Vector3(inside.x * builder.CELL, builder.habitat_base_y + 1.0, inside.y * builder.CELL)
 	await wait(3.0)
 	await _sleep_to_dawn()
 
-	# ---------------- Day 5 ----------------
+	# ---------------- Open ----------------
 	_day(5, "open")
 	log_line("STATE", "guided %s, hold %.2f, clock x%.1f" % [str(days.guided()), float(world.day_night.hold_at), float(world.day_night.time_scale)])
-	if days.guided(): got_stuck("day 5 is still guided")
-	if float(world.day_night.hold_at) >= 0.0: got_stuck("day 5's clock is still held")
+	if days.guided(): got_stuck("still guided after the first night in Quarters")
+	if float(world.day_night.hold_at) >= 0.0: got_stuck("the open game's clock is still held")
 	await wait(20.0)
 	step("End")
+
+## A6: waits for a chapter's first call, sleeping through a night if one
+## comes first (the chapter starts by day). The first sunset's photo too.
+func await_call(section: String, limit: float) -> void:
+	var radio: Node = world.radio
+	var notes: Node = world.notes
+	var t := 0.0
+	while not radio.heard.has(section) and t < limit:
+		if notes.is_open("photo") and str(radio.playing) == "d1_sunset":
+			await photo(player.global_position + world.drop_field.sunset.sun_direction() * 50.0, "the sunset", .05)
+		if notes.is_open("bed") and world.opening_days.is_night() and str(radio.playing) == "":
+			await _bed_and_sleep()
+		await wait(2.0)
+		t += 2.0
+	if not radio.heard.has(section): got_stuck("no '%s' within %.0f s of play" % [section, limit])
+
+## Cells for a 2 x 2 room of `kind` beside `next_to`.
+func _room_spot(builder: Node, kind: String, next_to: Array) -> Array:
+	builder.kind = kind
+	for c in next_to:
+		for d in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2), Vector2i(2, 1), Vector2i(-2, -1)]:
+			var at: Vector2i = c + d
+			var cells: Array = [at, at + Vector2i(1, 0), at + Vector2i(0, 1), at + Vector2i(1, 1)]
+			if cells.any(func(x): return next_to.has(x)): continue
+			if builder._invalid_reason(cells).is_empty(): return cells
+	return []
 
 ## A careful player: home to the cabin, hatch shut, suit full, a ration if hungry.
 func refill(why := "") -> void:

@@ -46,12 +46,16 @@ const TURN := .4                # rad/s
 const NAV_SCRIPT := preload("res://scripts/walker_nav_screen.gd")
 const WAIT_OUT := 2600.0        # metres out, hidden, until the night it moves
 const STRANDED_ABOVE := 2.0     # standing on it this high, not riding: you're put down
-const SEE_NEAR := 700.0         # you see it this close
-const SEE_HIGH := 1000.0        # ... or this far from ground this much higher
+const SEE_NEAR := 250.0         # you see it this close (A6: it's only ~550 m out, so follow the tracks first)
+const SEE_HIGH := 600.0         # ... or this far from ground this much higher
 const HIGH_ABOVE := 10.0
 const PARK_FROM_LANDER := 48.0
 const TRACKS_FROM := 220.0      # the tracks run this far out from the lander ...
-const TRACKS_TO := 1150.0       # ... to here (then the ground's too hard to show them)
+const TRACKS_TO := 1150.0       # ... to here at most (then the ground's too hard to show them)
+const TRACKS_SHORT := 35.0      # ... and stop this short of the walker
+const STALL_NEAR := 500.0       # A6: it stalled this far out from the lander ...
+const STALL_FAR := 580.0        # ... to this: inside the bare suit's reach
+const PATCH_REACH := 3.5        # this near the front-left wheel to patch its seal
 const TRACK_STEP := 1.6
 const TRACK_SPAN := 7.7         # the wheels' half-span
 const TEXT_DELAY := 75.0        # seconds to the orbiter's next pass
@@ -80,6 +84,7 @@ var walker_name := NAME
 var kit_given := false           # its airlock and fit-out kit joined the stock (once)
 var spot := Vector3.INF          # A4: the spot marked on the Map it's walking to
 const TRAVEL_SOL := 1.0          # sols to cross the Reach (docs: "about a sol")
+const HOME_RING := 1000.0        # A6: in the chapters, Walker 1's home is within this of the lander
 var _folded := 0.0               # 0 standing, 1 folded into its core
 var state := "stalled"          # stalled, walking, coming (v2: home overnight), parked, carrying, lowering, done; A4: ready, travelling
 var marked := false             # v2: the module's spot is marked, waiting for it
@@ -184,8 +189,8 @@ static func _vec(a: Variant) -> Vector3:
 static func _arr(v: Vector3) -> Array:
 	return [] if is_inf(v.x) else [v.x, v.y, v.z]
 
-## About 1.4 km out on open ground (past where its tracks fade), away from
-## the other finds' bearings.
+## About 550 m out on open ground, inside the bare suit's reach (A6,
+## docs/opening-days.md), away from the other finds' bearings.
 func _choose() -> Vector3:
 	var field: Node = world.get("drop_field")
 	var lander: Vector3 = world.lander.global_position
@@ -197,7 +202,7 @@ func _choose() -> Vector3:
 	var pod: Node = world.get("lifepod")
 	if pod != null:
 		for kind in pod.sites: taken.append(field._bearing(pod.sites[kind].global_position))
-	return field.choose("walker", 1300.0, 1500.0, "flat", taken, ridge)
+	return field.choose("walker", STALL_NEAR, STALL_FAR, "flat", taken, ridge)
 
 ## Before its night: far out, unseen and out of reach (parts 1 and 2 of the
 ## opening know nothing of it).
@@ -341,7 +346,8 @@ func lay_tracks() -> void:
 	var along := flat.normalized()
 	var side := Vector3(along.z, 0, -along.x)
 	# A gentle wander, so they read as walked, not drawn.
-	var count := int((TRACKS_TO - TRACKS_FROM) / TRACK_STEP)
+	var reach := clampf(flat.length() - TRACKS_SHORT, TRACKS_FROM + 40.0, TRACKS_TO)
+	var count := int((reach - TRACKS_FROM) / TRACK_STEP)
 	var print_mesh := BoxMesh.new()
 	print_mesh.size = Vector3(.55, .04, 1.1)
 	var mm := MultiMesh.new()
@@ -367,7 +373,7 @@ func lay_tracks() -> void:
 	_tracks.add_child(prints)
 	# Marks for the camera and for Notes, every 40 m.
 	var d := TRACKS_FROM
-	while d <= TRACKS_TO:
+	while d <= reach:
 		var mark := Marker3D.new()
 		var p := lander + along * d + side * sin(d / 90.0) * 6.0
 		mark.position = Vector3(p.x, MHSiteTerrain.height(p.x, p.z) + .3, p.z)
@@ -377,12 +383,12 @@ func lay_tracks() -> void:
 		mark.set_meta("photo_name", "Walker tracks")
 		_tracks.add_child(mark)
 		d += 40.0
-	# The leg panel it shed, beside the tracks about 400 m out.
+	# The leg panel it shed, beside the tracks most of the way out.
 	var panel := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = Vector3(1.1, .05, .7)
 	panel.mesh = box
-	var at := lander + along * 410.0 + side * (TRACK_SPAN + 2.5)
+	var at := lander + along * (reach * .7) + side * (TRACK_SPAN + 2.5)
 	panel.position = Vector3(at.x, MHSiteTerrain.height(at.x, at.z) + .05, at.z)
 	panel.rotation = Vector3(.12, 1.1, -.08)
 	var white := StandardMaterial3D.new()
@@ -483,7 +489,10 @@ func interaction_prompt() -> Dictionary:
 	match state:
 		"stalled": return {"label": NAME + " · lost: its nav screen's up on the front deck"}
 		"walking": return {"label": NAME + " · walking home"}
-		"coming": return {"label": NAME + " · set right: it'll crawl home overnight"}
+		"coming":
+			if fault_found and _near_fault(): return {"label": NAME + " · its front-left wheel seal, split", "primary": "Patch it"} if _have_patch_kit() else {"label": "Its front-left wheel seal: split. Pallet 3's patch kit would close it."}
+			if fault_found: return {"label": NAME + " · its front-left wheel seal's split"}
+			return {"label": NAME + " · set right, but locked: something in its running gear"}
 		"parked": return {"label": walker_name + " · carrying the core"}
 		"carrying", "lowering": return {"label": walker_name + " · setting the module down"}
 		"ready": return {"label": walker_name + " · ready: mark a spot for it on the Map (W)"}
@@ -491,7 +500,36 @@ func interaction_prompt() -> Dictionary:
 	return {"label": walker_name}
 
 func interact(_actor: Node = null) -> bool:
+	if state == "coming" and fault_found and _near_fault() and _have_patch_kit():
+		patch_seal()
+		return true
 	return false
+
+## The front-left wheel, in the world.
+func fault_spot() -> Vector3:
+	return to_global(Vector3(-7.7, .8, -5.0))
+
+func _near_fault() -> bool:
+	var player: Node3D = world.get("player")
+	if player == null: return false
+	var at := fault_spot()
+	return Vector2(player.global_position.x - at.x, player.global_position.z - at.z).length() < PATCH_REACH
+
+## Pallet 3's field tools (scripts/drop_field.gd tools): the patch kit's in them.
+func _have_patch_kit() -> bool:
+	var field: Node = world.get("drop_field")
+	return field == null or bool(field.get("tools"))
+
+## A6, chapter 3: the split seal patched on the spot. It walks home now, and
+## you can ride its deck.
+func patch_seal() -> void:
+	if state != "coming": return
+	fault_found = true
+	MHAudio.sfx("suit_clamp", -4.0)
+	MHNotices.post("valid", "The seal's patched", "Walker 1's front-left wheel turns clean. Climb its ladder to ride it home, or walk alongside.", "log")
+	var radio: Node = world.get("radio")
+	if radio != null: radio.ring("d3_patched")
+	_wake()
 
 ## Seated at the front: the nav screen (scripts/walker_nav_screen.gd).
 func open_nav() -> bool:
@@ -520,14 +558,13 @@ func recalibrated() -> void:
 ## v2: set right, but it'll walk home tonight, not now. You climb down.
 func _coming() -> void:
 	state = "coming"
-	MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit, for the mark
 	var lander: Vector3 = world.lander.global_position
 	var out := Vector3(global_position.x - lander.x, 0, global_position.z - lander.z).normalized()
 	home = lander + out * PARK_FROM_LANDER
 	MHAudio.sfx_at("mode_build", self, -4.0, .6)
 	var notes: Node = world.get("notes")
 	if notes != null: notes.answer("walker_seen")
-	MHNotices.post("info", NAME + " knows where it is", "But it won't move. Climb down and photograph it for Castellanos: Tab for the slate, then Camera.", "", 1)
+	MHNotices.post("info", NAME + " knows where it is", "But it won't move. Climb down and photograph it for Castle, one part at a time: Tab for the slate, then Camera.", "", 1)
 	var radio: Node = world.get("radio")
 	if radio != null: radio.ring("d3_fixed")
 
@@ -704,11 +741,18 @@ func _process(delta: float) -> void:
 			if sleep != null and bool(sleep.asleep): pace *= float(world.day_night.time_scale)
 			_watch_for_you()
 			if _can_move() and _drive(home, pace):
-				state = "parked"
-				MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit
 				var notes: Node = world.get("notes")
 				if notes != null: notes.think("walker_home")
-				MHNotices.post("info", NAME + " is home", "Press B to choose where the core goes.", "", 1)   # what to do next: ahead of the queue
+				if int(world.get("opening_version")) >= 2:
+					# A6: home by the lander, ready to be sent to the spot you choose.
+					state = "ready"
+					MHNotices.post("info", NAME + " is home", "Choose where home goes: open the Map, W on a spot to check it, W again to send Walker 1.", "", 1)
+					var radio: Node = world.get("radio")
+					if radio != null: radio.ring("d3_home")
+				else:
+					state = "parked"
+					MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its kit
+					MHNotices.post("info", NAME + " is home", "Press B to choose where the core goes.", "", 1)   # what to do next: ahead of the queue
 		"travelling":
 			_watch_for_you()
 			var hours := fposmod(MHGame.sol_hour - _last_hour, 24.0) if _last_hour >= 0.0 else 0.0
@@ -1004,6 +1048,7 @@ func _finish_set_down(animate := true) -> void:
 	if refolded:
 		MHNotices.post("info", "The core is down", "%s is folded in again: everything you had is in the store, ready to build." % walker_name, "", 1)
 		return
+	_bring_cargo()
 	if not MHChapterOne.known.has("ice_drill"): MHChapterOne.known["ice_drill"] = "module"
 	MHChapterOne.learn_after("module_down")
 	var notes: Node = world.get("notes")
@@ -1013,7 +1058,31 @@ func _finish_set_down(animate := true) -> void:
 		notes.think("module_power")
 		var drop: Node = world.get("storm_drop")
 		if drop != null and drop.cartridge != null and str(drop.cartridge.where) == "ground": notes.think("module_air", "staged")
-	MHNotices.post("info", "The core is down", "Walk over and cycle in. Inside, B unpacks its fit-out kit.", "", 1)
+	MHNotices.post("info", "The core is down", "It's cold and dark. Plug the air cartridge into its outside socket and lay the solar blanket beside it.", "", 1)
+	var radio: Node = world.get("radio")
+	if radio != null and int(world.get("opening_version")) >= 2: radio.ring("d4_down")
+
+## A6: it picked up your staged cargo at the lander on its way. If home's
+## away from the lander, the air cartridge and power pack come down by the core.
+const CARGO_STAGED := 40.0
+func _bring_cargo() -> void:
+	var lander: Vector3 = world.lander.global_position
+	var core := BUILD_RULES.module_zone(world.builder, base_id)
+	if core.is_empty(): return
+	var module: Node = world.get("module_life")
+	var by: Vector3 = module.socket_spot() if module != null and module.has_method("socket_spot") else global_position
+	if Vector2(by.x - lander.x, by.z - lander.z).length() < CARGO_STAGED * 1.5: return
+	var away := Vector3(by.x - lander.x, 0, by.z - lander.z).normalized()
+	var across := away.cross(Vector3.UP)
+	var i := 0
+	for group in ["o2_cartridge", "power_pack"]:
+		for item in get_tree().get_nodes_in_group(group):
+			var thing := item as Node3D
+			if thing == null or str(thing.get("where")) != "ground": continue
+			if Vector2(thing.global_position.x - lander.x, thing.global_position.z - lander.z).length() > CARGO_STAGED: continue
+			var p := by + away * 2.5 + across * (1.6 if i == 0 else -1.6)
+			thing.global_position = Vector3(p.x, MHSiteTerrain.height(p.x, p.z) + .05, p.z)
+			i += 1
 
 ## The first night under a real roof: after dark, inside the module.
 func _night_check(you: Vector3) -> void:
@@ -1094,6 +1163,11 @@ func spot_reason(at: Vector2) -> String:
 		if str(id) == base_id: continue
 		var c = builder.bases[id].get("centre", Vector2.INF)
 		if c is Vector2 and not is_inf((c as Vector2).x) and (c as Vector2).distance_to(at) < MHBases.APART: return "Too close to %s" % MHBases.label_for(str(id))
+	# The guided chapters (A6): Walker 1's home stays in ring 1, near the lander.
+	var opening: Node = world.get("opening_days")
+	if base_id == "w1" and not kit_given and opening != null and bool(opening.call("guided")):
+		var lander: Vector3 = world.lander.global_position
+		if Vector2(at.x - lander.x, at.y - lander.z).length() > HOME_RING: return "For now, keep home within a kilometre of the lander"
 	var origin: Vector2 = known.origin if known != null else Vector2.ZERO
 	var ground := MHBaseSite.reason(at.x + origin.x, at.y + origin.y, 24.0)
 	if not ground.is_empty(): return "Not there: " + ground
@@ -1108,6 +1182,8 @@ func send_to(at: Vector2) -> bool:
 	ladder_out = 0.0 if not riding else ladder_out
 	_last_hour = MHGame.sol_hour
 	MHNotices.post("info", walker_name + " is on its way", "It walks there on its own: about %s. Follow it, or ride it." % _eta(), "")
+	var radio: Node = world.get("radio")
+	if radio != null and base_id == "w1" and not kit_given: radio.ring("d3_sent")
 	return true
 
 func _eta() -> String:
@@ -1122,6 +1198,8 @@ func _arrive() -> void:
 	_place_ladder()
 	if not kit_given: MHChapterOne.stock["airlock"] = int(MHChapterOne.stock.get("airlock", 0)) + 1   # its airlock
 	MHNotices.post("info", walker_name + " is at its spot", "Go there and press B to choose where the core goes.", "", 1)
+	var radio: Node = world.get("radio")
+	if radio != null and base_id == "w1" and not kit_given: radio.ring("d4_arrived")
 
 func export_state() -> Dictionary:
 	return {"base_id": base_id, "name": walker_name, "kit_given": kit_given, "spot": _arr(spot), "state": state, "at": _arr(global_position), "yaw": rotation.y, "home": _arr(home), "target": _arr(target), "target_yaw": target_yaw,

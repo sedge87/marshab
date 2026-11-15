@@ -15,6 +15,19 @@ extends Node
 ## dark just gets a word of caution (night_caution). Version 1 kept it shut
 ## from inside at night while you lived in the lander.
 
+## The guided chapters, version 2, as rewritten in A6 (15 Nov,
+## docs/opening-days.md): chapters aren't days. A chapter's beats done, the
+## next one's first call comes after a short breather (BREATHER), on the same
+## sol if there's light. At dusk Castle calls from wherever the story is, and a
+## morning recaps only what's left. Nothing waits for the dark:
+##   1: pallets 1-3 for the bare suit, the cargo home.
+##   2: Rao sees something moving; GAR-Y found at work; his jobs; the crate.
+##   3: Walker 1's tracks; its nav set right; its wheel seal patched on the
+##      spot; ride it home; choose home on the Map (W, W).
+##   4: it walks there, kneels and folds into the core; air and power in; the
+##      first Quarters liner; the three horizons; the first night in Quarters
+##      ends the chapters.
+## (Below, the 8 Nov notes on the first v2, kept for the history.)
 ## The guided days, version 2 (docs/opening-days.md, 8 Nov redesign), for
 ## new games: four chapters on the real sun (9 Nov). The sun never waits.
 ## A chapter's beats done, its sunset call comes at dusk, and the next
@@ -41,6 +54,11 @@ const DAY1_SUN_EARLIER := .7    # day 1's photo call: about 1.3 h before sunset,
 const DUSK_SPEED := 8.0         # (no longer used: the sun runs freely)
 const MORNING_GAP := 14.0       # sim hours between mornings (a chapter turns over at most once a sol)
 const EARLY_HOURS := 2.5        # done with this much light left: "the rest of the day's yours"
+## A6: game hours between a chapter's beats done and the next chapter's first
+## call (index: the chapter just done). Back in the cabin it comes sooner.
+const BREATHER := [0.0, 1.0, 1.0, 0.0]
+const BREATHER_INSIDE := .25
+const LATE_START := 3.0         # no new chapter starts this close to sunset (about 5 real minutes of light): it waits for morning
 
 const STAGES := ["pallets", "lifepod", "walker", "module", "fit_out"]
 const FIT_OUT_PIECES := 3       # kit pieces placed: the module's lived in
@@ -67,6 +85,7 @@ var last_morning := UNSET        # sim hours at the last morning
 const UNSET := -1.0e9
 var dusk_sol := 0                # the sol whose "pick it up tomorrow" call came
 var done_told := 0               # the last chapter whose "the rest of the day's yours" came
+var done_at := UNSET             # A6: sim hours when this chapter's beats were done
 var survey_from := -1            # day 4: cores taken from here on (MHChapterOne.cores) count for the module's ice
 var ice_spot := Vector3.INF      # day 4: the module's ice, found
 const ICE_REACH := 400.0         # this near the module, a core's the module's ice
@@ -76,7 +95,7 @@ const BUNK_BY_DOOR := 4.5        # metres from the airlock: the bunk's "by the d
 const OWNER_NOTES := [
 	["d4_note_tupou", "tupou", "Life's mine, then. If you see anything at all that looks odd, layered, crusty, a funny colour, photograph it before you touch it. Please. I'll explain why later. At length."],
 	["d4_note_rao", "rao", "Climate. Every pass, I'm looking at your sky as well as for walkers. Tell me when the dust is up and when the frost is down. That's half my data, from you."],
-	["d4_note_achterberg", "achterberg", "Geology, and building with it. Your printer eats regolith. Find me good dirt and I'll find you things to make out of it. Also: well done on the seam."],
+	["d4_note_achterberg", "achterberg", "Geology, and building with it. Your printer eats regolith. Find me good dirt and I'll find you things to make out of it. Also: well done on Walker 1's wheel."],
 	["d4_note_mwangi", "mwangi", "Humans, which means you. Eat, drink, sleep, in that order, and tell me honestly how you're feeling. I'd rather hear 'lonely' than 'fine'."],
 ]
 var _fast := false
@@ -103,12 +122,13 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	last_morning = float(saved.get("last_morning", UNSET))
 	dusk_sol = int(saved.get("dusk_sol", 0))
 	done_told = int(saved.get("done_told", 0))
+	done_at = float(saved.get("done_at", UNSET))
 	var ice: Array = saved.get("ice_spot", [])
 	if ice.size() == 3: ice_spot = Vector3(float(ice[0]), float(ice[1]), float(ice[2]))
 
 func export_state() -> Dictionary:
 	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning, "nights": nights, "version": version, "sunset_called": sunset_called, "sunset_reached": sunset_reached, "sunset_spot": [] if is_inf(sunset_spot.x) else [sunset_spot.x, sunset_spot.y, sunset_spot.z],
-		"chapter": chapter, "last_morning": last_morning, "dusk_sol": dusk_sol, "done_told": done_told,
+		"chapter": chapter, "last_morning": last_morning, "dusk_sol": dusk_sol, "done_told": done_told, "done_at": done_at,
 		"survey_from": survey_from, "ice_spot": [] if is_inf(ice_spot.x) else [ice_spot.x, ice_spot.y, ice_spot.z]}
 
 # ---------- where the days are ----------
@@ -229,6 +249,13 @@ func _process(delta: float) -> void:
 	if _was_asleep:
 		_was_asleep = false
 		if hour >= sunrise - 2.0 and hour < 12.0: nights += 1
+		# A6: the first night after chapter 4's done (in Quarters) ends the chapters.
+		if v2() and chapter == STORY_DAYS and chapter_done(STORY_DAYS):
+			var radio_now := _radio()
+			if radio_now != null and not (radio_now.heard as Dictionary).has("d4_sunset_deal") and radio_now.handlers.has("owner_notes"):
+				(radio_now.handlers["owner_notes"] as Callable).call([])   # the talk was missed: the notes still come
+			chapter += 1
+			return
 	# Dusk: the day's done (or it's too late to finish it). Bed.
 	var dusk := hour >= sunset - DUSK_EARLY and hour < sunset + 6.0
 	var late := hour >= sunset or hour < sunrise
@@ -347,13 +374,26 @@ func day_done(day: int) -> bool:
 			if crate != null: return bool(crate.opened)   # the spares crate, towed home and opened
 			return pod == null or bool(pod.walker_due) or bool(pod.walker_moved)
 		3:
+			# A6: set right, patched, ridden home and sent to the spot you chose.
 			var walker: Node = world.get("walker")
-			if walker != null and str(walker.state) == "coming" and pod != null and not (pod.prints as Dictionary).has("seal"): return false
-			return walker == null or bool(walker.marked) or str(walker.state) in ["parked", "carrying", "lowering", "done"]
-		4: return _done("module") and _commissioned() and _done("fit_out") and not is_inf(ice_spot.x)
+			return walker == null or str(walker.state) in ["travelling", "parked", "carrying", "lowering", "done"]
+		4: return _done("module") and _commissioned() and quarters_built()
 	return true
 
-## Day 4: the module's leak patched and it's holding (scripts/module_life.gd).
+## A6, chapter 4: a Quarters liner with its bunk inside, at Walker 1's base.
+func quarters_built() -> bool:
+	var builder: Node = world.get("builder")
+	if builder == null: return true
+	for z in builder.zones:
+		if str(z.get("kind", "")) != "living" or str(z.get("base", "w1")) != "w1" or bool(z.get("arriving", false)): continue
+		for item in builder.placed_interior:
+			if str(item.get("id", "")) != "crew_bunk": continue
+			var at: Vector3 = item.get("position", Vector3.ZERO)
+			var cell := Vector2i(roundi(at.x / builder.CELL), roundi(at.z / builder.CELL))
+			if (z.cells as Array).has(cell): return true
+	return false
+
+## Day 4: the core holds air and has power (scripts/module_life.gd).
 func _commissioned() -> bool:
 	var module: Node = world.get("module_life")
 	return module != null and bool(module.commissioned)
@@ -365,19 +405,26 @@ func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void
 	if radio != null and chapter >= 3 and not radio.flag("surveyed") and _surveyed_near_home(): radio.flags["surveyed"] = true
 	var run := _hours_run()
 	if last_morning <= UNSET: last_morning = run
-	# Morning: the next chapter if this one's done, else what's left of it.
-	var sunset_on: bool = radio != null and (radio.playing == "d%d_sunset" % chapter or (radio.queue as Array).has("d%d_sunset" % chapter))
-	if hour >= sunrise - 1.5 and hour < 12.0 and run - last_morning >= MORNING_GAP and not sunset_on:
+	var busy: bool = radio != null and (radio.on_air() or not (radio.queue as Array).is_empty())
+	var done := chapter_done(chapter)
+	if done and done_at <= UNSET: done_at = run
+	if not done: done_at = UNSET
+	# Morning: what's left of an unfinished chapter (A6: a finished one has
+	# already moved on, or does below).
+	if hour >= sunrise - 1.5 and hour < 12.0 and run - last_morning >= MORNING_GAP and not busy:
 		last_morning = run
-		if chapter_done(chapter):
-			if chapter == STORY_DAYS and radio != null and not (radio.heard as Dictionary).has("d4_sunset_deal") and radio.handlers.has("owner_notes"):
-				(radio.handlers["owner_notes"] as Callable).call([])   # the talk was missed: the notes still come
-			chapter += 1
-			if not guided(): return   # day 5: yours
-		elif radio != null:
+		if not done and radio != null:
 			_leftover_flags(radio)
 			radio.heard.erase("d%d_still" % chapter)
 			radio.ring("d%d_still" % chapter)
+	# A6: the next chapter after a breather, by day (chapter 4 ends with sleep).
+	if done and chapter < STORY_DAYS and not busy and hour >= sunrise - 1.0 and hour < sunset - LATE_START:
+		var wait: float = BREATHER[chapter] if chapter < BREATHER.size() else 1.0
+		if _in_cabin(): wait = minf(wait, BREATHER_INSIDE)
+		if run - done_at >= wait:
+			chapter += 1
+			done_at = UNSET
+			done = chapter_done(chapter)
 	_day_calls(chapter, hour, sunrise)
 	# Day 1: on Rao's rise.
 	if chapter == 1 and not sunset_reached and not is_inf(sunset_spot.x):
@@ -390,24 +437,26 @@ func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void
 	if radio == null: return
 	# Day 1 asks for a photo of the sun going down: call while it's still above
 	# the hills (playtest 14 Nov: it had gone behind them by the time she asked).
-	var call_at := sunset - (CALL_BEFORE_SUNSET + DAY1_SUN_EARLIER if chapter == 1 else CALL_BEFORE_SUNSET)
-	var evening := hour >= call_at or hour < sunrise - 1.5
-	if chapter_done(chapter):
-		if sunset_called < chapter and evening:
-			sunset_called = chapter
-			if chapter == 1:
-				# Entirely optional: a talk wherever you are; a picture only if you're out.
-				if _in_cabin(): radio.flags["indoors"] = true
-				elif not is_inf(sunset_spot.x) and not sunset_reached: radio.flags["missed_rise"] = true
-			radio.ring("d%d_sunset" % chapter)
-		elif done_told < chapter and hour >= sunrise and hour < call_at - EARLY_HOURS:
-			done_told = chapter
-			radio.ring("d%d_done" % chapter)
-	elif dusk_sol != sol and hour >= call_at and hour < sunset + 3.0:
+	# Dusk, once a sol (A6): the first sunset talk once the cargo's home; the
+	# three horizons once chapter 4's done; else a short good night from
+	# wherever the story is.
+	var first_sunset := not (radio.heard as Dictionary).has("d1_sunset")
+	var call_at := sunset - (CALL_BEFORE_SUNSET + DAY1_SUN_EARLIER if first_sunset else CALL_BEFORE_SUNSET)
+	if dusk_sol != sol and hour >= call_at and hour < sunset + 3.0 and not busy:
 		dusk_sol = sol
-		_leftover_flags(radio)
-		radio.heard.erase("d%d_dusk" % chapter)
-		radio.ring("d%d_dusk" % chapter)
+		if chapter == STORY_DAYS and done:   # the finale's talk first, even on a first sunset
+			sunset_called = STORY_DAYS
+			radio.ring("d4_sunset")
+		elif first_sunset and chapter_done(1):
+			sunset_called = maxi(sunset_called, 1)
+			# Entirely optional: a talk wherever you are; a picture only if you're out.
+			if _in_cabin(): radio.flags["indoors"] = true
+			elif not is_inf(sunset_spot.x) and not sunset_reached: radio.flags["missed_rise"] = true
+			radio.ring("d1_sunset")
+		else:
+			_leftover_flags(radio)
+			radio.heard.erase("d%d_dusk" % chapter)
+			radio.ring("d%d_dusk" % chapter)
 
 func _hours_run() -> float:
 	var builder: Node = world.get("builder")
@@ -435,16 +484,16 @@ func _leftover_flags(radio: Node) -> void:
 				left.append("left_crate" if pod != null and (pod.prints as Dictionary).has("hitch") else "left_hitch")
 		3:
 			var state := str(walker.state) if walker != null else "done"
-			if state not in ["coming", "parked", "carrying", "lowering", "done"]: left.append("left_walker")
-			elif state == "coming":
-				if not bool(walker.get("fault_found")): left.append("left_photo")
-				elif pod != null and not (pod.prints as Dictionary).has("seal"): left.append("left_seal")
-				if not bool(walker.marked): left.append("left_mark")
+			if state == "stalled": left.append("left_walker")
+			elif state == "coming": left.append("left_patch" if bool(walker.get("fault_found")) else "left_photo")
+			elif state == "walking": left.append("left_ride")
+			elif state == "ready": left.append("left_home")
 		4:
-			if not _done("module"): left.append("left_down")
-			elif not _commissioned(): left.append("left_leak")
-			elif not _done("fit_out"): left.append("left_fit")
-			elif is_inf(ice_spot.x): left.append("left_ice")
+			var state := str(walker.state) if walker != null else "done"
+			if state == "travelling": left.append("left_walk")
+			elif not _done("module"): left.append("left_down")
+			elif not _commissioned(): left.append("left_power")
+			elif not quarters_built(): left.append("left_quarters")
 	for f in left: radio.flags[f] = true
 
 ## The calls that come as the day goes.
@@ -460,20 +509,18 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 		if field != null and field.sites.has("tools") and bool(field.sites.tools.pallet.opened): radio.ring("d1_pallet4")
 		# "A proper day's work" only once pallet 4's been opened too (playtest 14 Nov).
 		if pod != null and (pod.jobs as Dictionary).has("tow") and day_done(1): radio.ring("d1_cargo")
+	# A6: each chapter's first call comes when it starts, by day (the next
+	# chapter never starts after dark: see _chapter_tick).
 	elif day == 2 and hour >= sunrise - 1.0 and not bool(world.get("gary_met")):
 		radio.ring("d2_wake")
 	elif day == 3 and hour >= sunrise - 1.0:
 		radio.ring("d3_wake")
-	elif day == 4 and hour >= sunrise - 1.0:
-		var walker: Node = world.get("walker")
-		if walker != null and str(walker.state) == "coming": walker.arrive_overnight()
-		if walker != null and str(walker.state) == "parked" and bool(walker.marked) and not _in_cabin(): walker.deliver_marked()
-		radio.ring("d4_wake")
-		if _done("module"): radio.ring("d4_down")
-		if _done("module") and _commissioned() and _done("fit_out") and not (radio.heard as Dictionary).has("d4_home"):
+	elif day == 4:
+		# Walker 1 walks to your spot (scripts/walker.gd rings d4_arrived and
+		# d4_down); the core alive rings d4_patched (scripts/module_life.gd).
+		if _done("module") and _commissioned() and quarters_built() and not (radio.heard as Dictionary).has("d4_quarters"):
 			_bunk_flags(radio)
-			radio.ring("d4_home")
-		if survey_from >= 0 and is_inf(ice_spot.x): _look_for_ice(radio)
+			radio.ring("d4_quarters")
 
 ## GAR-Y's ice stakes out round the lander (chapter 3: find the water, then
 ## choose where the module goes).
@@ -567,6 +614,8 @@ func _mark_tracks() -> void:
 	var field: Node = world.get("drop_field")
 	if walker == null or known == null or field == null or bool(walker.get("seen")): return
 	walker.lay_tracks()
+	var pod: Node = world.get("lifepod")
+	if pod != null: pod.walker_moved = true   # the opening's part 3 (mars_world.opening_part)
 	known.learn("walker_tracks_start", "find", field.region_at(walker.tracks_start()), "Fresh tracks", "you", "castellanos")
 
 func field_crate() -> Node:

@@ -98,7 +98,20 @@ static func fixed_cells(builder: Node, kind: String, at: Vector2i) -> Array:
 ## The cargo a placement costs, or -1 to use the usual cost. The carried
 ## module came down whole: nothing to pay.
 static func cost(builder: Node, kind: String) -> int:
-	return 0 if kind == "general" and stage(builder) == "set_down" else -1
+	if kind == "general" and stage(builder) == "set_down": return 0
+	if first_quarters(builder, kind): return 0
+	return -1
+
+## A6: the guided chapters' first Quarters liner came with Walker 1 (nothing
+## printed yet to pay for a shell), at its base, while none stands.
+static func first_quarters(builder: Node, kind: String) -> bool:
+	if kind != "living" or not active(builder) or module_zone(builder).is_empty(): return false
+	var world: Node = builder.get("world")
+	var days: Node = world.get("opening_days") if world != null else null
+	if days == null or not days.has_method("guided") or not bool(days.guided()): return false
+	for zone in builder.get("zones"):
+		if str(zone.get("kind", "")) == "living": return false
+	return true
 
 ## Extra reasons a zone can't go here ("" when it can).
 static func zone_reason(builder: Node, kind: String, cells: Array) -> String:
@@ -123,6 +136,9 @@ static func explored(builder: Node, site: Vector2) -> bool:
 static func placed(builder: Node, zone: Dictionary) -> void:
 	if str(zone.kind) == "general" and stage(builder) == "set_down":
 		zone["carried"] = true
+		zone["cost"] = 0
+	elif first_quarters(builder, str(zone.kind)):
+		zone["kit"] = true   # A6: the first Quarters liner came in Walker 1's kit
 		zone["cost"] = 0
 
 ## The plan closed: with the module and an airlock placed, the walker goes.

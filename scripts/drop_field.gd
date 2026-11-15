@@ -28,9 +28,12 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const RIDGE_VIEW := 45.0          # this close to the first canopy, you see the next two
 
 ## [kind, nearest, furthest, the ground it wants]
-## 14 Nov: pallets 2 and 4 come in about 15% for the bare suit (docs/range-ladder.md),
-## so day 1 still ends before dusk; the chapter rewrite (A6) sets them properly.
-const KINDS := [["power", 440.0, 580.0, "flat"], ["gary", 720.0, 900.0, "rough"], ["tools", 760.0, 960.0, "low"]]
+## A6 (15 Nov, docs/opening-days.md): set for the bare suit, which turns you
+## back about 600 m out. Power ~400 m, GAR-Y's cradle ~450 m (he works
+## WORK_OUT further on), the field tools ~500 m; pallet 1 is ~250 m
+## (scripts/storm_drop.gd).
+const KINDS := [["power", 360.0, 440.0, "flat"], ["gary", 420.0, 480.0, "rough"], ["tools", 460.0, 540.0, "low"]]
+const AIM := {"flat": 400.0, "rough": 450.0, "low": 500.0}   # the distance each kind leans to
 const APART_DEG := 50.0           # bearings at least this far apart, from the lander
 const DOOR_WAIT := 3.0            # GAR-Y waits this far out from the ramp's foot
 const DOOR_REACH := 4.2           # step out this close and it introduces itself
@@ -55,7 +58,7 @@ var gary_working := false        # version 2, day 2: GAR-Y out at work, waiting 
 var crate: Node3D                # version 2, day 2: the spares crate GAR-Y was circling (scripts/spares_crate.gd)
 const CRATE := preload("res://scripts/spares_crate.gd")
 const FIND_REACH := 9.0          # this close and it notices you
-const WORK_OUT := 140.0          # how far past its cradle it's working
+const WORK_OUT := 130.0          # how far past its cradle it's working (A6: ~580 m out, the suit's edge)
 
 func setup(target_world: Node, saved: Dictionary) -> void:
 	world = target_world
@@ -187,9 +190,9 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 			if slope > 2.5: continue
 			var score := 0.0
 			match ground:
-				"flat": score = h * .1 - _roughness(p) * 4.0 - slope * 2.0 - absf(distance - 510.0) * .01
-				"rough": score = _roughness(p) * 2.0 - slope - absf(distance - 800.0) * .01
-				"low": score = (_ring_mean(p, 60.0) - h) * 1.5 - slope - absf(distance - 860.0) * .01
+				"flat": score = h * .1 - _roughness(p) * 4.0 - slope * 2.0 - absf(distance - float(AIM.flat)) * .01
+				"rough": score = _roughness(p) * 2.0 - slope - absf(distance - float(AIM.rough)) * .01
+				"low": score = (_ring_mean(p, 60.0) - h) * 1.5 - slope - absf(distance - float(AIM.low)) * .01
 			if not _sound(p) or not _sound(_pallet_at(p)): score -= 1000.0   # only if there's nowhere better
 			if score > best and reachable(p) and reachable(_pallet_at(p)):
 				best = score

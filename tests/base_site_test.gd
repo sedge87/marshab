@@ -11,7 +11,7 @@ const WEATHER_WEAR := preload("res://scripts/weather_wear.gd")
 
 func _initialize() -> void:
 	MHGame.base_site = {}
-	for site in ["region_plains", "region_crater", "region_riverbed"]:
+	for site in ["region_plains"]:   # the only landing site since A6
 		MHGame.site_id = site
 		var zone := MHSiteTerrain.region_zone()
 		var half := float(MHSiteTerrain.settings().get("pad_half", 60.0))

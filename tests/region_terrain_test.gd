@@ -11,7 +11,7 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const ROUTE := preload("res://scripts/rover_route.gd")
 
 func _initialize() -> void:
-	for site in ["region_plains", "region_crater", "region_riverbed"]:
+	for site in ["region_plains"]:   # the only landing site since A6
 		MHGame.site_id = site
 		var zone := MHSiteTerrain.region_zone()
 		assert(not zone.is_empty(), "%s lands in the region." % site)

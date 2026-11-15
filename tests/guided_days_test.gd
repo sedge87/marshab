@@ -1,20 +1,22 @@
 extends SceneTree
 
-# The guided days, version 2 (docs/opening-days.md; scripts/opening_days.gd,
-# drop_field.gd, radio.gd):
-# - a new game plays version 2: no GAR-Y on day 1, its pallet out of sight;
-# - from the ridge Castellanos names pallets 2 and 4 (not 3);
+# The guided chapters, version 2 as rewritten in A6 (docs/opening-days.md;
+# scripts/opening_days.gd, drop_field.gd, walker.gd, radio.gd):
+# - a new game plays version 2: no GAR-Y in chapter 1, its pallet out of sight;
+# - the pallets sit inside the bare suit's reach;
+# - from the ridge Castellanos names pallets 2 and 3 (not 4);
 # - the first call: the hatch stays shut till you answer Castle;
-# - chapters on the real sun: never held; not done by dusk, Castle says
-#   tomorrow (d1_dusk) and recaps in the morning (d1_still); done, the
-#   sunset call, and the next chapter the morning after;
+# - chapters aren't days: not done by dusk, Castle says tomorrow (d1_dusk)
+#   and recaps in the morning (d1_still); done, the next chapter comes after
+#   a breather on the same sol, and never starts too near dusk;
 # - a blackout before GAR-Y: something unseen brings you home, no leak;
 # - the landing seat takes Z;
-# - day 2's wake call brings GAR-Y out at work past its empty cradle; the
-#   cradle rings Castellanos; walk up and GAR-Y meets you; d2_found plays;
-# - day 2 holds till GAR-Y's found and the walker's due; then its sunset call;
-# - day 4: the module down cold and vented; cartridge and blanket bring the
-#   leak; patched, the fit-out, the ice survey; the talk and the owners' notes;
+# - chapter 2: GAR-Y out at work past its empty cradle; found; the crate;
+# - chapter 3: Walker 1's tracks; set right; photographed; its seal patched
+#   on the spot; it walks home and is sent to your spot from the Map;
+# - chapter 4: at the spot the core goes down, cold; air and power bring it
+#   alive (no leak); a Quarters liner with its bunk; the three horizons; the
+#   first night after ends the chapters;
 # - saved: the version and the calls.
 # godot --headless --path . --script res://tests/guided_days_test.gd
 var failures := 0
@@ -39,9 +41,14 @@ func _new_world(state := {}) -> Node:
 
 ## The next morning: a sol's gone by.
 func _morning(world: Node, radio: Node) -> void:
+	_pass_hours(world, 14.0)
 	world.opening_days.last_morning = world.opening_days._hours_run() - 20.0
 	MHGame.sol_hour = 6.5
 	await _settle(radio)
+
+## The sim clock moves on (the test's sun is frozen).
+func _pass_hours(world: Node, hours: float) -> void:
+	world.builder.simulation().hours_run += hours
 
 func _settle(radio: Node, seconds := 1.0) -> void:
 	await create_timer(seconds).timeout
@@ -118,10 +125,10 @@ func _initialize() -> void:
 
 	# Day 1: no GAR-Y anywhere.
 	_check(not bool(world.gary_met) and world.scout_rover == null, "no GAR-Y on day 1")
-	_check(not field.sites.gary.visible, "pallet 3 is out of sight on day 1")
+	_check(not field.sites.gary.visible, "pallet 4 (GAR-Y) is out of sight in chapter 1")
 	field.see_from_ridge()
 	await _settle(radio, .3)
-	_check(known.knows(field.sites.tools.id()) and not known.knows(field.sites.gary.id()), "from the ridge: pallet 4 named, pallet 3 not")
+	_check(known.knows(field.sites.tools.id()) and not known.knows(field.sites.gary.id()), "from the ridge: pallet 3 named, pallet 4 not")
 	_check(radio.heard.has("d1_ridge"), "Castellanos calls about the ridge")
 
 	# The real sun: it never waits.
@@ -163,6 +170,7 @@ func _initialize() -> void:
 	await _settle(radio)
 	_check(bool(days.sunset_reached), "on the rise")
 	MHGame.sol_hour = sunset - .5
+	days.dusk_sol = 0   # (the test's frozen clock: the same sol as the dusk call above)
 	await _settle(radio)
 	_check(radio.heard.has("d1_sunset"), "dusk: the sunset call")
 	_check(radio.flag("on_the_rise") and world.known.finished("sunset_spot"), "the rise mark's done")
@@ -171,17 +179,28 @@ func _initialize() -> void:
 	_check(notes.is_open("bed"), "it ends in bed")
 	_check(float(world.day_night.time_scale) == 1.0, "the clock's at its own pace")
 
-	# Night, then day 2.
+	# A6: the pallets inside the bare suit's reach (it turns you back ~600 m out).
+	var home: Vector3 = lander.global_position
+	var out := func(p: Vector3) -> float: return Vector2(p.x - home.x, p.z - home.z).length()
+	_check(out.call(world.storm_drop.ridge) < 320.0, "pallet 1 about 250 m out (%.0f m)" % out.call(world.storm_drop.ridge))
+	for kind in field.sites:
+		_check(out.call(field.sites[kind].at) < 560.0, "%s pallet inside the suit's reach (%.0f m)" % [kind, out.call(field.sites[kind].at)])
+
+	# Chapter 1 was done at dusk: chapter 2 waits for the morning, not the clock.
+	_pass_hours(world, 2.0)
+	await _settle(radio)
+	_check(int(days.chapter) == 1, "no new chapter starts at dusk")
 	days.nights = 1
 	await _morning(world, radio)
-	_check(int(days.chapter) == 2, "chapter 2 the morning after")
-	_check(radio.heard.has("d2_wake"), "Castellanos wakes you: something's moving")
+	_check(int(days.chapter) == 2, "chapter 2 in the morning")
+	_check(radio.heard.has("d2_wake"), "Castellanos: something's moving")
 	_check(bool(field.gary_working) and world.scout_rover != null, "GAR-Y is out at work")
 	_check(field.sites.gary.visible and bool(field.sites.gary.pallet.opened), "its cradle is there now, open")
 	_check(known.knows("gary_moving"), "the movement is on your Map")
 	var gary: Node3D = world.scout_rover
 	var work: Vector3 = gary.global_position
 	_check(work.distance_to(field.sites.gary.at) > 60.0, "it's working out past its cradle (%.0f m)" % work.distance_to(field.sites.gary.at))
+	_check(out.call(work) < 700.0, "GAR-Y within reach of a bare suit (%.0f m)" % out.call(work))
 
 	# The empty cradle.
 	player.global_position = field.sites.gary.pallet.global_position + Vector3(4, 1, 0)
@@ -200,8 +219,6 @@ func _initialize() -> void:
 	await _settle(radio)
 	_check(field.meeting == null, "the meeting finishes")
 	_check(radio.heard.has("d2_found"), "Castellanos explains GAR-Y")
-	_check(days._gary_found() and not days.day_done(2), "found, but day 2 isn't done till the walker's due")
-	pod.walker_due = true
 	var crate: Node3D = field.crate
 	_check(crate != null and not days.day_done(2), "the spares crate waits to be towed home")
 	_check(notes.is_open("salvage"), "Castellanos's call starts the salvage thought")
@@ -210,28 +227,25 @@ func _initialize() -> void:
 	_check(crate.interact(player) and str(crate.where) == "sled", "hitched to GAR-Y's sled")
 	pod.unload_cargo()
 	_check(crate.interact(player) and bool(crate.opened), "home and opened")
+	MHGame.sol_hour = 11.0
 	await _settle(radio)
 	_check(radio.heard.has("d2_crate"), "Castellanos on the crate")
-	_check(days.day_done(2), "jobs done")
-	MHGame.sol_hour = sunset - .5
-	await _settle(radio)
-	_check(radio.heard.has("d2_sunset"), "day 2's sunset call")
+	_check(days.day_done(2) and int(days.chapter) == 2, "chapter 2 done; a breather first")
 
-	# Day 3: the walker set right crawls home overnight; you mark the spot.
+	# A6: the breather, then chapter 3 the same sol.
+	_pass_hours(world, 1.2)
+	await _settle(radio)
+	_check(int(days.chapter) == 3 and radio.heard.has("d3_wake"), "after the breather, chapter 3 the same sol")
 	var walker: Node3D = world.walker
-	days.nights = 2
-	await _morning(world, radio)
-	_check(radio.heard.has("d3_wake"), "day 3's morning call")
-	var walker_seen_before := bool(walker.seen)   # (seen already, she has no need to mark the tracks)
-	_check(walker_seen_before or (bool(walker.tracks_laid) and known.things.has("walker_tracks_start")), "she marks where the tracks start")
+	_check(bool(walker.tracks_laid) and known.things.has("walker_tracks_start"), "she marks where the tracks start")
+	_check(out.call(walker.global_position) < 640.0, "Walker 1 stalled inside the suit's reach (%.0f m)" % out.call(walker.global_position))
 	player.global_position = walker.tracks_start()
 	await _settle(radio)
-	_check(walker_seen_before or radio.heard.has("d3_tracks"), "at the tracks, she says how to find the rest")
+	_check(radio.heard.has("d3_tracks") or bool(walker.seen), "at the tracks, she says how to find the rest")
 	walker.recalibrated()
 	await _settle(radio)
-	_check(str(walker.state) == "coming" and radio.heard.has("d3_fixed"), "set right, it'll come overnight (%s)" % walker.state)
-	_check(not days.day_done(3), "day 3 waits for the spot")
-	_check(not pod._open_plans().has(pod.PLANS.map(func(p): return str(p[0])).find("seal")), "no seal on the printer before the fault's found")
+	_check(str(walker.state) == "coming" and radio.heard.has("d3_fixed"), "set right, but locked (%s)" % walker.state)
+	_check(not days.day_done(3), "chapter 3 isn't done")
 	var cam := Camera3D.new()
 	world.add_child(cam)
 	var knee: Node3D = walker._knees[3]
@@ -242,7 +256,7 @@ func _initialize() -> void:
 		walker.photographed(cam)
 		await _settle(radio)
 		_check(radio.heard.has("d3_photo_knee") and not bool(walker.fault_found), "Castellanos: the knees are fine")
-	var wheel: Vector3 = walker.to_global(Vector3(-7.7, .8, -5.0))
+	var wheel: Vector3 = walker.fault_spot()
 	cam.global_position = wheel + walker.global_basis.x * -5.0 + Vector3(0, 1.0, 0)
 	cam.look_at(wheel)
 	_check(walker.aimed_part(cam) == "fl_wheel", "a picture of the front-left wheel (%s)" % walker.aimed_part(cam))
@@ -250,80 +264,85 @@ func _initialize() -> void:
 	cam.queue_free()
 	await _settle(radio)
 	_check(bool(walker.fault_found) and radio.heard.has("d3_fault"), "that's the one: the split seal")
-	walker.mark({"cells": [Vector2i(3, 3), Vector2i(4, 3), Vector2i(3, 4), Vector2i(4, 4), Vector2i(3, 5), Vector2i(4, 5)]})
+	_check(not pod._open_plans().has(pod.PLANS.map(func(p): return str(p[0])).find("seal")), "no seal to print: it's patched on the spot")
+	player.global_position = wheel + walker.global_basis.x * -1.5
+	field.tools = false
+	_check(str(walker.interaction_prompt().get("primary", "")) == "", "no patch kit, no patch")
+	field.tools = true
+	_check(str(walker.interaction_prompt().get("primary", "")) == "Patch it", "by the wheel: patch it (%s)" % walker.interaction_prompt())
+	_check(walker.interact(player) and str(walker.state) == "walking", "patched: it walks home")
 	await _settle(radio)
-	_check(bool(walker.marked) and radio.heard.has("d3_marked") and not days.day_done(3), "the spot's marked; the seal's still wanted")
-	_check(pod._open_plans().has(pod.PLANS.map(func(p): return str(p[0])).find("seal")), "the printer offers the wheel seal")
-	pod.printing = "seal"
-	pod._printed()
+	_check(radio.heard.has("d3_patched"), "Castle: ride it or walk with it")
+	walker.global_position = walker.home
+	player.global_position = lander.cabin_start().position
+	for i in 40:
+		walker._process(.1)
+		if str(walker.state) == "ready": break
 	await _settle(radio)
-	_check(radio.heard.has("d3_seal") and days.day_done(3), "seal printed: day 3 done")
-	MHGame.sol_hour = sunset - .5
+	_check(str(walker.state) == "ready" and radio.heard.has("d3_home"), "home by the lander: choose home on the Map (%s)" % walker.state)
+	_check(not walker.spot_reason(Vector2(home.x + 1500.0, home.z)).is_empty(), "home stays in ring 1 during the chapters")
+	var spot := Vector2.INF
+	for k in 40:
+		var at := Vector2(home.x, home.z) + Vector2.from_angle(k * .7) * (60.0 + k * 4.0)
+		if walker.spot_reason(at).is_empty():
+			spot = at
+			break
+	_check(not is_inf(spot.x), "there's a spot for home near the lander")
+	if is_inf(spot.x): spot = Vector2(home.x + 60.0, home.z)
+	_check(walker.send_to(spot) and str(walker.state) == "travelling", "W, W: Walker 1 sets off")
 	await _settle(radio)
-	_check(radio.heard.has("d3_sunset"), "day 3's sunset call")
-	_check(days.in_lander_days(), "day 3's night is still in the lander")
+	_check(radio.heard.has("d3_sent") and days.day_done(3), "sent: chapter 3 done")
+	await _settle(radio)
+	_check(int(days.chapter) == 4 and days.guided(), "chapter 4 straight on")
 
-	# Day 4: it's home at dawn.
-	days.nights = 3
-	await _morning(world, radio)
-	_check(str(walker.state) in ["parked", "carrying"] and walker.global_position.distance_to(walker.home) < 30.0, "dawn: Walker 1 is home (%s)" % walker.state)
-	_check(radio.heard.has("d4_wake"), "day 4's morning call")
-	_check(days.guided() and not days.in_lander_days(), "day 4: still guided, not the lander")
-
-	# Day 4: down cold and open to Mars; air and power in, a seam won't hold.
-	if BUILD_RULES_ZONE.module_zone(world.builder).is_empty():   # the test's mark has no plan behind it
-		world.builder.zones.append({"kind": "general", "cells": [Vector2i(3, 3), Vector2i(4, 3), Vector2i(3, 4), Vector2i(4, 4), Vector2i(3, 5), Vector2i(4, 5)], "carried": true, "cost": 0})
-		world.builder.zones.append({"kind": "airlock", "cells": [Vector2i(3, 6)], "cost": 0})
-	if str(walker.state) != "done": walker._finish_set_down()
+	# Chapter 4: at the spot, the core down, cold.
+	walker.global_position = Vector3(spot.x, walker.global_position.y, spot.y)
+	walker._arrive()
+	await _settle(radio)
+	_check(str(walker.state) == "parked" and radio.heard.has("d4_arrived"), "at its spot: go and set the core down")
+	var b: Node = world.builder
+	var c := Vector2i(roundi(spot.x / b.CELL), roundi(spot.y / b.CELL))
+	var core_cells := [c, c + Vector2i(1, 0), c + Vector2i(0, 1), c + Vector2i(1, 1), c + Vector2i(0, 2), c + Vector2i(1, 2)]
+	if BUILD_RULES_ZONE.module_zone(b, "w1").is_empty():
+		b.zones.append({"kind": "general", "cells": core_cells, "carried": true, "cost": 0, "base": "w1"})
+		b.zones.append({"kind": "airlock", "cells": [c + Vector2i(0, 3)], "cost": 0, "base": "w1"})
+	walker._finish_set_down()
 	await _settle(radio)
 	var module: Node = world.module_life
-	_check(module != null and bool(module.core.vented) and not bool(module.commissioned) and float(module.core.temp_c) < 0.0, "the module comes down cold and unpressurised")
-	_check(radio.heard.has("d4_down"), "Castle: air and power")
+	_check(module != null and bool(module.core.vented) and not bool(module.commissioned) and float(module.core.temp_c) < 0.0, "the core comes down cold and unpressurised")
+	_check(radio.heard.has("d4_down"), "Castle: it knelt; now air and power")
 	if module != null:
 		var cartridge: Node = root.get_tree().get_first_node_in_group("o2_cartridge")
 		if cartridge != null:
 			cartridge.where = "plugged"
 			cartridge.plugged_into = "module"
 		module.add_cartridge(1.0)
-		_check(module.leak == null, "no leak till the blanket's in too")
+		_check(not bool(module.commissioned), "not alive till the blanket's in too")
 		module.blanket(true)
 		await _settle(radio)
-		_check(module.leak != null and radio.heard.has("d4_leak"), "air and power in: a seam hisses, Castle calls")
-		_check(not days.day_done(4), "day 4 waits for the leak")
-		field.tools = true
-		if module.leak != null: module.leak.interact()
+		_check(module.leak == null and not bool(module.core.vented) and bool(module.commissioned) and radio.heard.has("d4_patched"), "air and power in: it's alive, no leak")
+		_check(not days.day_done(4), "chapter 4 waits for Quarters")
+		_check(BUILD_RULES_ZONE.cost(b, "living") == 0, "the first Quarters liner came with Walker 1: no cargo to pay")
+		var q := c + Vector2i(2, 0)
+		b.zones.append({"kind": "living", "cells": [q, q + Vector2i(1, 0), q + Vector2i(0, 1), q + Vector2i(1, 1)], "cost": 0, "base": "w1"})
+		b.placed_interior.append({"id": "crew_bunk", "position": Vector3(q.x * b.CELL, b.habitat_base_y, q.y * b.CELL), "placement_id": "t_bunk"})
 		await _settle(radio)
-		_check(not bool(module.core.vented) and bool(module.commissioned) and radio.heard.has("d4_patched"), "patched: it holds")
-		_check(not radio.heard.has("d4_home"), "the fit-out isn't done yet")
-		var b: Node = world.builder
-		var cells: Array = module.zone().get("cells", [])
-		var spot: Vector3 = Vector3(cells[0].x * b.CELL, b.habitat_base_y, cells[0].y * b.CELL) if not cells.is_empty() else Vector3.ZERO
-		for id in ["crew_bunk", "galley", "desk"]: b.placed_interior.append({"id": id, "position": spot, "placement_id": "t_" + id})
-		await _settle(radio)
-		_check(radio.heard.has("d4_home") and int(days.survey_from) >= 0, "fitted out: Castle's home call, then the survey ask")
-		_check(not days.day_done(4), "day 4 waits for the ice")
-		var centre: Vector3 = module._centre()
-		MHChapterOne.record_core({"x": centre.x + 40.0, "z": centre.z, "purity": .6, "dry": false, "depth_m": 1.0, "good": true})
-		await _settle(radio)
-		_check(radio.heard.has("d4_ice") and not is_inf(days.ice_spot.x) and known.things.has("ice_spot"), "good ice near the module: its spot, marked")
-		_check(days.day_done(4), "day 4 done: down, patched, fitted, ice")
-		# A good core taken by the module before she asked counts: you're ahead of them.
-		days.survey_from = -1
-		days.ice_spot = Vector3.INF
-		(radio.handlers["survey_start"] as Callable).call([])
-		_check(radio.flag("cored_already") and not is_inf(days.ice_spot.x) and radio.has_section("d4_cored"), "a core taken before the ask is the module's ice")
-		radio.ring("d4_sunset")
+		_check(days.quarters_built() and days.day_done(4) and radio.heard.has("d4_quarters"), "a Quarters liner with its bunk: chapter 4 done")
+		_check(days.guided(), "still guided until you sleep")
+		MHGame.sol_hour = sunset - .5
+		days.dusk_sol = 0
 		await _settle(radio, 2.0)
-		_check(radio.heard.has("goal_humans") and radio.heard.has("d4_sunset_deal"), "the talk goes round the room")
+		_check(radio.heard.has("d4_sunset") and radio.heard.has("goal_humans") and radio.heard.has("d4_sunset_deal"), "dusk: the three horizons, round the room")
 		var texts: Node = world.orbiter_texts
 		_check(texts != null and texts.has("d4_note_tupou") and texts.has("d4_note_mwangi") and texts.has("d4_note_rao") and texts.has("d4_note_achterberg"), "each owner sends a note")
-		days.nights = 4
-		await _morning(world, radio)
-		_check(not days.guided(), "the morning after: the guided chapters are over")
+		days._was_asleep = true
+		MHGame.sol_hour = 6.5
+		await _settle(radio)
+		_check(not days.guided(), "the morning after the first night: the guided chapters are over")
 
 	# Saved.
 	var state: Dictionary = days.export_state()
-	_check(int(state.get("version", 0)) == 2 and int(state.get("sunset_called", 0)) >= 3 and state.has("chapter"), "the version, the chapter and the calls are saved")
+	_check(int(state.get("version", 0)) == 2 and int(state.get("sunset_called", 0)) >= 1 and state.has("chapter") and state.has("done_at"), "the version, the chapter and the calls are saved")
 	_check((world.radio.export_state().heard as Dictionary).has("d2_found"), "the radio's heard calls are saved")
 
 	print("guided_days_test: %d failure(s)" % failures)

@@ -1,104 +1,61 @@
-# Day 4: making it home (docs/opening-days.md). The guided days end tonight.
-# Morning: the module's down, cold and open to Mars; air and power in, a seam
-# won't hold; patched. Midday: the fit-out. Afternoon: find its ice. Dusk:
-# the three horizons, each goal passed on from the crew member who owns it.
+# Chapter 4: making it home (docs/opening-days.md, A6 rewrite). The guided
+# chapters end with the first night in Quarters. Walker 1 reaches your spot,
+# you set the core down, it kneels and folds in; air and power bring it alive;
+# then the first Quarters liner. Dusk: the three horizons, each goal passed on
+# from the crew member who owns it.
 # The goal_* sections hold each owner's words, so they can get their own
 # voices later (change "Castellanos: Tupou says" to "Tupou:" and regenerate).
 # Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d4
 
-~ d4_wake
-Castellanos: Outpost One. Outpost One, wake up. Look out of your window. Go on, look. [ID:d4_wake_01]
-Castellanos: It made it. Walker 1 is parked right outside, it walked all night, and it's lifting the module right now. I've been watching it since four. I didn't sleep. Don't tell Mwangi. [ID:d4_wake_02]
-? chose_home Castellanos: It's heading straight for your stakes. Exactly where you put them. [ID:d4_wake_03]
-Castellanos: Go outside and watch it. You've waited long enough for this. We all have. [ID:d4_wake_04]
+# Walker 1 at your spot (scripts/walker.gd _arrive).
+~ d4_arrived
+Castellanos: Walker 1's at your spot. Go and meet it. [ID:d4_arrived_01]
+Castellanos: When you're there, press B and put the core down exactly where you want it. It'll do the rest. [ID:d4_arrived_02]
 => END
 
+# The core down (scripts/walker.gd _finish_set_down).
 ~ d4_down
-Castellanos: It's down. It's actually down. Your first room on Mars. Everyone up here is shouting at once and I can't hear myself think. [ID:d4_down_01]
+Castellanos: It knelt. It actually knelt, and folded itself into the core. Everyone up here is shouting at once and I can't hear myself think. [ID:d4_down_a6_01]
 - It's bigger than it looked.
-	Castellanos: Everything is, after nights in a lander. You're going to feel like you're rattling round a cathedral. [ID:d4_down_02a]
+	Castellanos: Everything is, after nights in a lander. [ID:d4_down_02a]
 - It's real.
 	set moved
 	Castellanos: It's real. It's really real. Give me a second. [ID:d4_down_02b]
 - Does Rao still want the bunk by the window?
 	set joker
 	Castellanos: He's already drawn a floor plan. On the wall. In pen. Achterberg is furious. [ID:d4_down_02c]
-Castellanos: Okay, now the less romantic bit. It travelled empty and open, so right now it's as cold inside as it is out there, and there's no air in it at all. Keep your helmet on. [ID:d4_down_05]
-Castellanos: Two things bring it to life. The air cartridge you brought down from the ridge goes in the socket on the outside wall. And the solar blanket goes out next to it, for power. [ID:d4_down_06]
-Castellanos: Do both and it'll seal itself and fill up. Then we'll see how it holds. [ID:d4_down_07]
+Castellanos: Now the less romantic bit. It's cold and dark in there, with no air. Plug the air cartridge into the socket on the outside wall, and lay the solar blanket next to it. [ID:d4_down_a6_06]
 => END
 
-~ d4_leak
-Castellanos: Hang on. It's filling, and it's losing it again. The pressure won't hold. [ID:d4_leak_01]
-Castellanos: Achterberg says a panel seam's probably opened up on the walk home. All that rocking. Something's open to the outside. [ID:d4_leak_02]
-- How do I find it?
-	Castellanos: Go in and listen. A leak hisses, and you'll see a little frost puffing out of it where the air freezes. Walk the walls. [ID:d4_leak_03a]
-- Is it dangerous?
-	set worried
-	Castellanos: Not to you, not in your suit. It's only dangerous to the module. It can't keep air in until that's sealed. Go in and listen for it. It'll hiss, and it'll be frosting up. [ID:d4_leak_03b]
-Castellanos: The patch kit from pallet three will do it. That's what it's for. [ID:d4_leak_04]
-=> END
-
+# Air and power in: it's alive (scripts/module_life.gd patched).
 ~ d4_patched
-Castellanos: And it's holding. Pressure's steady. Achterberg just let out a breath she's been holding since dawn. [ID:d4_patched_01]
-? worried Castellanos: See? Not dangerous. Just a bit of a scare, for us mostly. [ID:d4_patched_02]
-Castellanos: The heater's on full now and the lights are up. It's going to take a while to warm through, so don't take your helmet off just yet. [ID:d4_patched_03]
-Castellanos: While it does, unpack the fit-out kit and make it somewhere you'd actually want to live. Not a lab. A home. Your choice where everything goes. [ID:d4_patched_04]
+Castellanos: Pressure's up and holding, the heater's on and the lights are up. It's alive. [ID:d4_patched_a6_01]
+Castellanos: Now a proper bed. The core's bunk is a camp bed. Press B, draw a Quarters room off the core, and watch the crawler print its shell. [ID:d4_patched_a6_02]
 => END
 
-~ d4_home
+# A Quarters liner with its bunk, at Walker 1's base.
+~ d4_quarters
 Castellanos: Rao just flew over and got a picture. He says it looks like a home. He's a bit choked up about it, honestly. We all are. [ID:d4_home_01]
-? bunk_by_door Castellanos: Bunk right by the door, I see. You'll hear the airlock every time it cycles. Well. You'll know if anyone's coming. [ID:d4_home_04a]
-? bunk_quiet Castellanos: And you put the bunk in the quiet corner, away from the airlock. Good choice. That's what I'd have done. [ID:d4_home_04b]
+? bunk_by_door Castellanos: Bunk right by the door, I see. You'll hear the airlock every time it cycles. [ID:d4_home_a6_04a]
+? bunk_quiet Castellanos: And you put the bunk in the quiet corner, away from the airlock. That's what I'd have done. [ID:d4_home_04b]
 - It feels like one.
 	set home
 	Castellanos: Good. That was the whole point. [ID:d4_home_02a]
 - It's a start.
 	Castellanos: It's a very good start. Better than any of us thought we'd get, after that storm. [ID:d4_home_02b]
-Castellanos: Your food's all still in the lander's crate, by the way. It's a short walk to breakfast, for now. [ID:d4_home_05]
-=> d4_survey
-
-~ d4_survey
-do survey_start
-? cored_already => d4_cored
-Castellanos: One more job before the sun goes, and it's a big one. Achterberg's been at me all afternoon about it. [ID:d4_survey_01]
-?! surveyed Castellanos: She says the module's plans have an ice extractor in them, and that's no use without ice to put it on. She wants to know where your water is. [ID:d4_survey_02]
-?! surveyed Castellanos: Ask GAR-Y to find you some. Hold G by it and pick Survey zone. It'll stake out anywhere that looks icy, then you core the best stake to be sure. [ID:d4_survey_03]
-? surveyed Castellanos: She says GAR-Y's radar is all very well, but she wants that ice in a tube before she believes it. The extractor's going on it. [ID:d4_survey_02s]
-? surveyed Castellanos: Take your corer to the best blue stake near the module and core it, to be sure. [ID:d4_survey_03s]
-- Water's everything, isn't it?
-	Castellanos: Drinking, air, growing things. Even fuel, one day. Yes. It's everything. [ID:d4_survey_04a]
-- Leave it to me.
-	Castellanos: Thank you. She'll stop pacing, then. [ID:d4_survey_04b]
-=> END
-
-# You'd already cored good ice by the module before she asked (scripts/opening_days.gd survey_start).
-~ d4_cored
-Castellanos: I had one more job for you. Achterberg wants the module's ice in a tube before she'll believe in it. Then she pulled up the core you took earlier. That's ice, right on your doorstep. You're ahead of us. [ID:d4_cored_01]
-do ice_spot
-Castellanos: So that's your well. I've marked it on your compass. Tomorrow you build the extractor right there. [ID:d4_cored_02]
-Castellanos: Call me at sunset, okay? There's something I want to talk to you about properly. Nothing bad. I promise it's nothing bad. [ID:d4_cored_03]
-=> END
-
-~ d4_ice
-Castellanos: That's ice. Good, clean ice, right on your doorstep. Achterberg is doing a little dance. I can't unsee it. [ID:d4_ice_01]
-? thin_ice Castellanos: Well, it's thin. But it'll do to start, and there'll be better further out. [ID:d4_ice_02]
-do ice_spot
-Castellanos: That's your well. I've marked it on your compass. Tomorrow you build the extractor right there. [ID:d4_ice_03]
-Castellanos: Call me at sunset, okay? There's something I want to talk to you about properly. Nothing bad. I promise it's nothing bad. [ID:d4_home_03]
+Castellanos: The rest of the day's yours. Tonight you sleep in there. Call me at sunset, okay? There's something I want to talk about properly. Nothing bad. [ID:d4_quarters_a6_03]
 => END
 
 ~ d4_sunset
-Castellanos: Sunset from your own window. How's the view from in there? [ID:d4_sun_01]
+Castellanos: Sunset from your own place. How's the view from in there? [ID:d4_sun_a6_01]
 - Better than the lander's.
 	Castellanos: Anything's better than the lander's. That window was the size of a dinner plate. [ID:d4_sun_01a]
 - Worth the trip.
 	set worth_it
 	Castellanos: I was hoping you'd say that. [ID:d4_sun_01b]
 Castellanos: Okay. Here's the bit I wanted to say. I want to tell you where all this is going. Tomorrow, this season, and the whole mission. [ID:d4_sun_12]
-Castellanos: Tomorrow's easy. The extractor goes on your ice, and you'll have water of your own. That changes everything. [ID:d4_sun_13]
-Castellanos: This season, the other walkers. They're still out there somewhere, with more modules and more kit strapped to them. Rao's watching for them on every pass, and the moment he sees one, you'll know. [ID:d4_sun_14]
-Castellanos: One of them's carrying the ascent vehicle. Our ride home, one day. No hurry, though. This is an outpost, not a visit. We came to stay. [ID:d4_sun_14b]
+Castellanos: Tomorrow, water. An extractor on the ice nearest home, and you'll have water of your own. That changes everything. [ID:d4_sun_a6_13]
+Castellanos: This season, the other walkers. They're still out there somewhere, each with a core of its own. Rao's watching for them on every pass, and the moment he sees one, you'll know. [ID:d4_sun_a6_14]
 Castellanos: And the whole mission. You weren't sent all this way just to build a room, as lovely as the room is. There are four big questions, and each of us up here looks after one. [ID:d4_sun_15]
 - Which one's yours?
 	set asked_hers
@@ -144,20 +101,20 @@ do owner_notes
 do bed
 => END
 
-# Not done by dusk, and the morning after (scripts/opening_days.gd).
+# Dusk with chapter 4 still going, and the morning after (scripts/opening_days.gd).
 ~ d4_dusk
 Castellanos: It's getting dark, Outpost One. Let's leave the rest for tomorrow. [ID:d4_dusk_01]
-? left_down Castellanos: Walker 1 can set the module down in the morning. Lander again tonight. Sorry. [ID:d4_dusk_02a]
-? left_leak Castellanos: The leak'll keep till morning. Sleep in the lander tonight. The module's no use until it holds air. [ID:d4_dusk_02b]
-? left_fit Castellanos: The fit-out can wait. You've got a roof. [ID:d4_dusk_02c]
-? left_ice Castellanos: The ice will still be there tomorrow. That's rather the point of ice. [ID:d4_dusk_02d]
+? left_walk Castellanos: Walker 1 will keep walking through the night. It'll be at your spot by morning. [ID:d4_dusk_a6_02e]
+? left_down Castellanos: Walker 1 can set the core down in the morning. Lander again tonight. Sorry. [ID:d4_dusk_a6_02a]
+? left_power Castellanos: The core can come alive in the morning. Sleep in the lander tonight. It's no use until it holds air. [ID:d4_dusk_a6_02b]
+? left_quarters Castellanos: The camp bed in the core will do for one night, if you like. Quarters tomorrow. [ID:d4_dusk_a6_02c]
 do bed
 => END
 
 ~ d4_still
 Castellanos: Morning, Outpost One. Let's finish making that place a home. [ID:d4_still_01]
-? left_down Castellanos: Walker 1's waiting for you to come out and watch it set the module down. [ID:d4_still_02a]
-? left_leak Castellanos: First the leak. Go in and listen for the hiss. The patch kit will do it. [ID:d4_still_02b]
-? left_fit Castellanos: The fit-out kit's still in its crates. Make it somewhere you'd want to live. [ID:d4_still_02c]
-? left_ice Castellanos: And Achterberg still wants her ice. GAR-Y's Survey zone, then core the best stake. [ID:d4_still_02d]
+? left_walk Castellanos: Walker 1's nearly at your spot. [ID:d4_still_a6_02e]
+? left_down Castellanos: Walker 1's waiting at your spot. Go there and press B to set the core down. [ID:d4_still_a6_02a]
+? left_power Castellanos: The core still needs its air cartridge and its solar blanket. [ID:d4_still_a6_02b]
+? left_quarters Castellanos: And a proper bed: B, then a Quarters room off the core. [ID:d4_still_a6_02c]
 => END

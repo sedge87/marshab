@@ -1,4 +1,85 @@
-# The guided days (redesign, 8 Nov — days 1–4 built; not playtested)
+# The guided chapters (A6 rewrite, 15 Nov 2026)
+
+*Agreed with the user on 15 Nov (build plan A6). This replaces the 8 Nov redesign below, which stays as history. Every number is a starting point for playtest.*
+
+## Why
+- **The 14 Nov playtest:** every chapter's work ran out by early afternoon. A daylight sol is about 15 real minutes, and a chapter's work took about 8, so the rest of each day was waiting for the morning.
+- **The bare suit** (A2) turns you back at about 600 m out on flat ground: about 5.3 real minutes of air by day, with the walk back allowed for. The old pallets were 440 to 960 m out.
+- **The pillar rethink** replaced the General Module with the walker core (A3) and added walkers you send from the Map (A4).
+
+## The landing
+- **One home area: the plains round (−1400, 1000)** (`region.json` `home`; `docs/terrain-design.md` §1).
+- **The Land step is a briefing, not a picker** (the user, 15 Nov). It shows one screen: the home area as a 750 m circle on the region map, the landmarks near it (the frost hollow, the dry channel, the near mesa, the sand sheet) and the orbit report for the circle's centre. Nothing on it can be dragged.
+- **You steer in the descent**, anywhere inside the circle. Each choice has a trade-off: set down near the frost hollow and water is close; set down in the open and you get more sun. Skipping the descent (hold Esc) lets the autopilot take the best ground near the centre.
+- **The crater-floor and riverbed sites are gone** from `data/sites.json`, the Land step and the tests (the user, 15 Nov). Their flat pads stay in the land until the next region rebuild, as ordinary ground.
+
+## The pacing rule: chapters aren't days
+- **Done early, carry on.** When a chapter's beats are done, the next chapter's first call comes after a short breather (`BREATHER`, about one game hour, or as soon as you're back at the lander), on the same sol if there's light.
+- **Nights are just nights.** At dusk Castle calls from wherever the story is (`dusk_N` for the chapter you're in) and suggests bed. The hatch never locks and sleep is never forced. A sol ends whenever you sleep.
+- **Nothing waits for a morning, and nothing needs the dark.** GAR-Y and Walker 1 are found in daylight, and Walker 1 rides home with you. No beat is held for the clock ("don't hold the story for the clock", the A6 rule).
+- **A morning recap** comes only if you slept with a chapter half done: `dN_still` says what's left, from the `left_*` flags.
+- **Time budget:** about 40 to 45 minutes over roughly 3 sols. "Skip the guided days" stays in Custom rules.
+
+## Castle's calls
+- **On the move: three lines at most,** then a reply that never blocks you. The replies change her next line, never whether the story goes on.
+- **Long talks happen only at dusk or in the cabin.** "Why the crew can't land yet" moves from the first call to the first dusk talk.
+- She still watches your air (`data/radio/air.txt`), and a blackout still costs time, not harm.
+
+## Chapter 1: the cargo (about 12 minutes)
+1. **The descent.** Rao gets as far as "We've got you on the-" before the link drops.
+2. **The re-lock.** You answer Castle's "do you read me?" (the hatch waits for that). She says two lines, and pallet 1's photo goes on your slate.
+3. **The pallets, one at a time.** They're placed for the bare suit, each with one piece of ring 1 ground on the way:
+   - **Pallet 1, life support:** about 250 m out, on a rise. From it you see the next two. It holds the core's air cartridge (heavy).
+   - **Pallet 2, power:** about 400 m out, over a crack or a low ledge. It holds the solar blanket and battery (heavy).
+   - **Pallet 3, field tools:** about 500 m out, on the far side of a low crossing or past the sand sheet. It holds the hammer, the headlamp, the patch kit and two plan cartridges. This trip usually brings the first turn-back call.
+4. **Carry the cargo home** to the staging spot by the lander. Within 30 m counts.
+5. **Done:** with light left, the breather and then chapter 2. At dusk: the first sunset, Rao's rise and the long talk.
+
+## Chapter 2: GAR-Y (about 10 minutes)
+1. **Rao's pass sees something moving** out by the boulders (`d2_wake`, which can come mid-sol).
+2. **Pallet 4's cradle** is about 450 m out in the boulders, open and empty, with tracks leading away. GAR-Y is at work about 150 m further on, near the edge of your air. Let down (it isn't a walker), then won over.
+3. **His jobs:** Show me, a survey and a core at the nearest shallow ice, printing the sled hitch on the lander's printer, and towing the spares crate home. The bench sample is optional.
+4. **GAR-Y leads you home.** That's why you come to trust him.
+
+## Chapter 3: Walker 1, and choosing home (about 12 minutes)
+1. **Rao spots fresh tracks** (`d3_wake`, no 03:00 wait). They start about 200 m from the lander and are marked on the compass.
+2. **Walker 1 is stalled about 550 m out,** past a ledge line, within the bare suit's reach.
+3. **Fix its nav:** the sun sight, then send it your position.
+4. **Fix its fault on the spot** with pallet 3's patch kit: a dust-packed wheel seal (the user, 15 Nov). The printed seal is cut.
+5. **Ride its deck home.** It walks to the lander at its own pace, about 3 minutes, and Castle talks on the way.
+6. **Choose home on the Map.** W checks a spot: sun, night shelter, ice nearby, slope, and Castle's word. W again on the same spot sends Walker 1. This is the same move you'll use for Walkers 2 to 4 (`docs/bases-and-vehicles.md`).
+   - Home must be in ring 1, on ground you've explored. Next to the lander is the natural choice.
+   - GAR-Y's ice stakes from chapter 2 show where the water is.
+
+## Chapter 4: making it home (about 10 minutes)
+1. **Walker 1 walks there,** picking up your staged cargo at the lander on the way. Castle tells you to meet it.
+2. **It kneels and folds into the core.** You watch it happen.
+3. **Bring it alive:** plug the air cartridge into the core's socket and lay the solar blanket. The lights come on and the heat starts. The core's leak is cut (the user, 15 Nov).
+4. **The first liner, with Castle:** Quarters, in Plan view. Its bunk is the key piece. Watch the liner inflate and the crawler print its shell.
+5. **Bed in Quarters.** The three-horizons talk (`d4_sunset`: tomorrow, this season and the mission's four goals with their owners' notes) comes when you go to bed, or at dusk if that's sooner. **The first night in Quarters ends the guided chapters,** whenever it is.
+
+Chapter 4 is done when Walker 1's core is down and alive and a Quarters liner with its bunk stands at that base. The ice spot moves out of the chapters: it's part of choosing home in chapter 3.
+
+## After
+- The open game: free nights, free building and the range ladder.
+- The radio carries on on Castle's own timeline.
+
+## As built (A6)
+*Built 15 Nov (not playtested). Tests: `tests/guided_days_test.gd`, `tests/walker_test.gd`, `tests/radio_test.gd`; the robot run is `tests/guided_playthrough.gd` (log in `.claude_tmp/guided_playthrough_log.txt`).*
+
+- **The Land step** (`scripts/main_menu.gd`, `scripts/region_landing_picker.gd` `home_view`): one fixed map of the 750 m circle round `region.json` `home.centre`, with the dry channel and its crossings, the frost hollow, the sand sheet, the cargo target, north and a 500 m scale bar, plus the orbit report. The descent (`scripts/descent.gd`, `HOME_RADIUS` 750) steers inside that circle; skipping it lands at the nearest good ground to the centre.
+- **Old sites:** `region_crater` and `region_riverbed` are gone from `data/sites.json` and the tests. An old save at either loads as the plains (`MHGame.GONE_SITES`). `region.json` and the region generator still have their zones and pads; they go at the next region rebuild.
+- **Distances** (`scripts/storm_drop.gd`, `scripts/drop_field.gd`): pallet 1 at about 260 m (220 to 300), power 360 to 440 m on flat ground, GAR-Y's cradle 420 to 480 m in the rough, field tools 460 to 540 m low down, each aimed at 400, 450 and 500 m. GAR-Y works about 130 m past its cradle.
+- **The pacing** (`scripts/opening_days.gd`): `BREATHER` is 0, 1, 1, 0 game hours after chapters 1 to 4 (a quarter of that if you're in the cabin). A new chapter never starts within 3 game hours of sunset (`LATE_START`, about 5 real minutes of light; the robot run showed 1.5 let chapter 2 start just before the first sunset talk) or before an hour before sunrise, and never while Castle is on air. `done_at` is saved. Chapter 3 is done when Walker 1 is sent home; chapter 4 straight after. The morning recap plays only if the chapter is still open.
+- **Dusk:** once a sol. Chapter 4 done: `d4_sunset`. Otherwise the first sunset after chapter 1 is `d1_sunset` (with the "why the crew can't land" lines, moved out of the first call), and any later dusk is `dN_dusk` from the `left_*` flags.
+- **Walker 1** (`scripts/walker.gd`): stalls 500 to 580 m out; its tracks run to 35 m short of it; you see it from 250 m (it was 700 m, which let you skip the tracks). The front-left wheel seal is patched on the spot ("Patch it", within 3.5 m of `fault_spot()`, with pallet 3's kit), and it walks home to "ready" by the lander (`d3_home`). Map W, W sends it (`d3_sent`); during the chapters home must be within 1 km of the lander. At the spot: `d4_arrived`; after the set-down it carries any cartridge or pack staged within 40 m of the lander to the core's socket (`d4_down`).
+- **Cut:** the printed seal (`lifepod.gd` `_seal_wanted` false), Walker 1's overnight walk (`walker_night` is version 1 only) and the core's leak (`module_life.gd` `pressurise_try` goes straight to alive). The old `mark()` and overnight paths stay for version 1 saves.
+- **Chapter 4 done** when the core is down and alive and a Quarters zone with a `crew_bunk` stands at base w1 (`quarters_built`). That first liner is free (`build_rules.gd` `first_quarters`, the zone marked `kit`): it came in Walker 1's kit, because nothing has been printed yet to pay for a shell. Then `d4_quarters`, `d4_sunset` at dusk, and waking from the first night after ends the guided chapters.
+- **Radio:** `data/radio/day1.txt` to `day4.txt` rewritten to match; removed sections include `d2_sunset`, `d2_done`, `d3_seal`, `d3_choose`, `d3_marked`, `d3_sunset`, `d3_done`, `d4_wake`, `d4_leak`, `d4_home`, `d4_survey`, `d4_cored` and `d4_ice`. 50 new voice lines (`orb_*_a6_*` and the new sections).
+
+---
+
+# The guided days (redesign, 8 Nov; superseded by the A6 rewrite above)
 
 The user, 8 Nov, stepping back: the first days are a **curated tutorial** that introduces nearly everything the game will be. It's hand-holdy on purpose, with moment-to-moment control over how things happen. On day 5 the game opens up: the four goals, base building, and later the buried heart.
 

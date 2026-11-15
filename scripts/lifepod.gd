@@ -248,7 +248,8 @@ func _process(delta: float) -> void:
 			elif (sol >= 2 and hour > 5.0 and hour < 12.0) or float(c.water_sols()) < 1.0:
 				notes.think("water", "low", {"where": _ice_hint()})
 	# The walker moves in the small hours once you've done enough.
-	if _last_hour >= 0.0 and walker_due and not walker_moved and _crossed(_last_hour, hour, WALKER_HOUR): walker_night()
+	# (The guided chapters, version 2: Rao's pass finds its tracks by day instead, A6.)
+	if _last_hour >= 0.0 and walker_due and not walker_moved and int(world.get("opening_version")) < 2 and _crossed(_last_hour, hour, WALKER_HOUR): walker_night()
 	_last_hour = hour
 
 static func _crossed(from: float, to: float, at: float) -> bool:
@@ -435,9 +436,10 @@ func _open_plans() -> Array:
 	return out
 
 ## Day 3 of version 2: Walker 1's split wheel seal, before it can walk home.
+## The A6 rewrite (15 Nov) fixes Walker 1's wheel seal on the spot with the
+## patch kit (scripts/walker.gd patch_seal), so the printed seal is never wanted.
 func _seal_wanted() -> bool:
-	var walker: Node = world.get("walker")
-	return walker != null and str(walker.get("state")) == "coming" and bool(walker.get("fault_found"))
+	return false
 
 ## GAR-Y met for real (not still out at work, waiting to be found on day 2).
 func _gary_found() -> bool:

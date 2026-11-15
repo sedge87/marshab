@@ -2,20 +2,16 @@
 # Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d2
 
 ~ d2_wake
-Castellanos: Morning, Outpost One. Rise and shine. Sorry, I know it's early, but you'll want to hear this. [ID:d2_wake_01]
-Castellanos: Rao caught something on the night pass. Something small and warm, out past where your pallets came down. And the important part: it wasn't in the same place on the pass before. It's moving. [ID:d2_wake_02]
+Castellanos: Outpost One, you'll want to hear this. Rao's pass caught something small and warm, out by the boulders past your pallets. [ID:d2_wake_a6_01]
+Castellanos: And it wasn't in the same place on the pass before. It's moving. [ID:d2_wake_a6_02]
 - One of the walkers?
 	set hopeful
-	Castellanos: That's what I'm hoping. I've been hoping it since three in the morning, if I'm honest. If even one walker's still on its feet, the base isn't lost. [ID:d2_wake_03a]
+	Castellanos: That's what I'm hoping. If even one walker's still on its feet, the base isn't lost. [ID:d2_wake_a6_03a]
 - Moving how?
 	Castellanos: Slowly. Back and forth, back and forth, like it's searching for something. Rao says it looks busy. I don't know what that means either. [ID:d2_wake_03b]
-- Did you sleep at all?
-	set kind
-	Castellanos: A bit. Mwangi caught me at the window at four and sent me back to bed like a naughty child. He's not wrong. [ID:d2_wake_03c]
 ? dragged Castellanos: And I'll say it, since you're thinking it. Small, out there, moving about. Whatever pulled you home might be the very same thing. [ID:d2_wake_06]
 do gary_out
-Castellanos: I've put it on your Map. Go and have a look, but carefully. We have no idea what state anything's in after that storm. [ID:d2_wake_04]
-? lonely Castellanos: And hey. I know last night was a long one, first one alone on a whole planet. We're right here, every pass. Don't forget that. [ID:d2_wake_05]
+Castellanos: I've put it on your Map. It's near the edge of your air, so go carefully. [ID:d2_wake_a6_04]
 => END
 
 ~ d2_cradle
@@ -49,7 +45,7 @@ Castellanos: Here's what it can do. It scouts, and it remembers what it finds. I
 - So I'm not alone out here after all.
 	Castellanos: No. Not alone. Small company, but company. [ID:d2_found_08b]
 Castellanos: Hang on. What's that box beside it? Hold still, I'm on your helmet cam. That's a spares crate. It must have come off one of the pallets that broke up in the storm. [ID:d2_found_09]
-Castellanos: I bet that's what it's been circling all night. It knows that crate belongs to the base, and it can't do a thing about it. [ID:d2_found_10]
+Castellanos: I bet that's what it's been circling. It knows that crate belongs to the base, and it can't do a thing about it. [ID:d2_found_a6_10]
 - Can I carry it?
 	Castellanos: Seventy kilos? Not unless Mwangi's been hiding something in your rations. No. Leave your back out of this. [ID:d2_found_11a]
 - Can GAR-Y tow it?
@@ -80,30 +76,8 @@ Castellanos: And you've just learned the most important thing about living down 
 ? curious Castellanos: Told you. Boring things. Best things. [ID:d2_crate_04]
 => END
 
-~ d2_sunset
-Castellanos: So. How's your new friend? [ID:d2_sun_01]
-- It follows me everywhere.
-	Castellanos: Rao says it's imprinted on you. Like a duckling. Achterberg says that's not how robots work. Rao says it is now. They've been arguing about it for an hour. [ID:d2_sun_02a]
-- Useful. Very useful.
-	Castellanos: Good. You're going to need all the help you can get, and it's nice to know someone's got your back down there. Even if it's knee-high. [ID:d2_sun_02b]
-- It sat with me and watched the sun go down.
-	set sunset_gary
-	Castellanos: Stop it. You're going to make me cry, and the cabin's too small for crying. [ID:d2_sun_02c]
-Castellanos: Still no sign of the walkers, I'm afraid. We're looking on every pass. Tupou's taken over the night shift at the window. [ID:d2_sun_03]
-Castellanos: Get some sleep. Both of you. Does GAR-Y sleep? Ask it. Actually, don't, it'll only beep. [ID:d2_sun_04]
-- Goodnight, orbit.
-- Goodnight, Castle.
-	set first_name
-	Castellanos: Goodnight. Thanks for today. It was a good one. [ID:d2_sun_05b]
-Castellanos: Talk at sunrise, Outpost One. [ID:d2_sun_06]
-do bed
-=> END
-
-# Done early, not done by dusk, and the morning after (scripts/opening_days.gd).
-~ d2_done
-Castellanos: That's today's work done, and with daylight to spare. The rest of the day's yours. Strip some scrap, take some pictures, show GAR-Y around. Just be home by dark. [ID:d2_done_01]
-=> END
-
+# (A6: the sunset chat and "the rest of the day's yours" went: chapter 3 follows
+# after a breather, and dusk calls come from scripts/opening_days.gd.)
 ~ d2_dusk
 Castellanos: Getting dark down there. Head home, Outpost One. [ID:d2_dusk_01]
 ? left_gary Castellanos: Whatever's moving out there will still be moving tomorrow. We'll find it in daylight. [ID:d2_dusk_02a]

@@ -9,10 +9,10 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const ROUTE := preload("res://scripts/rover_route.gd")
 
 func _initialize() -> void:
-	MHGame.site_id = "region_crater"
+	MHGame.site_id = "region_plains"   # the crater floor stopped being a site in A6
 	MHGame.save_directory = "user://test_habitats"
 	MHGame.game_mode = "survival"
-	MHGame.pending_save_state = {"site_id": "region_crater", "builder": {}}
+	MHGame.pending_save_state = {"site_id": "region_plains", "builder": {}}
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 20: await process_frame
@@ -33,7 +33,7 @@ func _initialize() -> void:
 		for k in 20:
 			assert(not wall.has_point(prev.lerp(point, k / 20.0)), "It keeps out of the blocked square.")
 		prev = point
-	# Recalled from 1.1 km out on the crater rim, with you at the base: a
+	# Recalled from 1.1 km out, with you at the base: a
 	# route, then the drive home off-screen.
 	rover.global_position = Vector3(900, MHSiteTerrain.height(900, 700) + .3, 700)
 	world.player.global_position = Vector3(0, b.habitat_base_y + .3, 0)
@@ -50,5 +50,5 @@ func _initialize() -> void:
 		if not rover.recalling: break
 		if i % 600 == 0: print("  driving home: %d m to go, stage %s, waypoint %d of %d" % [roundi(rover.global_position.distance_to(world.player.global_position)), rover._recall_stage, rover._route_i, rover._route.size()])
 	assert(rover._in_bay() and not rover.recalling, "And it's home in the bay (%s)." % rover.global_position)
-	print("Rover route test passed: a route round blocked ground, recalled from the crater rim, driven home off-screen and parked in the bay.")
+	print("Rover route test passed: a route round blocked ground, recalled from 1.1 km out, driven home off-screen and parked in the bay.")
 	quit(0)

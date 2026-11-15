@@ -24,6 +24,9 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const TRAVERSABILITY := preload("res://scripts/traversability.gd")
 const OVAL := Vector2(400.0, 250.0)       # the landing oval's half axes (region_landing_picker.gd)
+## Story games (A6, docs/opening-days.md): you always come down on the plains
+## round home, and steer anywhere within this many metres of it.
+const HOME_RADIUS := 750.0
 const LANDER_SCENE := "res://assets/vehicles/landers_v2/Crew_Lander.glb"
 const ENTRY_TIME := 5.0
 const POWERED_FROM := 800.0               # metres up when the marker appears
@@ -42,6 +45,7 @@ const CREW_FILE := "res://data/orbiter_crew.json"
 var camera: Camera3D
 var environment: Node
 var centre := Vector2.ZERO                # the oval's centre, region metres (the site's origin here)
+var oval := OVAL                          # its half axes: OVAL, or the home circle in a story game
 var phase := "entry"
 var fuel := 1.0
 var altitude := 2500.0
@@ -77,10 +81,11 @@ const SAFE_APART := 140.0                 # metres between the cameras' safe spo
 var _safe: Array = []                     # [{at: Vector2 (site metres), tag, ring, label}]
 
 ## camera and environment are the main menu's; at is the oval's centre (region metres).
-func setup(menu_camera: Camera3D, menu_environment: Node, at: Vector2) -> void:
+func setup(menu_camera: Camera3D, menu_environment: Node, at: Vector2, half := OVAL) -> void:
 	camera = menu_camera
 	environment = menu_environment
 	centre = at
+	oval = half
 
 func _ready() -> void:
 	# The world round the oval: the site's origin at its centre, no pad.
@@ -102,7 +107,7 @@ func _ready() -> void:
 	_load_radio()
 	_build_hud()
 	camera.fov = 60.0
-	_place_lander(Vector2(-OVAL.x * .8, 0.0))
+	_place_lander(Vector2(-oval.x * .8, 0.0))
 
 func _process(delta: float) -> void:
 	_t += delta
@@ -131,7 +136,7 @@ func _entry(_delta: float) -> void:
 	camera.global_position = _lander.global_position + Vector3(0, 6, 22) + shake
 	camera.look_at(_lander.global_position + Vector3(60, -40, -200))
 	_glow.color.a = (1.0 - k) * (.35 + .1 * sin(_t * 20.0))
-	_place_lander(Vector2(lerpf(-OVAL.x * .8, -OVAL.x * .25, k), 0.0))
+	_place_lander(Vector2(lerpf(-oval.x * .8, -oval.x * .25, k), 0.0))
 	if k >= 1.0:
 		phase = "powered"
 		_t = 0.0
@@ -255,7 +260,7 @@ func _lock() -> void:
 
 ## The nearest good ground to the oval's centre (region metres).
 func _autopilot() -> Vector2:
-	var near := MHBaseSite.nearest_valid(centre.x, centre.y, minf(OVAL.x, OVAL.y))
+	var near := MHBaseSite.nearest_valid(centre.x, centre.y, minf(oval.x, oval.y))
 	return near if not is_inf(near.x) else centre
 
 func _finish(touchdown: Vector2) -> void:
@@ -284,10 +289,10 @@ func _follow_camera(delta: float, back: float, up: float) -> void:
 ## Within the oval and within reach of the lander (the reach shrinks as it comes down).
 func _clamp_marker(point: Vector2) -> Vector2:
 	var p := point
-	var e := Vector2(p.x / OVAL.x, p.y / OVAL.y)
+	var e := Vector2(p.x / oval.x, p.y / oval.y)
 	if e.length() > 1.0: p = Vector2(p.x, p.y) / e.length()
 	var lander := Vector2(_lander.global_position.x, _lander.global_position.z)
-	var reach := 40.0 + OVAL.x * clampf(altitude / POWERED_FROM, 0.0, 1.0)
+	var reach := 40.0 + oval.x * clampf(altitude / POWERED_FROM, 0.0, 1.0)
 	if p.distance_to(lander) > reach: p = lander + (p - lander).normalized() * reach
 	return p
 

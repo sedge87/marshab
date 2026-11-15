@@ -5889,7 +5889,7 @@ static func window_cargo() -> int:
 ## A saved zone's cargo at today's balance numbers (older saves used other costs).
 func _recompute_zone_cost(zone: Dictionary) -> void:
 	var zone_kind := str(zone.get("kind", ""))
-	if bool(zone.get("carried", false)): zone["cost"] = 0; return   # the walker's module came whole
+	if bool(zone.get("carried", false)) or bool(zone.get("kit", false)): zone["cost"] = 0; return   # the walker's module came whole (and A6's first Quarters liner)
 	if zone.has("angled_mount"):
 		zone["cost"] = cell_cost(zone_kind) * (_angled_corridor_bays(float(zone.angled_mount.get("length", CELL))) if zone_kind == "corridor" else 1)
 	elif zone.has("outline") and (zone.outline as Array).size() >= 3:

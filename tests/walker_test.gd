@@ -3,7 +3,7 @@ extends SceneTree
 # Step 3c, Walker 1 and the General Module (scripts/walker.gd,
 # scripts/build_rules.gd; systems-and-items §14 step 3c):
 # - before its night it waits ~2.6 km out, hidden, unknown, unseeable;
-# - the night it moves it comes to ~1.4 km, stalled, its fault lamp blinking;
+# - the night it moves it comes to ~550 m (A6: the bare suit's reach), stalled, its fault lamp blinking;
 # - B does nothing before the module's home;
 # - the night it moves it leaves tracks; near them, a Notes thought;
 # - a photo of the tracks sent up brings Castellanos's text and puts it on
@@ -118,13 +118,13 @@ func _initialize() -> void:
 	# The night it moves: it comes into view, and leaves tracks.
 	world.lifepod.walker_night()
 	far = _flat(walker.global_position, lander)
-	_check(not walker.hidden() and walker.visible and far > 1250.0 and far < 1550.0 and world.opening_part() == 3, "the night it moves it stops about 1.4 km out (%.0f m), part 3" % far)
+	_check(not walker.hidden() and walker.visible and far > 450.0 and far < 640.0 and world.opening_part() == 3, "the night it moves it stops about 550 m out (%.0f m), part 3" % far)
 	_check(walker.state == "stalled" and not walker.calibrated, "stalled: lost, not broken")
 	var marks: Array = world.get_tree().get_nodes_in_group("walker_tracks")
-	_check(walker.tracks_laid and marks.size() > 15, "it left tracks (%d marks)" % marks.size())
+	_check(walker.tracks_laid and marks.size() > 5, "it left tracks (%d marks)" % marks.size())
 	var nearest: float = marks.map(func(m): return _flat(m.global_position, lander)).min()
 	_check(nearest < 260.0, "they start in the near ring (%.0f m)" % nearest)
-	player.global_position = (marks[3] as Node3D).global_position + Vector3(0, 1.5, 0)
+	player.global_position = (marks[1] as Node3D).global_position + Vector3(0, 1.5, 0)
 	walker._look()
 	_check(world.notes.is_open("tracks"), "near them: a thought about the tracks")
 
@@ -141,7 +141,7 @@ func _initialize() -> void:
 	_check(screen.cargo_state(walkers[0]) == "seen", "Cargo: Walker 1 seen")
 
 	# Finding it, and setting it right from its deck.
-	player.global_position = walker.global_position + Vector3(0, 1.5, 600.0)
+	player.global_position = walker.global_position + Vector3(0, 1.5, 200.0)
 	walker._look()
 	_check(walker.seen and world.known.knows(walker.ID) and world.notes.is_open("walker_seen") and world.notes.is_settled("tracks"), "within sight: you see it")
 	var ladder: Node = walker.get_node("Ladder")
@@ -317,5 +317,5 @@ func _initialize() -> void:
 	again.queue_free()
 	await process_frame
 	if failures == 0:
-		print("Walker test passed: hidden until its night, then stalled 1.4 km out, lamp blinking; B waits; tracks and their thought; the photo sent up and Castellanos's text; seen, set right on its nav screen (sun sight, known landmarks), walked home with its headlights on and parked; the climb-down line and the stranded rescue; the plan's first lesson (the module and its airlock, explored ground, free); carried and lowered; the fit-out kit; its plans; the first night; saved and loaded.")
+		print("Walker test passed: hidden until its night, then stalled about 550 m out, lamp blinking; B waits; tracks and their thought; the photo sent up and Castellanos's text; seen, set right on its nav screen (sun sight, known landmarks), walked home with its headlights on and parked; the climb-down line and the stranded rescue; the plan's first lesson (the module and its airlock, explored ground, free); carried and lowered; the fit-out kit; its plans; the first night; saved and loaded.")
 	quit(1 if failures > 0 else 0)
