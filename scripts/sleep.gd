@@ -44,6 +44,11 @@ func blocked_reason() -> String:
 	if asleep: return "Already asleep."
 	if _critical(): return "Not with a critical alert up. Fix it first."
 	var player: Node3D = world.player
+	# The pressurised rover's cab (A7, scripts/crew_rover.gd): parked, with air.
+	if bool(player.get_meta("driving", false)):
+		var vehicle: Variant = player.get_meta("vehicle", null)
+		if vehicle != null and is_instance_valid(vehicle) and vehicle.has_method("cabin_ready") and vehicle.cabin_ready(): return ""
+		return "You can sleep in the pressurised rover's cab: parked, with air in its tank."
 	var in_cabin: bool = world.lander != null and bool(world.lander.cabin_contains(player.global_position))
 	if not world.builder.is_inside(player.global_position) and not in_cabin: return "You can only sleep inside: the habitat or the lander cabin."
 	if in_cabin and world.lander.has_method("sealed_cabin") and not world.lander.sealed_cabin(): return "Close the hatch and let it seal first."

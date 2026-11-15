@@ -64,7 +64,7 @@ func _initialize() -> void:
 	_key(KEY_W, false)
 	_key(KEY_C, true); _key(KEY_C, false)
 	for i in 60 * 3: await physics_frame
-	assert(rover.cruise > 3.0 and rover.speed > 3.0, "Cruising: still at %.1f m/s (set %.1f) with nothing held." % [rover.speed, rover.cruise])
+	assert(rover.cruise > 2.5 and rover.speed > 2.5, "Cruising (the rover is 3 m/s since A7): still at %.1f m/s (set %.1f) with nothing held." % [rover.speed, rover.cruise])
 	_key(KEY_SPACE, true)
 	for i in 30: await physics_frame
 	_key(KEY_SPACE, false)
@@ -83,7 +83,7 @@ func _initialize() -> void:
 	world.day_night.set_hour(12.0); world.day_night.frozen = true
 	for i in 5: await process_frame
 	rover.battery = 0.0
-	assert(is_equal_approx(rover.top_speed(), rover.RESERVE_SPEED), "On the reserve: reduced speed.")
+	assert(is_equal_approx(rover.top_speed(), float(rover._spec.reserve_speed)), "On the reserve: reduced speed.")
 	# Both flat at night: it can't move, and a recall says why.
 	world.day_night.set_hour(23.0)
 	for i in 10: await process_frame

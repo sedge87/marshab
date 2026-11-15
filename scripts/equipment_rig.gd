@@ -168,10 +168,12 @@ func _run(key: String, _actor: Node) -> bool:
 				_edit_sign(action)
 				return true
 			"recall_rover":
-				# The crew rover drives itself home (scripts/crew_rover.gd).
-				var rover := get_tree().get_first_node_in_group("crew_rover")
-				var note := "There's no crew rover yet: it comes with a vehicle bay." if rover == null else str(rover.recall())
-				get_tree().call_group("explore_hud", "show_equipment_note", "Crew rover", note)
+				# The vehicles drive themselves home (scripts/crew_rover.gd; A7: the rover and the buggy).
+				var notes: Array = []
+				for vehicle in get_tree().get_nodes_in_group("vehicle"): notes.append(str(vehicle.label()) + ": " + str(vehicle.recall()))
+				var note := "There are no vehicles yet: they're out in the land as wrecks to fix." if notes.is_empty() else "
+".join(notes)
+				get_tree().call_group("explore_hud", "show_equipment_note", "Vehicles", note)
 				return true
 			"monitor":
 				get_tree().call_group("habitat_world", "open_monitor")

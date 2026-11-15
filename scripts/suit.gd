@@ -230,14 +230,24 @@ func reserve_air() -> Dictionary:
 	if o2 > 0.0 or where != "outside" or passed_out: return {}
 	return {"temp_c": 12.0, "o2_pct": lerpf(14.0, 19.0, reserve), "co2_pct": lerpf(3.5, .8, reserve), "powered": true, "lit": true}
 
+var _rover_source: Node = null   # the vehicle a G top-up draws on
+
+## The vehicle you're driving, else the pressurised rover.
+func _vehicle() -> Node:
+	var player: Node = world.player
+	if player != null and player.has_meta("vehicle") and is_instance_valid(player.get_meta("vehicle")): return player.get_meta("vehicle")
+	return world.get("crew_rover")
+
 ## Where you're breathing from. The habitat counts only while its air is fit
 ## to breathe; the rover's cab only while its tank has oxygen; the lander
 ## cabin only once its hatch is shut and sealed (open, you're on your suit).
 func _where() -> String:
 	var player: Node3D = world.player
 	if bool(player.get_meta("driving", false)):
-		var rover: Node = world.get("crew_rover")
-		return "rover" if rover != null and float(rover.o2) > 0.0 else "outside"
+		# The pressurised rover's cab is sealed air while its tank lasts; the
+		# open scout buggy never is (A7, scripts/crew_rover.gd).
+		var rover: Node = _vehicle()
+		return "rover" if rover != null and (not rover.has_method("sealed") or rover.sealed()) and float(rover.o2) > 0.0 else "outside"
 	# Walker 1's front seat: a suit line off the module's air (playthrough, 8 Nov).
 	var walker: Node = world.get("walker")
 	if walker != null and bool(walker.get("riding")): return "walker"
@@ -412,7 +422,7 @@ func fill(share: float, source: String) -> bool:
 				got_o2 = cabin.core.take_oxygen(want_o2 * o2_hours() * O2_KG_PER_HOUR) / (o2_hours() * O2_KG_PER_HOUR)
 				got_power = cabin.core.take_energy(want_power * FULL_KWH) / FULL_KWH
 		"rover":
-			var rover: Node = world.get("crew_rover")
+			var rover: Node = _rover_source if _rover_source != null else _vehicle()
 			if rover == null: return false
 			var given: Vector2 = rover.supply_suit(want_o2 * o2_hours(), want_power)
 			got_o2 = given.x / o2_hours()
@@ -569,12 +579,16 @@ func debug_refill() -> void:
 	_patching = 0.0
 	_said.clear()
 
-## G beside the rover: as much as the rover can give.
-func top_up_from_rover() -> String:
+## G beside a vehicle: as much as it can give (the buggy has no air, only power).
+func top_up_from_rover(vehicle: Node = null) -> String:
 	if not active(): return "Suit life support only runs in Survival and Freedom."
 	if full(): return "Your suit is already full."
 	MHAudio.sfx("suit_fill", -6.0)
+	_rover_source = vehicle
 	var ok := fill(1.0, "rover")
+	_rover_source = null
+	if vehicle != null and vehicle.has_method("sealed") and not vehicle.sealed():
+		return "Charged your suit from the buggy's battery (it carries no air)." if ok else "The buggy's battery has nothing left to give."
 	_say("suit_full" if full() else ("suit_topping_up" if ok else "suit_no_supply"))
 	return "Topped up from the rover's tank and battery." if ok else "The rover has nothing left to give."
 
@@ -657,7 +671,7 @@ func nearest_refill() -> Dictionary:
 			offer.call(Vector3(centre.x, world.builder.habitat_base_y, centre.y), "AIRLOCK")
 	if world.lander != null and world.lander.present: offer.call(world.lander.global_position, "LANDER")
 	var rover: Node3D = world.get("crew_rover")
-	if rover != null and float(rover.o2) > 0.0: offer.call(rover.global_position, "ROVER")
+	if rover != null and float(rover.o2) > 0.0 and not bool(rover.get("wrecked")): offer.call(rover.global_position, "ROVER")
 	return best
 
 ## For the wrist pad's screen.
@@ -836,7 +850,8 @@ func _draw_visor() -> void:
 ## you come round inside).
 func pass_out() -> void:
 	passed_out = true
-	if bool(world.player.get_meta("driving", false)) and world.get("crew_rover") != null: world.crew_rover._get_out()
+	var vehicle := _vehicle()
+	if bool(world.player.get_meta("driving", false)) and vehicle != null: vehicle._get_out()
 	# Not met GAR-Y yet? It's been out looking for the lander, and finds you.
 	# The guided days: something does, unseen, and you meet it in its own time.
 	var field: Node = world.get("drop_field")
@@ -875,9 +890,10 @@ func _come_round(summary: Dictionary) -> void:
 	if not item.is_empty():
 		lines.append("You dropped the %s where you fell%s." % [str(item.label).to_lower(), " (it's on the region map, Tab)" if MHSiteTerrain.shape() == "region" else ""])
 	if leak: lines.append("The suit's seals took a knock: it leaks, so oxygen runs out faster, until you repair it at a suit service panel." if _has_panel else "The suit's seals took a knock: it leaks, so oxygen runs out faster, until you've patched it (an hour somewhere sealed).")
-	if world.get("crew_rover") != null and world.crew_rover.global_position.distance_to(world.player.global_position) > 30.0:
-		var rover_line: String = world.crew_rover.come_home_after_rescue()
-		if rover_line != "": lines.append(rover_line)
+	for vehicle in get_tree().get_nodes_in_group("vehicle"):
+		if (vehicle as Node3D).global_position.distance_to(world.player.global_position) > 30.0:
+			var rover_line: String = vehicle.come_home_after_rescue()
+			if rover_line != "": lines.append(rover_line)
 	var count := int(summary.rescues)
 	var remark := "\"Please don't do that again.\"" if count <= 1 else ("\"Twice now, Commander.\"" if count == 2 else "\"That's %d times now, Commander.\"" % count)
 	var field: Node = world.get("drop_field")

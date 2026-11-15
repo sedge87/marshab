@@ -49,7 +49,7 @@ func _physics_process(delta: float) -> void:
 	if _timer > 0.0: return
 	_timer = REFRESH
 	var centres: Array = []
-	for group in ["player", "crew_rover", "gar_y"]:
+	for group in ["player", "crew_rover", "scout_buggy", "gar_y"]:
 		for node in get_tree().get_nodes_in_group(group):
 			if node is Node3D and (node as Node3D).is_inside_tree(): centres.append((node as Node3D).global_position)
 	var near: Array = []

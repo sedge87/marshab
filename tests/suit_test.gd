@@ -135,11 +135,13 @@ func _initialize() -> void:
 	var tank: float = rover.o2
 	suit.top_up_from_rover()
 	_check(suit.o2 > .99 and suit.power > .99, "topped up from the rover")
-	_check(absf((tank - rover.o2) - 400.0 / 12.0) < .2 and absf((battery - rover.battery) - 4.0) < .1, "which drains its tank and battery (%.1f%%, %.1f%%)" % [tank - rover.o2, battery - rover.battery])
+	_check(absf((tank - rover.o2) - 400.0 / rover.TANK_SUIT_HOURS) < .2 and absf((battery - rover.battery) - 4.0) < .1, "which drains its tank and battery (%.1f%%, %.1f%%)" % [tank - rover.o2, battery - rover.battery])
 	# The bay refills the rover's tank from the habitat.
 	rover.o2 = 50.0
 	reserve = sim.o2_reserve_kg
-	await create_timer(2.0).timeout
+	# A7: the Garage restocks by game time (the clock is held still here): a fifth of an hour docked.
+	rover._charging = rover._charge_source()
+	rover._cabin_air(.2)
 	_check(rover._in_bay() and rover.o2 > 55.0 and sim.o2_reserve_kg < reserve, "the bay refills the rover's tank from the habitat (%.1f%%)" % rover.o2)
 	# Driving: the sealed cab, which breathes from the tank.
 	world.player.global_position = rover.global_position + Vector3(-2.5, .2, 0)

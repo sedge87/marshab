@@ -21,8 +21,12 @@ func _initialize() -> void:
 		{"kind": "vehicle_bay", "cells": [Vector2i(2, 0), Vector2i(3, 0), Vector2i(2, 1), Vector2i(3, 1)], "door_direction": Vector2i(0, 1), "cost": 0},
 		{"kind": "airlock", "cells": [Vector2i(0, -1)], "door_direction": Vector2i(0, -1), "cost": 0}]
 	b._rebuild()
+	# A7: on a region the rover is found as a wreck once the guided chapters
+	# are over. Past them, and fixed, for this test.
+	if world.opening_days != null: world.opening_days.chapter = 99
 	world._sync_crew_rover()
 	var rover = world.crew_rover
+	if rover.wrecked: rover._fixed(100.0)
 	for i in 20: await physics_frame
 	# The planner goes round a square it's told to keep out of.
 	var wall := Rect2(-200, -260, 400, 60)

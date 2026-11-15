@@ -25,7 +25,7 @@ const ROOMS := {
 	"galley": {"key": "galley_kitchenette", "bonus": "", "owner": "Mwangi"},
 	"hydroponics": {"key": "greenhouse_planter", "bonus": "Grows food", "owner": "Tupou"},
 	"storage": {"key": "cargo_rack", "bonus": "", "owner": ""},
-	"vehicle_bay": {"key": "rover_charger", "bonus": "", "owner": "Castle"},
+	"vehicle_bay": {"key": "rover_charger", "bonus": "Rover dock: fast charge, air, water and food, wheel bench and add-ons; a drone dock outside", "owner": "Castle"},
 	"medical": {"key": "crew_bunk", "bonus": "Twice the hull's shielding", "owner": "Rao"},
 }
 
