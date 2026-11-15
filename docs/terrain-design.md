@@ -657,6 +657,53 @@ Each fix is a better recipe. Its numbers show up as sliders in the editor.
   - [Wrinkle Ridge and Valley Network Intersection](https://www.uahirise.org/ESP_088471_1750).
 - Paper: Dundas et al. (2018), "Exposed subsurface ice sheets in the Martian mid-latitudes", *Science* 359(6372):199–201.
 
+### As built (B5, 15–16 Nov)
+All eight steps are built (commits 406e6a6, 5756eae, 1a4026a, 3fad63b, 25e29d5, abc1d2e, fe3aba7, 510548a). Nothing here has been playtested yet.
+
+**Tools**
+- **The land editor:** `tools/edit_land.bat` opens `tools/region_editor.py` at `http://127.0.0.1:8765/` (this machine only). It has templates for every kind, including `ice_scarp`, `channel`, `sinter_mound` and `monument`, and an areas layer.
+- **The layout file:** `data/region_layout.json` holds every landform, plus `areas`, `surprises` and `horizon`. Before any land changed, the heights were proven byte-identical to the old script (`tools/region_hash.py`).
+- **Seeds:** entries that came from the old script keep their old salt. New ones are seeded from a crc32 of their id, so adding or moving one landform doesn't reshuffle the others.
+- **Anchors:** `region.json` has 164 anchors. `MHRegion.anchor()` and `MHRegion.area_at()` are in `scripts/region_anchors.gd`.
+- **The sculpt layer is our own format, not the .exr above** (the user's choice). `data/region_sculpt.landdelta` is gzip of a small header ("LDLT", version, size, spacing, 64-cell tiles) plus only the touched tiles of float16 height differences on the 2 m grid.
+  - Both `tools/land_delta.py` and `scripts/land_delta.gd` (`MHLandDelta`) read and write it; a round-trip test covers both.
+  - Sculpt in `tools/sculpt_region.tscn`: Load generated land, use Terrain3D's brushes, Save sculpt. The generator adds it after the fissures, never over caves or cave corridors (`--no-sculpt` skips it).
+  - The per-save land layer (§14) can reuse the format.
+- **Rock paths:** `tools/make_rock_paths.py` writes `scenes/terrain/rock_paths.tscn`. It finds each foot from the generated heights, so re-run it after moving those landforms.
+  - There are 12 anchored Path3Ds (`scripts/tools/rock_path.gd`): the north scarp and east front feet, two glacier moraines, both riverbed caprocks and every ice scarp's foot.
+  - In the game they come to about 870 solid rocks and 4,000 small ones.
+  - You can also hand-edit a path in Godot and press Regenerate.
+- **The rock shader:** `shaders/ground_rock.gdshader`, the `ground_rock` role in MHPalette. It does world-space mottling, level layers, dust on top and ground-coloured dust banked at the foot. The foot is measured from the rock's origin, so there's no terrain lookup. The region's scattered rocks use it too.
+
+**The land**
+- **Ring 2 obstacles are real detours.** The rover crosses the wrinkle ridges, north scarp and east front only at their passes. The route fixer can't grade through them; it now tries up to 300 nearby gaps before failing.
+- **The maze** is measured on the 2 m grid. Across the wind the way through is 2.37 times the straight line, with 16 dead ends. Along the wind, two through-lanes are left open on purpose, so it can be crossed.
+- **Raised riverbeds:** laid from the Juventae patch, with flat tops, layered sides, caprock at the foot and a crossing branch.
+- **Glacier:** an alcove in its mesa, a 1 km tongue with Protonilus texture, bowed ridges, and moraines past the toe.
+- **All ice is `ice_scarp`.**
+  - Each is a pit with a 55° pole-facing banded face under a dust lip, ramped rounded ends, Promethei detail and a rubble foot.
+  - Two are on the ice fields (20–26 m); the ice cave's mouth is sunk into one of them.
+  - Four small ones (9 m) round home, `near_ice_1..4`.
+- **The ice wall thread** sits at whichever near_ice chip is 1–1.5 km from the lander (`lifepod.gd` `_near_ice`).
+  - It's placed before the iron, because a landform can't move.
+  - It keeps 30° from the drop field's sites: five full 50° spacings don't fit round one lander.
+  - `thread_site.gd` no longer builds the box lumps; it keeps only the chip and an invisible plate on the face.
+- **Areas:** black sands, ice country, pale layers, haematite hills, sulfur cracks and gypsum chaos.
+  - Each tints the colour map; gypsum also gets veins.
+  - Each sets fog haze in the environment.
+  - Each sets an ambience flavour via `MHAudio.area_sound` (cold ticks, dust devils, quiet wind), using existing sounds only.
+- **New kinds and marks:** `sinter_mound` (terraced pale silica), `monument` (a lone pinnacle and a perched boulder), three one-off `surprises`, old boulder tracks with a rock at each end, frost hollow polygons, more waymarks.
+- **Horizon landmarks:** a far volcano (bearing 300°, 26 km) and a far crater rim (140°, 18 km). They're drawn as silhouettes at 1.7 km, inside the camera's far plane, and scaled to look their real size and distance.
+
+**The sameness check (WARN, on purpose)**
+- **The method:** 36 headings from home, walked at game speeds (on foot 5 m/s, the rover 3 m/s, from `scripts/`, not the 1.4 / 5 m/s guessed in §14). Each walk stops at the callback bounds. "Something new" is a new landform kind, ground kind, area, or anchor coming into line of sight within 300 m (900 m for big ones).
+- **The result:** 56 dull stretches. The longest is 5.7 minutes on foot or 9.4 minutes by rover. Only 8 are over the on-foot limit; most are rover-only, because the rover is slower than walking.
+- **Left as a WARN for the user to tune in the editor:** they're listed in `checks.list` and drawn on its map.
+
+**Left alone**
+- `tests/notes_test.gd` has three failures that predate B5. They're the same with every B5 script at its old version: the sunset wish, "no ticks or counts", and rest offered in the cabin.
+- The region's binary maps (heights, colour, control and so on) are rebuilt by the generator but not committed, as in earlier steps. Only `region.json` is committed.
+
 ## 14. Ideas taken forward (15 Nov)
 
 The user asked what else the land and environment could hold. Of 16 new ideas:
@@ -664,7 +711,9 @@ The user asked what else the land and environment could hold. Of 16 new ideas:
 - **wind streaks as a compass were dropped;**
 - **radio shadow and relays were parked** for a design talk.
 
-The user then added two things of their own: rethink all the ice, and keep Mars from getting boring and repetitive. None of this is built.
+The user then added two things of their own: rethink all the ice, and keep Mars from getting boring and repetitive.
+
+**Built in B5 (16 Nov; §13 As built):** the sameness check, area colours, area sound and haze, surprises, all the ice (including the near ice wall), boulder tracks as marks, horizon landmarks, monument and sinter_mound shapes. The rest of the table below is still to do in its own phase.
 
 ### Against a boring, repetitive Mars
 The user: "Mars can get boring and repetitive and we need to avoid that in the game." Four rules for the land:

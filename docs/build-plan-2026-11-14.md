@@ -225,6 +225,8 @@ The user (15 Nov): caves and lava tubes should be a wonder to explore, and risky
 **Explain this one to the user before building it.** §12 ends with a starting list; none of it is agreed.
 
 ### B5. Terrain tools: layout file, map editor and sculpt layer (before C1; added 15 Nov) · Agreed 15 Nov: `docs/terrain-design.md` §13 and §14
+**Built 16 Nov** (406e6a6 … 510548a): all eight steps, see `docs/terrain-design.md` §13 "As built (B5)". Playtest build `Builds/OutpostOne-Playtest-16Nov-b5`; not playtested.
+
 **The agreed plan is §13 (with its order of work), plus from §14:**
 - all the ice rethought, including the near ice wall the player chips;
 - the four rules against a boring Mars (the sameness check, area colours, area sound and sky, surprises);
