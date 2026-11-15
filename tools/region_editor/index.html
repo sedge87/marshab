@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Land editor</title>
+<style>
+:root {
+  --bg: #17130f; --panel: #221c16; --line: #3a3028; --text: #eadfce; --dim: #a8988a; --accent: #e08a3c;
+  --pass: #6fbf73; --warn: #e0b13c; --fail: #e0573c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; display: flex; height: 100vh; overflow: hidden; }
+#mapwrap { flex: 1; position: relative; overflow: hidden; touch-action: none; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+#side { width: 340px; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+#side section { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+#side section.grow { flex: 1; overflow-y: auto; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 6px; }
+h3 { margin: 0 0 4px; font-size: 16px; }
+button, select { background: #2f2720; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: #1b130b; border-color: var(--accent); font-weight: 600; }
+button:disabled { opacity: .45; cursor: default; }
+.row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.slider { display: grid; grid-template-columns: 1fr 64px; gap: 2px 8px; margin: 6px 0; }
+.slider label { grid-column: 1 / 3; color: var(--dim); font-size: 12px; }
+.slider input[type=range] { width: 100%; accent-color: var(--accent); }
+.slider input[type=number] { width: 64px; background: #15110d; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 2px 4px; }
+.layers label { margin-right: 10px; color: var(--dim); }
+.check { display: grid; grid-template-columns: 44px 1fr; gap: 6px; padding: 3px 0; font-size: 13px; cursor: pointer; }
+.check b { font-size: 11px; text-align: center; border-radius: 4px; padding: 1px 0; color: #15110d; }
+.PASS b { background: var(--pass); } .WARN b { background: var(--warn); } .FAIL b { background: var(--fail); }
+.check span small { color: var(--dim); display: block; }
+#log { white-space: pre-wrap; font: 11px/1.3 Consolas, monospace; color: var(--dim); max-height: 140px; overflow-y: auto; margin: 6px 0 0; }
+#status { color: var(--dim); font-size: 12px; }
+#beforeafter { position: absolute; left: 12px; bottom: 12px; background: rgba(23,19,15,.85); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; display: none; }
+#tip { position: absolute; left: 12px; top: 12px; background: rgba(23,19,15,.85); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; color: var(--dim); font-size: 12px; max-width: 420px; }
+#hist { max-height: 160px; overflow-y: auto; }
+#hist div { display: flex; justify-content: space-between; padding: 2px 0; font-size: 12px; }
+@media (max-width: 760px) { body { flex-direction: column; } #side { width: 100%; height: 45vh; border-left: none; border-top: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<div id="mapwrap">
+  <canvas id="map"></canvas>
+  <div id="tip">Tap a landform to pick it. Drag its middle to move it, the square dot to resize, the round dot to turn. On a line, drag its dots; tap the line to add a dot. Scroll or pinch to zoom, drag empty ground to pan.</div>
+  <div id="beforeafter">Before <input id="ba" type="range" min="0" max="100" value="100"> After</div>
+</div>
+<div id="side">
+  <section>
+    <div class="row">
+      <button id="undo" title="Undo (Ctrl+Z)">Undo</button>
+      <button id="save" class="primary">Save</button>
+      <button id="regen">Regenerate</button>
+      <button id="full" title="Heights, maps and the ground textures (slow)">Full build</button>
+    </div>
+    <div id="status">Loading…</div>
+    <div class="layers row" style="margin-top:6px">
+      <label><input type="checkbox" id="l-outlines" checked> Landforms</label>
+      <label><input type="checkbox" id="l-caves" checked> Caves</label>
+      <label><input type="checkbox" id="l-rings" checked> Rings</label>
+      <label><input type="checkbox" id="l-anchors"> Anchors</label>
+      <label><input type="checkbox" id="l-dull" checked> Dull stretches</label>
+      <label><input type="checkbox" id="l-sculpt" checked> Sculpt</label>
+    </div>
+  </section>
+  <section>
+    <div class="row">
+      <select id="addkind"></select>
+      <button id="add">+ Add</button>
+      <button id="del" disabled>Delete</button>
+    </div>
+  </section>
+  <section class="grow" id="panel"><h2>Landform</h2><div style="color:var(--dim)">Nothing picked.</div></section>
+  <section class="grow">
+    <h2>Checks</h2>
+    <div id="checks" style="color:var(--dim)">No build yet.</div>
+    <pre id="log"></pre>
+  </section>
+  <section>
+    <h2>Saved land</h2>
+    <div id="hist"></div>
+  </section>
+</div>
+<script>
+"use strict";
+// ---------- state ----------
+let layout = null, region = {}, mapImg = null, beforeImg = null, sculptImg = null;
+let selected = null, dirty = false;
+const undoStack = [];
+const view = { cx: 0, cz: 0, scale: 0.12 };   // centre (region metres) and pixels per metre
+const COLOURS = {
+  mesa: "#e0a060", crater: "#f0d080", fresh_crater: "#f0d080", impact: "#f0d080", mound: "#d0b080", canyon: "#a07050",
+  wrinkle_ridge: "#ff8040", step_line: "#ff5040", dune_field: "#e8c070", ice_field: "#a0d0f0", ice_scarp: "#c0e8ff",
+  boulder_field: "#c0a0a0", lava_plain: "#806060", platy_belt: "#906868", fissure: "#ff3030", yardang_field: "#e0c0a0",
+  ripple_belt: "#f0e0a0", raised_riverbed: "#b0d080", glacier: "#d0e0f0", chaos_blocks: "#c08060", frost_hollow: "#e0f0ff",
+  channel: "#80b0e0", sand_sheet: "#f0d0a0", outcrop: "#ffb060", pit: "#ff6060", sliver: "#ff7070", marker: "#ffffff",
+  river: "#70a0e0", sinter_mound: "#f8f4e8", monument: "#ffd0a0", surprise: "#ff80ff"
+};
+// Slider ranges for the numbers a kind has ([min, max, step]); anything else gets a range made from its value.
+const RANGES = {
+  radius: [5, 1500, 5], height: [1, 200, 0.5], depth: [0.5, 200, 0.5], rim: [0, 150, 1], drop: [0, 60, 0.5],
+  arch: [0, 60, 0.5], crest: [0, 60, 0.5], arch_width: [20, 500, 5], crest_at: [0, 80, 1], steep_side: [2, 60, 1], gentle_side: [10, 200, 1],
+  wiggle: [0, 120, 1], sheer: [1, 40, 0.5], pass_run: [10, 200, 1], half_width: [0.5, 120, 0.5], length: [20, 3000, 10], width: [10, 1500, 5],
+  thickness: [0, 80, 0.5], pits: [0, 60, 1], count: [0, 200, 1], buttes: [0, 6, 1], lanes: [0, 8, 1], terrace: [2, 40, 0.5],
+  spacing: [10, 200, 1], ridge_height: [0, 30, 0.5], barchans: [0, 200, 1], block: [20, 300, 5], bulge: [0, 120, 1],
+  real_scale: [0.2, 4, 0.05], real_shrink: [0.2, 2, 0.05], secondaries: [0, 30, 1], slump_lobe: [0, 60, 1], landslide_height: [0, 40, 0.5],
+  up: [-1, 1, 2], ramp: [-3.15, 3.15, 0.01], gully: [-3.15, 3.15, 0.01], turn: [-3.15, 3.15, 0.01], age: [0, 1, 0.01],
+};
+const LABELS = { half_width: "half width (m)", arch: "arch (m)", crest: "crest (m)", radius: "radius (m)", height: "height (m)", depth: "depth (m)",
+  drop: "drop (m)", sheer: "sheer face run (m)", pass_run: "ramp length at a pass (m)", arch_width: "arch width (m)", steep_side: "steep side (m)",
+  gentle_side: "gentle side (m)", crest_at: "crest offset (m)", wiggle: "wander (m)", ramp: "ramp direction", gully: "gully direction" };
+// What + Add makes: a template, placed in the middle of the view.
+const TEMPLATES = {
+  mesa: { label: "Mesa", radius: 140, height: 45, ramp: null, gully: null, buttes: 2 },
+  impact: { label: "Crater", radius: 90, age: 0.3 },
+  boulder_field: { label: "Boulder field", radius: 180, sharp: false, lanes: 3 },
+  wrinkle_ridge: { label: "Wrinkle ridge", line: 900, passes: [0.5], arch: 9.0, crest: 15.0, arch_width: 170.0, crest_at: 25.0, steep_side: 16.0, gentle_side: 55.0, wiggle: 30.0 },
+  step_line: { label: "Scarp", line: 900, style: "caprock", up: -1.0, height: 18.0, passes: [0.5], sheer: 6.0, pass_run: 95.0 },
+  ice_scarp: { label: "Ice scarp", line: 300, drop: 20.0 },
+};
+const SKIP = new Set(["id", "kind", "label", "seed", "centre", "points", "from", "flow", "source", "mouth_angle", "sand_centre", "style", "sharp", "breaches", "side_canyons", "landslides", "tributaries", "split", "crossings", "passes"]);
+const HALF = () => layout.region.size * layout.region.spacing / 2;
+
+// ---------- helpers ----------
+const $ = (id) => document.getElementById(id);
+const canvas = $("map"), ctx = canvas.getContext("2d");
+const clone = (v) => JSON.parse(JSON.stringify(v));
+function toScreen(x, z) { const r = canvas.getBoundingClientRect(); return [r.width / 2 + (x - view.cx) * view.scale, r.height / 2 + (z - view.cz) * view.scale]; }
+function toWorld(px, py) { const r = canvas.getBoundingClientRect(); return [view.cx + (px - r.width / 2) / view.scale, view.cz + (py - r.height / 2) / view.scale]; }
+function pushUndo() { undoStack.push(clone(layout)); if (undoStack.length > 200) undoStack.shift(); dirty = true; updateStatus(); }
+function wind() { return layout.region.wind; }
+function centreOf(e) {
+  if (e.centre) return e.centre;
+  if (e.points) { const p = e.points; let x = 0, z = 0; for (const q of p) { x += q[0]; z += q[1]; } return [x / p.length, z / p.length]; }
+  if (e.from) return e.from;
+  if (e.source) return e.source;
+  return null;
+}
+function editable(e) { return !!(e.centre || e.points || e.from || e.source); }
+
+// The shape drawn for a landform: a circle, an ellipse along the wind, or a line.
+function shapeOf(e) {
+  const k = e.kind, w = wind();
+  if (e.points) return { line: e.points };
+  if (k === "dune_field") return { ellipse: [e.centre, e.radius * 1.8, e.radius, Math.atan2(w[1], w[0])] };
+  if (k === "yardang_field") return { ellipse: [e.centre, e.length / 2, e.width / 2, Math.atan2(w[1], w[0])] };
+  if (k === "ripple_belt") return { ellipse: [e.centre, e.width / 2, e.length / 2, Math.atan2(w[1], w[0])] };
+  if (k === "glacier") { const f = e.flow, n = Math.hypot(f[0], f[1]); return { line: [e.from, [e.from[0] + f[0] / n * e.length, e.from[1] + f[1] / n * e.length]], width: e.width }; }
+  if (k === "chaos_blocks" || e.radius) return { circle: [e.centre, e.radius] };
+  if (e.centre) return { dot: e.centre };
+  if (e.source) return { dot: e.source };
+  return null;
+}
+
+// ---------- drawing ----------
+function draw() {
+  const r = canvas.getBoundingClientRect();
+  canvas.width = r.width * devicePixelRatio; canvas.height = r.height * devicePixelRatio;
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  ctx.fillStyle = "#0e0b09"; ctx.fillRect(0, 0, r.width, r.height);
+  if (!layout) return;
+  const half = HALF();
+  if (!(view.scale > 0) && r.width > 0) view.scale = Math.min(r.width, r.height) / (half * 2) * 0.98;   // fit the region once the page has a size
+  const [x0, y0] = toScreen(-half, -half), [x1, y1] = toScreen(half, half);
+  const ba = +$("ba").value / 100;
+  if (mapImg) ctx.drawImage(mapImg, x0, y0, x1 - x0, y1 - y0);
+  if (beforeImg && ba < 1) {
+    const cut = x0 + (x1 - x0) * ba;   // left of the cut the old land, right the new
+    ctx.save(); ctx.beginPath(); ctx.rect(cut, y0, x1 - cut, y1 - y0); ctx.clip();
+    ctx.drawImage(beforeImg, x0, y0, x1 - x0, y1 - y0); ctx.restore();
+    ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.moveTo(cut, y0); ctx.lineTo(cut, y1); ctx.stroke();
+  }
+  if (sculptImg && $("l-sculpt").checked) ctx.drawImage(sculptImg, x0, y0, x1 - x0, y1 - y0);
+  if ($("l-rings").checked) {
+    const h = layout.region.home;
+    ctx.setLineDash([2, 6]); ctx.strokeStyle = "rgba(255,255,255,.35)";
+    for (const rr of layout.region.rings) circle(h.centre, rr);
+    ctx.setLineDash([]); ctx.strokeStyle = "rgba(255,220,160,.7)"; circle(h.centre, h.radius);
+  }
+  if ($("l-dull").checked) for (const s of (region.checks && region.checks.sameness && region.checks.sameness.dull) || []) {
+    ctx.strokeStyle = "rgba(255,80,200,.8)"; ctx.lineWidth = 3; ctx.beginPath();
+    const a = toScreen(s.from[0], s.from[1]), b = toScreen(s.to[0], s.to[1]); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.lineWidth = 1;
+  }
+  if ($("l-caves").checked) for (const c of region.caves || []) {
+    ctx.setLineDash([6, 4]); ctx.strokeStyle = "rgba(140,200,255,.9)"; ctx.lineWidth = 1.5; ctx.beginPath();
+    c.points.forEach((p, i) => { const s = toScreen(p[0], p[1]); i ? ctx.lineTo(s[0], s[1]) : ctx.moveTo(s[0], s[1]); });
+    ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1;
+  }
+  if ($("l-outlines").checked) for (const e of layout.landforms) drawLandform(e, e === selected);
+  if ($("l-anchors").checked) for (const a of region.anchors || []) {
+    const s = toScreen(a.position[0], a.position[1]);
+    ctx.fillStyle = "#ffe070"; ctx.fillRect(s[0] - 2, s[1] - 2, 4, 4);
+    if (view.scale > 0.5) { ctx.fillStyle = "rgba(255,240,200,.85)"; ctx.font = "10px system-ui"; ctx.fillText(a.id, s[0] + 4, s[1] - 3); }
+  }
+  if (selected) drawHandles(selected);
+}
+function circle(c, rr) { const s = toScreen(c[0], c[1]); ctx.beginPath(); ctx.arc(s[0], s[1], rr * view.scale, 0, Math.PI * 2); ctx.stroke(); }
+function drawLandform(e, on) {
+  const s = shapeOf(e); if (!s) return;
+  ctx.strokeStyle = COLOURS[e.kind] || "#fff"; ctx.lineWidth = on ? 3 : 1.5; ctx.globalAlpha = on ? 1 : .8;
+  if (s.circle) circle(s.circle[0], s.circle[1]);
+  if (s.ellipse) { const [c, a, b, t] = s.ellipse, p = toScreen(c[0], c[1]); ctx.beginPath(); ctx.ellipse(p[0], p[1], a * view.scale, b * view.scale, t, 0, Math.PI * 2); ctx.stroke(); }
+  if (s.line) { ctx.beginPath(); s.line.forEach((p, i) => { const q = toScreen(p[0], p[1]); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.stroke();
+    if (e.passes) for (const t of e.passes) { const q = along(s.line, t); const p = toScreen(q[0], q[1]); ctx.fillStyle = "#7f7"; ctx.beginPath(); ctx.arc(p[0], p[1], 4, 0, 7); ctx.fill(); } }
+  if (s.dot) { const p = toScreen(s.dot[0], s.dot[1]); ctx.fillStyle = ctx.strokeStyle; ctx.beginPath(); ctx.arc(p[0], p[1], 4, 0, 7); ctx.fill(); }
+  ctx.globalAlpha = 1; ctx.lineWidth = 1;
+  if (on || view.scale > 0.25) { const c = centreOf(e); if (c) { const p = toScreen(c[0], c[1]); ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.font = "11px system-ui"; ctx.fillText(e.label || e.id, p[0] + 6, p[1] - 6); } }
+}
+function along(line, t) {   // the point a share t of the way along a line
+  const seg = []; let total = 0;
+  for (let i = 1; i < line.length; i++) { const d = Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1]); seg.push(d); total += d; }
+  let want = t * total;
+  for (let i = 0; i < seg.length; i++) { if (want <= seg[i] || i === seg.length - 1) { const u = seg[i] ? Math.min(1, want / seg[i]) : 0; return [line[i][0] + (line[i + 1][0] - line[i][0]) * u, line[i][1] + (line[i + 1][1] - line[i][1]) * u]; } want -= seg[i]; }
+  return line[0];
+}
+// Handles: [{kind: "move"|"size"|"turn"|"point", index, x, z}]
+function handles(e) {
+  const out = [], c = centreOf(e); if (!c) return out;
+  out.push({ kind: "move", x: c[0], z: c[1] });
+  if (e.points) e.points.forEach((p, i) => out.push({ kind: "point", index: i, x: p[0], z: p[1] }));
+  const s = shapeOf(e);
+  let r = e.radius || (s && s.ellipse && s.ellipse[1]) || 0;
+  if (r && !e.points) out.push({ kind: "size", x: c[0] + r * 0.7071, z: c[1] + r * 0.7071 });
+  const turnable = e.points || e.kind === "glacier" || e.ramp != null || e.gully != null;
+  if (turnable) { const rr = r || 120; const a = e.kind === "glacier" ? Math.atan2(e.flow[1], e.flow[0]) : (e.ramp != null ? e.ramp : (e.gully != null ? e.gully : -Math.PI / 2));
+    out.push({ kind: "turn", x: c[0] + Math.cos(a) * (rr + 60), z: c[1] + Math.sin(a) * (rr + 60) }); }
+  return out;
+}
+function drawHandles(e) {
+  for (const h of handles(e)) {
+    const p = toScreen(h.x, h.z);
+    ctx.fillStyle = h.kind === "move" ? "#fff" : h.kind === "size" ? "#e08a3c" : h.kind === "turn" ? "#7cf" : "#ffd27a";
+    ctx.strokeStyle = "#000"; ctx.beginPath();
+    if (h.kind === "size") ctx.rect(p[0] - 6, p[1] - 6, 12, 12); else ctx.arc(p[0], p[1], h.kind === "point" ? 5 : 7, 0, 7);
+    ctx.fill(); ctx.stroke();
+  }
+}
+
+// ---------- picking and dragging ----------
+function distToSeg(px, pz, a, b) { const sx = b[0] - a[0], sz = b[1] - a[1], l2 = sx * sx + sz * sz || 1; const u = Math.max(0, Math.min(1, ((px - a[0]) * sx + (pz - a[1]) * sz) / l2)); return [Math.hypot(px - a[0] - u * sx, pz - a[1] - u * sz), u]; }
+function pick(x, z) {
+  const tol = 10 / view.scale; let best = null, bd = Infinity;
+  for (const e of layout.landforms) {
+    if (!editable(e)) continue;
+    const s = shapeOf(e); if (!s) continue; let d = Infinity;
+    if (s.circle) { const c = s.circle[0]; const r = Math.hypot(x - c[0], z - c[1]); d = r < s.circle[1] ? Math.min(Math.abs(r - s.circle[1]), r) * 0.5 : r - s.circle[1]; }
+    if (s.ellipse) { const [c, a, b, t] = s.ellipse; const dx = x - c[0], dz = z - c[1]; const u = (dx * Math.cos(t) + dz * Math.sin(t)) / a, v = (-dx * Math.sin(t) + dz * Math.cos(t)) / b; const q = Math.hypot(u, v); d = (q < 1 ? 0.5 * q : q - 1) * Math.min(a, b); }
+    if (s.line) for (let i = 1; i < s.line.length; i++) d = Math.min(d, distToSeg(x, z, s.line[i - 1], s.line[i])[0]);
+    if (s.dot) d = Math.hypot(x - s.dot[0], z - s.dot[1]);
+    if (d < bd) { bd = d; best = e; }
+  }
+  return bd < Math.max(tol, 40) ? best : null;
+}
+let drag = null;
+function pointer(ev) { const r = canvas.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; }
+canvas.addEventListener("pointerdown", (ev) => {
+  canvas.setPointerCapture(ev.pointerId);
+  const [px, py] = pointer(ev); const [x, z] = toWorld(px, py);
+  if (selected) for (const h of handles(selected)) {
+    const p = toScreen(h.x, h.z);
+    if (Math.hypot(p[0] - px, p[1] - py) < 10) { pushUndo(); drag = { handle: h, last: [x, z] }; return; }
+  }
+  if (selected && selected.points) {   // tap the line: add a dot
+    for (let i = 1; i < selected.points.length; i++) {
+      const [d] = distToSeg(x, z, selected.points[i - 1], selected.points[i]);
+      if (d * view.scale < 7) { pushUndo(); selected.points.splice(i, 0, [round1(x), round1(z)]); drag = { handle: { kind: "point", index: i }, last: [x, z] }; draw(); return; }
+    }
+  }
+  const e = pick(x, z);
+  if (e) { select(e); return; }
+  drag = { pan: [px, py, view.cx, view.cz] };
+});
+canvas.addEventListener("pointermove", (ev) => {
+  if (!drag) return;
+  const [px, py] = pointer(ev);
+  if (drag.pan) { view.cx = drag.pan[2] - (px - drag.pan[0]) / view.scale; view.cz = drag.pan[3] - (py - drag.pan[1]) / view.scale; draw(); return; }
+  const [x, z] = toWorld(px, py), e = selected, h = drag.handle;
+  const dx = x - drag.last[0], dz = z - drag.last[1];
+  if (h.kind === "move") moveBy(e, dx, dz);
+  if (h.kind === "point") e.points[h.index] = [round1(x), round1(z)];
+  if (h.kind === "size") { const c = centreOf(e); const r = Math.hypot(x - c[0], z - c[1]);
+    if (e.kind === "yardang_field") { const k = r / (e.length / 2); e.length = round1(e.length * k); e.width = round1(e.width * k); }
+    else if (e.kind === "ripple_belt") { const k = r / (e.width / 2); e.width = round1(e.width * k); e.length = round1(e.length * k); }
+    else if (e.kind === "dune_field") e.radius = round1(r / 1.8);
+    else e.radius = round1(Math.max(5, r)); }
+  if (h.kind === "turn") turnTo(e, x, z, drag);
+  drag.last = [x, z]; draw(); if (h.kind !== "move" && h.kind !== "point") showPanel();
+});
+canvas.addEventListener("pointerup", () => { if (drag && !drag.pan) showPanel(); drag = null; });
+canvas.addEventListener("wheel", (ev) => { ev.preventDefault(); const [px, py] = pointer(ev); const before = toWorld(px, py);
+  view.scale = Math.max(0.05, Math.min(4, view.scale * Math.exp(-ev.deltaY * 0.0015))); const after = toWorld(px, py);
+  view.cx += before[0] - after[0]; view.cz += before[1] - after[1]; draw(); }, { passive: false });
+function round1(v) { return Math.round(v * 10) / 10; }
+function moveBy(e, dx, dz) {
+  const m = (p) => { p[0] = round1(p[0] + dx); p[1] = round1(p[1] + dz); };
+  if (e.centre) m(e.centre); if (e.points) e.points.forEach(m); if (e.from) m(e.from); if (e.source) m(e.source); if (e.sand_centre) m(e.sand_centre);
+}
+function turnTo(e, x, z, d) {
+  const c = centreOf(e); const a = Math.atan2(z - c[1], x - c[0]);
+  if (e.kind === "glacier") { e.flow = [round3(Math.cos(a)), round3(Math.sin(a))]; return; }
+  if (e.ramp != null) { e.ramp = round3(a); return; }
+  if (e.gully != null) { e.gully = round3(a); return; }
+  if (e.points) { const prev = d.angle == null ? Math.atan2(d.last[1] - c[1], d.last[0] - c[0]) : d.angle; const t = a - prev; d.angle = a;
+    const cs = Math.cos(t), sn = Math.sin(t); e.points = e.points.map((p) => [round1(c[0] + (p[0] - c[0]) * cs - (p[1] - c[1]) * sn), round1(c[1] + (p[0] - c[0]) * sn + (p[1] - c[1]) * cs)]); }
+}
+function round3(v) { return Math.round(v * 1000) / 1000; }
+
+// ---------- the side panel ----------
+function select(e) { selected = e; $("del").disabled = !e; showPanel(); draw(); }
+function showPanel() {
+  const p = $("panel");
+  if (!selected) { p.innerHTML = '<h2>Landform</h2><div style="color:var(--dim)">Nothing picked.</div>'; return; }
+  const e = selected;
+  p.innerHTML = `<h2>${e.kind.replace(/_/g, " ")}</h2><h3>${e.label || e.id}</h3><div style="color:var(--dim);font-size:12px">${e.id}</div>`;
+  const add = (label, get, set, range) => {
+    const div = document.createElement("div"); div.className = "slider";
+    const v = get(); const [lo, hi, st] = range;
+    div.innerHTML = `<label>${label}</label><input type="range" min="${lo}" max="${hi}" step="${st}" value="${v}"><input type="number" step="${st}" value="${v}">`;
+    const [r, n] = div.querySelectorAll("input");
+    let started = false;
+    const apply = (val) => { if (!started) { pushUndo(); started = true; } set(+val); r.value = val; n.value = val; draw(); };
+    r.addEventListener("input", () => apply(r.value)); n.addEventListener("change", () => apply(n.value));
+    r.addEventListener("change", () => { started = false; });
+    p.appendChild(div);
+  };
+  for (const key of Object.keys(e)) {
+    const v = e[key];
+    if (SKIP.has(key) || typeof v !== "number") continue;
+    const range = RANGES[key] || [0, Math.max(1, Math.abs(v) * 3), Math.abs(v) >= 10 ? 1 : 0.01];
+    add(LABELS[key] || key.replace(/_/g, " "), () => e[key], (x) => { e[key] = x; }, [Math.min(range[0], v), Math.max(range[1], v), range[2]]);
+  }
+  for (const key of ["passes", "crossings"]) if (Array.isArray(e[key])) e[key].forEach((t, i) => add(`${key === "passes" ? "pass" : "crossing"} ${i + 1} (share along)`, () => e[key][i], (x) => { e[key][i] = x; }, [0, 1, 0.005]));
+  if (Array.isArray(e.passes)) { const b = document.createElement("div"); b.className = "row";
+    b.innerHTML = '<button>+ pass</button><button>− pass</button>';
+    const [plus, minus] = b.querySelectorAll("button");
+    plus.onclick = () => { pushUndo(); e.passes.push(0.5); showPanel(); draw(); };
+    minus.onclick = () => { if (e.passes.length) { pushUndo(); e.passes.pop(); showPanel(); draw(); } };
+    p.appendChild(b); }
+  if (e.ramp !== undefined || e.gully !== undefined) { const b = document.createElement("div"); b.className = "row"; b.style.marginTop = "6px";
+    b.innerHTML = `<label><input type="checkbox" ${e.ramp != null ? "checked" : ""}> ramp</label><label><input type="checkbox" ${e.gully != null ? "checked" : ""}> scree gully</label>`;
+    const [rc, gc] = b.querySelectorAll("input");
+    rc.onchange = () => { pushUndo(); e.ramp = rc.checked ? 0.0 : null; showPanel(); draw(); };
+    gc.onchange = () => { pushUndo(); e.gully = gc.checked ? 2.4 : null; showPanel(); draw(); };
+    p.appendChild(b); }
+  if (e.sharp !== undefined) { const b = document.createElement("label"); b.innerHTML = `<input type="checkbox" ${e.sharp ? "checked" : ""}> sharp rock (wears wheels)`;
+    b.querySelector("input").onchange = (ev) => { pushUndo(); e.sharp = ev.target.checked; }; p.appendChild(b); }
+  if (e.label !== undefined) { const b = document.createElement("div"); b.className = "slider"; b.innerHTML = '<label>name</label><input type="text" style="grid-column:1/3">';
+    const t = b.querySelector("input"); t.value = e.label; t.onchange = () => { pushUndo(); e.label = t.value; draw(); }; p.appendChild(b); }
+}
+
+// ---------- add, delete, undo ----------
+for (const k of Object.keys(TEMPLATES)) { const o = document.createElement("option"); o.value = k; o.textContent = TEMPLATES[k].label; $("addkind").appendChild(o); }
+$("add").onclick = () => {
+  const kind = $("addkind").value, t = clone(TEMPLATES[kind]);
+  let n = 1; while (layout.landforms.some((e) => e.id === `${kind}_new_${n}`)) n++;
+  const e = { id: `${kind}_new_${n}`, kind, label: t.label };
+  delete t.label;
+  if (t.line) { const L = t.line; delete t.line; e.points = [[round1(view.cx - L / 2), round1(view.cz)], [round1(view.cx), round1(view.cz - L * 0.05)], [round1(view.cx + L / 2), round1(view.cz)]]; }
+  else e.centre = [round1(view.cx), round1(view.cz)];
+  Object.assign(e, t);
+  pushUndo(); layout.landforms.push(e); select(e);
+};
+$("del").onclick = () => { if (!selected) return; pushUndo(); layout.landforms = layout.landforms.filter((e) => e !== selected); select(null); };
+$("undo").onclick = undo;
+function undo() { if (!undoStack.length) return; const id = selected && selected.id; layout = undoStack.pop(); selected = layout.landforms.find((e) => e.id === id) || null; dirty = true; showPanel(); draw(); updateStatus(); }
+document.addEventListener("keydown", (ev) => { if ((ev.ctrlKey || ev.metaKey) && ev.key === "z") { ev.preventDefault(); undo(); }
+  if (ev.key === "Delete" && selected && document.activeElement.tagName !== "INPUT") $("del").click(); });
+
+// ---------- save, regenerate, checks, history ----------
+async function save() {
+  const r = await fetch("/save", { method: "POST", body: JSON.stringify(layout) });
+  const j = await r.json();
+  if (!j.ok) { $("status").textContent = "Not saved: " + j.error; return false; }
+  dirty = false; updateStatus("Saved (the old land is kept as " + j.kept + ")."); loadHistory(); return true;
+}
+$("save").onclick = save;
+async function regenerate(full) {
+  if (dirty && !(await save())) return;
+  const r = await fetch("/regenerate", { method: "POST", body: JSON.stringify({ full }) });
+  if (!r.ok) { $("status").textContent = "Already building."; return; }
+  poll();
+}
+$("regen").onclick = () => regenerate(false);
+$("full").onclick = () => { if (confirm("A full build makes the ground textures too and takes several minutes. Go on?")) regenerate(true); };
+async function poll() {
+  const s = await (await fetch("/status")).json();
+  $("log").textContent = s.log.split("\n").slice(-14).join("\n");
+  $("regen").disabled = $("full").disabled = s.running;
+  if (s.running) { $("status").textContent = `Building… ${Math.round(Date.now() / 1000 - s.started)} s`; setTimeout(poll, 1500); return; }
+  if (s.ok === false) { $("status").textContent = "The build failed: see the log."; return; }
+  if (s.ok) { $("status").textContent = `Built in ${Math.round(s.finished - s.started)} s.`; await loadBuild(true); }
+}
+function loadImage(src) { return new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src + "?t=" + Date.now(); }); }
+async function loadBuild(after) {
+  region = await (await fetch("/region")).json();
+  mapImg = await loadImage("/map.png");
+  beforeImg = after ? await loadImage("/map_before.png") : null;
+  sculptImg = await loadImage("/sculpt.png");
+  $("beforeafter").style.display = beforeImg ? "block" : "none";
+  if (beforeImg) $("ba").value = 50;
+  showChecks(); draw();
+}
+function showChecks() {
+  const list = (region.checks && region.checks.list) || [];
+  const box = $("checks"); box.innerHTML = list.length ? "" : "No checks in this build.";
+  const order = { FAIL: 0, WARN: 1, PASS: 2 };
+  for (const c of [...list].sort((a, b) => order[a.status] - order[b.status])) {
+    const d = document.createElement("div"); d.className = "check " + c.status;
+    d.innerHTML = `<b>${c.status}</b><span>${c.name}<small>${c.detail || ""}</small></span>`;
+    if (c.at) d.onclick = () => { view.cx = c.at[0]; view.cz = c.at[1]; view.scale = Math.max(view.scale, 0.4); draw(); };
+    box.appendChild(d);
+  }
+}
+async function loadHistory() {
+  const names = await (await fetch("/history")).json();
+  const box = $("hist"); box.innerHTML = names.length ? "" : '<span style="color:var(--dim)">No earlier saves.</span>';
+  for (const n of names.slice(0, 40)) {
+    const d = document.createElement("div"); d.innerHTML = `<span>${n.replace(".json", "").replace("_", " ")}</span><button>Bring back</button>`;
+    d.querySelector("button").onclick = async () => { const old = await (await fetch("/history/" + n)).json(); pushUndo(); layout = old; select(null); updateStatus("Brought back " + n + ": Save, then Regenerate, to build it."); };
+    box.appendChild(d);
+  }
+}
+function updateStatus(msg) { $("status").textContent = msg || (dirty ? "Changed, not saved." : "Saved."); $("undo").disabled = !undoStack.length; }
+for (const id of ["l-outlines", "l-caves", "l-rings", "l-anchors", "l-dull", "l-sculpt"]) $(id).onchange = draw;
+$("ba").oninput = draw;
+window.addEventListener("resize", draw);
+window.addEventListener("beforeunload", (ev) => { if (dirty) { ev.preventDefault(); ev.returnValue = ""; } });
+
+(async function start() {
+  layout = await (await fetch("/layout")).json();
+  view.scale = 0;
+  await loadBuild(false); loadHistory(); updateStatus(); poll();
+})();
+</script>
+</body>
+</html>

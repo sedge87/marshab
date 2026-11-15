@@ -1557,6 +1557,10 @@ def build_heights():
     # One big fresh crater in the south: a sharp rim, a rocky blanket, a bowl you can walk into and out of.
     add_crater(h, x, z, FRESH_CRATER[0], FRESH_CRATER[1], FRESH_CRATER[2], 0.04, np.random.default_rng(kind_seed("fresh_crater", SEED + 10)))
     masks["craters"].append((FRESH_CRATER[0], FRESH_CRATER[1], FRESH_CRATER[2], 0.04))
+    # Craters added in the land editor ("impact"): each its own seed, so adding one reshuffles nothing.
+    for e in landforms("impact"):
+        add_crater(h, x, z, e["centre"][0], e["centre"][1], e["radius"], e.get("age", 0.3), np.random.default_rng(seed_of(e)))
+        masks["craters"].append((e["centre"][0], e["centre"][1], e["radius"], e.get("age", 0.3)))
     add_platy_belt(h, x, z, masks, medium); lap("add_platy_belt")
 
     # Landing zones: a level pad that blends into the land around it.
