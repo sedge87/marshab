@@ -193,6 +193,14 @@ func hatch_refusal() -> String:
 		var cabin_lander: Node = world.get("lander")
 		var you: Node3D = world.get("player")
 		if cabin_lander != null and you != null and bool(cabin_lander.cabin_contains(you.global_position)): return "Castle's calling. I should answer her first."
+	# 15 Nov playtest: the slate first, and hear her out before stepping outside.
+	if v2() and radio != null and int(chapter) <= 1 and (radio.heard as Dictionary).has("d1_relock") and (not (radio.heard as Dictionary).has("d1_slate") or radio.playing == "d1_slate"):
+		var in_lander: Node = world.get("lander")
+		var me: Node3D = world.get("player")
+		if in_lander != null and me != null and bool(in_lander.cabin_contains(me.global_position)):
+			var pda: Node = world.get("pda")
+			if pda != null and not bool(pda.received): return "My slate's on the console. I'm not going out there without it."
+			return "Castle's still talking me through it. Hear her out first."
 	if v2() or not in_lander_days() or not is_night(): return ""   # version 1 (old saves) still locks it
 	var lander: Node = world.get("lander")
 	var player: Node3D = world.get("player")
@@ -324,6 +332,8 @@ func radio_ready() -> void:
 		var taken: bool = notes != null and MHJournal.photos_on(int(notes.call("_sol"))) > _photos_before
 		if taken: radio.flags["sunset_photo"] = true
 		return taken or _photo_wait >= PHOTO_WAIT or radio.fast
+	radio.handlers["slate_light"] = func(_args: Array) -> void:
+		if world.has_method("_slate_lights_up"): world._slate_lights_up()
 	radio.handlers["parachute"] = func(_args: Array) -> void:
 		var drop: Node = world.get("storm_drop")
 		if drop != null: drop.parachute_thought()
@@ -504,7 +514,18 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 	var drop: Node = world.get("storm_drop")
 	var pod: Node = world.get("lifepod")
 	if day == 1:
-		if drop != null and drop.pallet != null and bool(drop.pallet.opened): radio.ring("d1_pallet1")
+		# The slate's in your hands after the first call: Castle talks you out
+		# (also mends an older save with the slate taken and no d1_slate yet).
+		var slate: Node = world.get("pda")
+		if (radio.heard as Dictionary).has("d1_relock") and radio.playing != "d1_relock" and slate != null and bool(slate.received) and not bool(slate.get("is_open")) and not (radio.heard as Dictionary).has("d1_slate"):
+			var cabin: Node = world.get("lander")
+			var me: Node3D = world.get("player")
+			if cabin != null and me != null and bool(cabin.cabin_contains(me.global_position)): radio.ring("d1_slate")
+			else: radio.heard["d1_slate"] = true   # already outside (an older save): nothing to talk you out of
+		if drop != null and drop.pallet != null and bool(drop.pallet.opened):
+			# 15 Nov playtest: she notices if you've stripped scrap already.
+			if pod != null and int(pod.parts) > 0: radio.flags["has_scrap"] = true
+			radio.ring("d1_pallet1")
 		if field != null and field.sites.has("power") and bool(field.sites.power.pallet.opened): radio.ring("d1_pallet2")
 		if field != null and field.sites.has("tools") and bool(field.sites.tools.pallet.opened): radio.ring("d1_pallet4")
 		# "A proper day's work" only once pallet 4's been opened too (playtest 14 Nov).

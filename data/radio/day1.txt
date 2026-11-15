@@ -21,24 +21,35 @@ Castellanos: Oh, thank God. There you are. We lost your antenna right as you tou
 - I'm down. I'm fine. Honestly.
 	set calm
 	Castellanos: Good. Okay. Give me a second, I just need to breathe for a bit. Seven months of sims and none of them ended with ninety seconds of nothing. [ID:d1_relock_03a]
-	Castellanos: You're on Mars. You're actually standing on Mars. The first person on Mars. How does that feel? [ID:d1_relock_03a2]
-	- Like I should say something historic.
-		set joker
-		Castellanos: Please don't. Mwangi's had a speech ready for you since the cruise and if you steal his thunder he'll sulk until the finale. [ID:d1_relock_03a3]
-	- Small. Very, very small.
-		set honest
-		Castellanos: Yeah. I think that's the right answer, actually. [ID:d1_relock_03a4]
 - That landing was rougher than the sims.
 	set honest
 	Castellanos: It looked rough from up here too. The dust threw you long, the beacon never answered, and you still put it down on flat ground. You walked away from it. That counts for everything. [ID:d1_relock_03b]
 - Is everyone up there okay?
 	set kind
 	Castellanos: Are we okay? You're the one who just fell out of the sky. Yes, we're fine. Tupou's pressed against the window, Rao's pretending he wasn't worried, and Mwangi is taking everybody's pulse whether they want it or not. [ID:d1_relock_03c]
-# 14 Nov playtest: you were at pallet 1 before she'd told you where it was.
-# The pallet first; why they can't come down follows while you walk.
+# 15 Nov playtest: you came to in the seat. She knows you were out.
+Castellanos: Your suit says you were out cold for a few minutes after touchdown. Mwangi wants you to sit still and breathe. Humour him. [ID:d1_relock_b1_01]
+Castellanos: And then, when you're ready, have a think about where you're sitting. You're on Mars. The first person on Mars. Ever. How does that feel? [ID:d1_relock_b1_02]
+- Like I should say something historic.
+	set joker
+	Castellanos: Please don't. Mwangi's had a speech ready for you since the cruise and if you steal his thunder he'll sulk until the finale. [ID:d1_relock_03a3]
+- Small. Very, very small.
+	set honest
+	Castellanos: Yeah. I think that's the right answer, actually. [ID:d1_relock_03a4]
+- I'll tell you when my head stops spinning.
+	Castellanos: Fair. It'll still be true in ten minutes. [ID:d1_relock_b1_03c]
 Castellanos: Right. Business, before I get sentimental. [ID:d1_relock_04]
-Castellanos: Rao got a photo of a parachute on the last pass. It's on your slate. Pallet one, up on the ridge, with the module's life support in it. That's where the base starts. Go and have a look, and talk to me while you walk if you like. [ID:d1_relock_07]
-do parachute
+Castellanos: Unclip, and grab your slate off the console. Rao got a photo on the last pass and it's on there. Have a look. [ID:d1_relock_b1_05]
+do slate_light
+=> END
+
+# The slate's first look (scripts/mars_world.gd _after_slate). The hatch waits
+# for this (scripts/opening_days.gd hatch_refusal).
+~ d1_slate
+Castellanos: See it? A parachute, up on the ridge. Pallet one, with the module's life support in it. That's where the base starts. [ID:d1_slate_b1_01]
+Castellanos: Before you open that hatch, look at your wrist. Hold T. That's your air, your power, and how long till you need to turn back. [ID:d1_slate_b1_02]
+Castellanos: The suit's small. A few minutes of air out there, not much more. The ridge and back is fine. Further than that, you come home and refill, and you watch that wrist. [ID:d1_slate_b1_03]
+do think air
 # A6: why the crew can't land yet waits for the first dusk talk (d1_sun_after).
 - When are the rest of you coming down?
 	set asked_landing
@@ -46,7 +57,8 @@ do parachute
 - No pressure, then.
 	set joker
 	Castellanos: None at all. Just the whole mission. You'll be fine, you were always the calm one on the ship. Apart from that one time with the coffee. [ID:d1_relock_06b]
-do think air
+Castellanos: First job, the ridge. Open the hatch, go and have a look, and talk to me while you walk if you like. [ID:d1_slate_b1_04]
+do parachute
 => END
 
 ~ d1_blackout
@@ -77,7 +89,8 @@ Castellanos: Your suit's got you right at the canopy. Is that you up there? What
 - It's heavier than it looked in training.
 	Castellanos: Everything is. Mwangi says your legs will thank you in a week and hate you until then. Take it slowly, get it down to the lander, and leave it by the ramp for the module. [ID:d1_p1_02c]
 Castellanos: And while you're up there, look around for a minute. Seriously. Nobody has ever stood on that ridge. You've got the best view for kilometres and I'm jealous of every one of them. [ID:d1_p1_03]
-Castellanos: Oh, and one more thing. The storm's left scrap all over the place up there. Bent panels, broken struts. Strip anything that comes loose as you go. The little printer in the lander eats it, and you'll want it. [ID:d1_p1_04]
+?! has_scrap Castellanos: Oh, and one more thing. The storm's left scrap all over the place up there. Bent panels, broken struts. Strip anything that comes loose as you go. The little printer in the lander eats it, and you'll want it. [ID:d1_p1_04]
+? has_scrap Castellanos: And I see you've already been stripping the storm's scrap on the way up. Good instinct. The little printer in the lander eats it. Keep at it, you'll want it. [ID:d1_p1_b1_04s]
 set scrap_told
 do think salvage
 => END

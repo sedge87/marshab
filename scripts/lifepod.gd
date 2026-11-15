@@ -34,6 +34,9 @@ const PLANS := [["hitch", "the sled hitch", "print_hitch_parts", 3.0], ["pick", 
 ## Suit add-ons (scripts/suit.gd): printable once you hold the plan's
 ## cartridge (docs/pillars.md: plans are things you find).
 const ADDON_PLANS := ["battery", "heater", "air_pack"]
+## Plans that need their cartridge found first (15 Nov playtest: the printer
+## offered all of these on day 1, with no reason to want them yet).
+const FOUND_PLANS := ["pick", "bladder", "battery", "heater", "air_pack"]
 const PRINT_SECONDS := 6.0
 ## GAR-Y's day (docs/opening-days.md): the hitch printed, the module's cargo
 ## staged by the lander, a survey or core by GAR-Y, a sample on the bench.
@@ -427,8 +430,8 @@ func _open_plans() -> Array:
 		if prints.has(str(PLANS[i][0])): continue
 		if str(PLANS[i][0]) == "hitch" and not _gary_found(): continue   # nothing to hitch it to yet
 		if str(PLANS[i][0]) == "seal" and not _seal_wanted(): continue
+		if FOUND_PLANS.has(str(PLANS[i][0])) and not cartridges.has(str(PLANS[i][0])): continue
 		if ADDON_PLANS.has(str(PLANS[i][0])):
-			if not cartridges.has(str(PLANS[i][0])): continue
 			# The suit already has it, or one's waiting to go on.
 			var suit: Node = world.get("suit")
 			if suit != null and (suit.addons.has(str(PLANS[i][0])) or suit.waiting.has(str(PLANS[i][0]))): continue

@@ -205,13 +205,11 @@ func pallet_opened() -> void:
 		"tools":
 			field.got_tools()
 			if notes != null: notes.answer("tools")
-			MHNotices.post("valid", "Pallet 3: field tools", "A rock hammer, a headlamp (F: brighter and wider than the suit lamp), a patch kit for suit seals, and two plan cartridges for the lander's printer: a spare suit battery and a heater pack.", "log")
+			MHNotices.post("valid", "Pallet 3: field tools", "A rock hammer, a headlamp (F: brighter and wider than the suit lamp) and a patch kit for split seals.", "log")
 			var suit: Node = world.get("suit")
 			if suit != null and suit.has_method("give_addon"): suit.give_addon("lamp")
-			var pod: Node = world.get("lifepod")
-			if pod != null and pod.has_method("learn_cartridge"):
-				pod.learn_cartridge("battery")
-				pod.learn_cartridge("heater")
+			# 15 Nov playtest: no plan cartridges here any more. The battery and
+			# heater plans are found later, when the cold starts to push.
 	field.pallet_opened(self)
 	MHAudio.moment()
 

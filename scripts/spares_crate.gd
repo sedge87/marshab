@@ -120,7 +120,11 @@ func _open() -> void:
 		pod.parts = int(pod.parts) + PARTS
 		pod.walker_due = true   # day 2's work done: the walker moves tonight
 	MHChapterOne.stock["spares_kit"] = int(MHChapterOne.stock.get("spares_kit", 0)) + SPARES
-	MHNotices.post("valid", "Spares crate", "Wiring, brackets, seals and fasteners: %d parts for the lander's printer, and %d spares kits put by for the module." % [PARTS, SPARES], "log")
+	MHNotices.post("valid", "Spares crate", "Wiring, brackets, seals and fasteners: %d parts for the lander's printer, %d spares kits put by for the module, and a bigger air pack for your suit." % [PARTS, SPARES], "log")
+	# 15 Nov playtest: the bare suit's first add-on comes here, after a day of
+	# feeling its limit (it was at pallet 1). It goes on at the next refill.
+	var suit: Node = world.get("suit")
+	if suit != null and suit.has_method("give_addon"): suit.give_addon("air_pack")
 	MHAudio.moment()
 	var radio: Node = world.get("radio")
 	if radio != null: radio.ring("d2_crate")

@@ -307,10 +307,9 @@ func pallet_opened() -> void:
 	if notes != null:
 		notes.answer("parachute")
 		notes.answer("air")
-	MHNotices.post("valid", "Pallet 1: life support", "Inside: the core's air cartridge, ten ration packs (you pocket them), the sample kit (hand corer, scoop, bags) and a bigger air pack, which clips straight onto your suit.", "log")
-	# The bare suit's first add-on (docs/range-ladder.md): it clips on here, at the life-support pallet.
-	var suit: Node = world.get("suit")
-	if suit != null and suit.has_method("give_addon"): suit.give_addon("air_pack", true)
+	MHNotices.post("valid", "Pallet 1: life support", "Inside: the core's air cartridge, ten ration packs (you pocket them) and the sample kit (hand corer, scoop, bags).", "log")
+	# 15 Nov playtest: no air pack here any more. The bare suit's limit has to
+	# be felt first; the bigger air pack is in GAR-Y's spares crate (chapter 2).
 	MHAudio.moment()
 
 func export_state() -> Dictionary:

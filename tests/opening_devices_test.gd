@@ -81,10 +81,17 @@ func _initialize() -> void:
 	_check(world.notes.is_settled("slate"), "the thought's answered")
 	pda.close()
 	_check(world._after_slate_done, "putting the slate down starts the next beats")
-	await create_timer(9.5).timeout
-	_check(world.notes.is_open("air") and not world.notes.is_open("parachute"), "then the air worry, before the parachute")
-	await create_timer(7.0).timeout
+	# 15 Nov playtest: Castle talks you through the slate (d1_slate): the air
+	# worry as she warns you about the suit, the parachute as she sends you out.
+	world.radio.fast = true
+	var air_first := false
+	for i in 120:
+		if world.notes.is_open("air") and not world.notes.is_open("parachute"): air_first = true
+		if world.notes.is_open("parachute"): break
+		await create_timer(.25).timeout
+	_check(world.notes.is_open("air") or air_first, "then the air worry (Castle on the suit)")
 	_check(world.notes.is_open("parachute"), "then the parachute")
+	_check(world.radio.heard.has("d1_slate"), "Castle talked you through the slate")
 	pda.open()
 	for i in pda.HINT_TIMES:
 		pda.close()

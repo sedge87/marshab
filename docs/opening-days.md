@@ -64,6 +64,29 @@ Chapter 4 is done when Walker 1's core is down and alive and a Quarters liner wi
 - The open game: free nights, free building and the range ladder.
 - The radio carries on on Castle's own timeline.
 
+## After the 15 Nov playtest (chapter 1)
+*The user's notes on chapter 1 of the 15 Nov build, and what changed (agreed 15 Nov). Not playtested yet.*
+
+- **You come to in the landing seat** (`scripts/wake_up.gd`): black, your breathing and the suit's alarm, then Castle's voice ("do you read me?"). Your eyes open blurred and the cabin swims into focus. You can turn your head but not move. Answering her unbuckles you.
+  - Her first call (`d1_relock`) says you were out cold, then has a moment for **the first person on Mars**, in the main line now, not one reply branch.
+  - She asks you to take the slate. It lights up when she asks (`do slate_light`), not on a timer.
+  - The slate's first look rings `d1_slate`: the parachute photo, then your wrist (hold T: air, power, turn-back), a word on how small the suit is, and "first job, the ridge".
+  - **The hatch stays shut** until the slate is in your hands and she's finished (`opening_days.gd` `hatch_refusal`). An older save with the slate already taken gets `d1_slate` in the cabin, or skips it if you're already outside.
+  - The lines may mention a window; the lander model is being redone.
+- **Landing anywhere sensible** (`descent.gd` `LANDER_HALF` 20 m): the descent checks the lander's own footprint, not a 120 m base pad. The pad check failed 91% of the home circle, so every landing snapped to a safe spot. Now about 40% of the circle is good ground; the rest is boulder fields and steep slopes. The green spots are tips only. A story game's founded site levels just that footprint (`main_menu.gd` `_found_base`).
+- **Air matters:**
+  - **No air pack on day 1.** Pallet 1 holds the cartridge, rations and sample kit. The bigger air pack is in GAR-Y's spares crate (chapter 2) and goes on at the next refill.
+  - **The lope costs air** (`suit.gd` `LOPE` 1.6 with no rhythm, `LOPE_FLOW` 1.3 in full flow; it was 1.3 easing to a walk's 1.0). At about twice a walk's speed it's still the better way to travel per breath. The bare suit stays 5 h, about 5.3 real minutes by day.
+  - The robot run lopes now (8 m/s, full flow) and refills only below half air, like a player.
+  - If air still never bites, the next lever is the bare suit's hours, not the pallet distances.
+- **The tiny printer offers only what the story needs.** Pallet 3 has no plan cartridges now. The pick, bladder, battery, heater and air pack plans all need their cartridge found first (`lifepod.gd` `FOUND_PLANS`). In the chapters that leaves the sled hitch. Placing those cartridges in wrecks is C1's job.
+- **Castle notices scrap you've already stripped** before pallet 1: `has_scrap` picks her other line.
+- **The orbiter in the sky** (`scripts/orbiter_sky.gd`): a moving point of sunlight, only as it really could be seen.
+  - When: in twilight, about 0.6 h after sunset (two dusks in three) and about 1 h before sunrise (one dawn in two).
+  - How: west to east, fading into the planet's shadow before it reaches the east. Never by day, never in the deep night.
+  - The first time it's up while you're outside, Castle says "look up, that's us" (`orbit_pass`, `data/radio/radio.txt`).
+- **Not done here:** survival from the elements as a whole (cold, suit power, dust, water, wear and storms) needs its own design talk after the rest of this playtest.
+
 ## As built (A6)
 *Built 15 Nov (not playtested). Tests: `tests/guided_days_test.gd`, `tests/walker_test.gd`, `tests/radio_test.gd`; the robot run is `tests/guided_playthrough.gd` (log in `.claude_tmp/guided_playthrough_log.txt`).*
 

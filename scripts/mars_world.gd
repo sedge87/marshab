@@ -8,6 +8,8 @@ const MISSION_CONTROL_LINK := preload("res://scripts/mission_control_link.gd")
 const GAR_Y_ORDERS := preload("res://scripts/gar_y_orders.gd")
 const SLEEP := preload("res://scripts/sleep.gd")
 const SLATE_CRADLE := preload("res://scripts/slate_cradle.gd")
+const WAKE_UP := preload("res://scripts/wake_up.gd")
+const ORBITER_SKY := preload("res://scripts/orbiter_sky.gd")
 ## Seconds after touchdown that the text from orbit lights the slate.
 const SLATE_LIGHTS_AT := 10.0
 const CARRY := preload("res://scripts/carry.gd")
@@ -589,6 +591,11 @@ func danger_level() -> float:
 
 func _begin_lander_intro() -> void:
 	_place_cabin_panel.call_deferred()
+	# The crew's orbiter, a moving point at twilight now and then (scripts/orbiter_sky.gd).
+	if MHChapterOne.new_rules() and get_tree().get_first_node_in_group("orbiter_sky") == null:
+		var sky := ORBITER_SKY.new()
+		sky.setup(self)
+		add_child(sky)
 	if not _start_in_lander:
 		# A loaded game: the hatch as it was saved (open in older saves). Shut,
 		# it's sealed at once (a close in progress finishes).
@@ -597,6 +604,13 @@ func _begin_lander_intro() -> void:
 		return
 	_intro_stage = "inside"
 	explore_hud.set_minimal(true)
+	# 15 Nov playtest: a story game starts out cold in the landing seat; Castle's
+	# call wakes you and the slate lights when she asks for it (scripts/wake_up.gd).
+	var waking := MHChapterOne.new_rules() and opening_version >= 2
+	if waking:
+		var wake := WAKE_UP.new()
+		wake.setup(self)
+		add_child(wake)
 	# What the lander's cameras saw coming down is sharp on the Map (master-design §2).
 	if known != null: known.reveal(Vector2(lander.global_position.x, lander.global_position.z) + known.origin, known.CAMERA_PATCH)
 	# Your slate lies on the console; a text from orbit lights it up (docs/pda.md §8).
@@ -605,7 +619,7 @@ func _begin_lander_intro() -> void:
 	# quiet, ARDEN's link-lost line, then the slate lights with the text. Put
 	# down, ARDEN explains the lander, then "air", then "parachute"
 	# (_after_slate). The sunset wish waits for the afternoon (scripts/notes.gd).
-	get_tree().create_timer(SLATE_LIGHTS_AT).timeout.connect(_slate_lights_up)
+	if not waking: get_tree().create_timer(SLATE_LIGHTS_AT).timeout.connect(_slate_lights_up)
 	# The link dropped at touchdown (scripts/descent.gd): ARDEN says why, after
 	# the static has died away. A skipped descent hears it too.
 	if MHChapterOne.new_rules() and opening_version < 2:
@@ -613,7 +627,7 @@ func _begin_lander_intro() -> void:
 	if pda != null: pda.lowered.connect(_after_slate, CONNECT_ONE_SHOT)
 	if pda != null and replies != null: pda.lowered.connect(replies.slate_lowered)
 	get_tree().create_timer(2.5 if not MHChapterOne.new_rules() else SLATE_LIGHTS_AT + 2.5).timeout.connect(func() -> void:
-		if _intro_stage == "inside":
+		if _intro_stage == "inside" and not waking:
 			if pda != null and not pda.received: explore_hud.show_equipment_note("Touchdown", "Your slate is lighting up on the console. Look at it and press E to pick it up.")
 			else: explore_hud.show_equipment_note("Touchdown", "You've landed on Mars. When you're ready, look at the hatch and press E to open it."))
 
@@ -660,9 +674,7 @@ func _place_slate() -> void:
 		if str(child.name).begins_with("Cabin_mission_planning_console"):
 			slate_cradle = SLATE_CRADLE.new()
 			slate_cradle.setup(self, child as Node3D)
-			# She's calling anyway: the slate can wait on the console.
-			if MHChapterOne.new_rules() and opening_version >= 2:
-				get_tree().create_timer(20.0).timeout.connect(func() -> void: if radio != null: radio.ring("d1_relock"))
+			# Version 2: Castle's call wakes you (scripts/wake_up.gd rings d1_relock).
 			return
 	# No console to lie on: ARDEN hands it over as before.
 	get_tree().create_timer(9.0).timeout.connect(_hand_over_slate)
@@ -673,9 +685,10 @@ func _after_slate() -> void:
 	if _after_slate_done: return
 	_after_slate_done = true
 	if MHChapterOne.new_rules() and opening_version >= 2:
-		# Version 2: the air and parachute thoughts come out of Castellanos's call
-		# (data/radio/day1.txt d1_relock: "do think air", "do parachute").
-		get_tree().create_timer(2.0).timeout.connect(func() -> void: if radio != null: radio.ring("d1_relock"))
+		# Version 2: the slate's first look; Castle talks you through the photo,
+		# the suit and the first job (data/radio/day1.txt d1_slate, which has
+		# "do think air" and "do parachute"). The hatch waits for it.
+		get_tree().create_timer(1.0).timeout.connect(func() -> void: if radio != null: radio.ring("d1_slate"))
 		return
 	elif MHChapterOne.new_rules():
 		get_tree().create_timer(2.0).timeout.connect(func() -> void:

@@ -15,6 +15,7 @@ const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const RULES := preload("res://scripts/build_rules.gd")
 const SPEED := 8.0          # Engine.time_scale while it runs
 const WALK := 4.0           # m/s, a player walking with pauses to look
+const LOPE := 8.0           # m/s, loping between places (15 Nov playtest: players lope everywhere)
 const STEP := 20.0          # metres per teleport hop
 const LOG_PATH := "res://.claude_tmp/guided_playthrough_log.txt"
 
@@ -158,9 +159,15 @@ func go(to: Vector3, what: String, stop_short := 2.5) -> void:
 	var flat := Vector3(to.x - from.x, 0, to.z - from.z)
 	var dist := flat.length() - stop_short
 	if dist <= 0.0: return
-	log_line("WALK", "%s (%.0f m)" % [what, dist])
+	var lope: bool = dist > 40.0 and not world.lander.cabin_contains(player.global_position)
+	log_line("WALK", "%s (%.0f m%s, air %.0f%%)" % [what, dist, ", loping" if lope else "", float(world.suit.o2) * 100.0])
 	var dir := flat.normalized()
 	var done := 0.0
+	if lope:
+		# The robot hops, so the body's own lope can't run: hold it still and say it's loping in full flow.
+		player.set_meta("slate_still", true)
+		player.set_meta("loping", true)
+		player.set("lope_flow", 3)
 	while done < dist:
 		var hop := minf(STEP, dist - done)
 		done += hop
@@ -171,7 +178,11 @@ func go(to: Vector3, what: String, stop_short := 2.5) -> void:
 		if gary != null and is_instance_valid(gary) and not bool(gary.get("rescuing")) and (gary as Node3D).global_position.distance_to(player.global_position) > 40.0:
 			(gary as Node3D).global_position = ground(player.global_position + Vector3(4, 0, 4))
 		player.look_at(Vector3(to.x, player.global_position.y, to.z), Vector3.UP)
-		await wait(hop / WALK)
+		await wait(hop / (LOPE if lope else WALK))
+	if lope:
+		player.set_meta("slate_still", false)
+		player.set_meta("loping", false)
+		player.set("lope_flow", 0)
 
 func face(at: Vector3) -> void:
 	player.look_at(Vector3(at.x, player.global_position.y, at.z), Vector3.UP)
@@ -261,7 +272,12 @@ func run() -> void:
 
 	# ---------------- Day 1 ----------------
 	_day(1, "the cargo")
-	await wait(12.0)
+	# 15 Nov playtest: you come to in the landing seat; answering Castle unbuckles you.
+	if not player.has_meta("strapped"): got_stuck("not strapped into the landing seat at the start")
+	await call_done("d1_relock", 400.0)
+	await wait(4.0)
+	if player.has_meta("strapped"): got_stuck("still strapped in after answering Castle")
+	log_line("STATE", "hatch says: '%s'" % world.opening_days.hatch_refusal())
 	if world.slate_cradle != null and is_instance_valid(world.slate_cradle):
 		step("Pick up the slate")
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -269,8 +285,9 @@ func run() -> void:
 		await wait(8.0)
 		world.pda.close()
 	else: got_stuck("no slate on the console")
-	await call_done("d1_relock", 400.0)
-	if not notes.is_open("air") or not notes.is_open("parachute"): got_stuck("after the first call: air %s, parachute %s" % [notes.is_open("air"), notes.is_open("parachute")])
+	await call_done("d1_slate", 400.0)
+	if not notes.is_open("air") or not notes.is_open("parachute"): got_stuck("after the slate call: air %s, parachute %s" % [notes.is_open("air"), notes.is_open("parachute")])
+	if not world.opening_days.hatch_refusal().is_empty(): got_stuck("the hatch still refuses: %s" % world.opening_days.hatch_refusal())
 	step("Open the hatch, step out")
 	lander.set_hatch(true)
 	world._update_lander_intro()
@@ -574,7 +591,7 @@ func refill(why := "") -> void:
 	await wait(2.0)
 
 ## Tops up first when the suit's under `need` of a tank.
-func ready_for(trip: String, need := .8) -> void:
+func ready_for(trip: String, need := .45) -> void:
 	if float(world.suit.o2) < need or float(world.suit.power) < .5: await refill(trip)
 
 ## The opening days: wait for "bed", go home, check the hatch holds at night, sleep.

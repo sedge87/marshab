@@ -75,6 +75,9 @@ func _initialize() -> void:
 
 	# Day 1: the first thoughts come out of Castellanos's first call, not before it.
 	_check(not notes.is_open("air") and not notes.is_open("parachute") and not notes.is_open("sunset"), "no thoughts about the lander or the parachute before anyone's spoken")
+	# 15 Nov playtest: you come to strapped into the landing seat.
+	var wake: Node = root.get_tree().get_first_node_in_group("wake_up")
+	_check(wake != null and player.has_meta("strapped"), "a new game starts out cold in the landing seat")
 	player.global_position = lander.cabin_start().position
 	MHGame.sol_hour = 9.0
 	_check(days.hatch_refusal().contains("answer"), "the hatch stays shut till you answer Castle (%s)" % days.hatch_refusal())
@@ -110,7 +113,14 @@ func _initialize() -> void:
 	MHGame.sol_hour = 9.0
 	radio.ring("d1_relock")
 	await _settle(radio, .3)
-	_check(radio.flag("answered") and days.hatch_refusal() == "", "answered: the hatch opens")
+	_check(radio.flag("answered") and radio.heard.has("d1_relock"), "answered Castle")
+	if wake != null and is_instance_valid(wake): wake.unbuckle()
+	_check(not player.has_meta("strapped"), "answering her unbuckles you")
+	player.global_position = lander.cabin_start().position
+	_check(days.hatch_refusal().contains("slate"), "the slate before the hatch (%s)" % days.hatch_refusal())
+	if world.slate_cradle != null and is_instance_valid(world.slate_cradle): world.slate_cradle.take(false)
+	await _settle(radio, 2.0)
+	_check(radio.heard.has("d1_slate") and days.hatch_refusal() == "", "slate in hand and Castle's done: the hatch opens (%s; received %s, playing '%s', queue %s)" % [days.hatch_refusal(), world.pda.received, radio.playing, radio.queue])
 	var hour_was := MHGame.sol_hour
 	MHGame.sol_hour = 23.0
 	_check(days.hatch_refusal() == "" and not str(days.night_caution()).is_empty(), "no night lock, just a caution")
@@ -155,6 +165,14 @@ func _initialize() -> void:
 	_check(radio.heard.has("d1_blackout") and radio.flag("dragged"), "Castle: something brought you in")
 	_check(not bool(world.suit.leak), "no lasting harm in the guided days")
 	MHGame.sol_hour = 10.0
+	# 15 Nov playtest: scrap first, and Castle notices; no air pack, no printer plans.
+	pod.parts = 2
+	world.storm_drop.pallet.open(false)
+	field.sites.tools.pallet.open(false)
+	await _settle(radio)
+	_check(radio.flag("has_scrap"), "Castle notices the scrap you've stripped already")
+	_check(not world.suit.addons.has("air_pack") and not world.suit.waiting.has("air_pack"), "pallet 1: no air pack on day 1")
+	_check(pod.cartridges.is_empty() and pod._open_plans().is_empty(), "pallet 3: no plan cartridges; nothing on the printer yet (%s)" % str(pod._open_plans()))
 	world.storm_drop.pallet.opened = true
 	field.sites.power.pallet.opened = true
 	field.sites.tools.pallet.opened = true
@@ -227,6 +245,7 @@ func _initialize() -> void:
 	_check(crate.interact(player) and str(crate.where) == "sled", "hitched to GAR-Y's sled")
 	pod.unload_cargo()
 	_check(crate.interact(player) and bool(crate.opened), "home and opened")
+	_check(world.suit.addons.has("air_pack") or world.suit.waiting.has("air_pack"), "the spares crate has the bigger air pack")
 	MHGame.sol_hour = 11.0
 	await _settle(radio)
 	_check(radio.heard.has("d2_crate"), "Castellanos on the crate")

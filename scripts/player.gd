@@ -67,7 +67,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Build modes reuse E (orbit) and other keys; explore actions must not fire
 	# behind the build camera, so only mouse-look below is shared.
 	# Driving the crew rover (scripts/crew_rover.gd): it takes the keys.
-	var exploring := not _any_build_mode_active() and not bool(get_meta("driving", false)) and not bool(get_meta("riding", false))
+	var exploring := not _any_build_mode_active() and not bool(get_meta("driving", false)) and not bool(get_meta("riding", false)) and not bool(get_meta("strapped", false))
 	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
 		# With the wrist pad up (T held), E eats the suit's food bar (scripts/suit.gd).
 		var suit := get_tree().get_first_node_in_group("suit")
@@ -95,6 +95,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		rotate_y(-event.relative.x * MOUSE_SENSITIVITY * look)
 		head.rotate_x(-event.relative.y * MOUSE_SENSITIVITY * look)
 		head.rotation.x = clamp(head.rotation.x, deg_to_rad(-80.0), deg_to_rad(80.0))
+		# Strapped into the landing seat (scripts/wake_up.gd): the head turns, the body doesn't.
+		if bool(get_meta("strapped", false)):
+			var home := float(get_meta("strap_yaw", rotation.y))
+			var reach := float(get_meta("strap_reach", PI))
+			rotation.y = home + clampf(wrapf(rotation.y - home, -PI, PI), -reach, reach)
+			head.rotation.x = clamp(head.rotation.x, deg_to_rad(-45.0), deg_to_rad(35.0))
 	# Build Mode needs a free cursor for repeated placement clicks. The builder
 	# marks the player while its isometric camera is active.
 	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not bool(get_meta("build_mode_active", false)):
@@ -108,7 +114,7 @@ func _physics_process(delta: float) -> void:
 	# Exterior construction uses the same movement keys to pan its bird's-eye
 	# camera. Freeze the character in place so panning never changes the real
 	# player cell represented by the build-mode marker.
-	if bool(get_meta("build_mode_active", false)) or bool(get_meta("ui_freeze", false)) or bool(get_meta("driving", false)) or bool(get_meta("riding", false)) or bool(get_meta("slate_still", false)):
+	if bool(get_meta("build_mode_active", false)) or bool(get_meta("ui_freeze", false)) or bool(get_meta("driving", false)) or bool(get_meta("riding", false)) or bool(get_meta("slate_still", false)) or bool(get_meta("strapped", false)):
 		velocity = Vector3.ZERO
 		return
 	if bool(get_meta("debug_fly", false)):

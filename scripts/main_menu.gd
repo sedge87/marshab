@@ -1342,7 +1342,7 @@ func _arrival_screen() -> void:
 		rng.randomize()
 		_landing_area = entry_area(rng)
 		if _skip_descent:
-			var near := MHBaseSite.nearest_valid(_landing_area.x, _landing_area.y, DESCENT_SCRIPT.HOME_RADIUS)
+			var near := MHBaseSite.nearest_valid(_landing_area.x, _landing_area.y, DESCENT_SCRIPT.HOME_RADIUS, DESCENT_SCRIPT.LANDER_HALF if _arrives() else 60.0)
 			_found_base(near if not is_inf(near.x) else _landing_area)
 		else: show_screen("descent"))
 	bar.add_child(land)
@@ -1363,7 +1363,8 @@ func _descent_screen() -> void:
 ## Found the base where the lander touched down (region metres) and load the world there.
 func _found_base(touchdown: Vector2) -> void:
 	if is_inf(touchdown.x): return
-	MHGame.base_site = MHBaseSite.make(touchdown.x, touchdown.y, MHGame.colony_name)
+	# A story game levels only the lander's footprint (the bases come later, with the walkers).
+	MHGame.base_site = MHBaseSite.make(touchdown.x, touchdown.y, MHGame.colony_name, DESCENT_SCRIPT.LANDER_HALF if _arrives() else 60.0)
 	MHGame.cargo_at = _landing_area - touchdown   # site metres from the base
 	MHGame.landing_target = Vector2.INF            # the lander sets down on the pad's centre
 	MHChapterOne.reset()

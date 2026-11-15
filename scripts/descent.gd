@@ -27,6 +27,10 @@ const OVAL := Vector2(400.0, 250.0)       # the landing oval's half axes (region
 ## Story games (A6, docs/opening-days.md): you always come down on the plains
 ## round home, and steer anywhere within this many metres of it.
 const HOME_RADIUS := 750.0
+## The lander's own footprint, not a base pad (15 Nov playtest: the 120 m pad
+## check failed 91% of the home circle, so every landing snapped to a safe spot;
+## at this half width about 40% of it is good ground, the rest boulders and slopes).
+const LANDER_HALF := 20.0
 const LANDER_SCENE := "res://assets/vehicles/landers_v2/Crew_Lander.glb"
 const ENTRY_TIME := 5.0
 const POWERED_FROM := 800.0               # metres up when the marker appears
@@ -46,6 +50,7 @@ var camera: Camera3D
 var environment: Node
 var centre := Vector2.ZERO                # the oval's centre, region metres (the site's origin here)
 var oval := OVAL                          # its half axes: OVAL, or the home circle in a story game
+var site_half := 60.0                     # the ground checked under the landing point (LANDER_HALF in a story game)
 var phase := "entry"
 var fuel := 1.0
 var altitude := 2500.0
@@ -86,6 +91,7 @@ func setup(menu_camera: Camera3D, menu_environment: Node, at: Vector2, half := O
 	environment = menu_environment
 	centre = at
 	oval = half
+	if is_equal_approx(half.x, HOME_RADIUS): site_half = LANDER_HALF
 
 func _ready() -> void:
 	# The world round the oval: the site's origin at its centre, no pad.
@@ -242,10 +248,10 @@ static func pick_chute(from: Vector2) -> Vector3:
 
 func _lock() -> void:
 	var region := marker + centre
-	var why := MHBaseSite.reason(region.x, region.y)
+	var why := MHBaseSite.reason(region.x, region.y, site_half)
 	_locked = marker
 	if not why.is_empty():
-		var near := MHBaseSite.nearest_valid(region.x, region.y, 400.0)
+		var near := MHBaseSite.nearest_valid(region.x, region.y, 400.0, site_half)
 		if is_inf(near.x): near = _autopilot()
 		_locked = near - centre
 		_say("Diverting: %s." % why)
@@ -260,7 +266,7 @@ func _lock() -> void:
 
 ## The nearest good ground to the oval's centre (region metres).
 func _autopilot() -> Vector2:
-	var near := MHBaseSite.nearest_valid(centre.x, centre.y, minf(oval.x, oval.y))
+	var near := MHBaseSite.nearest_valid(centre.x, centre.y, minf(oval.x, oval.y), site_half)
 	return near if not is_inf(near.x) else centre
 
 func _finish(touchdown: Vector2) -> void:
@@ -302,7 +308,7 @@ func _update_marker(delta: float, force := false) -> void:
 	if _check_t <= 0.0 or force:
 		_check_t = .25
 		var region := marker + centre
-		_reason = MHBaseSite.reason(region.x, region.y)
+		_reason = MHBaseSite.reason(region.x, region.y, site_half)
 		_valid = _reason.is_empty()
 		(_marker_mesh.material_override as StandardMaterial3D).albedo_color = MHStyle.VALID if _valid else MHStyle.DANGER
 	if force or _hazards_at.distance_to(marker) > HAZARD_CELL: _draw_hazards()

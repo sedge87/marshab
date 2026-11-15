@@ -156,6 +156,10 @@ func _initialize() -> void:
 	_check(pod.prints.has("hitch") and pod.jobs.has("print"), "the hitch is printed")
 	pod.done("scout")   # a GAR-Y survey (tests/opening_days_test.gd runs the real one)
 	_check(pod.walker_due, "three jobs done (%s): the walker is due" % str(pod.jobs.keys()))
+	# 15 Nov playtest: the pick and bladder plans are found now, not there from day 1.
+	_check(not pod._open_plans().has(1) and not pod._open_plans().has(2), "no pick or bladder plan till its cartridge is found")
+	pod.learn_cartridge("pick")
+	pod.learn_cartridge("bladder")
 	pod.next_plan()
 	var plan_name: String = str(pod.printer_prompt().get("plan", ""))
 	pod.print_now()
