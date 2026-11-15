@@ -1,0 +1,984 @@
+{
+ "about": "The region's layout (docs/terrain-design.md \u00a713): every landform's place and numbers. tools/generate_region.py holds how each kind is made; tools/edit_land.bat edits this file. Positions are region metres (x east, -z north).",
+ "version": 1,
+ "region": {
+  "id": "test_region",
+  "size": 3072,
+  "spacing": 2.0,
+  "seed": 1987,
+  "home": {
+   "centre": [-1400.0, 1000.0],
+   "radius": 750.0
+  },
+  "rings": [1000.0, 2500.0, 4000.0],
+  "wind": [0.97, -0.24],
+  "zones": {
+   "plains": {
+    "centre": [-1400.0, 1000.0],
+    "flat_radius": 95.0,
+    "label": "The plains"
+   },
+   "crater": {
+    "centre": [1580.0, -320.0],
+    "flat_radius": 85.0,
+    "label": "The crater floor"
+   }
+  },
+  "minor_cracks": 34,
+  "riverbed_zone": {
+   "flat_radius": 50.0,
+   "blend": 1.15,
+   "label": "The old riverbed"
+  }
+ },
+ "map_names": [
+  {
+   "name": "Crater",
+   "position": [1100.0, -1500.0]
+  },
+  {
+   "name": "Layered mound",
+   "position": [920.0, -580.0]
+  },
+  {
+   "name": "Canyon",
+   "position": [0.0, -2600.0]
+  },
+  {
+   "name": "Dune field",
+   "position": [-650.0, -1640.0]
+  },
+  {
+   "name": "Ice fields",
+   "position": [-1500.0, -1100.0]
+  },
+  {
+   "name": "Mesas",
+   "position": [-1400.0, 1700.0]
+  },
+  {
+   "name": "Ancient river",
+   "river_point": 110
+  },
+  {
+   "name": "Delta",
+   "river_point": -12
+  },
+  {
+   "name": "Wrinkle ridge",
+   "position": [-1650.0, 1900.0]
+  },
+  {
+   "name": "Wrinkle ridge",
+   "position": [-600.0, 1900.0]
+  },
+  {
+   "name": "Side canyon",
+   "position": [-2050.0, -1700.0]
+  },
+  {
+   "name": "Lava plain",
+   "position": [2350.0, 1500.0]
+  },
+  {
+   "name": "Platy lava",
+   "position": [1480.0, 1400.0]
+  },
+  {
+   "name": "Fissure",
+   "position": [2200.0, 360.0]
+  },
+  {
+   "name": "Yardangs",
+   "position": [-450.0, -250.0]
+  },
+  {
+   "name": "Raised riverbeds",
+   "position": [-40.0, 1600.0]
+  },
+  {
+   "name": "Buried glacier",
+   "position": [-1940.0, -970.0]
+  },
+  {
+   "name": "Chaos blocks",
+   "position": [2560.0, 2100.0]
+  }
+ ],
+ "landforms": [
+  {
+   "id": "big_crater",
+   "kind": "crater",
+   "label": "The big crater",
+   "seed": 2027,
+   "centre": [1100.0, -700.0],
+   "radius": 1100.0,
+   "depth": 95.0,
+   "rim": 62.0,
+   "breaches": [
+    {
+     "angle": -1.2,
+     "width": 0.34,
+     "drop": 0.6
+    },
+    {
+     "angle": 0.25,
+     "width": 0.26,
+     "drop": 0.72
+    }
+   ],
+   "slump_lobe": 16.0,
+   "secondaries": 9
+  },
+  {
+   "id": "mound",
+   "kind": "mound",
+   "label": "The layered mound",
+   "centre": [920.0, -580.0],
+   "radius": 330.0,
+   "height": 135.0,
+   "terrace": 11.0
+  },
+  {
+   "id": "canyon",
+   "kind": "canyon",
+   "label": "The canyon",
+   "seed": 1990,
+   "depth": 170.0,
+   "edge": -2030.0,
+   "far_edge": -2820.0,
+   "side_ramp_length": 700.0,
+   "side_canyons": [
+    {
+     "x": -250.0,
+     "length": 420.0,
+     "half_width": 75.0,
+     "ramp": false
+    },
+    {
+     "x": -2050.0,
+     "length": 700.0,
+     "half_width": 85.0,
+     "ramp": true
+    },
+    {
+     "x": 2050.0,
+     "length": 500.0,
+     "half_width": 70.0,
+     "ramp": false
+    },
+    {
+     "x": -1450.0,
+     "length": 230.0,
+     "half_width": 45.0,
+     "ramp": true
+    },
+    {
+     "x": -800.0,
+     "length": 170.0,
+     "half_width": 30.0,
+     "ramp": true
+    },
+    {
+     "x": 350.0,
+     "length": 170.0,
+     "half_width": 30.0,
+     "ramp": true
+    },
+    {
+     "x": 1850.0,
+     "length": 170.0,
+     "half_width": 30.0,
+     "ramp": true
+    },
+    {
+     "x": 2550.0,
+     "length": 170.0,
+     "half_width": 30.0,
+     "ramp": true
+    }
+   ],
+   "landslides": [
+    {
+     "x": -950.0,
+     "run_out": 420.0,
+     "half_width": 260.0
+    },
+    {
+     "x": 1250.0,
+     "run_out": 380.0,
+     "half_width": 220.0
+    }
+   ],
+   "landslide_height": 13.0
+  },
+  {
+   "id": "river",
+   "kind": "river",
+   "label": "The ancient river",
+   "source": [900.0, 2750.0],
+   "mouth_angle": [-0.33, 0.944],
+   "wide_at": 0.42
+  },
+  {
+   "id": "near_mesa",
+   "kind": "mesa",
+   "label": "Near mesa",
+   "seed": 2037,
+   "centre": [-760.0, 420.0],
+   "radius": 170.0,
+   "height": 48.0,
+   "ramp": null,
+   "gully": 2.4,
+   "buttes": 2
+  },
+  {
+   "id": "west_mesa",
+   "kind": "mesa",
+   "label": "West mesa",
+   "seed": 2037,
+   "centre": [-2050.0, 1650.0],
+   "radius": 240.0,
+   "height": 50.0,
+   "ramp": 0.0,
+   "gully": null,
+   "buttes": 2
+  },
+  {
+   "id": "far_mesa",
+   "kind": "mesa",
+   "label": "Far mesa",
+   "seed": 2037,
+   "centre": [300.0, 1500.0],
+   "radius": 140.0,
+   "height": 58.0,
+   "ramp": -0.9,
+   "gully": null,
+   "buttes": 2
+  },
+  {
+   "id": "small_mesa",
+   "kind": "mesa",
+   "label": "Small mesa",
+   "seed": 2037,
+   "centre": [-1950.0, 380.0],
+   "radius": 110.0,
+   "height": 34.0,
+   "ramp": null,
+   "gully": null,
+   "buttes": 2
+  },
+  {
+   "id": "east_mesa",
+   "kind": "mesa",
+   "label": "East mesa",
+   "seed": 2037,
+   "centre": [2100.0, 1700.0],
+   "radius": 260.0,
+   "height": 70.0,
+   "ramp": 0.0,
+   "gully": null,
+   "buttes": 2
+  },
+  {
+   "id": "glacier_mesa",
+   "kind": "mesa",
+   "label": "Glacier's mesa",
+   "seed": 2037,
+   "centre": [-2120.0, -760.0],
+   "radius": 125.0,
+   "height": 45.0,
+   "ramp": null,
+   "gully": null,
+   "buttes": 2
+  },
+  {
+   "id": "west_ridge",
+   "kind": "wrinkle_ridge",
+   "label": "Wrinkle ridge",
+   "seed": 2047,
+   "points": [
+    [-1750.0, 2450.0],
+    [-1700.0, 2050.0],
+    [-1600.0, 1650.0],
+    [-1700.0, 1300.0],
+    [-1950.0, 950.0],
+    [-2150.0, 600.0],
+    [-2250.0, 150.0]
+   ],
+   "passes": [0.3, 0.72],
+   "arch": 9.0,
+   "crest": 15.0,
+   "arch_width": 170.0,
+   "crest_at": 25.0,
+   "steep_side": 16.0,
+   "gentle_side": 55.0,
+   "wiggle": 30.0
+  },
+  {
+   "id": "east_ridge",
+   "kind": "wrinkle_ridge",
+   "label": "Wrinkle ridge",
+   "seed": 2047,
+   "points": [[-650.0, 2500.0], [-560.0, 2050.0], [-700.0, 1600.0], [-620.0, 1150.0], [-450.0, 800.0]],
+   "passes": [0.45],
+   "arch": 9.0,
+   "crest": 15.0,
+   "arch_width": 170.0,
+   "crest_at": 25.0,
+   "steep_side": 16.0,
+   "gentle_side": 55.0,
+   "wiggle": 30.0
+  },
+  {
+   "id": "north_scarp",
+   "kind": "step_line",
+   "label": "North scarp",
+   "style": "caprock",
+   "points": [[-2400.0, -150.0], [-2050.0, -230.0], [-1700.0, -170.0], [-1350.0, -290.0], [-1050.0, -230.0]],
+   "up": -1.0,
+   "height": 18.0,
+   "passes": [0.3, 0.75],
+   "sheer": 6.0,
+   "pass_run": 95.0
+  },
+  {
+   "id": "east_front",
+   "kind": "step_line",
+   "label": "East front",
+   "style": "flow_front",
+   "points": [[-330.0, 480.0], [-250.0, 900.0], [-330.0, 1300.0], [-230.0, 1700.0], [-300.0, 2150.0]],
+   "up": -1.0,
+   "height": 11.0,
+   "passes": [0.25, 0.6, 0.85],
+   "sheer": 6.0,
+   "pass_run": 95.0
+  },
+  {
+   "id": "dune_sea",
+   "kind": "dune_field",
+   "label": "The dune sea",
+   "seed": 2067,
+   "centre": [-650.0, -1640.0],
+   "radius": 500.0,
+   "spacing": 65.0,
+   "ridge_height": 8.0,
+   "barchans": 70
+  },
+  {
+   "id": "ice_field_1",
+   "kind": "ice_field",
+   "label": "Ice field",
+   "seed": 2078,
+   "centre": [-1500.0, -1100.0],
+   "radius": 600.0
+  },
+  {
+   "id": "ice_field_2",
+   "kind": "ice_field",
+   "label": "Ice field",
+   "seed": 2078,
+   "centre": [-1870.0, -640.0],
+   "radius": 380.0
+  },
+  {
+   "id": "ice_field_3",
+   "kind": "ice_field",
+   "label": "Ice field",
+   "seed": 2078,
+   "centre": [-1120.0, -1480.0],
+   "radius": 330.0
+  },
+  {
+   "id": "ice_field_4",
+   "kind": "ice_field",
+   "label": "Ice field",
+   "seed": 2078,
+   "centre": [-1950.0, -1350.0],
+   "radius": 260.0
+  },
+  {
+   "id": "ice_scarp_1",
+   "kind": "ice_scarp",
+   "label": "Ice scarp",
+   "points": [[-1760.0, -1240.0], [-1380.0, -1330.0]],
+   "drop": 10.0
+  },
+  {
+   "id": "ice_scarp_2",
+   "kind": "ice_scarp",
+   "label": "Ice scarp",
+   "points": [[-1990.0, -700.0], [-1760.0, -610.0]],
+   "drop": 8.0
+  },
+  {
+   "id": "boulder_field_1",
+   "kind": "boulder_field",
+   "label": "Boulder field",
+   "seed": 2087,
+   "centre": [2150.0, -1450.0],
+   "radius": 240.0,
+   "sharp": true,
+   "lanes": 3
+  },
+  {
+   "id": "boulder_field_2",
+   "kind": "boulder_field",
+   "label": "Boulder field",
+   "seed": 2087,
+   "centre": [-2350.0, 1950.0],
+   "radius": 200.0,
+   "sharp": false,
+   "lanes": 3
+  },
+  {
+   "id": "boulder_field_3",
+   "kind": "boulder_field",
+   "label": "Boulder field",
+   "seed": 2087,
+   "centre": [1750.0, 1150.0],
+   "radius": 200.0,
+   "sharp": true,
+   "lanes": 3
+  },
+  {
+   "id": "lava_plain",
+   "kind": "lava_plain",
+   "label": "The young lava plain",
+   "seed": 2107,
+   "west": 1280.0,
+   "north": 420.0,
+   "strip_west": 2420.0,
+   "strip_north": -1150.0,
+   "thickness": 8.0
+  },
+  {
+   "id": "platy_belt",
+   "kind": "platy_belt",
+   "label": "The platy belt",
+   "seed": 2117,
+   "width": 320.0,
+   "east": 1760.0,
+   "plate": 55.0,
+   "lanes": 3
+  },
+  {
+   "id": "main_fissure",
+   "kind": "fissure",
+   "label": "Main fissure",
+   "seed": 2127,
+   "points": [[1290.0, 640.0], [3040.0, 70.0]],
+   "half_width": 26.0,
+   "depth": 90.0,
+   "bridge": 0.2
+  },
+  {
+   "id": "north_fissure",
+   "kind": "fissure",
+   "label": "North fissure",
+   "seed": 2127,
+   "points": [[2360.0, -110.0], [3050.0, -390.0]],
+   "half_width": 14.0,
+   "depth": 50.0,
+   "bridge": null
+  },
+  {
+   "id": "yardangs",
+   "kind": "yardang_field",
+   "label": "The yardang maze",
+   "seed": 2147,
+   "centre": [-450.0, -250.0],
+   "length": 1000.0,
+   "width": 600.0,
+   "count": 44,
+   "real_scale": 1.5,
+   "real_shrink": 0.55
+  },
+  {
+   "id": "ripple_belt_1",
+   "kind": "ripple_belt",
+   "label": "Ripple belt",
+   "centre": [2650.0, -900.0],
+   "length": 520.0,
+   "width": 240.0
+  },
+  {
+   "id": "raised_riverbeds",
+   "kind": "raised_riverbed",
+   "label": "Raised riverbeds",
+   "seed": 2157,
+   "points": [
+    [-40.0, 2120.0],
+    [-120.0, 1880.0],
+    [-20.0, 1640.0],
+    [-100.0, 1400.0],
+    [-10.0, 1180.0],
+    [50.0, 1040.0]
+   ],
+   "tributaries": [
+    {
+     "at": 0.35,
+     "turn": 0.7
+    },
+    {
+     "at": 0.6,
+     "turn": -0.8
+    }
+   ],
+   "sand_centre": [-70.0, 1650.0],
+   "sand_radius": 430.0
+  },
+  {
+   "id": "glacier",
+   "kind": "glacier",
+   "label": "The buried glacier",
+   "seed": 2167,
+   "from": [-2060.0, -810.0],
+   "flow": [0.6, -0.8],
+   "length": 400.0,
+   "width": 300.0,
+   "thickness": 24.0,
+   "pits": 16
+  },
+  {
+   "id": "chaos_blocks",
+   "kind": "chaos_blocks",
+   "label": "Chaos blocks",
+   "centre": [2560.0, 2100.0],
+   "radius": 330.0,
+   "block": 120.0
+  },
+  {
+   "id": "fresh_crater",
+   "kind": "fresh_crater",
+   "label": "The fresh crater",
+   "seed": 1997,
+   "centre": [-380.0, 2180.0],
+   "radius": 150.0
+  },
+  {
+   "id": "frost_hollow",
+   "kind": "frost_hollow",
+   "label": "Frost hollow",
+   "centre": [-1400.0, 300.0],
+   "radius": 130.0,
+   "depth": 7.0
+  },
+  {
+   "id": "channel",
+   "kind": "channel",
+   "label": "Dry channel",
+   "seed": 2177,
+   "points": [[-900.0, 1750.0], [-850.0, 1480.0], [-930.0, 1200.0], [-870.0, 950.0], [-950.0, 720.0]],
+   "depth": 5.0,
+   "crossings": [0.3, 0.68],
+   "half_width": 8.0,
+   "wiggle": 22.0
+  },
+  {
+   "id": "sand_sheet",
+   "kind": "sand_sheet",
+   "label": "Sand sheet",
+   "centre": [-1640.0, 330.0],
+   "radius": 150.0
+  },
+  {
+   "id": "outcrop",
+   "kind": "outcrop",
+   "label": "Ledge-topped outcrop",
+   "centre": [-1130.0, 720.0],
+   "radius": 15.0,
+   "height": 5.5
+  },
+  {
+   "id": "collapse_pit",
+   "kind": "pit",
+   "label": "Collapse pit",
+   "centre": [-1050.0, 1340.0],
+   "radius": 7.0,
+   "depth": 10.0
+  },
+  {
+   "id": "sliver",
+   "kind": "sliver",
+   "label": "Cracked sliver",
+   "points": [[-1760.0, 150.0], [-1040.0, 40.0]],
+   "split": [0.3, 0.7],
+   "bulge": 42.0,
+   "half_width": 8.0,
+   "depth": 14.0
+  },
+  {
+   "id": "heart",
+   "kind": "marker",
+   "label": "The heart",
+   "centre": [2895.0, 225.0]
+  },
+  {
+   "id": "drone_wreck",
+   "kind": "marker",
+   "label": "Drone wreck",
+   "centre": [-650.0, -50.0]
+  }
+ ],
+ "caves": {
+  "cover": 4.0,
+  "step": 2.0,
+  "lava_tube": {
+   "id": "lava_tube",
+   "name": "Lava tube",
+   "kind": "lava_tube",
+   "course": [
+    [1850.0, 1800.0],
+    [1960.0, 1560.0],
+    [2040.0, 1330.0],
+    [2190.0, 1110.0],
+    [2280.0, 880.0],
+    [2420.0, 680.0],
+    [2520.0, 500.0],
+    [2640.0, 330.0]
+   ],
+   "half_width": 10.0,
+   "height": 14.0,
+   "depth": 40.0,
+   "ramp": 230.0,
+   "skylights": [
+    {
+     "along": 0.16,
+     "radius": 9.0,
+     "side": 1.0
+    },
+    {
+     "along": 0.33,
+     "radius": 7.0,
+     "side": -1.0
+    },
+    {
+     "along": 0.47,
+     "radius": 11.0,
+     "side": 1.0
+    },
+    {
+     "along": 0.66,
+     "radius": 8.0,
+     "side": -1.0
+    },
+    {
+     "along": 0.82,
+     "radius": 12.0,
+     "side": 1.0
+    },
+    {
+     "along": 0.93,
+     "radius": 7.0,
+     "side": -1.0
+    }
+   ]
+  },
+  "deep": {
+   "course": [
+    [2700.0, 350.0],
+    [2770.0, 400.0],
+    [2800.0, 470.0],
+    [2800.0, 560.0],
+    [2850.0, 610.0],
+    [2930.0, 600.0],
+    [2960.0, 530.0],
+    [2955.0, 440.0],
+    [2925.0, 350.0],
+    [2900.0, 270.0],
+    [2895.0, 225.0]
+   ],
+   "pitches": [
+    {
+     "after": 0,
+     "drop": 26.0
+    },
+    {
+     "after": 2,
+     "drop": 30.0
+    },
+    {
+     "after": 4,
+     "drop": 26.0
+    }
+   ],
+   "pitch_run": 16.0,
+   "grade": 0.01,
+   "sizes": {
+    "mid": [7.0, 10.0],
+    "pitch": [6.0, 9.0],
+    "lower": [5.5, 8.0],
+    "chamber": [21.0, 17.0]
+   },
+   "chamber": 56.0
+  },
+  "maze": [
+   {
+    "name": "The Braids",
+    "from": 180,
+    "to": 272,
+    "half": 24.0,
+    "height": 15.0,
+    "walls": [
+     {
+      "from": 190,
+      "to": 262,
+      "side": 0.05,
+      "gaps": [[222, 229]]
+     }
+    ],
+    "chokes": [
+     {
+      "at": 252,
+      "from_side": 0.05,
+      "to_side": 1.3
+     }
+    ],
+    "pits": [
+     {
+      "at": 241,
+      "side": 0.55,
+      "radius": 4.0,
+      "depth": 4.5
+     }
+    ]
+   },
+   {
+    "name": "The Hall",
+    "from": 372,
+    "to": 420,
+    "half": 27.0,
+    "height": 14.0,
+    "walls": [],
+    "chokes": [],
+    "pits": []
+   },
+   {
+    "name": "Three Ways",
+    "from": 600,
+    "to": 705,
+    "half": 25.0,
+    "height": 15.0,
+    "walls": [
+     {
+      "from": 610,
+      "to": 676,
+      "side": -0.3,
+      "gaps": [[640, 646]]
+     },
+     {
+      "from": 618,
+      "to": 672,
+      "side": 0.38,
+      "gaps": [[655, 661]]
+     }
+    ],
+    "chokes": [
+     {
+      "at": 668,
+      "from_side": -0.3,
+      "to_side": 0.38
+     },
+     {
+      "at": 630,
+      "from_side": 0.38,
+      "to_side": 1.3
+     }
+    ],
+    "pits": [
+     {
+      "at": 663,
+      "side": 0.04,
+      "radius": 3.5,
+      "depth": 4.0
+     },
+     {
+      "at": 624,
+      "side": 0.7,
+      "radius": 3.0,
+      "depth": 3.5
+     }
+    ]
+   },
+   {
+    "name": "The First Labyrinth",
+    "deep": true,
+    "from": 46,
+    "to": 108,
+    "half": 15.0,
+    "height": 9.0,
+    "walls": [
+     {
+      "from": 50,
+      "to": 104,
+      "side": -0.25,
+      "gaps": [[72, 76]]
+     },
+     {
+      "from": 56,
+      "to": 100,
+      "side": 0.35,
+      "gaps": [[60, 63], [88, 91]]
+     }
+    ],
+    "chokes": [
+     {
+      "at": 84,
+      "from_side": -0.25,
+      "to_side": 0.35
+     },
+     {
+      "at": 66,
+      "from_side": -1.3,
+      "to_side": -0.25
+     }
+    ],
+    "pits": [
+     {
+      "at": 80,
+      "side": 0.05,
+      "radius": 2.5,
+      "depth": 4.0
+     },
+     {
+      "at": 62,
+      "side": -0.65,
+      "radius": 2.5,
+      "depth": 4.5
+     }
+    ]
+   },
+   {
+    "name": "The Second Labyrinth",
+    "deep": true,
+    "from": 127,
+    "to": 189,
+    "half": 14.0,
+    "height": 9.0,
+    "walls": [
+     {
+      "from": 131,
+      "to": 185,
+      "side": 0.1,
+      "gaps": [[150, 154], [172, 175]]
+     }
+    ],
+    "chokes": [
+     {
+      "at": 162,
+      "from_side": 0.1,
+      "to_side": 1.3
+     },
+     {
+      "at": 142,
+      "from_side": -1.3,
+      "to_side": 0.1
+     }
+    ],
+    "pits": [
+     {
+      "at": 158,
+      "side": 0.6,
+      "radius": 2.5,
+      "depth": 5.0
+     },
+     {
+      "at": 138,
+      "side": -0.5,
+      "radius": 2.5,
+      "depth": 4.0
+     }
+    ]
+   },
+   {
+    "name": "The Last Maze",
+    "deep": true,
+    "from": 250,
+    "to": 360,
+    "half": 15.0,
+    "height": 9.0,
+    "walls": [
+     {
+      "from": 254,
+      "to": 356,
+      "side": -0.3,
+      "gaps": [[280, 284], [322, 326]]
+     },
+     {
+      "from": 262,
+      "to": 350,
+      "side": 0.3,
+      "gaps": [[300, 304], [338, 341]]
+     }
+    ],
+    "chokes": [
+     {
+      "at": 310,
+      "from_side": -1.3,
+      "to_side": -0.3
+     },
+     {
+      "at": 292,
+      "from_side": -0.3,
+      "to_side": 0.3
+     },
+     {
+      "at": 332,
+      "from_side": -0.3,
+      "to_side": 0.3
+     },
+     {
+      "at": 318,
+      "from_side": 0.3,
+      "to_side": 1.3
+     }
+    ],
+    "pits": [
+     {
+      "at": 305,
+      "side": -0.65,
+      "radius": 2.5,
+      "depth": 5.0
+     },
+     {
+      "at": 288,
+      "side": 0.0,
+      "radius": 2.5,
+      "depth": 4.5
+     },
+     {
+      "at": 314,
+      "side": 0.65,
+      "radius": 2.5,
+      "depth": 5.0
+     }
+    ]
+   }
+  ],
+  "natural": [
+   {
+    "id": "canyon_cave",
+    "name": "Canyon wall cave",
+    "kind": "cave",
+    "approach": [-1200.0, -2318.0],
+    "heading": [0.0, 1.0],
+    "length": 55.0,
+    "half_width": 2.4,
+    "height": 4.0,
+    "grade": 0.05
+   },
+   {
+    "id": "ice_cave",
+    "name": "Ice cave",
+    "kind": "ice_cave",
+    "approach": [-1572.0, -1300.0],
+    "heading": [0.23, 0.97],
+    "length": 42.0,
+    "half_width": 2.0,
+    "height": 3.4,
+    "grade": -0.04
+   }
+  ]
+ }
+}
