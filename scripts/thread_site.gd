@@ -109,25 +109,116 @@ func _build_ice_wall() -> void:
 	shape.position = Vector3(0, MHSiteTerrain.height(at.x, at.z) - at.y + up, -up / tan(deg_to_rad(ICE_FACE_DEG)) - 2.5)
 	add_child(shape)
 
-## Pale frost on the ground of the hollow, with a few bright chips of ice
-## where the dust has blown off.
+## Frost in the hollow, part of the ground itself: a decal (it lies on the
+## real slope like paint, no disc) of thin patchy hoarfrost, thickest in the
+## cracks between polygons as on the Phoenix site, fading out raggedly at its
+## edge. A few chips of clean ice show half-buried where the dust has blown
+## off. The chip spot is the middle, as before.
+const FROST_REACH := 4.5            # metres from the middle to the frost's ragged edge
+const FROST_PIXELS := 256
+static var _frost_texture: ImageTexture
 func _build_frost() -> void:
-	var disc := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 3.2
-	cyl.bottom_radius = 3.2
-	cyl.height = .02
-	cyl.radial_segments = 24
-	disc.mesh = cyl
-	disc.position = _ground(Vector3(0, .03, 0))
-	disc.material_override = FIND.material("frost")
-	add_child(disc)
+	var decal := Decal.new()
+	decal.name = "Frost"
+	decal.size = Vector3(FROST_REACH * 2.0, 3.0, FROST_REACH * 2.0)
+	decal.position = _ground(Vector3.ZERO)
+	decal.texture_albedo = _frost_image()
+	decal.albedo_mix = 1.0
+	decal.normal_fade = .35          # not up the sides of rocks
+	decal.upper_fade = .4
+	decal.lower_fade = .4
+	decal.distance_fade_enabled = true
+	decal.distance_fade_begin = 120.0
+	decal.distance_fade_length = 40.0
+	add_child(decal)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 19
-	for i in 5:
-		var size := Vector3(rng.randf_range(.3, .6), rng.randf_range(.08, .16), rng.randf_range(.3, .5))
-		_lump(size, Vector3(rng.randf_range(-2.0, 2.0), .03, rng.randf_range(-2.0, 2.0)), Vector3(0, rng.randf_range(0, TAU), 0), "ice")
+	var chip := _ice_chip_material()
+	for i in 7:
+		var model := "decor_rock_%02d" % rng.randi_range(0, 7)
+		var path := "res://assets/original_mars/models/%s.glb" % model
+		if not ResourceLoader.exists(path): continue
+		var root: Node3D = (load(path) as PackedScene).instantiate()
+		for mesh in root.find_children("*", "MeshInstance3D", true, false):
+			(mesh as MeshInstance3D).material_override = chip
+		var size := rng.randf_range(.18, .42)
+		var local := Vector3(rng.randf_range(-2.4, 2.4), 0.0, rng.randf_range(-2.4, 2.4))
+		root.scale = Vector3(size, size * rng.randf_range(.5, .8), size)
+		root.rotation = Vector3(rng.randf_range(-.4, .4), rng.randf_range(0, TAU), rng.randf_range(-.4, .4))
+		root.position = _ground(local) - Vector3(0, size * .35, 0)   # half sunk in the dust
+		add_child(root)
 	_collide(Vector3(4.0, .2, 4.0), Vector3(0, .1, 0))
+
+## Clean ice: pale and faintly glassy, never blue (docs/house-style.md), with
+## a little dust caught on it.
+static func _ice_chip_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.resource_name = "ice_chip_clean"
+	mat.albedo_color = Color("#D8D9D6")
+	mat.roughness = .28
+	mat.metallic_specular = .8
+	mat.rim_enabled = true
+	mat.rim = .3
+	mat.rim_tint = .5
+	return mat
+
+## Drawn once: polygon cracks (the gaps between jittered cells) hold the most
+## frost; a patchy thin coat between them; the edge ragged with noise; a few
+## clearer, greyer glints where it's thickest.
+static func _frost_image() -> ImageTexture:
+	if _frost_texture != null: return _frost_texture
+	var n := FROST_PIXELS
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var patch := FastNoiseLite.new()
+	patch.seed = 7
+	patch.frequency = .018
+	patch.fractal_octaves = 4
+	var edge := FastNoiseLite.new()
+	edge.seed = 11
+	edge.frequency = .03
+	var grain := FastNoiseLite.new()
+	grain.seed = 5
+	grain.frequency = .2
+	var cells := 9                     # polygons across the patch (about 1 m each)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 23
+	var seeds: Array[Vector2] = []
+	for j in cells:
+		for i in cells:
+			seeds.append(Vector2((i + rng.randf_range(.15, .85)) / cells, (j + rng.randf_range(.15, .85)) / cells))
+	var frost := Color("#E4E1DB")
+	var glint := Color("#C7CCCE")
+	for y in n:
+		for x in n:
+			var uv := Vector2((x + .5) / n, (y + .5) / n)
+			var r := (uv - Vector2(.5, .5)).length() * 2.0
+			var fade := 1.0 - smoothstep(.45, .95, r + edge.get_noise_2d(x, y) * .3)
+			if fade <= 0.0:
+				img.set_pixel(x, y, Color(frost, 0.0))
+				continue
+			var cx := clampi(int(uv.x * cells), 0, cells - 1)
+			var cy := clampi(int(uv.y * cells), 0, cells - 1)
+			var f1 := INF
+			var f2 := INF
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					var gx := cx + dx
+					var gy := cy + dy
+					if gx < 0 or gy < 0 or gx >= cells or gy >= cells: continue
+					var d := uv.distance_to(seeds[gy * cells + gx])
+					if d < f1:
+						f2 = f1
+						f1 = d
+					elif d < f2: f2 = d
+			# Cracks are thin and come and go; the coat between is patchy and grainy.
+			var crack := (1.0 - smoothstep(.002, .016, f2 - f1)) * smoothstep(-.35, .25, edge.get_noise_2d(x * 1.7 + 300.0, y * 1.7))
+			var coat := smoothstep(-.1, .5, patch.get_noise_2d(x, y)) * (.55 + .45 * grain.get_noise_2d(x, y))
+			var a := clampf(crack * .8 + coat * .6, 0.0, .9) * fade
+			var c := frost.lerp(glint, smoothstep(.6, .9, coat) * .6)
+			img.set_pixel(x, y, Color(c, a))
+	img.generate_mipmaps()
+	_frost_texture = ImageTexture.create_from_image(img)
+	return _frost_texture
 
 # ---------- chipping ----------
 
