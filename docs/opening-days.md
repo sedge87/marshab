@@ -81,10 +81,12 @@ Chapter 4 is done when Walker 1's core is down and alive and a Quarters liner wi
   - If air still never bites, the next lever is the bare suit's hours, not the pallet distances.
 - **The tiny printer offers only what the story needs.** Pallet 3 has no plan cartridges now. The pick, bladder, battery, heater and air pack plans all need their cartridge found first (`lifepod.gd` `FOUND_PLANS`). In the chapters that leaves the sled hitch. Placing those cartridges in wrecks is C1's job.
 - **Castle notices scrap you've already stripped** before pallet 1: `has_scrap` picks her other line.
-- **The orbiter in the sky** (`scripts/orbiter_sky.gd`): a moving point of sunlight, only as it really could be seen.
-  - When: in twilight, about 0.6 h after sunset (two dusks in three) and about 1 h before sunrise (one dawn in two).
-  - How: west to east, fading into the planet's shadow before it reaches the east. Never by day, never in the deep night.
-  - The first time it's up while you're outside, Castle says "look up, that's us" (`orbit_pass`, `data/radio/radio.txt`).
+- **The ship in the sky** (`scripts/orbiter_sky.gd`), as it really would be seen. The crew's ship is in the one-sol elliptical parking orbit (`docs/master-design.md`). It's only ever seen as reflected sunlight against a dark sky:
+  - **Every dusk, the dive:** from about 0.5 h after sunset, a bright point high in the south-west falls fast towards the east horizon as it drops to its close pass. It fades into the planet's shadow just before Castle goes behind Mars (`radio.gd` `los_window`).
+  - **Back round:** from about 0.3 h after she's back, a faint, nearly still star climbs from the east to high in the south, until the dawn sky washes it out.
+  - Never by day, and not while the ship is behind the planet.
+  - The first dive you see from outside, Castle says "look up, that's us, diving down for our close pass" (`orbit_pass`, `data/radio/radio.txt`).
+  - The user's notes (15 Nov): a low orbiter would circle 12 to 13 times a sol but pass over one spot only once or twice. A crewed ship would more likely use a one-sol elliptical orbit, which the game already uses.
 - **Not done here:** survival from the elements as a whole (cold, suit power, dust, water, wear and storms) needs its own design talk after the rest of this playtest.
 
 ## As built (A6)

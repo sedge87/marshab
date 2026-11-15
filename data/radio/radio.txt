@@ -1,9 +1,9 @@
 
-# The orbiter seen from the ground (scripts/orbiter_sky.gd): its first
-# twilight pass while you are outside. Regenerate: --only=orb_orbit_pass
+# The ship seen from the ground (scripts/orbiter_sky.gd): its first dusk
+# dive while you are outside, just before it goes behind the planet. Regenerate: --only=orb_orbit_pass
 ~ orbit_pass
-Castellanos: Look up. West, low, coming over. That bright dot that's moving? That's us. [ID:orbit_pass_01]
-Castellanos: Rao's waving. I'm waving. You can't see it, but we are. [ID:orbit_pass_02]
+Castellanos: Look up. South-west, high, and falling fast. That bright dot that's moving? That's us, diving down for our close pass. [ID:orbit_pass_01]
+Castellanos: Rao's waving. I'm waving. You can't see it, but we are. And in a few minutes we're behind the planet, so wave quickly. [ID:orbit_pass_a_02]
 - Waving back.
 	set waved
 	Castellanos: I'll tell him. He'll pretend he saw you. [ID:orbit_pass_03a]
