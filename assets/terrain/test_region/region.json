@@ -19916,119 +19916,119 @@
       "seed": 2298,
       "points": [
         [
-          -1567.85,
-          -1282.49,
-          -40.59
+          -1529.57,
+          -1224.53,
+          -58.36
         ],
         [
-          -1567.48,
-          -1280.52,
-          -40.67
+          -1529.05,
+          -1222.59,
+          -58.44
         ],
         [
-          -1567.18,
-          -1278.53,
-          -40.75
+          -1528.62,
+          -1220.63,
+          -58.52
         ],
         [
-          -1566.82,
-          -1276.56,
-          -40.83
+          -1528.11,
+          -1218.7,
+          -58.6
         ],
         [
-          -1566.29,
-          -1274.63,
-          -40.91
+          -1527.44,
+          -1216.81,
+          -58.68
         ],
         [
-          -1565.58,
-          -1272.74,
-          -40.99
+          -1526.6,
+          -1214.98,
+          -58.76
         ],
         [
-          -1564.78,
-          -1270.88,
-          -41.07
+          -1525.66,
+          -1213.18,
+          -58.84
         ],
         [
-          -1563.99,
-          -1269.01,
-          -41.15
+          -1524.74,
+          -1211.37,
+          -58.92
         ],
         [
-          -1563.23,
-          -1267.14,
-          -41.23
+          -1523.84,
+          -1209.56,
+          -59.0
         ],
         [
-          -1562.52,
-          -1265.25,
-          -41.31
+          -1522.99,
+          -1207.73,
+          -59.08
         ],
         [
-          -1561.86,
-          -1263.35,
-          -41.39
+          -1522.2,
+          -1205.88,
+          -59.16
         ],
         [
-          -1561.27,
-          -1261.44,
-          -41.47
+          -1521.47,
+          -1204.01,
+          -59.24
         ],
         [
-          -1560.75,
-          -1259.5,
-          -41.55
+          -1520.82,
+          -1202.12,
+          -59.32
         ],
         [
-          -1560.32,
-          -1257.55,
-          -41.63
+          -1520.24,
+          -1200.21,
+          -59.4
         ],
         [
-          -1559.95,
-          -1255.58,
-          -41.71
+          -1519.73,
+          -1198.27,
+          -59.48
         ],
         [
-          -1559.66,
-          -1253.6,
-          -41.79
+          -1519.29,
+          -1196.31,
+          -59.56
         ],
         [
-          -1559.43,
-          -1251.59,
-          -41.87
+          -1518.92,
+          -1194.33,
+          -59.64
         ],
         [
-          -1559.25,
-          -1249.58,
-          -41.95
+          -1518.59,
+          -1192.34,
+          -59.72
         ],
         [
-          -1559.11,
-          -1247.56,
-          -42.03
+          -1518.3,
+          -1190.33,
+          -59.8
         ],
         [
-          -1558.99,
-          -1245.53,
-          -42.11
+          -1518.03,
+          -1188.32,
+          -59.88
         ],
         [
-          -1558.87,
-          -1243.51,
-          -42.19
+          -1517.77,
+          -1186.31,
+          -59.96
         ],
         [
-          -1558.74,
-          -1241.48,
-          -42.27
+          -1517.49,
+          -1184.3,
+          -60.04
         ]
       ],
       "mouth": [
-        -1567.85,
-        -1282.49
+        -1529.57,
+        -1224.53
       ],
       "skylights": [],
       "finds": [
@@ -20064,6 +20064,16 @@
       -250.0,
       250.0,
       160.0
+    ],
+    [
+      -2276,
+      845,
+      120.0
+    ],
+    [
+      176,
+      1910,
+      90.0
     ]
   ],
   "sharp_boulder_fields": [
@@ -20076,6 +20086,11 @@
       1750.0,
       1150.0,
       200.0
+    ],
+    [
+      176,
+      1910,
+      90.0
     ]
   ],
   "home": {
@@ -20089,6 +20104,120 @@
     1000.0,
     2500.0,
     4000.0
+  ],
+  "horizon": [
+    {
+      "id": "far_volcano",
+      "kind": "volcano",
+      "label": "The far volcano",
+      "bearing": 300.0,
+      "distance": 26000.0,
+      "height": 2200.0,
+      "width": 30000.0
+    },
+    {
+      "id": "far_rim",
+      "kind": "crater_rim",
+      "label": "A great crater's rim",
+      "bearing": 140.0,
+      "distance": 18000.0,
+      "height": 700.0,
+      "width": 24000.0
+    }
+  ],
+  "surprises": [
+    {
+      "id": "silica_spring",
+      "kind": "sinter_mound",
+      "anchor": "sinter_mound.centre",
+      "note": "an old hot spring's silica: the best place in the Reach to look for signs of life"
+    },
+    {
+      "id": "the_needle",
+      "kind": "pinnacle",
+      "anchor": "lone_pinnacle.centre",
+      "note": "a lone spire of hard rock, visible for kilometres: a landmark to steer by"
+    },
+    {
+      "id": "balanced_rock",
+      "kind": "perched_boulder",
+      "anchor": "perched_boulder.centre",
+      "note": "a boulder left on a pedestal as the soft rock under it wore away (C1 sets the boulder)"
+    }
+  ],
+  "areas": [
+    {
+      "id": "black_sands",
+      "label": "The black sands",
+      "centre": [
+        -650.0,
+        -1640.0
+      ],
+      "radius": 800.0,
+      "palette": "basalt_sand",
+      "sound": "sandy",
+      "haze": 1.15
+    },
+    {
+      "id": "ice_country",
+      "label": "Ice country",
+      "centre": [
+        -1650.0,
+        -1100.0
+      ],
+      "radius": 950.0,
+      "palette": "ice_rubble",
+      "sound": "cold",
+      "haze": 1.25
+    },
+    {
+      "id": "pale_layers",
+      "label": "The pale layers",
+      "centre": [
+        920.0,
+        -600.0
+      ],
+      "radius": 1150.0,
+      "palette": "pale_layered",
+      "sound": "wind",
+      "haze": 0.9
+    },
+    {
+      "id": "haematite_hills",
+      "label": "Haematite hills",
+      "centre": [
+        -2150.0,
+        1750.0
+      ],
+      "radius": 700.0,
+      "palette": "haematite",
+      "sound": "wind",
+      "haze": 1.0
+    },
+    {
+      "id": "sulfur_cracks",
+      "label": "Sulfur cracks",
+      "centre": [
+        2250.0,
+        300.0
+      ],
+      "radius": 650.0,
+      "palette": "sulfur",
+      "sound": "still",
+      "haze": 1.1
+    },
+    {
+      "id": "gypsum_chaos",
+      "label": "Gypsum chaos",
+      "centre": [
+        2500.0,
+        2050.0
+      ],
+      "radius": 600.0,
+      "palette": "gypsum",
+      "sound": "wind",
+      "haze": 0.95
+    }
   ],
   "heart": [
     2895.0,
@@ -21014,18 +21143,18 @@
     "sharp_boulders"
   ],
   "ground_share": {
-    "dust": 0.437,
+    "dust": 0.435,
     "rock": 0.126,
-    "sand": 0.033,
-    "ripples": 0.015,
+    "sand": 0.032,
+    "ripples": 0.014,
     "gravel": 0.167,
-    "scree": 0.078,
-    "ice": 0.026,
+    "scree": 0.082,
+    "ice": 0.023,
     "frost": 0.005,
     "clay": 0.025,
     "lava": 0.071,
     "platy_lava": 0.014,
-    "sharp_boulders": 0.006
+    "sharp_boulders": 0.007
   },
   "viewpoints": [
     {
@@ -21074,7 +21203,7 @@
         -2120.0,
         -760.0
       ],
-      "height": 33.1
+      "height": 24.1
     },
     {
       "name": "South ridge lookout",
@@ -21133,11 +21262,11 @@
       },
       {
         "ring": 2,
-        "metres_between_choices": 158.0
+        "metres_between_choices": 156.0
       },
       {
         "ring": 3,
-        "metres_between_choices": 146.0
+        "metres_between_choices": 149.0
       }
     ],
     "step_lines": [
@@ -21203,6 +21332,10 @@
         -125.1
       ]
     },
+    "surprises": {
+      "count": 3,
+      "repeated": []
+    },
     "callback": {
       "x_min": -2652.0,
       "x_max": 2912.0,
@@ -21210,92 +21343,691 @@
       "z_max": 2652.0
     },
     "anchors": {
-      "count": 127,
-      "moved": [
+      "count": 164,
+      "moved": [],
+      "gone_since_last_build": [],
+      "missing_in_data": []
+    },
+    "sameness": {
+      "dull": [
         {
-          "id": "yardangs.dead_end_1",
-          "metres": 181.3
+          "from": [
+            -0.0,
+            -1424.9
+          ],
+          "to": [
+            850.0,
+            -2897.1
+          ],
+          "foot_minutes": 5.7,
+          "rover_minutes": 9.4
         },
         {
-          "id": "yardangs.dead_end_2",
-          "metres": 590.8
+          "from": [
+            86.1,
+            -247.0
+          ],
+          "to": [
+            1281.2,
+            -1249.8
+          ],
+          "foot_minutes": 5.2,
+          "rover_minutes": 8.7
         },
         {
-          "id": "yardangs.dead_end_3",
-          "metres": 544.8
+          "from": [
+            888.3,
+            -1727.1
+          ],
+          "to": [
+            1865.4,
+            -2891.5
+          ],
+          "foot_minutes": 5.1,
+          "rover_minutes": 8.4
         },
         {
-          "id": "yardangs.dead_end_4",
-          "metres": 305.3
+          "from": [
+            -1841.1,
+            -1501.4
+          ],
+          "to": [
+            -2084.2,
+            -2880.1
+          ],
+          "foot_minutes": 4.7,
+          "rover_minutes": 7.8
         },
         {
-          "id": "yardangs.dead_end_5",
-          "metres": 329.0
+          "from": [
+            1878.7,
+            -1751.1
+          ],
+          "to": [
+            2920.5,
+            -2625.3
+          ],
+          "foot_minutes": 4.5,
+          "rover_minutes": 7.6
         },
         {
-          "id": "yardangs.dead_end_6",
-          "metres": 547.8
+          "from": [
+            39.8,
+            -715.9
+          ],
+          "to": [
+            888.3,
+            -1727.1
+          ],
+          "foot_minutes": 4.4,
+          "rover_minutes": 7.3
         },
         {
-          "id": "yardangs.dead_end_7",
-          "metres": 687.1
+          "from": [
+            836.5,
+            186.0
+          ],
+          "to": [
+            1832.5,
+            -176.5
+          ],
+          "foot_minutes": 3.5,
+          "rover_minutes": 5.9
         },
         {
-          "id": "yardangs.dead_end_8",
-          "metres": 363.5
+          "from": [
+            -1504.2,
+            1590.9
+          ],
+          "to": [
+            -1663.9,
+            2496.9
+          ],
+          "foot_minutes": 3.1,
+          "rover_minutes": 5.1
         },
         {
-          "id": "yardangs.dead_end_9",
-          "metres": 398.2
+          "from": [
+            2114.5,
+            2279.2
+          ],
+          "to": [
+            2922.6,
+            2573.3
+          ],
+          "foot_minutes": 2.9,
+          "rover_minutes": 4.8
         },
         {
-          "id": "yardangs.dead_end_10",
-          "metres": 528.1
+          "from": [
+            1423.2,
+            -630.0
+          ],
+          "to": [
+            2133.4,
+            -1040.0
+          ],
+          "foot_minutes": 2.7,
+          "rover_minutes": 4.6
         },
         {
-          "id": "yardangs.dead_end_11",
-          "metres": 268.4
+          "from": [
+            -854.7,
+            -2092.3
+          ],
+          "to": [
+            -715.8,
+            -2880.1
+          ],
+          "foot_minutes": 2.7,
+          "rover_minutes": 4.4
         },
         {
-          "id": "yardangs.dead_end_12",
-          "metres": 257.7
+          "from": [
+            -1400.0,
+            -2120.0
+          ],
+          "to": [
+            -1400.0,
+            -2900.0
+          ],
+          "foot_minutes": 2.6,
+          "rover_minutes": 4.3
         },
         {
-          "id": "yardangs.dead_end_13",
-          "metres": 348.8
+          "from": [
+            -244.0,
+            -2176.2
+          ],
+          "to": [
+            16.0,
+            -2890.3
+          ],
+          "foot_minutes": 2.5,
+          "rover_minutes": 4.2
         },
         {
-          "id": "yardangs.dead_end_14",
-          "metres": 240.5
+          "from": [
+            -1618.9,
+            1601.4
+          ],
+          "to": [
+            -1872.0,
+            2296.8
+          ],
+          "foot_minutes": 2.5,
+          "rover_minutes": 4.1
         },
         {
-          "id": "yardangs.dead_end_15",
-          "metres": 434.8
+          "from": [
+            -2184.2,
+            65.4
+          ],
+          "to": [
+            -2659.9,
+            -501.4
+          ],
+          "foot_minutes": 2.5,
+          "rover_minutes": 4.1
         },
         {
-          "id": "yardangs.dead_end_16",
-          "metres": 663.3
+          "from": [
+            -2000.0,
+            2039.2
+          ],
+          "to": [
+            -2360.0,
+            2662.8
+          ],
+          "foot_minutes": 2.4,
+          "rover_minutes": 4.0
+        },
+        {
+          "from": [
+            -2419.2,
+            -1800.3
+          ],
+          "to": [
+            -2658.6,
+            -2458.1
+          ],
+          "foot_minutes": 2.3,
+          "rover_minutes": 3.9
+        },
+        {
+          "from": [
+            834.3,
+            -290.0
+          ],
+          "to": [
+            1423.2,
+            -630.0
+          ],
+          "foot_minutes": 2.3,
+          "rover_minutes": 3.8
+        },
+        {
+          "from": [
+            -435.8,
+            2149.1
+          ],
+          "to": [
+            -11.6,
+            2654.7
+          ],
+          "foot_minutes": 2.2,
+          "rover_minutes": 3.7
+        },
+        {
+          "from": [
+            2283.2,
+            1649.4
+          ],
+          "to": [
+            2913.5,
+            1760.6
+          ],
+          "foot_minutes": 2.1,
+          "rover_minutes": 3.6
+        },
+        {
+          "from": [
+            -327.5,
+            1899.9
+          ],
+          "to": [
+            162.7,
+            2311.3
+          ],
+          "foot_minutes": 2.1,
+          "rover_minutes": 3.6
+        },
+        {
+          "from": [
+            -462.9,
+            -1574.8
+          ],
+          "to": [
+            -244.0,
+            -2176.2
+          ],
+          "foot_minutes": 2.1,
+          "rover_minutes": 3.6
+        },
+        {
+          "from": [
+            280.1,
+            30.0
+          ],
+          "to": [
+            834.3,
+            -290.0
+          ],
+          "foot_minutes": 2.1,
+          "rover_minutes": 3.6
+        },
+        {
+          "from": [
+            400.0,
+            1000.0
+          ],
+          "to": [
+            1020.0,
+            1000.0
+          ],
+          "foot_minutes": 2.1,
+          "rover_minutes": 3.4
+        },
+        {
+          "from": [
+            -1400.0,
+            2020.0
+          ],
+          "to": [
+            -1400.0,
+            2640.0
+          ],
+          "foot_minutes": 2.1,
+          "rover_minutes": 3.4
+        },
+        {
+          "from": [
+            -1971.2,
+            899.3
+          ],
+          "to": [
+            -2581.8,
+            791.6
+          ],
+          "foot_minutes": 2.1,
+          "rover_minutes": 3.4
+        },
+        {
+          "from": [
+            1281.2,
+            -1249.8
+          ],
+          "to": [
+            1756.1,
+            -1648.3
+          ],
+          "foot_minutes": 2.1,
+          "rover_minutes": 3.4
+        },
+        {
+          "from": [
+            -2058.2,
+            1380.0
+          ],
+          "to": [
+            -2560.5,
+            1670.0
+          ],
+          "foot_minutes": 1.9,
+          "rover_minutes": 3.2
+        },
+        {
+          "from": [
+            -2330.0,
+            -610.8
+          ],
+          "to": [
+            -2620.0,
+            -1113.1
+          ],
+          "foot_minutes": 1.9,
+          "rover_minutes": 3.2
+        },
+        {
+          "from": [
+            2410.5,
+            -1200.0
+          ],
+          "to": [
+            2912.8,
+            -1490.0
+          ],
+          "foot_minutes": 1.9,
+          "rover_minutes": 3.2
+        },
+        {
+          "from": [
+            -2242.6,
+            1707.1
+          ],
+          "to": [
+            -2656.3,
+            2054.2
+          ],
+          "foot_minutes": 1.8,
+          "rover_minutes": 3.0
+        },
+        {
+          "from": [
+            -1706.4,
+            742.9
+          ],
+          "to": [
+            -2120.1,
+            395.8
+          ],
+          "foot_minutes": 1.8,
+          "rover_minutes": 3.0
+        },
+        {
+          "from": [
+            -661.2,
+            -1029.7
+          ],
+          "to": [
+            -476.5,
+            -1537.2
+          ],
+          "foot_minutes": 1.8,
+          "rover_minutes": 3.0
+        },
+        {
+          "from": [
+            2377.6,
+            -374.9
+          ],
+          "to": [
+            2885.0,
+            -559.6
+          ],
+          "foot_minutes": 1.8,
+          "rover_minutes": 3.0
+        },
+        {
+          "from": [
+            1455.9,
+            1503.6
+          ],
+          "to": [
+            1968.0,
+            1593.9
+          ],
+          "foot_minutes": 1.7,
+          "rover_minutes": 2.9
+        },
+        {
+          "from": [
+            -2241.4,
+            -1311.6
+          ],
+          "to": [
+            -2419.2,
+            -1800.3
+          ],
+          "foot_minutes": 1.7,
+          "rover_minutes": 2.9
+        },
+        {
+          "from": [
+            1042.2,
+            2410.0
+          ],
+          "to": [
+            1475.2,
+            2660.0
+          ],
+          "foot_minutes": 1.7,
+          "rover_minutes": 2.8
+        },
+        {
+          "from": [
+            -996.4,
+            2108.8
+          ],
+          "to": [
+            -825.4,
+            2578.7
+          ],
+          "foot_minutes": 1.7,
+          "rover_minutes": 2.8
+        },
+        {
+          "from": [
+            -31.7,
+            1790.0
+          ],
+          "to": [
+            384.0,
+            2030.0
+          ],
+          "foot_minutes": 1.6,
+          "rover_minutes": 2.7
+        },
+        {
+          "from": [
+            453.3,
+            2070.0
+          ],
+          "to": [
+            869.0,
+            2310.0
+          ],
+          "foot_minutes": 1.6,
+          "rover_minutes": 2.7
+        },
+        {
+          "from": [
+            -1195.1,
+            2162.1
+          ],
+          "to": [
+            -1111.7,
+            2634.8
+          ],
+          "foot_minutes": 1.6,
+          "rover_minutes": 2.7
+        },
+        {
+          "from": [
+            -1963.8,
+            794.8
+          ],
+          "to": [
+            -2396.1,
+            637.5
+          ],
+          "foot_minutes": 1.5,
+          "rover_minutes": 2.6
+        },
+        {
+          "from": [
+            -310.0,
+            -887.9
+          ],
+          "to": [
+            -80.0,
+            -1286.3
+          ],
+          "foot_minutes": 1.5,
+          "rover_minutes": 2.6
+        },
+        {
+          "from": [
+            2480.0,
+            1000.0
+          ],
+          "to": [
+            2920.0,
+            1000.0
+          ],
+          "foot_minutes": 1.5,
+          "rover_minutes": 2.4
+        },
+        {
+          "from": [
+            490.8,
+            666.6
+          ],
+          "to": [
+            924.1,
+            590.2
+          ],
+          "foot_minutes": 1.5,
+          "rover_minutes": 2.4
+        },
+        {
+          "from": [
+            -2389.9,
+            2179.7
+          ],
+          "to": [
+            -2659.9,
+            2501.4
+          ],
+          "foot_minutes": 1.4,
+          "rover_minutes": 2.3
+        },
+        {
+          "from": [
+            -2264.5,
+            1314.7
+          ],
+          "to": [
+            -2659.2,
+            1458.3
+          ],
+          "foot_minutes": 1.4,
+          "rover_minutes": 2.3
+        },
+        {
+          "from": [
+            -1400.0,
+            -1660.0
+          ],
+          "to": [
+            -1400.0,
+            -2080.0
+          ],
+          "foot_minutes": 1.4,
+          "rover_minutes": 2.3
+        },
+        {
+          "from": [
+            2499.8,
+            312.4
+          ],
+          "to": [
+            2913.5,
+            239.4
+          ],
+          "foot_minutes": 1.4,
+          "rover_minutes": 2.3
+        },
+        {
+          "from": [
+            1240.0,
+            1000.0
+          ],
+          "to": [
+            1640.0,
+            1000.0
+          ],
+          "foot_minutes": 1.3,
+          "rover_minutes": 2.2
+        },
+        {
+          "from": [
+            -1708.5,
+            632.3
+          ],
+          "to": [
+            -1965.7,
+            325.9
+          ],
+          "foot_minutes": 1.3,
+          "rover_minutes": 2.2
+        },
+        {
+          "from": [
+            -540.0,
+            -489.6
+          ],
+          "to": [
+            -340.0,
+            -836.0
+          ],
+          "foot_minutes": 1.3,
+          "rover_minutes": 2.2
+        },
+        {
+          "from": [
+            -654.4,
+            111.4
+          ],
+          "to": [
+            -397.3,
+            -195.0
+          ],
+          "foot_minutes": 1.3,
+          "rover_minutes": 2.2
+        },
+        {
+          "from": [
+            -2023.5,
+            640.0
+          ],
+          "to": [
+            -2352.6,
+            450.0
+          ],
+          "foot_minutes": 1.3,
+          "rover_minutes": 2.1
+        },
+        {
+          "from": [
+            -1400.0,
+            -1260.0
+          ],
+          "to": [
+            -1400.0,
+            -1640.0
+          ],
+          "foot_minutes": 1.3,
+          "rover_minutes": 2.1
+        },
+        {
+          "from": [
+            -204.4,
+            -424.8
+          ],
+          "to": [
+            39.8,
+            -715.9
+          ],
+          "foot_minutes": 1.3,
+          "rover_minutes": 2.1
         }
       ],
-      "gone_since_last_build": [
-        "yardangs.dead_end_17",
-        "yardangs.dead_end_18",
-        "yardangs.dead_end_19",
-        "yardangs.dead_end_20",
-        "yardangs.dead_end_21",
-        "yardangs.dead_end_22",
-        "yardangs.dead_end_23",
-        "yardangs.dead_end_24",
-        "yardangs.dead_end_25",
-        "yardangs.dead_end_26",
-        "yardangs.dead_end_27",
-        "yardangs.dead_end_28",
-        "yardangs.dead_end_29",
-        "yardangs.dead_end_30",
-        "yardangs.dead_end_31",
-        "yardangs.dead_end_32"
-      ],
-      "missing_in_data": []
+      "foot_minutes": 3.0,
+      "rover_minutes": 2.0,
+      "longest_foot": 5.7,
+      "longest_rover": 9.4,
+      "headings": 36
     },
     "list": [
       {
@@ -21325,12 +22057,12 @@
       {
         "name": "A choice every so often, ring 2",
         "status": "PASS",
-        "detail": "a choice every 158 m in a straight line (target 200 m or less)"
+        "detail": "a choice every 156 m in a straight line (target 200 m or less)"
       },
       {
         "name": "A choice every so often, ring 3",
         "status": "PASS",
-        "detail": "a choice every 146 m in a straight line (target 200 m or less)"
+        "detail": "a choice every 149 m in a straight line (target 200 m or less)"
       },
       {
         "name": "Passes on north scarp",
@@ -21373,8 +22105,22 @@
       },
       {
         "name": "Anchors",
+        "status": "PASS",
+        "detail": "164 anchors"
+      },
+      {
+        "name": "Surprises are one-offs",
+        "status": "PASS",
+        "detail": "3 surprises, each kind once"
+      },
+      {
+        "name": "Something new every few minutes",
         "status": "WARN",
-        "detail": "127 anchors; moved over 50 m: yardangs.dead_end_1 (181 m), yardangs.dead_end_2 (591 m), yardangs.dead_end_3 (545 m), yardangs.dead_end_4 (305 m), yardangs.dead_end_5 (329 m), yardangs.dead_end_6 (548 m), yardangs.dead_end_7 (687 m), yardangs.dead_end_8 (364 m); gone since the last build: yardangs.dead_end_17, yardangs.dead_end_18, yardangs.dead_end_19, yardangs.dead_end_20, yardangs.dead_end_21, yardangs.dead_end_22, yardangs.dead_end_23, yardangs.dead_end_24"
+        "detail": "56 dull stretches (over 3 min on foot or 2 min by rover with nothing new); longest 5.7 min on foot, 9.4 min by rover",
+        "at": [
+          -0.0,
+          -1424.9
+        ]
       }
     ]
   },
@@ -21455,7 +22201,7 @@
         -2120.0,
         -760.0
       ],
-      "height": 33.13,
+      "height": 24.12,
       "ring": 2,
       "landform": "glacier_mesa"
     },
@@ -21632,40 +22378,40 @@
     {
       "id": "ice_scarp_1.centre",
       "position": [
-        -1568.0,
-        -1285.5
+        -1451.3,
+        -1239.6
       ],
-      "height": -40.59,
+      "height": -30.19,
       "ring": 2,
       "landform": "ice_scarp_1"
     },
     {
       "id": "ice_scarp_1.start",
       "position": [
-        -1760.0,
-        -1240.0
+        -1640.0,
+        -1180.0
       ],
-      "height": -32.66,
+      "height": -32.5,
       "ring": 2,
       "landform": "ice_scarp_1"
     },
     {
       "id": "ice_scarp_1.end",
       "position": [
-        -1380.0,
-        -1330.0
+        -1260.0,
+        -1290.0
       ],
-      "height": -22.16,
+      "height": -32.82,
       "ring": 2,
       "landform": "ice_scarp_1"
     },
     {
       "id": "ice_scarp_2.centre",
       "position": [
-        -1873.1,
-        -654.3
+        -1872.2,
+        -656.7
       ],
-      "height": -7.92,
+      "height": -5.36,
       "ring": 2,
       "landform": "ice_scarp_2"
     },
@@ -21688,6 +22434,126 @@
       "height": -21.56,
       "ring": 2,
       "landform": "ice_scarp_2"
+    },
+    {
+      "id": "near_ice_1.centre",
+      "position": [
+        -1258.0,
+        2245.4
+      ],
+      "height": -7.41,
+      "ring": 2,
+      "landform": "near_ice_1"
+    },
+    {
+      "id": "near_ice_1.start",
+      "position": [
+        -1330.0,
+        2230.0
+      ],
+      "height": -12.32,
+      "ring": 2,
+      "landform": "near_ice_1"
+    },
+    {
+      "id": "near_ice_1.end",
+      "position": [
+        -1190.0,
+        2260.0
+      ],
+      "height": -5.54,
+      "ring": 2,
+      "landform": "near_ice_1"
+    },
+    {
+      "id": "near_ice_2.centre",
+      "position": [
+        -2588.0,
+        1235.4
+      ],
+      "height": -7.84,
+      "ring": 2,
+      "landform": "near_ice_2"
+    },
+    {
+      "id": "near_ice_2.start",
+      "position": [
+        -2660.0,
+        1220.0
+      ],
+      "height": 4.69,
+      "ring": 2,
+      "landform": "near_ice_2"
+    },
+    {
+      "id": "near_ice_2.end",
+      "position": [
+        -2520.0,
+        1250.0
+      ],
+      "height": -13.91,
+      "ring": 2,
+      "landform": "near_ice_2"
+    },
+    {
+      "id": "near_ice_3.centre",
+      "position": [
+        -1258.0,
+        -485.4
+      ],
+      "height": -17.05,
+      "ring": 2,
+      "landform": "near_ice_3"
+    },
+    {
+      "id": "near_ice_3.start",
+      "position": [
+        -1330.0,
+        -470.0
+      ],
+      "height": -15.91,
+      "ring": 2,
+      "landform": "near_ice_3"
+    },
+    {
+      "id": "near_ice_3.end",
+      "position": [
+        -1190.0,
+        -500.0
+      ],
+      "height": -18.36,
+      "ring": 2,
+      "landform": "near_ice_3"
+    },
+    {
+      "id": "near_ice_4.centre",
+      "position": [
+        -85.0,
+        695.0
+      ],
+      "height": 7.73,
+      "ring": 2,
+      "landform": "near_ice_4"
+    },
+    {
+      "id": "near_ice_4.start",
+      "position": [
+        -150.0,
+        700.0
+      ],
+      "height": 4.3,
+      "ring": 2,
+      "landform": "near_ice_4"
+    },
+    {
+      "id": "near_ice_4.end",
+      "position": [
+        -20.0,
+        690.0
+      ],
+      "height": 4.79,
+      "ring": 2,
+      "landform": "near_ice_4"
     },
     {
       "id": "boulder_field_1.centre",
@@ -21825,7 +22691,7 @@
         -40.6,
         1578.3
       ],
-      "height": 48.49,
+      "height": 49.82,
       "ring": 2,
       "landform": "raised_riverbeds"
     },
@@ -21970,6 +22836,136 @@
       "landform": "sliver"
     },
     {
+      "id": "sinter_mound.centre",
+      "position": [
+        2020.0,
+        560.0
+      ],
+      "height": 21.59,
+      "ring": 3,
+      "landform": "sinter_mound"
+    },
+    {
+      "id": "lone_pinnacle.centre",
+      "position": [
+        -2450.0,
+        380.0
+      ],
+      "height": 4.85,
+      "ring": 2,
+      "landform": "lone_pinnacle"
+    },
+    {
+      "id": "perched_boulder.centre",
+      "position": [
+        420.0,
+        2380.0
+      ],
+      "height": 125.67,
+      "ring": 2,
+      "landform": "perched_boulder"
+    },
+    {
+      "id": "waymark_6.centre",
+      "position": [
+        -2450.0,
+        -1885.0
+      ],
+      "height": -25.55,
+      "ring": 3,
+      "landform": "waymark_6"
+    },
+    {
+      "id": "waymark_7.centre",
+      "position": [
+        -785.0,
+        -2486.0
+      ],
+      "height": -167.36,
+      "ring": 3,
+      "landform": "waymark_7"
+    },
+    {
+      "id": "waymark_8.centre",
+      "position": [
+        -1400.0,
+        -2510.0
+      ],
+      "height": -188.93,
+      "ring": 3,
+      "landform": "waymark_8"
+    },
+    {
+      "id": "waymark_9.centre",
+      "position": [
+        1495.0,
+        1510.0
+      ],
+      "height": 6.43,
+      "ring": 3,
+      "landform": "waymark_9"
+    },
+    {
+      "id": "waymark_10.centre",
+      "position": [
+        -2276.0,
+        845.0
+      ],
+      "height": -30.1,
+      "ring": 1,
+      "landform": "waymark_10"
+    },
+    {
+      "id": "waymark_11.centre",
+      "position": [
+        2631.0,
+        -467.0
+      ],
+      "height": 49.72,
+      "ring": 0,
+      "landform": "waymark_11"
+    },
+    {
+      "id": "waymark_12.centre",
+      "position": [
+        235.0,
+        712.0
+      ],
+      "height": -12.34,
+      "ring": 2,
+      "landform": "waymark_12"
+    },
+    {
+      "id": "waymark_13.centre",
+      "position": [
+        176.0,
+        1910.0
+      ],
+      "height": 53.94,
+      "ring": 2,
+      "landform": "waymark_13"
+    },
+    {
+      "id": "waymark_14.centre",
+      "position": [
+        2700.0,
+        1000.0
+      ],
+      "height": 23.46,
+      "ring": 0,
+      "landform": "waymark_14"
+    },
+    {
+      "id": "waymark_15.centre",
+      "position": [
+        1842.0,
+        2180.0
+      ],
+      "height": 5.53,
+      "ring": 3,
+      "landform": "waymark_15"
+    },
+    {
       "id": "heart.centre",
       "position": [
         2895.0,
@@ -22085,7 +23081,7 @@
         -2120.0,
         -760.0
       ],
-      "height": 33.13,
+      "height": 24.12,
       "ring": 2,
       "landform": "glacier_mesa"
     },
@@ -22190,23 +23186,143 @@
       "landform": "channel"
     },
     {
+      "id": "ice_scarp_1.chip",
+      "position": [
+        -1457.7,
+        -1259.8
+      ],
+      "height": -52.06,
+      "ring": 2,
+      "landform": "ice_scarp_1"
+    },
+    {
+      "id": "ice_scarp_1.face",
+      "position": [
+        -1454.1,
+        -1248.3
+      ],
+      "height": -42.44,
+      "ring": 2,
+      "landform": "ice_scarp_1"
+    },
+    {
+      "id": "ice_scarp_2.chip",
+      "position": [
+        -1867.5,
+        -673.2
+      ],
+      "height": -25.71,
+      "ring": 2,
+      "landform": "ice_scarp_2"
+    },
+    {
+      "id": "ice_scarp_2.face",
+      "position": [
+        -1871.3,
+        -664.0
+      ],
+      "height": -15.08,
+      "ring": 2,
+      "landform": "ice_scarp_2"
+    },
+    {
+      "id": "near_ice_1.chip",
+      "position": [
+        -1258.1,
+        2235.9
+      ],
+      "height": -17.24,
+      "ring": 2,
+      "landform": "near_ice_1"
+    },
+    {
+      "id": "near_ice_1.face",
+      "position": [
+        -1259.3,
+        2241.9
+      ],
+      "height": -10.96,
+      "ring": 2,
+      "landform": "near_ice_1"
+    },
+    {
+      "id": "near_ice_2.chip",
+      "position": [
+        -2588.1,
+        1225.9
+      ],
+      "height": -14.67,
+      "ring": 2,
+      "landform": "near_ice_2"
+    },
+    {
+      "id": "near_ice_2.face",
+      "position": [
+        -2589.3,
+        1231.9
+      ],
+      "height": -11.72,
+      "ring": 2,
+      "landform": "near_ice_2"
+    },
+    {
+      "id": "near_ice_3.chip",
+      "position": [
+        -1261.9,
+        -494.1
+      ],
+      "height": -23.76,
+      "ring": 2,
+      "landform": "near_ice_3"
+    },
+    {
+      "id": "near_ice_3.face",
+      "position": [
+        -1260.7,
+        -488.1
+      ],
+      "height": -19.77,
+      "ring": 2,
+      "landform": "near_ice_3"
+    },
+    {
+      "id": "near_ice_4.chip",
+      "position": [
+        -85.7,
+        685.7
+      ],
+      "height": -2.56,
+      "ring": 2,
+      "landform": "near_ice_4"
+    },
+    {
+      "id": "near_ice_4.face",
+      "position": [
+        -85.2,
+        691.9
+      ],
+      "height": 3.37,
+      "ring": 2,
+      "landform": "near_ice_4"
+    },
+    {
       "id": "glacier.alcove",
       "position": [
-        -2060.0,
-        -810.0
+        -2084.8,
+        -760.9
       ],
-      "height": 51.02,
+      "height": 26.21,
       "ring": 2,
       "landform": "glacier"
     },
     {
       "id": "glacier.toe",
       "position": [
-        -1820.0,
-        -1130.0
+        -1608.8,
+        -1702.4
       ],
-      "height": -46.93,
-      "ring": 2,
+      "height": -7.97,
+      "ring": 3,
       "landform": "glacier"
     },
     {
@@ -22305,7 +23421,7 @@
         1754.2,
         2009.1
       ],
-      "height": 17.2,
+      "height": 17.23,
       "ring": 3,
       "landform": "lava_tube"
     },
@@ -22482,10 +23598,10 @@
     {
       "id": "ice_cave.mouth",
       "position": [
-        -1567.8,
-        -1282.5
+        -1529.6,
+        -1224.5
       ],
-      "height": -34.25,
+      "height": -51.83,
       "ring": 2,
       "landform": "ice_cave"
     },
@@ -23186,6 +24302,68 @@
         194.4,
         1698.0
       ]
+    ],
+    [
+      [
+        -357.2,
+        1739.4
+      ],
+      [
+        -311.7,
+        1724.2
+      ],
+      [
+        -264.7,
+        1714.5
+      ],
+      [
+        -217.6,
+        1705.5
+      ],
+      [
+        -171.9,
+        1690.7
+      ],
+      [
+        -127.3,
+        1673.2
+      ],
+      [
+        -82.6,
+        1655.5
+      ],
+      [
+        -40.7,
+        1632.3
+      ],
+      [
+        -0.3,
+        1606.4
+      ],
+      [
+        40.1,
+        1580.4
+      ],
+      [
+        83.5,
+        1560.2
+      ],
+      [
+        128.6,
+        1543.7
+      ],
+      [
+        172.6,
+        1524.5
+      ],
+      [
+        213.0,
+        1498.8
+      ],
+      [
+        249.3,
+        1467.4
+      ]
     ]
   ],
   "glacier": {
@@ -23194,137 +24372,137 @@
       -810.0
     ],
     "flow": [
-      0.6,
-      -0.8
+      0.45,
+      -0.89
     ],
-    "length": 400.0,
+    "length": 1000.0,
     "pits": [
       {
         "position": [
-          -1897.5,
-          -1060.2
+          -1743.3,
+          -1483.9
         ],
         "radius": 5.6,
         "roofed": false
       },
       {
         "position": [
-          -2003.9,
-          -926.6
+          -1940.7,
+          -1105.3
         ],
         "radius": 10.3,
         "roofed": false
       },
       {
         "position": [
-          -1851.5,
-          -1056.2
+          -1678.5,
+          -1519.4
         ],
         "radius": 11.0,
         "roofed": false
       },
       {
         "position": [
-          -2044.6,
-          -905.9
+          -2006.1,
+          -1023.6
         ],
         "radius": 10.5,
         "roofed": true
       },
       {
         "position": [
-          -1946.9,
-          -906.2
+          -1865.5,
+          -1117.4
         ],
         "radius": 6.9,
         "roofed": false
       },
       {
         "position": [
-          -1941.2,
-          -1053.3
+          -1808.6,
+          -1427.7
         ],
         "radius": 9.2,
         "roofed": false
       },
       {
         "position": [
-          -1836.7,
-          -1027.7
+          -1740.7,
+          -1508.4
         ],
-        "radius": 10.1,
+        "radius": 6.4,
         "roofed": false
       },
       {
         "position": [
-          -1969.2,
-          -986.6
+          -1756.7,
+          -1450.2
         ],
-        "radius": 16.2,
+        "radius": 11.4,
         "roofed": true
       },
       {
         "position": [
-          -2004.2,
-          -878.0
+          -1850.6,
+          -1149.4
         ],
-        "radius": 17.8,
+        "radius": 9.1,
         "roofed": false
       },
       {
         "position": [
-          -1904.0,
-          -1115.2
+          -1867.0,
+          -1084.2
         ],
-        "radius": 13.2,
+        "radius": 6.3,
         "roofed": false
       },
       {
         "position": [
-          -1932.0,
-          -966.3
+          -1929.2,
+          -1031.0
         ],
-        "radius": 9.7,
+        "radius": 16.0,
         "roofed": false
       },
       {
         "position": [
-          -1884.4,
-          -1008.7
+          -1833.6,
+          -1304.0
         ],
-        "radius": 17.8,
+        "radius": 15.7,
         "roofed": true
       },
       {
         "position": [
-          -1957.9,
-          -863.5
+          -1906.1,
+          -1129.4
+        ],
+        "radius": 15.4,
+        "roofed": false
+      },
+      {
+        "position": [
+          -1740.5,
+          -1372.5
+        ],
+        "radius": 6.0,
+        "roofed": false
+      },
+      {
+        "position": [
+          -1978.9,
+          -1096.6
+        ],
+        "radius": 8.9,
+        "roofed": false
+      },
+      {
+        "position": [
+          -1895.5,
+          -1018.3
         ],
         "radius": 5.7,
-        "roofed": false
-      },
-      {
-        "position": [
-          -1971.1,
-          -947.6
-        ],
-        "radius": 10.3,
-        "roofed": false
-      },
-      {
-        "position": [
-          -1919.3,
-          -1079.6
-        ],
-        "radius": 11.9,
-        "roofed": false
-      },
-      {
-        "position": [
-          -1983.5,
-          -829.9
-        ],
-        "radius": 12.3,
         "roofed": true
       }
     ]

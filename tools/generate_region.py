@@ -202,7 +202,36 @@ STEP_LINES = [{"id": e["id"], "kind": e["style"], "points": [_xz(p) for p in e["
                "sheer": e.get("sheer", 6.0), "pass_run": e.get("pass_run", 95.0)} for e in landforms("step_line")]
 MINOR_CRACKS = int(_R["minor_cracks"])
 HEART = _xz(landform("heart")["centre"])   # where the tube's lower level meets the old magnetised body, about 150 m down (the last point of DEEP's course)
-ICE_SCARPS = [(_xz(e["points"][0]), _xz(e["points"][-1]), e["drop"]) for e in landforms("ice_scarp")]
+ICE_FACE_DEG = 55.0   # an ice scarp's face (T4, §14): about as steep as the real ones in Promethei Terra
+
+
+def _ice_scarp_geom(e):
+    """An ice scarp's line, run so the high ground is on its left (the face looks the way `faces` points:
+    the pole, north, by default), and its face's horizontal run."""
+    pts = np.array([_xz(q) for q in e["points"]], dtype=float)
+    f = np.array(e.get("faces", [0.0, -1.0]), dtype=float); f /= np.linalg.norm(f)
+    want = np.array([-f[1], f[0]])   # travel with -f on the left
+    if float(np.dot(pts[-1] - pts[0], want)) < 0.0:
+        pts = pts[::-1]
+    height = float(e.get("height", e.get("drop", 10.0)))
+    return {"id": e["id"], "points": pts, "faces": f, "height": height,
+            "run": height / math.tan(math.radians(e.get("face_deg", ICE_FACE_DEG))),
+            "floor": float(e.get("floor", 40.0)), "back": float(e.get("back", height * 9.0)), "entry": e}
+
+
+ICE_SCARPS = [_ice_scarp_geom(e) for e in landforms("ice_scarp")]
+
+
+def ice_scarp_point(geom, t, out):
+    """A point on an ice scarp: `t` (0..1) along its line, `out` metres out from the top of its face
+    (towards where the face looks: -run is the foot)."""
+    pts = geom["points"]
+    seg = np.hypot(*np.diff(pts, axis=0).T); cum = np.concatenate([[0.0], np.cumsum(seg)])
+    at = t * cum[-1]; k = int(np.clip(np.searchsorted(cum, at) - 1, 0, len(seg) - 1))
+    q = pts[k] + (pts[k + 1] - pts[k]) * ((at - cum[k]) / max(seg[k], 1e-6))
+    d = (pts[k + 1] - pts[k]) / max(seg[k], 1e-6)
+    left = np.array([-d[1], d[0]])   # the high side
+    return q - left * out, -left
 
 
 def write_file(path, writer):
@@ -892,16 +921,57 @@ def add_ice_ground(h, x, z, masks, medium, small, edge_warp):
         bowl = np.clip(1.0 - rr, 0.0, 1.0)
         h[w] -= depth * np.where(z[w] > sz, smoothstep(0.0, 0.35, bowl), smoothstep(0.0, 1.0, bowl))
         scallops += 1
-    # Ice scarps: the ground drops to the north; their pole-facing faces show clean ice.
+    add_ice_scarps(h, x, z, masks, medium)
+
+
+def add_ice_scarps(h, x, z, masks, medium):
+    """Ice scarps (T4, §14): the pole-facing wall of a pit where buried ice has sublimated away, about 55
+    degrees, showing clean banded ice under a dust cap, with a rubble foot; the pit floor beyond it rises
+    gently back to the plain (the side facing the sun). The bands come from a real scarp in Promethei
+    Terra. Small ones round home are where the ice wall thread sends you (anchors near_ice_N.chip)."""
     masks["ice_scarp"] = np.zeros_like(h)
-    for a, b, drop in ICE_SCARPS:
-        line = np.array([a, b], dtype=float)
-        d, t, side = polyline_field(line, 260.0, step=1)
-        s = d * side * (1.0 if b[0] > a[0] else -1.0)   # > 0 south of the scarp
-        ends = smoothstep(0.0, 0.18, t) * smoothstep(1.0, 0.82, t)
-        lowered = drop * (1.0 - smoothstep(-5.0, 5.0, s)) * smoothstep(-230.0, -70.0, s) * ends
-        h -= lowered
-        masks["ice_scarp"] = np.maximum(masks["ice_scarp"], (np.abs(s) < 7.0) * ends)
+    masks["ice_rubble"] = np.zeros_like(h)
+    real = real_patch("ice_scarp_promethei")
+    rough = np.abs(np.roll(masks["noise"], (300, 1200), (0, 1)))
+    for g in ICE_SCARPS:
+        e = g["entry"]; H = g["height"]; run = g["run"]
+        line = smooth_line(g["points"], 10.0) if len(g["points"]) > 2 else g["points"]
+        length = float(np.sum(np.hypot(*np.diff(line, axis=0).T)))
+        reach = run + g["floor"] + g["back"] + 40.0
+        d, t, side = polyline_field(line, reach, step=1)
+        near = d < reach
+        if not near.any():
+            continue
+        sv = (d * side)[near]   # > 0 on the high side (the line runs with it on the left)
+        tv = t[near]
+        wob = 0.12 * run * medium[near]   # the face isn't ruled straight
+        sv = sv + wob
+        ramp = float(np.clip(length * 0.3, 40.0, 150.0)) / length   # the face dies away over this share at each end
+        ends = smoothstep(0.0, ramp, tv) * smoothstep(1.0, 1.0 - ramp, tv)
+        lin = np.clip((sv + run) / run, 0.0, 1.0)
+        f = 0.5 * lin + 0.5 * smoothstep(0.0, 1.0, lin)   # face: 0 at the foot, 1 at the lip
+        bands = int(max(2, H / 3.0))   # hard dusty bands between the clean ice stand out a little
+        fb = f * bands
+        f = 0.75 * f + 0.25 * (np.floor(fb) + smoothstep(0.3, 1.0, fb - np.floor(fb))) / bands
+        # The pit closes towards the ends in a rounded scallop: less floor, less back slope.
+        reach_in = run + (g["floor"] + g["back"]) * (0.25 + 0.75 * np.sqrt(ends))
+        pit = smoothstep(-reach_in, -(run + g["floor"] * (0.25 + 0.75 * np.sqrt(ends))), sv)
+        lowered = H * (1.0 - f) * pit * ends
+        if real is not None:   # the real scarp's layering, scaled to this face
+            along_m = tv * length
+            detail = sample_patch(real, along_m, (lin - 0.5) * 300.0)
+            lowered -= e.get("real_detail", 0.04) * (detail - float(np.median(real))) * (lin > 0.0) * (lin < 1.0) * ends
+        # The dust cap: the lip rounds over.
+        lip = smoothstep(0.0, 6.0, sv) * (1.0 - smoothstep(6.0, 14.0, sv))
+        lowered += 0.6 * lip * ends
+        # Rubble at the foot: blocks of ice and dust fallen off the face.
+        foot = np.clip(1.0 - np.abs(sv + run + 6.0) / 12.0, 0.0, 1.0) * ends
+        rubble = foot * (0.8 + 2.2 * rough[near]) * np.clip(H / 20.0, 0.4, 1.4)
+        h[near] -= lowered
+        h[near] += rubble
+        face = ((lin > 0.02) & (lin < 0.98)).astype(np.float32) * (ends > 0.3)
+        masks["ice_scarp"][near] = np.maximum(masks["ice_scarp"][near], face)
+        masks["ice_rubble"][near] = np.maximum(masks["ice_rubble"][near], foot)
 
 
 
@@ -1247,17 +1317,52 @@ def add_ripple_belts(h, x, z, masks, medium):
     masks["ripples"] = belt
 
 
-def raised_channel(h, line, top, half_width, masks, side_run=9.0):
+_PATCHES = {}
+
+
+def real_patch(name):
+    """A patch of real Mars relief (assets/terrain/patches/<name>.npz, see CREDITS.md), or None if it's missing."""
+    if name not in _PATCHES:
+        path = os.path.join(ROOT, "assets", "terrain", "patches", name + ".npz")
+        _PATCHES[name] = np.load(path)["relief"].astype(np.float32) if os.path.exists(path) else None
+    return _PATCHES[name]
+
+
+def sample_patch(relief, u, v, spacing=2.0):
+    """Sample a patch (rows across its axis, columns along it) at `u` metres along and `v` across, mirrored
+    at its edges so it never runs out; bilinear."""
+    rows, cols = relief.shape
+
+    def mirror(tt, n):
+        tt = np.mod(tt, 2.0 * (n - 1.001))
+        return np.where(tt > n - 1.001, 2.0 * (n - 1.001) - tt, tt)
+    uu = mirror(u / spacing + cols / 2.0, cols); vv = mirror(v / spacing + rows / 2.0, rows)
+    i0 = np.floor(uu).astype(int); j0 = np.floor(vv).astype(int); fu = uu - i0; fv = vv - j0
+    return (relief[j0, i0] * (1 - fu) * (1 - fv) + relief[j0, i0 + 1] * fu * (1 - fv) + relief[j0 + 1, i0] * (1 - fu) * fv + relief[j0 + 1, i0 + 1] * fu * fv)
+
+
+def raised_channel(h, line, top, half_width, masks, side_run=9.0, beds=3, real=None, real_amount=0.0):
     """Lay a raised riverbed along `line`: a flat-topped ridge of cemented
-    gravel standing `top` (per point) over the land beside it."""
+    gravel standing `top` (per point) over the land beside it. Its sides
+    stand in `beds` layers (hard beds over soft), and a patch of real
+    inverted channel (`real`) roughens its top and sides."""
     params = np.arange(len(line), dtype=float)
     reach = float(np.max(half_width)) + side_run + 30.0
-    d, t, _ = polyline_field(line, reach, params, step=1)
+    d, t, sd = polyline_field(line, reach, params, step=1)
     near = d < reach
     top_at = np.interp(t[near], params, top)
     width_at = np.interp(t[near], params, half_width)
     s = np.maximum(0.0, d[near] - width_at)
-    lift = top_at * (1.0 - smoothstep(0.0, side_run, s))
+    frac = 1.0 - smoothstep(0.0, side_run, s)
+    if beds > 1:   # layered sides: each bed a short steep riser over a narrow bench
+        f = frac * beds
+        frac = (np.floor(f) + smoothstep(0.45, 1.0, f - np.floor(f))) / beds
+    lift = top_at * frac
+    if real is not None and real_amount > 0.0:
+        seg = np.hypot(*np.diff(line, axis=0).T); cum = np.concatenate([[0.0], np.cumsum(seg)])
+        along_m = np.interp(t[near], params, cum)
+        detail = sample_patch(real, along_m, d[near] * sd[near])
+        lift += real_amount * (detail - 0.5 * float(np.median(real))) * smoothstep(0.0, 0.3, frac) * np.clip(top_at / 6.0, 0.0, 1.0)
     h[near] += lift
     masks["inverted"][near] = np.maximum(masks["inverted"][near], (s < 1.0).astype(np.float32))
     masks["inverted_side"][near] = np.maximum(masks["inverted_side"][near], ((s >= 1.0) & (s < side_run)).astype(np.float32))
@@ -1279,7 +1384,10 @@ def add_inverted_channels(h, x, z, masks, medium):
     main = smooth_line(c["points"], 16.0, 30.0, rng)
     n = len(main)
     ends = np.clip(np.minimum(np.arange(n), n - 1 - np.arange(n)) / 6.0, 0.0, 1.0)
-    raised_channel(h, main, (6.0 + 6.0 * np.linspace(0.0, 1.0, n)) * ends, 16.0 + 14.0 * np.linspace(0.0, 1.0, n), masks)
+    e = landform("raised_riverbeds")
+    real = real_patch("inverted_juventae"); amount = e.get("real_detail", 0.35); beds = int(e.get("beds", 3))
+    raised_channel(h, main, (6.0 + 6.0 * np.linspace(0.0, 1.0, n)) * ends, 16.0 + 14.0 * np.linspace(0.0, 1.0, n), masks,
+                   side_run=e.get("side_run", 9.0), beds=beds, real=real, real_amount=amount)
     lines.append(main)
     for at, turn in c["tributaries"]:
         k = int(at * (n - 1))
@@ -1288,8 +1396,23 @@ def add_inverted_channels(h, x, z, masks, medium):
         branch = wander(main[k], heading, rng.uniform(320.0, 520.0), rng, step=16.0, turn=0.08)
         m = len(branch)
         fade = np.clip((m - 1 - np.arange(m)) / 6.0, 0.0, 1.0)
-        raised_channel(h, branch, (4.0 + 4.0 * np.linspace(1.0, 0.0, m)) * fade, 8.0 + 8.0 * np.linspace(1.0, 0.0, m), masks)
+        raised_channel(h, branch, (4.0 + 4.0 * np.linspace(1.0, 0.0, m)) * fade, 8.0 + 8.0 * np.linspace(1.0, 0.0, m), masks,
+                       beds=max(beds - 1, 1), real=real, real_amount=amount * 0.7)
         lines.append(branch)
+    # An older, lower channel crossing the main one: two rivers of different ages, one laid over the other.
+    cr = e.get("crossing")
+    if cr:
+        k = int(cr["at"] * (n - 1))
+        fwd = main[min(k + 2, n - 1)] - main[max(k - 2, 0)]
+        heading = math.atan2(fwd[1], fwd[0]) + cr.get("turn", 1.3)
+        half_len = cr.get("length", 700.0) * 0.5
+        start = main[k] - np.array([math.cos(heading), math.sin(heading)]) * half_len
+        crossing = wander(start, heading, half_len * 2.0, rng, step=16.0, turn=0.05)
+        m = len(crossing)
+        fade = np.clip(np.minimum(np.arange(m), m - 1 - np.arange(m)) / 8.0, 0.0, 1.0)
+        raised_channel(h, crossing, cr.get("height", 4.0) * fade, np.full(m, cr.get("half_width", 9.0)), masks,
+                       beds=2, real=real, real_amount=amount * 0.6)
+        lines.append(crossing)
     masks["inverted_lines"] = [[[round(float(q[0]), 1), round(float(q[1]), 1)] for q in line[::3]] for line in lines]
 
 
@@ -1308,11 +1431,37 @@ def add_buried_glacier(h, x, z, masks, medium):
     spread = 0.55 + 0.45 * smoothstep(0.0, 0.6, u)   # it fans out as it flows
     r = np.sqrt(np.clip(u, 0.0, None) ** 2 + (v / spread) ** 2) + 0.1 * medium[win] + 0.05 * np.sin(np.arctan2(v, u) * 7.0)
     lobe = np.clip(1.0 - r ** 4, 0.0, 1.0) ** 0.5 * (u > -0.1) * smoothstep(-0.1, 0.05, u)
-    lines = 0.7 * np.sin(v * 26.0 + 2.0 * medium[win]) * lobe
+    e = landform("glacier")
+    # The alcove: the ice came out of a bowl cut back into its mesa, its floor near the ice's top.
+    alcove_r = e.get("alcove", 0.0)
+    if alcove_r > 0.0:
+        aw = window(origin[0] - axis[0] * alcove_r * 0.4, origin[1] - axis[1] * alcove_r * 0.4, alcove_r * 2.6)
+        au = (x[aw] - origin[0]) * axis[0] + (z[aw] - origin[1]) * axis[1]
+        av = -(x[aw] - origin[0]) * axis[1] + (z[aw] - origin[1]) * axis[0]
+        bowl = 1.0 - smoothstep(0.75, 1.05, np.hypot(np.minimum(au, 0.0) / (alcove_r * 1.1), av / alcove_r) + 0.08 * medium[aw])
+        bowl *= smoothstep(-alcove_r * 1.4, -alcove_r * 1.1, au)   # closed at the back
+        floor_level = float(np.median(h[aw][bowl < 0.05])) + c["thickness"] * 0.9   # the plain beside it, plus the ice
+        back_rise = 6.0 * smoothstep(0.0, 1.0, np.clip(-au / alcove_r, 0.0, 1.0))
+        h[aw] = h[aw] * (1.0 - bowl) + np.minimum(h[aw], floor_level + back_rise) * bowl
+        masks["glacier_alcove"] = [float(origin[0] - axis[0] * alcove_r * 0.5), float(origin[1] - axis[1] * alcove_r * 0.5)]
+    real = real_patch("glacier_protonilus")
+    if real is not None:   # flow lines and bowed ridges from a real glacier, scaled to this one
+        k_u = 1400.0 / c["length"]; k_v = 520.0 / c["width"]   # the patch is ~1400 m long, ~520 m across
+        lines = e.get("real_detail", 0.5) * sample_patch(real, (u - 0.5) * c["length"] * k_u, v * c["width"] * 0.5 * k_v) * lobe
+    else:
+        lines = 0.7 * np.sin(v * 26.0 + 2.0 * medium[win]) * lobe
     arcs = 0.9 * np.sin(r * 40.0) * smoothstep(0.55, 0.9, r) * lobe   # ridges bowed round the front
-    h[win] += c["thickness"] * lobe + lines + arcs
+    # Moraines: broken ridges of rubble the ice pushed out, in arcs past its toe.
+    moraine = np.zeros_like(r)
+    for kk in range(int(e.get("moraines", 3))):
+        rr = 1.04 + 0.07 * kk
+        moraine = np.maximum(moraine, (e.get("moraine_height", 3.5) - 0.8 * kk) * np.exp(-((r - rr) / 0.018) ** 2)
+                             * smoothstep(-0.2, 0.3, np.sin(np.arctan2(v, u) * (9.0 + kk) + kk * 1.7 + 2.5 * medium[win])) * (u > 0.3))
+    h[win] += c["thickness"] * lobe + lines + arcs + moraine
     body = np.zeros_like(h); body[win] = (lobe > 0.25)
     masks["glacier"] = body
+    mor = np.zeros_like(h); mor[win] = moraine / max(e.get("moraine_height", 3.5), 0.1)
+    masks["moraine"] = mor
     hidden = masks.setdefault("sinkholes", np.zeros_like(h))
     pits = []
     for _ in range(600):
@@ -1366,6 +1515,9 @@ def add_home_ground(h, x, z, masks, medium):
     d = np.hypot(x[w] - fx, z[w] - fz) / fr + 0.12 * medium[w]
     bowl = 1.0 - smoothstep(0.25, 1.25, d)
     h[w] -= fd * bowl
+    # Small polygons cracked into the frozen ground of the hollow (T4, §14), fading out up its sides.
+    _, edge, _, _ = voronoi_edges((x[w] + 3.0 * medium[w]) / 9.0, (z[w] - 3.0 * medium[w]) / 9.0, 47.0)
+    h[w] -= 0.45 * (1.0 - smoothstep(0.0, 1.6, edge * 9.0)) * smoothstep(0.35, 0.75, bowl)
     hollow = np.zeros_like(h); hollow[w] = (bowl > 0.45)
     masks["frost_hollow"] = hollow
     for k, e in enumerate(landforms("channel")):
@@ -1798,6 +1950,7 @@ def build_heights():
     for e in landforms("impact"):
         add_crater(h, x, z, e["centre"][0], e["centre"][1], e["radius"], e.get("age", 0.3), np.random.default_rng(seed_of(e)))
         masks["craters"].append((e["centre"][0], e["centre"][1], e["radius"], e.get("age", 0.3)))
+    add_oddities(h, x, z, masks, medium)
     add_platy_belt(h, x, z, masks, medium); lap("add_platy_belt")
 
     # Landing zones: a level pad that blends into the land around it.
@@ -1898,6 +2051,11 @@ for _mz in _caves["maze"]:
     MAZE.append(_e)
 # Natural caves, found on foot: where you walk up from, the way in, and size.
 NATURAL_CAVES = [dict(c, approach=_xz(c["approach"]), heading=_xz(c["heading"])) for c in _caves["natural"]]
+for _c in NATURAL_CAVES:   # a cave in an ice scarp: walk up to its foot, then straight in under the face
+    if _c.get("scarp"):
+        _g = next(g for g in ICE_SCARPS if g["id"] == _c["scarp"])
+        _p, _out = ice_scarp_point(_g, float(_c.get("at", 0.5)), _g["run"] + 10.0)
+        _c["approach"] = (float(_p[0]), float(_p[1])); _c["heading"] = (float(-_out[0]), float(-_out[1]))
 CAVE_COVER = _caves["cover"]   # ground kept at least this far over a cave's roof
 CAVE_STEP = _caves["step"]     # centreline points
 
@@ -2216,25 +2374,36 @@ def check_routes(h, masks, fix=True):
                     there = flood(ok | goal, goal)
                     ai = np.argwhere(reach); bi = np.argwhere(there)
                     if len(ai) and len(bi):
-                        bi = bi[:: max(1, len(bi) // 4000)]
-                        best = None
-                        for chunk in range(0, len(ai), 4000):
-                            part = ai[chunk:chunk + 4000]
-                            dd = ((part[:, None, :] - bi[None, :, :]) ** 2).sum(axis=2)
-                            k = np.unravel_index(np.argmin(dd), dd.shape)
-                            if best is None or dd[k] < best[0]:
-                                best = (dd[k], part[k[0]], bi[k[1]])
-                        pa = (best[1][1] * SPACING * step - HALF, best[1][0] * SPACING * step - HALF)
-                        pb = (best[2][1] * SPACING * step - HALF, best[2][0] * SPACING * step - HALF)
-                        rise = abs(sample(h, pb[0], pb[1]) - sample(h, pa[0], pa[1])) / max(math.hypot(pb[0] - pa[0], pb[1] - pa[1]), 1.0)
-                        if rise > 0.3:
-                            print(f"  route {zone_name} -> {name}: no graded track can bridge the gap at ({pa[0]:.0f}, {pa[1]:.0f})")
-                            pa = None
-                    if pa is not None and "no_grade" in masks:
-                        seg = np.linspace(0.0, 1.0, 40)
-                        if any(masks["no_grade"][int((pa[1] + (pb[1] - pa[1]) * u + HALF) / SPACING), int((pa[0] + (pb[0] - pa[0]) * u + HALF) / SPACING)] > 0.5 for u in seg):
-                            print(f"  route {zone_name} -> {name}: the gap at ({pa[0]:.0f}, {pa[1]:.0f}) is an obstacle meant as a detour; not graded")
-                            pa = None
+                        # The nearest few hundred gaps, nearest first: the first that's gentle enough
+                        # and doesn't cross an obstacle meant as a detour is graded.
+                        bi = bi[:: max(1, len(bi) // 3000)]
+                        ai = ai[:: max(1, len(ai) // 3000)]
+                        cands = []
+                        for chunk in range(0, len(ai), 1000):
+                            part = ai[chunk:chunk + 1000]
+                            dd = ((part[:, None, :] - bi[None, :, :]) ** 2).sum(axis=2).astype(np.float32)
+                            flat = np.argpartition(dd.ravel(), min(300, dd.size - 1))[:300]
+                            for f in flat:
+                                ka, kb = np.unravel_index(f, dd.shape)
+                                cands.append((float(dd[ka, kb]), part[ka], bi[kb]))
+                        cands.sort(key=lambda c_: c_[0])
+                        why = None
+                        for _, ca, cb in cands[:300]:
+                            qa = (ca[1] * SPACING * step - HALF, ca[0] * SPACING * step - HALF)
+                            qb = (cb[1] * SPACING * step - HALF, cb[0] * SPACING * step - HALF)
+                            rise = abs(sample(h, qb[0], qb[1]) - sample(h, qa[0], qa[1])) / max(math.hypot(qb[0] - qa[0], qb[1] - qa[1]), 1.0)
+                            if rise > 0.3:
+                                why = why or f"no graded track can bridge the gap at ({qa[0]:.0f}, {qa[1]:.0f})"
+                                continue
+                            if "no_grade" in masks:
+                                seg = np.linspace(0.0, 1.0, 40)
+                                if any(masks["no_grade"][int((qa[1] + (qb[1] - qa[1]) * u + HALF) / SPACING), int((qa[0] + (qb[0] - qa[0]) * u + HALF) / SPACING)] > 0.5 for u in seg):
+                                    why = why or f"the gap at ({qa[0]:.0f}, {qa[1]:.0f}) is an obstacle meant as a detour; not graded"
+                                    continue
+                            pa, pb = qa, qb
+                            break
+                        if pa is None and why:
+                            print(f"  route {zone_name} -> {name}: {why}")
                     if pa is not None:
                         print(f"  route {zone_name} -> {name}: bridging {math.hypot(pb[0] - pa[0], pb[1] - pa[1]):.0f} m at ({pa[0]:.0f}, {pa[1]:.0f})")
                         carve_ramp(h, pa, pb)
@@ -2519,9 +2688,40 @@ def write_map(h, masks):
     write_file(os.path.join(OUT, "map_detail.jpg"), lambda path: detail.save(path, quality=88))
 
 
-def add_surface_marks(masks):
-    """Marks that are only colour: dust devil tracks across the open plains
-    and the fresh crater's rays."""
+def add_oddities(h, x, z, masks, medium):
+    """One-offs that make a place (T4, §14). A sinter mound: pale silica laid down by an old hot spring,
+    a low dome in terraces with little rims. A monument: a lone pinnacle of hard rock with a skirt of
+    talus, or the pedestal of a perched boulder (anchor <id>.centre is its top: C1 sets the boulder on it)."""
+    masks["sinter"] = np.zeros_like(h)
+    masks["monument"] = np.zeros_like(h)
+    for e in landforms("sinter_mound"):
+        cx, cz = e["centre"]; r = e["radius"]; H = e.get("height", 8.0); n = int(e.get("terraces", 5))
+        w = window(cx, cz, r * 1.6)
+        d = np.hypot(x[w] - cx, z[w] - cz) / r + 0.08 * medium[w]
+        dome = np.clip(1.0 - d * d, 0.0, 1.0) ** 0.7
+        f = dome * n
+        terr = (np.floor(f) + smoothstep(0.75, 1.0, f - np.floor(f))) / n
+        rims = 0.35 * np.exp(-((f - np.floor(f) - 0.93) / 0.05) ** 2) * (dome > 0.02)   # little rims where pools stood
+        h[w] += H * terr + rims
+        masks["sinter"][w] = np.maximum(masks["sinter"][w], (d < 1.05).astype(np.float32))
+    for e in landforms("monument"):
+        cx, cz = e["centre"]; r = e.get("radius", 8.0); H = e.get("height", 25.0); style = e.get("style", "pinnacle")
+        w = window(cx, cz, r * 5.0)
+        d = np.hypot(x[w] - cx, z[w] - cz) + 1.5 * medium[w]
+        if style == "pinnacle":
+            spire = H * (1.0 - smoothstep(0.35 * r, r, d)) ** 0.8
+            skirt = H * 0.16 * (1.0 - smoothstep(r, r * 4.0, d)) ** 1.5
+            h[w] += np.maximum(spire, skirt)
+        else:   # perched boulder: a steep pedestal (the boulder itself is a model, C1)
+            pedestal = H * (1.0 - smoothstep(0.55 * r, 0.75 * r, d))
+            h[w] += pedestal + H * 0.1 * (1.0 - smoothstep(r, r * 3.0, d)) ** 1.5
+        masks["monument"][w] = np.maximum(masks["monument"][w], (d < r * 1.2).astype(np.float32))
+
+
+def add_surface_marks(masks, h=None):
+    """Marks that are only colour: dust devil tracks across the open plains,
+    the fresh crater's rays, and old boulder tracks: dotted trails where a
+    block fell off a cliff and bounced down the slope (the block at the end)."""
     x, z = grid()
     rng = np.random.default_rng(SEED + 240)
     tracks = np.zeros((N, N), dtype=np.float32)
@@ -2538,6 +2738,55 @@ def add_surface_marks(masks):
     spokes = np.clip(np.sin(ang * 11.0 + 2.0 * np.sin(ang * 3.0)) * 1.6 - 0.5, 0.0, 1.0) + 0.6 * np.clip(np.sin(ang * 23.0 + 1.0) - 0.6, 0.0, 1.0)
     masks["rays"] = (np.clip(spokes, 0.0, 1.0) * np.clip(1.0 - (dd - 1.0) / 6.0, 0.0, 1.0) ** 1.5 * (dd > 1.0) + np.clip(1.0 - (dd - 1.0) / 1.3, 0.0, 1.0) * (dd > 0.9)).astype(np.float32)
     masks["rays"] *= 1.0 - np.clip(masks["mesa_body"] + masks["sand_sheet"], 0.0, 1.0)
+    # Old boulder tracks (T4, §14), down the slopes below cliffs.
+    masks["boulder_tracks"] = np.zeros((N, N), dtype=np.float32)
+    masks["track_ends"] = []
+    if h is not None:
+        k = 4
+        hs = box_blur(h[::k, ::k], 2, 1)
+        gzz, gxx = np.gradient(hs, SPACING * k)
+        cliff = masks["_cliff_near"][::k, ::k] > 0.5
+        cand = np.argwhere(cliff & (np.hypot(gxx, gzz) > 0.25))
+        rng2 = np.random.default_rng(SEED + 245)
+        if len(cand):
+            for idx in rng2.choice(len(cand), size=min(70, len(cand)), replace=False):
+                j, i = cand[idx]
+                p = np.array([i * SPACING * k - HALF, j * SPACING * k - HALF], dtype=float)
+                pts = [p.copy()]
+                for _ in range(90):   # downhill in 3 m hops, until the ground levels out
+                    jj = int(np.clip((p[1] + HALF) / (SPACING * k), 0, hs.shape[0] - 1)); ii = int(np.clip((p[0] + HALF) / (SPACING * k), 0, hs.shape[1] - 1))
+                    g = np.array([gxx[jj, ii], gzz[jj, ii]])
+                    if np.hypot(*g) < 0.05:
+                        break
+                    p = p - g / np.hypot(*g) * 3.0 + rng2.normal(0.0, 0.4, 2)
+                    pts.append(p.copy())
+                if len(pts) < 15:
+                    continue
+                line = np.array(pts)
+                seg = np.hypot(*np.diff(line, axis=0).T); cum = np.concatenate([[0.0], np.cumsum(seg)])
+                d, t, _ = polyline_field(line, 6.0, cum, step=1)
+                bounce = rng2.uniform(3.0, 6.0)
+                dots = (d < 1.4) & (np.sin(t / bounce * math.tau) > 0.2)   # a dotted trail where it bounced
+                masks["boulder_tracks"] = np.maximum(masks["boulder_tracks"], dots.astype(np.float32) * (1.0 - smoothstep(0.7, 1.0, t / cum[-1])))
+                masks["track_ends"].append([round(float(line[-1][0]), 1), round(float(line[-1][1]), 1)])
+
+
+# The ground palettes an area can have (T4, §14): `mul` darkens or tints, `add` lightens towards white.
+AREA_PALETTES = {
+    "basalt_sand": {"mul": [0.66, 0.64, 0.65], "add": [0.0, 0.0, 0.0]},      # black basaltic sand
+    "pale_layered": {"mul": [1.0, 0.99, 0.96], "add": [0.10, 0.09, 0.06]},   # pale layered sediments
+    "ice_rubble": {"mul": [0.9, 0.93, 0.97], "add": [0.05, 0.06, 0.08]},     # grey, cold, ice-rich rubble
+    "haematite": {"mul": [0.84, 0.74, 0.8], "add": [0.0, 0.0, 0.0]},         # purple-grey haematite
+    "sulfur": {"mul": [1.0, 0.98, 0.78], "add": [0.06, 0.05, 0.0]},          # yellow sulfur-stained ground
+    "gypsum": {"mul": [1.0, 0.98, 0.95], "add": [0.03, 0.03, 0.03], "veins": 0.35},   # white gypsum veins
+}
+AREAS = [dict(a, centre=_xz(a["centre"])) for a in LAYOUT.get("areas", [])]
+
+
+def area_weight(area, x, z, large):
+    """How much of an area a point is in (0..1): a soft, wandering edge."""
+    d = dist(x, z, area["centre"]) / area["radius"] + 0.12 * large
+    return 1.0 - smoothstep(0.72, 1.02, d)
 
 
 def write_colour(masks, h=None):
@@ -2582,10 +2831,34 @@ def write_colour(masks, h=None):
     red += pale2 * (1 - red); green += pale2 * (1 - green); blue += pale2 * (1 - blue)
     grey = 0.06 * masks["inverted"][::2, ::2]
     red *= 1.0 - grey
+    bt = masks.get("boulder_tracks")
+    if bt is not None:
+        bt2 = np.maximum(np.maximum(bt[::2, ::2], bt[1::2, ::2]), np.maximum(bt[::2, 1::2], bt[1::2, 1::2]))
+        red *= 1.0 - 0.14 * bt2; green *= 1.0 - 0.13 * bt2; blue *= 1.0 - 0.1 * bt2
+    if "sinter" in masks:   # pale silica
+        sn = masks["sinter"][::2, ::2] * 0.22
+        red += sn * (1 - red); green += sn * (1 - green); blue += sn * (1 - blue) * 0.95
     streaks = masks["_streaks"][::2, ::2]
     red *= 1.0 - 0.13 * streaks; green *= 1.0 - 0.12 * streaks; blue *= 1.0 - 0.1 * streaks
     dunes = masks["dunes"][::2, ::2]
     red *= 1.0 - 0.08 * dunes; green *= 1.0 - 0.06 * dunes; blue *= 1.0 - 0.04 * dunes
+    # The areas: each its own ground (T4, §14), so a walk changes character as it goes.
+    if AREAS:
+        n2 = red.shape[0]
+        coords2 = (np.arange(n2) * SPACING * 2.0 - HALF).astype(np.float32)
+        x2, z2 = np.meshgrid(coords2, coords2)
+        for area in AREAS:
+            pal = AREA_PALETTES.get(area.get("palette", ""))
+            if pal is None:
+                continue
+            w = area_weight(area, x2, z2, large) * area.get("strength", 1.0)
+            if pal.get("veins"):
+                vn = np.abs(np.sin((x2 * 0.8 + z2 * 0.6) / 7.0 + 6.0 * medium + 3.0 * large))
+                w_v = w * pal["veins"] * (1.0 - smoothstep(0.0, 0.08, vn))
+                red += w_v * (1 - red); green += w_v * (1 - green); blue += w_v * (1 - blue) * 0.95
+            for k, ch in enumerate((red, green, blue)):
+                ch *= 1.0 - w * (1.0 - pal["mul"][k])
+                ch += w * pal["add"][k] * (1.0 - ch)
     alpha = np.full(red.shape, 0.5)
     img = np.dstack([np.clip(red, 0, 1), np.clip(green, 0, 1), np.clip(blue, 0, 1), alpha])
     write_file(os.path.join(OUT, "colour.png"), Image.fromarray((img * 255).astype("uint8"), "RGBA").save)
@@ -2611,6 +2884,15 @@ def write_rocks(h, masks):
     density = np.maximum(density, 0.3 * masks["channels"])   # cobbles on the valley floors
     density = np.maximum(density, 0.5 * masks.get("channel_floor", 0.0)); size = np.maximum(size, 0.35 * masks.get("channel_floor", 0.0))
     density = np.maximum(density, 0.9 * masks["step_apron"]); size = np.maximum(size, 0.85 * masks["step_apron"])   # fallen blocks below the scarps
+    for q in masks.get("track_ends", []):
+        w = window(q[0], q[1], 4.0)
+        density[w] = np.maximum(density[w], 0.95); size[w] = np.maximum(size[w], 0.95)
+    if "monument" in masks:
+        density = np.maximum(density, 0.6 * masks["monument"]); size = np.maximum(size, 0.6 * masks["monument"])
+    if "ice_rubble" in masks:
+        density = np.maximum(density, 0.7 * masks["ice_rubble"]); size = np.maximum(size, 0.6 * masks["ice_rubble"])   # blocks fallen off the ice scarps
+    if "moraine" in masks:
+        density = np.maximum(density, 0.8 * masks["moraine"]); size = np.maximum(size, 0.7 * masks["moraine"])   # the glacier's moraines are rubble
     density = np.where(masks["ice"] > 0.5, np.maximum(density, 0.22), density)   # a rock-strewn polygon plain
     # Boulder fields with corridors.
     x, z = grid()
@@ -2822,8 +3104,123 @@ def check_design(h, masks):
     maze = check_maze(h, masks)
     if maze is not None:
         checks["maze"] = maze
+    # The surprises (T4, §14): one-offs, each kind at most once, each at an anchor (anchor_checks fails a missing one).
+    kinds_seen = [q.get("kind", "") for q in LAYOUT.get("surprises", [])]
+    checks["surprises"] = {"count": len(kinds_seen), "repeated": sorted({k_ for k_ in kinds_seen if kinds_seen.count(k_) > 1})}
     checks["callback"] = {"x_min": -HALF + 420.0, "x_max": HALF - 160.0, "z_min": CANYON_FAR_EDGE - 60.0, "z_max": HALF - 420.0}
     return checks
+
+
+# The game's own speeds (scripts/player.gd WALK_SPEED, scripts/crew_rover.gd the pressurised rover's "speed").
+FOOT_SPEED = 5.0
+ROVER_SPEED = 3.0
+DULL_FOOT_MIN = 3.0
+DULL_ROVER_MIN = 2.0
+
+
+def check_sameness(h, masks, anchors, bounds, headings=36, view=300.0, far_view=900.0, cell=10.0):
+    """Walk out from home along many headings, to the edge of where you may go (`bounds`, the call-back
+    line). At each step, what can you see (a coarse line-of-sight test against the heights)? Something new
+    is a named place (an anchor: a mesa top, a pass, a cave mouth, an ice wall) coming into view within
+    `far_view`, a landform kind not yet seen on this walk within `view`, or a new area underfoot. A stretch
+    with nothing new for longer than 3 minutes on foot or 2 by rover is dull: those come back as lines the
+    land editor draws."""
+    k = int(cell / SPACING)
+    hh = h[::k, ::k]
+    n = hh.shape[0]
+    labels = np.zeros(hh.shape, dtype=np.int16)
+    kinds = [("dunes", "dunes", 0.5), ("ripples", "ripples", 0.5), ("ice", "ice", 0.5), ("ice_scarp", "ice_scarp", 0.5),
+             ("glacier", "glacier", 0.5), ("moraine", "moraine", 0.3), ("frost_hollow", "frost_hollow", 0.5),
+             ("mesa_body", "mesa", 0.5), ("talus", "talus", 0.5), ("mound", "mound", 0.5), ("yardang_field", "yardangs", 0.5),
+             ("lava", "lava", 0.5), ("chaos", "chaos", 0.5), ("inverted", "raised_riverbed", 0.5), ("channels", "channel", 0.5),
+             ("river_floor", "river", 0.5), ("step_front", "scarp", 0.5), ("fissure_near", "fissure", 0.5), ("sand_sheet", "sand_sheet", 0.5),
+             ("ejecta", "ejecta", 0.3), ("rays", "rays", 0.3), ("step_apron", "rockfall", 0.3), ("ice_rubble", "ice_rubble", 0.3)]
+    names = ["plain"]
+    for mask_name, kind, thr in kinds:
+        if mask_name not in masks or np.ndim(masks[mask_name]) != 2:
+            continue
+        if kind not in names:
+            names.append(kind)
+        labels[np.asarray(masks[mask_name])[::k, ::k] > thr] = names.index(kind)
+    if "crater_d" in masks:
+        names.append("crater"); labels[(masks["crater_d"][::k, ::k] < 1.15)] = len(names) - 1
+    if "canyon_u" in masks:
+        names.append("canyon"); labels[(masks["canyon_u"][::k, ::k] < 0.0)] = len(names) - 1
+    area_ids = np.full(hh.shape, -1, dtype=np.int16)
+    coords = np.arange(n) * cell - HALF
+    gx, gz = np.meshgrid(coords, coords)
+    for ai, a in enumerate(AREAS):
+        area_ids[area_weight(a, gx, gz, masks["large"][::k, ::k]) > 0.5] = ai
+    # The cells within view of a point, and the fractions of the way to them where the ground is tested.
+    r = int(view / cell)
+    oj, oi = np.mgrid[-r:r + 1, -r:r + 1]
+    keep = (oj * oj + oi * oi <= r * r) & ((oj != 0) | (oi != 0))
+    oj = oj[keep]; oi = oi[keep]
+    fr = np.array([0.2, 0.4, 0.6, 0.8])[:, None]
+    home = np.array(HOME["centre"], dtype=float)
+    step_m = 20.0
+    # The named places: one per landform is enough (its centre, or its first anchor), plus the special ones.
+    places = {}
+    for a in anchors:
+        key = a["id"] if not a["id"].endswith(".centre") else a["id"]
+        places[key] = (a["position"][0], a["position"][1], a["height"])
+    pid = list(places.keys()); pxz = np.array([[places[k][0], places[k][1]] for k in pid]); ph = np.array([places[k][2] for k in pid])
+    dull = []
+    longest_foot = longest_rover = 0.0
+    for hd in range(headings):
+        ang = hd * math.tau / headings
+        d = np.array([math.cos(ang), math.sin(ang)])
+        seen = set(); seen_areas = set(); seen_places = set()
+        last_new = 0.0; dist_m = 0.0; last_at = home.copy()
+        while True:
+            p = home + d * dist_m
+            if p[0] < bounds["x_min"] or p[0] > bounds["x_max"] or p[1] < bounds["z_min"] or p[1] > bounds["z_max"]:
+                break
+            j = int((p[1] + HALF) / cell); i = int((p[0] + HALF) / cell)
+            tj = np.clip(j + oj, 0, n - 1); ti = np.clip(i + oi, 0, n - 1)
+            eye = hh[j, i] + 1.7
+            target = hh[tj, ti] + 2.0
+            sj = np.clip(np.round(j + oj[None, :] * fr).astype(int), 0, n - 1); si = np.clip(np.round(i + oi[None, :] * fr).astype(int), 0, n - 1)
+            line = eye + (target - eye)[None, :] * fr
+            visible = np.all(hh[sj, si] < line + 0.5, axis=0)
+            new_kinds = set(np.unique(labels[tj[visible], ti[visible]]).tolist()) | {int(labels[j, i])}
+            here_area = int(area_ids[j, i])
+            # Named places in sight: within far_view, the line to them clear of the ground (6 samples).
+            dxz = pxz - p[None, :]; dist_p = np.hypot(dxz[:, 0], dxz[:, 1])
+            cand = np.where(dist_p < far_view)[0]
+            new_places = set()
+            for c_ in cand:
+                if pid[c_] in seen_places:
+                    continue
+                fr6 = np.linspace(0.15, 0.9, 6)
+                qs = p[None, :] + dxz[c_][None, :] * fr6[:, None]
+                qj = np.clip(((qs[:, 1] + HALF) / cell).astype(int), 0, n - 1); qi = np.clip(((qs[:, 0] + HALF) / cell).astype(int), 0, n - 1)
+                line_h = eye + (ph[c_] + 3.0 - eye) * fr6
+                if np.all(hh[qj, qi] < line_h + 0.5):
+                    new_places.add(pid[c_])
+            seen_places |= new_places
+            fresh = bool(new_kinds - seen) or bool(new_places) or (here_area >= 0 and here_area not in seen_areas)
+            seen |= new_kinds
+            if here_area >= 0:
+                seen_areas.add(here_area)
+            if fresh or dist_m == 0.0:
+                gap = dist_m - last_new
+                if gap / FOOT_SPEED / 60.0 > DULL_FOOT_MIN or gap / ROVER_SPEED / 60.0 > DULL_ROVER_MIN:
+                    dull.append({"from": [round(float(last_at[0]), 1), round(float(last_at[1]), 1)], "to": [round(float(p[0]), 1), round(float(p[1]), 1)],
+                                 "foot_minutes": round(gap / FOOT_SPEED / 60.0, 1), "rover_minutes": round(gap / ROVER_SPEED / 60.0, 1)})
+                longest_foot = max(longest_foot, gap / FOOT_SPEED / 60.0); longest_rover = max(longest_rover, gap / ROVER_SPEED / 60.0)
+                last_new = dist_m; last_at = p.copy()
+            dist_m += step_m
+        gap = dist_m - last_new   # the walk's last stretch, to the edge
+        if gap / FOOT_SPEED / 60.0 > DULL_FOOT_MIN or gap / ROVER_SPEED / 60.0 > DULL_ROVER_MIN:
+            p = home + d * dist_m
+            dull.append({"from": [round(float(last_at[0]), 1), round(float(last_at[1]), 1)], "to": [round(float(p[0]), 1), round(float(p[1]), 1)],
+                         "foot_minutes": round(gap / FOOT_SPEED / 60.0, 1), "rover_minutes": round(gap / ROVER_SPEED / 60.0, 1)})
+        longest_foot = max(longest_foot, gap / FOOT_SPEED / 60.0); longest_rover = max(longest_rover, gap / ROVER_SPEED / 60.0)
+    dull.sort(key=lambda s_: -s_["rover_minutes"])
+    print(f"  something new: {len(dull)} dull stretches from home; longest {longest_foot:.1f} min on foot, {longest_rover:.1f} min by rover")
+    return {"dull": dull, "foot_minutes": DULL_FOOT_MIN, "rover_minutes": DULL_ROVER_MIN,
+            "longest_foot": round(longest_foot, 1), "longest_rover": round(longest_rover, 1), "headings": headings}
 
 
 def line_coords(line, px, pz):
@@ -2914,6 +3311,32 @@ def sample_bilinear(h, px, pz):
     return float(top * (1 - tz) + bottom * tz)
 
 
+SCULPT_PATH = os.path.join(ROOT, "data", "region_sculpt.landdelta")
+
+
+def apply_sculpt(h, masks, caves):
+    """The hand-sculpted layer (B5 step 6: tools/sculpt_region.tscn writes data/region_sculpt.landdelta),
+    added last of all, except over the caves and the ground over them (their roofs and cover must hold)."""
+    if not os.path.exists(SCULPT_PATH) or "--no-sculpt" in sys.argv:
+        return None
+    import land_delta
+    delta = land_delta.read(SCULPT_PATH)
+    if delta.size != N:
+        print(f"  WARNING: the sculpt layer is for a {delta.size}^2 grid, not {N}^2: left out")
+        return {"applied": False, "tiles": len(delta.tiles)}
+    keep_out = np.clip(masks.get("cave_clear", np.zeros_like(h)), 0.0, 1.0).astype(np.float32)
+    for c in caves:
+        pts = c.get("points") or []
+        if len(pts) >= 2:
+            d, _, _ = polyline_field(np.array(pts, dtype=float)[:, :2], 40.0, step=1)
+            keep_out = np.maximum(keep_out, 1.0 - smoothstep(float(c.get("half_width", 3.0)) + CAVE_COVER + 4.0, float(c.get("half_width", 3.0)) + CAVE_COVER + 20.0, d))
+    before = h.copy()
+    delta.apply(h, keep_out)
+    changed = np.abs(h - before) > 0.05
+    print(f"  sculpt layer: {len(delta.tiles)} tiles, {int(changed.sum()) * SPACING * SPACING / 1e4:.1f} ha changed")
+    return {"applied": True, "tiles": len(delta.tiles), "hectares": round(float(changed.sum()) * SPACING * SPACING / 1e4, 2)}
+
+
 def build_anchors(h, masks, caves, fissures):
     """Every landform's centre and its useful points, on the final ground: [{id, position, height, ring, landform}].
     C1 places story things by these ids, so they follow the land when the editor moves it."""
@@ -2957,7 +3380,13 @@ def build_anchors(h, masks, caves, fissures):
     for k, p in enumerate(masks["home_crossings"]):
         add(f"channel.crossing_{k + 1}", p[0], p[1], "channel")
     g = GLACIER
-    add("glacier.alcove", g["from"][0], g["from"][1], "glacier")
+    for sc in ICE_SCARPS:   # the foot of the face, at its middle (the near ones: where the ice wall thread sends you)
+        foot, _ = ice_scarp_point(sc, 0.5, sc["run"] + 3.0)
+        add(f"{sc['id']}.chip", foot[0], foot[1], sc["id"])
+        mid, _ = ice_scarp_point(sc, 0.5, sc["run"] * 0.5)
+        add(f"{sc['id']}.face", mid[0], mid[1], sc["id"])
+    alcove = masks.get("glacier_alcove", g["from"])
+    add("glacier.alcove", alcove[0], alcove[1], "glacier")
     flow = np.array(g["flow"]) / np.linalg.norm(g["flow"])
     add("glacier.toe", g["from"][0] + flow[0] * g["length"], g["from"][1] + flow[1] * g["length"], "glacier")
     for f in fissures:
@@ -3075,6 +3504,10 @@ def checks_list(checks, routes):
         if a["missing_in_data"]:
             detail += "; named in data/ but missing: " + ", ".join(a["missing_in_data"])
         add("Anchors", status, detail)
+    sp = checks.get("surprises")
+    if sp is not None:
+        add("Surprises are one-offs", "FAIL" if sp["repeated"] else "PASS",
+            ("used more than once: " + ", ".join(sp["repeated"])) if sp["repeated"] else f"{sp['count']} surprises, each kind once")
     s = checks.get("sameness")
     if s is not None:
         add("Something new every few minutes", "WARN" if s["dull"] else "PASS",
@@ -3106,10 +3539,11 @@ def main():
     plans = plan_fissures(masks)
     routes = check_routes(h, masks); lap("check_routes")
     fissures = carve_fissures(h, *grid(), masks, plans); lap("carve_fissures")
+    sculpt = apply_sculpt(h, masks, caves)
     routes = check_routes(h, masks, fix=False)   # the fissures are hard gates: nothing is graded across them
     lo, hi = save_heights(h); lap("save_heights")
     write_control(h, masks); lap("write_control")
-    add_surface_marks(masks)
+    add_surface_marks(masks, h)
     write_colour(masks, h); lap("write_colour")
     write_map(h, masks); lap("write_map")
     write_rocks(h, masks); lap("write_rocks")
@@ -3117,8 +3551,12 @@ def main():
     ground_share = write_ground(h, masks)
     viewpoints = find_viewpoints(h, masks)
     checks = check_design(h, masks)
+    if sculpt is not None:
+        checks["sculpt"] = sculpt
     anchors = build_anchors(h, masks, caves, fissures)
     checks["anchors"] = anchor_checks(anchors, previous)
+    # 8. Mars mustn't get boring (T4, §14): something new comes into view every few minutes.
+    checks["sameness"] = check_sameness(h, masks, anchors, checks["callback"])
     checks["list"] = checks_list(checks, routes); lap("ground map, anchors and checks")
     for c in checks["list"]:
         if c["status"] != "PASS":
@@ -3141,6 +3579,10 @@ def main():
         "sharp_boulder_fields": [list(BOULDER_FIELDS[k]) for k in SHARP_BOULDERS],
         "home": {"centre": list(HOME["centre"]), "radius": HOME["radius"]},
         "rings": RINGS,
+        "horizon": LAYOUT.get("horizon", []),
+        "surprises": LAYOUT.get("surprises", []),
+        "areas": [{"id": a["id"], "label": a.get("label", a["id"]), "centre": [float(a["centre"][0]), float(a["centre"][1])], "radius": a["radius"],
+                   "palette": a.get("palette", ""), "sound": a.get("sound", "wind"), "haze": a.get("haze", 1.0)} for a in AREAS],
         "heart": list(HEART),
         "fissures": fissures,
         "hollow_ground": hollow,

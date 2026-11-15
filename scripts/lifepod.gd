@@ -22,6 +22,7 @@ extends Node3D
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const SITE := preload("res://scripts/thread_site.gd")
+const DROP_FIELD := preload("res://scripts/drop_field.gd")
 const FIND := preload("res://scripts/carried_find.gd")
 const SALVAGE := preload("res://scripts/salvage_piece.gd")
 const BENCH := preload("res://scripts/lifepod_bench.gd")
@@ -30,7 +31,8 @@ const SPARES_CRATE := preload("res://scripts/spares_crate.gd")
 const START_RATIONS := 2        # from the descent: a sol's food (step 4a)
 const PALLET_RATIONS := 10      # pallet 1's: about five sols, two a sol
 ## [kind, nearest, furthest, the ground it wants]
-const THREADS := [["iron", 1000.0, 1400.0, "rough"], ["ice_wall", 1000.0, 1500.0, "low"]]
+# The ice wall first: it is a fixed landform (B5), the iron goes where there is room.
+const THREADS := [["ice_wall", 1000.0, 1500.0, "low"], ["iron", 1000.0, 1400.0, "rough"]]
 const PLANS := [["hitch", "the sled hitch", "print_hitch_parts", 3.0], ["pick", "an ice pick head", "print_pick_parts", 2.0], ["bladder", "a water bladder", "print_bladder_parts", 2.0], ["seal", "a wheel seal for Walker 1", "print_seal_parts", 3.0], ["battery", "a spare suit battery", "print_battery_parts", 3.0], ["heater", "a suit heater pack", "print_heater_parts", 3.0], ["air_pack", "a bigger air pack", "print_air_pack_parts", 4.0]]
 ## Suit add-ons (scripts/suit.gd): printable once you hold the plan's
 ## cartridge (docs/pillars.md: plans are things you find).
@@ -120,9 +122,11 @@ func _place_sites(saved: Dictionary) -> void:
 	var field: Node = world.get("drop_field")
 	var ridge: Vector3 = world.storm_drop.ridge if world.get("storm_drop") != null else Vector3.INF
 	var taken: Array = []
+	var drop_sites := 0   # how many of taken are the drop field's (not the threads')
 	if field != null:
 		if not is_inf(ridge.x): taken.append(field._bearing(ridge))
 		for kind in field.sites: taken.append(field._bearing(field.sites[kind].at))
+	drop_sites = taken.size()
 	for spec in THREADS:
 		var kind := str(spec[0])
 		var state: Dictionary = saved.get(kind, {})
@@ -132,6 +136,10 @@ func _place_sites(saved: Dictionary) -> void:
 			var p: Array = state.at
 			where = Vector3(float(p[0]), float(p[1]), float(p[2]))
 			yaw = float(state.get("yaw", 0.0))
+		elif kind == "ice_wall" and not _near_ice(float(spec[1]), float(spec[2]), taken, field, drop_sites).is_empty():
+			var pick := _near_ice(float(spec[1]), float(spec[2]), taken, field, drop_sites)
+			where = pick.at
+			yaw = float(pick.yaw)
 		elif field != null:
 			where = field.choose(kind, float(spec[1]), float(spec[2]), str(spec[3]), taken, ridge)
 			var back: Vector3 = world.lander.global_position - where
@@ -146,6 +154,44 @@ func _place_sites(saved: Dictionary) -> void:
 		var where: Vector3 = tools.local_to_world(tools.PALLET_LOCAL + Vector3(-6.0, 0, 3.0))
 		where.y = MHSiteTerrain.height(where.x, where.z)
 		_add_site("frost", where, 0.0, bool(state.get("seen", false)))
+
+## The ice wall is one of the small ice scarps round home (B5: anchors
+## near_ice_N.chip, at the foot of each face). The one nearest the middle of
+## today's walk (nearest..furthest from the lander), and not the way the other
+## threads lie, is the thread; the others are just ice to find. {} when none
+## fits (then the drop field picks a spot, as before).
+## The drop field's own sites (the first `drop_sites` of taken) need only be
+## NEAR_DROP_DEG away: the scarps can't move, and five full spacings don't fit
+## round one lander.
+const NEAR_DROP_DEG := 30.0
+func _near_ice(nearest: float, furthest: float, taken: Array = [], field: Node = null, drop_sites := 0) -> Dictionary:
+	var known: Node = world.get("known")
+	var origin: Vector2 = known.origin as Vector2 if known != null else Vector2.ZERO
+	var home: Vector3 = world.lander.global_position
+	var aim := (nearest + furthest) * .5
+	var best := {}
+	var best_miss := INF
+	for id in MHRegion.anchors():
+		if not (id.begins_with("near_ice_") and id.ends_with(".chip")): continue
+		var face_id := id.trim_suffix(".chip") + ".face"
+		if not MHRegion.has_anchor(face_id): continue
+		var chip := MHRegion.anchor_position(id) - origin
+		var face := MHRegion.anchor_position(face_id) - origin
+		var away := Vector2(chip.x - home.x, chip.y - home.z).length()
+		if away < nearest or away > furthest: continue
+		if field != null:
+			var bearing: float = field._bearing(Vector3(chip.x, 0.0, chip.y))
+			var crowded := false
+			for k in taken.size():
+				var apart: float = NEAR_DROP_DEG if k < drop_sites else DROP_FIELD.APART_DEG
+				if absf(angle_difference(float(taken[k]), bearing)) < deg_to_rad(apart): crowded = true
+			if crowded: continue
+		var miss := absf(away - aim)
+		if miss < best_miss:
+			best_miss = miss
+			var out := chip - face   # local +Z looks out from the face
+			best = {"at": Vector3(chip.x, MHSiteTerrain.height(chip.x, chip.y), chip.y), "yaw": atan2(out.x, out.y)}
+	return best
 
 func _add_site(kind: String, where: Vector3, yaw: float, seen: bool) -> void:
 	var site: StaticBody3D = SITE.new()

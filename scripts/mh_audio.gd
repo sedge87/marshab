@@ -72,6 +72,7 @@ const MOODS := {
 }
 
 static var _director: MHAudio
+static var area_sound := ""          # the region area's sound: "", "wind", "sandy", "cold", "still" (MHRegion.area_at)
 
 # ---------- static API ----------
 static func director() -> MHAudio:
@@ -558,21 +559,26 @@ func _apply_wind(time: float) -> void:
 		_fade(_wind, -80.0, time, true)
 		_fade(_wind_night, -80.0, time, true)
 		return
+	if _space == "outside" and area_sound == "still": base -= 5.0   # the sulfur cracks lie in a hush
 	var night := night_amount(MHGame.sol_hour) if _space == "outside" else 0.0
 	_fade(_wind, base + 20.0 * log(maxf(1.0 - night, .001)) / log(10.0), time, night >= .999)
 	_fade(_wind_night, base - 6.0 + 20.0 * log(maxf(night, .001)) / log(10.0), time, night <= .001)
 
 ## Outside: now and then the cold ticks at night, or a dust devil passes by day.
+## The region area you're in (area_sound, set by OriginalMarsEnvironment from
+## MHRegion.area_at) leans on the same sounds: ice country ticks with cold by
+## day too, the sands raise more dust devils.
 func _process_ambience(delta: float) -> void:
 	if _space != "outside": return
 	_amb_t -= delta
 	if _amb_t > 0.0: return
 	var night := night_amount(MHGame.sol_hour)
 	_apply_wind(2.0)
-	if night > .6:
+	var devils := .08 if area_sound == "sandy" else .02
+	if night > .6 or (area_sound == "cold" and randf() < .25):
 		_amb_t = randf_range(4.0, 13.0)
-		_one_shot("ambience/cold_tick", randf_range(-3.0, 4.0), randf_range(-30.0, -24.0), 0.0)
-	elif night < .1 and randf() < .02 and _storm_level < .1:
+		_one_shot("ambience/cold_tick", randf_range(-3.0, 4.0), randf_range(-30.0, -24.0) - (0.0 if night > .6 else 4.0), 0.0)
+	elif night < .1 and randf() < devils and _storm_level < .1:
 		_amb_t = 120.0
 		_one_shot("ambience/dust_devil", randf_range(-1.0, 1.0), -18.0, 0.0)
 	else:

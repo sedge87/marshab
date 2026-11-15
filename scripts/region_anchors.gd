@@ -54,3 +54,21 @@ static func anchors(landform := "") -> PackedStringArray:
 		if landform.is_empty() or str(_index()[id].get("landform", "")) == landform:
 			out.append(id)
 	return out
+
+## The area a region point is in (T4, §14: each its own ground palette, sound
+## and haze): {id, label, palette, sound, haze, weight}, where weight (0..1)
+## eases across the area's soft edge; {} outside every area. Where two
+## overlap, the one you're deeper in.
+static func area_at(x: float, z: float) -> Dictionary:
+	var meta := RegionTerrain.meta()
+	if meta.is_empty(): return {}
+	var best := {}
+	var best_w := 0.0
+	for a in meta.get("areas", []):
+		var d := Vector2(x - float(a.centre[0]), z - float(a.centre[1])).length() / maxf(float(a.radius), 1.0)
+		var w := 1.0 - smoothstep(.72, 1.02, d)
+		if w > best_w:
+			best_w = w
+			best = {"id": str(a.id), "label": str(a.get("label", a.id)), "palette": str(a.get("palette", "")),
+				"sound": str(a.get("sound", "wind")), "haze": float(a.get("haze", 1.0)), "weight": w}
+	return best

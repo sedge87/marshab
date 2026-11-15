@@ -420,15 +420,61 @@
    "id": "ice_scarp_1",
    "kind": "ice_scarp",
    "label": "Ice scarp",
-   "points": [[-1760.0, -1240.0], [-1380.0, -1330.0]],
-   "drop": 10.0
+   "points": [[-1640.0, -1180.0], [-1450.0, -1240.0], [-1260.0, -1290.0]],
+   "height": 26.0,
+   "floor": 50.0,
+   "back": 220.0,
+   "real_detail": 0.04
   },
   {
    "id": "ice_scarp_2",
    "kind": "ice_scarp",
    "label": "Ice scarp",
-   "points": [[-1990.0, -700.0], [-1760.0, -610.0]],
-   "drop": 8.0
+   "points": [[-1990.0, -700.0], [-1880.0, -660.0], [-1760.0, -610.0]],
+   "height": 20.0,
+   "floor": 40.0,
+   "back": 180.0,
+   "real_detail": 0.04
+  },
+  {
+   "id": "near_ice_1",
+   "kind": "ice_scarp",
+   "label": "Ice wall",
+   "points": [[-1330.0, 2230.0], [-1190.0, 2260.0]],
+   "height": 9.0,
+   "floor": 20.0,
+   "back": 90.0,
+   "real_detail": 0.03
+  },
+  {
+   "id": "near_ice_2",
+   "kind": "ice_scarp",
+   "label": "Ice wall",
+   "points": [[-2660.0, 1220.0], [-2520.0, 1250.0]],
+   "height": 9.0,
+   "floor": 20.0,
+   "back": 90.0,
+   "real_detail": 0.03
+  },
+  {
+   "id": "near_ice_3",
+   "kind": "ice_scarp",
+   "label": "Ice wall",
+   "points": [[-1330.0, -470.0], [-1190.0, -500.0]],
+   "height": 9.0,
+   "floor": 20.0,
+   "back": 90.0,
+   "real_detail": 0.03
+  },
+  {
+   "id": "near_ice_4",
+   "kind": "ice_scarp",
+   "label": "Ice wall",
+   "points": [[-150.0, 700.0], [-20.0, 690.0]],
+   "height": 9.0,
+   "floor": 20.0,
+   "back": 90.0,
+   "real_detail": 0.03
   },
   {
    "id": "boulder_field_1",
@@ -568,7 +614,17 @@
     }
    ],
    "sand_centre": [-70.0, 1650.0],
-   "sand_radius": 430.0
+   "sand_radius": 430.0,
+   "real_detail": 0.35,
+   "beds": 3,
+   "side_run": 12.0,
+   "crossing": {
+    "at": 0.45,
+    "turn": 1.3,
+    "length": 700.0,
+    "height": 4.0,
+    "half_width": 9.0
+   }
   },
   {
    "id": "glacier",
@@ -576,11 +632,15 @@
    "label": "The buried glacier",
    "seed": 2167,
    "from": [-2060.0, -810.0],
-   "flow": [0.6, -0.8],
-   "length": 400.0,
-   "width": 300.0,
+   "flow": [0.45, -0.89],
+   "length": 1000.0,
+   "width": 320.0,
    "thickness": 24.0,
-   "pits": 16
+   "pits": 16,
+   "alcove": 110.0,
+   "real_detail": 0.5,
+   "moraines": 3,
+   "moraine_height": 3.5
   },
   {
    "id": "chaos_blocks",
@@ -654,6 +714,118 @@
    "bulge": 42.0,
    "half_width": 8.0,
    "depth": 14.0
+  },
+  {
+   "id": "sinter_mound",
+   "kind": "sinter_mound",
+   "label": "Sinter mound",
+   "centre": [2020.0, 560.0],
+   "radius": 70.0,
+   "height": 8.0,
+   "terraces": 5
+  },
+  {
+   "id": "lone_pinnacle",
+   "kind": "monument",
+   "label": "Lone pinnacle",
+   "style": "pinnacle",
+   "centre": [-2450.0, 380.0],
+   "radius": 9.0,
+   "height": 28.0
+  },
+  {
+   "id": "perched_boulder",
+   "kind": "monument",
+   "label": "Perched boulder",
+   "style": "perched_boulder",
+   "centre": [420.0, 2380.0],
+   "radius": 7.0,
+   "height": 9.0
+  },
+  {
+   "id": "waymark_6",
+   "kind": "impact",
+   "label": "Small crater",
+   "centre": [-2450.0, -1885.0],
+   "radius": 70.0,
+   "age": 0.25
+  },
+  {
+   "id": "waymark_7",
+   "kind": "monument",
+   "label": "Rock pinnacle",
+   "centre": [-785.0, -2486.0],
+   "style": "pinnacle",
+   "radius": 6.0,
+   "height": 14.0
+  },
+  {
+   "id": "waymark_8",
+   "kind": "impact",
+   "label": "Small crater",
+   "centre": [-1400.0, -2510.0],
+   "radius": 45.0,
+   "age": 0.15
+  },
+  {
+   "id": "waymark_9",
+   "kind": "impact",
+   "label": "Small crater",
+   "centre": [1495, 1510],
+   "radius": 55.0,
+   "age": 0.1
+  },
+  {
+   "id": "waymark_10",
+   "kind": "boulder_field",
+   "label": "Boulder field",
+   "centre": [-2276, 845],
+   "radius": 120.0,
+   "sharp": false,
+   "lanes": 3
+  },
+  {
+   "id": "waymark_11",
+   "kind": "monument",
+   "label": "Rock pinnacle",
+   "centre": [2631, -467],
+   "style": "pinnacle",
+   "radius": 7.0,
+   "height": 18.0
+  },
+  {
+   "id": "waymark_12",
+   "kind": "impact",
+   "label": "Small crater",
+   "centre": [235, 712],
+   "radius": 40.0,
+   "age": 0.05
+  },
+  {
+   "id": "waymark_13",
+   "kind": "boulder_field",
+   "label": "Boulder field",
+   "centre": [176, 1910],
+   "radius": 90.0,
+   "sharp": true,
+   "lanes": 2
+  },
+  {
+   "id": "waymark_14",
+   "kind": "sinter_mound",
+   "label": "Sinter mound",
+   "centre": [2700, 1000],
+   "radius": 45.0,
+   "height": 5.0,
+   "terraces": 4
+  },
+  {
+   "id": "waymark_15",
+   "kind": "impact",
+   "label": "Small crater",
+   "centre": [1842, 2180],
+   "radius": 65.0,
+   "age": 0.2
   },
   {
    "id": "heart",
@@ -1024,8 +1196,106 @@
     "length": 42.0,
     "half_width": 2.0,
     "height": 3.4,
-    "grade": -0.04
+    "grade": -0.04,
+    "scarp": "ice_scarp_1",
+    "at": 0.3
    }
   ]
- }
+ },
+ "areas": [
+  {
+   "id": "black_sands",
+   "label": "The black sands",
+   "centre": [-650.0, -1640.0],
+   "radius": 800.0,
+   "palette": "basalt_sand",
+   "sound": "sandy",
+   "haze": 1.15
+  },
+  {
+   "id": "ice_country",
+   "label": "Ice country",
+   "centre": [-1650.0, -1100.0],
+   "radius": 950.0,
+   "palette": "ice_rubble",
+   "sound": "cold",
+   "haze": 1.25
+  },
+  {
+   "id": "pale_layers",
+   "label": "The pale layers",
+   "centre": [920.0, -600.0],
+   "radius": 1150.0,
+   "palette": "pale_layered",
+   "sound": "wind",
+   "haze": 0.9
+  },
+  {
+   "id": "haematite_hills",
+   "label": "Haematite hills",
+   "centre": [-2150.0, 1750.0],
+   "radius": 700.0,
+   "palette": "haematite",
+   "sound": "wind",
+   "haze": 1.0
+  },
+  {
+   "id": "sulfur_cracks",
+   "label": "Sulfur cracks",
+   "centre": [2250.0, 300.0],
+   "radius": 650.0,
+   "palette": "sulfur",
+   "sound": "still",
+   "haze": 1.1
+  },
+  {
+   "id": "gypsum_chaos",
+   "label": "Gypsum chaos",
+   "centre": [2500.0, 2050.0],
+   "radius": 600.0,
+   "palette": "gypsum",
+   "sound": "wind",
+   "haze": 0.95
+  }
+ ],
+ "surprises": [
+  {
+   "id": "silica_spring",
+   "kind": "sinter_mound",
+   "anchor": "sinter_mound.centre",
+   "note": "an old hot spring's silica: the best place in the Reach to look for signs of life"
+  },
+  {
+   "id": "the_needle",
+   "kind": "pinnacle",
+   "anchor": "lone_pinnacle.centre",
+   "note": "a lone spire of hard rock, visible for kilometres: a landmark to steer by"
+  },
+  {
+   "id": "balanced_rock",
+   "kind": "perched_boulder",
+   "anchor": "perched_boulder.centre",
+   "note": "a boulder left on a pedestal as the soft rock under it wore away (C1 sets the boulder)"
+  }
+ ],
+ "horizon": [
+  {
+   "id": "far_volcano",
+   "kind": "volcano",
+   "label": "The far volcano",
+   "bearing": 300.0,
+   "distance": 26000.0,
+   "height": 2200.0,
+   "width": 30000.0
+  },
+  {
+   "id": "far_rim",
+   "kind": "crater_rim",
+   "label": "A great crater's rim",
+   "bearing": 140.0,
+   "distance": 18000.0,
+   "height": 700.0,
+   "width": 24000.0
+  }
+ ]
 }

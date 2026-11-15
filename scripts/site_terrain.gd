@@ -172,6 +172,12 @@ static func geology_unit(x: float, z: float) -> String:
 	if zone.is_empty(): return ""
 	return RegionTerrain.geology(x + float(zone.centre[0]), z + float(zone.centre[1]))
 
+## The region area under a point (site metres): MHRegion.area_at, or {} off a region site.
+static func area_at(x: float, z: float) -> Dictionary:
+	var zone := region_zone()
+	if zone.is_empty(): return {}
+	return MHRegion.area_at(x + float(zone.centre[0]), z + float(zone.centre[1]))
+
 ## The site's landing zone in its region ({} when it isn't a region site):
 ## the base site founded where the lander came down when there is one
 ## (MHGame.base_site, docs/landing-and-base-siting.md), else the site's
