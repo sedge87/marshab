@@ -107,6 +107,7 @@
 ### A6. The guided chapters, rewritten (`docs/opening-days.md`)
 - **Built 15 Nov** (not playtested). What was decided is in `docs/opening-days.md`, "As built (A6)". In short: a briefing Land step and a steered descent in a 750 m circle round home; chapters run together after a breather; Walker 1 patched on the spot and sent home from the Map; the core brought alive (no leak) and a Quarters liner; crater-floor and riverbed sites removed.
 - **15 Nov playtest, chapter 1:** you come to in the landing seat; you can land anywhere sensible; no air pack on day 1 and the lope costs air; the printer offers only story prints; the orbiter at twilight. See `docs/opening-days.md`, "After the 15 Nov playtest".
+- **Chapter 5, the Print Shop (15 Nov):** after chapter 4 nothing could be made. Pallet 6 is towed home, then the intake, the Print Shop and the extractor; after that, Castle's morning "what's next" calls and inner-voice hints. See `docs/opening-days.md`, "Chapter 5".
 - **The bare suit,** with the pallet distances to match.
 - **Chapter 3:** fix Walker 1 and choose home.
 - **Chapter 4:** Walker 1 kneels and folds into the core, you fit the first liner and watch its shell print, and you sleep in.
@@ -180,6 +181,12 @@ A new doc, taking over from `docs/terrain-overhaul.md` where they disagree. It c
 See `docs/terrain-design.md` §11 for what was built, what the checks say and where it differs from the plan. The old map is in `docs/terrain/before-b2/`.
 
 - `tools/generate_region.py`, the caves, the lava tube and its skylights, plus a first pass on the deep.
+
+### B-fix. Steep walls and floating rocks (small; added 15 Nov from the landmark review)
+The user's landmark review (`docs/terrain/landmarks.md`, "The user's review") grouped 21 Change notes into six problems, T1 to T6. T1 is this phase; the rest go to B3 to B6, A7 and C3 as that section says.
+- **Triplanar texturing on steep faces** in the terrain shader, so cliffs, chutes, fissure walls and the chaos blocks get rock projected from the side instead of stretched from above.
+- **Settle the floating rocks** in the scree gully onto the ground.
+- Then the ▶ playtest build of everything since chapter 1.
 
 ### B3. Traversal phases 2 to 5 (`docs/traversal.md`)
 - **Ground costs,** including the new kinds: ripple belts, boulder fields, platy lava, frost and hollow ground.

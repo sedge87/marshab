@@ -68,3 +68,63 @@
 | 40 | **A pitch** | (2715, 356) | One of three steep drops of 26 to 30 m, seen from its foot. | ropes | A 70 degree slope, not a sheer drop. |
 | 41 | **A labyrinth** | (2790, 430) | Narrow lanes between rock walls in the deep, with chokes and pits. | lamp, light stakes (later) |  |
 | 42 | **The heart's chamber** | (2895, 225) | The end: a wide chamber of dark rock with pale sinter on the floor, about 155 m down. | everything | Needs a set piece: today it's only a bigger room. |
+
+## The user's review (15 Nov 2026)
+
+*Decisions and notes from the user after walking the B2 build, in their own words where given. The Group column links each Change to one of the six problems below.*
+
+| # | Landmark | Decision | User's note | Group |
+|---|---|---|---|---|
+| 1 | Home plain | Keep | | |
+| 2 | Frost hollow | Keep | | |
+| 3 | Dry channel | Change | The riverbed floor is a little too smooth and flat. Tributaries would be cool. | T3 |
+| 4 | Sand sheet | Keep | | |
+| 5 | Scree gully | Change | Definitely stretched texture. Looks like it has floating rocks. | T1 |
+| 6 | Ledge-topped outcrop | Keep | | |
+| 7 | Collapse pit | Change | A piece the player can't escape is a bad idea. GAR-Y can't realistically get down there. Keep it only if it's the one fail state. | T5 |
+| 8 | Cracked sliver | Keep | | |
+| 9 | Wrinkle ridges | Change | Really small and almost unnoticeable; hard to tell from normal terrain. | T3 |
+| 10 | North scarp | Change | If it's gentle, add obstacles to drive around or rougher ground, especially in ring 2. | T3 |
+| 11 | East front | Change | Rough it up. Too gentle means it may as well not be there. Terrain should be a puzzle or at least an obstacle. | T3 |
+| 12 | Yardang maze | Change | Still doesn't feel like a maze; knobby; easy to navigate. | T3 |
+| 13 | Raised riverbeds | Change | Permission to find real elevation data for this. | T4 |
+| 14 | Far mesa | Keep | | |
+| 15 | Fresh crater | Keep | | |
+| 16 | Buried glacier | Change | Doesn't look like a glacier. Find images of real Mars glaciers (or artists' renditions) and try again. | T4 |
+| 17 | Ice fields and scarp | Keep | But check what known ice looks like on Mars and see what can be improved. | T4 |
+| 18 | Ice cave | Change | Definitely change the mouth: bend it into the land and make it look natural. | T2 |
+| 19 | Crater rim | Keep | | |
+| 20 | Canyon rim | Keep | | |
+| 21 | Canyon floor | Keep | | |
+| 22 | A canyon chute | Change | Make it look more natural and fix the stretched textures. "We have so many smooth looking walls in this game." | T1 |
+| 23 | Canyon wall cave | Change | Cave entrances need to look realistic, natural and blended into the land. | T2 |
+| 24 | Dune sea | Change | Ring 2; if it's about upgrading the rover's wheels it's probably fine as it is. | T6 |
+| 25 | Ripple belt | Keep | | |
+| 26 | Lava front | Keep | | |
+| 27 | Platy belt | Keep | | |
+| 28 | Lava plain and east mesa | Keep | | |
+| 29 | Main fissure | Change | Another candidate for the stretched-texture fix. | T1 |
+| 30 | North fissure | Change | Needs a visual clue or hint for the player. | T5 |
+| 31 | Chaos blocks | Change | Stretched texture needs a solution. | T1 |
+| 32 | Crater floor and mound | Keep | | |
+| 33 | Tube mouth | Change | Cave mouths need to be more natural and blended in. | T2 |
+| 34 | A skylight | Keep | | |
+| 35 | The Braids | Change | Needs to look far more natural; maybe the future terrain tools. | T2 |
+| 36 | The Hall | Keep | | |
+| 37 | Three Ways | Change | Like the halls before it: too flat and unrealistic. | T2 |
+| 38 | Cold trap | Keep | Boot spikes are a good idea: slippery and hard to cross without them. | |
+| 39 | The plug | Keep | The slab is fine; the marsquake can turn it to rubble later. | |
+| 40 | A pitch | Change | Hard to see coming (even flying through). Give the player a visual clue. | T5 |
+| 41 | A labyrinth | Change | Like the other caves, the walls feel flat and unnatural. | T2 |
+| 42 | The heart's chamber | Change | Agreed it needs a set piece, but the reveal isn't decided yet. | T6 |
+
+**Idea for the heart (not used yet):** on Alba Mons, marsquakes and local hydrogen chloride venting from fissures point to possible magma below the crust without any surface lava. A possible clue for the heart thread, held until the story is designed.
+
+### The six problems
+
+- **T1. Stretched textures on steep walls** (5, 22, 29, 31, and the scree's floating rocks). The fix: triplanar texturing on steep faces in the terrain shader. It's a single fix for all of them. Build plan: B-fix.
+- **T2. Cave mouths and walls look fake** (18, 23, 33, 35, 37, 41). Rough, noise-shaped walls; mouths sunk into the slope with rubble and overhangs. Build plan: B6.
+- **T3. Too gentle to be an obstacle** (3, 9, 10, 11, 12). Taller, rougher landforms, boulder fields, a real maze, tributaries for the dry channel. Build plan: B5.
+- **T4. Needs real Mars references** (13, 16, 17). HiRISE elevation models and real glacier and ice images first. Build plan: B5, research first.
+- **T5. Safety and readability** (7, 30, 40). A way out of the pit, or a gate so you can't fall in unprepared; visible cues for fissures and pitches. Build plan: B3 and B4.
+- **T6. Waits on other work** (24, 42). The dune sea becomes a rover-wheels gate (A7); the heart's chamber waits for the story (C3).
