@@ -163,13 +163,19 @@
   - where he can't reach you, the game rewinds to the automatic save made when you last left a base or rover.
 - **Mode differences** go in the modes table.
 
+### From the land: Track A pieces (`docs/terrain-design.md` §14, added 15 Nov)
+- **Terrain shadows on solar:** mesas and crater walls shade panels at dawn and dusk, so where you build matters for Power.
+- **Grading and digging:** flatten ground for a base, and dig regolith for berms and shielding, with the per-save land layer. This goes with building.
+- **Pale veins and layers mark resources:** looks in B5; they become readable finds with A5's materials.
+
 ### A10. Events and the radio
 - **Solar storms:** the aurora warns you, and you get under shielding.
 - **Dust storms**, including the storm's return later.
 - **Marsquakes and rockfalls.**
-- **Fresh impacts** with ice.
-- **Radio shadow** and relay beacons.
-- **Dust devils.**
+- **Fresh impacts** with ice. They cut a new crater with the per-save land layer (`docs/terrain-design.md` §14).
+- **Radio shadow** and relay beacons: **parked for a design talk** (15 Nov). The user fears it could get annoying. The starting idea is static, never a hard cut-off.
+- **Dust devils**, which can clean the panels, and **dust drifts** that pile against buildings and parked rovers (§14).
+- **Quakes leave new boulder tracks and rockfalls**, which can cut a stake trail (§14).
 
 ## Track B: the land (can run beside Track A)
 
@@ -201,6 +207,10 @@ The user's landmark review (`docs/terrain/landmarks.md`, "The user's review") gr
 - **Stake trails,** with the drone's markers.
 - **Crew asks,** folded into the goal trails.
 - **Ropes,** including down skylights and across fissures; the waiver; GAR-Y's winch.
+- **From `docs/terrain-design.md` §14:**
+  - fading boot and wheel tracks, with worn roads that pack into faster ground;
+  - slippery dawn frost on pole-facing slopes, gone by noon;
+  - soft sand traps on the hidden layer, using A7's bogging.
 
 ### B4. Caves: kit, hazards and the dark (after B3 and B6; added 15 Nov)
 The user (15 Nov): caves and lava tubes should be a wonder to explore, and risky, with a little fear. The maze and the plug that shuts the deep are built (`docs/terrain-design.md` §12). This section makes them dangerous and kit-gated.
@@ -213,7 +223,15 @@ The user (15 Nov): caves and lava tubes should be a wonder to explore, and risky
 
 **Explain this one to the user before building it.** §12 ends with a starting list; none of it is agreed.
 
-### B5. Terrain tools: layout file, map editor and sculpt layer (before C1; added 15 Nov)
+### B5. Terrain tools: layout file, map editor and sculpt layer (before C1; added 15 Nov) · Agreed 15 Nov: `docs/terrain-design.md` §13 and §14
+**The agreed plan is §13 (with its order of work), plus from §14:**
+- all the ice rethought, including the near ice wall the player chips;
+- the four rules against a boring Mars (the sameness check, area colours, area sound and sky, surprises);
+- the `ice_scarp`, `sinter_mound` and `monument` kinds;
+- far horizon landmarks and old boulder tracks;
+- a sculpt-layer format the per-save land layer can reuse.
+
+The list below is the first sketch.
 The user isn't happy with all of the land yet and wants control over it. The land is cheap to change (one script, about 2.5 minutes); the cost is in things placed on it. So this comes before C1.
 - **Layout file:** every landform constant moves out of `tools/generate_region.py` into `data/region_layout.json`. The generator loads it. The heights must come out byte-identical.
 - **Named anchors:** `region.json` gets `anchors` (id, position, ring) for every landform. C1 places story things by anchor, never by raw coordinates, so they follow the land.
@@ -242,6 +260,11 @@ The user wants a real underground, with lessons from The Forest, Skyrim and Subn
 - Walkers 2, 3 and 4, each lost in its own way.
 - The buggy, the rover and the drone.
 - Deposits, with richer ones further out.
+- **From `docs/terrain-design.md` §14:**
+  - names for the rock monuments (Castle uses them);
+  - meteorites as rare finds;
+  - your lander's heat shield, back shell and parachute 1–2 km away, to salvage (with A6's landing);
+  - the hot-spring sinter mounds placed as clues towards the heart (C2/C3).
 
 ### C2. The goal trails and the heart's clues, laid outward
 - The nav pockets.

@@ -503,7 +503,8 @@ Nothing here is built yet.
      - a choice every so many metres in each ring;
      - passes on each step line;
      - the maze check (below);
-     - anchors that moved or went missing.
+     - anchors that moved or went missing;
+     - the **sameness check** (§14): the dull stretches, drawn on the map.
 6. **Full build** makes the textures too (about 2.5 minutes). Then you walk it in the game.
 
 Each landform's random seed comes from its `id`, so moving or deleting one never reshuffles the others.
@@ -514,6 +515,9 @@ Each landform's random seed comes from its `id`, so moving or deleting one never
   - **every landform:** `id`, `kind`, `label`, where it is (a centre, size and turn, or the points of a line), and its kind's numbers. These are today's constants in `tools/generate_region.py`: `CRATER`, `MOUND`, `MESAS` (with `MESA_RAMPS` and `MESA_GULLIES` folded into each mesa), `STEP_LINES`, `WRINKLE_RIDGES`, `BOULDER_FIELDS`, `YARDANGS`, `GLACIER`, `ICE_PATCHES`, `ICE_SCARPS`, `INVERTED_CHANNELS`, `HOME_GROUND`, `FISSURES`, `LAVA_PLAIN`, `PLATY_BELT`, the canyon and its side canyons and landslides, the river, the dunes, the ripple belts, `CHAOS_BLOCKS`, `FRESH_CRATER`, `HEART`, `DRONE_WRECK` and the landing zones;
   - **the shape numbers buried inside the recipes,** where the user would want to tune them (for example a wrinkle ridge's 9 m arch and 15 m crest). They move into each landform's entry as named numbers, with today's values as defaults;
   - **`caves`:** `LAVA_TUBE`, `DEEP`, `MAZE` and `NATURAL_CAVES` as they are today (their points and numbers). In B5 the editor shows them and can move their ways in. B6 turns this section into passages and junctions.
+  - **`areas`** (§14): each part of the region, with its colour palette, its wind and ground sound set, and its haze distance;
+  - **`surprises`** (§14): one-off finds placed by anchor;
+  - **new kinds** from §14: `ice_scarp` (the near ice wall and the ice fields' scarps), `sinter_mound` (the hot-spring signs) and `monument` (named rock shapes).
 - **What stays in the script:** how each kind is made (its recipe), the ground textures, the checks.
 - **The proof step comes first.** The switched generator must make the same `height.r16.gz`, `control.u32.gz`, `colour.png`, `ground.png` and `region.json` (apart from the new `anchors`) byte for byte. A small script compares the hashes. Only then do the fixes start.
 - **Seeds by id.** Today each landform's seed is a fixed `SEED + n`. The file keeps those numbers for the landforms that exist (so the proof holds); new landforms get a seed made from their `id`.
@@ -539,6 +543,7 @@ Each landform's random seed comes from its `id`, so moving or deleting one never
 - The generator adds it **last**, after the caves and fissures and before the checks, so it survives every Regenerate and the checks see it.
 - It's masked to zero over every cave's footprint and its cover, so it can't open a roof.
 - The sculpt stays fixed on the map. The land editor shades sculpted patches, so you can see when a landform has been moved away from one.
+- **Its format and loader are reused** by the per-save land layer (§14), so build them as a shared piece.
 
 ### Rock scatter along a path (B5; the user's outline)
 - `scripts/tools/rock_path.gd`, a `@tool` script on a `Path3D`. Its Inspector has:
@@ -622,6 +627,7 @@ Each fix is a better recipe. Its numbers show up as sliders in the editor.
   - **Change:**
     - the two ice scarps become pole-facing pit walls 20–30 m high (from 8–10 m), with a pale banded ice face and a rubble foot;
     - scallops and polygon cracks on the ice fields.
+- **All the other ice** gets the same real look, including the near ice wall the player chips. See §14, "Ice, rethought everywhere".
 
 ### Order of work
 1. **The layout file** and the byte-for-byte proof.
@@ -630,7 +636,9 @@ Each fix is a better recipe. Its numbers show up as sliders in the editor.
    - first: view, select, move, sliders, Save, Regenerate, checks;
    - then: add, delete, undo, history, before/after.
 4. **The T3 fixes:** channel, wrinkle ridges, scarp and front, maze (with its check).
-5. **The T4 fixes:** download, cut the patches, then the riverbeds, glacier and ice.
+5. **The T4 fixes:** download, cut the patches, then the riverbeds, the glacier and all the ice (§14), including the near ice wall.
+   - Also from §14: the `areas` list, the sameness check, and the `surprises`, `sinter_mound` and `monument` kinds.
+   - The far horizon landmarks, and old boulder tracks laid as surface marks.
 6. **The sculpt layer** (Terrain3D).
 7. **The rock blend shader**, then the **rock path tool**, laid along the T3/T4 places.
 8. ▶ **Playtest build.** The user then tunes the land in the editor.
@@ -648,3 +656,85 @@ Each fix is a better recipe. Its numbers show up as sliders in the editor.
   - [Sinuous Ridges in Aeolis/Zephyria](https://www.uahirise.org/ESP_020528_1750);
   - [Wrinkle Ridge and Valley Network Intersection](https://www.uahirise.org/ESP_088471_1750).
 - Paper: Dundas et al. (2018), "Exposed subsurface ice sheets in the Martian mid-latitudes", *Science* 359(6372):199–201.
+
+## 14. Ideas taken forward (15 Nov)
+
+The user asked what else the land and environment could hold. Of 16 new ideas:
+- **14 were taken;**
+- **wind streaks as a compass were dropped;**
+- **radio shadow and relays were parked** for a design talk.
+
+The user then added two things of their own: rethink all the ice, and keep Mars from getting boring and repetitive. None of this is built.
+
+### Against a boring, repetitive Mars
+The user: "Mars can get boring and repetitive and we need to avoid that in the game." Four rules for the land:
+1. **Something new every few minutes.** A **sameness check** in the generator, shown in the land editor.
+   - From home, along many headings on foot and by rover, measure how far you travel before a new kind of place comes into view: a landform kind, a ground kind or an area colour.
+   - WARN past a target: about 3 minutes on foot, 2 minutes by rover, to be tuned.
+   - The dull stretches are drawn on the map.
+2. **Each area its own colours.** Real Mars isn't all red:
+   - black basalt sand;
+   - pale layered rock;
+   - grey ice rubble;
+   - purple-grey haematite;
+   - yellow sulfur;
+   - white gypsum veins.
+
+   An `areas` list in the layout file gives each area its palette, painted by the colour map. The palettes are picked in the land editor.
+3. **Each area its own sound and sky.**
+   - The same `areas` entry carries a wind and ground sound set and a haze distance: dust haze in the dunes, clear on the mesas, fog in the canyon at dawn.
+   - The dynamic score's region sounds and the environment read it.
+4. **Small surprises off the route.**
+   - A `surprises` kind: one-offs placed by anchor, such as a balanced boulder, a meteorite, an odd vein, a dead-end slot canyon or a frost-filled crater.
+   - Never the same twice. The sameness check counts them.
+
+### Ice, rethought everywhere
+The near ice wall the player chips (`scripts/thread_site.gd`, `_build_ice_wall`) is twelve box lumps, and the user calls it "ugly as hell". Every ice place gets the real Mars look from §13's references, in one shared style: pale and banded, never blue; dust-capped; grey rubble over buried ice.
+- **The near ice wall:** becomes a real small **ice scarp**.
+  - It's a pit cut into the land with one steep, pale, banded ice face (pole-facing) under a dusty cap, and fallen blocks at its foot.
+  - It's a layout-file kind, `ice_scarp`, so it shows in the land editor.
+  - The face uses the terrain shader's "exposed ice face" mask (`scripts/site_terrain.gd`).
+  - A few rocks come from the rock path tool.
+  - `thread_site.gd` keeps the chipping and drops the boxes. The chip spot is an anchor on the face.
+- **The frost hollow:** frost only on cold, shaded ground (see dawn frost below), with polygon cracks.
+- **The ice fields:** scallops and polygon cracks. Their two scarps become `ice_scarp`s, 20–30 m high (§13).
+- **The buried glacier:** a grey rubble tongue from an alcove, with moraines (§13).
+- **The ice cave:** its mouth is sunk into one of the new ice scarps. Its insides wait for B6.
+
+### One shared engine piece: land that changes while you play
+Five ideas change the ground during a game:
+- new craters;
+- rockfalls;
+- dust drifts;
+- worn roads;
+- grading and digging.
+
+They share one **per-save height difference layer**:
+- **the format:** the same as B5's sculpt layer (height differences on the 2 m grid);
+- **written at runtime** with Terrain3D's height edits and a map update for the changed cells;
+- **kept** in the save file;
+- **masked** over caves.
+
+### The ideas and where each goes
+
+| Idea | What it is | Builds on | Phase |
+|---|---|---|---|
+| Fading tracks, worn roads | boot and wheel prints that blow away over sols; often-driven routes pack into faster tracks | ground map, stake trails, the per-save layer | B3 |
+| New craters in play | a fresh impact with a blast mark and bright ejecta, sometimes clean ice laid bare; also a reveal | per-save layer, `reveals` | A10 (B5 tech) |
+| Boulder tracks, rockfalls | old trails as surface marks; new trails and fallen rock under cliffs after a quake, which can cut a stake trail | rock path tool, per-save layer, quakes | B5 (old marks), A10 (events) |
+| Dawn frost, canyon fog | slippery frost on pole-facing slopes at dawn, gone by noon; thin fog on the canyon and crater floors at sunrise | ground costs (frost), real sun, fog volumes | B3 + environment |
+| Far horizon landmarks | a big volcano and a crater rim beyond the map, on the horizon, to steer by | sky and horizon | B5 |
+| Named rock monuments | a perched giant boulder, a lone pinnacle and so on, named by Castle | `monument` kind, anchors | B5 (shapes), C1 (names) |
+| Hot-spring signs to the heart | pale silica sinter mounds and layered outcrops like Spirit's Home Plate, above the heart's old springs | `sinter_mound` kind, anchors | B5 (kind), C2/C3 (placing) |
+| Meteorites | rare iron meteorites on the plains (like Opportunity's "Heat Shield Rock") for the Lab and the Journal | `surprises`, samples | C1 + A5 |
+| Veins and layers mark resources | light-toned beds and white gypsum-like veins where materials are | `areas` palettes, geology map | B5 (looks) + A5 |
+| Your own landing debris | your lander's heat shield, back shell and parachute 1–2 km away, to salvage | anchors, the landing | A6 + C1 |
+| Terrain shadows on solar | mesas and crater walls shade panels at dawn and dusk, so where you build matters for Power | real sun, height lookup | A-track (Power) |
+| Dust drifts, dust devils | sand piles against buildings and parked rovers; a passing dust devil can clean the panels | per-save layer, weather | A10 |
+| Soft sand traps | a crust over loose sand where a rover bogs down (Spirit at Troy); on the hidden layer for the ground scan | `ground.png` hidden layer, rover bogging (A7) | B3 |
+| Grading and digging | flatten ground for a base; dig regolith for berms and shielding | per-save layer, building | A-track (building) |
+
+### Parked: radio shadow and relays
+Hills and mesas would block the radio, and relays on high ground would carry it on. The user likes it above ground but fears it could get annoying, so it waits for its own talk.
+
+A starting idea that avoids the annoyance: never a hard cut-off. Castle's voice would only fade to static, and remote things (the drone, a rover's autopilot) would stop behind ridges.
