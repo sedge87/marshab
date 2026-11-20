@@ -3,7 +3,9 @@
 # Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d3
 
 ~ d3_wake
-Castellanos: Outpost One, Rao's pass just came in. Fresh tracks in the dust, not far from you. Wide ones, much wider than GAR-Y's. [ID:d3_wake_a6_01]
+# 21 Nov: chapters 2 and 3 run side by side now, so GAR-Y may not be met yet (gary_met, ask_gary: scripts/opening_days.gd).
+? gary_met Castellanos: Outpost One, Rao's pass just came in. Fresh tracks in the dust, not far from you. Wide ones, much wider than GAR-Y's. [ID:d3_wake_a6_01]
+?! gary_met Castellanos: Outpost One, Rao's pass just came in. Fresh tracks in the dust, not far from you. Wide ones. Very wide. [ID:d3_wake_a7_01]
 Castellanos: I think it's a walker. I really do. Where they start is on your compass. [ID:d3_wake_a6_02]
 ? hopeful Castellanos: And yes, I know I said that last time. Let me have this one. [ID:d3_wake_04]
 do walker_tracks
@@ -70,7 +72,8 @@ Castellanos: Climb the ladder at the back and sit up front if you want a lift. O
 Castellanos: It's parked by the lander, and it's carrying the base's core. So now the fun part: you get to choose where home goes. [ID:d3_home_01]
 Castellanos: Open your Map. W on a spot checks it, sun, shelter, ice and slope. W again on the same spot sends Walker 1. [ID:d3_home_02]
 ? surveyed Castellanos: Somewhere near GAR-Y's blue stakes, if you can. That's water. [ID:d3_home_03s]
-?! surveyed Castellanos: And ask GAR-Y about ice first, if you like. Hold G by him and pick Survey zone. Home wants to be near water. [ID:d3_home_03]
+? ask_gary Castellanos: And ask GAR-Y about ice first, if you like. Hold G by him and pick Survey zone. Home wants to be near water. [ID:d3_home_03]
+?! gary_met Castellanos: Home wants to be near water, if you can. Low ground, frost in the mornings. [ID:d3_home_a7_03]
 => END
 
 # Walker 1 sent to the spot you chose on the Map (scripts/walker.gd send_to).
@@ -100,10 +103,11 @@ do bed
 => END
 
 ~ d3_still
-Castellanos: Morning. Let's get that walker sorted. [ID:d3_still_a6_01]
+? morning Castellanos: Morning. Let's get that walker sorted. [ID:d3_still_a6_01]
+?! morning Castellanos: About Walker 1. Here's where we are. [ID:d3_still_n01]
 ? left_walker Castellanos: Its nav's still confused. Go and set it right. [ID:d3_still_02a]
 ? left_photo Castellanos: Its legs are still locked. Take me some pictures, one part at a time, and we'll find it. [ID:d3_still_02b]
 ? left_patch Castellanos: That front-left wheel seal still needs your patch kit. [ID:d3_still_a6_02c]
 ? left_ride Castellanos: It's still walking home. Go and meet it. [ID:d3_still_a6_02e]
-? left_home Castellanos: And choose where home goes. Map, W on a spot, W again to send it. [ID:d3_still_a6_02d]
+? left_home Castellanos: And choose where home goes. Open the Map, click a spot to check it, click again to send it. [ID:d3_still_a7_02d]
 => END

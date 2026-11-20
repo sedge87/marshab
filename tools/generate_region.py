@@ -3541,6 +3541,9 @@ def main():
     fissures = carve_fissures(h, *grid(), masks, plans); lap("carve_fissures")
     sculpt = apply_sculpt(h, masks, caves)
     routes = check_routes(h, masks, fix=False)   # the fissures are hard gates: nothing is graded across them
+    # 21 Nov playtest: lone one-sample spikes stood on open ground as sharp pyramids (tools/despike_heights.py).
+    import despike_heights
+    print(f"  despiked {despike_heights.despike(h, [(m[0], m[1], m[2], HALF, SPACING) for m in despike_heights.monuments(ROOT)])} lone spikes")
     lo, hi = save_heights(h); lap("save_heights")
     write_control(h, masks); lap("write_control")
     add_surface_marks(masks, h)

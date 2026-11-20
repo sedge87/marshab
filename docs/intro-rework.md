@@ -104,6 +104,20 @@ The line pass checks every line against four questions:
 
 Phase 6 (the three new models) waits until this is done. The buggy model from the zip goes into its shell in R3.
 
+## 6b. Second playtest round (21 Nov, afternoon)
+
+**Fixed now, ahead of the rework:**
+- **Buggy and drone wrecks on the compass from sol 1.** The wreck check ran before the opening had loaded, and read "no opening" as "chapters over". It now waits (`mars_world.gd _sync_region_vehicles`).
+- **"Morning, sleep okay?" at 1:30 pm on sol 1.** The new idle and Ask Castle offers used the morning recap calls. `dN_still` now opens with "Morning…" only after a night's sleep, in the morning (the `morning` flag). Otherwise it uses a neutral opener (`dN_still_n01`).
+- **"Goodnight, Castle" offered after waking.** Falling asleep now ends the call in progress, replies included (`radio.gd _cut`).
+- **GAR-Y named in the walker-tracks call before you'd met him.** The lines that name GAR-Y now depend on `gary_met`, and `d3_home`'s ice line on `ask_gary`.
+- **Walker 1's thought without seeing it.** A sighting needs it on screen and a clear line over the ground.
+- **The GAR-Y meeting call waited till you were home.** Calls were held while you were past turn-back, and GAR-Y sits at the edge of your air. Now only real danger holds a call: air under a quarter, a leak, no power, a storm (`danger_level(false)`).
+- **The crate line away from the crate.** The `d2_found` openers and the crate line check `by_gary` and `by_crate` while they play, with a version for when you've walked off. This is the first use of the R1 idea, by hand.
+- **The pyramids.** Single height samples 3–5 m above all eight neighbours, drawn by Terrain3D as four-sided spikes; 187 on the current map. `tools/despike_heights.py` flattened them, and `generate_region.py` now de-spikes before saving. Which generator step makes them is still unknown.
+
+**Still for R1 and R2:** the same kind of problem is in other calls (for example `d2_found_14` "bring it back out here", and `d4_still` "press B to set the core down"). The line pass covers them.
+
 ## 7. Open questions for the user
 - Should the manifest be on the slate (Base page → Cargo), or only on a physical clipboard or console in the lander?
 - Should the buggy be fixable early (sol 2–3, with pallet 3's kit and scrap) or stay a later find (C1)?

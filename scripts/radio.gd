@@ -319,10 +319,17 @@ func _stale(section: String) -> bool:
 ## far-side notes, "pick it up tomorrow", a goodnight chat). Day 4's sunset
 ## talk is kept: it carries the goals.
 var _slept := false
+var _cut := false   # the call playing was ended (you fell asleep): its remaining steps are skipped
 func _watch_sleep() -> void:
 	var sleep: Node = world.get("sleep") if world != null else null
 	var asleep: bool = sleep != null and bool(sleep.get("asleep"))
 	if _slept and not asleep: woke()
+	# 21 Nov playtest: you fell asleep mid-call and woke to "Goodnight, Castle"
+	# still on offer. Sleep ends the call where it is, replies and all.
+	if asleep and not _slept and not playing.is_empty():
+		_cut = true
+		var replies: Node = world.get("replies") if world != null else null
+		if replies != null and replies.has_method("choose"): replies.choose(-1)
 	_slept = asleep
 
 func woke() -> void:
@@ -339,7 +346,7 @@ func _safe(urgent := false) -> bool:
 	if not fast and MHAudio.voice_busy(): return false
 	var suit: Node = world.get("suit")
 	if suit != null and bool(suit.get("passed_out")): return false
-	if not urgent and world.has_method("danger_level") and float(world.danger_level()) >= .3: return false
+	if not urgent and world.has_method("danger_level") and float(world.danger_level(false)) >= .3: return false
 	var sleep: Node = world.get("sleep")
 	return sleep == null or not bool(sleep.get("asleep"))
 
@@ -356,6 +363,7 @@ func _play(section: String) -> void:
 	if not fast: MHAudio.sfx("suit_beep", -12.0)
 	var steps: Array = _sections.get(section, [])
 	_ran_early = []
+	_cut = false
 	for step in steps:
 		if str(step.type) == "do" and not step.has("if") and str(step.args[0]) in EARLY_CUES:
 			_cue(step)
@@ -374,6 +382,7 @@ func _cue(step: Dictionary) -> void:
 
 func _run(steps: Array) -> void:
 	for step in steps:
+		if _cut: return
 		if step.has("if") and flags.has(str(step["if"])) == bool(step.get("not", false)): continue
 		if _ran_early.has(step): continue
 		match str(step.type):

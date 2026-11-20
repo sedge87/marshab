@@ -612,12 +612,15 @@ func _land_lander() -> void:
 ## How much danger you're in, 0 to 1, for the score (MHAudio.danger): only
 ## out on the ground in the suit. Low oxygen, past the turn-back point, a
 ## leak, flat suit power, or a storm on you.
-func danger_level() -> float:
+## turn_back: whether being past the turn-back point counts (the music, yes;
+## the radio, no: 21 Nov playtest, GAR-Y's meeting call waited till you were
+## home because he's near the edge of your air).
+func danger_level(turn_back := true) -> float:
 	if suit == null or not suit.active() or str(suit.where) != "outside": return 0.0
 	var level := 0.0
 	var o2 := float(suit.o2)
 	if o2 < .25: level = maxf(level, .5 + (.25 - o2) * 2.0)
-	if suit.turn_back_hours() <= 0.0 and o2 < .9: level = maxf(level, .6)
+	if turn_back and suit.turn_back_hours() <= 0.0 and o2 < .9: level = maxf(level, .6)
 	if bool(suit.leak): level = maxf(level, .4)
 	if float(suit.power) <= 0.0: level = maxf(level, .5)
 	var weather_node: Variant = get("weather")
@@ -904,7 +907,10 @@ func _sync_crew_rover() -> void:
 ## land (or, saved, where you left them). Not during the guided chapters.
 ## Creative: fixed, and parked by the lander.
 func _sync_region_vehicles() -> void:
-	var guided: bool = not debug_vehicles_now and opening_days != null and opening_days.has_method("guided") and opening_days.guided()
+	# 21 Nov playtest: this can run before the opening's set up; "no opening
+	# yet" isn't "chapters over" (the buggy and drone wrecks were on the compass on sol 1).
+	var settling := opening_days == null and not is_node_ready()   # still setting up: wait for the next check
+	var guided: bool = not debug_vehicles_now and (settling or (opening_days != null and opening_days.has_method("guided") and opening_days.guided()))
 	var creative := not MHGame.simulation_on()
 	if crew_rover == null and (not _crew_rover_state.is_empty() or not guided):
 		crew_rover = _spawn_vehicle("rover", _crew_rover_state, creative)

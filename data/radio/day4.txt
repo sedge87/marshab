@@ -112,7 +112,8 @@ do bed
 => END
 
 ~ d4_still
-Castellanos: Morning, Outpost One. Let's finish making that place a home. [ID:d4_still_01]
+? morning Castellanos: Morning, Outpost One. Let's finish making that place a home. [ID:d4_still_01]
+?! morning Castellanos: Let's finish making that place a home. [ID:d4_still_n01]
 ? left_walk Castellanos: Walker 1's nearly at your spot. [ID:d4_still_a6_02e]
 ? left_down Castellanos: Walker 1's waiting at your spot. Go there and press B to set the core down. [ID:d4_still_a6_02a]
 ? left_power Castellanos: The core still needs its air cartridge and its solar blanket. [ID:d4_still_a6_02b]

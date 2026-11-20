@@ -36,7 +36,7 @@ class FakeSuit extends Node:
 
 class FakeWorld extends Node:
 	var suit: Node
-	func danger_level() -> float: return 0.0
+	func danger_level(_turn_back := true) -> float: return 0.0
 
 func _all_steps(steps: Array, out: Array) -> void:
 	for step in steps:

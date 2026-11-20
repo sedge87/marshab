@@ -142,6 +142,9 @@ func _initialize() -> void:
 
 	# Finding it, and setting it right from its deck.
 	player.global_position = walker.global_position + Vector3(0, 1.5, 200.0)
+	# 21 Nov: seeing it means looking its way, over clear ground.
+	var camera := root.get_viewport().get_camera_3d()
+	if camera != null: camera.look_at(walker.global_position + Vector3.UP * 3.5)
 	walker._look()
 	_check(walker.seen and world.known.knows(walker.ID) and world.notes.is_open("walker_seen") and world.notes.is_settled("tracks"), "within sight: you see it")
 	var ladder: Node = walker.get_node("Ladder")

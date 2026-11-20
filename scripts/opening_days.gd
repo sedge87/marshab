@@ -431,6 +431,19 @@ func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void
 	var radio := _radio()
 	_story_clock(-1.0, false)   # the sun never waits (and an old save's hold lets go)
 	if radio != null and started.has(3) and not radio.flag("surveyed") and _surveyed_near_home(): radio.flags["surveyed"] = true
+	# Chapters 2 and 3 side by side: what she can say about GAR-Y (data/radio/day3.txt).
+	if radio != null:
+		var met := _gary_found()
+		if met: radio.flags["gary_met"] = true
+		else: radio.flags.erase("gary_met")
+		if met and not radio.flag("surveyed"): radio.flags["ask_gary"] = true
+		else: radio.flags.erase("ask_gary")
+		# Where you are, for lines about what's in front of you (data/radio/day2.txt d2_found).
+		var you: Vector3 = (world.player as Node3D).global_position
+		var gary_node := world.get("scout_rover") as Node3D
+		var crate_node := field_crate() as Node3D
+		_near_flag(radio, "by_gary", gary_node, you, 30.0)
+		_near_flag(radio, "by_crate", crate_node, you, 40.0)
 	var run := _hours_run()
 	if last_morning <= UNSET: last_morning = run
 	var busy: bool = radio != null and (radio.on_air() or not (radio.queue as Array).is_empty())
@@ -481,6 +494,10 @@ func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void
 			_leftover_flags(radio)
 			radio.heard.erase("d%d_dusk" % chapter)
 			radio.ring("d%d_dusk" % chapter)
+
+func _near_flag(radio: Node, flag_name: String, thing: Node3D, you: Vector3, reach: float) -> void:
+	if thing != null and is_instance_valid(thing) and Vector2(thing.global_position.x - you.x, thing.global_position.z - you.z).length() <= reach: radio.flags[flag_name] = true
+	else: radio.flags.erase(flag_name)
 
 ## 21 Nov: game hours with no chapter opened or finished before Castle
 ## offers the next step herself (about five real minutes).
@@ -540,6 +557,12 @@ func _offer_next(radio: Node) -> void:
 		for key in (radio.flags as Dictionary).keys():
 			if str(key).begins_with("left_"): radio.flags.erase(key)
 		radio.flags[_chapter_five_left()] = true
+	# 21 Nov playtest: "Morning, sleep okay?" at 1:30 pm on sol 1. Only a real
+	# morning, after a night's sleep, opens with "morning".
+	var hour := MHGame.sol_hour
+	var sunrise := float(_cycle().get("sunrise_hour", 5.0))
+	if hour >= sunrise - 1.5 and hour < sunrise + 3.0 and nights >= 1: radio.flags["morning"] = true
+	else: radio.flags.erase("morning")
 	var id := "d%d_still" % n
 	radio.heard.erase(id)
 	radio.ring(id)

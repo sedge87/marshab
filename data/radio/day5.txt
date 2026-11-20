@@ -68,7 +68,8 @@ Castellanos: The intake keeps digging feedstock. The Print Shop makes what you h
 
 # Chapter 5 not done by morning.
 ~ d5_still
-Castellanos: Morning, Outpost One. The Print Shop's still waiting on you. [ID:d5_still_01]
+? morning Castellanos: Morning, Outpost One. The Print Shop's still waiting on you. [ID:d5_still_01]
+?! morning Castellanos: The Print Shop's still waiting on you. [ID:d5_still_n01]
 ? left_pallet Castellanos: Pallet six is on your map. Take GAR-Y; the crate needs towing. [ID:d5_still_02a]
 ? left_tow Castellanos: The crate's out by pallet six. Hitch it to GAR-Y and bring it home. [ID:d5_still_02b]
 ? left_place Castellanos: The intake goes outside, the Print Shop indoors. Both on the Unpacked tab. [ID:d5_still_02c]

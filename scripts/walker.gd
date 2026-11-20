@@ -431,6 +431,9 @@ func _region() -> Vector2:
 func _in_sight(you: Vector3) -> bool:
 	var eye := you + Vector3.UP * 1.6
 	var deck := global_position + Vector3.UP * 3.5
+	# ... and in front of you (21 Nov: "I never even saw Walker 1 and this appears").
+	var camera := get_viewport().get_camera_3d() if is_inside_tree() else null
+	if camera != null and not camera.is_position_in_frustum(deck): return false
 	var far := Vector2(deck.x - eye.x, deck.z - eye.z).length()
 	var steps := maxi(int(far / 6.0), 1)
 	for i in range(1, steps):

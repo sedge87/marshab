@@ -218,7 +218,10 @@ do bed
 
 # A morning with yesterday's jobs still out there.
 ~ d1_still
-Castellanos: Morning, Outpost One. Sleep okay? Right. Let's finish what we started yesterday. [ID:d1_still_01]
+# 21 Nov: also offered when you ask (slate, Today) or after a long quiet spell,
+# so only a real morning says "morning" (the morning flag, scripts/opening_days.gd).
+? morning Castellanos: Morning, Outpost One. Sleep okay? Right. Let's finish what we started yesterday. [ID:d1_still_01]
+?! morning Castellanos: Outpost One, quick check-in. Here's what's still out there. [ID:d1_still_n01]
 ? left_air Castellanos: Pallet one first, up on the ridge. The module's air cartridge is still in it. [ID:d1_still_02a]
 ? left_power Castellanos: The power pallet's still out on the flat. Solar blanket and battery. [ID:d1_still_02b]
 ? left_tools Castellanos: And the field kit's waiting in its hollow. You'll want that hammer. [ID:d1_still_02c]
