@@ -142,7 +142,7 @@ func _process(delta: float) -> void:
 	_pips.queue_redraw()
 	var mode := prompt()
 	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not get_tree().paused
-	var holding := captured and Input.is_physical_key_pressed(KEY_E) and mode in ["chip", "cut", "scoop", "ore"]
+	var holding := captured and MHInput.held("use") and mode in ["chip", "cut", "scoop", "ore"]
 	_held = _held + delta if holding else 0.0
 	var need: float = {"chip": CHIP_SECONDS, "cut": CUT_SECONDS, "ore": MHMaterials.PULL_SECONDS}.get(mode, SCOOP_SECONDS)
 	_ring.visible = _held > .15

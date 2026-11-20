@@ -24,6 +24,11 @@ extends CanvasLayer
 
 const RegionTerrain := preload("res://scripts/region_terrain.gd")
 const SIZE := 860.0          # map square on screen, px
+var _boost := 1.0            # text and marks drawn this much larger (embedded in the slate)
+
+## A label's font size, boosted in the slate.
+func _tx(px: int) -> int:
+	return roundi(px * _boost)
 const ZOOMED := 1000.0       # metres across for Z's close view
 const MIN_SPAN := 150.0      # closest zoom, metres across
 const DETAIL_BELOW := 3000.0 # closer than this uses the close-up image
@@ -297,7 +302,6 @@ func _input(event: InputEvent) -> void:
 					survey_layer = not survey_layer
 					_say("Ice survey layer on." if survey_layer else "Ice survey layer off.")
 				KEY_G: _send_gar_y()
-				KEY_W: mark_walker_spot(_mouse())
 		get_viewport().set_input_as_handled()   # nothing else hears keys while it's open
 
 ## Where the mouse is over the map square, in map px.
@@ -312,6 +316,9 @@ func embed(holder: Control, fit: float) -> void:
 	_frame_home.remove_child(_frame)
 	holder.add_child(_frame)
 	_frame.scale = Vector2.ONE * fit / SIZE
+	# 21 Nov: shrunk into the slate, its labels came out about 7 px. Text and
+	# marks are drawn larger by as much as the square is shrunk (to about 13 px).
+	_boost = clampf(SIZE / fit / 1.25, 1.0, 2.2)
 	_frame.position = Vector2.ZERO
 	_frame.mouse_filter = Control.MOUSE_FILTER_STOP
 	_dragging = false
@@ -321,6 +328,7 @@ func embed(holder: Control, fit: float) -> void:
 
 ## Takes the map square back (the slate went down or changed app).
 func unembed() -> void:
+	_boost = 1.0
 	if not embedded: return
 	embedded = false
 	_frame.get_parent().remove_child(_frame)
@@ -356,6 +364,11 @@ func _click(pressed: bool, at: Vector2) -> void:
 		return
 	if _press_at.x < 0.0 or _press_moved > CLICK_SLOP: return
 	_press_at = Vector2(-1, -1)
+	# 21 Nov playtest: W chose the walker's spot, and walked you forward too.
+	# Now, while a walker's free to walk, a click is its spot (click again to send).
+	if ready_walker() != null:
+		mark_walker_spot(at)
+		return
 	toggle_pin(at)
 
 ## Drops a pin at `at` (map px), or lifts one already there. The pin's id, or "".
@@ -387,13 +400,12 @@ func slate_key(keycode: int) -> bool:
 			survey_layer = not survey_layer
 			_say("Ice survey layer on." if survey_layer else "Ice survey layer off.")
 		KEY_G: _send_gar_y()
-		KEY_W: mark_walker_spot(_cursor_at if _cursor_at.x >= 0.0 else Vector2(SIZE, SIZE) * .5)
 		_: return false
 	return true
 
 # ---------- A4: a spot for a walker's core ----------
 
-## The spot checked last (site metres), waiting for a second W to send it.
+## The spot checked last (site metres), waiting for a second click to send it.
 var walker_spot := Vector2.INF
 const SPOT_AGAIN_PX := 18.0
 
@@ -405,9 +417,9 @@ func ready_walker() -> Node:
 		if is_instance_valid(w) and str(w.state) == "ready": return w
 	return null
 
-## W on the map: the first press checks the spot under the cursor (sun, ice,
-## shelter, slope) and Castle weighs in; W again on the same spot sends the
-## walker there. Returns what it said.
+## A click on the map: the first checks the spot under the cursor (sun, ice,
+## shelter, slope) and Castle weighs in; a click again on the same spot sends
+## the walker there. Returns what it said.
 func mark_walker_spot(at: Vector2) -> String:
 	var walker := ready_walker()
 	if walker == null:
@@ -427,7 +439,7 @@ func mark_walker_spot(at: Vector2) -> String:
 		return why
 	walker_spot = site
 	var check := site_check(site)
-	_say("%s · W again to send %s." % [check.words, str(walker.walker_name)])
+	_say("%s · click again to send %s." % [check.words, str(walker.walker_name)])
 	MHNotices.post("info", "Castle on the spot", str(check.castle), "")
 	return str(check.words)
 
@@ -555,13 +567,13 @@ func _draw_markers() -> void:
 	while gx < _view.end.x:
 		var at := _region_to_map(Vector2(gx, 0)).x
 		c.draw_line(Vector2(at, 0), Vector2(at, SIZE), Color(1, 1, 1, .08), 1.0)
-		c.draw_string(font, Vector2(at + 3, 13), "%d" % roundi(gx), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, .45))
+		c.draw_string(font, Vector2(at + 3, 13), "%d" % roundi(gx), HORIZONTAL_ALIGNMENT_LEFT, -1, _tx(11), Color(1, 1, 1, .45))
 		gx += spacing
 	var gz := first.y
 	while gz < _view.end.y:
 		var at := _region_to_map(Vector2(0, gz)).y
 		c.draw_line(Vector2(0, at), Vector2(SIZE, at), Color(1, 1, 1, .08), 1.0)
-		c.draw_string(font, Vector2(3, at - 3), "%d" % roundi(-gz), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, .45))
+		c.draw_string(font, Vector2(3, at - 3), "%d" % roundi(-gz), HORIZONTAL_ALIGNMENT_LEFT, -1, _tx(11), Color(1, 1, 1, .45))
 		gz += spacing
 	# The base: every room cell.
 	if world.builder != null:
@@ -585,7 +597,16 @@ func _draw_markers() -> void:
 	for id in walkers:
 		var w: Node3D = walkers[id]
 		if is_instance_valid(w) and str(w.state) in ["ready", "travelling", "parked"]: _marker(w.global_position, str(w.walker_name), Color("#F2C35A"), "circle")
-	if not is_inf(walker_spot.x): _marker(Vector3(walker_spot.x, 0, walker_spot.y), "Spot", MHStyle.accent, "circle")
+	if not is_inf(walker_spot.x):
+		# The ground the base needs, to scale (walker.gd spot_reason checks 24 m),
+		# and the core itself (6 × 9 m), so you can see what you're choosing.
+		var spot_at := Vector3(walker_spot.x, 0, walker_spot.y)
+		var centre_px := _world_to_map(spot_at)
+		var metre_px := (_world_to_map(spot_at + Vector3(10.0, 0, 0)) - centre_px).length() / 10.0
+		_markers.draw_arc(centre_px, maxf(8.0, 24.0 * metre_px), 0.0, TAU, 48, MHStyle.accent, 2.0, true)
+		var core := Vector2(6.0, 9.0) * metre_px
+		if core.x >= 3.0: _markers.draw_rect(Rect2(centre_px - core * .5, core), Color(MHStyle.accent, .55))
+		_marker(spot_at, "Walker spot · click again to send", MHStyle.accent, "circle")
 	# The vehicles and the drone (A7, scripts/crew_rover.gd, scripts/scout_drone.gd); wrecks are pins.
 	for vehicle in world.get_tree().get_nodes_in_group("vehicle"):
 		if not bool(vehicle.get("wrecked")): _marker((vehicle as Node3D).global_position, "Rover" if str(vehicle.get("kind")) == "rover" else "Buggy", Color("#8CC3CB"), "circle")
@@ -628,7 +649,7 @@ func _draw_trail() -> void:
 		carried = length - (along - gap)
 	var start := points[0]
 	_markers.draw_arc(start, 6.0, 0.0, TAU, 20, colour, 2.0, true)
-	_markers.draw_string(ThemeDB.fallback_font, start + Vector2(10, -6), "Airlock", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, colour)
+	_markers.draw_string(ThemeDB.fallback_font, start + Vector2(10, -6), "Airlock", HORIZONTAL_ALIGNMENT_LEFT, -1, _tx(12), colour)
 
 ## Your pins (a dot on a stem) and the things you've found (a diamond).
 func _draw_known() -> void:
@@ -644,27 +665,28 @@ func _draw_known() -> void:
 			# The drone's route markers (A7): small teal triangles; B3 joins them to your trails.
 			var tri := PackedVector2Array([at + Vector2(0, -6), at + Vector2(5, 4), at + Vector2(-5, 4)])
 			_markers.draw_colored_polygon(tri, Color("#8CC3CB"))
-			_markers.draw_string(font, at + Vector2(8, 4), str(entry.name), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("#8CC3CB"))
+			_markers.draw_string(font, at + Vector2(8, 4), str(entry.name), HORIZONTAL_ALIGNMENT_LEFT, -1, _tx(11), Color("#8CC3CB"))
 			continue
 		if kind == "pin":
 			_markers.draw_line(at, at + Vector2(0, -14), Color(0, 0, 0, .8), 3.0, true)
 			_markers.draw_line(at, at + Vector2(0, -14), MHStyle.accent, 1.5, true)
 			_markers.draw_circle(at + Vector2(0, -16), 5.5, Color(0, 0, 0, .8))
 			_markers.draw_circle(at + Vector2(0, -16), 4.5, MHStyle.accent)
-			_markers.draw_string(font, at + Vector2(9, -12), str(entry.name), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MHStyle.accent)
+			_markers.draw_string(font, at + Vector2(9, -12), str(entry.name), HORIZONTAL_ALIGNMENT_LEFT, -1, _tx(12), MHStyle.accent)
 		else:
 			var diamond := PackedVector2Array([at + Vector2(0, -6), at + Vector2(6, 0), at + Vector2(0, 6), at + Vector2(-6, 0)])
 			_markers.draw_colored_polygon(diamond, MHStyle.WARN)
 			var outline := diamond.duplicate()
 			outline.append(diamond[0])
 			_markers.draw_polyline(outline, Color(0, 0, 0, .8), 1.0, true)
-			_markers.draw_string(font, at + Vector2(10, 5), str(entry.name), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, MHStyle.WARN)
+			_markers.draw_string(font, at + Vector2(10, 5), str(entry.name), HORIZONTAL_ALIGNMENT_LEFT, -1, _tx(12), MHStyle.WARN)
 
 func _marker(world_position: Vector3, text: String, colour: Color, shape: String) -> void:
 	var at := _world_to_map(world_position)
-	if shape == "square": _markers.draw_rect(Rect2(at - Vector2(6, 6), Vector2(12, 12)), colour)
-	else: _markers.draw_circle(at, 6.0, colour)
-	_markers.draw_string(ThemeDB.fallback_font, at + Vector2(10, 5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, colour)
+	var r := 6.0 * _boost
+	if shape == "square": _markers.draw_rect(Rect2(at - Vector2(r, r), Vector2(r, r) * 2.0), colour)
+	else: _markers.draw_circle(at, r, colour)
+	_markers.draw_string(ThemeDB.fallback_font, at + Vector2(r + 4.0, r * .8), text, HORIZONTAL_ALIGNMENT_LEFT, -1, _tx(13), colour)
 
 # ---------- the ice survey layer ----------
 
@@ -702,7 +724,7 @@ func _draw_survey() -> void:
 		for i in dashes:
 			if i % 2 == 1: continue
 			c.draw_arc(centre, r, TAU * i / dashes, TAU * (i + 1) / dashes, 4, zone_colour, 2.0, true)
-		if r > 14.0: c.draw_string(font, centre + Vector2(-40, -r - 6), "LIKELY ICE", HORIZONTAL_ALIGNMENT_CENTER, 80, 11, zone_colour)
+		if r > 14.0: c.draw_string(font, centre + Vector2(-40, -r - 6), "LIKELY ICE", HORIZONTAL_ALIGNMENT_CENTER, 80, _tx(11), zone_colour)
 	var stakes := get_tree().get_first_node_in_group("survey_stakes")
 	var readings: Array = stakes.call("readings") if stakes != null else ICE_KNOWLEDGE.samples(get_tree()).map(func(v): return {"at": Vector2(v.x, v.y), "reading": float(v.z), "cored": ""})
 	for entry in readings:

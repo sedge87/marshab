@@ -57,6 +57,7 @@ var _stumble := 0.0
 
 func _ready() -> void:
 	add_to_group("player")
+	MHInput.setup()   # the named controls, keyboard and gamepad (scripts/mh_input.gd)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	# Lets the controller follow small terrain undulations without hopping or snagging.
 	floor_snap_length = 0.5
@@ -68,45 +69,57 @@ func _unhandled_input(event: InputEvent) -> void:
 	# behind the build camera, so only mouse-look below is shared.
 	# Driving the crew rover (scripts/crew_rover.gd): it takes the keys.
 	var exploring := not _any_build_mode_active() and not bool(get_meta("driving", false)) and not bool(get_meta("riding", false)) and not bool(get_meta("strapped", false)) and not bool(get_meta("first_step", false))
-	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
-		# With the wrist pad up (T held), E eats the suit's food bar (scripts/suit.gd).
+	if exploring and MHInput.pressed(event, "use"):
+		# With the wrist pad up (Alt held), E eats the suit's food bar (scripts/suit.gd).
 		var suit := get_tree().get_first_node_in_group("suit")
-		if Input.is_physical_key_pressed(KEY_T) and suit != null and suit.eat_bar(): pass
+		if MHInput.held("wrist") and suit != null and suit.eat_bar(): pass
 		elif not _use_looked_at_interactable("interact"):
 			_toggle_nearby_airlock_door()
-	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
+	if exploring and MHInput.pressed(event, "lamp"):
 		# Focused equipment retains its contextual secondary action (such as a
 		# bunk reading light); otherwise F always operates the suit flashlight.
-		# With the wrist pad up (T held), F pings GAR-Y's survey stakes.
+		# With the wrist pad up (Alt held), F pings GAR-Y's survey stakes.
 		var stakes := get_tree().get_first_node_in_group("survey_stakes")
-		if Input.is_physical_key_pressed(KEY_T) and stakes != null and stakes.call("ping"): pass
+		if MHInput.held("wrist") and stakes != null and stakes.call("ping"): pass
 		elif not _use_looked_at_interactable("interact_secondary"):
 			set_flashlight_enabled(not _flashlight_enabled)
 	# I: the looked-at item's info card (what it does in the habitat).
-	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_I:
+	if exploring and MHInput.pressed(event, "info"):
 		_use_looked_at_interactable("interact_info")
 	# Z: sleep, at a bunk (scripts/sleep.gd).
-	if exploring and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_Z and not event.ctrl_pressed:
+	if exploring and MHInput.pressed(event, "sleep") and not (event is InputEventKey and event.ctrl_pressed):
 		_use_looked_at_interactable("interact_sleep")
 	# G: a tap is the looked-at item's third action, holding it opens GAR-Y's
 	# orders. Both are handled by scripts/gar_y_orders.gd.
 	# The first step on Mars (scripts/first_step.gd) drives the view for a few seconds.
 	if bool(get_meta("first_step", false)): return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		var look := float(get_meta("look_speed", 1.0))   # a lazier look when hungry (scripts/body.gd)
-		rotate_y(-event.relative.x * MOUSE_SENSITIVITY * look)
-		head.rotate_x(-event.relative.y * MOUSE_SENSITIVITY * look)
-		head.rotation.x = clamp(head.rotation.x, deg_to_rad(-80.0), deg_to_rad(80.0))
-		# Strapped into the landing seat (scripts/wake_up.gd): the head turns, the body doesn't.
-		if bool(get_meta("strapped", false)):
-			var home := float(get_meta("strap_yaw", rotation.y))
-			var reach := float(get_meta("strap_reach", PI))
-			rotation.y = home + clampf(wrapf(rotation.y - home, -PI, PI), -reach, reach)
-			head.rotation.x = clamp(head.rotation.x, deg_to_rad(-45.0), deg_to_rad(35.0))
+		look_by(event.relative * MOUSE_SENSITIVITY)
 	# Build Mode needs a free cursor for repeated placement clicks. The builder
 	# marks the player while its isometric camera is active.
 	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not bool(get_meta("build_mode_active", false)):
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+## Turns your view by `amount` radians (x across, y down): the mouse, or the
+## gamepad's right stick (in _process).
+func look_by(amount: Vector2) -> void:
+	var look := float(get_meta("look_speed", 1.0))   # a lazier look when hungry (scripts/body.gd)
+	rotate_y(-amount.x * look)
+	head.rotate_x(-amount.y * look)
+	head.rotation.x = clamp(head.rotation.x, deg_to_rad(-80.0), deg_to_rad(80.0))
+	# Strapped into the landing seat (scripts/wake_up.gd): the head turns, the body doesn't.
+	if bool(get_meta("strapped", false)):
+		var home := float(get_meta("strap_yaw", rotation.y))
+		var reach := float(get_meta("strap_reach", PI))
+		rotation.y = home + clampf(wrapf(rotation.y - home, -PI, PI), -reach, reach)
+		head.rotation.x = clamp(head.rotation.x, deg_to_rad(-45.0), deg_to_rad(35.0))
+
+func _process(delta: float) -> void:
+	# The right stick looks, wherever the mouse would (not while driving, in a
+	# build camera, the first step's scripted look or a paused menu).
+	if get_tree().paused or bool(get_meta("first_step", false)) or bool(get_meta("driving", false)) or _any_build_mode_active() or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED: return
+	var stick := MHInput.pad_look(delta)
+	if stick != Vector2.ZERO: look_by(stick)
 
 func _physics_process(delta: float) -> void:
 	if global_position.y < -30.0:
@@ -125,7 +138,7 @@ func _physics_process(delta: float) -> void:
 	var grounded := is_on_floor()
 	_crouch(delta)
 	var slate_up := bool(get_meta("slate_up", false))   # walking with the slate up: no jumping, no running
-	var jump_pressed := not slate_up and (Input.is_action_pressed("jump") or Input.is_key_pressed(KEY_SPACE))
+	var jump_pressed := not slate_up and MHInput.held("jump")
 	var jump_tapped := jump_pressed and not _jump_was_pressed
 	_jump_was_pressed = jump_pressed
 	# Input actions are retained for remapping. Direct key checks are a reliable
@@ -135,7 +148,7 @@ func _physics_process(delta: float) -> void:
 		_axis_pressed("move_back", KEY_S) - _axis_pressed("move_forward", KEY_W)
 	)
 	input_vector = input_vector.limit_length(1.0)
-	var sprint_held := not slate_up and (Input.is_action_pressed("sprint") or Input.is_key_pressed(KEY_SHIFT))
+	var sprint_held := not slate_up and MHInput.held("sprint")
 	var indoors := _indoors()
 	var can_lope := sprint_held and not crouching and not indoors and input_vector.length() > .1 and _stumble <= 0.0
 	_update_climb(grounded, (transform.basis * Vector3(input_vector.x, 0.0, input_vector.y)).normalized(), can_lope)
@@ -283,7 +296,7 @@ func stumble() -> void:
 
 ## Ctrl held: crouch. Letting go stands you up once there's headroom.
 func _crouch(delta: float) -> void:
-	var want := Input.is_key_pressed(KEY_CTRL)
+	var want := MHInput.held("crouch")
 	if crouching and not want and _headroom_blocked(): want = true
 	crouching = want
 	var capsule := _body_shape.shape as CapsuleShape3D
@@ -358,7 +371,8 @@ func _on_deck() -> bool:
 	return false
 
 func _axis_pressed(action: StringName, fallback_key: Key) -> float:
-	return 1.0 if Input.is_action_pressed(action) or Input.is_key_pressed(fallback_key) else 0.0
+	# The stick gives how far (a slow walk at half tilt); a key is all or nothing.
+	return 1.0 if Input.is_key_pressed(fallback_key) else MHInput.amount(action)
 
 func set_flashlight_enabled(enabled: bool) -> void:
 	_flashlight_enabled = enabled

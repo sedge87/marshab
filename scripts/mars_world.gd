@@ -79,7 +79,7 @@ var earth_link: Node   # scripts/mission_control_link.gd: delayed messages from 
 var _earth_link_state := {}
 var sleep: Node   # scripts/sleep.gd: sleep at a bunk to pass the time
 var carry: Node   # scripts/carry.gd: pick up small things and put them elsewhere
-var suit: Node    # scripts/suit.gd: your suit's oxygen, power and scrubber (hold T for the wrist pad)
+var suit: Node    # scripts/suit.gd: your suit's oxygen, power and scrubber (hold Alt for the wrist pad)
 var _suit_state := {}
 var cabin_life: Node   # scripts/lander_cabin_life.gd: the lander cabin on the new survival core
 var _cabin_state := {}
@@ -373,9 +373,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		save_now()
 		get_viewport().set_input_as_handled()
 		return
-	if event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("ui_cancel") or MHInput.pressed(event, "pause"):
 		if pause_menu == null: _show_pause()
 		else: _resume()
+	elif event is InputEventJoypadButton and MHInput.pressed(event, "map") and pda != null and pda.can_open():
+		pda.open("map")
 	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
 		# M raises the slate on Base. The new rules have no Mission Control to fall back on.
 		if pda != null and pda.can_open(): pda.open("base")

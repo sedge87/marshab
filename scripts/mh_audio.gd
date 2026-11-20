@@ -632,7 +632,7 @@ func _play_sfx(id: String, volume_db: float, pitch_jitter: float) -> void:
 	p.play()
 
 const SUIT_QUIET := ["suit_sealed", "suit_topping_up", "suit_full"]
-const SUIT_URGENT := ["suit_o2_quarter", "suit_o2_critical", "suit_turn_back", "suit_power_out"]
+const SUIT_URGENT := ["suit_o2_quarter", "suit_o2_critical", "suit_power_out"]
 
 func _suit_alert(id: String) -> void:
 	var variants: Array = (lines().get("suit", {}) as Dictionary).get(id, [])

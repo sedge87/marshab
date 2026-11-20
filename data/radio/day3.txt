@@ -7,7 +7,7 @@ Castellanos: Outpost One, Rao's pass just came in. Fresh tracks in the dust, not
 Castellanos: I think it's a walker. I really do. Where they start is on your compass. [ID:d3_wake_a6_02]
 ? hopeful Castellanos: And yes, I know I said that last time. Let me have this one. [ID:d3_wake_04]
 do walker_tracks
-Castellanos: It's inside your suit's reach, just. Top your air up first, and if I say turn back, you turn back. [ID:d3_wake_a6_03]
+Castellanos: It's inside your suit's reach, just. Top your air up first. [ID:d3_wake_a6_03]
 => END
 
 # At the tracks (scripts/walker.gd _look): how to find the rest.

@@ -2,29 +2,35 @@ extends Control
 
 ## The slate's screen (scripts/pda.gd, docs/pda.md §3): drawn into its
 ## SubViewport at 1280 x 800. A status bar along the top (time, day or night,
-## the resupply countdown, the link), a rail of apps down the left with an
-## unread dot on each, and the open app filling the rest. 1–9 switch apps.
+## the resupply countdown, the link), a row of page tabs with an unread dot on
+## each, and the open page filling the rest. 1–5 (or LB/RB) switch pages.
 ##
-## Apps arrive one at a time (docs/pda.md §9); the rail shows those built.
+## 21 Nov playtest: nine apps were too many, and nobody could tell what each
+## was for. Now four pages, each saying what it's for, with the old apps as
+## tabs inside them; and the Camera, a tool rather than a page, at the end.
+## Everything is drawn 25% larger (SCALE): the text was too small to read.
 
 const APPS := [
-	{"id": "notes", "label": "Notes", "icon": "pencil", "built": true},
-	{"id": "goals", "label": "Goals", "icon": "clipboard-check", "built": true},
-	{"id": "map", "label": "Map", "icon": "map-pin", "built": true},
-	{"id": "base", "label": "Base", "icon": "gauge", "built": true},
-	{"id": "cargo", "label": "Cargo", "icon": "package", "built": true},
-	{"id": "comms", "label": "Comms", "icon": "satellite", "built": true},
-	{"id": "site", "label": "Site", "icon": "mountain-snow", "built": true},
-	{"id": "log", "label": "Log", "icon": "clock", "built": true},
-	{"id": "camera", "label": "Camera", "icon": "camera", "built": true},
+	{"id": "today", "label": "Today", "icon": "pencil", "built": true, "what": "What's on your mind, and what's next."},
+	{"id": "map", "label": "Map", "icon": "map-pin", "built": true, "what": "Where you are, where things are, and the ground here."},
+	{"id": "base", "label": "Base", "icon": "gauge", "built": true, "what": "Power, heat and air at each base, and the cargo you've found."},
+	{"id": "radio", "label": "Radio", "icon": "satellite", "built": true, "what": "Messages, discoveries, and everything you've been told."},
+	{"id": "camera", "label": "Camera", "icon": "camera", "built": true, "what": "Photos for the journal."},
 ]
-const SIZE := Vector2(1280, 800)
+## The old app names, still used by callers and notices: [page, tab].
+const ALIASES := {"notes": ["today", ""], "goals": ["today", ""], "site": ["map", "site"], "cargo": ["base", "cargo"], "comms": ["radio", "messages"], "log": ["radio", "log"], "discoveries": ["radio", "discoveries"]}
+## Which notice channels (MHNotices.unread) light each page's dot.
+const DOTS := {"today": ["notes", "goals"], "map": ["map", "site"], "base": ["base", "cargo"], "radio": ["comms", "log"], "camera": ["camera"]}
+const SCALE := 1.25
+const PIXELS := Vector2(1280, 800)
+const SIZE := PIXELS / SCALE      # the page's own size, drawn SCALE times larger
 const GUIDE := preload("res://scripts/guide_overlay.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 
 var world: Node
 var pda: Node
 var app := ""
+var _tab := {"map": "map", "base": "base", "radio": "messages"}   # each page's open tab
 var _clock: Label
 var _link: Label
 var _keys: Control       # the keys along the bottom, the first few times (pda.gd show_keys)
@@ -42,11 +48,12 @@ var _comms_tab := "messages"
 var _comms_only := ""     # one person's messages, or everyone's
 const SYSTEMS := [["battery", "Battery", "zap"], ["water", "Water", "droplets"], ["food", "Food", "wheat"], ["air", "Air", "wind"], ["crew", "Crew health", "heart-pulse"]]
 var _map_cursor: Label
-const MAP_FIT := 600.0    # the map square on the screen, px
+const MAP_FIT := 360.0    # the map square on the screen, px (drawn SCALE larger)
 var _tick := 0.0
 
 func _ready() -> void:
 	size = SIZE
+	scale = Vector2(SCALE, SCALE)
 	theme = MHStyle.theme()
 	var back := ColorRect.new()
 	back.color = MHStyle.INK_950
@@ -55,20 +62,19 @@ func _ready() -> void:
 	# Kept clear of the edges: the bezel's raised lip hides a sliver of each side.
 	var safe := MarginContainer.new()
 	safe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right"]: safe.add_theme_constant_override("margin_" + side, 44)
-	for side in ["top", "bottom"]: safe.add_theme_constant_override("margin_" + side, 28)
+	for side in ["left", "right"]: safe.add_theme_constant_override("margin_" + side, 36)
+	for side in ["top", "bottom"]: safe.add_theme_constant_override("margin_" + side, 22)
 	add_child(safe)
 	var column := MHStyle.vbox(0)
 	safe.add_child(column)
 	column.add_child(_status_bar())
-	var body := MHStyle.hbox(0)
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(body)
-	body.add_child(_build_rail())
+	column.add_child(_build_rail())
 	_page = MarginContainer.new()
 	_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for side in ["left", "right", "top", "bottom"]: _page.add_theme_constant_override("margin_" + side, 28)
-	body.add_child(_page)
+	_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	for side in ["left", "right"]: _page.add_theme_constant_override("margin_" + side, 8)
+	for side in ["top", "bottom"]: _page.add_theme_constant_override("margin_" + side, 14)
+	column.add_child(_page)
 	# The keys, along the bottom, the first few times the slate is up.
 	_keys = PanelContainer.new()
 	_keys.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.INK_900, Color(0, 0, 0, 0), 0, 0, Vector4(24, 10, 24, 10)))
@@ -78,7 +84,7 @@ func _ready() -> void:
 	keys_row.add_child(MHStyle.mono("·", 18, MHStyle.TEXT_MUTED, 700))
 	keys_row.add_child(MHStyle.mono("TAB AGAIN TO RAISE IT", 18, MHStyle.TEXT_SECONDARY, 700))
 	keys_row.add_child(MHStyle.mono("·", 18, MHStyle.TEXT_MUTED, 700))
-	keys_row.add_child(MHStyle.mono("CLICK AN APP ON THE LEFT", 18, MHStyle.TEXT_SECONDARY, 700))
+	keys_row.add_child(MHStyle.mono("1–5 OR CLICK A TAB FOR A PAGE", 18, MHStyle.TEXT_SECONDARY, 700))
 	_keys.add_child(keys_row)
 	_keys.visible = false
 	column.add_child(_keys)
@@ -97,59 +103,142 @@ func _status_bar() -> Control:
 	bar.add_child(row)
 	return bar
 
+## The page tabs, in a row under the status bar.
+var _rail_row: HBoxContainer
 func _build_rail() -> Control:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size.x = 200
-	panel.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.INK_900, Color(0, 0, 0, 0), 0, 0, Vector4(12, 16, 12, 16)))
-	_rail = MHStyle.vbox(8)
-	panel.add_child(_rail)
+	panel.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.INK_900, Color(0, 0, 0, 0), 0, 0, Vector4(8, 8, 8, 8)))
+	_rail_row = MHStyle.hbox(8)
+	panel.add_child(_rail_row)
+	_rail = MHStyle.vbox(0)   # (kept for older callers; the tabs are in _rail_row)
 	_fill_rail()
 	return panel
 
 ## The rail's buttons, one per app in apps() (rebuilt if that changes, e.g.
 ## Notes for Goals once the world is known).
 func _fill_rail() -> void:
-	for child in _rail.get_children(): child.free()
+	for child in _rail_row.get_children(): child.free()
 	_rail_buttons = {}
 	var n := 0
 	for entry in APPS:
 		if not str(entry.id) in apps(): continue
 		n += 1
-		var button := MHStyle.button("%d  %s" % [n, entry.label], "ghost", str(entry.icon), 56)
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		var tool := str(entry.id) == "camera"
+		if tool: _rail_row.add_child(MHStyle.spacer())
+		var button := MHStyle.button(("%d" % n) if tool else ("%d  %s" % [n, entry.label]), "ghost", str(entry.icon), 48)
 		button.focus_mode = Control.FOCUS_NONE
+		if not tool: button.custom_minimum_size.x = 150
+		button.tooltip_text = str(entry.what)
 		button.pressed.connect(show_app.bind(str(entry.id)))
 		var dot := ColorRect.new()
 		dot.color = MHStyle.accent
-		dot.custom_minimum_size = Vector2(10, 10)
-		dot.size = Vector2(10, 10)
-		dot.position = Vector2(166, 23)
+		dot.custom_minimum_size = Vector2(9, 9)
+		dot.size = Vector2(9, 9)
+		dot.position = Vector2(8, 8)
 		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.add_child(dot)
-		_rail.add_child(button)
+		_rail_row.add_child(button)
 		_rail_buttons[str(entry.id)] = {"button": button, "dot": dot}
 
-## Built apps, in rail order. Goals only for a game still on the old
-## getting-started checklist; Notes otherwise (master-design §5).
+## The pages, in tab order (the Camera only once there's a camera).
 func apps() -> Array:
-	var checklist: bool = world != null and world.get("tutorial") != null
 	var shoots: bool = world != null and world.get("slate_camera") != null
-	var cargo: bool = world != null and world.get("storm_drop") != null
-	return APPS.filter(func(entry): return bool(entry.built) and (str(entry.id) != ("notes" if checklist else "goals")) and (shoots or str(entry.id) != "camera") and (cargo or str(entry.id) != "cargo")).map(func(entry): return str(entry.id))
+	return APPS.filter(func(entry): return bool(entry.built) and (shoots or str(entry.id) != "camera")).map(func(entry): return str(entry.id))
+
+## The tabs a page has: [id, label, icon].
+func tabs(page: String) -> Array:
+	match page:
+		"map": return [["map", "Map", "map"], ["site", "Here", "mountain-snow"]]
+		"base":
+			var cargo: bool = world != null and world.get("storm_drop") != null
+			return [["base", "Base", "gauge"]] + ([["cargo", "Cargo", "package"]] if cargo else [])
+		"radio": return [["messages", "Messages", "satellite"], ["discoveries", "Discoveries", "sparkles"], ["log", "Log", "clock"]]
+	return []
+
+## A page's header: its tabs on the left, what it's for on the right.
+func _page_head(page: String) -> Control:
+	var row := MHStyle.hbox(8)
+	for tab in tabs(page):
+		var id := str(tab[0])
+		var button := MHStyle.button(str(tab[1]), "primary" if str(_tab.get(page, "")) == id else "secondary", str(tab[2]), 40)
+		button.focus_mode = Control.FOCUS_NONE
+		button.pressed.connect(func() -> void:
+			_tab[page] = id
+			_rebuild())
+		row.add_child(button)
+	row.add_child(MHStyle.spacer())
+	for entry in APPS:
+		if str(entry.id) == page:
+			var what := MHStyle.body(str(entry.what), 15, MHStyle.TEXT_MUTED)
+			what.autowrap_mode = TextServer.AUTOWRAP_OFF
+			what.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			row.add_child(what)
+	row.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	return row
+
+## The open page, drawn again from scratch.
+func _rebuild() -> void:
+	_lend_map(false)
+	for child in _page.get_children(): child.queue_free()
+	var holder := MHStyle.vbox(12)
+	if not tabs(app).is_empty(): holder.add_child(_page_head(app))
+	var body: Control
+	var tab := str(_tab.get(app, ""))
+	match app:
+		"today": body = _notes_page() if world == null or world.get("tutorial") == null else _goals_page()
+		"map": body = _map_page() if tab == "map" else _site_page()
+		"base": body = _cargo_page() if tab == "cargo" else _base_page()
+		"radio":
+			if tab == "log":
+				body = _log_page()
+				MHNotices.seen("log")
+			else:
+				_comms_tab = "discoveries" if tab == "discoveries" else "messages"
+				body = _comms_page()
+		"camera": body = _camera_page()
+		_: body = _notes_page()
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	if app == "base" and tab == "base":   # taller than the screen with several bases: it scrolls
+		var scroll := ScrollContainer.new()
+		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(body)
+		body = scroll
+	holder.add_child(body)
+	_page.add_child(holder)
+	for channel in DOTS.get(app, []): MHNotices.seen(str(channel))
 
 ## The slate was raised (pda.gd): on this app, or the last one used.
 func opened(wanted := "") -> void:
 	if _rail_buttons.keys() != apps(): _fill_rail()
-	var choice := wanted if wanted in apps() else str(MHGame.setting("slate_app"))
-	if not choice in apps(): choice = str(apps()[0])
+	var choice := wanted if (wanted in apps() or ALIASES.has(wanted)) else str(MHGame.setting("slate_app"))
+	if not (choice in apps() or ALIASES.has(choice)): choice = str(apps()[0])
 	app = ""
 	show_app(choice)
 	_update_status()
 	_keys.visible = pda != null and bool(pda.show_keys())
 
+## The next or last page along the rail (the gamepad's RB / LB).
+func step_app(by: int) -> void:
+	var list := apps()
+	if list.is_empty(): return
+	var at := maxi(0, list.find(app))
+	show_app(str(list[wrapi(at + by, 0, list.size())]))
+
 func show_app(id: String) -> void:
+	# An old app name opens its page, on its tab.
+	if ALIASES.has(id):
+		var where: Array = ALIASES[id]
+		if not str(where[1]).is_empty(): _tab[str(where[0])] = str(where[1])
+		if world != null and world.get("guide_flags") != null: world.guide_flags["slate_" + id] = true
+		id = str(where[0])
+		if id == app: _rebuild()
+	elif tabs(id).any(func(t): return str(t[0]) == id):
+		_tab[id] = id   # "map" or "base" by name: its main tab
+		if id == app: _rebuild()
+	if not id in apps(): id = str(apps()[0])
 	if id == app and _page.get_child_count() > 0: return
-	_lend_map(false)
 	if app == "camera" and id != "camera": _camera_off()
 	app = id
 	MHNotices.seen(id)
@@ -158,17 +247,7 @@ func show_app(id: String) -> void:
 	if str(values.get("slate_app", "")) != id:
 		values["slate_app"] = id
 		MHGame.save_settings(values)
-	for child in _page.get_children(): child.queue_free()
-	match id:
-		"map": _page.add_child(_map_page())
-		"goals": _page.add_child(_goals_page())
-		"notes": _page.add_child(_notes_page())
-		"base": _page.add_child(_base_page())
-		"comms": _page.add_child(_comms_page())
-		"site": _page.add_child(_site_page())
-		"camera": _page.add_child(_camera_page())
-		"cargo": _page.add_child(_cargo_page())
-		_: _page.add_child(_log_page())
+	_rebuild()
 	for key in _rail_buttons:
 		(_rail_buttons[key].button as Button).theme_type_variation = "SelectedButton" if key == id else "GhostButton"
 	MHAudio.sfx("ui_click", -10.0)
@@ -187,7 +266,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		shutter()
 		get_viewport().set_input_as_handled()
 		return
-	var index := (event as InputEventKey).keycode - KEY_1
+	var index := (event as InputEventKey).keycode - KEY_1   # 1–5: the pages
 	var list := apps()
 	if index >= 0 and index < list.size():
 		show_app(str(list[index]))
@@ -199,31 +278,19 @@ func _process(delta: float) -> void:
 	if _tick > 0.0: return
 	_tick = .5
 	_update_status()
-	if app == "log" and MHNotices.history.size() != _shown_log:
-		for child in _page.get_children(): child.queue_free()
-		_page.add_child(_log_page())
-		MHNotices.seen("log")
-	if app == "map" and _map_you != null and _region() != null:
+	var tab := str(_tab.get(app, ""))
+	if app == "map" and tab == "map" and _map_you != null and _region() != null:
 		var lines: Array = _region().readouts()
 		_map_you.text = str(lines[0])
 		_map_cursor.text = str(lines[1])
-	if app == "comms" and _comms_signature() != _shown_comms: _redraw()
 	if app == "camera": _camera_words()
-	if app == "cargo" and _cargo_signature() != _shown_cargo:
-		for child in _page.get_children(): child.queue_free()
-		_page.add_child(_cargo_page())
-	if app == "site" and _site_signature() != _shown_site: _redraw()
-	if app == "base" and _base_signature() != _shown_base:
-		for child in _page.get_children(): child.queue_free()
-		_page.add_child(_base_page())
-		MHNotices.seen("base")
-	if app == "notes" and _notes_signature() != _shown_notes:
-		_redraw()
-		MHNotices.seen("notes")
-	if app == "goals" and _goals_signature() != _shown_goals:
-		for child in _page.get_children(): child.queue_free()
-		_page.add_child(_goals_page())
-		MHNotices.seen("goals")
+	var stale := false
+	match app:
+		"radio": stale = (MHNotices.history.size() != _shown_log) if tab == "log" else (_comms_signature() != _shown_comms)
+		"map": stale = tab == "site" and _site_signature() != _shown_site
+		"base": stale = (_cargo_signature() != _shown_cargo) if tab == "cargo" else (_base_signature() != _shown_base)
+		"today": stale = (_notes_signature() != _shown_notes) if world.get("tutorial") == null else (_goals_signature() != _shown_goals)
+	if stale: _rebuild()
 
 func _update_status() -> void:
 	var daytime := MHGame.sunlight_fraction > .08
@@ -240,7 +307,9 @@ func _update_status() -> void:
 	_link.text = ("ORBIT BACK %s" % radio.clock(radio.los_window().y)) if orbit_gone else ("LINK" if linked else "NO LINK")
 	_link.add_theme_color_override("font_color", MHStyle.WARN if orbit_gone or not linked else MHStyle.VALID)
 	for key in _rail_buttons:
-		(_rail_buttons[key].dot as Control).visible = key != app and int(MHNotices.unread.get(key, 0)) > 0
+		var waiting := 0
+		for channel in DOTS.get(key, [key]): waiting += int(MHNotices.unread.get(str(channel), 0))
+		(_rail_buttons[key].dot as Control).visible = key != app and waiting > 0
 
 ## In a cave the slate has no link (docs/terrain-overhaul.md: no link underground).
 func _linked() -> bool:
@@ -259,7 +328,7 @@ func _heading(title: String, note := "") -> VBoxContainer:
 func _log_page() -> Control:
 	_shown_log = MHNotices.history.size()
 	var page := MHStyle.vbox(16)
-	page.add_child(_heading("Log", "Everything you've been told, newest first."))
+	page.add_child(MHStyle.body("Everything you've been told, newest first.", 16, MHStyle.TEXT_MUTED))
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -705,11 +774,7 @@ func _base_signature() -> String:
 
 ## Redraws the open app in place.
 func _redraw() -> void:
-	for child in _page.get_children(): child.queue_free()
-	match app:
-		"comms": _page.add_child(_comms_page())
-		"site": _page.add_child(_site_page())
-	MHNotices.seen(app)
+	_rebuild()
 
 ## Comms: messages from Earth by person, newest first, each with Play; and
 ## the Discoveries (what's been found, leads, and what might be out there).
@@ -719,14 +784,6 @@ func _comms_page() -> Control:
 	var link: Node = get_tree().get_first_node_in_group("mission_control_link") if is_inside_tree() else null
 	var page := MHStyle.vbox(14)
 	var top := MHStyle.hbox(10)
-	for tab in [["messages", "Messages", "satellite"], ["discoveries", "Discoveries", "sparkles"]]:
-		var button := MHStyle.button(str(tab[1]), "primary" if _comms_tab == tab[0] else "secondary", str(tab[2]), 48)
-		button.focus_mode = Control.FOCUS_NONE
-		var id := str(tab[0])
-		button.pressed.connect(func() -> void:
-			_comms_tab = id
-			_redraw())
-		top.add_child(button)
 	top.add_child(MHStyle.spacer())
 	if link != null: top.add_child(MHStyle.mono(str(link.rota_line()), 15, MHStyle.INFO))
 	page.add_child(top)
@@ -1008,7 +1065,7 @@ func _map_page() -> Control:
 	_map_cursor = MHStyle.body("", 16, MHStyle.TEXT_MUTED)
 	_map_cursor.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	side.add_child(_map_cursor)
-	side.add_child(GUIDE.keys_box([[["Wheel"], "Zoom"], [["Drag"], "Move"], [["Z"], "Region / 1 km"], [["Space"], "You"], [["Click"], "Drop or lift a pin"], [["L"], "Ice survey"], [["G"], "GAR-Y: survey the zone"], [["W"], "Walker: check a spot, again to send"]]))
+	side.add_child(GUIDE.keys_box([[["Wheel"], "Zoom"], [["Drag"], "Move"], [["Z"], "Region / 1 km"], [["Space"], "You"], [["Click"], "Drop a pin · or, with a walker free, its spot"], [["L"], "Ice survey"], [["G"], "GAR-Y: survey the zone"]]))
 	holder.ready.connect(func() -> void: region.embed.call_deferred(holder, MAP_FIT), CONNECT_ONE_SHOT)
 	return page
 

@@ -37,6 +37,7 @@ var _sol_day: Label
 var _telemetry_context: Label
 var _telemetry_key := ""
 var _hint_strip: Control
+var _hint_pad := false
 var _hint_inside := false
 # Habitat systems panel (the life-support simulation's stores and warnings).
 var _systems_panel: PanelContainer
@@ -223,7 +224,7 @@ func _site_telemetry() -> PanelContainer:
 	_telemetry_sunlight = _telemetry_metric("SOLAR", "—", MHStyle.VALID)
 	second_row.add_child(_telemetry_sunlight.get_parent())
 	column.add_child(second_row)
-	column.add_child(MHStyle.body("Shift estimates · hold T for your suit", 10, MHStyle.TEXT_MUTED) if preload("res://scripts/suit.gd").active() else MHStyle.body("Shift estimates · suit required outside", 10, MHStyle.TEXT_MUTED))
+	column.add_child(MHStyle.body("Shift estimates · hold Alt for your suit", 10, MHStyle.TEXT_MUTED) if preload("res://scripts/suit.gd").active() else MHStyle.body("Shift estimates · suit required outside", 10, MHStyle.TEXT_MUTED))
 	panel.add_child(column)
 	return panel
 
@@ -420,9 +421,10 @@ func set_key_strip(rows: Array) -> void:
 
 func _refresh_hint_strip() -> void:
 	var inside := builder != null and builder.player_can_furnish()
-	if _hint_strip != null and inside == _hint_inside:
+	if _hint_strip != null and inside == _hint_inside and MHInput.pad == _hint_pad:
 		return
 	_hint_inside = inside
+	_hint_pad = MHInput.pad
 	if _hint_strip != null:
 		_hint_strip.queue_free()
 	if not _key_rows.is_empty():
@@ -430,9 +432,14 @@ func _refresh_hint_strip() -> void:
 		_root.add_child(_hint_strip)
 		_root.move_child(_hint_strip, 1)
 		return
-	var build_hints: Array = [[["B"], "Furnish room"], [["Shift", "B"], "Site plan"]] if inside else [[["B"], "Site plan"]]
-	var gary: Array = [[["G"], "Hold: GAR-Y"]] if get_tree().get_first_node_in_group("gar_y") != null else []
-	_hint_strip = MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["Ctrl"], "Crouch"], [["E"], "Interact", "accent"], [["F"], "Light"]] + gary + build_hints + [[["Tab"], "Slate"]] + ([[["T"], "Wrist"]] if preload("res://scripts/suit.gd").active() else []) + [[["M"], "Base"], [["Esc"], "Pause"]])
+	var gary_here := get_tree().get_first_node_in_group("gar_y") != null
+	var wrist_on: bool = preload("res://scripts/suit.gd").active()
+	if MHInput.pad:   # 21 Nov: the same strip in the gamepad's buttons (scripts/mh_input.gd)
+		_hint_strip = MHStyle.hint_strip([[["Left stick"], "Move"], [["L3"], "Sprint"], [["A"], "Jump"], [["R3"], "Crouch"], [["X"], "Use", "accent"], [["D-pad ↓"], "Light"]] + ([[["Y"], "GAR-Y"]] if gary_here else []) + [[["D-pad ←"], "Build"], [["View"], "Slate"], [["D-pad →"], "Map"]] + ([[["D-pad ↑"], "Wrist"]] if wrist_on else []) + [[["Menu"], "Pause"]])
+	else:
+		var build_hints: Array = [[["B"], "Furnish room"], [["Shift", "B"], "Site plan"]] if inside else [[["B"], "Site plan"]]
+		var gary: Array = [[["G"], "Hold: GAR-Y"]] if gary_here else []
+		_hint_strip = MHStyle.hint_strip([[["W", "A", "S", "D"], "Move"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["Ctrl"], "Crouch"], [["E"], "Interact", "accent"], [["F"], "Light"]] + gary + build_hints + [[["Tab"], "Slate"]] + ([[["Alt"], "Wrist"]] if wrist_on else []) + [[["M"], "Base"], [["Esc"], "Pause"]])
 	_root.add_child(_hint_strip)
 	_hint_strip.visible = false
 	# Keep the strip under the other HUD layers, where it was originally built.
@@ -523,9 +530,9 @@ func _update_prompt() -> void:
 				var claimed: String = claimer.call("claim_label", target)
 				if not claimed.is_empty(): prompt = prompt.duplicate(); prompt["primary"] = claimed
 			var actions: Array[String] = []
-			for action in [["E", "primary"], ["F", "secondary"], ["G", "tertiary"], ["Z", "sleep"], ["I", "info"]]:
+			for action in [[MHInput.glyph("use"), "primary"], [MHInput.glyph("lamp"), "secondary"], [MHInput.glyph("gar_y"), "tertiary"], [MHInput.glyph("sleep"), "sleep"], [MHInput.glyph("info"), "info"]]:
 				var action_name := str(prompt.get(str(action[1]), ""))
-				if not action_name.is_empty(): actions.append("%s %s" % [str(action[0]), action_name])
+				if not action_name.is_empty(): actions.append(("%s %s" % [str(action[0]), action_name]).strip_edges())
 			var carry := get_tree().get_first_node_in_group("carry")
 			var pickup: String = carry.call("pickup_key", target) if carry != null else ""
 			if not pickup.is_empty(): actions.insert(mini(1, actions.size()), "%s Pick up" % pickup)
@@ -533,7 +540,7 @@ func _update_prompt() -> void:
 			_prompt_verb.text = str(prompt.get("label", "Equipment"))
 			_prompt_state.text = ""
 		elif target.has_method("prompt_verb"):
-			_prompt_keys.text = "E"
+			_prompt_keys.text = MHInput.glyph("use")
 			_prompt_verb.text = str(target.call("prompt_verb"))
 			_prompt_state.text = "· " + str(target.call("state_text"))
 	# Riding Walker 1: how to get down (or use its nav), wherever you look.
@@ -550,7 +557,7 @@ func _update_prompt() -> void:
 		var corer := get_tree().get_first_node_in_group("hand_corer")
 		if corer != null and not str(corer.call("prompt")).is_empty():
 			show = true
-			_prompt_keys.text = "E"
+			_prompt_keys.text = MHInput.glyph("use")
 			_prompt_verb.text = "Hold to take a core"
 			_prompt_state.text = ""
 	# Step 5: a rock to chip, or the ground at your feet to scoop.
@@ -559,16 +566,16 @@ func _update_prompt() -> void:
 		var text: String = tools.call("prompt_text") if tools != null else ""
 		if not text.is_empty():
 			show = true
-			_prompt_keys.text = "" if text == "Already sampled" else "E"
+			_prompt_keys.text = "" if text == "Already sampled" else MHInput.glyph("use")
 			_prompt_verb.text = text
 			_prompt_state.text = ""
 	# Chapter one: holding E on ground GAR-Y hasn't surveyed says why no core.
-	if not show and Input.is_physical_key_pressed(KEY_E) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	if not show and MHInput.held("use") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var corer := get_tree().get_first_node_in_group("hand_corer")
 		var why: String = corer.call("why_not") if corer != null else ""
 		if not why.is_empty():
 			show = true
-			_prompt_keys.text = "E"
+			_prompt_keys.text = MHInput.glyph("use")
 			_prompt_verb.text = "No core"
 			_prompt_state.text = "· " + why
 	# 120 ms fade

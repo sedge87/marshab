@@ -61,7 +61,7 @@ const MORNING_GAP := 14.0       # sim hours between mornings (a chapter turns ov
 const EARLY_HOURS := 2.5        # done with this much light left: "the rest of the day's yours"
 ## A6: game hours between a chapter's beats done and the next chapter's first
 ## call (index: the chapter just done). Back in the cabin it comes sooner.
-const BREATHER := [0.0, 1.0, 1.0, 0.0]
+const BREATHER := [0.0, .25, .25, 0.0]   # 21 Nov: an hour (75 s) out on your air was too long
 const BREATHER_INSIDE := .25
 const LATE_START := 3.0         # no new chapter starts this close to sunset (about 5 real minutes of light): it waits for morning
 

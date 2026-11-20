@@ -12,7 +12,7 @@ extends Node
 ## batteries; in the lander cabin, from the lander's tanks; in the rover's
 ## cab, or with G beside the rover, from the rover's own tank and battery.
 ##
-## You learn how the suit is doing from the suit, not a HUD: hold T to raise
+## You learn how the suit is doing from the suit, not a HUD: hold Alt to raise
 ## your wrist pad (scripts/wrist_pad.gd), two soft LEDs at the edge of the
 ## visor (green, amber, red), the suit's voice and your breathing. A flat
 ## battery frosts the visor's edge.
@@ -30,7 +30,6 @@ extends Node
 
 const WRIST_PAD := preload("res://scripts/wrist_pad.gd")
 const RESCUE := preload("res://scripts/gar_y_rescue.gd")
-const AIR_WATCH_EARLY := .5     # game hours before the turn-back: Castle's first word
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
 const HABITAT_LIFE := preload("res://scripts/habitat_life.gd")
@@ -110,7 +109,7 @@ var dose_msv := 0.0              # your own total (saved)
 var today_msv := 0.0             # since local midnight (saved)
 ## Step 4a: eating and drinking outside. The drink bag fills from the lander's
 ## tank and you sip it as you go; the food bar sits in the helmet's port, taken
-## from the cabin's ration crate. With the wrist pad up (T), E eats the bar.
+## from the cabin's ration crate. With the wrist pad up (Alt), E eats the bar.
 var drink_l := DRINK_L           # (saved)
 var food_bar := true             # (saved)
 var dry_hours := 0.0             # out here with the bag dry (saved)
@@ -119,7 +118,7 @@ var waiting: Array = []          # found or printed, fitted at the next refill (
 var stowed: Array = []           # taken off at the suit rack: stays there till you fit it (saved)
 ## The wrist pad's introduction (docs/pda.md §8): the first time the hatch
 ## opens, the suit runs a seal check and lifts your arm to show it. Its screen
-## names the key (HOLD T) the first few times; a working display, so text is fine.
+## names the key (HOLD ALT) the first few times; a working display, so text is fine.
 const WRIST_HINT_TIMES := 4
 const SEAL_CHECK_SECONDS := 4.5
 var seal_checked := false        # (saved)
@@ -717,7 +716,6 @@ func _warnings() -> void:
 	var lines := [
 		["suit_sealed", true],
 		["suit_leak", leak],
-		["suit_turn_back", turn_back_hours() <= 0.0 and o2 < .9],
 		["suit_o2_half", o2 <= .5],
 		["suit_o2_quarter", o2 <= LOW],
 		["suit_o2_critical", o2 <= .08],
@@ -727,16 +725,13 @@ func _warnings() -> void:
 	for line in lines:
 		if line[1] and not _said.has(line[0]):
 			_said[line[0]] = true
-			if line[0] != "suit_sealed": MHAudio.sfx("suit_alarm" if line[0] in ["suit_o2_critical", "suit_turn_back"] else "suit_beep", -4.0)
+			if line[0] != "suit_sealed": MHAudio.sfx("suit_alarm" if line[0] == "suit_o2_critical" else "suit_beep", -4.0)
 			_say(str(line[0]))
-	# Castle watches your air from orbit (data/radio/air.txt), once each a trip.
-	var radio: Node = world.get("radio")
-	if radio == null or not radio.has_method("ring_urgent"): return
-	var turn := turn_back_hours()
-	for watch in [["air_watch_1", turn <= AIR_WATCH_EARLY and o2 < .9], ["air_watch_2", turn <= 0.0 and o2 < .9], ["air_watch_3", o2 <= .12]]:
-		if watch[1] and not _said.has(watch[0]):
-			_said[watch[0]] = true
-			radio.ring_urgent(str(watch[0]))
+	# 21 Nov: the turn-back is the wrist's alone, no voice. One soft chime as
+	# it turns amber, once a trip. Castle no longer watches your air.
+	if turn_back_hours() <= 0.0 and o2 < .9 and not _said.has("turn_back_chime"):
+		_said["turn_back_chime"] = true
+		MHAudio.sfx("suit_beep", -10.0)
 
 ## Your own breathing: slow at rest, quick when sprinting or short of air.
 func _breathing(delta: float) -> void:

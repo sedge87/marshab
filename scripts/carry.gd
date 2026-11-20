@@ -65,7 +65,7 @@ func _busy_elsewhere() -> bool:
 # ---------- each frame ----------
 
 func _process(delta: float) -> void:
-	var e_down := Input.is_physical_key_pressed(KEY_E)
+	var e_down := MHInput.held("use")
 	if not carrying.is_empty():
 		if _busy_elsewhere():
 			put_back()
@@ -102,10 +102,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if carrying.is_empty() or _busy_elsewhere(): return
 	var key := event as InputEventKey
 	var click := event as InputEventMouseButton
-	if key != null and key.pressed and not key.echo and key.keycode == KEY_Q:
+	if (key != null and key.pressed and not key.echo and key.keycode == KEY_Q) or (event is InputEventJoypadButton and MHInput.pressed(event, "cancel")):
 		get_viewport().set_input_as_handled()
 		put_back()
-	elif (key != null and key.pressed and not key.echo and key.keycode == KEY_E) or (click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT):
+	elif MHInput.pressed(event, "use") or (click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT):
 		get_viewport().set_input_as_handled()
 		if put_down(): _wait_for_release = true
 

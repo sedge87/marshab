@@ -44,7 +44,7 @@ func _initialize() -> void:
 	world.pda.hand_over()
 	await create_timer(1.0).timeout
 	_check(world.pda.received and world.pda.is_open, "ARDEN hands you the slate")
-	_check(str(world.pda.screen.app) == "comms", "it opens on Comms (%s)" % str(world.pda.screen.app))
+	_check(str(world.pda.screen.app) == "radio", "it opens on Radio (%s)" % str(world.pda.screen.app))
 	var labels: Array = world.pda.screen.find_children("*", "Label", true, false).map(func(l): return str(l.text))
 	_check(labels.any(func(t): return t.begins_with("FROM ORBIT")) and labels.any(func(t): return t.begins_with("Rao caught it on this pass")), "with the orbiter's text at the top")
 	var notes: Node = world.notes

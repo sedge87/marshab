@@ -68,7 +68,7 @@ const CONTROLS := [
 	["Explore", [[["W", "A", "S", "D"], "Walk"], [["Mouse"], "Look around"], [["Shift"], "Sprint"], [["Space"], "Jump"], [["Ctrl"], "Crouch"], [["E"], "Use"], [["F"], "2nd action · lamp"], [["G"], "3rd · hold: GAR-Y"], [["I"], "What it does"], [["Z"], "Sleep at a bunk"], [["K"], "Suit up indoors"], [["J"], "Journal"], [["C"], "Slate: Comms"]]],
 	["Carry & drive", [[["E"], "Pick up · put down"], [["Hold", "E"], "Pick up (some items)"], [["Q"], "Put it back"], [["E"], "Rover: in · out"], [["W", "S"], "Drive · reverse"], [["A", "D"], "Steer"], [["Space"], "Brake"], [["F"], "Rover lights"], [["V"], "Rover view"], [["C"], "Rover cruise"], [["O"], "Rover radio"], [["R"], "Rover: unstick"]]],
 	["Build", [[["B"], "Build ⇄ Explore"], [["Shift", "B"], "Site plan ⇄ Interior"], [["LMB"], "Place · drag"], [["R"], "Rotate · hold"], [["Shift"], "Hold: snap"], [["V"], "Room shape"], [["RMB"], "Cancel"], [["X"], "Remove · refund"], [["Ctrl", "Z"], "Undo"], [["F"], "Room footprint"], [["L"], "Plan key"]]],
-	["Camera & menus", [[["W", "A", "S", "D"], "Pan (build)"], [["Q", "E"], "Orbit (build)"], [["Wheel"], "Zoom (build)"], [["Tab"], "Slate · catalogue"], [["1", "9"], "Slate apps"], [["M"], "Slate: Base"], [["Hold", "T"], "Wrist pad · E eats"], [["N"], "Alert"], [["Esc"], "Pause"]]]
+	["Camera & menus", [[["W", "A", "S", "D"], "Pan (build)"], [["Q", "E"], "Orbit (build)"], [["Wheel"], "Zoom (build)"], [["Tab"], "Slate · catalogue"], [["1", "9"], "Slate apps"], [["M"], "Slate: Base"], [["Hold", "Alt"], "Wrist pad · E eats"], [["N"], "Alert"], [["Esc"], "Pause"]]]
 ]
 
 # ---------- colony ----------

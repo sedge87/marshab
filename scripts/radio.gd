@@ -34,7 +34,7 @@ signal cue(name: String, args: Array)
 
 const FOLDER := "res://data/radio/"
 const WHO := "Castellanos"
-const REPLY_SECONDS := 20.0
+const REPLY_SECONDS := 8.0       # 21 Nov: 20 s kept her on air too long
 const GAP_AFTER_LINE := .5
 const NUDGE_EVERY := 18.0
 
@@ -304,14 +304,6 @@ func _process(_delta: float) -> void:
 	var section := str(queue.pop_front())
 	_urgent.erase(section)
 	if heard.has(section) or _stale(section): return
-	if section.begins_with("air_watch"):
-		# An air warning held over the far side means nothing once you're home.
-		if not _outside(): return
-		# Several held up: the latest is first in line, and the only one worth saying.
-		for other in queue.duplicate():
-			if str(other).begins_with("air_watch"):
-				queue.erase(other)
-				_urgent.erase(str(other))
 	_play(section)
 
 ## The heads-up after she's already gone, or the hello long after she's back.
@@ -351,27 +343,43 @@ func _safe(urgent := false) -> bool:
 	var sleep: Node = world.get("sleep")
 	return sleep == null or not bool(sleep.get("asleep"))
 
+## 21 Nov playtest: you shouldn't stand about on your air waiting for her to
+## finish before you know where to go. Cues that put a place on your Map or a
+## thought in Notes run the moment the call starts, not after its last line.
+const EARLY_CUES := ["parachute", "gary_out", "walker_tracks", "pallet6", "sunset_spot", "ice_spot", "think"]
+var _ran_early: Array = []
+
 func _play(section: String) -> void:
 	playing = section
 	heard[section] = true
 	topics.erase(section)
 	if not fast: MHAudio.sfx("suit_beep", -12.0)
-	await _run(_sections.get(section, []))
+	var steps: Array = _sections.get(section, [])
+	_ran_early = []
+	for step in steps:
+		if str(step.type) == "do" and not step.has("if") and str(step.args[0]) in EARLY_CUES:
+			_cue(step)
+			_ran_early.append(step)
+	await _run(steps)
+	_ran_early = []
 	playing = ""
 	call_finished.emit(section)
+
+func _cue(step: Dictionary) -> void:
+	var args: Array = step.args
+	var cue_name := str(args[0])
+	var rest := args.slice(1)
+	if handlers.has(cue_name): (handlers[cue_name] as Callable).call(rest)
+	cue.emit(cue_name, rest)
 
 func _run(steps: Array) -> void:
 	for step in steps:
 		if step.has("if") and flags.has(str(step["if"])) == bool(step.get("not", false)): continue
+		if _ran_early.has(step): continue
 		match str(step.type):
 			"line": await _say(step)
 			"set": flags[str(step.flag)] = true
-			"do":
-				var args: Array = step.args
-				var cue_name := str(args[0])
-				var rest := args.slice(1)
-				if handlers.has(cue_name): (handlers[cue_name] as Callable).call(rest)
-				cue.emit(cue_name, rest)
+			"do": _cue(step)
 			"wait":
 				var args: Array = step.args
 				var check: Callable = checks.get(str(args[0]), Callable())

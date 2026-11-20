@@ -52,7 +52,7 @@ func _initialize() -> void:
 	# The slate: Notes, not Goals.
 	var screen = world.pda.screen if world.pda.get("screen") != null else null
 	if screen != null:
-		_check("notes" in screen.apps() and not "goals" in screen.apps(), "the slate has Notes, not Goals (%s)" % str(screen.apps()))
+		_check(screen.apps() == ["today", "map", "base", "radio"] or screen.apps() == ["today", "map", "base", "radio", "camera"], "the slate has four pages, Today first (%s)" % str(screen.apps()))
 		var page: Control = screen._notes_page()
 		var texts: Array = page.find_children("*", "Label", true, false).map(func(l): return str(l.text))
 		_check(texts.any(func(t): return t.begins_with("The lander will keep me going")) and not texts.any(func(t): return t.contains("/") or t.contains("✓")), "the page is just your thoughts, no ticks or counts")

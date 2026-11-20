@@ -443,7 +443,7 @@ func _set_explore_hud(on: bool) -> void:
 # ---------- input while driving ----------
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not driving and not get_tree().paused and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
+	if not driving and not get_tree().paused and MHInput.pressed(event, "recover"):
 		# Standing beside it: R frees it too.
 		var world := get_tree().get_first_node_in_group("habitat_world")
 		var walker: Node3D = world.player if world != null else null
@@ -455,6 +455,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_look.x = wrapf(_look.x - event.relative.x * 0.0025, -PI, PI)
 		_look.y = clampf(_look.y - event.relative.y * 0.0025, -1.1, 0.5)
+	# The gamepad's own buttons (scripts/mh_input.gd): out, lights, cruise, free it.
+	if event is InputEventJoypadButton:
+		var pad_handled := true
+		if MHInput.pressed(event, "vehicle_exit"): _get_out()
+		elif MHInput.pressed(event, "vehicle_lights"): _set_lights(not lights_on)
+		elif MHInput.pressed(event, "cruise"): _toggle_cruise()
+		elif MHInput.pressed(event, "recover"): _recover()
+		elif MHInput.pressed(event, "camera_view") or (event as InputEventJoypadButton).pressed and (event as InputEventJoypadButton).button_index == JOY_BUTTON_RIGHT_STICK:
+			first_person = not first_person
+			_look = Vector2(0.0, -0.2 if first_person else -0.22)
+			if _dash_echo != null: _dash_echo.visible = not first_person
+		else: pad_handled = false
+		if pad_handled: get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var handled := true
 		match event.keycode:
@@ -627,9 +641,14 @@ func _physics_process(delta: float) -> void:
 	if wrecked:
 		return
 	if driving and not get_tree().paused and not bool(_player.get_meta("ui_freeze", false)):
-		throttle = _axis(KEY_W, "move_forward") - _axis(KEY_S, "move_back")
+		# Keys, or RT/LT and the left stick (scripts/mh_input.gd): how far, not just on or off.
+		throttle = maxf(_axis(KEY_W, "throttle"), MHInput.amount("move_forward")) - maxf(_axis(KEY_S, "brake"), MHInput.amount("move_back"))
 		steer_in = _axis(KEY_A, "move_left") - _axis(KEY_D, "move_right")
-		braking = Input.is_key_pressed(KEY_SPACE)
+		braking = MHInput.held("handbrake")
+		var stick := MHInput.pad_look(delta)
+		if stick != Vector2.ZERO:
+			_look.x = wrapf(_look.x - stick.x, -PI, PI)
+			_look.y = clampf(_look.y - stick.y, -1.1, 0.5)
 		throttle = _cruise_throttle(throttle, braking)
 	elif driving and not get_tree().paused:
 		throttle = _cruise_throttle(0.0, false)   # cruising on while you look at the map
@@ -736,7 +755,7 @@ func _cruise_throttle(throttle: float, braking: bool) -> float:
 	return clampf(minf(cruise, top) / top, 0.0, 1.0) if top > 0.0 else 0.0
 
 func _axis(key: Key, action: String) -> float:
-	return 1.0 if Input.is_key_pressed(key) or (InputMap.has_action(action) and Input.is_action_pressed(action)) else 0.0
+	return 1.0 if Input.is_key_pressed(key) else MHInput.amount(action)
 
 ## Height, pitch and roll from the ground under the four corner wheels.
 func _follow_ground(delta: float) -> void:

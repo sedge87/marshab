@@ -188,7 +188,7 @@ func _draw_suit() -> void:
 	var o2: float = r.o2
 	# The wrist pad's introduction (scripts/suit.gd seal_check): the check, and the key.
 	if bool(r.get("seal_banner", false)):
-		_text("SEAL CHECK OK  ·  HOLD T TO RAISE THIS", Vector2(0, 33 * u), int(15 * u), MHStyle.VALID, 800, HORIZONTAL_ALIGNMENT_CENTER, size.x)
+		_text("SEAL CHECK OK  ·  HOLD ALT TO RAISE THIS", Vector2(0, 33 * u), int(15 * u), MHStyle.VALID, 800, HORIZONTAL_ALIGNMENT_CENTER, size.x)
 	elif bool(r.get("wrist_keys", false)):
 		_text("LET GO OF T TO LOWER", Vector2(0, 33 * u), int(15 * u), MHStyle.INFO, 700, HORIZONTAL_ALIGNMENT_CENTER, size.x)
 	if bool(r.get("leak", false)) and fmod(Time.get_ticks_msec() / 1000.0, 1.2) < .85:

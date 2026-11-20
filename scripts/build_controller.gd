@@ -150,7 +150,7 @@ const ZONE_TYPES := {
 
 # Catalogue metadata for the build HUD. Gameplay values stay in ZONE_TYPES.
 const ZONE_INFO := {
-	"general":{"cat":"rooms","icon":"box","rule":"Drag an area","desc":"The walker's core: the airlock and suit rack, life support (ice melter, water, oxygen), the power hub and a poor bunk. The only rigid module; every other room is a liner. Its upgrades, fitted at its rack, open room types."},
+	"general":{"cat":"rooms","icon":"box","rule":"Click to set it down · R turns it","desc":"The walker's core: the airlock and suit rack, life support (ice melter, water, oxygen), the power hub and a poor bunk. The only rigid module; every other room is a liner. Its upgrades, fitted at its rack, open room types."},
 	"living":{"cat":"rooms","icon":"bed-double","rule":"Drag an area","desc":"Bunks, lockers and the things you've found. Key piece: a bunk. A night here is a full night's sleep: you're rested for longer than after the core's bunk."},
 	"science":{"cat":"rooms","icon":"flask-conical","rule":"Drag an area","desc":"Put a find through the stations and it tells you what it is and where to go next. Key piece: the Science Workbench (the analyser). Opened by the core's Lab services upgrade."},
 	"storage":{"cat":"rooms","icon":"package","rule":"Drag an area","desc":"Racks for spares, tools and supplies, and the recycling hoppers that turn rubbish into feedstock. Key piece: a cargo rack."},
@@ -481,6 +481,27 @@ func _mark_interior_layer() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if display_only: return
+	# The gamepad (scripts/mh_input.gd): D-pad left in and out, RB/LB turn, B backs out.
+	if event is InputEventJoypadButton:
+		var active_player := world.get_node_or_null("Player") as Node
+		if MHInput.pressed(event, "build") and not (active_player != null and (bool(active_player.get_meta("driving", false)) or bool(active_player.get_meta("interior_build_active", false)) or bool(active_player.get_meta("surface_build_active", false)))):
+			if build_mode: _toggle()
+			elif not BUILD_RULES.b_reason(self).is_empty(): _flash_notice("info", BUILD_RULES.b_reason(self), BUILD_RULES.b_detail(self))
+			elif player_can_furnish(): interior_build_requested.emit()
+			else: _toggle()
+			get_viewport().set_input_as_handled()
+		elif build_mode and (MHInput.pressed(event, "rotate") or MHInput.pressed(event, "rotate_back")):
+			var back := MHInput.pressed(event, "rotate_back")
+			if equipment_id.is_empty() and kind in FREE_SITE_KINDS: _turn_free_site(-PI/12.0 if back else PI/12.0); MHAudio.sfx("rotate")
+			elif equipment_id.is_empty() and kind=="corridor" and corridor_drawing: corridor_flip=not corridor_flip; _preview_key=""; MHAudio.sfx("rotate")
+			elif not equipment_id.is_empty() or kind in ["airlock", "vehicle_bay", "corridor", "trench", "general"]: _rotate_airlock(); _preview_key=""; _refresh_catalogue()
+			get_viewport().set_input_as_handled()
+		elif build_mode and MHInput.pressed(event, "cancel"):
+			if corridor_drawing: _end_corridor_drawing()
+			elif dragging or not angled_corridor_mount.is_empty(): dragging=false; angled_corridor_mount={}; _draw_preview([],false)
+			else: _toggle()
+			get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode==KEY_B:
 			var active_player := world.get_node_or_null("Player") as Node
@@ -520,7 +541,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif build_mode and event.keycode==KEY_R and equipment_id.is_empty() and kind in FREE_SITE_KINDS: _turn_free_site(-PI/12.0 if event.shift_pressed else PI/12.0); MHAudio.sfx("rotate")
 		elif build_mode and event.keycode==KEY_R and equipment_id.is_empty() and kind=="corridor" and corridor_drawing: corridor_flip=not corridor_flip; _preview_key=""; MHAudio.sfx("rotate")
 		elif build_mode and event.keycode==KEY_T and equipment_id.is_empty() and kind=="corridor" and corridor_drawing: corridor_diagonal=not corridor_diagonal; _preview_key=""; MHAudio.sfx("rotate")
-		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="corridor" or kind=="trench"): _rotate_airlock(); _refresh_catalogue()
+		# 21 Nov playtest: R never turned the walker's core ("general"); its long side follows the airlock arrow (build_rules.gd fixed_cells).
+		elif build_mode and event.keycode==KEY_R and (not equipment_id.is_empty() or kind=="airlock" or kind=="vehicle_bay" or kind=="corridor" or kind=="trench" or kind=="general"): _rotate_airlock(); _preview_key=""; _refresh_catalogue()
 		elif build_mode and event.keycode==KEY_ESCAPE:
 			# Escape first cancels an in-progress placement; only an idle planner
 			# lets it through to open the pause screen.
@@ -636,6 +658,11 @@ func _process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_D): move.x+=1
 	if Input.is_key_pressed(KEY_Q): pivot.rotate_y(1.4*delta)
 	if Input.is_key_pressed(KEY_E): pivot.rotate_y(-1.4*delta)
+	# The gamepad: the left stick pans, the right stick orbits.
+	var pad_pan := Vector2(Input.get_joy_axis(0, JOY_AXIS_LEFT_X), Input.get_joy_axis(0, JOY_AXIS_LEFT_Y))
+	if pad_pan.length() > MHInput.PAD_DEADZONE: move += Vector3(pad_pan.x, 0.0, pad_pan.y)
+	var pad_orbit := Input.get_joy_axis(0, JOY_AXIS_RIGHT_X)
+	if absf(pad_orbit) > MHInput.PAD_DEADZONE: pivot.rotate_y(-1.4 * pad_orbit * delta)
 	if move.length()>0:
 		# Faster when zoomed out; Shift doubles it.
 		var pan_speed:=28.0*zoom/54.0*(2.0 if Input.is_key_pressed(KEY_SHIFT) else 1.0)

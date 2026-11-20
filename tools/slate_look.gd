@@ -81,7 +81,7 @@ func _initialize() -> void:
 	# Where the Log button sits on the display (Goals, Map, Base, Comms, Site, Log), and
 	# where on the screen's own pixels that lands.
 	var at := Vector2(430, 497)
-	print("display ", at, " -> screen pixels ", pda._screen_point(at), "; Log button rect ", pda.screen._rail_buttons["log"].button.get_global_rect())
+	print("display ", at, " -> screen pixels ", pda._screen_point(at), "; Log button rect ", pda.screen._rail_buttons["radio"].button.get_global_rect())
 	for pressed in [true, false]:
 		var click := InputEventMouseButton.new()
 		click.button_index = MOUSE_BUTTON_LEFT

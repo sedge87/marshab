@@ -495,7 +495,7 @@ func interaction_prompt() -> Dictionary:
 			return {"label": NAME + " · set right, but locked: something in its running gear"}
 		"parked": return {"label": walker_name + " · carrying the core"}
 		"carrying", "lowering": return {"label": walker_name + " · setting the module down"}
-		"ready": return {"label": walker_name + " · ready: mark a spot for it on the Map (W)"}
+		"ready": return {"label": walker_name + " · ready: click a spot for it on the Map"}
 		"travelling": return {"label": walker_name + " · walking to its spot"}
 	return {"label": walker_name}
 
@@ -746,7 +746,7 @@ func _process(delta: float) -> void:
 				if int(world.get("opening_version")) >= 2:
 					# A6: home by the lander, ready to be sent to the spot you choose.
 					state = "ready"
-					MHNotices.post("info", NAME + " is home", "Choose where home goes: open the Map, W on a spot to check it, W again to send Walker 1.", "", 1)
+					MHNotices.post("info", NAME + " is home", "Choose where home goes: open the Map and click a spot to check it, then click it again to send Walker 1.", "", 1)
 					var radio: Node = world.get("radio")
 					if radio != null: radio.ring("d3_home")
 				else:
@@ -1145,7 +1145,7 @@ func refold() -> void:
 	create_tween().tween_method(_fold, 1.0, 0.0, FOLD_SECONDS).set_trans(Tween.TRANS_SINE)
 	ladder_out = 1.0
 	_place_ladder()
-	MHNotices.post("info", walker_name + " is up", "Its core's folded away with everything in the store. Mark a spot for it on the Map (W).", "", 1)
+	MHNotices.post("info", walker_name + " is up", "Its core's folded away with everything in the store. Click a spot for it on the Map.", "", 1)
 
 ## Metres an hour: about a sol to cross the Reach.
 func travel_per_hour() -> float:

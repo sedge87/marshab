@@ -4,7 +4,7 @@ extends CanvasLayer
 # same way). The panel sits in the middle of the screen and scrolls; A7 added
 # the vehicles, the drone, stock and the Map. Cheats last for this session
 # only and are never saved. Once the panel has been opened, N toggles fly/noclip, and while flying T teleports to
-# where you look (T alone raises the wrist pad).
+# where you look (Alt raises the wrist pad).
 
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const SPEEDS := {"×1": 1.0, "×10": 10.0, "×60": 60.0}

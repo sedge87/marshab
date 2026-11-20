@@ -19,7 +19,7 @@ const MHPalette := preload("res://scripts/mh_palette.gd")
 const LAYER := 1 << 19                    # the wrist pad's layer: the helmet lamp skips it
 const SCREEN := Vector2(.224, .14)        # the opening in the bezel, metres (16:10)
 const PIXELS := Vector2i(1280, 800)
-const FILL := .62                         # of the view's height, by the screen
+const FILL := .72                         # of the view's height, by the screen (21 Nov: was .62; near 1:1 with its 800 px at 1080p)
 const SPEED := 5.0                        # raise and lower, per second
 const DROP := Vector3(.06, -.34, .1)      # lowered, below the view
 const DIM := .5                           # the world behind, darkened
@@ -43,6 +43,12 @@ var _mouse_before := Input.MOUSE_MODE_CAPTURED
 var _freeze_before := false
 var _hidden: Array = []   # HUD parts hidden with the slate up: [node, was visible]
 var _camera := false      # the Camera app: the mouse looks round, a click takes the picture
+## 21 Nov playtest: the slate's text was blurry. Its screen was drawn into the
+## 3D view, so the render scale and TAA softened it. Once it's fully raised the
+## same page is also drawn flat over the screen, pixel for pixel, exactly where
+## the 3D screen is (it's square to the camera then): sharp, and still the slate.
+var _crisp_layer: CanvasLayer
+var _crisp: TextureRect
 
 func setup(target_world: Node) -> MHPda:
 	world = target_world
@@ -79,7 +85,7 @@ func _ready() -> void:
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_texture = _view.get_texture()
-	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR   # no mipmaps: they blurred the small text
 	_face.material_override = material
 	_face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_face.position = Vector3(0, 0, .0085)
@@ -108,6 +114,17 @@ func _ready() -> void:
 	_dim.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_dim.layers = LAYER
 	add_child(_dim)
+	_crisp_layer = CanvasLayer.new()
+	_crisp_layer.layer = 90
+	add_child(_crisp_layer)
+	_crisp = TextureRect.new()
+	_crisp.texture = _view.get_texture()
+	_crisp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_crisp.stretch_mode = TextureRect.STRETCH_SCALE
+	_crisp.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_crisp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_crisp.visible = false
+	_crisp_layer.add_child(_crisp)
 	visible = false
 
 ## Where the slate sits, raised: far enough out that its screen fills FILL of
@@ -212,17 +229,42 @@ func _process(delta: float) -> void:
 	_slate.transform = Transform3D(tilt.slerp(Basis.IDENTITY, t), (at + DROP).lerp(at, t))
 	_dim.position = Vector3(0, 0, at.z - .03)
 	_dim_material.albedo_color.a = (DIM * .2 if _camera else DIM) * t
+	_place_crisp()
+
+## The flat, sharp copy of the screen (see _crisp), over the 3D one.
+func _place_crisp() -> void:
+	var camera := get_parent() as Camera3D
+	var show := is_open and raised >= 1.0 and not _camera and camera != null
+	if show:
+		var half := Vector3(SCREEN.x * .5, SCREEN.y * .5, 0.0)
+		var a := camera.unproject_position(_face.global_transform * Vector3(-half.x, half.y, 0.0))
+		var b := camera.unproject_position(_face.global_transform * Vector3(half.x, -half.y, 0.0))
+		var rect := Rect2(a, b - a).abs()
+		show = rect.size.x > 8.0
+		if show:
+			_crisp.position = rect.position.round()
+			_crisp.size = rect.size.round()
+	_crisp.visible = show
 
 # ---------- keys and the mouse ----------
 
 func _unhandled_input(event: InputEvent) -> void:
-	if is_open or not (event is InputEventKey and event.pressed and not event.echo): return
-	if (event as InputEventKey).keycode == KEY_TAB and can_open():
+	if is_open: return
+	if MHInput.pressed(event, "slate") and can_open():
 		open()
 		get_viewport().set_input_as_handled()
 
 func _input(event: InputEvent) -> void:
 	if not is_open: return
+	# The gamepad: View or B puts it down, LB/RB turn the page, A on the camera takes the picture.
+	if event is InputEventJoypadButton:
+		if MHInput.pressed(event, "slate") or MHInput.pressed(event, "cancel"): close()
+		elif MHInput.pressed(event, "page_next"): screen.step_app(1)
+		elif MHInput.pressed(event, "page_prev"): screen.step_app(-1)
+		elif _camera and MHInput.pressed(event, "confirm"): screen.shutter()
+		else: _view.push_input(event)
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey:
 		var key := event as InputEventKey
 		if key.pressed and not key.echo and (key.keycode == KEY_TAB or key.keycode == KEY_ESCAPE) and not screen.typing():

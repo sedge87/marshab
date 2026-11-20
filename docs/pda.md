@@ -82,7 +82,7 @@ Build mode, the Print Shop, the Lab, the Journal and the pause menu are unchange
 | M | Slate on Base | Mission Control |
 | Esc | Lowers the slate (when up) | Pause |
 | 1–6 | Switch apps (slate up) | — |
-| T (hold) | Wrist pad, unchanged | — |
+| Alt (hold) | Wrist pad (was T until 21 Nov) | D-pad up |
 | H | — (freed) | Fold the checklist |
 | N | — (freed) | Open the most serious alert |
 | L, G | Map layer and GAR-Y orders, inside the Map app | Same, inside the Tab map |

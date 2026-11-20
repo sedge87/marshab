@@ -91,7 +91,6 @@ Castellanos: Please keep an eye on your air. I'll be watching it too. You scared
 ~ d1_blackout_again
 Castellanos: Again. It brought you in again, whatever it is. I'm very grateful to it and I'd like to stop needing it. [ID:d1_blackout_again_01]
 ? dropped_cargo Castellanos: What you were carrying is where you fell. It's on your map. [ID:d1_blackout_again_02]
-Castellanos: Turn back sooner, okay? When I call, I mean it. [ID:d1_blackout_again_03]
 => END
 
 ~ d1_pallet1

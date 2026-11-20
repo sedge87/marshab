@@ -66,7 +66,7 @@ func _initialize() -> void:
 	var lines = JSON.parse_string(FileAccess.get_file_as_string("res://data/voice_lines.json"))
 	_check((lines.habitat as Dictionary).has("lander_brief") and FileAccess.file_exists("res://assets/audio/voice/lander_brief_0.wav"), "ARDEN's touchdown brief is written and voiced")
 	var screen: Control = world.pda.screen
-	_check(screen.apps().has("cargo"), "the slate has a Cargo app")
+	_check(screen.tabs("base").any(func(t): return str(t[0]) == "cargo"), "the slate has Cargo (a tab on Base)")
 	var data: Dictionary = screen._manifest_data()
 	_check((data.pallets as Array).size() == 12 and (data.walkers as Array).size() == 3, "12 pallets and 3 walkers on the manifest")
 	var first: Dictionary = data.pallets[0]

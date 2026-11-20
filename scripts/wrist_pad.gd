@@ -119,7 +119,7 @@ func wanted() -> bool:
 	var player := get_tree().get_first_node_in_group("player") as Node3D
 	if player == null or get_tree().paused: return false
 	if bool(player.get_meta("driving", false)) or bool(player.get_meta("ui_freeze", false)) or player._any_build_mode_active(): return false
-	return Input.is_physical_key_pressed(KEY_T) and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+	return MHInput.held("wrist") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED   # hold Alt (21 Nov: was T) or D-pad up
 
 func _process(delta: float) -> void:
 	var up := wanted()
