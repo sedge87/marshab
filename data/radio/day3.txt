@@ -54,7 +54,6 @@ Castellanos: Achterberg says your patch kit will close it. It's made for suits, 
 - Why did it get lost in the first place?
 	set asked_why
 	Castellanos: Honestly? I don't know. The storm blinded it, sure. But the backup should have brought it home, and it didn't. Something out there fooled it. [ID:d3_fixed_04a]
-	Castellanos: Put it on the list of things that keep me up at night. It's a long list. [ID:d3_fixed_04a2]
 => END
 
 ~ d3_patched

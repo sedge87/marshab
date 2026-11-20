@@ -245,10 +245,10 @@ func _initialize() -> void:
 	# Chapter 1 was done at dusk: chapter 2 waits for the morning, not the clock.
 	_pass_hours(world, 2.0)
 	await _settle(radio)
-	_check(int(days.chapter) == 1, "no new chapter starts at dusk")
+	_check(not days.started.has(2), "no new chapter starts at dusk")
 	days.nights = 1
 	await _morning(world, radio)
-	_check(int(days.chapter) == 2, "chapter 2 in the morning")
+	_check(days.started.has(2) and int(days.chapter) == 2, "chapter 2 in the morning")
 	_check(radio.heard.has("d2_wake"), "Castellanos: something's moving")
 	_check(bool(field.gary_working) and world.scout_rover != null, "GAR-Y is out at work")
 	_check(field.sites.gary.visible and bool(field.sites.gary.pallet.opened), "its cradle is there now, open")
@@ -287,12 +287,12 @@ func _initialize() -> void:
 	MHGame.sol_hour = 11.0
 	await _settle(radio)
 	_check(radio.heard.has("d2_crate"), "Castellanos on the crate")
-	_check(days.day_done(2) and int(days.chapter) == 2, "chapter 2 done; a breather first")
+	_check(days.day_done(2) and days.finished.has(2), "chapter 2 done")
 
-	# A6: the breather, then chapter 3 the same sol.
-	_pass_hours(world, 1.2)
+	# 21 Nov: chapter 3 opened alongside chapter 2 (open goals from sol 2).
+	_pass_hours(world, .2)
 	await _settle(radio)
-	_check(int(days.chapter) == 3 and radio.heard.has("d3_wake"), "after the breather, chapter 3 the same sol")
+	_check(days.started.has(3) and int(days.chapter) == 3 and radio.heard.has("d3_wake"), "chapter 3 open alongside it")
 	var walker: Node3D = world.walker
 	_check(bool(walker.tracks_laid) and known.things.has("walker_tracks_start"), "she marks where the tracks start")
 	_check(out.call(walker.global_position) < 640.0, "Walker 1 stalled inside the suit's reach (%.0f m)" % out.call(walker.global_position))
@@ -350,7 +350,7 @@ func _initialize() -> void:
 	await _settle(radio)
 	_check(radio.heard.has("d3_sent") and days.day_done(3), "sent: chapter 3 done")
 	await _settle(radio)
-	_check(int(days.chapter) == 4 and days.guided(), "chapter 4 straight on")
+	_check(int(days.chapter) == 4 and days.started.has(4) and days.guided(), "chapter 4 straight on")
 
 	# Chapter 4: at the spot, the core down, cold.
 	walker.global_position = Vector3(spot.x, walker.global_position.y, spot.y)

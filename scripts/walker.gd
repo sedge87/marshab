@@ -425,6 +425,19 @@ func _region() -> Vector2:
 	var known: Node = world.get("known")
 	return Vector2(global_position.x, global_position.z) + (known.origin as Vector2 if known != null else Vector2.ZERO)
 
+## 21 Nov playtest: it went on the compass from a rise with hills between
+## you, before you'd reached its tracks. Seen means a clear line from your
+## eyes to its deck over the ground between (and in the near ring only).
+func _in_sight(you: Vector3) -> bool:
+	var eye := you + Vector3.UP * 1.6
+	var deck := global_position + Vector3.UP * 3.5
+	var far := Vector2(deck.x - eye.x, deck.z - eye.z).length()
+	var steps := maxi(int(far / 6.0), 1)
+	for i in range(1, steps):
+		var p := eye.lerp(deck, float(i) / float(steps))
+		if MHSiteTerrain.height(p.x, p.z) > p.y + .3: return false
+	return true
+
 func _see() -> void:
 	seen = true
 	var known: Node = world.get("known")
@@ -969,7 +982,7 @@ func _look() -> void:
 		if _stranded >= 1.0: _put_down(player)
 	else: _stranded = 0.0
 	var far := Vector2(you.x - global_position.x, you.z - global_position.z).length()
-	if not seen and (far < SEE_NEAR or (far < SEE_HIGH and you.y > global_position.y + HIGH_ABOVE)): _see()
+	if not seen and (far < SEE_NEAR or (far < SEE_HIGH and you.y > global_position.y + HIGH_ABOVE)) and _in_sight(you): _see()
 	if not seen and tracks_laid and near_tracks(you):
 		var notes: Node = world.get("notes")
 		if notes != null: notes.think("tracks")

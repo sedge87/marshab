@@ -61,8 +61,6 @@ const MORNING_GAP := 14.0       # sim hours between mornings (a chapter turns ov
 const EARLY_HOURS := 2.5        # done with this much light left: "the rest of the day's yours"
 ## A6: game hours between a chapter's beats done and the next chapter's first
 ## call (index: the chapter just done). Back in the cabin it comes sooner.
-const BREATHER := [0.0, .25, .25, 0.0]   # 21 Nov: an hour (75 s) out on your air was too long
-const BREATHER_INSIDE := .25
 const LATE_START := 3.0         # no new chapter starts this close to sunset (about 5 real minutes of light): it waits for morning
 
 const STAGES := ["pallets", "lifepod", "walker", "module", "fit_out"]
@@ -85,7 +83,14 @@ var _photo_wait := 0.0           # the sunset call's "take a picture" wait
 var _photos_before := 0
 const SPOT_REACH := 18.0         # this close to the rise and you're there
 const PHOTO_WAIT := 50.0         # seconds Castellanos waits for the picture
-var chapter := 1                 # version 2: the guided chapter (1-4); 5 once they're over
+var chapter := 1                 # version 2: the first chapter not yet over (1-5); 6 once they all are
+## 21 Nov playtest ("more freeform"): sol 1 stays guided; from sol 2 the
+## chapters run side by side as open goals, each with only its real needs
+## (OPENS). started: chapters whose first call has come; finished: chapters
+## that are over (4 ends with the first night in Quarters, 5 with the
+## extractor set down).
+var started := [1]
+var finished := []
 var last_morning := UNSET        # sim hours at the last morning
 const UNSET := -1.0e9
 var dusk_sol := 0                # the sol whose "pick it up tomorrow" call came
@@ -128,12 +133,15 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	dusk_sol = int(saved.get("dusk_sol", 0))
 	done_told = int(saved.get("done_told", 0))
 	done_at = float(saved.get("done_at", UNSET))
+	# Older saves kept one chapter at a time: everything before it is over.
+	started = (saved.get("started", range(1, chapter + 1)) as Array).map(func(n): return int(n))
+	finished = (saved.get("finished", range(1, chapter)) as Array).map(func(n): return int(n))
 	var ice: Array = saved.get("ice_spot", [])
 	if ice.size() == 3: ice_spot = Vector3(float(ice[0]), float(ice[1]), float(ice[2]))
 
 func export_state() -> Dictionary:
 	return {"dawn_stage": dawn_stage, "bed_sol": bed_sol, "gary_waited_sol": gary_waited_sol, "arden_morning": arden_morning, "nights": nights, "version": version, "sunset_called": sunset_called, "sunset_reached": sunset_reached, "sunset_spot": [] if is_inf(sunset_spot.x) else [sunset_spot.x, sunset_spot.y, sunset_spot.z],
-		"chapter": chapter, "last_morning": last_morning, "dusk_sol": dusk_sol, "done_told": done_told, "done_at": done_at,
+		"chapter": chapter, "last_morning": last_morning, "dusk_sol": dusk_sol, "done_told": done_told, "done_at": done_at, "started": started, "finished": finished,
 		"survey_from": survey_from, "ice_spot": [] if is_inf(ice_spot.x) else [ice_spot.x, ice_spot.y, ice_spot.z]}
 
 # ---------- where the days are ----------
@@ -262,11 +270,11 @@ func _process(delta: float) -> void:
 		_was_asleep = false
 		if hour >= sunrise - 2.0 and hour < 12.0: nights += 1
 		# A6: the first night after chapter 4's done (in Quarters) ends the chapters.
-		if v2() and chapter == STORY_DAYS and chapter_done(STORY_DAYS):
+		if v2() and started.has(STORY_DAYS) and not finished.has(STORY_DAYS) and chapter_done(STORY_DAYS):
 			var radio_now := _radio()
 			if radio_now != null and not (radio_now.heard as Dictionary).has("d4_sunset_deal") and radio_now.handlers.has("owner_notes"):
 				(radio_now.handlers["owner_notes"] as Callable).call([])   # the talk was missed: the notes still come
-			chapter += 1
+			_finish(STORY_DAYS)
 			return
 	# Dusk: the day's done (or it's too late to finish it). Bed.
 	var dusk := hour >= sunset - DUSK_EARLY and hour < sunset + 6.0
@@ -277,7 +285,7 @@ func _process(delta: float) -> void:
 		if not guided(): return
 		var radio := _radio()
 		var call_due: bool = radio != null and (radio.on_air() or not (radio.queue as Array).is_empty())
-		if late and bed_sol != sol and not call_due:
+		if late and bed_sol != sol and not call_due and bed_led():
 			bed_sol = sol
 			notes.think("bed", "late", {"home": _home_name()})
 	else:
@@ -364,10 +372,15 @@ func radio_ready() -> void:
 		var notes: Node = world.get("notes")
 		if notes != null and not args.is_empty(): notes.think(str(args[0]))
 
+## Sol 1 only (21 Nov): the first night is guided to bed; after that
+## the nights are yours, and the cabin just offers rest (scripts/notes.gd).
+func bed_led() -> bool:
+	return guided() and (not v2() or nights < 1)
+
 ## The day's beats are done and the call's over: time for bed.
 func _bed_now() -> void:
 	var notes: Node = world.get("notes")
-	if notes == null: return
+	if notes == null or not bed_led(): return
 	bed_sol = int(notes.call("_sol")) if v2() else maxi(int(notes.call("_sol")), nights + 1)
 	notes.think("bed", "start", {"home": _home_name()})
 
@@ -417,32 +430,28 @@ func _commissioned() -> bool:
 func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void:
 	var radio := _radio()
 	_story_clock(-1.0, false)   # the sun never waits (and an old save's hold lets go)
-	if radio != null and chapter >= 3 and not radio.flag("surveyed") and _surveyed_near_home(): radio.flags["surveyed"] = true
+	if radio != null and started.has(3) and not radio.flag("surveyed") and _surveyed_near_home(): radio.flags["surveyed"] = true
 	var run := _hours_run()
 	if last_morning <= UNSET: last_morning = run
 	var busy: bool = radio != null and (radio.on_air() or not (radio.queue as Array).is_empty())
+	_open_chapters(sol, hour, sunrise, sunset, busy)
+	if _idle_from <= UNSET: _idle_from = run
 	var done := chapter_done(chapter)
-	if done and done_at <= UNSET: done_at = run
-	if not done: done_at = UNSET
-	# Morning: what's left of an unfinished chapter (A6: a finished one has
-	# already moved on, or does below).
+	# Morning: one next step, offered on the slate (Ask Castle), not pushed.
+	# She raises it herself only after a long while with nothing moving.
 	if hour >= sunrise - 1.5 and hour < 12.0 and run - last_morning >= MORNING_GAP and not busy:
 		last_morning = run
-		if not done and radio != null:
-			_leftover_flags(radio)
-			radio.heard.erase("d%d_still" % chapter)
-			radio.ring("d%d_still" % chapter)
-	# A6: the next chapter after a breather, by day (chapter 4 ends with sleep).
-	if done and chapter < STORY_DAYS and not busy and hour >= sunrise - 1.0 and hour < sunset - LATE_START:
-		var wait: float = BREATHER[chapter] if chapter < BREATHER.size() else 1.0
-		if _in_cabin(): wait = minf(wait, BREATHER_INSIDE)
-		if run - done_at >= wait:
-			chapter += 1
-			done_at = UNSET
-			done = chapter_done(chapter)
-	_day_calls(chapter, hour, sunrise)
+		_idle_from = run
+		if not done and chapter == 1 and radio != null: _offer_next(radio)   # sol 1 is still guided
+	if radio != null and not busy and run - _idle_from >= IDLE_HOURS and hour >= sunrise and hour < sunset - 1.0 and _open_now() > 0:
+		_idle_from = run
+		_offer_next(radio)
+	for n in started:
+		if not finished.has(int(n)): _day_calls(int(n), hour, sunrise)
+	if started.has(PRINT_CHAPTER) and not finished.has(PRINT_CHAPTER) and radio != null:
+		_chapter_five(radio, hour, sunrise, sunset, busy, false)
 	# Day 1: on Rao's rise.
-	if chapter == 1 and not sunset_reached and not is_inf(sunset_spot.x):
+	if not sunset_reached and not is_inf(sunset_spot.x):
 		var you: Vector3 = (world.player as Node3D).global_position
 		if Vector2(you.x - sunset_spot.x, you.z - sunset_spot.z).length() < SPOT_REACH:
 			sunset_reached = true
@@ -459,7 +468,7 @@ func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void
 	var call_at := sunset - (CALL_BEFORE_SUNSET + DAY1_SUN_EARLIER if first_sunset else CALL_BEFORE_SUNSET)
 	if dusk_sol != sol and hour >= call_at and hour < sunset + 3.0 and not busy:
 		dusk_sol = sol
-		if chapter == STORY_DAYS and done:   # the finale's talk first, even on a first sunset
+		if started.has(STORY_DAYS) and not finished.has(STORY_DAYS) and day_done(STORY_DAYS):   # the finale's talk first, even on a first sunset
 			sunset_called = STORY_DAYS
 			radio.ring("d4_sunset")
 		elif first_sunset and chapter_done(1):
@@ -472,6 +481,113 @@ func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void
 			_leftover_flags(radio)
 			radio.heard.erase("d%d_dusk" % chapter)
 			radio.ring("d%d_dusk" % chapter)
+
+## 21 Nov: game hours with no chapter opened or finished before Castle
+## offers the next step herself (about five real minutes).
+const IDLE_HOURS := 4.0
+var _idle_from := UNSET
+
+## What each chapter needs before its first call. Sol 1 is guided; then the
+## rest open as soon as what they truly need is there, side by side.
+func _may_open(n: int, sol: int) -> bool:
+	match n:
+		2, 3: return finished.has(1) and (nights >= 1 or sol >= 2)
+		4: return finished.has(3)
+		5: return day_done(4) and _gary_found()   # a base to put it in, and GAR-Y to tow its crate
+	return false
+
+## Chapters done open and close; one new chapter's first call at a time.
+func _open_chapters(sol: int, hour: float, sunrise: float, sunset: float, busy: bool) -> void:
+	var radio := _radio()
+	for n in [1, 2, 3]:
+		if not started.has(n) or finished.has(n) or not chapter_done(n): continue
+		# Chapter 1 closes with its "proper day's work" call (_day_calls).
+		if n == 1 and radio != null and not (radio.heard.has("d1_cargo") or radio.playing == "d1_cargo" or (radio.queue as Array).has("d1_cargo")): continue
+		_finish(n)
+	if not busy and hour >= sunrise - 1.0 and hour < sunset - LATE_START:
+		for n in range(2, PRINT_CHAPTER + 1):
+			if not started.has(n) and _may_open(n, sol):
+				started.append(n)
+				_idle_from = _hours_run()
+				if n == PRINT_CHAPTER and finished.has(STORY_DAYS) and radio != null: radio.flags["real_bed"] = true
+				break   # the next one waits for this one's call to end
+	_recount()
+
+func _finish(n: int) -> void:
+	if not finished.has(n): finished.append(n)
+	_idle_from = _hours_run()
+	_recount()
+
+func _recount() -> void:
+	chapter = 1
+	while finished.has(chapter): chapter += 1
+
+## The first chapter that's open and not over, or 0.
+func _open_now() -> int:
+	for n in range(1, PRINT_CHAPTER + 1):
+		if started.has(n) and not finished.has(n): return n
+	return 0
+
+## Castle's "what I'd do next": the first open chapter's recap.
+func _offer_next(radio: Node) -> void:
+	var n := _open_now()
+	if n <= 0: return
+	var keep := chapter
+	chapter = n
+	_leftover_flags(radio)
+	chapter = keep
+	if n == PRINT_CHAPTER:
+		for key in (radio.flags as Dictionary).keys():
+			if str(key).begins_with("left_"): radio.flags.erase(key)
+		radio.flags[_chapter_five_left()] = true
+	var id := "d%d_still" % n
+	radio.heard.erase(id)
+	radio.ring(id)
+
+## The slate's Ask Castle (Today page): true if she'll call.
+func ask_next() -> bool:
+	var radio := _radio()
+	if radio == null or radio.on_air() or not (radio.queue as Array).is_empty() or _open_now() <= 0: return false
+	if radio.has_method("in_contact") and not bool(radio.in_contact()): return false
+	_idle_from = _hours_run()
+	_offer_next(radio)
+	return true
+
+## The open goals for the slate's Today page: what I could do now, in any
+## order, and what each still needs. First person: these are my thoughts.
+func open_goals() -> Array:
+	if not v2() or world.get("walker") == null: return []
+	var out := []
+	var pod: Node = world.get("lifepod")
+	var walker: Node = world.get("walker")
+	var state := str(walker.state) if walker != null else "done"
+	if started.has(2) and not finished.has(2):
+		var crate: Node = field_crate()
+		if not _gary_found(): out.append({"text": "Find whatever Rao saw moving, out by the boulders past the pallets.", "needs": ""})
+		elif crate != null and not bool(crate.opened):
+			var hitch: bool = pod != null and (pod.prints as Dictionary).has("hitch")
+			out.append({"text": "Get the spares crate home behind GAR-Y.", "needs": "" if hitch else "a hitch for GAR-Y: scrap into the lander's printer"})
+	if started.has(3) and not finished.has(3):
+		match state:
+			"stalled": out.append({"text": "Follow the walker tracks and get its nav working.", "needs": ""})
+			"coming": out.append({"text": "Find what's wrong in Walker 1's running gear, and patch it.", "needs": "photos for Castle, one part at a time"})
+			"walking": out.append({"text": "Ride Walker 1 home.", "needs": ""})
+			"ready": out.append({"text": "Choose where home goes, on the Map.", "needs": ""})
+	if started.has(4) and not finished.has(4):
+		if state == "travelling": out.append({"text": "Meet Walker 1 at the spot I chose.", "needs": ""})
+		elif not _done("module"): out.append({"text": "See the module set down.", "needs": ""})
+		elif not _commissioned(): out.append({"text": "Get air and power into the module.", "needs": ""})
+		elif not quarters_built(): out.append({"text": "A Quarters liner with a bunk in it.", "needs": ""})
+		else: out.append({"text": "A first night in a real bed.", "needs": ""})
+	if not started.has(PRINT_CHAPTER) and started.has(3):
+		var needs := []
+		if not day_done(4): needs.append("a base with air and a bunk")
+		if not _gary_found(): needs.append("GAR-Y, to tow")
+		out.append({"text": "Something that makes things: the Print Shop.", "needs": ", ".join(needs) if not needs.is_empty() else "Castle's next drop"})
+	if started.has(PRINT_CHAPTER) and not finished.has(PRINT_CHAPTER) and (world.get("radio") == null or (world.radio.heard as Dictionary).has("d5_wake")):
+		var words := {"left_pallet": "Open pallet 6.", "left_tow": "Tow the Print Shop crate home behind GAR-Y.", "left_place": "Set the Print Shop and its intake down in the base.", "left_extractor": "Print the ice extractor and set it down.", "left_print": "Print the ice extractor and set it down."}
+		out.append({"text": str(words.get(_chapter_five_left(), "")), "needs": ""})
+	return out
 
 func _hours_run() -> float:
 	var builder: Node = world.get("builder")
@@ -567,6 +683,7 @@ func _after_chapters() -> void:
 	if morning: last_morning = run
 	_next_thoughts(notes)
 	if chapter == PRINT_CHAPTER:
+		if not started.has(PRINT_CHAPTER): started.append(PRINT_CHAPTER)
 		_chapter_five(radio, hour, sunrise, sunset, busy, morning)
 	elif morning:
 		_morning_next(radio)
@@ -585,14 +702,14 @@ func _chapter_five(radio: Node, hour: float, sunrise: float, sunset: float, busy
 	var heard: Dictionary = radio.heard
 	# An older save that had a Print Shop already: nothing to find.
 	if not heard.has("d5_wake") and _print_shop_placed():
-		chapter += 1
+		_finish(PRINT_CHAPTER)
 		return
 	if not heard.has("d5_wake"):
 		if not busy and hour >= sunrise - 1.0 and hour < sunset - LATE_START: radio.ring("d5_wake")
 		return
 	if _zone_placed("ice_extractor"):
 		if not heard.has("d5_water"): radio.ring("d5_water")
-		chapter += 1
+		_finish(PRINT_CHAPTER)
 		return
 	if _print_shop_placed() and _zone_placed("regolith_intake"): radio.ring("d5_printing")
 	if MHChapterOne.available("ice_drill", world.get("builder")) > 0: radio.ring("d5_extractor")
@@ -600,8 +717,7 @@ func _chapter_five(radio: Node, hour: float, sunrise: float, sunset: float, busy
 		for key in (radio.flags as Dictionary).keys():
 			if str(key).begins_with("left_"): radio.flags.erase(key)
 		radio.flags[_chapter_five_left()] = true
-		heard.erase("d5_still")
-		radio.ring("d5_still")
+		_offer_next(radio)
 
 ## What's left of chapter 5, for the morning recap.
 func _chapter_five_left() -> String:

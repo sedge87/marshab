@@ -198,7 +198,7 @@ func _rebuild() -> void:
 		"camera": body = _camera_page()
 		_: body = _notes_page()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	if app == "base" and tab == "base":   # taller than the screen with several bases: it scrolls
+	if (app == "base" and tab == "base") or (app == "today" and world != null and world.get("tutorial") == null):   # taller than the screen (several bases; notes and open goals): it scrolls
 		var scroll := ScrollContainer.new()
 		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -387,6 +387,29 @@ func _notes_page() -> Control:
 		column.add_child(_note_line("Nothing on my mind just now. Odd feeling, on Mars.", true))
 	for i in list.size():
 		column.add_child(_note_line(str(list[i].text), i > 0))
+	# 21 Nov: after sol 1, the opening's open goals, any order, each with what
+	# it still needs, and Castle's "what I'd do next" when you want it.
+	var days: Node = world.get("opening_days") if world != null else null
+	var goals: Array = days.open_goals() if days != null and days.has_method("open_goals") else []
+	if not goals.is_empty():
+		var space := Control.new()
+		space.custom_minimum_size.y = 18
+		column.add_child(space)
+		column.add_child(MHStyle.eyebrow("THINGS I COULD DO, ANY ORDER", Color("#c9b99a"), 13))
+		var gap2 := Control.new()
+		gap2.custom_minimum_size.y = 10
+		column.add_child(gap2)
+		for goal in goals:
+			var text := "·  " + str(goal.text)
+			if not str(goal.needs).is_empty(): text += "\n    first: " + str(goal.needs)
+			column.add_child(_note_line(text, false))
+		var ask := MHStyle.button("Ask Castle what's next", "secondary", "satellite", 44)
+		ask.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		ask.pressed.connect(func() -> void:
+			if bool(days.ask_next()): ask.text = "She's calling…"
+			else: ask.text = "Castle's busy or out of contact"
+			ask.disabled = true)
+		column.add_child(ask)
 	return page
 
 ## One thought on ruled paper: the newest in ink, older ones a little faded.
@@ -407,7 +430,9 @@ func _note_line(text: String, older: bool) -> Control:
 
 func _notes_signature() -> String:
 	var notes: Node = world.get("notes") if world != null else null
-	return str(notes.thoughts()) if notes != null else ""
+	var days: Node = world.get("opening_days") if world != null else null
+	var goals: Array = days.open_goals() if days != null and days.has_method("open_goals") else []
+	return (str(notes.thoughts()) if notes != null else "") + str(goals)
 
 ## Goals: the getting-started goals down the left, the current one's tasks
 ## with the next one's how-to, keys and Show me, and what the base still

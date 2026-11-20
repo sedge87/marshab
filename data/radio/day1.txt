@@ -70,7 +70,6 @@ Castellanos: The first person on Mars. Ever. How does it feel? [ID:d1_first_step
 - I can't stop looking at it.
 	set moved
 	Castellanos: Don't. Not yet. [ID:d1_first_step_04c]
-Castellanos: Houston's floor went completely silent when your boot came down. Then everyone stood up at once. [ID:d1_first_step_05]
 Castellanos: Right. Before I get sentimental. First job, the ridge. Talk to me while you walk, if you like. [ID:d1_first_step_06]
 do parachute
 => END
@@ -101,7 +100,6 @@ Castellanos: Your suit's got you right at the canopy. Is that you up there? What
 	Castellanos: No. The lander will keep you going, but it'll never be a base. That cartridge is the module's air. Carry it home and park it by the ramp, so it's waiting when the module comes. [ID:d1_p1_02b]
 - It's heavier than it looked in training.
 	Castellanos: Everything is. Mwangi says your legs will thank you in a week and hate you until then. Take it slowly, get it down to the lander, and leave it by the ramp for the module. [ID:d1_p1_02c]
-Castellanos: And while you're up there, look around for a minute. Seriously. Nobody has ever stood on that ridge. You've got the best view for kilometres and I'm jealous of every one of them. [ID:d1_p1_03]
 ?! has_scrap Castellanos: Oh, and one more thing. The storm's left scrap all over the place up there. Bent panels, broken struts. Strip anything that comes loose as you go. The little printer in the lander eats it, and you'll want it. [ID:d1_p1_04]
 ? has_scrap Castellanos: And I see you've already been stripping the storm's scrap on the way up. Good instinct. The little printer in the lander eats it. Keep at it, you'll want it. [ID:d1_p1_b1_04s]
 set scrap_told

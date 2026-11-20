@@ -7,11 +7,20 @@
 # (and --only=orb_next for the morning calls at the bottom).
 
 ~ d5_wake
+? real_bed => d5_wake_bed
+=> d5_wake_news
+
+# 21 Nov: chapter 5 opens once there's a base and GAR-Y; the bed question
+# only if you've slept in Quarters by then.
+~ d5_wake_bed
 Castellanos: Morning, Outpost One. How was a real bed? [ID:d5_wake_01]
 - Like sleeping on a cloud.
 	Castellanos: A cloud with a camp mattress. I'll take your word for it. [ID:d5_wake_02a]
 - Short.
 	Castellanos: They always are, the good ones. [ID:d5_wake_02b]
+=> d5_wake_news
+
+~ d5_wake_news
 Castellanos: News. Rao caught a parachute on his dawn pass. Pallet six. The Print Shop, and its regolith intake. [ID:d5_wake_03]
 Castellanos: That's the one that makes everything else. Rooms, the extractor, all of it. It's on your map now. [ID:d5_wake_04]
 do pallet6

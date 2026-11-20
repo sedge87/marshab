@@ -270,7 +270,7 @@ func _process(delta: float) -> void:
 	var sleep: Node = world.get("sleep")
 	var asleep: bool = sleep != null and bool(sleep.get("asleep"))
 	var days: Node = world.get("opening_days")
-	var guided: bool = days != null and days.guided()   # the opening days have "bed" instead
+	var guided: bool = days != null and (days.bed_led() if days.has_method("bed_led") else days.guided())   # the first night has "bed" instead
 	if not guided and cabin != null and cabin.player_inside() and not asleep and (hour >= sunset - 1.0 or hour < sunrise - 1.0) and _rest_offered != _sol():
 		_rest_offered = _sol()
 		if think("rest") and MHGame.tutorial_mode != "off" and world.get("explore_hud") != null:
