@@ -391,6 +391,7 @@ func _process(delta: float) -> void:
 	_compass.heading = wrapf(rad_to_deg(-player.rotation.y), 0.0, 360.0)
 	_compass.markers = compass_markers()
 	_compass.queue_redraw()
+	_track_tag_update()
 	_refresh_hint_strip()
 	_update_chip()
 	_update_telemetry()
@@ -489,20 +490,31 @@ func compass_markers() -> Array:
 	if known != null:
 		for marker in known.compass_markers(player.global_position):
 			var shown: Variant = MHGame.setting("compass_" + str(marker.kind) + "s")   # no setting yet (the drone's markers, A7): shown
-			if shown == null or bool(shown): out.append(marker)
-	return out
+			if shown == null or bool(shown) or bool(marker.get("tracked", false)): out.append(marker)
+	# 21 Nov playtest: the strip was clogged. Home, the nearest airlock and the
+	# mark you're tracking always show; anything else only when it's near where
+	# you're facing (the Compass widget then merges any that overlap).
+	var heading := wrapf(rad_to_deg(-player.rotation.y), 0.0, 360.0)
+	return out.filter(func(m): return bool(m.get("always", false)) or bool(m.get("tracked", false)) or absf(wrapf(float(m.bearing) - heading, -180.0, 180.0)) <= FACING_SPREAD)
+
+const FACING_SPREAD := 35.0   # degrees either side of your heading where other marks show
 
 func _home_markers(out: Array) -> void:
 	for landmark in get_tree().get_nodes_in_group("landmark"):
 		var spot := (landmark as Node3D).global_position - player.global_position
-		out.append({"bearing": wrapf(rad_to_deg(atan2(spot.x, -spot.z)), 0.0, 360.0), "label": str(landmark.get_meta("landmark_label", "")), "distance": Vector2(spot.x, spot.z).length()})
+		out.append({"bearing": wrapf(rad_to_deg(atan2(spot.x, -spot.z)), 0.0, 360.0), "label": str(landmark.get_meta("landmark_label", "")), "distance": Vector2(spot.x, spot.z).length(), "always": landmark.is_in_group("home_landmark") or str(landmark.get_meta("landmark_label", "")).to_upper().contains("LANDER")})
+	# Only the nearest way in (21 Nov: every base's doors crowded the strip).
+	var best := {}
 	for candidate in get_tree().get_nodes_in_group("airlock_door"):
 		var door := candidate as Node3D
 		if door == null or not door.has_method("door_label"): continue
 		var door_name: String = door.call("door_label")
 		if door_name != "OUTER" and door_name != "HANGAR": continue
 		var offset := door.global_position - player.global_position
-		out.append({"bearing": wrapf(rad_to_deg(atan2(offset.x, -offset.z)), 0.0, 360.0), "label": "AIRLOCK" if door_name == "OUTER" else "HANGAR", "distance": Vector2(offset.x, offset.z).length()})
+		var d := Vector2(offset.x, offset.z).length()
+		if best.is_empty() or d < float(best.distance):
+			best = {"bearing": wrapf(rad_to_deg(atan2(offset.x, -offset.z)), 0.0, 360.0), "label": "AIRLOCK" if door_name == "OUTER" else "HANGAR", "distance": d, "always": true}
+	if not best.is_empty(): out.append(best)
 
 func _update_chip() -> void:
 	var context := chip_prefix + "ZONE · OUTSIDE · " + MHGame.site_name()
@@ -677,3 +689,34 @@ func _render_readiness() -> void:
 		if item.status != "met": column.add_child(MHStyle.readiness_item(item))
 	panel.add_child(column)
 	_readiness_slot.add_child(panel)
+
+
+# ---------- the tracked mark's visor tag (21 Nov) ----------
+
+const TAG_RANGE := 200.0   # metres: closer than this, the tracked mark gets a small tag in the visor
+var _track_tag: Label
+
+## A small diamond and distance over the tracked mark, once it's near enough to
+## look for, so you can find it on the ground. Only the one you're tracking.
+func _track_tag_update() -> void:
+	if _track_tag == null:
+		_track_tag = MHStyle.mono("", 14, MHStyle.accent, 700)
+		_track_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_track_tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, .7))
+		_track_tag.add_theme_constant_override("outline_size", 4)
+		_root.add_child(_track_tag)
+	var known := get_tree().get_first_node_in_group("known_things")
+	var camera := get_viewport().get_camera_3d()
+	var entry: Dictionary = known.tracked_thing() if known != null and known.has_method("tracked_thing") else {}
+	var show := not entry.is_empty() and camera != null and not bool(MHGame.setting("hud_minimal") if MHGame.setting("hud_minimal") != null else false)
+	if show:
+		var flat: Vector2 = (entry.at as Vector2) - (known.origin as Vector2)
+		var spot := Vector3(flat.x, 0.0, flat.y)
+		spot.y = preload("res://scripts/site_terrain.gd").height(spot.x, spot.z) + 2.0
+		var metres := Vector2(spot.x - player.global_position.x, spot.z - player.global_position.z).length()
+		show = metres <= TAG_RANGE and metres > 6.0 and not camera.is_position_behind(spot)
+		if show:
+			_track_tag.text = "◆ %s · %d m" % [str(entry.name), roundi(metres)]
+			_track_tag.reset_size()
+			_track_tag.position = camera.unproject_position(spot) - Vector2(9, _track_tag.size.y * .5)
+	_track_tag.visible = show

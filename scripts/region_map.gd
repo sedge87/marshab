@@ -302,6 +302,7 @@ func _input(event: InputEvent) -> void:
 					survey_layer = not survey_layer
 					_say("Ice survey layer on." if survey_layer else "Ice survey layer off.")
 				KEY_G: _send_gar_y()
+				KEY_T: track_at(_mouse())
 		get_viewport().set_input_as_handled()   # nothing else hears keys while it's open
 
 ## Where the mouse is over the map square, in map px.
@@ -400,8 +401,20 @@ func slate_key(keycode: int) -> bool:
 			survey_layer = not survey_layer
 			_say("Ice survey layer on." if survey_layer else "Ice survey layer off.")
 		KEY_G: _send_gar_y()
+		KEY_T: track_at(_cursor_at if _cursor_at.x >= 0.0 else Vector2(SIZE, SIZE) * .5)
 		_: return false
 	return true
+
+## T: track the mark nearest the cursor (21 Nov): it stays on your compass
+## with its distance, and gets a visor tag when you're close. T on nothing
+## stops tracking.
+func track_at(at: Vector2) -> String:
+	var known := _known()
+	if known == null or not known.has_method("track"): return ""
+	var id: String = known.nearest_mark(_map_to_region(at), PIN_REACH_PX * 2.0 / SIZE * _span)
+	known.track(id)
+	_say(("Tracking %s." % str(known.thing(id).name)) if not id.is_empty() else "Tracking nothing.")
+	return id
 
 # ---------- A4: a spot for a walker's core ----------
 

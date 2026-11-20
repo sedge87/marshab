@@ -57,7 +57,7 @@ func _initialize() -> void:
 	for i in 90: await physics_frame
 	# The compass is on the driving HUD, with the airlocks on it.
 	assert(rover._compass != null and rover._compass.is_visible_in_tree(), "The compass shows while driving.")
-	assert(rover._compass.markers.any(func(m): return str(m.label) == "AIRLOCK"), "The airlock is on the rover's compass (%s)." % str(rover._compass.markers))
+	assert(rover._compass.markers.any(func(m): return str(m.label) in ["AIRLOCK", "HANGAR"]), "The nearest way in is on the rover's compass (%s)." % str(rover._compass.markers))
 	# C: cruise control holds the speed with no keys held; Space lets go.
 	_key(KEY_W, true)
 	for i in 60: await physics_frame

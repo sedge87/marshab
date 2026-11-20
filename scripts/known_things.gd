@@ -42,6 +42,11 @@ var things: Dictionary = {}
 var _seen := PackedByteArray()
 var version := 0                # bumps whenever the fog clears
 var _pin_count := 0
+## 21 Nov: the one mark you're heading for. It stays on the compass wherever
+## you face, with its distance, and gets a small visor tag near it. The newest
+## pin you drop, or a place someone tells you to go, becomes it; T on the Map
+## picks the mark nearest the cursor. "" for none. Saved.
+var tracked := ""
 var _check := 0.0
 var _fog_image: Image
 
@@ -189,6 +194,7 @@ func learn(id: String, kind: String, at: Vector2, thing_name: String, who := "yo
 		things[id] = thing
 	if who in thing.who: return false
 	(thing.who as Array).append(who)
+	if who == "you" and kind in ["pin", "find", "place"] and str(thing.source) != "you": tracked = id   # told where to go: head there
 	learned.emit(id, who)
 	changed.emit()
 	return true
@@ -239,12 +245,39 @@ func add_pin(at: Vector2, pin_name := "") -> String:
 	_pin_count += 1
 	var id := "pin:%d" % _pin_count
 	learn(id, "pin", at, pin_name if not pin_name.is_empty() else "Pin %d" % _pin_count)
+	tracked = id
 	return id
 
 func remove_pin(id: String) -> void:
 	if not things.has(id) or str(things[id].kind) != "pin": return
 	things.erase(id)
+	if tracked == id: tracked = ""
 	changed.emit()
+
+## Track a mark (or "" for none).
+func track(id: String) -> void:
+	tracked = id if things.has(id) else ""
+	changed.emit()
+
+## The tracked mark, if it's still worth heading for: {id, at, name, kind} or {}.
+func tracked_thing() -> Dictionary:
+	if tracked.is_empty() or not things.has(tracked) or bool(things[tracked].get("done", false)): return {}
+	var entry: Dictionary = things[tracked].duplicate()
+	entry["id"] = tracked
+	return entry
+
+## The mark you know nearest `at` (region metres) within `reach`, or "".
+func nearest_mark(at: Vector2, reach: float) -> String:
+	var best := ""
+	var best_d := reach
+	for id in things:
+		var entry: Dictionary = things[id]
+		if not "you" in (entry.who as Array) or not COMPASS_KINDS.has(str(entry.kind)) or bool(entry.get("done", false)): continue
+		var d: float = (entry.at as Vector2).distance_to(at)
+		if d <= best_d:
+			best = id
+			best_d = d
+	return best
 
 ## The pin nearest `at` within `reach` metres, or "".
 func pin_near(at: Vector2, reach: float) -> String:
@@ -273,7 +306,7 @@ func compass_markers(from_world: Vector3) -> Array:
 		var distance := offset.length()
 		if distance > float(COMPASS_KINDS[str(entry.kind)]) or distance < 4.0: continue
 		var colour := MHStyle.accent if str(entry.kind) == "pin" else (MHStyle.WARN if str(entry.kind) == "find" else (Color("#8CC3CB") if str(entry.kind) == "marker" else MHStyle.INK_100))
-		out.append({"bearing": wrapf(rad_to_deg(atan2(offset.x, -offset.y)), 0.0, 360.0), "label": str(entry.name), "distance": distance, "colour": colour, "kind": str(entry.kind)})
+		out.append({"bearing": wrapf(rad_to_deg(atan2(offset.x, -offset.y)), 0.0, 360.0), "label": str(entry.name), "distance": distance, "colour": colour, "kind": str(entry.kind), "tracked": str(id) == tracked})
 	return out
 
 # ---------- saving ----------
@@ -289,7 +322,7 @@ func export_state() -> Dictionary:
 	for id in things:
 		var entry: Dictionary = things[id]
 		list.append({"id": id, "kind": entry.kind, "at": [entry.at.x, entry.at.y], "name": entry.name, "who": entry.who, "source": entry.source, "sol": entry.sol, "hour": entry.hour, "done": bool(entry.get("done", false))})
-	return {"fog": Marshalls.raw_to_base64(_seen.compress(FileAccess.COMPRESSION_DEFLATE)), "things": list, "pins": _pin_count}
+	return {"fog": Marshalls.raw_to_base64(_seen.compress(FileAccess.COMPRESSION_DEFLATE)), "things": list, "pins": _pin_count, "tracked": tracked}
 
 func load_state(state: Dictionary) -> void:
 	things.clear()
@@ -301,6 +334,7 @@ func load_state(state: Dictionary) -> void:
 		var at: Array = entry.get("at", [0, 0])
 		things[str(entry.id)] = {"kind": str(entry.get("kind", "find")), "at": Vector2(float(at[0]), float(at[1])), "name": str(entry.get("name", "")), "who": Array(entry.get("who", ["you"])), "source": str(entry.get("source", "you")), "sol": float(entry.get("sol", 1)), "hour": float(entry.get("hour", 0)), "done": bool(entry.get("done", false))}
 	_pin_count = int(state.get("pins", 0))
+	tracked = str(state.get("tracked", ""))
 	version += 1
 	_fog_image = null
 	changed.emit()

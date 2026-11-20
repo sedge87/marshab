@@ -274,6 +274,10 @@ func _ready() -> void:
 		# What the lander's cameras saw on the way down (master-design §2).
 		elif _start_in_lander and _known_state.is_empty() and lander != null:
 			known.reveal(Vector2(lander.global_position.x, lander.global_position.z) + known.origin, DESCENT_SEEN)
+	# Lights on pallets, airlocks and drone markers, seen as you get near (21 Nov).
+	var beacons := preload("res://scripts/beacons.gd").new()
+	beacons.setup(self)
+	add_child(beacons)
 	notes = NOTES.new()
 	add_child(notes)
 	notes.setup(self, _notes_state, _start_in_lander)

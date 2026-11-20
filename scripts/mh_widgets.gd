@@ -115,6 +115,7 @@ class Compass extends Control:
 	var markers: Array = []   # [{bearing, label, distance, colour (optional)}]
 	var show_distance := true
 	const SPAN := 180.0
+	const MERGE_PX := 90.0
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		custom_minimum_size = Vector2(640, 52)
@@ -139,13 +140,37 @@ class Compass extends Control:
 		draw_line(Vector2(0, 24), Vector2(size.x, 24), Color(MHStyle.INK_100, 0.18), 1.0)
 		# Centre caret
 		draw_colored_polygon(PackedVector2Array([Vector2(size.x * 0.5 - 6, 24), Vector2(size.x * 0.5 + 6, 24), Vector2(size.x * 0.5, 31)]), MHStyle.accent)
-		for marker in markers:
+		# 21 Nov playtest: too many marks to read. Marks that would overlap merge
+		# into one with a count (the tracked one wins the label); the distance
+		# shows only on the tracked mark and the one you're facing.
+		var placed: Array = []   # [{x, marker, more}]
+		var sorted := markers.duplicate()
+		sorted.sort_custom(func(a, b): return int(bool(a.get("tracked", false))) > int(bool(b.get("tracked", false))) or (bool(a.get("tracked", false)) == bool(b.get("tracked", false)) and float(a.distance) < float(b.distance)))
+		for marker in sorted:
 			var mx := _x_for(float(marker.bearing))
 			if mx < 8 or mx > size.x - 8: continue
-			var diamond := PackedVector2Array([Vector2(mx, 33), Vector2(mx + 5, 38), Vector2(mx, 43), Vector2(mx - 5, 38)])
+			var merged := false
+			for p in placed:
+				if absf(float(p.x) - mx) < MERGE_PX:
+					p.more = int(p.more) + 1
+					merged = true
+					break
+			if not merged: placed.append({"x": mx, "marker": marker, "more": 0})
+		var font := MHStyle.font(500, true)
+		for p in placed:
+			var marker: Dictionary = p.marker
+			var mx := float(p.x)
+			var tracked := bool(marker.get("tracked", false))
+			var r := 7.0 if tracked else 5.0
+			var diamond := PackedVector2Array([Vector2(mx, 38 - r), Vector2(mx + r, 38), Vector2(mx, 38 + r), Vector2(mx - r, 38)])
 			draw_colored_polygon(diamond, marker.get("colour", MHStyle.INFO))
-			var text_m := "%s · %d m" % [marker.label, roundi(float(marker.distance))] if show_distance else str(marker.label)
-			draw_string(MHStyle.font(500, true), Vector2(mx + 9, 43), text_m, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(MHStyle.INK_100, 0.85))
+			if tracked: draw_polyline(PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]), MHStyle.INK_100, 1.5)
+			var facing := absf(mx - size.x * .5) < size.x * .06
+			var text_m := str(marker.label)
+			var metres := float(marker.distance)
+			if show_distance and (tracked or facing): text_m += (" · %.1f km" % (metres / 1000.0)) if metres >= 1000.0 else (" · %d m" % roundi(metres))
+			if int(p.more) > 0: text_m += "  +%d" % int(p.more)
+			draw_string(font, Vector2(mx + r + 4, 43), text_m, HORIZONTAL_ALIGNMENT_LEFT, -1, 13 if tracked else 12, Color(MHStyle.INK_100, 1.0 if tracked else .8))
 
 # Diegetic visor: four corner brackets.
 class Visor extends Control:
