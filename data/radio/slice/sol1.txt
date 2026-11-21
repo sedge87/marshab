@@ -36,3 +36,9 @@ Castellanos: Walk the pad, bring the beacon online, get the hab running. Devan's
 ~ d1_first_step
 chat Castellanos: Pathfinder's on Mars. That's the official version. Unofficially, Kai just hugged Devan. [ID:s1_first_step_01]
 => END
+
+# Scene 2: GAR-Y freed and met, through your helmet camera. Warmth, not orders.
+~ s1_gary
+Castellanos: Is that... GAR-Y's alive? Oh, good. Hi, GAR-Y. [ID:s1_gary_01]
+chat Castellanos: Kai wants to know if it remembers him. I've told him it's a rover. [ID:s1_gary_02]
+=> END

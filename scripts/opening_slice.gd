@@ -153,7 +153,8 @@ func done(id: String) -> bool:
 			var step: Node = world.get("first_step")
 			return step == null or bool(step.done)
 		"gary_met":
-			return bool(world.get("gary_met"))
+			var field: Node = world.get("drop_field")
+			return field == null or bool(field.get("gary_greeted"))
 		"pallets":
 			return _pallets_open()
 		"walker_awake", "walker_fixed", "walker_home", "core_down":

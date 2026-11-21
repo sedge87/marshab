@@ -33,6 +33,17 @@ const RIDGE_VIEW := 45.0          # this close to the first canopy, you see the 
 ## WORK_OUT further on), the field tools ~500 m; pallet 1 is ~250 m
 ## (scripts/storm_drop.gd).
 const KINDS := [["power", 360.0, 440.0, "flat"], ["gary", 420.0, 480.0, "rough"], ["tools", 460.0, 540.0, "low"]]
+## Version 3, the opening slice (docs/opening-slice.md §4a): GAR-Y's cradle in
+## view of the hatch (~150 m), the power module and the tools a short walk on.
+const KINDS_V3 := [["gary", 120.0, 180.0, "flat"], ["power", 300.0, 380.0, "flat"], ["tools", 360.0, 440.0, "low"]]
+const WORK_OUT_V3 := 100.0       # how far past its cradle GAR-Y is, snagged
+const STAKE_EVERY := 9.0         # its survey stakes, cradle to where it is
+const SNAG := preload("res://scripts/gary_snag.gd")
+var snag: Node3D
+var snag_freed := 0              # snag points freed (saved)
+var gary_greeted := false        # the meeting's over (the slice's "gary_met" beat)
+var _led := false
+var _g_hint := false
 const AIM := {"flat": 400.0, "rough": 450.0, "low": 500.0}   # the distance each kind leans to
 const APART_DEG := 50.0           # bearings at least this far apart, from the lander
 const DOOR_WAIT := 3.0            # GAR-Y waits this far out from the ramp's foot
@@ -77,7 +88,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	var taken: Array = []
 	var ridge: Vector3 = world.storm_drop.ridge if world.get("storm_drop") != null else Vector3.INF
 	if not is_inf(ridge.x): taken.append(_bearing(ridge))
-	for spec in KINDS:
+	for spec in (KINDS_V3 if v3() else KINDS):
 		var kind := str(spec[0])
 		var where := Vector3.INF
 		var yaw := 0.0
@@ -104,7 +115,14 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	add_child(sunset)
 	sunset.setup(world, saved.get("sunset", {}))
 	gary_working = bool(saved.get("gary_working", false))
-	if v2() and sites.has("gary"):
+	snag_freed = int(saved.get("snag_freed", 0))
+	gary_greeted = bool(saved.get("gary_greeted", false))
+	if v3() and sites.has("gary"):
+		sites.gary.empty = true   # it let itself out in the storm
+		_show_cradle(true)
+		if not sites.gary.pallet.opened: sites.gary.pallet.open(false)
+		if not gary_greeted: _snagged.call_deferred()
+	elif v2() and sites.has("gary"):
 		sites.gary.empty = true   # it let itself out in the storm
 		_show_cradle(gary_working or bool(world.get("gary_met")) or bool(sites.gary.pallet.opened))
 	if gary_working: _keep_working.call_deferred()
@@ -120,6 +138,89 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 
 func v2() -> bool:
 	return int(world.get("opening_version")) >= 2
+
+func v3() -> bool:
+	return int(world.get("opening_version")) >= 3
+
+# ---------- version 3: GAR-Y snagged, past its stakes ----------
+
+## Scene 2: GAR-Y out past its cradle, caught in a canopy, with the stakes it
+## planted leading there.
+func _snagged() -> void:
+	var spot := _snag_spot()
+	var gary: Node3D = world.get("scout_rover")
+	if gary == null or not is_instance_valid(gary): gary = world.meet_gary(spot)
+	if gary == null: return
+	gary.global_position = spot
+	var back: Vector3 = sites.gary.at - spot
+	gary.rotation.y = atan2(back.x, back.z)
+	gary.call("begin_rescue")   # held still by the lines
+	gary.set("staying", true)
+	_plant_stakes(sites.gary.at, spot, gary)
+	snag = SNAG.new()
+	add_child(snag)
+	snag.setup(self, gary, snag_freed)
+	snag.freed.connect(_snag_off)
+
+func _snag_spot() -> Vector3:
+	var site: Node = sites.gary
+	var away: Vector3 = site.at - world.lander.global_position
+	away.y = 0.0
+	away = away.normalized() if away.length() > .1 else Vector3.FORWARD
+	for turn in [0.0, 25.0, -25.0, 50.0, -50.0, 80.0, -80.0]:
+		var p: Vector3 = site._ground(site.at + away.rotated(Vector3.UP, deg_to_rad(turn)) * WORK_OUT_V3)
+		if reachable(p): return p
+	return site._ground(site.at + away * WORK_OUT_V3)
+
+## Its stakes, every STAKE_EVERY m from the cradle to where it's stuck: radar
+## readings in its survey (scripts/survey_stakes.gd draws them).
+func _plant_stakes(from: Vector3, to: Vector3, gary: Node3D) -> void:
+	var samples: Array = gary.get("ice_samples")
+	if samples == null or not samples.is_empty(): return
+	var n := maxi(2, int(from.distance_to(to) / STAKE_EVERY))
+	for i in range(1, n):
+		var p: Vector3 = from.lerp(to, float(i) / float(n))
+		samples.append(Vector3(p.x, p.z, randf_range(.02, .12)))   # dry ground
+
+func _snag_off() -> void:
+	snag_freed = SNAG.SNAGS
+	var gary: Node3D = world.get("scout_rover")
+	if gary == null: return
+	_meet(gary, "field", gary.global_position)
+
+## After the meeting: it leads you to the nearest pallet you haven't opened,
+## and waits there looking back (Scene 2, C1).
+func _lead_to_pallet() -> void:
+	var gary: Node3D = world.get("scout_rover")
+	if gary == null: return
+	var best: Node = null
+	var best_d := INF
+	var you: Vector3 = world.player.global_position
+	var drop: Node = world.get("storm_drop")
+	var options: Array = []
+	if drop != null and drop.pallet != null and not drop.pallet.opened: options.append([drop.pallet, drop.pallet.global_position])
+	for kind in ["power", "tools"]:
+		if sites.has(kind) and not sites[kind].pallet.opened: options.append([sites[kind], sites[kind].pallet_spot()])
+	for o in options:
+		var d: float = you.distance_to(o[1])
+		if d < best_d:
+			best_d = d
+			best = o[0]
+	if best == null: return
+	_led = true
+	var at: Vector3 = options.filter(func(o): return o[0] == best)[0][1]
+	var side: Vector3 = (you - at)
+	side.y = 0.0
+	side = side.normalized() * 3.0 if side.length() > .1 else Vector3(3, 0, 0)
+	gary.call("lead_to", at + side)
+
+func _g_hint_near_pallet() -> void:
+	if _g_hint or not _led or not gary_greeted: return
+	var gary: Node3D = world.get("scout_rover")
+	if gary == null: return
+	if (world.player as Node3D).global_position.distance_to(gary.global_position) > 6.0: return
+	_g_hint = true
+	MHNotices.hint("GAR-Y", "Hold G: GAR-Y")
 
 ## Pallet 4 out of sight (day 1 of version 2) or there to be found.
 func _show_cradle(on: bool) -> void:
@@ -330,6 +431,7 @@ func _process(delta: float) -> void:
 	_door_intro(delta + .5)
 	_keep_in_cradle()
 	_found_at_work()
+	_g_hint_near_pallet()
 	var notes: Node = world.get("notes")
 	var second: String = "tools" if v2() else "gary"
 	if notes != null and notes.is_open("chutes") and sites.power.pallet.opened and sites[second].pallet.opened: notes.answer("chutes")
@@ -414,6 +516,14 @@ func _met_scene(mode: String) -> void:
 	if mode == "pallet":
 		MHNotices.post("valid", "Pallet 4: GAR-Y", "GAR-Y is awake. It follows you, tows on its sled, and (hold G) takes orders.", "log")
 		_met("Woke GAR-Y in the boulder field. It looked at me for a long second, then beeped as if it had been waiting all along.")
+	elif mode == "field" and v3():
+		gary_greeted = true
+		var gary_now: Node3D = world.get("scout_rover")
+		if gary_now != null:
+			gary_now.call("end_rescue")
+			gary_now.set("staying", false)
+		_met("Found GAR-Y tangled in a scrap of parachute, past the stakes it had been planting since the storm. I cut it loose. It looked at me for a long second, then bumped my boot.")
+		_lead_to_pallet()
 	elif mode == "field":
 		var known_now: Node = world.get("known")
 		if known_now != null: known_now.finish("gary_moving")
@@ -506,7 +616,7 @@ func _apply_tools() -> void:
 	lamp.spot_angle = minf(lamp.spot_angle + 10.0, 60.0)
 
 func export_state() -> Dictionary:
-	var out := {"gary_working": gary_working, "tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "gary_in_cradle": gary_in_cradle, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}, "crate": crate.export_state() if crate != null and is_instance_valid(crate) else {},
+	var out := {"snag_freed": snag.freed_count() if snag != null and is_instance_valid(snag) else snag_freed, "gary_greeted": gary_greeted, "gary_working": gary_working, "tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "gary_in_cradle": gary_in_cradle, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}, "crate": crate.export_state() if crate != null and is_instance_valid(crate) else {},
 		"print_crate": print_crate.export_state() if print_crate != null and is_instance_valid(print_crate) else {}}
 	for kind in sites: out.sites[kind] = sites[kind].export_state()
 	return out
