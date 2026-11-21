@@ -141,6 +141,10 @@ func _process(_delta: float) -> void:
 		# The very first look is the slow one; after that, quick.
 		var first := suit != null and int(suit.get("wrist_hint_uses")) == 0 and _state == "down"
 		_anim.play("wrist_raise_first" if first else "wrist_raise", -1.0 if _state == "down" else BLEND)
+		# Pose it at the clip's first frame now: play() only poses it on the
+		# player's next update, and for that one frame the arm would show in
+		# its rest pose, up in view, before dropping and lifting (21 Nov).
+		if _state == "down": _anim.seek(0.0, true)
 		if _state == "down" and suit != null: suit.wrist_raised()
 		_state = "raising"
 	elif not up and _state in ["raising", "reading"]:
