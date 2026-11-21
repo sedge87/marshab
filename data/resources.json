@@ -778,6 +778,12 @@
       "power_kw": 2.5,
       "hours_per_sol": 24.0,
       "o2_kg": 1.2
+    },
+    "docking_port": {
+      "room": "general",
+      "cargo_kg": 160.0,
+      "power_kw": 0.0,
+      "hours_per_sol": 0.0
     }
   },
   "sites": {

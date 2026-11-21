@@ -40,6 +40,9 @@ var _power_check := 1.0
 
 func _ready() -> void:
 	add_to_group("habitat_interactable")
+	if equipment_id == "docking_port":
+		add_to_group("docking_port")
+		_build_port_collar.call_deferred()
 	_make_materials_two_sided()
 	_actions = EquipmentCatalog.rig(equipment_id).get("actions", [])
 	for index in range(_actions.size()): _build_action(index, _actions[index])
@@ -83,6 +86,11 @@ func _action_label(action: Dictionary) -> String:
 		if str(action.get("type", "")) == "service": return "%s · wear %d%%" % [job, roundi(w * 100.0)]
 		if w >= wear.SERVICE_FROM: return "%s · wear %d%%" % [job, roundi(w * 100.0)]
 	match str(action.get("type", "")):
+		"dock_port":
+			if not port_outside(): return "Needs an outside wall"
+			var rover := _habrover()
+			if rover == null: return "No HabRover yet"
+			return "Go through to the HabRover" if bool(rover.call("docked_at", self)) else "Call the HabRover here"
 		"harvest":
 			var crops := _crops()
 			if crops != null: return str(crops.status(_placement_id()))
@@ -166,6 +174,12 @@ func _run(key: String, _actor: Node) -> bool:
 				_set_state(str(action.state), (_screen_mode(action) + 1) % maxi(1, (action.get("modes", []) as Array).size()))
 			"sign_edit":
 				_edit_sign(action)
+				return true
+			"dock_port":
+				# The HabRover's sealed dock (scripts/crew_rover.gd): through to its cabin, or call it here.
+				var rover := _habrover()
+				var note := "There's no HabRover yet." if rover == null else str(rover.call("through_port", self))
+				if not note.is_empty(): get_tree().call_group("explore_hud", "show_equipment_note", "Docking Port", note)
 				return true
 			"recall_rover":
 				# The vehicles drive themselves home (scripts/crew_rover.gd; A7: the rover and the buggy).
@@ -1039,3 +1053,54 @@ func _make_materials_two_sided() -> void:
 			if source == null: continue
 			# House materials: shared, two-sided, brushed (scripts/mh_palette.gd).
 			mesh.set_surface_override_material(surface, MHPalette.material(source))
+
+# ---------- the docking port (Phase 6, 21 Nov) ----------
+
+var _collar: Node3D
+
+func _habrover() -> Node:
+	for vehicle in get_tree().get_nodes_in_group("crew_rover"):
+		if not bool(vehicle.get("wrecked")) or str(vehicle.get("repair")) == "crash": return vehicle
+	return null
+
+## Which way is outside: the port's back faces the wall.
+func port_out() -> Vector3:
+	var back := global_transform.basis.z
+	back.y = 0.0
+	return back.normalized()
+
+## Built against an outside wall: just beyond it is open ground, not a room.
+func port_outside() -> bool:
+	var builder := _builder()
+	if builder == null: return false
+	var beyond := global_position + port_out() * 1.6
+	return builder.call("_zone_at_point", Vector2(beyond.x, beyond.z)).is_empty() and not builder.is_inside(beyond + Vector3.UP)
+
+## The port's outside collar: a short sealed tube through the wall, with a
+## rubber seal ring where the HabRover's rear airlock presses on.
+func _build_port_collar() -> void:
+	if not is_inside_tree() or not port_outside(): return
+	_collar = Node3D.new()
+	_collar.name = "OutsideCollar"
+	add_child(_collar)
+	_collar.top_level = true
+	var out := port_out()
+	_collar.global_transform = Transform3D(Basis.looking_at(out, Vector3.UP), global_position + out * .55 + Vector3.UP * 1.08)
+	var tube := MeshInstance3D.new()
+	var tube_mesh := CylinderMesh.new()
+	tube_mesh.top_radius = .62; tube_mesh.bottom_radius = .62; tube_mesh.height = .5; tube_mesh.radial_segments = 40
+	var alloy := StandardMaterial3D.new(); alloy.resource_name = "collar_dark_alloy"; alloy.albedo_color = Color("#8796A0"); alloy.metallic = .3; alloy.roughness = .42
+	tube_mesh.material = alloy
+	tube.mesh = tube_mesh
+	tube.rotation.x = PI / 2.0
+	_collar.add_child(tube)
+	var seal := MeshInstance3D.new()
+	var ring := TorusMesh.new()
+	ring.inner_radius = .58; ring.outer_radius = .7; ring.rings = 40
+	var rubber := StandardMaterial3D.new(); rubber.resource_name = "seal_rubber"; rubber.albedo_color = Color("#323B40"); rubber.roughness = .85
+	ring.material = rubber
+	seal.mesh = ring
+	seal.rotation.x = PI / 2.0
+	seal.position.z = -.26
+	_collar.add_child(seal)
+

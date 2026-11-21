@@ -400,8 +400,16 @@ func _arrived() -> void:
 
 # ---- survey: scan, then flag ice or scoop a sample ----
 
+## A vehicle GAR-Y is towing home (crew_rover.gd), or "".
+func _towing() -> String:
+	for vehicle in get_tree().get_nodes_in_group("vehicle"):
+		var t = vehicle.get("tow")
+		if t is Dictionary and not (t as Dictionary).is_empty(): return str(vehicle.call("_tow_line"))
+	return ""
+
 func start_survey() -> bool:
 	if habitat == null: return false
+	if not _towing().is_empty(): return false   # busy towing a wreck
 	for attempt in 8:
 		var angle := randf() * TAU
 		var spot := global_position + Vector3(cos(angle), 0, sin(angle)) * randf_range(7.0, 12.0)
@@ -1016,6 +1024,11 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 		_ordered = false   # replaced, not failed
 		_end_task(true)
 	_escort_until = 0
+	# Towing a wreck: no surveys till it's home. It still comes for you.
+	var towing := _towing()
+	if not towing.is_empty() and kind in ["survey", "goto", "core", "find_ice", "show"]:
+		_say("worried")
+		return "GAR-Y can't: it's towing a wreck (%s). It'll still come if you call it." % towing.trim_prefix("GAR-Y is towing it ")
 	var indoors := _self_indoors()
 	match kind:
 		"come":

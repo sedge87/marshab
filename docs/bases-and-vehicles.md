@@ -239,7 +239,7 @@ The user's three field models (`asset_packs/outpost_field_assets_v1`, cleaned of
 - Tools: `tools/vehicle_cab_look.gd` (the cockpits, screens and cab parts), `tools/corer_look.gd` (the corer's stages) and `tools/field_model_look.gd`. Tests: `vehicles_test`, `crew_rover_test`, `rover_route_test` and the new `hand_corer_test`.
 - **Not done yet:** the buggy's dash knobs and other switches as clickable controls; walking about inside the HabRover (you reach the galley from the seat); and the sample case, kit and charge-lead hatches on Scout 02 as working parts.
 
-### Decided 21 Nov (not built): the sealed dock, and vehicles that break
+### Decided 21 Nov (built the same day, see below): the sealed dock, and vehicles that break
 
 - **A docking port for the HabRover.** It's a new piece you build on the outside wall of any pressurised room, the way you build an airlock.
   - The HabRover reverses on to it, and its back hatch mates with the port.
@@ -260,6 +260,30 @@ The user's three field models (`asset_packs/outpost_field_assets_v1`, cleaned of
   - fix it with spares you carried;
   - or radio GAR-Y to come to you.
   - If the cabin's supplies run out, the blackout rule applies: GAR-Y drags you home and you lose that trip's progress, not your game.
+
+### As built (21 Nov): the docking port, wrecks and the tow
+- **Docking port** (`docking_port`, airlock group, in the build list after the rover charger). It's a wall piece for any pressurised room: a framed hatch with a round window, an orange handle and status LEDs, and outside a short collar with a rubber seal. Model `asset_packs/mars_docking_port_v1`.
+  - It only works with open ground beyond the wall ("Needs an outside wall").
+  - A valid port becomes the HabRover's home, ahead of the Garage pad. It backs on with its rear airlock to the collar, and there's no umbilical: the seal is the link.
+  - E on the port, docked: through the hatch into the cab, looking down the aisle. Not docked: it calls the HabRover over (the usual recall).
+  - E in the cab while docked: out the back, into the room.
+- **Wrecks** (`crew_rover.gd` `_wreck_here`). A vehicle is wrecked where it lies, with a hazard-orange beacon strobe and a Map pin, when it:
+  - hits something above 4.2 m/s (in practice only the buggy is that fast);
+  - drops more than 3.5 m in one go;
+  - tips past about 46° for 0.6 s.
+- **What happens to you:**
+  - The buggy throws you clear, on suit air.
+  - The HabRover keeps you aboard: the cab still holds air, and the screens, galley and sleep still work. G radios GAR-Y for a tow. From outside, "Get in" works while the cabin is sealed.
+- **Fixing:** the buggy takes 1 spares kit and the HabRover takes 2, fixed where it lies.
+- **The tow:** recall a wreck (or press G aboard) and GAR-Y tows it home at about a sol per 3 km, with a 2-hour minimum, on game time.
+  - It arrives still damaged; you fix it there.
+  - A drop of more than 15 m means GAR-Y winches it back to the last spot it sat level (1–2 sols).
+  - While towing, GAR-Y refuses survey, go-to, core and ice orders. "Come" still works.
+- **Saved:** `crash`, `tow`, `safe`.
+- **Test:** `tests/dock_wreck_test.gd`. **Render:** `tools/dock_look.gd`.
+- **Not yet:**
+  - a towing animation (the wreck just appears at home when the time is up);
+  - rescuing you from a wrecked cab during a blackout.
 
 ## The blackout rule (outside the guided chapters)
 

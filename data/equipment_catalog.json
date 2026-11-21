@@ -5365,6 +5365,48 @@
       "placement": "floor",
       "pack": "outpost_stations_a5",
       "asset_scene": "res://assets/equipment/outpost_stations_a5/smelter.tscn"
+    },
+    {
+      "id": "docking_port",
+      "label": "Docking Port",
+      "group": "airlock",
+      "status": "catalogue",
+      "icon": "log-in",
+      "height": 2.16,
+      "description": "A sealed port for the HabRover, built against a room's outside wall. The HabRover reverses on to it and its rear airlock mates with the port: walk between the rover's cabin and the base with no suit. While docked it charges, refills its air, water and food from the base.",
+      "role": "The HabRover's sealed dock",
+      "primary_action": "Go through to the HabRover",
+      "asset_scene": "res://assets/equipment/mars_docking_port_v1/docking_port.tscn",
+      "cargo_cost": 160,
+      "valid_zones": [
+        "living",
+        "science",
+        "storage",
+        "hydroponics",
+        "engineering",
+        "general",
+        "galley",
+        "medical",
+        "corridor"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor_wall",
+      "effects": {},
+      "size_m": [
+        1.44,
+        2.16,
+        0.264
+      ],
+      "pack": "mars_docking_port_v1",
+      "system_note": "Pressurised rovers are meant to dock with the habitat through a suitport or a hatch, so the crew move between them without a spacewalk and without bringing dust inside.",
+      "system_links": [
+        "HabRover",
+        "Air",
+        "Power"
+      ]
     }
   ]
 }

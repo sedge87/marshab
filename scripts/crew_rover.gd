@@ -65,6 +65,19 @@ const LEAD_PER_H := 1.0         # suit battery shares an hour on the buggy's lea
 const TRAIL_STEP := 25.0        # m between the rover's breadcrumbs
 const TRAIL_MAX := 600
 const ALARM_EVERY := 4.0        # s between the cab alarm's tones
+## Wrecks (21 Nov decision, docs/bases-and-vehicles.md): a hard hit, a fall or
+## a roll wrecks a vehicle where it lies. Never lost: fix it there with
+## spares, or GAR-Y tows it (about a sol per 3 km; from somewhere you can't
+## reach, back to the last safe spot). A wreck never breaches the HabRover's
+## hull: its cabin stays a shelter.
+const CRASH_SPEED := 4.2        # m/s into something solid
+const FALL_M := 3.5             # m dropped in one go
+const DEEP_FALL_M := 15.0       # a drop this big: somewhere you can't drive out of
+const ROLL_RAD := .8            # tipped past this (about 46 degrees)...
+const ROLL_SECONDS := .6        # ...for this long: rolled
+const CRASH_SPARES := {"buggy": 1, "rover": 2}
+const TOW_M_PER_SOL := 3000.0
+const SAFE_EVERY := 2.0         # s between remembering a safe spot
 const DASH := preload("res://scripts/vehicle_dash.gd")
 const CARGO_LANDER := preload("res://scripts/cargo_lander.gd")   # its soft dust puff
 const MHPalette := preload("res://scripts/mh_palette.gd")
@@ -207,6 +220,13 @@ var lead := false               # the buggy's charge lead plugged into your suit
 var stash := STASH.duplicate()  # the buggy's glove box
 var trail := PackedVector2Array()   # the rover's breadcrumbs from home
 var _alarm_clock := 0.0
+var crash := ""                 # what wrecked it: "hit", "fall" or "roll" (saved)
+var tow := {}                   # GAR-Y's tow: {to: Vector3, yaw, hours_left, home} (saved)
+var _safe := Vector3.INF        # the last spot it sat level on firm ground (saved)
+var _safe_clock := 0.0
+var _tipped := 0.0
+var _tow_hour := -1.0
+var _rear_m := 3.4              # body centre to the rear airlock face
 
 func setup(target_builder: Node, vehicle_kind := "") -> void:
 	builder = target_builder
@@ -314,6 +334,8 @@ func _fit_field_model(visual: Node3D) -> void:
 			pivot.set_meta("rest", pivot.transform.basis)
 			pivot.set_meta("up", _in_parent(pivot, Vector3.UP))
 			wheel.set_meta("steer", pivot)
+	var hatch := visual.find_child("Airlock_Entry", true, false) as Node3D
+	if hatch != null: _rear_m = absf(_body_point(hatch).z)
 	var eye := visual.find_child("Driver_Eye", true, false) as Node3D
 	if eye != null: _spec["cab_view"] = _body_point(eye)
 	var seat := visual.find_child("Driver_Seat", true, false) as Node3D
@@ -456,7 +478,7 @@ func _update_dock_pad() -> void:
 		var y := float(home.get("y", 0.0))
 		var ground := _ground_under(Vector3(_pad_at.x, y, _pad_at.y), y)
 		_pad.global_transform = Transform3D(Basis(Vector3.UP, atan2(-out.x, -out.y)), Vector3(_pad_at.x, ground if not is_inf(ground) else y, _pad_at.y))
-	var docked := _in_bay() and absf(speed) < .3 and not wrecked
+	var docked := _in_bay() and absf(speed) < .3 and not wrecked and not home.has("port")
 	_umbilical.visible = docked
 	if docked:
 		# From the Garage wall (beside the door, at waist height) to the airlock.
@@ -669,7 +691,12 @@ func interact(_actor: Node = null) -> bool:
 	return true
 
 func interact_secondary(_actor: Node = null) -> bool:
-	if wrecked: return false
+	if wrecked:
+		if repair == "crash" and sealed() and tow.is_empty():
+			var player := get_tree().get_first_node_in_group("player") as CharacterBody3D
+			if player != null and not driving: _get_in(player)
+			return true
+		return false
 	_set_lights(not lights_on)
 	return true
 
@@ -732,10 +759,27 @@ func _wreck_prompt() -> Dictionary:
 		"part": return {"label": what + " · a steering link sheared", "primary": "Fit a printed part (spares kit, %d in store)" % int(MHChapterOne.stock.get("spares_kit", 0)), "info": "About"}
 		"battery": return {"label": what + " · battery dead", "primary": "Bridge its battery from your suit (%d%% of your power)" % roundi(BUGGY_BRIDGE_POWER * 100.0), "info": "About"}
 		"parts": return {"label": what + " · drive train and seals damaged", "primary": "Repair it (%d spares kits, %s)" % [ROVER_FIX.spares, MHMaterials.cost_line(ROVER_FIX.cost).trim_prefix("0 kg · ")], "info": "About"}
+		"crash":
+			if not tow.is_empty(): return {"label": what + " · " + _tow_line(), "info": "About"}
+			var prompt := {"label": what + " · " + _crash_text(), "primary": "Fix it (%d spares kit%s, %d in store)" % [_crash_spares(), "" if _crash_spares() == 1 else "s", int(MHChapterOne.stock.get("spares_kit", 0))], "info": "About"}
+			if sealed(): prompt["secondary"] = "Get in (the cabin still holds air)"
+			return prompt
 	return {"label": what}
 
 func _work_on_wreck() -> bool:
 	match repair:
+		"crash":
+			if not tow.is_empty():
+				_note(label(), _tow_line())
+				return false
+			if int(MHChapterOne.stock.get("spares_kit", 0)) < _crash_spares():
+				_refuse("You need %d spares kit%s (the Print Shop prints them) to fix it. Or recall it from a Garage: GAR-Y tows it home, about a sol per 3 km." % [_crash_spares(), "" if _crash_spares() == 1 else "s"])
+				return false
+			MHChapterOne.stock["spares_kit"] = int(MHChapterOne.stock.spares_kit) - _crash_spares()
+			crash = ""
+			_fixed(battery)
+			_note(label(), "Fixed: bent parts swapped from the spares kits, and it's back on its wheels.")
+			return true
 		"part":
 			if int(MHChapterOne.stock.get("spares_kit", 0)) < 1:
 				_refuse("You need a spares kit (the Print Shop prints them) to make a new steering link.")
@@ -772,6 +816,101 @@ func _work_on_wreck() -> bool:
 			_note(label(), "The drive train turns and the cab holds pressure again. Its batteries kept %d%%, but the tank's nearly empty: get it to a Garage, which refills its air, water and food. Its manifest had a plan for dune wheels too." % roundi(ROVER_WAKE_CHARGE))
 			return true
 	return false
+
+# ---------- crashes, wrecks and GAR-Y's tow ----------
+
+func _crash_spares() -> int:
+	return int(CRASH_SPARES.get(kind, 1))
+
+func _crash_text() -> String:
+	match crash:
+		"hit": return "a wheel and the steering bent in a hard hit"
+		"fall": return "suspension broken in a fall"
+		"roll": return "rolled: a wheel and a mast broken"
+	return "damaged"
+
+## Wrecked where it lies: pinned on the Map with a beacon, never lost.
+func _wreck_here(why: String, drop := 0.0) -> void:
+	wrecked = true
+	repair = "crash"
+	crash = why
+	speed = 0.0
+	cruise = 0.0
+	recalling = false
+	_tipped = 0.0
+	_model.rotation = Vector3(.06, 0, -.12) if why != "roll" else Vector3(.1, 0, -.35)
+	MHAudio.sfx("land", 0.0)
+	var world := get_tree().get_first_node_in_group("habitat_world")
+	if world != null and world.has_method("_mark_wreck"): world._mark_wreck(kind, global_position, "%s (wrecked)" % label())
+	var line := "The %s is wrecked: %s. Fix it here with %d spares kit%s, or recall it from a Garage and GAR-Y tows it home." % [label().to_lower(), _crash_text(), _crash_spares(), "" if _crash_spares() == 1 else "s"]
+	if driving and not sealed():
+		_get_out()   # thrown clear of the open buggy; your suit takes it
+	elif driving:
+		line += " The cabin's hull held: it's still a shelter, with its air, water and food. Press G to radio GAR-Y for a tow."
+	# Somewhere you can't drive out of (a big drop): GAR-Y brings it back up.
+	if why == "fall" and drop > DEEP_FALL_M and _safe != Vector3.INF:
+		var metres := Vector2(global_position.x - _safe.x, global_position.z - _safe.z).length()
+		tow = {"to": _safe, "yaw": rotation.y, "hours_left": clampf(metres / TOW_M_PER_SOL, 1.0, 2.0) * 24.0, "home": false}
+		_tow_hour = MHGame.sol_hour
+		line = "The %s went over a %d m drop: there's no driving out of there. GAR-Y will winch it back up to where it was last on firm ground, about %s." % [label().to_lower(), roundi(drop), _hours_text(float(tow.hours_left))]
+	_flash("%s wrecked" % label(), line)
+
+## Tipped past ROLL_RAD for ROLL_SECONDS: it's rolled. Level on firm ground:
+## a safe spot to remember.
+func _watch_roll(delta: float) -> void:
+	if absf(_roll) > ROLL_RAD or absf(_pitch) > ROLL_RAD + .1:
+		_tipped += delta
+		if _tipped > ROLL_SECONDS and not recalling: _wreck_here("roll")
+		return
+	_tipped = 0.0
+	_safe_clock -= delta
+	if _safe_clock <= 0.0 and absf(_roll) < .2 and absf(_pitch) < .2 and not bogged:
+		_safe_clock = SAFE_EVERY
+		_safe = global_position
+
+func _hours_text(hours: float) -> String:
+	if hours >= 30.0: return "%.1f sols" % (hours / 24.0)
+	return "%d hours" % maxi(1, roundi(hours))
+
+func _tow_line() -> String:
+	return "GAR-Y is towing it %s: %s to go" % ["home" if bool(tow.get("home", true)) else "back up", _hours_text(float(tow.get("hours_left", 0.0)))]
+
+## Recalled while wrecked: GAR-Y tows it home, about a sol per 3 km.
+func _start_tow(home: Dictionary) -> String:
+	if not tow.is_empty(): return _tow_line() + "."
+	if home.is_empty(): return "It's wrecked, and there's no Garage for GAR-Y to tow it to. Fix it where it lies with spares."
+	var to := Vector3((home.centre as Vector2).x, float(home.get("y", global_position.y)), (home.centre as Vector2).y)
+	var metres := Vector2(global_position.x - to.x, global_position.z - to.z).length()
+	var out: Vector2 = home.out
+	tow = {"to": to, "yaw": atan2(-out.x, -out.y), "hours_left": maxf(2.0, metres / TOW_M_PER_SOL * 24.0), "home": true}
+	_tow_hour = MHGame.sol_hour
+	return "GAR-Y's going out to tow it home: %s, about %s. GAR-Y can't survey while it tows, but it always comes for you." % [("%.1f km" % (metres / 1000.0)) if metres >= 1000.0 else "%d m" % roundi(metres), _hours_text(float(tow.hours_left))]
+
+## The tow runs on game time (sleeping passes it too). Done: it's where it
+## was taken, still wrecked, to be fixed with spares (a Garage is the easy place).
+func _tick_tow() -> void:
+	if tow.is_empty(): return
+	var hour := MHGame.sol_hour
+	if _tow_hour < 0.0: _tow_hour = hour
+	var passed := wrapf(hour - _tow_hour, 0.0, 24.0)
+	_tow_hour = hour
+	if passed <= 0.0 or passed > 20.0: return
+	tow["hours_left"] = float(tow.hours_left) - passed
+	if float(tow.hours_left) > 0.0: return
+	var to: Vector3 = tow.to
+	var ground := _ground_under(to, to.y)
+	global_position = Vector3(to.x, ground if not is_inf(ground) else to.y, to.z)
+	rotation.y = float(tow.get("yaw", rotation.y))
+	var home := bool(tow.get("home", true))
+	tow = {}
+	_note(label(), ("GAR-Y has towed the %s home. It's still damaged: fix it with %d spares kit%s." if home else "GAR-Y has winched the %s back up on to firm ground. It's still damaged: fix it with %d spares kit%s.") % [label().to_lower(), _crash_spares(), "" if _crash_spares() == 1 else "s"])
+
+## Is GAR-Y busy towing anything? (companion_rover.gd won't survey then.)
+static func gary_towing(tree: SceneTree) -> String:
+	for vehicle in tree.get_nodes_in_group("vehicle"):
+		var t = vehicle.get("tow")
+		if t is Dictionary and not (t as Dictionary).is_empty(): return str(vehicle.call("_tow_line"))
+	return ""
 
 func _refuse(text: String) -> void:
 	MHAudio.sfx("invalid")
@@ -815,6 +954,12 @@ func _get_in(player: CharacterBody3D) -> void:
 func _get_out() -> void:
 	if _player == null: return
 	var spot := _exit_spot()
+	var through_port := false
+	if _docks_outside():
+		var inside := _port_exit()
+		if inside != Vector3.INF:
+			spot = inside
+			through_port = true
 	if lead: use_cab_part("lead")
 	_close_cab()
 	_aimed = ""
@@ -822,7 +967,7 @@ func _get_out() -> void:
 	speed = 0.0
 	cruise = 0.0
 	_player.global_position = spot
-	_player.rotation.y = rotation.y
+	_player.rotation.y = rotation.y + (PI if through_port else 0.0)
 	if "safe_position" in _player: _player.safe_position = spot
 	_player.collision_layer = _player_layers.x
 	_player.collision_mask = _player_layers.y
@@ -916,6 +1061,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_2: fit_addon("traction_mats")
 			KEY_3: refit_wheels()
 			KEY_B: pass   # no building from the driver's seat
+			KEY_G:
+				if wrecked and repair == "crash": _note(label(), recall())
+				else: handled = false
 			_: handled = false
 		if handled: get_viewport().set_input_as_handled()
 
@@ -1065,6 +1213,17 @@ func _physics_process(delta: float) -> void:
 	var steer_in := 0.0
 	var braking := false
 	if wrecked:
+		_tick_tow()
+		if driving:
+			# Aboard a wreck (the HabRover's cabin is a shelter): it can't move,
+			# but the cab still breathes, the screens and the galley still work.
+			speed = 0.0
+			_battery(delta, 0.0)
+			_sound_alarm(delta)
+			_player.global_position = global_transform * (_spec.seat as Vector3) - Vector3.UP * 1.6
+			_place_camera(delta)
+			_aim_cab()
+			_update_hud()
 		return
 	if driving and not get_tree().paused and not bool(_player.get_meta("ui_freeze", false)):
 		# Keys, or RT/LT and the left stick (scripts/mh_input.gd): how far, not just on or off.
@@ -1110,8 +1269,15 @@ func _physics_process(delta: float) -> void:
 		var moved := (global_position - before).length()
 		if moved < absf(speed) * delta * 0.5:
 			if absf(speed) > 2.5: MHAudio.sfx("land", -4.0)
+			var impact := absf(speed)
 			speed *= 0.3
+			if impact > CRASH_SPEED and not recalling:
+				_wreck_here("hit")
+				return
 	_follow_ground(delta)
+	if wrecked: return   # it went over an edge
+	_watch_roll(delta)
+	if wrecked: return
 	var flat_moved := Vector2(global_position.x - before.x, global_position.z - before.z).length()
 	_spin_wheels(delta, global_position.distance_to(before))
 	_terrain_effects(delta, flat_moved)
@@ -1194,7 +1360,14 @@ func _follow_ground(delta: float) -> void:
 	var rl := _ground_at(global_transform * Vector3(-_half_track, 0, _half_base))
 	var rr := _ground_at(global_transform * Vector3(_half_track, 0, _half_base))
 	var heights := [fl, fr, rl, rr].filter(func(h): return not is_inf(h))
-	if heights.is_empty(): return
+	if heights.is_empty():
+		# Nothing under any wheel within reach: over an edge.
+		var below := _ground_under(global_position, global_position.y)
+		if not is_inf(below) and global_position.y - below > FALL_M and not recalling:
+			var drop := global_position.y - below
+			global_position.y = below
+			_wreck_here("fall", drop)
+		return
 	var mean := 0.0
 	for h in heights: mean += h
 	mean /= heights.size()
@@ -1208,6 +1381,11 @@ func _follow_ground(delta: float) -> void:
 	var across := ((fl + rl) - (fr + rr)) * .25
 	var bump := maxf(maxf(fl - (mean + along + across), fr - (mean + along - across)), maxf(rl - (mean - along + across), rr - (mean - along - across)))
 	var target := mean + maxf(0.0, bump - 0.1) - (.12 * slip if kind == "rover" else 0.0)   # sinking in as it bogs
+	if global_position.y - target > FALL_M and not recalling and not _in_bay():
+		var drop := global_position.y - target
+		global_position.y = target
+		_wreck_here("fall", drop)
+		return
 	var rate := 10.0 if target > global_position.y else 6.0
 	global_position.y = lerpf(global_position.y, target, minf(1.0, delta * rate))
 	var pitch := atan2(((fl + fr) - (rl + rr)) * 0.5, _half_base * 2.0)
@@ -1354,6 +1532,15 @@ func _flash(title: String, text: String) -> void:
 ## The first Garage: {centre, door (the hangar's outside face), out}.
 func _home() -> Dictionary:
 	if builder == null: return {}
+	# The HabRover: a docking port on a room's outside wall comes first.
+	if _docks_outside():
+		var port := _port()
+		if port != null:
+			var out3: Vector3 = port.port_out()
+			var out := Vector2(out3.x, out3.z)
+			var at := Vector2(port.global_position.x, port.global_position.z)
+			var pad := at + out * (_rear_m + .75)
+			return {"centre": pad, "pad": pad, "door": at, "out": out, "y": port.global_position.y, "port": port}
 	for zone in builder.zones:
 		if str(zone.get("kind", "")) != "vehicle_bay": continue
 		var outside: Vector2i = zone.get("door_direction", Vector2i(0, -1))
@@ -1374,14 +1561,50 @@ func _home() -> Dictionary:
 		return home
 	return {}
 
-## The HabRover docks on a pad outside the Garage; the buggy drives in.
+## The HabRover docks outside (a docking port, else a pad by the Garage
+## door); the buggy drives in.
 func _docks_outside() -> bool:
 	return kind == "rover" and _field
+
+## The first docking port built against an outside wall.
+func _port() -> Node3D:
+	for port in get_tree().get_nodes_in_group("docking_port"):
+		if port.has_method("port_outside") and bool(port.port_outside()): return port as Node3D
+	return null
+
+## Docked at this port (the rig asks, for its prompt).
+func docked_at(port: Node) -> bool:
+	var home := _home()
+	return home.get("port") == port and _in_bay() and absf(speed) < .3
+
+## E on a docking port inside the base: through the mated hatch into the
+## cabin, or (not docked) call the HabRover here. Returns a note, or "".
+func through_port(port: Node) -> String:
+	var player := get_tree().get_first_node_in_group("player") as CharacterBody3D
+	if not bool(port.call("port_outside")): return "A docking port needs an outside wall: nothing but open ground beyond it."
+	if docked_at(port):
+		if player == null or driving: return ""
+		MHAudio.sfx("door_open", -6.0)
+		_get_in(player)
+		_look = Vector2(PI, -0.35)   # in through the back: up in the aisle, by the galley
+		_place_camera(1.0)
+		return ""
+	if wrecked: return "The HabRover is wrecked: fix it, or have GAR-Y tow it home." if tow.is_empty() else _tow_line()
+	return recall()
+
+## Docked at a port, the rear airlock is mated: out that way is into the base.
+func _port_exit() -> Vector3:
+	var home := _home()
+	if not home.has("port") or not _in_bay(): return Vector3.INF
+	var port: Node3D = home.port
+	var inward: Vector3 = -port.port_out()
+	return port.global_position + inward * 1.1
 
 ## Called by the Garage's charger: drive home on its own. Returns what to
 ## tell the player.
 func recall() -> String:
 	var home := _home()
+	if wrecked and repair == "crash": return _start_tow(home)
 	if wrecked: return "It's still a wreck where you found it."
 	if bogged: return "It's bogged down: someone has to dig it out or lay a mat first."
 	if home.is_empty(): return "There's no Garage to come home to."
@@ -1861,7 +2084,7 @@ func _show_hud(on: bool) -> void:
 		_refresh_hints()
 
 func _refresh_hints() -> void:
-	var key := "%s%s%s%s%s" % [cabin_ready(), bogged, _in_bay(), _aimed, _cab_open.get(_aimed, false)]
+	var key := "%s%s%s%s%s%s%s" % [cabin_ready(), bogged, _in_bay(), _aimed, _cab_open.get(_aimed, false), wrecked, tow.is_empty()]
 	if key == _hint_key or _hud == null: return
 	_hint_key = key
 	if _hints != null: _hints.queue_free()
@@ -1872,6 +2095,7 @@ func _refresh_hints() -> void:
 	if kind == "rover" and _in_bay() and absf(speed) < .1: hints += [[["1"], "Dune wheels"], [["2"], "Mats"], [["3"], "Wheel bench"]]
 	else: hints.append([["R"], "Recover"])
 	if not _aimed.is_empty(): hints.push_front([["LMB"], _cab_label(_aimed), "accent"])
+	if wrecked and repair == "crash": hints = [[["G"], "Radio GAR-Y for a tow" if tow.is_empty() else _tow_line()]] + ([[["Z"], "Sleep"], [["X"], "Eat and drink"]] if cabin_ready() else [])
 	_hints = MHStyle.hint_strip(hints + map_hint + [[["E"], "Get out", "accent"]])
 	_hud.add_child(_hints)
 
@@ -1907,7 +2131,7 @@ func _home_marker() -> String:
 func export_state() -> Dictionary:
 	return {"kind": kind, "position": global_position, "yaw": rotation.y, "battery": battery, "reserve": reserve, "o2": o2, "lights": lights_on, "recalling": recalling, "radio": radio_on,
 		"water_l": water_l, "meals": meals, "wheels": wheels, "addons": addons, "mats": mats, "bogged": bogged, "slip": slip, "wrecked": wrecked, "repair": repair,
-		"trail": Array(trail), "stash": stash.duplicate()}
+		"trail": Array(trail), "stash": stash.duplicate(), "crash": crash, "tow": tow.duplicate(), "safe": _safe}
 
 func restore_state(state: Dictionary) -> void:
 	if state.has("position"): global_position = state.position as Vector3
@@ -1925,6 +2149,9 @@ func restore_state(state: Dictionary) -> void:
 	wrecked = bool(state.get("wrecked", false))
 	repair = str(state.get("repair", ""))
 	trail = PackedVector2Array(state.get("trail", []) as Array)
+	crash = str(state.get("crash", ""))
+	tow = (state.get("tow", {}) as Dictionary).duplicate()
+	_safe = state.get("safe", Vector3.INF)
 	if state.get("stash") is Dictionary: stash = (state.stash as Dictionary).duplicate()
 	if wrecked: _model.rotation = Vector3(.05, 0, -.08)
 	if bool(state.get("recalling", false)):

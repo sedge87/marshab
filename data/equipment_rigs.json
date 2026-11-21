@@ -5961,5 +5961,31 @@
         "type": "service"
       }
     ]
+  },
+  "docking_port": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "dock_port",
+        "label": "Go through to the HabRover"
+      },
+      {
+        "key": "secondary",
+        "type": "hinge",
+        "doors": [
+          {
+            "parts": [
+              "hatch_door"
+            ],
+            "edge": "min_x",
+            "axis": "y",
+            "angle": -100
+          }
+        ],
+        "label_on": "Close the hatch",
+        "label_off": "Open the hatch",
+        "state": "hatch"
+      }
+    ]
   }
 }

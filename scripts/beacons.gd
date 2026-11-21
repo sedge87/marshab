@@ -21,6 +21,7 @@ const STYLES := {
 	"pallet": {"colour": Color("#F2C35A"), "period": 2.2, "on": .18, "height": 1.9},
 	"airlock": {"colour": Color("#CFE9EE"), "period": 0.0, "on": 1.0, "height": 2.7},
 	"marker": {"colour": Color("#8CC3CB"), "period": 1.0, "on": .3, "height": 1.2},
+	"wreck": {"colour": Color("#E8743B"), "period": 1.4, "on": .25, "height": 3.2},
 }
 
 var world: Node
@@ -67,6 +68,9 @@ func _gather() -> void:
 	for door in get_tree().get_nodes_in_group("airlock_door"):
 		if not (door is Node3D) or not door.has_method("door_label"): continue
 		if str(door.call("door_label")) in ["OUTER", "HANGAR"]: want["airlock:%d" % door.get_instance_id()] = {"kind": "airlock", "target": door}
+	# A wrecked vehicle's own hazard strobe: never lost (crew_rover.gd).
+	for vehicle in get_tree().get_nodes_in_group("vehicle"):
+		if vehicle is Node3D and bool(vehicle.get("wrecked")) and str(vehicle.get("repair")) == "crash": want["wreck:%d" % vehicle.get_instance_id()] = {"kind": "wreck", "target": vehicle}
 	var known: Node = world.get("known") if world != null else null
 	if known != null:
 		for entry in known.known("you", "marker"):

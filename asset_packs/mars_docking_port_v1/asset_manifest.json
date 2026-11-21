@@ -1,0 +1,47 @@
+{
+  "style": "HQ pass for Forward+: baked PBR atlases (base colour with AO, normal, ORM), house look",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "docking_port",
+      "file": "docking_port.glb",
+      "placement": "floor_wall",
+      "bounds_m": [
+        [
+          -0.72,
+          0.0,
+          -0.144
+        ],
+        [
+          0.72,
+          2.16,
+          0.12
+        ]
+      ],
+      "triangles": 4588,
+      "named_components": [
+        "hatch_door_handle_accent",
+        "hatch_door_hinge_bolts_satin",
+        "hatch_door_inset_panel",
+        "hatch_door_panel_shell",
+        "hatch_door_rim_frame",
+        "hatch_door_window_dark",
+        "port_back_frame",
+        "port_bolts_satin",
+        "port_equaliser",
+        "port_gasket_black",
+        "port_handrail_satin",
+        "port_header_shell",
+        "port_jamb_l_shell",
+        "port_jamb_r_shell",
+        "port_light_led",
+        "port_sill_deep",
+        "port_status_0_led",
+        "port_status_1_led",
+        "port_status_2_led",
+        "port_tag_plate_panel",
+        "port_tunnel_deep"
+      ]
+    }
+  ]
+}
