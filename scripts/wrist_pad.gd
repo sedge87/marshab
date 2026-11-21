@@ -1,41 +1,54 @@
 extends Node3D
 
 ## The suit's wrist pad (scripts/suit.gd): your gloved left forearm with a
-## small computer strapped on (the model: asset_packs/mars_suit_wrist_v1). Hold T to raise it into view; let go and it drops
-## away. Its screen is a live info screen (info_screen.gd, "suit" mode):
-## oxygen time, power, the scrubber, the turn-back time and the way to the
-## nearest refill. It runs on the suit's own battery, not the habitat grid.
-## A child of the first-person camera, so it moves with your view.
+## small computer strapped on. Hold Alt (or D-pad up) to raise it into view;
+## let go and it drops away. Its screen is a live info screen
+## (info_screen.gd, "suit" mode): the ring of air with its home notch, power,
+## the sky, the way to the nearest refill and the status icons. It runs on the
+## suit's own battery, not the habitat grid. A child of the first-person
+## camera, so it moves with your view.
+##
+## 21 Nov: the V05 arm (deliverables/Wrist_Review_01, CLAUDE_HANDOFF.md), with
+## its own clips doing the whole lift: wrist_raise (0.5 s; wrist_raise_first,
+## slower, the very first time), wrist_read_idle looping while held, and
+## wrist_lower (0.43 s). It's held at the V06 mount, where the elbow stays out
+## of view at any field of view up to 90 degrees. The old arm
+## (assets/models/suit/wrist_arm.glb) stays in the project as a fallback.
 
 const INFO_SCREEN := preload("res://scripts/info_screen.gd")
-const ARM_MODEL := preload("res://assets/models/suit/wrist_arm.glb")
+const ARM_MODEL := preload("res://assets/models/suit/wrist_arm_v05.glb")
 const MHPalette := preload("res://scripts/mh_palette.gd")
-const RAISED := Vector3(-.03, -.1, -.33)     # the pad, raised, in the camera's space
-const DROP := Vector3(-.05, -.42, .06)
-const SPEED := 6.0                           # raise and drop, per second
+## V06 mount, camera space: the screen's centre, which way it faces, and the
+## forearm's line toward the fingers (CLAUDE_HANDOFF.md, V06).
+const SCREEN_AT := Vector3(-.0883, -.0027, -.1683)
+const FACING := Vector3(.6332, .0485, .7724)
+const ALONG := Vector3(.7669, .0953, -.6347)
+## The screen's centre in the model's own space (Blender (-.118, 0, .008)).
+const SCREEN_LOCAL := Vector3(-.118, .008, 0)
+const BLEND := .08   # seconds to blend between clips (letting go mid-raise)
 ## Its own render layer, so the helmet lamp a few centimetres away doesn't
 ## blow it out (the lamp skips this layer).
 const LAYER := 1 << 19
 
 var suit: Node
+## How far up it is, 0 (away) to 1 (reading), following the clips.
 var raised := 0.0
-var held := false   # raised without T (captures and tests)
+var held := false   # raised without the key (captures and tests)
 var _arm: Node3D
+var _anim: AnimationPlayer
 var _screen: Control
 var _view: SubViewport
-var _raised_basis: Basis
-var _lowered_basis: Basis
+## "down", "raising", "reading" or "lowering".
+var _state := "down"
 
 func _ready() -> void:
 	name = "WristPad"
-	# The pad faces your eyes; the forearm runs in from the lower left.
-	var facing := (-RAISED).normalized()
-	var along := Vector3(1.0, .06, -.22)
-	along = (along - facing * along.dot(facing)).normalized()
-	_raised_basis = Basis(along, facing, along.cross(facing)).orthonormalized()
-	_lowered_basis = Basis(Vector3.RIGHT, deg_to_rad(-55.0)) * _raised_basis
 	_arm = Node3D.new()
 	add_child(_arm)
+	var facing := FACING.normalized()
+	var along := (ALONG - facing * ALONG.dot(facing)).normalized()
+	var basis := Basis(along, facing, along.cross(facing)).orthonormalized()
+	_arm.transform = Transform3D(basis, SCREEN_AT - basis * SCREEN_LOCAL)
 	var lamp := get_parent().get_node_or_null("Flashlight") as Light3D
 	if lamp != null:
 		lamp.light_cull_mask &= ~LAYER
@@ -44,16 +57,21 @@ func _ready() -> void:
 	visible = false
 
 func _build_arm() -> void:
-	# The forearm, glove and pad case (asset_packs/mars_suit_wrist_v1), in
-	# house materials, on the pad's own layer, casting no shadows.
+	# The forearm, glove and pad case, in house materials, on the pad's own
+	# layer, casting no shadows.
 	var model := (ARM_MODEL.instantiate() as Node3D)
 	_arm.add_child(model)
 	MHPalette.apply(model)
+	_anim = model.find_children("*", "AnimationPlayer", true, false)[0] as AnimationPlayer
+	_anim.get_animation("wrist_read_idle").loop_mode = Animation.LOOP_LINEAR
+	_anim.animation_finished.connect(_clip_done)
 	var weave := _weave()
+	var display: MeshInstance3D
 	for part in model.find_children("*", "MeshInstance3D", true, false):
 		var mesh := part as MeshInstance3D
 		mesh.layers = LAYER
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if mesh.name.contains("Display_Surface_Wrist"): display = mesh
 		# The suit's fabric gets a fine weave, so it doesn't look like plastic.
 		if mesh.name.contains("fabric"):
 			for i in mesh.mesh.get_surface_count():
@@ -66,9 +84,9 @@ func _build_arm() -> void:
 				cloth.uv1_triplanar = true
 				cloth.uv1_scale = Vector3.ONE * 90.0
 				mesh.set_surface_override_material(i, cloth)
-	# Its screen.
+	# Its screen: the live face, drawn into a viewport on the model's display.
 	_view = SubViewport.new()
-	_view.size = Vector2i(480, 320)
+	_view.size = Vector2i(720, 480)
 	_view.transparent_bg = false
 	_view.render_target_update_mode = SubViewport.UPDATE_ONCE
 	add_child(_view)
@@ -77,28 +95,21 @@ func _build_arm() -> void:
 	_screen.viewport = _view
 	_screen.suit = suit
 	_view.add_child(_screen)
-	var face := MeshInstance3D.new()
-	var quad := QuadMesh.new()
-	quad.size = Vector2(.12, .12 * 320.0 / 480.0)
-	face.mesh = quad
 	var screen_material := StandardMaterial3D.new()
 	screen_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	screen_material.albedo_texture = _view.get_texture()
-	face.material_override = screen_material
-	face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	face.position = Vector3(-.08, .0095, 0)
-	face.layers = LAYER
-	face.rotation_degrees = Vector3(-90, 0, 0)
-	_arm.add_child(face)
-	# A little screen glow on the glove and sleeve, for the dark.
+	screen_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	if display != null: display.material_override = screen_material
+	# A little screen glow on the glove and sleeve, for the dark: just off the
+	# screen where it sits while you read.
 	var glow := OmniLight3D.new()
 	glow.light_color = Color("#9FE3FF")
 	glow.light_energy = .07
 	glow.omni_range = .16
-	glow.position = Vector3(-.08, .05, 0)
+	glow.position = SCREEN_LOCAL + Vector3(0, .04, 0)
 	glow.light_cull_mask = LAYER
 	glow.set_meta("budget_exempt", true)
-	_arm.add_child(glow)
+	model.add_child(glow)
 
 ## A fine fabric weave, as a normal map.
 static func _weave() -> NoiseTexture2D:
@@ -121,16 +132,37 @@ func wanted() -> bool:
 	if bool(player.get_meta("driving", false)) or bool(player.get_meta("ui_freeze", false)) or player._any_build_mode_active(): return false
 	return MHInput.held("wrist") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED   # hold Alt (21 Nov: was T) or D-pad up
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	var up := wanted()
-	var was := raised
-	raised = move_toward(raised, 1.0 if up else 0.0, delta * SPEED)
-	if raised > 0.0 and was <= 0.0:
-		MHAudio.sfx("suit_beep", -18.0)
-		_screen.refresh()
-		if suit != null and up: suit.wrist_raised()
-	visible = raised > 0.0
+	if up and _state in ["down", "lowering"]:
+		if _state == "down":
+			MHAudio.sfx("suit_beep", -18.0)
+			_screen.refresh()
+		# The very first look is the slow one; after that, quick.
+		var first := suit != null and int(suit.get("wrist_hint_uses")) == 0 and _state == "down"
+		_anim.play("wrist_raise_first" if first else "wrist_raise", -1.0 if _state == "down" else BLEND)
+		if _state == "down" and suit != null: suit.wrist_raised()
+		_state = "raising"
+	elif not up and _state in ["raising", "reading"]:
+		_anim.play("wrist_lower", BLEND)
+		_state = "lowering"
+	visible = _state != "down"
 	_screen.set_process(visible)
-	if not visible: return
-	var t := ease(raised, -2.0)
-	_arm.transform = Transform3D(_lowered_basis.slerp(_raised_basis, t), DROP.lerp(Vector3.ZERO, t) + RAISED)
+	match _state:
+		"raising": raised = _progress()
+		"reading": raised = 1.0
+		"lowering": raised = 1.0 - _progress()
+		_: raised = 0.0
+
+func _progress() -> float:
+	var length := _anim.current_animation_length
+	return clampf(_anim.current_animation_position / length, 0.0, 1.0) if length > 0.0 else 1.0
+
+func _clip_done(clip: StringName) -> void:
+	if str(clip).begins_with("wrist_raise") and _state == "raising":
+		_anim.play("wrist_read_idle")
+		_state = "reading"
+	elif clip == &"wrist_lower" and _state == "lowering":
+		_anim.stop()
+		_state = "down"
+		visible = false
