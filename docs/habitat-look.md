@@ -27,7 +27,9 @@ The rolling 2.6 m shutters go.
 - **Room hatches:** GAR-Y nudges them open, and its rocker wheels climb the 10 cm sill, with a small fold-down ramp if needed.
 - **Cost:** it comes with every airlock module, so there's nothing extra to build.
 
-## 3. One shell: curved outside, boxy inside (direction, for the walls, floors and roof pass)
+## 3. One shell: curved outside, boxy inside (PARKED 21 Nov)
+
+Parked on 21 Nov. Rough block-outs of four options (skinned boxes, cylinders with nodes, printed shells, and inflatables with straps after The Martian) didn't land with the user. The shell stays as it is for now, and only the doors and hatches go ahead. If this comes back, show real-quality concept art, not primitives. The notes below are kept for reference.
 The real reasons, which shape the art:
 - **Pressure:** air pressure pushes outward evenly, so pressurised hulls are curved: cylinders, domes and rounded ends. Flat walls would buckle. Modules outside should read as curved pressure vessels, with rib rings, end domes and bolted flanges where modules join.
 - **Inside:** rooms, racks and workstations are rectilinear, built into the round shell. Floors are flat decks with storage or services below. Walls are panels on a frame, with a gap behind for ducts and cables.
@@ -48,4 +50,4 @@ The real reasons, which shape the art:
 
 ## Order
 1. Hatches and GAR-Y's flap: an `airlock_door.gd` rework (a hinge instead of a shutter, hold-backs, alarm close, and the flap with its own lock), the Blender hatch and flap models, and GAR-Y's route through the flap.
-2. Then a shell design talk (walls, floors, roof, joins, the shielding layer), with renders of options before any building.
+2. The shell is parked (see section 3).
