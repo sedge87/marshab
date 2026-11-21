@@ -50,6 +50,15 @@ do Beats.cue("bed")
 => END
 ```
 
+## Lines that check the world (21 Nov, R1 of docs/intro-rework.md: built)
+Every condition is tested the moment its line comes up, not when the call was rung.
+- `? near:crate:40 Castellanos: …` — a live fact, `name:arg:arg`. Built-in facts: `outside`, `low_air`, `dark`, `near:<place>:<metres>`, `done:<flag>`. Scripts add more with `radio.facts["has"] = func(args) -> bool`. A plain word is a fact if one has that name, otherwise a flag.
+- `@ near:gary:30 Castellanos: …` then `@else Castellanos: …` — a line about something in front of you, and what's said instead if you're not there. Decided once; never both.
+- `chat Castellanos: …` — small talk, dropped when you've walked more than 15 m during the call (outside) or another call is waiting.
+- `fresh` (first row of a section) — an event call. If it waits more than 20 s for its turn (`fresh 30` for another limit), `<section>_late` plays instead, or nothing.
+- Places for `near:` are named in `radio.places` (opening_days.gd: `gary`, `crate`) or are any node group of that name.
+- `tests/radio_test.gd` checks every fact and place the scripts use is one the game knows.
+
 ## What it replaces
 - `data/replies.json`, for Castellanos only. Older saves keep it.
 - ARDEN's voice lines: `lander_brief`, `cabin_morning_check`, the module's "Welcome aboard".

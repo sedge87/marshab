@@ -22,6 +22,24 @@ extends Node
 ##   nudge Castellanos: ... [ID:x]        and while you're quiet, these are said
 ##                                        (one every NUDGE_EVERY seconds)
 ##
+## 21 Nov (docs/intro-rework.md §3, R1): lines check the world as they play.
+##   ? near:crate:40 Castellanos: ...     a condition can be a live fact, name:arg:arg,
+##                                        asked of code the moment the line comes up
+##                                        (facts: below; a plain word is a fact if one
+##                                        has that name, else a flag)
+##   @ near:crate:40 Castellanos: ...     a line about something in front of you...
+##   @else Castellanos: ...               ...and what's said instead if you're not there
+##                                        (decided once: never both)
+##   chat Castellanos: ...                small talk, dropped if you've walked off
+##                                        (CHAT_MOVE m outside) or another call waits
+##   fresh                                (first row of a section) an event call: if it
+##                                        waits over FRESH_SECONDS for its turn, its
+##                                        <section>_late form plays instead, or nothing
+## Facts every game has: outside, low_air, dark, near:<place>:<metres>,
+## done:<flag>. Others are added by the scripts that know them
+## (radio.facts["has"] = ...); places by name in radio.places, or any node
+## group of that name.
+##
 ## Calls queue and never interrupt danger: they wait while your suit's in
 ## trouble, you're out cold or a storm is on you. They also wait while the
 ## crew's ship is behind Mars (its one-sol orbit takes it round the far side
@@ -49,6 +67,14 @@ var checks: Dictionary = {}      # wait name -> Callable(args) -> bool
 var handlers: Dictionary = {}    # cue name -> Callable(args)
 var _sections: Dictionary = {}   # name -> Array of steps
 var _choice := -2                # the reply picked (-1 silence, -2 waiting)
+## Live facts a line can test: name -> Callable(args: Array) -> bool.
+var facts: Dictionary = {}
+## Places near:<name> can find: name -> Callable() returning a Node3D or Vector3.
+var places: Dictionary = {}
+const FRESH_SECONDS := 20.0      # an event call's longest wait before it's old news
+const CHAT_MOVE := 15.0          # metres walked during a call that drops its chat
+var _waited: Dictionary = {}     # section -> seconds in the queue
+var _call_from := Vector3.INF    # where you were when this call began
 
 static var _parsed: Dictionary = {}
 
@@ -65,6 +91,40 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 		heard.erase(cut)
 		if not queue.has(cut): queue.push_front(cut)
 	_sections = sections()
+	_base_facts()
+
+## The facts every game has. Scripts add their own (has, sees...) the same way.
+func _base_facts() -> void:
+	facts["outside"] = func(_args: Array) -> bool: return _outside()
+	facts["low_air"] = func(_args: Array) -> bool:
+		var suit: Node = world.get("suit") if world != null else null
+		return suit != null and str(suit.get("where")) == "outside" and float(suit.get("o2")) < .25
+	facts["dark"] = func(_args: Array) -> bool: return MHGame.sunlight_fraction < .1
+	facts["near"] = func(args: Array) -> bool: return _near(args)
+	facts["done"] = func(args: Array) -> bool: return not args.is_empty() and flags.has(str(args[0]))
+
+## Is a condition true right now? A fact if there's one by that name, else a flag.
+func test(condition: String) -> bool:
+	var parts := condition.split(":")
+	if facts.has(parts[0]): return bool((facts[parts[0]] as Callable).call(Array(parts.slice(1))))
+	return flags.has(condition)
+
+## near:<place>:<metres> (default 30), on the ground.
+func _near(args: Array) -> bool:
+	if args.is_empty(): return false
+	var at: Variant = place_of(str(args[0]))
+	var player: Node3D = world.get("player") if world != null else null
+	if at == null or player == null: return false
+	var reach := float(args[1]) if args.size() > 1 else 30.0
+	var you := player.global_position
+	return Vector2(float(at.x) - you.x, float(at.z) - you.z).length() <= reach
+
+## Where a named place is, or null.
+func place_of(thing: String) -> Variant:
+	var found: Variant = (places[thing] as Callable).call() if places.has(thing) else (get_tree().get_first_node_in_group(thing) if is_inside_tree() else null)
+	if found is Node3D: return (found as Node3D).global_position if is_instance_valid(found) and (found as Node3D).is_inside_tree() else null
+	if found is Vector3 and not is_inf((found as Vector3).x): return found
+	return null
 
 func export_state() -> Dictionary:
 	return {"flags": flags.duplicate(), "heard": heard.duplicate(), "topics": topics.duplicate(), "queue": queue.duplicate(), "playing": playing}
@@ -141,6 +201,22 @@ static func _steps(rows: Array) -> Array:
 			hold = true
 			i += 1
 			continue
+		if body == "fresh" or body.begins_with("fresh "):
+			var seconds := body.substr(5).strip_edges()
+			steps.append({"type": "fresh", "seconds": float(seconds) if seconds.is_valid_float() else FRESH_SECONDS})
+			i += 1
+			continue
+		# A place-bound line, and what's said instead (docs/intro-rework.md §3.2).
+		if body.begins_with("@else"):
+			if not steps.is_empty() and str(steps[-1].type) == "place": steps[-1]["else"] = _step(body.substr(5).strip_edges())
+			i += 1
+			continue
+		if body.begins_with("@ "):
+			var rest := body.substr(2).strip_edges()
+			var space := rest.find(" ")
+			steps.append({"type": "place", "cond": rest.substr(0, space), "then": _step(rest.substr(space + 1).strip_edges())})
+			i += 1
+			continue
 		if body.begins_with("nudge "):
 			nudges.append(_step(body.substr(6).strip_edges()))
 			i += 1
@@ -158,6 +234,8 @@ static func _step(body: String) -> Dictionary:
 		var space := rest.find(" ")
 		cond = rest.substr(0, space) if space > 0 else rest
 		body = rest.substr(space + 1).strip_edges() if space > 0 else ""
+	var chat := body.begins_with("chat ")
+	if chat: body = body.substr(5).strip_edges()
 	var step := {}
 	if body.begins_with("=>"): step = {"type": "goto", "to": body.substr(2).strip_edges()}
 	elif body.begins_with("do "): step = {"type": "do", "args": Array(body.substr(3).strip_edges().split(" ", false))}
@@ -173,6 +251,7 @@ static func _step(body: String) -> Dictionary:
 			id = said.substr(tag + 4).trim_suffix("]").strip_edges()
 			said = said.substr(0, tag).strip_edges()
 		step = {"type": "line", "who": who, "text": said, "id": id}
+		if chat: step["chat"] = true
 	if not cond.is_empty():
 		step["if"] = cond
 		step["not"] = negate
@@ -187,6 +266,8 @@ static func all_lines() -> Array:
 static func _collect(steps: Array, out: Array) -> void:
 	for step in steps:
 		if str(step.type) == "line" and not str(step.id).is_empty(): out.append([str(step.id), str(step.who), str(step.text)])
+		elif str(step.type) == "place":
+			_collect([step.then] + ([step["else"]] if step.has("else") else []), out)
 		elif str(step.type) == "choice":
 			_collect(step.get("nudges", []), out)
 			for option in step.options: _collect(option.steps, out)
@@ -297,14 +378,37 @@ func _watch_link() -> void:
 func flag(f: String) -> bool:
 	return flags.has(f)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_watch_link()
 	_watch_sleep()
+	if world != null and not world.get_tree().paused:
+		for waiting in queue: _waited[waiting] = float(_waited.get(waiting, 0.0)) + delta
 	if not playing.is_empty() or queue.is_empty() or not _safe(_urgent.has(str(queue[0]))): return
 	var section := str(queue.pop_front())
 	_urgent.erase(section)
+	var waited := float(_waited.get(section, 0.0))
+	_waited.erase(section)
 	if heard.has(section) or _stale(section): return
+	# An event call that waited too long is old news: its catch-up form, or nothing.
+	var limit := fresh_limit(section)
+	if limit > 0.0 and waited > limit:
+		heard[section] = true
+		var late := section + "_late"
+		if not _sections.has(late) or heard.has(late): return
+		section = late
 	_play(section)
+
+## How long an event call (marked `fresh`) may wait for its turn; 0 for any other.
+func fresh_limit(section: String) -> float:
+	var steps: Array = _sections.get(section, [])
+	return float(steps[0].seconds) if not steps.is_empty() and str(steps[0].type) == "fresh" else 0.0
+
+## Small talk is dropped once you've walked off, or when another call is waiting.
+func _chat_skipped() -> bool:
+	if not queue.is_empty(): return true
+	var player: Node3D = world.get("player") if world != null else null
+	if player == null or is_inf(_call_from.x) or not _outside(): return false
+	return player.global_position.distance_to(_call_from) > CHAT_MOVE
 
 ## The heads-up after she's already gone, or the hello long after she's back.
 func _stale(section: String) -> bool:
@@ -364,6 +468,8 @@ func _play(section: String) -> void:
 	var steps: Array = _sections.get(section, [])
 	_ran_early = []
 	_cut = false
+	var player: Node3D = world.get("player") if world != null else null
+	_call_from = player.global_position if player != null else Vector3.INF
 	for step in steps:
 		if str(step.type) == "do" and not step.has("if") and str(step.args[0]) in EARLY_CUES:
 			_cue(step)
@@ -383,10 +489,16 @@ func _cue(step: Dictionary) -> void:
 func _run(steps: Array) -> void:
 	for step in steps:
 		if _cut: return
-		if step.has("if") and flags.has(str(step["if"])) == bool(step.get("not", false)): continue
+		if step.has("if") and test(str(step["if"])) == bool(step.get("not", false)): continue
 		if _ran_early.has(step): continue
 		match str(step.type):
-			"line": await _say(step)
+			"line":
+				if bool(step.get("chat", false)) and _chat_skipped(): continue
+				await _say(step)
+			"place":
+				# Decided once, as it comes up: the line for here, or the one for elsewhere.
+				var pick: Variant = step.then if test(str(step.cond)) else step.get("else")
+				if pick != null: await _run([pick])
 			"set": flags[str(step.flag)] = true
 			"do": _cue(step)
 			"wait":
@@ -402,9 +514,13 @@ func _run(steps: Array) -> void:
 				await _run(_sections.get(to, []))
 				return
 
+var spoken: Array = []   # tests (fast): the line IDs said, in order
+
 func _say(step: Dictionary) -> void:
 	var id := str(step.id)
-	if fast: return
+	if fast:
+		spoken.append(id)
+		return
 	MHAudio.orbiter_line(id, str(step.who), str(step.text), "from orbit")
 	await get_tree().process_frame
 	var file := "res://assets/audio/voice/orb_%s.wav" % id

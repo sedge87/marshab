@@ -26,9 +26,9 @@ Castellanos: Whatever was in there let itself out and went off on its own. Follo
 => END
 
 ~ d2_found
-# 21 Nov: lines about what's in front of you check you're still there (by_gary, by_crate: scripts/opening_days.gd).
-? by_gary Castellanos: Talk to me. I can see you've stopped next to something. What is it? [ID:d2_found_01]
-?! by_gary Castellanos: Talk to me. Rao says you found whatever was moving out there. What was it? [ID:d2_found_a7_01]
+# 21 Nov: lines about what's in front of you check you're still there as they play (@ near:..., scripts/radio.gd).
+@ near:gary:30 Castellanos: Talk to me. I can see you've stopped next to something. What is it? [ID:d2_found_01]
+@else Castellanos: Talk to me. Rao says you found whatever was moving out there. What was it? [ID:d2_found_a7_01]
 - It's small. And I think it's friendly.
 - It just headbutted my boot.
 	set bumped
@@ -43,8 +43,8 @@ Castellanos: Here's what it can do. It scouts, and it remembers what it finds. I
 	Castellanos: Did it beep at you? Tell me it beeped at you. [ID:d2_found_08a]
 - So I'm not alone out here after all.
 	Castellanos: No. Not alone. Small company, but company. [ID:d2_found_08b]
-? by_crate Castellanos: Hang on. What's that box beside it? Hold still, I'm on your helmet cam. That's a spares crate. It must have come off one of the pallets that broke up in the storm. [ID:d2_found_09]
-?! by_crate Castellanos: And Rao's picture shows a box where it was working. A spares crate, off one of the pallets that broke up in the storm. It's on your map. [ID:d2_found_a7_09]
+@ near:crate:40 Castellanos: Hang on. What's that box beside it? Hold still, I'm on your helmet cam. That's a spares crate. It must have come off one of the pallets that broke up in the storm. [ID:d2_found_09]
+@else Castellanos: And Rao's picture shows a box where it was working. A spares crate, off one of the pallets that broke up in the storm. It's on your map. [ID:d2_found_a7_09]
 Castellanos: GAR-Y's got a tow mount on its back, but no hitch. The hitches were all on the pallet that broke up. Typical. [ID:d2_found_12]
 ?! scrap_told Castellanos: But you've got a little printer in the lander. It eats scrap. And the storm's left scrap all over the Reach: bent panels, broken struts, bits of pallet. [ID:d2_found_13]
 ?! scrap_told Castellanos: Strip some of that junk on the way home, feed it to the printer, and print GAR-Y a hitch. Then bring it back out here and tow that crate home. [ID:d2_found_14]

@@ -92,6 +92,7 @@ The line pass checks every line against four questions:
 ## 6. Build order
 
 1. **R1, the radio engine:** live facts, `@ near` with `@else`, freshness and catch-up forms, chat lines, recaps at play time. Tests in `tests/radio_test.gd`.
+   - *Built 21 Nov.* Syntax as written in `docs/radio.md` ("Lines that check the world"); facts are one token, `near:crate:40`. `d2_found` now uses `@ near:gary:30` / `@ near:crate:40` (the hand-made `by_gary`/`by_crate` flags are gone). Recaps at play time come in R2: the engine already tests every condition as the line plays, so `dN_still` only needs its lines rewritten onto facts.
 2. **R2, the line pass:** every call in `data/radio/day1-5.txt` audited with the four questions and rewritten where needed. New voices via `python tools/generate_voice.py --missing`, and rewritten IDs renamed so they regenerate.
 3. **R3, staging the drop:**
    - pallet 5, the buggy's shell (model: split shell, parachute, scar), at the buggy's spot;
