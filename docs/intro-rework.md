@@ -119,7 +119,7 @@ Phase 6 (the three new models) waits until this is done. The buggy model from th
 
 **Still for R1 and R2:** the same kind of problem is in other calls (for example `d2_found_14` "bring it back out here", and `d4_still` "press B to set the core down"). The line pass covers them.
 
-## 7. Open questions for the user
-- Should the manifest be on the slate (Base page → Cargo), or only on a physical clipboard or console in the lander?
-- Should the buggy be fixable early (sol 2–3, with pallet 3's kit and scrap) or stay a later find (C1)?
-- Should the far rover's heavy lander be visible from home, as a distant glint on the horizon, to pull you out later?
+## 7. Decided (21 Nov)
+- **The manifest is on the slate:** Base page → Cargo manifest, with you outside as well as home.
+- **The buggy stays a later find (C1).** You find its shell early; Castle says it's "for later". It's fixed once the Print Shop and parts are there, so the first days stay on foot.
+- **The far rover's heavy lander glints on the horizon from home** at low sun, a pull outward long before you can reach it.
