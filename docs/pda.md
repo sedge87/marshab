@@ -8,7 +8,7 @@
 
 | Device | What it's for | How you use it |
 |---|---|---|
-| **Wrist pad** (exists, `wrist_pad.gd`) | **Life support at a glance.** O₂ time, suit power, scrubber, dose, turn-back time, the nearest refill. Also new: the sample case count. | **Hold T.** You keep walking and looking. It never takes the mouse. |
+| **Wrist pad** (exists, `wrist_pad.gd`) | **Life support at a glance.** O₂ time, suit power, scrubber, dose, turn-back time, the nearest refill. Also new: the sample case count. | **Hold Alt.** You keep walking and looking. It never takes the mouse. Checked like a watch (21 Nov): the forearm comes across in front of your chest and your view dips about 30° to meet it, then comes back level. |
 | **Slate** (new, internally "PDA") | **Everything else you need to know.** Notes, map, base systems, comms, site data, a log of everything you were told. | **Tab** to raise or lower. **M** raises it on Base. **Esc** lowers it. |
 
 The wrist stays "life support only" (docs/start-and-chapter-one.md:99). The slate doesn't scan anything. Finding ice is still GAR-Y's job and the survey stakes'. The slate only shows what you, GAR-Y and Earth already know.

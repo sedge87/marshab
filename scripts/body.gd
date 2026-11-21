@@ -343,11 +343,13 @@ func _tired_cues(delta: float, camera: Camera3D, k: float) -> void:
 		var strength := .8 if not doze_risk() else 1.6
 		lean = deg_to_rad(strength * k) * sin(_drift * .37) * (1.0 if not walking else .6)
 	# Only while there's something to show, so other views of the camera are left alone.
-	if camera != null and (lean != 0.0 or absf(camera.rotation.z) > .0005 or absf(camera.rotation.x) > .0005):
+	# The pitch rests at 0, or dipped while you read your wrist (wrist_pad.gd).
+	var rest := -float(player.get_meta("wrist_tilt", 0.0)) if player != null else 0.0
+	if camera != null and (lean != 0.0 or absf(camera.rotation.z) > .0005 or absf(camera.rotation.x - rest) > .0005):
 		camera.rotation.z = lerpf(camera.rotation.z, lean, clampf(delta * 2.0, 0.0, 1.0))
-		camera.rotation.x = lerpf(camera.rotation.x, 0.0, clampf(delta * 3.0, 0.0, 1.0))
+		camera.rotation.x = lerpf(camera.rotation.x, rest, clampf(delta * 3.0, 0.0, 1.0))
 		if lean == 0.0 and absf(camera.rotation.z) < .0005: camera.rotation.z = 0.0
-		if absf(camera.rotation.x) < .0005: camera.rotation.x = 0.0
+		if absf(camera.rotation.x - rest) < .0005: camera.rotation.x = rest
 	if player != null:
 		# A lazier look when hungry; slower hands from both.
 		player.set_meta("look_speed", lerpf(1.0, .8 if hungry() else .9, k) if peckish() else 1.0)

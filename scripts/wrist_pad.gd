@@ -18,11 +18,15 @@ extends Node3D
 const INFO_SCREEN := preload("res://scripts/info_screen.gd")
 const ARM_MODEL := preload("res://assets/models/suit/wrist_arm_v05.glb")
 const MHPalette := preload("res://scripts/mh_palette.gd")
-## V06 mount, camera space: the screen's centre, which way it faces, and the
-## forearm's line toward the fingers (CLAUDE_HANDOFF.md, V06).
-const SCREEN_AT := Vector3(-.0883, -.0027, -.1683)
-const FACING := Vector3(.6332, .0485, .7724)
-const ALONG := Vector3(.7669, .0953, -.6347)
+## Checked like a watch (21 Nov): the forearm comes across in front of your
+## chest and your head dips to meet it. Head space (the view before the dip):
+## the screen's centre, which way it faces, and the forearm's line toward the
+## fingers. (Was the V06 mount, up at eye level 17 cm out.)
+const SCREEN_AT := Vector3(-.026, -.13, -.165)
+const FACING := Vector3(.12, .61, .78)
+const ALONG := Vector3(.92, .1, -.35)
+## How far your head dips to read it (radians, about 30 degrees).
+const DIP := .52
 ## The screen's centre in the model's own space (Blender (-.118, 0, .008)).
 const SCREEN_LOCAL := Vector3(-.118, .008, 0)
 const BLEND := .08   # seconds to blend between clips (letting go mid-raise)
@@ -157,6 +161,21 @@ func _process(_delta: float) -> void:
 		"reading": raised = 1.0
 		"lowering": raised = 1.0 - _progress()
 		_: raised = 0.0
+	_dip()
+
+## Your head dips with the lift: the camera pitches down and the pad, its
+## child, turns back the same, so the arm stays put by your chest. The look
+## (Head) is left alone, so your aim comes back where it was.
+var _dipped := 0.0
+func _dip() -> void:
+	var dip := DIP * smoothstep(0.0, 1.0, raised)
+	if dip == 0.0 and _dipped == 0.0: return
+	_dipped = dip
+	rotation.x = dip
+	var camera := get_parent() as Camera3D
+	if camera != null: camera.rotation.x = -dip
+	var player := get_tree().get_first_node_in_group("player")
+	if player != null: player.set_meta("wrist_tilt", dip)   # body.gd eases the camera toward it
 
 func _progress() -> float:
 	var length := _anim.current_animation_length
