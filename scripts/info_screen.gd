@@ -11,9 +11,10 @@ extends Control
 ##   sign       · the player's own text
 ##   camera     · the outside camera masts, a new picture each second (cycles
 ##                masts every 8 s when there are several)
-##   suit       · the wrist pad (wrist_pad.gd): the suit's oxygen, power and
-##                scrubber, the turn-back time and the way to the nearest
-##                refill. It runs on the suit's battery, so no grid needed.
+##   suit       · the wrist pad (wrist_pad.gd), drawn not written: a ring of
+##                air with a notch for the air home, power, the sky, the way
+##                to the nearest refill and status icons (21 Nov). It runs on
+##                the suit's battery, so no grid needed.
 ## The viewport only re-renders when this redraws (about once a second).
 
 const MHResources := preload("res://scripts/mh_resources.gd")
@@ -39,7 +40,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_since += delta
 	_spin += delta
-	if _since >= 1.0:
+	# The wrist redraws four times a second, so a leak can flash.
+	if _since >= (.25 if mode == "suit" else 1.0):
 		_since = 0.0
 		refresh()
 
@@ -166,104 +168,159 @@ func _bar(at: Vector2, width: float, share: float, colour: Color, u: float) -> v
 	draw_rect(Rect2(at, Vector2(width, 10 * u)), Color(1, 1, 1, .08))
 	draw_rect(Rect2(at, Vector2(width * clampf(share, 0.0, 1.0), 10 * u)), colour)
 
+# 21 Nov: the wrist pad, drawn not written (deliverables/Wrist_Review_01/
+# wrist_screen_mockup.png). One ring of air that empties, with a notch for the
+# air you need to get home: turning back is the edge reaching the notch. The
+# only number is air time. Power is the thin blue arc outside. Right: the sun
+# (or Phobos and Deimos at night), the way to air, and small icons that stay
+# dim until they matter. No base alerts here.
+const WRIST_TRACK := Color("#1E262B")
+const WRIST_DIM := Color("#343E44")
+
+## An arc from one share of the circle to another, from the top, clockwise,
+## r the outer edge, w its width; round ends unless it's the whole ring.
+func _wrist_arc(c: Vector2, r: float, w: float, from_share: float, to_share: float, colour: Color) -> void:
+	to_share = minf(to_share, 1.0)
+	if to_share <= from_share: return
+	var a0 := -PI / 2.0 + TAU * from_share
+	var a1 := -PI / 2.0 + TAU * to_share
+	draw_arc(c, r - w / 2.0, a0, a1, maxi(6, int(96.0 * (to_share - from_share)) + 2), colour, w, true)
+	if to_share - from_share < .999:
+		for a in [a0, a1]: draw_circle(c + Vector2(cos(a), sin(a)) * (r - w / 2.0), w / 2.0, colour)
+
 func _draw_suit() -> void:
 	var u := size.y / 320.0
 	if suit == null: return
 	var r: Dictionary = suit.readout()
-	var tone := func(share: float) -> Color: return MHStyle.DANGER if share <= .1 else (MHStyle.WARN if share <= .25 else MHStyle.VALID)
-	_text("SUIT", Vector2(22, 34) * u, int(20 * u), MHStyle.accent, 700)
-	_text("%02d:%02d" % [int(MHGame.sol_hour), int(fmod(MHGame.sol_hour, 1.0) * 60.0)], Vector2(size.x - 22 * u, 34 * u), int(18 * u), MHStyle.TEXT_SECONDARY, 500, HORIZONTAL_ALIGNMENT_RIGHT, -1)
-	# Chapter one: F sends a survey ping to GAR-Y's stakes (scripts/survey_stakes.gd).
-	var stakes := get_tree().get_first_node_in_group("survey_stakes")
-	if stakes != null and str(r.get("where", "")) == "outside" and not (stakes.call("readings") as Array).is_empty():
-		_text("F · PING STAKES", Vector2(92, 32) * u, int(15 * u), MHStyle.INFO, 700)
-	# The sample case, on the wrist (docs/pda.md: the visor pips' place).
-	if MHSamples.on() and MHChapterOne.has_corer:
-		var full := MHSamples.case_items.size() >= MHSamples.CASE_SLOTS
-		_text("CASE %d/%d" % [MHSamples.case_items.size(), MHSamples.CASE_SLOTS], Vector2(size.x - 92 * u, 34 * u), int(15 * u), MHStyle.WARN if full else MHStyle.TEXT_SECONDARY, 700, HORIZONTAL_ALIGNMENT_RIGHT, -1)
-	if not bool(r.active):
-		_text("Life support not simulated", Vector2(22, 110) * u, int(22 * u), MHStyle.TEXT_MUTED)
-		_text("(Creative)", Vector2(22, 140) * u, int(18 * u), MHStyle.TEXT_MUTED, 500)
+	var active := bool(r.active)
+	var outside := str(r.where) == "outside"
+	var o2 := clampf(float(r.o2), 0.0, 1.0)
+	var power := clampf(float(r.power), 0.0, 1.0)
+	var turn_back := float(r.turn_back)
+	var on_reserve := active and outside and o2 <= 0.0
+	var leak := bool(r.get("leak", false))
+	var flash := fmod(Time.get_ticks_msec() / 1000.0, 1.0) < .6
+	# The air's colour: green, amber as the edge nears the notch, red past it.
+	var col := MHStyle.VALID
+	if active and outside:
+		if on_reserve or turn_back <= 0.0: col = MHStyle.DANGER
+		elif turn_back < .5 or o2 <= .25: col = MHStyle.WARN
+	elif active and o2 <= .1: col = MHStyle.DANGER
+	if not active: col = MHStyle.TEXT_MUTED
+	var c := Vector2(150, 160) * u
+	var ring := 112.0 * u
+	var thick := 22.0 * u
+	# Power: the thin arc round the outside, with its bolt at the top.
+	var power_col := MHStyle.INFO if power > .25 else (MHStyle.WARN if power > .1 else MHStyle.DANGER)
+	_wrist_arc(c, ring + 19 * u, 6 * u, 0.0, 1.0, WRIST_DIM)
+	if active: _wrist_arc(c, ring + 19 * u, 6 * u, 0.0, power, power_col)
+	var b := c + Vector2(8, -ring / u - 30) * u
+	draw_colored_polygon(PackedVector2Array([b + Vector2(-2, -7) * u, b + Vector2(5, -7) * u, b + Vector2(1, -1) * u, b + Vector2(6, -1) * u, b + Vector2(-4, 9) * u, b + Vector2(-1, 2) * u, b + Vector2(-6, 2) * u]), power_col if active else WRIST_DIM)
+	# Air: the track, the reserve you need to get home, the air itself.
+	_wrist_arc(c, ring, thick, 0.0, 1.0, WRIST_TRACK)
+	var home := 0.0
+	if active and outside:
+		var hours := float(r.o2_hours)
+		home = clampf(o2 * (hours - turn_back) / hours, 0.0, 1.0) if hours > 0.0 else o2
+		_wrist_arc(c, ring, thick, 0.0, home, Color(MHStyle.WARN, .22))
+	_wrist_arc(c, ring, thick, 0.0, o2 if active else 1.0, col if active else WRIST_DIM)
+	if active and outside:
+		# The notch, and a small house beside it.
+		var a := -PI / 2.0 + TAU * home
+		var dir := Vector2(cos(a), sin(a))
+		draw_line(c + dir * (ring + 4 * u), c + dir * (ring - thick - 4 * u), MHStyle.TEXT_PRIMARY, 4 * u, true)
+		var h := c + dir * (ring + 30 * u)
+		draw_colored_polygon(PackedVector2Array([h + Vector2(-7, 0) * u, h + Vector2(0, -7) * u, h + Vector2(7, 0) * u, h + Vector2(5, 0) * u, h + Vector2(5, 6) * u, h + Vector2(-5, 6) * u, h + Vector2(-5, 0) * u]), MHStyle.TEXT_PRIMARY)
+	elif active and bool(r.filling) and o2 < .999:
+		# Topping up: a bright bead on the air's leading edge.
+		var e := -PI / 2.0 + TAU * o2
+		draw_circle(c + Vector2(cos(e), sin(e)) * (ring - thick / 2.0), 5 * u, MHStyle.TEXT_PRIMARY)
+	# The one number: air time (on the reserve, the reserve's time).
+	var number := "∞" if not active else _clock(float(r.get("reserve_hours", 0.0)) if on_reserve else float(r.o2_hours))
+	_text(number, Vector2(c.x - 100 * u, c.y + 14 * u), int(56 * u), col if not on_reserve or flash else Color(col, .45), 800, HORIZONTAL_ALIGNMENT_CENTER, 200 * u)
+	_text("O₂", Vector2(c.x - 40 * u, c.y + 40 * u), int(17 * u), MHStyle.TEXT_SECONDARY, 800, HORIZONTAL_ALIGNMENT_CENTER, 80 * u)
+	_wrist_sky(Vector2(395, 58) * u, 44 * u, u)
+	# The way to air, or the lock when you're sealed in.
+	var ax := Vector2(395, 140) * u
+	if not outside:
+		draw_rect(Rect2(ax + Vector2(-18, -6) * u, Vector2(36, 30) * u), MHStyle.VALID)
+		draw_arc(ax + Vector2(0, -12) * u, 12 * u, PI, TAU, 16, MHStyle.VALID, 5 * u, true)
+	else:
+		var refill: Dictionary = r.refill
+		var bearing := float(r.bearing)
+		var d := Vector2(sin(-bearing), -cos(-bearing))
+		var s := Vector2(-d.y, d.x)
+		var arrow_col := MHStyle.accent if not refill.is_empty() else WRIST_DIM
+		draw_colored_polygon(PackedVector2Array([ax + d * 30 * u, ax - d * 18 * u + s * 20 * u, ax - d * 6 * u, ax - d * 18 * u - s * 20 * u]), arrow_col)
+		var metres := float(refill.get("distance", 0.0))
+		var far := "—" if refill.is_empty() else (("%.1f km" % (metres / 1000.0)) if metres >= 1000.0 else ("%d m" % roundi(metres)))
+		_text(far, Vector2(ax.x - 80 * u, ax.y + 59 * u), int(26 * u), MHStyle.TEXT_PRIMARY, 800, HORIZONTAL_ALIGNMENT_CENTER, 160 * u)
+	# One short line, only while it's needed: learning the wrist, or why the air is going fast.
+	var hint := ""
+	var hint_col := MHStyle.INFO
+	if bool(r.get("seal_banner", false)): hint = "SEAL OK · HOLD ALT TO RAISE"; hint_col = MHStyle.VALID
+	elif bool(r.get("wrist_keys", false)): hint = "LET GO OF ALT TO LOWER"
+	elif outside and not (r.get("drains", {}).get("air", []) as Array).is_empty():
+		hint = "AIR FAST: %s" % ", ".join(r.drains.air).to_upper(); hint_col = MHStyle.WARN
+	if not hint.is_empty():
+		draw_multiline_string(_font(800), Vector2(310, 220) * u, hint, HORIZONTAL_ALIGNMENT_CENTER, 170 * u, int(13 * u), 2, hint_col)
+	_wrist_icons(r, u, flash)
+	# The whole screen's edge goes red when you're past the notch or leaking.
+	if active and outside and (turn_back <= 0.0 or on_reserve or (leak and flash)):
+		draw_rect(Rect2(Vector2(2, 2) * u, size - Vector2(4, 4) * u), MHStyle.DANGER, false, 4 * u)
+
+## Top right: the sun along its arc by day; Phobos (larger) and Deimos at night.
+func _wrist_sky(c: Vector2, radius: float, u: float) -> void:
+	draw_line(c + Vector2(-radius - 8 * u, 0), c + Vector2(radius + 8 * u, 0), MHStyle.TEXT_MUTED, 2 * u, true)
+	draw_arc(c, radius, PI, TAU, 32, WRIST_DIM, 2 * u, true)
+	var day := MHGame.daylight_progress(MHGame.sol_hour)
+	if day >= 0.0:
+		draw_circle(c + Vector2(-cos(day * PI), -sin(day * PI)) * radius, 7 * u, MHStyle.WARN)
 		return
-	var o2: float = r.o2
-	# The wrist pad's introduction (scripts/suit.gd seal_check): the check, and the key.
-	if bool(r.get("seal_banner", false)):
-		_text("SEAL CHECK OK  ·  HOLD ALT TO RAISE THIS", Vector2(0, 33 * u), int(15 * u), MHStyle.VALID, 800, HORIZONTAL_ALIGNMENT_CENTER, size.x)
-	elif bool(r.get("wrist_keys", false)):
-		_text("LET GO OF T TO LOWER", Vector2(0, 33 * u), int(15 * u), MHStyle.INFO, 700, HORIZONTAL_ALIGNMENT_CENTER, size.x)
-	if bool(r.get("leak", false)) and fmod(Time.get_ticks_msec() / 1000.0, 1.2) < .85:
-		_text("SEAL LEAK · REPAIR", Vector2(0, 33 * u), int(17 * u), MHStyle.DANGER, 800, HORIZONTAL_ALIGNMENT_CENTER, size.x)
-	# Oxygen: time left at this rate, big.
-	_text("OXYGEN", Vector2(22, 72) * u, int(18 * u), MHStyle.TEXT_SECONDARY)
-	_text(_clock(float(r.o2_hours)), Vector2(22, 128) * u, int(60 * u), tone.call(o2), 800)
-	_bar(Vector2(22, 138) * u, 200 * u, o2, tone.call(o2), u)
-	# Power, smaller, on the right.
-	var x := 252 * u
-	_text("POWER", Vector2(x, 72 * u), int(18 * u), MHStyle.TEXT_SECONDARY)
-	_text("%d%%" % roundi(float(r.power) * 100.0), Vector2(x, 104 * u), int(30 * u), tone.call(float(r.power)), 700)
-	_bar(Vector2(x, 112 * u), 200 * u, float(r.power), tone.call(float(r.power)), u)
-	# 15 Nov: why the air or the battery is going faster, in plain words.
-	var drains: Dictionary = r.get("drains", {})
-	if str(r.where) == "outside":
-		var air_why: Array = drains.get("air", [])
-		var power_why: Array = drains.get("power", [])
-		if not air_why.is_empty(): _text("AIR DRAINING FAST: %s" % ", ".join(air_why), Vector2(x, 140 * u), int(14 * u), MHStyle.WARN, 700)
-		if not power_why.is_empty(): _text("POWER DRAINING FAST: %s" % ", ".join(power_why), Vector2(x, 160 * u), int(14 * u), MHStyle.INFO, 700)
-	# Step 4a: the drink bag (a drop that empties) and the food bar (lit while it's there).
+	# Phobos crosses in about 11 hours, rising in the west; Deimos drifts slowly the other way.
+	var phobos := 1.0 - fmod(MHGame.sol_hour / 11.1, 1.0)
+	var deimos := fmod(MHGame.sol_hour / 60.0 + .3, 1.0)
+	for moon in [[phobos, 5.0], [deimos, 3.0]]:
+		var a: float = float(moon[0]) * PI
+		draw_circle(c + Vector2(-cos(a), -sin(a)) * radius, float(moon[1]) * u, MHStyle.TEXT_SECONDARY)
+
+## Bottom right: drink and food, the sample case, radiation and a leak.
+func _wrist_icons(r: Dictionary, u: float, flash: bool) -> void:
+	var y := 262.0 * u
 	if bool(r.get("needs", false)):
-		var drink := float(r.get("drink", 1.0))
-		var c := Vector2(32, 172) * u
-		var drop_col: Color = tone.call(drink)
-		var drop := PackedVector2Array([c + Vector2(0, -13) * u, c + Vector2(8, 1) * u, c + Vector2(6, 7) * u, c + Vector2(0, 10) * u, c + Vector2(-6, 7) * u, c + Vector2(-8, 1) * u])
-		draw_colored_polygon(drop, Color(1, 1, 1, .1))
-		draw_polyline(drop + PackedVector2Array([drop[0]]), drop_col, 1.5 * u, true)
-		_bar(Vector2(46, 167) * u, 60 * u, drink, drop_col, u)
-		var lit := bool(r.get("food_bar", false))
-		var bar_rect := Rect2(Vector2(126, 164) * u, Vector2(34, 14) * u)
-		draw_rect(bar_rect, MHStyle.VALID if lit else Color(1, 1, 1, .08))
-		draw_rect(bar_rect, MHStyle.TEXT_SECONDARY if lit else MHStyle.TEXT_MUTED, false, 1.5 * u)
-		if lit and str(r.get("where", "")) == "outside": _text("E · EAT", Vector2(168, 176) * u, int(14 * u), MHStyle.INFO, 700)
-	# The dosimeter: today and your running total.
-	var rate := float(r.get("dose_rate", 0.0)) * 24.0
-	_text("DOSE  %.2f mSv TODAY · %d TOTAL%s" % [float(r.get("today_msv", 0.0)), roundi(float(r.get("dose_msv", 0.0))), "  · HIGH" if rate > 2.0 else ""], Vector2(x, 180 * u), int(14 * u), MHStyle.DANGER if rate > 2.0 else MHStyle.TEXT_SECONDARY, 600)
-	# The line that matters most: when to turn back, or what's happening.
-	var line := ""
-	var colour := MHStyle.TEXT_PRIMARY
-	match str(r.where):
-		"outside":
-			var left := float(r.turn_back)
-			if o2 <= 0.0: line = "RESERVE %s · GET TO AIR" % _clock(float(r.get("reserve_hours", 0.0))); colour = MHStyle.DANGER
-			elif left <= 0.0: line = "TURN BACK NOW"; colour = MHStyle.DANGER
-			else:
-				line = "TURN BACK IN %s" % _clock(left)
-				colour = MHStyle.WARN if left < .5 else MHStyle.TEXT_PRIMARY
-		"rover": line = "ROVER CAB · TOPPING UP" if bool(r.filling) else "ROVER CAB · SEALED"
-		"lander": line = "LANDER CABIN · TOPPING UP" if bool(r.filling) else "LANDER CABIN · SEALED"
-		_: line = "AIRLOCK · TOPPING UP" if bool(r.filling) else "INSIDE · SEALED"
-	draw_rect(Rect2(Vector2(14, 190) * u, Vector2(size.x - 28 * u, 52 * u)), Color(colour, .12))
-	_text(line, Vector2(26, 228) * u, int(30 * u), colour, 800)
-	# Inside: how long the base runs without you (§12.5), before you go out.
-	var runway: Dictionary = r.get("runway", {})
-	if not runway.is_empty():
-		var short := float(runway.sols) < 3.0
-		_text(str(runway.text).to_upper(), Vector2(26, 292) * u, int(15 * u), MHStyle.WARN if short else MHStyle.TEXT_SECONDARY, 700)
-		return
-	# Outside: trouble at the base, relayed by the suit.
-	var trouble: Dictionary = r.get("base_alert", {})
-	if not trouble.is_empty() and str(r.where) == "outside":
-		_text("BASE: %s" % str(trouble.title).to_upper(), Vector2(26, 260) * u, int(15 * u), MHStyle.DANGER if str(trouble.level) == "critical" else MHStyle.WARN, 800)
-	# The way to the nearest refill, with an arrow from where you face.
-	var refill: Dictionary = r.refill
-	if refill.is_empty():
-		_text("NO REFILL NEARBY", Vector2(26, 292) * u, int(20 * u), MHStyle.TEXT_MUTED, 600)
-		return
-	var centre := Vector2(44, 282) * u
-	var bearing := float(r.bearing)
-	var dir := Vector2(sin(-bearing), -cos(-bearing))
-	var side := Vector2(-dir.y, dir.x)
-	draw_colored_polygon(PackedVector2Array([centre + dir * 18 * u, centre - dir * 12 * u + side * 12 * u, centre - dir * 5 * u, centre - dir * 12 * u - side * 12 * u]), MHStyle.accent)
-	var metres := float(refill.distance)
-	_text("%s  %s" % [str(refill.label), ("%.1f km" % (metres / 1000.0)) if metres >= 1000.0 else ("%d m" % roundi(metres))], Vector2(76, 294) * u, int(28 * u), MHStyle.TEXT_PRIMARY, 700)
+		var drink := clampf(float(r.get("drink", 1.0)), 0.0, 1.0)
+		var dc := MHStyle.WARN if drink < .25 else MHStyle.TEXT_SECONDARY
+		var x := 300.0 * u
+		var drop := PackedVector2Array([Vector2(x, y - 16 * u), Vector2(x + 10 * u, y), Vector2(x + 8 * u, y + 8 * u), Vector2(x, y + 12 * u), Vector2(x - 8 * u, y + 8 * u), Vector2(x - 10 * u, y)])
+		var level := y + 12 * u - 28 * u * drink
+		var below := PackedVector2Array([Vector2(x - 20 * u, level), Vector2(x + 20 * u, level), Vector2(x + 20 * u, y + 20 * u), Vector2(x - 20 * u, y + 20 * u)])
+		for part in Geometry2D.intersect_polygons(drop, below): draw_colored_polygon(part, dc)
+		draw_polyline(drop + PackedVector2Array([drop[0]]), dc, 2 * u, true)
+		var bar := Rect2(Vector2(326, y / u - 6) * u, Vector2(28, 12) * u)
+		draw_rect(bar, MHStyle.VALID if bool(r.get("food_bar", false)) else WRIST_DIM)
+	if MHSamples.on() and MHChapterOne.has_corer:
+		for i in MHSamples.CASE_SLOTS:
+			var pip := Rect2(Vector2(373 + i * 13, y / u - 5) * u, Vector2(10, 10) * u)
+			if i < MHSamples.case_items.size(): draw_rect(pip, MHStyle.TEXT_SECONDARY)
+			else: draw_rect(pip, WRIST_DIM, false, 2 * u)
+	# Radiation: lit only when the dose rate is high.
+	var y2 := 296.0 * u
+	var rc := MHStyle.DANGER if float(r.get("dose_rate", 0.0)) * 24.0 > 2.0 else WRIST_DIM
+	var rad_c := Vector2(300 * u, y2)
+	for k in 3:
+		var mid := deg_to_rad(k * 120.0 - 90.0)
+		var blade := PackedVector2Array([rad_c])
+		for j in 7: blade.append(rad_c + Vector2.from_angle(mid - .52 + .52 * j / 3.0) * 11 * u)
+		draw_colored_polygon(blade, rc)
+	draw_circle(rad_c, 4 * u, Color("#0C1316"))
+	draw_circle(rad_c, 2 * u, rc)
+	# A leak: a helmet with a crack, flashing red.
+	var leak := bool(r.get("leak", false))
+	var lc := MHStyle.DANGER if leak and flash else (Color(MHStyle.DANGER, .4) if leak else WRIST_DIM)
+	var hc := Vector2(340 * u, y2)
+	draw_arc(hc, 11 * u, 0, TAU, 24, lc, 2 * u, true)
+	draw_line(hc + Vector2(-11, 2) * u, hc + Vector2(11, 2) * u, lc, 2 * u, true)
+	if leak: draw_polyline(PackedVector2Array([hc + Vector2(2, -11) * u, hc + Vector2(-2, -5) * u, hc + Vector2(3, -1) * u, hc + Vector2(-1, 2) * u]), lc, 2 * u, true)
 
 # ---------- planets ----------
 
