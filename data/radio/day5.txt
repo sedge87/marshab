@@ -7,6 +7,8 @@
 # (and --only=orb_next for the morning calls at the bottom).
 
 ~ d5_wake
+# R2: the bed question only in the morning after it.
+?! morning => d5_wake_news
 ? real_bed => d5_wake_bed
 => d5_wake_news
 
@@ -21,7 +23,8 @@ Castellanos: Morning, Outpost One. How was a real bed? [ID:d5_wake_01]
 => d5_wake_news
 
 ~ d5_wake_news
-Castellanos: News. Rao caught a parachute on his dawn pass. Pallet six. The Print Shop, and its regolith intake. [ID:d5_wake_03]
+? dawn Castellanos: News. Rao caught a parachute on his dawn pass. Pallet six. The Print Shop, and its regolith intake. [ID:d5_wake_03]
+?! dawn Castellanos: News. Rao caught a parachute on his last pass. Pallet six. The Print Shop, and its regolith intake. [ID:d5_wake_r2_03]
 Castellanos: That's the one that makes everything else. Rooms, the extractor, all of it. It's on your map now. [ID:d5_wake_04]
 do pallet6
 Castellanos: The crate's far too heavy to carry. Take GAR-Y. It tows. [ID:d5_wake_05]

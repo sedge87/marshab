@@ -29,14 +29,16 @@ Castellanos: Oh, thank God. There you are. We lost you right at touchdown. Ninet
 - Is everyone up there okay?
 	set kind
 	Castellanos: You're asking us? Yes. Rao's gone a funny colour, but yes. [ID:d1_relock_c1_03c]
-Castellanos: Your suit says you were out cold for a few minutes. Take it slow. Unclip when you're ready, and grab your slate off the console. [ID:d1_relock_c1_04]
+?! has_slate Castellanos: Your suit says you were out cold for a few minutes. Take it slow. Unclip when you're ready, and grab your slate off the console. [ID:d1_relock_c1_04]
+? has_slate Castellanos: Your suit says you were out cold for a few minutes. Take it slow. [ID:d1_relock_r2_04s]
 => END
 
 # The slate's first look (scripts/mars_world.gd _after_slate). The hatch waits
 # for this (scripts/opening_days.gd hatch_refusal).
 ~ d1_slate
 Castellanos: See it? Rao's photo. A parachute, up on the ridge. Pallet one, the module's life support. That's where the base starts. [ID:d1_slate_c1_01]
-Castellanos: Seal your helmet, and then the hatch is yours. [ID:d1_slate_c1_02]
+?! helmet Castellanos: Seal your helmet, and then the hatch is yours. [ID:d1_slate_c1_02]
+? helmet Castellanos: Your helmet's sealed, so the hatch is yours. [ID:d1_slate_r2_02s]
 do think air
 # A6: why the crew can't land yet waits for the first dusk talk (d1_sun_after).
 - When are the rest of you coming down?
@@ -93,13 +95,18 @@ Castellanos: Again. It brought you in again, whatever it is. I'm very grateful t
 => END
 
 ~ d1_pallet1
-Castellanos: Your suit's got you right at the canopy. Is that you up there? What have we got? [ID:d1_p1_01]
+# R2 (21 Nov): the call can come after you've carried the cartridge down, so
+# the answers no longer tell you to, and the last line checks where it is.
+@ near:pallet1:40 Castellanos: Your suit's got you right at the canopy. Is that you up there? What have we got? [ID:d1_p1_01]
+@else Castellanos: You got pallet one open. What was in it? [ID:d1_p1_r2_01e]
 - An air cartridge, a sample kit and some rations.
-	Castellanos: Oh, that's good. The cartridge is the General Module's air plant, the heart of the place. It's heavy, but you can carry it. Bring it down and leave it by the lander, and it'll be ready the day the module comes in. [ID:d1_p1_02a]
+	Castellanos: Oh, that's good. The cartridge is the General Module's air plant, the heart of the place. It's heavy, but you can carry it. [ID:d1_p1_r2_02a]
 - None of this is for the lander, is it?
-	Castellanos: No. The lander will keep you going, but it'll never be a base. That cartridge is the module's air. Carry it home and park it by the ramp, so it's waiting when the module comes. [ID:d1_p1_02b]
+	Castellanos: No. The lander will keep you going, but it'll never be a base. That cartridge is the module's air. [ID:d1_p1_r2_02b]
 - It's heavier than it looked in training.
-	Castellanos: Everything is. Mwangi says your legs will thank you in a week and hate you until then. Take it slowly, get it down to the lander, and leave it by the ramp for the module. [ID:d1_p1_02c]
+	Castellanos: Everything is. Mwangi says your legs will thank you in a week and hate you until then. [ID:d1_p1_r2_02c]
+?! cartridge_home Castellanos: Get the cartridge down to the lander and leave it by the ramp, so it's waiting the day the module comes in. [ID:d1_p1_r2_03]
+? cartridge_home Castellanos: And it's already down by the ramp, waiting for the module. Good. [ID:d1_p1_r2_03h]
 ?! has_scrap Castellanos: Oh, and one more thing. The storm's left scrap all over the place up there. Bent panels, broken struts. Strip anything that comes loose as you go. The little printer in the lander eats it, and you'll want it. [ID:d1_p1_04]
 ? has_scrap Castellanos: And I see you've already been stripping the storm's scrap on the way up. Good instinct. The little printer in the lander eats it. Keep at it, you'll want it. [ID:d1_p1_b1_04s]
 set scrap_told
@@ -107,7 +114,9 @@ do think salvage
 => END
 
 ~ d1_ridge
-Castellanos: Okay, look at you, up on the high ground. From there you should see two more canopies. Rao's already marked them on your Map, he's been glued to the window all morning. [ID:d1_ridge_01]
+# R2: only "look at you, up there" if you still are.
+@ near:pallet1:120 Castellanos: Okay, look at you, up on the high ground. From there you should see two more canopies. Rao's already marked them on your Map, he's been glued to the window all morning. [ID:d1_ridge_01]
+@else Castellanos: Rao's spotted two more canopies from up here, and marked them on your Map. [ID:d1_ridge_r2_01e]
 Castellanos: The one out on the flat should be power: the module's solar blanket and its battery. The one down in the hollow is pinging a field kit beacon, so hammer, headlamp, the useful bits. [ID:d1_ridge_02]
 Castellanos: One at a time, please. Your suit won't stretch to both and back, and I'd really like you to come home tonight. [ID:d1_ridge_03]
 - Understood.

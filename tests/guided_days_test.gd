@@ -293,6 +293,13 @@ func _initialize() -> void:
 	_pass_hours(world, .2)
 	await _settle(radio)
 	_check(days.started.has(3) and int(days.chapter) == 3 and radio.heard.has("d3_wake"), "chapter 3 open alongside it")
+	# R2: recaps read the world as they play, per the call's own chapter.
+	var was_playing: String = radio.playing
+	radio.playing = "d3_still"
+	_check(radio.test("left_walker") and not radio.test("left_home"), "d3's recap reads the walker as it is now")
+	radio.playing = "d2_still"
+	_check(not radio.test("left_gary") and not radio.test("left_crate"), "d2's recap knows GAR-Y and the crate are done")
+	radio.playing = was_playing
 	var walker: Node3D = world.walker
 	_check(bool(walker.tracks_laid) and known.things.has("walker_tracks_start"), "she marks where the tracks start")
 	_check(out.call(walker.global_position) < 640.0, "Walker 1 stalled inside the suit's reach (%.0f m)" % out.call(walker.global_position))

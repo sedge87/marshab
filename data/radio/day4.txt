@@ -9,7 +9,8 @@
 
 # Walker 1 at your spot (scripts/walker.gd _arrive).
 ~ d4_arrived
-Castellanos: Walker 1's at your spot. Go and meet it. [ID:d4_arrived_01]
+@ near:walker:40 Castellanos: Walker 1's at your spot, and so are you. [ID:d4_arrived_r2_01n]
+@else Castellanos: Walker 1's at your spot. Go and meet it. [ID:d4_arrived_01]
 Castellanos: When you're there, press B and put the core down exactly where you want it. It'll do the rest. [ID:d4_arrived_02]
 => END
 
@@ -24,7 +25,19 @@ Castellanos: It knelt. It actually knelt, and folded itself into the core. Every
 - Does Rao still want the bunk by the window?
 	set joker
 	Castellanos: He's already drawn a floor plan. On the wall. In pen. Achterberg is furious. [ID:d4_down_02c]
+# R2: only ask for what isn't plugged in yet.
+? core_air => d4_down_power
+? core_power => d4_down_air
 Castellanos: Now the less romantic bit. It's cold and dark in there, with no air. Plug the air cartridge into the socket on the outside wall, and lay the solar blanket next to it. [ID:d4_down_a6_06]
+=> END
+
+~ d4_down_power
+? core_power => END
+Castellanos: Now the less romantic bit. The cartridge is in, so all it needs is power. Lay the solar blanket by the socket. [ID:d4_down_r2_06p]
+=> END
+
+~ d4_down_air
+Castellanos: Now the less romantic bit. The blanket's down, so all it needs is air. Plug the cartridge into the socket on the outside wall. [ID:d4_down_r2_06a]
 => END
 
 # Air and power in: it's alive (scripts/module_life.gd patched).
@@ -47,7 +60,8 @@ Castellanos: The rest of the day's yours. Tonight you sleep in there. Call me at
 => END
 
 ~ d4_sunset
-Castellanos: Sunset from your own place. How's the view from in there? [ID:d4_sun_a6_01]
+? indoors Castellanos: Sunset from your own place. How's the view from in there? [ID:d4_sun_a6_01]
+?! indoors Castellanos: Sunset from your own place. How's the view? [ID:d4_sun_r2_01o]
 - Better than the lander's.
 	Castellanos: Anything's better than the lander's. That window was the size of a dinner plate. [ID:d4_sun_01a]
 - Worth the trip.

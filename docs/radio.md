@@ -56,7 +56,14 @@ Every condition is tested the moment its line comes up, not when the call was ru
 - `@ near:gary:30 Castellanos: …` then `@else Castellanos: …` — a line about something in front of you, and what's said instead if you're not there. Decided once; never both.
 - `chat Castellanos: …` — small talk, dropped when you've walked more than 15 m during the call (outside) or another call is waiting.
 - `fresh` (first row of a section) — an event call. If it waits more than 20 s for its turn (`fresh 30` for another limit), `<section>_late` plays instead, or nothing.
-- Places for `near:` are named in `radio.places` (opening_days.gd: `gary`, `crate`) or are any node group of that name.
+- Places for `near:` are named in `radio.places` (opening_days.gd: `gary`, `crate`, `pallet1`, `gary_pallet`, `walker`, `lander`) or are any node group of that name.
+- The opening's facts (R2, `opening_days.gd _radio_facts`):
+  - the `left_*` recaps, for the call's own chapter;
+  - `morning`, `dawn`, `indoors`, `on_the_rise`, `missed_rise`;
+  - `has_scrap`, `cargo_early`, `cargo_mid`, `late_cargo`;
+  - `has_slate`, `helmet`, `cartridge_home`, `core_air`, `core_power`;
+  - `knows:<known-thing id>`.
+  - A fact wins over a flag of the same name.
 - `tests/radio_test.gd` checks every fact and place the scripts use is one the game knows.
 
 ## What it replaces

@@ -81,6 +81,7 @@ var sunset_spot := Vector3.INF   # day 1: the rise Castellanos sends you to, to 
 var sunset_reached := false
 var _photo_wait := 0.0           # the sunset call's "take a picture" wait
 var _photos_before := 0
+const TRACKS_CALL_NEAR := 150.0  # R4: the walker-tracks call waits till you're this near the lander
 const SPOT_REACH := 18.0         # this close to the rise and you're there
 const PHOTO_WAIT := 50.0         # seconds Castellanos waits for the picture
 var chapter := 1                 # version 2: the first chapter not yet over (1-5); 6 once they all are
@@ -330,6 +331,13 @@ func radio_ready() -> void:
 	# Places lines can be bound to (`@ near:gary:30`, scripts/radio.gd).
 	radio.places["gary"] = func() -> Variant: return world.get("scout_rover")
 	radio.places["crate"] = func() -> Variant: return field_crate()
+	radio.places["pallet1"] = func() -> Variant:
+		var drop: Node = world.get("storm_drop")
+		return drop.pallet if drop != null else null
+	radio.places["lander"] = func() -> Variant: return world.get("lander")
+	radio.places["walker"] = func() -> Variant: return world.get("walker")
+	radio.places["gary_pallet"] = func() -> Variant: return _site_pallet("gary")
+	_radio_facts(radio)
 	radio.handlers["gary_out"] = func(_args: Array) -> void:
 		var field: Node = world.get("drop_field")
 		if field != null: field.gary_out()
@@ -609,16 +617,85 @@ func _hours_run() -> float:
 	var builder: Node = world.get("builder")
 	return float(builder.simulation().hours_run) if builder != null and builder.has_method("simulation") else 0.0
 
+## R2 (docs/intro-rework.md §3): the facts the day scripts test, worked out
+## as each line plays rather than when its call was rung. They stand in for
+## the old flags of the same names (a fact wins over a flag).
+const LEFT_FACTS := ["left_air", "left_power", "left_tools", "left_cargo", "left_gary", "left_hitch", "left_crate", "left_walker", "left_photo", "left_patch", "left_ride", "left_home", "left_walk", "left_down", "left_quarters", "left_pallet", "left_tow", "left_place", "left_print", "left_extractor"]
+func _radio_facts(radio: Node) -> void:
+	for key in LEFT_FACTS:
+		var k: String = key
+		radio.facts[k] = func(_args: Array) -> bool: return _left_for_call().has(k)
+	# A real morning, after a night's sleep (21 Nov playtest: "Morning" at 1:30 pm).
+	radio.facts["morning"] = func(_args: Array) -> bool:
+		var sunrise := float(_cycle().get("sunrise_hour", 5.0))
+		return nights >= 1 and MHGame.sol_hour >= sunrise - 1.5 and MHGame.sol_hour < sunrise + 3.0
+	# Rao's pass "at dawn" only if it's still early.
+	radio.facts["dawn"] = func(_args: Array) -> bool: return MHGame.sol_hour < float(_cycle().get("sunrise_hour", 5.0)) + 2.0
+	radio.facts["indoors"] = func(_args: Array) -> bool: return not bool(radio.call("_outside"))
+	radio.facts["on_the_rise"] = func(_args: Array) -> bool: return not is_inf(sunset_spot.x) and _player_within(sunset_spot, SPOT_REACH * 1.5)
+	radio.facts["missed_rise"] = func(_args: Array) -> bool: return not is_inf(sunset_spot.x) and not _player_within(sunset_spot, SPOT_REACH * 1.5) and bool(radio.call("_outside"))
+	radio.facts["has_scrap"] = func(_args: Array) -> bool:
+		var pod: Node = world.get("lifepod")
+		return pod != null and int(pod.parts) > 0
+	radio.facts["cargo_early"] = func(_args: Array) -> bool: return _light_left() > 4.0
+	radio.facts["late_cargo"] = func(_args: Array) -> bool: return _light_left() < 1.2
+	radio.facts["cargo_mid"] = func(_args: Array) -> bool: return _light_left() >= 1.2 and _light_left() <= 4.0
+	radio.facts["has_slate"] = func(_args: Array) -> bool:
+		var slate: Node = world.get("pda")
+		return slate != null and bool(slate.received)
+	radio.facts["helmet"] = func(_args: Array) -> bool:
+		var suit: Node = world.get("suit")
+		return suit != null and bool(suit.get("helmet"))
+	# The air cartridge already down by the lander (or plugged in).
+	radio.facts["cartridge_home"] = func(_args: Array) -> bool:
+		var cartridge: Node3D = get_tree().get_first_node_in_group("o2_cartridge")
+		var lander: Node3D = world.get("lander")
+		if cartridge == null or lander == null: return false
+		if str(cartridge.get("where")) == "plugged": return true
+		return str(cartridge.get("where")) == "ground" and cartridge.global_position.distance_to(lander.global_position) < 40.0
+	radio.facts["core_air"] = func(_args: Array) -> bool:
+		var module: Node = world.get("module_life")
+		return module != null and bool(module.has_cartridge())
+	radio.facts["core_power"] = func(_args: Array) -> bool:
+		var module: Node = world.get("module_life")
+		return module != null and bool(module.has_blanket())
+	radio.facts["knows"] = func(args: Array) -> bool:
+		var known: Node = world.get("known")
+		return known != null and not args.is_empty() and bool(known.knows(":".join(args)))
+
+func _light_left() -> float:
+	return float(_cycle().get("sunset_hour", 19.0)) - MHGame.sol_hour
+
+func _player_within(at: Vector3, metres: float) -> bool:
+	var you: Vector3 = (world.player as Node3D).global_position
+	return Vector2(you.x - at.x, you.z - at.z).length() < metres
+
+func _site_pallet(kind: String) -> Variant:
+	var field: Node = world.get("drop_field")
+	return field.sites[kind].pallet if field != null and field.sites.has(kind) else null
+
+## What's left of the chapter the call on air belongs to (d3_still: chapter 3).
+func _left_for_call() -> Array:
+	var radio := _radio()
+	var n := chapter
+	var playing := str(radio.playing) if radio != null else ""
+	if playing.length() > 2 and playing[0] == "d" and playing[1].is_valid_int(): n = int(playing[1])
+	if n == PRINT_CHAPTER: return [_chapter_five_left()]
+	return _left_now(n)
+
 ## What's still to do in this chapter, for Castle's recap (left_* flags).
 func _leftover_flags(radio: Node) -> void:
 	for key in (radio.flags as Dictionary).keys():
 		if str(key).begins_with("left_"): radio.flags.erase(key)
+	for f in _left_now(chapter): radio.flags[f] = true
+
+func _left_now(n: int) -> Array:
 	var field: Node = world.get("drop_field")
 	var drop: Node = world.get("storm_drop")
 	var pod: Node = world.get("lifepod")
 	var walker: Node = world.get("walker")
 	var left := []
-	match chapter:
+	match n:
 		1:
 			if drop != null and drop.pallet != null and not bool(drop.pallet.opened): left.append("left_air")
 			if field != null and field.sites.has("power") and not bool(field.sites.power.pallet.opened): left.append("left_power")
@@ -641,7 +718,7 @@ func _leftover_flags(radio: Node) -> void:
 			elif not _done("module"): left.append("left_down")
 			elif not _commissioned(): left.append("left_power")
 			elif not quarters_built(): left.append("left_quarters")
-	for f in left: radio.flags[f] = true
+	return left
 
 ## The calls that come as the day goes.
 func _day_calls(day: int, hour: float, sunrise: float) -> void:
@@ -672,7 +749,14 @@ func _day_calls(day: int, hour: float, sunrise: float) -> void:
 	elif day == 2 and hour >= sunrise - 1.0 and not bool(world.get("gary_met")):
 		radio.ring("d2_wake")
 	elif day == 3 and hour >= sunrise - 1.0:
-		radio.ring("d3_wake")
+		# R4 (docs/intro-rework.md §4): Rao's tracks report comes once you're
+		# back by the lander, or once GAR-Y's call is over, whichever is first;
+		# never on top of the GAR-Y morning call.
+		var lander: Node3D = world.get("lander")
+		var by_home := lander != null and _player_within(lander.global_position, TRACKS_CALL_NEAR)
+		var after_gary: bool = (radio.heard as Dictionary).has("d2_found") and radio.playing != "d2_found"
+		var gary_call: bool = radio.playing in ["d2_wake", "d2_found"] or (radio.queue as Array).has("d2_wake") or (radio.queue as Array).has("d2_found")
+		if (by_home or after_gary) and not gary_call: radio.ring("d3_wake")
 	elif day == 4:
 		# Walker 1 walks to your spot (scripts/walker.gd rings d4_arrived and
 		# d4_down); the core alive rings d4_patched (scripts/module_life.gd).

@@ -94,6 +94,30 @@ The line pass checks every line against four questions:
 1. **R1, the radio engine:** live facts, `@ near` with `@else`, freshness and catch-up forms, chat lines, recaps at play time. Tests in `tests/radio_test.gd`.
    - *Built 21 Nov.* Syntax as written in `docs/radio.md` ("Lines that check the world"); facts are one token, `near:crate:40`. `d2_found` now uses `@ near:gary:30` / `@ near:crate:40` (the hand-made `by_gary`/`by_crate` flags are gone). Recaps at play time come in R2: the engine already tests every condition as the line plays, so `dN_still` only needs its lines rewritten onto facts.
 2. **R2, the line pass:** every call in `data/radio/day1-5.txt` audited with the four questions and rewritten where needed. New voices via `python tools/generate_voice.py --missing`, and rewritten IDs renamed so they regenerate.
+   - *Built 21 Nov.*
+     - **Recaps and time words are live facts now** (`opening_days.gd _radio_facts`). They're worked out as each line plays, so a recap can't be stale:
+       - all the `left_*` recaps, read for the chapter of the call on air;
+       - `morning`, `dawn`, `indoors`;
+       - `on_the_rise`, `missed_rise`;
+       - `has_scrap`, `cargo_early/mid/late`;
+       - `has_slate`, `helmet`, `cartridge_home`, `core_air`, `core_power`;
+       - `knows:<id>`.
+     - **New places:** `pallet1`, `gary_pallet`, `walker`, `lander`.
+     - **Lines rewritten (20 new voices, IDs `*_r2_*`):**
+       - d1_relock: "grab your slate" only if it's not in your hands yet;
+       - d1_slate: "seal your helmet" only if it isn't sealed;
+       - d1_pallet1: the opener is place-bound, the answers no longer say "carry it down", and the last line checks whether the cartridge is home;
+       - d1_ridge: "look at you, up there" only if you are;
+       - d2_wake: "past your pallets" only if you've seen them;
+       - d2_cradle: place-bound;
+       - d2_found: "bring it back out here" only by the crate;
+       - d3_wake: "top your air up" only on low air;
+       - d4_arrived: a version for when you're already at the walker;
+       - d4_down: asks only for what isn't plugged in;
+       - d4_sunset: a version for outdoors;
+       - d5_wake: the bed question only in the morning, and "dawn pass" only at dawn.
+     - The remaining lines passed the four questions as written.
+     - `tools/generate_voice.py` now reads `@` / `@else` / `chat` lines.
 3. **R3, staging the drop:**
    - pallet 5, the buggy's shell (model: split shell, parachute, scar), at the buggy's spot;
    - the rover's heavy lander;
@@ -112,6 +136,11 @@ The line pass checks every line against four questions:
      - seen lines say what state the thing is in.
    - Check with `tools/drop_shell_look.gd`.
 4. **R4, the trigger pass:** every `ring()` in code (about 40, listed in `opening_days.gd`, `walker.gd`, `drop_field.gd`, `drop_site.gd`, `spares_crate.gd`, `suit.gd`, `module_life.gd`, `first_step.gd`, `wake_up.gd`, `lifepod.gd`) moved onto a player fact, with freshness.
+   - *Built 21 Nov.*
+     - **Every `ring()` checked.** All but the dawn and dusk calls fire on something you did or reached: opening a pallet, the ridge, meeting GAR-Y, the tracks, a photo, a fix, the core down, the crate home.
+     - **Walker tracks (d3_wake):** Rao's report now waits until you're within 150 m of the lander, or GAR-Y's call is over, and never lands on top of the GAR-Y morning call.
+     - **d3_tracks** is marked `fresh`: dropped if it comes late.
+     - **Morning calls stay on the clock:** d2_wake (only while GAR-Y's unmet) and d5_wake (Rao's pass).
 5. **R5, check:** the robot run (`guided_playthrough`) gets a "Castle talked about X while I was more than 100 m from X" checker, then a playtest build.
 
 Phase 6 (the three new models) waits until this is done. The buggy model from the zip goes into its shell in R3.

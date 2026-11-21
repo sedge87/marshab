@@ -3,7 +3,9 @@
 # Regenerate voices after editing: python tools/generate_voice.py --missing --only=orb_d2
 
 ~ d2_wake
-Castellanos: Outpost One, you'll want to hear this. Rao's pass caught something small and warm, out by the boulders past your pallets. [ID:d2_wake_a6_01]
+# R2: "past your pallets" only if you've seen them.
+? knows:find:pallet_power Castellanos: Outpost One, you'll want to hear this. Rao's pass caught something small and warm, out by the boulders past your pallets. [ID:d2_wake_a6_01]
+?! knows:find:pallet_power Castellanos: Outpost One, you'll want to hear this. Rao's pass caught something small and warm, out by the boulders, a fair walk from the lander. [ID:d2_wake_r2_01]
 Castellanos: And it wasn't in the same place on the pass before. It's moving. [ID:d2_wake_a6_02]
 - One of the walkers?
 	set hopeful
@@ -16,7 +18,8 @@ Castellanos: I've put it on your Map. It's near the edge of your air, so go care
 => END
 
 ~ d2_cradle
-Castellanos: You've stopped. What have you got? [ID:d2_cradle_01]
+@ near:gary_pallet:40 Castellanos: You've stopped. What have you got? [ID:d2_cradle_01]
+@else Castellanos: Rao's pass had you at that empty pallet. What did you find? [ID:d2_cradle_r2_01e]
 - An empty pallet. Opened from the inside.
 	Castellanos: From the inside? Okay. That's new. That's slightly creepy, actually. Tupou's very excited and I'd like him to stop. [ID:d2_cradle_02a]
 - Tracks. Small ones. Six wheels.
@@ -46,10 +49,21 @@ Castellanos: Here's what it can do. It scouts, and it remembers what it finds. I
 @ near:crate:40 Castellanos: Hang on. What's that box beside it? Hold still, I'm on your helmet cam. That's a spares crate. It must have come off one of the pallets that broke up in the storm. [ID:d2_found_09]
 @else Castellanos: And Rao's picture shows a box where it was working. A spares crate, off one of the pallets that broke up in the storm. It's on your map. [ID:d2_found_a7_09]
 Castellanos: GAR-Y's got a tow mount on its back, but no hitch. The hitches were all on the pallet that broke up. Typical. [ID:d2_found_12]
-?! scrap_told Castellanos: But you've got a little printer in the lander. It eats scrap. And the storm's left scrap all over the Reach: bent panels, broken struts, bits of pallet. [ID:d2_found_13]
-?! scrap_told Castellanos: Strip some of that junk on the way home, feed it to the printer, and print GAR-Y a hitch. Then bring it back out here and tow that crate home. [ID:d2_found_14]
-? scrap_told Castellanos: But that little printer of yours can make one. That's what all the scrap was for. [ID:d2_found_13b]
-? scrap_told Castellanos: You'll have some from yesterday already. Strip a bit more on the way home if you need it, print GAR-Y a hitch, then bring it back out here and tow that crate home. [ID:d2_found_14b]
+# R2: "bring it back out here" only if you're still by the crate.
+? scrap_told => d2_found_hitch_b
+=> d2_found_hitch_a
+
+~ d2_found_hitch_a
+Castellanos: But you've got a little printer in the lander. It eats scrap. And the storm's left scrap all over the Reach: bent panels, broken struts, bits of pallet. [ID:d2_found_13]
+@ near:crate:60 Castellanos: Strip some of that junk on the way home, feed it to the printer, and print GAR-Y a hitch. Then bring it back out here and tow that crate home. [ID:d2_found_14]
+@else Castellanos: Strip some of that junk, feed it to the printer, and print GAR-Y a hitch. Then take it out to the crate and tow it home. [ID:d2_found_r2_14e]
+do think salvage
+=> END
+
+~ d2_found_hitch_b
+Castellanos: But that little printer of yours can make one. That's what all the scrap was for. [ID:d2_found_13b]
+? has_scrap Castellanos: You've got some scrap already. Print GAR-Y a hitch, then take it out to the crate and tow it home. [ID:d2_found_r2_14b]
+?! has_scrap Castellanos: Strip a bit more of it, print GAR-Y a hitch, then take it out to the crate and tow it home. [ID:d2_found_r2_14n]
 do think salvage
 => END
 
