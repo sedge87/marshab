@@ -402,9 +402,13 @@ func exercise_stations(inv: Dictionary, tiers: Dictionary) -> int:
 
 # ---------- sections and air pressure ----------
 
-## Rooms joined without a hatch share their air: {room index: section number}.
+## Rooms joined without a hatch, or through a hatch standing open, share
+## their air: {room index: section number}. A shut hatch keeps it apart
+## (21 Nov: the bulkhead hatches, airlock_door.gd; a breach slams them).
 func sections(inv: Dictionary) -> Dictionary:
-	if inv.has("sections"): return inv.sections
+	var open_hatches := _open_hatches()
+	var signature := str(open_hatches.keys())
+	if inv.has("sections") and str(inv.get("sections_hatches", "")) == signature: return inv.sections
 	var builder: Node = sim.builder
 	var rooms: Array = inv.rooms
 	var parent: Array = range(rooms.size())
@@ -420,8 +424,9 @@ func sections(inv: Dictionary) -> Dictionary:
 			var mine: int = room_of_cell[cell]
 			if other < 0 or other == mine: continue
 			if builder._is_airlock_inner_doorway(cell, side) or builder._is_airlock_inner_doorway(cell + side, -side): continue
-			# A door keeps the air apart (stored from either side of the wall); an open wall shares it.
-			if (builder._has_interior_door(cell, side) or builder._has_interior_door(cell + side, -side)) and not builder.is_open_wall(cell, side): continue
+			# A shut hatch keeps the air apart (stored from either side of the
+			# wall); one standing open, or an open wall, shares it.
+			if (builder._has_interior_door(cell, side) or builder._has_interior_door(cell + side, -side)) and not builder.is_open_wall(cell, side) and not open_hatches.has(cell * 2 + side): continue
 			# Between a grid space and a free-form one (an angled room, a 45°
 			# corridor leg), the grid side owns the wall and decides.
 			var mine_grid: bool = not rooms[mine].zone.has("outline")
@@ -435,6 +440,20 @@ func sections(inv: Dictionary) -> Dictionary:
 	var out := {}
 	for index in range(rooms.size()): out[index] = find.call(index)
 	inv["sections"] = out
+	inv["sections_hatches"] = signature
+	return out
+
+## The room hatches standing open, keyed by wall (2 x cell + side, so both
+## sides of a wall give the same key). Hatches on angled walls aren't keyed:
+## they count as shut, as before.
+func _open_hatches() -> Dictionary:
+	var out := {}
+	var builder: Node = sim.builder
+	if builder == null or not builder.is_inside_tree() or builder.get("root") == null: return out
+	for node in (builder.root as Node).get_children():
+		var door := node as AirlockDoor
+		if door == null or door.door_label() != "INTERIOR" or door.is_closed(): continue
+		out[Vector2i(roundi(door.position.x * 2.0 / 3.0), roundi(door.position.z * 2.0 / 3.0))] = true
 	return out
 
 ## The rooms sharing air with this one.
@@ -479,6 +498,12 @@ func _breach_step(dt: float, inv: Dictionary) -> void:
 	var section := section_rooms(inv, index)
 	var cells := 0.0
 	for i in section: cells += float(inv.rooms[i].cells)
+	# A hatch opened between a vented room and a full one: the air evens out.
+	var held := 0.0
+	for i in section: held += float(inv.rooms[i].cells) * float(section_pressure.get(str(inv.rooms[i].key), 1.0))
+	for i in section:
+		var even := held / maxf(1.0, cells)
+		if absf(float(section_pressure.get(str(inv.rooms[i].key), 1.0)) - even) > .001: section_pressure[str(inv.rooms[i].key)] = even
 	# Venting until patched: pressure halves every (cells x 0.25) hours.
 	if float(breach.patched_at) < 0.0:
 		var half := maxf(.05, cells * float(b.half_life_hours_per_cell))
