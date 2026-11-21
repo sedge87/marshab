@@ -49,6 +49,7 @@ extends Node
 
 signal call_finished(section: String)
 signal cue(name: String, args: Array)
+signal line_said(id: String, section: String)   # R5: the robot run's "talked about it from afar" check
 
 const FOLDER := "res://data/radio/"
 const WHO := "Castellanos"
@@ -518,6 +519,7 @@ var spoken: Array = []   # tests (fast): the line IDs said, in order
 
 func _say(step: Dictionary) -> void:
 	var id := str(step.id)
+	line_said.emit(id, playing)
 	if fast:
 		spoken.append(id)
 		return

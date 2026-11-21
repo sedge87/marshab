@@ -142,6 +142,12 @@ The line pass checks every line against four questions:
      - **d3_tracks** is marked `fresh`: dropped if it comes late.
      - **Morning calls stay on the clock:** d2_wake (only while GAR-Y's unmet) and d5_wake (Rao's pass).
 5. **R5, check:** the robot run (`guided_playthrough`) gets a "Castle talked about X while I was more than 100 m from X" checker, then a playtest build.
+   - *Built 21 Nov.*
+     - **The checker:** `radio.line_said` feeds the robot's `ABOUT` table, about 20 lines that describe something in front of you, each with its place. A line said more than 100 m from its place (or its own reach) is a FAR-TALK STUCK.
+     - **Result:** a full run through chapters 1–5 had **0 FAR-TALK and 0 STUCK**.
+     - **The robot is caught up with 16 Nov:** it unbuckles with E, seals the helmet with K, and opens the hatch the way a player does, so the first open vents. Before, it skipped the vent and unsealed the cabin at bedtime.
+     - **Found on the way:** the first sunset talk can run about 3 game hours. Its long half (`d1_sun_after`: why the crew can't land, then goodnight) now waits until you're inside. If you're still out, Castle says "Call me from inside" (`sun_after_wait`), and it rings once you're in, that first night only. In the run the robot was already indoors, so this path is untested.
+     - **Playtest build:** `Builds/OutpostOne-Playtest-21Nov-intro/`.
 
 Phase 6 (the three new models) waits until this is done. The buggy model from the zip goes into its shell in R3.
 

@@ -477,6 +477,9 @@ func _chapter_tick(sol: int, hour: float, sunrise: float, sunset: float) -> void
 			var known: Node = world.get("known")
 			if known != null: known.finish("sunset_spot")
 	if radio == null: return
+	# R5: the first sunset talk's long half, once you're inside that first night.
+	if nights == 0 and radio.flag("sun_after_wait") and not (radio.heard as Dictionary).has("d1_sun_after") and radio.playing.is_empty() and (radio.queue as Array).is_empty() and radio.test("indoors"):
+		radio.ring("d1_sun_after")
 	# Day 1 asks for a photo of the sun going down: call while it's still above
 	# the hills (playtest 14 Nov: it had gone behind them by the time she asked).
 	# Dusk, once a sol (A6): the first sunset talk once the cargo's home; the

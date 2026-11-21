@@ -185,7 +185,12 @@ do photo_ask
 wait photo
 ? sunset_photo Castellanos: Got it. Oh, that's beautiful. That's going on the wall, and Mwangi's already asking for a copy. You've got a good eye, you know. [ID:d1_sun_photo_02a]
 ?! sunset_photo Castellanos: No? That's okay. Some things you just want to look at. The camera's on your slate whenever you want it, and it all goes in your journal. [ID:d1_sun_photo_02b]
-=> d1_sun_after
+# R5 (21 Nov): the long half waits till you're inside (the robot ran out of
+# air on the rise listening to it). scripts/opening_days.gd rings it indoors.
+? indoors => d1_sun_after
+Castellanos: Now head in before the cold gets you. Call me from inside. I've got a long story for you. [ID:d1_sun_r2_in]
+set sun_after_wait
+=> END
 
 ~ d1_sun_after
 Castellanos: Rao wants to know what it sounds like down there. He says he's been imagining it since training. [ID:d1_sun_03]

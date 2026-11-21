@@ -199,6 +199,7 @@ func _initialize() -> void:
 	player = world.player
 	Engine.time_scale = SPEED
 	process_frame.connect(func(): _watch(root.get_process_delta_time()))
+	world.radio.line_said.connect(_heard_line)
 	if int(world.opening_version) < 2: got_stuck("a new game isn't on the guided days, version 2")
 	else: await run()
 	Engine.time_scale = 1.0
@@ -206,6 +207,7 @@ func _initialize() -> void:
 	lines.append("CHAPTERS (play minutes):")
 	for day in day_start: lines.append("  chapter %d started at %.1f min" % [int(day), float(day_start[day]) / 60.0])
 	lines.append("  ended at %.1f min" % (play_s / 60.0))
+	lines.append("  Castle talked about something from afar %d time(s) (FAR-TALK)" % far_talk)
 	lines.append("")
 	lines.append("STUCK (%d):" % stuck.size())
 	lines.append_array(stuck)
@@ -215,6 +217,42 @@ func _initialize() -> void:
 	f.close()
 	print("guided playthrough done: %d lines, %d stuck" % [lines.size(), stuck.size()])
 	quit(0)
+
+# ---------- R5: talking about things from afar ----------
+# Lines about something in front of you, and what (docs/intro-rework.md §6 R5).
+# Said while you're over FAR_TALK m from it (or its own reach), it's a STUCK.
+const FAR_TALK := 100.0
+const ABOUT := {
+	"d1_p1_01": "pallet1", "d1_ridge_01": ["pallet1", 140.0],
+	"d1_p2_01": "power_pallet", "d1_p4_01": "tools_pallet",
+	"d2_cradle_01": "gary_pallet", "d2_found_01": "gary", "d2_found_09": "crate", "d2_found_14": "crate",
+	"d3_tracks_01": ["walker_tracks", 150.0],
+	"d3_fixed_01": "walker", "d3_fixed_07": "walker", "d3_fixed_a6_09": "walker",
+	"d3_fixed_03b": "walker", "d3_fault_a6_02": "walker", "d3_patched_02": "walker",
+	"d4_arrived_r2_01n": "walker", "d5_pallet_01": "print_pallet",
+}
+var far_talk := 0
+
+func _where(thing: String) -> Variant:
+	var field: Node = world.drop_field
+	match thing:
+		"power_pallet", "tools_pallet", "print_pallet":
+			var kind: String = {"power_pallet": "power", "tools_pallet": "tools", "print_pallet": "print_shop"}[thing]
+			return field.sites[kind].pallet.global_position if field.sites.has(kind) else null
+	return world.radio.place_of(thing)
+
+func _heard_line(id: String, section: String) -> void:
+	if not ABOUT.has(id): return
+	var about: Variant = ABOUT[id]
+	var thing: String = about[0] if about is Array else about
+	var reach: float = float(about[1]) if about is Array else FAR_TALK
+	var at: Variant = _where(thing)
+	if at == null: return
+	var you := player.global_position
+	var far := Vector2(float(at.x) - you.x, float(at.z) - you.z).length()
+	if far > reach:
+		far_talk += 1
+		got_stuck("FAR-TALK: Castle on '%s' (%s, %s) while I was %.0f m from it" % [thing, id, section, far])
 
 func _day(n: int, what: String) -> void:
 	day_start[n] = play_s
@@ -276,7 +314,11 @@ func run() -> void:
 	if not player.has_meta("strapped"): got_stuck("not strapped into the landing seat at the start")
 	await call_done("d1_relock", 400.0)
 	await wait(4.0)
-	if player.has_meta("strapped"): got_stuck("still strapped in after answering Castle")
+	# 16 Nov: E unbuckles you (scripts/wake_up.gd); the robot presses it.
+	for node in world.get_children():
+		if node.get_script() == world.WAKE_UP and bool(node.get("strapped")): node.unbuckle()
+	await wait(2.0)
+	if player.has_meta("strapped"): got_stuck("still strapped in after unbuckling")
 	log_line("STATE", "hatch says: '%s'" % world.opening_days.hatch_refusal())
 	if world.slate_cradle != null and is_instance_valid(world.slate_cradle):
 		step("Pick up the slate")
@@ -286,10 +328,15 @@ func run() -> void:
 		world.pda.close()
 	else: got_stuck("no slate on the console")
 	await call_done("d1_slate", 400.0)
-	if not notes.is_open("air") or not notes.is_open("parachute"): got_stuck("after the slate call: air %s, parachute %s" % [notes.is_open("air"), notes.is_open("parachute")])
+	if not notes.is_open("air"): got_stuck("after the slate call: no air thought")   # the parachute thought comes with the first step now
+	# 16 Nov: K seals the helmet before the hatch.
+	if world.suit != null and not bool(world.suit.helmet): world.suit.suit_up()
+	await wait(2.0)
 	if not world.opening_days.hatch_refusal().is_empty(): got_stuck("the hatch still refuses: %s" % world.opening_days.hatch_refusal())
 	step("Open the hatch, step out")
-	lander.set_hatch(true)
+	lander.interact(player)   # as a player would: the first open vents the cabin, then the ramp drops
+	await wait(5.0)
+	if not lander.hatch_open(): got_stuck("the hatch didn't open (%s)" % str(lander.seal_state))
 	world._update_lander_intro()
 	await wait(6.0)
 	player.global_position = ground(lander.ramp_foot(4.0))
@@ -622,7 +669,7 @@ func _bed_and_sleep() -> void:
 		if lander.hatch_open():
 			lander.interact()
 			var shut_for := 0.0
-			while shut_for < 60.0 and (lander.hatch_open() or not world.get("sleep").blocked_reason().is_empty()):
+			while shut_for < 240.0 and (lander.hatch_open() or not world.get("sleep").blocked_reason().is_empty()):
 				await wait(1.0)
 				shut_for += 1.0
 	await _sleep_to_dawn()
