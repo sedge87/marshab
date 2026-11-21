@@ -414,6 +414,8 @@ func _update(alerts: Array) -> void:
 			if level != "advisory": preload("res://scripts/feature_hints.gd").first(get_tree(), "alerts")
 			# GAR-Y goes to look at the trouble.
 			get_tree().call_group("gar_y", "on_habitat_alert", id, level)
+			# A breach slams the hatches between rooms (airlock_door.gd).
+			get_tree().call_group("airlock_door", "on_habitat_alert", id, level)
 		else:
 			known.level = level
 			known.title = alert.title

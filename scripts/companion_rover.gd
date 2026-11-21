@@ -8,9 +8,11 @@ const MHPalette := preload("res://scripts/mh_palette.gd")
 ## - Indoors it roams the habitat room to room, opening interior and vehicle
 ##   bay doors (never airlocks) and closing them behind it, lingering in a
 ##   room before moving on; now and then it comes to visit you.
-## - It never opens an airlock, so it only goes in or out with you: a ping
-##   (E) means "come with me" and it follows you closely for a while, through
-##   any airlock you cycle.
+## - It comes through an airlock with you: a ping (E) means "come with me"
+##   and it follows you closely for a while. Since 21 Nov it also cycles an
+##   empty airlock by itself, one bulkhead hatch at a time: out to join you
+##   by day, home at dusk or in a storm, and for orders on the other side of
+##   the hull. It waits while you're in or at the airlock.
 ## - Outdoors by day it roams near you (or near the airlock if you've gone
 ##   in) and now and then surveys: it scans the ground, plants a flag where
 ##   there's buried ice, or scoops a regolith sample.
@@ -139,6 +141,18 @@ var _stop := 2.4             # how close it stops to the current point
 var _door_timer := 0.0
 var _opened: Array = []      # doors it opened, to close behind it
 var _door_wait := 0.0
+## GAR-Y cycles an empty airlock by itself (21 Nov, docs/habitat-look.md):
+## one hatch at a time, through the 1.2 m bulkhead hatches, so it goes out and
+## comes in on its own. It waits while you're in or by the airlock.
+const LOCK_CYCLE := 2.6        # s it waits in the chamber while it pumps
+const TRIP_LIMIT := 60.0       # s: a trip that can't finish gives up
+const APART_OUT := 40.0        # s you've been out (in daylight) before it comes to join you
+const APART_IN := 60.0         # s you've been in before it comes home
+var _trip: Array = []          # the airlock trip's steps, in order
+var _trip_age := 0.0
+var _trip_opened: Array = []   # hatches it opened, to shut if the trip is cut short
+var _trip_clock := 0.0
+var _apart := 0.0              # s it's been on the other side of the hull from you
 
 # ---- movement (as before) ----
 var _roam_goal := Vector3.INF
@@ -249,7 +263,9 @@ func _physics_process(delta: float) -> void:
 		if not task.is_empty(): _end_task(true)
 		velocity = Vector3.ZERO
 		return
+	if not _trip.is_empty() and _trip_step(delta): return
 	_think(delta)
+	_apart = _apart + delta if _self_indoors() != _player_indoors() else 0.0
 	var desired := global_position if (_busy or napping) else _follow_point()
 	# "Show me": it leads, and waits when you fall behind.
 	var waiting: bool = task_data.get("show", false) and target.global_position.distance_to(global_position) > SHOW_LEAD and target.global_position.distance_to(task_goal) > global_position.distance_to(task_goal)
@@ -307,6 +323,7 @@ func _physics_process(delta: float) -> void:
 # ---------- the brain ----------
 
 func _think(delta: float) -> void:
+	if not _trip.is_empty(): return
 	var indoors := _self_indoors()
 	var storm := _storm()
 	var dark := MHGame.sunlight_fraction < .2
@@ -1064,7 +1081,7 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 		"survey", "goto", "core":
 			if point == Vector3.INF: return "Aim at the ground where you want GAR-Y to go."
 			var inside_point: bool = habitat.is_inside(point)
-			if inside_point != indoors: return "GAR-Y can't use the airlock on its own. Ping it (E) so it comes through with you."
+			if inside_point != indoors and _gary_airlock() == null: return "GAR-Y can't use the airlock on its own. Ping it (E) so it comes through with you."
 			if Vector2(point.x - global_position.x, point.z - global_position.z).length() > 60.0: return "That's too far for GAR-Y (over 60 m)."
 			if kind != "goto" and inside_point: return "Surveys and core samples are for outside."
 			if kind == "core" and has_core: return "GAR-Y is already carrying a core sample. Bring it inside to the Lab."
@@ -1077,7 +1094,7 @@ func order(kind: String, point := Vector3.INF, item := "") -> String:
 		"find_ice", "find_ice_at":
 			# Its own survey loop across the nearest likely zone from orbit
 			# (find_ice_at: the zone at `point`, sent from the Tab map).
-			if indoors: return "GAR-Y looks for ice outside. Ping it (E) so it comes through the airlock with you."
+			if indoors and _gary_airlock() == null: return "GAR-Y looks for ice outside. Ping it (E) so it comes through the airlock with you."
 			var here := Vector2(global_position.x, global_position.z)
 			var zone := ICE_KNOWLEDGE.nearest_zone(here, 90.0) if kind == "find_ice" else ICE_KNOWLEDGE.nearest_zone(Vector2(point.x, point.z), 60.0)
 			if zone.is_empty(): return "There's no likely ice within reach. Open the map (Tab): the dashed circles are where orbital radar sees it." if kind == "find_ice" else "Point at one of the dashed ice zones."
@@ -1247,6 +1264,7 @@ func interaction_prompt() -> Dictionary:
 	return {"label": "%s · %s" % [NAME, status_text()], "primary": "Ping", "info": "About"}
 
 func status_text() -> String:
+	if not _trip.is_empty(): return "cycling the airlock"
 	if docked: return "charging %d%%" % clampi(roundi(100.0 * fmod(Time.get_ticks_msec() / 90000.0, 1.0)), 5, 99)
 	if napping: return "napping"
 	match task:
@@ -1469,8 +1487,16 @@ func _escorting() -> bool:
 func _player_indoors() -> bool:
 	return habitat != null and habitat.is_inside(target.global_position)
 
-## Where to drive this frame (and how close to stop, in _stop).
+## Where to drive this frame. A point on the other side of the hull from
+## GAR-Y sends it through the airlock.
 func _follow_point() -> Vector3:
+	if not _trip.is_empty(): return _trip_target()
+	var point := _follow_point_here()
+	if habitat != null and not staying and habitat.is_inside(point) != _self_indoors() and (not _escorting() or global_position.distance_to(target.global_position) > 6.0):
+		if _start_trip(habitat.is_inside(point)): return _trip_target()
+	return point
+
+func _follow_point_here() -> Vector3:
 	if task_goal != Vector3.INF:
 		return _routed(task_goal, TASK_STOP)
 	if staying:
@@ -1487,6 +1513,7 @@ func _follow_point() -> Vector3:
 ## to the room you're in.
 func _home_point() -> Vector3:
 	var delta := get_physics_process_delta_time()
+	if _wants_out(): return target.global_position
 	if _roam_goal == Vector3.INF or not habitat.is_inside(_roam_goal):
 		_roam_goal = _pick_room_spot(true)
 	var here := Vector2(global_position.x, global_position.z).distance_to(Vector2(_roam_goal.x, _roam_goal.z)) < 1.2
@@ -1520,6 +1547,9 @@ func _pick_room_spot(new_room: bool) -> Vector3:
 func _outdoor_point() -> Vector3:
 	_route.clear()
 	_stop = 1.0
+	if _wants_in():
+		var door := _gary_airlock()
+		if door != null: return door.global_position - _outward(door) * 2.0
 	var anchor := target.global_position if not _player_indoors() else global_position
 	_roam_timer -= get_physics_process_delta_time()
 	if _roam_goal == Vector3.INF or _roam_timer <= 0.0 or habitat.is_inside(_roam_goal) or Vector2(_roam_goal.x - anchor.x, _roam_goal.z - anchor.z).length() > 14.0:
@@ -1650,3 +1680,141 @@ func _try_step_over_threshold(flat_delta: Vector3) -> void:
 	if not test_move(Transform3D(global_transform.basis, raised), flat_delta.normalized() * .26):
 		global_position = raised
 		velocity.y = 0.0
+
+
+# ---------- cycling the airlock ----------
+
+func _autonomous() -> bool:
+	return bool(MHGame.setting("gary_autonomy")) and not staying and task.is_empty() and not napping and not _busy
+
+## Indoors, you've been out a while by day: it comes out to join you.
+func _wants_out() -> bool:
+	return _autonomous() and not _player_indoors() and _apart > APART_OUT and MHGame.sunlight_fraction >= .2 and not _storm() and _gary_airlock() != null
+
+## Outdoors with you inside: it comes home at dusk, in a storm, or after a while.
+func _wants_in() -> bool:
+	return _autonomous() and _player_indoors() and (_apart > APART_IN or MHGame.sunlight_fraction < .2 or _storm())
+
+## The nearest airlock's outer hatch (with its inner partner), or null.
+func _gary_airlock() -> AirlockDoor:
+	var best: AirlockDoor = null
+	for node in get_tree().get_nodes_in_group("airlock_door"):
+		var door := node as AirlockDoor
+		if door == null or door.door_label() != "OUTER" or door._partners.is_empty(): continue
+		if best == null or door.global_position.distance_to(global_position) < best.global_position.distance_to(global_position): best = door
+	return best
+
+## The outer hatch's outward direction (toward Mars).
+func _outward(door: AirlockDoor) -> Vector3:
+	var face := door.global_transform.basis.z
+	face.y = 0.0
+	face = face.normalized()
+	return face if not habitat.is_inside(door.global_position + face * 1.5 + Vector3.UP) else -face
+
+## A point d metres from a hatch on the side GAR-Y is on (side +1/-1 along its z).
+func _hatch_point(door: AirlockDoor, side: float, d: float) -> Vector3:
+	var face := door.global_transform.basis.z
+	face.y = 0.0
+	return door.global_position + face.normalized() * side * d
+
+func _side_of(door: AirlockDoor, at: Vector3) -> float:
+	return 1.0 if (door.global_transform.affine_inverse() * at).z > 0.0 else -1.0
+
+## Plan the trip: inner hatch then outer, or back, one hatch at a time.
+func _start_trip(going_in: bool) -> bool:
+	var outer := _gary_airlock()
+	if outer == null: return false
+	var inner: AirlockDoor = outer._partners[0]
+	if inner == null: return false
+	var doors: Array = [outer, inner] if going_in else [inner, outer]
+	_trip.clear()
+	_trip_opened.clear()
+	var at := global_position
+	for i in doors.size():
+		var door: AirlockDoor = doors[i]
+		var from := _side_of(door, at)
+		_trip.append({"do": "drive", "to": _hatch_point(door, from, 1.5), "door": door})
+		_trip.append({"do": "open", "door": door})
+		_trip.append({"do": "drive", "to": _hatch_point(door, -from, 1.45), "door": door})
+		_trip.append({"do": "shut", "door": door, "wait": LOCK_CYCLE if i == 0 else .2})
+		at = _hatch_point(door, -from, 1.45)
+	_route.clear()
+	_roam_goal = Vector3.INF
+	_trip_clock = 0.0
+	_trip_age = 0.0
+	if not task.is_empty(): _task_age = 0.0
+	_say("curious")
+	return true
+
+func _trip_target() -> Vector3:
+	_stop = .2
+	var step: Dictionary = _trip[0]
+	if str(step.do) == "drive":
+		var to: Vector3 = step.to
+		to.y = global_position.y
+		return to
+	return global_position
+
+## You're in the airlock, or standing at one of its hatches: GAR-Y waits.
+func _airlock_busy(door: AirlockDoor) -> bool:
+	for hatch in [door] + door._partners:
+		if (hatch as Node3D).global_position.distance_to(target.global_position) < 2.2: return true
+	var chamber: Dictionary = habitat._zone_at_point(Vector2(target.global_position.x, target.global_position.z))
+	return str(chamber.get("kind", "")) == "airlock"
+
+## Runs the trip's current step; true while it holds GAR-Y still.
+func _trip_step(delta: float) -> bool:
+	_trip_age += delta
+	var step: Dictionary = _trip[0]
+	var door: AirlockDoor = step.get("door")
+	if door == null or not is_instance_valid(door) or _trip_age > TRIP_LIMIT:
+		_end_trip(true)
+		return false
+	match str(step.do):
+		"drive":
+			var to: Vector3 = step.to
+			if Vector2(global_position.x - to.x, global_position.z - to.z).length() < .35:
+				_trip.pop_front()
+			return false
+		"open":
+			velocity = Vector3.ZERO
+			_face(door.global_position)
+			if door.is_open():
+				_trip_clock = 0.0
+				_trip.pop_front()
+				return true
+			# Only an empty airlock, with nobody waiting on its hatches.
+			if _trip_clock == 0.0 and not _airlock_busy(door) and door.idle() and door._partners.all(func(h): return (h as AirlockDoor).is_closed()):
+				door.toggle()
+				if not _trip_opened.has(door): _trip_opened.append(door)
+				_trip_clock = .01
+			return true
+		"shut":
+			velocity = Vector3.ZERO
+			if not step.has("asked"):
+				step["asked"] = true
+				door.request_shut()
+				_trip_opened.erase(door)
+				_trip_clock = 0.0
+			if door.is_closed():
+				_trip_clock += delta
+				if _trip_clock >= float(step.wait):
+					_trip_clock = 0.0
+					_trip.pop_front()
+					if _trip.is_empty(): _end_trip(false)
+			return true
+	_trip.pop_front()
+	return false
+
+func _end_trip(cut_short: bool) -> void:
+	_trip.clear()
+	_trip_clock = 0.0
+	_apart = 0.0
+	if cut_short:
+		for door in _trip_opened:
+			if is_instance_valid(door): (door as AirlockDoor).request_shut()
+	_trip_opened.clear()
+
+## Is GAR-Y partway through cycling the airlock? (tests, and its status)
+func in_airlock_trip() -> bool:
+	return not _trip.is_empty()

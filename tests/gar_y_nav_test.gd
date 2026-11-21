@@ -52,7 +52,8 @@ func _initialize() -> void:
 	await _wait(10.0)
 	_check(g.global_position.distance_to(galley_spot) < 1.6, "GAR-Y drives through to the galley (%s)" % [g.global_position])
 	var interior: Array = world.get_tree().get_nodes_in_group("airlock_door").filter(func(d): return d.door_label() == "INTERIOR")
-	_check(not interior.is_empty() and not interior.any(func(d): return d.is_open()), "and closes the door behind it")
+	# 21 Nov: room hatches stand open on their hold-backs (it leaves them be).
+	_check(not interior.is_empty() and interior.all(func(d): return d.is_open()), "the room hatch stands open on its hold-back")
 
 	# Never opens an airlock door.
 	for door in world.get_tree().get_nodes_in_group("airlock_door"):
@@ -78,22 +79,47 @@ func _initialize() -> void:
 	_check(g._escorting() and g.status_text() == "coming with you", "a ping: come with me")
 	await _wait(5.0)
 	_check(g.global_position.distance_to(p.global_position) < 3.0, "and it follows you closely (%.1f m)" % g.global_position.distance_to(p.global_position))
+	# 21 Nov: GAR-Y cycles an empty airlock by itself: with autonomy on, it goes
+	# out to join you, and comes home, one hatch at a time.
+	MHGame._settings["gary_autonomy"] = true
+	g._escort_until = 0
+	g.global_position = Vector3(3.0, y + .2, 3.0)
+	p.global_position = Vector3(3.0, b._terrain_height(Vector3(3.0, 0, 16.0)) + 1.0, 16.0)
+	await _wait(.5)
+	g._apart = 999.0
+	var used_airlock := false
+	for i in 30:
+		await _wait(1.0)
+		if g.in_airlock_trip(): used_airlock = true
+		if not b.is_inside(g.global_position) and not g.in_airlock_trip(): break
+	_check(used_airlock and not b.is_inside(g.global_position), "it cycles the airlock to join you outside (%s)" % g.global_position)
+	var hatches: Array = world.get_tree().get_nodes_in_group("airlock_door").filter(func(d): return d.door_label() in ["INNER", "OUTER"])
+	await _wait(1.5)
+	_check(hatches.all(func(d): return d.is_closed()), "and shuts both airlock hatches behind it")
+	p.global_position = Vector3(12.0, y + .2, 3.0)
+	await _wait(.5)
+	g._apart = 999.0
+	for i in 30:
+		await _wait(1.0)
+		if b.is_inside(g.global_position) and not g.in_airlock_trip(): break
+	_check(b.is_inside(g.global_position), "and cycles back in when you're inside (%s)" % g.global_position)
+	MHGame._settings["gary_autonomy"] = false
 	# Room culling: furniture in another room is only drawn through an open door.
 	g.queue_free()
 	var desk_at := Vector3(15.0, y, 4.5)
 	b.place_free_interior_equipment("work_desk", desk_at, 0.0, Vector2i(5, 1), b.free_interior_visual("work_desk", desk_at, 0.0))
 	var desk: Node3D = b.furnishing.get_child(b.furnishing.get_child_count() - 1)
 	var door = interior[0]
-	if door.is_open(): door.request_shut()
+	if door.is_open(): door.toggle()
 	await _wait(1.0)
 	b.update_furniture_visibility(Vector3(1.0, y + 1.6, 3.0))
 	_check(not desk.visible, "a desk in the galley isn't drawn from the living quarters with the door shut")
-	door.request_open()
-	await _wait(1.0)
+	door.toggle()
+	await _wait(1.5)
 	b.update_furniture_visibility(Vector3(1.0, y + 1.6, 3.0))
 	_check(desk.visible, "it is through the open door")
 	b.update_furniture_visibility(Vector3(15.0, y + 1.6, 60.0))
 	_check(not desk.visible, "and not from far outside")
 	if failures == 0:
-		print("GAR-Y navigation test passed: rooms via doors, doors closed behind, no airlocks, stays in, comes with you, and room culling.")
+		print("GAR-Y navigation test passed: rooms via doors, room hatches held open, no airlocks on its routes, stays in, comes with you, cycles an empty airlock by itself both ways, and room culling.")
 	quit(1 if failures > 0 else 0)

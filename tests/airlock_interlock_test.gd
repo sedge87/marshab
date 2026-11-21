@@ -22,7 +22,7 @@ func _initialize() -> void:
 	world.add_child(interior)
 	interior.setup("INTERIOR", true)
 	inner.toggle()
-	interior.toggle()
+	# 21 Nov: a room hatch stands open on its hold-back from the start.
 	await create_timer(.6).timeout
 	assert(not inner.is_closed() and not interior.is_closed(), "Setup: the inner and interior doors are open.")
 	outer.toggle()

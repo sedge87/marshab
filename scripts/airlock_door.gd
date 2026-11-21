@@ -1,8 +1,21 @@
 class_name AirlockDoor
 extends Node3D
-
-# A compact overhead bulkhead rather than sideways panels. It stays within the
-# header volume while open, so it cannot slide through exterior wall sections.
+# Every habitat door is a hinged pressure hatch (21 Nov, docs/habitat-look.md):
+# a rounded frame through the wall, a 1.2 x 1.9 m opening over a low sill
+# (wide enough for GAR-Y), a thick leaf on a left-hand hinge. A plate fills
+# the rest of the doorway. Hatches between rooms stand open on a hold-back
+# and swing shut in a hull breach alarm; airlock and Garage hatches are
+# worked by hand (GAR-Y cycles an empty airlock by itself). The Garage's wide
+# hangar door stays a roll-up shutter for the vehicles.
+const MHPalette := preload("res://scripts/mh_palette.gd")
+const HATCH_MODEL := "res://assets/models/habitat/bulkhead_hatch.glb"
+const HINGE := Vector3(-.71, 0.0, .205)      # the leaf's hinge line, door-local
+const HINGE_ANGLE := -100.0                  # open: back against the wall plate
+var _hatch := false
+var _model: Node3D
+var _pivot: Node3D
+var _leaf_collision: CollisionShape3D
+var _alarm_shut := false
 var _shutter: StaticBody3D
 var _shutter_collision: CollisionShape3D
 var _amount := 0.0
@@ -31,10 +44,19 @@ func setup(door_name := "AIRLOCK", create_inner_frame := false, shutter_width :=
 	_door_name=door_name
 	_shutter_width=shutter_width
 	_shutter_height=shutter_height
-	# The outer door uses the Blender portal. The inner door needs its own compact
-	# jambs and header, otherwise its shutter reads as an unsupported red wall.
-	if create_inner_frame: _fixed_frame()
-	_shutter=_make_shutter()
+	_hatch=door_name!="HANGAR" and ResourceLoader.exists(HATCH_MODEL)
+	if _hatch:
+		_build_hatch()
+		# Between rooms the hatch stands open on its hold-back.
+		if door_name=="INTERIOR":
+			_amount=1.0
+			_target_amount=1.0
+			_heard_target=1.0
+	else:
+		# The outer door uses the Blender portal. The inner door needs its own compact
+		# jambs and header, otherwise its shutter reads as an unsupported red wall.
+		if create_inner_frame: _fixed_frame()
+		_shutter=_make_shutter()
 	_build_status_display()
 
 func set_partner(partner: AirlockDoor) -> void:
@@ -46,7 +68,10 @@ func add_partner(partner: AirlockDoor) -> void:
 
 # Prompt text for the explore HUD ("Open Outer door" · "Sealed").
 func prompt_verb() -> String:
-	return ("Close " if _target_amount>.5 else "Open ")+_door_name.capitalize()+" door"
+	return ("Close " if _target_amount>.5 else "Open ")+_door_name.capitalize()+(" hatch" if _hatch else " door")
+
+func _noun() -> String:
+	return " HATCH" if _hatch else " DOOR"
 
 func state_text() -> String:
 	if Time.get_ticks_msec()<_locked_message_until: return "Interlocked"
@@ -189,7 +214,7 @@ func _add_box_visual(parent: StaticBody3D,size: Vector3,material: Material,solid
 		parent.add_child(collision)
 
 func is_automatic() -> bool:
-	return _door_name == "INTERIOR"
+	return _door_name == "INTERIOR" and not _hatch
 
 func _auto_step(delta: float) -> void:
 	_auto_check -= delta
@@ -226,7 +251,12 @@ func _physics_process(delta: float) -> void:
 	if _target_amount!=_heard_target:
 		_heard_target=_target_amount
 		MHAudio.sfx_at("door_open" if _target_amount>.5 else "door_close",self)
-	_amount=move_toward(_amount,_target_amount,delta*2.7)
+	_amount=move_toward(_amount,_target_amount,delta*(1.5 if _hatch else 2.7))
+	if _hatch:
+		_pivot.rotation.y=deg_to_rad(HINGE_ANGLE)*smoothstep(0.0,1.0,_amount)
+		_leaf_collision.set_deferred("disabled",_amount>.04)
+		_update_status()
+		return
 	# The shutter folds into the overhead cassette rather than travelling beyond
 	# the doorway. Scale keeps the visual and blocker contained in the frame.
 	_shutter.position.y=lerpf(_shutter_height*.5,minf(_shutter_height+.12,2.74),_amount)
@@ -236,6 +266,7 @@ func _physics_process(delta: float) -> void:
 
 func toggle() -> void:
 	if is_automatic(): _manual_until = Time.get_ticks_msec() + 5000
+	_alarm_shut = false   # opened again by hand
 	if _target_amount>.5:
 		_pending_open=false
 		_target_amount=0.0
@@ -255,6 +286,7 @@ func toggle() -> void:
 ## For GAR-Y: open (through the interlock if needed) or close this door.
 ## It only ever does this to interior and vehicle-bay doors.
 func request_open() -> void:
+	if _alarm_shut: return   # sealed for a breach: only you reopen it
 	if _target_amount < .5: toggle()
 
 func request_shut() -> void:
@@ -289,13 +321,13 @@ func _update_status() -> void:
 		return
 	var cycling:=absf(_target_amount-_amount)>.025
 	if cycling:
-		_status.text="CYCLING "+_door_name+" DOOR"
+		_status.text="CYCLING "+_door_name+_noun()
 		_status.modulate=MHStyle.WARN
 		_indicator_material.albedo_color=MHStyle.WARN
 		_indicator_material.emission=MHStyle.WARN*.8
 		_warning_light.light_energy=1.0+sin(Time.get_ticks_msec()*.012)*.45
 	elif _amount>.82:
-		_status.text="E — CLOSE "+_door_name+" DOOR"
+		_status.text="E — CLOSE "+_door_name+_noun()
 		_status.modulate=MHStyle.VALID
 		_indicator_material.albedo_color=MHStyle.VALID
 		_indicator_material.emission=MHStyle.VALID*.8
@@ -307,8 +339,77 @@ func _update_status() -> void:
 		_indicator_material.emission=MHStyle.INFO*.6
 		_warning_light.light_energy=.2
 	else:
-		_status.text="E — OPEN "+_door_name+" DOOR"
+		_status.text=("SEALED: BREACH\nE — OPEN " if _alarm_shut else "E — OPEN ")+_door_name+_noun()
 		_status.modulate=MHStyle.INK_100
 		_indicator_material.albedo_color=MHStyle.DANGER
 		_indicator_material.emission=MHStyle.DANGER*.7
 		_warning_light.light_energy=.40
+
+
+# ---------- the bulkhead hatch ----------
+
+## The hatch model in the doorway, its leaf on its hinge, and a wall plate
+## round it filling the rest of the opening.
+func _build_hatch() -> void:
+	_model=(load(HATCH_MODEL) as PackedScene).instantiate() as Node3D
+	_model.name="BulkheadHatch"
+	add_child(_model)
+	MHPalette.apply(_model)
+	_pivot=Node3D.new()
+	_pivot.name="HatchHinge"
+	_pivot.position=HINGE
+	add_child(_pivot)
+	for node in _model.find_children("*","MeshInstance3D",true,false):
+		if String(node.name).begins_with("leaf_"): node.reparent(_pivot,true)
+	var leaf:=StaticBody3D.new()
+	leaf.name="HatchLeaf"
+	_pivot.add_child(leaf)
+	_leaf_collision=CollisionShape3D.new()
+	var shape:=BoxShape3D.new()
+	shape.size=Vector3(1.3,2.0,.073)
+	_leaf_collision.shape=shape
+	_leaf_collision.position=Vector3(.71,1.03,.0035)
+	leaf.add_child(_leaf_collision)
+	# The plate round the frame, flush with the habitat walls.
+	var plate:=StaticBody3D.new()
+	plate.name="HatchPlate"
+	add_child(plate)
+	var white:=_material(MHStyle.STRUCTURAL_WHITE,0.0,.62)
+	var half:=_shutter_width*.5
+	var top:=_shutter_height
+	var pieces:=[[-half,-.74,0.0,top],[-.74,.74,2.22,top],[.74,half,0.0,top]]
+	for piece in pieces:
+		if float(piece[1])-float(piece[0])>.01 and float(piece[3])-float(piece[2])>.01: _solid(plate,piece,.16,white)
+	# The frame's own solid parts: two jambs and the head (no sill: you step over it).
+	for piece in [[-.75,-.6,0.0,2.24],[.6,.75,0.0,2.24],[-.6,.6,1.98,2.24]]: _solid(plate,piece,.3,null)
+
+func _solid(body: StaticBody3D,piece: Array,depth: float,material: Material) -> void:
+	var size:=Vector3(float(piece[1])-float(piece[0]),float(piece[3])-float(piece[2]),depth)
+	var centre:=Vector3((float(piece[0])+float(piece[1]))*.5,(float(piece[2])+float(piece[3]))*.5,0.0)
+	if material!=null:
+		var visual:=MeshInstance3D.new()
+		var mesh:=BoxMesh.new()
+		mesh.size=size
+		visual.mesh=mesh
+		visual.material_override=material
+		visual.position=centre
+		body.add_child(visual)
+	var collision:=CollisionShape3D.new()
+	var box_shape:=BoxShape3D.new()
+	box_shape.size=size
+	collision.shape=box_shape
+	collision.position=centre
+	body.add_child(collision)
+
+## A hull breach: every hatch between rooms swings shut and latches, so the
+## base seals room by room. You open them again by hand once it's safe.
+func on_habitat_alert(id: String,_level: String) -> void:
+	if id!="breach" or not _hatch or _door_name!="INTERIOR" or _target_amount<.5: return
+	_alarm_shut=true
+	_target_amount=0.0
+	MHAudio.sfx_at("door_interlock",self,-2.0)
+
+## GAR-Y cycling an empty airlock by itself (companion_rover.gd): is this
+## hatch free to use (nobody's waiting on its interlock)?
+func idle() -> bool:
+	return not _pending_open and absf(_target_amount-_amount)<.02

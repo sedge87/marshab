@@ -1,0 +1,59 @@
+{
+  "style": "HQ pass for Forward+: baked PBR atlases (base colour with AO, normal, ORM), house look",
+  "units": "metres; Y up; -Z forward; floor origin",
+  "assets": [
+    {
+      "id": "bulkhead_hatch",
+      "file": "bulkhead_hatch.glb",
+      "placement": "wall",
+      "bounds_m": [
+        [
+          -0.934,
+          0.0,
+          -0.186
+        ],
+        [
+          0.75,
+          2.24,
+          0.316
+        ]
+      ],
+      "triangles": 12008,
+      "named_components": [
+        "hatch_bolts_back_satin",
+        "hatch_bolts_front_satin",
+        "hatch_equaliser",
+        "hatch_frame_shell",
+        "hatch_gasket_black",
+        "hatch_handrail_back_satin",
+        "hatch_handrail_front_satin",
+        "hatch_hinge_162_dark",
+        "hatch_hinge_42_dark",
+        "hatch_light_back_led",
+        "hatch_light_front_led",
+        "hatch_status_back_0_led",
+        "hatch_status_back_1_led",
+        "hatch_status_back_2_led",
+        "hatch_status_front_0_led",
+        "hatch_status_front_1_led",
+        "hatch_status_front_2_led",
+        "hatch_tread_satin",
+        "hatch_trim_back_frame",
+        "hatch_trim_front_frame",
+        "leaf_inset_back_panel",
+        "leaf_inset_front_panel",
+        "leaf_lever_back_accent",
+        "leaf_lever_front_accent",
+        "leaf_panel_shell",
+        "leaf_strap_162_dark",
+        "leaf_strap_42_dark",
+        "leaf_window_back_dark",
+        "leaf_window_bolts_back_satin",
+        "leaf_window_bolts_front_satin",
+        "leaf_window_front_dark",
+        "leaf_window_rim_back_frame",
+        "leaf_window_rim_front_frame"
+      ]
+    }
+  ]
+}
