@@ -1,5 +1,7 @@
 # The guided chapters (A6 rewrite, 15 Nov 2026)
 
+> **22 Nov: the story and chapter order here are replaced by `docs/opening-slice.md`.** Kept as history and for the systems still reused.
+
 *Agreed with the user on 15 Nov (build plan A6). This replaces the 8 Nov redesign below, which stays as history. Every number is a starting point for playtest.*
 
 ## Why

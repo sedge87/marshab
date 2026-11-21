@@ -1,0 +1,38 @@
+# Sol 1 of the opening slice (docs/opening-slice.md §4a). Castle and you.
+# Show, don't tell: nobody explains what the player can see. The crew are
+# friends after seven months together, not a call centre. Format: the top of
+# scripts/radio.gd. IDs start s1_ so they never clash with the old days.
+# Voices: python tools/generate_voice.py --missing --only=orb_s1
+
+# Scene 1: touchdown. The section keeps its old name: scripts/wake_up.gd rings it.
+~ d1_relock
+Castellanos: Pathfinder, orbit. Pathfinder, do you read? [ID:s1_relock_01]
+hold
+nudge Castellanos: Come on. Key the mic. Anything. [ID:s1_relock_01b]
+nudge Castellanos: Pathfinder, orbit. Still here. Still listening. [ID:s1_relock_01c]
+- Pathfinder. I read you.
+	set answered
+- Down. In one piece.
+	set answered
+	set alive
+Castellanos: There you are. Ninety seconds of static, right at touchdown. Don't do that to me. [ID:s1_relock_02]
+Castellanos: You're off the cargo's line, but inside the zone. So. The job. [ID:s1_relock_03]
+Castellanos: Walk the pad, bring the beacon online, get the hab running. Devan's got us pencilled in for Thursday. [ID:s1_relock_04]
+- And if the pad's no good?
+	set asked_pad
+	Castellanos: Then we wait. That's why you're going first. [ID:s1_relock_05a]
+- Thursday. No pressure.
+	Castellanos: None at all. And if the pad's no good, we wait. That's why you're going first. [ID:s1_relock_05b]
+?! has_slate Castellanos: Manifest's on your slate. See what came down near you. [ID:s1_relock_06]
+? has_slate Castellanos: You've got the manifest. See what came down near you. [ID:s1_relock_06s]
+=> END
+
+# Scene 1: the slate in your hands. Short; the manifest does the talking.
+~ s1_manifest
+?! helmet Castellanos: Seal up when you're ready. The hatch is yours. [ID:s1_manifest_01]
+=> END
+
+# Scene 1: the first step (scripts/first_step.gd rings it).
+~ d1_first_step
+chat Castellanos: Pathfinder's on Mars. That's the official version. Unofficially, Kai just hugged Devan. [ID:s1_first_step_01]
+=> END

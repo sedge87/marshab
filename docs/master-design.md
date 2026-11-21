@@ -38,6 +38,8 @@ Subnautica wrote down three pillars, each tied to an emotion, but built only one
 
 ## 2. The premise and the opening
 
+> **22 Nov: replaced for the opening by `docs/opening-slice.md`.** The planned pad has failed, the Pathfinder finds a replacement, and the slice ends at the landing rehearsal with your hold. The crew are six on the orbiter, and Devan's lander has one descent and no diversion. This section stays as history until it's rewritten.
+
 **The story · Decided 7 Nov** (the user: "you were always sent to land after the walkers had established and built the base"; Mission Control "wouldn't let you pick your landing site … with blurry photos").
 - **Cargo first, then you (timing fixed 10 Nov).** As in NASA's Design Reference Architecture 5.0, the cargo left a launch window ahead of the crew. It waited in Mars orbit, and its pallets dropped on a schedule in the months before you arrived, so the walkers could gather them and build the base fresh, ready for you. The storm went global during solar conjunction, the real two weeks or so when the sun blocks Earth's radio to Mars. Nobody could hold the drops: the last pallets came down blind into the dust, and the walkers stalled mid-task. Nobody had walked on Mars before you: you're the first human there.
 - **You're the commissioner.** You were always to land after the base was built. Your pathfinder lander would touch down beside the finished base, walk in and commission it (bring each system up, check it, sign it off) with GAR-Y. **Changed 8 Nov (docs/opening-days.md):** the lander is a self-sufficient lifepod (a power cell, oxygen remade, water recycled; only food runs down). It will keep one person going about as long as they like, but it's no base: one seat, no room to grow. The pallets are the General Module's cargo.
@@ -193,6 +195,8 @@ The pressures change in kind as you go, and each fades once a machine takes it o
 - **The deep chains stay in the sim** (urine processor, waste sorter and so on), as "closing the loop" upgrades unlocked later, not day-one chores.
 
 ## 7. The story
+
+> **22 Nov: replaced for the opening by `docs/opening-slice.md`.** The planned pad has failed, the Pathfinder finds a replacement, and the slice ends at the landing rehearsal with your hold. The crew are six on the orbiter, and Devan's lander has one descent and no diversion. This section stays as history until it's rewritten.
 
 > **14 Nov:** the heart's clues are laid outward across the Reach, and the ending happens in the deep: you make it out, barely (`docs/range-ladder.md`).
 

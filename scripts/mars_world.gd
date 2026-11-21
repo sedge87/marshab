@@ -23,6 +23,7 @@ const STORM_DROP := preload("res://scripts/storm_drop.gd")
 const DROP_FIELD := preload("res://scripts/drop_field.gd")
 const LIFEPOD := preload("res://scripts/lifepod.gd")
 const OPENING_DAYS := preload("res://scripts/opening_days.gd")
+const OPENING_SLICE := preload("res://scripts/opening_slice.gd")   # version 3 (docs/opening-slice.md)
 const WALKER := preload("res://scripts/walker.gd")
 const MODULE_LIFE := preload("res://scripts/module_life.gd")
 const DESCENT_SEEN := 450.0   # metres round the landing the descent cameras saw
@@ -313,7 +314,7 @@ func _ready() -> void:
 			if walkers.has(str(id)): continue
 			var more: Node3D = add_walker(str(id), Vector3.INF, _walkers_state[id] as Dictionary)
 			if str(more.state) == "done": start_core(str(id))
-		opening_days = OPENING_DAYS.new()
+		opening_days = OPENING_SLICE.new() if opening_version >= 3 else OPENING_DAYS.new()
 		add_child(opening_days)
 		opening_days.setup(self, _days_state)
 	replies = REPLIES.new()

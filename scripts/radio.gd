@@ -78,6 +78,11 @@ var _waited: Dictionary = {}     # section -> seconds in the queue
 var _call_from := Vector3.INF    # where you were when this call began
 
 static var _parsed: Dictionary = {}
+## Which opening's calls load (22 Nov, docs/opening-slice.md): "days" is the
+## old guided chapters (data/radio/day*.txt); "slice" swaps them for
+## data/radio/slice/*.txt. Everything else in data/radio/ loads for both.
+static var opening_set := "days"
+static var _parsed_set := ""
 
 func setup(target_world: Node, saved: Dictionary) -> void:
 	world = target_world
@@ -134,16 +139,27 @@ func export_state() -> Dictionary:
 
 ## Every section in every file under data/radio/.
 static func sections() -> Dictionary:
-	if not _parsed.is_empty(): return _parsed
-	var dir := DirAccess.open(FOLDER)
-	if dir == null: return _parsed
+	if not _parsed.is_empty() and _parsed_set == opening_set: return _parsed
+	_parsed = {}
+	_parsed_set = opening_set
 	var files: Array = []
+	for file in _txt_files(FOLDER):
+		if opening_set == "slice" and str(file).begins_with("day"): continue
+		files.append(FOLDER + str(file))
+	if opening_set == "slice":
+		for file in _txt_files(FOLDER + "slice/"): files.append(FOLDER + "slice/" + str(file))
+	for path in files: parse_into(_parsed, FileAccess.get_file_as_string(str(path)))
+	return _parsed
+
+static func _txt_files(folder: String) -> Array:
+	var files: Array = []
+	var dir := DirAccess.open(folder)
+	if dir == null: return files
 	for f in dir.get_files():
 		var file := str(f).trim_suffix(".remap")
 		if file.ends_with(".txt") and not files.has(file): files.append(file)
 	files.sort()
-	for file in files: parse_into(_parsed, FileAccess.get_file_as_string(FOLDER + str(file)))
-	return _parsed
+	return files
 
 ## Parses one script's text into `out` (section name -> steps).
 static func parse_into(out: Dictionary, text: String) -> void:

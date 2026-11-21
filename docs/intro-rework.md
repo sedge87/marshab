@@ -1,5 +1,7 @@
 # The intro, reworked (draft for review, 21 Nov 2026)
 
+> **22 Nov: the story and chapter order here are replaced by `docs/opening-slice.md`.** Kept as history and for the systems still reused.
+
 *From the 21 Nov playtest. The user's verdict: triggers fire at odd times, Castle talks about things you've left behind, Walker 1 showed up before its tracks, and the buggy lies out there with no container or parachute. Decided: **storm drop, done right**; **reactive, place-aware dialogue**; **this design first, build after.** It replaces the trigger and dialogue parts of `docs/opening-days.md`. The chapter content (cargo, GAR-Y, Walker 1, home, Print Shop) stays.*
 
 ---

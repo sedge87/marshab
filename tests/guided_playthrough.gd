@@ -193,6 +193,7 @@ func _initialize() -> void:
 	MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 	MHGame.start_new_challenge()
 	MHChapterOne.reset()
+	load("res://scripts/opening_days.gd").new_games_version = 2   # the old guided chapters (the slice has its own robot)
 	world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame

@@ -46,7 +46,7 @@ extends Node
 ##          the mission (each goal from its owner up there, and their notes).
 ##          The first night in the module. Then day 5 is yours.
 ## Version 1 (the first opening) stays for older saves and older tests.
-static var new_games_version := 2
+static var new_games_version := 3   # 22 Nov: new games run the opening slice (scripts/opening_slice.gd)
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const STORY_DAYS := 4           # days run on story time; day 5 opens the game
 ## Chapter 5 (15 Nov, docs/opening-days.md "Chapter 5"): the Print Shop.
