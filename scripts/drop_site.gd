@@ -223,7 +223,7 @@ func power_laid() -> void:
 	if notes != null:
 		notes.answer("power_pallet")
 		notes.answer("power", {"how": "The solar blanket and the new battery kept the heater going."})
-	MHNotices.post("valid", "Solar blanket laid out", "The cabin now has %.1f kW more sunlight and a %d kWh battery: enough to run the heater, lights and scrubber all night." % [MHResources.revamp("power_pack_kw", 1.5), roundi(MHResources.revamp("power_pack_kwh", 10.0))], "log")
+	MHNotices.post("valid", "Solar blanket laid out", "The cabin now has %.1f kW more sunlight and a %d kWh battery: enough to run life support and the lights all night." % [MHResources.revamp("power_pack_kw", 1.5), roundi(MHResources.revamp("power_pack_kwh", 10.0))], "log")
 	var hud: Node = world.get("explore_hud")
 	if hud != null: hud.hide_equipment_note("Power pack")
 

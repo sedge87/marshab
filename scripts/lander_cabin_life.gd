@@ -2,10 +2,9 @@ extends Node
 
 ## The lander cabin, run by the new survival core (scripts/survival_core.gd;
 ## docs/systems-and-items.md §14 step 1). It's the first "base": a small
-## battery charged by the lander's panels, a heater, the lights and a CO₂
-## scrubber, each on a wall switch, and an oxygen tank behind a regulator.
-## Night one is a real choice: the battery can't run the heater, lights and
-## scrubber all night.
+## battery charged by the lander's panels and its power cell, and two wall
+## switches: life support (off, low or warm: the air and the heat, power +
+## hull, 21 Nov) and the lights. The oxygen port's dial shows the air.
 ##
 ## - The day/night clock calls advance() with the game hours that pass.
 ## - The cabin's real lights follow the core: they flicker when the battery is
@@ -20,7 +19,7 @@ const SWITCH := preload("res://scripts/cabin_switch.gd")
 ## the switches (the side away from the locker), facing the middle of the cabin.
 const PORT_SPOT := Vector3(.12, 1.12, 2.16)
 const PORT := preload("res://scripts/cabin_o2_port.gd")
-const SWITCH_SPOTS := {"heater": Vector3(-.95, 1.45, 2.06), "lights": Vector3(-.72, 1.45, 2.1), "scrubber": Vector3(-.49, 1.45, 2.13)}
+const SWITCH_SPOTS := {"heater": Vector3(-.95, 1.45, 2.06), "lights": Vector3(-.72, 1.45, 2.1)}
 
 var world: Node
 var core: RefCounted
@@ -88,10 +87,10 @@ func advance(hours: float, start_hour: float) -> void:
 	core.sipping_suit = suit != null and suit.active() and str(suit.where) == "outside" and not player_inside()
 	core.advance(hours, start_hour)
 
-## A cartridge plugged into the port: the tank grows by its oxygen, full.
-func add_cartridge(oxygen_kg: float) -> void:
-	core.tank_cap += oxygen_kg
-	core.tank_o2_kg = core.tank_cap
+## A cartridge plugged into an older game's port: a start-up part (power +
+## hull, 21 Nov), so it only freshens the air once.
+func add_cartridge(_oxygen_kg: float) -> void:
+	if not bool(core.vented): core.o2_kg = core.air_kg * .209 / core.O2_VOL
 	_since_runway = 99.0
 
 func player_inside() -> bool:
@@ -101,7 +100,6 @@ func toggle(which: String) -> void:
 	match which:
 		"heater": core.heater_mode = {"warm": "low", "low": "off", "off": "warm"}[core.heater_mode]
 		"lights": core.lights_on = not core.lights_on
-		"scrubber": core.scrubber_on = not core.scrubber_on
 	MHAudio.sfx("ui_click", -4.0, .05)
 	_since_runway = 99.0
 	for s in switches.values(): s.refresh()

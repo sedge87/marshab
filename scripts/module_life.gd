@@ -3,9 +3,11 @@ extends Node
 ## The General Module's own life support (step 3c, "Keeping it alive",
 ## docs/systems-and-items.md §14): built into its walls, run by the same
 ## survival core as the lander cabin (scripts/survival_core.gd, prefix
-## "module"). A CO₂ scrubber, a heater, lights and an Earth-filled oxygen
-## tank, on a battery with a strip of roof solar: enough for the days, not a
-## heated night. Pallet 2's solar blanket and battery, rolled up from beside
+## "module"). Life support (the air and the heat: power + hull, 21 Nov) and
+## lights, on a battery with a strip of roof solar: enough for the days, not a
+## heated night. Pallet 1's air cartridge is its one-off start-up part. The
+## hull wears; seams creak, then leak, and quakes and storms crack panels:
+## each a hiss you find and patch (scripts/module_leak.gd). Pallet 2's solar blanket and battery, rolled up from beside
 ## the lander and laid out at the module's outside socket
 ## (scripts/power_pack.gd), keep it going through the night. The power kit
 ## carrier (Walker 3) is the real fix, later. The lander stays the backup.
@@ -22,7 +24,7 @@ const RACK := "general_module_rack"
 const LEAK := preload("res://scripts/module_leak.gd")
 const COLD_START_C := -30.0      # version 2: set down cold, open to Mars, dark
 ## The switches on the rack's front (its local frame), left to right.
-const SWITCH_SPOTS := {"heater": Vector3(-.3, 1.45, .36), "lights": Vector3(-.08, 1.45, .36), "scrubber": Vector3(.14, 1.45, .36)}
+const SWITCH_SPOTS := {"heater": Vector3(-.3, 1.45, .36), "lights": Vector3(-.08, 1.45, .36)}
 ## The core's upgrade panel, right of the switches (scripts/core_panel.gd).
 const PANEL := preload("res://scripts/core_panel.gd")
 const PANEL_SPOT := Vector3(.42, 1.45, .36)
@@ -42,6 +44,10 @@ var _panel: StaticBody3D
 var commissioned := true
 var leak_found := false
 var leak: Node3D
+## The hull's open leaks (power + hull, 21 Nov): {at, facing, kind}, where
+## kind is "seam" (wear: a slow leak) or "crack" (a quake or storm: a fast one).
+var hull_leaks: Array = []
+var _leak_nodes: Array = []
 
 func setup(target_world: Node, state: Dictionary = {}) -> void:
 	world = target_world
@@ -65,6 +71,11 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 	leak_found = bool(state.get("leak_found", false))
 	_build_socket.call_deferred()
 	if not commissioned and leak_found: _spawn_leak.call_deferred()
+	add_to_group("hull_events")
+	for l in state.get("hull_leaks", []):
+		var a: Array = l
+		if a.size() >= 6: hull_leaks.append({"at": Vector3(a[0], a[1], a[2]), "facing": Vector3(a[3], 0, a[4]), "kind": str(a[5])})
+	_show_hull_leaks.call_deferred()
 
 ## Its base's carried zone (scripts/build_rules.gd), or {}.
 func zone() -> Dictionary:
@@ -97,12 +108,71 @@ func advance(hours: float, start_hour: float) -> void:
 	if not running() or hours <= 0.0: return
 	core.people = 1.0 if player_inside() else 0.0
 	core.advance(hours, start_hour)
+	if commissioned: _wear_check()
+
+# ---------- the hull (power + hull, 21 Nov) ----------
+
+## Worn far enough, a seam starts to creak and hiss: catch it with a patch.
+func _wear_check() -> void:
+	if float(core.hull_pct) >= MHResources.revamp("hull_seam_at_pct", 70.0): return
+	if hull_leaks.any(func(l): return str(l.kind) == "seam"): return
+	open_leak("seam")
+
+## A quake or a storm (scripts/site_weather.gd, weather.gd): the hull takes a
+## knock, and sometimes a panel cracks.
+func hull_event(kind: String) -> void:
+	if not running() or not commissioned: return
+	var damage := MHResources.revamp("hull_%s_damage_pct" % kind, 6.0)
+	var chance := MHResources.revamp("hull_%s_crack_chance" % kind, .25)
+	core.damage_hull(damage)
+	if randf() < chance: open_leak("crack")
+	_since_runway = 99.0
+
+## A new leak somewhere on the module's outer walls.
+func open_leak(kind: String) -> void:
+	var spots := wall_spots()
+	if spots.is_empty(): return
+	var spot: Dictionary = spots[randi() % spots.size()]
+	var record := {"at": spot.at, "facing": spot.facing, "kind": kind}
+	hull_leaks.append(record)
+	_show_leak(record)
+	_set_leak_rate()
+	if kind == "crack": MHAudio.sfx("suit_clamp", -2.0)
+	_since_runway = 99.0
+
+func _set_leak_rate() -> void:
+	var rate := 0.0
+	for l in hull_leaks:
+		rate += MHResources.revamp("hull_%s_leak_pct_per_h" % str(l.kind), .5)
+	core.leak_pct_per_h = rate
+
+func _show_hull_leaks() -> void:
+	for l in hull_leaks: _show_leak(l)
+	_set_leak_rate()
+
+func _show_leak(record: Dictionary) -> void:
+	var node: Node3D = LEAK.new()
+	node.kind = str(record.kind)
+	node.setup(self, record.at, record.facing)
+	node.set_meta("hull_leak", record)
+	_leak_nodes.append(node)
+
+## The patch kit on a leak: it's sealed, and the hull's mended a good way.
+func patch_leak(node: Node) -> void:
+	var record: Dictionary = node.get_meta("hull_leak", {})
+	hull_leaks.erase(record)
+	_leak_nodes.erase(node)
+	node.queue_free()
+	core.mend_hull(MHResources.revamp("hull_patch_mend_pct", 30.0) * (1.5 if str(record.get("kind", "")) == "crack" else 1.0))
+	_set_leak_rate()
+	MHAudio.sfx("suit_clamp", -4.0)
+	MHNotices.post("valid", "Seam sealed", "Hull at %d%%. The hiss has stopped." % roundi(float(core.hull_pct)))
+	_since_runway = 99.0
 
 func toggle(which: String) -> void:
 	match which:
 		"heater": core.heater_mode = {"warm": "low", "low": "off", "off": "warm"}[core.heater_mode]
 		"lights": core.lights_on = not core.lights_on
-		"scrubber": core.scrubber_on = not core.scrubber_on
 	MHAudio.sfx("ui_click", -4.0, .05)
 	_since_runway = 99.0
 	for s in switches.values(): s.refresh()
@@ -130,10 +200,9 @@ func blanket(on: bool, charge := .5) -> float:
 	if on: pressurise_try()
 	return share
 
-## Pallet 1's air cartridge on the socket: the module's tank grows by its oxygen, full.
-func add_cartridge(oxygen_kg: float) -> void:
-	core.tank_cap += oxygen_kg
-	core.tank_o2_kg = core.tank_cap
+## Pallet 1's air cartridge on the socket: the start-up part (power + hull,
+## 21 Nov). It doesn't run down; with the blanket in, the module comes alive.
+func add_cartridge(_oxygen_kg: float) -> void:
 	_since_runway = 99.0
 	pressurise_try()
 
@@ -291,6 +360,24 @@ func _spawn_leak() -> void:
 	leak = LEAK.new()
 	leak.setup(self, spot.at, spot.facing)
 
+## Every outer wall spot of the carried zone, about 1.2 m up: [{at, facing}].
+func wall_spots() -> Array:
+	var b: Node = world.builder
+	var cells: Array = zone().get("cells", [])
+	var others := {}
+	for z in b.zones:
+		if bool(z.get("carried", false)): continue
+		for c in z.cells: others[c] = true
+	var out: Array = []
+	var cell := float(b.CELL)
+	for c in cells:
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var beyond: Vector2i = c + d
+			if cells.has(beyond) or others.has(beyond): continue
+			var edge := Vector2(c.x, c.y) + Vector2(d.x, d.y) * .5
+			out.append({"at": Vector3(edge.x * cell - d.x * .22, _floor() + 1.2, edge.y * cell - d.y * .22), "facing": Vector3(-d.x, 0, -d.y)})
+	return out
+
 ## {at, facing} for the leak: a wall edge of the carried zone with nothing
 ## beyond it (not the airlock's side), the furthest from the airlock.
 func leak_spot() -> Dictionary:
@@ -345,6 +432,8 @@ func patched() -> void:
 
 ## Refolded (A4): its outside socket packs away with it.
 func _exit_tree() -> void:
+	for node in _leak_nodes:
+		if is_instance_valid(node): node.queue_free()
 	if socket != null and is_instance_valid(socket): socket.queue_free()
 	if _panel != null and is_instance_valid(_panel): _panel.queue_free()
 	for s in switches.values():
@@ -354,4 +443,5 @@ func export_state() -> Dictionary:
 	var out: Dictionary = core.export_state()
 	out["commissioned"] = commissioned
 	out["leak_found"] = leak_found
+	out["hull_leaks"] = hull_leaks.map(func(l): return [l.at.x, l.at.y, l.at.z, l.facing.x, l.facing.z, l.kind])
 	return out

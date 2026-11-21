@@ -119,13 +119,16 @@ func _draw_cabin() -> void:
 	var core: RefCounted = cabin.core
 	if not core.powered(): return
 	var u := size.y / 400.0
-	var o2_hours := float(core.tank_o2_kg) / .035
+	# Power + hull (21 Nov): the air tile is the air's state, not a tank.
+	var air := float(core.air_fraction())
+	var ahead: Dictionary = cabin.get("ahead") if cabin.get("ahead") != null else {}
+	var stale_in := float(ahead.get("air", -1.0))
 	var water_days := float(core.water_sols())
 	var solar := float((core.last as Dictionary).get("solar", 0.0))
 	var rations := int(pod.get("rations")) if pod != null and pod.get("rations") != null else -1
 	var temp := float(core.temp_c)
 	var tiles := [
-		["wind", "AIR", "%d h" % roundi(o2_hours) if o2_hours < 48.0 else "%d sol" % floori(o2_hours / 24.0), float(core.tank_o2_kg) / maxf(.01, float(core.tank_cap)), _level(o2_hours, 12.0, 4.0)],
+		["wind", "AIR", ("%d h" % maxi(1, roundi(stale_in))) if stale_in >= 0.0 else ("OK" if air > .7 else "STALE"), air, _level(air * 100.0, 70.0, 35.0)],
 		["droplets", "WATER", "%.1f L" % float(core.water_l), float(core.water_l) / maxf(.01, float(core.water_cap)), _level(water_days, 1.0, .4)],
 		["zap", "POWER", "%d%%" % roundi(float(core.battery_pct())), float(core.battery_pct()) / 100.0, _level(float(core.battery_pct()), 35.0, 15.0)],
 		["thermometer", "HEAT", "%d°" % roundi(temp), clampf((temp + 10.0) / 35.0, 0.0, 1.0), _level(temp, 12.0, 5.0)],

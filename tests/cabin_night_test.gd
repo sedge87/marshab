@@ -25,7 +25,7 @@ func _initialize() -> void:
 	world.day_night.frozen = true
 	var cabin = world.cabin_life
 	_check(cabin != null and cabin.running(), "the world runs the lander cabin on the new core")
-	_check(cabin.switches.size() == 3 and cabin.switches.values().all(func(s): return s.get_parent() == world.lander), "three switches on the cabin wall")
+	_check(cabin.switches.size() == 2 and cabin.switches.values().all(func(s): return s.get_parent() == world.lander), "two switches on the cabin wall: life support and lights")
 	var player: Node3D = world.player
 	player.global_position = world.lander.to_global(Vector3(0, world.lander.DECK + .9, .3))
 	for i in 3: await process_frame
@@ -39,7 +39,7 @@ func _initialize() -> void:
 	_check(not cabin.core.lights_on and is_zero_approx((lights[0] as Light3D).light_energy), "the lights switch goes dark (was %.2f)" % lit_energy)
 	cabin.switches.lights.interact()
 	var heater_prompt: Dictionary = cabin.switches.heater.interaction_prompt()
-	_check(str(heater_prompt.label).begins_with("Cabin heater") and str(heater_prompt.primary) == "Set to Low", "the heater's prompt (%s)" % str(heater_prompt))
+	_check(str(heater_prompt.label).begins_with("Cabin life support") and str(heater_prompt.primary) == "Set to Low", "the heater's prompt (%s)" % str(heater_prompt))
 	cabin.switches.heater.interact()
 	_check(cabin.core.heater_mode == "low", "E sets the heater to Low")
 	cabin.core.heater_mode = "warm"

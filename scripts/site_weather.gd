@@ -568,6 +568,7 @@ func marsquake() -> void:
 	MHAudio.sfx("quake_rumble", -2.0, 0.0)
 	# The opening stays quiet: the ground shakes, but no facts till the module's down.
 	if world.has_method("opening_part") and int(world.opening_part()) < 4: return
+	if is_inside_tree(): get_tree().call_group("hull_events", "hull_event", "quake")   # power + hull: a knock, maybe a crack
 	MHAudio.voice("seismic_activity")
 	var weather = world.get("weather")
 	if weather != null and weather.has_method("toast"):

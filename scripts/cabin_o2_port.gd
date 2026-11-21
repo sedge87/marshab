@@ -1,9 +1,9 @@
 extends StaticBody3D
 
-## The cabin wall's oxygen port (scripts/lander_cabin_life.gd): a dial that
-## shows how much is left in the cabin's oxygen tank, and the cradle a
-## cartridge plugs into (scripts/o2_cartridge.gd). No lettering: the needle,
-## a green tick at full and a dark one at empty say it all.
+## The cabin wall's air port (scripts/lander_cabin_life.gd): a dial that
+## shows how good the cabin air is (power + hull, 21 Nov: there's no tank),
+## and the cradle an older game's cartridge plugs into (scripts/o2_cartridge.gd).
+## No lettering: the needle, a green tick at fresh and a dark one at unsafe.
 
 const MODEL := preload("res://assets/models/storm_cargo/cabin_o2_port.glb")
 const MHPalette := preload("res://scripts/mh_palette.gd")
@@ -34,15 +34,20 @@ func setup(target_cabin: Node) -> void:
 
 func fraction() -> float:
 	var core: RefCounted = cabin.core if cabin != null else null
-	if core == null or float(core.tank_cap) <= 0.0: return 0.0
-	return clampf(float(core.tank_o2_kg) / float(core.tank_cap), 0.0, 1.0)
+	if core == null: return 0.0
+	return clampf(float(core.air_fraction()), 0.0, 1.0)
 
 func interaction_prompt() -> Dictionary:
 	var core: RefCounted = cabin.core if cabin != null else null
-	var label := "Cabin oxygen"
+	var label := "Cabin air"
 	if core != null:
-		var hours := float(core.tank_o2_kg) / maxf(.001, MHResources.setting("o2_per_person", .84) / 24.0)
-		label += " · about %s" % ("%d h" % roundi(hours) if hours < 48.0 else "%.0f sols" % (hours / 24.0))
+		var ahead: Dictionary = cabin.ahead
+		var h := float(ahead.get("air", -1.0))
+		var thin := float(ahead.get("oxygen", -1.0))
+		if thin >= 0.0 and (h < 0.0 or thin < h): h = thin
+		if not bool(core.life_on()): label += " · life support %s" % ("off" if core.powered() else "has no power")
+		elif h >= 0.0: label += " · stale in about %d h" % maxi(1, roundi(h))
+		else: label += " · fresh"
 	return {"label": label}
 
 func interact(_player: Node = null) -> bool:

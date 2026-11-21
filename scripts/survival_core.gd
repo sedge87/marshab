@@ -5,9 +5,17 @@ extends RefCounted
 ## builder. Step 1 runs the lander cabin with it; later steps add the
 ## habitat's rooms and machines to the same model.
 ##
+## Power + hull (21 Nov, docs/systems-and-items.md §1.3): the core is the
+## room's life support. It needs only power and a sound hull. There's no
+## oxygen tank, no separate scrubber: one switch (heater_mode, shown as "life
+## support": off, low or warm) runs the scrubbing, the oxygen and the heat.
+## With no power the cabin air is the buffer: it goes stale and cold over
+## hours. A leak (open seams, `leak_pct_per_h`) drains the air; the core
+## makes it up while it can, at a cost in battery.
+##
 ## Stores:
 ## - the battery (kWh);
-## - the oxygen tank (kg);
+## - the hull (0–100 %), worn by time, quakes and storms (scripts/module_life.gd);
 ## - the cabin air: kg of O₂ and CO₂ in its free volume;
 ## - the cabin temperature (°C), with a heat capacity;
 ## - the lander's water tank (L): you drink from it wherever you are (the
@@ -18,15 +26,15 @@ extends RefCounted
 ## - each machine that's on draws power, and all of it ends up as heat;
 ## - the hull loses heat to the outside;
 ## - people breathe O₂ in, and breathe CO₂ and body heat out;
-## - the scrubber takes CO₂ out;
-## - the regulator tops O₂ up from the tank (no power needed).
+## - with life support on and powered, CO₂ is scrubbed and O₂ remade;
+## - leaks take air out, and the core makes it up (power) while it can.
 ##
 ## When the battery is flat, every powered machine stops.
 ##
 ## The lander cabin is self-sufficient (the user, 8 Nov: a lifepod, too small
 ## to be a base; docs/opening-days.md): a small radioisotope unit gives it
-## power day and night, it remakes oxygen into its tank, and it recycles its
-## water. Only food runs down. The General Module has none of that.
+## power day and night, and it recycles its water. Only food runs down. The
+## General Module has none of that.
 ##
 ## The same model gives the alerts (one engine for the icon row, the slate and
 ## the voices) and the runway: run a copy forward and see when each store
@@ -47,16 +55,23 @@ const COLD_LIMITS := [12.0, 0.0]
 
 var battery_cap := 6.0
 var battery_kwh := 6.0
-var tank_cap := 3.0
-var tank_o2_kg := 3.0
 var air_kg := 18.0
 var o2_kg := 0.0
 var co2_kg := 0.0
 var temp_c := 20.0
 var people := 1.0                # breathing in here now
+## The life-support switch: "off", "low" (10 °C) or "warm" (20 °C). It runs
+## the scrubbing and the oxygen as well as the heat.
 var heater_mode := "warm"
 var lights_on := true
-var scrubber_on := true
+## Old name kept for older code and saves: the life support is on.
+var scrubber_on: bool:
+	get: return heater_mode != "off"
+	set(value):
+		if not value: heater_mode = "off"
+		elif heater_mode == "off": heater_mode = "low"
+var hull_pct := 100.0            # wear, quakes and storms take it down; patches put it back
+var leak_pct_per_h := 0.0        # of the cabin air, through open seams (set by the room)
 var last := {}                   # the last sub-step's flows (kW): solar, draw, heater, loss
 var vented := false              # open to Mars (the lander's hatch is open): no air to breathe
 var pack_kw := 0.0               # pallet 2's solar blanket, laid out by the lander (peak kW)
@@ -85,12 +100,6 @@ func _init(room := "cabin") -> void:
 	self_sufficient = room == "cabin" and n("cabin_self_sufficient", 1.0) > 0.0
 	battery_cap = m("cabin_battery_kwh", 6.0)
 	battery_kwh = battery_cap
-	tank_cap = m("cabin_o2_tank_kg", 3.0)
-	tank_o2_kg = tank_cap
-	if self_sufficient:
-		# Robot run 3: suit refills (0.28 kg each) emptied the old 0.84 kg tank.
-		tank_cap = maxf(tank_cap, n("cabin_o2_store_kg", 3.0))
-		tank_o2_kg = tank_cap
 	water_cap = maxf(n("cabin_water_l", 7.5), 12.0)
 	water_l = n("cabin_water_l", 7.5)
 	air_kg = m("cabin_air_m3", 15.0) * AIR_DENSITY
@@ -116,6 +125,19 @@ func co2_pct() -> float:
 
 func powered() -> bool:
 	return battery_kwh > .0005
+
+## Life support running: switched on, with power.
+func life_on() -> bool:
+	return powered() and heater_mode != "off"
+
+## The air at a glance, 0–1: 1 is fresh, 0 is unsafe (stale or thin).
+func air_fraction() -> float:
+	var stale := clampf((co2_pct() + still_co2_pct) / CO2_LIMITS[1], 0.0, 1.0)
+	var thin := clampf((20.9 - o2_pct()) / (20.9 - O2_LIMITS[1]), 0.0, 1.0)
+	return 1.0 - maxf(stale, thin)
+
+func leaking() -> bool:
+	return leak_pct_per_h > 0.0 and not vented
 
 func battery_pct() -> float:
 	return 100.0 * battery_kwh / maxf(.001, battery_cap)
@@ -153,17 +175,20 @@ func step(dt: float, outside: float, sun: float) -> void:
 	if self_sufficient: water_l = minf(water_cap, water_l + n("water_per_sol_l", 3.0) * 1.5 / 24.0 * dt)
 	var on := powered()
 	var draw := 0.0
+	var life := on and heater_mode != "off"
 	if on:
 		draw += m("cabin_avionics_kw", .1)
 		if lights_on: draw += m("cabin_lights_kw", .15)
-		if scrubber_on: draw += m("cabin_scrubber_kw", .25)
+		if life: draw += m("cabin_scrubber_kw", .25)
+	# Slow wear on the seams (none on the lander: it's the lifepod).
+	if not vented: hull_pct = maxf(0.0, hull_pct - m("cabin_hull_wear_pct_per_h", 0.0) * dt)
 	var body := people * n("body_heat_kw", .1)
 	var loss := m("cabin_ua_kw_per_c", .012) * (temp_c - outside)
 	var heat_cap := m("cabin_heat_kwh_per_c", .2)
 	# The heater makes up the loss, and closes the gap to its setting over
 	# about half an hour.
 	var heater := 0.0
-	if on and heater_mode != "off":
+	if life:
 		var want := loss - draw - body + (heater_target() - temp_c) * heat_cap / .5
 		heater = clampf(want, 0.0, m("cabin_heater_kw", 1.5))
 	draw += heater
@@ -175,18 +200,25 @@ func step(dt: float, outside: float, sun: float) -> void:
 	if vented:
 		last = {"solar": solar, "draw": draw, "heater": heater, "loss": loss}
 		return
-	if on or people <= 0.0: still_co2_pct = maxf(0.0, still_co2_pct - n("still_air_clear_pct_per_h", 10.0) * dt)
+	if life or people <= 0.0: still_co2_pct = maxf(0.0, still_co2_pct - n("still_air_clear_pct_per_h", 10.0) * dt)
 	else: still_co2_pct = minf(8.0, still_co2_pct + people * n("still_air_co2_pct_per_h", .25) * dt)
 	o2_kg = maxf(0.0, o2_kg - people * MHResources.setting("o2_per_person", .84) / 24.0 * dt)
 	co2_kg += people * MHResources.setting("co2_per_person", 1.0) / 24.0 * dt
-	if on and scrubber_on:
+	# A leak takes the air out, O₂ and CO₂ alike.
+	if leak_pct_per_h > 0.0:
+		var share := clampf(leak_pct_per_h / 100.0 * dt, 0.0, 1.0)
+		o2_kg -= o2_kg * share
+		co2_kg -= co2_kg * share
+	if life:
 		co2_kg = maxf(air_kg * .0004 / CO2_VOL, co2_kg - m("cabin_scrub_kg_per_h", .1) * dt)
-	if self_sufficient and on: tank_o2_kg = minf(tank_cap, tank_o2_kg + n("cabin_o2_make_kg_per_h", .25) * dt)
-	var short := air_kg * .209 / O2_VOL - o2_kg
-	if short > 0.0 and tank_o2_kg > 0.0:
-		var feed := minf(minf(short, .3 * dt), tank_o2_kg)
-		tank_o2_kg -= feed
-		o2_kg += feed
+		# Remake the O₂ (and make up a leak) as fast as it can, paid in power.
+		var short := air_kg * .209 / O2_VOL - o2_kg
+		if short > 0.0:
+			var cost := n("o2_make_kwh_per_kg", 1.5)
+			var feed := minf(minf(short, m("cabin_o2_make_kg_per_h", .3) * dt), battery_kwh / cost)
+			o2_kg += feed
+			battery_kwh = maxf(0.0, battery_kwh - feed * cost)
+			draw += feed * cost / maxf(dt, .0001)
 	last = {"solar": solar, "draw": draw, "heater": heater, "loss": loss}
 
 ## Outside temperature at an hour of the sol (the day/night clock's own curve).
@@ -201,17 +233,15 @@ func vent() -> void:
 	vented = true
 	temp_c -= m("cabin_vent_heat_c", 4.0)
 
-## The hatch is shut and latched: the regulator refills the cabin from the
-## tank (a small cost each time). A tank too low refills it only partly.
-## Returns the oxygen it took.
+## The hatch is shut and latched: the airlock's buffer refills the cabin,
+## and the core pays for it from the battery when it can (power + hull: no
+## tank). Returns the battery it took (kWh).
 func repressurise() -> float:
 	if not vented: return 0.0
 	vented = false
-	var need := m("cabin_repress_o2_kg", .03)
-	var got := take_oxygen(need)
-	o2_kg = air_kg * .209 / O2_VOL * (got / need if need > 0.0 else 1.0)
+	o2_kg = air_kg * .209 / O2_VOL
 	co2_kg = air_kg * .0004 / CO2_VOL
-	return got
+	return take_energy(m("cabin_repress_o2_kg", .03) * n("o2_make_kwh_per_kg", 1.5))
 
 ## Pallet 2's power pack is set up: a solar blanket and a battery, which
 ## arrives part-charged.
@@ -247,11 +277,22 @@ func water_sols() -> float:
 func thirsty() -> bool:
 	return dry_hours >= n("thirst_after_h", 12.0)
 
-## Up to `kg` of oxygen from the tank (filling a suit); returns what it gave.
+## Up to `kg` of oxygen made for a suit, paid from the battery; nothing
+## without power or with the life support off. Returns what it gave.
 func take_oxygen(kg: float) -> float:
-	var got := clampf(kg, 0.0, tank_o2_kg)
-	tank_o2_kg -= got
+	if not life_on(): return 0.0
+	var cost := n("o2_make_kwh_per_kg", 1.5)
+	var got := clampf(kg, 0.0, battery_kwh / cost)
+	battery_kwh -= got * cost
 	return got
+
+## Seams patched: the hull back up by `pct`, and the leak rate set again by
+## the room (scripts/module_life.gd).
+func mend_hull(pct: float) -> void:
+	hull_pct = clampf(hull_pct + pct, 0.0, 100.0)
+
+func damage_hull(pct: float) -> void:
+	hull_pct = clampf(hull_pct - pct, 0.0, 100.0)
 
 ## Up to `kwh` from the battery (charging a suit); returns what it gave.
 func take_energy(kwh: float) -> float:
@@ -286,25 +327,24 @@ func runway(start_hour: float, horizon := 24.0) -> Dictionary:
 ## chain}. `ahead` is a runway() result (optional): it adds the times.
 func alerts(ahead: Dictionary = {}) -> Array:
 	var out: Array = []
+	var life_link := ["wind", "Life support " + (heater_mode if life_on() else ("off" if powered() else "no power")), life_on()]
 	var co2 := co2_pct() + still_co2_pct
 	if co2 >= CO2_LIMITS[0]:
 		out.append({"id": prefix + "_co2", "level": "critical" if co2 >= CO2_LIMITS[1] else "warning", "title": room_name + " air going stale",
-			"text": ("CO₂ at %.1f%% round you: with the fans off, your breath pools. Suit up, or get the power back." if still_co2_pct > .3 else "CO₂ at %.1f%%. The scrubber needs power and switching on.") % co2,
-			"chain": [["wind", "Scrubber " + ("on" if scrubber_on and powered() else "off"), scrubber_on and powered()], ["heart-pulse", "You", false]]})
+			"text": ("CO₂ at %.1f%% round you: with the fans off, your breath pools. Suit up, or get the power back." if still_co2_pct > .3 else "CO₂ at %.1f%%. Life support needs power and switching on.") % co2,
+			"chain": [life_link, ["heart-pulse", "You", false]]})
 	var o2 := o2_pct()
 	if o2 < O2_LIMITS[0]:
 		out.append({"id": prefix + "_o2", "level": "critical" if o2 < O2_LIMITS[1] else "warning", "title": room_name + " oxygen low",
-			"text": "O₂ at %.1f%%." % o2, "chain": [["wind", "Tank %.1f kg" % tank_o2_kg, tank_o2_kg > 0.0], ["heart-pulse", "You", false]]})
-	if tank_o2_kg <= 0.0:
-		out.append({"id": prefix + "_tank", "level": "critical", "title": room_name + " oxygen tank empty",
-			"text": "Nothing left to top the cabin air up.", "chain": [["wind", "Tank empty", false]]})
-	elif tank_o2_kg < .5 * MHResources.setting("o2_per_person", .84):
-		out.append({"id": prefix + "_tank", "level": "warning", "title": room_name + " oxygen tank low",
-			"text": "%.1f kg left: under half a sol." % tank_o2_kg, "chain": [["wind", "Tank %.1f kg" % tank_o2_kg, false]]})
+			"text": "O₂ at %.1f%%%s." % [o2, ": the leak is beating the life support. Find it and patch it" if leaking() else ""], "chain": [life_link, ["heart-pulse", "You", false]]})
+	if leaking():
+		out.append({"id": prefix + "_leak", "level": "warning", "title": room_name + " leaking air",
+			"text": "Hull at %d%%. Listen for the hiss and look for frost: a patch kit seals it. Until then the life support makes up the air, and it costs power." % roundi(hull_pct),
+			"chain": [["triangle-alert", "Leak", false], ["zap", "Battery %d%%" % roundi(battery_pct()), powered()], life_link]})
 	if temp_c < COLD_LIMITS[0]:
 		out.append({"id": prefix + "_cold", "level": "critical" if temp_c < COLD_LIMITS[1] else "warning", "title": room_name + " cold",
-			"text": "%d °C inside. The heater is %s%s." % [roundi(temp_c), heater_mode, "" if powered() else ", with no power"],
-			"chain": [["flame", "Heater " + heater_mode, heater_mode != "off" and powered()], ["thermometer", "%d °C" % roundi(temp_c), false]]})
+			"text": "%d °C inside. Life support is %s%s." % [roundi(temp_c), heater_mode, "" if powered() else ", with no power"],
+			"chain": [["flame", "Life support " + heater_mode, life_on()], ["thermometer", "%d °C" % roundi(temp_c), false]]})
 	if not drinks: pass
 	elif water_l <= 0.0:
 		out.append({"id": "cabin_water", "level": "critical", "title": "No water left",
@@ -314,10 +354,10 @@ func alerts(ahead: Dictionary = {}) -> Array:
 			"text": "%.1f L left: under a sol." % water_l, "chain": [["droplet", "Tank %.1f L" % water_l, false]]})
 	if not powered():
 		out.append({"id": prefix + "_power", "level": "warning", "title": room_name + " battery flat",
-			"text": "Lights, fans, scrubber and heater are off until the sun charges it. It'll get cold first, then the air goes stale.", "chain": [["zap", "Battery 0%", false], ["sun", "Waiting for the sun", true]]})
+			"text": "Life support and lights are off until the sun charges it. It'll get cold first, then the air goes stale.", "chain": [["zap", "Battery 0%", false], ["sun", "Waiting for the sun", true]]})
 	elif float(ahead.get("power", -1.0)) >= 0.0 and float(ahead.power) <= 4.0:
 		out.append({"id": prefix + "_power", "level": "advisory", "title": room_name + " battery runs out at %s" % _clock_after(float(ahead.power)),
-			"text": "At this rate. The heater is the biggest load.", "chain": [["zap", "Battery %d%%" % roundi(battery_pct()), false], ["flame", "Heater " + heater_mode, true]]})
+			"text": "At this rate. Heating is the biggest load: life support on Low saves it." + (" The leak adds to it." if leaking() else ""), "chain": [["zap", "Battery %d%%" % roundi(battery_pct()), false], ["flame", "Life support " + heater_mode, true]]})
 	return out
 
 static func _clock_after(hours: float) -> String:
@@ -327,9 +367,10 @@ static func _clock_after(hours: float) -> String:
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"battery_kwh": battery_kwh, "tank_cap": tank_cap, "tank_o2_kg": tank_o2_kg, "o2_kg": o2_kg, "co2_kg": co2_kg, "temp_c": temp_c,
-		"heater": heater_mode, "lights": lights_on, "scrubber": scrubber_on, "people": people, "vented": vented, "pack_kw": pack_kw, "pack_kwh": pack_kwh,
-		"water_cap": water_cap, "water_l": water_l, "dry_hours": dry_hours, "still_co2_pct": still_co2_pct}
+	return {"battery_kwh": battery_kwh, "o2_kg": o2_kg, "co2_kg": co2_kg, "temp_c": temp_c,
+		"heater": heater_mode, "lights": lights_on, "people": people, "vented": vented, "pack_kw": pack_kw, "pack_kwh": pack_kwh,
+		"water_cap": water_cap, "water_l": water_l, "dry_hours": dry_hours, "still_co2_pct": still_co2_pct,
+		"hull_pct": hull_pct, "leak_pct_per_h": leak_pct_per_h}
 
 func load_state(state: Dictionary) -> void:
 	if state.is_empty(): return
@@ -337,14 +378,16 @@ func load_state(state: Dictionary) -> void:
 	pack_kwh = float(state.get("pack_kwh", 0.0))
 	battery_cap = m("cabin_battery_kwh", 6.0) + pack_kwh
 	battery_kwh = clampf(float(state.get("battery_kwh", battery_kwh)), 0.0, battery_cap)
-	tank_cap = maxf(tank_cap, float(state.get("tank_cap", tank_cap)))   # a cartridge plugged in adds to it
-	tank_o2_kg = clampf(float(state.get("tank_o2_kg", tank_o2_kg)), 0.0, tank_cap)
 	o2_kg = float(state.get("o2_kg", o2_kg))
 	co2_kg = float(state.get("co2_kg", co2_kg))
 	temp_c = float(state.get("temp_c", temp_c))
 	heater_mode = str(state.get("heater", heater_mode)) if HEATER_MODES.has(str(state.get("heater", ""))) else heater_mode
 	lights_on = bool(state.get("lights", lights_on))
-	scrubber_on = bool(state.get("scrubber", scrubber_on))
+	# Older saves (before 21 Nov) had the scrubber on its own switch: a
+	# scrubber left on with the heater off becomes life support on Low.
+	if state.has("scrubber") and bool(state.scrubber) and heater_mode == "off" and not bool(state.get("vented", false)): heater_mode = "low"
+	hull_pct = clampf(float(state.get("hull_pct", 100.0)), 0.0, 100.0)
+	leak_pct_per_h = maxf(0.0, float(state.get("leak_pct_per_h", 0.0)))
 	people = float(state.get("people", people))
 	vented = bool(state.get("vented", vented))
 	water_cap = maxf(water_cap, float(state.get("water_cap", water_cap)))

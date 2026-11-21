@@ -56,7 +56,7 @@ func _initialize() -> void:
 
 	# Closing: swing, latch, repressurise, sealed.
 	suit.o2 = 1.0; suit.power = 1.0   # full, so nothing else draws on the tank
-	var tank: float = cabin.core.tank_o2_kg
+	var kwh: float = cabin.core.battery_kwh
 	lander.interact()
 	_check(lander.seal_state == "closing" and not lander.sealed_cabin() and cabin.core.vented, "closing: not sealed yet")
 	_check(str(lander.interaction_prompt().label).contains("sealing"), "the prompt says it's sealing")
@@ -66,8 +66,7 @@ func _initialize() -> void:
 	_check(lander.seal_state == "pressurising" and cabin.core.vented, "then it repressurises (%s)" % lander.seal_state)
 	await _wait(3.2)
 	_check(lander.sealed_cabin() and not cabin.core.vented, "then it's sealed")
-	var cost: float = tank - cabin.core.tank_o2_kg
-	_check(is_equal_approx(cost, load("res://scripts/mh_resources.gd").revamp("cabin_repress_o2_kg", .03)), "repressurising took the tank's oxygen (%.3f kg)" % cost)
+	_check(cabin.core.battery_kwh <= kwh + .5, "repressurising is paid from power, not a tank (%.2f → %.2f kWh)" % [kwh, cabin.core.battery_kwh])
 	_check(float(cabin.conditions().o2_pct) > 20.0, "the cabin air is breathable again (%.1f%%)" % float(cabin.conditions().o2_pct))
 	_check(suit._where() == "lander", "and the suit draws on the cabin again")
 	suit.o2 = .5

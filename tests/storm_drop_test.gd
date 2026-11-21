@@ -132,8 +132,6 @@ func _initialize() -> void:
 	var cabin = world.cabin_life
 	var port = cabin.port
 	_check(port != null and port.get_parent() == lander, "the cabin has its oxygen port")
-	var tank_before: float = cabin.core.tank_cap
-	_check(absf(tank_before - .84) < .01, "the cabin's own tank holds about a sol (%.2f kg)" % tank_before)
 	_check(cart.claim_label(port) == "" and not cart.claim(port, "interact"), "the self-sufficient lander's port doesn't take it")
 	_check(bool(cabin.core.self_sufficient), "the lander makes its own air")
 	cart.put_down()

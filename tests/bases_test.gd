@@ -158,6 +158,24 @@ func _initialize() -> void:
 	_check(not w2.visible, "folded into its core: nothing left standing")
 	_check(world.cores.has("w2") and world.cores.w2.running() and bool(world.cores.w2.commissioned), "its core runs its own life support, commissioned")
 	_check(world.cores.has("w2") and not is_same(world.cores.w2, world.module_life), "apart from Walker 1's")
+	# ---------- the hull (power + hull, 21 Nov) ----------
+	var life2: Node = world.cores.w2
+	_check(not life2.wall_spots().is_empty(), "the core has outer walls a leak can open on")
+	life2.core.hull_pct = 65.0
+	life2.advance(.1, 12.0)
+	_check(life2.hull_leaks.size() == 1 and str(life2.hull_leaks[0].kind) == "seam" and life2.core.leaking(), "worn below 70%, a seam creaks open and leaks")
+	seed(1)
+	for i in 8: life2.hull_event("quake")
+	var cracks: int = life2.hull_leaks.filter(func(l): return str(l.kind) == "crack").size()
+	_check(cracks >= 1 and float(life2.core.hull_pct) < 65.0, "quakes knock the hull and crack panels (%d cracks, hull %d%%)" % [cracks, roundi(life2.core.hull_pct)])
+	var saved: Dictionary = life2.export_state()
+	_check((saved.hull_leaks as Array).size() == life2.hull_leaks.size(), "open leaks are saved")
+	world.drop_field.tools = true
+	var leak_node: Node = life2._leak_nodes[0]
+	_check(str(leak_node.interaction_prompt().get("primary", "")) == "Patch it", "with the patch kit, E patches it (%s)" % str(leak_node.interaction_prompt()))
+	var hull_before := float(life2.core.hull_pct)
+	while not life2._leak_nodes.is_empty(): (life2._leak_nodes[0] as Node).interact()
+	_check(life2.hull_leaks.is_empty() and not life2.core.leaking() and float(life2.core.hull_pct) > hull_before, "every leak patched: sealed, hull mended (%d%%)" % roundi(life2.core.hull_pct))
 	builder.active_base = "w2"
 	_check(B.cell_reason(builder, Vector2i(roundi((spot.x + 90.0) / 3.0), roundi(spot.y / 3.0))).begins_with("Too far"), "you build only near the core")
 	_check(B.cell_reason(builder, Vector2i(roundi((spot.x + 20.0) / 3.0), roundi(spot.y / 3.0))) == "", "near it you can")

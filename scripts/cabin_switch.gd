@@ -1,11 +1,11 @@
 extends StaticBody3D
 
-## One of the lander cabin's wall switches (heater, lights, scrubber): a small
+## One of the lander cabin's wall switches (life support, lights): a small
 ## panel with a lamp that shows its state (green on, amber low, dark off). E
 ## changes it. No lettering on the model: the prompt names it.
 
 var cabin: Node                  # scripts/lander_cabin_life.gd
-var which := ""                  # "heater", "lights" or "scrubber"
+var which := ""                  # "heater" (the life support: off, low, warm) or "lights"
 var _lamp: StandardMaterial3D
 
 func setup(target_cabin: Node, kind: String) -> void:
@@ -70,7 +70,7 @@ func interaction_prompt() -> Dictionary:
 		"heater":
 			var next: String = {"warm": "low", "low": "off", "off": "warm"}[core.heater_mode]
 			var words: Dictionary = {"warm": "Warm (%d °C)" % roundi(core.n("cabin_warm_c", 20.0)), "low": "Low (%d °C)" % roundi(core.n("cabin_low_c", 10.0)), "off": "Off"}
-			return {"label": "%s heater · " % str(core.room_name) + words[core.heater_mode], "primary": "Set to " + str(words[next]).split(" (")[0]}
+			return {"label": "%s life support · " % str(core.room_name) + words[core.heater_mode], "primary": "Set to " + str(words[next]).split(" (")[0]}
 		"lights":
 			return {"label": "%s lights · " % str(core.room_name) + ("On" if core.lights_on else "Off"), "primary": "Switch off" if core.lights_on else "Switch on"}
 		"scrubber":

@@ -36,8 +36,8 @@ const ICONS := {"life_support_power": "zap", "power": "zap", "battery_sunset": "
 	"cold": "flame", "cold_spot": "flame", "water": "droplets", "food": "utensils", "health": "heart-pulse",
 	"radiation": "radiation", "breach": "shield", "repress": "gauge", "breakdown": "wrench", "worn": "wrench", "bunks": "bed-double", "blackout": "satellite",
 	"injury": "syringe", "fitness": "dumbbell", "wellbeing": "smile",
-	"cabin_power": "zap", "cabin_co2": "recycle", "cabin_o2": "wind", "cabin_tank": "wind", "cabin_cold": "flame",
-	"module_power": "zap", "module_co2": "recycle", "module_o2": "wind", "module_tank": "wind", "module_cold": "flame"}
+	"cabin_power": "zap", "cabin_co2": "recycle", "cabin_o2": "wind", "cabin_leak": "shield", "cabin_cold": "flame",
+	"module_power": "zap", "module_co2": "recycle", "module_o2": "wind", "module_leak": "shield", "module_cold": "flame"}
 ## A critical alert still active chimes (softly, no voice) this often.
 const CRITICAL_CHIME := 60.0
 
@@ -362,7 +362,7 @@ const EXPLAIN := {
 ## The voice line for an alert at a level (see tools/generate_voice.py).
 static func voice_line(id: String, level: String) -> String:
 	# The lander cabin's alerts use the habitat's lines.
-	id = {"cabin_tank": "o2", "module_tank": "o2"}.get(id, id.trim_prefix("cabin_").trim_prefix("module_"))
+	id = {"cabin_leak": "breach", "module_leak": "breach"}.get(id, id.trim_prefix("cabin_").trim_prefix("module_"))
 	return "resolved_" + id if level == "resolved" else "%s_%s" % [id, level]
 
 ## The first link of most chains: where the power is (or isn't) coming from.

@@ -5,9 +5,15 @@ extends StaticBody3D
 ## soft noise made here, louder as you close in) and breathes a faint puff
 ## of frost, so you can find it by ear or by eye. Pallet 3's patch kit
 ## seals it (scripts/module_life.gd patched()).
+##
+## Power + hull (21 Nov): the same leak is the hull's. kind "seam" is a worn
+## seam creaking open (quiet, a thin puff); "crack" a panel split by a quake
+## or a storm (loud, a jet of frost). The patch kit seals them
+## (module_life.patch_leak).
 
 const RATE := 22050.0
 var life: Node                   # scripts/module_life.gd
+var kind := "day4"               # "day4" (the opening's seam), "seam" or "crack"
 var _player: AudioStreamPlayer3D
 var _playback: AudioStreamGeneratorPlayback
 var _puff: CPUParticles3D
@@ -41,12 +47,12 @@ func setup(target_life: Node, at: Vector3, facing: Vector3) -> void:
 
 func _build_puff() -> void:
 	_puff = CPUParticles3D.new()
-	_puff.amount = 18
+	_puff.amount = {"seam": 8, "crack": 34}.get(kind, 18)
 	_puff.lifetime = 1.4
 	_puff.direction = Vector3(0, .2, 1)
 	_puff.spread = 18.0
 	_puff.initial_velocity_min = .25
-	_puff.initial_velocity_max = .5
+	_puff.initial_velocity_max = .5 if kind != "crack" else 1.1
 	_puff.gravity = Vector3(0, -.05, 0)
 	_puff.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	_puff.emission_box_extents = Vector3(.2, .01, .01)
@@ -82,7 +88,7 @@ func _build_hiss() -> void:
 	_player = AudioStreamPlayer3D.new()
 	_player.stream = gen
 	_player.bus = "SFX"
-	_player.volume_db = -8.0
+	_player.volume_db = {"seam": -14.0, "crack": -3.0}.get(kind, -8.0)
 	_player.unit_size = 1.6
 	_player.max_distance = 14.0
 	add_child(_player)
@@ -103,11 +109,13 @@ func _process(delta: float) -> void:
 
 func interaction_prompt() -> Dictionary:
 	var field: Node = life.world.get("drop_field")
-	if field != null and bool(field.tools): return {"label": "Hissing seam", "primary": "Patch it"}
-	return {"label": "Hissing seam · it needs a patch kit"}
+	var label: String = {"seam": "Creaking seam", "crack": "Cracked panel"}.get(kind, "Hissing seam")
+	if field != null and bool(field.tools): return {"label": label, "primary": "Patch it"}
+	return {"label": label + " · it needs a patch kit"}
 
 func interact(_actor: Node = null) -> bool:
 	var field: Node = life.world.get("drop_field")
 	if field == null or not bool(field.tools): return false
-	life.patched()
+	if kind == "day4": life.patched()
+	else: life.patch_leak(self)
 	return true

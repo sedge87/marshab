@@ -263,7 +263,7 @@ func _process(delta: float) -> void:
 			think("power")
 	# A cold cabin while you're in it.
 	var cabin: Node = world.get("cabin_life")
-	if cabin != null and cabin.running() and not bool(cabin.core.self_sufficient) and is_open("air") and stage("air") == "start" and float(cabin.core.tank_o2_kg) < float(cabin.core.tank_cap) * .3:
+	if cabin != null and cabin.running() and not bool(cabin.core.self_sufficient) and is_open("air") and stage("air") == "start" and float(cabin.core.air_fraction()) < .7:
 		think("air", "low")
 	# Rest, offered at a pause and never forced: in the cabin from dusk, once
 	# a sol. It passes when you sleep, or with the morning.

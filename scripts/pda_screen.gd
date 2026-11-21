@@ -774,14 +774,14 @@ func _cabin_rows(cabin: Node) -> Dictionary:
 		var h := float(ahead.get(key, -1.0))
 		return ok if h < 0.0 else "until %s" % core._clock_after(h)
 	var charging: bool = float(core.last.get("solar", 0.0)) > float(core.last.get("draw", 0.0))
-	var battery_text := "%d%% · %s · heater %s" % [roundi(core.battery_pct()), "charging" if charging else when.call("power", "lasts the day"), core.heater_mode]
+	var battery_text := "%d%% · %s · life support %s" % [roundi(core.battery_pct()), "charging" if charging else when.call("power", "lasts the day"), core.heater_mode]
 	var co2: float = core.co2_pct() + float(core.still_co2_pct)
-	var air_text := "CO₂ %.1f%% · O₂ tank %.1f kg · %s" % [co2, core.tank_o2_kg, "fresh " + when.call("air", "all day") if co2 < 1.0 else "stale"]
+	var air_text := "CO₂ %.1f%% · hull %d%%%s · %s" % [co2, roundi(core.hull_pct), " leaking" if core.leaking() else "", "fresh " + when.call("air", "all day") if co2 < 1.0 else "stale"]
 	var warm_text := "%d °C · %s" % [roundi(core.temp_c), "warm " + when.call("cold", "all day") if core.temp_c >= 12.0 else "cold"]
 	var tone := func(bad: bool, worse: bool) -> Color: return MHStyle.DANGER if worse else (MHStyle.WARN if bad else MHStyle.VALID)
 	return {"battery": {"tone": tone.call(core.battery_pct() < 25.0, not core.powered()), "fraction": core.battery_pct() / 100.0, "text": battery_text},
 		"warmth": {"tone": tone.call(core.temp_c < 12.0, core.temp_c < 0.0), "fraction": clampf((core.temp_c + 10.0) / 32.0, 0.0, 1.0), "text": warm_text},
-		"air": {"tone": tone.call(co2 >= 1.0 or core.tank_o2_kg < .4, co2 >= 3.0 or core.tank_o2_kg <= 0.0), "fraction": clampf(core.tank_o2_kg / core.tank_cap, 0.0, 1.0), "text": air_text}}
+		"air": {"tone": tone.call(co2 >= 1.0 or core.leaking() or core.o2_pct() < 19.5, co2 >= 3.0 or core.o2_pct() < 17.0), "fraction": clampf(core.air_fraction(), 0.0, 1.0), "text": air_text}}
 
 func _base_signature() -> String:
 	var hud: Node = world.get("explore_hud") if world != null else null

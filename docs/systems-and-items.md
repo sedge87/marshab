@@ -37,15 +37,16 @@ Each system has stores (what's kept), flows (what goes in and out each sol), how
 **One rule:** every sealed space (the lander cabin, each General Module or base, the HabRover) has life support built in, its **core**. The core needs only two things: **power** and a **sound hull**. There are no oxygen tanks, scrubbers, recyclers, oxygen generators or reserve racks to place, switch, fill or service. Air is a result, not a resource.
 
 - **Powered and sealed:** the air stays good and the cabin stays warm. Nothing to watch.
-- **No power:** the core stops. The cabin air is the buffer. It goes stale (CO₂ up, a headache, heavy breathing) and cold over **about 3 hours** for one person, then O₂ falls (your vision greys at the edges). That buffer is your time to fix the power or get out.
+- **No power, or the life support switched off:** the core stops. The cabin air is the buffer. It goes stale (CO₂ up, a headache, heavy breathing) and cold over **about 3–4 hours** for one person, then O₂ falls (your vision greys at the edges). That buffer is your time to fix the power or get out.
 - **A leak:** air drains through the gap. A small leak the core can keep up with costs battery. A big one beats it, and the runway counts down until it's patched.
 - **The runway** shows how long the air will stay good, with the cause in plain words: "no power: battery flat", "leak: aft seam". The same causes feed the alerts and Castle (§10f).
-- **The core's draw** is one load on the battery, heat included (§1.2). Lights stay their own switch, which is a real choice on a tight first night.
+- **The core's draw** is one load on the battery, heat included (§1.2). Its switch has three settings: off, low (10 °C) and warm (20 °C). Low is the tight-night choice: off saves the most but the air goes stale. Lights stay their own switch.
+- **The emergency pack** (a reworked Oxygen Reserve) is a carried battery and air bottle. Plugged into a dead space, it runs that space's core for about 6 hours. It refills itself on any powered core, so it's a rescue tool, not upkeep.
 - **Hull integrity (0–100 %)** is the core's second state, one per space. It's shown on the slate's Base view and the vehicle dash. It falls from three causes, and each one shows up as something physical you find, never just a number:
   - **Slow wear** (dust, cold cycles): a creaking seam, frost on a joint, a faint hiss. Catch it early with a quick patch and it never becomes a leak.
   - **Quakes and storms:** a cracked seam or punctured wall. You hear the hiss, find it (by sound, by frost, by dust being sucked in) and patch it by hand.
   - **Vehicle knocks** (hard landings, rolls, hitting rocks fast): a dented hull. A bad one opens a cab leak. Field-patch it, then get it properly repaired at the Garage.
-- **Fixing is hands-on and always beatable.** A hull patch is printed from feedstock. In an emergency you can improvise a worse temporary patch from scrap or a crate panel. Upgrades and discoveries stretch the limits but never remove them: tougher seams, a leak finder, faster patching, more battery, and a longer power-cut buffer.
+- **Fixing is hands-on and always beatable.** Pallet 3's patch kit seals a leak (as built 21 Nov: the kit is a tool, not used up). Later: an improvised, worse patch from scrap or a crate panel when the kit's not to hand. Upgrades and discoveries stretch the limits but never remove them: tougher seams, a leak finder, faster patching, more battery, and a longer power-cut buffer.
 - **The opening (master-design §6):** pallet 1's air cartridge is a one-off **start-up part**. It brings the General Module's core to life and never runs down. The day-4 seam that won't hold is your first hull lesson.
 - **Ice and water are not for breathing.** They're for drinking, food, materials and, later, fuel (§1.4).
 - **The feel we want (user, 21 Nov):** working on Mars like Mark Watney or Ryland Grace, and actively making discoveries, without tedium. The work is in problems you find, understand and fix with what's to hand, not in meters you keep topped up.
@@ -600,7 +601,7 @@ This covers the 141 catalogue items (`data/equipment_catalog.json`) and the 5 si
 | Large Planter | Rework | Planter (potatoes); Greenhouse only |
 | Air Recycler | Cut (21 Nov) | built into the life-support core (§1.3) |
 | Water Processor | Rework | Water processor |
-| Oxygen Reserve | Cut (21 Nov) | no oxygen stores; air comes from power (§1.3) |
+| Oxygen Reserve | Rework (21 Nov) | the **emergency pack**: a carried battery and air bottle that runs a dead space's core for about 6 hours (a rover stranded flat, a base after a blackout). It refills itself on any powered core, so it's never upkeep (§1.3) |
 | Thermal Control Unit | Cut (21 Nov) | heat is part of the core (§1.2) |
 | Cargo Rack | Rework | Storage rack: holds stock visibly |
 | Engineering Bench | Rework | Engineering Bench: repairs, spares, studying kit, scrapping |
@@ -636,7 +637,7 @@ This covers the 141 catalogue items (`data/equipment_catalog.json`) and the 5 si
 | Mission Planning Console | Rework | Operations desk: Earth's requests, map table; in the Lab |
 | Mars Survey Board | Merge into Operations desk |  |
 | Wall Cabin Heater | Cut (21 Nov) | heat is part of the core (§1.2) |
-| Portable Utility Heater | Cut (21 Nov) | the lander cabin's core heats it (§1.2) |
+| Portable Utility Heater | Merge into the emergency pack (21 Nov) | its heat is part of the pack |
 | Small Cargo Crate | Rework | pallet contents (found) |
 | Large Cargo Crate | Rework | pallet contents (found) |
 | Loaded Cargo Pallet | Rework | a cargo pallet on a walking carrier |
@@ -651,7 +652,7 @@ This covers the 141 catalogue items (`data/equipment_catalog.json`) and the 5 si
 | Hazard Bollard | Furnishing | outdoor look |
 | Compact Reactor | Keep | late, 10 kW |
 | Ice Extractor | Rework | Ice extractor: needs a pipe or an outpost tank |
-| Oxygen Generator | Cut (21 Nov) | air is not made from water; the discovery becomes a core upgrade (§6c) |
+| Oxygen Generator | Rework (21 Nov) | the core upgrade from "Oxygen from Mars water": a water-split backup that keeps the air going in a power cut (doubles the buffer), using water only then (§6c) |
 | Crew Lander | Rework | the lander: your first refuge |
 | Landing Seat | Keep | lander cabin |
 | Galley Kitchenette | Rework | the Galley (working): eat by hand (E), cooking automatic |
@@ -734,7 +735,7 @@ This covers the 141 catalogue items (`data/equipment_catalog.json`) and the 5 si
 | Compact reactor (site) | Keep | late, 10 kW |
 | Ice extractor (site) | Rework | on a cored deposit (no 7 m rule); a pipe or an outpost tank |
 | Regolith intake (site) | Rework | feeds the regolith printer |
-| Atmosphere processor (site) | Cut (21 Nov) | folded into the core upgrade |
+| Atmosphere processor (site) | Rework (21 Nov) | an outpost unit on its own solar: refills your suit far from home. Opens with the atmosphere-processor discovery |
 | Smelter | Merged | the Print Shop takes haematite directly |
 | **New:** Haematite miner | New | at outcrops; GAR-Y collects from it |
 | **New:** Outdoor cable, heated pipe | New | planned in Look, laid by GAR-Y |

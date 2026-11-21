@@ -59,7 +59,7 @@
     },
     "cold": {
       "stages": {
-        "start": "Cold in here. The heater's on the wall switch, if the battery can spare it."
+        "start": "Cold in here. Life support's on the wall switch: Warm, if the battery can spare it. Low, if it can't."
       },
       "journal": "Warm again. I'd forgotten how much I like my fingers."
     },

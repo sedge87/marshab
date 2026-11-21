@@ -137,6 +137,7 @@ func _announce(state: String, eta: float, storm_left: float) -> void:
 			MHAudio.voice("storm_forecast")
 			_show_toast("Dust storm forecast", "Orbiters see a storm coming: it arrives in about %d hours and will cut solar power by %d%%. Charge the batteries and switch off what you don't need." % [ceili(eta), cut], MHStyle.WARN)
 		"storm":
+			if is_inside_tree(): get_tree().call_group("hull_events", "hull_event", "storm")   # power + hull: grit at the seams
 			MHAudio.sfx("storm_alert")
 			MHAudio.voice("storm_arrived")
 			_show_toast("Dust storm", "Solar output is down %d%% for about %s. Batteries and any reactor carry the base until it clears." % [cut, _duration(storm_left)], MHStyle.DANGER)

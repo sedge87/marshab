@@ -204,7 +204,7 @@ func run() -> void:
 	step("Open pallet 1 (the module's cargo: leave it for now)")
 	drop.pallet.open(false)
 	await wait(5.0)
-	log_line("STATE", "cabin o2 %.2f kg, battery %d%%, water %.1f L" % [float(world.cabin_life.core.tank_o2_kg), roundi(world.cabin_life.core.battery_pct()), float(world.cabin_life.core.water_l)])
+	log_line("STATE", "cabin air %.2f, battery %d%%, water %.1f L" % [float(world.cabin_life.core.air_fraction()), roundi(world.cabin_life.core.battery_pct()), float(world.cabin_life.core.water_l)])
 
 	var field: Node = world.drop_field
 	# Back to the ridge's view of pallets 2 and 3 if they aren't known.
@@ -509,7 +509,7 @@ func refill(why := "") -> void:
 	while not (lander.sealed_cabin() and world.suit.full()) and t < 120.0:
 		await wait(1.0)
 		t += 1.0
-	if not world.suit.full(): got_stuck("the suit didn't fill in the cabin (o2 %.2f, power %.2f, where %s, seal %s, in cabin %s, hatch open %s, cabin o2 %.2f kg, battery %.2f kWh)" % [float(world.suit.o2), float(world.suit.power), str(world.suit.where), str(lander.seal_state), str(lander.cabin_contains(player.global_position)), str(lander.hatch_open()), float(world.cabin_life.core.tank_o2_kg), float(world.cabin_life.core.battery_kwh)])
+	if not world.suit.full(): got_stuck("the suit didn't fill in the cabin (o2 %.2f, power %.2f, where %s, seal %s, in cabin %s, hatch open %s, cabin air %.2f, battery %.2f kWh)" % [float(world.suit.o2), float(world.suit.power), str(world.suit.where), str(lander.seal_state), str(lander.cabin_contains(player.global_position)), str(lander.hatch_open()), float(world.cabin_life.core.air_fraction()), float(world.cabin_life.core.battery_kwh)])
 	var body: Node = world.get("body")
 	if body != null and body.peckish() and world.lifepod != null:
 		if world.lifepod.eat_ration(): log_line("EAT", "a ration")

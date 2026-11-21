@@ -415,7 +415,7 @@ func fill(share: float, source: String) -> bool:
 				got_o2 = sim.take_oxygen(want_o2 * o2_hours() * O2_KG_PER_HOUR) / (o2_hours() * O2_KG_PER_HOUR)
 				got_power = sim.take_energy(want_power * FULL_KWH) / FULL_KWH
 		"lander":
-			# The cabin's own tank and battery (scripts/lander_cabin_life.gd).
+			# The cabin's life support makes it from its battery (power + hull, scripts/lander_cabin_life.gd).
 			var cabin: Node = world.get("cabin_life")
 			if cabin != null and MHGame.simulation_on():
 				got_o2 = cabin.core.take_oxygen(want_o2 * o2_hours() * O2_KG_PER_HOUR) / (o2_hours() * O2_KG_PER_HOUR)
