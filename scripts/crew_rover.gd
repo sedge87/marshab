@@ -67,6 +67,7 @@ const TRAIL_MAX := 600
 const ALARM_EVERY := 4.0        # s between the cab alarm's tones
 const CABIN := preload("res://scripts/vehicle_cabin.gd")
 const EYE_FORWARD := .25        # m ahead of the model's Driver_Eye: a better view out the front (playtest 21 Nov)
+const EYE_UP := {"rover": .15}  # m above it: the HabRover's seat sat you too low (playtest 21 Nov)
 const BOARD_SECONDS := .85      # getting in or out, or up from the seat: the camera's move
 const CAB_EYE_HEIGHT := 1.4     # standing under the HabRover's ceiling
 ## Wrecks (21 Nov decision, docs/bases-and-vehicles.md): a hard hit, a fall or
@@ -360,7 +361,7 @@ func _fit_field_model(visual: Node3D) -> void:
 	var hatch := visual.find_child("Airlock_Entry", true, false) as Node3D
 	if hatch != null: _rear_m = absf(_body_point(hatch).z)
 	var eye := visual.find_child("Driver_Eye", true, false) as Node3D
-	if eye != null: _spec["cab_view"] = _body_point(eye) + Vector3.FORWARD * EYE_FORWARD
+	if eye != null: _spec["cab_view"] = _body_point(eye) + Vector3.FORWARD * EYE_FORWARD + Vector3.UP * float(EYE_UP.get(kind, 0.0))
 	var seat := visual.find_child("Driver_Seat", true, false) as Node3D
 	if seat != null: _spec["seat"] = _body_point(seat) + Vector3.UP * 1.0
 	_yoke = visual.find_child("Steering_Yoke", true, false) as Node3D
