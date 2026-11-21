@@ -125,8 +125,41 @@ func _initialize() -> void:
 			var parked: float = Vector2(walker.global_position.x - lander.global_position.x, walker.global_position.z - lander.global_position.z).length()
 			check(parked < 40.0, "Walker 1 parked %.0f m from the lander" % parked)
 			check(days.done("walker_home"), "the walker_home beat didn't count")
+			# Scene 5: dusk in the cabin. The crew's evening call, the hatch
+			# stays shut after dark, and the seat is sleep till dawn.
+			var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+			var sunset := float(cycle.get("sunset_hour", 19.0))
+			world.day_night.set_hour(sunset - 3.0)
+			player.global_position = lander.to_global(Vector3(0, lander.DECK + .9, .3))
+			lander.set_hatch(false)
+			await wait(4.0)
+			check(not (radio.heard as Dictionary).has("s1_dusk") and not (radio.queue as Array).has("s1_dusk"), "the evening call came before dusk")
+			world.day_night.set_hour(sunset - 1.0)
+			var waited := 0.0
+			while waited < 120.0 and not (radio.heard as Dictionary).has("s1_dusk"):
+				await wait(2.0)
+				waited += 2.0
+				if MHGame.sol_hour > sunset - .2: world.day_night.set_hour(sunset - .5)
+			check((radio.heard as Dictionary).has("s1_dusk"), "the evening call didn't play in the cabin at dusk")
+			await wait(2.0)
+			var gary_d: float = gary.global_position.distance_to(lander.ramp_foot(2.5))
+			check(str(gary.get("task")) == "goto" or gary_d < 4.0, "GAR-Y didn't head for the steps (%.0f m off)" % gary_d)
+			world.day_night.set_hour(sunset + .7)
+			await wait(1.0)
+			check(days.hatch_refusal().contains("Humour me"), "the hatch isn't shut for the first night: '%s'" % days.hatch_refusal())
+			check(days.straight_to_sleep(), "the seat isn't sleep till dawn on the first night")
+			world.sleep.open()
+			await wait(1.0)
+			check(bool(world.sleep.asleep), "strapping in didn't sleep: %s" % world.sleep.blocked_reason())
+			waited = 0.0
+			while waited < 120.0 and bool(world.sleep.asleep):
+				await wait(2.0)
+				waited += 2.0
+			await wait(2.0)
+			check(not bool(world.sleep.asleep) and days.done("slept"), "no dawn after the first night (asleep %s, nights %d, hour %.1f)" % [str(world.sleep.asleep), int(days.nights), MHGame.sol_hour])
+			check(days.hatch_refusal() == "", "the hatch is still shut after the night: '%s'" % days.hatch_refusal())
 	Engine.time_scale = 1.0
-	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander.")
+	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, and the seat sleeps you to dawn.")
 	else:
 		for f in failures: print("FAIL: ", f)
 	quit(0 if failures.is_empty() else 1)

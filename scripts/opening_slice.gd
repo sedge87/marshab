@@ -43,6 +43,7 @@ var nights := 0
 var reached: Array = []          # beat ids whose call has been rung
 var chapter := 1                 # 1 = sol 1's beats, 2 = sol 2's, 3 = done (callers read this)
 var _was_asleep := false
+var _bed_said := false           # sol 1's "back to the lander and sleep" thought, once
 var _check := 0.0
 const CHECK_EVERY := .5
 
@@ -54,10 +55,11 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	nights = int(saved.get("nights", 0))
 	reached = (saved.get("reached", []) as Array).duplicate()
 	chapter = int(saved.get("chapter", 1))
+	_bed_said = bool(saved.get("bed_said", false))
 	RADIO.opening_set = "slice"
 
 func export_state() -> Dictionary:
-	return {"version": version, "nights": nights, "reached": reached.duplicate(), "chapter": chapter}
+	return {"version": version, "nights": nights, "reached": reached.duplicate(), "chapter": chapter, "bed_said": _bed_said}
 
 # ---------- what the rest of the game asks ----------
 
@@ -108,6 +110,11 @@ func bed_led() -> bool:
 
 func quarters_built() -> bool:
 	return done("quarters")
+
+## Scene 5: on sol 1's night, strapping into the landing seat is sleep till
+## dawn, no choosing hours (scripts/sleep.gd open).
+func straight_to_sleep() -> bool:
+	return guided() and nights < 1 and done("walker_home")
 
 func ask_next() -> bool:
 	return false   # Castle doesn't hand out next steps: the world and the manifest do
@@ -218,6 +225,7 @@ func _process(delta: float) -> void:
 	var sleep: Node = world.get("sleep")
 	var asleep: bool = sleep != null and bool(sleep.get("asleep"))
 	if asleep:
+		if not _was_asleep and nights < 1 and done("walker_home"): _night_sounds()
 		_was_asleep = true
 		return
 	if _was_asleep:
@@ -226,18 +234,67 @@ func _process(delta: float) -> void:
 		if hour < 12.0: nights += 1
 	if not guided(): return
 	var radio: Node = world.get("radio")
+	# A beat's call rings when the beat's done, one a tick, in order. Done out
+	# of order, its call still comes (the calls react, they don't instruct).
 	for beat in BEATS:
 		var id := str(beat[0])
-		if reached.has(id): continue
-		# A beat's call rings when the beat before it is done (or it's done
-		# itself, out of order: then its call is a short catch-up, if any).
-		var before := _beat_before(id)
-		if before != "" and not done(before) and not done(id): break
+		if reached.has(id) or not done(id) or not _call_ready(id): continue
 		reached.append(id)
 		if radio != null and radio.has_method("ring"): radio.ring(str(beat[1]))
 		break
+	_bedtime()
+	_gary_to_the_steps()
 	if done("helmet_off"): chapter = STORY_DAYS + 1
 	elif done("slept"): chapter = 2
+
+## Some calls wait for the right moment as well as the beat.
+func _call_ready(id: String) -> bool:
+	match id:
+		# Scene 5: the evening call, once you're in the cabin with your
+		# helmet off, at dusk.
+		"walker_home":
+			var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+			return _in_cabin() and not _helmet_on() and (MHGame.sol_hour >= float(cycle.get("sunset_hour", 19.0)) - 1.5 or is_night())
+	return true
+
+func _in_cabin() -> bool:
+	var lander: Node = world.get("lander")
+	var me: Node3D = world.get("player")
+	return lander != null and me != null and bool(lander.cabin_contains(me.global_position))
+
+func _helmet_on() -> bool:
+	var suit: Node = world.get("suit")
+	return suit != null and bool(suit.helmet)
+
+## Scene 5: once Walker 1's home and you're in, GAR-Y parks by the steps.
+var _gary_parked := false
+func _gary_to_the_steps() -> void:
+	if _gary_parked or nights >= 1 or not done("walker_home") or not _in_cabin(): return
+	var gary: Node3D = world.get("scout_rover")
+	var lander: Node3D = world.get("lander")
+	if gary == null or lander == null or bool(gary.get("rescuing")): return
+	_gary_parked = true
+	gary.lead_to(lander.ramp_foot(2.5), true)
+
+## Sol 1, after the evening call: the day's done. One thought, one hint.
+func _bedtime() -> void:
+	if _bed_said or nights >= 1 or not reached.has("walker_home"): return
+	var radio: Node = world.get("radio")
+	if radio != null and (radio.on_air() or not (radio.queue as Array).is_empty()): return
+	_bed_said = true
+	var notes: Node = world.get("notes")
+	if notes != null: notes.think("bed", "late", {"home": "the lander"})
+	MHNotices.hint("Bed", "Look at the landing seat and press Z to sleep till morning.")
+
+## Scene 5, the night: as you drift off, Walker 1's servos shift outside and
+## GAR-Y chirps once. Real seconds: the clock's racing by now.
+func _night_sounds() -> void:
+	var walker: Node3D = world.get("walker")
+	var gary: Node3D = world.get("scout_rover")
+	await get_tree().create_timer(1.6, true, false, true).timeout
+	if walker != null and is_instance_valid(walker): MHAudio.sfx_at("mode_build", walker, -10.0, .45)
+	await get_tree().create_timer(1.4, true, false, true).timeout
+	if gary != null and is_instance_valid(gary): MHAudio.sfx_at("place", gary, -12.0, 1.9)
 
 func _beat_before(id: String) -> String:
 	for i in BEATS.size():

@@ -42,3 +42,44 @@ chat Castellanos: Pathfinder's on Mars. That's the official version. Unofficiall
 Castellanos: Is that... GAR-Y's alive? Oh, good. Hi, GAR-Y. [ID:s1_gary_01]
 chat Castellanos: Kai wants to know if it remembers him. I've told him it's a rover. [ID:s1_gary_02]
 => END
+
+# Scene 3: the three near pallets open. Rao's on the long camera.
+~ s1_pallets
+chat Rao: I can see three lids off from up here. You're tidier than the storm was. [ID:s1_pallets_01]
+=> END
+
+# Scene 3: the hitch bracket on GAR-Y, its first fitting.
+~ s1_hitch
+chat Tupou: Is that a tow bar? You've given it a tow bar. It's going to be insufferable. [ID:s1_hitch_01]
+=> END
+
+# Scene 4: the power module's in and Walker 1 wakes. Its deck screen says
+# what's wrong; nobody here repeats it.
+~ s1_walker
+Castellanos: Walker 1 just checked in. First time in three weeks. [ID:s1_walker_01]
+Achterberg: I've got its telemetry. I'll keep quiet. You're the one standing next to it. [ID:s1_walker_02]
+=> END
+
+# Scene 4: the seal patched; it walks home on its own.
+~ s1_seal
+Achterberg: Pressure's holding. That's a good patch. [ID:s1_seal_01]
+chat Castellanos: Walk it home before the light goes. [ID:s1_seal_02]
+=> END
+
+# Scene 5: the evening call, the whole crew for the first time. You're in the
+# cabin with your helmet off. Each one speaks about today, not their job.
+~ s1_dusk
+Castellanos: Everyone's here. Nobody talk over each other. Devan. [ID:s1_dusk_01]
+Rao: The dust came up after midday, right on time. I watched your plume all the way back. [ID:s1_dusk_02]
+Achterberg: Tell me that walker's seal held. [ID:s1_dusk_03]
+- It held. Not a puff.
+	set seal_proud
+	Achterberg: Good. Then I'll sleep tonight. [ID:s1_dusk_04a]
+- Ask me again in the morning.
+	set seal_honest
+	Achterberg: Fair. I'll ask. [ID:s1_dusk_04b]
+Mwangi: Eat something, please. A ration bar is a meal down there. I've checked. [ID:s1_dusk_05]
+Tupou: And say goodnight to GAR-Y. It's been parked by your steps for an hour, looking at the door. [ID:s1_dusk_06]
+Castellanos: The pad's tomorrow afternoon. If it's good, it's Thursday. [ID:s1_dusk_07]
+Castellanos: Good first day, Pathfinder. [ID:s1_dusk_08]
+=> END

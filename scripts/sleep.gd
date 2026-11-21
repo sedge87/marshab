@@ -60,6 +60,12 @@ func blocked_reason() -> String:
 func open(_bunk: Node = null) -> void:
 	if _panel != null and is_instance_valid(_panel): return
 	if _refuse(): return
+	# The opening slice's first night: strap in and you sleep till dawn.
+	var days: Node = world.get("opening_days")
+	if days != null and days.has_method("straight_to_sleep") and days.straight_to_sleep():
+		MHNotices.drop("Bed")
+		sleep(_until_sunrise())
+		return
 	_freeze(true)
 	_panel = Control.new()
 	_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

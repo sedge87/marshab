@@ -254,7 +254,7 @@ def main():
     # The radio's call scripts (data/radio/*.txt, scripts/radio.gd): every
     # "Who: words [ID:x]" line is orb_<x>.wav in that crew member's voice.
     by_short = {str(p.get("short", p["name"])).lower(): p for p in ORBITER["people"] if "voice" in p}
-    for script in sorted((ROOT / "data" / "radio").glob("*.txt")):
+    for script in sorted((ROOT / "data" / "radio").rglob("*.txt")):   # slice/ too
         for raw in script.read_text(encoding="utf-8").splitlines():
             body = raw.strip()
             if body.startswith("?"):
