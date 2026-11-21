@@ -58,7 +58,7 @@ The real reasons, which shape the art:
   - Prompts and status say "hatch".
   - The Garage's hangar door stays the roll-up shutter.
 - **`scripts/companion_rover.gd`:** the airlock trip (`_start_trip`, `_trip_step`, `in_airlock_trip()`), with the autonomy rules above. Orders across the hull are allowed.
-- **Tests:** `gar_y_nav_test` covers the round trip, and `airlock_interlock_test` is updated. **Renders:** `tools/hatch_look.gd` and `tools/gary_airlock_look.gd`.
+- **Tests:** `gar_y_nav_test` covers the round trip, and `airlock_interlock_test` is updated. **Renders:** `tools/bulkhead_hatch_look.gd` and `tools/gary_airlock_look.gd`.
 - **Not yet:**
   - no hatch sound beyond the old door sounds;
   - shutting the room hatches is only visual for now: they aren't wired into how a breach spreads (module_life.gd).
