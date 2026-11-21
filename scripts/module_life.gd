@@ -98,7 +98,12 @@ func player_inside() -> bool:
 	if player == null or world.builder.build_mode: return false
 	if not world.builder.is_inside(player.global_position): return false
 	var cell := Vector2i(roundi(player.global_position.x / world.builder.CELL), roundi(player.global_position.z / world.builder.CELL))
-	return (zone().get("cells", []) as Array).has(cell)
+	if (zone().get("cells", []) as Array).has(cell): return true
+	# Rooms built onto this core share its life support (power + hull, 21 Nov).
+	# Before, a Quarters liner fell back to the old habitat sim with no
+	# scrubber, so its air went stale on the first night (robot run, 22 Nov).
+	var here: Dictionary = world.builder._zone_at_point(Vector2(player.global_position.x, player.global_position.z))
+	return not here.is_empty() and not here.has("at") and not zone().is_empty() and str(here.get("base", "w1")) == base_id
 
 ## Lights on and powered: the builder's lamps follow this (grid_power_online).
 func lit() -> bool:
