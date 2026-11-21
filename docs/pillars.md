@@ -48,14 +48,15 @@ Survival is strict outside, and the line between inside and outside is clear. Th
 
 | Where you are | What keeps you alive | What can go wrong |
 |---|---|---|
-| **In a hab** | the hab's power, then air, then heat | only what you or Mars cause, such as skimping on batteries before a dust storm or a seal you never serviced. The cabin air falls over hours with alarms, so you suit up indoors and fix it, or go to the lander. |
-| **In the pressurised rover** | its own air and power | running it dry far from home |
+| **In a hab** | its life-support core: **power + hull** (21 Nov, systems-and-items §1.3) | only what you or Mars cause, such as skimping on batteries before a dust storm, a seam you didn't patch, or a quake. The cabin air goes stale over hours with alarms, so you suit up indoors and fix it, or go to the lander. |
+| **In the pressurised rover** | the same core: its battery + hull | running the battery flat far from home, or a hard knock that opens a leak |
 | **On foot, suited** | the suit's air, heat and battery | terrain, the dark, dust and cold all change how fast they drain |
 
 - **You can suffocate at home,** but never at random. The hab is only as safe as its supplies. Random faults (CHAPEA-style surprises) can be added later.
 - **The suit is light touch.** It goes on and off at the airlock in a couple of seconds. No suiting-up chores.
 - **Hunger, thirst and tiredness stay, as a pull home.** They set how long a trip can be: you pack food bars, and you sleep before a long trip.
 - **The lander stays a lifepod** you can always fall back to.
+- **Work on Mars, don't watch meters (user, 21 Nov).** It should feel like Mark Watney or Ryland Grace: problems you find, understand and fix or improvise with what's to hand, and discoveries you actively make. Life support is one powered core per space, with hull integrity as its only other state. There are no air machines or stores to keep topped up.
 
 ### 3. Make it home: a foothold (a home and launch pad built from Mars)
 

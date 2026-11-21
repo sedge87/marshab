@@ -415,6 +415,8 @@ One part means you get by on reserves and a lot of ice; every part means you cou
 
 **The rule:** not a simulator. Out on the surface the player watches two things and one number. At home, the body's needs are felt, not metered.
 
+**Bases and vehicles follow the same rule (21 Nov):** each sealed space has one life-support core that needs only power and a sound hull (systems-and-items §1.3). There are no tanks, scrubbers or air machines to manage.
+
 **The suit: Air and Power** (`scripts/suit.gd`, the wrist pad in `scripts/info_screen.gd`):
 - **Air.** Real suits last 6 to 8 hours (the user's research, 15 Nov). Ours: 5 game hours bare, 8 with the air pack. Hard work burns it faster: loping (`LOPE` 1.6, easing to `LOPE_FLOW` 1.3 in rhythm), running, and a heavy load in your arms (`HEAVY_LOAD`, up to 1.7 for 40 kg; the cargo used to slow you without costing air). The CO2 scrubber is folded into Air: it isn't a separate limit, and its bar is gone from the wrist.
 - **Power.** The heater draws more as the light goes: dusk, shade and night (`power_rate`, from `COLD_SUN`). A flat battery means a cold suit, and the air goes faster (`COLD`).
