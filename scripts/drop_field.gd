@@ -40,6 +40,7 @@ const WORK_OUT_V3 := 100.0       # how far past its cradle GAR-Y is, snagged
 const STAKE_EVERY := 9.0         # its survey stakes, cradle to where it is
 const SNAG := preload("res://scripts/gary_snag.gd")
 var snag: Node3D
+var hitch: Node                  # version 3: GAR-Y's hitch bracket (scripts/hitch_bracket.gd)
 var snag_freed := 0              # snag points freed (saved)
 var gary_greeted := false        # the meeting's over (the slice's "gary_met" beat)
 var _led := false
@@ -111,6 +112,10 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 		site.setup(self, kind, where, yaw, state)
 		sites[kind] = site
 	if tools: _apply_tools()
+	if v3():
+		hitch = preload("res://scripts/hitch_bracket.gd").new()
+		add_child(hitch)
+		hitch.setup(world, saved.get("hitch", {}))
 	sunset = SUNSET.new()
 	add_child(sunset)
 	sunset.setup(world, saved.get("sunset", {}))
@@ -619,4 +624,5 @@ func export_state() -> Dictionary:
 	var out := {"snag_freed": snag.freed_count() if snag != null and is_instance_valid(snag) else snag_freed, "gary_greeted": gary_greeted, "gary_working": gary_working, "tools": tools, "chutes_seen": chutes_seen, "intro_pending": intro_pending, "gary_in_cradle": gary_in_cradle, "sites": {}, "sunset": sunset.export_state() if sunset != null else {}, "crate": crate.export_state() if crate != null and is_instance_valid(crate) else {},
 		"print_crate": print_crate.export_state() if print_crate != null and is_instance_valid(print_crate) else {}}
 	for kind in sites: out.sites[kind] = sites[kind].export_state()
+	if hitch != null: out["hitch"] = hitch.export_state()
 	return out

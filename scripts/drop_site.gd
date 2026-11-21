@@ -24,6 +24,8 @@ const BOULDERS := [
 ]
 const PALLET := preload("res://scripts/cargo_pallet.gd")
 const POWER_PACK := preload("res://scripts/power_pack.gd")
+const POWER_MODULE := preload("res://scripts/power_module.gd")
+const SPARES_IN_TOOLS := 2   # version 3: two spares kits in the tools pallet
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const MHResources := preload("res://scripts/mh_resources.gd")
@@ -42,7 +44,8 @@ var kind := ""
 var at := Vector3.INF          # the canopy's crown, world
 var yaw := 0.0
 var pallet: StaticBody3D
-var pack: StaticBody3D         # pallet 2's power pack
+var pack: StaticBody3D         # pallet 2's power pack (versions 1-2)
+var module: StaticBody3D       # pallet 2's power module (version 3, scripts/power_module.gd)
 var empty := false             # pallet 4 after GAR-Y left it to look for you
 var _check := 0.0
 
@@ -121,7 +124,17 @@ func _build(saved: Dictionary) -> void:
 	pallet.global_basis = _on_ground(pallet_spot(), yaw + .35)
 	pallet.global_position = Vector3(pallet_spot().x, _footprint_height(pallet_spot()) - .04, pallet_spot().z)
 	pallet.setup(self, bool(saved.get("opened", false)), label())
-	if kind == "power":
+	if kind == "power" and field.v3():
+		module = POWER_MODULE.new()
+		add_child(module)
+		var where := str(saved.get("module", "pallet"))
+		if where == "ground" and saved.has("module_at"):
+			var p: Array = saved.module_at
+			module.setup(self, "ground")
+			module.global_position = Vector3(float(p[0]), float(p[1]), float(p[2]))
+		else:
+			module.setup(self, "plugged" if where == "plugged" else "pallet")
+	elif kind == "power":
 		pack = POWER_PACK.new()
 		add_child(pack)
 		var where := str(saved.get("pack", "pallet"))
@@ -178,6 +191,7 @@ func _drape(mesh_instance: MeshInstance3D) -> void:
 ## What looking into the open pallet reaches (scripts/cargo_pallet.gd).
 func inside_of() -> Node:
 	if pack != null and pack.where == "pallet": return pack
+	if module != null and module.where == "pallet": return module
 	if kind == "gary" and bool(field.get("gary_in_cradle")):
 		var gary: Variant = world.get("scout_rover")
 		if gary != null and is_instance_valid(gary): return gary
@@ -191,6 +205,9 @@ func pallet_opened() -> void:
 		known.finish(id())
 	var notes: Node = world.get("notes")
 	match kind:
+		"power" when module != null:
+			module.reachable(true)
+			MHNotices.post("valid", "Pallet 2: power", "One power module, %d kg, with a keyed socket face. Heavy to carry far." % roundi(module.kg()), "log")
 		"power":
 			pack.reachable(true)
 			if notes != null: notes.think("power_pallet", "open")
@@ -202,6 +219,14 @@ func pallet_opened() -> void:
 				MHNotices.post("info", "Pallet 4", "GAR-Y's cradle, empty. It came looking for you.", "log")
 			else:
 				field.wake_gary(self)
+		"tools" when field.v3():
+			field.got_tools()
+			if notes != null: notes.answer("tools")
+			MHChapterOne.stock[MHChapterOne.SPARES_KIT] = int(MHChapterOne.stock.get(MHChapterOne.SPARES_KIT, 0)) + SPARES_IN_TOOLS
+			if field.hitch != null: field.hitch.found()
+			MHNotices.post("valid", "Pallet 3: field tools", "A rock hammer, a headlamp (F), %d spares kits, and a hitch bracket that fits GAR-Y's rear mount (E on GAR-Y)." % SPARES_IN_TOOLS, "log")
+			var suit: Node = world.get("suit")
+			if suit != null and suit.has_method("give_addon"): suit.give_addon("lamp")
 		"tools":
 			field.got_tools()
 			if notes != null: notes.answer("tools")
@@ -248,6 +273,10 @@ func _process(delta: float) -> void:
 
 func export_state() -> Dictionary:
 	var out := {"at": [at.x, at.y, at.z], "yaw": yaw, "opened": pallet.opened, "empty": empty}
+	if module != null:
+		out["module"] = module.where if not module.where in ["carried", "sled"] else "ground"
+		var m: Vector3 = module.global_position if module.where != "carried" else _ground(world.player.global_position)
+		out["module_at"] = [m.x, m.y, m.z]
 	if pack != null:
 		out["pack"] = pack.where if not pack.where in ["carried", "sled"] else "ground"
 		var p: Vector3 = pack.global_position if pack.where != "carried" else _ground(world.player.global_position)

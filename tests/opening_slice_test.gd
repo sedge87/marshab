@@ -79,8 +79,54 @@ func _initialize() -> void:
 		await wait(30.0)
 		check(days.done("gary_met"), "freeing GAR-Y didn't lead to the meeting")
 		check(str(gary.get("task")) == "goto", "GAR-Y isn't leading to a pallet (task '%s')" % str(gary.get("task")))
+		# Scene 3: the three pallets, the hitch, the power module on the sled.
+		world.storm_drop.pallet.open(false)
+		for kind in ["power", "tools"]: field.sites[kind].pallet.open(false)
+		await wait(2.0)
+		check(days.done("pallets"), "opening the three pallets didn't count")
+		check(world.storm_drop.cartridge == null, "pallet 1 still has an air cartridge in version 3")
+		check(int(MHChapterOne.stock.get("spares_kit", 0)) >= 2, "the tools pallet gave no spares kits")
+		check(field.hitch != null and bool(field.hitch.have), "the hitch bracket isn't in your kit")
+		var module: Node3D = field.sites.power.module
+		check(module != null and str(module.where) == "pallet", "the power module isn't in pallet 2")
+		if field.hitch != null:
+			check(field.hitch.claim_label(gary) != "", "no 'fit the hitch' on GAR-Y")
+			field.hitch.claim(gary, "interact")
+		await wait(2.0)
+		check(days.done("hitched"), "fitting the hitch bracket didn't count")
+		var walker: Node3D = world.walker
+		if module != null and walker != null:
+			player.global_position = _ground(module.global_position + Vector3(1.5, 0, 0))
+			gary.global_position = _ground(module.global_position + Vector3(-2, 0, 0))
+			module.interact()
+			check(str(module.where) == "carried", "picking up the module didn't carry it (%s)" % str(module.where))
+			check(module.claim(gary, "interact"), "GAR-Y's sled wouldn't take the module")
+			check(str(module.where) == "sled", "the module isn't on the sled (%s)" % str(module.where))
+			# Tow it to Walker 1 and plug it in from the sled.
+			var socket: Vector3 = walker.power_socket()
+			gary.global_position = _ground(socket + Vector3(6, 0, 0))
+			player.global_position = _ground(socket + Vector3(3, 0, 0))
+			await wait(1.0)
+			check(module.claim(walker, "interact"), "couldn't plug the module in from the sled")
+			await wait(2.0)
+			check(str(module.where) == "plugged" and str(walker.state) == "coming", "Walker 1 didn't wake (module %s, walker %s)" % [str(module.where), str(walker.state)])
+			check(days.done("walker_awake"), "the walker_awake beat didn't count")
+			# Scene 4: the seal, then it walks home on its own.
+			player.global_position = _ground(walker.fault_spot() + Vector3(1, 0, 0))
+			await wait(1.0)
+			check(walker.interact(), "couldn't patch the seal")
+			check(days.done("walker_fixed"), "patching the seal didn't count")
+			player.global_position = _ground(world.lander.ramp_foot(4.0))
+			var t := 0.0
+			while t < 600.0 and str(walker.state) != "ready":
+				await wait(5.0)
+				t += 5.0
+			check(str(walker.state) == "ready", "Walker 1 didn't walk home (state %s)" % str(walker.state))
+			var parked: float = Vector2(walker.global_position.x - lander.global_position.x, walker.global_position.z - lander.global_position.z).length()
+			check(parked < 40.0, "Walker 1 parked %.0f m from the lander" % parked)
+			check(days.done("walker_home"), "the walker_home beat didn't count")
 	Engine.time_scale = 1.0
-	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, and it leads to a pallet.")
+	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander.")
 	else:
 		for f in failures: print("FAIL: ", f)
 	quit(0 if failures.is_empty() else 1)

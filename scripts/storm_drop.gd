@@ -199,6 +199,9 @@ func _build() -> void:
 	pallet.global_position = local_to_world(PALLET_LOCAL) + Vector3(0, -.04, 0)
 	pallet.global_basis = _on_ground(pallet.global_position, yaw + .35)
 	pallet.setup(self, bool(_saved.get("opened", false)))
+	# Version 3 (docs/opening-slice.md): no cartridge. Pallet 1 is stores;
+	# the power module in pallet 2 runs the core's air.
+	if int(world.get("opening_version")) >= 3: return
 	# Its oxygen cartridge: inside, on the ground, carried (put down when
 	# saved) or plugged into the cabin.
 	cartridge = CARTRIDGE.new()
@@ -295,7 +298,7 @@ func pallet_opened() -> void:
 	var known_now: Node = world.get("known")
 	if known_now != null: known_now.finish("find:parachute")
 	MHChapterOne.has_corer = true   # the sample kit: hand corer, scoop and bags (scripts/sample_tools.gd)
-	cartridge.reachable(true)
+	if cartridge != null: cartridge.reachable(true)
 	# Step 4a: ten ration packs, into your pockets; stowed in the cabin crate when you're home.
 	var lifepod: Node = world.get("lifepod")
 	if lifepod != null: lifepod.pocket_rations(lifepod.PALLET_RATIONS)
@@ -307,7 +310,8 @@ func pallet_opened() -> void:
 	if notes != null:
 		notes.answer("parachute")
 		notes.answer("air")
-	MHNotices.post("valid", "Pallet 1: life support", "Inside: the core's air cartridge, ten ration packs (you pocket them) and the sample kit (hand corer, scoop, bags).", "log")
+	if cartridge == null: MHNotices.post("valid", "Pallet 1: stores", "Ten ration packs (you pocket them) and the sample kit: hand corer, scoop, bags.", "log")
+	else: MHNotices.post("valid", "Pallet 1: life support", "Inside: the core's air cartridge, ten ration packs (you pocket them) and the sample kit (hand corer, scoop, bags).", "log")
 	# 15 Nov playtest: no air pack here any more. The bare suit's limit has to
 	# be felt first; the bigger air pack is in GAR-Y's spares crate (chapter 2).
 	MHAudio.moment()

@@ -77,6 +77,16 @@ const WAIT_REACH := 5.0         # stand this near the ladder's foot and it stops
 const LEAVE_REACH := 12.0       # ... and walks on once you're this far off
 const PHOTO_SIZE := Vector2i(480, 300)
 const PHOTO_METRES := 70.0
+## Version 3, the opening slice (docs/opening-slice.md §4a Scene 4): stalled
+## in view on a flat battery, woken by the power module in its frame socket,
+## its seal found by eye (a dust plume and frost) and patched, then home to
+## kneel by the lander for the night.
+const STALL_NEAR_V3 := 400.0
+const STALL_FAR_V3 := 600.0
+const PARK_V3 := 18.0            # it kneels this close to the lander overnight
+const SOCKET_LOCAL := Vector3(-2.2, 1.6, 0.0)   # the power socket on its frame, in its own frame
+const SEE_SEAL := 6.0            # this close to the bad seal and you've seen it
+var _seal_fx: Node3D
 
 var world: Node
 var base_id := "w1"              # its base's id (A4): Walker n seeds base "wn"
@@ -173,6 +183,8 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	var pod: Node = world.get("lifepod")
 	if base_id != "w1": pass   # the opening's tracks are Walker 1's
 	elif bool(saved.get("tracks", false)) or (pod != null and bool(pod.walker_moved)): lay_tracks()
+	elif _v3():
+		if state == "coming": _show_seal_leak.call_deferred(true)
 	elif not seen and not calibrated and state == "stalled": _wait_out_of_sight()
 	# Saved mid-delivery: it's down.
 	marked = bool(saved.get("marked", false))
@@ -202,7 +214,89 @@ func _choose() -> Vector3:
 	var pod: Node = world.get("lifepod")
 	if pod != null:
 		for kind in pod.sites: taken.append(field._bearing(pod.sites[kind].global_position))
+	if _v3(): return field.choose("walker", STALL_NEAR_V3, STALL_FAR_V3, "flat", taken, ridge)
 	return field.choose("walker", STALL_NEAR, STALL_FAR, "flat", taken, ridge)
+
+func _v3() -> bool:
+	return int(world.get("opening_version")) >= 3
+
+## Where the power module plugs in (scripts/power_module.gd).
+func power_socket() -> Vector3:
+	return to_global(SOCKET_LOCAL)
+
+## v3: the power module's in. Its lamp goes steady, its joints twitch, the
+## deck screen comes on. Its nav comes back with power (no sun sight), but a
+## wheel seal is leaking: it won't walk until that's patched.
+func power_in() -> void:
+	if state != "stalled": return
+	calibrated = true
+	if not seen: _see()
+	var known_now: Node = world.get("known")
+	if known_now != null: known_now.finish(ID)
+	state = "coming"
+	var lander: Vector3 = world.lander.global_position
+	var out := Vector3(global_position.x - lander.x, 0, global_position.z - lander.z).normalized()
+	home = lander + out * PARK_V3
+	MHAudio.sfx_at("mode_build", self, -2.0, .6)
+	_twitch()
+	_show_seal_leak(true)
+	var notes: Node = world.get("notes")
+	if notes != null: notes.answer("walker_seen")
+
+## The joints stir as the power comes up.
+func _twitch() -> void:
+	var t := create_tween()
+	for knee in _knees:
+		if knee == null: continue
+		t.parallel().tween_property(knee, "rotation:x", (knee as Node3D).rotation.x + .06, .3)
+	for knee in _knees:
+		if knee == null: continue
+		t.tween_property(knee, "rotation:x", (knee as Node3D).rotation.x, .4)
+
+## The bad seal: a thin plume of dust and a rime of frost on the front-left hub.
+func _show_seal_leak(on: bool) -> void:
+	if not on:
+		if _seal_fx != null and is_instance_valid(_seal_fx): _seal_fx.queue_free()
+		_seal_fx = null
+		return
+	if _seal_fx != null: return
+	_seal_fx = Node3D.new()
+	_seal_fx.name = "SealLeak"
+	add_child(_seal_fx)
+	_seal_fx.global_position = fault_spot()
+	var frost := MeshInstance3D.new()
+	var ring := TorusMesh.new()
+	ring.inner_radius = .32
+	ring.outer_radius = .42
+	frost.mesh = ring
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(.92, .95, 1.0)
+	mat.roughness = .3
+	frost.material_override = mat
+	frost.rotation.z = PI * .5
+	_seal_fx.add_child(frost)
+	var plume := GPUParticles3D.new()
+	plume.amount = 24
+	plume.lifetime = 1.6
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 25.0
+	pm.initial_velocity_min = .4
+	pm.initial_velocity_max = .9
+	pm.gravity = Vector3(0, -.2, 0)
+	pm.scale_min = .1
+	pm.scale_max = .25
+	plume.process_material = pm
+	var puff := QuadMesh.new()
+	puff.size = Vector2(.3, .3)
+	var pmat := StandardMaterial3D.new()
+	pmat.albedo_color = Color(.75, .55, .42, .45)
+	pmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	pmat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	pmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	puff.material = pmat
+	plume.draw_pass_1 = puff
+	_seal_fx.add_child(plume)
 
 ## Before its night: far out, unseen and out of reach (parts 1 and 2 of the
 ## opening know nothing of it).
@@ -502,6 +596,12 @@ func take_photo() -> void:
 # ---------- the fault: lost, not broken ----------
 
 func interaction_prompt() -> Dictionary:
+	if _v3():
+		match state:
+			"stalled": return {"label": NAME + " · dead: its battery's flat"}
+			"coming":
+				if _near_fault(): return {"label": NAME + " · front-left wheel seal: frosted, venting dust", "primary": "Patch it"} if _have_patch_kit() else {"label": NAME + " · front-left wheel seal: frosted, venting dust"}
+				return {"label": NAME + " · awake, but leaking: front axle"}
 	match state:
 		"stalled": return {"label": NAME + " · lost: its nav screen's up on the front deck"}
 		"walking": return {"label": NAME + " · walking home"}
@@ -516,7 +616,7 @@ func interaction_prompt() -> Dictionary:
 	return {"label": walker_name}
 
 func interact(_actor: Node = null) -> bool:
-	if state == "coming" and fault_found and _near_fault() and _have_patch_kit():
+	if state == "coming" and (fault_found or _v3()) and _near_fault() and _have_patch_kit():
 		patch_seal()
 		return true
 	return false
@@ -542,9 +642,10 @@ func patch_seal() -> void:
 	if state != "coming": return
 	fault_found = true
 	MHAudio.sfx("suit_clamp", -4.0)
-	MHNotices.post("valid", "The seal's patched", "Walker 1's front-left wheel turns clean. Climb its ladder to ride it home, or walk alongside.", "log")
+	_show_seal_leak(false)
+	MHNotices.post("valid", "The seal's patched", "Walker 1's front-left wheel turns clean." + ("" if _v3() else " Climb its ladder to ride it home, or walk alongside."), "log")
 	var radio: Node = world.get("radio")
-	if radio != null: radio.ring("d3_patched")
+	if radio != null and not _v3(): radio.ring("d3_patched")
 	_wake()
 
 ## Seated at the front: the nav screen (scripts/walker_nav_screen.gd).
@@ -722,14 +823,14 @@ func _wake() -> void:
 	state = "walking"
 	var lander: Vector3 = world.lander.global_position
 	var out := Vector3(global_position.x - lander.x, 0, global_position.z - lander.z).normalized()
-	home = lander + out * PARK_FROM_LANDER
+	home = lander + out * (PARK_V3 if _v3() else PARK_FROM_LANDER)
 	_walk_from = Vector2(home.x - global_position.x, home.z - global_position.z).length()
 	_walk_clock = 0.0
 	_talk = 0
 	MHAudio.sfx_at("mode_build", self, 0.0, .6)
 	var notes: Node = world.get("notes")
 	if notes != null: notes.answer("walker_seen")
-	MHNotices.post("info", NAME + " is walking home", "It knows where it is now. It'll park by the lander, with you aboard or not.", "")
+	if not _v3(): MHNotices.post("info", NAME + " is walking home", "It knows where it is now. It'll park by the lander, with you aboard or not.", "")
 
 # ---------- the walk ----------
 
@@ -759,7 +860,9 @@ func _process(delta: float) -> void:
 			if _can_move() and _drive(home, pace):
 				var notes: Node = world.get("notes")
 				if notes != null: notes.think("walker_home")
-				if int(world.get("opening_version")) >= 2:
+				if _v3():
+					state = "ready"   # Scene 4: it kneels by the lander for the night
+				elif int(world.get("opening_version")) >= 2:
 					# A6: home by the lander, ready to be sent to the spot you choose.
 					state = "ready"
 					MHNotices.post("info", NAME + " is home", "Choose where home goes: open the Map and click a spot to check it, then click it again to send Walker 1.", "", 1)
