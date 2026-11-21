@@ -239,6 +239,19 @@ The user's three field models (`asset_packs/outpost_field_assets_v1`, cleaned of
 - Tools: `tools/vehicle_cab_look.gd` (the cockpits, screens and cab parts), `tools/corer_look.gd` (the corer's stages) and `tools/field_model_look.gd`. Tests: `vehicles_test`, `crew_rover_test`, `rover_route_test` and the new `hand_corer_test`.
 - **Not done yet:** the buggy's dash knobs and other switches as clickable controls; walking about inside the HabRover (you reach the galley from the seat); and the sample case, kit and charge-lead hatches on Scout 02 as working parts.
 
+### Decided 21 Nov (not built): the sealed dock, and vehicles that break
+
+- **A docking port for the HabRover.** It's a new piece you build on the outside wall of any pressurised room, the way you build an airlock.
+  - The HabRover reverses on to it, and its back hatch mates with the port.
+  - You walk from the cab straight into the base with no suit, and back out the same way.
+  - While docked it shares the base's power and air, and restocks water and food.
+  - A recall drives it to the port.
+  - The Garage stays the home of the buggy and the drone. The pad by the Garage door is only a fallback for when there's no port.
+  - The Garage itself isn't pressurised (its doors into the base are sealed hatches that only open one side at a time), which is why the port goes on a room.
+- **Vehicles can be wrecked, but never lost for good** (every limit is beatable).
+  - A hard fall, a roll or a crash turns a vehicle into a wreck where it lies, and you fix it there with spares, as when you first found it.
+  - If it ends up somewhere you can't reach (down in the deep, for example), GAR-Y tows it back to the last safe spot over a sol or two.
+
 ## The blackout rule (outside the guided chapters)
 
 At zero health outside:
