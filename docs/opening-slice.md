@@ -173,6 +173,33 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - You plant the two end stakes by hand, and GAR-Y runs between them.
 - The slate profile surprises you both: a void band reaching past the visible crack.
 
+### Scene 11: the Collapse pit · agreed 22 Nov
+- **Look into the pit first (D2).** Tamsin asks for a comparison line where everyone knows there's a void. Before the line you walk to the lip (0.2 km south-east) and look down the 10 m pit:
+  - rubble on the floor;
+  - a dark undercut running north-west, toward the pad.
+- **Then the line at the lip.** You plant the stakes yourself, and where you stand matters: the nearer the lip, the clearer the reading. The two profiles show side by side on the slate, and they match.
+- **The crumbling lip (E1): the one fail state.**
+  - Within about 3 m of the edge the ground crumbles under your boots (sound, small slides, a camera shake), and the wrist ring flickers.
+  - Step onto the last metre and the lip gives way. You fall into the pit: a blackout and GAR-Y's rescue (the existing one), not death.
+
+### Scene 11b: the hold · agreed 22 Nov
+- **The crew argue it (F3).** Silence while the orbiter studies your profiles, then a short back-and-forth:
+  - Tamsin: same signature, there's a void under the pad;
+  - Devan wants to try anyway: the one descent's worth of fuel won't wait for ever, and nor will the recycler;
+  - Joseph and Tamsin say no.
+- **Castle decides:** "Thursday's off. We hold." Then one reply choice for you, and something human from her.
+- It shows what the one-descent fuel costs, and it sets up the ending, where the hold is your call.
+
+### Scene 12: the new job (walk home and evening) · agreed 22 Nov
+- **Mostly at home (G1).** You walk home at dusk, and in the Quarters the evening call becomes the new job:
+  - Castle sets it: find and verify a replacement pad;
+  - Joseph: what makes a site usable (flat, firm, a clear approach, within reach of the hab);
+  - Tamsin: a deeper line needs a towed radar sled, and her plan goes to the slate;
+  - Devan: he wants wind on the approach;
+  - Kai saves his for later.
+- **If the call runs long (over about 2 minutes), part of it moves to the walk home.** Tamsin's sled plan goes first, since she has just read the profiles.
+- **Ends with** the Print Shop pallet pinned on the slate, ready for chunk 3.
+
 ### Act 1: foothold (sols 1–2; decided 22 Nov: two sols, the clock unchanged)
 *The clock stays as it is (a 30-minute sol, about 20 minutes of daylight after landing).*
 - **Sol 1:** the assignment, GAR-Y, the pallets, then finding and fixing Walker 1. At sunset you're back in the scout lander for the first night, the lifepod moment, with the walker's lamp blinking out on the plain.
@@ -386,5 +413,5 @@ No text on any model.
 ## 11. Open questions
 - Do the Earth Mission Control letters stay?
 - How much of the current day 1–5 radio survives once the order changes?
-- How close does the pit lip let you go before the fail state?
+- ~~How close does the pit lip let you go before the fail state?~~ Decided 22 Nov (scene 11): crumbles within 3 m, gives way on the last metre, and you're rescued by GAR-Y.
 - What's in the manifest's corrupted entries, and which story beats restore them (beyond the slice)?
