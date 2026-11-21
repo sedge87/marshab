@@ -33,15 +33,16 @@ func _initialize() -> void:
 	assert(absf(rover.global_position.y - pad_ground) < 0.35, "On the ground (%.2f, ground %.2f)." % [rover.global_position.y, pad_ground])
 	assert(rover._umbilical != null and rover._umbilical.visible and str(rover._charge_source()) == "garage", "The umbilical's on: it charges and restocks from the Garage.")
 	assert(not get_nodes_in_group("vehicle_bay_ramp").is_empty(), "The hangar has a ramp down to the ground.")
-	assert(str(rover.interaction_prompt().primary) == "Drive", "Look at it: Drive.")
+	assert(rover._cabin != null and not rover.interaction_prompt().has("primary"), "Look at it: you get in by the rear hatch (21 Nov), not E on its side.")
 	MHGame.game_mode = "freedom"   # the batteries run down (Creative's never do)
 	# At night, so the roof panel isn't topping the battery up as it drains.
 	world.day_night.set_hour(23.0); world.day_night.frozen = true
 	for i in 5: await process_frame
 	var player: Node3D = world.player
 	player.global_position = rover.global_position + Vector3(-2.5, 0.2, 0)
-	assert(rover.interact(), "Get in.")
+	assert(rover.sit_down(player), "Sit in the driver's seat.")
 	assert(bool(player.get_meta("driving", false)) and not player.visible, "You're in the driver's seat.")
+	for i in 70: await physics_frame   # the camera carries you down into it
 	# Drive south, away from the Garage.
 	_key(KEY_W, true)
 	for i in 60 * 7: await physics_frame
@@ -74,11 +75,19 @@ func _initialize() -> void:
 	_key(KEY_SPACE, false)
 	assert(rover.cruise == 0.0, "Braking turns cruise control off.")
 	for i in 90: await physics_frame
-	# Get out: you're standing beside it.
+	# Get up: brake to a stop (it won't let you up while it rolls), then E.
 	_key(KEY_E, true); _key(KEY_E, false)
 	for i in 5: await physics_frame
-	assert(not bool(player.get_meta("driving", false)) and player.visible, "E gets you out.")
-	assert(player.global_position.distance_to(rover.global_position) < 4.0, "Beside the rover (%s)." % player.global_position)
+	assert(rover.driving, "Still rolling: E won't get you up (%.1f m/s)." % rover.speed)
+	_key(KEY_SPACE, true)
+	for i in 120: await physics_frame
+	_key(KEY_SPACE, false)
+	_key(KEY_E, true); _key(KEY_E, false)
+	for i in 80: await physics_frame
+	assert(not bool(player.get_meta("driving", false)) and player.visible and rover._cabin.player_in, "E stands you up into the aisle (driving %s, visible %s, in %s, walk %s, speed %.2f, at %s)." % [player.get_meta("driving", false), player.visible, rover._cabin.player_in, rover._cabin.walk, rover.speed, player.global_position])
+	rover._cabin.go_out()
+	await create_timer(4.5).timeout
+	assert(not rover._cabin.player_in and player.global_position.distance_to(rover.global_position) < 6.0, "Out by the airlock, behind it (%s)." % player.global_position)
 	# Saved and restored with the base.
 	var state: Dictionary = world.current_state()
 	assert(not (state.crew_rover as Dictionary).is_empty(), "The rover is in the save.")

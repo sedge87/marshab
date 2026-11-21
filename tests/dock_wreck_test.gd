@@ -50,11 +50,12 @@ func _initialize() -> void:
 	var player: Node3D = world.player
 	player.global_position = port.global_position - port.port_out() * 1.2 + Vector3.UP * .1
 	_check(port.interact(player), "E on the port")
-	for i in 3: await physics_frame
-	_check(bool(player.get_meta("driving", false)) and rover.driving, "through the hatch into the cab")
-	rover._get_out()
-	for i in 3: await physics_frame
-	_check(not rover.driving and b.is_inside(player.global_position + Vector3.UP), "out the back: into the room (%s)" % player.global_position)
+	await create_timer(3.5).timeout
+	_check(rover._cabin.player_in and not rover.driving, "through the mated hatch, on your feet in the aisle")
+	_check(str(rover._cabin.spot_prompt("gates").get("primary", "")) == "Through to the base", "docked: the gates lead back into the base")
+	rover._cabin.go_out()
+	await create_timer(3.5).timeout
+	_check(not rover._cabin.player_in and b.is_inside(player.global_position + Vector3.UP), "out the back: into the room (%s)" % player.global_position)
 	# Off on a drive: it's wrecked in a hard hit, the cabin still a shelter.
 	MHGame.game_mode = "freedom"
 	MHChapterOne.stock["spares_kit"] = 0

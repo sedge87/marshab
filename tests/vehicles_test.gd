@@ -129,7 +129,7 @@ func _initialize() -> void:
 	rover.water_l = 10.0
 	player.global_position = rover.global_position + Vector3(-2.6, .3, 0)
 	for i in 10: await physics_frame
-	assert(rover.interact(), "Get in the rover.")
+	assert(rover.sit_down(player), "Get in the rover (its driver's seat; 21 Nov: you walk in by the rear hatch).")
 	for i in 30: await process_frame
 	assert(str(suit.where) == "rover", "Its sealed cab: you breathe its air (%s)." % suit.where)
 	assert(rover.cabin_ready(), "Parked with air: the cabin is a safe pocket.")
@@ -142,9 +142,10 @@ func _initialize() -> void:
 	for i in 60 * 3: await physics_frame
 	var rover_speed: float = rover.speed
 	_key(KEY_W, false)
-	assert(rover_speed > 2.5 and rover_speed <= 3.05, "Slow: about 3 m/s (%.1f)." % rover_speed)
+	assert(rover_speed > 2.5 and rover_speed <= 3.05, "Slow: about 3 m/s (%.1f; top %.1f, max %.1f, kind %s, boarding %s, driving %s, wheels %.0f)." % [rover_speed, rover.top_speed(), rover._max_speed, rover.kind, rover._boarding, rover.driving, rover.wheels])
 	assert(not rover.cabin_ready(), "Moving: not a cabin to sleep in.")
-	_key(KEY_E, true); _key(KEY_E, false)
+	rover.speed = 0.0
+	rover._get_out(false)   # straight out beside it (the airlock walk is tests/vehicle_board_test.gd)
 	for i in 5: await physics_frame
 
 	# Bogging on loose ground.
@@ -201,7 +202,7 @@ func _initialize() -> void:
 	assert(rover.fit_addon("traction_mats") and rover.mats == rover.MATS, "And a rack of traction mats.")
 	rover.wheels = 30.0
 	assert(rover.refit_wheels() and rover.wheels == 100.0, "The wheel bench refits the tread.")
-	rover._get_out()
+	rover._get_out(false)
 	world.day_night.frozen = false
 	world.day_night.time_scale = 60.0
 	for i in 120: await process_frame

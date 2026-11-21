@@ -65,12 +65,16 @@ const LEAD_PER_H := 1.0         # suit battery shares an hour on the buggy's lea
 const TRAIL_STEP := 25.0        # m between the rover's breadcrumbs
 const TRAIL_MAX := 600
 const ALARM_EVERY := 4.0        # s between the cab alarm's tones
+const CABIN := preload("res://scripts/vehicle_cabin.gd")
+const EYE_FORWARD := .25        # m ahead of the model's Driver_Eye: a better view out the front (playtest 21 Nov)
+const BOARD_SECONDS := .85      # getting in or out, or up from the seat: the camera's move
+const CAB_EYE_HEIGHT := 1.4     # standing under the HabRover's ceiling
 ## Wrecks (21 Nov decision, docs/bases-and-vehicles.md): a hard hit, a fall or
 ## a roll wrecks a vehicle where it lies. Never lost: fix it there with
 ## spares, or GAR-Y tows it (about a sol per 3 km; from somewhere you can't
 ## reach, back to the last safe spot). A wreck never breaches the HabRover's
 ## hull: its cabin stays a shelter.
-const CRASH_SPEED := 4.2        # m/s into something solid
+const CRASH_SPEED := .65        # of top speed, into something solid
 const FALL_M := 3.5             # m dropped in one go
 const DEEP_FALL_M := 15.0       # a drop this big: somewhere you can't drive out of
 const ROLL_RAD := .8            # tipped past this (about 46 degrees)...
@@ -88,11 +92,11 @@ const GROUND := preload("res://scripts/ground.gd")
 
 ## Per kind. Distances are a full battery's worth; the reserve is extra.
 const SPECS := {
-	"rover": {"label": "HabRover", "speed": 3.0, "reverse": 1.2, "reserve_speed": 1.8, "range_m": 6000.0, "reserve_m": 600.0,
+	"rover": {"label": "HabRover", "speed": 7.5, "reverse": 2.0, "reserve_speed": 3.0, "range_m": 6000.0, "reserve_m": 600.0,
 		"solar_per_h": 6.0, "sealed": true, "wheelbase": 3.56, "wheel_r": .59, "half_track": 1.64, "half_base": 1.78,
 		"hull": Vector3(3.6, 2.9, 6.4), "seat": Vector3(-.4, 1.5, -.7), "cab_view": Vector3(0, 1.45, -1.42),
 		"dash": Vector3(-.05, 1.24, -1.86), "dash_size": Vector2(.42, .246), "chase": Vector2(7.5, 2.6)},
-	"buggy": {"label": "Scout buggy", "speed": 5.0, "reverse": 2.0, "reserve_speed": 2.5, "range_m": 2000.0, "reserve_m": 300.0,
+	"buggy": {"label": "Scout buggy", "speed": 12.0, "reverse": 3.0, "reserve_speed": 4.0, "range_m": 2000.0, "reserve_m": 300.0,
 		"solar_per_h": 4.0, "sealed": false, "wheelbase": 2.24, "wheel_r": .51, "half_track": .99, "half_base": 1.12,
 		"hull": Vector3(2.2, 1.0, 3.4), "seat": Vector3(-.32, 1.0, .2), "cab_view": Vector3(-.32, 1.62, .18),
 		"dash": Vector3.INF, "dash_size": Vector2.ZERO, "chase": Vector2(6.0, 2.4)},
@@ -242,6 +246,9 @@ var _safe_clock := 0.0
 var _tipped := 0.0
 var _tow_hour := -1.0
 var _rear_m := 3.4              # body centre to the rear airlock face
+var _cabin: Node                # the HabRover's walk-in cabin (scripts/vehicle_cabin.gd)
+var _boarding := false          # the camera is moving you in or out
+var _board := Vector3.INF       # the buggy's side step, body space
 
 func setup(target_builder: Node, vehicle_kind := "") -> void:
 	builder = target_builder
@@ -353,7 +360,7 @@ func _fit_field_model(visual: Node3D) -> void:
 	var hatch := visual.find_child("Airlock_Entry", true, false) as Node3D
 	if hatch != null: _rear_m = absf(_body_point(hatch).z)
 	var eye := visual.find_child("Driver_Eye", true, false) as Node3D
-	if eye != null: _spec["cab_view"] = _body_point(eye)
+	if eye != null: _spec["cab_view"] = _body_point(eye) + Vector3.FORWARD * EYE_FORWARD
 	var seat := visual.find_child("Driver_Seat", true, false) as Node3D
 	if seat != null: _spec["seat"] = _body_point(seat) + Vector3.UP * 1.0
 	_yoke = visual.find_child("Steering_Yoke", true, false) as Node3D
@@ -369,7 +376,7 @@ func _fit_field_model(visual: Node3D) -> void:
 		_screens[spec[0]] = SCREENS.attach(self, found as MeshInstance3D, str(spec[0]), spec[1])
 		_lift_screen(found as MeshInstance3D)
 	var galley := visual.find_child("Galley_Drawer_02", true, false) as Node3D
-	if galley != null:
+	if galley != null and kind != "rover":
 		var g := _body_point(galley)
 		_galley_eye = Vector3(g.x + (1.0 if g.x < 0.0 else -1.0), (_spec.cab_view as Vector3).y, g.z)
 	var parts: Dictionary = CAB_PARTS.get(kind, {})
@@ -385,6 +392,18 @@ func _fit_field_model(visual: Node3D) -> void:
 		_cab[what] = part
 		_cab_rest[what] = moving.transform
 		part.set_meta("moves", moving)
+	# The buggy's side step on the driver's side: you climb in over it.
+	for side in ["Board_Left", "Board_Right"]:
+		var step := visual.find_child(side, true, false) as Node3D
+		if step == null: continue
+		var at := _body_point(step)
+		if _board == Vector3.INF or signf(at.x) == signf((_spec.seat as Vector3).x): _board = at
+	# The HabRover: a cabin you walk into through the rear airlock.
+	if kind == "rover" and visual.find_child("Airlock_Inside", true, false) != null:
+		_cabin = CABIN.new()
+		_cabin.name = "Cabin"
+		add_child(_cabin)
+		_cabin.setup(self, visual)
 
 ## A screen sits a few millimetres proud of its panel, toward the driver
 ## (Scout 02's quads were flush with the panel face and lost behind it).
@@ -435,7 +454,7 @@ func screen_state() -> Dictionary:
 
 ## The cab alarm: sealed, aboard, and the cab air low or the hull leaking.
 func _cab_alarm() -> bool:
-	return sealed() and driving and SUIT.active() and (o2 < 20.0 or leaking())
+	return sealed() and aboard() and SUIT.active() and (o2 < 20.0 or leaking())
 
 ## Where "home" is for the screens: the Garage, else the lander.
 func _home_target() -> Dictionary:
@@ -693,6 +712,7 @@ func _sound_alarm(delta: float) -> void:
 
 func interaction_prompt() -> Dictionary:
 	if wrecked: return _wreck_prompt()
+	if walk_in(): return outside_prompt()
 	var head := "%s · battery %d%%" % [label(), roundi(battery)]
 	if sealed() and SUIT.active(): head += " · air %d%%" % roundi(o2)
 	if kind == "rover" and hull < 100.0: head += " · hull %d%%" % roundi(hull)
@@ -703,8 +723,55 @@ func interaction_prompt() -> Dictionary:
 	elif SUIT.active(): prompt["tertiary"] = "Top up suit" if sealed() else "Charge suit"
 	return prompt
 
+## The walk-in HabRover from outside: its state, the lights and a suit top-up;
+## you get in by the rear hatch, and field fixes are done from the kit locker.
+func outside_prompt() -> Dictionary:
+	var head := "%s · battery %d%%" % [label(), roundi(battery)]
+	if SUIT.active(): head += " · air %d%%" % roundi(o2)
+	if hull < 100.0: head += " · hull %d%%" % roundi(hull)
+	var prompt := {"label": head + (" · BOGGED" if bogged else " · in by the rear hatch"), "secondary": "Headlights off" if lights_on else "Headlights on", "info": "About"}
+	if bogged: prompt["tertiary"] = "Dig it out (%ds)" % roundi(DIG_SECONDS - _dig)
+	elif SUIT.active(): prompt["tertiary"] = "Top up suit"
+	return prompt
+
+## The HabRover you walk into (not a wreck: that keeps the seat-only "Get in").
+func walk_in() -> bool:
+	return _cabin != null and not wrecked
+
+## Aboard: in the driver's seat, or on your feet in the cabin.
+func aboard() -> bool:
+	return driving or (_cabin != null and bool(_cabin.player_in))
+
+## The base's docking port the rear airlock is mated to now, or null.
+func docked_port() -> Node3D:
+	var home := _home()
+	if home.has("port") and _in_bay() and absf(speed) < .3: return home.port as Node3D
+	return null
+
+## Ground a step behind the rear airlock (where you step down to).
+func ground_behind() -> Vector3:
+	var at: Vector3 = _model.global_transform * Vector3(0, 0, _rear_m + 1.1)
+	var ground := _ground_at(at)
+	return Vector3(at.x, (ground if not is_inf(ground) else global_position.y) + .05, at.z)
+
+## E on the driver's seat (walking in the HabRover): sit and drive.
+func sit_down(player: CharacterBody3D) -> bool:
+	if player == null or driving: return false
+	_get_in(player)
+	return true
+
+## A spares kit on the worn wheels (from the kit locker, or G beside the rover).
+func fix_wheels() -> bool:
+	if kind != "rover" or wheels >= 99.0 or int(MHChapterOne.stock.get("spares_kit", 0)) <= 0: return false
+	MHChapterOne.stock["spares_kit"] = int(MHChapterOne.stock.spares_kit) - 1
+	wheels = minf(100.0, wheels + WHEEL_FIX)
+	MHAudio.sfx("place", -4.0)
+	_note(label(), "You swap the torn tread segments from a spares kit: the wheels are at %d%%. The Garage's wheel bench does a full refit." % roundi(wheels))
+	return true
+
 func interact(_actor: Node = null) -> bool:
 	if wrecked: return _work_on_wreck()
+	if walk_in(): return false   # in by the rear hatch (scripts/vehicle_cabin.gd)
 	var player := get_tree().get_first_node_in_group("player") as CharacterBody3D
 	if player == null or driving: return false
 	_get_in(player)
@@ -727,13 +794,9 @@ func interact_tertiary(_actor: Node = null) -> bool:
 	if bogged:
 		_dig_step()
 		return true
-	if leaking(): return patch_hull()
-	if kind == "rover" and wheels < 99.0 and int(MHChapterOne.stock.get("spares_kit", 0)) > 0:
-		MHChapterOne.stock["spares_kit"] = int(MHChapterOne.stock.spares_kit) - 1
-		wheels = minf(100.0, wheels + WHEEL_FIX)
-		MHAudio.sfx("place", -4.0)
-		_note(label(), "You swap the torn tread segments from a spares kit: the wheels are at %d%%. The Garage's wheel bench does a full refit." % roundi(wheels))
-		return true
+	if not walk_in():   # the walk-in HabRover does these from its kit locker
+		if leaking(): return patch_hull()
+		if fix_wheels(): return true
 	var suit := get_tree().get_first_node_in_group("suit")
 	if suit == null: return false
 	_note(label(), str(suit.top_up_from_rover(self)))
@@ -867,7 +930,7 @@ func _wreck_here(why: String, drop := 0.0) -> void:
 	if world != null and world.has_method("_mark_wreck"): world._mark_wreck(kind, global_position, "%s (wrecked)" % label())
 	var line := "The %s is wrecked: %s. Fix it here with %d spares kit%s, or recall it from a Garage and GAR-Y tows it home." % [label().to_lower(), _crash_text(), _crash_spares(), "" if _crash_spares() == 1 else "s"]
 	if driving and not sealed():
-		_get_out()   # thrown clear of the open buggy; your suit takes it
+		_get_out(false)   # thrown clear of the open buggy; your suit takes it
 	elif driving:
 		line += " The cabin's hull held: it's still a shelter, with its air, water and food. Press G to radio GAR-Y for a tow."
 	# Somewhere you can't drive out of (a big drop): GAR-Y brings it back up.
@@ -954,7 +1017,8 @@ func _learn_plan(id: String) -> void:
 
 # ---------- getting in and out ----------
 
-func _get_in(player: CharacterBody3D) -> void:
+func _get_in(player: CharacterBody3D, animate := true) -> void:
+	var from := _head_eye(player)
 	_player = player
 	var world := get_tree().get_first_node_in_group("habitat_world")
 	if world != null and world.get("carry") != null: world.carry.put_back()
@@ -967,15 +1031,72 @@ func _get_in(player: CharacterBody3D) -> void:
 	player.collision_layer = 0
 	player.collision_mask = 0
 	player.velocity = Vector3.ZERO
+	if player.has_meta("in_cab"): player.remove_meta("in_cab")
 	_look = Vector2(0.0, -0.2)
 	_cam.current = true
 	_place_camera(1.0)
 	_set_explore_hud(false)
 	_show_hud(true)
-	MHAudio.sfx("door_close" if sealed() else "place", -6.0)
+	if walk_in(): MHAudio.sfx("place", -10.0)
+	else: MHAudio.sfx("door_close" if sealed() else "place", -6.0)
+	if animate and first_person and from != Transform3D.IDENTITY:
+		# The camera carries you from where you stood: over the buggy's side
+		# step, or down into the HabRover's seat.
+		var seated := _cam.global_transform
+		var path: Array = [from]
+		if _board != Vector3.INF: path.append(_eye_at(_board + Vector3.UP * 1.45, rotation.y + PI * .5 * signf(_board.x)))
+		path.append(seated)
+		_ride(path)
 
-func _get_out() -> void:
+## Your eye as you stand, for the camera's move into the seat.
+func _head_eye(player: Node) -> Transform3D:
+	var head_camera := player.get_node_or_null("Head/Camera3D") as Camera3D if player != null else null
+	return head_camera.global_transform if head_camera != null and head_camera.is_inside_tree() else Transform3D.IDENTITY
+
+## A level eye at a body-space point, looking along world yaw `yaw`.
+func _eye_at(body: Vector3, yaw: float) -> Transform3D:
+	return Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, -.15), _model.global_transform * body)
+
+## Moves the driving camera through `path` (world transforms); keys wait till it's done.
+func _ride(path: Array, then := Callable()) -> void:
+	_boarding = true
+	_cam.global_transform = path[0]
+	var t := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var each := BOARD_SECONDS / maxf(1.0, path.size() - 1.0)
+	for i in range(1, path.size()):
+		t.tween_property(_cam, "global_transform", path[i], each)
+	t.tween_callback(func() -> void:
+		_boarding = false
+		if then.is_valid(): then.call())
+
+## E in the seat: the walk-in HabRover stands you up into the aisle (you
+## leave by the airlock); the buggy, or a wreck, puts you out beside it.
+func _exit_pressed() -> void:
+	if _boarding: return
+	if walk_in() and absf(speed) > .3:
+		_refuse("Stop first: you can only get up from the seat when it's parked.")
+		return
+	_get_out()
+
+func _stand_up() -> void:
+	var seat: Vector3 = _spec.seat
+	var stand := Vector3(0.0, (_cabin._floor_y if _cabin != null else seat.y - 1.0), seat.z + .8)
+	var yaw := rotation.y + PI   # toward the aisle and the galley
+	var spot: Vector3 = _model.global_transform * stand
+	_player.set_meta("cab_ceiling", true)
+	var target := _eye_at(stand + Vector3.UP * CAB_EYE_HEIGHT, yaw)
+	_close_cab()
+	_aimed = ""
+	driving = false
+	speed = 0.0
+	cruise = 0.0
+	_ride([_cam.global_transform, _eye_at(seat + Vector3(0, .25, .35), rotation.y + PI * .5), target], func() -> void: _release(spot, yaw))
+
+func _get_out(animate := true) -> void:
 	if _player == null: return
+	if animate and walk_in() and _cabin != null:
+		_stand_up()
+		return
 	var spot := _exit_spot()
 	var through_port := false
 	if _docks_outside():
@@ -989,8 +1110,19 @@ func _get_out() -> void:
 	driving = false
 	speed = 0.0
 	cruise = 0.0
+	var yaw := rotation.y + (PI if through_port else 0.0)
+	if animate and first_person and _board != Vector3.INF:
+		var step := _eye_at(_board + Vector3.UP * 1.45, rotation.y + PI * .5 * signf(_board.x))
+		_ride([_cam.global_transform, step, Transform3D(Basis(Vector3.UP, yaw), spot + Vector3.UP * 1.6)], func() -> void: _release(spot, yaw))
+		return
+	_release(spot, yaw)
+
+## Back on your own feet at `spot`, facing `yaw`: seen, solid, your own camera.
+func _release(spot: Vector3, yaw: float) -> void:
+	if _player == null: return
 	_player.global_position = spot
-	_player.rotation.y = rotation.y + (PI if through_port else 0.0)
+	_player.rotation.y = yaw
+	_player.velocity = Vector3.ZERO
 	if "safe_position" in _player: _player.safe_position = spot
 	_player.collision_layer = _player_layers.x
 	_player.collision_mask = _player_layers.y
@@ -1001,7 +1133,7 @@ func _get_out() -> void:
 	if head_camera != null: head_camera.current = true
 	_set_explore_hud(true)
 	_show_hud(false)
-	MHAudio.sfx("door_open" if sealed() else "place", -6.0)
+	if not walk_in(): MHAudio.sfx("door_open" if sealed() else "place", -6.0)
 	_player = null
 
 ## Beside the driver's door, or the other side, or behind: the first spot
@@ -1020,7 +1152,7 @@ func _exit_spot() -> Vector3:
 		var query := PhysicsShapeQueryParameters3D.new()
 		query.shape = capsule
 		query.transform = Transform3D(Basis.IDENTITY, stand + Vector3.UP * 0.95)
-		query.exclude = [get_rid()]
+		query.exclude = _own_rids()
 		if space.intersect_shape(query, 1).is_empty(): return stand
 	return global_transform * Vector3(-side, 0, 0) + Vector3.UP * 0.1
 
@@ -1040,6 +1172,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 	if not driving or get_tree().paused: return
+	if _boarding:
+		get_viewport().set_input_as_handled()
+		return
 	if not _aimed.is_empty() and ((event is InputEventMouseButton and event.pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT)
 			or (event is InputEventJoypadButton and event.pressed and (event as InputEventJoypadButton).button_index == JOY_BUTTON_RIGHT_SHOULDER)):
 		use_cab_part(_aimed)
@@ -1052,7 +1187,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# The gamepad's own buttons (scripts/mh_input.gd): out, lights, cruise, free it.
 	if event is InputEventJoypadButton:
 		var pad_handled := true
-		if MHInput.pressed(event, "vehicle_exit"): _get_out()
+		if MHInput.pressed(event, "vehicle_exit"): _exit_pressed()
 		elif MHInput.pressed(event, "vehicle_lights"): _set_lights(not lights_on)
 		elif MHInput.pressed(event, "cruise"): _toggle_cruise()
 		elif MHInput.pressed(event, "recover"): _recover()
@@ -1066,7 +1201,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		var handled := true
 		match event.keycode:
-			KEY_E: _get_out()
+			KEY_E: _exit_pressed()
 			KEY_F: _set_lights(not lights_on)
 			KEY_V:
 				first_person = not first_person
@@ -1094,7 +1229,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Parked with the cab sealed: the cabin is a safe pocket.
 func cabin_ready() -> bool:
-	return sealed() and driving and absf(speed) < .1 and (o2 > 0.0 or not SUIT.active())
+	return sealed() and aboard() and absf(speed) < .1 and (o2 > 0.0 or not SUIT.active())
 
 func _cabin_sleep() -> void:
 	if not sealed(): return
@@ -1232,6 +1367,9 @@ func _unbog() -> void:
 # ---------- driving ----------
 
 func _physics_process(delta: float) -> void:
+	if _cabin != null:
+		var walk := walk_in() and not driving and not recalling and tow.is_empty()
+		if walk != bool(_cabin.walk): _cabin.set_walk(walk)
 	var throttle := 0.0
 	var steer_in := 0.0
 	var braking := false
@@ -1244,11 +1382,11 @@ func _physics_process(delta: float) -> void:
 			_battery(delta, 0.0)
 			_sound_alarm(delta)
 			_player.global_position = global_transform * (_spec.seat as Vector3) - Vector3.UP * 1.6
-			_place_camera(delta)
+			if not _boarding: _place_camera(delta)
 			_aim_cab()
 			_update_hud()
 		return
-	if driving and not get_tree().paused and not bool(_player.get_meta("ui_freeze", false)):
+	if driving and not get_tree().paused and not _boarding and not bool(_player.get_meta("ui_freeze", false)):
 		# Keys, or RT/LT and the left stick (scripts/mh_input.gd): how far, not just on or off.
 		throttle = maxf(_axis(KEY_W, "throttle"), MHInput.amount("move_forward")) - maxf(_axis(KEY_S, "brake"), MHInput.amount("move_back"))
 		steer_in = _axis(KEY_A, "move_left") - _axis(KEY_D, "move_right")
@@ -1294,7 +1432,7 @@ func _physics_process(delta: float) -> void:
 			if absf(speed) > 2.5: MHAudio.sfx("land", -4.0)
 			var impact := absf(speed)
 			speed *= 0.3
-			if impact > CRASH_SPEED and not recalling:
+			if impact > CRASH_SPEED * _max_speed and not recalling:
 				_wreck_here("hit")
 				return
 			if impact > HULL_KNOCK_FROM and not recalling and sealed():
@@ -1315,7 +1453,7 @@ func _physics_process(delta: float) -> void:
 	if driving:
 		_player.global_position = global_transform * (_spec.seat as Vector3) - Vector3.UP * 1.6
 		_player.rotation.y = rotation.y   # you face where it's going (the region map's arrow)
-		_place_camera(delta)
+		if not _boarding: _place_camera(delta)
 		_aim_cab()
 		_update_hud()
 
@@ -1429,10 +1567,20 @@ func _follow_ground(delta: float) -> void:
 		wheel.position.y = float(wheel.get_meta("rest_y")) + offset
 
 ## The ground (or floor, or ramp) under a point; INF if there's none.
+## What the rover's own rays look past: itself, its walk-in cabin (its floor
+## isn't the ground) and you.
+func _own_rids() -> Array[RID]:
+	var rids: Array[RID] = [get_rid()]
+	if _cabin != null:
+		for body in _cabin._bodies: rids.append((body as CollisionObject3D).get_rid())
+	var world := get_tree().get_first_node_in_group("habitat_world") if is_inside_tree() else null
+	if world != null and world.get("player") != null: rids.append((world.player as CollisionObject3D).get_rid())
+	return rids
+
 func _ground_at(at: Vector3) -> float:
 	var from := Vector3(at.x, global_position.y + 1.6, at.z)
 	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3(.02, -7.0, .015))
-	query.exclude = [get_rid()]
+	query.exclude = _own_rids()
 	if _player != null: query.exclude.append(_player.get_rid())
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	return float((hit.position as Vector3).y) if not hit.is_empty() else INF
@@ -1528,7 +1676,7 @@ func _cabin_air(hours: float) -> void:
 		o2 = 100.0
 		return
 	if _charging == "garage": _restock(hours)
-	if not driving: return
+	if not aboard(): return
 	var was := o2
 	var leak := leak_per_h()
 	if life_on():
@@ -1663,6 +1811,9 @@ func through_port(port: Node) -> String:
 	if not bool(port.call("port_outside")): return "A docking port needs an outside wall: nothing but open ground beyond it."
 	if docked_at(port):
 		if player == null or driving: return ""
+		if walk_in():
+			_cabin.through_from_port(player)
+			return ""
 		MHAudio.sfx("door_open", -6.0)
 		_get_in(player)
 		_look = Vector2(PI, -0.35)   # in through the back: up in the aisle, by the galley
@@ -1688,6 +1839,7 @@ func recall() -> String:
 	if bogged: return "It's bogged down: someone has to dig it out or lay a mat first."
 	if home.is_empty(): return "There's no Garage to come home to."
 	if driving: return "Someone's driving it."
+	if _cabin != null and bool(_cabin.player_in): return "You're aboard: sit in the driver's seat to drive it."
 	if _in_bay(): return "It's already docked at the Garage." if _docks_outside() else "It's already here in the Garage."
 	if top_speed() <= 0.0: return "Its battery and reserve are flat and it's dark: it can't move until sunrise, when its solar can crawl it home."
 	_start_recall()
@@ -1860,7 +2012,7 @@ func set_down_at(at: Vector3, yaw := INF) -> bool:
 func _ground_under(at: Vector3, near_y: float) -> float:
 	var from := Vector3(at.x, near_y + 25.0, at.z)
 	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3(.02, -60.0, .015))
-	query.exclude = [get_rid()]
+	query.exclude = _own_rids()
 	var world := get_tree().get_first_node_in_group("habitat_world")
 	if world != null and world.player != null: query.exclude.append(world.player.get_rid())
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
@@ -1959,7 +2111,7 @@ func _place_camera(delta: float) -> void:
 	var back := Vector3(sin(yaw), 0.0, cos(yaw)) * chase.x * cos(_look.y) + Vector3.UP * (chase.y - 1.5 - sin(_look.y) * chase.x)
 	var wanted := target + back
 	var query := PhysicsRayQueryParameters3D.create(target, wanted)
-	query.exclude = [get_rid()]
+	query.exclude = _own_rids()
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty(): wanted = target + (hit.position - target) * 0.9
 	_cam.global_position = _cam.global_position.lerp(wanted, minf(1.0, delta * 6.0))

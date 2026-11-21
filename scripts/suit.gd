@@ -247,6 +247,9 @@ func _where() -> String:
 		# open scout buggy never is (A7, scripts/crew_rover.gd).
 		var rover: Node = _vehicle()
 		return "rover" if rover != null and (not rover.has_method("sealed") or rover.sealed()) and float(rover.o2) > 0.0 else "outside"
+	# On your feet in the HabRover's cabin (scripts/vehicle_cabin.gd): its air.
+	var cab: Variant = player.get_meta("in_cab") if player.has_meta("in_cab") else null
+	if cab is Node and is_instance_valid(cab): return "rover" if float(cab.o2) > 0.0 else "outside"
 	# Walker 1's front seat: a suit line off the module's air (playthrough, 8 Nov).
 	var walker: Node = world.get("walker")
 	if walker != null and bool(walker.get("riding")): return "walker"
@@ -853,7 +856,7 @@ func _draw_visor() -> void:
 func pass_out() -> void:
 	passed_out = true
 	var vehicle := _vehicle()
-	if bool(world.player.get_meta("driving", false)) and vehicle != null: vehicle._get_out()
+	if bool(world.player.get_meta("driving", false)) and vehicle != null: vehicle._get_out(false)
 	# Not met GAR-Y yet? It's been out looking for the lander, and finds you.
 	# The guided days: something does, unseen, and you meet it in its own time.
 	var field: Node = world.get("drop_field")

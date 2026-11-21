@@ -140,7 +140,8 @@ func _initialize() -> void:
 	# Power + hull: a knock opens a leak, a patch kit seals it, the Garage mends it.
 	rover.hull = 100.0
 	rover.damage_hull(50.0, "a test knock")
-	_check(rover.leaking() and str(rover.interaction_prompt().get("tertiary", "")).begins_with("Patch the hull"), "a hard knock opens a cab leak, patched with G (%d%%)" % roundi(rover.hull))
+	var patch_offer: String = rover._cabin._locker_job() if rover._cabin != null else str(rover.interaction_prompt().get("tertiary", ""))
+	_check(rover.leaking() and patch_offer.begins_with("Patch the hull"), "a hard knock opens a cab leak, patched from the kit locker (%d%%)" % roundi(rover.hull))
 	var field: Node = rover._drop_field()
 	if field == null:
 		_check(not rover.patch_hull() and rover.leaking(), "no patch kit, no patch")
@@ -159,12 +160,12 @@ func _initialize() -> void:
 	_check(rover._in_bay() and rover.o2 > 55.0 and rover.hull > before_quake, "the bay freshens the cab (%.1f%%) and mends the hull (%d%%)" % [rover.o2, roundi(rover.hull)])
 	# Driving: the sealed cab, which breathes from the tank.
 	world.player.global_position = rover.global_position + Vector3(-2.5, .2, 0)
-	rover.interact()
+	rover.sit_down(world.player)
 	world.suit._check = 0.0
 	await process_frame
 	await process_frame
 	_check(suit.where == "rover", "in the cab you're breathing the rover's air (%s, driving %s)" % [suit.where, world.player.get_meta("driving", false)])
-	rover._get_out()
+	rover._get_out(false)
 	# No oxygen in Survival: you black out, carrying a jar of samples, and
 	# GAR-Y drags you home while the hours pass.
 	var gary = world.scout_rover

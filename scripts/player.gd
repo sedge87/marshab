@@ -12,8 +12,8 @@ const JUMP_VELOCITY := 3.6
 # along on its own. Tapping jump as you land is never needed and never
 # punished: each tap in time builds your flow, and flow makes you faster,
 # your bounds longer and your breathing easier (scripts/suit.gd).
-const LOPE_SPEED := 7.5
-const LOPE_FLOW_SPEED := .7     # more m/s for each step of flow
+const LOPE_SPEED := 7.0
+const LOPE_FLOW_SPEED := .35    # more m/s for each step of flow
 const LOPE_UP := 2.2            # each bound's lift: about .8 s in the air
 const LOPE_FLOW_UP := .06       # a longer bound for each step of flow
 const LOPE_FLOW_MAX := 3
@@ -36,6 +36,7 @@ const CLIMB_UNTIL := 8.0
 const STAND_HEIGHT := 1.8
 const CROUCH_HEIGHT := 1.15
 const STAND_EYES := 1.6
+const CAB_HEIGHT := 1.6         # under the HabRover's low ceiling (scripts/vehicle_cabin.gd)
 
 @onready var head: Node3D = $Head
 @onready var flashlight: SpotLight3D = $Head/Camera3D/Flashlight
@@ -300,11 +301,12 @@ func _crouch(delta: float) -> void:
 	if crouching and not want and _headroom_blocked(): want = true
 	crouching = want
 	var capsule := _body_shape.shape as CapsuleShape3D
-	var height := CROUCH_HEIGHT if crouching else STAND_HEIGHT
+	var low := bool(get_meta("cab_ceiling", false))
+	var height := CROUCH_HEIGHT if crouching else (CAB_HEIGHT if low else STAND_HEIGHT)
 	if not is_equal_approx(capsule.height, height):
 		capsule.height = height
 		_body_shape.position.y = height * .5
-	var eyes := STAND_EYES - (STAND_HEIGHT - CROUCH_HEIGHT) if crouching else STAND_EYES
+	var eyes := STAND_EYES - (STAND_HEIGHT - height)
 	head.position.y = move_toward(head.position.y, eyes, delta * 4.0)
 
 func _headroom_blocked() -> bool:

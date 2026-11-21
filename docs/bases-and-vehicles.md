@@ -300,6 +300,15 @@ The cab follows the same rule as the bases (systems-and-items §1.3): one life-s
 - **Saved:** `hull`. Older saves load at 100%. The buggy has no air or hull.
 - **Not yet:** the improvised scrap patch, the emergency pack, and a findable hiss spot inside the cab.
 
+### As built (21 Nov): walk-in HabRover, animated boarding
+- **HabRover (`scripts/vehicle_cabin.gd`):** parked, you get in by the rear hatch. E on it runs a ~3 s cycle: the hatch swings open, you step up into the lock, it shuts, a hiss, then the inner gates open into the aisle. Inside you're on your feet (a shorter body under the low ceiling) and breathing its air. E on a galley drawer opens it, the bunk is for sleep, and E on the driver's seat sits you down. E in the seat stands you up into the aisle, but only once it's stopped. Out: E on the inner gates. Docked to a port, you walk straight through with no cycle.
+- Its collision while parked is the model's own shell (a two-sided trimesh). The rover's box comes back while it drives, is recalled, towed or wrecked. The rover's own rays look past its shell and you.
+- A wreck keeps the seat-only "Get in".
+- **The side hatch is the kit locker:** E opens it. From it you patch the hull (patch kit) or fix the wheels (spares). G outside is only "Top up suit" and digging out.
+- **Buggy:** E climbs you in over the side step, with a camera move. E climbs you out.
+- **Driver's eye** 25 cm further forward in both, for a better view out the front.
+- **Test:** `tests/vehicle_board_test.gd`.
+
 ## The blackout rule (outside the guided chapters)
 
 At zero health outside:
