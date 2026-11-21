@@ -66,7 +66,10 @@ func _initialize() -> void:
 	var rover_out: float = Vector2(rover.global_position.x, rover.global_position.z).length()
 	assert(buggy_out > 450.0 and buggy_out < 750.0, "The buggy's wreck is in ring 1, about 600 m out (%d m)." % roundi(buggy_out))
 	assert(rover_out > 2100.0 and rover_out < 2700.0, "The rover's wreck is at the edge of ring 2 (%d m)." % roundi(rover_out))
-	assert(buggy.find_children("dash_screen", "MeshInstance3D", true, false).size() == 1, "The buggy's model has its dashboard screen.")
+	assert(buggy._screens.has("drive") and buggy._screens.has("home"), "Scout 02: its drive and return-to-hab screens.")
+	assert(rover._screens.has("drive") and rover._screens.has("nav") and rover._screens.has("cabin"), "Traverse 06: drive, nav and cabin screens.")
+	assert(buggy._wheels.size() == 4 and rover._wheels.size() == 6, "Four wheels and six, found on the models.")
+	assert(buggy._cab.has("glove_box") and buggy._cab.has("lead") and rover._cab.has("drawer_meals"), "The glove box, the suit lead and the galley drawers.")
 
 	# ---------- the buggy: fixed on the spot ----------
 	MHChapterOne.stock["spares_kit"] = 0

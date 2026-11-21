@@ -910,6 +910,7 @@ func _sync_crew_rover() -> void:
 	var outside: Vector2i = bay.get("door_direction", Vector2i(0, -1))
 	crew_rover.global_position = Vector3(centre.x, builder.habitat_base_y + 0.05, centre.y)
 	crew_rover.rotation.y = builder._direction_yaw(outside)
+	if crew_rover._docks_outside(): crew_rover.park_at_home(false)   # the HabRover's pad, outside the door
 
 ## Region sites: the buggy, the rover and the drone, as wrecks out in the
 ## land (or, saved, where you left them). Not during the guided chapters.

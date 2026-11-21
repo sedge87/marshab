@@ -570,7 +570,7 @@ func _update_prompt() -> void:
 		if corer != null and not str(corer.call("prompt")).is_empty():
 			show = true
 			_prompt_keys.text = MHInput.glyph("use")
-			_prompt_verb.text = "Hold to take a core"
+			_prompt_verb.text = str(corer.call("prompt_verb"))
 			_prompt_state.text = ""
 	# Step 5: a rock to chip, or the ground at your feet to scoop.
 	if not show:

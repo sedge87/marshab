@@ -26,8 +26,12 @@ func _initialize() -> void:
 	var rover = world.crew_rover
 	assert(rover != null, "A vehicle bay brings the crew rover.")
 	for i in 30: await physics_frame
-	var y: float = b.habitat_base_y
-	assert(absf(rover.global_position.y - y) < 0.25 and rover._in_bay(), "It's parked on the bay floor (%s, floor %.2f)." % [rover.global_position, y])
+	# Phase 6: the HabRover (Traverse 06) is too tall for the hangar: it docks
+	# on a pad outside the big door, backed on to the wall by an umbilical.
+	var pad_ground: float = b._terrain_height(rover.global_position)
+	assert(rover._docks_outside() and rover._in_bay() and not rover._in_bay_room(), "Docked on its pad outside the Garage (%s)." % rover.global_position)
+	assert(absf(rover.global_position.y - pad_ground) < 0.35, "On the ground (%.2f, ground %.2f)." % [rover.global_position.y, pad_ground])
+	assert(rover._umbilical != null and rover._umbilical.visible and str(rover._charge_source()) == "garage", "The umbilical's on: it charges and restocks from the Garage.")
 	assert(not get_nodes_in_group("vehicle_bay_ramp").is_empty(), "The hangar has a ramp down to the ground.")
 	assert(str(rover.interaction_prompt().primary) == "Drive", "Look at it: Drive.")
 	MHGame.game_mode = "freedom"   # the batteries run down (Creative's never do)
@@ -38,15 +42,15 @@ func _initialize() -> void:
 	player.global_position = rover.global_position + Vector3(-2.5, 0.2, 0)
 	assert(rover.interact(), "Get in.")
 	assert(bool(player.get_meta("driving", false)) and not player.visible, "You're in the driver's seat.")
-	# Drive south, out of the hangar.
+	# Drive south, away from the Garage.
 	_key(KEY_W, true)
 	for i in 60 * 7: await physics_frame
 	_key(KEY_W, false)
 	for i in 60: await physics_frame
 	var hangar_z := 1.5 * 3.0 + 1.5     # the bay's south face
-	assert(rover.global_position.z > hangar_z + 3.0, "Out through the hangar door (z %.1f)." % rover.global_position.z)
+	assert(rover.global_position.z > hangar_z + 3.0, "Away from the Garage (z %.1f)." % rover.global_position.z)
 	var ground: float = b._terrain_height(rover.global_position)
-	assert(absf(rover.global_position.y - ground) < 0.35, "Down the ramp onto the ground (%.2f, ground %.2f)." % [rover.global_position.y, ground])
+	assert(absf(rover.global_position.y - ground) < 0.35, "On the ground (%.2f, ground %.2f)." % [rover.global_position.y, ground])
 	assert(rover.battery < 100.0, "Driving uses the battery (%.1f%%)." % rover.battery)
 	# Steer and keep going: it turns.
 	var yaw_before: float = rover.rotation.y
@@ -104,10 +108,10 @@ func _initialize() -> void:
 	for i in 60 * 40:
 		await physics_frame
 		if not rover.recalling: break
-	assert(not rover.recalling and rover._in_bay(), "It drove itself home into the bay (%s)." % rover.global_position)
+	assert(not rover.recalling and rover._in_bay(), "It drove itself home to its pad (%s)." % rover.global_position)
 	for i in 60 * 3: await physics_frame
 	var hangar_open := get_nodes_in_group("airlock_door").any(func(d): return str(d.door_label()) == "HANGAR" and d.is_open())
-	assert(not hangar_open, "And shut the hangar behind it.")
+	assert(not hangar_open, "It never opens the hangar.")
 	assert(str(rover.recall()).contains("already"), "A second recall: it's already home.")
 	# In Creative the batteries never run down.
 	MHGame.game_mode = "creative"
@@ -115,5 +119,5 @@ func _initialize() -> void:
 	rover.reserve = 0.0
 	for i in 3: await physics_frame
 	assert(rover.battery == 100.0 and rover.reserve == 100.0, "Creative: always full.")
-	print("Crew rover test passed: in the bay, the ramp, getting in, driving out through the hangar, steering, the battery, getting out, saving, the reserve, no solar at night, a recall home, the compass, cruise control and Creative's endless battery.")
+	print("Crew rover test passed: docked on its pad outside the Garage, the ramp, getting in, driving away, steering, the battery, getting out, saving, the reserve, no solar at night, a recall home, the compass, cruise control and Creative's endless battery.")
 	quit(0)

@@ -214,6 +214,31 @@
   - Settings switches for marker compass marks;
   - remote switching from the rover terminal (survival-systems §12.5).
 
+### As built (Phase 6, 21 Nov): the field models
+
+The user's three field models (`asset_packs/outpost_field_assets_v1`, cleaned of all lettering by `source/clean_field_assets.py`; in game as `assets/models/field/*.glb`) replace the code-built buggy, the EVA-6 and the old corer.
+
+- **Scout 02 (the scout buggy).** The wheels, the steering and the yoke are driven from the model's own empties. There are two working screens, drawn like the wrist (`scripts/vehicle_screens.gd`):
+  - **Drive:** a speed arc, a battery ring with the reserve in amber, the range, and lit icons for lights, cruise, slipping and worn wheels.
+  - **Return to hab:** an arrow home and the distance. Your suit's air shows in minutes, with the drive home marked on the ring. The edge goes red when the air won't cover the drive: the turn-back on a working screen, never a voice.
+  - **The glove box:** parked, look at it and click to open it. It holds two food bars and 1.5 L of water pouches, and a Garage restocks it (the bars come from the ration crate).
+  - **The suit charge lead:** click to plug in, and the buggy's battery charges your suit while you sit. There's no air in it.
+- **Traverse 06 (the HabRover).** It has six wheels, front and rear steering, and three screens:
+  - **Drive:** as on the buggy.
+  - **Nav:** the breadcrumb route you drove (a mark every 25 m), north up, with home and you on it. It clears at the dock.
+  - **Cabin:** pressure, cab O₂ and warmth as three rings, with water and meals underneath. Below 20% O₂ the screen flashes and an alarm sounds every 4 s.
+  - **The galley:** three drawers (meals, water, food bars) open by clicking. Parked, turn right round and you're up in the aisle beside them. X still eats and drinks in one go.
+- **The HabRover docks outside.** It's 3.8 m tall and 6.7 m long, too big for the hangar. Its pad is beside the Garage's big door, on the side away from the drone dock. It backs on to the wall, with an umbilical from the wall to its rear airlock. That pad counts as "in the Garage" for charging, restocking, add-ons, the wheel bench and recall. A recall drives to just off the pad and reverses on. It never opens the hangar. The buggy and the drone still go inside.
+- **The MC-01 hand corer** (`scripts/hand_corer.gd`) is worked by hand:
+  - E plants it.
+  - Each press of E is a stroke: the collar drops and the ratchet clicks round. Six strokes take it to depth.
+  - Strokes quicker than 0.45 s are rushed, and two rushed strokes smear the layers. That gives a partial read, which doesn't count as the ice find.
+  - The regolith shoe skids on ice halfway down. R swaps in the ice shoe by hand.
+  - Then E opens the head, hold E draws the liner up (the core shows ice or regolith), and E caps it.
+  - Walk off more than 3 m and it's left.
+- Tools: `tools/vehicle_cab_look.gd` (the cockpits, screens and cab parts), `tools/corer_look.gd` (the corer's stages) and `tools/field_model_look.gd`. Tests: `vehicles_test`, `crew_rover_test`, `rover_route_test` and the new `hand_corer_test`.
+- **Not done yet:** the buggy's dash knobs and other switches as clickable controls; walking about inside the HabRover (you reach the galley from the seat); and the sample case, kit and charge-lead hatches on Scout 02 as working parts.
+
 ## The blackout rule (outside the guided chapters)
 
 At zero health outside:

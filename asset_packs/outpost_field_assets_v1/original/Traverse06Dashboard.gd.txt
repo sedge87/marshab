@@ -1,0 +1,188 @@
+extends Node3D
+## Attach to a Node3D wrapper above the imported Traverse 06 scene.
+## Leave model_path empty when the rover is a child of this node.
+## Connect your vehicle systems to update_driving(), update_navigation()
+## and update_cabin(). The initial values match the model preview.
+
+@export var model_path: NodePath
+
+var _drive: Face
+var _nav: Face
+var _cabin: Face
+var _drawers: Array[Node3D] = []
+var _drawer_closed_positions: Array[Vector3] = []
+var _drawer_tweens: Dictionary = {}
+
+
+func _ready() -> void:
+	var model := self if model_path.is_empty() else get_node_or_null(model_path)
+	if model == null:
+		push_error("Traverse 06 dashboard: model_path does not point to a rover.")
+		return
+	for number in range(1, 4):
+		var drawer := model.find_child("Galley_Drawer_%02d" % number, true, false) as Node3D
+		_drawers.append(drawer)
+		_drawer_closed_positions.append(drawer.position if drawer != null else Vector3.ZERO)
+	_drive = _connect_display(model, "Dash_Drive", Vector2i(670, 309), 0)
+	_nav = _connect_display(model, "Dash_Nav", Vector2i(510, 300), 1)
+	_cabin = _connect_display(model, "Dash_Life_Support", Vector2i(530, 277), 2)
+	update_driving(32.0, 82.0)
+	update_navigation(18.4, PackedVector2Array([
+		Vector2(0.12, 0.82), Vector2(0.28, 0.44), Vector2(0.53, 0.56),
+		Vector2(0.67, 0.19), Vector2(0.86, 0.19),
+	]))
+	update_cabin(70.3, 21.0, 21.0, false)
+
+
+func update_driving(speed_kph: float, battery_percent: float) -> void:
+	if _drive == null:
+		return
+	_drive.values = Vector3(absf(speed_kph), clampf(battery_percent, 0.0, 100.0), 0.0)
+	_drive.queue_redraw()
+
+
+## Route coordinates are normalized to the map rectangle. Origin is top-left.
+func update_navigation(distance_to_hab_km: float, route: PackedVector2Array) -> void:
+	if _nav == null:
+		return
+	_nav.values.x = maxf(distance_to_hab_km, 0.0)
+	_nav.route = route
+	_nav.queue_redraw()
+
+
+func update_cabin(pressure_kpa: float, oxygen_percent: float, temperature_c: float, alarm: bool) -> void:
+	if _cabin == null:
+		return
+	_cabin.values = Vector3(pressure_kpa, oxygen_percent, temperature_c)
+	_cabin.alarm = alarm
+	_cabin.queue_redraw()
+
+
+## Drawer numbers are 1–3, front to back. Pass 0 seconds for save-state restore.
+## Returns false when the index is invalid or the model has no matching drawer.
+func set_galley_drawer_open(number: int, open: bool, seconds: float = 0.28) -> bool:
+	var index := number - 1
+	if index < 0 or index >= _drawers.size() or not is_instance_valid(_drawers[index]):
+		return false
+	var drawer := _drawers[index]
+	var pending := _drawer_tweens.get(index) as Tween
+	if pending != null and pending.is_valid():
+		pending.kill()
+	_drawer_tweens.erase(index)
+	var target := _drawer_closed_positions[index]
+	if open:
+		target.x -= 0.385
+	if seconds <= 0.0:
+		drawer.position = target
+	else:
+		var motion := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_drawer_tweens[index] = motion
+		motion.tween_property(drawer, "position", target, seconds)
+	return true
+
+
+func _connect_display(model: Node, role: String, resolution: Vector2i, mode: int) -> Face:
+	var surface := model.find_child("Display_Surface_" + role, true, false) as MeshInstance3D
+	var preview := model.find_child("Preview_Graphics_" + role, true, false) as Node3D
+	if surface == null:
+		push_warning("Traverse 06 dashboard: missing display surface " + role)
+		return null
+
+	var viewport := SubViewport.new()
+	viewport.name = role + "_Viewport"
+	viewport.size = resolution
+	viewport.disable_3d = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+	add_child(viewport)
+
+	var face := Face.new()
+	face.mode = mode
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	viewport.add_child(face)
+	face.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_texture = viewport.get_texture()
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	surface.material_override = material
+	if preview != null:
+		preview.hide()
+	return face
+
+
+class Face extends Control:
+	const INK := Color("#9edbc9")
+	const DIM := Color("#547f7b")
+	const WARN := Color("#ffb460")
+	const DANGER := Color("#ff7557")
+	const BG := Color("#112b2d")
+	var mode := 0
+	var values := Vector3.ZERO
+	var route := PackedVector2Array()
+	var alarm := false
+
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), BG)
+		draw_rect(Rect2(Vector2(12, 12), size - Vector2(24, 24)), DIM, false, 2)
+		match mode:
+			0: _draw_drive()
+			1: _draw_nav()
+			2: _draw_cabin()
+
+
+	func _text(at: Vector2, line: String, point_size: int, tint: Color = INK) -> void:
+		draw_string(ThemeDB.fallback_font, at, line, HORIZONTAL_ALIGNMENT_LEFT, -1, point_size, tint)
+
+
+	func _draw_drive() -> void:
+		_text(Vector2(30, 65), "TRAVERSE 06 / DRIVE", 31)
+		draw_line(Vector2(30, 88), Vector2(size.x - 30, 88), DIM, 2)
+		draw_line(Vector2(410, 110), Vector2(410, 258), DIM, 2)
+		_text(Vector2(29, 201), "%03d" % roundi(values.x), 108)
+		_text(Vector2(275, 197), "KM/H", 31)
+		_text(Vector2(30, 260), "SPEED", 25, DIM)
+		_text(Vector2(433, 131), "BATTERY", 27, DIM)
+		var tint := DANGER if values.y <= 15.0 else WARN
+		_text(Vector2(432, 205), "%d%%" % roundi(values.y), 62, tint)
+		for i in range(8):
+			var amount := clampf(values.y * 0.08 - float(i), 0.0, 1.0)
+			draw_rect(Rect2(434 + i * 25, 225, 19, 21), DIM, false, 1)
+			if amount > 0.0:
+				draw_rect(Rect2(435 + i * 25, 226, 17 * amount, 19), tint)
+
+
+	func _draw_nav() -> void:
+		_text(Vector2(29, 55), "NAV / HABITAT", 29)
+		var map := Rect2(Vector2(30, 76), Vector2(size.x - 60, 139))
+		draw_rect(map, DIM, false, 2)
+		for i in range(1, 8):
+			var x := map.position.x + map.size.x * i / 8.0
+			draw_line(Vector2(x, map.position.y), Vector2(x, map.end.y), DIM.darkened(0.46), 1)
+		for i in range(1, 4):
+			var y := map.position.y + map.size.y * i / 4.0
+			draw_line(Vector2(map.position.x, y), Vector2(map.end.x, y), DIM.darkened(0.46), 1)
+		_text(Vector2(30, 267), "HAB   %.1f KM" % values.x, 34, WARN)
+		var points := PackedVector2Array()
+		for point in route:
+			points.append(map.position + point.clamp(Vector2.ZERO, Vector2.ONE) * map.size)
+		if points.size() > 1:
+			draw_polyline(points, INK, 5.0, true)
+			draw_rect(Rect2(points[-1] - Vector2(6, 6), Vector2(12, 12)), WARN)
+		if points.size() > 0:
+			draw_circle(points[0], 7.0, INK)
+
+
+	func _draw_cabin() -> void:
+		var tint := DANGER if alarm else INK
+		var status := "CABIN / CHECK SYSTEMS" if alarm else "CABIN / NOMINAL"
+		_text(Vector2(29, 56), status, 29, tint)
+		draw_line(Vector2(30, 77), Vector2(size.x - 30, 77), DIM, 2)
+		draw_line(Vector2(292, 90), Vector2(292, 177), DIM, 2)
+		_text(Vector2(29, 112), "PRESSURE", 24, DIM)
+		_text(Vector2(30, 169), "%.1f" % values.x, 55, tint)
+		_text(Vector2(211, 166), "kPa", 30)
+		_text(Vector2(322, 112), "O2", 24, DIM)
+		_text(Vector2(320, 169), "%.0f%%" % values.y, 55, tint)
+		draw_line(Vector2(30, 188), Vector2(size.x - 30, 188), DIM, 2)
+		_text(Vector2(30, 239), "CABIN TEMP    %.0f C" % values.z, 31)

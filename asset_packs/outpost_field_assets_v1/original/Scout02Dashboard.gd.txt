@@ -1,0 +1,152 @@
+extends Node3D
+## Attach this to a Node3D wrapper above the imported Scout 02 scene.
+## To use a camera, parent a Camera3D to Driver_Eye at identity.
+## Call update_driving() and update_return() after this node is ready.
+## suit_minutes comes from the equipped EVA suit. A negative value means no link.
+
+@export var model_path: NodePath
+
+var _drive: Face
+var _eva: Face
+var _glove_box_hinge: Node3D
+var _glove_box_rest_x := 0.0
+var _glove_box_tween: Tween
+
+
+func _ready() -> void:
+	var model := self if model_path.is_empty() else get_node_or_null(model_path)
+	if model == null:
+		push_error("Scout 02 dashboard: model_path does not point to a buggy.")
+		return
+	_glove_box_hinge = model.find_child("Glove_Box_Hinge", true, false) as Node3D
+	if _glove_box_hinge != null:
+		_glove_box_rest_x = _glove_box_hinge.rotation.x
+	_drive = _connect_display(model, "Dash_Drive", Vector2i(650, 276), true)
+	_eva = _connect_display(model, "Dash_EVA", Vector2i(560, 259), false)
+	update_driving(24.0, 76.0)
+	update_return("NE", 1.8, 28)
+
+
+func update_driving(speed_kph: float, battery_percent: float) -> void:
+	if _drive == null:
+		return
+	_drive.speed_kph = absf(speed_kph)
+	_drive.battery = clampf(battery_percent, 0, 100)
+	_drive.queue_redraw()
+
+
+## Supply the heading toward home, such as NE or 045 degrees.
+## A negative range suppresses both the bearing and distance.
+func update_return(bearing: String, distance_km: float, suit_minutes: int = -1) -> void:
+	if _eva == null:
+		return
+	_eva.bearing = bearing
+	_eva.distance = distance_km
+	_eva.suit_minutes = suit_minutes
+	_eva.queue_redraw()
+
+
+## Pass 0 seconds to set the lid immediately, including on save-state restore.
+func set_glove_box_open(open: bool, seconds: float = 0.26) -> bool:
+	if not is_instance_valid(_glove_box_hinge):
+		return false
+	if _glove_box_tween != null and _glove_box_tween.is_valid():
+		_glove_box_tween.kill()
+	var target := _glove_box_rest_x - (deg_to_rad(72.0) if open else 0.0)
+	if seconds <= 0.0:
+		_glove_box_hinge.rotation.x = target
+	else:
+		_glove_box_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_glove_box_tween.tween_property(_glove_box_hinge, "rotation:x", target, seconds)
+	return true
+
+
+func _connect_display(model: Node, role: String, resolution: Vector2i, is_drive: bool) -> Face:
+	var surface := model.find_child("Display_Surface_" + role, true, false) as MeshInstance3D
+	if surface == null:
+		push_warning("Scout 02 dashboard: display surface missing for " + role)
+		return null
+
+	var viewport := SubViewport.new()
+	viewport.name = role + "_Viewport"
+	viewport.size = resolution
+	viewport.disable_3d = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+	add_child(viewport)
+
+	var face := Face.new()
+	face.is_drive = is_drive
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	viewport.add_child(face)
+	face.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_texture = viewport.get_texture()
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	surface.material_override = material
+	var preview := model.find_child("Preview_Graphics_" + role, true, false) as Node3D
+	if preview != null:
+		preview.hide()
+	return face
+
+
+class Face extends Control:
+	const INK := Color("#a2ddcf")
+	const DIM := Color("#85b7aa")
+	const RULE := Color("#456a64")
+	const AMBER := Color("#ffc16e")
+	const ALERT := Color("#ff8569")
+	const BACKGROUND := Color("#10292a")
+
+	var is_drive := false
+	var speed_kph := 0.0
+	var battery := 0.0
+	var bearing := ""
+	var distance := -1.0
+	var suit_minutes := -1
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), BACKGROUND)
+		draw_rect(Rect2(Vector2(12, 12), size - Vector2(24, 24)), RULE, false, 2)
+		draw_line(Vector2(28, 74), Vector2(size.x - 28, 74), RULE, 2)
+		if is_drive:
+			_draw_drive()
+		else:
+			_draw_return()
+
+	func _text(at: Vector2, content: String, font_size: int, color: Color = INK) -> void:
+		draw_string(ThemeDB.fallback_font, at, content, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+
+	func _draw_drive() -> void:
+		_text(Vector2(29, 56), "SCOUT 02 / DRIVE", 30)
+		_text(Vector2(28, 179), "%03d" % clampi(roundi(speed_kph), 0, 999), 97)
+		_text(Vector2(254, 171), "KM/H", 31, DIM)
+		_text(Vector2(28, 233), "4WD   /   EVA", 26, DIM)
+		draw_line(Vector2(377, 93), Vector2(377, 232), RULE, 2)
+		var tint := ALERT if battery <= 15.0 else AMBER
+		_text(Vector2(403, 117), "BATTERY", 26, DIM)
+		_text(Vector2(401, 185), "%d%%" % roundi(battery), 63, tint)
+		for i in range(6):
+			var amount := clampf(battery * 0.06 - float(i), 0.0, 1.0)
+			draw_rect(Rect2(404 + i * 34, 212, 25, 18), RULE, false, 2)
+			if amount > 0:
+				draw_rect(Rect2(406 + i * 34, 214, amount * 21, 14), tint)
+
+	func _draw_return() -> void:
+		_text(Vector2(29, 56), "RETURN TO HAB", 30)
+		if distance >= 0.0:
+			_text(Vector2(28, 150), bearing.left(8), 48)
+			_text(Vector2(256, 150), "%.1f KM" % distance, 54, AMBER)
+			var arrow := PackedVector2Array([
+				Vector2(199, 131), Vector2(239, 131), Vector2(227, 120),
+				Vector2(239, 131), Vector2(227, 142),
+			])
+			draw_polyline(arrow, INK, 3.0, true)
+		else:
+			_text(Vector2(28, 147), "NO RETURN FIX", 42, AMBER)
+		draw_line(Vector2(28, 169), Vector2(size.x - 28, 169), RULE, 2)
+		_text(Vector2(29, 217), "SUIT RESERVE", 31, DIM)
+		var reserve := "-- MIN" if suit_minutes < 0 else "%d MIN" % suit_minutes
+		var tint := ALERT if suit_minutes >= 0 and suit_minutes <= 10 else INK
+		_text(Vector2(363, 219), reserve, 36, tint)

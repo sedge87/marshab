@@ -1,0 +1,90 @@
+extends Node3D
+## Attach to a wrapper with the imported MC-01 as a child.
+## Call these controls from the first-person tool and sampling systems.
+
+@export var model_path: NodePath
+
+var _upper: Node3D
+var _head: Node3D
+var _driver: Node3D
+var _sleeve: Node3D
+var _cap: Node3D
+var _seat: Node3D
+var _samples: Node3D
+var _regolith_sample: Node3D
+var _ice_sample: Node3D
+var _regolith_shoe: Node3D
+var _ice_shoe: Node3D
+var _driver_rest: Vector3
+var _sleeve_rest: Vector3
+var _cap_rest: Vector3
+
+
+func _ready() -> void:
+	var model := self if model_path.is_empty() else get_node_or_null(model_path)
+	if model == null:
+		push_error("MC-01 corer: model path is missing.")
+		return
+	_upper = model.find_child("Upper_Assembly_Hinge", true, false) as Node3D
+	_head = model.find_child("Ratchet_Head", true, false) as Node3D
+	_driver = model.find_child("Slide_Collar", true, false) as Node3D
+	_sleeve = model.find_child("Sleeve_Assembly", true, false) as Node3D
+	_cap = model.find_child("Seal_Cap", true, false) as Node3D
+	_seat = model.find_child("Seal_Seat", true, false) as Node3D
+	_samples = model.find_child("Recovered_Core", true, false) as Node3D
+	_regolith_sample = model.find_child("Core_Regolith", true, false) as Node3D
+	_ice_sample = model.find_child("Core_Ice", true, false) as Node3D
+	_regolith_shoe = model.find_child("Shoe_Regolith", true, false) as Node3D
+	_ice_shoe = model.find_child("Shoe_Ice", true, false) as Node3D
+	if [_upper, _head, _driver, _sleeve, _cap, _seat, _samples, _regolith_sample, _ice_sample, _regolith_shoe, _ice_shoe].has(null):
+		push_error("MC-01 corer: one or more named model nodes are missing.")
+		return
+	_driver_rest = _driver.position
+	_sleeve_rest = _sleeve.position
+	_cap_rest = _cap.position
+	_samples.hide()
+	_ice_sample.position = _regolith_sample.position
+	_ice_shoe.position = _regolith_shoe.position
+	set_ice_shoe(false)
+
+
+func set_ice_shoe(enabled: bool) -> void:
+	if _ice_shoe != null and _regolith_shoe != null:
+		_ice_shoe.visible = enabled
+		_regolith_shoe.visible = not enabled
+
+
+## A normalized manual stroke from the upper stop to the lower stop.
+func set_drive_stroke(amount: float) -> void:
+	if _driver != null:
+		_driver.position = _driver_rest - Vector3.UP * 0.046 * clampf(amount, 0, 1)
+
+
+func set_ratchet_angle(radians: float) -> void:
+	if _head != null:
+		_head.rotation.y = radians
+
+
+## Opens the drive assembly before the liner is lifted free of the barrel.
+func set_head_open(amount: float) -> void:
+	if _upper != null:
+		_upper.rotation.x = deg_to_rad(118.0) * clampf(amount, 0, 1)
+
+
+## The liner is drawn upward through the barrel after the head is open.
+func set_sleeve_extraction(amount: float) -> void:
+	if _sleeve != null:
+		_sleeve.position = _sleeve_rest + Vector3.UP * 0.34 * clampf(amount, 0, 1)
+
+
+func set_cap_sealed(enabled: bool) -> void:
+	if _cap != null and _seat != null:
+		_cap.position = _seat.position + (_sleeve.position - _sleeve_rest) if enabled and _sleeve != null else _cap_rest
+
+
+## An inspection pose for the recovered sample. Sampling and inventory are external.
+func show_recovered_core(visible_core: bool, icy: bool = false) -> void:
+	if _samples != null and _regolith_sample != null and _ice_sample != null:
+		_samples.visible = visible_core
+		_regolith_sample.visible = not icy
+		_ice_sample.visible = icy

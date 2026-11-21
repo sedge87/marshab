@@ -5,11 +5,12 @@ extends CharacterBody3D
 ##
 ## - "buggy", the scout buggy: open, so you stay suited and breathe your own
 ##   air. Quick (5 m/s), about 2 km to a charge, a small locker for what you
-##   carry. Code-built model (scripts/vehicle_model.gd). Found in a ring 1
+##   carry. Model: Scout 02 (Phase 6; the old code-built one in
+##   scripts/vehicle_model.gd is the fallback). Found in a ring 1
 ##   cargo wreck: a printed part (a spares kit) and a battery bridged from
 ##   your suit bring it back.
-## - "rover", the pressurised rover: the EVA-6 (model from the user's design,
-##   25 Oct). Slow (3 m/s), about 6 km to a charge. A sealed cab with its own
+## - "rover", the HabRover: Traverse 06 (Phase 6; the EVA-6 model is the
+##   fallback). Slow (3 m/s), about 6 km to a charge. A sealed cab with its own
 ##   air, power, water and food: one of the three survival states (in a hab,
 ##   in the rover, on foot; docs/pillars.md). Parked, you can sleep (Z), eat
 ##   and drink (X), and your suit tops up from it. It bogs on sand and ripple
@@ -21,12 +22,22 @@ extends CharacterBody3D
 ## lights, V cockpit or chase view, mouse to look, O radio, R recover it if
 ## it's wedged (not when bogged: dig out or lay a mat), E get out.
 ##
-## The dashboard is a working screen in the cab (scripts/vehicle_dash.gd).
-## The cockpit view looks at it; the chase view shows the same screen small
-## in a corner. The compass strip stays on in both, as on foot.
+## The dashboards are working screens in the cab, drawn like the wrist
+## (scripts/vehicle_screens.gd): Scout 02 has Drive and Return to hab (the
+## way home, and your suit's air in minutes against the drive); the HabRover
+## has Drive, Nav (the breadcrumb route you drove) and Cabin (its own air,
+## with a live alarm). The cockpit view looks at them; the chase view shows
+## the Drive screen small in a corner. The compass strip stays on in both.
 ##
-## Charging: the Garage's rover dock charges fast and refills the rover's air,
-## water and food; parked by the lander or any base's core it trickle-charges;
+## Hands-on cab (Phase 6): parked, look at a part and click (LMB, or RB): the
+## buggy's glove box (food bars, water pouches) and its suit charge lead
+## (power, no air); the HabRover's three galley drawers (meals, water, food
+## bars), reached by turning right round into the aisle.
+##
+## Charging: the Garage charges fast and refills air, water and food. The
+## buggy drives in; the HabRover is too tall and long for the hangar, so it
+## docks on a pad outside beside the big door, its airlock backed on to the
+## wall by an umbilical; parked by the lander or any base's core it trickle-charges;
 ## anywhere outside its roof solar adds a little by day. Main battery flat,
 ## a reserve takes over at reduced speed; both flat, a solar crawl by day.
 ##
@@ -34,6 +45,26 @@ extends CharacterBody3D
 
 const MODEL_PATH := "res://assets/vehicles/crew_rover.glb"
 const MODEL := preload("res://scripts/vehicle_model.gd")
+## Phase 6 (21 Nov): the user's field models (asset_packs/outpost_field_assets_v1,
+## cleaned of lettering). Their fronts face +Z, so they're turned to face -Z;
+## the game hangs its parts on their named empties (Wheel_FL, Steer_FL,
+## Driver_Eye, Display_Surface_Dash_Drive, Glove_Box_Hinge, Galley_Drawer_01).
+const FIELD_MODELS := {"buggy": "res://assets/models/field/scout_02.glb", "rover": "res://assets/models/field/traverse_06.glb"}
+const SCREENS := preload("res://scripts/vehicle_screens.gd")
+## Each Display_Surface: what it shows and its pixels (the quads' own shapes).
+const SCREEN_MODES := {"Dash_Drive": ["drive", Vector2i(650, 300)], "Dash_EVA": ["home", Vector2i(560, 260)],
+	"Dash_Nav": ["nav", Vector2i(510, 300)], "Dash_Life_Support": ["cabin", Vector2i(530, 280)]}
+## Things in the cab you use by looking at them and clicking (the cockpit
+## view): model empty -> what it is.
+const CAB_PARTS := {"buggy": {"Glove_Box_Access": "glove_box", "Charge_Lead_Access": "lead"},
+	"rover": {"Galley_Drawer_01": "drawer_meals", "Galley_Drawer_02": "drawer_water", "Galley_Drawer_03": "drawer_bars"}}
+const AIM_CONE := .16           # rad off the look line that still counts as looking at a part
+const AIM_REACH := 3.0          # m from your eye (the galley is behind the seats)
+const STASH := {"bars": 2, "water_l": 1.5}   # the buggy's glove box, full
+const LEAD_PER_H := 1.0         # suit battery shares an hour on the buggy's lead
+const TRAIL_STEP := 25.0        # m between the rover's breadcrumbs
+const TRAIL_MAX := 600
+const ALARM_EVERY := 4.0        # s between the cab alarm's tones
 const DASH := preload("res://scripts/vehicle_dash.gd")
 const CARGO_LANDER := preload("res://scripts/cargo_lander.gd")   # its soft dust puff
 const MHPalette := preload("res://scripts/mh_palette.gd")
@@ -44,13 +75,13 @@ const GROUND := preload("res://scripts/ground.gd")
 
 ## Per kind. Distances are a full battery's worth; the reserve is extra.
 const SPECS := {
-	"rover": {"label": "Pressurised rover", "speed": 3.0, "reverse": 1.2, "reserve_speed": 1.8, "range_m": 6000.0, "reserve_m": 600.0,
-		"solar_per_h": 6.0, "sealed": true, "wheelbase": 2.9, "wheel_r": .366, "half_track": .99, "half_base": 1.29,
-		"hull": Vector3(2.25, 1.5, 4.05), "seat": Vector3(-.4, 1.5, -.7), "cab_view": Vector3(0, 1.45, -1.42),
+	"rover": {"label": "HabRover", "speed": 3.0, "reverse": 1.2, "reserve_speed": 1.8, "range_m": 6000.0, "reserve_m": 600.0,
+		"solar_per_h": 6.0, "sealed": true, "wheelbase": 3.56, "wheel_r": .59, "half_track": 1.64, "half_base": 1.78,
+		"hull": Vector3(3.6, 2.9, 6.4), "seat": Vector3(-.4, 1.5, -.7), "cab_view": Vector3(0, 1.45, -1.42),
 		"dash": Vector3(-.05, 1.24, -1.86), "dash_size": Vector2(.42, .246), "chase": Vector2(7.5, 2.6)},
 	"buggy": {"label": "Scout buggy", "speed": 5.0, "reverse": 2.0, "reserve_speed": 2.5, "range_m": 2000.0, "reserve_m": 300.0,
-		"solar_per_h": 4.0, "sealed": false, "wheelbase": 2.24, "wheel_r": .38, "half_track": .92, "half_base": 1.12,
-		"hull": Vector3(1.9, 1.0, 2.9), "seat": Vector3(-.32, 1.0, .2), "cab_view": Vector3(-.32, 1.62, .18),
+		"solar_per_h": 4.0, "sealed": false, "wheelbase": 2.24, "wheel_r": .51, "half_track": .99, "half_base": 1.12,
+		"hull": Vector3(2.2, 1.0, 3.4), "seat": Vector3(-.32, 1.0, .2), "cab_view": Vector3(-.32, 1.62, .18),
 		"dash": Vector3.INF, "dash_size": Vector2.ZERO, "chase": Vector2(6.0, 2.4)},
 }
 const LIMP_SPEED := 0.8         # both batteries flat: crawling on roof solar (daylight only)
@@ -161,6 +192,21 @@ var _backing := 0.0
 var _hull: CollisionShape3D
 var _hull_centre := Vector3.ZERO
 var _said := {}
+var _field := false             # wearing a Phase 6 field model
+var _screens := {}              # mode -> SubViewport (vehicle_screens.gd)
+var _cab := {}                  # what -> Node3D in the cab you can click (CAB_PARTS)
+var _cab_rest := {}             # what -> its closed transform
+var _cab_open := {}             # what -> true while open
+var _aimed := ""                # the cab part you're looking at
+var _yoke: Node3D
+var _galley_eye := Vector3.INF  # the HabRover: where you stand in the aisle to reach the galley
+var _yoke_rest := Basis.IDENTITY
+var _yoke_axis := Vector3.FORWARD
+var _reticle: Control
+var lead := false               # the buggy's charge lead plugged into your suit
+var stash := STASH.duplicate()  # the buggy's glove box
+var trail := PackedVector2Array()   # the rover's breadcrumbs from home
+var _alarm_clock := 0.0
 
 func setup(target_builder: Node, vehicle_kind := "") -> void:
 	builder = target_builder
@@ -173,7 +219,7 @@ func sealed() -> bool:
 	return bool(_spec.get("sealed", false))
 
 func _ready() -> void:
-	_spec = SPECS.get(kind, SPECS.rover)
+	_spec = (SPECS.get(kind, SPECS.rover) as Dictionary).duplicate()
 	_max_speed = float(_spec.speed)
 	_half_track = float(_spec.half_track)
 	_half_base = float(_spec.half_base)
@@ -196,7 +242,14 @@ func _ready() -> void:
 	_model.name = "Body"
 	add_child(_model)
 	var visual: Node3D
-	if kind == "rover":
+	var field_path: String = FIELD_MODELS.get(kind, "")
+	if not field_path.is_empty() and ResourceLoader.exists(field_path):
+		visual = (load(field_path) as PackedScene).instantiate() as Node3D
+		visual.rotation.y = PI
+		_model.add_child(visual)
+		MHPalette.apply(visual)
+		_field = true
+	elif kind == "rover":
 		var scene := load(MODEL_PATH) as PackedScene
 		if scene != null:
 			visual = scene.instantiate() as Node3D
@@ -206,7 +259,9 @@ func _ready() -> void:
 		visual = MODEL.new()
 		visual.kind = "buggy"
 		_model.add_child(visual)
-	if visual != null:
+	if _field:
+		_fit_field_model(visual)
+	elif visual != null:
 		for node in visual.find_children("wheel_*", "Node3D", true, false):
 			_wheels[str(node.name).substr(6, 2)] = node
 		_tail_lights.assign(visual.find_children("tail_light_red*", "MeshInstance3D", true, false))
@@ -231,6 +286,368 @@ func _ready() -> void:
 		o2 = 0.0
 		water_l = 0.0
 		meals = 0
+
+# ---------- the field models (Phase 6) ----------
+
+## A direction in this vehicle's own space, as seen in `node`'s parent's axes.
+func _in_parent(node: Node3D, body_dir: Vector3) -> Vector3:
+	var parent := node.get_parent() as Node3D
+	var from_parent := _model.global_transform.affine_inverse().basis * parent.global_transform.basis
+	return (from_parent.inverse() * body_dir).normalized()
+
+func _body_point(node: Node3D) -> Vector3:
+	return _model.global_transform.affine_inverse() * node.global_position
+
+## Wheels by where they sit (not by the model's own side names), the eye and
+## seat, the yoke, the screens and the cab parts.
+func _fit_field_model(visual: Node3D) -> void:
+	for found in visual.find_children("Wheel_*", "Node3D", true, false):
+		var wheel := found as Node3D
+		if str(wheel.name).length() != 8: continue
+		var at := _body_point(wheel)
+		var key := ("f" if at.z < -.5 else ("r" if at.z > .5 else "m")) + ("l" if at.x < 0.0 else "r")
+		_wheels[key] = wheel
+		wheel.set_meta("rest", wheel.transform.basis)
+		wheel.set_meta("axle", _in_parent(wheel, Vector3.RIGHT))
+		var pivot := visual.find_child("Steer_" + str(wheel.name).substr(6), true, false) as Node3D
+		if pivot != null:
+			pivot.set_meta("rest", pivot.transform.basis)
+			pivot.set_meta("up", _in_parent(pivot, Vector3.UP))
+			wheel.set_meta("steer", pivot)
+	var eye := visual.find_child("Driver_Eye", true, false) as Node3D
+	if eye != null: _spec["cab_view"] = _body_point(eye)
+	var seat := visual.find_child("Driver_Seat", true, false) as Node3D
+	if seat != null: _spec["seat"] = _body_point(seat) + Vector3.UP * 1.0
+	_yoke = visual.find_child("Steering_Yoke", true, false) as Node3D
+	if _yoke != null:
+		_yoke_rest = _yoke.transform.basis
+		var toward := (_spec.cab_view as Vector3) - _body_point(_yoke)
+		toward.x = 0.0
+		_yoke_axis = _in_parent(_yoke, toward.normalized() if toward.length() > .01 else Vector3.BACK)
+	for found in visual.find_children("Display_Surface_*", "MeshInstance3D", true, false):
+		var role := str(found.name).trim_prefix("Display_Surface_")
+		if not SCREEN_MODES.has(role): continue
+		var spec: Array = SCREEN_MODES[role]
+		_screens[spec[0]] = SCREENS.attach(self, found as MeshInstance3D, str(spec[0]), spec[1])
+		_lift_screen(found as MeshInstance3D)
+	var galley := visual.find_child("Galley_Drawer_02", true, false) as Node3D
+	if galley != null:
+		var g := _body_point(galley)
+		_galley_eye = Vector3(g.x + (1.0 if g.x < 0.0 else -1.0), (_spec.cab_view as Vector3).y, g.z)
+	var parts: Dictionary = CAB_PARTS.get(kind, {})
+	for part_name in parts:
+		var part := visual.find_child(str(part_name), true, false) as Node3D
+		if part == null: continue
+		var what: String = parts[part_name]
+		# The glove box swings on its hinge; drawers slide; the lead lifts.
+		var moving: Node3D = part
+		if what == "glove_box":
+			var hinge := visual.find_child("Glove_Box_Hinge", true, false) as Node3D
+			if hinge != null: moving = hinge
+		_cab[what] = part
+		_cab_rest[what] = moving.transform
+		part.set_meta("moves", moving)
+
+## A screen sits a few millimetres proud of its panel, toward the driver
+## (Scout 02's quads were flush with the panel face and lost behind it).
+func _lift_screen(screen: MeshInstance3D) -> void:
+	var normals = screen.mesh.surface_get_arrays(0)[Mesh.ARRAY_NORMAL]
+	if normals == null or (normals as PackedVector3Array).is_empty(): return
+	var facing := (screen.global_transform.basis * (normals as PackedVector3Array)[0]).normalized()
+	var to_eye := _model.global_transform * (_spec.cab_view as Vector3) - screen.global_transform * screen.mesh.get_aabb().get_center()
+	if facing.dot(to_eye) < 0.0: facing = -facing
+	screen.global_position += facing * .006
+
+## What the screens show (vehicle_screens.gd), all live. Minutes are game
+## minutes, as the wrist counts them.
+func screen_state() -> Dictionary:
+	var s := {"on": battery > 0.0 or reserve > 0.0 or not MHGame.simulation_on(), "speed": absf(speed), "top": maxf(_max_speed, .1),
+		"cruise": cruise, "battery": battery, "reserve": reserve, "lights": lights_on, "slip": slip > .35, "bogged": bogged,
+		"wheels": wheels if kind == "rover" else 100.0, "charging": _charging == "garage" or _charging == "base",
+		"range_m": battery / _drain_per_m() + reserve / _reserve_drain_per_m(), "lead": lead,
+		"here": Vector2(global_position.x, global_position.z), "yaw": rotation.y, "trail": trail}
+	if not MHGame.simulation_on():
+		s.battery = 100.0
+		s.range_m = -1.0
+	var home := _home_target()
+	if not home.is_empty():
+		var to: Vector2 = (home.at as Vector2) - (s.here as Vector2)
+		var metres := to.length()
+		var drive_seconds := metres / maxf(.5, _max_speed * .8)
+		s["home"] = {"at": home.at, "metres": metres, "bearing": wrapf(atan2(-to.x, -to.y) - rotation.y, -PI, PI),
+			"minutes": drive_seconds / SUIT.real_seconds_per_hour() * 60.0}
+	var suit := get_tree().get_first_node_in_group("suit")
+	if suit != null and SUIT.active():
+		var r: Dictionary = suit.readout()
+		s["suit_minutes"] = float(r.o2_hours) * 60.0
+		s["suit_full_minutes"] = float(suit.o2_hours()) * 60.0
+	if sealed():
+		s["cab_live"] = SUIT.active()
+		s["cab_o2"] = o2
+		s["kpa"] = 70.3 if o2 > 0.0 else 0.0
+		s["temp_c"] = 21.0 if battery > 0.0 or reserve > 0.0 else -20.0
+		s["water_l"] = water_l
+		s["water_full"] = WATER_L
+		s["meals"] = meals
+		s["meals_full"] = MEALS
+		s["alarm"] = _cab_alarm()
+	return s
+
+## The cab alarm: sealed, aboard, and the air tank low or gone.
+func _cab_alarm() -> bool:
+	return sealed() and driving and SUIT.active() and o2 < 20.0
+
+## Where "home" is for the screens: the Garage, else the lander.
+func _home_target() -> Dictionary:
+	var home := _home()
+	if not home.is_empty(): return {"at": home.centre}
+	var world := get_tree().get_first_node_in_group("habitat_world")
+	if world == null or world.get("lander") == null: return {}
+	var at: Vector3 = (world.lander as Node3D).global_position
+	return {"at": Vector2(at.x, at.z)}
+
+# ---------- the HabRover's pad and umbilical ----------
+
+var _pad: Node3D
+var _umbilical: MeshInstance3D
+var _pad_at := Vector2.INF
+
+## A plain pad beside the Garage door and, while docked, the umbilical from
+## the Garage wall to the HabRover's airlock (charge, air, water, food).
+func _update_dock_pad() -> void:
+	if not _docks_outside(): return
+	var home := _home()
+	if home.is_empty():
+		if _pad != null: _pad.visible = false
+		return
+	if _pad == null:
+		_pad = Node3D.new()
+		_pad.name = "HabRoverPad"
+		_pad.top_level = true
+		add_child(_pad)
+		var slab := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(_half_track * 2.0 + 1.4, .12, _half_base * 2.0 + 2.2)
+		var paint := StandardMaterial3D.new()
+		paint.resource_name = "pad_regolith_concrete"
+		paint.albedo_color = Color("#8A6E5E")
+		paint.roughness = 1.0
+		box.material = paint
+		slab.mesh = box
+		slab.position.y = .02
+		_pad.add_child(slab)
+		_umbilical = MeshInstance3D.new()
+		var hose := CylinderMesh.new()
+		hose.top_radius = .07
+		hose.bottom_radius = .07
+		hose.height = 1.0
+		var rubber := StandardMaterial3D.new()
+		rubber.resource_name = "umbilical_rubber_graphite"
+		rubber.albedo_color = Color("#2E3539")
+		rubber.roughness = .8
+		hose.material = rubber
+		_umbilical.mesh = hose
+		_umbilical.top_level = true
+		add_child(_umbilical)
+	_pad.visible = true
+	if _pad_at != (home.pad as Vector2):
+		_pad_at = home.pad
+		var out: Vector2 = home.out
+		var y := float(home.get("y", 0.0))
+		var ground := _ground_under(Vector3(_pad_at.x, y, _pad_at.y), y)
+		_pad.global_transform = Transform3D(Basis(Vector3.UP, atan2(-out.x, -out.y)), Vector3(_pad_at.x, ground if not is_inf(ground) else y, _pad_at.y))
+	var docked := _in_bay() and absf(speed) < .3 and not wrecked
+	_umbilical.visible = docked
+	if docked:
+		# From the Garage wall (beside the door, at waist height) to the airlock.
+		var out3 := Vector3((home.out as Vector2).x, 0, (home.out as Vector2).y)
+		var rear := global_position + out3 * -(_half_base - .1) + Vector3.UP * 1.1
+		var wall := Vector3(rear.x, rear.y + .5, rear.z) - out3 * (rear - Vector3((home.door as Vector2).x, rear.y, (home.door as Vector2).y)).dot(out3)
+		var mid := (rear + wall) * .5
+		var along := wall - rear
+		var length := along.length()
+		if length < .05:
+			_umbilical.visible = false
+			return
+		var up := along / length
+		var x := up.cross(Vector3.FORWARD if absf(up.dot(Vector3.FORWARD)) < .9 else Vector3.RIGHT).normalized()
+		_umbilical.global_transform = Transform3D(Basis(x, up * length, x.cross(up)), mid)
+
+# ---------- the cab: things you look at and click ----------
+
+## Which cab part you're looking at, from the cockpit view, parked or slow.
+func _aim_cab() -> void:
+	var was := _aimed
+	_aimed = ""
+	if first_person and absf(speed) < .3 and _cam != null:
+		var eye := _cam.global_position
+		var look := -_cam.global_transform.basis.z
+		var best := AIM_CONE
+		for what in _cab:
+			var to: Vector3 = (_cab[what] as Node3D).global_position - eye
+			if to.length() > AIM_REACH: continue
+			var off := look.angle_to(to)
+			if off < best:
+				best = off
+				_aimed = what
+	if _reticle != null:
+		_reticle.visible = first_person and not _cab.is_empty()
+		_reticle.modulate = MHStyle.accent if not _aimed.is_empty() else Color(1, 1, 1, .45)
+	if _aimed != was: _hint_key = ""
+
+func _cab_label(what: String) -> String:
+	var open := bool(_cab_open.get(what, false))
+	match what:
+		"glove_box": return ("Take from the glove box" if _stash_has() else "Close the glove box (empty)") if open else "Open the glove box"
+		"lead": return "Unplug the suit lead" if lead else "Plug in the suit lead"
+		"drawer_meals": return ("Eat a meal" if meals > 0 or not MHGame.needs_food_water() else "Close (no meals)") if open else "Open the meals drawer"
+		"drawer_water": return ("Drink and fill the drink bag" if water_l > .1 or not MHGame.needs_food_water() else "Close (tank empty)") if open else "Open the water drawer"
+		"drawer_bars": return ("Pack a food bar" if meals > 0 or not MHGame.needs_food_water() else "Close (empty)") if open else "Open the snacks drawer"
+	return what
+
+func _stash_has() -> bool:
+	return int(stash.get("bars", 0)) > 0 or float(stash.get("water_l", 0.0)) > .05
+
+## Click: open it, take from it, or (nothing to take) close it.
+func use_cab_part(what: String) -> bool:
+	if not _cab.has(what): return false
+	if what == "lead":
+		lead = not lead
+		MHAudio.sfx("place", -6.0)
+		_cab_move(what, lead)
+		_note(label(), "The charge lead clicks into your suit: the buggy's battery is charging it. It carries no air." if lead else "Lead unplugged.")
+		return true
+	if not bool(_cab_open.get(what, false)):
+		_cab_move(what, true)
+		MHAudio.sfx("door_open", -12.0)
+		return true
+	var took := false
+	match what:
+		"glove_box": took = _take_from_stash()
+		"drawer_meals": took = _eat_meal()
+		"drawer_water": took = _drink()
+		"drawer_bars": took = _pack_bar()
+	if not took:
+		_cab_move(what, false)
+		MHAudio.sfx("door_close", -12.0)
+	return true
+
+func _cab_move(what: String, open: bool) -> void:
+	_cab_open[what] = open
+	var part: Node3D = _cab[what]
+	var moving: Node3D = part.get_meta("moves", part)
+	var rest: Transform3D = _cab_rest[what]
+	var target := rest
+	if what == "glove_box": target.basis = rest.basis * Basis(Vector3.RIGHT, -deg_to_rad(72.0) if open else 0.0)
+	elif what.begins_with("drawer"):   # out into the aisle, toward the middle
+		var toward_aisle := Vector3.RIGHT if _body_point(part).x < 0.0 else Vector3.LEFT
+		target.origin = rest.origin + (_in_parent(moving, toward_aisle) * .385 if open else Vector3.ZERO)
+	elif what == "lead": target.origin = rest.origin + (_in_parent(moving, Vector3.UP) * .05 if open else Vector3.ZERO)
+	if not is_inside_tree() or not moving.is_inside_tree():
+		moving.transform = target
+		return
+	var motion := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	motion.tween_property(moving, "transform", target, .28)
+
+func _close_cab() -> void:
+	for what in _cab_open.keys():
+		if bool(_cab_open[what]) and what != "lead": _cab_move(what, false)
+
+func _suit_node() -> Node:
+	var world := get_tree().get_first_node_in_group("habitat_world")
+	return world.get("suit") if world != null else null
+
+func _take_from_stash() -> bool:
+	var suit := _suit_node()
+	var lines: Array = []
+	if suit != null and not bool(suit.food_bar) and int(stash.get("bars", 0)) > 0:
+		stash["bars"] = int(stash.bars) - 1
+		suit.food_bar = true
+		lines.append("a food bar into the suit's pocket (%d left)" % int(stash.bars))
+	if suit != null and float(stash.get("water_l", 0.0)) > .05:
+		var give := minf(float(SUIT.DRINK_L) - float(suit.drink_l), float(stash.water_l))
+		if give > .05:
+			stash["water_l"] = float(stash.water_l) - give
+			suit.drink_l = float(suit.drink_l) + give
+			suit.dry_hours = 0.0
+			lines.append("a water pouch into the drink bag (%.1f L left)" % float(stash.water_l))
+	if lines.is_empty(): return false
+	MHAudio.sfx("ui_confirm", -8.0)
+	_note(label(), "From the glove box: " + " and ".join(lines) + ".")
+	return true
+
+## The buggy's glove box, refilled at a Garage (bars from the ration crate).
+func _restock_stash() -> void:
+	stash["water_l"] = STASH.water_l
+	var world := get_tree().get_first_node_in_group("habitat_world")
+	var pod: Node = world.get("lifepod") if world != null else null
+	while int(stash.bars) < int(STASH.bars):
+		if MHGame.needs_food_water() and not (pod != null and pod.has_method("take_ration") and pod.take_ration()): break
+		stash["bars"] = int(stash.bars) + 1
+
+func _eat_meal() -> bool:
+	var needs := MHGame.needs_food_water()
+	if meals <= 0 and needs: return false
+	if needs: meals -= 1
+	var world := get_tree().get_first_node_in_group("habitat_world")
+	if world != null and world.get("body") != null: world.body.eat()
+	MHAudio.sfx("ui_confirm", -8.0)
+	_note(label(), "You eat a meal from the galley drawer (%d left)." % meals if needs else "You eat.")
+	return true
+
+func _drink() -> bool:
+	var suit := _suit_node()
+	if suit == null: return false
+	var needs := MHGame.needs_food_water()
+	if needs and water_l <= .1: return false
+	var give := float(SUIT.DRINK_L) - float(suit.drink_l)
+	if needs: give = minf(give, water_l)
+	suit.drink_l = float(suit.drink_l) + give
+	suit.dry_hours = 0.0
+	if needs: water_l -= give
+	MHAudio.sfx("ui_confirm", -8.0)
+	_note(label(), "You drink and fill the suit's drink bag (%.0f L left in the tank)." % water_l if needs else "You drink.")
+	return true
+
+func _pack_bar() -> bool:
+	var suit := _suit_node()
+	if suit == null or bool(suit.food_bar): return false
+	if MHGame.needs_food_water():
+		if meals <= 0: return false
+		meals -= 1
+	suit.food_bar = true
+	MHAudio.sfx("ui_confirm", -8.0)
+	_note(label(), "Packed a food bar for the suit.")
+	return true
+
+## Seated on the buggy with the lead in: its battery charges your suit.
+func _lead_charge(hours: float) -> void:
+	if not lead or not driving: return
+	var suit := _suit_node()
+	if suit == null or not SUIT.active() or float(suit.power) >= 1.0: return
+	var given := supply_suit(0.0, minf(1.0 - float(suit.power), LEAD_PER_H * hours))
+	suit.power = minf(1.0, float(suit.power) + given.y)
+
+## The rover's breadcrumbs: dropped as it goes, cleared at home.
+func _drop_crumb() -> void:
+	if kind != "rover" or wrecked: return
+	var here := Vector2(global_position.x, global_position.z)
+	if _charging == "garage":
+		trail = PackedVector2Array([here])
+		return
+	if trail.is_empty() or trail[trail.size() - 1].distance_to(here) >= TRAIL_STEP:
+		trail.append(here)
+		if trail.size() > TRAIL_MAX: trail.remove_at(1)
+
+## The cab alarm sounds while the screen flashes.
+func _sound_alarm(delta: float) -> void:
+	if not _cab_alarm():
+		_alarm_clock = 0.0
+		return
+	_alarm_clock -= delta
+	if _alarm_clock <= 0.0:
+		_alarm_clock = ALARM_EVERY
+		MHAudio.sfx("warn", -10.0)
 
 # ---------- interaction ----------
 
@@ -290,7 +707,7 @@ func interact_info(_actor: Node = null) -> bool:
 func about() -> String:
 	if kind == "buggy":
 		return "An open scout buggy: you stay suited and breathe your own air. About 2 km to a charge (5 m/s), then a short reserve. It charges fast at a Garage, slowly parked by the lander or a base's core, and a little from its solar panel by day. G beside it charges your suit from its battery. W/S drive, A/D steer, Space brake, C cruise, F lights, V cockpit or chase view, R free it if it's wedged, E get out."
-	return "The EVA-6 pressurised rover: a sealed cab with its own air (about %d hours for one), water and food, and about 6 km to a charge at 3 m/s. Parked, Z sleeps and X eats and drinks; your suit tops up from it. It bogs on sand and ripples (dig out, or lay a traction mat with L), and sharp boulders and platy lava wear its wheels (spares kits, or the Garage's wheel bench). Add-ons are fitted at a Garage: dune wheels and traction mats. A Garage charges it fast and refills its air, water and food." % roundi(TANK_SUIT_HOURS)
+	return "The HabRover: a sealed cabin with its own air (about %d hours for one), water and food, and about 6 km to a charge at 3 m/s. Parked, Z sleeps and X eats and drinks; your suit tops up from it. It bogs on sand and ripples (dig out, or lay a traction mat with L), and sharp boulders and platy lava wear its wheels (spares kits, or the Garage's wheel bench). Add-ons are fitted at a Garage: dune wheels and traction mats. A Garage charges it fast and refills its air, water and food." % roundi(TANK_SUIT_HOURS)
 
 func _note(title: String, text: String) -> void:
 	get_tree().call_group("explore_hud", "show_equipment_note", title, text)
@@ -398,6 +815,9 @@ func _get_in(player: CharacterBody3D) -> void:
 func _get_out() -> void:
 	if _player == null: return
 	var spot := _exit_spot()
+	if lead: use_cab_part("lead")
+	_close_cab()
+	_aimed = ""
 	driving = false
 	speed = 0.0
 	cruise = 0.0
@@ -452,6 +872,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 	if not driving or get_tree().paused: return
+	if not _aimed.is_empty() and ((event is InputEventMouseButton and event.pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT)
+			or (event is InputEventJoypadButton and event.pressed and (event as InputEventJoypadButton).button_index == JOY_BUTTON_RIGHT_SHOULDER)):
+		use_cab_part(_aimed)
+		_hint_key = ""
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_look.x = wrapf(_look.x - event.relative.x * 0.0025, -PI, PI)
 		_look.y = clampf(_look.y - event.relative.y * 0.0025, -1.1, 0.5)
@@ -690,12 +1116,16 @@ func _physics_process(delta: float) -> void:
 	_spin_wheels(delta, global_position.distance_to(before))
 	_terrain_effects(delta, flat_moved)
 	_battery(delta, flat_moved)
+	_drop_crumb()
+	_sound_alarm(delta)
+	_update_dock_pad()
 	_hangar_doors()
 	_update_effects()
 	if driving:
 		_player.global_position = global_transform * (_spec.seat as Vector3) - Vector3.UP * 1.6
 		_player.rotation.y = rotation.y   # you face where it's going (the region map's arrow)
 		_place_camera(delta)
+		_aim_cab()
 		_update_hud()
 
 ## The ground under the wheels: bogging and wheel wear (the rover only).
@@ -812,7 +1242,15 @@ func _spin_wheels(delta: float, moved: float) -> void:
 		var yaw := steer if axle == "f" else (-steer * 0.5 if axle == "r" else 0.0)
 		var spin := float(wheel.get_meta("spin", 0.0)) - turn
 		wheel.set_meta("spin", spin)
+		if wheel.has_meta("rest"):
+			# A field model: spin about the axle and steer on its Steer_ empty,
+			# both worked out in the parent's own axes (the model is turned).
+			wheel.transform.basis = Basis(wheel.get_meta("axle") as Vector3, spin) * (wheel.get_meta("rest") as Basis)
+			var pivot: Node3D = wheel.get_meta("steer") if wheel.has_meta("steer") else null
+			if pivot != null: pivot.transform.basis = Basis(pivot.get_meta("up") as Vector3, yaw) * (pivot.get_meta("rest") as Basis)
+			continue
 		wheel.transform.basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, spin)
+	if _yoke != null: _yoke.transform.basis = Basis(_yoke_axis, steer * 2.2) * _yoke_rest
 
 ## What it can do now: full speed on the battery (less on worn wheels),
 ## slower on the reserve, a solar crawl by day with both flat, nothing at night.
@@ -856,6 +1294,9 @@ func _battery(_delta: float, moved: float) -> void:
 		battery = minf(100.0, battery + add * hours)
 		if _charging == "garage" or _charging == "base": reserve = minf(100.0, reserve + add * hours)
 		if sealed(): _cabin_air(hours)
+		else:
+			_lead_charge(hours)
+			if _charging == "garage": _restock_stash()
 	var docked := _charging == "garage"
 	if docked and not _was_charging and driving and battery < 99.0: MHAudio.sfx("ui_confirm", -8.0)
 	_was_charging = docked
@@ -921,8 +1362,21 @@ func _home() -> Dictionary:
 		for cell in zone.cells: centre += Vector2(cell) * BuildController.CELL
 		centre /= float((zone.cells as Array).size())
 		var door: Vector3 = face.position
-		return {"centre": centre, "door": Vector2(door.x, door.z), "out": Vector2(outside), "y": MHBases.zone_y(builder, zone)}
+		var home := {"centre": centre, "door": Vector2(door.x, door.z), "out": Vector2(outside), "y": MHBases.zone_y(builder, zone)}
+		if _docks_outside():
+			# The HabRover is too tall and long for the hangar: its pad is
+			# outside, beside the big door (the drone dock is on the other
+			# side), backed on to the wall with its airlock to the Garage.
+			var out := Vector2(outside)
+			var side := Vector2(-out.y, out.x)
+			home["pad"] = home.door + out * (_half_base + 1.9) - side * (float(face.get("width", 6.0)) * .5 + _half_track + 1.0)
+			home["centre"] = home.pad
+		return home
 	return {}
+
+## The HabRover docks on a pad outside the Garage; the buggy drives in.
+func _docks_outside() -> bool:
+	return kind == "rover" and _field
 
 ## Called by the Garage's charger: drive home on its own. Returns what to
 ## tell the player.
@@ -932,7 +1386,7 @@ func recall() -> String:
 	if bogged: return "It's bogged down: someone has to dig it out or lay a mat first."
 	if home.is_empty(): return "There's no Garage to come home to."
 	if driving: return "Someone's driving it."
-	if _in_bay(): return "It's already here in the Garage."
+	if _in_bay(): return "It's already docked at the Garage." if _docks_outside() else "It's already here in the Garage."
 	if top_speed() <= 0.0: return "Its battery and reserve are flat and it's dark: it can't move until sunrise, when its solar can crawl it home."
 	_start_recall()
 	var how := "on its battery" if battery > 0.0 else ("on its reserve" if reserve > 0.0 else "slowly, on its solar")
@@ -948,6 +1402,9 @@ func _autopilot(delta: float) -> Vector2:
 	if _recall_stage == "approach" and top_speed() > 0.0 and _no_progress(at.distance_to(target), delta): _hop()
 	if _recall_stage == "enter" and _no_progress(at.distance_to(home.centre), delta):
 		park_at_home(false)
+		return Vector2.ZERO
+	if _recall_stage == "enter" and _docks_outside() and at.distance_to(home.centre) < 7.5:
+		park_at_home(false)   # it reverses on to the pad and the umbilical: done in one step
 		return Vector2.ZERO
 	if _recall_stage == "enter" and at.distance_to(home.centre) < 1.2:
 		recalling = false
@@ -981,7 +1438,7 @@ func _start_recall() -> void:
 	_since_better = 0.0
 	var home := _home()
 	if home.is_empty(): return
-	var approach: Vector2 = home.door + home.out * 7.0
+	var approach: Vector2 = (home.pad + home.out * 6.0) if _docks_outside() else home.door + home.out * 7.0
 	var from := Vector2(global_position.x, global_position.z)
 	var rocks: Array = []
 	var field := get_tree().get_first_node_in_group("region_rocks")
@@ -1112,7 +1569,11 @@ func park_at_home(refilled := true) -> bool:
 	var home := _home()
 	if home.is_empty() or driving: return false
 	var out: Vector2 = home.out
-	global_position = Vector3(home.centre.x, float(home.get("y", builder.habitat_base_y)), home.centre.y)
+	var y := float(home.get("y", builder.habitat_base_y))
+	if _docks_outside():
+		var ground := _ground_under(Vector3(home.centre.x, y, home.centre.y), y)
+		if not is_inf(ground): y = ground
+	global_position = Vector3(home.centre.x, y, home.centre.y)
 	rotation.y = atan2(-out.x, -out.y)
 	speed = 0.0
 	recalling = false
@@ -1146,13 +1607,20 @@ func refill() -> void:
 		water_l = WATER_L
 		meals = MEALS
 
+## Docked: in the Garage (the buggy), or on its pad outside the door (the HabRover).
 func _in_bay() -> bool:
+	if _docks_outside():
+		var home := _home()
+		return not home.is_empty() and Vector2(global_position.x, global_position.z).distance_to(home.pad) < 3.0
+	return _in_bay_room()
+
+func _in_bay_room() -> bool:
 	if builder == null: return false
 	var zone: Dictionary = builder._zone_at_point(Vector2(global_position.x, global_position.z))
 	return not zone.is_empty() and str(zone.get("kind", "")) == "vehicle_bay"
 
 func _hangar_doors() -> void:
-	if not driving and not recalling:
+	if (not driving and not recalling) or _docks_outside():
 		return
 	var nearest: Node = null
 	var nearest_distance := 1e9
@@ -1177,7 +1645,10 @@ func _hangar_doors() -> void:
 
 func _place_camera(delta: float) -> void:
 	if first_person:
-		_cam.global_position = _model.global_transform * (_spec.cab_view as Vector3)
+		# Parked in the HabRover, turning right round: you're up in the aisle by the galley.
+		var eye: Vector3 = _spec.cab_view
+		if _galley_eye != Vector3.INF and absf(speed) < .1 and absf(_look.x) > 1.75: eye = _galley_eye
+		_cam.global_position = _model.global_transform * eye
 		_cam.global_transform.basis = Basis(Vector3.UP, rotation.y + _look.x) * Basis(Vector3.RIGHT, _look.y)
 		return
 	var chase: Vector2 = _spec.chase
@@ -1282,7 +1753,7 @@ func _update_effects() -> void:
 # ---------- the dashboard ----------
 
 ## The cab's screen: on the buggy's control column (its model's dash_screen),
-## or in front of the EVA-6's driver.
+## or in front of the EVA-6's driver (the field models have their own screens).
 func _build_dash(visual: Node3D) -> void:
 	_dash = DASH.new()
 	add_child(_dash)
@@ -1290,7 +1761,7 @@ func _build_dash(visual: Node3D) -> void:
 	if visual != null:
 		var found := visual.find_children("dash_screen", "MeshInstance3D", true, false)
 		if not found.is_empty(): screen = found[0]
-	if screen == null and _spec.dash != Vector3.INF:
+	if screen == null and _spec.dash != Vector3.INF and not _field:
 		screen = MeshInstance3D.new()
 		screen.name = "dash_screen"
 		var quad := QuadMesh.new()
@@ -1359,7 +1830,7 @@ func _show_hud(on: bool) -> void:
 		add_child(_hud)
 		# The dashboard's echo for the chase view: the same screen, small, low left.
 		_dash_echo = TextureRect.new()
-		_dash_echo.texture = _dash.get_texture()
+		_dash_echo.texture = (_screens.drive as SubViewport).get_texture() if _screens.has("drive") else _dash.get_texture()
 		_dash_echo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		_dash_echo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
 		_dash_echo.anchor_top = 1.0; _dash_echo.anchor_bottom = 1.0
@@ -1367,6 +1838,13 @@ func _show_hud(on: bool) -> void:
 		_dash_echo.offset_top = -100 - 188; _dash_echo.offset_bottom = -100
 		_dash_echo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_hud.add_child(_dash_echo)
+		# A small dot in the cockpit view: it lights on a part you can click.
+		_reticle = Control.new()
+		_reticle.set_anchors_preset(Control.PRESET_CENTER)
+		_reticle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_reticle.draw.connect(func(): _reticle.draw_circle(Vector2.ZERO, 3.5, Color.WHITE); _reticle.draw_arc(Vector2.ZERO, 8.0, 0, TAU, 24, Color.WHITE, 1.5, true))
+		_reticle.visible = false
+		_hud.add_child(_reticle)
 		# The compass, where it sits on foot (top centre): always on.
 		var compass_band := CenterContainer.new()
 		compass_band.anchor_right = 1
@@ -1383,7 +1861,7 @@ func _show_hud(on: bool) -> void:
 		_refresh_hints()
 
 func _refresh_hints() -> void:
-	var key := "%s%s%s" % [cabin_ready(), bogged, _in_bay()]
+	var key := "%s%s%s%s%s" % [cabin_ready(), bogged, _in_bay(), _aimed, _cab_open.get(_aimed, false)]
 	if key == _hint_key or _hud == null: return
 	_hint_key = key
 	if _hints != null: _hints.queue_free()
@@ -1393,6 +1871,7 @@ func _refresh_hints() -> void:
 	elif cabin_ready(): hints += [[["Z"], "Sleep"], [["X"], "Eat and drink"]]
 	if kind == "rover" and _in_bay() and absf(speed) < .1: hints += [[["1"], "Dune wheels"], [["2"], "Mats"], [["3"], "Wheel bench"]]
 	else: hints.append([["R"], "Recover"])
+	if not _aimed.is_empty(): hints.push_front([["LMB"], _cab_label(_aimed), "accent"])
 	_hints = MHStyle.hint_strip(hints + map_hint + [[["E"], "Get out", "accent"]])
 	_hud.add_child(_hints)
 
@@ -1427,7 +1906,8 @@ func _home_marker() -> String:
 
 func export_state() -> Dictionary:
 	return {"kind": kind, "position": global_position, "yaw": rotation.y, "battery": battery, "reserve": reserve, "o2": o2, "lights": lights_on, "recalling": recalling, "radio": radio_on,
-		"water_l": water_l, "meals": meals, "wheels": wheels, "addons": addons, "mats": mats, "bogged": bogged, "slip": slip, "wrecked": wrecked, "repair": repair}
+		"water_l": water_l, "meals": meals, "wheels": wheels, "addons": addons, "mats": mats, "bogged": bogged, "slip": slip, "wrecked": wrecked, "repair": repair,
+		"trail": Array(trail), "stash": stash.duplicate()}
 
 func restore_state(state: Dictionary) -> void:
 	if state.has("position"): global_position = state.position as Vector3
@@ -1444,6 +1924,8 @@ func restore_state(state: Dictionary) -> void:
 	slip = float(state.get("slip", 0.0))
 	wrecked = bool(state.get("wrecked", false))
 	repair = str(state.get("repair", ""))
+	trail = PackedVector2Array(state.get("trail", []) as Array)
+	if state.get("stash") is Dictionary: stash = (state.stash as Dictionary).duplicate()
 	if wrecked: _model.rotation = Vector3(.05, 0, -.08)
 	if bool(state.get("recalling", false)):
 		_start_recall.call_deferred()
