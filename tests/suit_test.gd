@@ -127,7 +127,7 @@ func _initialize() -> void:
 	suit.refill_at_panel()
 	_check(suit.o2 < .31, "with nothing to spare in the habitat, there's nothing to refill from")
 	sim.o2_reserve_kg = keep[0]; sim.battery_kwh = keep[1]; sim.o2_pct = 21.0
-	# The rover: G beside it tops you up from its tank and battery.
+	# The rover: G beside it tops you up, air and power both made from its battery.
 	var rover = world.crew_rover
 	_check(rover != null and str(rover.interaction_prompt().get("tertiary", "")) == "Top up suit", "the rover offers a suit top-up")
 	suit.o2 = .5; suit.power = .5
@@ -135,14 +135,28 @@ func _initialize() -> void:
 	var tank: float = rover.o2
 	suit.top_up_from_rover()
 	_check(suit.o2 > .99 and suit.power > .99, "topped up from the rover")
-	_check(absf((tank - rover.o2) - 400.0 / rover.TANK_SUIT_HOURS) < .2 and absf((battery - rover.battery) - 4.0) < .1, "which drains its tank and battery (%.1f%%, %.1f%%)" % [tank - rover.o2, battery - rover.battery])
-	# The bay refills the rover's tank from the habitat.
+	var made: float = .5 * float(suit.o2_hours()) * rover.SUIT_O2_COST
+	_check(is_equal_approx(tank, rover.o2) and absf((battery - rover.battery) - 4.0 - made) < .1, "which costs only its battery (%.1f%%), no tank" % (battery - rover.battery))
+	# Power + hull: a knock opens a leak, a patch kit seals it, the Garage mends it.
+	rover.hull = 100.0
+	rover.damage_hull(50.0, "a test knock")
+	_check(rover.leaking() and str(rover.interaction_prompt().get("tertiary", "")).begins_with("Patch the hull"), "a hard knock opens a cab leak, patched with G (%d%%)" % roundi(rover.hull))
+	var field: Node = rover._drop_field()
+	if field == null:
+		_check(not rover.patch_hull() and rover.leaking(), "no patch kit, no patch")
+		rover.hull = 70.0
+	else:
+		field.tools = true
+		_check(rover.patch_hull() and not rover.leaking(), "the patch kit seals it (%d%%)" % roundi(rover.hull))
+	var before_quake: float = rover.hull
+	rover.hull_event("quake")
+	_check(is_equal_approx(before_quake, rover.hull), "parked in the Garage, a quake doesn't touch it")
+	# The bay mends the hull and freshens the cab.
 	rover.o2 = 50.0
-	reserve = sim.o2_reserve_kg
 	# A7: the Garage restocks by game time (the clock is held still here): a fifth of an hour docked.
 	rover._charging = rover._charge_source()
 	rover._cabin_air(.2)
-	_check(rover._in_bay() and rover.o2 > 55.0 and sim.o2_reserve_kg < reserve, "the bay refills the rover's tank from the habitat (%.1f%%)" % rover.o2)
+	_check(rover._in_bay() and rover.o2 > 55.0 and rover.hull > before_quake, "the bay freshens the cab (%.1f%%) and mends the hull (%d%%)" % [rover.o2, roundi(rover.hull)])
 	# Driving: the sealed cab, which breathes from the tank.
 	world.player.global_position = rover.global_position + Vector3(-2.5, .2, 0)
 	rover.interact()
@@ -220,7 +234,7 @@ func _initialize() -> void:
 	suit.leak = true
 	suit.dropped = (dropped_state.dropped as Array).map(func(d): return {"placement_id": str(d.placement_id), "label": str(d.label), "position": Vector3(d.position[0], d.position[1], d.position[2])})
 	saved = world.current_state()
-	_check(is_equal_approx(float(saved.suit.o2), .42) and saved.crew_rover.has("o2"), "the suit and the rover's tank are saved")
+	_check(is_equal_approx(float(saved.suit.o2), .42) and saved.crew_rover.has("o2"), "the suit and the rover's cab air are saved")
 	world.queue_free()
 	await process_frame
 	world = await _world("survival", saved)

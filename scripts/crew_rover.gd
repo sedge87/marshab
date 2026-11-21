@@ -110,7 +110,21 @@ const BASE_REACH := 30.0        # m from a core or the lander that counts as par
 const GHOST_DISTANCE := 150.0   # m from you: past this a recalled vehicle drives home without physics
 const HOP_AFTER := 20.0         # s without getting closer to its next waypoint: lifted on to it
 ## The rover's stores.
-const TANK_SUIT_HOURS := 36.0   # the oxygen tank, in hours of one person breathing (a night out and two days)
+## Cab life support (power + hull, 21 Nov): one built-in core that runs off
+## the batteries. No oxygen tank: the air is made while there's power.
+const CAB_LIFE_PER_H := 1.2     # battery % an hour while you're aboard
+const CAB_STALE_HOURS := 3.5    # no power: fresh to unbreathable in this long
+const CAB_MAKE_PER_H := 60.0    # cab air % an hour the core can make back
+const SUIT_O2_COST := .4        # battery % per hour of suit oxygen made
+## Hull (%): hard knocks short of a crash, quakes and storms. Below
+## HULL_LEAK_AT a seam leaks; the lower, the faster.
+const HULL_KNOCK_FROM := 2.6    # m/s into something solid starts denting
+const HULL_KNOCK_PER_MS := 9.0  # hull % per m/s above that
+const HULL_LEAK_AT := 65.0
+const HULL_LEAK_PER_H := 120.0  # cab air % an hour lost at 0% hull
+const HULL_PATCH := 25.0        # a field patch (patch kit); the Garage mends it fully
+const HULL_PATCH_TO := 85.0
+const HULL_EVENT := {"quake": 10.0, "storm": 5.0}
 const WATER_L := 20.0
 const MEALS := 6
 const SUIT_POWER_COST := 8.0    # battery % to charge a flat suit
@@ -146,7 +160,8 @@ var speed := 0.0
 var steer := 0.0
 var battery := 100.0
 var reserve := 100.0
-var o2 := 100.0                 # the rover's oxygen tank, %
+var o2 := 100.0                 # cab air, % fresh (made from the battery)
+var hull := 100.0               # cab hull integrity, %
 var water_l := WATER_L
 var meals := MEALS
 var wheels := 100.0             # the rover's wheel condition, %
@@ -246,6 +261,7 @@ func _ready() -> void:
 	_wheel_r = float(_spec.wheel_r)
 	add_to_group("vehicle")
 	add_to_group("crew_rover" if kind == "rover" else "scout_buggy")
+	if kind == "rover": add_to_group("hull_events")
 	set_meta("interaction_target", self)
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
 	collision_layer = 1
@@ -407,6 +423,8 @@ func screen_state() -> Dictionary:
 		s["cab_live"] = SUIT.active()
 		s["cab_o2"] = o2
 		s["kpa"] = 70.3 if o2 > 0.0 else 0.0
+		s["hull"] = hull
+		s["leak"] = leaking()
 		s["temp_c"] = 21.0 if battery > 0.0 or reserve > 0.0 else -20.0
 		s["water_l"] = water_l
 		s["water_full"] = WATER_L
@@ -415,9 +433,9 @@ func screen_state() -> Dictionary:
 		s["alarm"] = _cab_alarm()
 	return s
 
-## The cab alarm: sealed, aboard, and the air tank low or gone.
+## The cab alarm: sealed, aboard, and the cab air low or the hull leaking.
 func _cab_alarm() -> bool:
-	return sealed() and driving and SUIT.active() and o2 < 20.0
+	return sealed() and driving and SUIT.active() and (o2 < 20.0 or leaking())
 
 ## Where "home" is for the screens: the Garage, else the lander.
 func _home_target() -> Dictionary:
@@ -676,10 +694,12 @@ func _sound_alarm(delta: float) -> void:
 func interaction_prompt() -> Dictionary:
 	if wrecked: return _wreck_prompt()
 	var head := "%s · battery %d%%" % [label(), roundi(battery)]
-	if sealed() and SUIT.active(): head += " · O2 %d%%" % roundi(o2)
+	if sealed() and SUIT.active(): head += " · air %d%%" % roundi(o2)
+	if kind == "rover" and hull < 100.0: head += " · hull %d%%" % roundi(hull)
 	if bogged: return {"label": head + " · BOGGED", "primary": "Drive", "tertiary": "Dig it out (%ds)" % roundi(DIG_SECONDS - _dig), "info": "About"}
 	var prompt := {"label": head, "primary": "Drive", "secondary": "Headlights off" if lights_on else "Headlights on", "info": "About"}
-	if kind == "rover" and wheels < 99.0 and MHChapterOne.stock.get("spares_kit", 0) > 0: prompt["tertiary"] = "Fix the wheels (spares kit, %d%%)" % roundi(wheels)
+	if leaking(): prompt["tertiary"] = "Patch the hull (patch kit)"
+	elif kind == "rover" and wheels < 99.0 and MHChapterOne.stock.get("spares_kit", 0) > 0: prompt["tertiary"] = "Fix the wheels (spares kit, %d%%)" % roundi(wheels)
 	elif SUIT.active(): prompt["tertiary"] = "Top up suit" if sealed() else "Charge suit"
 	return prompt
 
@@ -707,6 +727,7 @@ func interact_tertiary(_actor: Node = null) -> bool:
 	if bogged:
 		_dig_step()
 		return true
+	if leaking(): return patch_hull()
 	if kind == "rover" and wheels < 99.0 and int(MHChapterOne.stock.get("spares_kit", 0)) > 0:
 		MHChapterOne.stock["spares_kit"] = int(MHChapterOne.stock.spares_kit) - 1
 		wheels = minf(100.0, wheels + WHEEL_FIX)
@@ -718,11 +739,13 @@ func interact_tertiary(_actor: Node = null) -> bool:
 	_note(label(), str(suit.top_up_from_rover(self)))
 	return true
 
-## Up to `o2_hours` of suit oxygen and `power_share` of a suit battery, from
-## the tank and the main battery. Returns what it gave (hours, share).
+## Up to `o2_hours` of suit oxygen and `power_share` of a suit battery, both
+## made from the batteries. Returns what it gave (hours, share).
 func supply_suit(o2_hours: float, power_share: float) -> Vector2:
-	var give_o2 := clampf(o2_hours, 0.0, o2 / 100.0 * TANK_SUIT_HOURS) if sealed() else 0.0
-	o2 -= give_o2 / TANK_SUIT_HOURS * 100.0
+	var give_o2 := 0.0
+	if sealed() and life_on():
+		give_o2 = clampf(o2_hours, 0.0, _power() / SUIT_O2_COST) if MHGame.simulation_on() else o2_hours
+		_draw(give_o2 * SUIT_O2_COST)
 	var give_power := clampf(power_share, 0.0, battery / SUIT_POWER_COST)
 	battery -= give_power * SUIT_POWER_COST
 	return Vector2(give_o2, give_power)
@@ -734,7 +757,7 @@ func interact_info(_actor: Node = null) -> bool:
 func about() -> String:
 	if kind == "buggy":
 		return "An open scout buggy: you stay suited and breathe your own air. About 2 km to a charge (5 m/s), then a short reserve. It charges fast at a Garage, slowly parked by the lander or a base's core, and a little from its solar panel by day. G beside it charges your suit from its battery. W/S drive, A/D steer, Space brake, C cruise, F lights, V cockpit or chase view, R free it if it's wedged, E get out."
-	return "The HabRover: a sealed cabin with its own air (about %d hours for one), water and food, and about 6 km to a charge at 3 m/s. Parked, Z sleeps and X eats and drinks; your suit tops up from it. It bogs on sand and ripples (dig out, or lay a traction mat with L), and sharp boulders and platy lava wear its wheels (spares kits, or the Garage's wheel bench). Add-ons are fitted at a Garage: dune wheels and traction mats. A Garage charges it fast and refills its air, water and food." % roundi(TANK_SUIT_HOURS)
+	return "The HabRover: a sealed cabin whose life support runs off its batteries (hull %d%%), with water and food, and about 6 km to a charge at 3 m/s. Parked, Z sleeps and X eats and drinks; your suit tops up from it. It bogs on sand and ripples (dig out, or lay a traction mat with L), and sharp boulders and platy lava wear its wheels (spares kits, or the Garage's wheel bench). Add-ons are fitted at a Garage: dune wheels and traction mats. A Garage charges it fast, mends the hull and restocks its water and food; a patch kit seals a leak in the field." % roundi(hull)
 
 func _note(title: String, text: String) -> void:
 	get_tree().call_group("explore_hud", "show_equipment_note", title, text)
@@ -813,7 +836,7 @@ func _work_on_wreck() -> bool:
 			o2 = 10.0
 			water_l = 2.0
 			_learn_plan("dune_wheels")
-			_note(label(), "The drive train turns and the cab holds pressure again. Its batteries kept %d%%, but the tank's nearly empty: get it to a Garage, which refills its air, water and food. Its manifest had a plan for dune wheels too." % roundi(ROVER_WAKE_CHARGE))
+			_note(label(), "The drive train turns and the cab holds pressure again. Its batteries kept %d%%, enough to run the cab's life support: get it to a Garage, which restocks its water and food. Its manifest had a plan for dune wheels too." % roundi(ROVER_WAKE_CHARGE))
 			return true
 	return false
 
@@ -1076,7 +1099,7 @@ func cabin_ready() -> bool:
 func _cabin_sleep() -> void:
 	if not sealed(): return
 	if not cabin_ready():
-		_refuse("Park first, with air in the tank, to sleep in the cab.")
+		_refuse("Park first, with power for the cab's air, to sleep in the cab.")
 		return
 	get_tree().call_group("sleep", "open", self)
 
@@ -1274,6 +1297,8 @@ func _physics_process(delta: float) -> void:
 			if impact > CRASH_SPEED and not recalling:
 				_wreck_here("hit")
 				return
+			if impact > HULL_KNOCK_FROM and not recalling and sealed():
+				damage_hull((impact - HULL_KNOCK_FROM) * HULL_KNOCK_PER_MS, "a hard knock")
 	_follow_ground(delta)
 	if wrecked: return   # it went over an edge
 	_watch_roll(delta)
@@ -1495,27 +1520,81 @@ func _charge_source() -> String:
 			if here.distance_to(core_at) < BASE_REACH and not MHBases.zones_of(builder, str(id)).is_empty(): return "base"
 	return "solar"
 
-## The cab breathes from the tank while you're aboard; the Garage refills
-## the tank from the base's oxygen, and its water and food from the store.
+## The cab's life support: while you're aboard it runs off the batteries and
+## keeps the air fresh; with no power the air goes stale over a few hours, and
+## a leaking hull bleeds it faster than the core can make it back.
 func _cabin_air(hours: float) -> void:
 	if not SUIT.active():
 		o2 = 100.0
 		return
-	if driving:
-		var was := o2
-		o2 = maxf(0.0, o2 - hours * 100.0 / TANK_SUIT_HOURS)
-		if was > 20.0 and o2 <= 20.0: _flash("Rover oxygen low", "The cab's tank is at 20%. A Garage refills it from the base.")
-		if was > 0.0 and o2 <= 0.0: _flash("Rover oxygen empty", "The cab is no longer sealed air: your suit is on its own. Head home.")
 	if _charging == "garage": _restock(hours)
+	if not driving: return
+	var was := o2
+	var leak := leak_per_h()
+	if life_on():
+		_draw(hours * CAB_LIFE_PER_H * (1.0 + leak / 60.0))
+		o2 = clampf(o2 + (CAB_MAKE_PER_H - leak) * hours, 0.0, 100.0)
+	else:
+		o2 = maxf(0.0, o2 - (100.0 / CAB_STALE_HOURS + leak) * hours)
+	var why := "the hull's leaking: patch it (patch kit, G outside) or get to a Garage" if leak > 0.0 else "no power: the batteries are flat"
+	if was > 20.0 and o2 <= 20.0: _flash("Cab air going stale", "The cab's air is at 20%%: %s." % why)
+	if was > 0.0 and o2 <= 0.0: _flash("Cab air gone", "The cab can't hold air: your suit is on its own. Head home.")
+
+## Life support runs while either battery has charge.
+func life_on() -> bool:
+	return battery > 0.0 or reserve > 0.0 or not MHGame.simulation_on()
+
+func _power() -> float:
+	return battery + reserve
+
+## Takes `pct` from the main battery, then the reserve.
+func _draw(pct: float) -> void:
+	if not MHGame.simulation_on(): return
+	var from_main := minf(battery, pct)
+	battery -= from_main
+	reserve = maxf(0.0, reserve - (pct - from_main))
+
+## Cab air % an hour the hull loses: nothing at or above HULL_LEAK_AT.
+func leak_per_h() -> float:
+	if hull >= HULL_LEAK_AT: return 0.0
+	return HULL_LEAK_PER_H * (1.0 - hull / HULL_LEAK_AT) + 10.0
+
+func leaking() -> bool:
+	return kind == "rover" and hull < HULL_LEAK_AT
+
+func damage_hull(pct: float, cause: String) -> void:
+	if kind != "rover" or pct <= 0.0 or not MHGame.simulation_on(): return
+	var was := hull
+	hull = maxf(0.0, hull - pct)
+	if was >= HULL_LEAK_AT and hull < HULL_LEAK_AT:
+		_flash("Cab leak", "%s opened a seam in the cab (hull %d%%): you can hear it hiss. Seal it with a patch kit from outside (G), or get to a Garage." % [cause.capitalize(), roundi(hull)])
+	elif driving and pct >= 3.0:
+		_note(label(), "%s: the hull's at %d%%." % [cause.capitalize(), roundi(hull)])
+
+## Quakes and storms (the hull_events group). Parked in the Garage, it's sheltered.
+func hull_event(what: String) -> void:
+	if wrecked or _in_bay(): return
+	damage_hull(float(HULL_EVENT.get(what, 0.0)) * randf_range(.5, 1.5), "the " + ("quake" if what == "quake" else "storm"))
+
+## A field patch seals the leak and gives some hull back; the Garage mends it fully.
+func patch_hull() -> bool:
+	var field := _drop_field()
+	if field == null or not bool(field.get("tools")):
+		_refuse("You need the patch kit (from Pallet 3) to seal the hull.")
+		return false
+	hull = maxf(HULL_LEAK_AT, minf(HULL_PATCH_TO, hull + HULL_PATCH))
+	MHAudio.sfx("place", -4.0)
+	_note(label(), "You find the hiss by the frost on the seam and press a patch over it: the hull's at %d%%. A Garage mends it properly." % roundi(hull))
+	return true
+
+func _drop_field() -> Node:
+	var world := get_tree().get_first_node_in_group("habitat_world")
+	var field: Node = world.get("drop_field") if world != null else null
+	return field if field != null else get_tree().get_first_node_in_group("drop_field")
 
 func _restock(hours: float) -> void:
-	if o2 < 100.0:
-		var add := minf(100.0 - o2, 200.0 * hours)
-		var sim = builder.simulation() if builder != null else null
-		if sim != null and MHGame.simulation_on():
-			var kg := add / 100.0 * TANK_SUIT_HOURS * SUIT.O2_KG_PER_HOUR
-			add *= sim.take_oxygen(kg) / kg if kg > 0.0 else 1.0
-		o2 = minf(100.0, o2 + add)
+	hull = minf(100.0, hull + 50.0 * hours)
+	o2 = minf(100.0, o2 + 200.0 * hours)
 	water_l = minf(WATER_L, water_l + 40.0 * hours)
 	if meals < MEALS:
 		var world := get_tree().get_first_node_in_group("habitat_world")
@@ -2016,7 +2095,7 @@ func _refresh_dash() -> void:
 	elif _charging == "base": lines[0] += "   ·   CHARGING"
 	lines.append(_home_marker() + ("   ·   CRUISE %d" % roundi(cruise * 3.6) if cruise > 0.0 else ""))
 	if sealed():
-		var air := "CAB AIR %d%%   ·   WATER %.0f L   ·   MEALS %d" % [roundi(o2), water_l, meals] if SUIT.active() else "CAB SEALED"
+		var air := "CAB AIR %d%%   ·   HULL %d%%   ·   WATER %.0f L   ·   MEALS %d" % [roundi(o2), roundi(hull), water_l, meals] if SUIT.active() else "CAB SEALED   ·   HULL %d%%" % roundi(hull)
 		lines.append(air)
 		var kit: Array = ["WHEELS %d%%" % roundi(wheels)]
 		if has_addon("dune_wheels"): kit.append("DUNE WHEELS")
@@ -2040,6 +2119,9 @@ func _refresh_dash() -> void:
 		danger = true
 	elif sealed() and SUIT.active() and o2 < 20.0:
 		alert = "CAB AIR LOW" if o2 > 0.0 else "CAB AIR EMPTY · ON SUIT"
+		danger = true
+	elif leaking():
+		alert = "HULL LEAK · PATCH IT (G OUTSIDE)"
 		danger = true
 	elif cabin_ready(): alert = "PARKED · Z SLEEP · X EAT AND DRINK"
 	_dash.show_state(label().to_upper(), "%d km/h" % roundi(absf(speed) * 3.6), lines, alert, danger)
@@ -2129,7 +2211,7 @@ func _home_marker() -> String:
 # ---------- saving ----------
 
 func export_state() -> Dictionary:
-	return {"kind": kind, "position": global_position, "yaw": rotation.y, "battery": battery, "reserve": reserve, "o2": o2, "lights": lights_on, "recalling": recalling, "radio": radio_on,
+	return {"kind": kind, "position": global_position, "yaw": rotation.y, "battery": battery, "reserve": reserve, "o2": o2, "hull": hull, "lights": lights_on, "recalling": recalling, "radio": radio_on,
 		"water_l": water_l, "meals": meals, "wheels": wheels, "addons": addons, "mats": mats, "bogged": bogged, "slip": slip, "wrecked": wrecked, "repair": repair,
 		"trail": Array(trail), "stash": stash.duplicate(), "crash": crash, "tow": tow.duplicate(), "safe": _safe}
 
@@ -2139,6 +2221,7 @@ func restore_state(state: Dictionary) -> void:
 	battery = float(state.get("battery", battery))
 	reserve = float(state.get("reserve", reserve))
 	o2 = float(state.get("o2", o2))
+	hull = float(state.get("hull", 100.0))
 	water_l = float(state.get("water_l", water_l))
 	meals = int(state.get("meals", meals))
 	wheels = float(state.get("wheels", wheels))

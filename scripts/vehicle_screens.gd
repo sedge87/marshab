@@ -264,7 +264,7 @@ func _draw_cabin(s: Dictionary) -> void:
 	var alarm := bool(s.get("alarm", false))
 	var sealed := bool(s.get("cab_live", false))
 	var rings := [
-		[float(s.get("kpa", 0.0)) / 70.0, MHStyle.TEXT_SECONDARY, "kPa", "%d" % roundi(float(s.get("kpa", 0.0)))],
+		[float(s.get("hull", 100.0)) / 100.0, MHStyle.DANGER if bool(s.get("leak", false)) else MHStyle.TEXT_SECONDARY, "HULL", "%d%%" % roundi(float(s.get("hull", 100.0)))],
 		[float(s.get("cab_o2", 0.0)) / 100.0, MHStyle.TEXT_SECONDARY, "O₂", "%d%%" % roundi(float(s.get("cab_o2", 0.0)))],
 		[(float(s.get("temp_c", 0.0)) + 40.0) / 62.0, MHStyle.TEXT_SECONDARY, "°C", "%d" % roundi(float(s.get("temp_c", 0.0)))],
 	]

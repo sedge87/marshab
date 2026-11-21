@@ -285,6 +285,21 @@ The user's three field models (`asset_packs/outpost_field_assets_v1`, cleaned of
   - a towing animation (the wreck just appears at home when the time is up);
   - rescuing you from a wrecked cab during a blackout.
 
+### As built (21 Nov): the HabRover's power + hull
+The cab follows the same rule as the bases (systems-and-items §1.3): one life-support core, power and hull, no oxygen tank.
+- **Power:** while you're aboard, life support takes about 1.2% of the battery an hour (main first, then the reserve). Suit top-ups make their oxygen from the battery too.
+- **No power:** the cab air goes from fresh to unbreathable in about 3.5 hours, with a "no power" cause in the warning.
+- **Hull %**, shown on the dash line, the prompt and the Cabin screen (its first ring, red while leaking):
+  - a hard knock between 2.6 m/s and the 4.2 m/s crash takes 9% per m/s over;
+  - a quake about 10% and a dust storm about 5% (it joins the `hull_events` group), except when it's parked in the Garage.
+  - A wreck still never breaches it: the cab stays a shelter.
+- **Leaks:** below 65% a seam leaks, faster the lower it goes. Life support works harder (more battery) and the air falls once the leak beats it. The dash reads "HULL LEAK", the cab alarm sounds, and a warning names the cause.
+- **Fixes:**
+  - G outside with Pallet 3's patch kit: "Patch the hull" seals the leak (+25%, up to 85%).
+  - The Garage mends it fully and freshens the air.
+- **Saved:** `hull`. Older saves load at 100%. The buggy has no air or hull.
+- **Not yet:** the improvised scrap patch, the emergency pack, and a findable hiss spot inside the cab.
+
 ## The blackout rule (outside the guided chapters)
 
 At zero health outside:
