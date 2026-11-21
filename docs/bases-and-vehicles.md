@@ -251,6 +251,15 @@ The user's three field models (`asset_packs/outpost_field_assets_v1`, cleaned of
 - **Vehicles can be wrecked, but never lost for good** (every limit is beatable).
   - A hard fall, a roll or a crash turns a vehicle into a wreck where it lies, and you fix it there with spares, as when you first found it.
   - If it ends up somewhere you can't reach (down in the deep, for example), GAR-Y tows it back to the last safe spot over a sol or two.
+- **Far wrecks wait for you.** A wreck stays where it lies, pinned on the Map with its own beacon. You can:
+  - go and fix it with spares, by buggy, on foot or in the other vehicle;
+  - or ask GAR-Y to tow it home, at about a sol per 3 km (an 8 km tow takes nearly three sols).
+  - While towing, GAR-Y can't survey, but it always breaks off to rescue you. Distance costs time, never the vehicle.
+- **The HabRover's cabin is a shelter.** A wreck breaks the wheels or the drive, never the hull, so the cabin keeps its air, water and food. Stranded far out, you can:
+  - sleep;
+  - fix it with spares you carried;
+  - or radio GAR-Y to come to you.
+  - If the cabin's supplies run out, the blackout rule applies: GAR-Y drags you home and you lose that trip's progress, not your game.
 
 ## The blackout rule (outside the guided chapters)
 
