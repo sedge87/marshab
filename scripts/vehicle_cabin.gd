@@ -79,8 +79,7 @@ func setup(owner_rover: Node, visual: Node3D) -> void:
 		_locker_open_basis = _swing(_locker, LOCKER_SWING, func(far: Vector3) -> float: return absf(far.x))   # out to the side
 	# Collision you can walk in: the cabin shell as built, the hatch and gates
 	# (they swing and slide with their meshes).
-	var chassis := visual.find_child("Chassis_Visual", true, false) as MeshInstance3D
-	if chassis != null: _shell = _solid(chassis, "shell")
+	_shell = _slabs(visual)
 	if _hatch != null:
 		for mesh in _hatch.find_children("*", "MeshInstance3D", true, false): _solid(mesh as MeshInstance3D, "hatch")
 	for gate in _gates:
@@ -120,6 +119,44 @@ func _swing(pivot: Node3D, angle: float, outward: Callable) -> Basis:
 			score = s
 			best = basis
 	return best
+
+## The cabin as a dozen boxes, in the model's own space (metres; +Z is the
+## front, -Z the rear airlock, +X the galley side): the floor, roof, sides,
+## the nose and dash, the rear wall round the airlock, the galley, the bunk
+## and the seats. Measured off Traverse 06. (The model's own mesh, 157,000
+## triangles, made walking in it crawl: 21 Nov playtest.)
+const SLABS := [
+	[Vector3(-1.9, .41, -3.56), Vector3(1.9, 1.11, 3.18)],      # underbody, its top the cab floor
+	[Vector3(-1.9, 2.92, -3.56), Vector3(1.9, 3.83, 3.18)],     # roof
+	[Vector3(1.32, 1.11, -3.56), Vector3(1.9, 2.92, 3.18)],     # galley-side wall
+	[Vector3(-1.9, 1.11, -3.56), Vector3(-1.32, 2.92, 3.18)],   # bunk-side wall
+	[Vector3(-1.32, 1.11, 1.25), Vector3(1.32, 2.92, 3.18)],    # nose and dash
+	[Vector3(.58, 1.11, -3.56), Vector3(1.32, 2.92, -2.43)],    # the airlock's sides...
+	[Vector3(-1.32, 1.11, -3.56), Vector3(-.58, 2.92, -2.43)],
+	[Vector3(-.58, 2.85, -3.56), Vector3(.58, 2.92, -2.43)],    # ...and its lintel
+	[Vector3(.53, 1.11, -2.43), Vector3(1.32, 2.92, -.49)],     # galley
+	[Vector3(-1.32, 1.11, -2.43), Vector3(-.58, 2.92, 0.0)],    # bunk
+	[Vector3(.35, 1.11, -.35), Vector3(1.0, 1.95, .45)],        # passenger seat
+	[Vector3(-1.0, 1.11, -.35), Vector3(-.35, 1.95, .45)],      # driver's seat
+	[Vector3(-.35, 1.11, .3), Vector3(.35, 2.92, 1.25)],        # between the seats (too low to stand)
+]
+
+func _slabs(visual: Node3D) -> Spot:
+	var body := Spot.new()
+	body.cabin = self
+	body.what = "shell"
+	for slab in SLABS:
+		var lo: Vector3 = slab[0]
+		var hi: Vector3 = slab[1]
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = hi - lo
+		shape.shape = box
+		shape.position = (lo + hi) * .5
+		body.add_child(shape)
+	visual.add_child(body)
+	_bodies.append(body)
+	return body
 
 func _solid(mesh: MeshInstance3D, what: String) -> Spot:
 	if mesh == null or mesh.mesh == null: return null
