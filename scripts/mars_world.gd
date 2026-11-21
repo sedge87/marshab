@@ -140,6 +140,14 @@ const CREW_ROVER_SCRIPT := preload("res://scripts/crew_rover.gd")
 const SCOUT_DRONE_SCRIPT := preload("res://scripts/scout_drone.gd")
 const DRONE_DOCK_SCRIPT := preload("res://scripts/drone_dock.gd")
 const VEHICLE_MODEL := preload("res://scripts/vehicle_model.gd")
+const DROP_SHELL := preload("res://scripts/drop_shell.gd")
+## 21 Nov (docs/intro-rework.md R3): what each vehicle came down in, set out at
+## its wreck and kept after it's fixed. kind -> scripts/drop_shell.gd.
+var drop_shells := {}
+var _shell_spots := {}   # kind -> Vector3, from the save, set out on the next check
+## A wreck joins the record only once you've seen it (its chute or capsule):
+## this close, by kind.
+const WRECK_SEEN := {"buggy": 350.0, "drone": 160.0, "rover": 260.0}
 const RegionTerrain := preload("res://scripts/region_terrain.gd")
 ## A7 test spawns, from the lander: [kind, metres out, degrees off the way
 ## to the region's middle]. C1 moves them: the buggy into a ring 1 cargo
@@ -930,12 +938,30 @@ func _sync_region_vehicles() -> void:
 			drone.global_position = spot
 			if creative: drone.interact()   # Creative: no wreck, it flies to a dock or waits
 		drone.dock_built()
-	# The wrecks' pins (known things may not be set up yet on the first pass).
-	if known != null:
+		if str(drone.state) == "wrecked": _add_shell("drone", drone.global_position)
+	for kind in _shell_spots.keys():
+		if not drop_shells.has(kind): _add_shell(str(kind), _shell_spots[kind])
+	# The wrecks' pins, once you've seen them (21 Nov: not from the start: the
+	# drop's pieces are "location unknown" until someone sees them).
+	if known != null and player != null:
+		var you: Vector3 = player.global_position
 		for vehicle in [crew_rover, buggy]:
-			if vehicle != null and vehicle.wrecked and not known.things.has("wreck:" + str(vehicle.kind)):
-				_mark_wreck(str(vehicle.kind), vehicle.global_position, "Rover wreck" if vehicle.kind == "rover" else "Buggy wreck")
-		if drone != null and str(drone.state) == "wrecked" and not known.things.has("wreck:drone"): _mark_wreck("drone", drone.global_position, "Drone wreck")
+			if vehicle != null and vehicle.wrecked and not known.things.has("wreck:" + str(vehicle.kind)) and you.distance_to(vehicle.global_position) < float(WRECK_SEEN.get(str(vehicle.kind), 250.0)):
+				_mark_wreck(str(vehicle.kind), vehicle.global_position, "HabRover's lander" if vehicle.kind == "rover" else "Buggy's shell")
+		if drone != null and str(drone.state) == "wrecked" and not known.things.has("wreck:drone") and you.distance_to(drone.global_position) < float(WRECK_SEEN.drone): _mark_wreck("drone", drone.global_position, "Drone capsule")
+
+func _shells_saved() -> Dictionary:
+	var out := {}
+	for k in _shell_spots: out[k] = [_shell_spots[k].x, _shell_spots[k].y, _shell_spots[k].z]
+	return out
+
+func _add_shell(kind: String, spot: Vector3) -> void:
+	if drop_shells.has(kind): return
+	var shell: Node3D = DROP_SHELL.new()
+	add_child(shell)
+	shell.setup(self, kind, spot)
+	drop_shells[kind] = shell
+	_shell_spots[kind] = spot
 
 func _spawn_vehicle(kind: String, saved: Dictionary, creative: bool) -> CharacterBody3D:
 	var vehicle: CharacterBody3D = CREW_ROVER_SCRIPT.new()
@@ -950,7 +976,7 @@ func _spawn_vehicle(kind: String, saved: Dictionary, creative: bool) -> Characte
 		return vehicle
 	for spawn in WRECK_SPAWNS:
 		if str(spawn[0]) != kind: continue
-		var spot := _wreck_spot(float(spawn[1]), float(spawn[2]))
+		var spot := _wreck_spot(float(spawn[1]), float(spawn[2])) if kind != "rover" else _rover_wreck_spot(float(spawn[1]), float(spawn[2]))
 		vehicle.global_position = spot + Vector3.UP * .05
 		vehicle.rotation.y = fmod(spot.x * .37 + spot.z * .11, TAU)
 		vehicle.make_wreck()
@@ -964,6 +990,7 @@ func _add_debris(kind: String, spot: Vector3) -> void:
 	add_child(debris)
 	var at := spot + Vector3(6.0 if kind == "rover" else 4.0, 0, 4.0)
 	debris.global_position = Vector3(at.x, MHSiteTerrain.height(at.x, at.z), at.z)
+	_add_shell(kind, spot)
 
 ## A test spawn's spot: `metres` out from the lander, turned `degrees` off
 ## the way to the region's middle (so it stays inside the region).
@@ -974,6 +1001,26 @@ func _wreck_spot(metres: float, degrees: float) -> Vector3:
 	var half := float(RegionTerrain.meta().get("half", 3000.0)) - 250.0
 	var region := (origin + way).clamp(Vector2(-half, -half), Vector2(half, half))
 	return _flat_spot(Vector3(region.x - origin.x, 0, region.y - origin.y))
+
+## The HabRover's heavy lander (21 Nov, R3): far out, but somewhere the lander
+## can see, so its glint shows on the horizon from home at a low sun. Tries
+## angles either side of the planned one and a few distances; the first with a
+## clear line over the ground wins, else the planned spot.
+func _rover_wreck_spot(metres: float, degrees: float) -> Vector3:
+	var eye := Vector3(0, MHSiteTerrain.height(0, 0) + 1.8, 0)
+	if lander != null: eye = Vector3(lander.global_position.x, MHSiteTerrain.height(lander.global_position.x, lander.global_position.z) + 1.8, lander.global_position.z)
+	for turn in [0.0, 12.0, -12.0, 24.0, -24.0, 36.0, -36.0, 48.0, -48.0, 60.0, -60.0, 75.0, -75.0, 90.0, -90.0]:
+		for far in [metres, metres * .8, metres * 1.1, metres * .65]:
+			var spot := _wreck_spot(far, degrees + turn)
+			if _clear_line(eye, spot + Vector3.UP * 3.0): return spot
+	return _wreck_spot(metres, degrees)
+
+func _clear_line(from: Vector3, to: Vector3) -> bool:
+	var steps := maxi(int(Vector2(to.x - from.x, to.z - from.z).length() / 12.0), 1)
+	for i in range(1, steps):
+		var p := from.lerp(to, float(i) / float(steps))
+		if MHSiteTerrain.height(p.x, p.z) > p.y + .3: return false
+	return true
 
 ## The drone's wreck: region.json "drone_wreck", by the first yardang maze.
 func _drone_wreck_spot() -> Vector3:
@@ -1410,6 +1457,7 @@ func current_state() -> Dictionary:
 		"crew_rover": crew_rover.export_state() if crew_rover != null else {},
 		"buggy": buggy.export_state() if buggy != null else _buggy_state,
 		"drone": drone.export_state() if drone != null else _drone_state,
+		"drop_shells": _shells_saved(),
 		"suit": suit.export_state() if suit != null else {},
 		"slate": {"hint_uses": pda.hint_uses, "sol_card": sol_card_shown} if pda != null else {},
 		"cabin": cabin_life.export_state() if cabin_life != null else {},
@@ -1493,6 +1541,9 @@ func _restore_pending_habitat() -> void:
 	_crew_rover_state = state.get("crew_rover", {}) as Dictionary
 	_buggy_state = state.get("buggy", {}) as Dictionary
 	_drone_state = state.get("drone", {}) as Dictionary
+	for k in (state.get("drop_shells", {}) as Dictionary):
+		var s: Array = state.drop_shells[k]
+		_shell_spots[str(k)] = Vector3(float(s[0]), float(s[1]), float(s[2]))
 	_suit_state = state.get("suit", {}) as Dictionary
 	_slate_state = state.get("slate", {}) as Dictionary
 	# A save from before the sol cards: no card for the sol it's on.

@@ -1121,7 +1121,7 @@ func _manifest_data() -> Dictionary:
 		if parsed is Dictionary: _manifest = parsed
 	return _manifest
 
-## "recovered", "seen" or "missing" for a manifest line.
+## "recovered", "seen", "glimpsed" (a glint far out) or "missing" for a manifest line.
 func cargo_state(entry: Dictionary) -> String:
 	var source := str(entry.get("source", ""))
 	var known: Node = world.get("known") if world != null else null
@@ -1133,6 +1133,14 @@ func cargo_state(entry: Dictionary) -> String:
 		var walker: Node = world.get("walker")
 		if walker != null and str(walker.state) != "stalled": return "recovered"
 		if walker != null and walker.knows(): return "seen"
+	elif source.begins_with("wreck:"):
+		# 21 Nov (R3): a vehicle's container. Recovered once it's fixed; seen
+		# once you've found it; the HabRover can first be a glint far out.
+		var kind := source.trim_prefix("wreck:")
+		var vehicle: Node = world.get({"buggy": "buggy", "rover": "crew_rover", "drone": "drone"}.get(kind, kind))
+		if vehicle != null and not (str(vehicle.get("state")) == "wrecked" if kind == "drone" else bool(vehicle.get("wrecked"))): return "recovered"
+		if known != null and known.knows("wreck:" + kind): return "seen"
+		if known != null and kind == "rover" and known.knows("glint:habrover"): return "glimpsed"
 	elif source.begins_with("drop_field:"):
 		var field: Node = world.get("drop_field")
 		var kind := source.trim_prefix("drop_field:")
@@ -1170,21 +1178,21 @@ func _cargo_page() -> Control:
 	return page
 
 func _cargo_row(entry: Dictionary, state: String) -> Control:
-	var colour: Color = {"recovered": MHStyle.VALID, "seen": MHStyle.WARN}.get(state, MHStyle.TEXT_MUTED)
+	var colour: Color = {"recovered": MHStyle.VALID, "seen": MHStyle.WARN, "glimpsed": MHStyle.INFO}.get(state, MHStyle.TEXT_MUTED)
 	var row := MHStyle.hbox(14)
-	row.add_child(MHStyle.icon({"recovered": "circle-check", "seen": "eye"}.get(state, "circle-dashed"), 20, colour))
+	row.add_child(MHStyle.icon({"recovered": "circle-check", "seen": "eye", "glimpsed": "eye"}.get(state, "circle-dashed"), 20, colour))
 	var words := MHStyle.vbox(2)
 	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# No spoilers (playtest 14 Nov): what a pallet holds shows once it's
 	# found; until it's seen, only its number.
-	var title := str(entry.name) if state != "missing" else str(entry.name).get_slice(" · ", 0)
-	var what := str(entry.holds) if state == "recovered" else ("Seen, not opened yet." if state == "seen" else "No signal yet.")
+	var title := str(entry.name) if not state in ["missing", "glimpsed"] else str(entry.name).get_slice(" · ", 0)
+	var what := str(entry.holds) if state == "recovered" else (str(entry.get("seen_text", "Seen, not opened yet.")) if state == "seen" else (str(entry.get("glimpsed_text", "Glimpsed.")) if state == "glimpsed" else "No signal yet."))
 	words.add_child(MHStyle.label(title, 18, MHStyle.TEXT_PRIMARY if state != "missing" else MHStyle.TEXT_SECONDARY, 700))
 	var holds := MHStyle.body(what, 15, MHStyle.TEXT_SECONDARY if state != "missing" else MHStyle.TEXT_MUTED)
 	holds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	words.add_child(holds)
 	row.add_child(words)
-	row.add_child(MHStyle.mono({"recovered": "RECOVERED", "seen": "SEEN"}.get(state, "NO SIGNAL"), 13, colour, 700))
+	row.add_child(MHStyle.mono({"recovered": "RECOVERED", "seen": "SEEN", "glimpsed": "GLINT"}.get(state, "NO SIGNAL"), 13, colour, 700))
 	return row
 
 # ---------- Camera: photos for the journal (scripts/slate_camera.gd) ----------

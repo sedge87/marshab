@@ -100,6 +100,17 @@ The line pass checks every line against four questions:
    - the drone's capsule;
    - an impact scar and debris on every container;
    - the manifest on the slate's Base page.
+   - *Built 21 Nov.* `scripts/drop_shell.gd` stages each one from the models in `assets/models/storm_cargo/` (built by `asset_packs/mars_storm_cargo_v2/source/build_drop_shells.py`):
+     - the buggy's split shell, with a skid strip, its chute and debris;
+     - the drone's sprung capsule, with its small chute;
+     - the HabRover's heavy lander, tipped on a crumpled leg, with a retro-rocket scorch.
+   - Wrecks go on the Map only once you've been within sight (buggy 350 m, rover 260 m, drone 160 m), as "Buggy's shell", "HabRover's lander" and "Drone capsule".
+   - **The glint.** The HabRover's lander is placed 1.6–2.6 km out, somewhere the lander can see (`mars_world.gd _rover_wreck_spot`). From more than 300 m away, while the sun is under 25°, it twinkles. Seeing it with a clear line learns `glint:habrover`.
+   - **The manifest:**
+     - pallet 5 is the scout buggy, 8 the instruments with the drone, 9 the HabRover on its lander, 10 its stores;
+     - a new state, **GLINT**, sits between "no signal" and "seen";
+     - seen lines say what state the thing is in.
+   - Check with `tools/drop_shell_look.gd`.
 4. **R4, the trigger pass:** every `ring()` in code (about 40, listed in `opening_days.gd`, `walker.gd`, `drop_field.gd`, `drop_site.gd`, `spares_crate.gd`, `suit.gd`, `module_life.gd`, `first_step.gd`, `wake_up.gd`, `lifepod.gd`) moved onto a player fact, with freshness.
 5. **R5, check:** the robot run (`guided_playthrough`) gets a "Castle talked about X while I was more than 100 m from X" checker, then a playtest build.
 

@@ -1,16 +1,16 @@
 {
-  "_about": "The mission's cargo manifest on the slate (scripts/pda_screen.gd Cargo app; docs/master-design.md §2, systems-and-items §15). Twelve pallets and the three walking carriers that went down ahead of you. Paperwork, not a quest list: each line is greyed out until you find it, and says nothing about where it is. 'source' tells the slate how to check it: storm_drop (pallet 1), drop_field:<kind> (pallets 2-4; since 14 Nov tools are 3 and GAR-Y 4); the rest come with later steps.",
+  "_about": "The mission's cargo manifest on the slate (scripts/pda_screen.gd Cargo app; docs/master-design.md §2, systems-and-items §15). Twelve pallets and the three walking carriers that went down ahead of you. Paperwork, not a quest list: each line is greyed out until you find it, and says nothing about where it is. 'source' tells the slate how to check it: storm_drop (pallet 1), drop_field:<kind> (pallets 2-4 and 6; since 14 Nov tools are 3 and GAR-Y 4), wreck:<vehicle> (21 Nov, R3: the buggy's shell, the drone's capsule, the HabRover's heavy lander; seen_text when found wrecked, glimpsed_text for the HabRover's glint); the rest come with later steps.",
   "pallets": [
     {"id": "life", "name": "Pallet 1 · Life support", "holds": "The core's air cartridge, ten ration packs and the sample kit (hand corer, scoop and bags).", "source": "storm_drop"},
     {"id": "power", "name": "Pallet 2 · Field power", "holds": "A rolled solar blanket and a battery pack.", "source": "drop_field:power"},
     {"id": "tools", "name": "Pallet 3 · Field tools", "holds": "A rock hammer, a bright lamp, and a suit patch kit.", "source": "drop_field:tools"},
     {"id": "gary", "name": "Pallet 4 · GAR-Y", "holds": "GAR-Y, the commissioning rover, folded for the trip.", "source": "drop_field:gary"},
-    {"id": "rover", "name": "Pallet 5 · Scout rover", "holds": "A two-seat open rover, folded."},
-    {"id": "print_shop", "name": "Pallet 6 · Print Shop", "holds": "The base's printer and its regolith intake."},
+    {"id": "rover", "name": "Pallet 5 · Scout buggy", "holds": "A two-seat open buggy, in its own cargo shell. The shell split when it hit; the buggy needs fixing before it drives.", "source": "wreck:buggy", "seen_text": "Found in its split shell. Damaged: one for later, once there are parts."},
+    {"id": "print_shop", "name": "Pallet 6 · Print Shop", "holds": "The base's printer and its regolith intake.", "source": "drop_field:print_shop"},
     {"id": "comms", "name": "Pallet 7 · Comms", "holds": "The high-gain antenna's spares and the base's long-range radio."},
-    {"id": "instruments", "name": "Pallet 8 · Instruments", "holds": "The weather station and the field instruments."},
-    {"id": "habrover_a", "name": "Pallet 9 · HabRover, chassis", "holds": "The pressurised rover's frame, wheels and drive."},
-    {"id": "habrover_b", "name": "Pallet 10 · HabRover, cabin", "holds": "The pressurised rover's cabin and its life support."},
+    {"id": "instruments", "name": "Pallet 8 · Instruments", "holds": "The scout drone, in a small capsule of its own, with the field instruments.", "source": "wreck:drone", "seen_text": "Its capsule found, sprung open. The drone needs fixing."},
+    {"id": "habrover_a", "name": "Pallet 9 · HabRover", "holds": "The pressurised rover, whole, on its own heavy lander. It came down on rockets, not a chute.", "source": "wreck:rover", "seen_text": "Its heavy lander found, tipped on a crumpled leg. The rover rolled off and needs fixing.", "glimpsed_text": "A glint on the horizon when the sun is low. Something big came down out there."},
+    {"id": "habrover_b", "name": "Pallet 10 · HabRover stores", "holds": "The HabRover's cabin stores: food, water and its spare life support."},
     {"id": "reactor", "name": "Pallet 11 · Compact reactor", "holds": "The base's long-term power: a small fission reactor and its radiators."},
     {"id": "spares", "name": "Pallet 12 · Spares", "holds": "Spare parts for every system on the manifest."}
   ],

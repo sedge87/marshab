@@ -53,7 +53,15 @@ func _initialize() -> void:
 	var drone = world.drone
 	assert(buggy != null and rover != null and drone != null, "Past the guided chapters, all three are out in the land.")
 	assert(buggy.wrecked and rover.wrecked and str(drone.state) == "wrecked", "As wrecks.")
-	assert(known.things.has("wreck:buggy") and known.things.has("wreck:rover") and known.things.has("wreck:drone"), "Marked on the Map (A7 test spawns).")
+	# 21 Nov (R3): each in its container, and off the Map until you've seen it.
+	assert(world.drop_shells.has("buggy") and world.drop_shells.has("rover") and world.drop_shells.has("drone"), "Each wreck has its shell, lander or capsule.")
+	assert(not known.things.has("wreck:buggy") and not known.things.has("wreck:rover"), "Not on the Map before anyone's seen them.")
+	var was: Vector3 = world.player.global_position
+	for wreck in [buggy, rover, drone]:
+		world.player.global_position = wreck.global_position + Vector3(20, 0, 0)
+		world._sync_region_vehicles()
+	world.player.global_position = was
+	assert(known.things.has("wreck:buggy") and known.things.has("wreck:rover") and known.things.has("wreck:drone"), "Marked on the Map once seen up close.")
 	var buggy_out: float = Vector2(buggy.global_position.x, buggy.global_position.z).length()
 	var rover_out: float = Vector2(rover.global_position.x, rover.global_position.z).length()
 	assert(buggy_out > 450.0 and buggy_out < 750.0, "The buggy's wreck is in ring 1, about 600 m out (%d m)." % roundi(buggy_out))
