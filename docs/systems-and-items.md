@@ -199,6 +199,36 @@ You choose a **loadout from the suit rack** before going out. You start with **4
 | Field spectrometer (like Perseverance's PIXL) | names a mineral on the spot, at the cost of a slot | new |
 | A deployable instrument | §5 | new |
 
+### 4a. Carrying: what you can see, plus one slate page · **To consider (22 Nov proposal)**
+
+**Not built, not yet decided.** No inventory grid. Everything you carry stays visible and checkable, and choices are made at physical places.
+
+- **Why not a grid:**
+  - **It turns trips into menu time:** sorting and hoarding in a pause screen, when a trip should be decided at the door.
+  - **It hides weight.** With a grid, 20 kg is a number in a corner. In your hands, the power module slows you, blocks your tools and has to be set down.
+  - **It breaks the diegetic rule:** it would be the biggest non-diegetic screen in the game.
+  - **It makes the game feel generic.**
+- **The risk on our side:** as items pile up, they end up scattered across your hands, the kit, the case, the suit, the sled and the base. Players then can't answer "have I got a patch kit on me?" That's the real case for inventories, and these rules answer it:
+  1. **Everything carried has a visible place:**
+     - in your hands (one thing, about 20 kg);
+     - in the belt slots;
+     - in the sample case (six samples);
+     - on suit mounts (lamp, air pack);
+     - on GAR-Y's sled (50 kg).
+
+     Nothing goes into an invisible bag.
+  2. **One slate page, "On me",** reads the lot at a glance: your hands, each slot, the case contents, suit add-ons, the sled's load and the total weight. It's read-only: for checking, not managing.
+  3. **Choices happen at places:**
+     - the **suit rack** sets the loadout;
+     - **shelves** hold the stores;
+     - the **sled** takes big loads.
+
+     You can't swap gear mid-field, so the choice at the door counts: stakes or a spare bottle?
+  4. **Small consumables are counts, not slots.** Patch kits, ration bars and marker beacons are numbers on a belt pouch, shown on the wrist and on "On me".
+  5. **Slots cap at about 6,** even with the suit pack and rover-locker upgrades, so keys 1–6 stay simple.
+- **When:** after chunk 2. The survey stakes are the first real "what do I take?" choice, which makes them the time to build the suit rack loadout.
+- **As built today (22 Nov):** four fixed slots (corer, hammer, scoop, stakes) on keys 1–4, listed on the slate under Base → Kit. There's no loadout choice yet.
+
 ---
 
 ## 5. Deployable instruments (outdoor science) · **Decided 3 Nov**
