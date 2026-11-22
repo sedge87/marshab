@@ -1,10 +1,10 @@
 extends StaticBody3D
 
-## One piece of a core's fit-out kit in its crate, by the core's wall
-## (opening slice, docs/opening-slice.md §4a Scene 7). E takes the piece out
-## and it's in your hands (scripts/carry.gd carry_new): look where it goes,
-## R turns it, E sets it down. Q puts it back. Once its piece is placed the
-## crate's gone. Crates are worked out from the kit still to place
+## One piece of a core's fit-out kit in its crate, on the core's floor
+## (opening slice, docs/opening-slice.md §4a Scene 7). E unpacks it: the lid
+## opens and the piece goes on your build list (22 Nov playtest: placing by
+## hand had no snap, no proper turn and no remove). B places it like anything
+## else. Once its piece is placed the crate's gone. Crates are worked out from the kit still to place
 ## (scripts/build_rules.gd kit_left), so nothing about them is saved.
 ##
 ## The models (asset_packs/outpost_chunk1_v1/Fitout_Crates): three moulded
@@ -95,13 +95,19 @@ func _role(role: String) -> Material:
 func _label() -> String:
 	return str(EquipmentCatalog.get_entry(id).get("label", id))
 
+func _unpacked() -> bool:
+	return MHChapterOne.unpacked.has("kit:" + id)
+
 func interaction_prompt() -> Dictionary:
-	return {"label": "Fit-out crate · " + _label(), "primary": "Take it out"}
+	if _unpacked(): return {"label": "Fit-out crate · " + _label() + " · unpacked: B to place it"}
+	return {"label": "Fit-out crate · " + _label(), "primary": "Unpack it"}
 
 func interact(_actor: Node = null) -> bool:
-	var carry: Node = get_tree().get_first_node_in_group("carry")
-	if carry == null or not carry.carry_new(id): return false
+	if _unpacked(): return false
+	MHChapterOne.unpacked["kit:" + id] = true
 	_set_open(true)
+	MHAudio.sfx("suit_clamp", -8.0)
+	MHNotices.post("valid", _label() + " unpacked", "It's on your build list: stand in a room and press B to place it.", "log")
 	return true
 
 ## The lid swings up and the cargo's lifted out; shut again, it's back.
@@ -123,8 +129,4 @@ func _process(delta: float) -> void:
 	if MHChapterOne.available(id, world.builder) <= 0:
 		queue_free()
 		return
-	# Put back (Q) or dropped: the piece is in its crate again.
-	if _open:
-		var carry: Node = get_tree().get_first_node_in_group("carry")
-		var held: Dictionary = carry.get("carrying") if carry != null else {}
-		if str(held.get("id", "")) != id: _set_open(false)
+	if _unpacked() and not _open: _set_open(true)   # a loaded game: it stays open

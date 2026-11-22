@@ -233,6 +233,41 @@ func _v3() -> bool:
 
 ## Where the power module plugs in (scripts/power_module.gd): the model's
 ## PowerSocket marker in its berth on the left side (its -Z out of the socket).
+## v3 (22 Nov playtest: nobody found where the module goes): the socket's
+## port glows amber while the module's on its way to it, carried, on the sled
+## or set down within reach.
+const SOCKET_GLOW_M := 25.0
+var _socket_glow: OmniLight3D
+func _socket_glow_tick() -> void:
+	var want := false
+	if _v3() and state == "stalled":
+		var module: Node3D = get_tree().get_first_node_in_group("power_module")
+		if module != null and str(module.get("where")) in ["carried", "sled", "ground"]:
+			var at: Vector3 = (world.player as Node3D).global_position if str(module.get("where")) == "carried" else module.global_position
+			var socket := power_socket()
+			want = Vector2(at.x - socket.x, at.z - socket.z).length() < SOCKET_GLOW_M
+	if want and _socket_glow == null:
+		_socket_glow = OmniLight3D.new()
+		_socket_glow.light_color = Color(1.0, .62, .2)
+		_socket_glow.light_energy = 2.5
+		_socket_glow.omni_range = 1.6
+		add_child(_socket_glow)
+		var lamp := MeshInstance3D.new()
+		var ball := SphereMesh.new()
+		ball.radius = .06
+		ball.height = .12
+		lamp.mesh = ball
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Color(1.0, .62, .2)
+		lamp.material_override = mat
+		_socket_glow.add_child(lamp)
+	if _socket_glow != null:
+		_socket_glow.visible = want
+		if want:
+			var t := socket_transform()
+			_socket_glow.global_position = t.origin - t.basis.z * .08
+
 func power_socket() -> Vector3:
 	return socket_transform().origin
 
@@ -617,7 +652,7 @@ func take_photo() -> void:
 func interaction_prompt() -> Dictionary:
 	if _v3():
 		match state:
-			"stalled": return {"label": NAME + " · dead: its battery's flat"}
+			"stalled": return {"label": NAME + " · dead: its battery's flat · power socket on its side"}
 			"coming":
 				if _near_fault(): return {"label": NAME + " · front-left wheel seal: frosted, venting dust", "primary": "Patch it"} if _have_patch_kit() else {"label": NAME + " · front-left wheel seal: frosted, venting dust"}
 				return {"label": NAME + " · awake, but leaking: front axle"}
@@ -671,6 +706,9 @@ func patch_seal() -> void:
 
 ## Seated at the front: the nav screen (scripts/walker_nav_screen.gd).
 func open_nav() -> bool:
+	# v3: only the power module wakes it (22 Nov playtest: the old nav-screen
+	# fix woke it without the module, and the module was left with no use).
+	if _v3(): return false
 	if calibrated or state != "stalled" or not riding or (_nav != null and is_instance_valid(_nav)): return false
 	_nav = NAV_SCRIPT.new()
 	_nav.setup(self)
@@ -1069,7 +1107,7 @@ func _input(event: InputEvent) -> void:
 func ride_prompt() -> Dictionary:
 	if _getting_off: return {"keys": "", "verb": "Stopping to let you down…"}
 	if _deck != null and _deck.active(): return _deck.prompt()
-	if state == "stalled" and not calibrated and looking_at_nav(): return {"keys": "E", "verb": "Use the nav screen"}
+	if state == "stalled" and not calibrated and not _v3() and looking_at_nav(): return {"keys": "E", "verb": "Use the nav screen"}
 	return {"keys": "E", "verb": "Climb down"}
 
 func looking_at_nav() -> bool:
@@ -1127,6 +1165,7 @@ func _look() -> void:
 		if _stranded >= 1.0: _put_down(player)
 	else: _stranded = 0.0
 	var far := Vector2(you.x - global_position.x, you.z - global_position.z).length()
+	_socket_glow_tick()
 	if not seen and (far < SEE_NEAR or (far < SEE_HIGH and you.y > global_position.y + HIGH_ABOVE)) and _in_sight(you): _see()
 	# 22 Nov playtest: the close-up thought (its lamp, its seat and screen)
 	# came at 500 m. From far off you only get what you could make out; the

@@ -367,7 +367,7 @@ func _initialize() -> void:
 			check(deck != null and deck.active(), "the deck isn't live while you ride")
 			if deck != null:
 				var reading: String = deck.screen_text()
-				check(deck.screen_lit() and reading.contains("GROUND") and reading.contains("WATER"), "the deck screen doesn't read the ground: '%s'" % reading)
+				check(deck.screen_lit() and (reading.contains("GOOD SPOT") or reading.contains("NOT HERE")) and reading.contains("Water"), "the deck screen doesn't read the ground: '%s'" % reading)
 				var before: Vector3 = walker.global_position
 				var w := InputEventKey.new()
 				w.physical_keycode = KEY_W; w.keycode = KEY_W; w.pressed = true
@@ -388,8 +388,9 @@ func _initialize() -> void:
 					walker.global_position = Vector3(home_at.x, 0, home_at.y)
 					walker._settle()
 					await wait(4.0)
-					check(deck.screen_text().contains("SET DOWN HERE"), "good ground doesn't offer 'Set down here': '%s'" % deck.screen_text())
-					check(deck.press(true) and bool(deck.siting), "E on the deck screen didn't lay the outline")
+					check(deck.screen_text().contains("GOOD SPOT"), "good ground doesn't say 'GOOD SPOT': '%s'" % deck.screen_text())
+					# 22 Nov playtest: E sets down wherever you look (it used to need the screen).
+					check(deck.press() and bool(deck.siting), "E on the deck didn't lay the outline")
 					await wait(1.0)
 					check(str(deck._why) == "", "the outline says not here: %s" % str(deck._why))
 					deck.press()
@@ -407,23 +408,37 @@ func _initialize() -> void:
 					check(life != null and bool(life.commissioned) and life.breathable() and life.has_blanket(), "the core isn't running on the power module (commissioned %s)" % str(life.commissioned if life != null else "no core"))
 					var builder: Node = world.builder
 					var rules := preload("res://scripts/build_rules.gd")
-					check(rules.b_reason(builder).contains("terminal"), "B still opens the plan: '%s'" % rules.b_reason(builder))
 					var inside: Vector3 = life._centre()
 					player.global_position = Vector3(inside.x, builder.habitat_base_y + 1.0, inside.z)
 					await wait(3.0)
+					# B inside a room furnishes it again (rooms stay at the terminal).
+					check(rules.b_reason(builder).is_empty(), "B inside the core is refused: '%s'" % rules.b_reason(builder))
 					var crates: Array = root.get_tree().get_nodes_in_group("kit_crate")
+					# The crates lie inside the core's floor, clear of its walls.
+					var lo := Vector2(INF, INF)
+					var hi := Vector2(-INF, -INF)
+					for c in rules.module_zone(builder).get("cells", []):
+						lo = Vector2(minf(lo.x, (c.x - .5) * builder.CELL), minf(lo.y, (c.y - .5) * builder.CELL))
+						hi = Vector2(maxf(hi.x, (c.x + .5) * builder.CELL), maxf(hi.y, (c.y + .5) * builder.CELL))
+					for crate in crates:
+						var reach := .7   # half the large case's length, and a little
+						var p: Vector3 = (crate as Node3D).global_position
+						check(p.x - reach > lo.x and p.x + reach < hi.x and p.z - reach > lo.y and p.z + reach < hi.y, "the %s crate pokes through the core's wall (%s in %s..%s)" % [str(crate.id), str(p), str(lo), str(hi)])
 					var kit: Array = rules.kit_left(builder)
 					check(kit.has("site_plan_terminal"), "the kit has no Site plan terminal: %s" % str(kit))
 					check(crates.size() == kit.size(), "%d crates for %d kit pieces" % [crates.size(), kit.size()])
-					var carry: Node = root.get_tree().get_first_node_in_group("carry")
 					var core_cells: Array = rules.module_zone(builder).get("cells", [])
+					check(rules.unpacked_kit(builder).is_empty(), "kit on the build list before any crate's opened")
 					for crate in crates:
 						var piece := str(crate.id)
-						check(crate.interact(), "the %s crate didn't give its piece" % piece)
-						check(str(carry.carrying.get("id", "")) == piece, "not holding the %s" % piece)
+						check(crate.interact(), "the %s crate didn't unpack" % piece)
+						check(rules.unpacked_kit(builder).has(piece), "the %s isn't on the build list after unpacking" % piece)
+						# Placed the B way (the interior builder's own placement).
 						var spot := _free_spot(builder, piece, core_cells)
 						check(not spot.is_empty(), "no floor spot for the %s" % piece)
-						if not spot.is_empty(): check(carry._place(spot.at, spot.rot, Vector3.UP), "couldn't set the %s down" % piece)
+						if not spot.is_empty():
+							var at: Vector3 = spot.at
+							builder.place_free_interior_equipment(piece, at, float(spot.rot), Vector2i(roundi(at.x / builder.CELL), roundi(at.z / builder.CELL)), builder.free_interior_visual(piece, at, float(spot.rot)))
 						await wait(1.0)
 					await wait(2.0)
 					check(root.get_tree().get_nodes_in_group("kit_crate").is_empty(), "crates left after placing the kit")
@@ -439,6 +454,7 @@ func _initialize() -> void:
 						var zone := {"kind": "living", "cells": quarters, "door_direction": builder.airlock_direction, "cost": builder._zone_cost(quarters)}
 						rules.placed(builder, zone)
 						check(bool(zone.get("kit", false)), "the first Quarters wasn't free")
+						check(rules.zone_reason(builder, "living", quarters).is_empty() or quarters.size() > rules.FREE_QUARTERS_CELLS, "the free Quarters refused: %s" % rules.zone_reason(builder, "living", quarters))
 						builder.zones.append(zone)
 						builder._history.append({"type": "zone", "zone": zone})
 						builder._rebuild()

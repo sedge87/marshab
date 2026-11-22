@@ -50,6 +50,24 @@
       },
       "journal": ""
     },
+    "walker_home": {
+      "stages": {
+        "start": "Walker 1's knelt by the lander for the night. Tomorrow I ride it out and find a spot for home."
+      },
+      "journal": ""
+    },
+    "kit_crates": {
+      "stages": {
+        "start": "It's down, and it's ours. The kit's in crates on the floor: a bunk, a table, the rack, a terminal for planning rooms. And a Quarters liner."
+      },
+      "journal": ""
+    },
+    "walker_ride": {
+      "stages": {
+        "start": "Morning. Walker 1's waiting with the core slung under it. Up the ladder, then walk it till the deck screen likes the ground."
+      },
+      "journal": ""
+    },
     "bed": {
       "stages": {
         "start": "That's the day. Back to {home} and sleep.",
@@ -202,7 +220,7 @@
     "walker_seen": {
       "stages": {
         "start": "Something tall out there, standing still, with an amber light blinking. That has to be Walker 1. It should be parked by the core, not out there. I need a closer look.",
-        "close": "Walker 1, with the base's core slung under it. The blinking's a fault lamp, but nothing looks broken. Is it just lost? There's a seat and a screen up front."
+        "close": "Walker 1, with the base's core slung under it. Dead still, fault lamp blinking: its battery's flat. There's a power socket on its side. The module in pallet 2 would fit that."
       },
       "journal": "Found Walker 1. It wasn't broken, it was lost: its compass was way off. Gave it the sun and a few places I knew, and it walked home."
     },

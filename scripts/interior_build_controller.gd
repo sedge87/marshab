@@ -976,7 +976,8 @@ func _fits_in(id: String) -> String:
 ## Fixed tabs: This room, every equipment tab with something unlocked, Structure.
 func _tab_ids() -> Array:
 	# The fit-out kit is the Interior view's first lesson: only it, till it's out.
-	if not BUILD_RULES.kit_left(builder).is_empty(): return [UNPACKED_TAB]
+	# Not in the slice (22 Nov): the kit's on the list with everything else.
+	if not BUILD_RULES.kit_left(builder).is_empty() and not BUILD_RULES.slice(builder): return [UNPACKED_TAB]
 	var tabs: Array = [HERE_TAB]
 	if MHChapterOne.on(): tabs.append(UNPACKED_TAB)
 	for group in EquipmentCatalog.groups():
@@ -1016,6 +1017,25 @@ func _render_selector_tabs() -> void:
 		tab.set_meta("tutorial_target", "group:" + str(tab_id).trim_prefix("_"))
 		tab.add_to_group("tutorial_target")
 		_selector_tabs.add_child(tab)
+	# 22 Nov playtest: "an easy to toggle filter to remove the things from the
+	# list that you can't build". On by default; remembered for the session.
+	var filter := Button.new()
+	filter.text = "  Can build" if only_buildable else "  Everything"
+	filter.tooltip_text = "Showing what you can build now · click for everything" if only_buildable else "Showing everything · click for only what you can build"
+	filter.icon = MHIcons.texture("search" if only_buildable else "layers", 18)
+	filter.focus_mode = Control.FOCUS_NONE
+	filter.custom_minimum_size = Vector2(0, 40)
+	filter.add_theme_font_size_override("font_size", 15)
+	filter.add_theme_color_override("font_color", MHStyle.TEXT_PRIMARY)
+	var fpad := Vector4(12, 6, 14, 6)
+	filter.add_theme_stylebox_override("normal", MHStyle.box(MHStyle.tint(MHStyle.accent, .14) if only_buildable else MHStyle.SURFACE_CONTROL, MHStyle.BORDER_SUBTLE, 6, 1, fpad))
+	filter.add_theme_stylebox_override("hover", MHStyle.box(MHStyle.SURFACE_CONTROL_HOVER, MHStyle.BORDER_STRONG, 6, 1, fpad))
+	filter.add_theme_stylebox_override("pressed", filter.get_theme_stylebox("normal"))
+	filter.pressed.connect(func():
+		only_buildable = not only_buildable
+		_render_selector_tabs()
+		_render_selector_cards())
+	_selector_tabs.add_child(filter)
 
 ## Does this tab hold anything that fits the room the player is in?
 func _tab_useful(tab_id: String) -> bool:
@@ -1055,16 +1075,26 @@ func _render_selector_cards() -> void:
 func _visible_ids() -> Array:
 	if _selector_group == STRUCTURE_TAB:
 		return STRUCTURE_TOOLS.map(func(tool): return str(tool.id))
-	if _selector_group == HERE_TAB:
-		return _selector_items
-	if _selector_group == UNPACKED_TAB: return _unpacked_ids()
-	return _catalog_items.filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == _selector_group)
+	var ids: Array
+	if _selector_group == HERE_TAB: ids = _selector_items
+	elif _selector_group == UNPACKED_TAB: ids = _unpacked_ids()
+	else: ids = _catalog_items.filter(func(id): return str(EquipmentCatalog.get_entry(id).get("group", "")) == _selector_group)
+	if only_buildable: ids = ids.filter(func(id): return _buildable(str(id)))
+	return ids
+
+## The filter's test: placeable now (stock or materials, plan known), and a
+## kit piece only once its crate's unpacked.
+static var only_buildable := true
+func _buildable(id: String) -> bool:
+	if not MHChapterOne.item_reason(id, builder).is_empty(): return false
+	if BUILD_RULES.slice(builder) and BUILD_RULES.kit_left(builder).has(id) and not BUILD_RULES.unpacked_kit(builder).has(id): return false
+	return true
 
 ## Interior items on the Unpacked tab (crate copies, or made at the fabricator), in catalogue order.
 func _unpacked_ids() -> Array:
 	var ready := MHChapterOne.on_build_bar(builder)
 	var kit := BUILD_RULES.kit_left(builder)
-	if not kit.is_empty(): ready = kit
+	if not kit.is_empty(): ready = BUILD_RULES.unpacked_kit(builder)
 	return _catalog_items.filter(func(id): return ready.has(id))
 
 func _structure_tool(id: String) -> Dictionary:

@@ -1207,12 +1207,17 @@ func _set_explore_hud(on: bool) -> void:
 
 # ---------- input while driving ----------
 
+## Something in your hands to turn with R (scripts/carry.gd): R is its, not the recover.
+func _carrying() -> bool:
+	var carry: Node = get_tree().get_first_node_in_group("carry")
+	return carry != null and not (carry.get("carrying") as Dictionary).is_empty()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not driving and not get_tree().paused and MHInput.pressed(event, "recover"):
 		# Standing beside it: R frees it too.
 		var world := get_tree().get_first_node_in_group("habitat_world")
 		var walker: Node3D = world.player if world != null else null
-		if walker != null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not (world.builder != null and world.builder.build_mode) 				and walker.global_position.distance_to(global_position) < 6.0 and not wrecked:
+		if walker != null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not (world.builder != null and world.builder.build_mode) and not bool(walker.get_meta("interior_build_active", false)) and not bool(walker.get_meta("surface_build_active", false)) and not _carrying() 				and walker.global_position.distance_to(global_position) < 6.0 and not wrecked:
 			_recover()
 			get_viewport().set_input_as_handled()
 		return

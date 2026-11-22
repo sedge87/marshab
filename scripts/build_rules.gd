@@ -64,9 +64,10 @@ static func stage(builder: Node) -> String:
 
 ## Why B can't open the Site plan now ("" when it can).
 static func b_reason(builder: Node, at_terminal := false) -> String:
-	# The opening slice's rule: rooms are planned at a Site plan terminal, and
-	# furniture goes down by hand. B doesn't open the plan.
-	if not at_terminal and slice(builder): return "Rooms are planned at a Site plan terminal"
+	# The opening slice's rule: rooms are planned at a Site plan terminal. B
+	# inside a room furnishes it (22 Nov playtest: "bring it back... i never
+	# meant for us to remove it": snap, turn and remove all live there).
+	if not at_terminal and slice(builder) and not bool(builder.call("player_can_furnish")): return "Rooms are planned at a Site plan terminal"
 	match stage(builder):
 		"waiting": return "Nothing to build with yet" if str(walker(builder).get("state")) != "travelling" else "The walker is still on its way"
 		"delivering":
@@ -75,7 +76,7 @@ static func b_reason(builder: Node, at_terminal := false) -> String:
 	return ""
 
 static func b_detail(builder: Node) -> String:
-	if slice(builder) and stage(builder) in ["", "set_down"]: return "Furniture and kit go down by hand: take it out of its crate, R turns it, E sets it down."
+	if slice(builder) and stage(builder) in ["", "set_down"]: return "Stand in a room and press B to furnish it. Unpacked kit is on its list."
 	match stage(builder):
 		"waiting": return "The base's first room is still out there on its walker."
 		"delivering":
@@ -129,9 +130,13 @@ static func first_quarters(builder: Node, kind: String) -> bool:
 		if str(zone.get("kind", "")) == "living": return false
 	return true
 
+## Walker 1's free Quarters liner: up to this many cells (a 6 × 6 m room).
+const FREE_QUARTERS_CELLS := 4
+
 ## Extra reasons a zone can't go here ("" when it can).
 static func zone_reason(builder: Node, kind: String, cells: Array) -> String:
 	if not active(builder): return ""
+	if first_quarters(builder, kind) and cells.size() > FREE_QUARTERS_CELLS: return "Walker 1's Quarters liner covers up to %d cells" % FREE_QUARTERS_CELLS
 	if stage(builder) == "set_down":
 		if not offered(builder, kind): return "Only the core and its airlock for now"
 		if kind == "general" and not module_zone(builder).is_empty(): return "There's only the one module: undo it to move it"
@@ -192,3 +197,16 @@ static func give_kit(builder: Node = null) -> void:
 	var pieces: Dictionary = kit(builder) if builder != null else KIT
 	for id in pieces:
 		MHChapterOne.stock[id] = int(MHChapterOne.stock.get(id, 0)) + int(pieces[id])
+	# 22 Nov playtest: something to work with. Walker 1 carries a starter bin
+	# of feedstock (a sol's intake), so the first prints don't wait.
+	if builder != null and slice(builder) and not MHChapterOne.unpacked.has("starter_feedstock"):
+		MHChapterOne.unpacked["starter_feedstock"] = true
+		MHChapterOne.feedstock_kg += STARTER_FEEDSTOCK_KG
+const STARTER_FEEDSTOCK_KG := 150.0
+
+## Version 3: a kit piece goes on the build list once its crate's opened
+## (scripts/kit_crate.gd), not before.
+static func unpacked_kit(builder: Node) -> Array:
+	var left := kit_left(builder)
+	if not slice(builder): return left
+	return left.filter(func(id): return MHChapterOne.unpacked.has("kit:" + str(id)))

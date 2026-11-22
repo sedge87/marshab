@@ -123,8 +123,15 @@ func o2_pct() -> float:
 func co2_pct() -> float:
 	return 100.0 * co2_kg / air_kg * CO2_VOL
 
+## 22 Nov playtest: at dawn the first trickle of sun switched life support
+## back on, the heater drained it at once, and "battery flat" came and went
+## every step, chiming. Once it's flat it stays off until there's a little
+## in hand (FLAT_BACK_KWH).
+const FLAT_BACK_KWH := .3
+const LOW_RESERVE_KWH := 1.0
+var _flat := false
 func powered() -> bool:
-	return battery_kwh > .0005
+	return battery_kwh > (FLAT_BACK_KWH if _flat else .0005)
 
 ## Life support running: switched on, with power.
 func life_on() -> bool:
@@ -191,10 +198,15 @@ func step(dt: float, outside: float, sun: float) -> void:
 	if life:
 		var want := loss - draw - body + (heater_target() - temp_c) * heat_cap / .5
 		heater = clampf(want, 0.0, m("cabin_heater_kw", 1.5))
-	draw += heater
 	var solar := (m("cabin_solar_kw", 1.5) + pack_kw) * sun
 	if self_sufficient: solar += n("cabin_rtg_kw", .7)   # the power cell, day and night
+	# Nearly flat: the heater only spends half what the sun brings in, so the
+	# battery climbs back instead of flicking on and off all morning.
+	if life and battery_kwh < LOW_RESERVE_KWH: heater = minf(heater, maxf(0.0, solar - draw) * .5)
+	draw += heater
 	battery_kwh = clampf(battery_kwh + (solar - draw) * dt, 0.0, battery_cap)
+	if battery_kwh <= .0005: _flat = true
+	elif battery_kwh > FLAT_BACK_KWH: _flat = false
 	temp_c += (draw + body - loss) * dt / heat_cap
 	# Air (none while the cabin is open to Mars: the suit breathes for you).
 	if vented:
@@ -354,10 +366,10 @@ func alerts(ahead: Dictionary = {}) -> Array:
 			"text": "%.1f L left: under a sol." % water_l, "chain": [["droplet", "Tank %.1f L" % water_l, false]]})
 	if not powered():
 		out.append({"id": prefix + "_power", "level": "warning", "title": room_name + " battery flat",
-			"text": "Life support and lights are off until the sun charges it. It'll get cold first, then the air goes stale.", "chain": [["zap", "Battery 0%", false], ["sun", "Waiting for the sun", true]]})
+			"text": "Life support and lights are off until the sun charges it. It'll get cold first, then the air goes stale. When it's back, Low on the rack's switch makes it last.", "chain": [["zap", "Battery 0%", false], ["sun", "Waiting for the sun", true]]})
 	elif float(ahead.get("power", -1.0)) >= 0.0 and float(ahead.power) <= 4.0:
 		out.append({"id": prefix + "_power", "level": "advisory", "title": room_name + " battery runs out at %s" % _clock_after(float(ahead.power)),
-			"text": "At this rate. Heating is the biggest load: life support on Low saves it." + (" The leak adds to it." if leaking() else ""), "chain": [["zap", "Battery %d%%" % roundi(battery_pct()), false], ["flame", "Life support " + heater_mode, true]]})
+			"text": "At this rate. Heating is the biggest load: set life support to Low (the switch on the rack) to save it." + (" The leak adds to it." if leaking() else ""), "chain": [["zap", "Battery %d%%" % roundi(battery_pct()), false], ["flame", "Life support " + heater_mode, true]]})
 	return out
 
 static func _clock_after(hours: float) -> String:

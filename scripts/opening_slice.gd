@@ -173,13 +173,13 @@ const GOAL_THOUGHTS := {
 	"gary_met": "GAR-Y's cradle is empty. Where did it go?",
 	"pallets": "Open the pallets that came down nearby.",
 	"hitched": "GAR-Y could tow the power module if it had its hitch.",
-	"walker_awake": "Get power into Walker 1.",
+	"walker_awake": "Walker 1's battery's flat. The power module in pallet 2 fits its socket.",
 	"walker_fixed": "Something on Walker 1's front axle is leaking.",
 	"walker_home": "Bring Walker 1 back to the lander before dark.",
 	"slept": "Sleep. Tomorrow it walks.",
 	"core_down": "Ride Walker 1 and find the right spot for home.",
-	"kit_placed": "Unpack the fit-out kit.",
-	"quarters": "Plan a room at the terminal.",
+	"kit_placed": "Unpack the crates on the core's floor, then B (standing inside) to place the kit.",
+	"quarters": "Walker 1's kit has a Quarters liner. The terminal plans it: up to four cells.",
 	"helmet_off": "Somewhere to breathe without the helmet.",
 	"pad_seen": "The pad's this afternoon. East, past the plain.",
 	"pad_reseated": "That mast shouldn't lean. Its foot's in a crack.",
@@ -297,6 +297,8 @@ func _process(delta: float) -> void:
 		if radio != null and radio.has_method("ring"): radio.ring(str(beat[1]))
 		break
 	_bedtime()
+	_ride_lead()
+	_kit_lead()
 	_tiredness_wins()
 	if reached.has("core_down") and not _circled: _gary_circles()
 	_gary_to_the_steps()
@@ -373,15 +375,47 @@ func _kit_crates() -> void:
 	if builder == null or life == null: return
 	var left: Array = BUILD_RULES.kit_left(builder)
 	if left.is_empty(): return
-	var spots: Array = life.wall_spots()
-	if spots.is_empty(): return
+	for spot in crate_spots(life, left):
+		KIT_CRATE.new().setup(world, str(spot.id), spot.at, spot.facing)
+
+## 22 Nov playtest: crates against the walls poked out through them. They're
+## laid in two rows down the middle of the core's floor instead, long sides
+## along the room, each row centred and kept inside an inset of the walls.
+const CRATE_GAP := .4
+const CRATE_ROW := .9          # each row's distance off the middle line
+static func crate_spots(life: Node, pieces: Array) -> Array:
+	var cells: Array = life.zone().get("cells", [])
+	if cells.is_empty(): return []
+	var cell: float = life.world.builder.CELL
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for c in cells:
+		lo = Vector2(minf(lo.x, c.x), minf(lo.y, c.y))
+		hi = Vector2(maxf(hi.x, c.x), maxf(hi.y, c.y))
+	var mid := (lo + hi) * .5 * cell
+	var along_x := (hi.x - lo.x) >= (hi.y - lo.y)       # the room's long way
+	var along := Vector3(1, 0, 0) if along_x else Vector3(0, 0, 1)
+	var across := Vector3(0, 0, 1) if along_x else Vector3(1, 0, 0)
+	var facing := across                                  # a crate's local X (its long side) runs along the room
 	var floor_y: float = life.call("_floor")
-	for i in left.size():
-		var spot: Dictionary = spots[(i * 2) % spots.size()]
-		var facing: Vector3 = spot.facing
-		var at: Vector3 = spot.at + facing * .45 + facing.cross(Vector3.UP) * (1.4 if i >= spots.size() / 2 else 0.0)   # the large case is 1.3 m long
-		at.y = floor_y
-		KIT_CRATE.new().setup(world, str(left[i]), at, facing)
+	var rows: Array = [[], []]
+	for i in pieces.size(): rows[i % 2].append(str(pieces[i]))
+	var out: Array = []
+	for r in 2:
+		var lengths: Array = []
+		var total := 0.0
+		for id in rows[r]:
+			var size: Vector3 = KIT_CRATE.SIZES[(KIT_CRATE.CASES.get(id, ["medium", ""]) as Array)[0]]
+			lengths.append(size.x)
+			total += size.x
+		total += CRATE_GAP * maxf(0.0, rows[r].size() - 1.0)
+		var run := -total * .5
+		for i in rows[r].size():
+			var centre: float = run + float(lengths[i]) * .5
+			run += float(lengths[i]) + CRATE_GAP
+			var at := Vector3(mid.x, floor_y, mid.y) + along * centre + across * (CRATE_ROW if r == 0 else -CRATE_ROW)
+			out.append({"id": rows[r][i], "at": at, "facing": -facing if r == 0 else facing})   # latches face the aisle between the rows
+	return out
 
 ## Scene 5: once Walker 1's home and you're in, GAR-Y parks by the steps.
 var _gary_parked := false
@@ -402,6 +436,39 @@ func _bedtime() -> void:
 	var notes: Node = world.get("notes")
 	if notes != null: notes.think("bed", "late", {"home": "the lander"})
 	MHNotices.hint("Bed", "Look at the landing seat and press Z to sleep till morning.")
+
+## 22 Nov playtest: "got the walker back to base but cant figure out how to
+## place it". A thought when it kneels home, and at dawn a thought and one
+## hint for the ride; the hint goes once you're up on its deck.
+const RIDE_HINT := "Walker 1"
+var _home_said := false
+var _ride_said := false
+func _ride_lead() -> void:
+	var walker: Node = world.get("walker")
+	if walker == null or done("core_down"):
+		if _ride_said: MHNotices.drop(RIDE_HINT)
+		return
+	var notes: Node = world.get("notes")
+	if not _home_said and nights < 1 and done("walker_home"):
+		_home_said = true
+		if notes != null: notes.think("walker_home", "start")
+	if bool(walker.get("riding")):
+		if _ride_said: MHNotices.drop(RIDE_HINT)
+		return
+	if _ride_said or nights < 1 or str(walker.get("state")) != "ready" or _in_cabin(): return
+	_ride_said = true
+	if notes != null: notes.think("walker_ride", "start")
+	MHNotices.hint(RIDE_HINT, "Climb its ladder. Hold W and it walks where you look; the deck screen reads the ground. E sets it down.")
+
+## Once the core's folded: the kit's in crates on its floor, and B places it.
+var _kit_said := false
+func _kit_lead() -> void:
+	if _kit_said or not done("core_down") or done("kit_placed"): return
+	if get_tree().get_nodes_in_group("kit_crate").is_empty(): return
+	_kit_said = true
+	var notes: Node = world.get("notes")
+	if notes != null: notes.think("kit_crates", "start")
+	MHNotices.hint("Fit-out kit", "Unpack each crate (E), then stand in the core and press B: the kit's on your build list. The site plan terminal's in there too: it plans new rooms.")
 
 ## Scene 5: stay up on sol 1's night and, past midnight in the cabin,
 ## tiredness wins: you nod off where you are and sleep till dawn. Not with a

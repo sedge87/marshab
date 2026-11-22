@@ -22,6 +22,7 @@ var _outline: Node3D
 var _read_in := 0.0
 var _read_at := Vector3.INF
 var _reading := ""
+var _reading_bad := false
 var _dir := Vector2i(0, 1)
 var _cells: Array = []
 var _airlock: Vector2i
@@ -57,26 +58,41 @@ func setup(target_walker: Node3D) -> void:
 var _glass: MeshInstance3D
 var _view: SubViewport
 var _text: Label
+var _head: Label
 var _lit: StandardMaterial3D
+## 22 Nov playtest: "the site read is really hard to read". Twice the pixels,
+## big type, the verdict on its own line at the top, one fact a line.
+const SCREEN_PX := Vector2i(1280, 720)
+const GREEN := Color(.62, 1.0, .78)
+const AMBER := Color(1.0, .72, .3)
 func _build_glass_screen(glass: MeshInstance3D) -> void:
 	_glass = glass
 	_view = SubViewport.new()
-	_view.size = Vector2i(640, 360)
+	_view.size = SCREEN_PX
 	_view.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(_view)
 	var back := ColorRect.new()
-	back.color = Color("#07130F")
-	back.size = Vector2(640, 360)
+	back.color = Color("#06120E")
+	back.size = Vector2(SCREEN_PX)
 	_view.add_child(back)
+	_head = Label.new()
+	_head.position = Vector2(48, 34)
+	_head.size = Vector2(SCREEN_PX.x - 96, 170)
+	_head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_head.add_theme_font_size_override("font_size", 66)
+	_head.add_theme_color_override("font_color", GREEN)
+	_view.add_child(_head)
 	_text = Label.new()
-	_text.position = Vector2(24, 18)
-	_text.size = Vector2(592, 324)
+	_text.position = Vector2(48, 230)
+	_text.size = Vector2(SCREEN_PX.x - 96, SCREEN_PX.y - 260)
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_text.add_theme_font_size_override("font_size", 26)
-	_text.add_theme_color_override("font_color", Color(.55, 1.0, .72))
+	_text.add_theme_font_size_override("font_size", 46)
+	_text.add_theme_constant_override("line_spacing", 10)
+	_text.add_theme_color_override("font_color", GREEN)
 	_view.add_child(_text)
 	_lit = StandardMaterial3D.new()
 	_lit.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_lit.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
 	_lit.albedo_texture = _view.get_texture()
 
 func _screen_on(on: bool) -> void:
@@ -86,13 +102,19 @@ func _screen_on(on: bool) -> void:
 	_glass.material_override = _lit if on else null
 	_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
 
-func _screen_say(words: String) -> void:
-	if _glass == null: _screen.text = words
-	else: _text.text = words
+## The first line is the headline (amber when it's a "no"), the rest below.
+func _screen_say(words: String, warn := false) -> void:
+	if _glass == null:
+		_screen.text = words
+		return
+	var lines := words.split("\n", true, 1)
+	_head.text = lines[0]
+	_head.add_theme_color_override("font_color", AMBER if warn else GREEN)
+	_text.text = lines[1].strip_edges() if lines.size() > 1 else ""
 
 ## What the deck screen shows now, and whether it's lit (tests).
 func screen_text() -> String:
-	return _text.text if _glass != null else _screen.text
+	return (_head.text + "\n" + _text.text) if _glass != null else _screen.text
 
 func screen_lit() -> bool:
 	return _glass.material_override == _lit if _glass != null else _screen.visible
@@ -118,7 +140,7 @@ func tick(delta: float) -> void:
 	if _reading.is_empty() or (_read_in <= 0.0 and (moving or walker.global_position.distance_to(_read_at) > 1.0)) or walker.global_position.distance_to(_read_at) > READ_MOVED:
 		_read_in = READ_EVERY
 		_read()
-	_screen_say(_reading)
+	_screen_say(_reading, _reading_bad)
 
 func _look_flat() -> Vector3:
 	var camera := world.player.get_node_or_null("Head/Camera3D") as Camera3D
@@ -135,24 +157,25 @@ func _read() -> void:
 	var at := Vector2(_read_at.x, _read_at.z)
 	var rx := at.x + origin.x
 	var rz := at.y + origin.y
-	var lines: Array = ["SITE READ · HERE", ""]
 	var why: String = walker.spot_reason(at)
 	var dx: float = MHSiteTerrain.height(at.x + 6.0, at.y) - MHSiteTerrain.height(at.x - 6.0, at.y)
 	var dz: float = MHSiteTerrain.height(at.x, at.y + 6.0) - MHSiteTerrain.height(at.x, at.y - 6.0)
 	var slope := rad_to_deg(atan(Vector2(dx, dz).length() / 12.0))
-	lines.append("GROUND   " + ("firm · %d° slope" % roundi(slope) if why.is_empty() else why.to_lower()))
+	var verdict := "NOT HERE · " + why
+	if why.is_empty(): verdict = "GOOD SPOT · E sets it down" + (" (%d° slope)" % roundi(slope) if slope >= 4.0 else "")
+	var lines: Array = [verdict]
 	var conditions := MHBaseSite.conditions(rx, rz)
 	var sun := MHBaseSite.sunshine(conditions.horizon)
-	lines.append("SUN      %d%% of open sky · shaded %.1f h" % [roundi(float(sun.share) * 100.0), float(sun.hidden_hours)])
+	lines.append("Sun        %d%% of the sky · shaded %.1f h" % [roundi(float(sun.share) * 100.0), float(sun.hidden_hours)])
 	var dust := float(conditions.dust_per_sol)
-	lines.append("SHELTER  nights +%.1f °C · dust %s" % [float(conditions.shelter_c), "low" if dust < .018 else ("high" if dust > .03 else "some")])
+	lines.append("Shelter   nights +%.1f °C · dust %s" % [float(conditions.shelter_c), "low" if dust < .018 else ("high" if dust > .03 else "some")])
 	var ice := INF
 	for d in MHBaseSite.ice_deposits(rx, rz):
 		if float(d.richness) >= MHBaseSite.DRILLABLE: ice = minf(ice, Vector2(float(d.x), float(d.z)).length())
-	lines.append("WATER    " + ("ice %d m" % roundi(ice) if not is_inf(ice) else "no ice near"))
-	lines.append("")
-	lines.append("[E] SET DOWN HERE" if why.is_empty() else "keep walking")
+	lines.append("Water     " + ("ice %d m away" % roundi(ice) if not is_inf(ice) else "no ice near"))
+	if not why.is_empty(): lines.append("Keep walking.")
 	_reading = "\n".join(lines)
+	_reading_bad = not why.is_empty()
 
 # ---------- set down here ----------
 
@@ -160,10 +183,14 @@ func _read() -> void:
 func press(looked := false) -> bool:
 	if siting:
 		return confirm()
-	if str(walker.state) != "ready" or not (looked or walker.looking_at_nav()): return false
+	# 22 Nov playtest: E only set down if you were aiming at the little screen,
+	# and anywhere else it climbed you off. Riding, E is "set down here".
+	if str(walker.state) != "ready": return false
 	var at := Vector2(walker.global_position.x, walker.global_position.z)
-	if not walker.spot_reason(at).is_empty():
+	var no: String = walker.spot_reason(at)
+	if not no.is_empty():
 		MHAudio.sfx("invalid", -6.0)
+		MHNotices.post("warn", "Not here", no + ". Keep walking: the deck screen reads the ground as you go.", "", 1)
 		return true
 	siting = true
 	walker.state = "parked"      # the build rules' set-down stage: the core and airlock can go here
@@ -215,7 +242,7 @@ func _aim() -> void:
 		builder.zones.erase(core)
 	builder.kind = "general"
 	_draw_outline()
-	_screen_say("SET DOWN HERE?\n\nThe airlock faces the way you look.\n\n" + ("[E] SET IT DOWN    [SPACE] BACK" if _why.is_empty() else "NOT HERE: %s\n[SPACE] BACK" % _why.to_lower()))
+	_screen_say(("SET DOWN HERE? · E" if _why.is_empty() else "NOT THIS WAY · " + _why) + "\nThe airlock faces the way you look.\nTurn to choose its side.\nSpace walks on.", not _why.is_empty())
 
 func _draw_outline() -> void:
 	_clear_outline()
@@ -251,6 +278,7 @@ func confirm() -> bool:
 	if not siting: return false
 	if not _why.is_empty():
 		MHAudio.sfx("invalid", -6.0)
+		MHNotices.post("warn", "Not this way", _why + ". Look another way, or Space to walk on.", "", 1)
 		return true
 	var builder: Node = world.builder
 	var middle := Vector2.ZERO
@@ -278,6 +306,5 @@ func _place(kind: String, cells: Array) -> void:
 	builder.kind = "general"
 
 func prompt() -> Dictionary:
-	if siting: return {"keys": "E", "verb": "Set it down here" if _why.is_empty() else "Not here", "secondary": "Space · back"}
-	if walker.looking_at_nav(): return {"keys": "E", "verb": "Set down here"}
-	return {"keys": "W", "verb": "Walk where you look · E climbs down"}
+	if siting: return {"keys": "E", "verb": "Set it down here" if _why.is_empty() else "Not this way", "secondary": "Space · walk on"}
+	return {"keys": "E", "verb": "Set down here", "secondary": "W · walk where you look · Space · climb down"}

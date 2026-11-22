@@ -64,10 +64,13 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 			# The opening slice (docs/opening-slice.md §4a Scene 7): the power
 			# module rode home inside the walker and runs it from the fold.
 			# Sealed and breathing, but bare, cold and dim: the vents warm it.
+			# 22 Nov playtest: it ran flat the first night and beeped all morning.
+			# The module you plugged into Walker 1 is the core's power: sized so
+			# Warm gets through a night with a margin (2.5 kW, 20 kWh).
 			core.temp_c = 3.0
 			core.heater_mode = "warm"
-			core.lights_on = false
-			core.add_power_pack(MHResources.revamp("power_pack_kw", 1.5), MHResources.revamp("power_pack_kwh", 10.0), .7)
+			core.lights_on = true
+			core.add_power_pack(MHResources.revamp("walker_module_kw", 2.5), MHResources.revamp("walker_module_kwh", 20.0), .7)
 		elif int(world.get("opening_version")) >= 2 and base_id == "w1":
 			commissioned = false
 			core.vented = true
@@ -335,11 +338,19 @@ func interact(_actor: Node = null) -> bool:
 
 # ---------- the switches, on the rack ----------
 
+func _on_this_base(cell: Vector2i) -> bool:
+	if (zone().get("cells", []) as Array).has(cell): return true
+	for z in world.builder.zones:
+		if str(z.get("base", "w1")) == base_id and (z.get("cells", []) as Array).has(cell): return true
+	return false
+
 func _hook_rack() -> void:
 	for node in world.builder.root.find_children("Interior_*", "Node3D", true, false):
 		if str(node.get_meta("equipment_id", "")) != RACK: continue
 		var at: Vector3 = (node as Node3D).global_position
-		if not (zone().get("cells", []) as Array).has(Vector2i(roundi(at.x / world.builder.CELL), roundi(at.z / world.builder.CELL))): continue
+		# 22 Nov playtest: a rack set in the Quarters had no switches, so there
+		# was nothing to do about the alerts. Any room of this base will do.
+		if not _on_this_base(Vector2i(roundi(at.x / world.builder.CELL), roundi(at.z / world.builder.CELL))): continue
 		_rack = node
 		for kind in SWITCH_SPOTS:
 			var s: StaticBody3D = switches.get(kind)

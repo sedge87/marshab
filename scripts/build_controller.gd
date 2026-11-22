@@ -522,6 +522,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_flash_notice("info", BUILD_RULES.b_reason(self), BUILD_RULES.b_detail(self))
 			elif not event.shift_pressed and player_can_furnish():
 				interior_build_requested.emit()
+			elif BUILD_RULES.slice(self):
+				_flash_notice("info", "Rooms are planned at a Site plan terminal", "B on its own furnishes the room you're in.")
 			else:
 				_toggle()
 		elif event.keycode == KEY_F9:
@@ -2430,7 +2432,11 @@ func _footprint_add_reason(cell: Vector2i) -> String:
 	if not connected: return "New cells must touch the selected room"
 	var site_reason := BASES.cell_reason(self, cell)
 	if not site_reason.is_empty(): return site_reason
-	if _used_cargo() + earth_cost(cell_cost(str(zone.kind)), zone_printable(str(zone.kind))) > MHGame.cargo_budget(): return "Not enough cargo left"
+	# Walker 1's Quarters liner stretches to a few cells, free (22 Nov playtest:
+	# "you can only place 1 block").
+	if bool(zone.get("kit", false)):
+		if (zone.get("cells", []) as Array).size() >= BUILD_RULES.FREE_QUARTERS_CELLS: return "Walker 1's Quarters liner covers %d cells" % BUILD_RULES.FREE_QUARTERS_CELLS
+	elif _used_cargo() + earth_cost(cell_cost(str(zone.kind)), zone_printable(str(zone.kind))) > MHGame.cargo_budget(): return "Not enough cargo left"
 	var player := world.get_node_or_null("Player") as Node3D
 	if player != null and cell == Vector2i(roundi(player.global_position.x / CELL), roundi(player.global_position.z / CELL)):
 		return "Move clear of the player before building"
@@ -5991,6 +5997,11 @@ func _place_key_piece(zone: Dictionary) -> void:
 	var id := MHRoomTypes.key_of(str(zone.get("kind", "")))
 	if id.is_empty() or display_only: return
 	zone["key_piece"] = true
+	# The opening slice: it goes on your build list and you put it where you
+	# want it (22 Nov playtest: the Quarters came with a bunk facing away).
+	if BUILD_RULES.slice(self):
+		MHNotices.post("valid", "%s planned" % str(ZONE_TYPES.get(str(zone.get("kind", "")), {}).get("label", "Room")), "Its %s is on your build list: stand in the room and press B to place it." % str(EquipmentCatalog.get_entry(id).get("label", id)).to_lower(), "log")
+		return
 	var entry := EquipmentCatalog.get_entry(id)
 	if entry.is_empty(): return
 	var spot := _key_spot(zone, id, str(entry.get("placement", "floor")) == "floor_wall")

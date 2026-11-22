@@ -866,6 +866,8 @@
     "power_pack_kw": 1.5,
     "power_pack_kwh": 10.0,
     "power_pack_carry_kg": 18.0,
+    "walker_module_kw": 2.5,
+    "walker_module_kwh": 20.0,
     "cabin_water_l": 7.5,
     "water_per_sol_l": 3.0,
     "thirst_after_h": 12.0,

@@ -563,7 +563,7 @@ func _update_prompt() -> void:
 			show = true
 			_prompt_keys.text = str(line.get("keys", ""))
 			_prompt_verb.text = str(line.get("verb", ""))
-			_prompt_state.text = ""
+			_prompt_state.text = ("· " + str(line.secondary)) if line.has("secondary") else ""
 	# Chapter one: outside with the hand corer and nothing in view.
 	if not show:
 		var corer := get_tree().get_first_node_in_group("hand_corer")

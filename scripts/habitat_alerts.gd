@@ -386,8 +386,18 @@ func _sols(n: float) -> String:
 
 # ---------- raising, repeating, clearing ----------
 
+## 22 Nov playtest: alerts beeped all morning and there was nothing to do.
+## An alert that drops away only counts as cleared once it's stayed away this
+## long (no all-clear then re-raise, chime after chime), and nothing chimes
+## while you're asleep: you see what's wrong when you wake.
+const CLEAR_AFTER := 20.0
+func _asleep() -> bool:
+	var sleep: Node = world.get("sleep") if world != null else null
+	return sleep != null and bool(sleep.get("asleep"))
+
 func _update(alerts: Array) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
+	var quiet := _asleep()
 	var seen := {}
 	alerts.sort_custom(func(a, b): return LEVEL_RANK[str(a.level)] > LEVEL_RANK[str(b.level)])
 	var chimed := false
@@ -396,9 +406,10 @@ func _update(alerts: Array) -> void:
 		seen[id] = true
 		var level := str(alert.level)
 		var known: Dictionary = _active.get(id, {})
-		var was := str(known.get("level", ""))
+		if not known.is_empty(): known.erase("gone_at")
+		var was := str(known.get("peak", known.get("level", "")))   # worse than it's been, not just worse than a moment ago
 		if known.is_empty() or LEVEL_RANK[level] > LEVEL_RANK[was]:
-			_active[id] = {"level": level, "since": now, "said": now, "title": alert.title, "alert": alert, "new": true}
+			_active[id] = {"level": level, "peak": level, "since": now, "said": now, "title": alert.title, "alert": alert, "new": true}
 			# The first time this kind of alert comes up, its card says why it matters.
 			if EXPLAIN.has(id) and not _explained.has(id):
 				_explained[id] = true
@@ -407,7 +418,7 @@ func _update(alerts: Array) -> void:
 			_record(alert, level)
 			# One soft chime for the most serious new one; a new critical
 			# alert also speaks up, once.
-			if not chimed:
+			if not chimed and not quiet:
 				MHAudio.sfx(str(LEVEL_SOUND[level]), -9.0, 0.0)
 				if level == "critical": MHAudio.voice(voice_line(id, level))
 				chimed = true
@@ -420,18 +431,20 @@ func _update(alerts: Array) -> void:
 			known.level = level
 			known.title = alert.title
 			known.alert = alert
-			if level == "critical" and now - float(known.said) >= CRITICAL_CHIME and not chimed:
+			if level == "critical" and now - float(known.said) >= CRITICAL_CHIME and not chimed and not quiet:
 				known.said = now
 				MHAudio.sfx("warn", -14.0, 0.0)
 				chimed = true
 	for id in _active.keys():
 		if seen.has(id): continue
 		var gone: Dictionary = _active[id]
+		if not gone.has("gone_at"): gone["gone_at"] = now
+		if now - float(gone.gone_at) < CLEAR_AFTER: continue
 		_active.erase(id)
 		_dismissed.erase(id)
 		if LEVEL_RANK[str(gone.level)] >= LEVEL_RANK["warning"]:
 			_record({"id": id, "title": "%s: back to normal" % str(gone.title).trim_suffix(" falling").trim_suffix(" rising").trim_suffix(" running out").trim_suffix(" running low"), "text": "", "chain": []}, "resolved")
-			MHAudio.sfx("all_clear", -12.0, 0.0)
+			if not quiet: MHAudio.sfx("all_clear", -12.0, 0.0)
 			_flash_cleared(id)
 			get_tree().call_group("gar_y", "on_alert_cleared", id)
 		if _detail_id == id: _close_detail()
