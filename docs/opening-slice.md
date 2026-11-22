@@ -410,6 +410,39 @@ No text on any model.
 7. **The rehearsal and the hold.**
 8. **Checks:** the robot run to the hold (no STUCK or FAR-TALK, two lead orders), then a playtest build.
 
+## 10a. Chunk 1 as built (22 Nov)
+Scenes 1–7 run from waking to Castle's quiet call. `tests/opening_slice_test.gd` drives the whole chunk headless and passes. Not yet played by hand.
+- **Beats:** `scripts/opening_slice.gd`. Each call rings when its own beat is done, one per check. The evening call also waits until you're in the cabin, helmet off, at dusk. The opening ends once the quiet call has rung. Optional beats (the hitch) never block it.
+- **Scene 2:** GAR-Y snagged in a canopy, `scripts/gary_snag.gd`.
+- **Scene 3:** the pallets.
+  - Pallet 1 is stores, with no cartridge.
+  - Pallet 2 holds the 45 kg power module, `scripts/power_module.gd`. You carry it, or tow it on GAR-Y's sled.
+  - Pallet 3 adds two spares kits and the hitch bracket, `scripts/hitch_bracket.gd`.
+- **Field kit:** `scripts/field_kit.gd`. Keys 1–4 hold the corer, hammer, scoop and stakes; stakes are empty until chunk 2. Tools only work in hand, in version 3 games.
+- **Kit tab:** on the slate's Base page.
+- **Manifest:** numbered entries, "in your area" / "location unknown", contents unknown until opened. Pallets 7 and 11 and Walker 3 are corrupted.
+- **Scene 4:** Walker 1 stalls 400–600 m out. It wakes on the module, with a frost-and-dust seal leak. After the patch it walks home and kneels 18 m from the lander.
+- **Scene 5:**
+  - the crew's evening call (Tamsin, Joseph and Kai voiced: Catherine, George, James);
+  - GAR-Y parks by the steps;
+  - the hatch stays shut after dark;
+  - the landing seat is sleep till dawn, with servo and chirp sounds.
+- **Scene 6:** `scripts/walker_deck.gd`.
+  - Hold W and the walker walks where you look.
+  - The deck screen reads ground, sun, shelter and water.
+  - E on the screen gives "Set down here" and an outline; look the way the airlock should face.
+  - E again sets it down and it folds; Space backs out.
+- **Scene 7:**
+  - The core starts on the power module: sealed, cold, dim, heater warming. There's no socket or blanket.
+  - Kit crates by the wall, `scripts/kit_crate.gd`: take a piece into your hands, and a ghost shows where it goes. R turns it, E sets it down, Q puts it back.
+  - The Site Plan Terminal is a kit piece. Its screen opens the planner. In version 3, B no longer does.
+- **Stand-ins** until the assets arrive: power module, hitch bracket, canopy, deck screen (Label3D), kit crates, terminal (the comms rack model), and the hammer and scoop in hand.
+- **Not done:**
+  - "Sleep once tiredness wins" on night 1 (the seat only).
+  - GAR-Y circling the folded core.
+  - The kit's held tool isn't saved.
+  - Printed furniture later in the game still goes through the old interior build. Chunk 3 (Print Shop) needs it by hand too.
+
 ## 11. Open questions
 - Do the Earth Mission Control letters stay?
 - How much of the current day 1–5 radio survives once the order changes?

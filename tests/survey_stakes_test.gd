@@ -17,6 +17,7 @@ func _initialize() -> void:
 	MHGame.base_site = {}
 	MHGame.pending_save_state = {}
 	MHChapterOne.reset()
+	load("res://scripts/opening_days.gd").new_games_version = 2   # the stake system as it was; the slice plants GAR-Y's trail and holds tools in hand
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 30: await process_frame
