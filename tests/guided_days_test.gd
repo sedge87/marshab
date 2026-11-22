@@ -32,6 +32,7 @@ func _new_world(state := {}) -> Node:
 	MHGame.site_id = "region"; MHGame.game_mode = "survival"; MHGame.pending_save_state = state; MHGame.landing_target = Vector2.INF
 	MHGame.tutorial_mode = MHGame.default_tutorial_mode()
 	if state.is_empty(): MHChapterOne.reset()
+	load("res://scripts/opening_days.gd").new_games_version = 2   # this test is the old guided days; new games now play the slice
 	var world = load("res://scenes/mars_world.tscn").instantiate()
 	root.add_child(world)
 	for i in 10: await process_frame
