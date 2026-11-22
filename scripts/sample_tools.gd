@@ -14,6 +14,7 @@ extends Node
 ## Workbench or the Sample Storage Cabinet unloads the case, and E on a
 ## workbench opens the lab.
 
+const FIELD_KIT := preload("res://scripts/field_kit.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const CHIP_SECONDS := 1.6
 const SCOOP_SECONDS := 1.2
@@ -111,14 +112,14 @@ func _scoop_target() -> Vector3:
 ## break off iron-rich rock the Lab has named), "scoop" or "".
 func prompt() -> String:
 	if not _outside_free(): return ""
-	var rock := _rock_target()
+	var rock := _rock_target() if FIELD_KIT.holding_in(world, "hammer") else {}   # version 3: the hammer in hand (key 2)
 	if not rock.is_empty():
 		if MHSamples.chipped.has(str(rock.key)):
 			var kind := MHSamples.rock_at(rock.point)
 			if MHMaterials.iron_rich(kind) and MHMaterials.known_rock(kind): return "ore"
 			return "chipped"
 		return "cut" if _ice_wall(rock) else "chip"
-	return "scoop" if _scoop_target() != Vector3.INF else ""
+	return "scoop" if FIELD_KIT.holding_in(world, "scoop") and _scoop_target() != Vector3.INF else ""
 
 func prompt_text() -> String:
 	match prompt():

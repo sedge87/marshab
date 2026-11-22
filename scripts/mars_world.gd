@@ -51,6 +51,7 @@ const SLATE_CAMERA := preload("res://scripts/slate_camera.gd")
 const LAB_SCREEN := preload("res://scripts/lab_screen.gd")
 const FABRICATOR_SCREEN := preload("res://scripts/fabricator_screen.gd")
 var hand_corer: Node
+var field_kit: Node   # scripts/field_kit.gd: version 3's tools in hand, keys 1–4
 var survey_stakes: Node3D   # scripts/survey_stakes.gd (chapter one): GAR-Y's readings as stakes, T + F pings them
 var sample_tools: Node   # step 5: scoop, rock chips, the sample case
 var journal_keeper: Node   # step 5: J, the bunk's notebook, sketches
@@ -349,6 +350,9 @@ func _ready() -> void:
 		add_child(survey_stakes)
 		sample_tools = SAMPLE_TOOLS.new().setup(self)
 		add_child(sample_tools)
+		field_kit = preload("res://scripts/field_kit.gd").new()
+		add_child(field_kit)
+		field_kit.setup(self, {})
 		journal_keeper = JOURNAL_KEEPER.new().setup(self)
 		add_child(journal_keeper)
 		slate_camera = SLATE_CAMERA.new().setup(self)

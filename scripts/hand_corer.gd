@@ -12,6 +12,7 @@ const MHResources := preload("res://scripts/mh_resources.gd")
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const ICE_KNOWLEDGE := preload("res://scripts/ice_knowledge.gd")
+const FIELD_KIT := preload("res://scripts/field_kit.gd")
 const KEEP_CLEAR_M := 8.0   # from the habitat and landers, so a tap of E still works the doors
 
 const MODEL := "res://assets/equipment/mars_chapter_one_v1/models/hand_corer.glb"
@@ -63,6 +64,7 @@ func _ready() -> void:
 ## Where a core would go now, or INF when it can't.
 func _target() -> Vector3:
 	if not MHChapterOne.on() or not MHChapterOne.has_corer: return Vector3.INF
+	if not FIELD_KIT.holding_in(world, "corer"): return Vector3.INF   # version 3: in your hand (key 1)
 	var player: Node3D = world.player
 	if player == null or bool(player.get_meta("driving", false)) or bool(player.get_meta("riding", false)) or player._any_build_mode_active(): return Vector3.INF
 	if world.builder.is_inside(player.global_position) or world.lander.cabin_contains(player.global_position): return Vector3.INF
@@ -79,6 +81,7 @@ func _target() -> Vector3:
 ## stake, or how to get a survey. "" otherwise.
 func why_not() -> String:
 	if not MHChapterOne.on() or not MHChapterOne.has_corer or world.player == null: return ""
+	if not FIELD_KIT.holding_in(world, "corer"): return ""
 	var player: Node3D = world.player
 	if bool(player.get_meta("driving", false)) or bool(player.get_meta("riding", false)) or player._any_build_mode_active(): return ""
 	if world.builder.is_inside(player.global_position) or world.lander.cabin_contains(player.global_position): return ""

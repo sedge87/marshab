@@ -151,7 +151,8 @@ func tabs(page: String) -> Array:
 		"map": return [["map", "Map", "map"], ["site", "Here", "mountain-snow"]]
 		"base":
 			var cargo: bool = world != null and world.get("storm_drop") != null
-			return [["base", "Base", "gauge"]] + ([["cargo", "Cargo", "package"]] if cargo else [])
+			var kit: bool = world != null and world.get("field_kit") != null and int(world.get("opening_version")) >= 3
+			return [["base", "Base", "gauge"]] + ([["cargo", "Cargo", "package"]] if cargo else []) + ([["kit", "Kit", "wrench"]] if kit else [])
 		"radio": return [["messages", "Messages", "satellite"], ["discoveries", "Discoveries", "sparkles"], ["log", "Log", "clock"]]
 	return []
 
@@ -187,7 +188,7 @@ func _rebuild() -> void:
 	match app:
 		"today": body = _notes_page() if world == null or world.get("tutorial") == null else _goals_page()
 		"map": body = _map_page() if tab == "map" else _site_page()
-		"base": body = _cargo_page() if tab == "cargo" else _base_page()
+		"base": body = _cargo_page() if tab == "cargo" else (_kit_page() if tab == "kit" else _base_page())
 		"radio":
 			if tab == "log":
 				body = _log_page()
@@ -323,6 +324,39 @@ func _heading(title: String, note := "") -> VBoxContainer:
 	top.add_child(MHStyle.title(title, 30))
 	if not note.is_empty(): top.add_child(MHStyle.body(note, 17, MHStyle.TEXT_MUTED))
 	return top
+
+## Kit (opening slice, docs/opening-slice.md §4a Scene 3): what you carry,
+## what's on your suit, what's fitted to GAR-Y.
+func _kit_page() -> Control:
+	var page := MHStyle.vbox(14)
+	page.add_child(_heading("Kit", "What's in your hands is what you chose: 1–4."))
+	var kit: Node = world.get("field_kit")
+	if kit != null:
+		for slot in kit.slots():
+			var row := MHStyle.hbox(12)
+			row.add_child(MHStyle.mono(str(slot[0]), 20, MHStyle.accent if bool(slot[4]) else MHStyle.TEXT_MUTED))
+			var name_text := str(slot[2]) if bool(slot[3]) else "Empty"
+			row.add_child(MHStyle.body(name_text, 19, MHStyle.TEXT_PRIMARY if bool(slot[3]) else MHStyle.TEXT_MUTED))
+			if bool(slot[4]): row.add_child(MHStyle.body("in hand", 16, MHStyle.accent))
+			page.add_child(row)
+	# A heavy load slows you down (the power module, say).
+	var player: Node = world.get("player")
+	var load_speed := float(player.get_meta("load_speed", 1.0)) if player != null else 1.0
+	if load_speed < 1.0:
+		page.add_child(MHStyle.body("Carrying something heavy: walking at %d%%." % roundi(load_speed * 100.0), 17, MHStyle.WARN))
+	var suit: Node = world.get("suit")
+	if suit != null:
+		var fitted: Array = []
+		for id in suit.addons: fitted.append(str(suit.ADDONS.get(str(id), {}).get("name", id)))
+		page.add_child(MHStyle.title("Suit", 22))
+		page.add_child(MHStyle.body(", ".join(fitted).capitalize() if not fitted.is_empty() else "Nothing added.", 17, MHStyle.TEXT_MUTED))
+	var pod: Node = world.get("lifepod")
+	page.add_child(MHStyle.title("GAR-Y", 22))
+	var gary_kit: Array = []
+	if pod != null and (pod.prints as Dictionary).has("hitch"): gary_kit.append("Hitch bracket (rear): it can tow")
+	page.add_child(MHStyle.body("
+".join(gary_kit) if not gary_kit.is_empty() else "Nothing fitted.", 17, MHStyle.TEXT_MUTED))
+	return page
 
 ## Log: every notice, newest first (MHNotices).
 func _log_page() -> Control:
@@ -1177,7 +1211,16 @@ func _cargo_page() -> Control:
 	for entry in data.get("walkers", []): list.add_child(_cargo_row(entry, cargo_state(entry)))
 	return page
 
+## The opening slice's manifest (docs/opening-slice.md §4a Scene 1, B1):
+## every container numbered; the near ones "in your area", the rest unknown;
+## nothing says what's inside until it's opened; a few records corrupted.
+const NEAR_V3 := ["life", "power", "tools", "gary", "general_module"]
+const CORRUPT_V3 := ["comms", "reactor", "power_kit"]
+func _manifest_v3() -> bool:
+	return world != null and int(world.get("opening_version")) >= 3
+
 func _cargo_row(entry: Dictionary, state: String) -> Control:
+	if _manifest_v3(): return _cargo_row_v3(entry, state)
 	var colour: Color = {"recovered": MHStyle.VALID, "seen": MHStyle.WARN, "glimpsed": MHStyle.INFO}.get(state, MHStyle.TEXT_MUTED)
 	var row := MHStyle.hbox(14)
 	row.add_child(MHStyle.icon({"recovered": "circle-check", "seen": "eye", "glimpsed": "eye"}.get(state, "circle-dashed"), 20, colour))
@@ -1193,6 +1236,32 @@ func _cargo_row(entry: Dictionary, state: String) -> Control:
 	words.add_child(holds)
 	row.add_child(words)
 	row.add_child(MHStyle.mono({"recovered": "RECOVERED", "seen": "SEEN", "glimpsed": "GLINT"}.get(state, "NO SIGNAL"), 13, colour, 700))
+	return row
+
+func _cargo_row_v3(entry: Dictionary, state: String) -> Control:
+	var id := str(entry.get("id", ""))
+	var number := str(entry.name).get_slice(" · ", 0)
+	if state == "missing": state = "near" if NEAR_V3.has(id) else ("corrupt" if CORRUPT_V3.has(id) else "unknown")
+	var colour: Color = {"recovered": MHStyle.VALID, "seen": MHStyle.WARN, "glimpsed": MHStyle.INFO, "near": MHStyle.accent}.get(state, MHStyle.TEXT_MUTED)
+	var row := MHStyle.hbox(14)
+	row.add_child(MHStyle.icon({"recovered": "circle-check", "seen": "eye", "glimpsed": "eye", "near": "map-pin"}.get(state, "circle-dashed"), 20, colour))
+	var words := MHStyle.vbox(2)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var title := str(entry.get("name_v3", entry.name)) if state == "recovered" else (number + " · ░▒░ ▒░░▒" if state == "corrupt" else number)
+	var what := ""
+	match state:
+		"recovered": what = str(entry.get("holds_v3", entry.holds))
+		"seen": what = "Seen, not opened yet. Contents unknown."
+		"glimpsed": what = "A glint, far out. Contents unknown."
+		"near": what = "In your area. Contents unknown."
+		"corrupt": what = "Record damaged in the storm."
+		_: what = "Location unknown. Contents unknown."
+	words.add_child(MHStyle.label(title, 18, MHStyle.TEXT_PRIMARY if state in ["recovered", "seen", "near"] else MHStyle.TEXT_SECONDARY, 700))
+	var holds := MHStyle.body(what, 15, MHStyle.TEXT_SECONDARY)
+	holds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	words.add_child(holds)
+	row.add_child(words)
+	row.add_child(MHStyle.mono({"recovered": "RECOVERED", "seen": "SEEN", "glimpsed": "GLINT", "near": "IN YOUR AREA", "corrupt": "CORRUPT"}.get(state, "UNKNOWN"), 13, colour, 700))
 	return row
 
 # ---------- Camera: photos for the journal (scripts/slate_camera.gd) ----------

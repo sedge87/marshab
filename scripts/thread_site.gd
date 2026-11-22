@@ -223,7 +223,7 @@ static func _frost_image() -> ImageTexture:
 # ---------- chipping ----------
 
 func _hammer() -> bool:
-	return MHChapterOne.has_hammer
+	return MHChapterOne.has_hammer and preload("res://scripts/field_kit.gd").holding_in(lifepod.world, "hammer")
 
 func interaction_prompt() -> Dictionary:
 	var label := str(NAMES.get(kind, "Rock"))

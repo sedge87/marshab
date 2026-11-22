@@ -245,7 +245,9 @@ func _process(delta: float) -> void:
 	_bedtime()
 	_gary_to_the_steps()
 	_kit_crates()
-	if done("helmet_off"): chapter = STORY_DAYS + 1
+	# Over once Castle's quiet call has rung (some beats are optional: you
+	# can carry the module and never fit the hitch).
+	if reached.has("helmet_off"): chapter = STORY_DAYS + 1
 	elif done("slept"): chapter = 2
 
 ## Some calls wait for the right moment as well as the beat.

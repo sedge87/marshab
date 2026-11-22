@@ -104,6 +104,23 @@ func _initialize() -> void:
 		for kind in ["power", "tools"]: field.sites[kind].pallet.open(false)
 		await wait(2.0)
 		check(days.done("pallets"), "opening the three pallets didn't count")
+		# The field kit: tools are chosen with 1-4, not guessed.
+		var field_kit: Node = world.field_kit
+		check(field_kit != null and bool(field_kit.has("corer")) and bool(field_kit.has("hammer")), "the corer and hammer aren't in the kit")
+		if field_kit != null:
+			check(not preload("res://scripts/field_kit.gd").holding_in(world, "corer"), "the corer works without being in hand")
+			field_kit.select(0)
+			check(str(field_kit.held) == "corer" and preload("res://scripts/field_kit.gd").holding_in(world, "corer"), "key 1 didn't put the corer in hand")
+			await wait(.5)
+			check(player.get_node("Head/Camera3D").get_node_or_null("InHand") != null, "the corer doesn't show in your hand")
+			field_kit.select(0)
+			check(str(field_kit.held) == "", "key 1 again didn't put it away")
+			var manifest: Control = world.pda.screen._cargo_page()
+			check(manifest != null, "the Cargo page didn't build")
+			if manifest != null: manifest.free()
+			var page: Control = world.pda.screen._kit_page()
+			check(page != null and page.get_child_count() > 4, "the slate's Kit page is empty")
+			if page != null: page.free()
 		check(world.storm_drop.cartridge == null, "pallet 1 still has an air cartridge in version 3")
 		check(int(MHChapterOne.stock.get("spares_kit", 0)) >= 2, "the tools pallet gave no spares kits")
 		check(field.hitch != null and bool(field.hitch.have), "the hitch bracket isn't in your kit")
@@ -272,9 +289,15 @@ func _initialize() -> void:
 					check(days.done("quarters"), "the Quarters never stood")
 					check(days.done("helmet_off"), "helmet off in the Quarters didn't count")
 					await wait(3.0)
+					t = 0.0
+					while t < 120.0 and not (radio.heard as Dictionary).has("s2_quiet"):
+						await wait(3.0)
+						t += 3.0
+					check((radio.heard as Dictionary).has("s2_quiet"), "Castle's quiet call didn't play (reached %s)" % str(days.reached))
+					await wait(2.0)
 					check(int(days.chapter) == 3 and not days.guided(), "the opening didn't end after the first room (chapter %d)" % int(days.chapter))
 	Engine.time_scale = 1.0
-	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B sends you to the terminal, the kit comes out of its crates by hand, and the terminal plans the free Quarters.")
+	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, tools go in hand with 1-4 and show on the slate's Kit page, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B sends you to the terminal, the kit comes out of its crates by hand, and the terminal plans the free Quarters.")
 	else:
 		for f in failures: print("FAIL: ", f)
 	quit(0 if failures.is_empty() else 1)

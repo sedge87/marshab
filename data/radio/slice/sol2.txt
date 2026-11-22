@@ -1,0 +1,43 @@
+# Sol 2 of the opening slice (docs/opening-slice.md §4a Scenes 6-7). The
+# morning ride, the core, the first room. Same rules as sol1.txt: show,
+# don't tell; people talking, not instructions. IDs start s2_.
+# Voices: python tools/generate_voice.py --missing --only=orb_s2
+
+# Scene 6: dawn, after the first night in the lander.
+~ s2_dawn
+chat Castellanos: Morning, Pathfinder. Devan's got your walker on the long camera. It's wearing frost. [ID:s2_dawn_01]
+chat Rao: It looks taller from up here. That can't be right. [ID:s2_dawn_02]
+=> END
+
+# Scene 6: the core's set down and folded.
+~ s2_down
+Achterberg: That's a core on the ground. I've waited three weeks to say that. [ID:s2_down_01]
+chat Tupou: Joseph's asking if he can name it. We've said no. [ID:s2_down_02]
+=> END
+
+# Scene 7: the fit-out kit's all out of its crates.
+~ s2_kit
+chat Mwangi: Put the bunk where you'll see out. Doctor's orders. Seriously. [ID:s2_kit_01]
+=> END
+
+# Scene 7: the first Quarters liner is up.
+~ s2_quarters
+chat Achterberg: Liner's holding pressure. Round as a balloon. [ID:s2_quarters_01]
+=> END
+
+# Scene 7: helmet off in the Quarters. Castle, alone, nothing to fix.
+~ s2_quiet
+Castellanos: It's just me on the line. The others are asleep, or pretending. [ID:s2_quiet_01]
+Castellanos: Describe it to me. What can you see? [ID:s2_quiet_02]
+- A bunk, a table and a window full of red.
+	set quiet_window
+	Castellanos: A window full of red. I'm writing that down. [ID:s2_quiet_03a]
+- Not much. It's mine, though.
+	set quiet_mine
+	Castellanos: That's the bit that counts. [ID:s2_quiet_03b]
+- Honestly? Dust. On everything.
+	set quiet_dust
+	Castellanos: Then it's a home. Ours has crumbs. [ID:s2_quiet_03c]
+Castellanos: Seven months looking at the same five faces. I'd forgotten what a room sounds like. [ID:s2_quiet_04]
+Castellanos: Right. Pad's this afternoon. Devan's already drawing on the window. [ID:s2_quiet_05]
+=> END
