@@ -364,8 +364,15 @@ func _kit_page() -> Control:
 			var row := MHStyle.hbox(12)
 			row.add_child(MHStyle.mono(str(slot[0]), 20, MHStyle.accent if bool(slot[4]) else MHStyle.TEXT_MUTED))
 			var name_text := str(slot[2]) if bool(slot[3]) else "Empty"
-			row.add_child(MHStyle.body(name_text, 19, MHStyle.TEXT_PRIMARY if bool(slot[3]) else MHStyle.TEXT_MUTED))
-			if bool(slot[4]): row.add_child(MHStyle.body("in hand", 16, MHStyle.accent))
+			# 22 Nov playtest: a wrapping label in a row has no width of its own
+			# and fell to one letter per line; give the name the row's room.
+			var name_label := MHStyle.body(name_text, 19, MHStyle.TEXT_PRIMARY if bool(slot[3]) else MHStyle.TEXT_MUTED)
+			name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(name_label)
+			if bool(slot[4]):
+				var held := MHStyle.body("in hand", 16, MHStyle.accent)
+				held.autowrap_mode = TextServer.AUTOWRAP_OFF
+				row.add_child(held)
 			page.add_child(row)
 	# A heavy load slows you down (the power module, say).
 	var player: Node = world.get("player")

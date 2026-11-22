@@ -1257,6 +1257,11 @@ func _patrol_next() -> void:
 func interaction_prompt() -> Dictionary:
 	if has_meta("sunset_offer"): return {"label": NAME + " · looking at the sun", "primary": "Watch the sunset together", "info": "About"}
 	if has_meta("lift_out"): return {"label": NAME + " · folded in its cradle", "primary": "Lift it out"}
+	# Still caught in the canopy (scripts/gary_snag.gd): say how many lines are left.
+	var snag := get_tree().get_first_node_in_group("gary_snag")
+	if snag != null and not (snag.left as Array).is_empty():
+		var lines_left := (snag.left as Array).size()
+		return {"label": "%s · caught: %d %s still to free" % [NAME, lines_left, "line" if lines_left == 1 else "lines"], "primary": "Look for the glowing tags", "info": "About"}
 	var pod := get_tree().get_first_node_in_group("lifepod")
 	if pod != null and pod.cargo_ready(self): return {"label": NAME + " · cargo on its sled", "primary": "Unload the cargo", "info": "About"}
 	if pod != null and pod.sled_ready(self): return {"label": "%s · %d kg of ice on its sled" % [NAME, roundi(float(pod.sled_kg))], "primary": "Melt the sled's ice", "info": "About"}

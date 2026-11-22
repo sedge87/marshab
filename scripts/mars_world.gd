@@ -1546,12 +1546,14 @@ func _restore_pending_habitat() -> void:
 	# Older saves have no tutorial: first-time hints as before.
 	_tutorial_state = state.get("tutorial", {"mode": "hints"}) as Dictionary
 	MHGame.tutorial_mode = str(_tutorial_state.get("mode", "hints"))
-	builder.restore_habitat_state(state.get("builder", {}) as Dictionary)
-	_earth_link_state = state.get("mission_control", {}) as Dictionary
-	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
+	# Before the builder: its restore can run the vehicle sync, which would
+	# spawn fresh wrecks if the saved vehicles weren't known yet (22 Nov: buggy lost on load).
 	_crew_rover_state = state.get("crew_rover", {}) as Dictionary
 	_buggy_state = state.get("buggy", {}) as Dictionary
 	_drone_state = state.get("drone", {}) as Dictionary
+	builder.restore_habitat_state(state.get("builder", {}) as Dictionary)
+	_earth_link_state = state.get("mission_control", {}) as Dictionary
+	if scout_rover != null and scout_rover.has_method("restore_state"): scout_rover.call("restore_state", state.get("gary", {}) as Dictionary)
 	for k in (state.get("drop_shells", {}) as Dictionary):
 		var s: Array = state.drop_shells[k]
 		_shell_spots[str(k)] = Vector3(float(s[0]), float(s[1]), float(s[2]))

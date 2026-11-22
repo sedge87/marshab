@@ -7,6 +7,7 @@ extends SceneTree
 ## godot --headless --path . --script res://tests/opening_slice_test.gd
 
 var world: Node
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 var failures: Array = []
 
 func check(ok: bool, what: String) -> void:
@@ -273,7 +274,22 @@ func _initialize() -> void:
 		check(module != null and str(module.where) == "pallet", "the power module isn't in pallet 2")
 		if field.hitch != null:
 			check(field.hitch.claim_label(gary) != "", "no 'fit the hitch' on GAR-Y")
-			field.hitch.claim(gary, "interact")
+			# The way you'd really do it: stand by GAR-Y, look at it, press E
+			# (22 Nov playtest: the prompt showed but E pinged it instead).
+			gary.set("staying", true)
+			var head_cam := world.player.get_node("Head/Camera3D") as Camera3D
+			for side in [Vector3(1.6, 0, 0), Vector3(-1.6, 0, 0), Vector3(0, 0, 1.6), Vector3(0, 0, -1.6)]:
+				var face: Vector3 = gary.global_position + side
+				face.y = MHSiteTerrain.height(face.x, face.z) + .1
+				world.player.global_position = face
+				world.player.look_at(Vector3(gary.global_position.x, face.y, gary.global_position.z), Vector3.UP)
+				head_cam.look_at(gary.global_position + Vector3.UP * .45, Vector3.UP)
+				for i in 3: await physics_frame
+				if world.explore_hud._looked_at_interactable() == gary: break   # a clear look (not past a pallet)
+			world.player._use_looked_at_interactable("interact")
+			check(bool(field.hitch.fitted), "E on GAR-Y didn't fit the hitch bracket")
+			if not bool(field.hitch.fitted): field.hitch.claim(gary, "interact")
+			gary.set("staying", false)
 		await wait(2.0)
 		check(days.done("hitched"), "fitting the hitch bracket didn't count")
 		var walker: Node3D = world.walker

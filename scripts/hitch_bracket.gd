@@ -33,12 +33,20 @@ func found() -> void:
 	have = true
 
 func claim(target: Node, method_name: String) -> bool:
-	if method_name != "interact" or not have or fitted or target == null or not target.is_in_group("gar_y"): return false
+	if method_name != "interact" or not _can_fit(target): return false
 	fit()
 	return true
 
 func claim_label(target: Node) -> String:
-	return "Fit the hitch bracket" if have and not fitted and target != null and target.is_in_group("gar_y") else ""
+	return "Fit the hitch bracket" if _can_fit(target) else ""
+
+## 22 Nov playtest: the bracket was offered while GAR-Y was still caught in
+## the canopy (and E did nothing). Only once it's free and you've met.
+func _can_fit(target: Node) -> bool:
+	if not have or fitted or target == null or not target.is_in_group("gar_y"): return false
+	if bool(target.get("rescuing")): return false
+	var field: Node = world.get("drop_field")
+	return field == null or not ("gary_greeted" in field) or bool(field.gary_greeted)
 
 func fit() -> void:
 	have = false

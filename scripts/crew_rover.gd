@@ -1019,6 +1019,25 @@ func _fixed(charge: float) -> void:
 func _learn_plan(id: String) -> void:
 	if not MHChapterOne.known.has(id): MHChapterOne.known[id] = "found"
 
+# ---------- on the compass and Map ----------
+
+## 22 Nov playtest: your vehicles are marked on the compass and the Map at any
+## distance, wherever you left them. Not while you're in one, and not a wreck
+## you haven't got going (that's still a find).
+var _mark_in := 0.0
+func _mark_tick(delta: float) -> void:
+	_mark_in -= delta
+	if _mark_in > 0.0: return
+	_mark_in = 1.5
+	var known: Node = get_tree().get_first_node_in_group("known_things")
+	if known == null:
+		var world := get_tree().get_first_node_in_group("habitat_world")
+		known = world.get("known") if world != null else null
+	if known == null: return
+	var id := "vehicle:" + kind
+	if wrecked or driving or not is_inside_tree(): known.picked_up(id)
+	else: known.set_down(id, str(_spec.get("label", "Rover")), global_position, "vehicle")
+
 # ---------- getting in and out ----------
 
 func _get_in(player: CharacterBody3D, animate := true) -> void:
@@ -1393,6 +1412,7 @@ func _unbog() -> void:
 # ---------- driving ----------
 
 func _physics_process(delta: float) -> void:
+	_mark_tick(delta)
 	if _cabin != null:
 		var walk := walk_in() and not driving and not recalling and tow.is_empty()
 		if walk != bool(_cabin.walk): _cabin.set_walk(walk)

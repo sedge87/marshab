@@ -671,9 +671,17 @@ func _draw_known() -> void:
 	var font := ThemeDB.fallback_font
 	for entry in known.known("you"):
 		var kind := str(entry.kind)
-		if kind != "pin" and kind != "find" and kind != "marker": continue
+		if not kind in ["pin", "find", "marker", "left"]: continue   # vehicles: drawn live below (_draw_markers)
 		var at := _region_to_map(entry.at as Vector2)
 		if at.x < -30 or at.y < -30 or at.x > SIZE + 30 or at.y > SIZE + 30: continue
+		if kind == "left":
+			# Things you left out there (the power module): a small square in
+			# your colour, where you left it.
+			var r := 4.0
+			_markers.draw_rect(Rect2(at - Vector2(r + 1, r + 1), Vector2(r + 1, r + 1) * 2.0), Color(0, 0, 0, .8))
+			_markers.draw_rect(Rect2(at - Vector2(r, r), Vector2(r, r) * 2.0), MHStyle.accent)
+			_markers.draw_string(font, at + Vector2(r + 5, 4), str(entry.name), HORIZONTAL_ALIGNMENT_LEFT, -1, _tx(12), MHStyle.accent)
+			continue
 		if kind == "marker":
 			# The drone's route markers (A7): small teal triangles; B3 joins them to your trails.
 			var tri := PackedVector2Array([at + Vector2(0, -6), at + Vector2(5, 4), at + Vector2(-5, 4)])

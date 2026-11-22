@@ -419,6 +419,10 @@ func _use_looked_at_interactable(method_name: String) -> bool:
 			if target != null and target.has_method(method_name):
 				return bool(target.call(method_name, self))
 		if node.has_method(method_name):
+			# The same claims for a target without the meta (GAR-Y itself: 22 Nov
+			# playtest, "Fit the hitch bracket" showed but E pinged it instead).
+			for claimer in get_tree().get_nodes_in_group("interaction_claims"):
+				if bool(claimer.call("claim", node, method_name)): return true
 			return bool(node.call(method_name, self))
 		node = node.get_parent()
 	return false

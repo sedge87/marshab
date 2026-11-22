@@ -40,7 +40,7 @@ func setup(target_field: Node, target_gary: Node3D, already_freed: int = 0) -> v
 	_build_cloth()
 	# Snag points: front-left wheel, rear-right wheel, the mast.
 	var spots := [Vector3(-.42, .18, -.38), Vector3(.42, .18, .40), Vector3(0, .9, .05)]
-	var labels := ["A line round the front wheel", "A line round the back wheel", "The canopy's caught on its mast"]
+	var labels := ["Line round the front wheel", "Line round the back wheel", "Canopy caught on its mast"]
 	for i in SNAGS:
 		var model_line: Node3D = _canopy.find_child("Line_%d" % (i + 1), true, false) as Node3D if _canopy != null else null
 		if i < already_freed:
@@ -49,6 +49,7 @@ func setup(target_field: Node, target_gary: Node3D, already_freed: int = 0) -> v
 		var point := SnagPoint.new()
 		point.snag = self
 		point.label = labels[i]
+		point.index = i
 		add_child(point)
 		point.position = spots[i]
 		left.append(point)
@@ -105,6 +106,9 @@ func point_freed(point: Node) -> void:
 	_lines.erase(point)
 	point.queue_free()
 	MHAudio.sfx_at("place", gary, -4.0, .6)
+	if not left.is_empty():
+		var hud: Node = field.world.get("explore_hud")
+		if hud != null: hud.show_equipment_note("One line free", "%d still caught. Look for the amber tags." % left.size())
 	if left.is_empty():
 		if _cloth != null:
 			var t := create_tween()
@@ -129,6 +133,9 @@ func _process(delta: float) -> void:
 class SnagPoint extends StaticBody3D:
 	var snag: Node
 	var label := ""
+	var index := 0
+	var _tag: MeshInstance3D
+	var _pulse := 0.0
 	var _holding := false
 	var _held := 0.0
 
@@ -139,10 +146,28 @@ class SnagPoint extends StaticBody3D:
 		sphere.radius = .28
 		shape.shape = sphere
 		add_child(shape)
+		# 22 Nov playtest: the three snag points were hard to spot. Each has a
+		# small amber tag that pulses until it's freed (no lettering).
+		_tag = MeshInstance3D.new()
+		var ball := SphereMesh.new()
+		ball.radius = .05
+		ball.height = .1
+		_tag.mesh = ball
+		var glow := StandardMaterial3D.new()
+		glow.albedo_color = Color(1.0, .62, .18)
+		glow.emission_enabled = true
+		glow.emission = Color(1.0, .55, .12)
+		glow.emission_energy_multiplier = 2.0
+		glow.no_depth_test = true
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_tag.material_override = glow
+		_tag.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_tag)
 
 	func interaction_prompt() -> Dictionary:
-		if _holding: return {"label": label, "primary": "Freeing it…"}
-		return {"label": label, "primary": "Hold to free it"}
+		var of := "%s (%d of %d left)" % [label, (snag.left as Array).size(), snag.SNAGS]
+		if _holding: return {"label": of, "primary": "Freeing it…"}
+		return {"label": of, "primary": "Hold E to free it"}
 
 	func interact(_player: Node = null) -> bool:
 		_holding = true
@@ -150,6 +175,8 @@ class SnagPoint extends StaticBody3D:
 		return true
 
 	func _process(delta: float) -> void:
+		_pulse += delta
+		if _tag != null: _tag.scale = Vector3.ONE * (1.0 + .35 * sin(_pulse * 4.0 + index))
 		if not _holding: return
 		var player: Node3D = snag.field.world.player
 		if not Input.is_key_pressed(KEY_E) or player.global_position.distance_to(global_position) > snag.REACH:
