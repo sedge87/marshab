@@ -352,7 +352,7 @@ func _ready() -> void:
 		add_child(sample_tools)
 		field_kit = preload("res://scripts/field_kit.gd").new()
 		add_child(field_kit)
-		field_kit.setup(self, {})
+		field_kit.setup(self, MHGame.pending_save_state.get("field_kit", {}))
 		journal_keeper = JOURNAL_KEEPER.new().setup(self)
 		add_child(journal_keeper)
 		slate_camera = SLATE_CAMERA.new().setup(self)
@@ -1482,6 +1482,7 @@ func current_state() -> Dictionary:
 		"walker": walker.export_state() if walker != null else {},
 		"opening_days": opening_days.export_state() if opening_days != null else {},
 		"module_life": module_life.export_state() if module_life != null else {},
+		"field_kit": field_kit.export_state() if field_kit != null else {},
 		"cores": _export_cores(),
 		"walkers": _export_walkers(),
 		"gary_met": gary_met,

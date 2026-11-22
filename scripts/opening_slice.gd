@@ -54,6 +54,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	version = int(saved.get("version", VERSION))
 	nights = int(saved.get("nights", 0))
 	reached = (saved.get("reached", []) as Array).duplicate()
+	_circled = reached.has("core_down")   # a loaded game past the fold doesn't replay the lap
 	chapter = int(saved.get("chapter", 1))
 	_bed_said = bool(saved.get("bed_said", false))
 	RADIO.opening_set = "slice"
@@ -243,6 +244,8 @@ func _process(delta: float) -> void:
 		if radio != null and radio.has_method("ring"): radio.ring(str(beat[1]))
 		break
 	_bedtime()
+	_tiredness_wins()
+	if reached.has("core_down") and not _circled: _gary_circles()
 	_gary_to_the_steps()
 	_kit_crates()
 	# Over once Castle's quiet call has rung (some beats are optional: you
@@ -307,6 +310,42 @@ func _bedtime() -> void:
 	var notes: Node = world.get("notes")
 	if notes != null: notes.think("bed", "late", {"home": "the lander"})
 	MHNotices.hint("Bed", "Look at the landing seat and press Z to sleep till morning.")
+
+## Scene 5: stay up on sol 1's night and, past midnight in the cabin,
+## tiredness wins: you nod off where you are and sleep till dawn. Not with a
+## critical alert up (scripts/sleep.gd blocked_reason).
+const NOD_OFF_AFTER := .5   # 00:30
+func _tiredness_wins() -> void:
+	if not _bed_said or nights >= 1 or not _in_cabin(): return
+	var hour := MHGame.sol_hour
+	if hour < NOD_OFF_AFTER or hour >= 12.0: return
+	var sleep: Node = world.get("sleep")
+	if sleep == null or bool(sleep.asleep) or not str(sleep.blocked_reason()).is_empty(): return
+	if bool(world.player.get_meta("ui_freeze", false)): return
+	MHNotices.drop("Bed")
+	sleep.sleep(sleep._until_sunrise())
+
+## Scene 6: the core's folded and GAR-Y does a slow lap of it, then a happy
+## chirp. Not saved: a loaded game past the fold just doesn't replay it.
+const CIRCLE_RADIUS := 7.0
+var _circled := false
+func _gary_circles() -> void:
+	_circled = true
+	var gary: Node3D = world.get("scout_rover")
+	var walker: Node3D = world.get("walker")
+	if gary == null or walker == null or bool(gary.get("rescuing")): return
+	var centre := walker.global_position
+	var start := atan2(gary.global_position.x - centre.x, gary.global_position.z - centre.z)
+	for i in range(1, 7):
+		var angle := start + TAU * i / 6.0
+		var spot := centre + Vector3(sin(angle), 0.0, cos(angle)) * CIRCLE_RADIUS
+		gary.lead_to(spot, true)
+		var waited := 0.0
+		while waited < 8.0 and is_instance_valid(gary) and gary.leading_to(spot):
+			await get_tree().create_timer(.25).timeout
+			waited += .25
+		if not is_instance_valid(gary) or bool(gary.get("rescuing")) or not (gary.task == "" or gary.leading_to(spot)): return   # given other orders
+	if is_instance_valid(gary): gary._say("happy")
 
 ## Scene 5, the night: as you drift off, Walker 1's servos shift outside and
 ## GAR-Y chirps once. Real seconds: the clock's racing by now.

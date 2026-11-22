@@ -30,8 +30,11 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	name = "FieldKit"
 	add_to_group("field_kit")
 	held = str(saved.get("held", ""))
+	_restore.call_deferred()   # once the save's chapter-one state (what you've got) is loaded
+
+func _restore() -> void:
 	if not has(held): held = ""
-	_show.call_deferred()
+	_show()
 
 func export_state() -> Dictionary:
 	return {"held": held}
