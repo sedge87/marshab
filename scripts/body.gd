@@ -267,9 +267,12 @@ func tick_needs(hours: float, asleep: bool, out_cold := false) -> void:
 		awake_hours = minf(awake_hours + hours, 24.0 * 5.0)
 		rested_hours = maxf(0.0, rested_hours - hours)
 
-## You ate (a ration pack, or the suit's food bar).
+## You ate (a ration pack, or the suit's food bar). `meals` counts them this
+## session (not saved): scripts/crew_presence.gd hears the first one.
+var meals := 0
 func eat() -> void:
 	fed_hours = 0.0
+	meals += 1
 
 ## You slept `hours` (scripts/sleep.gd, on waking).
 ## `longer`: Quarters' full night (scripts/room_types.gd) stretches it.

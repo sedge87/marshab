@@ -472,10 +472,14 @@ func _notes_page() -> Control:
 			var text := "·  " + str(goal.text)
 			if not str(goal.needs).is_empty(): text += "\n    first: " + str(goal.needs)
 			column.add_child(_note_line(text, false))
-		var ask := MHStyle.button("Ask Castle what's next", "secondary", "satellite", 44)
+		# 22 Nov: in the slice it's Ask orbit, answered by whoever fits (scripts/crew_presence.gd).
+		var presence: Node = world.get("crew_presence") if world != null else null
+		var ask := MHStyle.button("Ask orbit" if presence != null else "Ask Castle what's next", "secondary", "satellite", 44)
 		ask.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		ask.pressed.connect(func() -> void:
-			if bool(days.ask_next()): ask.text = "She's calling…"
+			if presence != null:
+				ask.text = "Calling orbit…" if bool(presence.ask()) else "Orbit's busy or out of contact"
+			elif bool(days.ask_next()): ask.text = "She's calling…"
 			else: ask.text = "Castle's busy or out of contact"
 			ask.disabled = true)
 		column.add_child(ask)

@@ -840,6 +840,7 @@ static func defaults() -> Dictionary:
 	for key in VOLUME_KEYS: d[key] = 80 if key != "vol_master" else 100
 	d["mc_chatter"] = "normal"   # Mission Control small talk: log, quiet, normal, chatty (scripts/mission_control_link.gd)
 	d["rover_radio"] = true      # the rover radio starts on (O while driving)
+	d["open_channel"] = true     # the orbiter crew overheard now and then (scripts/crew_presence.gd)
 	# The compass strip is always on screen; these choose what's marked on it.
 	d["compass_home"] = true     # the lander, airlocks and landmarks
 	d["compass_pins"] = true     # your own pins (scripts/known_things.gd)

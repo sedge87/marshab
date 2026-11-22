@@ -24,6 +24,7 @@ const DROP_FIELD := preload("res://scripts/drop_field.gd")
 const LIFEPOD := preload("res://scripts/lifepod.gd")
 const OPENING_DAYS := preload("res://scripts/opening_days.gd")
 const OPENING_SLICE := preload("res://scripts/opening_slice.gd")   # version 3 (docs/opening-slice.md)
+const CREW_PRESENCE := preload("res://scripts/crew_presence.gd")   # the crew around you in the slice
 const WALKER := preload("res://scripts/walker.gd")
 const MODULE_LIFE := preload("res://scripts/module_life.gd")
 const DESCENT_SEEN := 450.0   # metres round the landing the descent cameras saw
@@ -118,6 +119,7 @@ var orbiter_texts: Node  # scripts/orbiter_texts.gd: the orbiter crew's texts an
 const REPLIES := preload("res://scripts/replies.gd")
 const RADIO := preload("res://scripts/radio.gd")
 var radio: Node        # scripts/radio.gd: Castellanos and you (docs/radio.md)
+var crew_presence: Node  # scripts/crew_presence.gd: reactive calls, hints, Ask orbit, the open channel (slice only)
 var _radio_state := {}
 ## Which opening this game plays: 2 is the guided days of docs/opening-days.md
 ## (8 Nov redesign: no GAR-Y before day 2, Castellanos on the radio, story
@@ -326,6 +328,10 @@ func _ready() -> void:
 		add_child(radio)
 		radio.setup(self, _radio_state)
 		if opening_days != null: opening_days.radio_ready()
+		if opening_days != null and opening_days.get_script() == OPENING_SLICE:
+			crew_presence = CREW_PRESENCE.new()
+			add_child(crew_presence)
+			crew_presence.setup(self)
 	if MHChapterOne.new_rules():
 		orbiter_texts = ORBITER_TEXTS.new()
 		add_child(orbiter_texts)

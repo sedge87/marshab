@@ -41,3 +41,16 @@ Castellanos: Describe it to me. What can you see? [ID:s2_quiet_02]
 Castellanos: Seven months looking at the same five faces. I'd forgotten what a room sounds like. [ID:s2_quiet_04]
 Castellanos: Right. Pad's this afternoon. Devan's already drawing on the window. [ID:s2_quiet_05]
 => END
+
+# Devan: the dawn ride, first time on Walker 1's deck while it walks
+# (scripts/crew_presence.gd).
+~ s2_ride
+fresh 30
+Rao: Four metres up. How's the view? [ID:s2_ride_01]
+- I can see the pad from here.
+	Rao: So can I. It's just smaller from three hundred kilometres. [ID:s2_ride_02a]
+- Bit wobbly.
+	Rao: Lean into it. It's walking, not dancing. [ID:s2_ride_02b]
+Rao: I've got a bet with Kai on how long before you ride it everywhere. Don't let me down. [ID:s2_ride_03]
+=> END
+

@@ -27,9 +27,34 @@ Castellanos: Walk the pad, bring the beacon online, get the hab running. Devan's
 ? has_slate Castellanos: You've got the manifest. See what came down near you. [ID:s1_relock_06s]
 => END
 
-# Scene 1: the slate in your hands. Short; the manifest does the talking.
+# Scene 1: the slate in your hands. The manifest, then step-out advice you
+# steer (docs/opening-slice.md "How and when the crew talk"): each topic once,
+# the menu comes back till you go; silence (walking off) ends it.
 ~ s1_manifest
-?! helmet Castellanos: Seal up when you're ready. The hatch is yours. [ID:s1_manifest_01]
+Castellanos: Got it? That's everything that came down. Twelve pallets, three walkers, GAR-Y. The storm moved most of it. [ID:s1_manifest_02]
+Achterberg: The ones marked "in your area" are close enough to walk. The rest we find later. [ID:s1_manifest_03]
+=> s1_ask
+
+~ s1_ask
+- ?! ask_look What do I look for out there?
+	set ask_look
+	set asked
+	Achterberg: Parachutes. Every pallet came down under one, and they're bright. GAR-Y's cradle should be close to you too. [ID:s1_ask_look_01]
+	=> s1_ask
+- ?! ask_most What matters most?
+	set ask_most
+	set asked
+	Castellanos: Walker 1. It carries the hab. If it's sat dead in the dust, it'll want power, and one of those pallets is a power module. [ID:s1_ask_most_01]
+	=> s1_ask
+- ?! ask_safe How do I not get into trouble?
+	set ask_safe
+	set asked
+	Castellanos: The ring on your wrist. That's your air, and the notch is the way home. When they meet, you turn round. No arguments. [ID:s1_ask_safe_01]
+	=> s1_ask
+- I'm going.
+	?! asked Castellanos: Good. Shout if you want us. [ID:s1_ask_go_01]
+	?! helmet Castellanos: Seal up when you're ready. The hatch is yours. [ID:s1_manifest_01]
+	? helmet Castellanos: The hatch is yours. [ID:s1_ask_go_02]
 => END
 
 # Scene 1: the first step (scripts/first_step.gd rings it).
@@ -45,12 +70,12 @@ chat Castellanos: Kai wants to know if it remembers him. I've told him it's a ro
 
 # Scene 3: the three near pallets open. Rao's on the long camera.
 ~ s1_pallets
-chat Rao: I can see three lids off from up here. You're tidier than the storm was. [ID:s1_pallets_01]
+Rao: I can see three lids off from up here. You're tidier than the storm was. [ID:s1_pallets_01]
 => END
 
 # Scene 3: the hitch bracket on GAR-Y, its first fitting.
 ~ s1_hitch
-chat Tupou: Is that a tow bar? You've given it a tow bar. It's going to be insufferable. [ID:s1_hitch_01]
+Tupou: Is that a tow bar? You've given it a tow bar. It's going to be insufferable. [ID:s1_hitch_01]
 => END
 
 # Scene 4: the power module's in and Walker 1 wakes. Its deck screen says
@@ -62,7 +87,11 @@ Achterberg: I've got its telemetry. I'll keep quiet. You're the one standing nex
 
 # Scene 4: the seal patched; it walks home on its own.
 ~ s1_seal
-Achterberg: Pressure's holding. That's a good patch. [ID:s1_seal_01]
+Achterberg: Pressure's holding. How did you find it? The screen only said front axle. [ID:s1_seal_02a]
+- Frost on the seal, and a little plume.
+	Achterberg: That's the way. Eyes first, telemetry second. [ID:s1_seal_03a]
+- Walked round it till something looked wrong.
+	Achterberg: Honestly, that's most of engineering. [ID:s1_seal_03b]
 chat Castellanos: Walk it home before the light goes. [ID:s1_seal_02]
 => END
 
@@ -78,8 +107,35 @@ Achterberg: Tell me that walker's seal held. [ID:s1_dusk_03]
 - Ask me again in the morning.
 	set seal_honest
 	Achterberg: Fair. I'll ask. [ID:s1_dusk_04b]
-Mwangi: Eat something, please. A ration bar is a meal down there. I've checked. [ID:s1_dusk_05]
+?! ate Mwangi: Eat something, please. A ration bar is a meal down there. I've checked. [ID:s1_dusk_05]
+? ate Mwangi: You ate. I saw. I'm very proud. [ID:s1_dusk_05b]
 Tupou: And say goodnight to GAR-Y. It's been parked by your steps for an hour, looking at the door. [ID:s1_dusk_06]
 Castellanos: The pad's tomorrow afternoon. If it's good, it's Thursday. [ID:s1_dusk_07]
 Castellanos: Good first day, Pathfinder. [ID:s1_dusk_08]
+=> END
+
+# Reactive calls (docs/opening-slice.md "How and when the crew talk"): one
+# real back-and-forth each, rung by scripts/crew_presence.gd when the thing
+# happens, never as instructions.
+
+# Kai: the stores pallet's lid is off; the sample kit's in view.
+~ s1_stores
+fresh 30
+Tupou: Is that the sample kit? Closer. Oh, the little corer. [ID:s1_stores_01]
+- Want me to bring you something?
+	Tupou: Anything that isn't red dust. Actually, the red dust too. [ID:s1_stores_02a]
+- It's mine now.
+	Tupou: Fine. But I get first look at whatever it finds. [ID:s1_stores_02b]
+Tupou: Sorry. Seven months of photos, and you're holding the real thing. [ID:s1_stores_03]
+=> END
+
+# Joseph: the first ration eaten, any time.
+~ s1_ate
+fresh 30
+Mwangi: Was that a ration bar? I saw the wrapper on your camera. [ID:s1_ate_01]
+- Delicious.
+	Mwangi: Liar. But a fed liar. [ID:s1_ate_02a]
+- It was food.
+	Mwangi: That's the spirit. Mostly. [ID:s1_ate_02b]
+Mwangi: Drink something too. I'm on the treadmill matching your steps, and I'm thirsty. [ID:s1_ate_03]
 => END

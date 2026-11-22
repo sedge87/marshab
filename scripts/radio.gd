@@ -8,6 +8,8 @@ extends Node
 ##   ~ section_name                       a call (or part of one) starts here
 ##   Castellanos: What they say. [ID:d1_x] a spoken line; the ID names its voice file,
 ##                                        res://assets/audio/voice/orb_<ID>.wav
+##   - ?! flag What you could say         (22 Nov) a reply offered only while the flag's
+##                                        unset (- ? flag: only once it's set)
 ##   - What you could say                 2-3 replies in a row; the lines indented
 ##   	Castellanos: Their answer. [ID:..]  under one play only if you pick it
 ##   do cue_name arg arg                  a cue in code (scripts/opening_days.gd
@@ -92,6 +94,11 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	for key in (saved.get("heard", {}) as Dictionary): heard[str(key)] = true
 	for t in saved.get("topics", []): topics.append(str(t))
 	for q in saved.get("queue", []): queue.append(str(q))
+	# Names on voices (scripts/mh_audio.gd crew_caption): a loaded game's
+	# count, or the descent's for a new one, or fresh.
+	if saved.has("named"): MHAudio.named = (saved.named as Dictionary).duplicate()
+	elif not MHAudio.named_from_descent: MHAudio.named = {}
+	MHAudio.named_from_descent = false
 	var cut := str(saved.get("playing", ""))
 	if not cut.is_empty():   # a call cut off by a save plays again, from the top (its cues are safe to run twice)
 		heard.erase(cut)
@@ -133,7 +140,7 @@ func place_of(thing: String) -> Variant:
 	return null
 
 func export_state() -> Dictionary:
-	return {"flags": flags.duplicate(), "heard": heard.duplicate(), "topics": topics.duplicate(), "queue": queue.duplicate(), "playing": playing}
+	return {"flags": flags.duplicate(), "heard": heard.duplicate(), "topics": topics.duplicate(), "queue": queue.duplicate(), "playing": playing, "named": MHAudio.named.duplicate()}
 
 # ---------- the scripts ----------
 
@@ -202,6 +209,17 @@ static func _steps(rows: Array) -> Array:
 			var choice := {"type": "choice", "options": []}
 			while i < rows.size() and int(rows[i][0]) == base and str(rows[i][1]).begins_with("- "):
 				var option := {"text": str(rows[i][1]).substr(2).strip_edges(), "steps": []}
+				# "- ?! flag Text": a reply offered only while the flag's unset
+				# (or "- ? flag Text": only once it's set).
+				var said := str(option.text)
+				if said.begins_with("?"):
+					var negate := said.begins_with("?!")
+					var rest := said.substr(2 if negate else 1).strip_edges()
+					var space := rest.find(" ")
+					if space > 0:
+						option["if"] = rest.substr(0, space)
+						option["not"] = negate
+						option.text = rest.substr(space + 1).strip_edges()
 				i += 1
 				var start := i
 				while i < rows.size() and int(rows[i][0]) > base: i += 1
@@ -319,6 +337,11 @@ func call_orbit() -> bool:
 	var section := str(topics.pop_front())
 	queue.push_front(section)
 	return true
+
+## The open channel (data/radio/slice/open_channel.txt): the crew talking to
+## each other, overheard. No call beep, and captioned as the open channel.
+static func overheard(section: String) -> bool:
+	return section.begins_with("oc_")
 
 func on_air() -> bool:
 	return not playing.is_empty()
@@ -481,7 +504,7 @@ func _play(section: String) -> void:
 	playing = section
 	heard[section] = true
 	topics.erase(section)
-	if not fast: MHAudio.sfx("suit_beep", -12.0)
+	if not fast and not overheard(section): MHAudio.sfx("suit_beep", -12.0)
 	var steps: Array = _sections.get(section, [])
 	_ran_early = []
 	_cut = false
@@ -539,7 +562,7 @@ func _say(step: Dictionary) -> void:
 	if fast:
 		spoken.append(id)
 		return
-	MHAudio.orbiter_line(id, str(step.who), str(step.text), "from orbit")
+	MHAudio.orbiter_line(id, str(step.who), str(step.text), "open channel" if overheard(playing) else "from orbit")
 	await get_tree().process_frame
 	var file := "res://assets/audio/voice/orb_%s.wav" % id
 	if id.is_empty() or not ResourceLoader.exists(file):
@@ -548,7 +571,11 @@ func _say(step: Dictionary) -> void:
 	await get_tree().create_timer(GAP_AFTER_LINE, false).timeout
 
 func _ask(step: Dictionary) -> void:
-	var options: Array = step.options
+	var options: Array = []
+	for option in step.options:
+		if option.has("if") and test(str(option["if"])) == bool(option.get("not", false)): continue
+		options.append(option)
+	if options.is_empty(): return
 	var texts: Array = []
 	for option in options: texts.append(str(option.text))
 	_choice = -2

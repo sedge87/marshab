@@ -12,10 +12,13 @@
     "beats": [
       {"id": "descent_entry", "speaker": "rao", "phase": "entry", "at": 0.3, "text": "Entry interface. You're glowing nicely. Hang on, this bit's loud."},
       {"id": "descent_engines", "speaker": "rao", "phase": "powered", "at": 0.6, "text": "Chute's away, engines lit. Powered descent: pick your spot, I'll keep you honest."},
-      {"id": "descent_beacons", "speaker": "castellanos", "phase": "powered", "at": 7.0, "text": "Base beacon's silent. So are the walkers. Nothing since the storm."},
-      {"id": "descent_plan", "speaker": "castellanos", "phase": "powered", "at": 12.5, "text": "You're coming in long, so forget the beacon. Your cameras will show you safe ground. Pick one."},
+      {"id": "descent_brief_cargo", "speaker": "castellanos", "phase": "powered", "at": 5.0, "text": "While Devan flies: the cargo came down a month ago, and then the storm got to it. Walkers, pallets, GAR-Y. All of it's somewhere near you."},
+      {"id": "descent_mast", "speaker": "achterberg", "phase": "powered", "at": 11.0, "text": "The pad's mast is still standing. That's all I can tell from up here."},
+      {"id": "descent_brief_fuel", "speaker": "castellanos", "phase": "powered", "at": 16.0, "text": "Our lander's got fuel for one descent. No second try, no backup site. So you go first, and you tell us it's safe."},
       {"id": "descent_spotted", "speaker": "rao", "phase": "powered", "at": 21.0, "text": "And I think I've got one. A parachute, on high ground. Picture when you're down."},
+      {"id": "descent_heart", "speaker": "mwangi", "phase": "powered", "at": 26.0, "text": "Heart rate one-forty. Very normal. Mine's higher, and I'm sitting down."},
       {"id": "descent_fuel", "speaker": "rao", "phase": "powered", "at": 31.0, "text": "Fuel's getting thin. Choose your ground and commit."},
+      {"id": "descent_window", "speaker": "tupou", "phase": "powered", "at": 36.0, "text": "Six of us came all this way, and you get the window seat."},
       {"id": "descent_dust", "speaker": "castellanos", "phase": "final", "at": 3.5, "text": "Dust is up. Steady. Steady."}
     ],
     "events": {

@@ -259,7 +259,7 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - **Models:** the radar sled is already in the chunk 1 pack. Check whether the printer needs a wall-mount version (`mars_fabrication_v1/regolith_printer.glb`), and whether the intake, GAR-Y's radar head and the suit rack's loadout screen need new models.
 - **Code:** reuse the Print Shop crate tow, `fabricator.gd`, `chapter_one.gd` (jobs, feedstock, intake rate) and `materials.gd` (salvage from pallets and debris). Printed furniture still goes through the old interior build (§10a).
 
-### How and when the crew talk (sols 0–2) · proposed 22 Nov, lines for review
+### How and when the crew talk (sols 0–2) · built 22 Nov
 *Why: a playtester said the opening is very lonely now. Only Castle really talks in the first hour, the other four get one quip each (mostly droppable `chat` lines), and nothing says who the five are or why you came down alone. The user (22 Nov): the descent stays the only lead-in (no new scene before it), voices only with a name on each, the crew react to what they see you doing (briefly, at the right moment, never lecturing), an occasional open channel, and the orbiter passing overhead.*
 
 **The rules**
@@ -326,7 +326,7 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 | the fit-out crates | Mwangi | Those crates won't unpack themselves. I'd help, but, you know. Orbit. |
 | the first room | Achterberg | The terminal's where rooms come from. The first one's on the house. |
 
-**Ask orbit (on the slate, any time on the radio link).** Press it and whoever fits answers with the hint for where you are, even before the 3 minutes. Asking a second time gets *"Same as before. You've got this."* With nothing pending you get one of a few short "nothing urgent" lines, e.g. *Castellanos: Nothing from us. Enjoy the view.* It's always your choice to ask.
+**Ask orbit (on the slate, any time on the radio link).** Press it and whoever fits answers with the hint for where you are, even before the 3 minutes. Asking again replays that hint (built 22 Nov; the "Same as before" line was dropped as unhelpful). With nothing pending you get one of a few short "nothing urgent" lines, e.g. *Castellanos: Nothing from us. Enjoy the view.* It's always your choice to ask.
 
 **One real call each on sols 1–2** (`data/radio/slice/`).
 
@@ -372,7 +372,20 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 5. *Sol 2 morning.* Mwangi: Has anyone seen my pick? / Tupou: In the galley. With the spoons. Where you left it.
 6. *Sol 2, any time.* Rao: Wind at the site's backing west. Logging it. / Achterberg: You log everything. / Rao: And one day you'll thank me.
 
-**The orbiter overhead.** A bright point crossing the sky west to east, about twice a sol, easiest to spot at dawn and dusk. It adds no rule about when calls can happen.
+**As built (22 Nov).**
+- **Where things live:**
+  - `scripts/crew_presence.gd`: the reactive calls (Kai, Joseph, Devan), the stall hints, Ask orbit and the open channel;
+  - `data/radio/slice/hints.txt` and `open_channel.txt`: the new lines;
+  - `sol1.txt` and `sol2.txt`: the lander menu, the calls and the fixes;
+  - `data/orbiter_crew.json`: the descent.
+- **Names on voices:** `MHAudio.crew_caption`. The count is saved with the radio.
+- **Reply options:** these can now be hidden by a flag (`- ?! flag Text`).
+- **Settings:** the open-channel switch is in Settings → Audio, under Mission Control.
+- **Timings:** reactions wait 15 s after any call; hints and the open channel wait 60 s.
+- **Tests:** `tests/crew_presence_test.gd` is new; the slice, descent and radio tests pass.
+- **Not hand-played.**
+
+**The orbiter overhead.** Already built before this pass (`scripts/orbiter_sky.gd` and the `orbit_pass` call in `data/radio/radio.txt`, which is Castle's, not Devan's). A bright point crossing the sky west to east, about twice a sol, easiest to spot at dawn and dusk. It adds no rule about when calls can happen.
 - The first time you're outside during a pass, one line: *Rao: Look up. West to east, the bright one. That's us.*
 
 **Not changed:**

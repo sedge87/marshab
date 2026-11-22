@@ -167,7 +167,30 @@ static func orbiter_line(id: String, who: String, text: String, note := "", cut_
 	var d := director()
 	if d == null: return
 	if cut_in: d._run("_hush", [])
-	d._run("_queue_cast", [id, who, text, note, "voice/orb_" + id])
+	d._run("_queue_cast", [id, crew_caption(who), text, note, "voice/orb_" + id])
+
+# Names on voices (22 Nov, docs/opening-slice.md "How and when the crew
+# talk"): each crew member's first NAMED_LINES lines in a game are captioned
+# with their full name and role ("Devan Rao · Pilot"), then just the short
+# name. The count is saved with the radio (scripts/radio.gd); the descent
+# starts it fresh for a new game.
+const NAMED_LINES := 2
+const CREW_FILE := "res://data/orbiter_crew.json"
+static var named: Dictionary = {}          # short name -> lines captioned so far
+static var named_from_descent := false     # the descent counted these for the game about to start
+static var _crew_by_short: Dictionary = {}
+
+static func crew_caption(who: String) -> String:
+	if _crew_by_short.is_empty():
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(CREW_FILE))
+		if parsed is Dictionary:
+			for person in parsed.get("people", []): _crew_by_short[str(person.get("short", ""))] = person
+	if not _crew_by_short.has(who): return who
+	var said := int(named.get(who, 0))
+	named[who] = said + 1
+	if said >= NAMED_LINES: return who
+	var person: Dictionary = _crew_by_short[who]
+	return "%s · %s" % [str(person.get("name", who)), str(person.get("role", ""))]
 
 # Stops the voice now and drops anything waiting (a skipped descent).
 static func hush() -> void:

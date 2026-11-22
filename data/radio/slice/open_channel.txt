@@ -1,0 +1,44 @@
+# The open channel (docs/opening-slice.md "How and when the crew talk"): the
+# crew overheard talking to each other, not to you. scripts/crew_presence.gd
+# plays these in order, each once, at most one every few minutes, never near
+# a call or in danger, outside or in the lander. Settings → Audio turns them off.
+# Voices: python tools/generate_voice.py --missing --only=orb_oc
+
+# 1. After GAR-Y's met. It teaches what the channel is.
+~ oc_1
+Rao: ...telling you, under fifteen minutes. [ID:oc_1_01]
+Castellanos: Open channel, Devan. [ID:oc_1_02]
+Rao: Oh. Hi, Pathfinder. Ignore us. [ID:oc_1_03]
+=> END
+
+~ oc_2
+Rao: Kai, you owe me a coffee. [ID:oc_2_01]
+Tupou: You said ten minutes. [ID:oc_2_02]
+Rao: I said under fifteen. Ten is under fifteen. [ID:oc_2_03]
+=> END
+
+# Sol 1 afternoon.
+~ oc_3
+Achterberg: Recycler's sulking again. Joseph, if your tea tastes of filter, that's why. [ID:oc_3_01]
+Mwangi: My tea always tastes of filter. [ID:oc_3_02]
+=> END
+
+# Sol 1 night, in the lander.
+~ oc_4
+Tupou: Earth's coming up over the edge. Mostly cloud tonight. [ID:oc_4_01]
+Castellanos: Go to sleep, Kai. [ID:oc_4_02]
+Tupou: Can't. Somebody has to watch. [ID:oc_4_03]
+=> END
+
+# Sol 2 morning.
+~ oc_5
+Mwangi: Has anyone seen my pick? [ID:oc_5_01]
+Tupou: In the galley. With the spoons. Where you left it. [ID:oc_5_02]
+=> END
+
+# Sol 2, any time.
+~ oc_6
+Rao: Wind at the site's backing west. Logging it. [ID:oc_6_01]
+Achterberg: You log everything. [ID:oc_6_02]
+Rao: And one day you'll thank me. [ID:oc_6_03]
+=> END

@@ -256,6 +256,13 @@ func _audio() -> Control:
 	radio_row.add_child(radio)
 	radio_row.add_child(MHStyle.body("Rover radio on when you get in (O while driving)", 15, MHStyle.TEXT_SECONDARY))
 	mc.add_child(radio_row)
+	var open_row := MHStyle.hbox(18)
+	var open := MHWidgets.Switch.new()
+	open.button_pressed = bool(_values.get("open_channel", true))
+	open.toggled.connect(func(on: bool) -> void: _values["open_channel"] = on)
+	open_row.add_child(open)
+	open_row.add_child(MHStyle.body("Open channel: now and then, overhear the orbiter crew talking to each other", 15, MHStyle.TEXT_SECONDARY))
+	mc.add_child(open_row)
 	form.add_child(mc)
 	# On screen: captions for what's said, and the getting-started checklist.
 	var screen_group := MHStyle.vbox(10)

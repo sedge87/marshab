@@ -92,6 +92,9 @@ func setup(menu_camera: Camera3D, menu_environment: Node, at: Vector2, half := O
 	centre = at
 	oval = half
 	if is_equal_approx(half.x, HOME_RADIUS): site_half = LANDER_HALF
+	# A new game's names on voices start here: the crew are introduced on the way down.
+	MHAudio.named = {}
+	MHAudio.named_from_descent = true
 
 func _ready() -> void:
 	# The world round the oval: the site's origin at its centre, no pad.

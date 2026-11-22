@@ -1,0 +1,54 @@
+# Help when you want it (docs/opening-slice.md "How and when the crew talk",
+# guidance without lectures). scripts/crew_presence.gd rings hint_<beat> once
+# if that step hasn't moved in about 3 minutes, and Ask orbit on the slate
+# rings it any time: said as something noticed, never an order.
+# Voices: python tools/generate_voice.py --missing --only=orb_hint
+
+~ hint_gary_met
+Tupou: Those orange stakes by the cradle. GAR-Y plants those. Just saying. [ID:hint_gary_01]
+=> END
+
+~ hint_pallets
+Rao: I've still got three chutes on the camera. Nearest's on the rise. [ID:hint_pallets_01]
+=> END
+
+~ hint_hitched
+Achterberg: There's a bracket in the tools pallet that fits GAR-Y's back end. [ID:hint_hitched_01]
+=> END
+
+~ hint_walker_awake
+Achterberg: Walker 1's lamp is amber. Amber means alive, but starving. [ID:hint_walker_awake_01]
+=> END
+
+~ hint_walker_fixed
+Achterberg: Screens only tell you so much. Walk round the front wheels and look. [ID:hint_walker_fixed_01]
+=> END
+
+~ hint_walker_home
+Castellanos: Light's going. Bring it home. [ID:hint_walker_home_01]
+=> END
+
+~ hint_core_down
+Rao: The walker's screen reads the ground under you. Find a spot that reads well. [ID:hint_core_down_01]
+=> END
+
+~ hint_kit_placed
+Mwangi: Those crates won't unpack themselves. I'd help, but, you know. Orbit. [ID:hint_kit_placed_01]
+=> END
+
+~ hint_quarters
+Achterberg: The terminal's where rooms come from. The first one's on the house. [ID:hint_quarters_01]
+=> END
+
+# Ask orbit with nothing pending.
+~ ask_nothing_1
+Castellanos: Nothing from us. Enjoy the view. [ID:ask_nothing_01]
+=> END
+
+~ ask_nothing_2
+Rao: All quiet up here. Well. Kai's humming. [ID:ask_nothing_02]
+=> END
+
+~ ask_nothing_3
+Mwangi: Nothing urgent. Drink some water while you're thinking about it. [ID:ask_nothing_03]
+=> END
