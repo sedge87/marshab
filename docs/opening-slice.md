@@ -259,6 +259,91 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - **Models:** the radar sled is already in the chunk 1 pack. Check whether the printer needs a wall-mount version (`mars_fabrication_v1/regolith_printer.glb`), and whether the intake, GAR-Y's radar head and the suit rack's loadout screen need new models.
 - **Code:** reuse the Print Shop crate tow, `fabricator.gd`, `chapter_one.gd` (jobs, feedstock, intake rate) and `materials.gd` (salvage from pallets and debris). Printed furniture still goes through the old interior build (§10a).
 
+### How and when the crew talk (sols 0–2) · proposed 22 Nov, lines for review
+*Why: a playtester said the opening is very lonely now. Only Castle really talks in the first hour, the other four get one quip each (mostly droppable `chat` lines), and nothing says who the five are or why you came down alone. The user (22 Nov): the descent stays the only lead-in (no new scene before it), voices only with a name on each, the crew react to what they see you doing (briefly, at the right moment, never lecturing), an occasional open channel, and the orbiter passing overhead.*
+
+**The rules**
+- **React, don't guide.** A call starts from something you just did, or something on your helmet camera. It never gives the next step, and never repeats what a screen already shows.
+- **Short.** At most 3 lines, plus an optional reply (2 choices or silence).
+- **Spacing.** One voice at a time, and no new call within about 60 s of the last. In danger (the pit lip, low air), only safety lines play.
+- **Once each.** Every reaction plays once per game.
+- **Each in their own field:**
+  - Tamsin: kit and repairs;
+  - Kai: rocks, samples and GAR-Y;
+  - Devan: the sky, dust and the ride;
+  - Joseph: you (eating, effort, sleep).
+- **Names on voices.** The first 2 lines from each speaker show their full name and role in the caption ("Devan Rao, pilot"), then just the name. The descent introduces all five, so the names land before touchdown.
+
+**The descent: Devan flies, Castle briefs** (`data/orbiter_crew.json` "radio"; replaces the stale beacon lines). The times are seconds into the phase. Powered descent lasts 42 s.
+
+| When | Who | Line |
+|---|---|---|
+| entry 0.3 | Rao | Entry interface. You're glowing nicely. Hang on, this bit's loud. *(kept)* |
+| powered 0.6 | Rao | Chute's away, engines lit. Pick your spot, I'll keep you honest. |
+| powered 5 | Castellanos | While Devan flies: the cargo came down a month ago, and then the storm got to it. Walkers, pallets, GAR-Y. All of it's somewhere near you. |
+| powered 11 | Achterberg | The pad's mast is still standing. That's all I can tell from up here. |
+| powered 16 | Castellanos | Our lander's got fuel for one descent. No second try, no backup site. So you go first, and you tell us it's safe. |
+| powered 21 | Rao | And I think I've got one. A parachute, on high ground. Picture when you're down. *(kept)* |
+| powered 26 | Mwangi | Heart rate one-forty. Very normal. Mine's higher, and I'm sitting down. |
+| powered 31 | Rao | Fuel's getting thin. Choose your ground and commit. *(kept)* |
+| powered 36 | Tupou | Six of us came all this way, and you get the window seat. |
+| final 3.5 | Castellanos | Dust is up. Steady. Steady. *(kept)* |
+| events | Rao | lock, divert and the contact cut *(kept; the caption's broken dash fixed)* |
+
+*Cut:* "Base beacon's silent…" and "forget the beacon", which contradict the pad looking fine (Scene 8).
+
+**One real call each on sols 1–2** (`data/radio/slice/`).
+
+- **Kai: the stores pallet opened** (new beat: the first stores lid off, or the sample kit taken).
+  > Tupou: Is that the sample kit? Closer. Oh, the little corer.
+  > - *Want me to bring you something?* → Tupou: Anything that isn't red dust. Actually, the red dust too.
+  > - *It's mine now.* → Tupou: Fine. But I get first look at whatever it finds.
+  >
+  > Tupou: Sorry. Seven months of photos, and you're holding the real thing.
+
+- **Tamsin: the seal patched** (replaces `s1_seal_01`; Castle's "walk it home" stays).
+  > Achterberg: Pressure's holding. How did you find it? The screen only said front axle.
+  > - *Frost on the seal, and a little plume.* → Achterberg: That's the way. Eyes first, telemetry second.
+  > - *Walked round it till something looked wrong.* → Achterberg: Honestly, that's most of engineering.
+
+- **Devan: the dawn ride** (new beat: first time on Walker 1's deck while it walks; `s2_dawn` stays as the morning hello).
+  > Rao: Four metres up. How's the view?
+  > - *I can see the pad from here.* → Rao: So can I. It's just smaller from three hundred kilometres.
+  > - *Bit wobbly.* → Rao: Lean into it. It's walking, not dancing.
+  >
+  > Rao: I've got a bet with Kai on how long before you ride it everywhere. Don't let me down.
+
+- **Joseph: the first ration eaten** (new beat, any time on sol 1).
+  > Mwangi: Was that a ration bar? I saw the wrapper on your camera.
+  > - *Delicious.* → Mwangi: Liar. But a fed liar.
+  > - *It was food.* → Mwangi: That's the spirit. Mostly.
+  >
+  > Mwangi: Drink something too. I'm on the treadmill matching your steps, and I'm thirsty.
+
+  The evening call reacts to it. Joseph's "Eat something, please" becomes, if you've eaten: *"You ate. I saw. I'm very proud."*
+- **No first line is droppable.** `s1_pallets_01` (Rao) and `s1_hitch_01` (Kai) lose `chat`, so they always play.
+
+**The open channel: overheard, not aimed at you.** Quiet, with the caption marked *(open channel)*.
+- At most one snippet every ~4 minutes, never within 60 s of a call, and never in danger.
+- They play outside or in the lander, in order, each once.
+- They can be turned off in Settings (Audio).
+- The first one teaches what the channel is.
+
+1. *After GAR-Y's met.* Rao: …telling you, under fifteen minutes. / Castellanos: Open channel, Devan. / Rao: Oh. Hi, Pathfinder. Ignore us.
+2. *Sol 1, any time after 1.* Rao: Kai, you owe me a coffee. / Tupou: You said ten minutes. / Rao: I said under fifteen. Ten is under fifteen.
+3. *Sol 1 afternoon.* Achterberg: Recycler's sulking again. Joseph, if your tea tastes of filter, that's why. / Mwangi: My tea always tastes of filter.
+4. *Sol 1 night, in the lander.* Tupou: Earth's coming up over the edge. Mostly cloud tonight. / Castellanos: Go to sleep, Kai. / Tupou: Can't. Somebody has to watch.
+5. *Sol 2 morning.* Mwangi: Has anyone seen my pick? / Tupou: In the galley. With the spoons. Where you left it.
+6. *Sol 2, any time.* Rao: Wind at the site's backing west. Logging it. / Achterberg: You log everything. / Rao: And one day you'll thank me.
+
+**The orbiter overhead.** A bright point crossing the sky west to east, about twice a sol, easiest to spot at dawn and dusk. It adds no rule about when calls can happen.
+- The first time you're outside during a pass, one line: *Rao: Look up. West to east, the bright one. That's us.*
+
+**Not changed:**
+- Castle stays the near voice.
+- The evening call, the quiet call and the hold stay as written.
+- The free stretch's crew stories come later (`docs/crew-stories.md`).
+
 ### Act 1: foothold (sols 1–2; decided 22 Nov: two sols, the clock unchanged)
 *The clock stays as it is (a 30-minute sol, about 20 minutes of daylight after landing).*
 - **Sol 1:** the assignment, GAR-Y, the pallets, then finding and fixing Walker 1. At sunset you're back in the scout lander for the first night, the lifepod moment, with the walker's lamp blinking out on the plain.

@@ -3,6 +3,8 @@
 The orbiter crew now carry the game's human stories. That job used to belong to Mission Control (`docs/mission-control-voice.md`); what's usable from that cast moves here. A character session to flesh everyone out properly is still to come (the user, 22 Nov). Nothing here is built.
 
 ## 1. How the stories reach you
+*The opening (descent to sol 2) has its own rules for when the crew talk, the open channel and names on voices: `docs/opening-slice.md`, "How and when the crew talk".*
+
 - **Like Firewatch: real conversations, anywhere.** The suit radio carries them, and the crew see your helmet camera, so some calls react to what you're looking at (a strange rock, a wreck, the view).
   - Each call is a back-and-forth with 2–3 reply choices, or saying nothing.
   - They remember your answers.
