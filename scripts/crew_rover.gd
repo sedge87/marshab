@@ -250,6 +250,8 @@ var _rear_m := 3.4              # body centre to the rear airlock face
 var _cabin: Node                # the HabRover's walk-in cabin (scripts/vehicle_cabin.gd)
 var _boarding := false          # the camera is moving you in or out
 var _board := Vector3.INF       # the buggy's side step, body space
+var _ride_legs := 0             # legs in the camera's last boarding move (tests read it)
+var _boards: Array = []         # both side steps, body space (you climb in over the nearer one)
 
 func setup(target_builder: Node, vehicle_kind := "") -> void:
 	builder = target_builder
@@ -398,6 +400,7 @@ func _fit_field_model(visual: Node3D) -> void:
 		var step := visual.find_child(side, true, false) as Node3D
 		if step == null: continue
 		var at := _body_point(step)
+		_boards.append(at)
 		if _board == Vector3.INF or signf(at.x) == signf((_spec.seat as Vector3).x): _board = at
 	# The HabRover: a cabin you walk into through the rear airlock.
 	if kind == "rover" and visual.find_child("Airlock_Inside", true, false) != null:
@@ -1045,9 +1048,28 @@ func _get_in(player: CharacterBody3D, animate := true) -> void:
 		# step, or down into the HabRover's seat.
 		var seated := _cam.global_transform
 		var path: Array = [from]
-		if _board != Vector3.INF: path.append(_eye_at(_board + Vector3.UP * 1.45, rotation.y + PI * .5 * signf(_board.x)))
+		var step := _nearest_board(from.origin)
+		if step != Vector3.INF:
+			path.append(_eye_at(step + Vector3.UP * 1.45, rotation.y + PI * .5 * signf(step.x)))
+			var seat_x := (_model.global_transform.affine_inverse() * seated.origin).x
+			if signf(step.x) != signf(seat_x):
+				# In over the passenger side: down into that seat, then shuffle
+				# across, a little ducked, into the driver's.
+				var across := _model.global_transform.affine_inverse() * seated.origin
+				across.x = -across.x
+				path.append(Transform3D(seated.basis, _model.global_transform * (across + Vector3.DOWN * .08)))
+				path.append(Transform3D(seated.basis, _model.global_transform * (Vector3(0.0, across.y - .12, across.z))))
 		path.append(seated)
 		_ride(path)
+
+## The side step nearer `world_at` (body space), or INF when the vehicle has none.
+func _nearest_board(world_at: Vector3) -> Vector3:
+	if _boards.is_empty(): return _board
+	var local := _model.global_transform.affine_inverse() * world_at
+	var best: Vector3 = _boards[0]
+	for at in _boards:
+		if signf((at as Vector3).x) == signf(local.x): best = at
+	return best
 
 ## Your eye as you stand, for the camera's move into the seat.
 func _head_eye(player: Node) -> Transform3D:
@@ -1061,9 +1083,12 @@ func _eye_at(body: Vector3, yaw: float) -> Transform3D:
 ## Moves the driving camera through `path` (world transforms); keys wait till it's done.
 func _ride(path: Array, then := Callable()) -> void:
 	_boarding = true
+	_ride_legs = path.size() - 1
 	_cam.global_transform = path[0]
 	var t := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	var each := BOARD_SECONDS / maxf(1.0, path.size() - 1.0)
+	# Two legs (in over the step, down into the seat) take BOARD_SECONDS; a
+	# shuffle across from the passenger seat adds a little for each extra leg.
+	var each := BOARD_SECONDS * (1.0 + .4 * maxf(0.0, path.size() - 3.0)) / maxf(1.0, path.size() - 1.0)
 	for i in range(1, path.size()):
 		t.tween_property(_cam, "global_transform", path[i], each)
 	t.tween_callback(func() -> void:

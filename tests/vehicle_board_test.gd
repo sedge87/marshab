@@ -122,6 +122,24 @@ func _initialize() -> void:
 		_check(buggy._boarding, "E: you climb out")
 		await _wait(1.1)
 		_check(not buggy.driving and player.visible, "out beside it (%s)" % player.global_position)
+		# From either side: you climb in over the near step; from the passenger
+		# side you drop into that seat and shuffle across to the wheel.
+		var side_x: Vector3 = (buggy._model.global_transform.basis.x).normalized()
+		var driver_sign := signf((buggy._spec.seat as Vector3).x)
+		for passenger in [false, true]:
+			var s := -driver_sign if passenger else driver_sign
+			var stand: Vector3 = buggy.global_position + side_x * 2.2 * s
+			stand.y = b._terrain_height(stand) + .2
+			player.global_position = stand
+			for i in 5: await physics_frame
+			var step: Vector3 = buggy._nearest_board(stand + Vector3.UP * 1.6)
+			_check(signf(step.x) == s, "%s side: in over that side's step" % ("passenger" if passenger else "driver's"))
+			_check(buggy.interact(player) and buggy._boarding, "%s side: climbing in" % ("passenger" if passenger else "driver's"))
+			_check(buggy._ride_legs == (4 if passenger else 2), "%s side: %d legs" % ["passenger" if passenger else "driver's", buggy._ride_legs])
+			await _wait(1.7)
+			_check(not buggy._boarding and buggy.driving, "seated at the wheel")
+			buggy._exit_pressed()
+			await _wait(1.1)
 	else:
 		print("skip buggy: none with a field model in this world")
 	print("Vehicle board test %s." % ("passed" if failures == 0 else "FAILED (%d)" % failures))
