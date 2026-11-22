@@ -158,8 +158,53 @@ func _initialize() -> void:
 			await wait(2.0)
 			check(not bool(world.sleep.asleep) and days.done("slept"), "no dawn after the first night (asleep %s, nights %d, hour %.1f)" % [str(world.sleep.asleep), int(days.nights), MHGame.sol_hour])
 			check(days.hatch_refusal() == "", "the hatch is still shut after the night: '%s'" % days.hatch_refusal())
+			# Scene 6: the dawn ride. Climb aboard, it walks where you look,
+			# the deck screen reads the ground, and "Set down here".
+			check(str(walker.state) == "ready", "Walker 1 isn't ready to ride at dawn (%s)" % str(walker.state))
+			player.global_position = _ground(walker.to_global(walker.STEP_OFF))
+			await wait(1.0)
+			check(walker.climb(), "couldn't climb aboard Walker 1")
+			await wait(3.0)
+			var deck: Node = walker.get_node_or_null("Deck")
+			check(deck != null and deck.active(), "the deck isn't live while you ride")
+			if deck != null:
+				var screen: Label3D = deck.get_node_or_null("../DeckScreen") if deck.get_node_or_null("../DeckScreen") != null else walker.get_node_or_null("DeckScreen")
+				check(screen != null and screen.visible and screen.text.contains("GROUND") and screen.text.contains("WATER"), "the deck screen doesn't read the ground: '%s'" % (screen.text if screen != null else "none"))
+				var before: Vector3 = walker.global_position
+				var w := InputEventKey.new()
+				w.physical_keycode = KEY_W; w.keycode = KEY_W; w.pressed = true
+				Input.parse_input_event(w)
+				await wait(4.0)
+				w = w.duplicate(); w.pressed = false
+				Input.parse_input_event(w)
+				check(walker.global_position.distance_to(before) > 3.0, "holding W didn't walk it (moved %.1f m)" % walker.global_position.distance_to(before))
+				# Walk it out to good ground (teleported: the test can't steer 200 m).
+				var home_at := Vector2.INF
+				for k in 80:
+					var at := Vector2(lander.global_position.x, lander.global_position.z) + Vector2.from_angle(k * .7) * (80.0 + k * 6.0)
+					if walker.spot_reason(at).is_empty():
+						home_at = at
+						break
+				check(not is_inf(home_at.x), "no good ground for home near the lander")
+				if not is_inf(home_at.x):
+					walker.global_position = Vector3(home_at.x, 0, home_at.y)
+					walker._settle()
+					await wait(4.0)
+					check(screen.text.contains("SET DOWN HERE"), "good ground doesn't offer 'Set down here': '%s'" % screen.text)
+					check(deck.press(true) and bool(deck.siting), "E on the deck screen didn't lay the outline")
+					await wait(1.0)
+					check(str(deck._why) == "", "the outline says not here: %s" % str(deck._why))
+					deck.press()
+					await wait(1.0)
+					check(str(walker.state) in ["carrying", "lowering", "done"], "confirming didn't set it down (%s)" % str(walker.state))
+					t = 0.0
+					while t < 120.0 and str(walker.state) != "done":
+						await wait(2.0)
+						t += 2.0
+					check(str(walker.state) == "done" and days.done("core_down"), "the core didn't come down (%s)" % str(walker.state))
+					check(not bool(walker.riding), "still on the deck after the fold")
 	Engine.time_scale = 1.0
-	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, and the seat sleeps you to dawn.")
+	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, and Set down here lays the outline and folds the core.")
 	else:
 		for f in failures: print("FAIL: ", f)
 	quit(0 if failures.is_empty() else 1)

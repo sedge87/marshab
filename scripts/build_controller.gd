@@ -2563,7 +2563,7 @@ func _invalid_reason(cells: Array) -> String:
 			if zone.has("outline") and _cell_overlaps_outline_area(cell, zone_outline(zone)):
 				return "Overlaps free-form habitat"
 	var player := world.get_node_or_null("Player") as Node3D
-	if player != null:
+	if player != null and not bool(player.get_meta("riding", false)):   # riding the walker that carries it: you're up on its deck
 		var player_cell := Vector2i(roundi(player.global_position.x / CELL), roundi(player.global_position.z / CELL))
 		for cell in cells:
 			if cell == player_cell:

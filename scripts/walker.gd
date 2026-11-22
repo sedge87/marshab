@@ -87,6 +87,8 @@ const PARK_V3 := 18.0            # it kneels this close to the lander overnight
 const SOCKET_LOCAL := Vector3(-2.2, 1.6, 0.0)   # the power socket on its frame, in its own frame
 const SEE_SEAL := 6.0            # this close to the bad seal and you've seen it
 var _seal_fx: Node3D
+const DECK_SCRIPT := preload("res://scripts/walker_deck.gd")
+var _deck: Node3D                # v3: the dawn ride's deck screen and set-down (scripts/walker_deck.gd)
 
 var world: Node
 var base_id := "w1"              # its base's id (A4): Walker n seeds base "wn"
@@ -193,6 +195,12 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	if marked and state == "coming": _show_mark.call_deferred()
 	if state in ["carrying", "lowering"]: _finish_set_down.call_deferred(false)
 	elif state == "done": _module.visible = false; _module_shape.disabled = true; _fold(1.0)
+	if _v3() and base_id == "w1":
+		_deck = DECK_SCRIPT.new()
+		add_child(_deck)
+		_deck.setup(self)
+		# Saved while the set-down outline was up: back to ready.
+		if state == "parked" and world.get("builder") != null and BUILD_RULES.module_zone(world.builder, base_id).is_empty(): state = "ready"
 
 static func _vec(a: Variant) -> Vector3:
 	if a is Array and (a as Array).size() == 3: return Vector3(float(a[0]), float(a[1]), float(a[2]))
@@ -602,6 +610,8 @@ func interaction_prompt() -> Dictionary:
 			"coming":
 				if _near_fault(): return {"label": NAME + " · front-left wheel seal: frosted, venting dust", "primary": "Patch it"} if _have_patch_kit() else {"label": NAME + " · front-left wheel seal: frosted, venting dust"}
 				return {"label": NAME + " · awake, but leaking: front axle"}
+			"walking": return {"label": NAME + " · walking home"}
+			"ready": return {"label": NAME + " · kneeling, ready to ride"}
 	match state:
 		"stalled": return {"label": NAME + " · lost: its nav screen's up on the front deck"}
 		"walking": return {"label": NAME + " · walking home"}
@@ -884,6 +894,7 @@ func _process(delta: float) -> void:
 	_last_hour = MHGame.sol_hour
 	_run_ladder(delta)
 	if _getting_off and ladder_out >= 1.0: _step_off()
+	if _deck != null: _deck.tick(delta)
 	if riding: _ride()
 	_check -= delta
 	if _check <= 0.0:
@@ -921,6 +932,7 @@ func ladder_prompt() -> Dictionary:
 ## stopped for you to climb on or off.
 func _ladder_wanted() -> bool:
 	if _getting_off: return true
+	if _deck != null and riding and state == "ready": return false   # v3: packed while you ride and steer
 	if state in ["stalled", "parked", "done", "ready"]: return true
 	return _waiting and not riding
 
@@ -991,10 +1003,16 @@ func _step_off() -> void:
 	var player: CharacterBody3D = world.get("player")
 	if player == null or not riding: return
 	riding = false
+	if _deck != null and _deck.siting: _deck.cancel()
 	remove_from_group("riding_prompt")
 	if _nav != null and is_instance_valid(_nav): _nav.close()
 	_clear = state in ["walking", "carrying"]
 	var spot := to_global(STEP_OFF)
+	# Never into the rooms it's just set down (the airlock can face the ladder).
+	var step := 1
+	while step < 6 and world.builder != null and world.builder.is_inside(Vector3(spot.x, world.builder.habitat_base_y + 1.0, spot.z)):
+		spot = to_global(STEP_OFF + Vector3(0, 0, 2.5 * step))
+		step += 1
 	spot.y = MHSiteTerrain.height(spot.x, spot.z) + .1
 	player.global_position = spot
 	if "safe_position" in player: player.safe_position = spot
@@ -1019,6 +1037,14 @@ func _input(event: InputEvent) -> void:
 	if not riding or _getting_off or (_nav != null and is_instance_valid(_nav)): return
 	if not (event is InputEventKey and event.pressed and not event.echo): return
 	var key := (event as InputEventKey).keycode
+	if _deck != null and _deck.active():
+		if key == KEY_E and _deck.press():
+			get_viewport().set_input_as_handled()
+			return
+		if key == KEY_SPACE and _deck.siting:
+			_deck.cancel()
+			get_viewport().set_input_as_handled()
+			return
 	if key == KEY_E:
 		if not looking_at_nav() or not open_nav(): climb_down()
 		get_viewport().set_input_as_handled()
@@ -1029,6 +1055,7 @@ func _input(event: InputEvent) -> void:
 ## The line under the crosshair while you ride, wherever you look.
 func ride_prompt() -> Dictionary:
 	if _getting_off: return {"keys": "", "verb": "Stopping to let you down…"}
+	if _deck != null and _deck.active(): return _deck.prompt()
 	if state == "stalled" and not calibrated and looking_at_nav(): return {"keys": "E", "verb": "Use the nav screen"}
 	return {"keys": "E", "verb": "Climb down"}
 
