@@ -498,10 +498,11 @@ Scenes 1–7 run from waking to Castle's quiet call. `tests/opening_slice_test.g
   - The first Walker 1 remake stays in the pack for reference only.
 - **No stand-ins left in chunk 1**, except the survey stakes held in hand.
 - **In the pack for chunk 2:** the landing pad and beacon (now in, §10b), and the radar sled (chunk 3).
+- **Done since (a3c072a):**
+  - On night 1, staying up in the cabin past 00:30 lets tiredness win: you sleep till dawn.
+  - GAR-Y does one slow lap of the folded core, then chirps.
+  - The held tool is saved.
 - **Not done:**
-  - "Sleep once tiredness wins" on night 1 (the seat only).
-  - GAR-Y circling the folded core.
-  - The kit's held tool isn't saved.
   - Printed furniture later in the game still goes through the old interior build. Chunk 3 (Print Shop) needs it by hand too.
 
 ## 10b. Chunk 2 as built (22 Nov)
@@ -540,14 +541,15 @@ Scenes 8–12 run from Castle's quiet call to the new job. The opening now ends 
   - The new job comes in a base room, helmet off, from 2.5 hours before sunset.
   - Then pallet 6 is marked on the Map and tracked on the compass.
   - Pallet 6 itself is put down 75 m from the pad, on the side away from the pit, when the pad is built. Opening it runs the existing Print Shop crate tow (chunk 3).
+- **Finished after (22 Nov):**
+  - **The stakes:** the stake in your hand is the pack's `Survey_Stake`, held at its glove grip. The `Survey_Stake_Bundle` lies across the open stores pallet; E takes it (`scripts/stake_bundle.gd`), and only then does key 4 work. Saved as `bundle_taken`.
+  - **Pad collision:** the pad's sections (dropped ones too) and the broken slabs are solid now, using trimesh bodies.
+  - **The wrist at the lip:** while the ground crumbles, the wrist ring stutters, dimming at random, faster and more often on the last metres.
 - **Fixed on the way:** GAR-Y froze for good when the base rebuilt its doors partway through an airlock trip (a freed door in a typed variable, `companion_rover.gd _trip_step`).
 - **Not done:**
   - The ground's hand-width step is the dropped pad sections, not terrain sculpt.
-  - The wrist ring doesn't flicker at the lip.
   - The sled plan is a line on the radio, not a real plan yet (chunk 3).
-  - The stake in your hand and the bundle on the stores pallet are still the old ones. The pack has both (`Survey_Stakes`), but those files belong to the chunk 1 model work (`field_kit.gd`, the pallets).
   - The new models are placed by numbers in code and haven't been looked at in the running game.
-  - The pad's sections have no collision, so you sink a few centimetres into them.
 
 ## 11. Open questions
 - Do the Earth Mission Control letters stay?

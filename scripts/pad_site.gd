@@ -214,6 +214,7 @@ func _build() -> void:
 		if node == null: continue
 		node.position.y -= DROP
 		node.rotation.z = deg_to_rad(-1.2)
+	_solid(_model, ["Sector_", "LandingPad_"])
 	_cracks()
 	_fit_beacon()
 	_lamp_material()
@@ -389,7 +390,21 @@ func _part(id: String, at: Vector2, turn: float, sink: float, tilt := Vector3.ZE
 	var g := to_global(part.position)
 	part.position.y = MHSiteTerrain.height(g.x, g.z) - centre.y + sink
 	part.rotation = Vector3(tilt.x, turn, tilt.z)
+	if id.begins_with("cracked_slab"): _solid(part, [""])
 	return part
+
+## Walk-on collision for the pad's sections and the broken slabs (you sank a
+## few centimetres into them): each mesh whose name starts with one of
+## `prefixes` gets a static trimesh body, so a dropped or tilted section is
+## solid where it really sits.
+func _solid(root: Node, prefixes: Array) -> void:
+	if root == null: return
+	for mesh in root.find_children("*", "MeshInstance3D", true, false):
+		var mesh_name := str(mesh.name)
+		for prefix in prefixes:
+			if mesh_name.begins_with(str(prefix)):
+				(mesh as MeshInstance3D).create_trimesh_collision()
+				break
 
 ## Fresh cracks: across the pad where the sections dropped, and on out to
 ## the beacon's sunk foot.
@@ -630,6 +645,10 @@ func _lip(player: Node3D, r: float, delta: float) -> void:
 	if not _edge_said:
 		_edge_said = true
 		_think("pit_edge")
+	# The wrist ring flickers while the ground's going (scripts/info_screen.gd
+	# reads this): stronger on the last couple of metres.
+	player.set_meta("unsteady_until", Time.get_ticks_msec() + 400)
+	player.set_meta("unsteady", clampf(1.0 - (r - pit_edge) / CRUMBLE, .3, 1.0))
 	_crumble_next -= delta
 	if _crumble_next <= 0.0:
 		_crumble_next = randf_range(.8, 1.6) * (.5 if r < pit_edge + 1.8 else 1.0)

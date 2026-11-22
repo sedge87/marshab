@@ -8,11 +8,13 @@ extends Node
 ## tool by context (holding() is always true there).
 ##
 ## What's in your hand shows in your hand, low on the right: the corer is the
-## MC-01 model, the hammer and scoop their own models; the stakes a stand-in.
+## MC-01 model, the hammer, scoop and survey stake their own models.
 
 const MC01 := "res://assets/models/field/mc01_corer.glb"
 const HAMMER := "res://assets/models/chunk1/rock_hammer.glb"
 const SCOOP := "res://assets/models/chunk1/sample_scoop.glb"
+const STAKE := "res://assets/models/chunk2/survey_stake.glb"
+const STAKE_GRIP := .506
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const SLOTS := [
 	["corer", "Hand corer"],
@@ -120,7 +122,17 @@ func _show() -> void:
 		"scoop":
 			_model = _hand_tool(SCOOP)
 			if _model == null: _model = _stand_in([[Vector3(.03, .03, .3), Vector3(0, 0, .1), "dark_alloy"], [Vector3(.1, .03, .12), Vector3(0, 0, -.1), "white_painted"]])
-		"stakes": _model = _stand_in([[Vector3(.02, .3, .02), Vector3.ZERO, "orange"]])
+		"stakes":
+			# One stake from the bundle, held at its glove grip (0.506 m up from the tip).
+			var stake := _hand_tool(STAKE)
+			if stake != null:
+				_model = Node3D.new()
+				_model.add_child(stake)
+				stake.rotation_degrees = Vector3.ZERO
+				stake.position = Vector3(0, -STAKE_GRIP, 0)
+				_model.scale = Vector3.ONE * .7
+				_model.rotation_degrees = Vector3(-12, 10, -8)
+			else: _model = _stand_in([[Vector3(.02, .3, .02), Vector3.ZERO, "orange"]])
 	if _model == null: return
 	_model.name = "InHand"
 	camera.add_child(_model)

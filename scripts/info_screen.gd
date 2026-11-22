@@ -41,9 +41,14 @@ func _process(delta: float) -> void:
 	_since += delta
 	_spin += delta
 	# The wrist redraws four times a second, so a leak can flash.
-	if _since >= (.25 if mode == "suit" else 1.0):
+	if _since >= (_suit_every() if mode == "suit" else 1.0):
 		_since = 0.0
 		refresh()
+
+## Four redraws a second; faster while the ground's going, so the ring stutters.
+func _suit_every() -> float:
+	var wearer: Node = get_tree().get_first_node_in_group("player")
+	return .07 if wearer != null and int(wearer.get_meta("unsteady_until", 0)) > Time.get_ticks_msec() else .25
 
 func refresh() -> void:
 	if mode == "camera": _aim_camera()
@@ -210,6 +215,11 @@ func _draw_suit() -> void:
 		elif turn_back < .5 or o2 <= .25: col = MHStyle.WARN
 	elif active and o2 <= .1: col = MHStyle.DANGER
 	if not active: col = MHStyle.TEXT_MUTED
+	# Ground giving way under you (scripts/pad_site.gd, the pit's lip): the
+	# ring stutters, dimming at random from one redraw to the next.
+	var wearer: Node = get_tree().get_first_node_in_group("player") if is_inside_tree() else null
+	if active and wearer != null and int(wearer.get_meta("unsteady_until", 0)) > Time.get_ticks_msec():
+		if randf() < .35 + .45 * float(wearer.get_meta("unsteady", .3)): col = Color(col, randf_range(.15, .5))
 	var c := Vector2(150, 160) * u
 	var ring := 112.0 * u
 	var thick := 22.0 * u

@@ -23,6 +23,7 @@ const FIELD_KIT := preload("res://scripts/field_kit.gd")
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const STAKE_MODEL := "res://assets/models/chunk2/survey_stake.glb"
 const STAKE_SUNK := .12       # pushed this far into the ground
+const BUNDLE := preload("res://scripts/stake_bundle.gd")
 const AHEAD := 1.1            # m in front of you a stake goes in
 const MIN_LENGTH := 8.0
 const MAX_LENGTH := 60.0
@@ -56,6 +57,8 @@ var _progress_at := 0.0
 var _best_t := -1.0
 var _stage := ""              # "", "to_start", "run"
 var _via: Array = []          # waypoints round the pit on the way to the start
+var bundle_taken := false     # the stakes bundle out of the stores pallet
+var _bundle: Node
 
 func setup(target_world: Node, target_pad: Node, saved: Dictionary) -> void:
 	world = target_world
@@ -63,16 +66,29 @@ func setup(target_world: Node, target_pad: Node, saved: Dictionary) -> void:
 	name = "SurveyLine"
 	add_to_group("survey_line")
 	lines = (saved.get("lines", []) as Array).duplicate(true)
+	bundle_taken = bool(saved.get("bundle_taken", false))
 	_build_overlay.call_deferred()
 	_plant_saved.call_deferred()
 
 func export_state() -> Dictionary:
-	return {"lines": lines.duplicate(true)}
+	return {"lines": lines.duplicate(true), "bundle_taken": bundle_taken}
 
-## The stakes come in the stores pallet (pallet 1).
+## The stakes come in the stores pallet (pallet 1): a bundle you take out by hand.
 func have_stakes() -> bool:
 	var drop: Node = world.get("storm_drop")
-	return drop == null or drop.pallet == null or bool(drop.pallet.opened)
+	if drop == null or drop.pallet == null: return true
+	return bundle_taken
+
+## Once the stores pallet's open, the bundle lies across its open top.
+func _place_bundle() -> void:
+	if bundle_taken or (_bundle != null and is_instance_valid(_bundle)): return
+	var drop: Node = world.get("storm_drop")
+	if drop == null or drop.pallet == null or not bool(drop.pallet.opened): return
+	var pallet: Node3D = drop.pallet
+	var at := Transform3D(pallet.global_basis, pallet.global_transform * Vector3(0.0, pallet.SIZE.y - .06, .12))
+	_bundle = BUNDLE.new()
+	_bundle.setup(self, at)
+	_bundle.taken.connect(func() -> void: bundle_taken = true)
 
 # ---------- the ground ----------
 
@@ -161,6 +177,7 @@ func prompt_text() -> String:
 
 func _process(delta: float) -> void:
 	_clock += delta
+	if not bundle_taken and int(_clock * 2.0) != int((_clock - delta) * 2.0): _place_bundle()
 	var down := MHInput.held("use") and not world.get_tree().paused and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 	var press := down and not _was_down
 	_was_down = down
