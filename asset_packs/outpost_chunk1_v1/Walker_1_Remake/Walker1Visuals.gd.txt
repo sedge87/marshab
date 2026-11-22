@@ -1,0 +1,104 @@
+extends Node3D
+
+@export_range(0.0, 1.0, 0.001) var initial_deployment := 0.0
+
+@onready var _body: Node3D = $Body
+@onready var _socket: Node3D = $Body/PowerSocket
+@onready var _habitat: Node3D = $Body/HabitatModule
+@onready var _display: MeshInstance3D = $Body/DeckScreen
+@onready var _lamp: MeshInstance3D = $Body/Lamp/lamp_glow_lamp_amber
+@onready var _hatch: Node3D = $Body/HabitatModule/EntryWall/EntryHatch
+
+var _upper: Array[Node3D] = []
+var _lower: Array[Node3D] = []
+var _axle: Array[Node3D] = []
+var _p := 0.0
+var _display_material: StandardMaterial3D
+var _lamp_material: StandardMaterial3D
+var _docked: Node3D
+
+
+func _ready() -> void:
+	for i in range(1, 7):
+		_upper.append(find_child("UpperLeg_%d" % i, true, false) as Node3D)
+		_lower.append(find_child("LowerLeg_%d" % i, true, false) as Node3D)
+		_axle.append(find_child("AxleCarrier_%d" % i, true, false) as Node3D)
+	_display_material = StandardMaterial3D.new()
+	_display_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_display_material.texture_repeat = false
+	var lamp_source := _lamp.get_active_material(0) as StandardMaterial3D
+	_lamp_material = lamp_source.duplicate() as StandardMaterial3D
+	_lamp.material_override = _lamp_material
+	set_deployment(initial_deployment)
+
+
+## Drive with the project's own fold interaction or animation timeline.
+func set_deployment(progress: float) -> void:
+	_p = clampf(progress, 0.0, 1.0)
+	_body.position.y = -0.42 * _p
+	var reach := lerpf(1.55, 1.27, _p)
+	var rise := 0.414 - (1.39 + _body.position.y)
+	var l1 := 1.15
+	var l2 := 0.96
+	var angle := -acos(clampf((reach * reach + rise * rise - l1 * l1 - l2 * l2) / (2.0 * l1 * l2), -1.0, 1.0))
+	var shoulder := atan2(rise, reach) - atan2(l2 * sin(angle), l1 + l2 * cos(angle))
+	for i in range(_upper.size()):
+		_upper[i].rotation.z = shoulder
+		_lower[i].rotation.z = angle
+		_axle[i].rotation.z = -shoulder - angle
+
+	var roof := _habitat.get_node("Roof") as Node3D
+	roof.position.y = lerpf(2.649, 3.817, smoothstep(0.0, 0.38, _p))
+	for i in range(1, 5):
+		var post := _habitat.get_node("LiftPost_%d" % i) as Node3D
+		post.scale.y = (roof.position.y - 1.707) / (3.817 - 1.707)
+	_set_wall("RearWall", 2.330, 0.23, 0.53, -1.0, true)
+	_set_wall("EntryWall", 2.027, 0.39, 0.70, 1.0, true)
+	_set_wall("SideWall_R", 1.835, 0.56, 0.88, 1.0, false)
+	_set_wall("SideWall_L", 1.648, 0.70, 1.00, -1.0, false)
+	if _p < 0.999:
+		_hatch.rotation.y = 0.0
+
+
+func _set_wall(wall_name: String, packed_y: float, start: float, end: float, sign_dir: float, x_axis: bool) -> void:
+	var progress := clampf(inverse_lerp(start, end, _p), 0.0, 1.0)
+	var wall := _habitat.get_node(wall_name) as Node3D
+	wall.position.y = lerpf(packed_y, 1.609, smoothstep(0.0, 1.0, progress * 1.9))
+	var folded := sign_dir * PI / 2.0 * (1.0 - smoothstep(0.0, 1.0, progress))
+	if x_axis:
+		wall.rotation.x = folded
+	else:
+		wall.rotation.z = folded
+
+
+## Align the actual power case by its connector and carry it with the chassis.
+func mount_power_module(power: Node3D) -> bool:
+	if not is_instance_valid(power) or not power.is_inside_tree() or power == self or power.is_ancestor_of(self):
+		return false
+	if is_instance_valid(_docked) and _docked != power:
+		return false
+	var face := power.find_child("SocketFace", true, false) as Node3D
+	if face == null:
+		return false
+	var in_case := power.global_transform.affine_inverse() * face.global_transform
+	var target := _socket.global_transform * Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
+	if power.get_parent() != _body:
+		power.reparent(_body, true)
+	power.global_transform = target * in_case.affine_inverse()
+	_docked = power
+	return true
+
+
+func set_entry_open(opened: bool) -> void:
+	_hatch.rotation.y = 1.72 if opened and _p >= 0.999 else 0.0
+
+
+func set_deck_display(texture: Texture2D) -> void:
+	_display_material.albedo_texture = texture
+	_display.material_override = _display_material if texture != null else null
+
+
+func set_beacon_on(enabled: bool) -> void:
+	_lamp_material.emission_enabled = enabled
+	_lamp_material.emission = Color("#ffb566")
+	_lamp_material.emission_energy_multiplier = 1.35 if enabled else 0.0

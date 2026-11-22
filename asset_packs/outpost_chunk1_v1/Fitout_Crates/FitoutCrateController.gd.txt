@@ -1,0 +1,59 @@
+extends Node3D
+
+signal lid_state_changed(is_open: bool)
+
+@export var lid_path: NodePath = ^"Lid"
+@export var contents_path: NodePath = ^"Contents"
+@export_range(0.0, 2.0, 0.01) var travel_seconds := 0.34
+
+var _lid: Node3D
+var _contents: Node3D
+var _closed_x := 0.0
+var _open := false
+var _in_motion := false
+var _tween: Tween
+
+
+func _ready() -> void:
+	_lid = get_node_or_null(lid_path) as Node3D
+	_contents = get_node_or_null(contents_path) as Node3D
+	if _lid:
+		_closed_x = _lid.rotation.x
+
+
+func set_open(enabled: bool, immediate := false) -> void:
+	if _lid == null or (enabled == _open and not immediate):
+		return
+	if _tween and _tween.is_valid():
+		_tween.kill()
+	_open = enabled
+	var target := _closed_x - deg_to_rad(103.0) if enabled else _closed_x
+	if immediate or travel_seconds <= 0.0:
+		_lid.rotation.x = target
+		_finish_motion()
+		return
+	_in_motion = true
+	_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	_tween.tween_property(_lid, "rotation:x", target, travel_seconds)
+	_tween.tween_callback(_finish_motion)
+
+
+func toggle_lid() -> void:
+	set_open(not _open)
+
+
+func _finish_motion() -> void:
+	_in_motion = false
+	lid_state_changed.emit(_open)
+
+
+## Call after successfully awarding or spawning the corresponding game item.
+func remove_packed_item(item_name: StringName) -> bool:
+	if not _open or _in_motion or _contents == null:
+		return false
+	for item in _contents.get_children():
+		if item.name == item_name:
+			_contents.remove_child(item)
+			item.queue_free()
+			return true
+	return false

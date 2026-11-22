@@ -1,0 +1,15 @@
+extends Node3D
+
+@export_range(0.01, 0.2, 0.001) var drum_radius_m := 0.039
+
+@onready var _reel: Node3D = $Reel
+@onready var _clip: Node3D = $Clip
+@onready var _closed_angle: float = _reel.rotation.x
+
+
+## Drive the reel from the game's paid-out cable length and show the stowed clip
+## whenever the hitch is reeled in.
+func set_paid_out_length(metres: float) -> void:
+	var length := maxf(0.0, metres)
+	_reel.rotation.x = _closed_angle - length / drum_radius_m
+	_clip.visible = is_zero_approx(length)

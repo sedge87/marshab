@@ -284,7 +284,7 @@ func _kit_crates() -> void:
 	for i in left.size():
 		var spot: Dictionary = spots[(i * 2) % spots.size()]
 		var facing: Vector3 = spot.facing
-		var at: Vector3 = spot.at + facing * .45 + facing.cross(Vector3.UP) * (.9 if i >= spots.size() / 2 else 0.0)
+		var at: Vector3 = spot.at + facing * .45 + facing.cross(Vector3.UP) * (1.4 if i >= spots.size() / 2 else 0.0)   # the large case is 1.3 m long
 		at.y = floor_y
 		KIT_CRATE.new().setup(world, str(left[i]), at, facing)
 

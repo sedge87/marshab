@@ -1,0 +1,43 @@
+extends Node3D
+
+enum Status { ASLEEP, PLUGGED_IN, RUNNING }
+
+@export var lamp_path: NodePath = ^"StatusLamp"
+
+var _status: Status = Status.ASLEEP
+var _lamp_material: StandardMaterial3D
+var _off_color: Color
+
+
+func _ready() -> void:
+	var lens := get_node_or_null(lamp_path) as MeshInstance3D
+	if lens == null:
+		push_warning("Power module has no StatusLamp mesh at the assigned path.")
+		return
+	var base := lens.get_active_material(0) as StandardMaterial3D
+	_lamp_material = base.duplicate() as StandardMaterial3D if base else StandardMaterial3D.new()
+	_off_color = _lamp_material.albedo_color
+	lens.material_override = _lamp_material
+	_apply_status()
+
+
+func set_status(status: Status) -> void:
+	_status = status
+	if _lamp_material:
+		_apply_status()
+
+
+func _apply_status() -> void:
+	var color := _off_color
+	var intensity := 0.0
+	match _status:
+		Status.PLUGGED_IN:
+			color = Color("#ffb449")
+			intensity = 1.25
+		Status.RUNNING:
+			color = Color("#fff7e8")
+			intensity = 1.15
+	_lamp_material.albedo_color = color
+	_lamp_material.emission_enabled = intensity > 0.0
+	_lamp_material.emission = color
+	_lamp_material.emission_energy_multiplier = intensity

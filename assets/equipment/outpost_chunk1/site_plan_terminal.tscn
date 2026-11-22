@@ -1,0 +1,14 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/equipment_rig.gd" id="1_rig"]
+[ext_resource type="PackedScene" path="res://assets/equipment/outpost_chunk1/site_plan_terminal.glb" id="2_model"]
+[ext_resource type="Script" path="res://scripts/site_plan_terminal_screen.gd" id="3_screen"]
+
+[node name="SitePlanTerminal" type="Node3D"]
+script = ExtResource("1_rig")
+equipment_id = "site_plan_terminal"
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+
+[node name="ScreenGlow" type="Node3D" parent="."]
+script = ExtResource("3_screen")

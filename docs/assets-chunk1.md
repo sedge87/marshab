@@ -2,6 +2,8 @@
 
 *For the user to build with ChatGPT, 22 Nov 2026. The scenes are in `docs/opening-slice.md` §4a. I'm building the chunk now with stand-in blocks, so each model drops in by its node names when it arrives.*
 
+*Arrived 22 Nov (`asset_packs/outpost_chunk1_v1`): §1, §2, §3 and §4 are in the game (see `docs/opening-slice.md` §10a). §5 came back as a full remake at a different size and with its own fold-out cabin, so it waits on a decision. The pad, beacon and radar sled from "Coming next" are in the pack too.*
+
 ## What every package needs (same as the rover set, `asset_packs/outpost_field_assets_v1`)
 - **Files:**
   - `original/<Name>.glb`;

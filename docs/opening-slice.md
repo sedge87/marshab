@@ -436,7 +436,13 @@ Scenes 1–7 run from waking to Castle's quiet call. `tests/opening_slice_test.g
   - The core starts on the power module: sealed, cold, dim, heater warming. There's no socket or blanket.
   - Kit crates by the wall, `scripts/kit_crate.gd`: take a piece into your hands, and a ghost shows where it goes. R turns it, E sets it down, Q puts it back.
   - The Site Plan Terminal is a kit piece. Its screen opens the planner. In version 3, B no longer does.
-- **Stand-ins** until the assets arrive: power module, hitch bracket, canopy, deck screen (Label3D), kit crates, terminal (the comms rack model), and the hammer and scoop in hand.
+- **Models in (22 Nov, `asset_packs/outpost_chunk1_v1`):**
+  - the power module (lamp off asleep, steady amber plugged in);
+  - GAR-Y's field upgrade (worn finish, `RearMount`, `FrontMount`, `MastMount`) and the tow hitch on `RearMount`;
+  - the Site Plan Terminal (its screen a plain glow; the plan opens full-screen);
+  - the fit-out crates in three sizes: the work light in the small case, the chair and the rack in the medium, the terminal, bunk and table in the large. Taking a piece out opens the lid; Q closes it again.
+- **Still stand-ins:** the canopy, the deck screen (Label3D), the hammer and scoop in hand, and Walker 1 itself. The Walker 1 remake in the pack is a different machine (about 3.4 × 5.4 m, unfolding its own small cabin) from the game's 15 m walker that carries and lowers the core, so it isn't swapped in yet.
+- **In the pack for chunk 2, not in the game yet:** the landing pad and beacon, and the radar sled.
 - **Not done:**
   - "Sleep once tiredness wins" on night 1 (the seat only).
   - GAR-Y circling the folded core.

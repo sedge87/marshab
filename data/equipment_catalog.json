@@ -1978,10 +1978,10 @@
       "group": "communications",
       "status": "future",
       "icon": "map",
-      "height": 1.5,
+      "height": 1.12,
       "description": "The base's planning screen: rooms, corridors, airlocks and the pad are planned here, and the crawler prints them.",
       "role": "Plan the structure",
-      "asset_scene": "res://assets/equipment/mars_mission_operations_repack/communications_station.tscn",
+      "asset_scene": "res://assets/equipment/outpost_chunk1/site_plan_terminal.tscn",
       "cargo_cost": 0,
       "valid_zones": [
         "general",
@@ -1998,9 +1998,9 @@
         "power_draw": 0.2
       },
       "size_m": [
-        1.37,
-        2.065,
-        0.989
+        0.6,
+        1.12,
+        0.52
       ],
       "system_note": "Every core's fit-out kit has one. Structure is planned only here; furniture and kit go down by hand.",
       "system_links": [

@@ -11,10 +11,13 @@ extends StaticBody3D
 ## heavy), "sled" (behind GAR-Y, once its hitch is fitted) or "plugged"
 ## (into Walker 1's frame socket; from then on it's the walker's).
 ##
-## Stand-in look until the model arrives (docs/assets-chunk1.md §1): a
-## ruggedised box with a keyed socket face, grab bars and a status lamp.
+## The model (asset_packs/outpost_chunk1_v1/Power_Module): a ruggedised box
+## on runners, its keyed plug (SocketFace) at one end, a tow eye at the
+## other, grab bars and a StatusLamp (off asleep, steady amber plugged in).
+## Turned so the plug faces +X, the side that meets Walker 1's socket.
 
 const MHPalette := preload("res://scripts/mh_palette.gd")
+const MODEL := "res://assets/models/chunk1/power_module.glb"
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const HELD_AT := Vector3(.25, -.55, -.85)
 const SIZE := Vector3(1.0, .5, .6)
@@ -62,6 +65,22 @@ func kg() -> float:
 	return KG
 
 func _build() -> Node3D:
+	var scene: PackedScene = load(MODEL) if ResourceLoader.exists(MODEL) else null
+	if scene == null: return _build_stand_in()
+	var model := scene.instantiate() as Node3D
+	model.name = "Box"
+	model.rotation.y = -PI * .5   # its plug end (-Z) to +X
+	MHPalette.apply(model)
+	_lamp = model.find_child("StatusLamp", true, false) as MeshInstance3D
+	_lamp_mat = StandardMaterial3D.new()
+	_lamp_mat.albedo_color = Color(.12, .11, .1)
+	_lamp_mat.emission_enabled = true
+	_lamp_mat.emission = Color.BLACK
+	if _lamp != null: _lamp.material_override = _lamp_mat
+	return model
+
+## The old block-out, if the model's missing.
+func _build_stand_in() -> Node3D:
 	var root := Node3D.new()
 	root.name = "Box"
 	var body := _block(SIZE, "white_painted")
@@ -184,7 +203,9 @@ func plug_in() -> void:
 	rotation = Vector3.ZERO
 	where = "plugged"
 	reachable(false)
-	_lamp_mat.emission = Color(1.0, .62, .2)
+	_lamp_mat.albedo_color = Color("#ffb449")
+	_lamp_mat.emission = Color("#ffb449")
+	_lamp_mat.emission_energy_multiplier = 1.25
 	MHAudio.sfx("suit_clamp", -2.0)
 	walker.power_in()
 

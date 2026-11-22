@@ -1,0 +1,40 @@
+extends Node3D
+
+@export var screen_path: NodePath = ^"Screen"
+
+var _screen: MeshInstance3D
+var _glass_override: Material
+var _live_material: StandardMaterial3D
+var _texture: Texture2D
+var _powered := false
+
+
+func _ready() -> void:
+	_screen = get_node_or_null(screen_path) as MeshInstance3D
+	if _screen == null:
+		push_warning("Site plan terminal is missing its Screen mesh.")
+		return
+	_glass_override = _screen.material_override
+	_live_material = StandardMaterial3D.new()
+	_live_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_live_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	_live_material.texture_repeat = false
+	_live_material.cull_mode = BaseMaterial3D.CULL_BACK
+	_apply_screen()
+
+
+func set_screen_texture(texture: Texture2D) -> void:
+	_texture = texture
+	_apply_screen()
+
+
+func set_powered(enabled: bool) -> void:
+	_powered = enabled
+	_apply_screen()
+
+
+func _apply_screen() -> void:
+	if _screen == null or _live_material == null:
+		return
+	_live_material.albedo_texture = _texture
+	_screen.material_override = _live_material if _powered and _texture != null else _glass_override

@@ -1,0 +1,56 @@
+extends Node3D
+
+enum Phase { AS_FOUND, PAD_BUILT, RESEATED, POWERED, COMMISSIONED }
+
+@export var initial_phase: Phase = Phase.COMMISSIONED
+
+var _phase: Phase
+var _phase_was_set := false
+var _ready_to_display := false
+var _beacon_optic: StandardMaterial3D
+var _pad_optic: StandardMaterial3D
+
+@onready var _pad: Node3D = $LandingPad
+@onready var _mast: Node3D = $BeaconStation/BeaconTilt
+@onready var _broken: Node3D = $BeaconStation/BrokenLead
+@onready var _tail: Node3D = $BeaconStation/BeaconTilt/BrokenMastTail
+@onready var _repair: Node3D = $BeaconStation/RepairedLead
+
+
+func _ready() -> void:
+	var lamp := _mast.get_node("BeaconLens/BeaconLens_lamp_amber") as MeshInstance3D
+	var guides := _pad.get_node("PadGuideLenses/PadGuideLenses_lamp_white") as MeshInstance3D
+	_beacon_optic = _isolated_lens(lamp)
+	_pad_optic = _isolated_lens(guides)
+	_broken.scale = Vector3.ONE
+	_tail.scale = Vector3.ONE
+	_ready_to_display = true
+	set_phase(_phase if _phase_was_set else initial_phase)
+
+
+func set_phase(phase: Phase) -> void:
+	_phase = phase
+	_phase_was_set = true
+	if not _ready_to_display:
+		return
+	_pad.visible = phase >= Phase.PAD_BUILT
+	var repaired := phase >= Phase.RESEATED
+	_mast.rotation.x = 0.0 if repaired else deg_to_rad(-17.0)
+	_broken.visible = not repaired
+	_tail.visible = not repaired
+	_repair.visible = repaired
+	_set_lens(_beacon_optic, Color("#ffba58"), 1.65 if phase >= Phase.POWERED else 0.0)
+	_set_lens(_pad_optic, Color("#fff2d2"), 1.05 if phase == Phase.COMMISSIONED else 0.0)
+
+
+func _isolated_lens(lens: MeshInstance3D) -> StandardMaterial3D:
+	var source := lens.get_active_material(0) as StandardMaterial3D
+	var material := source.duplicate() as StandardMaterial3D
+	lens.material_override = material
+	return material
+
+
+func _set_lens(material: StandardMaterial3D, tint: Color, power: float) -> void:
+	material.emission_enabled = power > 0.0
+	material.emission = tint
+	material.emission_energy_multiplier = power

@@ -4,10 +4,12 @@ extends Node
 ## the first GAR-Y fitting, found in the tools pallet. With it in your kit, E
 ## on GAR-Y fits it to its rear mount, and from then on it shows there and
 ## GAR-Y can tow (scripts/lifepod.gd sled_takes reads prints["hitch"]).
-## A stand-in bracket until the model arrives (docs/assets-chunk1.md §2);
-## it looks for a "RearMount" node on GAR-Y's model first.
+## The model (asset_packs/outpost_chunk1_v1/GAR_Y_Tow_Hitch) sits on GAR-Y's
+## "RearMount" (its field-upgrade model) at an identity transform: mount
+## plate, reel, clip and cable exit (CableOut). A block if either is missing.
 
 const MHPalette := preload("res://scripts/mh_palette.gd")
+const MODEL := "res://assets/models/chunk1/gar_y_tow_hitch.glb"
 const REAR_FALLBACK := Vector3(0, .32, .62)   # behind GAR-Y (its front is -Z)
 
 var world: Node
@@ -52,6 +54,13 @@ func _show_on_gary() -> void:
 	var gary: Node3D = world.get("scout_rover")
 	if gary == null or not is_instance_valid(gary) or (_shown != null and is_instance_valid(_shown)): return
 	var mount: Node3D = gary.find_child("RearMount", true, false) as Node3D
+	var scene: PackedScene = load(MODEL) if ResourceLoader.exists(MODEL) else null
+	if mount != null and scene != null:
+		_shown = scene.instantiate() as Node3D
+		_shown.name = "HitchBracket"
+		MHPalette.apply(_shown)
+		mount.add_child(_shown)
+		return
 	_shown = MeshInstance3D.new()
 	_shown.name = "HitchBracket"
 	var box := BoxMesh.new()

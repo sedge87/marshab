@@ -1,0 +1,22 @@
+extends Node3D
+
+@onready var _lens: MeshInstance3D = $StatusLens/StatusLens_lamp_amber
+var _material: StandardMaterial3D
+var _scanning := false
+
+
+func _ready() -> void:
+	var base := _lens.get_active_material(0) as StandardMaterial3D
+	_material = base.duplicate() as StandardMaterial3D
+	_lens.material_override = _material
+	set_scanning(_scanning)
+
+
+## Switch the visible indicator when the survey gameplay has started sampling.
+func set_scanning(enabled: bool) -> void:
+	_scanning = enabled
+	if _material == null:
+		return
+	_material.emission_enabled = enabled
+	_material.emission = Color("#ffbe61")
+	_material.emission_energy_multiplier = 1.12 if enabled else 0.0
