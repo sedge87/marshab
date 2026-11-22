@@ -34,6 +34,18 @@ static func walker(builder: Node) -> Node:
 		if str(node.get("base_id")) == base: return node
 	return null
 
+## A version 3 game (the opening slice, docs/opening-slice.md).
+static func slice(builder: Node) -> bool:
+	var world: Node = builder.get("world") if builder != null else null
+	return world != null and int(world.get("opening_version")) >= 3
+
+## The kit's pieces, by game: version 3 adds the Site plan terminal.
+static func kit(builder: Node) -> Dictionary:
+	var out := KIT.duplicate()
+	if slice(builder): out[TERMINAL] = 1
+	return out
+const TERMINAL := "site_plan_terminal"
+
 ## Any walker in the world: the core comes only on one.
 static func active(builder: Node) -> bool:
 	return MHGame.game_mode != "creative" and builder != null and builder.is_inside_tree() and builder.get_tree().get_first_node_in_group("walker") != null
@@ -51,7 +63,10 @@ static func stage(builder: Node) -> String:
 	return ""
 
 ## Why B can't open the Site plan now ("" when it can).
-static func b_reason(builder: Node) -> String:
+static func b_reason(builder: Node, at_terminal := false) -> String:
+	# The opening slice's rule: rooms are planned at a Site plan terminal, and
+	# furniture goes down by hand. B doesn't open the plan.
+	if not at_terminal and slice(builder): return "Rooms are planned at a Site plan terminal"
 	match stage(builder):
 		"waiting": return "Nothing to build with yet" if str(walker(builder).get("state")) != "travelling" else "The walker is still on its way"
 		"delivering":
@@ -60,6 +75,7 @@ static func b_reason(builder: Node) -> String:
 	return ""
 
 static func b_detail(builder: Node) -> String:
+	if slice(builder) and stage(builder) in ["", "set_down"]: return "Furniture and kit go down by hand: take it out of its crate, R turns it, E sets it down."
 	match stage(builder):
 		"waiting": return "The base's first room is still out there on its walker."
 		"delivering":
@@ -167,11 +183,12 @@ static func plan_closed(builder: Node) -> void:
 static func kit_left(builder: Node) -> Array:
 	if not active(builder) or str(walker(builder).get("state")) != "done": return []
 	var out: Array = []
-	for id in KIT:
+	for id in kit(builder):
 		if MHChapterOne.available(str(id), builder) > 0: out.append(str(id))
 	return out
 
 ## Lowered: the kit's pieces join the stock (placed for free).
-static func give_kit() -> void:
-	for id in KIT:
-		MHChapterOne.stock[id] = int(MHChapterOne.stock.get(id, 0)) + int(KIT[id])
+static func give_kit(builder: Node = null) -> void:
+	var pieces: Dictionary = kit(builder) if builder != null else KIT
+	for id in pieces:
+		MHChapterOne.stock[id] = int(MHChapterOne.stock.get(id, 0)) + int(pieces[id])

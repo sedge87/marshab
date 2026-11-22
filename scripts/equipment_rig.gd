@@ -192,6 +192,10 @@ func _run(key: String, _actor: Node) -> bool:
 			"monitor":
 				get_tree().call_group("habitat_world", "open_monitor")
 				return true
+			"site_plan":
+				# The opening slice's building rule: structure is planned here.
+				get_tree().call_group("habitat_world", "open_site_plan")
+				return true
 			"terminal":
 				# The lander's console is only a radio and a message log: no Mission Control screen.
 				get_tree().call_group("habitat_world", "open_lander_comms" if equipment_id == "mission_planning_console" else "open_terminal")

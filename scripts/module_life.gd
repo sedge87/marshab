@@ -60,7 +60,15 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 		core.temp_c = 12.0
 		# Only Walker 1's comes down cold, in the opening; a later walker's core
 		# arrives commissioned (its kit's been through this once).
-		if int(world.get("opening_version")) >= 2 and base_id == "w1":
+		if int(world.get("opening_version")) >= 3 and base_id == "w1":
+			# The opening slice (docs/opening-slice.md §4a Scene 7): the power
+			# module rode home inside the walker and runs it from the fold.
+			# Sealed and breathing, but bare, cold and dim: the vents warm it.
+			core.temp_c = 3.0
+			core.heater_mode = "warm"
+			core.lights_on = false
+			core.add_power_pack(MHResources.revamp("power_pack_kw", 1.5), MHResources.revamp("power_pack_kwh", 10.0), .7)
+		elif int(world.get("opening_version")) >= 2 and base_id == "w1":
 			commissioned = false
 			core.vented = true
 			core.temp_c = COLD_START_C
@@ -69,7 +77,7 @@ func setup(target_world: Node, state: Dictionary = {}) -> void:
 	core.load_state(state)
 	commissioned = bool(state.get("commissioned", commissioned))
 	leak_found = bool(state.get("leak_found", false))
-	_build_socket.call_deferred()
+	if int(world.get("opening_version")) < 3: _build_socket.call_deferred()   # v3: no blanket, no outside socket
 	if not commissioned and leak_found: _spawn_leak.call_deferred()
 	add_to_group("hull_events")
 	for l in state.get("hull_leaks", []):

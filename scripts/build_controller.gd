@@ -754,7 +754,18 @@ func _pointer_over_ui() -> bool:
 	var hovered:=get_viewport().gui_get_hovered_control()
 	return hovered!=null and hovered.mouse_filter!=Control.MOUSE_FILTER_IGNORE
 
+## Opened at a Site plan terminal (version 3: the only way in).
+var from_terminal := false
+func open_from_terminal() -> void:
+	if build_mode or display_only: return
+	if not BUILD_RULES.b_reason(self, true).is_empty():
+		_flash_notice("info", BUILD_RULES.b_reason(self, true), BUILD_RULES.b_detail(self))
+		return
+	from_terminal = true
+	_toggle()
+
 func _toggle() -> void:
+	if build_mode: from_terminal = false
 	_hide_ladder_ghost()
 	_hide_free_ghost()
 	build_mode=!build_mode; ui.visible=build_mode; grid.visible=build_mode; camera.current=build_mode

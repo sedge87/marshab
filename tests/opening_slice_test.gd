@@ -22,6 +22,26 @@ func _ground(p: Vector3) -> Vector3:
 	var terrain := preload("res://scripts/site_terrain.gd")
 	return Vector3(p.x, terrain.height(p.x, p.z) + 1.0, p.z)
 
+## A floor spot in the core where `id` is allowed, scanning a 0.5 m grid.
+func _free_spot(builder: Node, id: String, cells: Array) -> Dictionary:
+	for cell in cells:
+		for dx in [-1.0, -.5, 0.0, .5, 1.0]:
+			for dz in [-1.0, -.5, 0.0, .5, 1.0]:
+				for rot in [0.0, PI * .5]:
+					var at := Vector3(cell.x * builder.CELL + dx, builder.habitat_base_y, cell.y * builder.CELL + dz)
+					if builder.free_interior_invalid_reason(id, at, Vector3.UP, rot).is_empty(): return {"at": at, "rot": rot}
+	return {}
+
+## A 2x2 block of cells against the core that the plan takes.
+func _beside(builder: Node, core: Array) -> Array:
+	for c in core:
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			for shift in [Vector2i.ZERO, Vector2i(-1, 0), Vector2i(0, -1), Vector2i(-1, -1)]:
+				var start: Vector2i = c + d * (1 if d.x + d.y > 0 else 2) + shift
+				var cells: Array = builder._cells(start, start + Vector2i(1, 1))
+				if not cells.is_empty() and builder._invalid_reason(cells).is_empty(): return cells
+	return []
+
 func _initialize() -> void:
 	MHGame.site_id = "region"; MHGame.set_mode("survival"); MHGame.pending_save_state = {}; MHGame.landing_target = Vector2.INF
 	MHGame.tutorial_mode = MHGame.default_tutorial_mode()
@@ -203,8 +223,58 @@ func _initialize() -> void:
 						t += 2.0
 					check(str(walker.state) == "done" and days.done("core_down"), "the core didn't come down (%s)" % str(walker.state))
 					check(not bool(walker.riding), "still on the deck after the fold")
+					# Scene 7: inside the core. It runs on the power module, no
+					# cartridge or blanket; the kit's in crates by the wall.
+					var life: Node = world.module_life
+					check(life != null and bool(life.commissioned) and life.breathable() and life.has_blanket(), "the core isn't running on the power module (commissioned %s)" % str(life.commissioned if life != null else "no core"))
+					var builder: Node = world.builder
+					var rules := preload("res://scripts/build_rules.gd")
+					check(rules.b_reason(builder).contains("terminal"), "B still opens the plan: '%s'" % rules.b_reason(builder))
+					var inside: Vector3 = life._centre()
+					player.global_position = Vector3(inside.x, builder.habitat_base_y + 1.0, inside.z)
+					await wait(3.0)
+					var crates: Array = root.get_tree().get_nodes_in_group("kit_crate")
+					var kit: Array = rules.kit_left(builder)
+					check(kit.has("site_plan_terminal"), "the kit has no Site plan terminal: %s" % str(kit))
+					check(crates.size() == kit.size(), "%d crates for %d kit pieces" % [crates.size(), kit.size()])
+					var carry: Node = root.get_tree().get_first_node_in_group("carry")
+					var core_cells: Array = rules.module_zone(builder).get("cells", [])
+					for crate in crates:
+						var piece := str(crate.id)
+						check(crate.interact(), "the %s crate didn't give its piece" % piece)
+						check(str(carry.carrying.get("id", "")) == piece, "not holding the %s" % piece)
+						var spot := _free_spot(builder, piece, core_cells)
+						check(not spot.is_empty(), "no floor spot for the %s" % piece)
+						if not spot.is_empty(): check(carry._place(spot.at, spot.rot, Vector3.UP), "couldn't set the %s down" % piece)
+						await wait(1.0)
+					await wait(2.0)
+					check(root.get_tree().get_nodes_in_group("kit_crate").is_empty(), "crates left after placing the kit")
+					check(days.done("kit_placed"), "placing the kit didn't count (left %s)" % str(rules.kit_left(builder)))
+					# The first Quarters, planned at the terminal.
+					world.open_site_plan()
+					await wait(1.0)
+					check(bool(builder.build_mode) and bool(builder.from_terminal), "the terminal didn't open the plan")
+					builder.kind = "living"
+					var quarters := _beside(builder, core_cells)
+					check(not quarters.is_empty(), "no spot for the Quarters beside the core")
+					if not quarters.is_empty():
+						var zone := {"kind": "living", "cells": quarters, "door_direction": builder.airlock_direction, "cost": builder._zone_cost(quarters)}
+						rules.placed(builder, zone)
+						check(bool(zone.get("kit", false)), "the first Quarters wasn't free")
+						builder.zones.append(zone)
+						builder._history.append({"type": "zone", "zone": zone})
+						builder._rebuild()
+					builder._toggle()
+					t = 0.0
+					while t < 300.0 and not days.done("helmet_off"):
+						await wait(3.0)
+						t += 3.0
+					check(days.done("quarters"), "the Quarters never stood")
+					check(days.done("helmet_off"), "helmet off in the Quarters didn't count")
+					await wait(3.0)
+					check(int(days.chapter) == 3 and not days.guided(), "the opening didn't end after the first room (chapter %d)" % int(days.chapter))
 	Engine.time_scale = 1.0
-	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, and Set down here lays the outline and folds the core.")
+	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B sends you to the terminal, the kit comes out of its crates by hand, and the terminal plans the free Quarters.")
 	else:
 		for f in failures: print("FAIL: ", f)
 	quit(0 if failures.is_empty() else 1)

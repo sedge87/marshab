@@ -25,6 +25,7 @@ var _hold_target := ""
 ## After putting something down with E, E has to come up again before it
 ## can pick anything up (or the same press grabbed it straight back).
 var _wait_for_release := false
+var _turn := 0.0               # R turns what you're holding (15° a press; Shift+R back)
 
 func setup(target_world: Node) -> void:
 	world = target_world
@@ -102,6 +103,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if carrying.is_empty() or _busy_elsewhere(): return
 	var key := event as InputEventKey
 	var click := event as InputEventMouseButton
+	if MHInput.pressed(event, "rotate"):
+		get_viewport().set_input_as_handled()
+		_turn += -PI / 12.0 if key != null and key.shift_pressed else PI / 12.0
+		MHAudio.sfx("rotate", -6.0)
+		return
 	if (key != null and key.pressed and not key.echo and key.keycode == KEY_Q) or (event is InputEventJoypadButton and MHInput.pressed(event, "cancel")):
 		get_viewport().set_input_as_handled()
 		put_back()
@@ -122,16 +128,34 @@ func pick_up(placement_id: String) -> bool:
 	_hold = 0.0
 	_e_was_down = true   # this press doesn't also put it down
 	var label := str(EquipmentCatalog.get_entry(str(record.id)).get("label", record.id))
-	_ghost = builder().free_interior_visual(str(record.id), record.get("position", Vector3.ZERO) as Vector3, float(record.get("rotation_y", 0.0)))
+	_turn = 0.0
+	_make_ghost(str(record.id), record.get("position", Vector3.ZERO) as Vector3, float(record.get("rotation_y", 0.0)))
+	MHAudio.sfx("ui_click", -4.0)
+	get_tree().call_group("explore_hud", "show_equipment_note", "Carrying: %s" % label, "Click or press E to put it down where the ghost is green. R turns it. Q puts it back where it was.")
+	return true
+
+## A new piece out of a crate or the base's store (the opening slice's
+## building rule: furniture goes down by hand). Q puts it back in its crate.
+func carry_new(id: String) -> bool:
+	if not carrying.is_empty() or EquipmentCatalog.get_entry(id).is_empty() or _busy_elsewhere(): return false
+	carrying = {"id": id, "from_store": true, "state": {}}
+	_turn = 0.0
+	_hold = 0.0
+	_e_was_down = true
+	_make_ghost(id, (world.player as Node3D).global_position, 0.0)
+	MHAudio.sfx("ui_click", -4.0)
+	var label := str(EquipmentCatalog.get_entry(id).get("label", id))
+	get_tree().call_group("explore_hud", "show_equipment_note", "Carrying: %s" % label, "Look where it goes. R turns it; E sets it down where the ghost is green. Q puts it back.")
+	return true
+
+func _make_ghost(id: String, at: Vector3, yaw: float) -> void:
+	_ghost = builder().free_interior_visual(id, at, yaw)
 	for child in _ghost.find_children("*", "", true, false):
 		if child.get_script() != null: child.set_script(null)
 	for body in _ghost.find_children("*", "StaticBody3D", true, false): (body as StaticBody3D).collision_layer = 0
 	for shape in _ghost.find_children("*", "CollisionShape3D", true, false): (shape as CollisionShape3D).disabled = true
 	for light in _ghost.find_children("*", "Light3D", true, false): (light as Light3D).visible = false
 	world.add_child(_ghost)
-	MHAudio.sfx("ui_click", -4.0)
-	get_tree().call_group("explore_hud", "show_equipment_note", "Carrying: %s" % label, "Click or press E to put it down where the ghost is green. Q puts it back where it was.")
-	return true
 
 func _update_ghost() -> void:
 	var camera := _camera()
@@ -162,7 +186,7 @@ func _update_ghost() -> void:
 
 ## Facing the player, like placing it in build mode.
 func _yaw() -> float:
-	return float(world.player.rotation.y) + PI + float(EquipmentCatalog.get_entry(str(carrying.id)).get("model_rotation_y", 0.0))
+	return float(world.player.rotation.y) + PI + _turn + float(EquipmentCatalog.get_entry(str(carrying.id)).get("model_rotation_y", 0.0))
 
 ## Aiming at a table, shelf, bunk or crate: the spot on its top under the
 ## crosshair (as interior build does), or Vector3.INF.
@@ -197,6 +221,13 @@ func put_down() -> bool:
 ## Back where it came from.
 func put_back() -> bool:
 	if carrying.is_empty(): return false
+	if bool(carrying.get("from_store", false)):
+		# Out of a crate: back in it, nothing placed.
+		carrying = {}
+		if _ghost != null: _ghost.queue_free()
+		_ghost = null
+		get_tree().call_group("explore_hud", "hide_equipment_note", "Carrying")
+		return true
 	var placed := _place(carrying.get("position", Vector3.ZERO) as Vector3, float(carrying.get("rotation_y", 0.0)), Vector3.UP, true)
 	return placed
 

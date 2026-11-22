@@ -3065,6 +3065,15 @@
       }
     ]
   },
+  "site_plan_terminal": {
+    "actions": [
+      {
+        "key": "primary",
+        "type": "site_plan",
+        "label": "Open the site plan"
+      }
+    ]
+  },
   "mars_survey_board": {
     "actions": [
       {

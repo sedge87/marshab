@@ -1188,7 +1188,7 @@ func _finish_set_down(animate := true) -> void:
 	var refolded := kit_given
 	if not kit_given:
 		kit_given = true
-		BUILD_RULES.give_kit()
+		BUILD_RULES.give_kit(world.builder)
 	if world.has_method("start_core"): world.start_core(base_id)
 	elif world.has_method("start_module_life"): world.start_module_life()
 	if refolded:
@@ -1198,6 +1198,10 @@ func _finish_set_down(animate := true) -> void:
 	if not MHChapterOne.known.has("ice_drill"): MHChapterOne.known["ice_drill"] = "module"
 	MHChapterOne.learn_after("module_down")
 	var notes: Node = world.get("notes")
+	if _v3():
+		# Scene 7: nothing to plug in; the power module's already running it.
+		if notes != null: notes.answer("walker_home")
+		return
 	if notes != null:
 		notes.answer("walker_home")
 		notes.think("module_plans")

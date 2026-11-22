@@ -1198,6 +1198,10 @@ func show_chapter_messages(messages: Array) -> void:
 ## The comms terminal (the Communications Station, or the lander's Mission
 ## Planning Console): Mission Control's station screen, with the Monitor,
 ## Cameras, Crew and Dossier (docs/pda.md §6).
+## A Site plan terminal (docs/opening-slice.md, building rule): the planner.
+func open_site_plan() -> void:
+	if builder != null: builder.open_from_terminal()
+
 func open_terminal() -> void:
 	_open_mission_control()
 

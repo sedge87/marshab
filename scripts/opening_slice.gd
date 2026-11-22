@@ -244,6 +244,7 @@ func _process(delta: float) -> void:
 		break
 	_bedtime()
 	_gary_to_the_steps()
+	_kit_crates()
 	if done("helmet_off"): chapter = STORY_DAYS + 1
 	elif done("slept"): chapter = 2
 
@@ -265,6 +266,25 @@ func _in_cabin() -> bool:
 func _helmet_on() -> bool:
 	var suit: Node = world.get("suit")
 	return suit != null and bool(suit.helmet)
+
+## Scene 7: the fit-out kit, in crates by the core's wall, once it's down.
+const KIT_CRATE := preload("res://scripts/kit_crate.gd")
+func _kit_crates() -> void:
+	if not done("core_down") or not get_tree().get_nodes_in_group("kit_crate").is_empty(): return
+	var builder: Node = world.get("builder")
+	var life: Node = world.get("module_life")
+	if builder == null or life == null: return
+	var left: Array = BUILD_RULES.kit_left(builder)
+	if left.is_empty(): return
+	var spots: Array = life.wall_spots()
+	if spots.is_empty(): return
+	var floor_y: float = life.call("_floor")
+	for i in left.size():
+		var spot: Dictionary = spots[(i * 2) % spots.size()]
+		var facing: Vector3 = spot.facing
+		var at: Vector3 = spot.at + facing * .45 + facing.cross(Vector3.UP) * (.9 if i >= spots.size() / 2 else 0.0)
+		at.y = floor_y
+		KIT_CRATE.new().setup(world, str(left[i]), at, facing)
 
 ## Scene 5: once Walker 1's home and you're in, GAR-Y parks by the steps.
 var _gary_parked := false
