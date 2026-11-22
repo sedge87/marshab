@@ -200,6 +200,56 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - **If the call runs long (over about 2 minutes), part of it moves to the walk home.** Tamsin's sled plan goes first, since she has just read the profiles.
 - **Ends with** the Print Shop pallet pinned on the slate, ready for chunk 3.
 
+### Chunk 3: Act 3, the Print Shop (sol 3) · scope agreed 22 Nov
+*Chunk 3 is Act 3 only: from pallet 6 to the radar sled fitted on GAR-Y and the bench pinned. The channel, dust, the logger and the beacon test (Act 4) are chunk 4.*
+
+### Scene 13: the dawn tow · agreed 22 Nov
+- **Sol 3, the morning's first job (A).** You wake, and pallet 6 is already pinned. Walk out to it (75 m from the pad, on the side away from the pit), open it, and GAR-Y tows the crate home on its hitch (the existing Print Shop crate tow).
+- It's a calm walk: no problem to solve on the way.
+
+### Scene 14: the install, by hand · agreed 22 Nov
+- **Like the fit-out (A).** Unpack the crate by the core:
+  - place the printer inside the core with the preview, R to turn it;
+  - carry the intake outside and set it down; a cable plugs it in.
+- This follows the building rule: furnishings and outdoor kit go by hand, structure goes at the terminal.
+
+### Scene 15: the first print, the connector · agreed 22 Nov
+- **Print it, carry it (A).** A quick print (a few minutes) from the crate's feedstock.
+- It goes into your field kit and waits for the candidate bench (Act 4), where you fit it and power the beacon. Nobody makes a wasted trip to the failed pad.
+
+### Scene 16: the radar sled, and learning the materials · agreed 22 Nov
+- **Tamsin's plan becomes a real plan** (a story plan relayed by Castle).
+- **It needs feedstock and salvage.** The skids and antenna box print from feedstock; the antenna's electronics need **salvage**, Earth parts stripped from the empty pallets and storm debris on the plain. **Metal waits for the Workshop** (the smelter), which gives that room a clear reason to exist later.
+- **The printer screen shows the shortfall:** stock against need, the rate a sol, and the time to the sled at that rate.
+- **Tamsin teaches it (A), and you learn by doing.** She rings as the engineer:
+  - the intake sifts dirt; loose, fine ground fills it faster;
+  - a second intake adds to the rate;
+  - strip the pallets you've emptied for parts.
+  You move or add an intake and watch the rate climb, then walk the pallets for salvage.
+- *Why (the user, 22 Nov):* the player needs to understand feedstock, intakes and parts, so they know how to grow the base later.
+- The sled finishes by late afternoon once the materials are in.
+
+### Scene 17: the loadout at the suit rack · agreed 22 Nov
+- **One spot for you and GAR-Y (C + A).** You don't call GAR-Y over; you change its kit when you change your own.
+- **The suit rack's loadout screen has two halves:**
+  - **You:** the suit add-ons and the field kit (e.g. extra stakes against more air). This brings in the carrying ideas from the systems brief §4a.
+  - **GAR-Y:** the mast (the radar head), the rear hitch (the sled or the cargo sled) and the front tool bar.
+- **GAR-Y waits by the airlock** (it parks there already). Its kit is fitted as you step out, with a short servo clunk as you come through the lock.
+- The model shows what's fitted, and hold-G gains *Tow sled*.
+
+### Scene 18: the sol 3 evening call · agreed 22 Nov
+- **With the sled fitted (A),** the evening call brings the leads together:
+  - Joseph's criteria (flat, firm, a clear approach, within reach of the hab);
+  - Devan's wind on the approach;
+  - the first map read.
+- They point to the bench across the Dry channel, and it gets pinned.
+- The player can say what changed: "I can make parts, and GAR-Y can see under the ground."
+
+**Chunk 3 to check before building:**
+- **Sol 3's daylight is tight:** about 20 minutes for the tow, the install, the connector, the salvage walk and the sled. The sled's print time and the materials needed are set to fit, and tuned in playtest.
+- **Models:** the radar sled is already in the chunk 1 pack. Check whether the printer needs a wall-mount version (`mars_fabrication_v1/regolith_printer.glb`), and whether the intake, GAR-Y's radar head and the suit rack's loadout screen need new models.
+- **Code:** reuse the Print Shop crate tow, `fabricator.gd`, `chapter_one.gd` (jobs, feedstock, intake rate) and `materials.gd` (salvage from pallets and debris). Printed furniture still goes through the old interior build (§10a).
+
 ### Act 1: foothold (sols 1–2; decided 22 Nov: two sols, the clock unchanged)
 *The clock stays as it is (a 30-minute sol, about 20 minutes of daylight after landing).*
 - **Sol 1:** the assignment, GAR-Y, the pallets, then finding and fixing Walker 1. At sunset you're back in the scout lander for the first night, the lifepod moment, with the walker's lamp blinking out on the plain.
