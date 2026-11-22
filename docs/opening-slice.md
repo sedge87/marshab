@@ -200,11 +200,19 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - **If the call runs long (over about 2 minutes), part of it moves to the walk home.** Tamsin's sled plan goes first, since she has just read the profiles.
 - **Ends with** the Print Shop pallet pinned on the slate, ready for chunk 3.
 
-### Chunk 3: Act 3, the Print Shop (sol 3) · scope agreed 22 Nov
+### Chunk 3: Act 3, the Print Shop, in the free stretch · scope agreed 22 Nov, reshaped the same evening
 *Chunk 3 is Act 3 only: from pallet 6 to the radar sled fitted on GAR-Y and the bench pinned. The channel, dust, the logger and the beacon test (Act 4) are chunk 4.*
 
-### Scene 13: the dawn tow · agreed 22 Nov
-- **Sol 3, the morning's first job (A).** You wake, and pallet 6 is already pinned. Walk out to it (75 m from the pad, on the side away from the pit), open it, and GAR-Y tows the crate home on its hitch (the existing Print Shop crate tow).
+**The free stretch (the user, 22 Nov evening): the rails come off after the hold.**
+- **Scene 12's call ends differently.** After the new job, Castle tells you to take a few days and make the place a home: *"Call us when you're ready."* From here there's no forced sleep and no set sols; sleep is your choice, and tiredness still nudges you.
+- **Soft wishes, one real need.** The crew mention things they'd love (a second room, somewhere to cook, the Print Shop running). None of them gates anything. The one real need is the radar sled: call in without it, and Castle says *"We'll need Tamsin's sled first."* The plan's on your slate.
+- **You carry on at the base radio.** It's a comms set in the core (a fit-out piece, or part of the terminal). Press E: *Call Castle: I'm ready.* That starts Act 4 (chunk 4).
+- **Furnishings have a reason:** readying the crew's future rooms. The crew let slip what they'd miss. Some keepsakes are out on the plain (the manifest's corrupted entries are partly the crew's personal effects), so you make low-stakes trips to find odds and ends; once found, you can print more. Others you print. They notice on the helmet camera.
+- **The crew's stories run through it** (`docs/crew-stories.md`).
+- **The Print Shop scenes below keep their order, but on your own clock.** Pallet 6 is pinned as the first suggestion, not a timed job. Tamsin's teaching rings the first time you use the printer, not on a set day.
+
+### Scene 13: the tow · agreed 22 Nov
+- **The first suggestion, whenever you go (A).** Pallet 6 is pinned. Walk out to it (75 m from the pad, on the side away from the pit), open it, and GAR-Y tows the crate home on its hitch (the existing Print Shop crate tow).
 - It's a calm walk: no problem to solve on the way.
 
 ### Scene 14: the install, by hand · agreed 22 Nov
@@ -237,8 +245,8 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - **GAR-Y waits by the airlock** (it parks there already). Its kit is fitted as you step out, with a short servo clunk as you come through the lock.
 - The model shows what's fitted, and hold-G gains *Tow sled*.
 
-### Scene 18: the sol 3 evening call · agreed 22 Nov
-- **With the sled fitted (A),** the evening call brings the leads together:
+### Scene 18: the call to carry on · agreed 22 Nov
+- **When you're ready, at the base radio, with the sled fitted (A),** the call brings the leads together:
   - Joseph's criteria (flat, firm, a clear approach, within reach of the hab);
   - Devan's wind on the approach;
   - the first map read.
@@ -246,7 +254,8 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - The player can say what changed: "I can make parts, and GAR-Y can see under the ground."
 
 **Chunk 3 to check before building:**
-- **Sol 3's daylight is tight:** about 20 minutes for the tow, the install, the connector, the salvage walk and the sled. The sled's print time and the materials needed are set to fit, and tuned in playtest.
+- **No daylight squeeze now:** the free stretch has no set sol, so the sled's print time and materials are tuned for pace in playtest, not to fit one day.
+- **The opening's forced sleep ends at the hold.** Check what `opening_slice.gd` and the lander/seat rules still force after that.
 - **Models:** the radar sled is already in the chunk 1 pack. Check whether the printer needs a wall-mount version (`mars_fabrication_v1/regolith_printer.glb`), and whether the intake, GAR-Y's radar head and the suit rack's loadout screen need new models.
 - **Code:** reuse the Print Shop crate tow, `fabricator.gd`, `chapter_one.gd` (jobs, feedstock, intake rate) and `materials.gd` (salvage from pallets and debris). Printed furniture still goes through the old interior build (§10a).
 
