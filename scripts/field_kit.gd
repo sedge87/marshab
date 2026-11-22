@@ -53,7 +53,9 @@ func has(id: String) -> bool:
 	match id:
 		"corer", "scoop": return MHChapterOne.has_corer
 		"hammer": return MHChapterOne.has_hammer
-		"stakes": return false   # the survey line comes with chunk 2
+		"stakes":   # the survey line (chunk 2, scripts/survey_line.gd): the bundle's in the stores pallet
+			var line: Node = get_tree().get_first_node_in_group("survey_line") if is_inside_tree() else null
+			return line != null and bool(line.have_stakes())
 	return false
 
 func label(id: String) -> String:

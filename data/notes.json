@@ -258,6 +258,30 @@
         "start": "A pallet, open and empty. The latches were undone from inside. Small tracks lead off from it: six wheels, close together."
       },
       "journal": "Pallet 4 was empty when I found it, opened from the inside. Whatever was in it let itself out in the storm."
+    },
+    "pad_wrong": {
+      "stages": {
+        "start": "That's not right. The mast's leaning, and the ground... it's dropped."
+      },
+      "journal": "The pad looked fine from the plain. Up close the beacon leaned, its foot was in a fresh crack, and the ground had dropped a hand's width."
+    },
+    "pad_connector": {
+      "stages": {
+        "start": "The lead's not unplugged, it's torn. The connector's sheared off in the socket. Tape won't fix that."
+      },
+      "journal": "The beacon's power connector was sheared off in its socket. It needs a new one, printed."
+    },
+    "pit_down": {
+      "stages": {
+        "start": "Ten metres down, at least. And the far wall goes back under, towards the pad."
+      },
+      "journal": "Looked down into the Collapse pit. Its wall is undercut: the hollow runs back under the ground, towards the pad."
+    },
+    "pit_edge": {
+      "stages": {
+        "start": "The edge is crumbling under my boots. Not one step closer."
+      },
+      "journal": ""
     }
   }
 }

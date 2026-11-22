@@ -1,0 +1,82 @@
+extends Node3D
+
+@onready var _mast: Node3D = $Mast
+@onready var _screen: MeshInstance3D = $Mast/TiltScreen
+@onready var _lead: MeshInstance3D = $Mast/Lead
+@onready var _loose: Node3D = $Mast/LeadLoose
+@onready var _stub: Node3D = $Mast/LeadTorn
+@onready var _connector: Node3D = $Mast/Connector
+@onready var _feet: Array[Node3D] = [$Foot_1, $Foot_2, $Foot_3]
+
+var _lenses: Array[StandardMaterial3D] = []
+var _display: StandardMaterial3D
+
+
+func _ready() -> void:
+	for node in $Mast/Lamp.find_children("*", "MeshInstance3D", true, false):
+		var lens := node as MeshInstance3D
+		var material := lens.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
+		lens.set_surface_override_material(0, material)
+		_lenses.append(material)
+	set_as_found()
+
+
+func set_as_found() -> void:
+	set_lean(12.0)
+	for i in range(1, 4):
+		set_foot_sink(i, 9.0 if i == 1 else 0.0)
+	set_connected(false)
+	set_lamp(false)
+
+
+func set_reseated() -> void:
+	set_lean(0.0)
+	for i in range(1, 4):
+		set_foot_sink(i, 0.0)
+	set_connected(false)
+	set_lamp(false)
+
+
+func set_running() -> void:
+	set_reseated()
+	set_connected(true)
+	set_lamp(true)
+
+
+func set_lean(degrees: float) -> void:
+	_mast.rotation.z = -deg_to_rad(degrees)
+
+
+func set_foot_sink(index: int, degrees: float) -> void:
+	if index < 1 or index > _feet.size():
+		return
+	var angle := deg_to_rad(30.0 + 120.0 * (index - 1))
+	var hinge_axis := Vector3(-sin(angle), 0, -cos(angle)).normalized()
+	_feet[index - 1].basis = Basis(hinge_axis, deg_to_rad(degrees))
+
+
+func set_connected(connected: bool) -> void:
+	_lead.scale = Vector3.ONE
+	_connector.scale = Vector3.ONE
+	_lead.visible = connected
+	_connector.visible = connected
+	_loose.visible = not connected
+	_stub.visible = not connected
+
+
+func set_lamp(lit: bool, color: Color = Color(1.0, 0.50, 0.13)) -> void:
+	for material in _lenses:
+		material.emission_enabled = lit
+		material.emission = color
+		material.emission_energy_multiplier = 2.4
+
+
+func set_tilt_readout(texture: Texture2D) -> void:
+	if texture == null:
+		_screen.material_override = null
+		return
+	if _display == null:
+		_display = StandardMaterial3D.new()
+		_display.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_display.albedo_texture = texture
+	_screen.material_override = _display

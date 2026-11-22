@@ -572,6 +572,16 @@ func _update_prompt() -> void:
 			_prompt_keys.text = MHInput.glyph("use")
 			_prompt_verb.text = str(corer.call("prompt_verb"))
 			_prompt_state.text = ""
+	# Chunk 2: the survey stakes in hand (scripts/survey_line.gd).
+	if not show:
+		var line := get_tree().get_first_node_in_group("survey_line")
+		var said: String = line.call("prompt_text") if line != null else ""
+		if not said.is_empty():
+			show = true
+			var can := said.begins_with("Plant")
+			_prompt_keys.text = MHInput.glyph("use") if can else ""
+			_prompt_verb.text = said
+			_prompt_state.text = ""
 	# Step 5: a rock to chip, or the ground at your feet to scoop.
 	if not show:
 		var tools := get_tree().get_first_node_in_group("sample_tools")

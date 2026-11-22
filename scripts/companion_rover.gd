@@ -1766,10 +1766,13 @@ func _airlock_busy(door: AirlockDoor) -> bool:
 func _trip_step(delta: float) -> bool:
 	_trip_age += delta
 	var step: Dictionary = _trip[0]
-	var door: AirlockDoor = step.get("door")
-	if door == null or not is_instance_valid(door) or _trip_age > TRIP_LIMIT:
+	# The door can be gone (the base rebuilt its doors mid-trip): a freed
+	# door can't even be put in a typed variable, so check it first.
+	var maybe: Variant = step.get("door")
+	if maybe == null or not is_instance_valid(maybe) or _trip_age > TRIP_LIMIT:
 		_end_trip(true)
 		return false
+	var door: AirlockDoor = maybe
 	match str(step.do):
 		"drive":
 			var to: Vector3 = step.to

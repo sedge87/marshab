@@ -1,0 +1,20 @@
+extends Node3D
+
+var _lens_material: StandardMaterial3D
+
+
+func _ready() -> void:
+	var lamp := $Lamp as MeshInstance3D
+	_lens_material = lamp.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
+	for mesh in find_children("*", "MeshInstance3D", true, false):
+		var instance := mesh as MeshInstance3D
+		var source := instance.mesh.surface_get_material(0)
+		if source != null and source.resource_name == "lamp_amber":
+			instance.set_surface_override_material(0, _lens_material)
+	set_marker_lit(false)
+
+
+func set_marker_lit(lit: bool) -> void:
+	_lens_material.emission_enabled = lit
+	_lens_material.emission = Color(1.0, 0.50, 0.12)
+	_lens_material.emission_energy_multiplier = 1.65

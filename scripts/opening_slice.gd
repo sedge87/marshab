@@ -35,7 +35,17 @@ const BEATS := [
 	["kit_placed", "s2_kit"],       # the fit-out kit placed by hand, the terminal too
 	["quarters", "s2_quarters"],    # the first Quarters liner, planned at the terminal
 	["helmet_off", "s2_quiet"],     # helmet off in the Quarters; Castle's quiet call
+	# Chunk 2, Act 2: the pad (sol 2 afternoon, §4a Scenes 8–12).
+	["pad_seen", "s2_pad_seen"],    # up close at the pad: Castle sees it on your helmet camera
+	["pad_reseated", "s2_reseat"],  # the foot levered, the mast pulled upright; Tamsin asks for a line
+	["pad_line", "s2_pad_line"],    # a line across the pad: a void band past the crack
+	["pit_seen", "s2_pit_seen"],    # at the pit's lip, looking down
+	["pit_line", "s2_hold"],        # the line at the lip matches; the crew argue; Castle holds
+	["sled_plan", "s2_sled"],       # the walk home: Tamsin's sled plan
+	["new_job", "s2_job"],          # home at dusk: the new job; pallet 6 pinned
 ]
+const LAST_BEAT := "new_job"
+const CHUNK_TWO := ["pad_seen", "pad_reseated", "pad_line", "pit_seen", "pit_line", "sled_plan", "new_job"]
 
 var world: Node
 var version := VERSION
@@ -46,6 +56,14 @@ var _was_asleep := false
 var _bed_said := false           # sol 1's "back to the lander and sleep" thought, once
 var _check := 0.0
 const CHECK_EVERY := .5
+const PAD_SITE := preload("res://scripts/pad_site.gd")
+const SURVEY_LINE := preload("res://scripts/survey_line.gd")
+var pad: Node3D                  # chunk 2: the planned pad and the pit (scripts/pad_site.gd)
+var lines: Node                  # chunk 2: survey lines (scripts/survey_line.gd)
+var _pad_state := {}
+var _lines_state := {}
+var _faint_said := false
+var _pinned := false
 
 func setup(target_world: Node, saved: Dictionary) -> void:
 	world = target_world
@@ -57,10 +75,28 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	_circled = reached.has("core_down")   # a loaded game past the fold doesn't replay the lap
 	chapter = int(saved.get("chapter", 1))
 	_bed_said = bool(saved.get("bed_said", false))
+	_faint_said = bool(saved.get("faint_said", false))
+	_pinned = bool(saved.get("pinned", false))
+	_pad_state = saved.get("pad", {}) as Dictionary
+	_lines_state = saved.get("lines", {}) as Dictionary
 	RADIO.opening_set = "slice"
+	_build_pad.call_deferred()
+
+## Chunk 2: the pad, the pit and the survey line, once the world's up.
+func _build_pad() -> void:
+	if pad != null or world == null or world.get("lander") == null: return
+	pad = PAD_SITE.new()
+	world.add_child(pad)
+	pad.setup(world, _pad_state)
+	lines = SURVEY_LINE.new()
+	add_child(lines)
+	lines.setup(world, pad, _lines_state)
+	lines.line_done.connect(_line_done)
 
 func export_state() -> Dictionary:
-	return {"version": version, "nights": nights, "reached": reached.duplicate(), "chapter": chapter, "bed_said": _bed_said}
+	return {"version": version, "nights": nights, "reached": reached.duplicate(), "chapter": chapter, "bed_said": _bed_said,
+		"faint_said": _faint_said, "pinned": _pinned,
+		"pad": pad.export_state() if pad != null else _pad_state, "lines": lines.export_state() if lines != null else _lines_state}
 
 # ---------- what the rest of the game asks ----------
 
@@ -76,7 +112,7 @@ func chapter_done(n: int) -> bool:
 func day_done(day: int) -> bool:
 	match day:
 		1: return done("walker_home")
-		2: return done("helmet_off")
+		2: return done(LAST_BEAT)
 	return true
 
 ## Sol 1 is lived in the lander; from sol 2 the core is home.
@@ -145,6 +181,13 @@ const GOAL_THOUGHTS := {
 	"kit_placed": "Unpack the fit-out kit.",
 	"quarters": "Plan a room at the terminal.",
 	"helmet_off": "Somewhere to breathe without the helmet.",
+	"pad_seen": "The pad's this afternoon. East, past the plain.",
+	"pad_reseated": "That mast shouldn't lean. Its foot's in a crack.",
+	"pad_line": "Tamsin wants a line across the pad. Stakes are on 4.",
+	"pit_seen": "The Collapse pit. Something to hold the pad's line against.",
+	"pit_line": "Run the same line at the pit's lip. Close, but not too close.",
+	"sled_plan": "Head home.",
+	"new_job": "Home. Helmet off. They'll call.",
 }
 
 # ---------- the beats ----------
@@ -178,6 +221,16 @@ func done(id: String) -> bool:
 		"hitched":
 			var pod: Node = world.get("lifepod")
 			return pod != null and (pod.prints as Dictionary).has("hitch")
+	# Chunk 2 waits for the first room: the pad's the afternoon's job.
+	if id in CHUNK_TWO:
+		if not reached.has("helmet_off") or pad == null: return false
+		match id:
+			"pad_seen": return bool(pad.seen)
+			"pad_reseated": return bool(pad.reseated)
+			"pad_line": return lines.has_line("pad")
+			"pit_seen": return bool(pad.pit_seen)
+			"pit_line": return lines.has_line("pad") and lines.has_line("pit")
+			"sled_plan", "new_job": return reached.has("pit_line")
 	return false
 
 func _pallets_open() -> bool:
@@ -248,9 +301,10 @@ func _process(delta: float) -> void:
 	if reached.has("core_down") and not _circled: _gary_circles()
 	_gary_to_the_steps()
 	_kit_crates()
-	# Over once Castle's quiet call has rung (some beats are optional: you
+	_pin_print_shop()
+	# Over once the new job's call has rung (some beats are optional: you
 	# can carry the module and never fit the hitch).
-	if reached.has("helmet_off"): chapter = STORY_DAYS + 1
+	if reached.has(LAST_BEAT): chapter = STORY_DAYS + 1
 	elif done("slept"): chapter = 2
 
 ## Some calls wait for the right moment as well as the beat.
@@ -261,7 +315,45 @@ func _call_ready(id: String) -> bool:
 		"walker_home":
 			var cycle: Dictionary = MHGame.site().get("day_cycle", {})
 			return _in_cabin() and not _helmet_on() and (MHGame.sol_hour >= float(cycle.get("sunset_hour", 19.0)) - 1.5 or is_night())
+		# Scene 12: Tamsin's sled plan on the walk home, once the hold's
+		# played and you've left the pit behind (or you're already in).
+		"sled_plan":
+			var radio: Node = world.get("radio")
+			if radio == null or not (radio.heard as Dictionary).has("s2_hold") or radio.on_air(): return false
+			var me: Node3D = world.get("player")
+			var pit: Vector2 = pad.pit_centre()
+			return me == null or is_inf(pit.x) or not _outside() or Vector2(me.global_position.x - pit.x, me.global_position.z - pit.y).length() > 60.0
+		# Scene 12: the new job, at home in a room with your helmet off, at
+		# dusk or after.
+		"new_job":
+			var radio: Node = world.get("radio")
+			if radio == null or not (radio.heard as Dictionary).has("s2_sled"): return false
+			var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+			return not _outside() and not _helmet_on() and not _in_cabin() and (MHGame.sol_hour >= float(cycle.get("sunset_hour", 19.0)) - 2.5 or is_night())
 	return true
+
+func _outside() -> bool:
+	var suit: Node = world.get("suit")
+	return suit == null or str(suit.get("where")) == "outside"
+
+## Scene 11: a line at the pit that reads mush. Tamsin asks for closer, once.
+func _line_done(line: Dictionary) -> void:
+	if str(line.kind) != "pit" or str(line.verdict) == "void" or _faint_said: return
+	_faint_said = true
+	var radio: Node = world.get("radio")
+	if radio != null and radio.has_method("ring"): radio.ring("s2_pit_faint")
+
+## Scene 12, the end: pallet 6 on your slate, tracked.
+func _pin_print_shop() -> void:
+	if _pinned or not reached.has(LAST_BEAT): return
+	var field: Node = world.get("drop_field")
+	var known: Node = world.get("known")
+	if field == null or known == null or not field.sites.has("print_shop"): return
+	_pinned = true
+	var site: Node3D = field.sites.print_shop
+	known.learn("pallet_6", "find", field.region_at(site.at), "Pallet 6 · Print Shop", "you", "castellanos")
+	known.track("pallet_6")
+	MHNotices.hint("Pallet 6", "The Print Shop's pallet is marked on your Map and your compass.")
 
 func _in_cabin() -> bool:
 	var lander: Node = world.get("lander")
@@ -374,6 +466,10 @@ func radio_ready() -> void:
 		return suit != null and bool(suit.helmet)
 	radio.facts["gary_met"] = func(_args: Array) -> bool: return done("gary_met")
 	radio.facts["morning"] = func(_args: Array) -> bool: return MHGame.sol_hour >= 5.0 and MHGame.sol_hour < 11.0
+	radio.facts["fell_in_pit"] = func(_args: Array) -> bool: return pad != null and bool(pad.fell)
+	radio.facts["hitched"] = func(_args: Array) -> bool: return done("hitched")
+	radio.handlers["stakes_hint"] = func(_args: Array) -> void:
+		MHNotices.hint("Survey stakes", "Key 4 puts the stakes in hand. E plants one where you stand. Walk on and plant the far one, and GAR-Y runs the line between them.")
 	radio.facts["indoors"] = func(_args: Array) -> bool:
 		var suit: Node = world.get("suit")
 		return suit != null and str(suit.get("where")) != "outside"

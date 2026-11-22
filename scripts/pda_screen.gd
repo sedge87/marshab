@@ -148,7 +148,10 @@ func apps() -> Array:
 ## The tabs a page has: [id, label, icon].
 func tabs(page: String) -> Array:
 	match page:
-		"map": return [["map", "Map", "map"], ["site", "Here", "mountain-snow"]]
+		"map":
+			var line: Node = get_tree().get_first_node_in_group("survey_line") if is_inside_tree() else null
+			var has_lines: bool = line != null and not (line.lines as Array).is_empty()
+			return [["map", "Map", "map"], ["site", "Here", "mountain-snow"]] + ([["lines", "Lines", "map-pin"]] if has_lines else [])
 		"base":
 			var cargo: bool = world != null and world.get("storm_drop") != null
 			var kit: bool = world != null and world.get("field_kit") != null and int(world.get("opening_version")) >= 3
@@ -187,7 +190,7 @@ func _rebuild() -> void:
 	var tab := str(_tab.get(app, ""))
 	match app:
 		"today": body = _notes_page() if world == null or world.get("tutorial") == null else _goals_page()
-		"map": body = _map_page() if tab == "map" else _site_page()
+		"map": body = _map_page() if tab == "map" else (_lines_page() if tab == "lines" else _site_page())
 		"base": body = _cargo_page() if tab == "cargo" else (_kit_page() if tab == "kit" else _base_page())
 		"radio":
 			if tab == "log":
@@ -327,6 +330,31 @@ func _heading(title: String, note := "") -> VBoxContainer:
 
 ## Kit (opening slice, docs/opening-slice.md §4a Scene 3): what you carry,
 ## what's on your suit, what's fitted to GAR-Y.
+## Lines: every survey line's profile, newest first (scripts/survey_line.gd).
+## Brown is solid ground; the warmer and taller the colour from below, the
+## more hollow it reads; hatched is where GAR-Y got no reading.
+func _lines_page() -> Control:
+	var page := MHStyle.vbox(14)
+	page.add_child(_heading("Lines", "Two stakes, GAR-Y between: what's under the ground."))
+	var line_node: Node = get_tree().get_first_node_in_group("survey_line")
+	if line_node == null: return page
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(scroll)
+	var list := MHStyle.vbox(18)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	var all: Array = line_node.lines
+	for i in range(all.size() - 1, -1, -1):
+		var line: Dictionary = all[i]
+		var a: Array = line.a
+		var b: Array = line.b
+		var length := Vector2(float(a[0]), float(a[1])).distance_to(Vector2(float(b[0]), float(b[1])))
+		list.add_child(MHStyle.body("%d m · %s" % [roundi(length), line_node.verdict_text(line)], 15, MHStyle.TEXT_MUTED))
+		list.add_child(line_node.profile_for(line, Vector2(560, 96)))
+	return page
+
 func _kit_page() -> Control:
 	var page := MHStyle.vbox(14)
 	page.add_child(_heading("Kit", "What's in your hands is what you chose: 1–4."))

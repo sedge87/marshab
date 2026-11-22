@@ -42,6 +42,144 @@ func _beside(builder: Node, core: Array) -> Array:
 				if not cells.is_empty() and builder._invalid_reason(cells).is_empty(): return cells
 	return []
 
+func _heard(radio: Node, section: String, seconds: float) -> bool:
+	var t := 0.0
+	while t < seconds and not (radio.heard as Dictionary).has(section):
+		await wait(1.0)
+		t += 1.0
+	# And let it finish, so the next call can come.
+	t = 0.0
+	while t < 60.0 and str(radio.playing) == section:
+		await wait(1.0)
+		t += 1.0
+	return (radio.heard as Dictionary).has(section)
+
+func _outside(player: Node3D, at: Vector3) -> void:
+	if world.suit != null and not bool(world.suit.helmet): world.suit.suit_up()
+	await wait(1.0)
+	player.global_position = _ground(at)
+	await wait(2.0)
+
+## A line GAR-Y runs between a and b (site metres); waits for it to finish.
+func _run_line(lines: Node, gary: Node3D, a: Vector2, b: Vector2) -> Dictionary:
+	var before: int = (lines.lines as Array).size()
+	gary.global_position = _ground(Vector3(a.x, 0, a.y) + Vector3(1.5, 0, 0))
+	check(lines.plant(Vector3(a.x, preload("res://scripts/site_terrain.gd").height(a.x, a.y), a.y)), "the first stake didn't go in")
+	check(lines.plant(Vector3(b.x, preload("res://scripts/site_terrain.gd").height(b.x, b.y), b.y)), "the far stake didn't go in: %s" % lines.far_reason(Vector3(b.x, 0, b.y)))
+	var t := 0.0
+	while t < 240.0 and (lines.lines as Array).size() == before:
+		await wait(2.0)
+		t += 2.0
+	check((lines.lines as Array).size() > before, "GAR-Y never finished the line")
+	return (lines.lines as Array).back() if (lines.lines as Array).size() > before else {}
+
+## Chunk 2 (docs/opening-slice.md §4a Scenes 8–12): the pad has failed.
+func _chunk_two(days: Node, radio: Node, player: Node3D, gary: Node3D, lander: Node3D) -> void:
+	var pad: Node3D = days.pad
+	var lines: Node = days.lines
+	check(pad != null and lines != null, "no pad or survey line in the slice")
+	if pad == null or lines == null: return
+	var to_lander: float = pad.centre_2d().distance_to(Vector2(lander.global_position.x, lander.global_position.z))
+	var to_pit: float = pad.centre_2d().distance_to(pad.pit_centre())
+	check(to_lander > 120.0 and to_lander < 600.0, "the pad is %.0f m from the lander" % to_lander)
+	check(to_pit > 160.0 and to_pit < 250.0, "the pad is %.0f m from the pit, not ~200" % to_pit)
+	var field: Node = world.drop_field
+	check(field.sites.has("print_shop"), "pallet 6 isn't down near the pad")
+	if field.sites.has("print_shop"):
+		var p6: Vector3 = field.sites.print_shop.at
+		check(Vector2(p6.x, p6.z).distance_to(pad.centre_2d()) < 120.0, "pallet 6 isn't in sight of the pad")
+	check(str(pad.keep_clear(pad.centre_2d())) != "", "a base could go on the pad")
+	# Scene 8: up close, you see it.
+	check(not days.done("pad_seen"), "the pad counted as seen before going there")
+	var beacon: Vector3 = pad.beacon_at()
+	await _outside(player, beacon + Vector3(4, 0, 4))
+	await wait(8.0)
+	check(bool(pad.seen) and days.done("pad_seen"), "standing at the beacon didn't count as seeing it")
+	check(await _heard(radio, "s2_pad_seen", 90.0), "Castle didn't see the pad on the helmet camera (reached %s)" % str(days.reached))
+	# Scene 9: lever the foot, then GAR-Y pulls the mast upright.
+	check(not bool(pad.press("mast").ok), "the mast came up before its foot was levered")
+	var foot: Node = pad.find_child("Point_foot", true, false)
+	check(foot != null, "no sunk foot to lever")
+	if foot != null: check(foot.hold_for(5.0), "holding E didn't lever the foot")
+	await wait(2.0)
+	check(bool(pad.levered), "the foot isn't levered")
+	gary.global_position = _ground(beacon + Vector3(3, 0, 0))
+	pad.press("lead")
+	check(bool(pad.connector_seen), "looking at the lead didn't count")
+	check(bool(pad.press("mast").ok), "GAR-Y's cable wouldn't clip on")
+	var t := 0.0
+	while t < 90.0 and not bool(pad.reseated):
+		await wait(2.0)
+		t += 2.0
+	check(bool(pad.reseated) and days.done("pad_reseated"), "the mast never came upright")
+	check(await _heard(radio, "s2_reseat", 90.0), "Tamsin didn't ask for the line")
+	# Scene 10: the line across the pad. Stakes in hand with 4.
+	world.field_kit.select(3)
+	check(str(world.field_kit.held) == "stakes", "key 4 didn't put the stakes in hand")
+	var path: Array = pad.void_path()
+	var along: Vector2 = ((path[2] as Vector2) - (path[0] as Vector2)).normalized()
+	var across := Vector2(-along.y, along.x)
+	var c: Vector2 = pad.centre_2d()
+	var line: Dictionary = await _run_line(lines, gary, c - across * 13.0, c + across * 13.0)
+	check(str(line.get("kind", "")) == "pad" and str(line.get("verdict", "")) == "void", "the pad's line reads %s / %s, not a void across the pad: %s" % [str(line.get("kind", "")), str(line.get("verdict", "")), str(line.get("readings", []))])
+	var readings: Array = line.get("readings", [])
+	check(not readings.is_empty() and float(readings[0]) < .25 and float(readings[-1]) < .25, "the pad line's ends aren't solid: %s" % str(readings))
+	check(await _heard(radio, "s2_pad_line", 90.0), "the pad line got no reaction")
+	check(world.pda.screen.tabs("map").any(func(tab): return str(tab[0]) == "lines"), "the slate has no Lines tab")
+	var page: Control = world.pda.screen._lines_page()
+	check(page != null, "the Lines page didn't build")
+	if page != null: page.free()
+	# Scene 11: the pit. Look down, then a line too far back, then a close one.
+	var pit: Vector2 = pad.pit_centre()
+	var out := -(c - pit).normalized()   # the side away from the pad: the void's tube runs the other way
+	await _outside(player, Vector3(pit.x, 0, pit.y) + Vector3(out.x, 0, out.y) * (pad.pit_edge + 4.5))
+	await wait(2.0)
+	check(bool(pad.pit_seen) and days.done("pit_seen"), "standing at the lip didn't count as seeing the pit")
+	var side := Vector2(-out.y, out.x)
+	var far: Dictionary = await _run_line(lines, gary, pit + out * 17.0 - side * 9.0, pit + out * 17.0 + side * 9.0)
+	check(str(far.get("kind", "")) == "pit" and str(far.get("verdict", "")) != "void", "a line far back from the lip read clearly (%s %s)" % [str(far.get("verdict", "")), str(far.get("readings", []))])
+	check(await _heard(radio, "s2_pit_faint", 60.0), "Tamsin didn't ask for closer")
+	lines.first = Vector3(pit.x - 15.0, 0, pit.y)
+	check(lines.far_reason(Vector3(pit.x + 15.0, 0, pit.y)).contains("edge"), "a line across the pit was allowed")
+	lines.first = Vector3.INF
+	var close: Dictionary = await _run_line(lines, gary, pit + out * 11.5 - side * 10.0, pit + out * 11.5 + side * 10.0)
+	check(str(close.get("kind", "")) == "pit" and str(close.get("verdict", "")) == "void", "the close line at the pit reads %s" % str(close.get("verdict", "")))
+	check(days.done("pit_line"), "the two matching lines didn't count")
+	player.global_position = _ground(Vector3(pit.x, 0, pit.y) + Vector3(out.x, 0, out.y) * 30.0)
+	check(await _heard(radio, "s2_hold", 120.0), "the hold call didn't play (reached %s)" % str(days.reached))
+	# The lip: crumbling within 3 m, and the last metre gives way. GAR-Y
+	# brings you home.
+	player.global_position = _ground(Vector3(pit.x, 0, pit.y) + Vector3(out.x, 0, out.y) * (pad.pit_edge + 2.0))
+	await wait(2.0)
+	check(not bool(pad.fell), "fell in from 2 m back")
+	player.global_position = _ground(Vector3(pit.x, 0, pit.y) + Vector3(out.x, 0, out.y) * (pad.pit_edge + .5))
+	t = 0.0
+	while t < 20.0 and not bool(world.suit.passed_out):
+		await wait(1.0)
+		t += 1.0
+	check(bool(pad.fell) and bool(world.suit.passed_out), "the last metre didn't give way (fell %s, out %s)" % [str(pad.fell), str(world.suit.passed_out)])
+	t = 0.0
+	while t < 300.0 and bool(world.suit.passed_out):
+		await wait(3.0)
+		t += 3.0
+	check(not bool(world.suit.passed_out), "never came round after the fall")
+	check(str(world.suit.where) != "outside", "came round outside after the fall (%s)" % str(world.suit.where))
+	# Scene 12: Tamsin's sled plan, then home at dusk, the new job.
+	check(await _heard(radio, "s2_sled", 120.0), "Tamsin's sled plan didn't come")
+	var inside: Vector3 = world.module_life._centre()
+	player.global_position = Vector3(inside.x, world.builder.habitat_base_y + 1.0, inside.z)
+	await wait(2.0)
+	if bool(world.suit.helmet): world.suit.suit_off()
+	var cycle: Dictionary = MHGame.site().get("day_cycle", {})
+	if MHGame.sol_hour < float(cycle.get("sunset_hour", 19.0)) - 2.0 and MHGame.sol_hour > 6.0: world.day_night.set_hour(float(cycle.get("sunset_hour", 19.0)) - 1.0)
+	check(await _heard(radio, "s2_job", 150.0), "the new job's call didn't play (reached %s, where %s, helmet %s)" % [str(days.reached), str(world.suit.where), str(world.suit.helmet)])
+	await wait(3.0)
+	check(str(world.known.tracked) == "pallet_6", "pallet 6 isn't tracked on the compass (%s)" % str(world.known.tracked))
+	check(int(days.chapter) == 3 and not days.guided(), "the opening didn't end after the new job (chapter %d)" % int(days.chapter))
+	# Saved and loaded: the pad keeps its state.
+	var state: Dictionary = days.export_state()
+	check(bool(state.pad.reseated) and (state.lines.lines as Array).size() == 3, "the pad and lines didn't save")
+
 func _initialize() -> void:
 	MHGame.site_id = "region"; MHGame.set_mode("survival"); MHGame.pending_save_state = {}; MHGame.landing_target = Vector2.INF
 	MHGame.tutorial_mode = MHGame.default_tutorial_mode()
@@ -205,8 +343,8 @@ func _initialize() -> void:
 			var deck: Node = walker.get_node_or_null("Deck")
 			check(deck != null and deck.active(), "the deck isn't live while you ride")
 			if deck != null:
-				var screen: Label3D = deck.get_node_or_null("../DeckScreen") if deck.get_node_or_null("../DeckScreen") != null else walker.get_node_or_null("DeckScreen")
-				check(screen != null and screen.visible and screen.text.contains("GROUND") and screen.text.contains("WATER"), "the deck screen doesn't read the ground: '%s'" % (screen.text if screen != null else "none"))
+				var reading: String = deck.screen_text()
+				check(deck.screen_lit() and reading.contains("GROUND") and reading.contains("WATER"), "the deck screen doesn't read the ground: '%s'" % reading)
 				var before: Vector3 = walker.global_position
 				var w := InputEventKey.new()
 				w.physical_keycode = KEY_W; w.keycode = KEY_W; w.pressed = true
@@ -227,7 +365,7 @@ func _initialize() -> void:
 					walker.global_position = Vector3(home_at.x, 0, home_at.y)
 					walker._settle()
 					await wait(4.0)
-					check(screen.text.contains("SET DOWN HERE"), "good ground doesn't offer 'Set down here': '%s'" % screen.text)
+					check(deck.screen_text().contains("SET DOWN HERE"), "good ground doesn't offer 'Set down here': '%s'" % deck.screen_text())
 					check(deck.press(true) and bool(deck.siting), "E on the deck screen didn't lay the outline")
 					await wait(1.0)
 					check(str(deck._why) == "", "the outline says not here: %s" % str(deck._why))
@@ -295,9 +433,10 @@ func _initialize() -> void:
 						t += 3.0
 					check((radio.heard as Dictionary).has("s2_quiet"), "Castle's quiet call didn't play (reached %s)" % str(days.reached))
 					await wait(2.0)
-					check(int(days.chapter) == 3 and not days.guided(), "the opening didn't end after the first room (chapter %d)" % int(days.chapter))
+					check(days.guided(), "the opening ended at the first room: chunk 2's pad is still to come")
+					await _chunk_two(days, radio, player, gary, lander)
 	Engine.time_scale = 1.0
-	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, tools go in hand with 1-4 and show on the slate's Kit page, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B sends you to the terminal, the kit comes out of its crates by hand, and the terminal plans the free Quarters.")
+	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, tools go in hand with 1-4 and show on the slate's Kit page, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B sends you to the terminal, the kit comes out of its crates by hand, and the terminal plans the free Quarters. Chunk 2: the pad is ~200 m from the pit with pallet 6 in sight and no base allowed on it; up close it counts as seen and Castle calls; the foot levers, GAR-Y's cable pulls the mast upright; stakes go in hand with 4; a line across the pad reads a void band with solid ends; the Lines tab shows it; at the pit a far line reads faint and Tamsin asks for closer, a line over the pit is refused, a close one reads void; the hold plays; the lip gives way on the last metre and GAR-Y brings you round inside; Tamsin's sled plan, then the new job at home pins pallet 6 and ends the opening.")
 	else:
 		for f in failures: print("FAIL: ", f)
 	quit(0 if failures.is_empty() else 1)

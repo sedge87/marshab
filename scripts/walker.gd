@@ -1354,3 +1354,7 @@ func _arrive() -> void:
 func export_state() -> Dictionary:
 	return {"base_id": base_id, "name": walker_name, "kit_given": kit_given, "spot": _arr(spot), "state": state, "at": _arr(global_position), "yaw": rotation.y, "home": _arr(home), "target": _arr(target), "target_yaw": target_yaw,
 		"marked": marked, "fault_found": fault_found, "shots": shots.keys(), "calibrated": calibrated, "nav_sight": nav_sight_done, "seen": seen, "tracks": tracks_laid, "sent": sent, "text_left": _text_left, "first_night": first_night}
+	var pad_site: Node = get_tree().get_first_node_in_group("pad_site")
+	if pad_site != null:
+		var clear := str(pad_site.keep_clear(at))
+		if not clear.is_empty(): return clear

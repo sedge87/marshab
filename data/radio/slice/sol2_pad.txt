@@ -1,0 +1,89 @@
+# Sol 2 afternoon of the opening slice, chunk 2 (docs/opening-slice.md §4a
+# Scenes 8-12): the planned pad has failed. Same rules as sol1.txt: show,
+# don't tell. Nobody explains the pad before you've seen it; the evidence is
+# on your slate before anyone says what it means. IDs start s2_.
+# Voices: python tools/generate_voice.py --missing --only=orb_s2
+
+# Scene 8: up close at the pad. Castle's been watching your helmet camera.
+~ s2_pad_seen
+Castellanos: Hold still a second. Pan left. Is that mast leaning, or is it you? [ID:s2_pad_seen_01]
+- It's leaning. The foot's down in a crack.
+	set pad_told_foot
+	Castellanos: A crack. Right. [ID:s2_pad_seen_02a]
+- The lead's torn out of the box.
+	set pad_told_lead
+	Castellanos: Torn. Not unplugged. [ID:s2_pad_seen_02b]
+- The ground's dropped. A hand's width.
+	set pad_told_step
+	Castellanos: The ground dropped. [ID:s2_pad_seen_02c]
+chat Achterberg: Get me a good look at the step, would you? Close as you like. [ID:s2_pad_seen_03]
+=> END
+
+# Scene 9: the foot levered up and the mast upright. Tamsin asks for a line (C2).
+~ s2_reseat
+Achterberg: Tilt's reading zero. Nice work, both of you. [ID:s2_reseat_01]
+?hitched chat Rao: Did GAR-Y just tow a mast upright? I'm putting that on the wall. [ID:s2_reseat_02]
+Achterberg: The lead's another story. That connector's sheared off in the socket. It wants a new one printed, not tape. [ID:s2_reseat_03]
+Achterberg: And before anyone trusts that pad, run me a line across it. Two stakes, and let GAR-Y drive between them. [ID:s2_reseat_04]
+do stakes_hint
+=> END
+
+# Scene 10: the line across the pad. The profile surprises everyone.
+~ s2_pad_line
+Achterberg: Hang on. That isn't the crack. That band runs right under the middle. [ID:s2_pad_line_01]
+Achterberg: Could be a soft layer. Could be nothing. I want something to hold it against. [ID:s2_pad_line_02]
+Achterberg: The Collapse pit's two hundred metres south-east. We know what's under that. Same kind of line, along its edge. [ID:s2_pad_line_03]
+chat Mwangi: Along its edge meaning not in it. I'd like that noted. [ID:s2_pad_line_04]
+=> END
+
+# Scene 11: at the pit's lip, looking down.
+~ s2_pit_seen
+chat Tupou: Oh, look at that. The far wall's undercut. It goes back under. [ID:s2_pit_seen_01]
+chat Achterberg: Under towards the pad. Mm. [ID:s2_pit_seen_02]
+=> END
+
+# Scene 11: a line at the pit that's too far back to read.
+~ s2_pit_faint
+Achterberg: That's mush. You're too far back to read it. Closer to the lip, if the ground lets you. [ID:s2_pit_faint_01]
+=> END
+
+# Scene 11b: the profiles match. The crew argue it; Castle decides (F3).
+~ s2_hold
+Achterberg: There it is. Same width, same fall-off. Same signature. [ID:s2_hold_01]
+Achterberg: There's a void under your pad. The pit's just where the roof already came down. [ID:s2_hold_02]
+Rao: It's sat through three weeks of storm. It'll hold for one landing. [ID:s2_hold_03]
+Mwangi: You don't know that. Nobody down there or up here knows that. [ID:s2_hold_04]
+Rao: The recycler's losing a litre a day, Joseph. We don't get to wait for ever. [ID:s2_hold_05]
+Achterberg: And we don't get a second go if the pad lets go under us. One descent, Devan. That's all the fuel there is. [ID:s2_hold_06]
+Castellanos: Enough. Pathfinder, you're the one standing on it. [ID:s2_hold_07]
+- It's not safe. I wouldn't put you down on it.
+	set hold_firm
+	Castellanos: Neither would I. [ID:s2_hold_08a]
+- I don't know. That's the problem.
+	set hold_unsure
+	Castellanos: Then that's my answer too. [ID:s2_hold_08b]
+- Devan's not wrong about the time.
+	set hold_time
+	Castellanos: No, he isn't. But he's wrong about the pad. [ID:s2_hold_08c]
+Castellanos: Thursday's off. We hold. [ID:s2_hold_09]
+Castellanos: Devan, I know. Go and look at the recycler with Tamsin. Joseph, a word. [ID:s2_hold_10]
+Castellanos: And Pathfinder? Thank you. That's exactly why you went first. [ID:s2_hold_11]
+=> END
+
+# Scene 12: the walk home. Tamsin's sled plan, while it's fresh.
+~ s2_sled
+Achterberg: Walking home? Good. I've been drawing. [ID:s2_sled_01]
+Achterberg: GAR-Y's radar only sees a few metres down. To prove a new pad I need deeper. A sled, towed on that hitch. [ID:s2_sled_02]
+Achterberg: The plan's on your slate. It wants a printer, mind. [ID:s2_sled_03]
+=> END
+
+# Scene 12: home, helmet off, dusk. The new job, round the table.
+~ s2_job
+Castellanos: Evening. Here's where we are. [ID:s2_job_01]
+Castellanos: We need a new pad, and you're going to find it. Not just flat. Proven. [ID:s2_job_02]
+Mwangi: Flat, firm, a clear way in for Devan, and close enough to the hab to walk it in suits. Four things. I've written them on the wall. [ID:s2_job_03]
+?fell_in_pit Mwangi: And no more pits. I mean it. [ID:s2_job_03b]
+Rao: And wind. I want to know what the air does on the approach after midday. [ID:s2_job_04]
+chat Tupou: I've got a thing too. It'll keep. Rocks are patient. [ID:s2_job_05]
+Castellanos: Pallet six came down within sight of the pad. That's your printer. Sleep first. [ID:s2_job_06]
+=> END

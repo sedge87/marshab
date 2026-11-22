@@ -1,0 +1,19 @@
+extends Node3D
+
+@onready var _flag: MeshInstance3D = $Stake/Flag
+@onready var _head: MeshInstance3D = $Stake/Head
+@onready var _lens := _head.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
+
+
+func _ready() -> void:
+	_head.set_surface_override_material(0, _lens)
+
+
+func set_flag_angle(degrees: float) -> void:
+	_flag.rotation.y = deg_to_rad(degrees)
+
+
+func set_signal(lit: bool, color: Color = Color(1.0, 0.46, 0.11)) -> void:
+	_lens.emission_enabled = lit
+	_lens.emission = color
+	_lens.emission_energy_multiplier = 1.1

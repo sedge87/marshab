@@ -442,12 +442,57 @@ Scenes 1–7 run from waking to Castle's quiet call. `tests/opening_slice_test.g
   - the Site Plan Terminal (its screen a plain glow; the plan opens full-screen);
   - the fit-out crates in three sizes: the work light in the small case, the chair and the rack in the medium, the terminal, bunk and table in the large. Taking a piece out opens the lid; Q closes it again.
 - **Still stand-ins:** the canopy, the deck screen (Label3D), the hammer and scoop in hand, and Walker 1 itself. The Walker 1 remake in the pack is a different machine (about 3.4 × 5.4 m, unfolding its own small cabin) from the game's 15 m walker that carries and lowers the core, so it isn't swapped in yet.
-- **In the pack for chunk 2, not in the game yet:** the landing pad and beacon, and the radar sled.
+- **In the pack for chunk 2:** the landing pad and beacon (now in, §10b), and the radar sled (chunk 3).
 - **Not done:**
   - "Sleep once tiredness wins" on night 1 (the seat only).
   - GAR-Y circling the folded core.
   - The kit's held tool isn't saved.
   - Printed furniture later in the game still goes through the old interior build. Chunk 3 (Print Shop) needs it by hand too.
+
+## 10b. Chunk 2 as built (22 Nov)
+Scenes 8–12 run from Castle's quiet call to the new job. The opening now ends on the new job's call, not the quiet call. `tests/opening_slice_test.gd` carries on through the whole afternoon and passes. Not yet played by hand.
+- **Beats** (`scripts/opening_slice.gd`): `pad_seen`, `pad_reseated`, `pad_line`, `pit_seen`, `pit_line` (the hold), `sled_plan`, `new_job`.
+  - None counts until the quiet call has rung: the pad is the afternoon's job.
+  - Calls: `data/radio/slice/sol2_pad.txt`, plus `s2_pit_faint`, which isn't a beat.
+- **The pad** (`scripts/pad_site.gd`, model `assets/models/chunk2/landing_pad_and_beacon.glb` from the chunk 1 pack):
+  - It sits on the flattest ground 170–240 m north-west of the Collapse pit, clear of the lander (120 m) and the cargo. Its beacon side faces the pit.
+  - As found: the mast leans 17°, the station tilts 5° on its sunk foot, the torn lead shows, the two pit-side sections have dropped 10 cm, and fresh cracks run across the pad and out to the foot.
+  - The beacon is the chunk 2 pack's own (`pad_beacon.glb`, the Guarded form of the three in `Beacon_Forms`, from `asset_packs/outpost_chunk2_v1/Pad_Beacon`). It stands where the pad model's beacon stood (that one is hidden), with its front turned to the pad. Its mast leans sideways, Foot_1 droops 9° into the crack and the whole tripod tips 5° on it. The lead hangs torn (`LeadLoose`, `LeadTorn`) and the lamp is dark.
+  - The tilt readout is drawn by the game on the beacon's blank `TiltScreen` (a Label3D on its face).
+  - Dressing from the pack (`Pad_Site`): four corner markers, dark, because the pad has no power; the cracked step slab (one half 8.5 cm down) where the crack leaves the pad for the beacon; two more broken slabs off the pit-side corner; and fractured edge strips along both cracks across the pad.
+  - No base can be set down within 26 m of the pad, or near the pit (`keep_clear`, read by `walker.gd`).
+- **Scene 8:** 6 s within 14 m of the beacon counts as seen (Castle's helmet camera). After 1 s you get the Notes thought *That's not right.* Castle's call has a reply choice: the foot, the lead or the step.
+- **Scene 9:**
+  - Hold E at the sunk foot (its `LeverPoint_1`, 2.2 s) and it comes level.
+  - E on the mast with the hitch fitted: GAR-Y backs to 4.8 m off on the side away from the lean, a cable runs from its `CableOut` to the mast's `HitchPoint`, and the mast swings upright over 3.5 s. With no hitch, hold E for 3.5 s and push it up yourself.
+  - E on the torn lead: *The connector's sheared off… Tape won't fix that.*
+  - Tamsin's call asks for the line, and a hint teaches key 4.
+- **The survey line** (`scripts/survey_line.gd`):
+  - The stakes are in hand on key 4 once pallet 1 is open. Planted ones are the pack's `survey_stake.glb`, pushed 12 cm in, with the amber head lit. E plants a stake 1.1 m ahead of you; the far stake must be 8–60 m away.
+  - GAR-Y drives to the first stake (round the pit if its way crosses it), then to the far one, reading as it goes.
+  - A reading is 1.5 m apart (8–32 per line). Anything it never reached is hatched "no reading". If it makes no progress for 40 s, the rest is left unresolved.
+  - The void model: a buried tube (full to 4.5 m from its axis, gone at 9 m) from the pit, under the pad's centre and 35 m on, plus the undercut all round the pit (full within 10 m of its centre, gone at 22 m).
+  - Verdicts: three or more readings ≥ 0.5 is a void band; anything ≥ 0.25 is faint; otherwise solid.
+  - A line is "pad" if it passes within 7 m of the pad's centre, and "pit" within 22 m of the pit's. GAR-Y won't run a line closer than 9.5 m to the pit's centre.
+  - Each profile shows on screen while it runs and for 14 s after. Every line is saved, and the slate's Map page gets a Lines tab.
+- **Scene 11:**
+  - Within 5 m of the edge: *Ten metres down… goes back under, towards the pad*, plus Kai's and Tamsin's chat. There's rubble on the pit floor (`mars_rocks_v2`), loose rubble round the rim, and an undercut overhang on the pad side (`Pit_Lip`).
+  - A pit line too far back reads faint, and Tamsin asks for closer, once.
+  - **The lip:** within 3 m of the edge the ground crumbles: a low thud, a small camera shudder and stones going over (the pack's rubble, scaled down). On the last metre it gives way: you go over, and 1.6 s later you black out and GAR-Y's rescue brings you home. Joseph mentions it at dinner.
+- **The hold:** Tamsin, Devan, Joseph and Tamsin again, then Castle asks you, then "Thursday's off. We hold."
+- **Scene 12:**
+  - Tamsin's sled plan comes once the hold has finished and you're more than 60 m from the pit, or indoors.
+  - The new job comes in a base room, helmet off, from 2.5 hours before sunset.
+  - Then pallet 6 is marked on the Map and tracked on the compass.
+  - Pallet 6 itself is put down 75 m from the pad, on the side away from the pit, when the pad is built. Opening it runs the existing Print Shop crate tow (chunk 3).
+- **Fixed on the way:** GAR-Y froze for good when the base rebuilt its doors partway through an airlock trip (a freed door in a typed variable, `companion_rover.gd _trip_step`).
+- **Not done:**
+  - The ground's hand-width step is the dropped pad sections, not terrain sculpt.
+  - The wrist ring doesn't flicker at the lip.
+  - The sled plan is a line on the radio, not a real plan yet (chunk 3).
+  - The stake in your hand and the bundle on the stores pallet are still the old ones. The pack has both (`Survey_Stakes`), but those files belong to the chunk 1 model work (`field_kit.gd`, the pallets).
+  - The new models are placed by numbers in code and haven't been looked at in the running game.
+  - The pad's sections have no collision, so you sink a few centimetres into them.
 
 ## 11. Open questions
 - Do the Earth Mission Control letters stay?
