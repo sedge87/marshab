@@ -476,6 +476,9 @@ func _open_plans() -> Array:
 	for i in PLANS.size():
 		if prints.has(str(PLANS[i][0])): continue
 		if str(PLANS[i][0]) == "hitch" and not _gary_found(): continue   # nothing to hitch it to yet
+		# The opening slice (version 3): the hitch bracket comes in the tools
+		# pallet and you fit it to GAR-Y by hand (scripts/hitch_bracket.gd).
+		if str(PLANS[i][0]) == "hitch" and int(world.get("opening_version")) >= 3: continue
 		if str(PLANS[i][0]) == "seal" and not _seal_wanted(): continue
 		if FOUND_PLANS.has(str(PLANS[i][0])) and not cartridges.has(str(PLANS[i][0])): continue
 		if ADDON_PLANS.has(str(PLANS[i][0])):
@@ -636,6 +639,9 @@ func staged(item: Node3D) -> bool:
 
 func _check_staging() -> void:
 	if jobs.has("tow"): return
+	# The opening slice (version 3) has no air cartridge or power pack to stage:
+	# with both missing this read as staged at once ("Cargo staged" at touchdown).
+	if int(world.get("opening_version")) >= 3: return
 	var notes: Node = world.get("notes")
 	var cart := _cartridge()
 	if notes != null and cart != null and staged(cart) and notes.is_open("module_air"): notes.think("module_air", "staged")
@@ -688,6 +694,9 @@ func unload_cargo() -> void:
 		item.rotation = Vector3(0, world.lander.rotation.y, 0)
 		item.where = "ground"
 		item.reachable(true)
+		# Off the sled and left on the ground: on the compass (scripts/power_module.gd).
+		var known_left: Node = world.get("known")
+		if known_left != null and item.get_script() != null and (item.get_script() as Script).get_script_constant_map().has("LEFT_ID"): known_left.set_down(str(item.LEFT_ID), "Power module", item.global_position)
 		i += 1
 	sled_cargo.clear()
 	MHAudio.sfx("place", -6.0)

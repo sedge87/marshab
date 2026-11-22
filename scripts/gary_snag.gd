@@ -42,7 +42,7 @@ func setup(target_field: Node, target_gary: Node3D, already_freed: int = 0) -> v
 	var spots := [Vector3(-.42, .18, -.38), Vector3(.42, .18, .40), Vector3(0, .9, .05)]
 	var labels := ["A line round the front wheel", "A line round the back wheel", "The canopy's caught on its mast"]
 	for i in SNAGS:
-		var model_line: Node3D = _canopy.find_child("Line_%d" % (i + 1), false, false) as Node3D if _canopy != null else null
+		var model_line: Node3D = _canopy.find_child("Line_%d" % (i + 1), true, false) as Node3D if _canopy != null else null
 		if i < already_freed:
 			if model_line != null: model_line.visible = false
 			continue
@@ -61,7 +61,7 @@ func _build_cloth() -> void:
 		_canopy = model.instantiate() as Node3D
 		add_child(_canopy)
 		MHPalette.apply(_canopy)
-		_cloth = _canopy.find_child("Cloth", false, false) as Node3D
+		_cloth = _canopy.find_child("Cloth", true, false) as Node3D   # under the model's CanopySnag root
 		return
 	var scene: PackedScene = load(PARACHUTE) if ResourceLoader.exists(PARACHUTE) else null
 	if scene != null:
@@ -88,10 +88,11 @@ func _line(from: Vector3, to: Vector3) -> MeshInstance3D:
 	material.albedo_color = Color(.92, .55, .2)
 	mesh.material_override = material
 	add_child(mesh)
-	mesh.position = (from + to) * .5
+	# In the snag's own space (look_at works in world space, which put these
+	# lines at the world's origin, by the lander).
 	var dir := (to - from).normalized()
-	if absf(dir.dot(Vector3.UP)) < .99: mesh.look_at_from_position(mesh.position, to, Vector3.UP)
-	mesh.rotate_object_local(Vector3.RIGHT, PI * .5)
+	var side := dir.cross(Vector3.UP) if absf(dir.dot(Vector3.UP)) < .99 else Vector3.RIGHT
+	mesh.transform = Transform3D(Basis(side.normalized(), dir, side.normalized().cross(dir)).orthonormalized(), (from + to) * .5)
 	return mesh
 
 func freed_count() -> int:

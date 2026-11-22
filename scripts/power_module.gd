@@ -159,6 +159,8 @@ func pick_up() -> void:
 	if camera == null: return
 	where = "carried"
 	reachable(false)
+	var known_left: Node = world.get("known")
+	if known_left != null: known_left.picked_up(LEFT_ID)
 	get_parent().remove_child(self)
 	camera.add_child(self)
 	position = HELD_AT
@@ -167,6 +169,8 @@ func pick_up() -> void:
 	MHAudio.sfx("suit_clamp", -6.0)
 	var hud: Node = world.get("explore_hud")
 	if hud != null: hud.show_equipment_note("Carrying the power module", "Heavy. Q sets it down." + (" E on GAR-Y loads it on its sled." if _hitched() else ""))
+
+const LEFT_ID := "left:power_module"   # its mark on the compass while it's on the ground
 
 func put_down() -> void:
 	if where != "carried": return
@@ -178,6 +182,8 @@ func put_down() -> void:
 	rotation = Vector3(0, player.rotation.y + PI * .5, 0)
 	where = "ground"
 	reachable(true)
+	var known_left: Node = world.get("known")
+	if known_left != null: known_left.set_down(LEFT_ID, "Power module", global_position)
 	player.set_meta("load_speed", 1.0)
 	MHAudio.sfx("place", -6.0)
 	var hud: Node = world.get("explore_hud")
@@ -192,6 +198,8 @@ func plug_in() -> void:
 	var walker := _walker()
 	if walker == null: return
 	if where == "carried": world.player.set_meta("load_speed", 1.0)
+	var known_left: Node = world.get("known")
+	if known_left != null: known_left.picked_up(LEFT_ID)
 	if where == "sled":
 		var pod: Node = world.get("lifepod")
 		if pod != null: (pod.sled_cargo as Array).erase(self)

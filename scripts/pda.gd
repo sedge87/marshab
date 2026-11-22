@@ -161,7 +161,10 @@ func hand_over(raise := true) -> void:
 	MHAudio.sfx("suit_beep", -8.0)
 	# A new game: straight to the orbiter's photo of the parachute (Comms), if it came.
 	var texts: Node = world.get("orbiter_texts") if world != null else null
-	if texts != null and not texts.latest_photo().is_empty(): open("comms")
+	# The opening slice (version 3): Castle's "manifest's on your slate" — it
+	# comes up on the Cargo tab (Base page), so you don't have to hunt for it.
+	if world != null and int(world.get("opening_version")) >= 3: open("cargo")
+	elif texts != null and not texts.latest_photo().is_empty(): open("comms")
 	else: open("notes" if world == null or world.get("tutorial") == null else "goals")
 
 ## Raise it, on an app if one is named (otherwise the last one used).

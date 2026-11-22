@@ -47,6 +47,7 @@ const NAV_SCRIPT := preload("res://scripts/walker_nav_screen.gd")
 const WAIT_OUT := 2600.0        # metres out, hidden, until the night it moves
 const STRANDED_ABOVE := 2.0     # standing on it this high, not riding: you're put down
 const SEE_NEAR := 250.0         # you see it this close (A6: it's only ~550 m out, so follow the tracks first)
+const SEE_CLOSE := 30.0         # near enough to make out its lamp, seat and screen
 const SEE_HIGH := 600.0         # ... or this far from ground this much higher
 const HIGH_ABOVE := 10.0
 const PARK_FROM_LANDER := 48.0
@@ -561,7 +562,7 @@ func _see() -> void:
 	if notes != null:
 		notes.answer("tracks")
 		notes.answer("night_sound")
-		notes.think("walker_seen")
+		notes.think("walker_seen", "start")
 
 ## The slate's Camera app: a picture of the tracks can go up to the orbiter.
 func can_send() -> bool:
@@ -1127,6 +1128,12 @@ func _look() -> void:
 	else: _stranded = 0.0
 	var far := Vector2(you.x - global_position.x, you.z - global_position.z).length()
 	if not seen and (far < SEE_NEAR or (far < SEE_HIGH and you.y > global_position.y + HIGH_ABOVE)) and _in_sight(you): _see()
+	# 22 Nov playtest: the close-up thought (its lamp, its seat and screen)
+	# came at 500 m. From far off you only get what you could make out; the
+	# detail comes when you're near enough to read it, and looking.
+	elif seen and state == "stalled" and far < SEE_CLOSE and _in_sight(you):
+		var notes_now: Node = world.get("notes")
+		if notes_now != null: notes_now.think("walker_seen", "close")
 	if not seen and tracks_laid and near_tracks(you):
 		var notes: Node = world.get("notes")
 		if notes != null: notes.think("tracks")

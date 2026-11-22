@@ -149,6 +149,7 @@ func _spot() -> Vector3:
 	var suit: Node = world.get("suit")
 	if suit != null and str(suit.get("where")) != "outside": return Vector3.INF
 	if world.lander != null and world.lander.cabin_contains(player.global_position): return Vector3.INF
+	if not gary_with_you(): return Vector3.INF
 	var at := player.global_position - player.global_transform.basis.z * AHEAD
 	at.y = MHSiteTerrain.height(at.x, at.z)
 	return at
@@ -164,10 +165,21 @@ func far_reason(at: Vector3) -> String:
 		if not is_inf(pit.x) and _to_segment(pit, Vector2(first.x, first.z), Vector2(at.x, at.z)) < PIT_KEEP: return "That line runs over the edge: GAR-Y can't drive it"
 	return ""
 
+## A line is GAR-Y reading the ground between two stakes: no line until it's
+## met and free (22 Nov playtest: stakes went in before GAR-Y was found, and
+## the prompt said it was on its way).
+func gary_with_you() -> bool:
+	var field: Node = world.get("drop_field")
+	if field != null and "gary_greeted" in field and not bool(field.gary_greeted): return false
+	return _gary() != null
+
 ## What E does here, for the HUD (scripts/explore_hud.gd), or "".
 func prompt_text() -> String:
 	if not running.is_empty():
+		if _gary() == null: return "The line's staked: GAR-Y will run it when it can"
 		return "GAR-Y's running the line" if _stage == "run" else "GAR-Y's heading for the first stake"
+	if FIELD_KIT.holding_in(world, "stakes") and have_stakes() and not gary_with_you():
+		return "GAR-Y reads the ground between the stakes: find it first"
 	var at := _spot()
 	if is_inf(at.x): return ""
 	if is_inf(first.x): return "Plant the first stake"
@@ -219,8 +231,9 @@ func plant(at: Vector3) -> bool:
 	return true
 
 func _stake(at: Vector3) -> Node3D:
-	var stake := Node3D.new()
+	var stake := PlantedStake.new()
 	stake.name = "LineStake"
+	stake.line = self
 	world.add_child(stake)
 	stake.global_position = at
 	var scene: PackedScene = load(STAKE_MODEL) if ResourceLoader.exists(STAKE_MODEL) else null
@@ -255,10 +268,53 @@ func _stake(at: Vector3) -> Node3D:
 
 func _plant_saved() -> void:
 	for line in lines:
-		for end in [line.a, line.b]:
+		var pulled: Array = line.get("pulled", [])
+		for key in ["a", "b"]:
+			if key in pulled: continue
+			var end: Array = line[key]
 			var p := Vector3(float(end[0]), 0, float(end[1]))
 			p.y = MHSiteTerrain.height(p.x, p.z)
 			_stakes.append(_stake(p))
+
+## E on a planted stake: you pull it up (22 Nov playtest). The line's
+## reading stays on the slate; only the stake comes out. Not while GAR-Y's
+## running that line.
+func pull(stake: Node3D) -> bool:
+	var at := Vector2(stake.global_position.x, stake.global_position.z)
+	if not running.is_empty():
+		for key in ["a", "b"]:
+			var end: Array = running[key]
+			if at.distance_to(Vector2(float(end[0]), float(end[1]))) < .3:
+				_hint("Not yet", "GAR-Y's reading this line. Leave the stakes in till it's done.")
+				MHAudio.sfx("invalid", -8.0)
+				return false
+	if not is_inf(first.x) and at.distance_to(Vector2(first.x, first.z)) < .3: first = Vector3.INF   # the line you'd started: begun again
+	for line in lines:
+		for key in ["a", "b"]:
+			var end: Array = line[key]
+			if at.distance_to(Vector2(float(end[0]), float(end[1]))) < .3:
+				if not line.has("pulled"): line["pulled"] = []
+				if not key in line.pulled: (line.pulled as Array).append(key)
+	_stakes.erase(stake)
+	stake.queue_free()
+	MHAudio.sfx("suit_clamp", -8.0)
+	return true
+
+class PlantedStake extends StaticBody3D:
+	var line: Node
+	func _ready() -> void:
+		set_meta("interaction_target", self)
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = Vector3(.14, .95, .14)
+		shape.shape = box
+		shape.position.y = .4
+		add_child(shape)
+		collision_layer = 1
+	func interaction_prompt() -> Dictionary:
+		return {"label": "Survey stake", "primary": "Pull it up"}
+	func interact(_actor: Node = null) -> bool:
+		return line != null and line.pull(self)
 
 # ---------- GAR-Y runs it ----------
 
