@@ -441,7 +441,12 @@ Scenes 1–7 run from waking to Castle's quiet call. `tests/opening_slice_test.g
   - GAR-Y's field upgrade (worn finish, `RearMount`, `FrontMount`, `MastMount`) and the tow hitch on `RearMount`;
   - the Site Plan Terminal (its screen a plain glow; the plan opens full-screen);
   - the fit-out crates in three sizes: the work light in the small case, the chair and the rack in the medium, the terminal, bunk and table in the large. Taking a piece out opens the lid; Q closes it again.
-- **Still stand-ins:** the canopy, the deck screen (Label3D), the hammer and scoop in hand, and Walker 1 itself. The Walker 1 remake in the pack is a different machine (about 3.4 × 5.4 m, unfolding its own small cabin) from the game's 15 m walker that carries and lowers the core, so it isn't swapped in yet.
+- **Round 2 in (22 Nov, `docs/assets-chunk1-round2.md`):**
+  - **Walker 1 at full scale.** The power module docks on its `PowerSocket` in the low berth on the left. Its readouts are drawn on the model's `DeckScreen` while you ride; otherwise it's dark glass. The ladder sections slide up its lean. The cables run from 0.326 m to touchdown. It kneels on real legs (winch arms out, ride deck folded, wheels planted) before it folds away.
+  - **The canopy snag.** Each of the three lines goes as you free it; the cloth stays.
+  - **The rock hammer and sample scoop** in hand.
+  - The first Walker 1 remake stays in the pack for reference only.
+- **No stand-ins left in chunk 1**, except the survey stakes held in hand.
 - **In the pack for chunk 2:** the landing pad and beacon (now in, §10b), and the radar sled (chunk 3).
 - **Not done:**
   - "Sleep once tiredness wins" on night 1 (the seat only).

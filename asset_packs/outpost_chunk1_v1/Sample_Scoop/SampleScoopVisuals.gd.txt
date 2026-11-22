@@ -1,0 +1,8 @@
+extends Node3D
+
+@onready var _pan: Node3D = $ScoopJoint/Pan
+
+
+## Positive degrees tip the mouth toward the ground.
+func set_pan_angle(degrees: float) -> void:
+	_pan.rotation.x = deg_to_rad(-clampf(degrees, -16.0, 72.0))

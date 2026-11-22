@@ -62,12 +62,13 @@ const TEXT_DELAY := 75.0        # seconds to the orbiter's next pass
 const LOWER_SECONDS := 9.0
 const MODULE_BOTTOM := 1.25     # the carried module's floor above the ground
 const WHEEL_R := .62
-const LADDER := Vector3(0, 1.6, 5.74)   # the ladder up its back, in the model
+const LADDER := Vector3(0, 1.6, 6.92)   # the ladder up its back, in the model (it leans: foot at z 7.4)
+const LADDER_SLOPE := 1.66 / 5.51       # its sections slide back up the lean: z falls this much per metre up
 ## Where you ride: seated on the front deck facing forward (your feet; eyes
 ## about 1.3 m over the deck), so you see where it's going (8 Nov playtest).
 const DECK := Vector3(0, 5.36, -3.15)
 const NAV_AT := Vector3(0, 6.26, -3.95)  # the nav screen before the seat, in the model
-const STEP_OFF := Vector3(0, 0, 7.4)     # the ladder's foot, where you climb down to
+const STEP_OFF := Vector3(0, 0, 8.4)     # just behind the ladder's foot, where you climb down to
 const TALK_AFTER := 45.0        # seconds into the walk home: Castellanos's first text
 const TALK_AGAIN := 0.5         # ... and again this far along
 const LADDER_SCRIPT := preload("res://scripts/walker_ladder.gd")
@@ -130,6 +131,7 @@ var _light: OmniLight3D
 var _dust: Node3D
 var _wheels: Array = []
 var _knees: Array = []
+var _knee_rest: Array = []       # each knee's standing bend (about its X)
 var _cables: Array = []
 var _module_shape: CollisionShape3D
 var _module_y0 := 0.0
@@ -228,9 +230,15 @@ func _choose() -> Vector3:
 func _v3() -> bool:
 	return int(world.get("opening_version")) >= 3
 
-## Where the power module plugs in (scripts/power_module.gd).
+## Where the power module plugs in (scripts/power_module.gd): the model's
+## PowerSocket marker in its berth on the left side (its -Z out of the socket).
 func power_socket() -> Vector3:
-	return to_global(SOCKET_LOCAL)
+	return socket_transform().origin
+
+func socket_transform() -> Transform3D:
+	var socket := _model.find_child("PowerSocket", true, false) as Node3D if _model != null else null
+	if socket != null: return socket.global_transform
+	return Transform3D(global_basis, to_global(SOCKET_LOCAL))
 
 ## v3: the power module's in. Its lamp goes steady, its joints twitch, the
 ## deck screen comes on. Its nav comes back with power (no sun sight), but a
@@ -347,14 +355,16 @@ func _build() -> void:
 	_lamp = _model.find_child("Lamp", true, false)
 	for i in 2:
 		var section := _model.find_child("Ladder_%d" % (i + 2), true, false) as Node3D
-		if section != null: _sections.append([section, section.position.y, float(LADDER_STOW[i])])
+		if section != null: _sections.append([section, section.position.y, float(LADDER_STOW[i]), section.position.z])
 	_dust = _model.find_child("Dust", true, false)
 	if _dust != null: _dust.visible = false   # older models: the dust's gone from the story
 	_build_lights()
 	if _module != null: _module_y0 = _module.position.y
 	for i in range(1, 7):
 		_wheels.append(_model.find_child("Wheel_%d" % i, true, false))
-		_knees.append(_model.find_child("Knee_%d" % i, true, false))
+		var knee := _model.find_child("Knee_%d" % i, true, false) as Node3D
+		_knees.append(knee)
+		_knee_rest.append(knee.rotation.x if knee != null else 0.0)
 	for i in range(1, 5): _cables.append(_model.find_child("Cable_%d" % i, true, false))
 	_cable_length(0.0)
 	_light = OmniLight3D.new()
@@ -420,10 +430,10 @@ func _shape(body: StaticBody3D, box: BoxShape3D, size: Vector3, at: Vector3) -> 
 	body.add_child(shape)
 	return shape
 
-## Cables a little longer than the gap, plus however far the module's down.
+## Winch to the module's lugs (0.326 m carried), plus however far it's down.
 func _cable_length(down: float) -> void:
 	for cable in _cables:
-		if cable != null: (cable as Node3D).scale = Vector3(1, maxf(.05, .12 + down), 1)
+		if cable != null: (cable as Node3D).scale = Vector3(1, maxf(.05, .326 + down), 1)
 
 func _settle() -> void:
 	var p := global_position
@@ -946,7 +956,9 @@ func _run_ladder(delta: float) -> void:
 func _place_ladder() -> void:
 	var t := smoothstep(0.0, 1.0, ladder_out)
 	for s in _sections:
-		(s[0] as Node3D).position.y = float(s[1]) + (1.0 - t) * float(s[2])
+		var up := (1.0 - t) * float(s[2])
+		(s[0] as Node3D).position.y = float(s[1]) + up
+		(s[0] as Node3D).position.z = float(s[3]) - LADDER_SLOPE * up
 	if _ladder_shape != null: _ladder_shape.disabled = ladder_out < .95
 
 ## Walking: come up to its ladder's foot and it stops and runs the ladder
@@ -1090,9 +1102,8 @@ func _roll(metres: float) -> void:
 	for i in _knees.size():
 		var knee := _knees[i] as Node3D
 		if knee == null: continue
-		var s := -1.0 if i < 3 else 1.0
 		var lift := maxf(0.0, sin(_gait + (PI if i % 2 == 1 else 0.0))) * .09
-		knee.rotation.z = s * lift
+		knee.rotation.x = float(_knee_rest[i]) - lift
 
 func _put_down(player: Node3D) -> void:
 	_stranded = 0.0
@@ -1257,13 +1268,51 @@ func _fold(t: float) -> void:
 	if _model == null: return
 	var kneel := smoothstep(0.0, .5, t)
 	var fold := smoothstep(.4, 1.0, t)
-	_model.position.y = -KNEEL * kneel
+	if _model.find_child("RideDeckFold", true, false) != null: _kneel(KNEEL * kneel)
+	else: _model.position.y = -KNEEL * kneel   # older model: the whole thing sinks
 	_model.scale = Vector3(lerpf(1.0, .35, fold), lerpf(1.0, .25, fold), lerpf(1.0, .7, fold))
 	var gone := t >= 1.0
 	visible = not gone
 	for body in find_children("*", "StaticBody3D", true, false):
 		(body as StaticBody3D).collision_layer = 0 if gone else 1
 	if _ladder_shape != null and gone: _ladder_shape.disabled = true
+
+## The frame comes down `drop` metres on bent legs, wheels where they stand
+## (asset_packs/outpost_chunk1_v1/Walker_1_Full_Scale/Walker1Visuals.gd.txt):
+## winch arms out, the ride deck folds forward, the berth stays at its height.
+func _kneel(drop: float) -> void:
+	if _body == null: return
+	_body.position.y = -drop
+	var upper := 3.0
+	var lower := 3.10
+	var run := 3.60
+	var rise := WHEEL_R - (5.05 - drop)
+	var bend := -acos(clampf((run * run + rise * rise - upper * upper - lower * lower) / (2.0 * upper * lower), -1.0, 1.0))
+	var lift := atan2(rise, run) - atan2(lower * sin(bend), upper + lower * cos(bend))
+	for i in range(1, 7):
+		var side := -1.0 if i <= 3 else 1.0
+		var hip := _body.get_node_or_null("Hip_%d" % i) as Node3D
+		if hip == null: continue
+		var knee := hip.get_node("Knee_%d" % i) as Node3D
+		var carrier := knee.get_node("AxleCarrier_%d" % i) as Node3D
+		var home := Basis(Vector3(0.0, 0.0, -side), Vector3(side, 0.0, 0.0), Vector3.DOWN)
+		hip.basis = home * Basis(Vector3.RIGHT, -lift)
+		knee.basis = Basis(Vector3.RIGHT, -bend)
+		carrier.basis = Basis(Vector3.RIGHT, lift + bend) * home.inverse()
+	var stowed := drop > .01
+	var deck := _body.get_node_or_null("RideDeckFold") as Node3D
+	if deck != null: deck.rotation.x = deg_to_rad(-92.7) * clampf(drop / 1.0, 0.0, 1.0)
+	var berth := _body.get_node_or_null("Berth") as Node3D
+	if berth != null:
+		berth.position.y = .35 + drop
+		var strut := berth.get_node_or_null("BerthStrut") as Node3D
+		if strut != null: strut.scale.y = (4.621 - drop) / 4.621
+	for i in range(1, 5):
+		var arm := _body.get_node_or_null("WinchArm_%d" % i) as Node3D
+		if arm == null: continue
+		arm.position.x = (-1.0 if i % 2 == 1 else 1.0) * lerpf(2.60, 3.54, clampf(drop / 1.0, 0.0, 1.0))
+		var cable := arm.get_node_or_null("Cable_%d" % i) as Node3D
+		if cable != null: cable.visible = not stowed
 
 ## Refolded (scripts/core_panel.gd): it stands up where its core was, ready.
 func refold() -> void:
@@ -1318,6 +1367,10 @@ func spot_reason(at: Vector2) -> String:
 	if base_id == "w1" and not kit_given and opening != null and bool(opening.call("guided")):
 		var lander: Vector3 = world.lander.global_position
 		if Vector2(at.x - lander.x, at.y - lander.z).length() > HOME_RING: return "For now, keep home within a kilometre of the lander"
+	var pad_site: Node = get_tree().get_first_node_in_group("pad_site")
+	if pad_site != null:
+		var clear := str(pad_site.keep_clear(at))
+		if not clear.is_empty(): return clear
 	var origin: Vector2 = known.origin if known != null else Vector2.ZERO
 	var ground := MHBaseSite.reason(at.x + origin.x, at.y + origin.y, 24.0)
 	if not ground.is_empty(): return "Not there: " + ground
@@ -1354,7 +1407,3 @@ func _arrive() -> void:
 func export_state() -> Dictionary:
 	return {"base_id": base_id, "name": walker_name, "kit_given": kit_given, "spot": _arr(spot), "state": state, "at": _arr(global_position), "yaw": rotation.y, "home": _arr(home), "target": _arr(target), "target_yaw": target_yaw,
 		"marked": marked, "fault_found": fault_found, "shots": shots.keys(), "calibrated": calibrated, "nav_sight": nav_sight_done, "seen": seen, "tracks": tracks_laid, "sent": sent, "text_left": _text_left, "first_night": first_night}
-	var pad_site: Node = get_tree().get_first_node_in_group("pad_site")
-	if pad_site != null:
-		var clear := str(pad_site.keep_clear(at))
-		if not clear.is_empty(): return clear

@@ -1,0 +1,13 @@
+extends Node3D
+
+@onready var _lines: Array[Node3D] = [$Line_1, $Line_2, $Line_3]
+
+
+func set_line_released(line_number: int, released: bool = true) -> void:
+	if line_number >= 1 and line_number <= _lines.size():
+		_lines[line_number - 1].visible = not released
+
+
+func set_released_mask(mask: int) -> void:
+	for index in range(_lines.size()):
+		_lines[index].visible = (mask & (1 << index)) == 0

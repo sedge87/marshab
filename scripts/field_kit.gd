@@ -8,9 +8,11 @@ extends Node
 ## tool by context (holding() is always true there).
 ##
 ## What's in your hand shows in your hand, low on the right: the corer is the
-## MC-01 model, the others stand-ins until their models arrive.
+## MC-01 model, the hammer and scoop their own models; the stakes a stand-in.
 
 const MC01 := "res://assets/models/field/mc01_corer.glb"
+const HAMMER := "res://assets/models/chunk1/rock_hammer.glb"
+const SCOOP := "res://assets/models/chunk1/sample_scoop.glb"
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const SLOTS := [
 	["corer", "Hand corer"],
@@ -112,14 +114,28 @@ func _show() -> void:
 				_model = scene.instantiate() as Node3D
 				_model.scale = Vector3.ONE * .45
 				_model.rotation_degrees = Vector3(-8, 20, -12)
-		"hammer": _model = _stand_in([[Vector3(.04, .04, .36), Vector3(0, 0, .1), "dark_alloy"], [Vector3(.12, .05, .05), Vector3(0, 0, -.08), "graphite"]])
-		"scoop": _model = _stand_in([[Vector3(.03, .03, .3), Vector3(0, 0, .1), "dark_alloy"], [Vector3(.1, .03, .12), Vector3(0, 0, -.1), "white_painted"]])
+		"hammer":
+			_model = _hand_tool(HAMMER)
+			if _model == null: _model = _stand_in([[Vector3(.04, .04, .36), Vector3(0, 0, .1), "dark_alloy"], [Vector3(.12, .05, .05), Vector3(0, 0, -.08), "graphite"]])
+		"scoop":
+			_model = _hand_tool(SCOOP)
+			if _model == null: _model = _stand_in([[Vector3(.03, .03, .3), Vector3(0, 0, .1), "dark_alloy"], [Vector3(.1, .03, .12), Vector3(0, 0, -.1), "white_painted"]])
 		"stakes": _model = _stand_in([[Vector3(.02, .3, .02), Vector3.ZERO, "orange"]])
 	if _model == null: return
 	_model.name = "InHand"
 	camera.add_child(_model)
 	_model.position = HELD_AT
 	for mesh in _model.find_children("*", "MeshInstance3D", true, false): (mesh as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## The hammer or scoop model (asset_packs/outpost_chunk1_v1): its origin is
+## the grip, its head or pan out along -Z, held like the stand-ins were.
+func _hand_tool(path: String) -> Node3D:
+	var scene: PackedScene = load(path) if ResourceLoader.exists(path) else null
+	if scene == null: return null
+	var tool := scene.instantiate() as Node3D
+	MHPalette.apply(tool)
+	tool.rotation_degrees = Vector3(-20, 15, 0)
+	return tool
 
 func _stand_in(parts: Array) -> Node3D:
 	var root := Node3D.new()

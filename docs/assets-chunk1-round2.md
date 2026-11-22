@@ -1,5 +1,7 @@
 # Asset brief: chunk 1, round 2 (Walker 1, the canopy, the hammer and scoop)
 
+*Arrived and in the game 22 Nov: all four, to spec (`asset_packs/outpost_chunk1_v1`, `docs/opening-slice.md` §10a).*
+
 *For the user to build with ChatGPT, 22 Nov 2026. Round 1 (`docs/assets-chunk1.md`) is in the game: the power module, GAR-Y's field upgrade and hitch, the Site Plan Terminal and the fit-out crates. These four are still stand-ins. Attach `assets/companions/walker.glb` (the game's current walker) and the `Walker_1_Remake` you sent, so ChatGPT can see both.*
 
 ---

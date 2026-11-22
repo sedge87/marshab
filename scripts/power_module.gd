@@ -197,10 +197,16 @@ func plug_in() -> void:
 		if pod != null: (pod.sled_cargo as Array).erase(self)
 	var hud: Node = world.get("explore_hud")
 	if hud != null: hud.hide_equipment_note("Carrying")
+	# Its plug (SocketFace) meets the walker's PowerSocket face to face.
+	var face := _box.find_child("SocketFace", true, false) as Node3D
+	var in_case := global_transform.affine_inverse() * face.global_transform if face != null else Transform3D.IDENTITY
 	get_parent().remove_child(self)
 	walker.add_child(self)
-	position = walker.SOCKET_LOCAL
-	rotation = Vector3.ZERO
+	if face != null:
+		global_transform = (walker.socket_transform() * Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)) * in_case.affine_inverse()
+	else:
+		position = walker.SOCKET_LOCAL
+		rotation = Vector3.ZERO
 	where = "plugged"
 	reachable(false)
 	_lamp_mat.albedo_color = Color("#ffb449")

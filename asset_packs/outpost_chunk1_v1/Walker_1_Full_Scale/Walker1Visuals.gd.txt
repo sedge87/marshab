@@ -1,0 +1,82 @@
+extends Node3D
+
+@onready var _body: Node3D = $Body
+@onready var _module: Node3D = $Module
+@onready var _screen: MeshInstance3D = $Body/RideDeckFold/DeckScreen
+
+var _screen_material: StandardMaterial3D
+
+
+func _ready() -> void:
+	set_pose(0.0, 0.0, 0.0)
+
+
+## Fractions from 0 to 1. The caller owns timing and gameplay state.
+## Release the payload and pack the ladder before lowering the chassis.
+func set_pose(module_lowering: float, ladder_packing: float, kneeling: float) -> void:
+	var lowering := clampf(module_lowering, 0.0, 1.0)
+	var packing := clampf(ladder_packing, 0.0, 1.0)
+	var kneel := clampf(kneeling, 0.0, 1.0)
+	if lowering < 1.0 or packing < 1.0:
+		kneel = 0.0
+	var drop := 3.2 * kneel
+	_body.position.y = -drop
+	_module.position.y = 1.25 * (1.0 - lowering)
+	_set_legs(drop)
+	_set_ladder(packing)
+
+	var stowed := kneel > 0.0
+	var ride_deck := _body.get_node("RideDeckFold") as Node3D
+	ride_deck.rotation.x = deg_to_rad(-92.7) if stowed else 0.0
+	var berth := _body.get_node("Berth") as Node3D
+	berth.position.y = 0.35 + drop
+	(berth.get_node("BerthStrut") as Node3D).scale.y = (4.621 - drop) / 4.621
+	for index in range(1, 5):
+		var winch := _body.get_node("WinchArm_%d" % index) as Node3D
+		var cable := winch.get_node("Cable_%d" % index) as Node3D
+		var side := -1.0 if index % 2 == 1 else 1.0
+		winch.position.x = side * (3.54 if stowed else 2.60)
+		cable.scale.y = 0.326 + 1.25 * lowering
+		cable.visible = not stowed
+
+
+func _set_legs(drop: float) -> void:
+	var upper := 3.0
+	var lower := 3.10
+	var run := 3.60
+	var rise := 0.62 - (5.05 - drop)
+	var length_cosine := (run * run + rise * rise - upper * upper - lower * lower) / (2.0 * upper * lower)
+	var bend := -acos(clampf(length_cosine, -1.0, 1.0))
+	var lift := atan2(rise, run) - atan2(lower * sin(bend), upper + lower * cos(bend))
+	for index in range(1, 7):
+		var side := -1.0 if index <= 3 else 1.0
+		var hip := _body.get_node("Hip_%d" % index) as Node3D
+		var knee := hip.get_node("Knee_%d" % index) as Node3D
+		var carrier := knee.get_node("AxleCarrier_%d" % index) as Node3D
+		var home := Basis(Vector3(0.0, 0.0, -side), Vector3(side, 0.0, 0.0), Vector3.DOWN)
+		hip.basis = home * Basis(Vector3.RIGHT, -lift)
+		knee.basis = Basis(Vector3.RIGHT, -bend)
+		carrier.basis = Basis(Vector3.RIGHT, lift + bend) * home.inverse()
+
+
+func _set_ladder(packing: float) -> void:
+	var slope := 1.66 / 5.51
+	var middle := _body.get_node("Ladder_2") as Node3D
+	var bottom := _body.get_node("Ladder_3") as Node3D
+	middle.position.y = 4.033 + 1.9 * packing
+	bottom.position.y = 2.165 + 3.6 * packing
+	middle.position.z = 7.40 - slope * middle.position.y
+	bottom.position.z = 7.40 - slope * bottom.position.y
+	(bottom.get_node("LadderShoe") as Node3D).rotation.x = PI * 0.58 * packing
+
+
+## The visual asset starts with blank glass. Optional runtime feed.
+func set_deck_display(readout: Texture2D) -> void:
+	if readout == null:
+		_screen.material_override = null
+		return
+	if _screen_material == null:
+		_screen_material = StandardMaterial3D.new()
+		_screen_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_screen_material.albedo_texture = readout
+	_screen.material_override = _screen_material

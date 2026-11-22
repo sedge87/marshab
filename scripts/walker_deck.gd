@@ -31,6 +31,10 @@ func setup(target_walker: Node3D) -> void:
 	walker = target_walker
 	world = walker.world
 	name = "Deck"
+	var glass := walker.find_child("DeckScreen", true, false) as MeshInstance3D
+	if glass != null:
+		_build_glass_screen(glass)
+		return
 	_screen = Label3D.new()
 	_screen.name = "DeckScreen"
 	_screen.pixel_size = .0016
@@ -47,13 +51,59 @@ func setup(target_walker: Node3D) -> void:
 	_screen.rotation_degrees = Vector3(-18, 0, 0)
 	_screen.visible = false
 
+## The model's deck screen (Walker_1 DeckScreen, a blank 16:9 glass facing
+## the seat): the readout is drawn into a small viewport and shown on it,
+## lit while you ride, dark glass otherwise.
+var _glass: MeshInstance3D
+var _view: SubViewport
+var _text: Label
+var _lit: StandardMaterial3D
+func _build_glass_screen(glass: MeshInstance3D) -> void:
+	_glass = glass
+	_view = SubViewport.new()
+	_view.size = Vector2i(640, 360)
+	_view.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(_view)
+	var back := ColorRect.new()
+	back.color = Color("#07130F")
+	back.size = Vector2(640, 360)
+	_view.add_child(back)
+	_text = Label.new()
+	_text.position = Vector2(24, 18)
+	_text.size = Vector2(592, 324)
+	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_text.add_theme_font_size_override("font_size", 26)
+	_text.add_theme_color_override("font_color", Color(.55, 1.0, .72))
+	_view.add_child(_text)
+	_lit = StandardMaterial3D.new()
+	_lit.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_lit.albedo_texture = _view.get_texture()
+
+func _screen_on(on: bool) -> void:
+	if _glass == null:
+		_screen.visible = on
+		return
+	_glass.material_override = _lit if on else null
+	_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
+
+func _screen_say(words: String) -> void:
+	if _glass == null: _screen.text = words
+	else: _text.text = words
+
+## What the deck screen shows now, and whether it's lit (tests).
+func screen_text() -> String:
+	return _text.text if _glass != null else _screen.text
+
+func screen_lit() -> bool:
+	return _glass.material_override == _lit if _glass != null else _screen.visible
+
 func active() -> bool:
 	return bool(walker.riding) and str(walker.state) in ["ready", "parked"] and (str(walker.state) == "ready" or siting)
 
 # ---------- each frame, riding ----------
 
 func tick(delta: float) -> void:
-	_screen.visible = active()
+	_screen_on(active())
 	if not active(): return
 	if siting:
 		_aim()
@@ -68,7 +118,7 @@ func tick(delta: float) -> void:
 	if _reading.is_empty() or (_read_in <= 0.0 and (moving or walker.global_position.distance_to(_read_at) > 1.0)) or walker.global_position.distance_to(_read_at) > READ_MOVED:
 		_read_in = READ_EVERY
 		_read()
-	_screen.text = _reading
+	_screen_say(_reading)
 
 func _look_flat() -> Vector3:
 	var camera := world.player.get_node_or_null("Head/Camera3D") as Camera3D
@@ -165,7 +215,7 @@ func _aim() -> void:
 		builder.zones.erase(core)
 	builder.kind = "general"
 	_draw_outline()
-	_screen.text = "SET DOWN HERE?\n\nThe airlock faces the way you look.\n\n" + ("[E] SET IT DOWN    [SPACE] BACK" if _why.is_empty() else "NOT HERE: %s\n[SPACE] BACK" % _why.to_lower())
+	_screen_say("SET DOWN HERE?\n\nThe airlock faces the way you look.\n\n" + ("[E] SET IT DOWN    [SPACE] BACK" if _why.is_empty() else "NOT HERE: %s\n[SPACE] BACK" % _why.to_lower()))
 
 func _draw_outline() -> void:
 	_clear_outline()

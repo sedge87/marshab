@@ -7,9 +7,14 @@ extends Node3D
 ## watches. When the last line comes away, scripts/drop_field.gd runs the
 ## meeting.
 ##
-## Stand-in look until the canopy model arrives: a scaled-down storm_cargo
-## parachute behind it and thin lines from each snag point to the cloth.
+## The model (asset_packs/outpost_chunk1_v1/GAR_Y_Canopy_Snag), set at
+## GAR-Y's origin: the torn Cloth slumped behind it and Line_1-3 (front-left
+## wheel, back-right wheel, mast), each with its wrap. Each line goes as its
+## snag is freed; the cloth stays behind as debris. If the model's missing,
+## a scaled-down storm_cargo parachute and thin drawn lines stand in.
 
+const CANOPY := "res://assets/models/chunk1/gar_y_canopy_snag.glb"
+const MHPalette := preload("res://scripts/mh_palette.gd")
 const PARACHUTE := "res://assets/models/storm_cargo/parachute.glb"
 const SNAGS := 3
 const FREE_SECONDS := 1.4
@@ -37,16 +42,27 @@ func setup(target_field: Node, target_gary: Node3D, already_freed: int = 0) -> v
 	var spots := [Vector3(-.42, .18, -.38), Vector3(.42, .18, .40), Vector3(0, .9, .05)]
 	var labels := ["A line round the front wheel", "A line round the back wheel", "The canopy's caught on its mast"]
 	for i in SNAGS:
-		if i < already_freed: continue
+		var model_line: Node3D = _canopy.find_child("Line_%d" % (i + 1), false, false) as Node3D if _canopy != null else null
+		if i < already_freed:
+			if model_line != null: model_line.visible = false
+			continue
 		var point := SnagPoint.new()
 		point.snag = self
 		point.label = labels[i]
 		add_child(point)
 		point.position = spots[i]
 		left.append(point)
-		_lines[point] = _line(spots[i], Vector3(0, .5, 1.6))
+		_lines[point] = model_line if model_line != null else _line(spots[i], Vector3(0, .5, 1.6))
 
+var _canopy: Node3D
 func _build_cloth() -> void:
+	var model: PackedScene = load(CANOPY) if ResourceLoader.exists(CANOPY) else null
+	if model != null:
+		_canopy = model.instantiate() as Node3D
+		add_child(_canopy)
+		MHPalette.apply(_canopy)
+		_cloth = _canopy.find_child("Cloth", false, false) as Node3D
+		return
 	var scene: PackedScene = load(PARACHUTE) if ResourceLoader.exists(PARACHUTE) else null
 	if scene != null:
 		_cloth = scene.instantiate() as Node3D
