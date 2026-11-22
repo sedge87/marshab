@@ -292,6 +292,42 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 
 *Cut:* "Base beacon's silent…" and "forget the beacon", which contradict the pad looking fine (Scene 8).
 
+**Guidance without lectures (the user, 22 Nov):** "guidance is still needed without just lecturing the player." This middle ground has three parts:
+1. a short talk in the lander that you can steer;
+2. one hint per step, only if you stall;
+3. a way to ask orbit yourself.
+
+**In the lander: the manifest, then step-out advice** (replaces `s1_manifest`; plays once you're holding the slate, ~1–2 min). It's a conversation you steer: each topic you pick gets a short answer. "I'm going" ends it at any point, and walking to the hatch pauses it.
+> Castellanos: Got it? That's everything that came down. Twelve pallets, three walkers, GAR-Y. The storm moved most of it.
+> Achterberg: The ones marked "in your area" are close enough to walk. The rest we find later.
+>
+> *Ask (each topic once; the menu comes back until you leave):*
+> - *What do I look for out there?* → Achterberg: Parachutes. Every pallet came down under one, and they're bright. GAR-Y's cradle should be close to you too.
+> - *What matters most?* → Castellanos: Walker 1. It carries the hab. If it's sat dead in the dust, it'll want power, and one of those pallets is a power module.
+> - *How do I not get into trouble?* → Castellanos: The ring on your wrist. That's your air, and the notch is the way home. When they meet, you turn round. No arguments.
+> - *I'm going.* → Castellanos: Seal up when you're ready. The hatch is yours.
+>
+> *If you pick "I'm going" first:* Castellanos: Good. Shout if you want us.
+
+**If you stall: one hint, from whoever would notice.** It plays only if the step hasn't moved in about 3 minutes, it's daylight, and no call has played in the last 60 s.
+- Each hint is phrased as something they've noticed, never an order.
+- It plays once, then stays available through *Ask orbit*.
+- They reuse the `nudge` lines that `radio.gd` already has.
+
+| Waiting on | Who | Hint |
+|---|---|---|
+| finding GAR-Y | Tupou | Those orange stakes by the cradle. GAR-Y plants those. Just saying. |
+| the first pallet | Rao | I've still got three chutes on the camera. Nearest's on the rise. |
+| the hitch | Achterberg | There's a bracket in the tools pallet that fits GAR-Y's back end. |
+| powering the walker | Achterberg | Walker 1's lamp is amber. Amber means alive, but starving. |
+| finding the fault | Achterberg | Screens only tell you so much. Walk round the front wheels and look. |
+| bringing it home (late in the day) | Castellanos | Light's going. Bring it home. |
+| choosing home (sol 2) | Rao | The walker's screen reads the ground under you. Find a spot that reads well. |
+| the fit-out crates | Mwangi | Those crates won't unpack themselves. I'd help, but, you know. Orbit. |
+| the first room | Achterberg | The terminal's where rooms come from. The first one's on the house. |
+
+**Ask orbit (on the slate, any time on the radio link).** Press it and whoever fits answers with the hint for where you are, even before the 3 minutes. Asking a second time gets *"Same as before. You've got this."* With nothing pending you get one of a few short "nothing urgent" lines, e.g. *Castellanos: Nothing from us. Enjoy the view.* It's always your choice to ask.
+
 **One real call each on sols 1–2** (`data/radio/slice/`).
 
 - **Kai: the stores pallet opened** (new beat: the first stores lid off, or the sample kit taken).
