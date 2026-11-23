@@ -15,6 +15,7 @@ extends Node3D
 
 const CANOPY := "res://assets/models/chunk1/gar_y_canopy_snag.glb"
 const MHPalette := preload("res://scripts/mh_palette.gd")
+const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const PARACHUTE := "res://assets/models/storm_cargo/parachute.glb"
 const SNAGS := 3
 const FREE_SECONDS := 1.4
@@ -115,7 +116,7 @@ func point_freed(point: Node) -> void:
 			# to keep its height, so on a slope it was left hanging in the air
 			# (23 Nov playtest).
 			var from := _cloth.global_position
-			var clearance := from.y - MHSiteTerrain.height(from.x, from.z)
+			var clearance: float = from.y - MHSiteTerrain.height(from.x, from.z)
 			var to := (_cloth.get_parent() as Node3D).to_global(_cloth.position + Vector3(0, 0, 2.5))
 			to.y = MHSiteTerrain.height(to.x, to.z) + clearance
 			var t := create_tween()
