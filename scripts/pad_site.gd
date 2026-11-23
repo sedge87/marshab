@@ -85,7 +85,12 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	world = target_world
 	name = "PadSite"
 	add_to_group("pad_site")
-	seen = bool(saved.get("seen", false))
+	# 23 Nov playtest: the pad on the compass, always, like the lander
+	# (explore_hud.gd _home_markers; Settings > Compass > Lander and airlocks).
+	add_to_group("landmark")
+	add_to_group("home_landmark")
+	set_meta("landmark_label", "PAD")
+	seen =bool(saved.get("seen", false))
 	levered = bool(saved.get("levered", false))
 	reseated = bool(saved.get("reseated", false))
 	connector_seen = bool(saved.get("connector_seen", false))
