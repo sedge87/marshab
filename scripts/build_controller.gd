@@ -5829,7 +5829,9 @@ func _remove_at(cell: Vector2i) -> void:
 			if bool(zones[index].get("carried", false)) and BUILD_RULES.stage(self) != "set_down":
 				_flash_notice("invalid", "The core stays", "It's the base's heart, set down whole. Refold it from its panel to move the base.")
 				return
-			if str(zones[index].kind) == "landing_pad" and bool(zones[index].get("down", false)):
+			# In the story game the pad's not on the bar (build_rules.gd offered),
+			# so one placed before that rule can still be taken up (23 Nov).
+			if str(zones[index].kind) == "landing_pad" and bool(zones[index].get("down", false)) and not BUILD_RULES.slice(self):
 				_flash_notice("invalid", "The pad stays", "The crew's landing pad is down: this is the main base.")
 				return
 			var refund:=int(zones[index].cost)

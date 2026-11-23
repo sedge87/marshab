@@ -94,6 +94,10 @@ static func offered(builder: Node, kind: String) -> bool:
 	# The core comes only on a walker (one walker, one base; A3, 14 Nov):
 	# never drawn by hand once there's a walker in the world. Creative still can.
 	if kind == "general" and active(builder): return false
+	# The story game: the crew's pad goes where you've proven the ground
+	# (the new job, docs/opening-slice.md Scene 12), not straight off the
+	# bar (23 Nov playtest). Until that's built, it isn't offered.
+	if kind == "landing_pad" and slice(builder): return false
 	return true
 
 ## A base's carried core, once placed in the plan (or {}): the plan's base
