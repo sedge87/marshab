@@ -72,6 +72,15 @@ func setup(door_name := "AIRLOCK", create_inner_frame := false, shutter_width :=
 	_hatch=door_name!="HANGAR" and ResourceLoader.exists(HATCH_MODEL)
 	if _hatch:
 		_build_hatch()
+		# 23 Nov playtest: airlock hatches open one way only, into the higher
+		# pressure, so the air holds them shut (no flipping to swing away from
+		# you). The chamber is on the door's +Z side (build_controller.gd
+		# _build_airlock_zone and the angled airlocks): the outer hatch swings
+		# into the chamber, the inner one into the habitat.
+		if wants_hands():
+			_face = 1.0 if door_name == "OUTER" else -1.0
+			_face_target = _face
+			_pose_leaf()
 		# Between rooms the hatch stands open on its hold-back.
 		if door_name=="INTERIOR":
 			_amount=1.0
@@ -278,7 +287,7 @@ func _sweep_blocked() -> bool:
 
 ## Open away from `who` (null: whoever's nearest).
 func _aim_away(who: Node3D) -> void:
-	if not _hatch: return
+	if not _hatch or wants_hands(): return   # airlock hatches keep their one way
 	if who == null: who = _nearest_user()
 	if who != null: _face_target = -side_of(who)
 
@@ -541,6 +550,12 @@ func _build_hatch() -> void:
 	var half:=_shutter_width*.5
 	var top:=_shutter_height
 	var pieces:=[[-half,-.74,0.0,top],[-.74,.74,2.22,top],[.74,half,0.0,top]]
+	# 23 Nov playtest: the frame's outer top corners are rounded (r ~.3 m), so
+	# the square plate left open corners. An L at each, outside the doorway
+	# (half-width .6, head 1.98) and hidden inside the frame where they overlap.
+	for sx in [-1.0,1.0]:
+		pieces.append([minf(sx*.6,sx*.745),maxf(sx*.6,sx*.745),1.9,2.225])
+		pieces.append([minf(sx*.42,sx*.745),maxf(sx*.42,sx*.745),1.99,2.225])
 	for piece in pieces:
 		if float(piece[1])-float(piece[0])>.01 and float(piece[3])-float(piece[2])>.01: _solid(plate,piece,.16,white)
 	# The frame's own solid parts: two jambs and the head (no sill: you step over it).
@@ -582,8 +597,9 @@ func idle() -> bool:
 
 ## Hold E at an airlock hatch (22 Nov playtest): you step up to it and,
 ## while E is held, the lever turns, which frees the leaf (no arm for now).
-## The leaf The leaf swings away from you, you step through the frame (input
-## frozen, ~1.5 s, eased), and it swings shut behind you once you're clear.
+## The leaf swings its one way (into the higher pressure); if that's towards
+## you, you step back out of its arc first. Then you step through the frame
+## (input frozen, eased), and it swings shut behind you once you're clear.
 ## Let go of E before the lever's over and it springs back: nothing opens.
 class HandMoment extends Node:
 	const REACH := .4      # step up and look at the lever
@@ -600,6 +616,8 @@ class HandMoment extends Node:
 	var _start: Vector3
 	var _stand: Vector3
 	var _far: Vector3
+	var _clear: Vector3    # back out of the leaf's arc, when it swings your way
+	var _toward_you := false
 	var _yaw0 := 0.0
 	var _pitch0 := 0.0
 	var _yaw := 0.0
@@ -625,6 +643,9 @@ class HandMoment extends Node:
 		_far = door.to_global(Vector3(0.0, 0.0, -side * 1.95))
 		var lift := _start.y - _floor_y(_start, _start.y)
 		_far.y = _floor_y(_far, _start.y) + lift
+		_toward_you = signf(door._face) == signf(side)
+		_clear = door.to_global(Vector3(.55, 0.0, side * 1.95))
+		_clear.y = _floor_y(_clear, _start.y) + lift
 		_yaw0 = player.rotation.y
 		_pitch0 = _head().rotation.x
 		var eye := _stand + Vector3.UP * 1.6
@@ -669,6 +690,19 @@ class HandMoment extends Node:
 				door._lever_angle = door.LEVER_TURN * smoothstep(0.0, 1.0, turned)
 				if turned >= 1.0:
 					MHAudio.sfx_at("door_interlock", door, -8.0)
+					if _toward_you:
+						phase = "back"
+					else:
+						door.toggle(player)
+						phase = "wait"
+					t = 0.0
+			"back":
+				# It opens towards you: a step back out of its arc, then it swings.
+				var k := smoothstep(0.0, 1.0, t / .45)
+				player.global_position = _stand.lerp(_clear, k)
+				door._lever_angle = door.LEVER_TURN * (1.0 - k * .3)
+				if t >= .45:
+					_stand = _clear
 					door.toggle(player)
 					phase = "wait"
 					t = 0.0
