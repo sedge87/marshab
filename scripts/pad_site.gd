@@ -65,6 +65,7 @@ var pit_seen := false
 var fell := false               # you went over the pit's lip (once is enough)
 var print_placed := false
 var pulling := false
+var _by_hand := false   # pushed upright by you, not pulled by GAR-Y
 var _dwell := 0.0
 var _model: Node3D
 var _station: Node3D
@@ -470,7 +471,7 @@ func prompt_for(id: String, holding: bool) -> Dictionary:
 			return {"label": "The power lead's torn out of the box", "primary": "" if connector_seen else "Look closer"}
 		"mast":
 			if reseated: return {"label": "The mast's upright", "primary": ""}
-			if pulling: return {"label": "GAR-Y's pulling", "primary": ""}
+			if pulling: return {"label": "Coming upright…" if _by_hand else "GAR-Y's pulling", "primary": ""}
 			if not levered: return {"label": "The mast leans %d°" % roundi(LEAN), "primary": "Its foot's sunk: lever that first"}
 			if _can_tow(): return {"label": "The mast leans %d°" % roundi(LEAN), "primary": "Clip GAR-Y's cable on"}
 			return {"label": "The mast leans %d°" % roundi(LEAN), "primary": "Pushing…" if holding else "Hold to push it upright"}
@@ -500,7 +501,9 @@ func press(id: String) -> Dictionary:
 func held_done(id: String) -> void:
 	match id:
 		"foot": lever()
-		"mast": _upright(1.6)
+		"mast":
+			_by_hand = true   # 23 Nov playtest: it said GAR-Y was pulling before you'd met it
+			_upright(1.6)
 
 ## The sunk foot comes up out of the crack.
 func lever() -> void:
@@ -559,6 +562,7 @@ func _upright(seconds: float) -> void:
 
 func _reseated() -> void:
 	pulling = false
+	_by_hand = false
 	reseated = true
 	if _cable != null and is_instance_valid(_cable): _cable.queue_free()
 	_cable = null
