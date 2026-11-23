@@ -36,7 +36,7 @@ func enter(id: String) -> void:
 	rotation_offset = 0.0
 	player.set_meta("surface_build_active", true)
 	_build_hud()
-	get_tree().call_group("explore_hud", "set_key_strip", [[["LMB"], "Place", "accent"], [["R"], "Turn"], [["Shift"], "Hold: snap"], [["X"], "Remove what you aim at"], [["B"], "Done"]])
+	get_tree().call_group("explore_hud", "set_key_strip", [[["LMB"], "Place", "accent"], [["Q", "E"], "Pick"], [["R"], "Turn"], [["Shift"], "Hold: snap"], [["X"], "Remove what you aim at"], [["B"], "Done"]])
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	MHAudio.sfx("mode_build", -2.0, 0.0)
 	MHAudio.build_layer(true)
@@ -75,6 +75,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			_remove_target()
 			get_viewport().set_input_as_handled()
 			return
+		# 23 Nov: B outside opens this straight from Explore, so Q and E pick
+		# the prop here instead of in the Site plan's catalogue.
+		if event.keycode == KEY_Q or event.keycode == KEY_E:
+			_cycle(-1 if event.keycode == KEY_Q else 1)
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_place_preview()
@@ -82,6 +88,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			rotation_offset = wrapf(rotation_offset + (PI / 24.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -PI / 24.0), -PI, PI)
 			_refresh_preview(true)
+
+func _ids() -> Array:
+	return builder.SURFACE_EQUIPMENT.keys()
+
+func _cycle(step: int) -> void:
+	var ids := _ids()
+	if ids.is_empty(): return
+	selected_id = str(ids[wrapi(ids.find(selected_id) + step, 0, ids.size())])
+	MHAudio.sfx("ui_click", -6.0)
+	_refresh_preview(true)
 
 func _process(delta: float) -> void:
 	if active:
@@ -216,6 +232,8 @@ func _build_hud() -> void:
 func _update_hud() -> void:
 	if _selection == null: return
 	var entry := builder.surface_entry(selected_id)
-	_selection.text = str(entry.get("label", selected_id))
+	var ids := _ids()
+	_selection.text = "‹ Q   %s   E ›" % str(entry.get("label", selected_id)) if ids.size() > 1 else str(entry.get("label", selected_id))
+	_selection.tooltip_text = "%d of %d" % [ids.find(selected_id) + 1, ids.size()]
 	_status.text = "READY · free ground placement" if _valid_reason.is_empty() else _valid_reason
 	_status.add_theme_color_override("font_color", MHStyle.VALID if _valid_reason.is_empty() else MHStyle.DANGER)

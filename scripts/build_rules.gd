@@ -67,16 +67,20 @@ static func b_reason(builder: Node, at_terminal := false) -> String:
 	# The opening slice's rule: rooms are planned at a Site plan terminal. B
 	# inside a room furnishes it (22 Nov playtest: "bring it back... i never
 	# meant for us to remove it": snap, turn and remove all live there).
-	if not at_terminal and slice(builder) and not bool(builder.call("player_can_furnish")): return "Rooms are planned at a Site plan terminal"
+	# 23 Nov: B furnishes inside a room and places outdoor props outside;
+	# it works once the fit-out kit's box is open. Rooms stay at the terminal.
 	match stage(builder):
 		"waiting": return "Nothing to build with yet" if str(walker(builder).get("state")) != "travelling" else "The walker is still on its way"
 		"delivering":
 			if str(walker(builder).get("state")) == "coming": return "The module's spot is marked"
 			return "The walker is setting the module down"
+	if not at_terminal and slice(builder) and not kit_open() and not kit_left(builder).is_empty(): return "Open the fit-out kit first"
 	return ""
 
 static func b_detail(builder: Node) -> String:
-	if slice(builder) and stage(builder) in ["", "set_down"]: return "Stand in a room and press B to furnish it. Unpacked kit is on its list."
+	if slice(builder) and stage(builder) in ["", "set_down"]:
+		if not kit_open() and not kit_left(builder).is_empty(): return "The kit box is on the General Module's floor. Open it (E), then B furnishes."
+		return "B furnishes the room you're in, or places outdoor gear outside. New rooms are planned at a Site plan terminal."
 	match stage(builder):
 		"waiting": return "The base's first room is still out there on its walker."
 		"delivering":
@@ -204,9 +208,17 @@ static func give_kit(builder: Node = null) -> void:
 		MHChapterOne.feedstock_kg += STARTER_FEEDSTOCK_KG
 const STARTER_FEEDSTOCK_KG := 150.0
 
-## Version 3: a kit piece goes on the build list once its crate's opened
-## (scripts/kit_crate.gd), not before.
+## Version 3: the whole kit goes on the build list once its box is open
+## (scripts/kit_crate.gd), and nothing before.
 static func unpacked_kit(builder: Node) -> Array:
 	var left := kit_left(builder)
-	if not slice(builder): return left
-	return left.filter(func(id): return MHChapterOne.unpacked.has("kit:" + str(id)))
+	if not slice(builder) or kit_open(): return left
+	return []
+
+## The fit-out kit box is open (23 Nov: one box unlocks B). A save from the
+## crate-a-piece days counts as open once any crate was.
+static func kit_open() -> bool:
+	if MHChapterOne.unpacked.has("kit_box"): return true
+	for key in MHChapterOne.unpacked:
+		if str(key).begins_with("kit:"): return true
+	return false

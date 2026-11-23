@@ -147,6 +147,25 @@ The game draws every screen. Give each screen a flat mesh with good UVs, named `
   - **A printed guitar:** Joseph's good guitar stayed on Earth, so the one you print has to look different. Sintered-regolith body, faint layer lines, printed tuning pegs, real strings.
     - This sets **the printed look** for every printed furnishing (house style: a `printed` material role).
 
+## 10. The fit-out kit box · new · replaces the three fit-out crates (23 Nov)
+- **Why:** the kit now comes in one big box on the General Module's floor. Opening it is the moment building (B) unlocks, so the player should see everything they've been given at once.
+- **Reference and scale:**
+  - the same family as the fit-out crates and the Print Shop crate, about 2.0 × 1.1 × 1.2 m;
+  - no skids (Walker 1 carried it in);
+  - for now the game uses the large fit-out crate scaled up 1.6×.
+- **Inside, seen when the lid is open:** the six pieces packed in foam and straps:
+  - the bunk (flat-packed frame and rolled mattress);
+  - the table (top and folded legs);
+  - the rack's rails;
+  - the folded chair;
+  - the work light;
+  - the Site plan terminal.
+  Simple blocks are enough as long as each piece reads.
+- **Nodes:**
+  - `Lid`: pivot at the rear hinge (the game opens it 103°);
+  - `Contents`, with one child per piece.
+- **File:** `assets/models/chunk1/fitout_kit_box.glb`. The game picks it up automatically once it's there.
+
 ## Not needed for chunk 3
 - The wind logger and channel dressing (chunk 4).
 - Crew Quarters furniture beyond what's above.
@@ -164,3 +183,4 @@ The game draws every screen. Give each screen a flat mesh with good UVs, named `
 6. **The airlock loadout rack.**
 7. **Salvage pieces.**
 8. **The personal-effects case and the printed guitar** (the printed look).
+9. **The fit-out kit box**: a stand-in works meanwhile.

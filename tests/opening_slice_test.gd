@@ -403,7 +403,7 @@ func _initialize() -> void:
 					check(str(walker.state) == "done" and days.done("core_down"), "the core didn't come down (%s)" % str(walker.state))
 					check(not bool(walker.riding), "still on the deck after the fold")
 					# Scene 7: inside the core. It runs on the power module, no
-					# cartridge or blanket; the kit's in crates by the wall.
+					# cartridge or blanket; the kit's in one box on the floor.
 					var life: Node = world.module_life
 					check(life != null and bool(life.commissioned) and life.breathable() and life.has_blanket(), "the core isn't running on the power module (commissioned %s)" % str(life.commissioned if life != null else "no core"))
 					var builder: Node = world.builder
@@ -411,34 +411,35 @@ func _initialize() -> void:
 					var inside: Vector3 = life._centre()
 					player.global_position = Vector3(inside.x, builder.habitat_base_y + 1.0, inside.z)
 					await wait(3.0)
-					# B inside a room furnishes it again (rooms stay at the terminal).
-					check(rules.b_reason(builder).is_empty(), "B inside the core is refused: '%s'" % rules.b_reason(builder))
+					# 23 Nov: the kit's one box, and B waits until it's open.
 					var crates: Array = root.get_tree().get_nodes_in_group("kit_crate")
-					# The crates lie inside the core's floor, clear of its walls.
+					check(crates.size() == 1, "%d kit boxes, not one" % crates.size())
+					check(not rules.b_reason(builder).is_empty(), "B works before the kit box is open")
+					# The box lies inside the core's floor, clear of its walls.
 					var lo := Vector2(INF, INF)
 					var hi := Vector2(-INF, -INF)
 					for c in rules.module_zone(builder).get("cells", []):
 						lo = Vector2(minf(lo.x, (c.x - .5) * builder.CELL), minf(lo.y, (c.y - .5) * builder.CELL))
 						hi = Vector2(maxf(hi.x, (c.x + .5) * builder.CELL), maxf(hi.y, (c.y + .5) * builder.CELL))
 					for crate in crates:
-						var reach := .7   # half the large case's length, and a little
+						var reach := 1.1   # half the stand-in box's length, and a little
 						var p: Vector3 = (crate as Node3D).global_position
-						check(p.x - reach > lo.x and p.x + reach < hi.x and p.z - reach > lo.y and p.z + reach < hi.y, "the %s crate pokes through the core's wall (%s in %s..%s)" % [str(crate.id), str(p), str(lo), str(hi)])
+						check(p.x - reach > lo.x and p.x + reach < hi.x and p.z - reach > lo.y and p.z + reach < hi.y, "the kit box pokes through the core's wall (%s in %s..%s)" % [str(p), str(lo), str(hi)])
 					var kit: Array = rules.kit_left(builder)
 					check(kit.has("site_plan_terminal"), "the kit has no Site plan terminal: %s" % str(kit))
-					check(crates.size() == kit.size(), "%d crates for %d kit pieces" % [crates.size(), kit.size()])
 					var core_cells: Array = rules.module_zone(builder).get("cells", [])
-					check(rules.unpacked_kit(builder).is_empty(), "kit on the build list before any crate's opened")
-					for crate in crates:
-						var piece := str(crate.id)
-						check(crate.interact(), "the %s crate didn't unpack" % piece)
-						check(rules.unpacked_kit(builder).has(piece), "the %s isn't on the build list after unpacking" % piece)
+					check(rules.unpacked_kit(builder).is_empty(), "kit on the build list before the box is open")
+					if not crates.is_empty(): check(crates[0].interact(), "the kit box didn't open")
+					check(rules.b_reason(builder).is_empty(), "B inside the core is refused once the box is open: '%s'" % rules.b_reason(builder))
+					for piece in kit:
+						check(rules.unpacked_kit(builder).has(piece), "the %s isn't on the build list after opening the box" % piece)
+					for piece in kit:
 						# Placed the B way (the interior builder's own placement).
-						var spot := _free_spot(builder, piece, core_cells)
+						var spot := _free_spot(builder, str(piece), core_cells)
 						check(not spot.is_empty(), "no floor spot for the %s" % piece)
 						if not spot.is_empty():
 							var at: Vector3 = spot.at
-							builder.place_free_interior_equipment(piece, at, float(spot.rot), Vector2i(roundi(at.x / builder.CELL), roundi(at.z / builder.CELL)), builder.free_interior_visual(piece, at, float(spot.rot)))
+							builder.place_free_interior_equipment(str(piece), at, float(spot.rot), Vector2i(roundi(at.x / builder.CELL), roundi(at.z / builder.CELL)), builder.free_interior_visual(str(piece), at, float(spot.rot)))
 						await wait(1.0)
 					await wait(2.0)
 					check(root.get_tree().get_nodes_in_group("kit_crate").is_empty(), "crates left after placing the kit")
@@ -475,7 +476,7 @@ func _initialize() -> void:
 					check(days.guided(), "the opening ended at the first room: chunk 2's pad is still to come")
 					await _chunk_two(days, radio, player, gary, lander)
 	Engine.time_scale = 1.0
-	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the stakes bundle comes off the stores pallet by hand, tools go in hand with 1-4 and show on the slate's Kit page, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B sends you to the terminal, the kit comes out of its crates by hand, and the terminal plans the free Quarters. Chunk 2: the pad is ~200 m from the pit with pallet 6 in sight and no base allowed on it; up close it counts as seen and Castle calls; the foot levers, GAR-Y's cable pulls the mast upright; stakes go in hand with 4; a line across the pad reads a void band with solid ends; the Lines tab shows it; at the pit a far line reads faint and Tamsin asks for closer, a line over the pit is refused, a close one reads void; the hold plays; the lip gives way on the last metre and GAR-Y brings you round inside; Tamsin's sled plan, then the new job at home pins pallet 6 and ends the opening.")
+	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the stakes bundle comes off the stores pallet by hand, tools go in hand with 1-4 and show on the slate's Kit page, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B waits for the one kit box, opening it puts the whole kit on B's list, and the terminal plans the free Quarters. Chunk 2: the pad is ~200 m from the pit with pallet 6 in sight and no base allowed on it; up close it counts as seen and Castle calls; the foot levers, GAR-Y's cable pulls the mast upright; stakes go in hand with 4; a line across the pad reads a void band with solid ends; the Lines tab shows it; at the pit a far line reads faint and Tamsin asks for closer, a line over the pit is refused, a close one reads void; the hold plays; the lip gives way on the last metre and GAR-Y brings you round inside; Tamsin's sled plan, then the new job at home pins pallet 6 and ends the opening.")
 	else:
 		for f in failures: print("FAIL: ", f)
 	quit(0 if failures.is_empty() else 1)

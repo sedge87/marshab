@@ -33,7 +33,7 @@ Rao: The walker's screen reads the ground under you. Find a spot that reads well
 => END
 
 ~ hint_kit_placed
-Mwangi: Those crates won't unpack themselves. I'd help, but, you know. Orbit. [ID:hint_kit_placed_01]
+Mwangi: That box won't unpack itself. I'd help, but, you know. Orbit. [ID:hint_kit_placed_01]
 => END
 
 ~ hint_quarters

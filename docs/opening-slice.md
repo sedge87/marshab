@@ -134,14 +134,15 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 
 ### Building rule · agreed 22 Nov
 - **Structure** (rooms/liners, corridors, airlocks, the pad) is planned only at a **Site plan terminal**. It opens today's build view over the whole site, and the crawler prints in real time.
-  - **The player places the terminal themselves.** It comes in the walker's fit-out kit, and every core's kit has one. Suggested spot: by the airlock and suit rack, so you pass it going out and coming in.
-- **Furnishings and outdoor kit are placed by hand**, anywhere sensible. You hold the item you're actually carrying (from your kit or the base's store), a faint preview shows, R turns it, and you set it down.
+  - **The player places the terminal themselves, with B.** It comes in the walker's fit-out kit, and every core's kit has one. Suggested spot: by the airlock and suit rack, so you pass it going out and coming in. B moves or removes it like any furniture, and the Print Shop prints more, so a big base is never far from one.
+- **Furnishings are placed with B** (changed 23 Nov). B works once the fit-out kit's box is open. Inside a room it furnishes the room, with snap, turn and remove. Outside it places outdoor gear in first person (Q and E pick, R turns). Printed furniture lands on the same list.
+- **Equipment is not building.** The power module, stakes, field kit, and later the connector and wind logger, are carried and used, never on B.
 - **The slate shows the plan, read-only** (a Site page).
 - **Later:** a terminal in the Workshop, so big bases are never far from one.
 
 ### Scene 7: the first indoor moment (sol 2 morning, about 8 min) · agreed 22 Nov
 - **First time inside the core:** rigid, bare, cold and dim. Life support is already running on the power module: the vents hum and the window frost clears. Power + hull, shown.
-- **The fit-out kit, placed by hand (A1):** bunk, rack, table, chair, work light and the Site plan terminal, in crates by the wall. You place each piece with a preview and R to turn it.
+- **The fit-out kit, one box (changed 23 Nov):** bunk, rack, table, chair, work light and the Site plan terminal, packed in one big case in the middle of the floor. E lifts the lid and the packed kit shows. From then on B works, with the whole kit on its list.
   - The work light changes the room as soon as it's down.
   - You choose where the terminal goes.
 - **The first room:** at your terminal, plan the first Quarters liner against the core. It's free (in the kit), with a one-off prompt.
@@ -257,7 +258,7 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - **No daylight squeeze now:** the free stretch has no set sol, so the sled's print time and materials are tuned for pace in playtest, not to fit one day.
 - **The opening's forced sleep ends at the hold.** Check what `opening_slice.gd` and the lander/seat rules still force after that.
 - **Models:** the radar sled is already in the chunk 1 pack. Check whether the printer needs a wall-mount version (`mars_fabrication_v1/regolith_printer.glb`), and whether the intake, GAR-Y's radar head and the suit rack's loadout screen need new models.
-- **Code:** reuse the Print Shop crate tow, `fabricator.gd`, `chapter_one.gd` (jobs, feedstock, intake rate) and `materials.gd` (salvage from pallets and debris). Printed furniture still goes through the old interior build (§10a).
+- **Code:** reuse the Print Shop crate tow, `fabricator.gd`, `chapter_one.gd` (jobs, feedstock, intake rate) and `materials.gd` (salvage from pallets and debris). Printed furniture lands on B's list like the kit.
 
 ### How and when the crew talk (sols 0–2) · built 22 Nov
 *Why: a playtester said the opening is very lonely now. Only Castle really talks in the first hour, the other four get one quip each (mostly droppable `chat` lines), and nothing says who the five are or why you came down alone. The user (22 Nov): the descent stays the only lead-in (no new scene before it), voices only with a name on each, the crew react to what they see you doing (briefly, at the right moment, never lecturing), an occasional open channel, and the orbiter passing overhead.*
@@ -323,7 +324,7 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 | finding the fault | Achterberg | Screens only tell you so much. Walk round the front wheels and look. |
 | bringing it home (late in the day) | Castellanos | Light's going. Bring it home. |
 | choosing home (sol 2) | Rao | The walker's screen reads the ground under you. Find a spot that reads well. |
-| the fit-out crates | Mwangi | Those crates won't unpack themselves. I'd help, but, you know. Orbit. |
+| the fit-out kit box | Mwangi | That box won't unpack itself. I'd help, but, you know. Orbit. |
 | the first room | Achterberg | The terminal's where rooms come from. The first one's on the house. |
 
 **Ask orbit (on the slate, any time on the radio link).** Press it and whoever fits answers with the hint for where you are, even before the 3 minutes. Asking again replays that hint (built 22 Nov; the "Same as before" line was dropped as unhelpful). With nothing pending you get one of a few short "nothing urgent" lines, e.g. *Castellanos: Nothing from us. Enjoy the view.* It's always your choice to ask.
@@ -627,13 +628,13 @@ Scenes 1–7 run from waking to Castle's quiet call. `tests/opening_slice_test.g
   - E again sets it down and it folds; Space backs out.
 - **Scene 7:**
   - The core starts on the power module: sealed, cold, dim, heater warming. There's no socket or blanket.
-  - Kit crates by the wall, `scripts/kit_crate.gd`: take a piece into your hands, and a ghost shows where it goes. R turns it, E sets it down, Q puts it back.
+  - The kit box, `scripts/kit_crate.gd` (23 Nov: one box replaces a crate a piece): E opens it and the whole kit goes on B's list (`build_rules.gd kit_open`). B is refused until then. It stays open until every piece is placed. Outside, B opens first-person outdoor placement (`surface_build_controller.gd`, Q/E pick).
   - The Site Plan Terminal is a kit piece. Its screen opens the planner. In version 3, B no longer does.
 - **Models in (22 Nov, `asset_packs/outpost_chunk1_v1`):**
   - the power module (lamp off asleep, steady amber plugged in);
   - GAR-Y's field upgrade (worn finish, `RearMount`, `FrontMount`, `MastMount`) and the tow hitch on `RearMount`;
   - the Site Plan Terminal (its screen a plain glow; the plan opens full-screen);
-  - the fit-out crates in three sizes: the work light in the small case, the chair and the rack in the medium, the terminal, bunk and table in the large. Taking a piece out opens the lid; Q closes it again.
+  - the fit-out crates in three sizes (the large one, scaled up, now stands in for the one kit box until its model arrives, docs/assets-chunk3.md);
 - **Round 2 in (22 Nov, `docs/assets-chunk1-round2.md`):**
   - **Walker 1 at full scale.** The power module docks on its `PowerSocket` in the low berth on the left. Its readouts are drawn on the model's `DeckScreen` while you ride; otherwise it's dark glass. The ladder sections slide up its lean. The cables run from 0.326 m to touchdown. It kneels on real legs (winch arms out, ride deck folded, wheels planted) before it folds away.
   - **The canopy snag.** Each of the three lines goes as you free it; the cloth stays.
@@ -646,7 +647,7 @@ Scenes 1–7 run from waking to Castle's quiet call. `tests/opening_slice_test.g
   - GAR-Y does one slow lap of the folded core, then chirps.
   - The held tool is saved.
 - **Not done:**
-  - Printed furniture later in the game still goes through the old interior build. Chunk 3 (Print Shop) needs it by hand too.
+  - ~~Printed furniture still goes through the old interior build.~~ That *is* B's furnishing; it stays. (23 Nov)
 
 ## 10b. Chunk 2 as built (22 Nov)
 Scenes 8–12 run from Castle's quiet call to the new job. The opening now ends on the new job's call, not the quiet call. `tests/opening_slice_test.gd` carries on through the whole afternoon and passes. Not yet played by hand.

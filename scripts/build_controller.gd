@@ -488,6 +488,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if build_mode: _toggle()
 			elif not BUILD_RULES.b_reason(self).is_empty(): _flash_notice("info", BUILD_RULES.b_reason(self), BUILD_RULES.b_detail(self))
 			elif player_can_furnish(): interior_build_requested.emit()
+			elif BUILD_RULES.slice(self): open_outdoor_build()
 			else: _toggle()
 			get_viewport().set_input_as_handled()
 		elif build_mode and (MHInput.pressed(event, "rotate") or MHInput.pressed(event, "rotate_back")):
@@ -523,7 +524,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif not event.shift_pressed and player_can_furnish():
 				interior_build_requested.emit()
 			elif BUILD_RULES.slice(self):
-				_flash_notice("info", "Rooms are planned at a Site plan terminal", "B on its own furnishes the room you're in.")
+				# 23 Nov: outside, B places outdoor gear (first person, on the
+				# ground). Rooms are planned at a Site plan terminal.
+				open_outdoor_build()
 			else:
 				_toggle()
 		elif event.keycode == KEY_F9:
@@ -794,6 +797,13 @@ func _toggle() -> void:
 		# Leave the player exactly where they were when the plan view was opened.
 		# Build mode is a camera/tool mode, not a teleport or respawn.
 		player.velocity=Vector3.ZERO
+
+## Version 3, B outside: outdoor props, placed in first person
+## (scripts/surface_build_controller.gd, which cycles them with Q and E).
+## Never equipment: the power module, stakes and field kit are carried.
+func open_outdoor_build() -> void:
+	if SURFACE_EQUIPMENT.is_empty(): return
+	surface_build_requested.emit(str(SURFACE_EQUIPMENT.keys()[0]))
 
 ## True when the player stands inside a habitat zone, where Interior build works.
 func player_can_furnish() -> bool:

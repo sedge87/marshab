@@ -1976,7 +1976,7 @@
       "id": "site_plan_terminal",
       "label": "Site Plan Terminal",
       "group": "communications",
-      "status": "future",
+      "status": "catalogue",
       "icon": "map",
       "height": 1.12,
       "description": "The base's planning screen: rooms, corridors, airlocks and the pad are planned here, and the crawler prints them.",
@@ -2002,7 +2002,7 @@
         1.12,
         0.52
       ],
-      "system_note": "Every core's fit-out kit has one. Structure is planned only here; furniture and kit go down by hand.",
+      "system_note": "Every core's fit-out kit has one, and the Print Shop prints more. Structure is planned only here; furniture goes down with B.",
       "system_links": [
         "Building"
       ]

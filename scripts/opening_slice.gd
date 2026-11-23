@@ -32,7 +32,7 @@ const BEATS := [
 	["walker_home", "s1_dusk"],     # it's knelt by the lander; the evening call
 	["slept", "s2_dawn"],           # the first night, in the lander
 	["core_down", "s2_down"],       # ridden home, chosen, set down and folded
-	["kit_placed", "s2_kit"],       # the fit-out kit placed by hand, the terminal too
+	["kit_placed", "s2_kit"],       # the fit-out kit placed with B, the terminal too
 	["quarters", "s2_quarters"],    # the first Quarters liner, planned at the terminal
 	["helmet_off", "s2_quiet"],     # helmet off in the Quarters; Castle's quiet call
 	# Chunk 2, Act 2: the pad (sol 2 afternoon, §4a Scenes 8–12).
@@ -178,7 +178,7 @@ const GOAL_THOUGHTS := {
 	"walker_home": "Bring Walker 1 back to the lander before dark.",
 	"slept": "Sleep. Tomorrow it walks.",
 	"core_down": "Ride Walker 1 and find the right spot for home.",
-	"kit_placed": "Unpack the crates on the core's floor, then B (standing inside) to place the kit.",
+	"kit_placed": "Open the fit-out kit box on the core's floor, then B (standing inside) to place the kit.",
 	"quarters": "Walker 1's kit has a Quarters liner. The terminal plans it: up to four cells.",
 	"helmet_off": "Somewhere to breathe without the helmet.",
 	"pad_seen": "The pad's this afternoon. East, past the plain.",
@@ -366,26 +366,22 @@ func _helmet_on() -> bool:
 	var suit: Node = world.get("suit")
 	return suit != null and bool(suit.helmet)
 
-## Scene 7: the fit-out kit, in crates by the core's wall, once it's down.
+## Scene 7: the fit-out kit, one box in the middle of the core's floor, once
+## it's down (23 Nov: one box unlocks B, not a crate a piece).
 const KIT_CRATE := preload("res://scripts/kit_crate.gd")
 func _kit_crates() -> void:
 	if not done("core_down") or not get_tree().get_nodes_in_group("kit_crate").is_empty(): return
 	var builder: Node = world.get("builder")
 	var life: Node = world.get("module_life")
 	if builder == null or life == null: return
-	var left: Array = BUILD_RULES.kit_left(builder)
-	if left.is_empty(): return
-	for spot in crate_spots(life, left):
-		KIT_CRATE.new().setup(world, str(spot.id), spot.at, spot.facing)
+	if BUILD_RULES.kit_left(builder).is_empty(): return
+	var spot := kit_box_spot(life)
+	if not spot.is_empty(): KIT_CRATE.new().setup(world, spot.at, spot.facing)
 
-## 22 Nov playtest: crates against the walls poked out through them. They're
-## laid in two rows down the middle of the core's floor instead, long sides
-## along the room, each row centred and kept inside an inset of the walls.
-const CRATE_GAP := .4
-const CRATE_ROW := .9          # each row's distance off the middle line
-static func crate_spots(life: Node, pieces: Array) -> Array:
+## The middle of the core's floor, the box's long side along the room.
+static func kit_box_spot(life: Node) -> Dictionary:
 	var cells: Array = life.zone().get("cells", [])
-	if cells.is_empty(): return []
+	if cells.is_empty(): return {}
 	var cell: float = life.world.builder.CELL
 	var lo := Vector2(INF, INF)
 	var hi := Vector2(-INF, -INF)
@@ -394,28 +390,8 @@ static func crate_spots(life: Node, pieces: Array) -> Array:
 		hi = Vector2(maxf(hi.x, c.x), maxf(hi.y, c.y))
 	var mid := (lo + hi) * .5 * cell
 	var along_x := (hi.x - lo.x) >= (hi.y - lo.y)       # the room's long way
-	var along := Vector3(1, 0, 0) if along_x else Vector3(0, 0, 1)
-	var across := Vector3(0, 0, 1) if along_x else Vector3(1, 0, 0)
-	var facing := across                                  # a crate's local X (its long side) runs along the room
-	var floor_y: float = life.call("_floor")
-	var rows: Array = [[], []]
-	for i in pieces.size(): rows[i % 2].append(str(pieces[i]))
-	var out: Array = []
-	for r in 2:
-		var lengths: Array = []
-		var total := 0.0
-		for id in rows[r]:
-			var size: Vector3 = KIT_CRATE.SIZES[(KIT_CRATE.CASES.get(id, ["medium", ""]) as Array)[0]]
-			lengths.append(size.x)
-			total += size.x
-		total += CRATE_GAP * maxf(0.0, rows[r].size() - 1.0)
-		var run := -total * .5
-		for i in rows[r].size():
-			var centre: float = run + float(lengths[i]) * .5
-			run += float(lengths[i]) + CRATE_GAP
-			var at := Vector3(mid.x, floor_y, mid.y) + along * centre + across * (CRATE_ROW if r == 0 else -CRATE_ROW)
-			out.append({"id": rows[r][i], "at": at, "facing": -facing if r == 0 else facing})   # latches face the aisle between the rows
-	return out
+	var facing := Vector3(0, 0, 1) if along_x else Vector3(1, 0, 0)   # the box's local X (its long side) runs along the room
+	return {"at": Vector3(mid.x, float(life.call("_floor")), mid.y), "facing": facing}
 
 ## Scene 5: once Walker 1's home and you're in, GAR-Y parks by the steps.
 var _gary_parked := false
@@ -460,7 +436,7 @@ func _ride_lead() -> void:
 	if notes != null: notes.think("walker_ride", "start")
 	MHNotices.hint(RIDE_HINT, "Climb its ladder. Hold W and it walks where you look; the deck screen reads the ground. E sets it down.")
 
-## Once the core's folded: the kit's in crates on its floor, and B places it.
+## Once the core's folded: the kit's in one box on its floor, and B places it.
 var _kit_said := false
 func _kit_lead() -> void:
 	if _kit_said or not done("core_down") or done("kit_placed"): return
@@ -468,7 +444,7 @@ func _kit_lead() -> void:
 	_kit_said = true
 	var notes: Node = world.get("notes")
 	if notes != null: notes.think("kit_crates", "start")
-	MHNotices.hint("Fit-out kit", "Unpack each crate (E), then stand in the core and press B: the kit's on your build list. The site plan terminal's in there too: it plans new rooms.")
+	MHNotices.hint("Fit-out kit", "Open the kit box (E). Then B furnishes: the whole kit's on your build list. The Site plan terminal's in it too: place it where you'll pass it, and it plans new rooms.")
 
 ## Scene 5: stay up on sol 1's night and, past midnight in the cabin,
 ## tiredness wins: you nod off where you are and sleep till dawn. Not with a
