@@ -855,7 +855,6 @@ static func defaults() -> Dictionary:
 	# Comfort, for anyone the lope makes motion sick (player.gd, body.gd, suit.gd).
 	d["view_bounce"] = "low"     # how much of each bound your eyes ride: off, low, medium, full
 	d["steady_horizon"] = false  # no view roll from stumbles or tiredness
-	d["helmet_edge"] = true      # a faint dark edge to the glass while the helmet's on
 	return d
 
 static func setting(key: String):

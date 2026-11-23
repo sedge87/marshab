@@ -296,7 +296,7 @@ func _audio() -> Control:
 	var bounce := MHWidgets.Segmented.new().setup(VIEW_BOUNCE.values(), str(VIEW_BOUNCE.get(str(_values.get("view_bounce", "low")), "Low")))
 	bounce.changed.connect(func(value: String) -> void: _values["view_bounce"] = str(VIEW_BOUNCE.find_key(value)))
 	screen_group.add_child(bounce)
-	for entry in [["steady_horizon", "Steady horizon: the view never tilts (stumbles, tiredness)", false], ["helmet_edge", "Helmet edge: a faint frame round the glass while suited", true]]:
+	for entry in [["steady_horizon", "Steady horizon: the view never tilts (stumbles, tiredness)", false]]:
 		var comfort_row := MHStyle.hbox(12)
 		var comfort_switch := MHWidgets.Switch.new()
 		var comfort_key := str(entry[0])
