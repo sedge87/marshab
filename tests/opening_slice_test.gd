@@ -232,11 +232,15 @@ func _initialize() -> void:
 	if gary != null:
 		check((gary.ice_samples as Array).size() >= 5, "only %d stakes lead to GAR-Y" % (gary.ice_samples as Array).size())
 		check(not days.done("gary_met"), "met GAR-Y before freeing it")
+		# 23 Nov playtest: the manifest said GAR-Y was recovered before you'd left the lander.
+		var gary_line := {"id": "gary", "source": "drop_field:gary"}
+		check(world.pda.screen.cargo_state(gary_line) != "recovered", "the manifest has GAR-Y recovered before it's freed")
 		player.global_position = _ground(gary.global_position + Vector3(2, 0, 0))
 		await wait(1.0)
 		for point in (field.snag.left as Array).duplicate(): point.free_for(5.0)
 		await wait(30.0)
 		check(days.done("gary_met"), "freeing GAR-Y didn't lead to the meeting")
+		check(world.pda.screen.cargo_state(gary_line) == "recovered", "the manifest doesn't have GAR-Y recovered after the meeting")
 		check(str(gary.get("task")) == "goto", "GAR-Y isn't leading to a pallet (task '%s')" % str(gary.get("task")))
 		# Scene 3: the three pallets, the hitch, the power module on the sled.
 		world.storm_drop.pallet.open(false)

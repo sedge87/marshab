@@ -1222,7 +1222,11 @@ func cargo_state(entry: Dictionary) -> String:
 			# GAR-Y's pallet: recovered once you've met it, not when it let itself
 			# out in the storm (playtest 14 Nov: "recovered" on day 1).
 			if kind == "gary":
-				if bool(world.get("gary_met")): return "recovered"
+				# Version 3 places GAR-Y snagged in the field from the start (which
+				# sets gary_met), so it counts once you've freed it and met it
+				# (23 Nov playtest: "recovered" before leaving the lander).
+				var met := bool(field.get("gary_greeted")) if field.v3() else bool(world.get("gary_met"))
+				if met: return "recovered"
 			elif (site.pallet != null and bool(site.pallet.opened)) or bool(site.get("empty")): return "recovered"
 			if known != null and (known.knows(site.id()) or known.knows(site.id(), "orbiter")): return "seen"
 	return "missing"
