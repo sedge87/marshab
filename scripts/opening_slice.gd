@@ -292,7 +292,13 @@ func _process(delta: float) -> void:
 	# of order, its call still comes (the calls react, they don't instruct).
 	for beat in BEATS:
 		var id := str(beat[0])
-		if reached.has(id) or not done(id) or not _call_ready(id): continue
+		if reached.has(id) or not done(id): continue
+		# 23 Nov playtest: some calls rang long after they made sense. A call
+		# that's overtaken is dropped (counted as heard, nothing said).
+		if _overtaken(id):
+			reached.append(id)
+			continue
+		if not _call_ready(id): continue
 		reached.append(id)
 		if radio != null and radio.has_method("ring"): radio.ring(str(beat[1]))
 		break
@@ -310,8 +316,30 @@ func _process(delta: float) -> void:
 	elif done("slept"): chapter = 2
 
 ## Some calls wait for the right moment as well as the beat.
+## A call that would only confuse now: the dawn call about the walker
+## frosted on the plain, once you've already ridden it home (you slept
+## first somewhere later, 23 Nov playtest).
+func _overtaken(id: String) -> bool:
+	match id:
+		"slept": return done("core_down")
+	return false
+
+## Within this far of `at` (site metres, x/z), outside.
+func _near(at: Vector2, reach: float) -> bool:
+	var me: Node3D = world.get("player")
+	if me == null or is_inf(at.x) or not _outside(): return false
+	return Vector2(me.global_position.x - at.x, me.global_position.z - at.y).length() <= reach
+
 func _call_ready(id: String) -> bool:
 	match id:
+		# The pad and pit calls are the crew watching your helmet camera
+		# there. Done before the first room (chunk two waits for it), they
+		# used to ring wherever you were, back at base (23 Nov playtest);
+		# now they wait till you're back at the pad.
+		"pad_seen", "pad_reseated", "pad_line":
+			return pad == null or _near(pad.centre_2d(), 60.0)
+		"pit_seen", "pit_line":
+			return pad == null or _near(pad.pit_centre(), 60.0)
 		# Scene 5: the evening call, once you're in the cabin with your
 		# helmet off, at dusk.
 		"walker_home":
@@ -375,6 +403,7 @@ func _kit_crates() -> void:
 	var life: Node = world.get("module_life")
 	if builder == null or life == null: return
 	if BUILD_RULES.kit_left(builder).is_empty(): return
+	if BUILD_RULES.kit_open(): return   # opened once and packed away (23 Nov)
 	var spot := kit_box_spot(life)
 	if not spot.is_empty(): KIT_CRATE.new().setup(world, spot.at, spot.facing)
 

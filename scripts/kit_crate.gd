@@ -5,7 +5,7 @@ extends StaticBody3D
 ## E opens it: the lid lifts, the packed kit shows, and from then on B
 ## furnishes (scripts/build_rules.gd kit_open), with the whole kit on the
 ## list: bunk, rack, table, chair, work light and the Site plan terminal.
-## It stays open and empty until every kit piece is placed, then it's gone.
+## Once opened it's packed away (23 Nov playtest); the kit stays on B's list.
 ## Worked out from the kit still to place (build_rules.gd kit_left) and one
 ## flag, MHChapterOne.unpacked["kit_box"], so nothing else is saved.
 ##
@@ -92,7 +92,17 @@ func interact(_actor: Node = null) -> bool:
 	# A beat to see what's inside before the notice.
 	get_tree().create_timer(LID_SECONDS + .9).timeout.connect(func():
 		MHNotices.post("valid", "Fit-out kit unpacked", "Press B to furnish. Everything in the kit is on your build list, the Site plan terminal too: place it where you'll pass it, and it plans new rooms.", "log"))
+	# 23 Nov playtest: once its contents are on your build list the box has
+	# done its job. A beat to see inside, then it's packed away.
+	get_tree().create_timer(LID_SECONDS + 2.5).timeout.connect(_pack_away)
 	return true
+
+func _pack_away() -> void:
+	if not is_inside_tree(): return
+	MHAudio.sfx("place", -10.0)
+	var t := create_tween()
+	t.tween_property(self, "scale", Vector3(1.0, .02, 1.0), .35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(queue_free)
 
 ## The lid swings up; the packed kit stays in view.
 func _set_open(on: bool) -> void:
@@ -109,7 +119,6 @@ func _process(delta: float) -> void:
 	_check -= delta
 	if _check > 0.0: return
 	_check = .5
-	if world == null or BUILD_RULES.kit_left(world.builder).is_empty():
+	# Gone once opened (a loaded game too), or with nothing left to place.
+	if world == null or BUILD_RULES.kit_left(world.builder).is_empty() or (BUILD_RULES.kit_open() and not _open):
 		queue_free()
-		return
-	if BUILD_RULES.kit_open() and not _open: _set_open(true)   # a loaded game: it stays open
