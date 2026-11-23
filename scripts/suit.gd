@@ -211,7 +211,7 @@ func _process(delta: float) -> void:
 		_breathing(delta)
 	_blink += delta
 	_don = maxf(0.0, _don - delta)
-	var wearing := where == "outside" or helmet or (_don > 0.0 and not _don_on)
+	var wearing := _open_air() or helmet or (_don > 0.0 and not _don_on)
 	_set_visor_visible(wearing and not bool(world.player.get_meta("build_mode_active", false)))
 	_visor.modulate.a = 1.0
 	_visor.queue_redraw()
@@ -742,7 +742,7 @@ func _warnings() -> void:
 
 ## Your own breathing: slow at rest, quick when sprinting or short of air.
 func _breathing(delta: float) -> void:
-	if where != "outside" and not helmet:
+	if not _open_air() and not helmet:
 		return
 	_breath_wait -= delta
 	if _breath_wait > 0.0: return
@@ -762,11 +762,16 @@ func _breathing(delta: float) -> void:
 ## Through the airlock: suit on as you go out, off as you come in.
 func _track_airlock() -> void:
 	if where == _prev_where: return
-	var was_out := _prev_where == "outside"
-	var now_out := where == "outside"
+	# The walker's deck is open to Mars (23 Nov playtest: stepping up took the
+	# helmet off): its suit line tops you up, but the helmet stays on.
+	var was_out := _prev_where in OPEN_AIR
+	var now_out := where in OPEN_AIR
 	if _prev_where != "" and was_out != now_out and active() and not helmet: _don_moment(now_out)
 	if now_out: helmet = false   # outside, it's simply on
 	_prev_where = where
+
+const OPEN_AIR := ["outside", "walker"]
+func _open_air() -> bool: return where in OPEN_AIR
 
 func _don_moment(on: bool) -> void:
 	_don = DON_SECONDS
@@ -779,7 +784,7 @@ func _don_moment(on: bool) -> void:
 
 ## Indoors: whether K can suit you up now.
 func can_suit_up() -> bool:
-	return active() and where != "outside" and not helmet and o2 > .05 and power > .05
+	return active() and not _open_air() and not helmet and o2 > .05 and power > .05
 
 func suit_up() -> void:
 	if not can_suit_up(): return
@@ -810,7 +815,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## The first time the room turns on you, a nudge: you can suit up in here.
 func _suit_up_hint() -> void:
-	if helmet or where == "outside" or _said.has("suit_up_hint") or not active(): return
+	if helmet or _open_air() or _said.has("suit_up_hint") or not active(): return
 	var body: Node = world.get("body")
 	if body == null or not body.has_method("surroundings"): return
 	var air: Dictionary = body.surroundings()
