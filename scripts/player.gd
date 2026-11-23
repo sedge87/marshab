@@ -314,31 +314,35 @@ func _crouch(delta: float) -> void:
 	head.position.y = base + _steady(delta)
 
 ## Comfort (23 Nov: the lope can make people motion sick). The body bounds;
-## the eyes follow only part of the rise above where you left the ground
+## the eyes follow only part of the height above the ground beneath you
 ## (Settings > Comfort > View bounce), and ease back once you land.
+##
+## 23 Nov playtest: measured from where you took off, rising ground counted
+## as part of the bound and the view sank towards the slope ahead (uphill,
+## bound after bound). Now it's the height over the ground right under you,
+## which is nothing at each landing on any slope, and the drop is capped so
+## the eyes stay well clear of the ground.
 const VIEW_BOUNCE := {"off": 0.0, "low": .33, "medium": .66, "full": 1.0}
+const EYE_DROP_MAX := .4    # m: about one lope bound's rise
 var _eye_drop := 0.0        # how far the eyes sit below the body's own rise
-var _took_off_y := 0.0
-var _was_airborne := false
 func _steady(delta: float) -> float:
-	var airborne := not is_on_floor() and not _indoors()
 	var keep := float(VIEW_BOUNCE.get(str(MHGame.setting("view_bounce")), .33))
-	if keep >= .999:
-		_eye_drop = 0.0
-		_was_airborne = airborne
-		return 0.0
-	# Take off from where the eyes already are, so a bound that starts before
-	# the last one's drop has eased out carries on smoothly instead of
-	# snapping up (23 Nov playtest: landings felt stiff and jerky uphill).
-	if airborne and not _was_airborne: _took_off_y = global_position.y - _eye_drop / (1.0 - keep)
-	_was_airborne = airborne
-	if airborne:
-		var rise := clampf(global_position.y - _took_off_y, 0.0, 2.0)
-		_eye_drop = (1.0 - keep) * rise
-	else:
-		# Ease out softly on the ground (fast at first, gentle at the end).
-		_eye_drop = lerpf(_eye_drop, 0.0, 1.0 - exp(-delta * 5.0))
+	var want := 0.0
+	if keep < .999 and not is_on_floor() and not _indoors():
+		want = clampf((1.0 - keep) * _height_over_ground(), 0.0, EYE_DROP_MAX)
+	# Quick to follow the bound, so it stays steady; smooth over rock edges.
+	_eye_drop = lerpf(_eye_drop, want, 1.0 - exp(-delta * (14.0 if want > _eye_drop else 7.0)))
 	return -_eye_drop
+
+## How high your feet are over whatever's under them (up to 3 m).
+func _height_over_ground() -> float:
+	var from := global_position + Vector3.UP * .1
+	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 3.1)
+	query.exclude = [get_rid()]
+	query.collision_mask = collision_mask
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty(): return 3.0
+	return maxf(0.0, global_position.y - (hit.position as Vector3).y)
 
 func _headroom_blocked() -> bool:
 	var query := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * CROUCH_HEIGHT, global_position + Vector3.UP * (STAND_HEIGHT + .05))
