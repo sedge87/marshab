@@ -166,7 +166,9 @@ func _graphics() -> Control:
 	form.add_child(toggles)
 	# In a game: its tutorial, changed straight away (Full, Hints only, Off).
 	var game := get_tree().get_first_node_in_group("habitat_world") if is_inside_tree() else null
-	if game != null and game.has_method("set_tutorial_mode"):
+	# The old ARDEN step-by-step guide: not in this version of the game (the
+	# guided chapters teach instead), so only the older rules offer it.
+	if game != null and game.has_method("set_tutorial_mode") and not MHChapterOne.new_rules():
 		var tutorial_box := MHStyle.vbox(10)
 		tutorial_box.add_child(MHStyle.eyebrow("Tutorial (this game)", MHStyle.TEXT_MUTED, 14))
 		var choices := {"full": "Full", "hints": "Hints only", "off": "Off"}
@@ -213,19 +215,22 @@ func _graphics() -> Control:
 	return grid
 
 const VOLUME_STEPS := ["Off", "25 %", "50 %", "75 %", "100 %"]
-const MC_LEVELS := {"log": "Log only", "quiet": "Quiet", "normal": "Normal", "chatty": "Chatty"}
 const SUBTITLES := {"full": "Full", "compact": "Compact", "off": "Off"}
-const CHECKLIST := {"full": "Full", "folded": "Folded", "hidden": "Hidden"}
 const BODY_CUES := {"full": "Full", "soft": "Softer", "low": "Low"}
 const VIEW_BOUNCE := {"off": "Off", "low": "Low", "medium": "Medium", "full": "Full"}
 const COMPASS_MARKS := [["compass_home", "Lander and airlocks"], ["compass_pins", "Your pins"], ["compass_finds", "Things you've found"], ["compass_places", "Places you know"], ["compass_distance", "Distances"]]
 
 func _audio() -> Control:
 	var grid := MHStyle.hbox(48)
+	# 23 Nov: the tab outgrew the screen; it scrolls now.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(scroll)
 	var form := MHStyle.vbox(30)
 	form.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_child(form)
-	for row in [["vol_master", "Master", "Everything at once."], ["vol_music", "Music", "Slow synth score. It never repeats the same way twice."], ["vol_ambience", "Ambience", "Wind on the surface, life-support hum inside the habitat."], ["vol_sfx", "Effects", "Airlocks, building, footsteps and menu clicks."], ["vol_voice", "Habitat voice", "The habitat computer's spoken alerts and greetings."]]:
+	scroll.add_child(form)
+	for row in [["vol_master", "Master", "Everything at once."], ["vol_music", "Music", "Slow synth score. It never repeats the same way twice."], ["vol_ambience", "Ambience", "Wind on the surface, life-support hum inside the habitat."], ["vol_sfx", "Effects", "Airlocks, building, footsteps and menu clicks."], ["vol_voice", "Voices", "The crew on the radio."]]:
 		var col := MHStyle.vbox(10)
 		var text := MHStyle.hbox(12)
 		text.add_child(MHStyle.label(row[1], 19, MHStyle.TEXT_PRIMARY, 600))
@@ -237,41 +242,20 @@ func _audio() -> Control:
 		control.changed.connect(_on_volume.bind(row[0]))
 		col.add_child(control)
 		form.add_child(col)
-	# Mission Control's people (scripts/mission_control_link.gd): how much
-	# small talk, and the rover radio. Story beats always come.
+	# The radio (23 Nov: Mission Control's small-talk level went, since Earth
+	# is silent after touchdown in this version of the game).
 	var mc := MHStyle.vbox(10)
-	var mc_text := MHStyle.hbox(12)
-	mc_text.add_child(MHStyle.label("Mission Control", 19, MHStyle.TEXT_PRIMARY, 600))
-	var mc_hint := MHStyle.body("How much small talk from Earth. Their stories always come; Log only keeps everything as text in the Messages log.", 15, MHStyle.TEXT_MUTED)
-	mc_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mc_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	mc_text.add_child(mc_hint)
-	mc.add_child(mc_text)
-	var chatter := MHWidgets.Segmented.new().setup(MC_LEVELS.values(), str(MC_LEVELS.get(str(_values.get("mc_chatter", "normal")), "Normal")))
-	chatter.changed.connect(func(value: String) -> void: _values["mc_chatter"] = str(MC_LEVELS.find_key(value)))
-	mc.add_child(chatter)
-	var radio_row := MHStyle.hbox(18)
-	var radio := MHWidgets.Switch.new()
-	radio.button_pressed = bool(_values.get("rover_radio", true))
-	radio.toggled.connect(func(on: bool) -> void: _values["rover_radio"] = on)
-	radio_row.add_child(radio)
-	radio_row.add_child(MHStyle.body("Rover radio on when you get in (O while driving)", 15, MHStyle.TEXT_SECONDARY))
-	mc.add_child(radio_row)
-	var open_row := MHStyle.hbox(18)
-	var open := MHWidgets.Switch.new()
-	open.button_pressed = bool(_values.get("open_channel", true))
-	open.toggled.connect(func(on: bool) -> void: _values["open_channel"] = on)
-	open_row.add_child(open)
-	open_row.add_child(MHStyle.body("Open channel: now and then, overhear the orbiter crew talking to each other", 15, MHStyle.TEXT_SECONDARY))
-	mc.add_child(open_row)
+	mc.add_child(MHStyle.label("Radio", 19, MHStyle.TEXT_PRIMARY, 600))
+	mc.add_child(_switch_row("rover_radio", true, "Rover radio on when you get in (O while driving)"))
+	mc.add_child(_switch_row("open_channel", true, "Open channel: now and then, overhear the orbiter crew talking to each other"))
 	form.add_child(mc)
-	# On screen: captions for what's said, and the getting-started checklist.
+	# On screen: captions for what's said, and how hard the body cues show.
+	# (The checklist went to the slate, so its row went too.)
 	var screen_group := MHStyle.vbox(10)
 	screen_group.add_child(MHStyle.label("On screen", 19, MHStyle.TEXT_PRIMARY, 600))
 	for row in [
-			["subtitles", "Subtitles", SUBTITLES, "compact", "Captions for ARDEN, the suit and Mission Control. Compact keeps them small, and in the corner while you build."],
-			["body_cues", "Body cues", BODY_CUES, "full", "How strongly cold, stale air and low oxygen show on screen: frost, the headache edge, grey vision, shaking hands. It never changes the harm."],
-			["checklist", "Checklist", CHECKLIST, "full", "The getting-started goals on screen, with the Classic HUD. H cycles it in a game."]]:
+			["subtitles", "Subtitles", SUBTITLES, "compact", "Captions for the crew on the radio and the suit. Compact keeps them small, and in the corner while you build."],
+			["body_cues", "Body cues", BODY_CUES, "full", "How strongly cold, stale air and low oxygen show on screen: frost, the headache edge, grey vision, shaking hands. It never changes the harm."]]:
 		var line := MHStyle.hbox(12)
 		line.add_child(MHStyle.label(str(row[1]), 16, MHStyle.TEXT_SECONDARY, 600))
 		var hint := MHStyle.body(str(row[4]), 14, MHStyle.TEXT_MUTED)
@@ -296,15 +280,7 @@ func _audio() -> Control:
 	var bounce := MHWidgets.Segmented.new().setup(VIEW_BOUNCE.values(), str(VIEW_BOUNCE.get(str(_values.get("view_bounce", "low")), "Low")))
 	bounce.changed.connect(func(value: String) -> void: _values["view_bounce"] = str(VIEW_BOUNCE.find_key(value)))
 	screen_group.add_child(bounce)
-	for entry in [["steady_horizon", "Steady horizon: the view never tilts (stumbles, tiredness)", false]]:
-		var comfort_row := MHStyle.hbox(12)
-		var comfort_switch := MHWidgets.Switch.new()
-		var comfort_key := str(entry[0])
-		comfort_switch.button_pressed = bool(_values.get(comfort_key, entry[2]))
-		comfort_switch.toggled.connect(func(on: bool) -> void: _values[comfort_key] = on)
-		comfort_row.add_child(comfort_switch)
-		comfort_row.add_child(MHStyle.body(str(entry[1]), 15, MHStyle.TEXT_SECONDARY))
-		screen_group.add_child(comfort_row)
+	screen_group.add_child(_switch_row("steady_horizon", false, "Steady horizon: the view never tilts (stumbles, tiredness)"))
 	# The compass strip: always on, you choose what's marked on it.
 	var compass_text := MHStyle.hbox(12)
 	compass_text.add_child(MHStyle.label("Compass", 16, MHStyle.TEXT_SECONDARY, 600))
@@ -318,13 +294,8 @@ func _audio() -> Control:
 	compass_grid.add_theme_constant_override("h_separation", 24)
 	compass_grid.add_theme_constant_override("v_separation", 8)
 	for entry in COMPASS_MARKS:
-		var row := MHStyle.hbox(12)
-		var toggle := MHWidgets.Switch.new()
-		var compass_key := str(entry[0])
-		toggle.button_pressed = bool(_values.get(compass_key, true))
-		toggle.toggled.connect(func(on: bool) -> void: _values[compass_key] = on)
-		row.add_child(toggle)
-		row.add_child(MHStyle.body(str(entry[1]), 15, MHStyle.TEXT_SECONDARY))
+		var row := _switch_row(str(entry[0]), true, str(entry[1]))
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		compass_grid.add_child(row)
 	screen_group.add_child(compass_grid)
 	form.add_child(screen_group)
@@ -349,6 +320,22 @@ func _audio() -> Control:
 	side.add_child(actions)
 	grid.add_child(side)
 	return grid
+
+## A switch with its text beside it. The text takes the rest of the row and
+## wraps; without that it was squeezed to nothing and ran down the screen one
+## letter per line (23 Nov).
+func _switch_row(key: String, default: bool, text: String) -> HBoxContainer:
+	var row := MHStyle.hbox(18)
+	var sw := MHWidgets.Switch.new()
+	sw.button_pressed = bool(_values.get(key, default))
+	sw.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	sw.toggled.connect(func(on: bool) -> void: _values[key] = on)
+	row.add_child(sw)
+	var label := MHStyle.body(text, 15, MHStyle.TEXT_SECONDARY)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(label)
+	return row
 
 func _volume_label(key: String) -> String:
 	return VOLUME_STEPS[clampi(roundi(float(_values.get(key, 80)) / 25.0), 0, 4)]
