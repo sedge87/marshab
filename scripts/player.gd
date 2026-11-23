@@ -322,14 +322,22 @@ var _took_off_y := 0.0
 var _was_airborne := false
 func _steady(delta: float) -> float:
 	var airborne := not is_on_floor() and not _indoors()
-	if airborne and not _was_airborne: _took_off_y = global_position.y
-	_was_airborne = airborne
 	var keep := float(VIEW_BOUNCE.get(str(MHGame.setting("view_bounce")), .33))
+	if keep >= .999:
+		_eye_drop = 0.0
+		_was_airborne = airborne
+		return 0.0
+	# Take off from where the eyes already are, so a bound that starts before
+	# the last one's drop has eased out carries on smoothly instead of
+	# snapping up (23 Nov playtest: landings felt stiff and jerky uphill).
+	if airborne and not _was_airborne: _took_off_y = global_position.y - _eye_drop / (1.0 - keep)
+	_was_airborne = airborne
 	if airborne:
 		var rise := clampf(global_position.y - _took_off_y, 0.0, 2.0)
 		_eye_drop = (1.0 - keep) * rise
 	else:
-		_eye_drop = move_toward(_eye_drop, 0.0, delta * 1.2)
+		# Ease out softly on the ground (fast at first, gentle at the end).
+		_eye_drop = lerpf(_eye_drop, 0.0, 1.0 - exp(-delta * 5.0))
 	return -_eye_drop
 
 func _headroom_blocked() -> bool:
