@@ -451,6 +451,11 @@ func _initialize() -> void:
 					builder.kind = "living"
 					var quarters := _beside(builder, core_cells)
 					check(not quarters.is_empty(), "no spot for the Quarters beside the core")
+					# 23 Nov: the site plan is paid in regolith, about 25 kg a cell,
+					# and what's left on the plan is the regolith store.
+					check(builder.cell_cost("living") == 25, "a Quarters cell costs %d kg, not 25" % builder.cell_cost("living"))
+					var store_before := MHChapterOne.feedstock_kg
+					check(absi(MHGame.cargo_budget() - builder.used_cargo() - floori(store_before)) <= 1, "the plan's regolith left (%d) isn't the store (%d)" % [MHGame.cargo_budget() - builder.used_cargo(), floori(store_before)])
 					if not quarters.is_empty():
 						var zone := {"kind": "living", "cells": quarters, "door_direction": builder.airlock_direction, "cost": builder._zone_cost(quarters)}
 						rules.placed(builder, zone)
@@ -459,6 +464,15 @@ func _initialize() -> void:
 						builder.zones.append(zone)
 						builder._history.append({"type": "zone", "zone": zone})
 						builder._rebuild()
+						check(absf(MHChapterOne.feedstock_kg - store_before) < 1.0, "the free Quarters took regolith (%.0f -> %.0f)" % [store_before, MHChapterOne.feedstock_kg])
+						# A paid cell next: it takes 25 kg, and removing it gives them back.
+						var extra := {"kind": "living", "cells": [Vector2i(quarters[0].x + 20, quarters[0].y)], "door_direction": builder.airlock_direction, "cost": 25}
+						builder.zones.append(extra)
+						builder._rebuild()
+						check(absf(store_before - MHChapterOne.feedstock_kg - 25.0) < 1.0, "a paid cell took %.0f kg of regolith, not 25" % (store_before - MHChapterOne.feedstock_kg))
+						builder.zones.erase(extra)
+						builder._rebuild()
+						check(absf(MHChapterOne.feedstock_kg - store_before) < 1.0, "removing the cell didn't give its regolith back (%.0f, was %.0f)" % [MHChapterOne.feedstock_kg, store_before])
 					builder._toggle()
 					t = 0.0
 					while t < 300.0 and not days.done("helmet_off"):

@@ -30,7 +30,13 @@ const STEPS := ["ice", "water", "oxygen", "food"]
 ## (habitat_wear.gd). Always known; each job makes KITS_PER_JOB.
 const SPARES_KIT := "spares_kit"
 const KITS_PER_JOB := 2
-const KIT_COST := {"feedstock_kg": 12.0, "hours": 2.0}
+## 23 Nov: the Print Shop prints from iron and salvage; regolith only grows
+## the base (rooms, corridors, the site plan).
+const KIT_COST := {"feedstock_kg": 0.0, "metal_kg": 3.0, "salvage_kg": 1.0, "hours": 2.0}
+## Furniture and small parts without their own numbers: 2-5 kg of iron by size.
+const SMALL_IRON_MIN := 2.0
+const SMALL_IRON_MAX := 5.0
+const SMALL_IRON_PER_CARGO_KG := 1.0 / 30.0
 ## Feedstock is the one thing printing uses (playtest, 2 Nov: Earth parts are
 ## gone). Besides the crate and recycling, a running regolith intake makes it,
 ## and each wave of crew lands with more (data/resources.json).
@@ -65,7 +71,11 @@ static var crates_landing := false
 static var unpacked: Dictionary = {}     # crate id -> true
 static var stock: Dictionary = {}        # id -> count landed or made (placed ones included)
 static var shell_kg := 0
+## The regolith store (the intake's output; named feedstock before 23 Nov).
 static var feedstock_kg := 0.0
+## Regolith built into the site plan so far (settle_regolith); -1 for a save
+## from before, which takes what's already built as paid.
+static var regolith_paid := 0
 static var known: Dictionary = {}        # plan id -> how it came ("sent", "discovered")
 ## Each Print Shop's work (docs/start-and-chapter-one.md §13.5): placement id
 ## -> {current: {id, hours_left, hours} or {}, queue: [plan ids]}.
@@ -101,7 +111,7 @@ static func new_rules() -> bool:
 ## A new game: the crates are all still packed.
 static func reset() -> void:
 	older_rules = false
-	unpacked = {}; stock = {}; shell_kg = 0; feedstock_kg = 0.0
+	unpacked = {}; stock = {}; shell_kg = 0; feedstock_kg = 0.0; regolith_paid = 0
 	known = {}; jobs = {}; made = {}; paid = {}; has_corer = false; has_hammer = false; cores = []; steps = {}; finished_at = -1.0
 	stores_landed = false; reserve_used = false; emergency_eta = -1.0; said = {}
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
@@ -115,7 +125,7 @@ static func reset() -> void:
 
 static func export_state() -> Dictionary:
 	return {"older_rules": older_rules, "crates": crates_landing, "unpacked": unpacked.duplicate(), "stock": stock.duplicate(), "shell_kg": shell_kg,
-		"feedstock_kg": feedstock_kg, "known": known.duplicate(), "jobs": jobs.duplicate(true),
+		"feedstock_kg": feedstock_kg, "regolith_paid": regolith_paid, "known": known.duplicate(), "jobs": jobs.duplicate(true),
 		"made": made.duplicate(), "paid": paid.duplicate(),
 		"has_corer": has_corer, "has_hammer": has_hammer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
 		"stores_landed": stores_landed, "reserve_used": reserve_used, "emergency_eta": emergency_eta, "said": said.duplicate(),
@@ -139,6 +149,7 @@ static func load_state(state: Dictionary, has_section: bool) -> void:
 	for key in (state.get("stock", {}) as Dictionary): stock[str(key)] = int(state.stock[key])
 	shell_kg = int(state.get("shell_kg", 0))
 	feedstock_kg = float(state.get("feedstock_kg", 0.0))
+	regolith_paid = int(state.get("regolith_paid", -1))
 	# Saved when printing also took Earth parts: the crate was 1,500 kg then,
 	# 3,000 now, so an unpacked one gets the difference.
 	if state.has("earth_parts") and unpacked.has("fabricator_stock"): feedstock_kg += OLD_SAVE_TOP_UP
@@ -202,8 +213,8 @@ static func manifest_lines(crate_id: String) -> Array:
 	var contents: Dictionary = crate(crate_id).get("contents", {})
 	for key in contents:
 		match str(key):
-			"_shell_kg": lines.append("Hull kit · %s" % MHStyle.kg(int(contents[key])))
-			"_feedstock_kg": lines.append("Feedstock · %s" % MHStyle.kg(int(contents[key])))
+			"_shell_kg": lines.append("Old hull kit · %s" % MHStyle.kg(int(contents[key])))
+			"_feedstock_kg": lines.append("Regolith · %s" % MHStyle.kg(int(contents[key])))
 			"_metal_kg": lines.append("Metal stock · %s" % MHStyle.kg(int(contents[key])))
 			"_salvage_kg": lines.append("Salvage · %s" % MHStyle.kg(int(contents[key])))
 			"_hand_corer": lines.append("Sampling kit (corer, scoop, sample case)")
@@ -314,6 +325,17 @@ static func settle(builder: Object) -> void:
 		if want > 0: paid[id] = want
 		else: paid.erase(id)
 
+## 23 Nov: the site plan's regolith, worked out from what's planned (like
+## settle), so placing takes it from the store and removing gives it back.
+static func settle_regolith(builder: Object) -> void:
+	if not on() or builder == null or not builder.has_method("total_cargo"): return
+	var want := maxi(0, int(builder.total_cargo()) - shell_kg)
+	if regolith_paid < 0: regolith_paid = want   # a save from before: what's built was paid
+	var diff := want - regolith_paid
+	if diff == 0: return
+	feedstock_kg = maxf(0.0, feedstock_kg - float(diff))
+	regolith_paid = want
+
 ## Empty when this can be placed; otherwise what to do about it.
 static func item_reason(id: String, builder: Object) -> String:
 	if not needs_stock(id): return ""
@@ -391,12 +413,15 @@ static func _give_first(id: String) -> void:
 
 ## {feedstock_kg, hours} for one job.
 static func plan_cost(id: String) -> Dictionary:
-	if id == SPARES_KIT: return {"feedstock_kg": KIT_COST.feedstock_kg, "hours": maxf(MIN_PRINT_HOURS, KIT_COST.hours * PRINT_PACE)}
+	if id == SPARES_KIT: return {"feedstock_kg": 0.0, "metal_kg": KIT_COST.metal_kg, "salvage_kg": KIT_COST.salvage_kg, "hours": maxf(MIN_PRINT_HOURS, KIT_COST.hours * PRINT_PACE)}
 	var p := plan(id)
 	var d: Dictionary = plans_data().get("defaults", {})
 	var mass := float(p.get("cargo_kg", EquipmentCatalog.get_entry(id).get("cargo_cost", 50)))
-	return {"feedstock_kg": float(p.get("feedstock_kg", roundf(mass * float(d.get("feedstock_per_kg", .6))))),
-		"metal_kg": float(p.get("metal_kg", 0.0)), "salvage_kg": float(p.get("salvage_kg", 0.0)),
+	# 23 Nov: no regolith. Machines carry their own iron and salvage (plans.json);
+	# anything else is a small part, 2-5 kg of iron by size.
+	var small := clampf(roundf(mass * SMALL_IRON_PER_CARGO_KG), SMALL_IRON_MIN, SMALL_IRON_MAX)
+	return {"feedstock_kg": 0.0,
+		"metal_kg": float(p.get("metal_kg", small)), "salvage_kg": float(p.get("salvage_kg", 0.0)),
 		"hours": maxf(MIN_PRINT_HOURS, PRINT_PACE * float(p.get("hours", clampf(roundf(mass / float(d.get("kg_per_hour", 25))), float(d.get("min_hours", 1)), float(d.get("max_hours", 20))))))}
 
 ## Everything the fabricator could make now (known plans), in catalogue order.
@@ -462,7 +487,7 @@ static func job_reason(id: String, builder: Object, printer := "") -> String:
 	# Started now, it's paid for now; queued, it's paid for when it starts.
 	if (work.current as Dictionary).is_empty():
 		var cost := plan_cost(id)
-		if feedstock_kg < float(cost.feedstock_kg): return "Not enough feedstock"
+		if feedstock_kg < float(cost.feedstock_kg): return "Not enough regolith"
 		var short := MHMaterials.short_of(cost)
 		if not short.is_empty(): return short
 	return ""
@@ -640,7 +665,7 @@ static func _plan_message(id: String) -> Dictionary:
 	if bool(plan(id).get("upgrade", false)):
 		for up in MHRoomTypes.UPGRADES:
 			if str(MHRoomTypes.UPGRADES[up].plan) == id:
-				return {"id": "plan", "title": "New core upgrade: %s" % str(MHRoomTypes.UPGRADES[up].label), "text": "Castle sent the plan. Fit it at the core's rack (%s feedstock) and you can build %s." % [MHStyle.kg(roundi(MHRoomTypes.cost(str(up)))), MHRoomTypes.opens_text(str(up))], "tone": "info"}
+				return {"id": "plan", "title": "New core upgrade: %s" % str(MHRoomTypes.UPGRADES[up].label), "text": "Castle sent the plan. Fit it at the core's rack (%s regolith) and you can build %s." % [MHStyle.kg(roundi(MHRoomTypes.cost(str(up)))), MHRoomTypes.opens_text(str(up))], "tone": "info"}
 	# A5: a station plan from one of the crew in orbit, relayed by Castle.
 	var owner := str(plan(id).get("owner", ""))
 	if not owner.is_empty():
@@ -658,7 +683,7 @@ static func _check_steps(builder: Object, sim: Object, last: Dictionary, hours: 
 	var intakes := int(sim.inventory().get("intakes", 0))
 	if intakes > 0 and not steps.has("feedstock") and float(last.get("generation_kw", 0.0)) > 0.0:
 		steps["feedstock"] = now
-		out.append({"id": "step", "title": "Feedstock is coming in", "text": "The intake sifts Mars dirt into %d kg a sol for the Print Shops. Build more and it multiplies. While the crate refills, go exploring: on your slate's Map, radar shows where ice might be, and GAR-Y can survey it for you." % roundi(sim.feedstock_rate(sim.inventory())), "tone": "valid"})
+		out.append({"id": "step", "title": "Regolith is coming in", "text": "The intake sifts Mars dirt into %d kg of regolith a sol: it builds rooms, corridors and airlocks. Build more and it multiplies. While the crate refills, go exploring: on your slate's Map, radar shows where ice might be, and GAR-Y can survey it for you." % roundi(sim.feedstock_rate(sim.inventory())), "tone": "valid"})
 	# 2. Water: the extractor's meltwater is tested once it has run a while.
 	if steps.has("ice") and not known.has("water_reclaimer") and _count(builder, "ice_extractor") > 0 and float(last.get("raw_in", 0.0)) > 0.0:
 		water_hours += hours

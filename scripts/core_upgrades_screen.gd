@@ -20,7 +20,7 @@ func _fill(into: VBoxContainer) -> void:
 		_refold_row(into)
 		return
 	var open: Array = MHRoomTypes.ROOMS.keys().filter(func(k): return MHRoomTypes.upgrade_for(str(k)).is_empty())
-	var line := MHStyle.body("Open from the start: %s. Feedstock: %s." % [", ".join(open.map(func(k): return MHRoomTypes.label(str(k)))), MHStyle.kg(floori(MHChapterOne.feedstock_kg))], 15, MHStyle.TEXT_SECONDARY)
+	var line := MHStyle.body("Open from the start: %s. Regolith: %s." % [", ".join(open.map(func(k): return MHRoomTypes.label(str(k)))), MHStyle.kg(floori(MHChapterOne.feedstock_kg))], 15, MHStyle.TEXT_SECONDARY)
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	into.add_child(line)
 	for id in MHRoomTypes.UPGRADES:

@@ -77,8 +77,8 @@ static func plan_mix(id: String) -> Dictionary:
 ## What's short for a cost with feedstock_kg, metal_kg and salvage_kg, or "".
 static func short_of(cost: Dictionary) -> String:
 	var bits: Array = []
-	if MHChapterOne.feedstock_kg < float(cost.get("feedstock_kg", 0.0)) - .001: bits.append("%s feedstock (you have %s)" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), MHStyle.kg(floori(MHChapterOne.feedstock_kg))])
-	if metal_kg < float(cost.get("metal_kg", 0.0)) - .001: bits.append("%s metal (you have %s)" % [MHStyle.kg(roundi(float(cost.metal_kg))), MHStyle.kg(floori(metal_kg))])
+	if MHChapterOne.feedstock_kg < float(cost.get("feedstock_kg", 0.0)) - .001: bits.append("%s regolith (you have %s)" % [MHStyle.kg(roundi(float(cost.feedstock_kg))), MHStyle.kg(floori(MHChapterOne.feedstock_kg))])
+	if metal_kg < float(cost.get("metal_kg", 0.0)) - .001: bits.append("%s iron (you have %s)" % [MHStyle.kg(roundi(float(cost.metal_kg))), MHStyle.kg(floori(metal_kg))])
 	if salvage_kg < float(cost.get("salvage_kg", 0.0)) - .001: bits.append("%s salvage (you have %s)" % [MHStyle.kg(roundi(float(cost.salvage_kg))), MHStyle.kg(floori(salvage_kg))])
 	return "" if bits.is_empty() else "Needs " + " and ".join(bits)
 
@@ -87,16 +87,17 @@ static func pay(cost: Dictionary, times := 1.0) -> void:
 	metal_kg = maxf(0.0, metal_kg - float(cost.get("metal_kg", 0.0)) * times)
 	salvage_kg = maxf(0.0, salvage_kg - float(cost.get("salvage_kg", 0.0)) * times)
 
-## "40 kg · 8 kg metal · 5 kg salvage" for a card.
+## "8 kg iron · 5 kg salvage" for a card.
 static func cost_line(cost: Dictionary) -> String:
-	var bits: Array = [MHStyle.kg(roundi(float(cost.get("feedstock_kg", 0.0))))]
-	if float(cost.get("metal_kg", 0.0)) > 0.0: bits.append("%s metal" % MHStyle.kg(roundi(float(cost.metal_kg))))
+	var bits: Array = []
+	if float(cost.get("feedstock_kg", 0.0)) > 0.0: bits.append("%s regolith" % MHStyle.kg(roundi(float(cost.feedstock_kg))))
+	if float(cost.get("metal_kg", 0.0)) > 0.0: bits.append("%s iron" % MHStyle.kg(roundi(float(cost.metal_kg))))
 	if float(cost.get("salvage_kg", 0.0)) > 0.0: bits.append("%s salvage" % MHStyle.kg(roundi(float(cost.salvage_kg))))
 	return " · ".join(bits)
 
-## "Feedstock 2.4 t · metal 60 kg · salvage 60 kg · iron-rich rock 20 kg"
+## "Regolith 2.4 t · iron 60 kg · salvage 60 kg · iron-rich rock 20 kg"
 static func store_line() -> String:
-	var line := "Feedstock %s · metal %s · salvage %s" % [MHStyle.kg(floori(MHChapterOne.feedstock_kg)), MHStyle.kg(floori(metal_kg)), MHStyle.kg(floori(salvage_kg))]
+	var line := "Regolith %s · iron %s · salvage %s" % [MHStyle.kg(floori(MHChapterOne.feedstock_kg)), MHStyle.kg(floori(metal_kg)), MHStyle.kg(floori(salvage_kg))]
 	if ore_kg() > 0.0: line += " · iron-rich rock %s" % MHStyle.kg(floori(ore_kg()))
 	return line
 

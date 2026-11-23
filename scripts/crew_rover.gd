@@ -148,7 +148,7 @@ const WHEEL_FIX := 50.0         # % a spares kit gives back in the field
 const ADDONS := {
 	"dune_wheels": {"slot": "wheels", "label": "Dune wheels", "cost": {"metal_kg": 30.0, "salvage_kg": 10.0},
 		"says": "Wide mesh wheels that float on sand: no bogging on dune sand, much less on ripples."},
-	"traction_mats": {"slot": "kit", "label": "Traction mats", "cost": {"feedstock_kg": 20.0, "salvage_kg": 4.0},
+	"traction_mats": {"slot": "kit", "label": "Traction mats", "cost": {"metal_kg": 3.0, "salvage_kg": 4.0},
 		"says": "Three printed mats in a rack on the back: L lays one under the wheels when you're bogged."},
 }
 const MATS := 3
@@ -1356,7 +1356,7 @@ func _pay_then(cost: Dictionary, then: Callable) -> bool:
 	if MHGame.simulation_on():
 		if MHChapterOne.feedstock_kg < float(cost.get("feedstock_kg", 0.0)) - .001 or MHMaterials.short_of(cost) != "":
 			var short := MHMaterials.short_of(cost)
-			_refuse((short if short != "" else "Not enough feedstock") + ".")
+			_refuse((short if short != "" else "Not enough iron or salvage") + ".")
 			return false
 		MHChapterOne.feedstock_kg -= float(cost.get("feedstock_kg", 0.0))
 		MHMaterials.pay(cost)

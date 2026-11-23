@@ -54,12 +54,12 @@ static func cargo(builder: Node, printable_only := false) -> int:
 	for record in builder.wall_upgrades:
 		var each: Dictionary = spec(str(record.kind))
 		if printable_only and not bool(each.get("printable", false)): continue
-		total += int(each.get("cargo", 0))
+		total += BuildController.regolith_kg(int(each.get("cargo", 0)))
 	return total
 
 ## The cost of placing this upgrade on this target (a whole roof is per square).
 static func target_cargo(kind: String, target: Dictionary) -> int:
-	var each := int(spec(kind).get("cargo", 0))
+	var each := BuildController.regolith_kg(int(spec(kind).get("cargo", 0)))
 	return each * (target.cells as Array).size() if kind == "roof" else each
 
 # ---------- aiming ----------

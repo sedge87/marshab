@@ -189,7 +189,7 @@ func _update_status() -> void:
 	var waiting := (work.queue as Array).size()
 	_job_bar.visible = not job.is_empty()
 	if job.is_empty():
-		_job.text = "Waiting for feedstock to start the next print" if waiting > 0 else "Idle. Pick a plan and print it; it runs on the habitat's power."
+		_job.text = "Waiting for iron or salvage to start the next print" if waiting > 0 else "Idle. Pick a plan and print it; it runs on the habitat's power."
 		return
 	var done := 1.0 - float(job.hours_left) / maxf(.01, float(job.hours))
 	var speed := MHChapterOne.fabricator_speed(_builder(), printer)
@@ -357,7 +357,7 @@ func _render_detail() -> void:
 	if _selected == MHChapterOne.SPARES_KIT:
 		var builder := _builder()
 		var have := int(builder.simulation().life.spares) if builder != null else 0
-		entry = {"description": "Filter beds, brine bags, seals and fittings, printed from feedstock. One kit services a worn machine or repairs a broken one. You have %d." % have}
+		entry = {"description": "Filter beds, brine bags, seals and fittings, printed from iron and a little salvage. One kit services a worn machine or repairs a broken one. You have %d." % have}
 	var cost := MHChapterOne.plan_cost(_selected)
 	_detail.add_child(MHStyle.eyebrow({"brought": "PLAN · BROUGHT FROM EARTH", "sent": "PLAN · SENT BY MISSION CONTROL", "discovered": "PLAN · FROM A DISCOVERY"}.get(MHChapterOne.plan_source(_selected), "PLAN") + "  ·  " + tab_of(_selected).to_upper()))
 	var head := MHStyle.hbox(14)
@@ -370,9 +370,10 @@ func _render_detail() -> void:
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail.add_child(about)
 	var rows := MHStyle.vbox(6)
-	var list: Array = [["layers", "Feedstock", MHStyle.kg(roundi(float(cost.feedstock_kg))), MHChapterOne.feedstock_kg >= float(cost.feedstock_kg)]]
+	var list: Array = []
+	if float(cost.get("feedstock_kg", 0.0)) > 0.0: list.append(["layers", "Regolith", MHStyle.kg(roundi(float(cost.feedstock_kg))), MHChapterOne.feedstock_kg >= float(cost.feedstock_kg)])
 	# A5: metal (the Workshop's smelter) and salvage (debris, pallets, wrecks).
-	if float(cost.get("metal_kg", 0.0)) > 0.0: list.append(["hammer", "Metal", "%s (you have %s)" % [MHStyle.kg(roundi(float(cost.metal_kg))), MHStyle.kg(floori(MHMaterials.metal_kg))], MHMaterials.metal_kg >= float(cost.metal_kg)])
+	if float(cost.get("metal_kg", 0.0)) > 0.0: list.append(["hammer", "Iron", "%s (you have %s)" % [MHStyle.kg(roundi(float(cost.metal_kg))), MHStyle.kg(floori(MHMaterials.metal_kg))], MHMaterials.metal_kg >= float(cost.metal_kg)])
 	if float(cost.get("salvage_kg", 0.0)) > 0.0: list.append(["package", "Salvage", "%s (you have %s)" % [MHStyle.kg(roundi(float(cost.salvage_kg))), MHStyle.kg(floori(MHMaterials.salvage_kg))], MHMaterials.salvage_kg >= float(cost.salvage_kg)])
 	list.append_array([["clock", "Time", duration(float(cost.hours)) + " (game time)", true], ["zap", "Power", "1.2 kW while it prints", true]])
 	for row in list:
@@ -384,7 +385,7 @@ func _render_detail() -> void:
 		line.add_child(MHStyle.mono(str(row[2]), 14, MHStyle.TEXT_PRIMARY if bool(row[3]) else MHStyle.WARN, 600))
 		rows.add_child(line)
 	_detail.add_child(rows)
-	var on_bar := "On the build bar: each extra one takes this feedstock as you place it" if MHChapterOne.made.has(_selected) else "Not printed yet: the first job puts it on the build bar for good"
+	var on_bar := "On the build bar: each extra one takes this iron and salvage as you place it" if MHChapterOne.made.has(_selected) else "Not printed yet: the first job puts it on the build bar for good"
 	if _selected == MHChapterOne.SPARES_KIT: on_bar = "Print them as you need them: worn machines lose output, then break"
 	var bar_note := MHStyle.body(on_bar, 14, MHStyle.TEXT_MUTED)
 	bar_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

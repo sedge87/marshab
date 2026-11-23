@@ -223,19 +223,19 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - This follows the building rule: furnishings and outdoor kit go by hand, structure goes at the terminal.
 
 ### Scene 15: the first print, the connector · agreed 22 Nov
-- **Print it, carry it (A).** A quick print (a few minutes) from the crate's feedstock.
+- **Print it, carry it (A).** A quick print (a few minutes) from the starting iron.
 - It goes into your field kit and waits for the candidate bench (Act 4), where you fit it and power the beacon. Nobody makes a wasted trip to the failed pad.
 
 ### Scene 16: the radar sled, and learning the materials · agreed 22 Nov
 - **Tamsin's plan becomes a real plan** (a story plan relayed by Castle).
-- **It needs feedstock and salvage.** The skids and antenna box print from feedstock; the antenna's electronics need **salvage**, Earth parts stripped from the empty pallets and storm debris on the plain. **Metal waits for the Workshop** (the smelter), which gives that room a clear reason to exist later.
-- **The printer screen shows the shortfall:** stock against need, the rate a sol, and the time to the sled at that rate.
+- **It needs iron and salvage** (changed 23 Nov; to confirm when chunk 3 is built). The skids and antenna box are iron; the antenna's electronics need **salvage**, Earth parts stripped from the empty pallets and storm debris on the plain. The starting iron isn't quite enough, so you break off iron-rich rock by hand at an outcrop and smelt it.
+- **The printer screen shows the shortfall:** stock against need, and where each comes from.
 - **Tamsin teaches it (A), and you learn by doing.** She rings as the engineer:
-  - the intake sifts dirt; loose, fine ground fills it faster;
-  - a second intake adds to the rate;
-  - strip the pallets you've emptied for parts.
-  You move or add an intake and watch the rate climb, then walk the pallets for salvage.
-- *Why (the user, 22 Nov):* the player needs to understand feedstock, intakes and parts, so they know how to grow the base later.
+  - iron is in the dark rock: break some off and bring it back;
+  - strip the pallets you've emptied for parts;
+  - the intake is for the base, not the printer: regolith builds rooms, corridors and airlocks.
+  You walk to an outcrop and the pallets, and watch the sled's needs fill.
+- *Why (the user, 22 Nov):* the player needs to understand the materials, so they know how to grow the base later.
 - The sled finishes by late afternoon once the materials are in.
 
 ### Scene 17: the loadout at the suit rack · agreed 22 Nov
@@ -258,7 +258,7 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - **No daylight squeeze now:** the free stretch has no set sol, so the sled's print time and materials are tuned for pace in playtest, not to fit one day.
 - **The opening's forced sleep ends at the hold.** Check what `opening_slice.gd` and the lander/seat rules still force after that.
 - **Models:** the radar sled is already in the chunk 1 pack. Check whether the printer needs a wall-mount version (`mars_fabrication_v1/regolith_printer.glb`), and whether the intake, GAR-Y's radar head and the suit rack's loadout screen need new models.
-- **Code:** reuse the Print Shop crate tow, `fabricator.gd`, `chapter_one.gd` (jobs, feedstock, intake rate) and `materials.gd` (salvage from pallets and debris). Printed furniture lands on B's list like the kit.
+- **Code:** reuse the Print Shop crate tow, `fabricator.gd`, `chapter_one.gd` (jobs, regolith, intake rate) and `materials.gd` (salvage from pallets and debris). Printed furniture lands on B's list like the kit.
 
 ### How and when the crew talk (sols 0–2) · built 22 Nov
 *Why: a playtester said the opening is very lonely now. Only Castle really talks in the first hour, the other four get one quip each (mostly droppable `chat` lines), and nothing says who the five are or why you came down alone. The user (22 Nov): the descent stays the only lead-in (no new scene before it), voices only with a name on each, the crew react to what they see you doing (briefly, at the right moment, never lecturing), an occasional open channel, and the orbiter passing overhead.*

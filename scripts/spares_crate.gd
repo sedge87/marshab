@@ -168,7 +168,7 @@ func _open_print_shop() -> void:
 	for id in ["fabricator", "regolith_intake"]:
 		MHChapterOne.stock[id] = int(MHChapterOne.stock.get(id, 0)) + 1
 	MHChapterOne.feedstock_kg += STARTER_FEEDSTOCK
-	MHNotices.post("valid", "Pallet 6: the Print Shop", "The Print Shop, a regolith intake and a %s sack of feedstock, in the store. B for the build bar: they're on its Unpacked tab." % MHStyle.kg(roundi(STARTER_FEEDSTOCK)), "log")
+	MHNotices.post("valid", "Pallet 6: the Print Shop", "The Print Shop, a regolith intake and a %s sack of regolith, in the store. B for the build bar: they're on its Unpacked tab." % MHStyle.kg(roundi(STARTER_FEEDSTOCK)), "log")
 	MHAudio.moment()
 	var radio: Node = world.get("radio")
 	if radio != null: radio.ring("d5_unpacked")

@@ -691,7 +691,7 @@ func _feedstock_block(sim: RefCounted) -> Control:
 	var box := MHStyle.vbox(4)
 	var top := MHStyle.hbox(10)
 	top.add_child(MHStyle.icon("package", 22, MHStyle.INFO))
-	top.add_child(MHStyle.label("Feedstock", 19, MHStyle.TEXT_PRIMARY, 700))
+	top.add_child(MHStyle.label("Regolith", 19, MHStyle.TEXT_PRIMARY, 700))
 	box.add_child(top)
 	box.add_child(MHStyle.body(_feedstock_words(sim), 17, MHStyle.TEXT_SECONDARY))
 	# A5: the other materials, and each room's chain at this base.

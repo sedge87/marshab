@@ -153,7 +153,7 @@ const ZONE_INFO := {
 	"general":{"cat":"rooms","icon":"box","rule":"Click to set it down · R turns it","desc":"The walker's core: the airlock and suit rack, life support (ice melter, water, oxygen), the power hub and a poor bunk. The only rigid module; every other room is a liner. Its upgrades, fitted at its rack, open room types."},
 	"living":{"cat":"rooms","icon":"bed-double","rule":"Drag an area","desc":"Bunks, lockers and the things you've found. Key piece: a bunk. A night here is a full night's sleep: you're rested for longer than after the core's bunk."},
 	"science":{"cat":"rooms","icon":"flask-conical","rule":"Drag an area","desc":"Put a find through the stations and it tells you what it is and where to go next. Key piece: the Science Workbench (the analyser). Opened by the core's Lab services upgrade."},
-	"storage":{"cat":"rooms","icon":"package","rule":"Drag an area","desc":"Racks for spares, tools and supplies, and the recycling hoppers that turn rubbish into feedstock. Key piece: a cargo rack."},
+	"storage":{"cat":"rooms","icon":"package","rule":"Drag an area","desc":"Racks for spares, tools and supplies, and the recycling hoppers that turn rubbish into regolith-grade fill. Key piece: a cargo rack."},
 	"hydroponics":{"cat":"rooms","icon":"sprout","rule":"Drag an area","desc":"Plant and harvest by hand. Key piece: a planter. Grows food and a little oxygen. Opened by the core's water loop."},
 	"life_support":{"cat":"rooms","icon":"wind","rule":"Drag an area","desc":"Makes space for air and water recyclers. Furnish it to support crew."},
 	"engineering":{"cat":"rooms","icon":"wrench","rule":"Drag an area","desc":"Print add-ons, kit and adapters, and mend worn kit with spares. Key piece: the Print Shop, which prints faster here. Opened by the core's heavy power upgrade."},
@@ -173,7 +173,7 @@ const ZONE_INFO := {
 	"solar":{"cat":"power","icon":"sun","rule":"One cell, or a roof · R turns","desc":"Cabled to the grid wherever it stands. Facing north gives full output."},
 	"reactor":{"cat":"power","icon":"atom","rule":"One cell · R turns","desc":"A compact fission reactor, cabled to the grid. High output, day and night, but a high cargo cost."},
 	"ice_extractor":{"cat":"power","icon":"drill","rule":"One cell on ice · R turns","desc":"Drills into buried ice. Choose it to survey blue ice-rich ground."},
-	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil: it makes Print Shop feedstock while it runs (about 150 kg a sol), and feeds a regolith printer indoors, which turns it into building material."},
+	"regolith_intake":{"cat":"power","icon":"mountain-snow","rule":"Anywhere · R turns","desc":"Digs Martian soil: it fills the regolith store while it runs (about 150 kg a sol). Regolith builds the site plan: rooms, corridors, airlocks and the pad."},
 	"atmosphere_processor":{"cat":"power","icon":"wind","rule":"Anywhere · R turns","desc":"Splits oxygen out of the Mars air, like NASA's MOXIE scaled up. No water needed, but 2.5 kW."},
 	"landing_pad":{"cat":"structure","icon":"rocket","rule":"18 m square · one only","desc":"A printed pad for the crew's lander, with edge lights and a beacon mast. The base you build it at becomes the main base, where the crew will land. Once it's down it stays, and that base can't be refolded."}
 }
@@ -1169,7 +1169,7 @@ func reassign_reason(zone: Dictionary) -> String:
 	if not zone_offered(kind): return "No longer made"
 	if not MHRoomTypes.locked_reason(kind).is_empty(): return MHRoomTypes.locked_reason(kind)
 	if not MHChapterOne.zone_reason(kind, self).is_empty(): return MHChapterOne.zone_reason(kind, self)
-	if _used_cargo() - int(zone.cost) + _reassigned_cost(zone, kind) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() - int(zone.cost) + _reassigned_cost(zone, kind) > MHGame.cargo_budget(): return short_note()
 	return ""
 
 ## Room kinds cut on 14 Nov (docs/rooms-and-equipment.md): their kit moved to
@@ -1320,7 +1320,7 @@ func _angled_outline_mount_at(point: Vector2) -> Dictionary:
 func _angled_outline_mount_invalid_reason(mount: Dictionary) -> String:
 	var mount_length := float(mount.get("length", CELL))
 	var mount_cost := cell_cost(kind) * (_angled_corridor_bays(mount_length) if kind == "corridor" else 1)
-	if _used_cargo() + earth_cost(mount_cost, zone_printable(kind)) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() + earth_cost(mount_cost, zone_printable(kind)) > MHGame.cargo_budget(): return short_note()
 	for sample in _outline_site_samples(_angled_mount_outline(mount)):
 		var site_reason := _point_site_reason(sample)
 		if not site_reason.is_empty(): return site_reason
@@ -1549,7 +1549,7 @@ func freeform_invalid_reason(points: PackedVector2Array) -> String:
 		else:
 			for cell in zone.get("cells", []):
 				if _polygons_overlap_area(points, _freeform_cell_polygon(cell)): return "Overlaps existing habitat"
-	if _used_cargo() + earth_cost(_freeform_cost(points), zone_printable(kind)) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() + earth_cost(_freeform_cost(points), zone_printable(kind)) > MHGame.cargo_budget(): return short_note()
 	if is_inside_tree():
 		var base_y := BASES.base_y(self, active_base) if not BASES.zones_of(self, active_base).is_empty() else _proposed_freeform_base_y(points)
 		var samples := points.duplicate()
@@ -1646,7 +1646,7 @@ func _learn(id: String) -> void:
 
 func place_free_interior_equipment(id: String, position: Vector3, rotation_y: float, zone_cell: Vector2i, visual: Node3D, anchor_normal := Vector3.UP) -> bool:
 	var entry := EquipmentCatalog.get_entry(id)
-	if entry.is_empty() or (not _stock_covers(id) and _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget()):
+	if entry.is_empty() or (not _stock_covers(id) and _used_cargo() + item_earth_cost(id) > MHGame.cargo_budget()):
 		return false
 	var placement_id := "interior_%d" % Time.get_ticks_usec()
 	placed_interior.append({"placement_id": placement_id, "id": id, "position": position, "rotation_y": rotation_y, "zone_cell": zone_cell, "anchor_normal": anchor_normal})
@@ -1755,7 +1755,7 @@ func free_interior_invalid_reason(id: String, world_position: Vector3, surface_n
 		support = stack_support(id, world_position, rotation_y)
 		if support.is_empty(): return "Set this on a table, desk, counter, shelf or crate"
 		if world_position.y + _free_interior_size(entry).y > _headroom(support, world_position.y): return "Too tall for this shelf"
-	if not _stock_covers(id) and _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if not _stock_covers(id) and _used_cargo() + item_earth_cost(id) > MHGame.cargo_budget(): return short_note()
 	if _blocks_doorway(entry, world_position, rotation_y): return "Keep the doorway clear"
 	# A free-positioned item must fit wholly inside valid room cells. Checking the
 	# four footprint corners prevents a player from burying it in the shell wall
@@ -2037,7 +2037,7 @@ func equipment_invalid_reason(id: String, cell: Vector2i) -> String:
 	if not equipment_at(cell).is_empty(): return "This cell is already furnished"
 	var stock_reason := MHChapterOne.item_reason(id, self)
 	if not stock_reason.is_empty(): return stock_reason
-	if not _stock_covers(id) and _used_cargo() + earth_cost(int(entry.get("cargo_cost", 0)), item_printable(id)) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if not _stock_covers(id) and _used_cargo() + item_earth_cost(id) > MHGame.cargo_budget(): return short_note()
 	return ""
 
 func equipment_at(cell: Vector2i) -> Dictionary:
@@ -2446,7 +2446,7 @@ func _footprint_add_reason(cell: Vector2i) -> String:
 	# "you can only place 1 block").
 	if bool(zone.get("kit", false)):
 		if (zone.get("cells", []) as Array).size() >= BUILD_RULES.FREE_QUARTERS_CELLS: return "Walker 1's Quarters liner covers %d cells" % BUILD_RULES.FREE_QUARTERS_CELLS
-	elif _used_cargo() + earth_cost(cell_cost(str(zone.kind)), zone_printable(str(zone.kind))) > MHGame.cargo_budget(): return "Not enough cargo left"
+	elif _used_cargo() + earth_cost(cell_cost(str(zone.kind)), zone_printable(str(zone.kind))) > MHGame.cargo_budget(): return short_note()
 	var player := world.get_node_or_null("Player") as Node3D
 	if player != null and cell == Vector2i(roundi(player.global_position.x / CELL), roundi(player.global_position.z / CELL)):
 		return "Move clear of the player before building"
@@ -2600,7 +2600,7 @@ func _invalid_reason(cells: Array) -> String:
 		if not airlock_reason.is_empty(): return airlock_reason
 	if kind=="vehicle_bay" and not _valid_vehicle_bay(cells): return "2–4 cells each way, door facing outside, beside a room"
 	if kind=="ice_extractor" and not _extractor_ice_reason(Vector2(cells[0].x*CELL,cells[0].y*CELL)).is_empty(): return _extractor_ice_reason(Vector2(cells[0].x*CELL,cells[0].y*CELL))
-	if _used_cargo()+earth_cost(_zone_cost(cells), zone_printable(kind))>MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo()+earth_cost(_zone_cost(cells), zone_printable(kind))>MHGame.cargo_budget(): return short_note()
 	# Build on a local, reasonably flat patch. A short foundation can bridge a
 	# shallow dip, but we reject hills and deep drops instead of making towers.
 	# The floor follows the ground: the rooms it touches decide its level, and
@@ -3080,6 +3080,7 @@ func _rebuild() -> void:
 	MHSiteTerrain.trench_areas = TRENCHES.areas(trenches)   # before anything reads the ground
 	_merge_touching_same_type_rooms()
 	BASES.settle(self)   # every piece gets its base and its floor (A4)
+	if not display_only: MHChapterOne.settle_regolith(self)   # 23 Nov: the site plan takes its regolith
 	# Solar on a roof comes down with the room under it (cargo back).
 	zones = zones.filter(func(z): return not z.get("roof", false) or _roof_under(z.at))
 	_prune_angled_outline_connectors()
@@ -4443,7 +4444,7 @@ func window_invalid_reason(target: Dictionary) -> String:
 	if target.is_empty(): return "Aim at a wall of a room or corridor"
 	if _window_index_at(target.mid, target.dir) >= 0: return "This wall bay already has a window"
 	if WALL_UPGRADES.index_at(self, "regolith", target) >= 0: return "This wall bay is shielded"
-	if _used_cargo() + window_cargo() > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() + window_cargo() > MHGame.cargo_budget(): return short_note()
 	return ""
 
 ## Centre of a bay's wall at mid-height, local X along the wall.
@@ -4545,7 +4546,7 @@ func _free_site_reason(target: Dictionary) -> String:
 		if kind=="ice_extractor" and not _extractor_ice_reason(at).is_empty(): return _extractor_ice_reason(at)
 		var player := world.get_node_or_null("Player") as Node3D
 		if player != null and Vector2(player.global_position.x, player.global_position.z).distance_to(at) < radius + .5: return "Move clear of the player before building"
-	if _used_cargo()+earth_cost(_zone_cost([cell]), zone_printable(kind))>MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo()+earth_cost(_zone_cost([cell]), zone_printable(kind))>MHGame.cargo_budget(): return short_note()
 	return ""
 
 ## A ghost of the machine at the cursor, turned as it will stand, with its
@@ -4751,7 +4752,7 @@ func undo_last_structure() -> bool:
 # ---------- interior partition walls ----------
 
 static func partition_cargo() -> int:
-	return int(MHResources.setting("partition_cargo_kg", 60.0))
+	return regolith_kg(int(MHResources.setting("partition_cargo_kg", 60.0)))
 
 ## The 1.5 m partition segment nearest a floor point: on the half-cell grid,
 ## along whichever grid line is closest. {a, b} on the ground plane.
@@ -4820,7 +4821,7 @@ func partition_invalid_reason(segment: Dictionary, door := false, glass := false
 		var mid := (a + b) * .5
 		if _interior_footprints_overlap(at, _free_interior_size(entry), float(item.get("rotation_y", 0.0)), Vector3(mid.x, 0, mid.y), Vector3((b - a).length(), 0, PARTITION_THICKNESS), -atan2((b - a).y, (b - a).x)):
 			return "Blocked by the %s" % str(entry.get("label", "equipment")).to_lower()
-	if _used_cargo() + earth_cost(partition_cargo(), true) > MHGame.cargo_budget(): return "Not enough cargo left"
+	if _used_cargo() + earth_cost(partition_cargo(), true) > MHGame.cargo_budget(): return short_note()
 	return ""
 
 ## Add a wall, glass or door segment (or change a panel's type). Undo with Ctrl+Z.
@@ -5931,14 +5932,33 @@ func _zone_cost(cells: Array) -> int:
 ## reactor or ice extractor, from the balance spreadsheet.
 func cell_cost(zone_kind: String) -> int:
 	if zone_kind == "trench": return 0   # dug on site, nothing from Earth
-	if zone_kind == "landing_pad": return int(ZONE_TYPES.landing_pad.cost)   # printed regolith, a little Earth binder
-	if zone_kind in SITE_UPGRADES: return int(WALL_UPGRADES.spec(str(SITE_UPGRADES[zone_kind])).cargo)
+	if zone_kind == "landing_pad": return regolith_kg(int(ZONE_TYPES.landing_pad.cost))   # printed regolith, a little Earth binder
+	if zone_kind in SITE_UPGRADES: return regolith_kg(int(WALL_UPGRADES.spec(str(SITE_UPGRADES[zone_kind])).cargo))
 	var site_item: String = {"solar": "solar_array", "reactor": "surface_reactor", "ice_extractor": "ice_drill", "regolith_intake": "regolith_intake", "atmosphere_processor": "atmosphere_processor"}.get(zone_kind, "")
 	if not site_item.is_empty(): return int(MHResources.item_value(site_item, "cargo_kg", 300.0))
-	return int(MHResources.room(zone_kind).get("cargo_kg_per_cell", 800.0))
+	return regolith_kg(int(MHResources.room(zone_kind).get("cargo_kg_per_cell", 800.0)))
+
+## 23 Nov: under chapter rules the site plan is paid in regolith from the
+## intake, not Earth cargo: a room cell is about 25 kg (800 kg of cargo
+## before), so building the base never holds you back. Iron and salvage pay
+## for what goes inside (the Print Shop). Other rules keep the cargo numbers.
+const REGOLITH_PER_CARGO_KG := 25.0 / 800.0
+static func regolith_kg(cargo: int) -> int:
+	if cargo <= 0 or not MHChapterOne.on(): return cargo
+	return maxi(1, roundi(cargo * REGOLITH_PER_CARGO_KG))
+
+## Furniture and equipment: under chapter rules they cost iron and salvage
+## at the Print Shop (or come from stock), never site-plan regolith.
+func item_earth_cost(id: String) -> int:
+	if MHChapterOne.on(): return 0
+	return earth_cost(int(EquipmentCatalog.get_entry(id).get("cargo_cost", 0)), item_printable(id))
+
+## Why the site plan can't afford it.
+static func short_note() -> String:
+	return "Not enough regolith: the intake makes more" if MHChapterOne.on() else "Not enough cargo left"
 
 static func window_cargo() -> int:
-	return int(MHResources.setting("window_cargo_kg", 150.0))
+	return regolith_kg(int(MHResources.setting("window_cargo_kg", 150.0)))
 
 ## A saved zone's cargo at today's balance numbers (older saves used other costs).
 func _recompute_zone_cost(zone: Dictionary) -> void:
@@ -5958,6 +5978,7 @@ func _used_cargo() -> int:
 
 ## Mars-made material made so far (printed by regolith printers).
 func mars_made_total() -> int:
+	if MHChapterOne.on(): return 0   # chapter rules: one regolith store pays for the site plan
 	return int(simulation().printed_kg)
 
 ## The cost of everything printable that's placed: room shells, corridors,
@@ -6068,7 +6089,8 @@ func _total_cargo() -> int:
 	var stocked := {}
 	for item in placed_equipment + placed_interior:
 		var id := str(item.get("id", ""))
-		if not (stock_rules and not item_printable(id)) and not _from_stock(id, stocked): total += int(EquipmentCatalog.get_entry(id).get("cargo_cost", 0))
+		if stock_rules: continue   # chapter rules: iron and salvage, paid at the Print Shop
+		if not _from_stock(id, stocked): total += int(EquipmentCatalog.get_entry(id).get("cargo_cost", 0))
 	total += hull_windows.size() * window_cargo()
 	total += partitions.size() * partition_cargo()
 	total += WALL_UPGRADES.cargo(self)
@@ -6097,7 +6119,7 @@ func _update_budget() -> void:
 	var remaining:=MHGame.cargo_budget()-_used_cargo()
 	cargo_meter.max_value=maxi(1, MHGame.cargo_budget())
 	cargo_meter.value_label=""
-	cargo_meter.label_text="HULL KIT LEFT" if MHChapterOne.on() else "CARGO REMAINING"
+	cargo_meter.label_text="REGOLITH" if MHChapterOne.on() else "CARGO REMAINING"
 	if chapter_label != null:
 		chapter_label.visible = MHChapterOne.on()
 		if chapter_label.visible:
@@ -6539,6 +6561,7 @@ func cargo_by_category() -> Dictionary:
 	return out
 
 func used_cargo() -> int: return _used_cargo()
+func total_cargo() -> int: return _total_cargo()
 
 func zone_outline(zone: Dictionary) -> PackedVector2Array:
 	# Future room tools may store an explicit outline. Use it exactly as saved;

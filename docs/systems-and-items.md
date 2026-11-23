@@ -1022,4 +1022,18 @@ One Survival run should let you try every pillar:
   - a printed room shell: regolith only.
 - 1 kg of haematite gives about 0.5 kg of iron.
 
+**Building never holds you back (decided 23 Nov, built).**
+- **Walkers bring a core**, so you can start a base anywhere. They don't bring hull kit.
+- **Regolith is the only cost of growing the base.** It pays for everything planned at the Site plan terminal: rooms, corridors, windows, partitions, shielding and the pad.
+  - A room cell is **about 25 kg** (each room type scales around that, about 19–47 kg).
+  - The walker's starter bin is 150 kg, and each intake adds 150 kg a sol. One intake builds about 6 cells a sol.
+  - Rooms go up in a few seconds.
+- **Iron and salvage pay for what goes inside**, made at the Print Shop:
+  - furniture and small parts cost 2–5 kg of iron by size;
+  - machines cost their listed iron plus salvage;
+  - spares kits cost 3 kg of iron and 1 of salvage.
+  - You start with 60 kg of iron and 60 kg of salvage.
+- In code, the regolith store is still `MHChapterOne.feedstock_kg`, but players only ever see "regolith".
+- **Open:** maybe special resources for cores, later.
+
 **Old saves.** They don't load in the revamp. A clear message says they belong to v0.3.0, which stays tagged and playable. Creative keeps the freeform builder.

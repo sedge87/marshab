@@ -105,7 +105,7 @@ func _ready() -> void:
 	# Stock for testing the Print Shop, repairs and add-ons; and the Map.
 	col.add_child(MHStyle.eyebrow("Stock and the Map", MHStyle.accent))
 	var stock := _flow()
-	for spec in [["+5 spares kits", _give.bind("kits")], ["+100 kg metal and salvage", _give.bind("metal")], ["+500 kg feedstock", _give.bind("feedstock")],
+	for spec in [["+5 spares kits", _give.bind("kits")], ["+100 kg metal and salvage", _give.bind("metal")], ["+500 kg regolith", _give.bind("feedstock")],
 			["+5 rations", _give.bind("rations")], ["Reveal the whole Map", _reveal_map]]:
 		var k := _small_button(spec[0])
 		k.pressed.connect(spec[1])

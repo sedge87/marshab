@@ -250,9 +250,9 @@
     },
     "next_feedstock": {
       "stages": {
-        "start": "The Print Shop's nearly out of feedstock. The intake digs it, slowly. Another intake would dig faster, if I print one."
+        "start": "Regolith's running low. The intake digs it, slowly. Another intake would dig faster, if I print one."
       },
-      "journal": "Got the feedstock flowing again."
+      "journal": "Got the regolith flowing again."
     },
     "next_metal": {
       "stages": {

@@ -353,8 +353,10 @@ static func normalise_mode(mode: String) -> String:
 ## The landed cargo this site allows: the balance budget plus the site's
 ## landing bonus (low sites have thicker air for parachutes).
 static func mission_cargo_budget() -> int:
-	# Chapter one: no tonnes from Earth, only the hull kit the crates brought.
-	if MHChapterOne.on(): return MHChapterOne.shell_kg
+	# Chapter rules: no tonnes from Earth. The site plan is paid in regolith:
+	# what's in store plus what's already built into the plan (settle_regolith),
+	# so "left" is the store. An old save's hull kit still counts.
+	if MHChapterOne.on(): return MHChapterOne.shell_kg + floori(MHChapterOne.feedstock_kg) + maxi(0, MHChapterOne.regolith_paid)
 	var start := MHResources.setting("freedom_cargo_budget_kg", 140000.0) if game_mode == "freedom" else MHResources.setting("cargo_budget_kg", 100000.0)
 	return roundi(start * (1.0 + float(MHResources.site(site_id).get("cargo_bonus", 0.0)))) + resupply_kg
 
