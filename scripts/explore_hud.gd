@@ -390,6 +390,8 @@ func _process(delta: float) -> void:
 	if player == null or not visible: return
 	_compass.heading = wrapf(rad_to_deg(-player.rotation.y), 0.0, 360.0)
 	_compass.markers = compass_markers()
+	var suit: Node = get_tree().get_first_node_in_group("suit")
+	_compass.sealed = suit != null and suit.has_method("wearing") and bool(suit.wearing())
 	_compass.queue_redraw()
 	_track_tag_update()
 	_refresh_hint_strip()

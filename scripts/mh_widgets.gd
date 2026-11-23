@@ -114,11 +114,29 @@ class Compass extends Control:
 		set(v): heading = v; queue_redraw()
 	var markers: Array = []   # [{bearing, label, distance, colour (optional)}]
 	var show_distance := true
+	## 23 Nov: the helmet's on (sealed indoors, or outside): a small helmet
+	## mark at the strip's right end, so it's always clear.
+	var sealed := false:
+		set(v):
+			if v != sealed: sealed = v; queue_redraw()
 	const SPAN := 180.0
 	const MERGE_PX := 90.0
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		custom_minimum_size = Vector2(640, 52)
+	## A helmet in outline: the dome, the visor's window and the neck ring.
+	func _draw_helmet(c: Vector2) -> void:
+		var ink := Color(MHStyle.INK_100, .9)
+		var shadow := Color(0, 0, 0, .45)
+		for pass_i in 2:
+			var o := Vector2(1, 1) if pass_i == 0 else Vector2.ZERO
+			var col := shadow if pass_i == 0 else ink
+			draw_arc(c + o, 9.0, PI * 1.02, TAU * .99, 20, col, 2.0, true)              # dome
+			draw_line(c + o + Vector2(-9, 0), c + o + Vector2(-9, 6), col, 2.0)          # sides
+			draw_line(c + o + Vector2(9, 0), c + o + Vector2(9, 6), col, 2.0)
+			draw_line(c + o + Vector2(-11, 8), c + o + Vector2(11, 8), col, 2.5)         # neck ring
+			var visor := Rect2(c + o + Vector2(-5.5, -4.5), Vector2(11, 7))
+			draw_rect(visor, Color(MHStyle.INFO, .55) if pass_i == 1 else shadow, true)  # the glass
 	func _x_for(bearing: float) -> float:
 		var delta := wrapf(bearing - heading, -180.0, 180.0)
 		return size.x * 0.5 + delta / SPAN * size.x
@@ -138,6 +156,7 @@ class Compass extends Control:
 			else:
 				draw_line(Vector2(x, 6), Vector2(x, 14), Color(muted, muted.a * fade), 2.0)
 		draw_line(Vector2(0, 24), Vector2(size.x, 24), Color(MHStyle.INK_100, 0.18), 1.0)
+		if sealed: _draw_helmet(Vector2(size.x + 22, 18))
 		# Centre caret
 		draw_colored_polygon(PackedVector2Array([Vector2(size.x * 0.5 - 6, 24), Vector2(size.x * 0.5 + 6, 24), Vector2(size.x * 0.5, 31)]), MHStyle.accent)
 		# 21 Nov playtest: too many marks to read. Marks that would overlap merge

@@ -212,6 +212,7 @@ func _process(delta: float) -> void:
 	_blink += delta
 	_don = maxf(0.0, _don - delta)
 	var wearing := _open_air() or helmet or (_don > 0.0 and not _don_on)
+	_wearing = wearing and _helmet_t() >= 1.0
 	_set_visor_visible(wearing and not bool(world.player.get_meta("build_mode_active", false)))
 	_visor.modulate.a = 1.0
 	_visor.queue_redraw()
@@ -825,6 +826,11 @@ func _suit_up_hint() -> void:
 	var weather: Node = world.get("weather")
 	if weather != null and weather.has_method("toast"): weather.toast("The room's turning on you", "Press K to suit up and breathe from the suit while you sort it out. K again takes it off.", MHStyle.WARN)
 
+## The helmet's on and sealed (the compass shows its mark).
+var _wearing := false
+func wearing() -> bool:
+	return _wearing and active()
+
 func _set_visor_visible(on: bool) -> void:
 	if _visor.visible != on: _visor.visible = on
 
@@ -845,14 +851,23 @@ func _helmet_t() -> float:
 
 func _draw_visor() -> void:
 	var size := _visor.size
-	# 22 Nov playtest: putting the helmet on is a moment you see. The helmet's
-	# lower rim comes down over your eyes (the shell dark above it), the
-	# glass mists as the seal locks and clears, then the lights come up. Once
-	# it's on, only the two lights show that you're wearing it.
+	# 23 Nov: no helmet in view, ever (the user: just make it clear it's on).
+	# Putting it on, the glass mists as the seal locks and clears, then the
+	# lights come up; taking it off runs it backwards. Once it's on, the two
+	# lights and the compass's helmet mark say you're wearing it.
 	var t := _helmet_t()
-	if t < .45: _draw_helmet_shell(size, smoothstep(0.0, 1.0, t / .45))
-	var mist := clampf(1.0 - (t - .4) / .6, 0.0, 1.0) if t >= .4 else 0.0
-	if mist > 0.0: _visor.draw_rect(Rect2(Vector2.ZERO, size), Color(.86, .9, .93, .28 * mist))
+	var mist := _mist(t)
+	if mist > 0.0:
+		_visor.draw_rect(Rect2(Vector2.ZERO, size), Color(.86, .9, .93, .3 * mist))
+		# Thicker towards the edges, as breath fogs a visor.
+		var fog := minf(size.x, size.y) * .22
+		for i in 8:
+			var a := .06 * mist * (1.0 - i / 8.0)
+			var w := fog * (1.0 - i / 8.0)
+			_visor.draw_rect(Rect2(0, 0, size.x, w), Color(.9, .93, .95, a))
+			_visor.draw_rect(Rect2(0, size.y - w, size.x, w), Color(.9, .93, .95, a))
+			_visor.draw_rect(Rect2(0, 0, w, size.y), Color(.9, .93, .95, a))
+			_visor.draw_rect(Rect2(size.x - w, 0, w, size.y), Color(.9, .93, .95, a))
 	var lit := clampf((t - .55) / .45, 0.0, 1.0)
 	if lit <= 0.0: return
 	# 23 Nov: no dark edge to the glass (the user: "that needs to go").
@@ -879,25 +894,12 @@ func _draw_visor() -> void:
 			_visor.draw_rect(Rect2(0, 0, w, size.y), Color(.85, .93, 1.0, a))
 			_visor.draw_rect(Rect2(size.x - w, 0, w, size.y), Color(.85, .93, 1.0, a))
 
-## The helmet coming down over your head: everything above its rim's arch is
-## the dark inside of the shell. k 0: the rim at the top of your view; 1: past
-## the bottom.
-func _draw_helmet_shell(size: Vector2, k: float) -> void:
-	var edge := lerpf(-.05, 1.25, k) * size.y
-	var arch: PackedVector2Array = []
-	for i in 25:
-		var x := size.x * float(i) / 24.0
-		var u := (x - size.x * .5) / (size.x * .5)
-		arch.append(Vector2(x, edge - size.y * .12 * (1.0 - u * u)))
-	var shell: PackedVector2Array = [Vector2(0, -4), Vector2(size.x, -4)]
-	for i in range(arch.size() - 1, -1, -1): shell.append(arch[i])
-	_visor.draw_colored_polygon(shell, Color(.025, .025, .03, .97))
-	# A soft shadow under the rim, and the padded lip catching the light.
-	for i in 6:
-		var off: PackedVector2Array = []
-		for point in arch: off.append(point + Vector2(0, 5.0 + 7.0 * i))
-		_visor.draw_polyline(off, Color(.025, .025, .03, .45 / (1.0 + i)), 8.0)
-	_visor.draw_polyline(arch, Color(.42, .4, .37, .7), 3.0, true)
+## The visor's mist through the moment (0 none, 1 full): it fogs quickly as
+## the seal locks, then clears.
+static func _mist(t: float) -> float:
+	if t >= 1.0: return 0.0
+	if t < .25: return smoothstep(0.0, 1.0, t / .25)
+	return 1.0 - smoothstep(0.0, 1.0, (t - .25) / .7)
 
 # ---------- blacking out ----------
 
