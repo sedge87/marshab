@@ -82,16 +82,17 @@ func _role(role: String) -> Material:
 
 func interaction_prompt() -> Dictionary:
 	if BUILD_RULES.kit_open(): return {"label": "Fit-out kit · unpacked: stand in a room and press B to furnish"}
-	return {"label": "Fit-out kit · bunk, rack, table, chair, work light, Site plan terminal", "primary": "Open it"}
+	return {"label": "Fit-out kit · the Print Shop and its intake, bunk, rack, table, chair, work light, Site plan terminal", "primary": "Open it"}
 
 func interact(_actor: Node = null) -> bool:
 	if BUILD_RULES.kit_open(): return false
 	MHChapterOne.unpacked[FLAG] = true
+	BUILD_RULES.unpack_print_shop()   # 23 Nov: the Print Shop's in the box
 	_set_open(true)
 	MHAudio.sfx("suit_clamp", -8.0)
 	# A beat to see what's inside before the notice.
 	get_tree().create_timer(LID_SECONDS + .9).timeout.connect(func():
-		MHNotices.post("valid", "Fit-out kit unpacked", "Press B to furnish. Everything in the kit is on your build list, the Site plan terminal too: place it where you'll pass it, and it plans new rooms.", "log"))
+		MHNotices.post("valid", "Fit-out kit unpacked", "Press B to furnish. Everything in the kit is on your build list: the Print Shop and its regolith intake (with a %s sack of regolith), and the Site plan terminal, which plans new rooms. Place it where you'll pass it." % MHStyle.kg(roundi(BUILD_RULES.STARTER_FEEDSTOCK_KG + BUILD_RULES.PRINT_SHOP_FEEDSTOCK_KG)), "log"))
 	# 23 Nov playtest: once its contents are on your build list the box has
 	# done its job. A beat to see inside, then it's packed away.
 	get_tree().create_timer(LID_SECONDS + 2.5).timeout.connect(_pack_away)

@@ -17,3 +17,22 @@ func _ready() -> void:
 	glow.emission = Color("#2A8C9C")
 	glow.emission_energy_multiplier = .6
 	screen.material_override = glow
+	_glow = glow
+
+## 23 Nov playtest: nothing said you could plan a room here. Until the first
+## Quarters is planned, the screen breathes brighter.
+var _glow: StandardMaterial3D
+var _t := 0.0
+func _process(delta: float) -> void:
+	if _glow == null: return
+	_t += delta
+	var world := get_tree().get_first_node_in_group("habitat_world")
+	var builder: Node = world.get("builder") if world != null else null
+	var waiting := builder != null and int(world.get("opening_version")) >= 3
+	if waiting:
+		for zone in builder.get("zones"):
+			if str(zone.get("kind", "")) == "living":
+				waiting = false
+				break
+	_glow.emission_energy_multiplier = (.6 + .9 * (.5 + .5 * sin(_t * 3.0))) if waiting else .6
+	if not waiting and _t > 1.0: set_process(false)

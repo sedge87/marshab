@@ -61,7 +61,7 @@ func _region_at() -> Vector2:
 func _mark() -> void:
 	var known := _known()
 	if known == null or not is_inside_tree(): return
-	if known.learn(MARK_ID, "find", _region_at(), "Print Shop crate", "you", "you"): known.track(MARK_ID)
+	if known.learn(MARK_ID, "find", _region_at(), "Survey sled crate", "you", "you"): known.track(MARK_ID)
 
 var _mark_check := 0.0
 func _process(delta: float) -> void:
@@ -161,7 +161,7 @@ static func near_a_core(in_world: Node, p: Vector3) -> bool:
 	return builder != null and builder.is_inside(p + Vector3(0, 1, 0))
 
 func _title() -> String:
-	return "Print Shop crate" if kind == "print_shop" else "Spares crate"
+	return "Survey sled crate" if kind == "print_shop" else "Spares crate"   # 23 Nov: pallet 6 is the sled
 
 func _kg() -> float:
 	return PRINT_SHOP_KG if kind == "print_shop" else KG
@@ -218,6 +218,15 @@ func _open_print_shop() -> void:
 	if known != null: known.finish("print_shop_crate")
 	_open_lid()
 	MHAudio.sfx_at("suit_clamp", self, -4.0, .9)
+	# 23 Nov playtest: in the story game the Print Shop came in the fit-out
+	# kit box, and pallet 6 carries the survey sled's frame and antenna. Its
+	# fittings are printed (Tamsin's plan; the sled itself is chunk 3).
+	if int(world.get("opening_version")) >= 3:
+		MHChapterOne.unpacked["radar_sled_frame"] = true   # read by the sled's build (chunk 3)
+		_clear_away()
+		MHNotices.post("valid", "Pallet 6: the survey sled", "The deep-radar sled's frame and antenna, in the store. Its fittings want printing: Tamsin's plan is on your slate.", "log")
+		MHAudio.moment()
+		return
 	for id in ["fabricator", "regolith_intake"]:
 		MHChapterOne.stock[id] = int(MHChapterOne.stock.get(id, 0)) + 1
 	MHChapterOne.feedstock_kg += STARTER_FEEDSTOCK

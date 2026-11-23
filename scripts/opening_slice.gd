@@ -179,7 +179,7 @@ const GOAL_THOUGHTS := {
 	"slept": "Sleep. Tomorrow it walks.",
 	"core_down": "Ride Walker 1 and find the right spot for home.",
 	"kit_placed": "Open the fit-out kit box on the core's floor, then B (standing inside) to place the kit.",
-	"quarters": "Walker 1's kit has a Quarters liner. The terminal plans it: up to four cells.",
+	"quarters": "Somewhere to sleep with the helmet off. The Site plan terminal plans rooms: as big as the regolith allows.",
 	"helmet_off": "Somewhere to breathe without the helmet.",
 	"pad_seen": "The pad's this afternoon. East, past the plain.",
 	"pad_reseated": "That mast shouldn't lean. Its foot's in a crack.",
@@ -309,6 +309,8 @@ func _process(delta: float) -> void:
 	if reached.has("core_down") and not _circled: _gary_circles()
 	_gary_to_the_steps()
 	_kit_crates()
+	_quarters_lead()
+	if world.get("builder") != null: BUILD_RULES.catch_up_print_shop(world.builder)   # a save from before the Print Shop moved
 	_pin_print_shop()
 	# Over once the new job's call has rung (some beats are optional: you
 	# can carry the module and never fit the hitch).
@@ -381,9 +383,9 @@ func _pin_print_shop() -> void:
 	if field == null or known == null or not field.sites.has("print_shop"): return
 	_pinned = true
 	var site: Node3D = field.sites.print_shop
-	known.learn("pallet_6", "find", field.region_at(site.at), "Pallet 6 · Print Shop", "you", "castellanos")
+	known.learn("pallet_6", "find", field.region_at(site.at), "Pallet 6 · Survey sled", "you", "castellanos")
 	known.track("pallet_6")
-	MHNotices.hint("Pallet 6", "The Print Shop's pallet is marked on your Map and your compass.")
+	MHNotices.hint("Pallet 6", "The survey sled's pallet is marked on your Map and your compass.")
 
 func _in_cabin() -> bool:
 	var lander: Node = world.get("lander")
@@ -464,6 +466,15 @@ func _ride_lead() -> void:
 	_ride_said = true
 	if notes != null: notes.think("walker_ride", "start")
 	MHNotices.hint(RIDE_HINT, "Climb its ladder. Hold W and it walks where you look; the deck screen reads the ground. E sets it down.")
+
+## 23 Nov playtest: it wasn't clear you could build a Quarters at all. Once
+## the kit's placed and there's no Quarters, one pointer to the terminal
+## (its screen pulses too: scripts/site_plan_terminal_screen.gd).
+var _quarters_said := false
+func _quarters_lead() -> void:
+	if _quarters_said or not done("kit_placed") or _quarters(): return
+	_quarters_said = true
+	MHNotices.hint("A room of your own", "Rooms are planned at the Site plan terminal: walk up to it and press E. A Quarters costs regolith by the cell, so make it as big as your store allows.")
 
 ## Once the core's folded: the kit's in one box on its floor, and B places it.
 var _kit_said := false

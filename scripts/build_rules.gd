@@ -124,7 +124,9 @@ static func fixed_cells(builder: Node, kind: String, at: Vector2i) -> Array:
 ## module came down whole: nothing to pay.
 static func cost(builder: Node, kind: String) -> int:
 	if kind == "general" and stage(builder) == "set_down": return 0
-	if first_quarters(builder, kind): return 0
+	# 23 Nov playtest: the first Quarters is paid like any room, as big as
+	# the regolith allows (the Print Shop's sack and the starter bin).
+	if first_quarters(builder, kind) and not slice(builder): return 0
 	return -1
 
 ## A6: the guided chapters' first Quarters liner came with Walker 1 (nothing
@@ -144,7 +146,7 @@ const FREE_QUARTERS_CELLS := 4
 ## Extra reasons a zone can't go here ("" when it can).
 static func zone_reason(builder: Node, kind: String, cells: Array) -> String:
 	if not active(builder): return ""
-	if first_quarters(builder, kind) and cells.size() > FREE_QUARTERS_CELLS: return "Walker 1's Quarters liner covers up to %d cells" % FREE_QUARTERS_CELLS
+	if first_quarters(builder, kind) and not slice(builder) and cells.size() > FREE_QUARTERS_CELLS: return "Walker 1's Quarters liner covers up to %d cells" % FREE_QUARTERS_CELLS
 	if stage(builder) == "set_down":
 		if not offered(builder, kind): return "Only the core and its airlock for now"
 		if kind == "general" and not module_zone(builder).is_empty(): return "There's only the one module: undo it to move it"
@@ -166,8 +168,8 @@ static func placed(builder: Node, zone: Dictionary) -> void:
 	if str(zone.kind) == "general" and stage(builder) == "set_down":
 		zone["carried"] = true
 		zone["cost"] = 0
-	elif first_quarters(builder, str(zone.kind)):
-		zone["kit"] = true   # A6: the first Quarters liner came in Walker 1's kit
+	elif first_quarters(builder, str(zone.kind)) and not slice(builder):
+		zone["kit"] = true   # A6: the first Quarters liner came in Walker 1's kit (not the story game, 23 Nov)
 		zone["cost"] = 0
 
 ## The plan closed: with the module and an airlock placed, the walker goes.
@@ -211,6 +213,27 @@ static func give_kit(builder: Node = null) -> void:
 		MHChapterOne.unpacked["starter_feedstock"] = true
 		MHChapterOne.feedstock_kg += STARTER_FEEDSTOCK_KG
 const STARTER_FEEDSTOCK_KG := 150.0
+
+## 23 Nov playtest: in the story game the Print Shop comes packed in the
+## fit-out kit box, with its regolith intake and a sack of regolith (it was
+## pallet 6's crate; pallet 6 now carries the survey sled). Once only.
+const PRINT_SHOP_FEEDSTOCK_KG := 250.0
+static func unpack_print_shop() -> bool:
+	if MHChapterOne.unpacked.has("print_shop"): return false
+	MHChapterOne.unpacked["print_shop"] = true
+	for id in ["fabricator", "regolith_intake"]:
+		MHChapterOne.stock[id] = int(MHChapterOne.stock.get(id, 0)) + 1
+	MHChapterOne.feedstock_kg += PRINT_SHOP_FEEDSTOCK_KG
+	return true
+
+## A save from before the move: its kit box was opened without the Print
+## Shop in it. Give it once, unless it already came off pallet 6.
+static func catch_up_print_shop(builder: Node) -> void:
+	if MHChapterOne.unpacked.has("print_shop") or not slice(builder) or not kit_open(): return
+	if int(MHChapterOne.stock.get("fabricator", 0)) > 0 or MHChapterOne.placed_count("fabricator", builder) > 0:
+		MHChapterOne.unpacked["print_shop"] = true
+		return
+	unpack_print_shop()
 
 ## Version 3: the whole kit goes on the build list once its box is open
 ## (scripts/kit_crate.gd), and nothing before.

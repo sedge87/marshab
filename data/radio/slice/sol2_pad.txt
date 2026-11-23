@@ -74,7 +74,7 @@ Castellanos: And Pathfinder? Thank you. That's exactly why you went first. [ID:s
 ~ s2_sled
 Achterberg: Walking home? Good. I've been drawing. [ID:s2_sled_01]
 Achterberg: GAR-Y's radar only sees a few metres down. To prove a new pad I need deeper. A sled, towed on that hitch. [ID:s2_sled_02]
-Achterberg: The plan's on your slate. It wants a printer, mind. [ID:s2_sled_03]
+Achterberg: The plan's on your slate. The frame came down on pallet six; the fittings you can print. [ID:s2_sled_03]
 => END
 
 # Scene 12: home, helmet off, dusk. The new job, round the table.
@@ -85,5 +85,5 @@ Mwangi: Flat, firm, a clear way in for Devan, and close enough to the hab to wal
 ?fell_in_pit Mwangi: And no more pits. I mean it. [ID:s2_job_03b]
 Rao: And wind. I want to know what the air does on the approach after midday. [ID:s2_job_04]
 chat Tupou: I've got a thing too. It'll keep. Rocks are patient. [ID:s2_job_05]
-Castellanos: Pallet six came down within sight of the pad. That's your printer. Sleep first. [ID:s2_job_06]
+Castellanos: Pallet six came down within sight of the pad. That's Tamsin's sled. Sleep first. [ID:s2_job_06]
 => END

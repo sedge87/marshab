@@ -143,9 +143,10 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 ### Scene 7: the first indoor moment (sol 2 morning, about 8 min) · agreed 22 Nov
 - **First time inside the core:** rigid, bare, cold and dim. Life support is already running on the power module: the vents hum and the window frost clears. Power + hull, shown.
 - **The fit-out kit, one box (changed 23 Nov):** bunk, rack, table, chair, work light and the Site plan terminal, packed in one big case in the middle of the floor. E lifts the lid and the packed kit shows. From then on B works, with the whole kit on its list.
+  - **The Print Shop is in the box too (23 Nov playtest):** opening it puts the Print Shop and its regolith intake on B's list, with a 250 kg sack of regolith. The box packs away once opened. Pallet 6 no longer carries the Print Shop (Scene 12).
   - The work light changes the room as soon as it's down.
   - You choose where the terminal goes.
-- **The first room:** at your terminal, plan the first Quarters liner against the core. It's free (in the kit), with a one-off prompt.
+- **The first room:** at your terminal, plan the first Quarters liner against the core. **Changed 23 Nov playtest:** it's paid in regolith like any room (~25 kg a cell), as big as the store allows; no free liner, no 4-cell cap. Once the kit's placed a one-off hint points to the terminal, and the terminal's screen pulses until a Quarters is planned.
   - Watch through the window as the liner inflates and the crawler lays the shell.
   - Then place the bunk inside it.
 - **Helmet off in the Quarters (B1):** once it's sealed and its air reads green. GAR-Y potters in and inspects.
@@ -192,6 +193,7 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - It shows what the one-descent fuel costs, and it sets up the ending, where the hold is your call.
 
 ### Scene 12: the new job (walk home and evening) · agreed 22 Nov
+- **Pallet 6 is the survey sled (changed 23 Nov playtest):** it carries the radar sled's frame and antenna, not the Print Shop. It still lands in sight of the pad and GAR-Y still tows it home; opening it at home puts the frame on hand (the fittings want printing, Scene 16).
 - **Mostly at home (G1).** You walk home at dusk, and in the Quarters the evening call becomes the new job:
   - Castle sets it: find and verify a replacement pad;
   - Joseph: what makes a site usable (flat, firm, a clear approach, within reach of the hab);
@@ -227,6 +229,8 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - It goes into your field kit and waits for the candidate bench (Act 4), where you fit it and power the beacon. Nobody makes a wasted trip to the failed pad.
 
 ### Scene 16: the radar sled, and learning the materials · agreed 22 Nov
+- **The frame came on pallet 6 (23 Nov playtest);** the Print Shop was already in the fit-out kit (Scene 7), so this scene prints the fittings.
+- **Readiness lives on the slate (23 Nov):** the old builder's Mission readiness panel is hidden in the story game. The current goal is a thought on the slate's Today page; the pad's four needs (firm, flat, close, a clear way in) become ticked thoughts there when the new-pad chunk is built.
 - **Tamsin's plan becomes a real plan** (a story plan relayed by Castle).
 - **It needs iron and salvage** (changed 23 Nov; to confirm when chunk 3 is built). The skids and antenna box are iron; the antenna's electronics need **salvage**, Earth parts stripped from the empty pallets and storm debris on the plain. The starting iron isn't quite enough, so you break off iron-rich rock by hand at an outcrop and smelt it.
 - **The printer screen shows the shortfall:** stock against need, and where each comes from.

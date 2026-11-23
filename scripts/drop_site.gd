@@ -36,7 +36,7 @@ const DEBRIS_STOPS := [-120.0, -85.0, -55.0, -30.0]   # metres out from the pall
 const SEEN_FROM := 200.0
 const NEAR := 25.0
 const LABELS := {"power": "Pallet 2", "tools": "Pallet 3", "gary": "Pallet 4", "print_shop": "Pallet 6"}   # 14 Nov: tools 3, GAR-Y 4; chapter 5: 6
-const NAMES := {"power": "Pallet 2 · power", "tools": "Pallet 3 · field tools", "gary": "Pallet 4 · GAR-Y", "print_shop": "Pallet 6 · Print Shop"}
+const NAMES := {"power": "Pallet 2 · power", "tools": "Pallet 3 · field tools", "gary": "Pallet 4 · GAR-Y", "print_shop": "Pallet 6 · Survey sled"}   # 23 Nov: the Print Shop moved to the kit box
 
 var field: Node
 var world: Node
@@ -236,7 +236,7 @@ func pallet_opened() -> void:
 			# 15 Nov playtest: no plan cartridges here any more. The battery and
 			# heater plans are found later, when the cold starts to push.
 		"print_shop":
-			MHNotices.post("valid", "Pallet 6: the Print Shop", "Its crate's too heavy to carry. Bring GAR-Y close and hitch it to the sled.", "log")
+			MHNotices.post("valid", "Pallet 6: the survey sled", "Tamsin's deep-radar sled, in a crate too heavy to carry. Bring GAR-Y close and hitch it to the sled.", "log")
 			var radio: Node = world.get("radio")
 			if radio != null: radio.ring("d5_pallet")
 	field.pallet_opened(self)

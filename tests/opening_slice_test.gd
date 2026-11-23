@@ -471,12 +471,16 @@ func _initialize() -> void:
 					if not quarters.is_empty():
 						var zone := {"kind": "living", "cells": quarters, "door_direction": builder.airlock_direction, "cost": builder._zone_cost(quarters)}
 						rules.placed(builder, zone)
-						check(bool(zone.get("kit", false)), "the first Quarters wasn't free")
-						check(rules.zone_reason(builder, "living", quarters).is_empty() or quarters.size() > rules.FREE_QUARTERS_CELLS, "the free Quarters refused: %s" % rules.zone_reason(builder, "living", quarters))
+						# 23 Nov: the first Quarters is paid, any size (the Print Shop's
+						# sack came in the kit box).
+						check(not bool(zone.get("kit", false)), "the first Quarters was free")
+						check(rules.zone_reason(builder, "living", quarters).is_empty(), "the Quarters refused: %s" % rules.zone_reason(builder, "living", quarters))
+						check(store_before >= 25.0 * quarters.size(), "not enough regolith for the first Quarters (%.0f kg for %d cells)" % [store_before, quarters.size()])
 						builder.zones.append(zone)
 						builder._history.append({"type": "zone", "zone": zone})
 						builder._rebuild()
-						check(absf(MHChapterOne.feedstock_kg - store_before) < 1.0, "the free Quarters took regolith (%.0f -> %.0f)" % [store_before, MHChapterOne.feedstock_kg])
+						check(absf(store_before - MHChapterOne.feedstock_kg - 25.0 * quarters.size()) < 1.0, "the first Quarters took %.0f kg, not %d" % [store_before - MHChapterOne.feedstock_kg, 25 * quarters.size()])
+						store_before = MHChapterOne.feedstock_kg
 						# A paid cell next: it takes 25 kg, and removing it gives them back.
 						var extra := {"kind": "living", "cells": [Vector2i(quarters[0].x + 20, quarters[0].y)], "door_direction": builder.airlock_direction, "cost": 25}
 						builder.zones.append(extra)
@@ -516,7 +520,7 @@ func _initialize() -> void:
 					check(days.guided(), "the opening ended at the first room: chunk 2's pad is still to come")
 					await _chunk_two(days, radio, player, gary, lander)
 	Engine.time_scale = 1.0
-	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the stakes bundle comes off the stores pallet by hand, tools go in hand with 1-4 and show on the slate's Kit page, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B waits for the one kit box, opening it puts the whole kit on B's list, and the terminal plans the free Quarters. Chunk 2: the pad is ~200 m from the pit with pallet 6 in sight and no base allowed on it; up close it counts as seen and Castle calls; the foot levers, GAR-Y's cable pulls the mast upright; stakes go in hand with 4; a line across the pad reads a void band with solid ends; the Lines tab shows it; at the pit a far line reads faint and Tamsin asks for closer, a line over the pit is refused, a close one reads void; the hold plays; the lip gives way on the last metre and GAR-Y brings you round inside; Tamsin's sled plan, then the new job at home pins pallet 6 and ends the opening.")
+	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the stakes bundle comes off the stores pallet by hand, tools go in hand with 1-4 and show on the slate's Kit page, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B waits for the one kit box, opening it puts the whole kit on B's list, and the terminal plans a paid Quarters. Chunk 2: the pad is ~200 m from the pit with pallet 6 in sight and no base allowed on it; up close it counts as seen and Castle calls; the foot levers, GAR-Y's cable pulls the mast upright; stakes go in hand with 4; a line across the pad reads a void band with solid ends; the Lines tab shows it; at the pit a far line reads faint and Tamsin asks for closer, a line over the pit is refused, a close one reads void; the hold plays; the lip gives way on the last metre and GAR-Y brings you round inside; Tamsin's sled plan, then the new job at home pins pallet 6 and ends the opening.")
 	else:
 		for f in failures: print("FAIL: ", f)
 	quit(0 if failures.is_empty() else 1)
