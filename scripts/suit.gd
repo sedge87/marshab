@@ -850,6 +850,17 @@ func _draw_visor() -> void:
 	if mist > 0.0: _visor.draw_rect(Rect2(Vector2.ZERO, size), Color(.86, .9, .93, .28 * mist))
 	var lit := clampf((t - .55) / .45, 0.0, 1.0)
 	if lit <= 0.0: return
+	# Comfort (23 Nov): a faint dark edge to the glass, a fixed frame that
+	# helps anyone the lope makes motion sick. Settings > Comfort > Helmet edge.
+	if bool(MHGame.setting("helmet_edge")):
+		var band := minf(size.x, size.y) * .07
+		for i in 10:
+			var a := .05 * lit * (1.0 - i / 10.0)
+			var w := band * (1.0 - i / 10.0)
+			_visor.draw_rect(Rect2(0, 0, size.x, w), Color(0, 0, 0, a))
+			_visor.draw_rect(Rect2(0, size.y - w, size.x, w), Color(0, 0, 0, a))
+			_visor.draw_rect(Rect2(0, 0, w, size.y), Color(0, 0, 0, a))
+			_visor.draw_rect(Rect2(size.x - w, 0, w, size.y), Color(0, 0, 0, a))
 	# Trouble at the base: a third light, top centre, slow amber or quick red.
 	var trouble := base_alert()
 	if not trouble.is_empty() and fmod(_blink, 1.6 if str(trouble.level) == "warning" else .7) < .4:

@@ -292,7 +292,8 @@ func stumble() -> void:
 	if _stumble > 0.0: return
 	_stumble = STUMBLE_TIME
 	_end_lope()
-	head.rotation.z = .09 if randf() < .5 else -.09
+	# Settings > Comfort > Steady horizon: the slow-down stays, the lurch goes.
+	if not bool(MHGame.setting("steady_horizon")): head.rotation.z = .09 if randf() < .5 else -.09
 	MHAudio.sfx("land", -2.0)
 
 ## Ctrl held: crouch. Letting go stands you up once there's headroom.
@@ -307,7 +308,29 @@ func _crouch(delta: float) -> void:
 		capsule.height = height
 		_body_shape.position.y = height * .5
 	var eyes := STAND_EYES - (STAND_HEIGHT - height)
-	head.position.y = move_toward(head.position.y, eyes, delta * 4.0)
+	# Take last frame's comfort offset off first, so other scripts that move
+	# the head (waking in the seat, the rescue) still ease back as before.
+	var base := move_toward(head.position.y + _eye_drop, eyes, delta * 4.0)
+	head.position.y = base + _steady(delta)
+
+## Comfort (23 Nov: the lope can make people motion sick). The body bounds;
+## the eyes follow only part of the rise above where you left the ground
+## (Settings > Comfort > View bounce), and ease back once you land.
+const VIEW_BOUNCE := {"off": 0.0, "low": .33, "medium": .66, "full": 1.0}
+var _eye_drop := 0.0        # how far the eyes sit below the body's own rise
+var _took_off_y := 0.0
+var _was_airborne := false
+func _steady(delta: float) -> float:
+	var airborne := not is_on_floor() and not _indoors()
+	if airborne and not _was_airborne: _took_off_y = global_position.y
+	_was_airborne = airborne
+	var keep := float(VIEW_BOUNCE.get(str(MHGame.setting("view_bounce")), .33))
+	if airborne:
+		var rise := clampf(global_position.y - _took_off_y, 0.0, 2.0)
+		_eye_drop = (1.0 - keep) * rise
+	else:
+		_eye_drop = move_toward(_eye_drop, 0.0, delta * 1.2)
+	return -_eye_drop
 
 func _headroom_blocked() -> bool:
 	var query := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * CROUCH_HEIGHT, global_position + Vector3.UP * (STAND_HEIGHT + .05))

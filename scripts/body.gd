@@ -341,7 +341,8 @@ func _tired_cues(delta: float, camera: Camera3D, k: float) -> void:
 	_lid = move_toward(_lid, target_lid, delta * (1.2 if target_lid > _lid else 3.5))
 	# The drift: a slow lean of the view, more the more tired you are.
 	var lean := 0.0
-	if tired() and _dozing <= 0.0:
+	# Settings > Comfort > Steady horizon turns the lean off; the heavy lids stay.
+	if tired() and _dozing <= 0.0 and not bool(MHGame.setting("steady_horizon")):
 		_drift += delta
 		var strength := .8 if not doze_risk() else 1.6
 		lean = deg_to_rad(strength * k) * sin(_drift * .37) * (1.0 if not walking else .6)

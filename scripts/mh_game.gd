@@ -852,6 +852,10 @@ static func defaults() -> Dictionary:
 	d["subtitles"] = "compact"   # captions for spoken lines: full, compact, off (mh_audio.gd)
 	d["checklist"] = "full"      # the getting-started checklist: full, folded, hidden (tutorial.gd; H cycles it)
 	d["slate_app"] = "goals"     # the slate's last app (pda_screen.gd)
+	# Comfort, for anyone the lope makes motion sick (player.gd, body.gd, suit.gd).
+	d["view_bounce"] = "low"     # how much of each bound your eyes ride: off, low, medium, full
+	d["steady_horizon"] = false  # no view roll from stumbles or tiredness
+	d["helmet_edge"] = true      # a faint dark edge to the glass while the helmet's on
 	return d
 
 static func setting(key: String):

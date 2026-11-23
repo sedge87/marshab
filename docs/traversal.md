@@ -64,6 +64,12 @@ The game's distances and speeds are already stretched for play (a 600 m pallet i
 - Outside only: indoors, sprint is still a plain run.
 - Not built yet: dust puffs, and the turn-back time learning your loped ground.
 
+## Comfort (23 Nov, built)
+For anyone the lope makes motion sick. In Settings > On screen > Comfort.
+- **View bounce:** Off, Low (the default), Medium or Full. The body bounds the same; the eyes ride only that share of each rise above take-off, and ease back after landing. Plain jumps outside count too. (`player.gd` `_steady`)
+- **Steady horizon** (off by default): no view tilt from a stumble or from tiredness's slow lean. The slow-down and the heavy lids stay. (`player.gd` `stumble`, `body.gd`)
+- **Helmet edge** (on by default): a faint dark frame round the glass while the helmet's on, a fixed reference for the eye. It's drawn with the helmet's lights in `suit.gd` `_draw_visor`.
+
 ## Phase 2: ground that costs
 
 The straight line stops being the best line.

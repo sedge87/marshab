@@ -217,6 +217,7 @@ const MC_LEVELS := {"log": "Log only", "quiet": "Quiet", "normal": "Normal", "ch
 const SUBTITLES := {"full": "Full", "compact": "Compact", "off": "Off"}
 const CHECKLIST := {"full": "Full", "folded": "Folded", "hidden": "Hidden"}
 const BODY_CUES := {"full": "Full", "soft": "Softer", "low": "Low"}
+const VIEW_BOUNCE := {"off": "Off", "low": "Low", "medium": "Medium", "full": "Full"}
 const COMPASS_MARKS := [["compass_home", "Lander and airlocks"], ["compass_pins", "Your pins"], ["compass_finds", "Things you've found"], ["compass_places", "Places you know"], ["compass_distance", "Distances"]]
 
 func _audio() -> Control:
@@ -283,6 +284,27 @@ func _audio() -> Control:
 		var pick := MHWidgets.Segmented.new().setup(labels.values(), str(labels.get(str(_values.get(key, row[3])), labels[row[3]])))
 		pick.changed.connect(func(value: String) -> void: _values[key] = str(labels.find_key(value)))
 		screen_group.add_child(pick)
+	# Comfort (23 Nov): for anyone the lope makes motion sick.
+	screen_group.add_child(MHStyle.label("Comfort", 19, MHStyle.TEXT_PRIMARY, 600))
+	var bounce_line := MHStyle.hbox(12)
+	bounce_line.add_child(MHStyle.label("View bounce", 16, MHStyle.TEXT_SECONDARY, 600))
+	var bounce_hint := MHStyle.body("How much your view rides each bound of the lope. Your body bounds the same either way.", 14, MHStyle.TEXT_MUTED)
+	bounce_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bounce_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bounce_line.add_child(bounce_hint)
+	screen_group.add_child(bounce_line)
+	var bounce := MHWidgets.Segmented.new().setup(VIEW_BOUNCE.values(), str(VIEW_BOUNCE.get(str(_values.get("view_bounce", "low")), "Low")))
+	bounce.changed.connect(func(value: String) -> void: _values["view_bounce"] = str(VIEW_BOUNCE.find_key(value)))
+	screen_group.add_child(bounce)
+	for entry in [["steady_horizon", "Steady horizon: the view never tilts (stumbles, tiredness)", false], ["helmet_edge", "Helmet edge: a faint frame round the glass while suited", true]]:
+		var comfort_row := MHStyle.hbox(12)
+		var comfort_switch := MHWidgets.Switch.new()
+		var comfort_key := str(entry[0])
+		comfort_switch.button_pressed = bool(_values.get(comfort_key, entry[2]))
+		comfort_switch.toggled.connect(func(on: bool) -> void: _values[comfort_key] = on)
+		comfort_row.add_child(comfort_switch)
+		comfort_row.add_child(MHStyle.body(str(entry[1]), 15, MHStyle.TEXT_SECONDARY))
+		screen_group.add_child(comfort_row)
 	# The compass strip: always on, you choose what's marked on it.
 	var compass_text := MHStyle.hbox(12)
 	compass_text.add_child(MHStyle.label("Compass", 16, MHStyle.TEXT_SECONDARY, 600))
