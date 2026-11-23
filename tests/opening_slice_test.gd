@@ -485,6 +485,20 @@ func _initialize() -> void:
 						builder.zones.erase(extra)
 						builder._rebuild()
 						check(absf(MHChapterOne.feedstock_kg - store_before) < 1.0, "removing the cell didn't give its regolith back (%.0f, was %.0f)" % [MHChapterOne.feedstock_kg, store_before])
+						# 23 Nov: stores have a cap; each Storage cell raises it and
+						# shows the stock as piles.
+						check(MHStores.storage_cells == 0 and absf(MHStores.cap("regolith") - 500.0) < .1, "regolith cap with no Storage is %.0f, not 500" % MHStores.cap("regolith"))
+						var shed := {"kind": "storage", "cells": [Vector2i(quarters[0].x + 20, quarters[0].y)], "door_direction": builder.airlock_direction, "cost": 25}
+						builder.zones.append(shed)
+						builder._rebuild()
+						check(MHStores.storage_cells == 1 and absf(MHStores.cap("regolith") - 1000.0) < .1, "one Storage cell didn't raise the cap to 1000 (%.0f)" % MHStores.cap("regolith"))
+						var piles: Node = builder.get_node_or_null("StoragePiles")
+						check(piles != null and piles.get_child_count() > 0, "the Storage cell shows no stock")
+						var room_left := MHStores.room("regolith")
+						check(absf(MHStores.fit("regolith", room_left + 100.0) - room_left) < .1, "a full store still took more")
+						builder.zones.erase(shed)
+						builder._rebuild()
+						check(MHStores.storage_cells == 0, "removing the Storage cell didn't lower the cap")
 					builder._toggle()
 					t = 0.0
 					while t < 300.0 and not days.done("helmet_off"):

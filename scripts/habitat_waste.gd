@@ -73,7 +73,7 @@ func step(dt: float, inv: Dictionary, powered: Dictionary, crew: int, rations_kg
 	stores.metals_kg = float(stores.metals_kg) - metal
 	var made := plastic * .9 + metal * .95
 	recycled_kg += made
-	if MHChapterOne.on(): MHChapterOne.feedstock_kg += made
+	if MHChapterOne.on(): MHChapterOne.feedstock_kg += MHStores.fit("regolith", made)
 	# Compost.
 	var organic := minf(float(stores.organics_kg), _count(inv, "compost_hopper") * COMPOST_KG * per_sol)
 	stores.organics_kg = float(stores.organics_kg) - organic

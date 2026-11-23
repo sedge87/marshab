@@ -97,8 +97,8 @@ static func cost_line(cost: Dictionary) -> String:
 
 ## "Regolith 2.4 t · iron 60 kg · salvage 60 kg · iron-rich rock 20 kg"
 static func store_line() -> String:
-	var line := "Regolith %s · iron %s · salvage %s" % [MHStyle.kg(floori(MHChapterOne.feedstock_kg)), MHStyle.kg(floori(metal_kg)), MHStyle.kg(floori(salvage_kg))]
-	if ore_kg() > 0.0: line += " · iron-rich rock %s" % MHStyle.kg(floori(ore_kg()))
+	var line := "%s · %s · %s" % [MHStores.line("regolith"), MHStores.line("iron"), MHStores.line("salvage")]
+	if ore_kg() > 0.0: line += " · " + MHStores.line("ore")
 	return line
 
 # ---------- iron-rich rock ----------
@@ -206,11 +206,13 @@ static func tick(hours: float, builder: Object, powered: bool) -> Array:
 	if not on() or not smelted_by_hand or not powered or hours <= 0.0: return []
 	var count := smelters(builder).size()
 	if count == 0: return []
+	# The iron store full: the smelter waits (scripts/stores.gd).
+	if MHStores.fit("iron", 1.0) <= 0.0: return []
 	var sols := hours / 24.0 * count
 	if ore_kg() > 0.0:
-		metal_kg += _melt_ore(SMELT_ORE_PER_SOL * sols)
+		metal_kg += _melt_ore(minf(SMELT_ORE_PER_SOL * sols, MHStores.room("iron") / .5))
 	elif MHChapterOne.feedstock_kg > REGOLITH_RESERVE:
-		var take := minf(SMELT_REGOLITH_PER_SOL * sols, MHChapterOne.feedstock_kg - REGOLITH_RESERVE)
+		var take := minf(minf(SMELT_REGOLITH_PER_SOL * sols, MHChapterOne.feedstock_kg - REGOLITH_RESERVE), MHStores.room("iron") / REGOLITH_YIELD)
 		MHChapterOne.feedstock_kg -= take
 		metal_kg += take * REGOLITH_YIELD
 	return []

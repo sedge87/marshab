@@ -1036,4 +1036,18 @@ One Survival run should let you try every pillar:
 - In code, the regolith store is still `MHChapterOne.feedstock_kg`, but players only ever see "regolith".
 - **Open:** maybe special resources for cores, later.
 
+**Store caps and Storage rooms (decided 23 Nov, built).** Code: scripts/stores.gd, scripts/storage_piles.gd.
+
+| | Regolith | Iron | Salvage | Iron-rich rock |
+|---|---|---|---|---|
+| The core holds | 500 kg | 100 kg | 100 kg | 200 kg |
+| Each Storage cell adds | +500 kg | +100 kg | +100 kg | +200 kg |
+
+- **When a store is full,** the machines that fill it on their own pause: the intake and recyclers for regolith, the smelter for iron. The slate and a notice say "store full: build Storage".
+- **Hand-carried finds always go in,** even over the cap, so nothing is lost.
+- **Storage rooms show the stock:**
+  - regolith sacks, iron bars, salvage crates and ore bins fill each cell's corners as stock rises;
+  - stock fills Storage first, and what's over sits in the core, out of sight.
+- The models are in docs/assets-chunk3.md §11.
+
 **Old saves.** They don't load in the revamp. A clear message says they belong to v0.3.0, which stays tagged and playable. Creative keeps the freeform builder.

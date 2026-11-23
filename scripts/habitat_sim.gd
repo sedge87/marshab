@@ -680,7 +680,7 @@ func step(dt: float, hour: float) -> void:
 	if powered.tiers[TIER_OTHER]: printed_kg += print_rate(inv) * per_sol
 	# Chapter rules: a running regolith intake sifts and sinters Mars dirt
 	# into Print Shop feedstock (playtest, 2 Nov).
-	if MHChapterOne.on() and powered.tiers[TIER_OTHER]: MHChapterOne.feedstock_kg += feedstock_rate(inv) * per_sol
+	if MHChapterOne.on() and powered.tiers[TIER_OTHER]: MHChapterOne.feedstock_kg += MHStores.fit("regolith", feedstock_rate(inv) * per_sol)   # pauses when the store's full
 	if inv.cells > 0:
 		var o2_breathed := crew * MHResources.setting("o2_per_person", .84) * per_sol
 		var co2_out := crew * MHResources.setting("co2_per_person", 1.0) * per_sol

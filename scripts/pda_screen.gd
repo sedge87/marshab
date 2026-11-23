@@ -695,8 +695,8 @@ func _feedstock_block(sim: RefCounted) -> Control:
 	box.add_child(top)
 	box.add_child(MHStyle.body(_feedstock_words(sim), 17, MHStyle.TEXT_SECONDARY))
 	# A5: the other materials, and each room's chain at this base.
-	var more := "Metal %s · salvage %s" % [MHStyle.kg(floori(MHMaterials.metal_kg)), MHStyle.kg(floori(MHMaterials.salvage_kg))]
-	if MHMaterials.ore_kg() > 0.0: more += " · iron-rich rock %s for the smelter" % MHStyle.kg(floori(MHMaterials.ore_kg()))
+	var more := "%s · %s" % [MHStores.line("iron"), MHStores.line("salvage")]
+	if MHMaterials.ore_kg() > 0.0: more += " · %s for the smelter" % MHStores.line("ore")
 	if MHMaterials.carried_kg() > 0.0: more += " · %s in the suit" % MHStyle.kg(floori(MHMaterials.carried_kg()))
 	box.add_child(MHStyle.body(more, 17, MHStyle.TEXT_SECONDARY))
 	var chains := _chains_words()
@@ -736,9 +736,12 @@ func _feedstock_words(sim: RefCounted) -> String:
 	var intake := float(sim.feedstock_rate(sim.inventory()))
 	var recycled := float((sim.waste.last as Dictionary).get("recycled", 0.0))
 	var made := "%s kg a sol from %d regolith intake%s" % [str(snappedf(intake, .1)), intakes, "" if intakes == 1 else "s"] if intakes > 0 else "no regolith intake yet"
-	return "%s in store
+	var held := "%s of %s in store" % [MHStyle.kg(floori(MHChapterOne.feedstock_kg)), MHStyle.kg(roundi(MHStores.cap("regolith")))]
+	if MHStores.is_full("regolith"): held += " · FULL: the intake's paused. Build Storage to hold more"
+	elif MHStores.storage_cells == 0: held += " · Storage rooms hold more"
+	return "%s
 %s
-%s kg a sol recycled from waste" % [MHStyle.kg(floori(MHChapterOne.feedstock_kg)), made, str(snappedf(recycled, .1))]
+%s kg a sol recycled from waste" % [held, made, str(snappedf(recycled, .1))]
 
 ## One system: its name, a bar and the words (charge, trend, sols left).
 func _gauge(title: String, glyph: String, row: Dictionary) -> Control:

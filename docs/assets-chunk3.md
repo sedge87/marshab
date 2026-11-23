@@ -166,6 +166,16 @@ The game draws every screen. Give each screen a flat mesh with good UVs, named `
   - `Contents`, with one child per piece.
 - **File:** `assets/models/chunk1/fitout_kit_box.glb`. The game picks it up automatically once it's there.
 
+## 11. Storage stock · new · four small props, shown in Storage rooms (23 Nov)
+- **Why:** stores now have a cap. Storage rooms raise it, and show what's in store as piles that grow as stock rises. Stand-in blocks are in the game now (scripts/storage_piles.gd).
+- **Four props.** Each sits on its own origin at floor level, with the front facing -Z:
+  - **Regolith sack:** a filled woven bulk bag, about 0.55 × 0.34 × 0.42 m. It must stack two high. Each sack is 125 kg.
+  - **Iron bar:** one cast bar, about 0.12 × 0.08 × 0.6 m, rough-cast, dark. The game stacks them in pairs, five layers high (10 kg each). Optional: a low pallet under the stack.
+  - **Salvage crate:** a small open-top crate of scrap (brackets, cable, panel offcuts), about 0.5 m cube. It must stack two high. Each crate is 25 kg.
+  - **Ore bin:** a low bin of rust-red iron-rich rock, about 0.5 × 0.36 × 0.45 m. Each bin is 50 kg.
+- **Where they go:** each Storage cell has a corner for each kind (four sacks, ten bars, four crates, four bins). A full cell holds exactly what the cell adds to the cap. Slots near placed furniture stay empty.
+- **Files:** `assets/models/storage/regolith_sack.glb`, `iron_bar.glb`, `salvage_crate.glb`, `ore_bin.glb`. The game uses them automatically once they're there. MHPalette roles, no lettering.
+
 ## Not needed for chunk 3
 - The wind logger and channel dressing (chunk 4).
 - Crew Quarters furniture beyond what's above.
@@ -184,3 +194,4 @@ The game draws every screen. Give each screen a flat mesh with good UVs, named `
 7. **Salvage pieces.**
 8. **The personal-effects case and the printed guitar** (the printed look).
 9. **The fit-out kit box**: a stand-in works meanwhile.
+10. **Storage stock** (sack, iron bar, salvage crate, ore bin): stand-ins work meanwhile.

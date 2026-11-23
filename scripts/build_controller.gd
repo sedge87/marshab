@@ -3080,7 +3080,16 @@ func _rebuild() -> void:
 	MHSiteTerrain.trench_areas = TRENCHES.areas(trenches)   # before anything reads the ground
 	_merge_touching_same_type_rooms()
 	BASES.settle(self)   # every piece gets its base and its floor (A4)
-	if not display_only: MHChapterOne.settle_regolith(self)   # 23 Nov: the site plan takes its regolith
+	if not display_only:
+		MHChapterOne.settle_regolith(self)   # 23 Nov: the site plan takes its regolith
+		MHStores.storage_cells = MHStores.count_cells(zones)   # Storage cells raise every store's cap
+		if MHChapterOne.on():
+			var piles := get_node_or_null("StoragePiles")
+			if piles == null:
+				piles = preload("res://scripts/storage_piles.gd").new()
+				piles.setup(self)
+				add_child(piles)
+			piles.refresh(true)
 	# Solar on a roof comes down with the room under it (cargo back).
 	zones = zones.filter(func(z): return not z.get("roof", false) or _roof_under(z.at))
 	_prune_angled_outline_connectors()
@@ -6120,7 +6129,7 @@ func _update_budget() -> void:
 		return
 	var remaining:=MHGame.cargo_budget()-_used_cargo()
 	cargo_meter.max_value=maxi(1, MHGame.cargo_budget())
-	cargo_meter.value_label=""
+	cargo_meter.value_label=("%s of %s held" % [MHStyle.kg(maxi(0, remaining)), MHStyle.kg(roundi(MHStores.cap("regolith")))]) if MHChapterOne.on() else ""
 	cargo_meter.label_text="REGOLITH" if MHChapterOne.on() else "CARGO REMAINING"
 	if chapter_label != null:
 		chapter_label.visible = MHChapterOne.on()
