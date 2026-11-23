@@ -40,6 +40,38 @@ func setup(target_world: Node, home: Node, at: Vector3, saved: Dictionary) -> vo
 	_build()
 	global_position = Vector3(at.x, MHSiteTerrain.height(at.x, at.z), at.z)
 	rotation.y = float(saved.get("yaw", randf() * TAU))
+	if kind == "print_shop" and not opened: _mark.call_deferred()
+
+## 23 Nov playtest: opening pallet 6 took its mark off the compass, and the
+## crate beside it had none, so it was easy to lose while you went for GAR-Y.
+## The crate gets its own mark (Map and compass), tracked the first time,
+## and the mark follows it on the sled. Unpacking it finishes the mark.
+const MARK_ID := "print_shop_crate"
+func _known() -> Node:
+	return world.get("known") if world != null else null
+
+func _region_at() -> Vector2:
+	var known := _known()
+	return Vector2(global_position.x, global_position.z) + (known.origin as Vector2 if known != null else Vector2.ZERO)
+
+func _mark() -> void:
+	var known := _known()
+	if known == null or not is_inside_tree(): return
+	if known.learn(MARK_ID, "find", _region_at(), "Print Shop crate", "you", "you"): known.track(MARK_ID)
+
+var _mark_check := 0.0
+func _process(delta: float) -> void:
+	if kind != "print_shop" or opened: return
+	_mark_check -= delta
+	if _mark_check > 0.0: return
+	_mark_check = 1.0
+	var known := _known()
+	if known == null or not known.things.has(MARK_ID): return
+	var here := _region_at()
+	var thing: Dictionary = known.things[MARK_ID]
+	if (thing.at as Vector2).distance_to(here) > 3.0:
+		thing.at = here
+		known.changed.emit()
 
 func _build() -> void:
 	var body := MeshInstance3D.new()
