@@ -973,11 +973,14 @@ func _drive(goal: Vector3, delta: float, yaw := INF, speed := SPEED) -> bool:
 		return false
 	var want := _face_yaw(flat)
 	rotation.y = rotate_toward(rotation.y, want, TURN * delta)
+	var heading := Vector3.ZERO
 	if absf(angle_difference(rotation.y, want)) < .5:
 		var step := minf(speed * delta, flat.length())
 		global_position += flat.normalized() * step
+		heading = flat
 		_roll(step)
 	_settle()
+	_step_legs(delta, heading)
 	return false
 
 # ---------- riding it ----------
@@ -1151,6 +1154,7 @@ func _roll(metres: float) -> void:
 	for wheel in _wheels:
 		if wheel != null: (wheel as Node3D).rotation.x -= metres / WHEEL_R
 	_gait += metres * 1.4
+	if _body != null and _body.get_node_or_null("Hip_1") != null: return   # the full rig steps in _step_legs
 	for i in _knees.size():
 		var knee := _knees[i] as Node3D
 		if knee == null: continue
@@ -1342,22 +1346,8 @@ func _fold(t: float) -> void:
 func _kneel(drop: float) -> void:
 	if _body == null: return
 	_body.position.y = -drop
-	var upper := 3.0
-	var lower := 3.10
-	var run := 3.60
-	var rise := WHEEL_R - (5.05 - drop)
-	var bend := -acos(clampf((run * run + rise * rise - upper * upper - lower * lower) / (2.0 * upper * lower), -1.0, 1.0))
-	var lift := atan2(rise, run) - atan2(lower * sin(bend), upper + lower * cos(bend))
-	for i in range(1, 7):
-		var side := -1.0 if i <= 3 else 1.0
-		var hip := _body.get_node_or_null("Hip_%d" % i) as Node3D
-		if hip == null: continue
-		var knee := hip.get_node("Knee_%d" % i) as Node3D
-		var carrier := knee.get_node("AxleCarrier_%d" % i) as Node3D
-		var home := Basis(Vector3(0.0, 0.0, -side), Vector3(side, 0.0, 0.0), Vector3.DOWN)
-		hip.basis = home * Basis(Vector3.RIGHT, -lift)
-		knee.basis = Basis(Vector3.RIGHT, -bend)
-		carrier.basis = Basis(Vector3.RIGHT, lift + bend) * home.inverse()
+	_kneel_drop = drop
+	_pose_legs()
 	var stowed := drop > .01
 	var deck := _body.get_node_or_null("RideDeckFold") as Node3D
 	if deck != null: deck.rotation.x = deg_to_rad(-92.7) * clampf(drop / 1.0, 0.0, 1.0)
@@ -1372,6 +1362,77 @@ func _kneel(drop: float) -> void:
 		arm.position.x = (-1.0 if i % 2 == 1 else 1.0) * lerpf(2.60, 3.54, clampf(drop / 1.0, 0.0, 1.0))
 		var cable := arm.get_node_or_null("Cable_%d" % i) as Node3D
 		if cable != null: cable.visible = not stowed
+
+## Each leg solved on its own: hip and knee bend so the wheel sits
+## `_leg_lift[i]` metres above where it would stand (0 on the ground).
+var _kneel_drop := 0.0
+func _pose_legs() -> void:
+	if _body == null: return
+	var upper := 3.0
+	var lower := 3.10
+	var run := 3.60
+	for i in range(1, 7):
+		var side := -1.0 if i <= 3 else 1.0
+		var hip := _body.get_node_or_null("Hip_%d" % i) as Node3D
+		if hip == null: continue
+		var knee := hip.get_node("Knee_%d" % i) as Node3D
+		var carrier := knee.get_node("AxleCarrier_%d" % i) as Node3D
+		var rise := WHEEL_R - (5.05 - _kneel_drop) + float(_leg_lift[i - 1])
+		var bend := -acos(clampf((run * run + rise * rise - upper * upper - lower * lower) / (2.0 * upper * lower), -1.0, 1.0))
+		var lift := atan2(rise, run) - atan2(lower * sin(bend), upper + lower * cos(bend))
+		var home := Basis(Vector3(0.0, 0.0, -side), Vector3(side, 0.0, 0.0), Vector3.DOWN)
+		hip.basis = home * Basis(Vector3.RIGHT, -lift)
+		knee.basis = Basis(Vector3.RIGHT, -bend)
+		carrier.basis = Basis(Vector3.RIGHT, lift + bend) * home.inverse()
+
+## 23 Nov playtest (it drove straight through rocks): walking, each leg
+## lifts its wheel over any rock under it or just ahead, and sets it down on
+## the far side. Small stones it rolls over; the gait's little step stays.
+const LEG_LOOK_AHEAD := 3.0      # metres ahead of a wheel it starts lifting
+const LEG_MAX_LIFT := 2.4        # metres: the most a leg can raise its wheel
+const LEG_UP := 3.0              # m/s the wheel rises
+const LEG_DOWN := 1.6            # m/s it comes back down
+const WHEEL_HALF := .6           # half the wheel's width, plus a little
+var _leg_lift: Array = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+var _near_rocks: Array = []
+var _rocks_check := 0.0
+
+func _wheel_local(i: int) -> Vector3:
+	return Vector3((-1.0 if i < 3 else 1.0) * 7.7, 0.0, [-5.0, 0.0, 5.0][i % 3])
+
+## How high the wheel must lift to clear the rocks at this spot.
+func _clear_height(at: Vector3) -> float:
+	var ground := MHSiteTerrain.height(at.x, at.z)
+	var need := 0.0
+	for rock in _near_rocks:
+		var r: float = rock.w
+		var d := Vector2(rock.x - at.x, rock.z - at.z).length()
+		if d > r + WHEEL_HALF: continue
+		var top: float = rock.y + sqrt(maxf(0.0, r * r - minf(d, r) * minf(d, r)))
+		need = maxf(need, top - ground + .1)
+	return need if need > .2 else 0.0
+
+func _step_legs(delta: float, heading: Vector3) -> void:
+	if _body == null or _body.get_node_or_null("Hip_1") == null: return
+	_rocks_check -= delta
+	if _rocks_check <= 0.0:
+		_rocks_check = .5
+		var field := get_tree().get_first_node_in_group("region_rocks")
+		var p := global_position
+		_near_rocks = field.rocks_in(Rect2(p.x - 16.0, p.z - 16.0, 32.0, 32.0)) if field != null else []
+	var ahead := heading.normalized() * LEG_LOOK_AHEAD if heading.length() > .01 else Vector3.ZERO
+	for i in 6:
+		var wheel_node: Node3D = _wheels[i] if i < _wheels.size() else null
+		var wheel := wheel_node.global_position if wheel_node != null else to_global(_wheel_local(i))
+		var want := 0.0
+		for k in 4:
+			want = maxf(want, _clear_height(wheel + ahead * (k / 3.0)))
+		# The tripod gait's small step, so it still reads as walking.
+		want = maxf(want, maxf(0.0, sin(_gait + (PI if i % 2 == 1 else 0.0))) * .12)
+		want = minf(want, LEG_MAX_LIFT)
+		var now: float = _leg_lift[i]
+		_leg_lift[i] = move_toward(now, want, (LEG_UP if want > now else LEG_DOWN) * delta)
+	_pose_legs()
 
 ## Refolded (scripts/core_panel.gd): it stands up where its core was, ready.
 func refold() -> void:
