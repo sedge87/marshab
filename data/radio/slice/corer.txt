@@ -1,0 +1,48 @@
+# The hand corer, talked through by Kai (opening version 3). He's the one who
+# wants the cores most, so he can't help himself: one short line the first
+# time you reach each stage, never again. Curious, not a manual. Rung from
+# code (scripts/field_kit.gd: the corer in your hand; scripts/hand_corer.gd:
+# each stage). Lines about a stage only play while you're still at it
+# (the live fact corer_at:<stage>:<stage>...), so a late one is dropped.
+# Voices: python tools/generate_voice.py --missing --only=orb_corer
+
+# Key 1: the corer in your hand for the first time.
+~ corer_hand
+Tupou: Is that the corer? Oh, good. Only where GAR-Y's staked the ground, mind. It wants a reason to dig. [ID:corer_hand_01]
+=> END
+
+# Planted: the first stroke's yours.
+~ corer_drive
+fresh 15
+? corer_at:drive Tupou: Slow strokes. Let the ratchet click round each time. It's not a race. [ID:corer_drive_01]
+=> END
+
+# Two strokes too quick: the layers are smearing.
+~ corer_rushed
+fresh 10
+? corer_at:drive Tupou: Easy, easy. Rush it and the layers smear together. [ID:corer_rushed_01]
+=> END
+
+# The regolith shoe skids partway down.
+~ corer_skid
+fresh 15
+? corer_at:drive Tupou: Skidding? That's ice. That's a good sign. R swaps the shoe. [ID:corer_skid_01]
+=> END
+
+# Down to depth.
+~ corer_open
+fresh 15
+? corer_at:open:draw Tupou: That's the depth. Open the head, draw the liner, cap it. Gently. [ID:corer_open_01]
+=> END
+
+# The liner coming up.
+~ corer_draw
+fresh 10
+? corer_at:draw:cap Tupou: Steady. Feel it coming? [ID:corer_draw_01]
+=> END
+
+# Capped: the first core.
+~ corer_done
+fresh 20
+Tupou: Capped. Whatever's in there, nobody's ever seen it. I'm a bit jealous. [ID:corer_done_01]
+=> END

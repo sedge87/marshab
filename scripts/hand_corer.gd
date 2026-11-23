@@ -45,6 +45,24 @@ var _last_stroke := -10.0
 var _done_at := 0.0
 var _was_down := false
 var _was_swap := false
+var _kai_fact := false
+var _reset_heard := true     # the ratchet's "ready" click since the last stroke
+
+## Kai talks you through it the first time (data/radio/slice/corer.txt):
+## one line per stage, first time only (the radio's `heard` keeps it in the
+## save). Version 3 openings only.
+func _kai(section: String) -> void:
+	if not FIELD_KIT.gates(world): return
+	var radio: Node = world.get("radio")
+	if radio != null and radio.has_method("ring"): radio.ring(section)
+
+## corer_at:<stage>:<stage>...: you're still at one of these stages.
+func _watch_kai_fact() -> void:
+	if _kai_fact: return
+	var radio: Node = world.get("radio")
+	if radio == null: return
+	_kai_fact = true
+	(radio.facts as Dictionary)["corer_at"] = func(args: Array) -> bool: return args.has(stage)
 
 func setup(target_world: Node) -> Node:
 	world = target_world
@@ -122,6 +140,7 @@ func _process(delta: float) -> void:
 	var press := down and not _was_down
 	_was_down = down
 	_clock += delta
+	_watch_kai_fact()
 	if not stage.is_empty() and (world.player == null or Vector2(world.player.global_position.x - _at.x, world.player.global_position.z - _at.z).length() > LEAVE_M):
 		_abandon()
 		return
@@ -133,9 +152,16 @@ func _process(delta: float) -> void:
 		"drive":
 			if MHInput.held("rotate") and not _was_swap: _swap_shoe()
 			if press: _stroke()
+			# The timing, shown by the tool itself: the collar rides back up
+			# and the ratchet turns over one notch in exactly STROKE_GAP, then
+			# clicks. Stroke after the click and it's a clean one.
+			if not _reset_heard and _clock - _last_stroke >= STROKE_GAP:
+				_reset_heard = true
+				if _strokes < STROKES and not _stalled: MHAudio.sfx("ui_click", -2.0, .02)
 		"open":
 			if press:
 				stage = "draw"
+				_kai("corer_draw")
 				_tween_to(func(v: float): _rig.call("head", v), 0.0, 1.0, .45)
 				MHAudio.sfx("door_open", -10.0)
 		"draw":
@@ -160,8 +186,10 @@ func _plant(at: Vector3) -> void:
 	_stalled = false
 	_draw = 0.0
 	_last_stroke = -10.0
+	_reset_heard = true
 	_core = MHChapterOne.core_at(Vector2(at.x, at.z), float(world.builder._ice_richness_at_point(Vector2(at.x, at.z))))
 	stage = "drive"
+	_kai("corer_drive")
 	_show_tool(true)
 	MHAudio.sfx("place", -6.0)
 
@@ -172,20 +200,27 @@ func _stroke() -> void:
 		return
 	var gap := _clock - _last_stroke
 	_last_stroke = _clock
-	if gap < STROKE_GAP: _rushed += 1
+	if gap < STROKE_GAP:
+		_rushed += 1
+		if _rushed >= RUSHED_LIMIT: _kai("corer_rushed")
 	# The regolith shoe reaches the ice partway down and skids on it.
 	var ice_step := ceili(float(STROKES) * .5)
 	if not ice_shoe and not bool(_core.dry) and _strokes >= ice_step:
 		_stalled = true
 		MHAudio.sfx("land", -8.0)
+		_kai("corer_skid")
 		world.builder._flash_notice("info", "The shoe skids", "Something hard about %.1f m down: ice. The regolith shoe won't cut it. Swap in the ice shoe (%s)." % [float(_core.depth_m), MHInput.glyph("rotate")])
 		return
 	_strokes += 1
-	MHAudio.sfx("ui_click", -4.0 if gap >= STROKE_GAP else -10.0)
-	_rig.call("stroke")
+	# A clean stroke lands with a solid thunk; one before the click grinds.
+	if gap >= STROKE_GAP: MHAudio.sfx("place", -6.0)
+	else: MHAudio.sfx("land", -10.0, .1)
+	_reset_heard = false
+	_rig.call("stroke", STROKE_GAP)
 	_sink(float(_strokes) / float(STROKES))
 	if _strokes >= STROKES:
 		stage = "open"
+		_kai("corer_open")
 
 func _swap_shoe() -> void:
 	ice_shoe = not ice_shoe
@@ -200,6 +235,7 @@ func _cap() -> void:
 	_rig.call("cap", true)
 	stage = "done"
 	_done_at = _clock
+	_kai("corer_done")
 	var core := _core.duplicate()
 	core["partial"] = _rushed >= RUSHED_LIMIT
 	if bool(core.partial): core["good"] = false
@@ -328,14 +364,21 @@ class MC01Rig:
 		if _shoe_ice != null: _shoe_ice.visible = ice
 		if _shoe_regolith != null: _shoe_regolith.visible = not ice
 
-	## One stroke: the collar drops and springs back; the ratchet clicks round.
-	func stroke() -> void:
+	## One stroke: the collar drops, then rides back up while the ratchet
+	## turns over a notch, both finishing at `reset` seconds: the safe pace,
+	## there to be watched. A stroke before then cuts the last one short.
+	var _motion: Tween
+	func stroke(reset: float) -> void:
+		var from := _turn
 		_turn += deg_to_rad(30.0)
-		if _head != null: _head.rotation.y = _turn
-		if _collar == null: return
-		var motion := _collar.create_tween()
-		motion.tween_property(_collar, "position", _collar_rest - Vector3.UP * .046, .12)
-		motion.tween_property(_collar, "position", _collar_rest, .2)
+		if _motion != null and _motion.is_valid(): _motion.kill()
+		var target: Node3D = _collar if _collar != null else _head
+		if target == null: return
+		_motion = target.create_tween()
+		if _collar != null: _motion.tween_property(_collar, "position", _collar_rest - Vector3.UP * .046, .1)
+		var back := maxf(.1, reset - .1)
+		if _collar != null: _motion.tween_property(_collar, "position", _collar_rest, back).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		if _head != null: _motion.parallel().tween_property(_head, "rotation:y", _turn, back).from(from).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	func head(amount: float) -> void:
 		if _upper != null: _upper.rotation.x = deg_to_rad(118.0) * clampf(amount, 0.0, 1.0)

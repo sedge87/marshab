@@ -85,6 +85,7 @@ func select(index: int) -> void:
 		return
 	held = "" if held == id else id
 	MHAudio.sfx("suit_clamp", -10.0)
+	if held == "corer" and gates(world) and world.get("radio") != null: world.radio.ring("corer_hand")   # Kai talks you through it (data/radio/slice/corer.txt)
 	_show()
 	if hud != null:
 		if held.is_empty(): hud.hide_equipment_note("In hand")
