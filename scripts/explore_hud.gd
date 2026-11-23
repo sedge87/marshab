@@ -35,6 +35,15 @@ var _telemetry_sunlight: Label
 var _sol_clock: Label
 var _sol_day: Label
 var _telemetry_context: Label
+var _telemetry_head: Label       # "Site telemetry", or "This room"
+var _telemetry_place: Label
+var _telemetry_elevation: Label
+var _telemetry_note: Label       # indoors: how long the room's power and air last
+var _telemetry_site := ""
+var _runway_age := 99.0
+var _runway_text := ""
+var _battery_was := -1.0
+var _battery_trend := 0.0
 var _telemetry_key := ""
 var _hint_strip: Control
 var _hint_pad := false
@@ -208,15 +217,19 @@ func _site_telemetry() -> PanelContainer:
 	panel.custom_minimum_size = Vector2(258, 0)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var column := MHStyle.vbox(5)
-	column.add_child(MHStyle.eyebrow("Site telemetry", MHStyle.accent, 10))
+	_telemetry_head = MHStyle.eyebrow("Site telemetry", MHStyle.accent, 10)
+	column.add_child(_telemetry_head)
 	var location := str(site.get("name", site.get("based_on", "Mars")))   # the region's own name (14 Nov: "Gale Crater" read as the wrong place)
-	column.add_child(MHStyle.mono(location, 13, MHStyle.TEXT_PRIMARY, 600))
+	_telemetry_site = location
+	_telemetry_place = MHStyle.mono(location, 13, MHStyle.TEXT_PRIMARY, 600)
+	column.add_child(_telemetry_place)
 	_telemetry_context = MHStyle.eyebrow("Outside · EVA exposure", MHStyle.TEXT_MUTED, 9)
 	column.add_child(_telemetry_context)
 	var first_row := MHStyle.hbox(14)
 	_telemetry_temp = _telemetry_metric("TEMP", str(telemetry.get("temperature", "—")), MHStyle.INFO)
 	first_row.add_child(_telemetry_temp.get_parent())
-	first_row.add_child(_telemetry_metric("ELEVATION", str(telemetry.get("elevation", "—")), MHStyle.TEXT_SECONDARY).get_parent())
+	_telemetry_elevation = _telemetry_metric("ELEVATION", str(telemetry.get("elevation", "—")), MHStyle.TEXT_SECONDARY)
+	first_row.add_child(_telemetry_elevation.get_parent())
 	column.add_child(first_row)
 	var second_row := MHStyle.hbox(14)
 	_telemetry_radiation = _telemetry_metric("RADIATION", str(telemetry.get("radiation", "—")), MHStyle.WARN)
@@ -224,6 +237,9 @@ func _site_telemetry() -> PanelContainer:
 	_telemetry_sunlight = _telemetry_metric("SOLAR", "—", MHStyle.VALID)
 	second_row.add_child(_telemetry_sunlight.get_parent())
 	column.add_child(second_row)
+	_telemetry_note = MHStyle.body("", 11, MHStyle.TEXT_SECONDARY)
+	_telemetry_note.visible = false
+	column.add_child(_telemetry_note)
 	column.add_child(MHStyle.body("Shift estimates · hold Alt for your suit", 10, MHStyle.TEXT_MUTED) if preload("res://scripts/suit.gd").active() else MHStyle.body("Shift estimates · suit required outside", 10, MHStyle.TEXT_MUTED))
 	panel.add_child(column)
 	return panel
@@ -451,14 +467,33 @@ func _refresh_hint_strip() -> void:
 func _update_telemetry() -> void:
 	if _telemetry_temp == null or builder == null:
 		return
+	# 23 Nov playtest: inside, the card read the outside's -32 °C and
+	# "Sheltered". Where a room runs on its own life support (the lander
+	# cabin, the walker core and the rooms joined to it), the card is that
+	# room's: its air, its warmth, its power and how long they last.
+	var life := _life_here()
+	if not life.is_empty():
+		_update_room_card(life)
+		return
+	_set_caption(_telemetry_temp, "TEMP")
+	_set_caption(_telemetry_elevation, "ELEVATION")
+	_set_caption(_telemetry_radiation, "RADIATION")
+	_set_caption(_telemetry_sunlight, "SOLAR")
+	_telemetry_note.visible = false
 	var climate := builder.climate_at(player.global_position)
+	var outside := str(climate.get("state", "")) == "outside"
+	_telemetry_head.text = "Site telemetry" if outside else "This room"
+	_telemetry_place.text = _telemetry_site
+	_telemetry_elevation.text = str(MHGame.site().get("telemetry", {}).get("elevation", "—"))
+	_telemetry_elevation.add_theme_color_override("font_color", MHStyle.TEXT_SECONDARY)
 	var key := str([climate.temperature, climate.radiation, climate.context, MHGame.sol_hour, MHGame.sunlight_fraction, roundi(MHGame.solar_irradiance(MHGame.sol_hour) * 100.0)])
 	if key == _telemetry_key:
 		return
 	_telemetry_key = key
 	_telemetry_temp.text = "%d °C" % roundi(float(climate.temperature))
-	_telemetry_radiation.text = str(climate.radiation)
-	_telemetry_radiation.add_theme_color_override("font_color", MHStyle.WARN if str(climate.radiation) == "High" else MHStyle.VALID)
+	var exposed := str(climate.radiation) == "High"
+	_telemetry_radiation.text = "Exposed" if exposed else str(climate.radiation)
+	_telemetry_radiation.add_theme_color_override("font_color", MHStyle.WARN if exposed else MHStyle.VALID)
 	_telemetry_context.text = "%s · %s" % [str(climate.context), MHGame.formatted_sol_time()]
 	if _telemetry_sunlight != null:
 		# Share of full panel output available now: builds through the morning,
@@ -469,6 +504,91 @@ func _update_telemetry() -> void:
 			solar *= 1.0 - float(builder.simulation().solar_cut())
 		_telemetry_sunlight.text = "%d%%" % roundi(solar * 100.0)
 		_telemetry_sunlight.add_theme_color_override("font_color", MHStyle.VALID if solar > .1 else MHStyle.TEXT_MUTED)
+
+const SURVIVAL_CORE := preload("res://scripts/survival_core.gd")
+
+## The room you're in, if it runs on its own life support: {core, name}.
+func _life_here() -> Dictionary:
+	var world: Node = builder.get("world") if builder != null else null
+	if world == null or player == null: return {}
+	var lander: Node = world.get("lander")
+	var cabin: Node = world.get("cabin_life")
+	if cabin != null and cabin.get("core") != null and lander != null and lander.has_method("cabin_contains") and lander.cabin_contains(player.global_position):
+		return {"core": cabin.get("core"), "name": "Lander cabin"}
+	var module: Node = world.get("module_life")
+	if module != null and module.get("core") != null and module.has_method("player_inside") and module.player_inside():
+		var here: Dictionary = builder._zone_at_point(Vector2(player.global_position.x, player.global_position.z))
+		var label := str(BuildController.ZONE_TYPES.get(str(here.get("kind", "")), {}).get("label", "Core"))
+		if bool(here.get("carried", false)): label = "Walker core"
+		return {"core": module.get("core"), "name": label}
+	return {}
+
+func _set_caption(value: Label, caption: String) -> void:
+	if value == null: return
+	var holder := value.get_parent()
+	if holder != null and holder.get_child_count() > 0 and holder.get_child(0) is Label: (holder.get_child(0) as Label).text = caption
+
+## Inside: air, temperature, power, and how long they last.
+func _update_room_card(life: Dictionary) -> void:
+	var core: RefCounted = life.core
+	_telemetry_head.text = "This room"
+	_telemetry_place.text = str(life.name)
+	_set_caption(_telemetry_temp, "AIR")
+	_set_caption(_telemetry_elevation, "TEMP")
+	_set_caption(_telemetry_radiation, "POWER")
+	_set_caption(_telemetry_sunlight, "OUTSIDE")
+	var limits_o2: Array = SURVIVAL_CORE.O2_LIMITS
+	var limits_cold: Array = SURVIVAL_CORE.COLD_LIMITS
+	if bool(core.get("vented")):
+		_telemetry_temp.text = "Vented"
+		_telemetry_temp.add_theme_color_override("font_color", MHStyle.DANGER)
+	else:
+		var o2: float = core.call("o2_pct")
+		var air: float = core.call("air_fraction")
+		_telemetry_temp.text = "%.1f%% O2" % o2
+		_telemetry_temp.add_theme_color_override("font_color", MHStyle.DANGER if o2 < float(limits_o2[1]) or air < .2 else (MHStyle.WARN if o2 < float(limits_o2[0]) or air < .6 else MHStyle.VALID))
+	var temp: float = core.get("temp_c")
+	_telemetry_elevation.text = "%d °C" % roundi(temp)
+	_telemetry_elevation.add_theme_color_override("font_color", MHStyle.DANGER if temp < float(limits_cold[1]) else (MHStyle.WARN if temp < float(limits_cold[0]) else MHStyle.VALID))
+	var powered := bool(core.call("powered"))
+	var battery: float = core.call("battery_pct")
+	_runway_age += get_process_delta_time()
+	var fresh := _runway_age >= 5.0
+	if fresh:
+		if _battery_was >= 0.0: _battery_trend = battery - _battery_was
+		_battery_was = battery
+	var arrow := " ▲" if _battery_trend > .05 else (" ▼" if _battery_trend < -.05 else "")
+	_telemetry_radiation.text = ("Flat" if not powered else "%d%%" % roundi(battery)) + arrow
+	_telemetry_radiation.add_theme_color_override("font_color", MHStyle.DANGER if not powered or battery < 10.0 else (MHStyle.WARN if battery < 30.0 else MHStyle.VALID))
+	var outside_c := MHGame.outside_temperature_c if MHGame.outside_temperature_c != 0.0 else float(MHGame.site().get("telemetry", {}).get("outside_temp_c", -30.0))
+	_telemetry_sunlight.text = "%d °C" % roundi(outside_c)
+	_telemetry_sunlight.add_theme_color_override("font_color", MHStyle.INFO)
+	_telemetry_context.text = "Inside · %s" % MHGame.formatted_sol_time()
+	# How long it lasts: the core's own look ahead, every 5 s (it runs a sol).
+	if fresh:
+		_runway_age = 0.0
+		_runway_text = _runway_line(core.call("runway", MHGame.sol_hour, 24.0))
+	_telemetry_note.text = _runway_text
+	_telemetry_note.visible = not _runway_text.is_empty()
+	_telemetry_key = ""
+
+## The first thing to run out in the next sol, as a clock time.
+func _runway_line(ahead: Dictionary) -> String:
+	var first := ""
+	var soonest := INF
+	for key in ["power", "oxygen", "air", "cold"]:
+		var t := float(ahead.get(key, -1.0))
+		if t >= 0.0 and t < soonest:
+			soonest = t
+			first = key
+	if first.is_empty(): return "Power, air and warmth good for the next sol"
+	var at := wrapf(MHGame.sol_hour + soonest, 0.0, 24.0)
+	var clock := "%02d:%02d" % [floori(at), floori(fmod(at, 1.0) * 60.0)]
+	match first:
+		"power": return "Power lasts till %s" % clock
+		"oxygen": return "Oxygen runs thin by %s" % clock
+		"air": return "Air goes stale by %s" % clock
+	return "Too cold by %s" % clock
 
 func _update_sol_clock() -> void:
 	if _sol_clock == null:
@@ -671,6 +791,12 @@ func _item_on_furniture(origin: Vector3, direction: Vector3, hit_distance: float
 	return null
 
 func _refresh_readiness(quiet := false) -> void:
+	# The story game (23 Nov playtest): the old builder's readiness list isn't
+	# this game's goal. The goal lives on the slate's Today page.
+	if MHChapterOne.new_rules():
+		_readiness_slot.visible = false
+		return
+	_readiness_slot.visible = true
 	var items := builder.readiness()
 	var key := str(items)
 	if key == _readiness_key: return
