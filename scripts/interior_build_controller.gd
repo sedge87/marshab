@@ -759,12 +759,16 @@ func _build_hud() -> void:
 ## The bar along the bottom: category tabs, then a row of picture cards.
 func _build_bar() -> PanelContainer:
 	_bar = PanelContainer.new()
-	_bar.anchor_left = .5
-	_bar.anchor_right = .5
+	# 23 Nov playtest: a fixed 1560 px bar grew to the right when its tab row
+	# was wider, off-centre and off the screen. Now it spans the screen with
+	# a margin each side, and grows both ways if it ever must.
+	_bar.anchor_left = 0.0
+	_bar.anchor_right = 1.0
 	_bar.anchor_top = 1.0
 	_bar.anchor_bottom = 1.0
-	_bar.offset_left = -780
-	_bar.offset_right = 780
+	_bar.offset_left = 48
+	_bar.offset_right = -48
+	_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_bar.offset_top = -330
 	_bar.offset_bottom = -92
 	_bar.add_theme_stylebox_override("panel", MHStyle.box(MHStyle.SURFACE_HUD_STRONG, MHStyle.BORDER_SUBTLE, 8, 1, Vector4(18, 16, 18, 16)))
@@ -780,6 +784,7 @@ func _build_bar() -> PanelContainer:
 	head.add_child(_selector_context)
 	_hints = MHStyle.mono("", 12, MHStyle.TEXT_SECONDARY)
 	_hints.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_hints.visible = false   # the key strip under the bar shows the same keys
 	head.add_child(_hints)
 	column.add_child(head)
 	var scroll := ScrollContainer.new()
