@@ -213,7 +213,7 @@ func _process(delta: float) -> void:
 	_don = maxf(0.0, _don - delta)
 	var wearing := where == "outside" or helmet or (_don > 0.0 and not _don_on)
 	_set_visor_visible(wearing and not bool(world.player.get_meta("build_mode_active", false)))
-	_visor.modulate.a = 1.0 if _don <= 0.0 else (1.0 - _don / DON_SECONDS if _don_on else _don / DON_SECONDS)
+	_visor.modulate.a = 1.0
 	_visor.queue_redraw()
 	if o2 > 0.0 or where != "outside": reserve = 1.0
 	if o2 <= 0.0 and where == "outside" and not passed_out:
@@ -256,6 +256,10 @@ func _where() -> String:
 	if world.lander != null and world.lander.cabin_contains(player.global_position):
 		if not world.lander.has_method("sealed_cabin") or world.lander.sealed_cabin(): return "lander"
 		return "outside"
+	# An airlock chamber is Mars until its outer hatch is shut and it has
+	# repressurised (22 Nov playtest: the helmet came off with the hatch open).
+	var lock := AirlockDoor.chamber_at(player.global_position, get_tree())
+	if lock != null and not lock.chamber_cycled(): return "outside"
 	var module: Node = world.core_at(player.global_position) if world.has_method("core_at") else world.get("module_life")   # A4: the base you're in
 	if module != null and module.running() and module.player_inside():
 		return "habitat" if module.breathable() and float(module.core.o2_pct()) >= 17.0 else "outside"
@@ -768,6 +772,9 @@ func _don_moment(on: bool) -> void:
 	_don = DON_SECONDS
 	_don_on = on
 	MHAudio.sfx("suit_clamp", -8.0)
+	# The seal: air hissing into the helmet as it locks, or out as it breaks.
+	if on: get_tree().create_timer(DON_SECONDS * .45).timeout.connect(func() -> void: MHAudio.sfx("suit_fill", -16.0))
+	else: MHAudio.sfx("suit_fill", -16.0)
 	if on: get_tree().create_timer(DON_SECONDS * .6).timeout.connect(func() -> void: MHAudio.sfx("suit_beep", -10.0))
 
 ## Indoors: whether K can suit you up now.
@@ -824,20 +831,37 @@ func _tone(share: float) -> Color:
 ## Two out-of-focus LEDs at the top corners of the visor (oxygen left, power
 ## right), blinking when critical; frost creeping in from the edges when the
 ## suit's battery is flat and the heater is off.
+## How far through putting the helmet on (0 off, 1 on and sealed). Taking it
+## off runs the same moment backwards.
+func _helmet_t() -> float:
+	if _don <= 0.0: return 1.0
+	var p := 1.0 - _don / DON_SECONDS
+	return p if _don_on else 1.0 - p
+
 func _draw_visor() -> void:
 	var size := _visor.size
+	# 22 Nov playtest: putting the helmet on is a moment you see. The helmet's
+	# lower rim comes down over your eyes (the shell dark above it), the
+	# glass mists as the seal locks and clears, then the lights come up. Once
+	# it's on, only the two lights show that you're wearing it.
+	var t := _helmet_t()
+	if t < .45: _draw_helmet_shell(size, smoothstep(0.0, 1.0, t / .45))
+	var mist := clampf(1.0 - (t - .4) / .6, 0.0, 1.0) if t >= .4 else 0.0
+	if mist > 0.0: _visor.draw_rect(Rect2(Vector2.ZERO, size), Color(.86, .9, .93, .28 * mist))
+	var lit := clampf((t - .55) / .45, 0.0, 1.0)
+	if lit <= 0.0: return
 	# Trouble at the base: a third light, top centre, slow amber or quick red.
 	var trouble := base_alert()
 	if not trouble.is_empty() and fmod(_blink, 1.6 if str(trouble.level) == "warning" else .7) < .4:
 		var colour := MHStyle.WARN if str(trouble.level) == "warning" else MHStyle.DANGER
-		for ring in 5: _visor.draw_circle(Vector2(size.x * .5, size.y * .03), size.y * (.004 + .006 * ring), Color(colour, .3 / (1.0 + ring * 1.4)))
+		for ring in 5: _visor.draw_circle(Vector2(size.x * .5, size.y * .03), size.y * (.004 + .006 * ring), Color(colour, lit * .3 / (1.0 + ring * 1.4)))
 	for side in [[Vector2(size.x * .045, size.y * .055), o2], [Vector2(size.x * .955, size.y * .055), power]]:
 		var share := float(side[1])
 		if share <= .1 and fmod(_blink, .8) > .45: continue
 		var colour := _tone(share)
 		for ring in 6:
 			var r := size.y * (.006 + .007 * ring)
-			_visor.draw_circle(side[0], r, Color(colour, .3 / (1.0 + ring * 1.4)))
+			_visor.draw_circle(side[0], r, Color(colour, lit * .3 / (1.0 + ring * 1.4)))
 	var frost := clampf(1.0 - power / .08, 0.0, 1.0) if power < .08 else 0.0
 	if frost > 0.0:
 		var band := size.y * .12 * frost
@@ -848,6 +872,26 @@ func _draw_visor() -> void:
 			_visor.draw_rect(Rect2(0, size.y - w, size.x, w), Color(.85, .93, 1.0, a))
 			_visor.draw_rect(Rect2(0, 0, w, size.y), Color(.85, .93, 1.0, a))
 			_visor.draw_rect(Rect2(size.x - w, 0, w, size.y), Color(.85, .93, 1.0, a))
+
+## The helmet coming down over your head: everything above its rim's arch is
+## the dark inside of the shell. k 0: the rim at the top of your view; 1: past
+## the bottom.
+func _draw_helmet_shell(size: Vector2, k: float) -> void:
+	var edge := lerpf(-.05, 1.25, k) * size.y
+	var arch: PackedVector2Array = []
+	for i in 25:
+		var x := size.x * float(i) / 24.0
+		var u := (x - size.x * .5) / (size.x * .5)
+		arch.append(Vector2(x, edge - size.y * .12 * (1.0 - u * u)))
+	var shell: PackedVector2Array = [Vector2(0, -4), Vector2(size.x, -4)]
+	for i in range(arch.size() - 1, -1, -1): shell.append(arch[i])
+	_visor.draw_colored_polygon(shell, Color(.025, .025, .03, .97))
+	# A soft shadow under the rim, and the padded lip catching the light.
+	for i in 6:
+		var off: PackedVector2Array = []
+		for point in arch: off.append(point + Vector2(0, 5.0 + 7.0 * i))
+		_visor.draw_polyline(off, Color(.025, .025, .03, .45 / (1.0 + i)), 8.0)
+	_visor.draw_polyline(arch, Color(.42, .4, .37, .7), 3.0, true)
 
 # ---------- blacking out ----------
 

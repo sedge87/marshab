@@ -11,10 +11,35 @@ const MHPalette := preload("res://scripts/mh_palette.gd")
 const HATCH_MODEL := "res://assets/models/habitat/bulkhead_hatch.glb"
 const HINGE := Vector3(-.71, 0.0, .205)      # the leaf's hinge line, door-local
 const HINGE_ANGLE := -100.0                  # open: back against the wall plate
+## 22 Nov playtest: a hatch always swings AWAY from whoever opens it. The leaf
+## is a plug: it can seat on either face of the frame (+1 the door's +Z face,
+## -1 its -Z face) and, opened from the side it's seated on, it first pushes
+## straight back through the frame, then swings. Its collision stays solid.
+const LEAF_REACH := 1.3                      # hinge to the leaf's free edge
+const SWEEP_CLEAR := LEAF_REACH + .45        # a body this far from the hinge is clear of the leaf
+const PLUG_SPEED := 5.0                      # face units a second (2 = the whole push)
+## The lever on the leaf: its hub (door-local x, y) and the turn that frees it.
+const LEVER_HUB := Vector2(.44, 1.12)
+const LEVER_TURN := -70.0
+## Outer hatch sealed: the chamber repressurises for this long (the hiss)
+## before it counts as habitat and the helmet can come off.
+const CYCLE_SECONDS := 2.0
 var _hatch := false
 var _model: Node3D
 var _pivot: Node3D
+var _face_holder: Node3D
+var _lever: Node3D
+var _lever_angle := 0.0
+var _leaf_body: StaticBody3D
 var _leaf_collision: CollisionShape3D
+var _face := 1.0
+var _face_target := 1.0
+## Between rooms: standing open on the hold-back. Shut by hand, the hatch then
+## opens as you walk up and shuts again once you've gone.
+var _held_back := true
+var _close_behind := false
+var _sealed_msec := -100000
+var _moment: Node
 var _alarm_shut := false
 var _shutter: StaticBody3D
 var _shutter_collision: CollisionShape3D
@@ -214,7 +239,89 @@ func _add_box_visual(parent: StaticBody3D,size: Vector3,material: Material,solid
 		parent.add_child(collision)
 
 func is_automatic() -> bool:
-	return _door_name == "INTERIOR" and not _hatch
+	if _door_name != "INTERIOR": return false
+	return not _hatch or (not _held_back and not _alarm_shut)
+
+## Airlock hatches are worked by hand: hold E, the lever turns, the
+## leaf swings away and you step through (HandMoment below).
+func wants_hands() -> bool:
+	return _hatch and (_door_name == "OUTER" or _door_name == "INNER")
+
+## Which side of the door (door-local z sign) `body` is on.
+func side_of(body: Node3D) -> float:
+	return 1.0 if to_local(body.global_position).z >= 0.0 else -1.0
+
+## The nearer of you and GAR-Y, if either is at the door.
+func _nearest_user() -> Node3D:
+	var best: Node3D = null
+	var best_d := 4.0
+	if not is_inside_tree(): return null
+	for group in ["player", "gar_y"]:
+		var body := get_tree().get_first_node_in_group(group) as Node3D
+		if body == null: continue
+		var d := body.global_position.distance_to(global_position)
+		if d < best_d:
+			best = body
+			best_d = d
+	return best
+
+## Is `body` where the leaf would sweep (on the leaf's face, inside its arc)?
+func in_sweep(body: Node3D) -> bool:
+	if body == null or not _hatch: return false
+	var q := to_local(body.global_position)
+	if absf(q.y) > 2.5 or q.z * _face < -.05: return false
+	return Vector2(q.x - HINGE.x, q.z - HINGE.z * _face).length() < SWEEP_CLEAR
+
+func _sweep_blocked() -> bool:
+	if not is_inside_tree(): return false
+	return in_sweep(get_tree().get_first_node_in_group("player") as Node3D)
+
+## Open away from `who` (null: whoever's nearest).
+func _aim_away(who: Node3D) -> void:
+	if not _hatch: return
+	if who == null: who = _nearest_user()
+	if who != null: _face_target = -side_of(who)
+
+## Begin the hands-on hatch: E held turns the lever, then you step through.
+func hand_open(player: Node3D) -> void:
+	if in_hand_moment(): return
+	if _target_amount > .5:
+		toggle(player)   # already open: E just shuts it
+		return
+	_moment = HandMoment.new(self, player)
+	add_child(_moment)
+
+func in_hand_moment() -> bool:
+	return _moment != null and is_instance_valid(_moment)
+
+## The airlock's chamber has its outer hatch shut and has finished
+## repressurising (only meaningful on the OUTER hatch).
+func chamber_cycled() -> bool:
+	if not is_closed() or _pending_open: return false
+	return Time.get_ticks_msec() - _sealed_msec >= int(CYCLE_SECONDS * 1000.0)
+
+## The OUTER hatch of the airlock chamber `pos` stands in (between an OUTER
+## hatch and its INNER partner), or null.
+static func chamber_at(pos: Vector3, tree: SceneTree) -> AirlockDoor:
+	if tree == null: return null
+	for node in tree.get_nodes_in_group("airlock_door"):
+		var outer := node as AirlockDoor
+		if outer == null or outer._door_name != "OUTER" or not outer.is_inside_tree(): continue
+		for partner in outer._partners:
+			if partner == null or partner._door_name != "INNER" or not partner.is_inside_tree(): continue
+			var o := outer.global_position
+			var d := partner.global_position - o
+			d.y = 0.0
+			var length := d.length()
+			if length < .5: continue
+			var along := d / length
+			var off := pos - o
+			if absf(off.y) > 3.0: continue
+			off.y = 0.0
+			var t := off.dot(along)
+			if t < .05 or t > length - .05: continue
+			if (off - along * t).length() < 1.6: return outer
+	return null
 
 func _auto_step(delta: float) -> void:
 	_auto_check -= delta
@@ -229,7 +336,9 @@ func _auto_step(delta: float) -> void:
 		if Vector2(offset.x, offset.z).length() < AUTO_RANGE and absf(offset.y) < 2.5: near = true
 	if near:
 		_auto_away = 0.0
-		if _target_amount < .5 and _habitat_inner_doors_closed(): _target_amount = 1.0
+		if _target_amount < .5 and _habitat_inner_doors_closed():
+			_aim_away(null)
+			_target_amount = 1.0
 	elif _target_amount > .5:
 		_auto_away += .15
 		if _auto_away > 1.2: _target_amount = 0.0
@@ -251,12 +360,11 @@ func _physics_process(delta: float) -> void:
 	if _target_amount!=_heard_target:
 		_heard_target=_target_amount
 		MHAudio.sfx_at("door_open" if _target_amount>.5 else "door_close",self)
-	_amount=move_toward(_amount,_target_amount,delta*(1.5 if _hatch else 2.7))
 	if _hatch:
-		_pivot.rotation.y=deg_to_rad(HINGE_ANGLE)*smoothstep(0.0,1.0,_amount)
-		_leaf_collision.set_deferred("disabled",_amount>.04)
+		_hatch_step(delta)
 		_update_status()
 		return
+	_amount=move_toward(_amount,_target_amount,delta*2.7)
 	# The shutter folds into the overhead cassette rather than travelling beyond
 	# the doorway. Scale keeps the visual and blocker contained in the frame.
 	_shutter.position.y=lerpf(_shutter_height*.5,minf(_shutter_height+.12,2.74),_amount)
@@ -264,13 +372,56 @@ func _physics_process(delta: float) -> void:
 	_shutter_collision.set_deferred("disabled",_amount>.82)
 	_update_status()
 
-func toggle() -> void:
-	if is_automatic(): _manual_until = Time.get_ticks_msec() + 5000
+## The leaf: shut, it waits; opening, it first pushes through the frame to
+## the far face (if it's seated on the opener's side), then swings; closing,
+## it holds still while you stand in its arc.
+func _hatch_step(delta: float) -> void:
+	var was_closed := _amount < .04
+	if _target_amount > _amount:
+		if _face != _face_target and _amount < .02:
+			_face = move_toward(_face, _face_target, delta * PLUG_SPEED)
+		else:
+			_amount = move_toward(_amount, _target_amount, delta * 1.5)
+	elif _target_amount < _amount:
+		if not _sweep_blocked(): _amount = move_toward(_amount, _target_amount, delta * 1.5)
+	# Stepped through by hand: it swings shut behind you once you're clear.
+	if _close_behind and _amount > .82 and not in_hand_moment() and not _sweep_blocked():
+		_close_behind = false
+		_target_amount = 0.0
+	if not was_closed and _amount < .04 and _target_amount < .04 and _leads_to_environment():
+		_sealed_msec = Time.get_ticks_msec()
+		# The outer hatch seats: the chamber repressurises with a long hiss.
+		MHAudio.sfx_at("suit_fill", self, -4.0)
+	_pose_leaf()
+
+## Leaf visuals and collision from _face and _amount.
+func _pose_leaf() -> void:
+	var face := _face if absf(_face) > .02 else (.02 if _face_target > 0.0 else -.02)
+	_face_holder.scale = Vector3(1.0, 1.0, face)
+	var angle := deg_to_rad(HINGE_ANGLE) * smoothstep(0.0, 1.0, _amount)
+	_pivot.rotation.y = angle
+	_lever.rotation.z = deg_to_rad(_lever_angle)
+	# The collision box, mirrored by hand (physics shapes dislike negative scale).
+	var centre := HINGE + Basis(Vector3.UP, angle) * _leaf_collision.position
+	centre.z *= face
+	var turned := Basis(Vector3.UP, angle * signf(face))
+	_leaf_body.transform = Transform3D(turned, centre - turned * _leaf_collision.position)
+
+## Door-local centre of the lever that faces `side` (the one you'd grab).
+func lever_point(side: float) -> Vector3:
+	var face_z := .28 if side == signf(_face) else .136   # front lever, or the back one through the frame
+	return Vector3(LEVER_HUB.x, .97, face_z * signf(_face))
+
+func toggle(who: Node3D = null) -> void:
+	if is_automatic() or _door_name == "INTERIOR": _manual_until = Time.get_ticks_msec() + 5000
 	_alarm_shut = false   # opened again by hand
 	if _target_amount>.5:
 		_pending_open=false
 		_target_amount=0.0
+		if _door_name == "INTERIOR": _held_back = false
 		return
+	if _door_name == "INTERIOR": _held_back = true
+	_aim_away(who)
 	if not _habitat_inner_doors_closed():
 		# Queue this door, command the open neighbouring door(s) to seal, and
 		# only then open.  The player does not need to turn around and close the
@@ -339,7 +490,7 @@ func _update_status() -> void:
 		_indicator_material.emission=MHStyle.INFO*.6
 		_warning_light.light_energy=.2
 	else:
-		_status.text=("SEALED: BREACH\nE — OPEN " if _alarm_shut else "E — OPEN ")+_door_name+_noun()
+		_status.text=("SEALED: BREACH\nE — OPEN " if _alarm_shut else ("HOLD E — OPEN " if wants_hands() else "E — OPEN "))+_door_name+_noun()
 		_status.modulate=MHStyle.INK_100
 		_indicator_material.albedo_color=MHStyle.DANGER
 		_indicator_material.emission=MHStyle.DANGER*.7
@@ -355,21 +506,33 @@ func _build_hatch() -> void:
 	_model.name="BulkheadHatch"
 	add_child(_model)
 	MHPalette.apply(_model)
+	# Everything that seats on one face (leaf, gasket, hinge knuckles) sits in
+	# a holder mirrored in z when the leaf moves to the other face.
+	_face_holder=Node3D.new()
+	_face_holder.name="HatchFace"
+	add_child(_face_holder)
 	_pivot=Node3D.new()
 	_pivot.name="HatchHinge"
 	_pivot.position=HINGE
-	add_child(_pivot)
+	_face_holder.add_child(_pivot)
+	_lever=Node3D.new()
+	_lever.name="HatchLever"
+	_pivot.add_child(_lever)
+	_lever.position=Vector3(LEVER_HUB.x,LEVER_HUB.y,0.0)-HINGE
 	for node in _model.find_children("*","MeshInstance3D",true,false):
-		if String(node.name).begins_with("leaf_"): node.reparent(_pivot,true)
-	var leaf:=StaticBody3D.new()
-	leaf.name="HatchLeaf"
-	_pivot.add_child(leaf)
+		var part:=String(node.name)
+		if part.begins_with("leaf_lever"): node.reparent(_lever,true)
+		elif part.begins_with("leaf_"): node.reparent(_pivot,true)
+		elif part.begins_with("hatch_hinge") or part.begins_with("hatch_gasket"): node.reparent(_face_holder,true)
+	_leaf_body=StaticBody3D.new()
+	_leaf_body.name="HatchLeaf"
+	add_child(_leaf_body)
 	_leaf_collision=CollisionShape3D.new()
 	var shape:=BoxShape3D.new()
 	shape.size=Vector3(1.3,2.0,.073)
 	_leaf_collision.shape=shape
 	_leaf_collision.position=Vector3(.71,1.03,.0035)
-	leaf.add_child(_leaf_collision)
+	_leaf_body.add_child(_leaf_collision)
 	# The plate round the frame, flush with the habitat walls.
 	var plate:=StaticBody3D.new()
 	plate.name="HatchPlate"
@@ -413,3 +576,134 @@ func on_habitat_alert(id: String,_level: String) -> void:
 ## hatch free to use (nobody's waiting on its interlock)?
 func idle() -> bool:
 	return not _pending_open and absf(_target_amount-_amount)<.02
+
+
+# ---------- through an airlock hatch by hand ----------
+
+## Hold E at an airlock hatch (22 Nov playtest): you step up to it and,
+## while E is held, the lever turns, which frees the leaf (no arm for now).
+## The leaf The leaf swings away from you, you step through the frame (input
+## frozen, ~1.5 s, eased), and it swings shut behind you once you're clear.
+## Let go of E before the lever's over and it springs back: nothing opens.
+class HandMoment extends Node:
+	const REACH := .4      # step up and look at the lever
+	const TURN := .6       # E held this long turns the lever all the way
+	const RETRACT := .25
+	const STEP := 1.5      # through the frame
+	const WAIT_MAX := 6.0  # the interlock is sealing the other hatch
+	var door: AirlockDoor
+	var player: Node3D
+	var side := 1.0
+	var phase := "reach"
+	var t := 0.0
+	var turned := 0.0
+	var _start: Vector3
+	var _stand: Vector3
+	var _far: Vector3
+	var _yaw0 := 0.0
+	var _pitch0 := 0.0
+	var _yaw := 0.0
+	var _pitch := 0.0
+	var _froze := false
+
+	func _init(d: AirlockDoor, p: Node3D) -> void:
+		door = d
+		player = p
+		side = d.side_of(p)
+		name = "HandMoment"
+
+	func _ready() -> void:
+		if bool(player.get_meta("ui_freeze", false)):
+			queue_free()
+			return
+		player.set_meta("ui_freeze", true)
+		_froze = true
+		var local := door.to_local(player.global_position)
+		_start = player.global_position
+		_stand = door.to_global(Vector3(clampf(local.x, -.25, .3), 0.0, side * .95))
+		_stand.y = _start.y
+		_far = door.to_global(Vector3(0.0, 0.0, -side * 1.95))
+		var lift := _start.y - _floor_y(_start, _start.y)
+		_far.y = _floor_y(_far, _start.y) + lift
+		_yaw0 = player.rotation.y
+		_pitch0 = _head().rotation.x
+		var eye := _stand + Vector3.UP * 1.6
+		var aim := door.to_global(door.lever_point(side)).lerp(door.to_global(Vector3(0, 1.3, 0)), .6)
+		var to := aim - eye
+		_yaw = atan2(-to.x, -to.z)
+		_pitch = atan2(to.y, Vector2(to.x, to.z).length())
+		MHAudio.sfx_at("suit_clamp", door, -10.0)
+
+	func _head() -> Node3D:
+		return player.get_node("Head") as Node3D
+
+	func _floor_y(at: Vector3, fallback: float) -> float:
+		var space := (player as Node3D).get_world_3d().direct_space_state
+		var query := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 1.2, at + Vector3.DOWN * 2.5)
+		if player is CollisionObject3D: query.exclude = [(player as CollisionObject3D).get_rid()]
+		var hit := space.intersect_ray(query)
+		return float((hit.position as Vector3).y) if not hit.is_empty() else fallback
+
+	func _held() -> bool:
+		return MHInput.held("use") or Input.is_key_pressed(KEY_E)
+
+	func _physics_process(delta: float) -> void:
+		if not is_instance_valid(player):
+			_finish()
+			return
+		t += delta
+		match phase:
+			"reach":
+				var k := smoothstep(0.0, 1.0, t / REACH)
+				player.global_position = _start.lerp(_stand, k)
+				player.rotation.y = lerp_angle(_yaw0, _yaw, k)
+				_head().rotation.x = lerp_angle(_pitch0, _pitch, k)
+				if t >= REACH:
+					phase = "turn"
+					t = 0.0
+			"turn":
+				if _held(): turned = move_toward(turned, 1.0, delta / TURN)
+				else:
+					phase = "cancel"
+					t = 0.0
+				door._lever_angle = door.LEVER_TURN * smoothstep(0.0, 1.0, turned)
+				if turned >= 1.0:
+					MHAudio.sfx_at("door_interlock", door, -8.0)
+					door.toggle(player)
+					phase = "wait"
+					t = 0.0
+			"cancel":
+				# Let go early: the lever springs back.
+				turned = move_toward(turned, 0.0, delta * 4.0)
+				door._lever_angle = door.LEVER_TURN * smoothstep(0.0, 1.0, turned)
+				if t >= RETRACT and turned <= 0.0: _finish()
+			"wait":
+				if door.is_open():
+					phase = "step"
+					t = 0.0
+				elif t > WAIT_MAX: _finish()
+			"step":
+				var k := smoothstep(0.0, 1.0, t / STEP)
+				door._lever_angle = door.LEVER_TURN * (1.0 - smoothstep(0.0, 1.0, minf(t / .5, 1.0)))
+				var at := _stand.lerp(_far, k)
+				# Over the sill: a small lift mid-step.
+				at.y += sin(k * PI) * .06
+				player.global_position = at
+				var through := door.global_basis.z * -side
+				player.rotation.y = lerp_angle(_yaw, atan2(-through.x, -through.z), smoothstep(0.0, 1.0, minf(t / .6, 1.0)))
+				_head().rotation.x = lerp_angle(_pitch, deg_to_rad(-6.0), smoothstep(0.0, 1.0, minf(t / .6, 1.0)))
+				if t >= STEP:
+					player.global_position = _far
+					door._close_behind = true
+					_finish()
+
+	func _finish() -> void:
+		door._lever_angle = 0.0 if phase != "turn" else door._lever_angle
+		if _froze and is_instance_valid(player): player.set_meta("ui_freeze", false)
+		_froze = false
+		set_physics_process(false)
+		queue_free()
+
+	func _exit_tree() -> void:
+		if _froze and is_instance_valid(player): player.set_meta("ui_freeze", false)
+		_froze = false

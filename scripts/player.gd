@@ -393,8 +393,12 @@ func _toggle_nearby_airlock_door() -> void:
 		if door != null and global_position.distance_to(door.global_position) < nearest_distance:
 			nearest = door
 			nearest_distance = global_position.distance_to(door.global_position)
-	if nearest != null:
-		nearest.toggle()
+	if nearest == null: return
+	# Airlock hatches by hand: hold E, the glove turns the lever and you step
+	# through (scripts/airlock_door.gd HandMoment). Others swing away from you.
+	if nearest is AirlockDoor and (nearest as AirlockDoor).wants_hands(): (nearest as AirlockDoor).hand_open(self)
+	elif nearest is AirlockDoor: (nearest as AirlockDoor).toggle(self)
+	else: nearest.toggle()
 
 func _any_build_mode_active() -> bool:
 	return bool(get_meta("build_mode_active", false)) or bool(get_meta("interior_build_active", false)) or bool(get_meta("surface_build_active", false))
