@@ -111,8 +111,15 @@ func point_freed(point: Node) -> void:
 		if hud != null: hud.show_equipment_note("One line free", "%d still caught. Look for the amber tags." % left.size())
 	if left.is_empty():
 		if _cloth != null:
+			# It slides back off GAR-Y and settles on the ground there. It used
+			# to keep its height, so on a slope it was left hanging in the air
+			# (23 Nov playtest).
+			var from := _cloth.global_position
+			var clearance := from.y - MHSiteTerrain.height(from.x, from.z)
+			var to := (_cloth.get_parent() as Node3D).to_global(_cloth.position + Vector3(0, 0, 2.5))
+			to.y = MHSiteTerrain.height(to.x, to.z) + clearance
 			var t := create_tween()
-			t.tween_property(_cloth, "position", _cloth.position + Vector3(0, 0, 2.5), 2.0)
+			t.tween_property(_cloth, "global_position", to, 2.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		freed.emit()
 
 func _process(delta: float) -> void:
