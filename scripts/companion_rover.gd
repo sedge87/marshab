@@ -1263,6 +1263,7 @@ func interaction_prompt() -> Dictionary:
 		var lines_left := (snag.left as Array).size()
 		return {"label": "%s · caught: %d %s still to free" % [NAME, lines_left, "line" if lines_left == 1 else "lines"], "primary": "Look for the glowing tags", "info": "About"}
 	var pod := get_tree().get_first_node_in_group("lifepod")
+	if pod != null and pod.sled_module_for_walker(self) != null: return {"label": NAME + " · the power module's on its sled", "primary": "Plug it into Walker 1", "info": "About"}
 	if pod != null and pod.cargo_ready(self): return {"label": NAME + " · cargo on its sled", "primary": "Unload the cargo", "info": "About"}
 	if pod != null and pod.sled_ready(self): return {"label": "%s · %d kg of ice on its sled" % [NAME, roundi(float(pod.sled_kg))], "primary": "Melt the sled's ice", "info": "About"}
 	if pod != null and pod.gary_report_ready(): return {"label": NAME + " · out all night", "primary": "What did you find?", "info": "About"}
@@ -1297,6 +1298,11 @@ func interact(_actor: Node = null) -> bool:
 		return true
 	# Back at the lander with ice on its sled (scripts/lifepod.gd).
 	var pod := get_tree().get_first_node_in_group("lifepod")
+	var module_here: Node = pod.sled_module_for_walker(self) if pod != null else null
+	if module_here != null:
+		module_here.plug_in()
+		_say("tada")
+		return true
 	if pod != null and pod.cargo_ready(self):
 		pod.unload_cargo()
 		_say("tada")

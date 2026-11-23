@@ -672,17 +672,26 @@ func load_on_sled(item: Node3D, gary: Node3D) -> void:
 	if gary.has_method("order"): gary.order("come")
 	MHNotices.post("info", "On GAR-Y's sled", "GAR-Y tows it now. At the lander, E on GAR-Y unloads it.", "log")
 
+## 23 Nov playtest: the cargo comes off wherever you are (it only came off
+## by the lander or a base, so the power module was stuck on the sled out at
+## Walker 1). Away from the lander it's set down just behind GAR-Y.
 func cargo_ready(gary: Node3D) -> bool:
-	if sled_cargo.is_empty() or gary == null: return false
-	if gary.global_position.distance_to(world.lander.global_position) < SLED_REACH: return true
-	# Chapter 5: the Print Shop crate comes off at a base's core too.
-	return sled_cargo.any(func(item): return is_instance_valid(item) and str(item.get("kind")) == "print_shop") and SPARES_CRATE.near_a_core(world, gary.global_position)
+	if gary == null: return false
+	return sled_cargo.any(func(item): return item != null and is_instance_valid(item))
+
+## The power module on the sled with GAR-Y beside Walker 1: E on GAR-Y plugs
+## it straight in (scripts/power_module.gd).
+func sled_module_for_walker(gary: Node3D) -> Node:
+	if gary == null: return null
+	for item in sled_cargo:
+		if item != null and is_instance_valid(item) and item.is_in_group("power_module") and item.get_parent() == gary and item.near_walker(): return item
+	return null
 
 ## E on GAR-Y by the lander: the cargo comes off, set down side by side.
 func unload_cargo() -> void:
 	var i := 0
 	var gary: Node3D = sled_cargo[0].get_parent() as Node3D if not sled_cargo.is_empty() and is_instance_valid(sled_cargo[0]) else null
-	var at_lander: bool = gary == null or gary.global_position.distance_to(world.lander.global_position) < SLED_REACH or not SPARES_CRATE.near_a_core(world, gary.global_position)
+	var at_lander: bool = gary == null or gary.global_position.distance_to(world.lander.global_position) < SLED_REACH
 	for item in sled_cargo:
 		if item == null or not is_instance_valid(item): continue
 		var home: Node = item.get("drop") if item.get("drop") != null else item.get("site")

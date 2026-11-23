@@ -479,12 +479,17 @@ func _cable_length(down: float) -> void:
 	for cable in _cables:
 		if cable != null: (cable as Node3D).scale = Vector3(1, maxf(.05, .326 + down), 1)
 
+## 23 Nov playtest: an average of five spots let a wheel on a rise sink into
+## the ground. It now stands on the highest ground under its wheels (the four
+## corners and the middles of its sides), so none goes under.
 func _settle() -> void:
 	var p := global_position
-	var heights := 0.0
-	for offset in [Vector3.ZERO, global_basis.x * 7.0, -global_basis.x * 7.0, global_basis.z * 5.0, -global_basis.z * 5.0]:
-		heights += MHSiteTerrain.height(p.x + offset.x, p.z + offset.z)
-	global_position.y = heights / 5.0
+	var top := -INF
+	for sx in [-1.0, 0.0, 1.0]:
+		for sz in [-1.0, 0.0, 1.0]:
+			var offset: Vector3 = global_basis.x * 7.0 * sx + global_basis.z * 5.0 * sz
+			top = maxf(top, MHSiteTerrain.height(p.x + offset.x, p.z + offset.z))
+	global_position.y = top
 
 # ---------- the tracks it left ----------
 

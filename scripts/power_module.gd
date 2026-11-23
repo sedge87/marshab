@@ -205,23 +205,76 @@ func plug_in() -> void:
 		if pod != null: (pod.sled_cargo as Array).erase(self)
 	var hud: Node = world.get("explore_hud")
 	if hud != null: hud.hide_equipment_note("Carrying")
-	# Its plug (SocketFace) meets the walker's PowerSocket face to face.
-	var face := _box.find_child("SocketFace", true, false) as Node3D
-	var in_case := global_transform.affine_inverse() * face.global_transform if face != null else Transform3D.IDENTITY
+	# 23 Nov playtest: plugged in, it hung off the walker's side. Now it lines
+	# up with the socket (where its outline showed), then slides into the
+	# frame's berth and out of sight: it rides inside from here on.
+	var target := plugged_transform(walker)
+	var from := global_transform
 	get_parent().remove_child(self)
 	walker.add_child(self)
-	if face != null:
-		global_transform = (walker.socket_transform() * Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)) * in_case.affine_inverse()
-	else:
-		position = walker.SOCKET_LOCAL
-		rotation = Vector3.ZERO
+	global_transform = from
 	where = "plugged"
 	reachable(false)
+	_show_ghost(false)
+	var socket: Transform3D = walker.socket_transform()
+	var inward := socket.basis.z.normalized()   # the socket's -Z points out of it
+	var local_target := walker.global_transform.affine_inverse() * target
+	var local_in := walker.global_transform.affine_inverse() * Transform3D(target.basis, target.origin + inward * 1.2)
+	var tween := create_tween().set_trans(Tween.TRANS_SINE)
+	tween.tween_property(self, "transform", local_target, .6)
+	tween.tween_interval(.25)
+	tween.tween_property(self, "transform", local_in, .7).set_ease(Tween.EASE_IN)
+	tween.tween_callback(func(): visible = false)
 	_lamp_mat.albedo_color = Color("#ffb449")
 	_lamp_mat.emission = Color("#ffb449")
 	_lamp_mat.emission_energy_multiplier = 1.25
 	MHAudio.sfx("suit_clamp", -2.0)
 	walker.power_in()
+
+## Where it sits plugged in: its plug (SocketFace) face to face with the
+## walker's PowerSocket.
+func plugged_transform(walker: Node3D) -> Transform3D:
+	var face := _box.find_child("SocketFace", true, false) as Node3D
+	if face == null: return Transform3D(walker.global_basis, walker.to_global(walker.SOCKET_LOCAL))
+	var in_case := global_transform.affine_inverse() * face.global_transform
+	return (walker.socket_transform() * Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)) * in_case.affine_inverse()
+
+## 23 Nov playtest: it wasn't clear where the module goes. Within reach of
+## Walker 1, a glowing outline of it shows in the socket.
+var _ghost: Node3D
+var _ghost_check := 0.0
+func _process(delta: float) -> void:
+	if where == "plugged":
+		set_process(false)
+		return
+	_ghost_check -= delta
+	if _ghost_check > 0.0: return
+	_ghost_check = .2
+	var want := near_walker()
+	_show_ghost(want)
+	if want: _ghost.global_transform = plugged_transform(_walker())
+
+func _show_ghost(on: bool) -> void:
+	if not on:
+		if _ghost != null: _ghost.visible = false
+		return
+	if _ghost == null:
+		_ghost = _box.duplicate() as Node3D
+		_ghost.name = "SocketOutline"
+		_ghost.top_level = true
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(1.0, .62, .2, .28)
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.no_depth_test = false
+		for mesh in _ghost.find_children("*", "MeshInstance3D", true, false):
+			(mesh as MeshInstance3D).material_override = mat
+			(mesh as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if _ghost is MeshInstance3D: (_ghost as MeshInstance3D).material_override = mat
+		var walker := _walker()
+		(walker if walker != null else site).add_child(_ghost)
+	_ghost.visible = true
 
 # ---------- GAR-Y's sled claims E while you carry it ----------
 

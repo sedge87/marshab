@@ -26,6 +26,7 @@ var world: Node
 var drop: Node                   # where it lives when it's on the ground (lifepod.unload_cargo)
 var where := "ground"            # ground, sled
 var opened := false
+var gone := false                # 23 Nov playtest: the empty crate sinks away a bit after opening
 var _shape: CollisionShape3D
 var _lid: MeshInstance3D
 
@@ -40,6 +41,9 @@ func setup(target_world: Node, home: Node, at: Vector3, saved: Dictionary) -> vo
 	_build()
 	global_position = Vector3(at.x, MHSiteTerrain.height(at.x, at.z), at.z)
 	rotation.y = float(saved.get("yaw", randf() * TAU))
+	# An opened crate is cleared away once it's empty (opened in an older
+	# save counts too). The node stays, hidden, so nothing spawns it again.
+	if opened: _hide()
 	if kind == "print_shop" and not opened: _mark.call_deferred()
 
 ## 23 Nov playtest: opening pallet 6 took its mark off the compass, and the
@@ -118,7 +122,23 @@ func _open_lid() -> void:
 	_lid.rotation.x = deg_to_rad(-70.0)
 
 func reachable(on: bool) -> void:
-	_shape.disabled = not on
+	_shape.disabled = not on or gone
+
+const CLEAR_AFTER := 6.0         # seconds the open, empty crate stays in view
+## The empty crate settles into the dust and goes.
+func _clear_away() -> void:
+	await get_tree().create_timer(CLEAR_AFTER).timeout
+	if not is_inside_tree() or gone: return
+	_shape.disabled = true
+	var tween := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(self, "position:y", position.y - 1.4, 2.5)
+	tween.tween_callback(_hide)
+
+func _hide() -> void:
+	gone = true
+	visible = false
+	if _shape != null: _shape.disabled = true
+	set_process(false)
 
 func _lifepod() -> Node:
 	return world.get("lifepod")
@@ -181,6 +201,7 @@ func _open() -> void:
 		pod.parts = int(pod.parts) + PARTS
 		pod.walker_due = true   # day 2's work done: the walker moves tonight
 	MHChapterOne.stock["spares_kit"] = int(MHChapterOne.stock.get("spares_kit", 0)) + SPARES
+	_clear_away()
 	MHNotices.post("valid", "Spares crate", "Wiring, brackets, seals and fasteners: %d parts for the lander's printer, %d spares kits put by for the module, and a bigger air pack for your suit." % [PARTS, SPARES], "log")
 	# 15 Nov playtest: the bare suit's first add-on comes here, after a day of
 	# feeling its limit (it was at pallet 1). It goes on at the next refill.
@@ -200,6 +221,7 @@ func _open_print_shop() -> void:
 	for id in ["fabricator", "regolith_intake"]:
 		MHChapterOne.stock[id] = int(MHChapterOne.stock.get(id, 0)) + 1
 	MHChapterOne.feedstock_kg += STARTER_FEEDSTOCK
+	_clear_away()
 	MHNotices.post("valid", "Pallet 6: the Print Shop", "The Print Shop, a regolith intake and a %s sack of regolith, in the store. B for the build bar: they're on its Unpacked tab." % MHStyle.kg(roundi(STARTER_FEEDSTOCK)), "log")
 	MHAudio.moment()
 	var radio: Node = world.get("radio")
