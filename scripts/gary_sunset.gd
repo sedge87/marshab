@@ -67,6 +67,10 @@ func _wait(delta: float) -> void:
 	_check = .5
 	var g := gary()
 	if g == null or not bool(world.get("gary_met")): return
+	# 23 Nov: never while it's running a survey line (the offer pulled it off
+	# the line halfway, and the rest read "no reading").
+	for survey in get_tree().get_nodes_in_group("survey_line"):
+		if not (survey.get("running") as Dictionary).is_empty(): return
 	var hour := MHGame.sol_hour
 	var sunset := _sunset_hour()
 	if hour < sunset - OFFER_FROM or hour > sunset + OFFER_UNTIL: return

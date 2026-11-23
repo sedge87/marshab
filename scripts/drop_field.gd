@@ -329,7 +329,7 @@ func _bearing(p: Vector3) -> float:
 	return atan2(p.x - home.x, p.z - home.z)
 
 ## The best spot for a kind of pallet, round the lander.
-func choose(kind: String, nearest: float, furthest: float, ground: String, taken: Array, ridge: Vector3, from := Vector3.INF) -> Vector3:
+func choose(kind: String, nearest: float, furthest: float, ground: String, taken: Array, ridge: Vector3, from := Vector3.INF, ridge_clear := 250.0) -> Vector3:
 	var home: Vector3 = world.lander.global_position if is_inf(from.x) else from
 	var best := -INF
 	var out := Vector3.INF
@@ -338,7 +338,7 @@ func choose(kind: String, nearest: float, furthest: float, ground: String, taken
 			var bearing := step * TAU / 24.0
 			if taken.any(func(b): return absf(angle_difference(float(b), bearing)) < deg_to_rad(APART_DEG)): continue
 			var p := home + Vector3(sin(bearing), 0, cos(bearing)) * float(distance)
-			if not is_inf(ridge.x) and Vector2(p.x - ridge.x, p.z - ridge.z).length() < 250.0: continue
+			if not is_inf(ridge.x) and Vector2(p.x - ridge.x, p.z - ridge.z).length() < ridge_clear: continue
 			var h: float = MHSiteTerrain.height(p.x, p.z)
 			var slope := _slope(p, 6.0)
 			if slope > 2.5: continue

@@ -85,6 +85,7 @@ const PHOTO_METRES := 70.0
 ## kneel by the lander for the night.
 const STALL_NEAR_V3 := 400.0
 const STALL_FAR_V3 := 600.0
+const WALKER_RIDGE_CLEAR_V3 := 400.0   # metres from the parachute (pallet 1)
 const PARK_V3 := 18.0            # it kneels this close to the lander overnight
 const SOCKET_LOCAL := Vector3(-2.2, 1.6, 0.0)   # the power socket on its frame, in its own frame
 const SEE_SEAL := 6.0            # this close to the bad seal and you've seen it
@@ -225,7 +226,14 @@ func _choose() -> Vector3:
 	var pod: Node = world.get("lifepod")
 	if pod != null:
 		for kind in pod.sites: taken.append(field._bearing(pod.sites[kind].global_position))
-	if _v3(): return field.choose("walker", STALL_NEAR_V3, STALL_FAR_V3, "flat", taken, ridge)
+	if _v3():
+		# 23 Nov playtest: from the parachute the walker looked right beside
+		# it. It goes round the other side: 90°+ from the parachute's bearing
+		# (two blocked bearings 45° either side, each blocking 50°) and 400 m clear.
+		if not is_inf(ridge.x):
+			var b: float = field._bearing(ridge)
+			taken.append_array([b - deg_to_rad(45.0), b + deg_to_rad(45.0)])
+		return field.choose("walker", STALL_NEAR_V3, STALL_FAR_V3, "flat", taken, ridge, Vector3.INF, WALKER_RIDGE_CLEAR_V3)
 	return field.choose("walker", STALL_NEAR, STALL_FAR, "flat", taken, ridge)
 
 func _v3() -> bool:

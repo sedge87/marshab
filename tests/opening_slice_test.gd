@@ -227,6 +227,14 @@ func _initialize() -> void:
 	var field: Node = world.drop_field
 	var cradle_d: float = lander.global_position.distance_to(field.sites.gary.at)
 	check(cradle_d > 100.0 and cradle_d < 200.0, "GAR-Y's cradle is %.0f m out, not ~150" % cradle_d)
+	# 23 Nov playtest: Walker 1 stalled right beside the parachute; it's round the other side now.
+	var ridge_at: Vector3 = world.storm_drop.ridge
+	var walker_at: Vector3 = (world.walker as Node3D).global_position
+	if not is_inf(ridge_at.x):
+		var apart := Vector2(walker_at.x - ridge_at.x, walker_at.z - ridge_at.z).length()
+		var lander_at: Vector3 = lander.global_position
+		var turn := rad_to_deg(absf(angle_difference(atan2(walker_at.x - lander_at.x, walker_at.z - lander_at.z), atan2(ridge_at.x - lander_at.x, ridge_at.z - lander_at.z))))
+		check(apart >= 400.0 and turn >= 90.0, "Walker 1 is %.0f m and %.0f° from the parachute, not 400 m+ and 90°+" % [apart, turn])
 	var gary: Node3D = world.scout_rover
 	check(gary != null and field.snag != null, "GAR-Y isn't out there snagged")
 	if gary != null:
