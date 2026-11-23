@@ -283,7 +283,8 @@ func _together(delta: float, begin: float) -> void:
 		_eyes(Color("#8CF5A0"), 1.1, .7)
 	if _cue("swell", begin + 5.8): MHAudio.moment()
 	if _cue("title", begin + 6.4): _show_title()
-	if _cue("thought", begin + 7.6):
+	# After the name card has gone (23 Nov playtest: the thought sat on top of it).
+	if _cue("thought", begin + 11.2):
 		var notes: Node = world.get("notes")
 		if notes != null: notes.think("not_alone")
 	var length := PALLET_SECONDS if mode == "pallet" else DOOR_SECONDS
@@ -315,9 +316,9 @@ func _build_title() -> void:
 func _show_title() -> void:
 	if _title == null: return
 	var tween := create_tween()
-	tween.tween_property(_title, "modulate:a", 1.0, 1.2)
-	tween.tween_interval(3.2)
-	tween.tween_property(_title, "modulate:a", 0.0, 1.4)
+	tween.tween_property(_title, "modulate:a", 1.0, 1.0)
+	tween.tween_interval(2.6)
+	tween.tween_property(_title, "modulate:a", 0.0, 1.0)   # gone by begin + 11.0
 
 func _finish() -> void:
 	var finished_mode := mode
