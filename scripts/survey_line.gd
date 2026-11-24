@@ -118,6 +118,8 @@ static func _to_segment(p: Vector2, a: Vector2, b: Vector2) -> float:
 ## What a line is of: "pad" (it crosses the planned pad), "pit" (by the
 ## Collapse pit) or "line".
 func kind_of(a: Vector2, b: Vector2) -> String:
+	var four: Node = get_tree().get_first_node_in_group("chunk_four") if is_inside_tree() else null
+	if four != null and bool(four.near_bench(a, b)): return "bench"   # chunk 4: a line at the bench
 	if pad == null: return "line"
 	if _to_segment(pad.centre_2d(), a, b) <= PAD_REACH: return "pad"
 	var pit: Vector2 = pad.pit_centre()
@@ -163,6 +165,10 @@ func far_reason(at: Vector3) -> String:
 	if pad != null:
 		var pit: Vector2 = pad.pit_centre()
 		if not is_inf(pit.x) and _to_segment(pit, Vector2(first.x, first.z), Vector2(at.x, at.z)) < PIT_KEEP: return "That line runs over the edge: GAR-Y can't drive it"
+	var four: Node = get_tree().get_first_node_in_group("chunk_four") if is_inside_tree() else null
+	if four != null and bool(four.near_bench(Vector2(first.x, first.z), Vector2(at.x, at.z))):
+		var c3: Node = four.call("_chunk3")
+		if c3 == null or not bool(c3.sled_fitted()): return "That deep needs the sled on GAR-Y's hitch"
 	return ""
 
 ## A line is GAR-Y reading the ground between two stakes: no line until it's
@@ -227,6 +233,10 @@ func plant(at: Vector3) -> bool:
 	readings.resize(count)
 	readings.fill(null)
 	running = {"a": [a.x, a.y], "b": [b.x, b.y], "kind": kind_of(a, b), "readings": readings, "verdict": ""}
+	if str(running.kind) == "bench":
+		# Chunk 4: the sled can't take the bench's edge step; GAR-Y stops short of it.
+		var four := get_tree().get_first_node_in_group("chunk_four")
+		running["stop_t"] = float(four.step_cross(a, b)) if four != null else -1.0
 	_start_run()
 	return true
 
@@ -386,7 +396,15 @@ func _run(_delta: float) -> void:
 				_best_t = t
 				_progress_at = _clock
 				_read_up_to(t)
-			if t > .97 or at.distance_to(b) < 2.0 or (str(gary.task).is_empty() and at.distance_to(b) < 4.0):
+			var stop_t := float(running.get("stop_t", -1.0))
+			if stop_t >= 0.0 and t >= stop_t - .03 and off < 4.0:
+				# Scene 22: the sled tips its nose at the step, GAR-Y chirps and stops.
+				running["stalled"] = true
+				_read_up_to(maxf(stop_t - .03, 0.0))
+				gary.call("_end_task")
+				gary.call("_say", "worried")
+				_finish()
+			elif t > .97 or at.distance_to(b) < 2.0 or (str(gary.task).is_empty() and at.distance_to(b) < 4.0):
 				_read_up_to(1.0)
 				_finish()
 			elif str(gary.task).is_empty():
@@ -467,9 +485,11 @@ static func label_for(line: Dictionary) -> String:
 	match str(line.get("kind", "")):
 		"pad": return "Across the planned pad"
 		"pit": return "At the Collapse pit"
+		"bench": return "Across the bench"
 	return "Survey line"
 
 static func verdict_text(line: Dictionary) -> String:
+	if bool(line.get("stalled", false)): return "solid to the step; unresolved past it"
 	match str(line.get("verdict", "")):
 		"void": return "a void band"
 		"faint": return "faint: hard to read"

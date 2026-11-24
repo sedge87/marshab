@@ -37,6 +37,7 @@ var _at := Vector3.INF
 var _ground := 0.0
 var _core := {}
 var _strokes := 0
+var _through := false   # chunk 4: this core dropped through the step's soft layer
 var _rushed := 0
 var _stalled := false
 var _draw := 0.0
@@ -91,8 +92,13 @@ func _target() -> Vector3:
 	for node in [world.lander] + (world.cargo_landers as Array):
 		if node != null and Vector2(node.global_position.x - at.x, node.global_position.z - at.z).length() < KEEP_CLEAR_M: return Vector3.INF
 	if not world.builder.zones.is_empty() and world.builder.call("_zone_at_point", Vector2(at.x, at.z)).size() > 0: return Vector3.INF
-	if not ICE_KNOWLEDGE.surveyed(ICE_KNOWLEDGE.samples(get_tree()), Vector2(at.x, at.z)): return Vector3.INF
+	if not ICE_KNOWLEDGE.surveyed(ICE_KNOWLEDGE.samples(get_tree()), Vector2(at.x, at.z)) and not _bench_ok(at): return Vector3.INF
 	return at
+
+## Chunk 4: Kai's optional core at the bench (the bench line is the survey).
+func _bench_ok(at: Vector3) -> bool:
+	var four: Node = get_tree().get_first_node_in_group("chunk_four")
+	return four != null and bool(four.allows_core(Vector2(at.x, at.z)))
 
 ## Why holding E here takes no core, when the only reason is the ground
 ## hasn't been surveyed (shown while you hold E): the way to the nearest
@@ -184,6 +190,7 @@ func _plant(at: Vector3) -> void:
 	_strokes = 0
 	_rushed = 0
 	_stalled = false
+	_through = false
 	_draw = 0.0
 	_last_stroke = -10.0
 	_reset_heard = true
@@ -218,6 +225,14 @@ func _stroke() -> void:
 	_reset_heard = false
 	_rig.call("stroke", STROKE_GAP)
 	_sink(float(_strokes) / float(STROKES))
+	# Chunk 4, scene 23: near the bench's step the ground's a soft layer, and it drops through.
+	var four: Node = get_tree().get_first_node_in_group("chunk_four")
+	if not _through and _strokes == 3 and four != null and bool(four.soft_at(Vector2(_at.x, _at.z))):
+		_through = true
+		_strokes = STROKES
+		MHAudio.sfx("land", -4.0, .5)
+		_kai("s4_through")
+		world.builder._flash_notice("info", "It dropped through", "A soft layer: the corer fell the rest of the way on its own. Open the head and see what came up.")
 	if _strokes >= STROKES:
 		stage = "open"
 		_kai("corer_open")
@@ -239,7 +254,10 @@ func _cap() -> void:
 	var core := _core.duplicate()
 	core["partial"] = _rushed >= RUSHED_LIMIT
 	if bool(core.partial): core["good"] = false
-	if not _icy() and not bool(core.dry):
+	if _through:
+		core["through"] = true
+		core["good"] = false
+	if not _icy() and not bool(core.dry) and not _through:
 		core["good"] = false   # the regolith shoe stopped above the ice
 		core["above_ice"] = true
 	_take_core(core)
@@ -292,7 +310,10 @@ func _take_core(core: Dictionary) -> void:
 	MHAudio.sfx("ui_confirm", -6.0)
 	var title := ""
 	var text := ""
-	if bool(core.get("partial", false)):
+	if bool(core.get("through", false)):
+		title = "Core: dropped through"
+		text = "Loose, layered grit with a soft band you could press a thumb into, about a metre down. Not ice. Not a hazard on its own, but worth a note: the bench's edge isn't as solid as it looks."
+	elif bool(core.get("partial", false)):
 		title = "Core: smeared"
 		text = "You drove it too fast and the layers ran together. %s Take another, a stroke at a time." % ("Dry, as far as you can tell." if bool(core.dry) else "There's ice in it, but you can't read how deep or how clean.")
 	elif bool(core.get("above_ice", false)):

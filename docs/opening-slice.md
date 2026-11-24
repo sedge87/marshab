@@ -774,6 +774,19 @@ Scenes 13–18, the free stretch after the new job. Review and decisions: `docs/
   - fitting the connector at the beacon (Chunk 4);
   - nothing has been looked at in the running game.
 
+## 10d. Chunk 4 as built (24 Nov)
+Scenes 19–24, the bench across the Dry channel. `scripts/chunk_four.gd` owns it (saved as `chunk4`); `tests/opening_slice_test.gd` carries on through it. Not hand-played; the logger and the stuck-at-step sled are stand-ins.
+- **Beats** (`FREE_BEATS`, after `ready`): `bench_call` (rings `s4_candidate`, hands over the logger's plan), then call-less goals `logger_printed`, `logger_read`, `bench_survey`, `beacon_down`, `beacon_lit`. Calls are in `data/radio/slice/act4.txt`; Ask orbit hints are in `hints.txt`.
+- **Places** (region metres): bench (-832, 1181), crossings N (-890.2, 1055.5) and S (-872.8, 1450.3), the edge step along x = -880 (z 1100–1262). The old placeholder bench is gone.
+- **Dust** (`site_weather.gd`): three fog layers at each crossing, on the canyon fog shader, visual only. Density ramps 12:00–14:30 and fades 18:00–19:30; north 0.8, south 0.16.
+- **Wind logger:** a hand part (`MHChapterOne.HAND`, 6 kg iron, 3 salvage) handed over by Devan's call; kit slot 5 (`field_kit.gd`, key 5); E sets it down, E at it picks it up. Its screen shows two traces: calm in the lee and below the step, split on the rim (within 12 m east of the step), true on the shoulder (12–30 m east). Each reading rings once after 4 s standing (`s4_logger_calm / _split / _good`).
+- **Crossing call** (`s4_crossing`): once, within 70 m of either crossing.
+- **Sled survey** (`survey_line.gd`): a line within 80 m of the bench is kind `bench`, needs the sled on the hitch, and GAR-Y stops 3% short of the step (a worried chirp), the rest hatched, `stalled` set; Tamsin rings `s4_stall`.
+- **Kai's core** (`hand_corer.gd`): after a bench line, a core within 90 m of the bench is allowed; within 8 m of the step the third stroke drops through (`through` core, `s4_through`); it's not ice.
+- **The beacon** (`pad_site.gd`, `chunk_three.gd`, `chunk_four.gd`): once ready, hold E at the pad's upright beacon with GAR-Y near to unbolt it; it lies on the hitch as fitting `beacon` (one load at a time, so the sled is off). At the orange feet marker on the bench hold E (GAR-Y within 14 m) to stand it up, then hold E at its torn lead to fit the printed connector (it's used up). The lamp lights, and Devan's lock rings `s4_lit`. Setting the feet is folded into standing it up.
+- **Saved:** `chunk4` (beacon stage, logger position and readings, crossing call), `taken` on the pad.
+- **Not done:** the stuck-at-step sled pose, the logger model, real feet-setting, the beacon on the Map, voices for `s4_*` lines (`tools/generate_voice.py`), a visibility hook beyond the visual dust, hold-G *Survey here*.
+
 ## 11. Open questions
 - Do the Earth Mission Control letters stay?
 - How much of the current day 1–5 radio survives once the order changes?

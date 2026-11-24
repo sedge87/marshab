@@ -31,12 +31,14 @@ var _windows: Array = []           # [pane, material]
 var _cleaned := {}                 # devil node id -> array keys it has cleaned
 var _indoors := false
 const MAX_TRACKS := 16
+const CHUNK_FOUR := preload("res://scripts/chunk_four.gd")
 
 var world: Node
 var site := ""
 var _rng := RandomNumberGenerator.new()
 var _fog: Array[MeshInstance3D] = []
 var _fog_heights: Array = []
+var _dust: Array = []            # chunk 4: [{layers: [MeshInstance3D], strength}] at the Dry channel's crossings
 var _snow: CPUParticles3D
 var _streaks: CPUParticles3D
 var _clouds: MeshInstance3D
@@ -72,6 +74,7 @@ func setup(target_world: Node) -> void:
 			_build_rays()
 		_:
 			_build_streaks(Vector3(1, 0, 0))
+			_build_channel_dust.call_deferred()
 	_build_halo()
 	var builder: Node = world.builder
 	if builder != null and builder.has_signal("habitat_changed"):
@@ -104,6 +107,7 @@ func _process(delta: float) -> void:
 		_:
 			_update_devils(on, hour, delta, true)
 			_update_gusts(on, hour)
+			_update_channel_dust(on, hour)
 			_update_quake(on, delta)
 	_marks_check -= delta
 	if _marks_check <= 0.0:
@@ -203,6 +207,55 @@ func _set_fog(amount: float, lift := 0.0) -> void:
 		var thick := amount * lerpf(1.0, .45, float(i) / maxf(1.0, _fog.size() - 1.0))
 		(layer.material_override as ShaderMaterial).set_shader_parameter("density", thick)
 		layer.position.y = float(_fog_heights[i]) + lift
+
+# ---------- the Dry channel's crossings (chunk 4) ----------
+
+## Dust at the two crossings (docs/opening-slice.md Scene 20): visual only. The
+## north crossing's open and funnels the afternoon wind, so it clouds; the
+## south one's banked and sheltered, so it barely does. Three fog layers at
+## each, on the same shader as the canyon cloud and the ice fog.
+func _build_channel_dust() -> void:
+	var crossings: Dictionary = CHUNK_FOUR.crossings_site()
+	if crossings.is_empty() or not _dust.is_empty(): return
+	var shader := Shader.new()
+	shader.code = FOG_SHADER
+	for key in crossings:
+		var at: Vector2 = crossings[key]
+		var north: bool = str(key) == "north"
+		var entry := {"layers": [], "strength": .8 if north else .16}
+		var ground := TERRAIN.height(at.x, at.y)
+		for height in [.7, 1.8, 3.2]:
+			var layer := MeshInstance3D.new()
+			var mesh := PlaneMesh.new()
+			mesh.size = Vector2(150.0, 150.0) if north else Vector2(90.0, 90.0)
+			layer.mesh = mesh
+			layer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var material := ShaderMaterial.new()
+			material.shader = shader
+			material.set_shader_parameter("tint", Color("#D2B79B"))
+			material.set_shader_parameter("scale", .03)
+			material.set_shader_parameter("drift", Vector2(_rng.randf_range(.4, 1.0), _rng.randf_range(-.3, .3)))
+			layer.material_override = material
+			layer.visible = false
+			add_child(layer)
+			layer.global_position = Vector3(at.x, ground + float(height), at.y)
+			(entry.layers as Array).append(layer)
+		_dust.append(entry)
+
+## The wind rises after midday and drops towards dusk.
+func _dust_amount(hour: float) -> float:
+	return smoothstep(12.0, 14.5, hour) * (1.0 - smoothstep(18.0, 19.5, hour))
+
+func _update_channel_dust(on: bool, hour: float) -> void:
+	if _dust.is_empty(): return
+	var ramp := _dust_amount(hour) if on else 0.0
+	for entry in _dust:
+		var layers: Array = entry.layers
+		for i in layers.size():
+			var layer := layers[i] as MeshInstance3D
+			var amount := float(entry.strength) * ramp * lerpf(1.0, .5, float(i) / 2.0)
+			layer.visible = amount > .01
+			if layer.visible: (layer.material_override as ShaderMaterial).set_shader_parameter("density", amount)
 
 # ---------- Ice Fields ----------
 

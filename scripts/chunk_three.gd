@@ -29,6 +29,9 @@ const FITTINGS := {
 		"says": "A small regolith scoop. Not used in the rehearsal yet."},
 	"sled": {"label": "Survey sled", "model": SLED, "mount": "RearMount", "slot": "hitch",
 		"says": "Tamsin's deep-radar sled, towed on the hitch's cable."},
+	# Chunk 4: the pad's beacon, towed to the bench. The hitch holds one load at a time.
+	"beacon": {"label": "Pad beacon", "model": "res://assets/models/chunk2/pad_beacon.glb", "mount": "RearMount", "slot": "hitch",
+		"says": "The pad's beacon, unbolted and laid on the hitch. It goes up at the bench."},
 }
 const SLOTS := ["mast", "front", "hitch"]
 const OUTCROP_RADIUS := 1.8
@@ -87,6 +90,9 @@ func have(fitting: String) -> bool:
 		"radar": return MHChapterOne.unpacked.has("radar_sled_frame")
 		"lamps", "scoop": return MHChapterOne.unpacked.has("eva_station") or MHChapterOne.placed_count("eva_station", _builder()) > 0
 		"sled": return sled_built
+		"beacon":
+			var four := get_tree().get_first_node_in_group("chunk_four")
+			return four != null and str(four.beacon_state) == "carried"
 	return false
 
 ## The station's choice for a slot (one fitting or nothing). The front's
@@ -178,6 +184,11 @@ func _refresh_gary() -> void:
 		mount.add_child(model)
 		_shown[slot] = model
 		if want == "sled": _trail(model, mount)
+		if want == "beacon":
+			# Laid along GAR-Y's back, its foot to the rear.
+			model.rotation_degrees = Vector3(-90, 0, 0)
+			model.scale = Vector3.ONE * .85
+			model.position = Vector3(0, .25, -.2)
 		if want == "lamps": _lamp_lights(model)
 
 ## The sled trails behind the hitch: its tow point on the cable's end, on

@@ -1,7 +1,7 @@
 extends Node
 
 ## The field kit's four slots (opening slice, docs/opening-slice.md §4a
-## Scene 3): what's in your hand is what you chose, with 1–4, never guessed
+## Scene 3): what's in your hand is what you chose, with 1–5, never guessed
 ## from what you're looking at. 1 the hand corer, 2 the rock hammer, 3 the
 ## sample scoop, 4 the survey stakes (chunk 2). The same key again puts it
 ## away. Only a version 3 game gates the tools; older games keep working the
@@ -21,6 +21,7 @@ const SLOTS := [
 	["hammer", "Rock hammer"],
 	["scoop", "Sample scoop"],
 	["stakes", "Survey stakes"],
+	["logger", "Wind logger"],   # chunk 4: printed after Devan's ask
 ]
 const HELD_AT := Vector3(.32, -.34, -.62)
 
@@ -60,6 +61,7 @@ func has(id: String) -> bool:
 		"stakes":   # the survey line (chunk 2, scripts/survey_line.gd): the bundle's in the stores pallet
 			var line: Node = get_tree().get_first_node_in_group("survey_line") if is_inside_tree() else null
 			return line != null and bool(line.have_stakes())
+		"logger": return MHChapterOne.parts.has("wind_logger")
 	return false
 
 func label(id: String) -> String:
@@ -94,7 +96,7 @@ func select(index: int) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not gates(world) or not (event is InputEventKey) or not event.pressed or event.echo: return
 	var key := (event as InputEventKey).keycode
-	if key < KEY_1 or key > KEY_4 or (event as InputEventKey).ctrl_pressed: return
+	if key < KEY_1 or key > KEY_5 or (event as InputEventKey).ctrl_pressed: return
 	var player: Node = world.get("player")
 	if player == null or bool(player.get_meta("ui_freeze", false)) or bool(player.get_meta("driving", false)) or player._any_build_mode_active(): return
 	var pda: Node = world.get("pda")
@@ -134,6 +136,9 @@ func _show() -> void:
 				_model.scale = Vector3.ONE * .7
 				_model.rotation_degrees = Vector3(-12, 10, -8)
 			else: _model = _stand_in([[Vector3(.02, .3, .02), Vector3.ZERO, "orange"]])
+		"logger":
+			# A folded tripod (a stand-in until the logger model comes): legs, a box, a cup head.
+			_model = _stand_in([[Vector3(.03, .5, .03), Vector3(0, 0, .1), "dark_alloy"], [Vector3(.12, .08, .1), Vector3(0, -.12, .1), "graphite"], [Vector3(.07, .03, .07), Vector3(0, .26, .1), "white_painted"]])
 	if _model == null: return
 	_model.name = "InHand"
 	camera.add_child(_model)

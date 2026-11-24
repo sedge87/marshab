@@ -357,7 +357,7 @@ func _lines_page() -> Control:
 
 func _kit_page() -> Control:
 	var page := MHStyle.vbox(14)
-	page.add_child(_heading("Kit", "What's in your hands is what you chose: 1–4."))
+	page.add_child(_heading("Kit", "What's in your hands is what you chose: 1–5."))
 	var kit: Node = world.get("field_kit")
 	if kit != null:
 		for slot in kit.slots():

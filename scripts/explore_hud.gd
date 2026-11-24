@@ -704,6 +704,15 @@ func _update_prompt() -> void:
 			_prompt_keys.text = MHInput.glyph("use") if can else ""
 			_prompt_verb.text = said
 			_prompt_state.text = ""
+	# Chunk 4: the wind logger in hand (scripts/chunk_four.gd).
+	if not show:
+		var four := get_tree().get_first_node_in_group("chunk_four")
+		var logger_said: String = four.call("prompt_text") if four != null else ""
+		if not logger_said.is_empty():
+			show = true
+			_prompt_keys.text = MHInput.glyph("use")
+			_prompt_verb.text = logger_said
+			_prompt_state.text = ""
 	# Step 5: a rock to chip, or the ground at your feet to scoop.
 	if not show:
 		var tools := get_tree().get_first_node_in_group("sample_tools")

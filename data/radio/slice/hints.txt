@@ -77,3 +77,28 @@ Achterberg: The EVA station sets GAR-Y's hitch. Put the sled on it and go out to
 ~ hint_ready
 Castellanos: Whenever you're ready. Call us from the slate or the base radio. [ID:hint_ready_01]
 => END
+
+# Chunk 4 (the free stretch, Act 4): Ask only, never a stall hint.
+~ hint_bench_call
+Castellanos: Take your time. Get your gear together and head for the bench. [ID:hint_bench_call_01]
+=> END
+
+~ hint_logger_printed
+Achterberg: The logger's plan is on your slate. A small print. It lands in kit slot five. [ID:hint_logger_printed_01]
+=> END
+
+~ hint_logger_read
+Rao: Put the logger where you'd trust it, then look at both traces. Move it if they disagree. [ID:hint_logger_read_01]
+=> END
+
+~ hint_bench_survey
+Achterberg: Stake a line across the bench with GAR-Y and the sled. The deep readings will tell us. [ID:hint_bench_survey_01]
+=> END
+
+~ hint_beacon_down
+Achterberg: The beacon's still at the old pad. GAR-Y can tow it on the hitch, one load at a time. [ID:hint_beacon_down_01]
+=> END
+
+~ hint_beacon_lit
+Rao: Stand the beacon at the bench, fit the connector, and I'll lock on from here. [ID:hint_beacon_lit_01]
+=> END

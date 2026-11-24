@@ -58,11 +58,21 @@ const FREE_BEATS := [
 	["sled_built", "s3_sled_built"],# the printed fittings bolted to the frame
 	["sled_fitted", "s3_sled_out"], # out through the lock with the sled on GAR-Y
 	["ready", ""],                  # "Call Castle: I'm ready" (slate or base radio); the bench pinned
+	# Chunk 4, Act 4 (Scenes 19-24, scripts/chunk_four.gd): the bench across the Dry channel.
+	["bench_call", "s4_candidate"], # the candidate framed; Devan's ask for wind; the logger's plan
+	["logger_printed", ""],         # the wind logger out of the drawer (kit slot five)
+	["logger_read", ""],            # it stood where both traces agree
+	["bench_survey", ""],           # a line across the bench with the sled (it stalls at the edge step)
+	["beacon_down", ""],            # the pad's beacon unbolted onto GAR-Y's hitch
+	["beacon_lit", ""],             # stood at the bench, the connector fitted, lit: Devan's lock
 ]
 const FINAL_BEAT := "ready"
-## The bench across the Dry channel (data/region_layout.json "channel",
-## bench 0.5: its middle reach, the east side), region metres.
-const BENCH := Vector2(-905.0, 1200.0)
+## The bench across the Dry channel, region metres: fixed from a terrain
+## sample on 24 Nov (scripts/chunk_four.gd; docs/opening-slice.md).
+const CHUNK_FOUR := preload("res://scripts/chunk_four.gd")
+const BENCH := CHUNK_FOUR.BENCH
+var chunk4: Node                 # chunk 4: the bench, the logger, the beacon's tow
+var _chunk4_state := {}
 const CHUNK_THREE := preload("res://scripts/chunk_three.gd")
 var chunk3: Node                 # chunk 3: the outcrop, the case, the sled, GAR-Y's fittings
 var _chunk3_state := {}
@@ -101,6 +111,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	_pad_state = saved.get("pad", {}) as Dictionary
 	_lines_state = saved.get("lines", {}) as Dictionary
 	_chunk3_state = saved.get("chunk3", {}) as Dictionary
+	_chunk4_state = saved.get("chunk4", {}) as Dictionary
 	_bench_pinned = bool(saved.get("bench_pinned", false))
 	RADIO.opening_set = "slice"
 	_build_pad.call_deferred()
@@ -118,12 +129,16 @@ func _build_pad() -> void:
 	chunk3 = CHUNK_THREE.new()
 	add_child(chunk3)
 	chunk3.setup(world, _chunk3_state)
+	chunk4 = CHUNK_FOUR.new()
+	add_child(chunk4)
+	chunk4.setup(world, _chunk4_state)
 
 func export_state() -> Dictionary:
 	return {"version": version, "nights": nights, "reached": reached.duplicate(), "chapter": chapter, "bed_said": _bed_said,
 		"faint_said": _faint_said, "pinned": _pinned,
 		"pad": pad.export_state() if pad != null else _pad_state, "lines": lines.export_state() if lines != null else _lines_state,
-		"chunk3": chunk3.export_state() if chunk3 != null else _chunk3_state, "bench_pinned": _bench_pinned}
+		"chunk3": chunk3.export_state() if chunk3 != null else _chunk3_state, "bench_pinned": _bench_pinned,
+		"chunk4": chunk4.export_state() if chunk4 != null else _chunk4_state}
 
 # ---------- what the rest of the game asks ----------
 
@@ -231,6 +246,13 @@ const GOAL_THOUGHTS := {
 	"sled_built": "The sled's fittings. The Print Shop says what's short.",
 	"sled_fitted": "Put the sled on GAR-Y's hitch at the EVA station, then go out together.",
 	"ready": "When I'm ready, I call Castle. The slate, or the base radio.",
+	# Chunk 4, the bench.
+	"bench_call": "Devan wants wind on the approach. Tamsin's sent a plan.",
+	"logger_printed": "The wind logger's plan is on my slate. A small print.",
+	"logger_read": "Set the logger down where I'd trust it. Both traces should agree.",
+	"bench_survey": "A line across the bench, with GAR-Y and the sled.",
+	"beacon_down": "The beacon's still at the pad. GAR-Y can tow it, one load at a time.",
+	"beacon_lit": "Stand the beacon up at the bench and fit the connector.",
 }
 
 ## After the new job: the free stretch (chunk 3), a version 3 game.
@@ -248,6 +270,13 @@ func _free_done(id: String) -> bool:
 		"sled_built": return chunk3 != null and bool(chunk3.sled_built)
 		"sled_fitted": return chunk3 != null and bool(chunk3.sled_fitted()) and _outside()
 		"ready": return reached.has(FINAL_BEAT)
+		# Chunk 4: nothing starts before the ready call.
+		"bench_call": return reached.has(FINAL_BEAT)
+		"logger_printed": return chunk4 != null and bool(chunk4.logger_printed())
+		"logger_read": return chunk4 != null and (chunk4.logger_seen as Dictionary).has("good")
+		"bench_survey": return chunk4 != null and bool(chunk4.bench_survey_done())
+		"beacon_down": return chunk4 != null and str(chunk4.beacon_state) != "pad"
+		"beacon_lit": return chunk4 != null and str(chunk4.beacon_state) == "lit"
 	return false
 
 ## The ready call can be made (the slate's button, the base radio).
@@ -283,6 +312,7 @@ func _free_tick() -> void:
 		BUILD_RULES.catch_up_chunk_three(builder)
 	_pin_print_shop()
 	MHChapterOne.hand_plan("beacon_connector")
+	if reached.has("bench_call"): MHChapterOne.hand_plan("wind_logger")
 	if MHChapterOne.unpacked.has("radar_sled_frame"): MHChapterOne.hand_plan("radar_sled_fittings")
 	if chunk3 != null: chunk3.place_case()
 	var radio: Node = world.get("radio")
@@ -479,6 +509,7 @@ func _outside() -> bool:
 
 ## Scene 11: a line at the pit that reads mush. Tamsin asks for closer, once.
 func _line_done(line: Dictionary) -> void:
+	if bool(line.get("stalled", false)) and chunk4 != null: chunk4.call("ring_stall")   # chunk 4, scene 22
 	if str(line.kind) != "pit" or str(line.verdict) == "void" or _faint_said: return
 	_faint_said = true
 	var radio: Node = world.get("radio")
@@ -665,6 +696,9 @@ func radio_ready() -> void:
 		if chunk3 != null: chunk3.place_outcrop()
 		MHNotices.hint("Iron-rich rock", "The dark outcrop is marked on your Map. Key 2 for the hammer: break some off, and it comes home in your suit's bag. E at the Print Shop feeds it into the hopper.")
 	radio.handlers["pin_bench"] = func(_args: Array) -> void: _pin_bench()
+	radio.handlers["hand_logger_plan"] = func(_args: Array) -> void:
+		MHChapterOne.hand_plan("wind_logger")
+		MHNotices.hint("Wind logger", "Print it at the Print Shop (small, iron and salvage), take it out of the drawer, then key 5 puts it in hand. E sets it down; set it where you'd trust it.")
 	radio.handlers["stakes_hint"] = func(_args: Array) -> void:
 		MHNotices.hint("Survey stakes", "Key 4 puts the stakes in hand. E plants one where you stand. Walk on and plant the far one, and GAR-Y runs the line between them.")
 	radio.facts["indoors"] = func(_args: Array) -> bool:

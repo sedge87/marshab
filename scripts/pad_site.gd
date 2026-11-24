@@ -64,6 +64,7 @@ var connector_seen := false
 var pit_seen := false
 var fell := false               # you went over the pit's lip (once is enough)
 var print_placed := false
+var taken := false              # chunk 4: the beacon's unbolted and towed to the bench
 var pulling := false
 var _by_hand := false   # pushed upright by you, not pulled by GAR-Y
 var _dwell := 0.0
@@ -97,6 +98,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	pit_seen = bool(saved.get("pit_seen", false))
 	fell = bool(saved.get("fell", false))
 	print_placed = bool(saved.get("print_placed", false))
+	taken = bool(saved.get("taken", false))
 	_find_pit()
 	if saved.has("centre"):
 		var c: Array = saved.centre
@@ -108,7 +110,7 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 
 func export_state() -> Dictionary:
 	return {"centre": [centre.x, centre.y, centre.z], "yaw": yaw, "seen": seen, "levered": levered, "reseated": reseated,
-		"connector_seen": connector_seen, "pit_seen": pit_seen, "fell": fell, "print_placed": print_placed}
+		"connector_seen": connector_seen, "pit_seen": pit_seen, "fell": fell, "print_placed": print_placed, "taken": taken}
 
 func centre_2d() -> Vector2:
 	return Vector2(centre.x, centre.z)
@@ -256,12 +258,14 @@ func _build() -> void:
 		_add_point("foot", _station.to_local(lever.global_position) if lever != null else Vector3(.6, .1, -.35), .3, _station)
 		_add_point("lead", plug.position if plug != null else Vector3(-.09, .3, -.26), .22, _mast)
 		_add_point("mast", _hitch, .35, _mast)
+		_add_point("take", Vector3(0, .9, 0), .5, _station)   # chunk 4: unbolt it for the bench
 	else:
 		_add_point("foot", SUNK_FOOT, .3, _station)
 		_add_point("lead", BOX, .22, _station)
 		_add_point("mast", MAST_TOP, .35, _mast)
 	_dress_pad()
 	_show_state()
+	if taken: _hide_beacon.call_deferred()
 	_dress_pit()
 	_place_print_shop.call_deferred()
 
@@ -480,6 +484,13 @@ func prompt_for(id: String, holding: bool) -> Dictionary:
 			if not levered: return {"label": "The mast leans %d°" % roundi(LEAN), "primary": "Its foot's sunk: lever that first"}
 			if _can_tow(): return {"label": "The mast leans %d°" % roundi(LEAN), "primary": "Clip GAR-Y's cable on"}
 			return {"label": "The mast leans %d°" % roundi(LEAN), "primary": "Pushing…" if holding else "Hold to push it upright"}
+		"take":
+			var four := _four()
+			if taken or four == null or not _beacon: return {}
+			if not reseated: return {"label": "The pad's beacon", "primary": ""}
+			if not bool(four.ready_done()): return {"label": "The pad's beacon, upright and dead", "primary": ""}
+			if not bool(four.can_take()): return {"label": "The pad's beacon, upright and dead", "primary": "GAR-Y has to be here to tow it"}
+			return {"label": "The pad's beacon, upright and dead", "primary": "Unbolting it…" if holding else "Hold to unbolt it for the bench"}
 	return {}
 
 ## A tap on a point. Returns whether it did anything; `hold` comes back true
@@ -501,6 +512,12 @@ func press(id: String) -> Dictionary:
 				pull()
 				return {"ok": true, "hold": 0.0}
 			return {"ok": true, "hold": PUSH_SECONDS}
+		"take":
+			var four := _four()
+			if taken or four == null or not reseated or not bool(four.can_take()):
+				MHAudio.sfx("invalid", -8.0)
+				return {"ok": false, "hold": 0.0}
+			return {"ok": true, "hold": 3.0}
 	return {"ok": false, "hold": 0.0}
 
 func held_done(id: String) -> void:
@@ -509,6 +526,24 @@ func held_done(id: String) -> void:
 		"mast":
 			_by_hand = true   # 23 Nov playtest: it said GAR-Y was pulling before you'd met it
 			_upright(1.6)
+		"take": take_beacon()
+
+func _four() -> Node:
+	return get_tree().get_first_node_in_group("chunk_four")
+
+## Chunk 4: the pad's beacon comes off its feet for GAR-Y's hitch.
+func take_beacon() -> void:
+	var four := _four()
+	if taken or four == null or not bool(four.can_take()): return
+	taken = true
+	_hide_beacon()
+	four.beacon_taken()
+
+func _hide_beacon() -> void:
+	var holder := get_node_or_null("PadBeacon") as Node3D
+	if holder != null:
+		holder.visible = false
+		for shape in holder.find_children("*", "CollisionShape3D", true, false): (shape as CollisionShape3D).disabled = true
 
 ## The sunk foot comes up out of the crack.
 func lever() -> void:

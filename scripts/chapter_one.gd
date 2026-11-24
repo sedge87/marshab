@@ -42,6 +42,8 @@ const KIT_COST := {"feedstock_kg": 0.0, "metal_kg": 3.0, "salvage_kg": 1.0, "hou
 const HAND := {
 	"beacon_connector": {"label": "Beacon connector", "metal_kg": 3.0, "salvage_kg": 1.0, "hours": .7,
 		"says": "A new connector for the pad beacon's torn lead. About 12 cm: it rides in your field kit."},
+	"wind_logger": {"label": "Wind logger", "metal_kg": 6.0, "salvage_kg": 3.0, "hours": .8,
+		"says": "A folding tripod with cups, a vane and a logger box (chunk 4, Devan's ask). It rides in kit slot five."},
 	"radar_sled_fittings": {"label": "Survey sled fittings", "metal_kg": 70.0, "salvage_kg": 70.0, "hours": 16.0,
 		"says": "The skid shoes, tow clevis and the antenna's electronics box for Tamsin's sled. Iron for the hardware, salvage for the electronics."},
 }

@@ -22,7 +22,8 @@ const STORES_NEAR := 30.0        # metres from the stores pallet for Kai's look 
 const OPEN_EVERY := 240.0        # seconds between open-channel snippets
 ## The steps with a hint, in hints.txt as hint_<id>.
 const HINTED := ["gary_met", "pallets", "hitched", "walker_awake", "walker_fixed", "walker_home", "core_down", "kit_placed", "quarters",
-	"sled_home", "printer_in", "connector", "sled_built", "sled_fitted", "ready"]   # chunk 3: Ask only, no stall hints (the free stretch)
+	"sled_home", "printer_in", "connector", "sled_built", "sled_fitted", "ready",
+	"bench_call", "logger_printed", "logger_read", "bench_survey", "beacon_down", "beacon_lit"]   # chunk 3: Ask only, no stall hints (the free stretch)
 ## Steps where the hint only makes sense out on the surface.
 const OUTDOOR := ["gary_met", "pallets", "hitched", "walker_awake", "walker_fixed", "walker_home", "core_down"]
 

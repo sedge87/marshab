@@ -1,0 +1,57 @@
+# Chunk 4, Act 4 (docs/opening-slice.md Scenes 19-24): the bench across the
+# Dry channel. Rung by scripts/opening_slice.gd's free beats and by
+# scripts/chunk_four.gd. Voices: python tools/generate_voice.py --missing --only=orb_s4
+
+# Scene 19: after the ready call, a few minutes on, the candidate framed and
+# Devan's ask for wind. The logger's plan goes to the slate.
+~ s4_candidate
+Rao: One thing before you go. I want wind on that approach. Two readings, not one. [ID:s4_candidate_01]
+Achterberg: I've sent you a plan. A little tripod with cups on it. It's a small print. [ID:s4_candidate_02]
+do hand_logger_plan
+Rao: Don't take my word for where to stand it. Put it where you'd put it. [ID:s4_candidate_03]
+=> END
+
+# Scene 20: the first time you're at a crossing's bank.
+~ s4_crossing
+Mwangi: Two ways over, by the map. The north's the short one. The south's banked, longer. [ID:s4_crossing_01]
+Rao: North's open. Wind gets in it after midday. I'd go early, or I'd go round. [ID:s4_crossing_02]
+=> END
+
+# Scene 21: the logger down, its two traces disagree.
+~ s4_logger_split
+Rao: Hm. That's two readings that shouldn't disagree. [ID:s4_logger_split_01]
+Rao: Where is it standing? [ID:s4_logger_split_02]
+- It's on the rim, in the open.
+	Rao: Then the rim's the truth. Move it back and watch what the calm one's been hiding. [ID:s4_logger_split_03]
+- I haven't moved it since I put it down.
+	Rao: Good. Keep it that way for a minute. Then try the other side of the bench. [ID:s4_logger_split_04]
+=> END
+
+~ s4_logger_calm
+Rao: Dead calm. Nice. Suspiciously nice. [ID:s4_logger_calm_01]
+Rao: Is it tucked in behind something? [ID:s4_logger_calm_02]
+=> END
+
+~ s4_logger_good
+Rao: That's it. Both traces agree now, and they agree with the dust you walked through. [ID:s4_logger_good_01]
+Rao: The approach is windier than the bench. I can plan round that. [ID:s4_logger_good_02]
+=> END
+
+# Scene 22: GAR-Y and the sled reach the edge step.
+~ s4_stall
+Achterberg: It's stopped. That's the step. The sled can't take that, and I wouldn't ask GAR-Y to. [ID:s4_stall_01]
+Achterberg: Everything past it stays hatched. Unresolved. We know what we don't know. [ID:s4_stall_02]
+=> END
+
+# Scene 23: a core near the edge drops through.
+~ s4_through
+Tupou: Oh. Oh, that dropped. There's a soft layer under there. [ID:s4_through_01]
+Tupou: Don't worry, it's only the corer that fell. Write down where you were. [ID:s4_through_02]
+=> END
+
+# Scene 24: the beacon at the bench, lit.
+~ s4_lit
+Rao: There. I've got a tone. It's faint, and it's steady. [ID:s4_lit_01]
+Rao: Locked. I have the beacon from orbit. [ID:s4_lit_02]
+Castellanos: Thursday's back on. [ID:s4_lit_03]
+=> END

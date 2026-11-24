@@ -347,6 +347,146 @@ func _chunk_three(days: Node, radio: Node, player: Node3D, gary: Node3D, core_ce
 	check(absf(MHMaterials.salvage_kg - salvage_now) < .1, "a reload let stripped pallets pay again")
 	check(MHChapterOne.parts.has("beacon_connector") and not MHChapterOne.tray.has(printer), "the connector came back after a reload")
 
+## A line GAR-Y is walked along by the test, a metre every half second (the headless terrain far from home has no collision to drive on).
+func _walk_line(lines: Node, gary: Node3D, a: Vector2, b: Vector2) -> Dictionary:
+	var before: int = (lines.lines as Array).size()
+	gary.global_position = _ground(Vector3(a.x, 0, a.y))
+	check(lines.plant(Vector3(a.x, MHSiteTerrain.height(a.x, a.y), a.y)), "the first stake didn't go in")
+	check(lines.plant(Vector3(b.x, MHSiteTerrain.height(b.x, b.y), b.y)), "the far stake didn't go in: %s" % lines.far_reason(Vector3(b.x, 0, b.y)))
+	var length := a.distance_to(b)
+	var step := 0.0
+	while step <= length + 2.0 and (lines.lines as Array).size() == before:
+		var p := a.lerp(b, minf(step / length, 1.0))
+		gary.global_position = _ground(Vector3(p.x, 0, p.y))
+		await wait(.5)
+		step += 1.0
+	await wait(1.0)
+	check((lines.lines as Array).size() > before, "the walked line never finished")
+	return (lines.lines as Array).back() if (lines.lines as Array).size() > before else {}
+
+## Chunk 4 (docs/opening-slice.md Scenes 19-24): the bench across the Dry channel.
+func _chunk_four(days: Node, radio: Node, player: Node3D, gary: Node3D) -> void:
+	var four: Node = days.chunk4
+	var c4 := preload("res://scripts/chunk_four.gd")
+	var chunk: Node = days.chunk3
+	check(four != null, "chunk 4's controller wasn't built")
+	if four == null: return
+	var bench := c4.bench_site()
+	check(not is_inf(bench.x), "no bench position on a region site")
+	check(c4.crossings_site().has("north") and c4.crossings_site().has("south"), "the two crossings aren't there")
+	# Scene 19: Devan's ask, the logger's plan.
+	check(await _heard(radio, "s4_candidate", 180.0), "Devan's ask for wind didn't play (reached %s)" % str(days.reached))
+	await wait(2.0)
+	check(MHChapterOne.known.has("wind_logger"), "the logger's plan wasn't handed over")
+	var builder: Node = world.builder
+	var printers: Array = MHChapterOne.fabricators(builder)
+	var printer := str(printers[0].get("placement_id", "")) if not printers.is_empty() else ""
+	if MHMaterials.metal_kg < 20.0: MHMaterials.metal_kg = 20.0
+	if MHMaterials.salvage_kg < 10.0: MHMaterials.add_salvage(10.0 - MHMaterials.salvage_kg)
+	check(MHChapterOne.start_job("wind_logger", builder, printer).is_empty(), "the logger job refused: %s" % MHChapterOne.job_reason("wind_logger", builder, printer))
+	MHChapterOne._run_printers(6.0, builder, builder.simulation())
+	check(MHChapterOne.tray.get(printer, "") == "wind_logger", "the logger didn't come out in the drawer")
+	var fab: Node = null
+	for node in root.find_children("*", "Node3D", true, false):
+		if node.get_script() == load("res://scripts/fabricator.gd"):
+			fab = node
+			break
+	if fab != null: check(fab.interact(), "E at the Print Shop didn't take the logger")
+	check(MHChapterOne.parts.has("wind_logger") and days.done("logger_printed"), "the logger isn't in hand")
+	var kit: Node = world.field_kit
+	check(kit.slots().size() == 5 and bool(kit.has("logger")), "the kit has no fifth slot for the logger")
+	kit.select(4)
+	check(str(kit.held) == "logger", "key 5 didn't put the logger in hand")
+	# Scene 21: the shoulder reads true, the rim splits.
+	var shoulder := c4.site_of(Vector2(c4.STEP_X + 20.0, c4.BENCH.y))
+	await _outside(player, Vector3(shoulder.x, 0, shoulder.y + 2.0))
+	player.rotation.y = 0.0
+	four.call("_logger_press")
+	check(not is_inf(four.logger_at.x), "E with the logger in hand didn't set it down")
+	await wait(8.0)
+	check((four.logger_seen as Dictionary).has("good"), "the shoulder didn't read true")
+	check(await _heard(radio, "s4_logger_good", 90.0), "Devan didn't answer the true reading")
+	check(days.done("logger_read"), "the true reading didn't count")
+	four.call("_pick_up")
+	check(is_inf(four.logger_at.x), "picking the logger up left it out")
+	var rim := c4.site_of(Vector2(c4.STEP_X + 3.0, c4.BENCH.y))
+	await _outside(player, Vector3(rim.x, 0, rim.y + 2.0))
+	four.call("_logger_press")
+	await wait(8.0)
+	check((four.logger_seen as Dictionary).has("split"), "the rim didn't split the traces")
+	check(await _heard(radio, "s4_logger_split", 90.0), "Devan didn't ask where it stood")
+	four.call("_pick_up")
+	# Scene 20: the crossing call, at the north bank.
+	var north: Vector2 = c4.crossings_site().north
+	await _outside(player, Vector3(north.x, 0, north.y + 20.0))
+	await wait(3.0)
+	check(await _heard(radio, "s4_crossing", 90.0), "the crossing call didn't play at the north bank")
+	# Scene 22: a line across the bench stalls at the step; past it is unresolved.
+	check(chunk.sled_fitted(), "the sled isn't on GAR-Y for the bench line")
+	var lines: Node = days.lines
+	var a := c4.site_of(Vector2(c4.STEP_X + 25.0, c4.BENCH.y + 6.0))
+	var b := c4.site_of(Vector2(c4.STEP_X - 20.0, c4.BENCH.y + 6.0))
+	await _outside(player, Vector3(a.x, 0, a.y))
+	var line: Dictionary = await _walk_line(lines, gary, a, b)
+	check(str(line.get("kind", "")) == "bench", "the line at the bench is '%s', not bench" % str(line.get("kind", "")))
+	check(bool(line.get("stalled", false)), "the sled didn't stall at the edge step: stop_t %s, line %s, gary at %s, a %s b %s" % [str(line.get("stop_t", "none")), str(line), str(gary.global_position), str(a), str(b)])
+	var readings: Array = line.get("readings", [])
+	check(not readings.is_empty() and float(readings.back()) < 0.0 and float(readings.front()) >= 0.0, "the profile isn't solid to the step and hatched past it")
+	check(days.done("bench_survey"), "the bench line didn't count")
+	check(await _heard(radio, "s4_stall", 90.0), "Tamsin didn't see the sled stall")
+	# Scene 23: Kai's core near the step drops through.
+	var soft := c4.site_of(Vector2(c4.STEP_X + 3.0, c4.BENCH.y + 6.0))
+	await _outside(player, Vector3(soft.x, 0, soft.y + 2.0))
+	var corer: Node = world.hand_corer
+	kit.select(0)
+	var at := Vector3(soft.x, MHSiteTerrain.height(soft.x, soft.y), soft.y)
+	check(four.allows_core(soft), "the bench's core isn't allowed after its survey")
+	corer._plant(at)
+	for i in 3:
+		await wait(1.6)
+		corer._stroke()
+	check(str(corer.stage) == "open", "the core didn't drop through to open (stage %s)" % str(corer.stage))
+	corer._cap()
+	check(bool(four.through_seen()), "the through core wasn't recorded")
+	check(await _heard(radio, "s4_through", 90.0), "Kai didn't react to the core dropping through")
+	# Scene 24: the beacon comes off the pad, rides the hitch, stands at the bench, is fitted and lit.
+	var pad: Node3D = days.pad
+	check(bool(pad.reseated), "the pad's beacon isn't upright")
+	await _outside(player, pad.beacon_at() + Vector3(4.0, 0, 0))
+	gary.global_position = _ground(pad.beacon_at() + Vector3(6.0, 0, 2.0))
+	check(four.can_take(), "the beacon can't be taken off the pad")
+	pad.take_beacon()
+	check(bool(pad.taken) and str(four.beacon_state) == "carried", "unbolting the beacon didn't put it on the hitch")
+	check(str(chunk.on_gary.hitch) == "beacon" and not bool(chunk.sled_fitted()), "the hitch holds %s: it should be one load at a time" % str(chunk.on_gary.hitch))
+	await wait(1.0)
+	check(gary.find_child("Fitting_beacon", true, false) != null, "the beacon doesn't show on GAR-Y")
+	check(days.done("beacon_down"), "the beacon on the hitch didn't count")
+	await _outside(player, Vector3(bench.x, 0, bench.y + 3.0))
+	gary.global_position = _ground(Vector3(bench.x + 4.0, 0, bench.y))
+	await wait(1.0)
+	check(bool(four.press("stand").ok), "the beacon can't be stood at the bench with GAR-Y here")
+	four.held_done("stand")
+	check(str(four.beacon_state) == "bench" and str(chunk.on_gary.hitch) == "", "standing the beacon up didn't free the hitch")
+	check(MHChapterOne.parts.has("beacon_connector"), "the printed connector isn't in hand at the bench")
+	check(bool(four.press("fit").ok), "the connector can't be fitted at the bench")
+	four.held_done("fit")
+	check(str(four.beacon_state) == "lit" and not MHChapterOne.parts.has("beacon_connector"), "fitting the connector didn't light the beacon")
+	check(await _heard(radio, "s4_lit", 120.0), "Devan's lock call didn't play")
+	check(days.done("beacon_lit"), "the lit beacon didn't count")
+	# Saved: the state comes back.
+	var saved: Dictionary = days.export_state().get("chunk4", {})
+	check(str(saved.get("beacon", "")) == "lit" and (saved.get("logger_seen", {}) as Dictionary).has("good"), "chunk 4 didn't save: %s" % str(saved))
+	# The dust at the crossings: visual, clock-driven, denser at the north.
+	var weather := root.find_child("SiteWeather", true, false)
+	check(weather != null and (weather._dust as Array).size() == 2, "the channel dust isn't built")
+	if weather != null and (weather._dust as Array).size() == 2:
+		weather._update_channel_dust(true, 16.0)
+		var amounts := []
+		for entry in weather._dust: amounts.append(float((((entry.layers as Array)[0] as MeshInstance3D).material_override as ShaderMaterial).get_shader_parameter("density")))
+		check(amounts.max() > .5 and amounts.min() > .01 and amounts.max() > amounts.min() * 2.0, "the afternoon dust isn't denser at one crossing (%s)" % str(amounts))
+		weather._update_channel_dust(true, 6.0)
+		check(not (((weather._dust[0].layers as Array)[0]) as MeshInstance3D).visible, "the channel dust shows at dawn")
+
 func _initialize() -> void:
 	MHGame.site_id = "region"; MHGame.set_mode("survival"); MHGame.pending_save_state = {}; MHGame.landing_target = Vector2.INF
 	MHGame.tutorial_mode = MHGame.default_tutorial_mode()
@@ -686,6 +826,7 @@ func _initialize() -> void:
 					check(days.guided(), "the opening ended at the first room: chunk 2's pad is still to come")
 					await _chunk_two(days, radio, player, gary, lander)
 					await _chunk_three(days, radio, player, gary, core_cells)
+					await _chunk_four(days, radio, player, gary)
 	Engine.time_scale = 1.0
 	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the stakes bundle comes off the stores pallet by hand, tools go in hand with 1-4 and show on the slate's Kit page, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B waits for the one kit box, opening it puts the whole kit on B's list, and the terminal plans a paid Quarters. Chunk 2: the pad is ~200 m from the pit with pallet 6 in sight and no base allowed on it; up close it counts as seen and Castle calls; the foot levers, GAR-Y's cable pulls the mast upright; stakes go in hand with 4; a line across the pad reads a void band with solid ends; the Lines tab shows it; at the pit a far line reads faint and Tamsin asks for closer, a line over the pit is refused, a close one reads void; the hold plays; the lip gives way on the last metre and GAR-Y brings you round inside; Tamsin's sled plan, then the new job at home pins pallet 6 and ends the opening. Chunk 3: the free stretch keeps Ask orbit, the ready call is refused without the sled, pallet 6 opened at home brings the frame and radar head, the Print Shop and EVA station place, the connector prints into the drawer and E takes it, Tamsin teaches the outcrop (hematite) on first use, emptied pallets strip once for salvage, rock goes in the hopper at half, the fittings build the sled, the front mount takes scoop or lamps never both, the fittings go on GAR-Y out through the lock without stealing its head, the effects case gives the bear once, the ready call pins the bench, and a reload re-pays nothing.")
 	else:
