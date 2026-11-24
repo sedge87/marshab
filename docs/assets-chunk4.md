@@ -34,7 +34,7 @@ The game draws every screen. Give each screen a flat mesh with good UVs, named `
 
 ## 4. GAR-Y's sled at the step · optional
 - **We have:** `Radar_Sled.glb` with `TowPoint`, `ScanOrigin` and a status lens.
-- **Wanted if cheap:** a **stuck-at-step** pose (nose tilted up on the lip), as the doc's states already list. Not needed to start building.
+- **Wanted (decided 24 Nov):** a **stuck-at-step** pose (nose tilted up on the lip). The player learns the sled can't cross the step by watching it stall, so this pose is used. A stand-in tilt is fine to start building.
 
 ## Not needed for chunk 4
 - Relay mast, cave light stakes, sample readers, the commissioned beacon kit.

@@ -300,6 +300,11 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - **Ground type (`ground.png`, 24 Nov):** the bench is 100% dust within 40 m. The north crossing is **scree** (79%) with rock and gravel, not sand. The south crossing is dust (48%), gravel (31%) and scree (16%). Both approaches from the west are mostly dust. So "the north crossing's sand floor lifts dust" does not match the ground. **Decided 24 Nov:** the reason is exposure (open and funnelled after midday), and the ground map is left alone. Fog goes at both crossings, denser at the north; the south's banks shelter it. The buggy's extra drain at the north crossing becomes a flat surcharge near that crossing, not a sand rule.
 - Not yet checked: rocks and boulders on the bench patch, and how it looks in the running game.
 
+**Decided 24 Nov (later):**
+- **The beacon is carried to the bench.** You pull the mast off the failed pad, GAR-Y tows it on the hitch (one item at a time, so the sled and the beacon are separate trips), and you re-erect it at the bench. It is the same beacon, so the torn lead and the printed connector both pay off.
+- **The wind logger is printed.** Devan asks for wind on the approach and relays a plan; you print it at the Print Shop (small and quick, iron and salvage, other materials optional) and it lands in the fifth kit slot. Whether it needs anything beyond iron and salvage is left to tuning.
+- **The edge step is learned by watching.** GAR-Y drives the sled up to the step, tips its nose, chirps and stops; only then does the slate hatch the unresolved end. This uses the sled's stuck-at-step pose in `docs/assets-chunk4.md` §4, which moves from optional to wanted.
+
 Still open: the other chunk 3 review §9 leftovers (hold-G Survey here, keepsakes, guitar, hopper route).
 
 ### How and when the crew talk (sols 0–2) · built 22 Nov
