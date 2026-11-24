@@ -27,7 +27,7 @@ extends Node3D
 const MHSiteTerrain := preload("res://scripts/site_terrain.gd")
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const MODEL := "res://assets/models/chunk2/landing_pad_and_beacon.glb"
-const ROCKS := "res://asset_packs/mars_rocks_v2/decor_rock_0%d.glb"
+const ROCKS := "res://assets/original_mars/models/decor_rock_0%d.glb"   # 24 Nov: asset_packs/ is .gdignore'd, so the old path never loaded
 ## The chunk 2 pack (asset_packs/outpost_chunk2_v1): the beacon proper, and
 ## the dressing for the pad and the pit's lip.
 const BEACON := "res://assets/models/chunk2/pad_beacon.glb"

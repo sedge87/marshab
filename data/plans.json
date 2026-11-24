@@ -4,6 +4,7 @@
   "defaults": {"feedstock_per_kg": 0.6, "kg_per_hour": 25, "min_hours": 1, "max_hours": 20},
   "_comment_a5": "A5 (15 Nov): metal_kg and salvage_kg beside feedstock_kg (scripts/materials.gd). after_any: any of these events brings the plan.",
   "plans": {
+    "printed_guitar": {"source": "brought", "metal_kg": 4, "salvage_kg": 6, "hours": 6, "_comment": "24 Nov chunk 3: too big for the drawer (0.94 m), so printed in panels and a neck and put together where it's placed; strings and tuners from salvage."},
     "site_plan_terminal": {"source": "brought", "metal_kg": 4, "salvage_kg": 2, "hours": 2, "_comment": "23 Nov: every core's kit has one; print more so a big base is never far from one."},
     "ice_drill": {"source": "discovered", "after": "ice", "feedstock_kg": 200, "hours": 12, "cargo_kg": 450, "metal_kg": 40, "salvage_kg": 10},
     "water_reclaimer": {"source": "discovered", "after": "water", "feedstock_kg": 150, "hours": 10, "metal_kg": 15, "salvage_kg": 10},

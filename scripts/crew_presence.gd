@@ -21,7 +21,8 @@ const REACT_AFTER := 15.0        # a reaction comes sooner: it's about what you'
 const STORES_NEAR := 30.0        # metres from the stores pallet for Kai's look at the kit
 const OPEN_EVERY := 240.0        # seconds between open-channel snippets
 ## The steps with a hint, in hints.txt as hint_<id>.
-const HINTED := ["gary_met", "pallets", "hitched", "walker_awake", "walker_fixed", "walker_home", "core_down", "kit_placed", "quarters"]
+const HINTED := ["gary_met", "pallets", "hitched", "walker_awake", "walker_fixed", "walker_home", "core_down", "kit_placed", "quarters",
+	"sled_home", "printer_in", "connector", "sled_built", "sled_fitted", "ready"]   # chunk 3: Ask only, no stall hints (the free stretch)
 ## Steps where the hint only makes sense out on the surface.
 const OUTDOOR := ["gary_met", "pallets", "hitched", "walker_awake", "walker_fixed", "walker_home", "core_down"]
 
@@ -49,6 +50,10 @@ func setup(target_world: Node) -> void:
 
 func _live() -> bool:
 	return radio != null and opening != null and is_instance_valid(opening) and bool(opening.guided())
+
+## Chunk 3's free stretch: Ask orbit still answers, nothing else runs.
+func _free() -> bool:
+	return radio != null and opening != null and is_instance_valid(opening) and opening.has_method("free_stretch") and bool(opening.free_stretch())
 
 func _ate() -> bool:
 	var body: Node = world.get("body")
@@ -96,7 +101,9 @@ func _react(section: String) -> void:
 
 ## The step you're on: the first hinted beat not yet done, or "".
 func current_step() -> String:
-	for beat in opening.BEATS:
+	var beats: Array = opening.BEATS
+	if opening.has_method("free_stretch") and bool(opening.free_stretch()): beats = opening.FREE_BEATS
+	for beat in beats:
 		var id := str(beat[0])
 		if bool(opening.done(id)): continue
 		return id if HINTED.has(id) else ""
@@ -132,7 +139,7 @@ func _hint_fits(step: String) -> bool:
 ## it), or a "nothing from us". False if nobody can answer now.
 func ask() -> bool:
 	if radio == null or bool(radio.on_air()) or not bool(radio.in_contact()): return false
-	var step := current_step() if _live() else ""
+	var step := current_step() if _live() or _free() else ""
 	var section := "hint_" + step
 	if step.is_empty() or not bool(radio.has_section(section)):
 		_nothing += 1

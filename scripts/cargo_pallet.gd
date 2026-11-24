@@ -48,11 +48,38 @@ func setup(target_drop: Node, is_open: bool, pallet_label := "Pallet 1") -> void
 	if opened:
 		_lid_pivot.rotation.x = -deg_to_rad(OPEN_DEGREES)
 		_freed = LATCHES
+	if stripped(): _lid_pivot.visible = false
+
+# ---------- chunk 3: stripping an emptied pallet for parts ----------
+
+## The opening slice (version 3): opening a pallet no longer pays its
+## salvage; once it's empty, holding E strips its frame and packing for
+## Earth-made parts (Tamsin's lesson, docs/opening-slice.md scene 16), and
+## its lid comes off. Other games pay on opening, as before.
+func _slice() -> bool:
+	var world: Node = drop.get("world") if drop != null else null
+	return world != null and int(world.get("opening_version")) >= 3
+
+func stripped() -> bool:
+	return MHMaterials.stripped.has(label)
+
+func _strippable() -> bool:
+	return opened and _slice() and MHMaterials.on() and not stripped() and _inside() == null
+
+func strip() -> void:
+	if not _strippable(): return
+	MHMaterials.stripped[label] = true
+	MHMaterials.add_salvage(MHMaterials.SALVAGE_PER_PALLET)
+	_lid_pivot.visible = false
+	MHAudio.sfx_at("suit_clamp", self, -2.0, .7)
+	MHNotices.post("info", "Salvage", "%s of Earth-made parts off %s: wiring loom, a control board, brackets and fasteners." % [MHStyle.kg(roundi(MHMaterials.SALVAGE_PER_PALLET)), label.to_lower()], "log")
 
 func interaction_prompt() -> Dictionary:
 	if opened:
 		var inside := _inside()
-		return inside.interaction_prompt() if inside != null else {"label": label + " · open"}
+		if inside != null: return inside.interaction_prompt()
+		if _strippable(): return {"label": label + " · empty", "primary": "Stripping it for parts…" if _holding else "Hold to strip it for parts"}
+		return {"label": label + (" · stripped" if stripped() else " · open")}
 	if _holding and _freed > 0: return {"label": "Cargo pallet", "primary": "Freeing the latches · %d of %d" % [_freed, LATCHES]}
 	return {"label": "Cargo pallet", "primary": "Hold to free the latches"}
 
@@ -67,7 +94,8 @@ func _inside() -> Node:
 func interact(_player: Node = null) -> bool:
 	if opened:
 		var inside := _inside()
-		return inside.interact(_player) if inside != null else false
+		if inside != null: return inside.interact(_player)
+		if not _strippable(): return false
 	_holding = true
 	return true
 
@@ -85,9 +113,14 @@ func _process(delta: float) -> void:
 	while _freed < now:
 		_freed += 1
 		MHAudio.sfx_at("suit_clamp", self, -4.0, .9)
+	if _held >= HOLD and opened:
+		_holding = false
+		_held = 0.0
+		if _strippable(): strip()
+		return
 	if _held >= HOLD:
 		# A5: the pallet's own frame and packing are salvage (opened by hand, once).
-		if not opened and MHMaterials.on():
+		if not opened and MHMaterials.on() and not _slice():
 			MHMaterials.add_salvage(MHMaterials.SALVAGE_PER_PALLET)
 			MHNotices.post("info", "Salvage", "%s of Earth-made parts from the pallet's frame and packing." % MHStyle.kg(roundi(MHMaterials.SALVAGE_PER_PALLET)), "log")
 		open()

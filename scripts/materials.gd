@@ -44,15 +44,20 @@ static var ore: Dictionary = {}      # rock type -> kg at base, waiting for a sm
 static var carried: Dictionary = {}  # rock type -> kg in the suit
 static var pulled: Dictionary = {}   # rock key -> break-offs taken
 static var smelted_by_hand := false
+## Chunk 3 (scene 16): rock types someone has told you about (Tamsin: "iron's
+## in the dark rock"), so you can break it off before the Lab names it.
+static var told: Dictionary = {}
+## Chunk 3: pallets stripped for parts (their label -> true).
+static var stripped: Dictionary = {}
 
 static func on() -> bool:
 	return MHChapterOne.on()
 
 static func reset() -> void:
-	metal_kg = START_METAL; salvage_kg = START_SALVAGE; ore = {}; carried = {}; pulled = {}; smelted_by_hand = false
+	metal_kg = START_METAL; salvage_kg = START_SALVAGE; ore = {}; carried = {}; pulled = {}; smelted_by_hand = false; told = {}; stripped = {}
 
 static func export_state() -> Dictionary:
-	return {"metal_kg": metal_kg, "salvage_kg": salvage_kg, "ore": ore.duplicate(), "carried": carried.duplicate(), "pulled": pulled.duplicate(), "smelted_by_hand": smelted_by_hand}
+	return {"metal_kg": metal_kg, "salvage_kg": salvage_kg, "ore": ore.duplicate(), "carried": carried.duplicate(), "pulled": pulled.duplicate(), "smelted_by_hand": smelted_by_hand, "told": told.duplicate(), "stripped": stripped.duplicate()}
 
 ## `state` is the "materials" section; empty for a save from before A5.
 static func load_state(state: Dictionary) -> void:
@@ -66,6 +71,8 @@ static func load_state(state: Dictionary) -> void:
 	carried = (state.get("carried", {}) as Dictionary).duplicate()
 	pulled = (state.get("pulled", {}) as Dictionary).duplicate()
 	smelted_by_hand = bool(state.get("smelted_by_hand", false))
+	told = (state.get("told", {}) as Dictionary).duplicate()
+	stripped = (state.get("stripped", {}) as Dictionary).duplicate()
 
 # ---------- costs ----------
 
@@ -118,6 +125,7 @@ static func iron_rich(rock: String) -> bool:
 
 ## Whether the Lab has named this rock type: a full read of a sample of it.
 static func known_rock(rock: String) -> bool:
+	if told.has(rock): return true
 	for record in MHSamples.archive():
 		if str(record.get("rock", "")) == rock and (record.get("partial", []) as Array).is_empty(): return true
 	return false
@@ -143,6 +151,15 @@ static func unload() -> Array:
 	for rock in carried: ore[rock] = float(ore.get(rock, 0.0)) + float(carried[rock])
 	carried = {}
 	return [{"id": "ore_in", "title": "Iron-rich rock stored", "text": "%s for the smelter. %s" % [MHStyle.kg(roundi(kg)), "A smelter in the Workshop turns it into metal." if not smelted_by_hand else "The smelter will get to it."], "tone": "valid"}]
+
+## Chunk 3: the Print Shop's hopper takes the store's iron-rich rock by hand
+## (E at the printer), at the smelter's yield, so the opening needs no
+## Workshop. Returns the iron made (0 if there was no rock).
+static func feed_hopper() -> float:
+	if not on() or ore_kg() <= 0.0: return 0.0
+	var made := _melt_ore(ore_kg())
+	metal_kg += made
+	return made
 
 # ---------- salvage ----------
 

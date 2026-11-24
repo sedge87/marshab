@@ -1236,6 +1236,10 @@ func open_tiny_printer() -> void:
 func open_suit_rack() -> void:
 	_open_live_view(load("res://scripts/suit_rack_screen.gd").new().setup(self))
 
+## The EVA station's screen (chunk 3, scripts/eva_station_screen.gd).
+func open_eva_station() -> void:
+	_open_live_view(load("res://scripts/eva_station_screen.gd").new().setup(self))
+
 ## The core's upgrades, on the panel on its rack (scripts/core_panel.gd).
 func open_core_upgrades() -> void:
 	_open_live_view(load("res://scripts/core_upgrades_screen.gd").new().setup(self))

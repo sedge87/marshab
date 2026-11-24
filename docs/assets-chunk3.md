@@ -48,6 +48,7 @@ The game draws every screen. Give each screen a flat mesh with good UVs, named `
   - `WallMount`: an empty on the back, for the bracket version.
 
 ## 2. The Print Shop crate (pallet 6) · new · one of the chunk 1 crate family
+> **Superseded 24 Nov** (`docs/assets-chunk3-review.md` §1): the Print Shop comes in the fit-out kit box now and pallet 6 is the survey sled, so this crate is parked.
 - **Why:** you tow it home and unpack it by the core (scenes 13–14). It should read as the same kit family as the fit-out crates, only bigger, so the player knows to "open it and take the pieces out".
 - **Reference and scale:**
   - an extra-large fit-out crate, about 2.0 × 1.3 × 1.3 m;
@@ -133,6 +134,7 @@ The game draws every screen. Give each screen a flat mesh with good UVs, named `
 - **Pieces:**
   - **A stripped pallet state:** for the opened storm-cargo pallets (`mars_storm_cargo_v2`), side panels gone, wiring pulled loose and frame bolts out. One mesh to swap in, or panels as separate nodes (`Panel_1..4`) the game can hide.
   - **The salvage bundle:** a net bag of Earth parts (cable loom, a circuit board edge, brackets), about 0.4 m. It's carried in hand, so it needs a `GripPoint`.
+  - > **Superseded 24 Nov:** stripping pays salvage straight into the store, and the salvage tub by the printer shows it. There's no net bag to carry (`docs/assets-chunk3-review.md` §6).
 
 ## 9. Keepsakes and the "printed" look · mostly reuse
 - **Why:** the free stretch's furnishings ready the crew's future rooms. Some keepsakes are found on the plain, and the rest you print. The crew notice them on your helmet camera.

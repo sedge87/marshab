@@ -141,7 +141,14 @@ static func find_near(position: Vector3) -> String:
 ## The rock type of a rock at a position: a cave find's own rock near its
 ## spot, else weighted by the ground it sits on (unit_rocks), or by the site
 ## on the old single-site maps. The same rock always gives the same answer.
+## Chunk 3: rocks placed by the story with a set type ([Vector2 centre,
+## radius, rock]), e.g. the iron-rich outcrop Tamsin points you to
+## (scripts/chunk_three.gd). Not saved: whoever places them adds them again.
+static var placed_rocks: Array = []
+
 static func rock_at(position: Vector3) -> String:
+	for placed in placed_rocks:
+		if (placed[0] as Vector2).distance_to(Vector2(position.x, position.z)) <= float(placed[1]): return str(placed[2])
 	var find := find_near(position)
 	if (data().get("rock_types", {}) as Dictionary).has(find): return find
 	var by_unit: Dictionary = data().get("unit_rocks", {})

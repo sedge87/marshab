@@ -483,6 +483,14 @@ func _notes_page() -> Control:
 			else: ask.text = "Castle's busy or out of contact"
 			ask.disabled = true)
 		column.add_child(ask)
+		# Chunk 3, Scene 18: the ready call over suit comms, from anywhere.
+		if days.has_method("ready_call_open") and bool(days.ready_call_open()):
+			var ready := MHStyle.button("Call Castle: I'm ready", "primary", "satellite", 44)
+			ready.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			ready.pressed.connect(func() -> void:
+				ready.text = "Calling…" if bool(days.ready_call()) else "Orbit's busy or out of contact"
+				ready.disabled = true)
+			column.add_child(ready)
 	return page
 
 ## One thought on ruled paper: the newest in ink, older ones a little faded.

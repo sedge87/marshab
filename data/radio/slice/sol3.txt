@@ -1,0 +1,66 @@
+# Chunk 3 of the opening slice (docs/opening-slice.md Scenes 13–18, §10c):
+# the free stretch. No set sol, no forced sleep; the calls react to what
+# you've done. Format: the top of scripts/radio.gd.
+# Voices: python tools/generate_voice.py --missing --only=orb_s3
+
+# Scene 13: pallet 6 opened at home. The frame's in the store.
+~ s3_sled_home
+Achterberg: That's my sled. Frame's straight, antenna's fine. [ID:s3_sled_home_01]
+Achterberg: It wants an electronics box and two skid shoes. I've put the plan on your Print Shop. [ID:s3_sled_home_02]
+chat Rao: She drew those skids on a napkin. I watched her. [ID:s3_sled_home_03]
+=> END
+
+# Scene 14: the Print Shop's in the core.
+~ s3_printer
+Castellanos: Print Shop's up. First job's a small one: a new connector for the pad beacon. [ID:s3_printer_01]
+Castellanos: Keep it in your kit. It goes wherever the new pad does. [ID:s3_printer_02]
+=> END
+
+# Scene 16: the first time the sled's needs show. Tamsin teaches the materials.
+~ s3_teach
+Achterberg: You're short on iron. That's normal. Here's where it comes from. [ID:s3_teach_01]
+Achterberg: There's a dark outcrop not far from you. Iron-rich. Break some off with the hammer and bring it back. [ID:s3_teach_02]
+do iron_outcrop
+Achterberg: The Print Shop's hopper takes it as it is. You lose half to slag, but it's iron. [ID:s3_teach_03]
+Achterberg: The electronics want salvage. Every pallet you've emptied is wiring and boards. Strip them. [ID:s3_teach_04]
+- And the intake?
+	Achterberg: That's for the base. Regolith builds rooms, corridors, airlocks. The printer wants metal. [ID:s3_teach_05a]
+- Rock and pallets. Got it.
+	Achterberg: That's the whole trick. Everything else is patience. [ID:s3_teach_05b]
+=> END
+
+# Scene 15: the connector out of the drawer.
+~ s3_connector
+chat Achterberg: That's a clean print. Don't lose it. [ID:s3_connector_01]
+=> END
+
+# Scene 16: the fittings bolted on.
+~ s3_sled_built
+Achterberg: Is that it? Turn it round. Let me see the skids. [ID:s3_sled_built_01]
+Achterberg: Beautiful. Set GAR-Y's hitch to it at the EVA station. It'll want the radar head on the mast too. [ID:s3_sled_built_02]
+=> END
+
+# Scene 17: out through the lock with the sled on GAR-Y.
+~ s3_sled_out
+chat Achterberg: Look at it go. It's like a dog with a new toy. [ID:s3_sled_out_01]
+chat Castellanos: Whenever you're ready. No rush. [ID:s3_sled_out_02]
+=> END
+
+# Scene 18: you call in without the sled.
+~ s3_not_ready
+Castellanos: Good to hear you. We'll need Tamsin's sled first. The plan's on your Print Shop. [ID:s3_not_ready_01]
+=> END
+
+# Scene 18: you call in, the sled fitted. The leads come together.
+~ s3_ready
+Castellanos: Go ahead. [ID:s3_ready_01]
+- I can make parts. And GAR-Y can see under the ground.
+	set said_changed
+- Ready when you are.
+Castellanos: Good. Then here's where we are. [ID:s3_ready_02]
+Mwangi: Flat, firm, a clear way in, close enough to walk. I've been through the map. One place keeps coming up. [ID:s3_ready_03]
+Rao: And the wind's quiet there after midday. In the lee of something. [ID:s3_ready_04]
+Achterberg: The bench across the Dry channel. The first map read likes it. The sled will tell us if it's right. [ID:s3_ready_05]
+do pin_bench
+Castellanos: It's on your slate. Take GAR-Y and the sled. Bring the connector. [ID:s3_ready_06]
+=> END

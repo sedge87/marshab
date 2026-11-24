@@ -224,7 +224,24 @@ static func unpack_print_shop() -> bool:
 	for id in ["fabricator", "regolith_intake"]:
 		MHChapterOne.stock[id] = int(MHChapterOne.stock.get(id, 0)) + 1
 	MHChapterOne.feedstock_kg += PRINT_SHOP_FEEDSTOCK_KG
+	unpack_chunk_three()
 	return true
+
+## Chunk 3 (24 Nov, docs/assets-chunk3-review.md): the EVA station, the base
+## radio and the salvage tub come in the same kit box. Extra stock, not KIT
+## pieces, so a save past the kit isn't told it has pieces left to place.
+const CHUNK_THREE_KIT := ["eva_station", "base_radio", "salvage_tub"]
+static func unpack_chunk_three() -> bool:
+	if MHChapterOne.unpacked.has("eva_station"): return false
+	MHChapterOne.unpacked["eva_station"] = true
+	for id in CHUNK_THREE_KIT:
+		MHChapterOne.stock[id] = int(MHChapterOne.stock.get(id, 0)) + 1
+	return true
+
+## A save whose kit box was opened before chunk 3: give them once.
+static func catch_up_chunk_three(builder: Node) -> void:
+	if MHChapterOne.unpacked.has("eva_station") or not MHChapterOne.unpacked.has("print_shop") or not slice(builder): return
+	unpack_chunk_three()
 
 ## A save from before the move: its kit box was opened without the Print
 ## Shop in it. Give it once, unless it already came off pallet 6.

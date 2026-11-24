@@ -85,5 +85,6 @@ Mwangi: Flat, firm, a clear way in for Devan, and close enough to the hab to wal
 ?fell_in_pit Mwangi: And no more pits. I mean it. [ID:s2_job_03b]
 Rao: And wind. I want to know what the air does on the approach after midday. [ID:s2_job_04]
 chat Tupou: I've got a thing too. It'll keep. Rocks are patient. [ID:s2_job_05]
-Castellanos: Pallet six came down within sight of the pad. That's Tamsin's sled. Sleep first. [ID:s2_job_06]
+Castellanos: That's not tonight. Take a few days. Make it a home. Pallet six is Tamsin's sled, when you're up to it. [ID:s2_job_06]
+Castellanos: Call us when you're ready. [ID:s2_job_07]
 => END

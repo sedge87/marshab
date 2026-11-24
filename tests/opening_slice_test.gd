@@ -181,6 +181,172 @@ func _chunk_two(days: Node, radio: Node, player: Node3D, gary: Node3D, lander: N
 	var state: Dictionary = days.export_state()
 	check(bool(state.pad.reseated) and (state.lines.lines as Array).size() == 3, "the pad and lines didn't save")
 
+## Chunk 3 (docs/opening-slice.md Scenes 13–18, §10c): the free stretch.
+func _chunk_three(days: Node, radio: Node, player: Node3D, gary: Node3D, core_cells: Array) -> void:
+	var builder: Node = world.builder
+	var chunk: Node = days.chunk3
+	check(chunk != null, "chunk 3's controller wasn't built")
+	if chunk == null: return
+	check(days.free_stretch() and not days.guided(), "the free stretch didn't start after the new job")
+	check(not days.open_goals().is_empty(), "the slate's Today page has nothing in the free stretch (Ask orbit would vanish)")
+	check(str(world.crew_presence.current_step()) == "sled_home", "Ask orbit's step in the free stretch is '%s', not sled_home" % str(world.crew_presence.current_step()))
+	for id in ["eva_station", "base_radio", "salvage_tub"]:
+		check(int(MHChapterOne.stock.get(id, 0)) >= 1, "the kit box didn't bring the %s" % id)
+	await wait(12.0)
+	# Scene 18 early: the ready call without the sled is refused.
+	check(days.ready_call_open(), "the ready call isn't open in the free stretch")
+	check(days.ready_call(), "the ready call didn't go out")
+	check(await _heard(radio, "s3_not_ready", 60.0), "Castle didn't say the sled comes first")
+	check(not days.done("ready"), "the ready call counted without the sled")
+	# Scene 13: pallet 6 opened where it lies; its crate towed home and opened.
+	var field: Node = world.drop_field
+	var site: Node = field.sites.get("print_shop") if field != null else null
+	check(site != null, "pallet 6 isn't on the plain")
+	if site != null and not bool(site.pallet.opened): site.pallet.open(false)
+	await wait(1.0)
+	var crates := root.get_tree().get_nodes_in_group("print_shop_crate")
+	if crates.is_empty() and site != null: field.pallet_opened(site)
+	crates = root.get_tree().get_nodes_in_group("print_shop_crate")
+	check(not crates.is_empty(), "no survey sled crate on the plain")
+	var walker: Node3D = world.walker
+	if not crates.is_empty():
+		var crate: Node3D = crates[0]
+		crate.global_position = _ground(walker.global_position + Vector3(4.0, 0, 4.0)) - Vector3(0, .9, 0)
+		await wait(1.0)
+		check(crate.interact(), "the sled crate didn't open by the core")
+	check(MHChapterOne.unpacked.has("radar_sled_frame"), "pallet 6 didn't put the sled's frame in the store")
+	check(await _heard(radio, "s3_sled_home", 90.0), "Tamsin didn't greet her sled")
+	await wait(2.0)
+	check(MHChapterOne.plan_known("radar_sled_fittings") and MHChapterOne.plan_known("beacon_connector"), "the story's hand plans weren't handed over")
+	check(chunk.have("radar"), "the radar head didn't come with pallet 6")
+	# Scene 14: the Print Shop and the EVA station in the core.
+	var inside: Vector3 = world.module_life._centre()
+	player.global_position = Vector3(inside.x, builder.habitat_base_y + 1.0, inside.z)
+	await wait(2.0)
+	if bool(world.suit.helmet): world.suit.suit_off()
+	for piece in ["fabricator", "eva_station", "salvage_tub"]:
+		var spot := _free_spot(builder, piece, core_cells)
+		check(not spot.is_empty(), "no floor spot in the core for the %s" % piece)
+		if spot.is_empty(): continue
+		var at: Vector3 = spot.at
+		builder.place_free_interior_equipment(piece, at, float(spot.rot), Vector2i(roundi(at.x / builder.CELL), roundi(at.z / builder.CELL)), builder.free_interior_visual(piece, at, float(spot.rot)))
+		await wait(1.0)
+	var printers: Array = MHChapterOne.fabricators(builder)
+	check(not printers.is_empty(), "the Print Shop didn't place")
+	if printers.is_empty(): return
+	var printer := str(printers[0].get("placement_id", ""))
+	check(await _heard(radio, "s3_printer", 90.0), "Castle's Print Shop call didn't play")
+	var fab: Node = null
+	for node in root.find_children("*", "Node3D", true, false):
+		if node.get_script() == load("res://scripts/fabricator.gd"):
+			fab = node
+			break
+	check(fab != null and fab.find_child("OutputDrawer", true, false) != null, "the Print Shop isn't the chunk 3 printer model")
+	check(chunk.have("lamps") and chunk.have("scoop"), "the lamp bar and scoop didn't come with the EVA station")
+	# Scene 15: the connector, a hand part, out in the drawer.
+	var metal_before := MHMaterials.metal_kg
+	check(MHChapterOne.start_job("beacon_connector", builder, printer).is_empty(), "the connector job refused: %s" % MHChapterOne.job_reason("beacon_connector", builder, printer))
+	# Scene 16: the first use of the printer rings Tamsin's teaching, indoors.
+	check(await _heard(radio, "s3_teach", 120.0), "Tamsin's teaching call didn't play (reached %s)" % str(days.reached))
+	check(MHMaterials.told.has("hematite") and not is_inf(chunk.outcrop.x), "the teaching didn't mark the dark outcrop")
+	check(MHSamples.rock_at(Vector3(chunk.outcrop.x, 0, chunk.outcrop.y)) == "hematite", "the outcrop doesn't read as hematite")
+	check(MHMaterials.known_rock("hematite"), "hematite isn't a known rock after the teaching")
+	var t := 0.0
+	var sim: Object = builder.simulation()
+	var hours_at := float(sim.hours_run)
+	while t < 60.0 and not MHChapterOne.tray.has(printer):
+		await wait(2.0)
+		t += 2.0
+	var powered: bool = float(sim.last.get("generation_kw", 0.0)) > 0.0 or float(sim.battery_kwh) > .5
+	check(MHChapterOne.tray.get(printer, "") == "beacon_connector" or not powered, "the connector didn't print on the sim's clock in 60 s (%.2f sim h passed, generation %.2f kW, battery %.2f kWh, job %s)" % [float(sim.hours_run) - hours_at, float(sim.last.get("generation_kw", 0.0)), float(sim.battery_kwh), str(MHChapterOne.jobs.get(printer, {}))])
+	if not MHChapterOne.tray.has(printer): MHChapterOne._run_printers(2.0, builder, sim)
+	check(MHChapterOne.tray.get(printer, "") == "beacon_connector", "the connector never came out in the drawer")
+	check(metal_before - MHMaterials.metal_kg > 2.0, "the connector cost no iron")
+	check(not MHChapterOne.job_reason("radar_sled_fittings", builder, printer).is_empty(), "a new job was allowed with the drawer full")
+	if fab != null: check(fab.interact(), "E at the Print Shop didn't take the connector")
+	check(MHChapterOne.parts.has("beacon_connector") and not MHChapterOne.tray.has(printer), "the connector isn't in hand")
+	check(await _heard(radio, "s3_connector", 60.0), "the connector got no reaction")
+	# The fittings want more than the starting stock: rock and pallets.
+	check(not MHChapterOne.job_reason("radar_sled_fittings", builder, printer).is_empty(), "the sled's fittings could be printed from the starting stock")
+	var salvage_before := MHMaterials.salvage_kg
+	var stripped := 0
+	for pallet in root.get_tree().get_nodes_in_group("cargo_pallet"):
+		if pallet.has_method("_strippable") and bool(pallet._strippable()):
+			pallet.strip()
+			stripped += 1
+	check(stripped >= 1, "no emptied pallet could be stripped")
+	check(absf(MHMaterials.salvage_kg - salvage_before - 25.0 * stripped) < .1, "stripping %d pallets gave %.0f kg of salvage" % [stripped, MHMaterials.salvage_kg - salvage_before])
+	var again := MHMaterials.salvage_kg
+	for pallet in root.get_tree().get_nodes_in_group("cargo_pallet"):
+		if pallet.has_method("strip"): pallet.strip()
+	check(absf(MHMaterials.salvage_kg - again) < .1, "a stripped pallet paid twice")
+	# Rock from the outcrop, through the hopper at half.
+	while MHMaterials.metal_kg < 72.0:
+		MHMaterials.ore["hematite"] = float(MHMaterials.ore.get("hematite", 0.0)) + 30.0
+		var metal := MHMaterials.metal_kg
+		if fab != null: check(fab.interact(), "E at the Print Shop didn't feed the hopper")
+		check(absf(MHMaterials.metal_kg - metal - 15.0) < .5, "30 kg of rock made %.1f kg of iron, not 15" % (MHMaterials.metal_kg - metal))
+		if MHMaterials.metal_kg - metal < 1.0: break
+	if MHMaterials.salvage_kg < 70.0: MHMaterials.add_salvage(70.0 - MHMaterials.salvage_kg)   # more pallets than the test opened
+	check(MHChapterOne.start_job("radar_sled_fittings", builder, printer).is_empty(), "the fittings job refused: %s" % MHChapterOne.job_reason("radar_sled_fittings", builder, printer))
+	MHChapterOne._run_printers(20.0, builder, builder.simulation())
+	check(MHChapterOne.tray.get(printer, "") == "radar_sled_fittings", "the fittings didn't come out in the drawer")
+	if fab != null: fab.interact()
+	check(bool(chunk.sled_built), "taking the fittings didn't build the sled")
+	check(await _heard(radio, "s3_sled_built", 90.0), "Tamsin didn't see the sled")
+	# Scene 17: the EVA station. The front takes lamps or scoop, never both.
+	chunk.choose("front", "lamps")
+	chunk.choose("front", "scoop")
+	check(str(chunk.loadout.front) == "scoop", "the front mount holds %s, not the scoop" % str(chunk.loadout.front))
+	chunk.choose("mast", "radar")
+	chunk.choose("hitch", "sled")
+	chunk.choose("front", "radar")   # the wrong mount: refused
+	check(str(chunk.loadout.front) == "scoop", "the radar head went on the front mount")
+	check(chunk.pending() and str(chunk.on_gary.hitch) == "", "the fittings went on before the airlock")
+	var screen: Control = load("res://scripts/eva_station_screen.gd").new().setup(world)
+	root.add_child(screen)
+	await wait(.5)
+	check(screen.is_inside_tree(), "the EVA station's screen didn't open")
+	screen.queue_free()
+	# Out through the lock: they go on GAR-Y, and its head is still its own.
+	await _outside(player, walker.global_position + Vector3(10.0, 0, 6.0))
+	gary.global_position = _ground(walker.global_position + Vector3(12.0, 0, 8.0))
+	await wait(3.0)
+	check(str(chunk.on_gary.mast) == "radar" and str(chunk.on_gary.front) == "scoop" and str(chunk.on_gary.hitch) == "sled", "out through the lock, GAR-Y has %s" % str(chunk.on_gary))
+	check(gary.find_child("Fitting_sled", true, false) != null and gary.find_child("Fitting_radar", true, false) != null, "the fittings don't show on GAR-Y")
+	check(gary.find_child("Fitting_lamps", true, false) == null, "the lamp bar shows on GAR-Y with the scoop")
+	var head: Node = gary.get("_head")
+	check(head == null or not bool(gary._in_fitting(head)), "GAR-Y's head is the radar head's")
+	check(days.done("sled_fitted"), "the sled on GAR-Y outside didn't count")
+	check(await _heard(radio, "s3_sled_out", 90.0), "the sled going out got no reaction")
+	# The effects case on the plain, the bear inside.
+	check(not is_inf(chunk.case_at.x), "no effects case on the plain")
+	var cases := root.get_tree().get_nodes_in_group("effects_case")
+	check(not cases.is_empty(), "the effects case didn't appear")
+	if not cases.is_empty():
+		check(cases[0].interact() and bool(chunk.case_opened), "the case didn't open")
+		var bears := int(MHChapterOne.stock.get("zero_g_plush", 0))
+		check(cases[0].interact() and int(MHChapterOne.stock.get("zero_g_plush", 0)) == bears + 1, "taking the bear didn't put it on B's list")
+		check(not cases[0].interact(), "the empty case gave something again")
+	# Scene 18: the ready call, the sled built. The bench is pinned.
+	await wait(5.0)
+	check(days.ready_call(), "the ready call with the sled didn't go out")
+	check(await _heard(radio, "s3_ready", 120.0), "the ready call didn't play")
+	await wait(2.0)
+	check(days.done("ready") and not days.ready_call_open(), "the ready call didn't end chunk 3")
+	check(str(world.known.tracked) == "bench", "the bench isn't tracked (%s)" % str(world.known.tracked))
+	# Saved and loaded: nothing doubles, nothing re-pays.
+	var state: Dictionary = days.export_state()
+	var c3: Dictionary = state.get("chunk3", {})
+	check(bool(c3.get("sled_built", false)) and str((c3.get("on_gary", {}) as Dictionary).get("hitch", "")) == "sled" and bool(c3.get("plush_taken", false)), "chunk 3 didn't save: %s" % str(c3))
+	var mats := MHMaterials.export_state()
+	MHMaterials.load_state(mats)
+	var salvage_now := MHMaterials.salvage_kg
+	for pallet in root.get_tree().get_nodes_in_group("cargo_pallet"):
+		if pallet.has_method("strip"): pallet.strip()
+	check(absf(MHMaterials.salvage_kg - salvage_now) < .1, "a reload let stripped pallets pay again")
+	check(MHChapterOne.parts.has("beacon_connector") and not MHChapterOne.tray.has(printer), "the connector came back after a reload")
+
 func _initialize() -> void:
 	MHGame.site_id = "region"; MHGame.set_mode("survival"); MHGame.pending_save_state = {}; MHGame.landing_target = Vector2.INF
 	MHGame.tutorial_mode = MHGame.default_tutorial_mode()
@@ -519,8 +685,9 @@ func _initialize() -> void:
 					await wait(2.0)
 					check(days.guided(), "the opening ended at the first room: chunk 2's pad is still to come")
 					await _chunk_two(days, radio, player, gary, lander)
+					await _chunk_three(days, radio, player, gary, core_cells)
 	Engine.time_scale = 1.0
-	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the stakes bundle comes off the stores pallet by hand, tools go in hand with 1-4 and show on the slate's Kit page, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B waits for the one kit box, opening it puts the whole kit on B's list, and the terminal plans a paid Quarters. Chunk 2: the pad is ~200 m from the pit with pallet 6 in sight and no base allowed on it; up close it counts as seen and Castle calls; the foot levers, GAR-Y's cable pulls the mast upright; stakes go in hand with 4; a line across the pad reads a void band with solid ends; the Lines tab shows it; at the pit a far line reads faint and Tamsin asks for closer, a line over the pit is refused, a close one reads void; the hold plays; the lip gives way on the last metre and GAR-Y brings you round inside; Tamsin's sled plan, then the new job at home pins pallet 6 and ends the opening.")
+	if failures.is_empty(): print("Opening slice test passed: version 3 boots, the slice's calls load (not the old days), the assignment plays, the slate and helmet open the hatch, GAR-Y's cradle is near and it's snagged past its stakes, freeing it runs the meeting, it leads to a pallet, the three pallets give the stores, the stakes bundle comes off the stores pallet by hand, tools go in hand with 1-4 and show on the slate's Kit page, the module, spares and the hitch, the module tows on the sled and wakes Walker 1, the seal patches and it walks home by the lander, the crew call at dusk in the cabin, GAR-Y parks by the steps, the hatch stays shut that night, the seat sleeps you to dawn, you ride Walker 1 at dawn steering where you look, the deck screen reads the ground, Set down here lays the outline and folds the core, which runs on the power module, B waits for the one kit box, opening it puts the whole kit on B's list, and the terminal plans a paid Quarters. Chunk 2: the pad is ~200 m from the pit with pallet 6 in sight and no base allowed on it; up close it counts as seen and Castle calls; the foot levers, GAR-Y's cable pulls the mast upright; stakes go in hand with 4; a line across the pad reads a void band with solid ends; the Lines tab shows it; at the pit a far line reads faint and Tamsin asks for closer, a line over the pit is refused, a close one reads void; the hold plays; the lip gives way on the last metre and GAR-Y brings you round inside; Tamsin's sled plan, then the new job at home pins pallet 6 and ends the opening. Chunk 3: the free stretch keeps Ask orbit, the ready call is refused without the sled, pallet 6 opened at home brings the frame and radar head, the Print Shop and EVA station place, the connector prints into the drawer and E takes it, Tamsin teaches the outcrop (hematite) on first use, emptied pallets strip once for salvage, rock goes in the hopper at half, the fittings build the sled, the front mount takes scoop or lamps never both, the fittings go on GAR-Y out through the lock without stealing its head, the effects case gives the bear once, the ready call pins the bench, and a reload re-pays nothing.")
 	else:
 		for f in failures: print("FAIL: ", f)
 	quit(0 if failures.is_empty() else 1)

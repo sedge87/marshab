@@ -52,3 +52,28 @@ Rao: All quiet up here. Well. Kai's humming. [ID:ask_nothing_02]
 ~ ask_nothing_3
 Mwangi: Nothing urgent. Drink some water while you're thinking about it. [ID:ask_nothing_03]
 => END
+
+# Chunk 3 (the free stretch): Ask orbit only, never a stall hint.
+~ hint_sled_home
+Achterberg: Pallet six. My sled's in it. Open it there and GAR-Y can tow the crate home. [ID:hint_sled_home_01]
+=> END
+
+~ hint_printer_in
+Achterberg: The Print Shop came in the kit box. It's on B's Unpacked tab, the intake too. [ID:hint_printer_in_01]
+=> END
+
+~ hint_connector
+Castellanos: The beacon connector's plan is on the Print Shop. Small job. [ID:hint_connector_01]
+=> END
+
+~ hint_sled_built
+Achterberg: The fittings want iron and salvage. Dark rock goes in the hopper. Strip the empty pallets for the rest. [ID:hint_sled_built_01]
+=> END
+
+~ hint_sled_fitted
+Achterberg: The EVA station sets GAR-Y's hitch. Put the sled on it and go out together. [ID:hint_sled_fitted_01]
+=> END
+
+~ hint_ready
+Castellanos: Whenever you're ready. Call us from the slate or the base radio. [ID:hint_ready_01]
+=> END

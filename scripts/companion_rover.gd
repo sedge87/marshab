@@ -216,7 +216,11 @@ func _ready() -> void:
 		if leg != null: _legs.append(leg)
 	if _body != null: _body_y = _body.position.y
 	if _panel != null: _panel_y = _panel.position.y
-	_head = find_child("Head", true, false) as Node3D
+	# Its own head, not a fitting's (the chunk 3 radar head has a "Head" too).
+	for node in find_children("Head", "Node3D", true, false):
+		if not _in_fitting(node):
+			_head = node as Node3D
+			break
 	for eye_name in ["Eye_L", "Eye_R"]:
 		var eye := find_child(eye_name, true, false) as Node3D
 		if eye != null: _eyes.append(eye)
@@ -1352,6 +1356,13 @@ func interact_info(_actor: Node = null) -> bool:
 		tally += "\nRock collection (%d of %d): %s" % [rocks.size(), ROCKS.size(), ", ".join(rocks.map(func(i): return str(ROCKS[int(i)][0])))]
 	get_tree().call_group("explore_hud", "show_equipment_note", "%s — %s" % [NAME, FULL_NAME], ABOUT + tally)
 	return true
+
+## Under a chunk 3 fitting (scripts/gary_fittings.gd), not GAR-Y's own body.
+func _in_fitting(node: Node) -> bool:
+	while node != null and node != self:
+		if node.has_meta("gar_y_fitting"): return true
+		node = node.get_parent()
+	return false
 
 # ---------- saving ----------
 

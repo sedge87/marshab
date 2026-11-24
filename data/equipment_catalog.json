@@ -3461,6 +3461,150 @@
       ]
     },
     {
+      "id": "eva_station",
+      "label": "EVA Station",
+      "group": "general",
+      "status": "catalogue",
+      "icon": "hammer",
+      "height": 2.2,
+      "description": "Where you get ready to go out: the suit's add-ons on one side, GAR-Y's fittings and the survey sled on the other.",
+      "role": "Sets the suit's add-ons and GAR-Y's fittings for the next trip out",
+      "primary_action": "Get ready to go out",
+      "asset_scene": "res://assets/models/chunk3/eva_station.tscn",
+      "cargo_cost": 120,
+      "valid_zones": [
+        "general",
+        "vehicle_bay",
+        "airlock"
+      ],
+      "footprint": [
+        3,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        3.53,
+        2.2,
+        1.56
+      ],
+      "pack": "outpost_chunk3_v1",
+      "system_note": "On the ISS, getting ready for a spacewalk takes most of a day: suits checked, tools tethered, every piece counted. Here it's one station, and what's on its pegs is what isn't on you or GAR-Y.",
+      "system_links": [
+        "Suit",
+        "GAR-Y"
+      ]
+    },
+    {
+      "id": "base_radio",
+      "label": "Base Radio",
+      "group": "communications",
+      "status": "catalogue",
+      "icon": "satellite",
+      "height": 0.38,
+      "mount_height": 1.0,
+      "description": "The base's own set on orbit's channel. Your suit hears the same calls anywhere; this one's a handset by the table.",
+      "role": "A second way to call orbit, from inside",
+      "primary_action": "Call orbit",
+      "asset_scene": "res://assets/models/chunk3/base_radio.tscn",
+      "cargo_cost": 15,
+      "valid_zones": [
+        "general",
+        "living",
+        "communications",
+        "engineering",
+        "science"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "wall",
+      "effects": {},
+      "size_m": [
+        0.59,
+        0.38,
+        0.63
+      ],
+      "pack": "outpost_chunk3_v1",
+      "system_note": "Apollo crews on the Moon talked to Houston through their suits, relayed by the lunar rover or the lander. A base radio is the same link with a handset.",
+      "system_links": [
+        "Comms"
+      ]
+    },
+    {
+      "id": "salvage_tub",
+      "label": "Salvage Tub",
+      "group": "storage",
+      "status": "catalogue",
+      "icon": "recycle",
+      "height": 0.34,
+      "description": "Wiring, boards and brackets stripped from the storm pallets, sorted for the Print Shop.",
+      "role": "Shows the salvage store",
+      "asset_scene": "res://assets/models/chunk3/salvage_tub.tscn",
+      "cargo_cost": 5,
+      "valid_zones": [
+        "general",
+        "engineering",
+        "storage"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {},
+      "size_m": [
+        0.55,
+        0.34,
+        0.46
+      ],
+      "pack": "outpost_chunk3_v1",
+      "system_note": "Every pallet that lands is spare parts: harness, control boards, fasteners. Stripping them is how the first base gets its electronics.",
+      "system_links": [
+        "Salvage",
+        "Print Shop"
+      ]
+    },
+    {
+      "id": "printed_guitar",
+      "label": "Printed Guitar",
+      "group": "recreation",
+      "status": "catalogue",
+      "icon": "music",
+      "height": 0.94,
+      "description": "A guitar printed in panels and a neck, strung with wire from the salvage tub.",
+      "role": "Personal",
+      "asset_scene": "res://assets/models/chunk3/printed_guitar.tscn",
+      "cargo_cost": 0,
+      "valid_zones": [
+        "living",
+        "general",
+        "galley",
+        "recreation"
+      ],
+      "footprint": [
+        1,
+        1
+      ],
+      "placement": "floor",
+      "effects": {
+        "happiness": 1
+      },
+      "size_m": [
+        0.34,
+        0.94,
+        0.15
+      ],
+      "pack": "outpost_chunk3_v1",
+      "printable": false,
+      "system_note": "A guitar has been on the ISS since 2001. This one's body is printed in sections, too big for the Print Shop in one piece, and put together where it's placed.",
+      "system_links": [
+        "Morale",
+        "Print Shop"
+      ]
+    },
+    {
       "id": "regolith_intake",
       "label": "Regolith Intake",
       "group": "exterior",
@@ -3476,7 +3620,7 @@
         1,
         1
       ],
-      "asset_scene": "res://assets/equipment/mars_fabrication_v1/regolith_intake.tscn",
+      "asset_scene": "res://assets/models/chunk3/regolith_intake.tscn",
       "system_note": "A scoop wheel digs Martian soil, a sieve drum grades it, and a conveyor feeds it underground to the regolith printer.",
       "system_links": [
         "Cargo",

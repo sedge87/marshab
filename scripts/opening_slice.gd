@@ -46,6 +46,27 @@ const BEATS := [
 ]
 const LAST_BEAT := "new_job"
 const CHUNK_TWO := ["pad_seen", "pad_reseated", "pad_line", "pit_seen", "pit_line", "sled_plan", "new_job"]
+## Chunk 3, Act 3 (docs/opening-slice.md Scenes 13–18, §10c): the free
+## stretch after the new job. Beats with calls, checked from the world the
+## same way, but none of them guided: no forced sleep, no set sol, no stall
+## hints (Ask orbit still answers). "ready" is rung by the ready call itself.
+const FREE_BEATS := [
+	["sled_home", "s3_sled_home"],  # pallet 6 opened at home: the sled's frame in the store
+	["printer_in", "s3_printer"],   # the Print Shop placed in the core; the connector's plan
+	["teach", "s3_teach"],          # first use of the printer: Tamsin teaches iron and salvage
+	["connector", "s3_connector"],  # the beacon connector taken out of the drawer
+	["sled_built", "s3_sled_built"],# the printed fittings bolted to the frame
+	["sled_fitted", "s3_sled_out"], # out through the lock with the sled on GAR-Y
+	["ready", ""],                  # "Call Castle: I'm ready" (slate or base radio); the bench pinned
+]
+const FINAL_BEAT := "ready"
+## The bench across the Dry channel (data/region_layout.json "channel",
+## bench 0.5: its middle reach, the east side), region metres.
+const BENCH := Vector2(-905.0, 1200.0)
+const CHUNK_THREE := preload("res://scripts/chunk_three.gd")
+var chunk3: Node                 # chunk 3: the outcrop, the case, the sled, GAR-Y's fittings
+var _chunk3_state := {}
+var _bench_pinned := false
 
 var world: Node
 var version := VERSION
@@ -79,6 +100,8 @@ func setup(target_world: Node, saved: Dictionary) -> void:
 	_pinned = bool(saved.get("pinned", false))
 	_pad_state = saved.get("pad", {}) as Dictionary
 	_lines_state = saved.get("lines", {}) as Dictionary
+	_chunk3_state = saved.get("chunk3", {}) as Dictionary
+	_bench_pinned = bool(saved.get("bench_pinned", false))
 	RADIO.opening_set = "slice"
 	_build_pad.call_deferred()
 
@@ -92,11 +115,15 @@ func _build_pad() -> void:
 	add_child(lines)
 	lines.setup(world, pad, _lines_state)
 	lines.line_done.connect(_line_done)
+	chunk3 = CHUNK_THREE.new()
+	add_child(chunk3)
+	chunk3.setup(world, _chunk3_state)
 
 func export_state() -> Dictionary:
 	return {"version": version, "nights": nights, "reached": reached.duplicate(), "chapter": chapter, "bed_said": _bed_said,
 		"faint_said": _faint_said, "pinned": _pinned,
-		"pad": pad.export_state() if pad != null else _pad_state, "lines": lines.export_state() if lines != null else _lines_state}
+		"pad": pad.export_state() if pad != null else _pad_state, "lines": lines.export_state() if lines != null else _lines_state,
+		"chunk3": chunk3.export_state() if chunk3 != null else _chunk3_state, "bench_pinned": _bench_pinned}
 
 # ---------- what the rest of the game asks ----------
 
@@ -159,6 +186,15 @@ func ask_next() -> bool:
 ## The slate's Today page: first-person thoughts about what's open now.
 func open_goals() -> Array:
 	var out := []
+	if free_stretch():
+		for beat in FREE_BEATS:
+			var id := str(beat[0])
+			if done(id): continue
+			var text := str(GOAL_THOUGHTS.get(id, ""))
+			if text.is_empty(): continue
+			out.append({"text": text, "needs": ""})
+			break
+		return out
 	for beat in BEATS:
 		var id := str(beat[0])
 		if done(id): continue
@@ -188,7 +224,76 @@ const GOAL_THOUGHTS := {
 	"pit_line": "Run the same line at the pit's lip. Close, but not too close.",
 	"sled_plan": "Head home.",
 	"new_job": "Home. Helmet off. They'll call.",
+	# Chunk 3, the free stretch: suggestions, not orders.
+	"sled_home": "Pallet 6 is Tamsin's sled. GAR-Y can tow the crate home.",
+	"printer_in": "The Print Shop's on B's Unpacked tab. It goes in the core.",
+	"connector": "The beacon connector first. A small print.",
+	"sled_built": "The sled's fittings. The Print Shop says what's short.",
+	"sled_fitted": "Put the sled on GAR-Y's hitch at the EVA station, then go out together.",
+	"ready": "When I'm ready, I call Castle. The slate, or the base radio.",
 }
+
+## After the new job: the free stretch (chunk 3), a version 3 game.
+func free_stretch() -> bool:
+	return world != null and world.get("walker") != null and reached.has(LAST_BEAT)
+
+func _free_done(id: String) -> bool:
+	match id:
+		"sled_home": return MHChapterOne.unpacked.has("radar_sled_frame")
+		"printer_in": return not MHChapterOne.fabricators(world.get("builder")).is_empty()
+		"teach":
+			if not (reached.has("sled_home") and reached.has("printer_in")): return false
+			return MHChapterOne.parts.has("beacon_connector") or MHChapterOne.made.has("beacon_connector") or not MHChapterOne.jobs.is_empty()
+		"connector": return MHChapterOne.parts.has("beacon_connector")
+		"sled_built": return chunk3 != null and bool(chunk3.sled_built)
+		"sled_fitted": return chunk3 != null and bool(chunk3.sled_fitted()) and _outside()
+		"ready": return reached.has(FINAL_BEAT)
+	return false
+
+## The ready call can be made (the slate's button, the base radio).
+func ready_call_open() -> bool:
+	return free_stretch() and not reached.has(FINAL_BEAT)
+
+## Scene 18: "Call Castle: I'm ready." Without the sled, Castle says so.
+func ready_call() -> bool:
+	var radio: Node = world.get("radio")
+	if radio == null or not ready_call_open() or bool(radio.on_air()): return false
+	if chunk3 == null or not bool(chunk3.sled_built):
+		(radio.heard as Dictionary).erase("s3_not_ready")
+		radio.ring("s3_not_ready")
+		return true
+	reached.append(FINAL_BEAT)
+	radio.ring("s3_ready")
+	return true
+
+func _pin_bench() -> void:
+	var known: Node = world.get("known")
+	if _bench_pinned or known == null: return
+	_bench_pinned = true
+	known.learn("bench", "find", BENCH, "The bench · across the Dry channel", "you", "castellanos")
+	known.track("bench")
+	MHNotices.hint("The bench", "Across the Dry channel. It's marked on your Map and your compass.")
+
+## The free stretch's tick: the stock it's owed, the plans the story hands
+## over, the case on the plain, and one call at a time.
+func _free_tick() -> void:
+	var builder: Node = world.get("builder")
+	if builder != null:
+		BUILD_RULES.catch_up_print_shop(builder)
+		BUILD_RULES.catch_up_chunk_three(builder)
+	_pin_print_shop()
+	MHChapterOne.hand_plan("beacon_connector")
+	if MHChapterOne.unpacked.has("radar_sled_frame"): MHChapterOne.hand_plan("radar_sled_fittings")
+	if chunk3 != null: chunk3.place_case()
+	var radio: Node = world.get("radio")
+	if radio == null or bool(radio.on_air()): return
+	for beat in FREE_BEATS:
+		var id := str(beat[0])
+		if str(beat[1]).is_empty() or reached.has(id) or not done(id): continue
+		if id == "teach" and _outside(): continue   # at the printer, indoors
+		reached.append(id)
+		radio.ring(str(beat[1]))
+		break
 
 # ---------- the beats ----------
 
@@ -221,6 +326,8 @@ func done(id: String) -> bool:
 		"hitched":
 			var pod: Node = world.get("lifepod")
 			return pod != null and (pod.prints as Dictionary).has("hitch")
+	for beat in FREE_BEATS:
+		if str(beat[0]) == id: return _free_done(id)
 	# Chunk 2 waits for the first room: the pad's the afternoon's job.
 	if id in CHUNK_TWO:
 		if not reached.has("helmet_off") or pad == null: return false
@@ -286,7 +393,9 @@ func _process(delta: float) -> void:
 		_was_asleep = false
 		var hour := MHGame.sol_hour
 		if hour < 12.0: nights += 1
-	if not guided(): return
+	if not guided():
+		if free_stretch(): _free_tick()
+		return
 	var radio: Node = world.get("radio")
 	# A beat's call rings when the beat's done, one a tick, in order. Done out
 	# of order, its call still comes (the calls react, they don't instruct).
@@ -551,6 +660,11 @@ func radio_ready() -> void:
 	radio.facts["morning"] = func(_args: Array) -> bool: return MHGame.sol_hour >= 5.0 and MHGame.sol_hour < 11.0
 	radio.facts["fell_in_pit"] = func(_args: Array) -> bool: return pad != null and bool(pad.fell)
 	radio.facts["hitched"] = func(_args: Array) -> bool: return done("hitched")
+	radio.handlers["iron_outcrop"] = func(_args: Array) -> void:
+		MHMaterials.told["hematite"] = true
+		if chunk3 != null: chunk3.place_outcrop()
+		MHNotices.hint("Iron-rich rock", "The dark outcrop is marked on your Map. Key 2 for the hammer: break some off, and it comes home in your suit's bag. E at the Print Shop feeds it into the hopper.")
+	radio.handlers["pin_bench"] = func(_args: Array) -> void: _pin_bench()
 	radio.handlers["stakes_hint"] = func(_args: Array) -> void:
 		MHNotices.hint("Survey stakes", "Key 4 puts the stakes in hand. E plants one where you stand. Walk on and plant the far one, and GAR-Y runs the line between them.")
 	radio.facts["indoors"] = func(_args: Array) -> bool:

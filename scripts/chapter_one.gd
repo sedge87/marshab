@@ -33,6 +33,18 @@ const KITS_PER_JOB := 2
 ## 23 Nov: the Print Shop prints from iron and salvage; regolith only grows
 ## the base (rooms, corridors, the site plan).
 const KIT_COST := {"feedstock_kg": 0.0, "metal_kg": 3.0, "salvage_kg": 1.0, "hours": 2.0}
+## Chunk 3 (docs/assets-chunk3-review.md): hand-sized parts. Each fits the
+## Print Shop's build plate (0.65 x 0.32 m) and comes out in its output
+## drawer: E at the printer takes it (scripts/fabricator.gd). One of each,
+## and only once the story hands you its plan (known[id], set by the
+## opening slice). Bigger things still go to the build bar, assembled where
+## they're placed. Hours are the plan's (x PRINT_PACE like the rest).
+const HAND := {
+	"beacon_connector": {"label": "Beacon connector", "metal_kg": 3.0, "salvage_kg": 1.0, "hours": .7,
+		"says": "A new connector for the pad beacon's torn lead. About 12 cm: it rides in your field kit."},
+	"radar_sled_fittings": {"label": "Survey sled fittings", "metal_kg": 70.0, "salvage_kg": 70.0, "hours": 16.0,
+		"says": "The skid shoes, tow clevis and the antenna's electronics box for Tamsin's sled. Iron for the hardware, salvage for the electronics."},
+}
 ## Furniture and small parts without their own numbers: 2-5 kg of iron by size.
 const SMALL_IRON_MIN := 2.0
 const SMALL_IRON_MAX := 5.0
@@ -81,6 +93,10 @@ static var known: Dictionary = {}        # plan id -> how it came ("sent", "disc
 ## -> {current: {id, hours_left, hours} or {}, queue: [plan ids]}.
 static var jobs: Dictionary = {}
 static var made: Dictionary = {}         # id -> true once the fabricator has made one
+## Chunk 3: a finished hand part waiting in a printer's drawer (placement id
+## -> part id), and the hand parts you've taken out (id -> true).
+static var tray: Dictionary = {}
+static var parts: Dictionary = {}
 static var paid: Dictionary = {}         # id -> copies placed beyond stock, paid for from the stores
 static var has_corer := false
 static var has_hammer := false   # pallet 3's rock hammer (scripts/drop_field.gd)
@@ -112,7 +128,7 @@ static func new_rules() -> bool:
 static func reset() -> void:
 	older_rules = false
 	unpacked = {}; stock = {}; shell_kg = 0; feedstock_kg = 0.0; regolith_paid = 0
-	known = {}; jobs = {}; made = {}; paid = {}; has_corer = false; has_hammer = false; cores = []; steps = {}; finished_at = -1.0
+	known = {}; jobs = {}; made = {}; paid = {}; tray = {}; parts = {}; has_corer = false; has_hammer = false; cores = []; steps = {}; finished_at = -1.0
 	stores_landed = false; reserve_used = false; emergency_eta = -1.0; said = {}
 	water_hours = 0.0; soil = ""; soil_potted_at = -1.0; lander_spots = []
 	crates_landing = false
@@ -126,7 +142,7 @@ static func reset() -> void:
 static func export_state() -> Dictionary:
 	return {"older_rules": older_rules, "crates": crates_landing, "unpacked": unpacked.duplicate(), "stock": stock.duplicate(), "shell_kg": shell_kg,
 		"feedstock_kg": feedstock_kg, "regolith_paid": regolith_paid, "known": known.duplicate(), "jobs": jobs.duplicate(true),
-		"made": made.duplicate(), "paid": paid.duplicate(),
+		"made": made.duplicate(), "paid": paid.duplicate(), "tray": tray.duplicate(), "parts": parts.duplicate(),
 		"has_corer": has_corer, "has_hammer": has_hammer, "cores": cores.duplicate(true), "steps": steps.duplicate(), "finished_at": finished_at,
 		"stores_landed": stores_landed, "reserve_used": reserve_used, "emergency_eta": emergency_eta, "said": said.duplicate(),
 		"water_hours": water_hours, "soil": soil, "soil_potted_at": soil_potted_at, "lander_spots": lander_spots.duplicate(true), "crew_plan": MHCrewPlan.export_state(), "rooms": MHRoomTypes.export_state(),
@@ -162,6 +178,8 @@ static func load_state(state: Dictionary, has_section: bool) -> void:
 		var hours := float(plan_cost(str(old_job.id)).hours)
 		jobs[""] = {"current": {"id": str(old_job.id), "hours_left": minf(float(old_job.get("hours_left", hours)), hours), "hours": hours}, "queue": []}
 	for key in (state.get("paid", {}) as Dictionary): paid[str(key)] = int(state.paid[key])
+	tray = (state.get("tray", {}) as Dictionary).duplicate()
+	parts = (state.get("parts", {}) as Dictionary).duplicate()
 	if state.has("made"):
 		for key in (state.made as Dictionary): made[str(key)] = true
 	else:
@@ -252,6 +270,7 @@ static func crates_left() -> int:
 static func label(id: String) -> String:
 	if id == SPARES_KIT: return "Spares kits (%d)" % KITS_PER_JOB
 	if ZONE_STOCK_LABELS.has(id): return str(ZONE_STOCK_LABELS[id])
+	if HAND.has(id): return str(HAND[id].label)
 	return str(EquipmentCatalog.get_entry(id).get("label", id.capitalize()))
 
 ## Whether placing this needs stock under these rules (printable things and
@@ -374,6 +393,7 @@ static func plan_source(id: String) -> String:
 	return str(plan(id).get("source", "brought"))
 
 static func plan_known(id: String) -> bool:
+	if HAND.has(id): return known.has(id)   # the story hands these over
 	if str(MHGame.rule("plans")) == "all" or plan_source(id) == "brought": return true
 	return known.has(id)
 
@@ -414,6 +434,7 @@ static func _give_first(id: String) -> void:
 ## {feedstock_kg, hours} for one job.
 static func plan_cost(id: String) -> Dictionary:
 	if id == SPARES_KIT: return {"feedstock_kg": 0.0, "metal_kg": KIT_COST.metal_kg, "salvage_kg": KIT_COST.salvage_kg, "hours": maxf(MIN_PRINT_HOURS, KIT_COST.hours * PRINT_PACE)}
+	if HAND.has(id): return {"feedstock_kg": 0.0, "metal_kg": float(HAND[id].metal_kg), "salvage_kg": float(HAND[id].salvage_kg), "hours": maxf(MIN_PRINT_HOURS, float(HAND[id].hours) * PRINT_PACE)}
 	var p := plan(id)
 	var d: Dictionary = plans_data().get("defaults", {})
 	var mass := float(p.get("cargo_kg", EquipmentCatalog.get_entry(id).get("cargo_cost", 50)))
@@ -427,6 +448,8 @@ static func plan_cost(id: String) -> Dictionary:
 ## Everything the fabricator could make now (known plans), in catalogue order.
 static func fabricable() -> Array:
 	var out: Array = [SPARES_KIT]
+	for id in HAND:
+		if plan_known(str(id)) and not parts.has(id) and not made.has(id): out.append(str(id))
 	for id in ZONE_STOCK_LABELS:
 		if plan_known(id): out.append(id)
 	for id in EquipmentCatalog.entries():
@@ -478,11 +501,13 @@ static func printing_where(id: String) -> String:
 static func job_reason(id: String, builder: Object, printer := "") -> String:
 	if fabricators(builder).is_empty(): return "Place the Print Shop first"
 	printer = _printer(builder, printer)
+	if HAND.has(id) and (made.has(id) or parts.has(id)): return "Already made: it's in the drawer" if tray.values().has(id) else "Already made"
 	if made.has(id) and id != SPARES_KIT: return "Already made: place it from the build bar"
 	if id != SPARES_KIT and not printing_where(id).is_empty():
 		return "Already printing" if printing_where(id) == printer else "Printing at the other Print Shop"
 	if not plan_known(id) and id != SPARES_KIT: return plan_hint(id)
 	var work := printer_work(printer)
+	if HAND.has(id) and tray.has(printer): return "Take the %s out of the drawer first" % label(str(tray[printer])).to_lower()
 	if (work.queue as Array).size() >= QUEUE_MAX: return "The queue is full (%d)" % QUEUE_MAX
 	# Started now, it's paid for now; queued, it's paid for when it starts.
 	if (work.current as Dictionary).is_empty():
@@ -523,6 +548,20 @@ static func cancel_job(builder: Object = null, printer := "") -> void:
 static func unqueue(printer: String, index: int) -> void:
 	var queue: Array = printer_work(printer).queue
 	if index >= 0 and index < queue.size(): queue.remove_at(index)
+
+## Chunk 3: the part in this printer's drawer into your hands; its id or "".
+static func take_part(printer: String) -> String:
+	if not tray.has(printer): return ""
+	var id := str(tray[printer])
+	tray.erase(printer)
+	parts[id] = true
+	return id
+
+## The story hands over a hand part's plan (scripts/opening_slice.gd).
+static func hand_plan(id: String) -> bool:
+	if known.has(id) or not HAND.has(id): return false
+	known[id] = "story"
+	return true
 
 ## Whether this printer is printing now (its power draw, the sim).
 static func is_printing(printer: String) -> bool:
@@ -567,6 +606,11 @@ static func _run_printers(hours: float, builder: Object, sim: Object) -> Array:
 			var life: Object = sim.get("life")
 			life.set("spares", int(life.get("spares")) + KITS_PER_JOB)
 			out.append({"id": "made", "title": "Print Shop: %d spares kits printed" % KITS_PER_JOB, "text": "%d on the shelf. Each one services a worn machine or repairs a broken one." % int(life.get("spares")), "tone": "valid"})
+		elif HAND.has(id):
+			# Chunk 3: it's in the output drawer, waiting for your hand.
+			made[id] = true
+			tray[str(printer)] = id
+			out.append({"id": "made", "title": "Print Shop: %s printed" % label(id).to_lower(), "text": "It's in the output drawer. E at the Print Shop takes it out.", "tone": "valid"})
 		else:
 			stock[id] = int(stock.get(id, 0)) + 1
 			made[id] = true

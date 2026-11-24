@@ -39,6 +39,10 @@ func setup(target_world: Node) -> Node:
 	world = target_world
 	return self
 
+## Chunk 3: a rock placed by the story can be aimed at like the site's own.
+func add_rock(at: Vector2, size: float) -> void:
+	_rocks.append([at, size])
+
 func _ready() -> void:
 	add_to_group("sample_tools")
 	add_to_group("interaction_claims")
@@ -114,6 +118,9 @@ func prompt() -> String:
 	if not _outside_free(): return ""
 	var rock := _rock_target() if FIELD_KIT.holding_in(world, "hammer") else {}   # version 3: the hammer in hand (key 2)
 	if not rock.is_empty():
+		# Chunk 3: rock you've been told is iron-rich breaks off straight away.
+		var told := MHSamples.rock_at(rock.point)
+		if (rock.cave as Dictionary).is_empty() and MHMaterials.told.has(told) and MHMaterials.iron_rich(told): return "ore"
 		if MHSamples.chipped.has(str(rock.key)):
 			var kind := MHSamples.rock_at(rock.point)
 			if MHMaterials.iron_rich(kind) and MHMaterials.known_rock(kind): return "ore"

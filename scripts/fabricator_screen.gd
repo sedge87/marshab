@@ -208,6 +208,7 @@ func needed_now(ids: Array) -> Array:
 	var out: Array = []
 	for id in ids:
 		if MHChapterOne.made.has(id) or id == MHChapterOne.SPARES_KIT: continue
+		if MHChapterOne.HAND.has(id): out.append(id); continue   # chunk 3: the story's parts
 		if str(MHChapterOne.plan(str(id)).get("after", "")) in MHChapterOne.STEPS: out.append(id)
 	var builder := _builder()
 	if builder != null and builder.simulation() != null:
@@ -287,6 +288,7 @@ func _state(id: String) -> Array:
 	var work := _work()
 	if str((work.current as Dictionary).get("id", "")) == id: return ["Printing…", MHStyle.accent]
 	if (work.queue as Array).has(id): return ["Queued", MHStyle.accent]
+	if MHChapterOne.HAND.has(id) and MHChapterOne.made.has(id): return ["Printed · in the drawer", MHStyle.VALID]
 	if MHChapterOne.made.has(id) and id != MHChapterOne.SPARES_KIT: return ["Printed · on the build bar", MHStyle.VALID]
 	var reason := MHChapterOne.job_reason(id, _builder(), printer)
 	if reason.is_empty(): return ["Ready to print", MHStyle.TEXT_PRIMARY]
@@ -358,8 +360,10 @@ func _render_detail() -> void:
 		var builder := _builder()
 		var have := int(builder.simulation().life.spares) if builder != null else 0
 		entry = {"description": "Filter beds, brine bags, seals and fittings, printed from iron and a little salvage. One kit services a worn machine or repairs a broken one. You have %d." % have}
+	var hand := MHChapterOne.HAND.has(_selected)
+	if hand: entry = {"description": str(MHChapterOne.HAND[_selected].says)}
 	var cost := MHChapterOne.plan_cost(_selected)
-	_detail.add_child(MHStyle.eyebrow({"brought": "PLAN · BROUGHT FROM EARTH", "sent": "PLAN · SENT BY MISSION CONTROL", "discovered": "PLAN · FROM A DISCOVERY"}.get(MHChapterOne.plan_source(_selected), "PLAN") + "  ·  " + tab_of(_selected).to_upper()))
+	_detail.add_child(MHStyle.eyebrow("PLAN · TAMSIN'S" if hand else {"brought": "PLAN · BROUGHT FROM EARTH", "sent": "PLAN · SENT BY MISSION CONTROL", "discovered": "PLAN · FROM A DISCOVERY"}.get(MHChapterOne.plan_source(_selected), "PLAN") + "  ·  " + tab_of(_selected).to_upper()))
 	var head := MHStyle.hbox(14)
 	head.add_child(MHStyle.icon_tile(_icon(_selected), 52, 30, MHStyle.accent, MHStyle.TEXT_ON_ACCENT, MHStyle.RADIUS_MD))
 	var name_label := MHStyle.title(_label(_selected), 26)
@@ -385,14 +389,21 @@ func _render_detail() -> void:
 		line.add_child(MHStyle.mono(str(row[2]), 14, MHStyle.TEXT_PRIMARY if bool(row[3]) else MHStyle.WARN, 600))
 		rows.add_child(line)
 	_detail.add_child(rows)
+	# Chunk 3, scene 16: where each short material comes from (Tamsin's lesson).
+	var sources := _sources(cost)
+	if not sources.is_empty():
+		var where := MHStyle.body(sources, 14, MHStyle.WARN)
+		where.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_detail.add_child(where)
 	var on_bar := "On the build bar: each extra one takes this iron and salvage as you place it" if MHChapterOne.made.has(_selected) else "Not printed yet: the first job puts it on the build bar for good"
 	if _selected == MHChapterOne.SPARES_KIT: on_bar = "Print them as you need them: worn machines lose output, then break"
+	if hand: on_bar = "Hand-sized: it comes out in the output drawer, and E at the Print Shop takes it"
 	var bar_note := MHStyle.body(on_bar, 14, MHStyle.TEXT_MUTED)
 	bar_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail.add_child(bar_note)
 	var reason := MHChapterOne.job_reason(_selected, _builder(), printer)
 	var busy := not (_work().current as Dictionary).is_empty()
-	var verb := "Add to the queue" if busy else ("Print %d" % MHChapterOne.KITS_PER_JOB if _selected == MHChapterOne.SPARES_KIT else "Print the first one")
+	var verb := "Add to the queue" if busy else ("Print %d" % MHChapterOne.KITS_PER_JOB if _selected == MHChapterOne.SPARES_KIT else ("Print it" if hand else "Print the first one"))
 	var start := MHStyle.button(verb if reason.is_empty() else reason, "primary" if reason.is_empty() else "secondary", "plus" if busy else "play", 48)
 	start.disabled = not reason.is_empty()
 	start.pressed.connect(func() -> void:
@@ -405,6 +416,16 @@ func _render_detail() -> void:
 		cancel.pressed.connect(func() -> void: MHChapterOne.cancel_job(_builder(), printer); _render())
 		_detail.add_child(cancel)
 	_detail.add_child(_queue_list())
+
+## What's short and where it comes from: "" when nothing is.
+static func _sources(cost: Dictionary) -> String:
+	var bits: Array = []
+	if MHMaterials.metal_kg < float(cost.get("metal_kg", 0.0)) - .001:
+		bits.append("Iron: the dark, iron-rich rock. Break some off with the hammer (2) and bring it in; the Print Shop's hopper takes it." if MHMaterials.told.has("hematite") else "Iron: smelted from iron-rich rock.")
+	if MHMaterials.salvage_kg < float(cost.get("salvage_kg", 0.0)) - .001:
+		bits.append("Salvage: strip the pallets you've emptied for parts (hold E on one), or storm debris.")
+	return "
+".join(bits)
 
 ## This printer's queue: each waiting plan with a button to take it off
 ## (nothing is paid until it starts).

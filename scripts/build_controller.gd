@@ -5264,7 +5264,7 @@ func _build_ice_extractor(zone: Dictionary) -> void:
 	_add_site_plan_tile(zone)
 
 func _build_regolith_intake(zone: Dictionary) -> void:
-	_add_site_machine(zone, "regolith_intake", _site_ground(zone), Vector3(2.0, 1.2, 2.4))
+	_add_site_machine(zone, "regolith_intake", _site_ground(zone), Vector3(1.61, .62, 2.57))   # the chunk 3 intake, unfolded
 	_add_site_plan_tile(zone)
 
 ## Its model is the regolith intake's until the air batch is modelled

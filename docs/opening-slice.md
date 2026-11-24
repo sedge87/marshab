@@ -205,6 +205,7 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 
 ### Chunk 3: Act 3, the Print Shop, in the free stretch · scope agreed 22 Nov, reshaped the same evening
 *Chunk 3 is Act 3 only: from pallet 6 to the radar sled fitted on GAR-Y and the bench pinned. The channel, dust, the logger and the beacon test (Act 4) are chunk 4.*
+*Built 24 Nov (§10c). Where the scenes below and the build differ, §10c and `docs/assets-chunk3-review.md` win: the Print Shop came in the kit box, the loadout is the EVA station in the General Module, and the ready call goes over suit comms (slate or base radio).*
 
 **The free stretch (the user, 22 Nov evening): the rails come off after the hold.**
 - **Scene 12's call ends differently.** After the new job, Castle tells you to take a few days and make the place a home: *"Call us when you're ready."* From here there's no forced sleep and no set sols; sleep is your choice, and tiredness still nudges you.
@@ -698,6 +699,38 @@ Scenes 8–12 run from Castle's quiet call to the new job. The opening now ends 
   - The ground's hand-width step is the dropped pad sections, not terrain sculpt.
   - The sled plan is a line on the radio, not a real plan yet (chunk 3).
   - The new models are placed by numbers in code and haven't been looked at in the running game.
+
+## 10c. Chunk 3 as built (24 Nov)
+Scenes 13–18, the free stretch after the new job. Review and decisions: `docs/assets-chunk3-review.md`. `tests/opening_slice_test.gd` carries on through it and passes. Not yet played by hand.
+- **The free stretch** (`scripts/opening_slice.gd`): the guided opening still ends at `new_job`, so there's no forced sleep and no set sol. A second beat list, `FREE_BEATS`, runs on its own tick: `sled_home`, `printer_in`, `teach`, `connector`, `sled_built`, `sled_fitted`, `ready`.
+  - Calls: `data/radio/slice/sol3.txt`.
+  - The slate's Today page shows one suggestion at a time, so Ask orbit stays. It answers with `hint_*` lines in `hints.txt`. There are no stall hints in the free stretch.
+  - Castle's new-job call now ends *"Take a few days. Make it a home… Call us when you're ready."*
+- **Scene 13:** pallet 6 (the survey sled) opens where it lies, and GAR-Y tows its crate home as before. Opening the crate by the core puts the frame and the radar head in the store. Tamsin greets her sled, and the fittings' plan arrives.
+- **Scene 14:** the fit-out kit box also brings the EVA station, the base radio and the salvage tub as extra stock (`build_rules.unpack_chunk_three`, with a catch-up for older saves). The printer is the chunk 3 model. The intake unfolds once when it's placed.
+- **Scene 15:** the beacon connector is a hand part (`MHChapterOne.HAND`, about 3 kg of iron and 1 of salvage). It finishes into the output drawer, which slides out with the part on its mat. E takes it into your field kit. No new job can start while the drawer's full.
+- **Scene 16:**
+  - Tamsin's teaching rings the first time the printer's used, indoors. She marks a dark outcrop about 38 m from the core (it reads as hematite), teaches the hopper (half yield) and stripping pallets, and says the intake is for the base.
+  - Stripping: hold E on an opened, empty storm pallet, 25 kg of salvage, once.
+  - The fittings cost 70 kg of iron and 70 kg of salvage. The printer screen says what's short and where it comes from.
+  - Taking the fittings from the drawer builds the sled.
+- **Scene 17:** the EVA station (General Module, `eva_station.gd` and its screen):
+  - its *You* half is the suit rack;
+  - its *GAR-Y* half covers the mast, the front (lamps or scoop) and the hitch (the sled);
+  - the fittings go on as you step out through the airlock (`scripts/chunk_three.gd`), and the sled trails on the hitch's cable.
+- **Scene 18:**
+  - *Call Castle: I'm ready* is on the slate's Today page, and E on the base radio does the same.
+  - Without the sled, Castle refuses: *"We'll need Tamsin's sled first."*
+  - With it: Joseph's criteria, Devan's wind and Tamsin's first read point to the bench across the Dry channel, and it's pinned and tracked. That ends chunk 3.
+- **Small:**
+  - One crew effects case lies on the plain by the storm pallets. E opens it, and E takes Kai's niece's bear onto B's list.
+  - The printed guitar is a printable item (4 kg of iron, 6 of salvage).
+- **Saved:** `chunk3` in the slice's state (loadout, what's on GAR-Y, the sled, the outcrop, the case), `bench_pinned`, `MHMaterials.told` and `stripped`, and `MHChapterOne.tray` and `parts`.
+- **Not done:**
+  - hold-G *Tow sled*, and the scoop doing anything;
+  - the folded intake and packed printer as carry forms;
+  - fitting the connector at the beacon (Chunk 4);
+  - nothing has been looked at in the running game.
 
 ## 11. Open questions
 - Do the Earth Mission Control letters stay?
