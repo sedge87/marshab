@@ -36,6 +36,38 @@ The game draws every screen. Give each screen a flat mesh with good UVs, named `
 - **We have:** `Radar_Sled.glb` with `TowPoint`, `ScanOrigin` and a status lens.
 - **Wanted (decided 24 Nov):** a **stuck-at-step** pose (nose tilted up on the lip). The player learns the sled can't cross the step by watching it stall, so this pose is used. A stand-in tilt is fine to start building.
 
+## 5. Beacon stowed on the hitch · new
+- **Why:** the game lays the pad's upright beacon along GAR-Y's back to tow it (the model turned 90 degrees). A made towing form would look right.
+- **Form:** the mast laid or folded flat, feet strapped down, the lead coiled, about 2.2 m long.
+- **Nodes:** an empty matching GAR-Y's `RearMount`, and a `TowPoint`.
+
+---
+
+## Carried over from chunk 3 (never delivered; the game uses stand-ins)
+
+## 6. Fit-out kit box
+- **Why:** it is the moment B unlocks. Today the game uses the large fit-out crate scaled up 1.6 times.
+- **Size:** about 2.0 x 1.1 x 1.2 m, no skids (Walker 1 carried it in). Same family as the fit-out crates.
+- **Nodes:** `Lid`, pivoted at the rear hinge (the game opens it 103 degrees), and `Contents` with one child per piece.
+- **Inside, with the lid open:** the six pieces packed in foam and straps: the bunk (flat-packed frame and rolled mattress), the table (top and folded legs), the rack's rails, the folded chair, the work light, and the Site plan terminal. Simple blocks are enough if each piece reads.
+- **File:** `assets/models/chunk1/fitout_kit_box.glb`. The game picks it up automatically.
+
+## 7. Storage stock props
+- **Why:** Storage rooms show what is in store as piles. Stand-in blocks are in the game now (`scripts/storage_piles.gd`).
+- **Four props,** each on its own origin at floor level, front facing -Z:
+  - **Regolith sack:** a filled woven bulk bag, about 0.55 x 0.34 x 0.42 m, stacks two high (125 kg each).
+  - **Iron bar:** one rough-cast dark bar, about 0.12 x 0.08 x 0.6 m, stacked in pairs five layers high (10 kg each). A low pallet under the stack is optional.
+  - **Salvage crate:** an open-top crate of scrap (brackets, cable, panel offcuts), about a 0.5 m cube, stacks two high (25 kg each).
+  - **Ore bin:** a low bin of rust-red iron-rich rock, about 0.5 x 0.36 x 0.45 m (50 kg each).
+- **Files:** `assets/models/storage/regolith_sack.glb`, `iron_bar.glb`, `salvage_crate.glb`, `ore_bin.glb`. MHPalette roles, no lettering.
+
+## 8. Stripped pallet state
+- **Why:** stripping an emptied storm pallet for salvage should show on the pallet. Today the game only hides its lid.
+- **Form:** for the opened storm-cargo pallets (`mars_storm_cargo_v2`): side panels gone, wiring pulled loose, frame bolts out.
+- **Either** one mesh to swap in, **or** the panels as separate nodes `Panel_1` to `Panel_4` that the game can hide.
+
+---
+
 ## Not needed for chunk 4
 - Relay mast, cave light stakes, sample readers, the commissioned beacon kit.
 - Anything for the rehearsal or the hold (chunk 5).
