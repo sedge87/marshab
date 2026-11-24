@@ -265,6 +265,43 @@ All five already speak in the radio scripts: Castle in the calls, the other four
 - **Models:** the radar sled is already in the chunk 1 pack. Check whether the printer needs a wall-mount version (`mars_fabrication_v1/regolith_printer.glb`), and whether the intake, GAR-Y's radar head and the suit rack's loadout screen need new models.
 - **Code:** reuse the Print Shop crate tow, `fabricator.gd`, `chapter_one.gd` (jobs, regolith, intake rate) and `materials.gd` (salvage from pallets and debris). Printed furniture lands on B's list like the kit.
 
+### Chunk 4: Act 4, the bench across the Dry channel · scope agreed 24 Nov
+*Chunk 4 is Act 4 only: from the pinned bench to the beacon test. It ends on Devan's lock ("Thursday's back on"). The rehearsal and the three hold paths are chunk 5. Decided 24 Nov: dust is clock-driven and local to the channel; the wind logger is placed by you and teaches through two disagreeing traces, with no auto-warning.*
+
+### Scene 19: the candidate
+- After the ready call, one short call frames the bench from the leads: Joseph's checklist, Devan's wind question, Tamsin's first read. The pin and track already exist.
+- The real bench position is fixed from the terrain, not the old placeholder (open item).
+
+### Scene 20: the crossing
+- **North:** short and open (scree floor, no banks). After midday the wind funnels through it, dust lifts and visibility drops. *Decided 24 Nov: exposure, not sand; the ground map stays as it is.*
+- **South:** banked and sheltered, but longer, so it costs suit margin.
+- Go early, take the long way, or pin your way back. The repaired scout buggy is optional; north sand drains its charge.
+
+### Scene 21: the wind logger
+- Carry the tripod and place it. In the bench's lee it reads calm, which is wrong but plausible. On the exposed rim, two traces disagree.
+- Devan explains only after you've seen it. Moving the logger fixes a bad placement. No warning from the slate.
+
+### Scene 22: the sled survey
+- Stake a line; GAR-Y tows the sled; the ground is solid.
+- The sled can't take the bench's edge step, so the end of the profile is **unresolved** (hatched). A faint return under the far edge is left for chunk 5.
+
+### Scene 23: Kai's core (optional)
+- A core near the edge drops through a soft layer: a new "dropped through" result. Kai is curious; nobody is alarmed.
+
+### Scene 24: the beacon test
+- Carry the beacon and the printed connector to the bench, set its feet, fit the connector, power it. The lamp lights and the screen reads POWER ON.
+- Devan locks on from orbit. Castle and Devan: "Thursday's back on." Chunk 4 ends.
+
+**Chunk 4 to check before building:** see `docs/assets-chunk4.md` for models; the build list (beats, local dust, logger slot, survey kind, corer stage, beacon helper) is in the approved plan. **Decided 24 Nov:** the logger takes a fifth field-kit slot (key 5); dust is visual only (compass and map unchanged); the hitch holds one item at a time (fitting the sled drops cargo); I sample the terrain to fix the bench and the two crossings, since the terrain editor was never finished. **Terrain sample (24 Nov, from `height.r16.gz`, region metres x, z):**
+- Crossings (from `home_ground.crossings`): **south (-872.8, 1450.3)**, **north (-890.2, 1055.5)**. The floor there is flat (range under 0.5 m over 16 m) and the banks ease from about 14 m deep to nothing.
+- Proposed **bench: (-832, 1181)**, about 66 m east of the channel line and 12.7 m above its floor. A 16 m patch there varies by only 1.6 m. The channel-facing slope rises about 9 m over the 20 m before it (roughly 25°), which is the **edge step** for the sled. It sits about 145 m from the north crossing and 250 m from the south.
+- Fallback: (-846, 1344), flatter (0.8 m) but only 105 m from the south crossing, so the crossing choice matters less.
+- **Bench A (-832, 1181) chosen by the user, 24 Nov.** The old placeholder (-905, 1200) sits on the channel floor.
+- **Ground type (`ground.png`, 24 Nov):** the bench is 100% dust within 40 m. The north crossing is **scree** (79%) with rock and gravel, not sand. The south crossing is dust (48%), gravel (31%) and scree (16%). Both approaches from the west are mostly dust. So "the north crossing's sand floor lifts dust" does not match the ground. **Decided 24 Nov:** the reason is exposure (open and funnelled after midday), and the ground map is left alone. Fog goes at both crossings, denser at the north; the south's banks shelter it. The buggy's extra drain at the north crossing becomes a flat surcharge near that crossing, not a sand rule.
+- Not yet checked: rocks and boulders on the bench patch, and how it looks in the running game.
+
+Still open: the other chunk 3 review §9 leftovers (hold-G Survey here, keepsakes, guitar, hopper route).
+
 ### How and when the crew talk (sols 0–2) · built 22 Nov
 *Why: a playtester said the opening is very lonely now. Only Castle really talks in the first hour, the other four get one quip each (mostly droppable `chat` lines), and nothing says who the five are or why you came down alone. The user (22 Nov): the descent stays the only lead-in (no new scene before it), voices only with a name on each, the crew react to what they see you doing (briefly, at the right moment, never lecturing), an occasional open channel, and the orbiter passing overhead.*
 
