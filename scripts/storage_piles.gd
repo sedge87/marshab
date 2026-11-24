@@ -8,9 +8,11 @@ extends Node3D
 ## One cell's slots hold exactly what the cell adds to the cap
 ## (scripts/stores.gd PER_CELL), so a full room means a full store.
 ##
-## Stand-in shapes in house colours until the models arrive
-## (docs/assets-chunk3.md "Storage stock"): the slot positions stay the same
-## when they do. A slot near furniture you've placed is left empty.
+## Models (24 Nov, the chunk 3 additions): assets/models/storage/ regolith
+## sack (0.55 x 0.42 x 0.33 m, two high), iron bar (0.12 x 0.08 x 0.60, 2 x 5),
+## salvage crate (0.52 x 0.49 x 0.52, two high) and ore bin (0.52 x 0.36 x
+## 0.49, one high). Plain shapes stand in if one's missing. A slot near
+## furniture you've placed is left empty.
 
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const CELL := 3.0
@@ -20,7 +22,7 @@ const CLEAR := .85               # metres a slot keeps from placed furniture
 ## kind -> [kg per item, model path, slots in a cell's corner as [x, y, z]].
 ## Corners: sacks (-,-), iron (+,-), crates (-,+), ore bins (+,+).
 const KINDS := {
-	"regolith": [125.0, "res://assets/models/storage/regolith_sack.glb", [[-1.0, 0.0, -1.05], [-.4, 0.0, -1.05], [-1.0, .36, -1.05], [-.4, .36, -1.05]]],
+	"regolith": [125.0, "res://assets/models/storage/regolith_sack.glb", [[-1.0, 0.0, -1.05], [-.4, 0.0, -1.05], [-1.0, .43, -1.05], [-.4, .43, -1.05]]],
 	"iron": [10.0, "res://assets/models/storage/iron_bar.glb", []],
 	"salvage": [25.0, "res://assets/models/storage/salvage_crate.glb", [[-1.0, 0.0, 1.0], [-.45, 0.0, 1.0], [-1.0, .5, 1.0], [-.45, .5, 1.0]]],
 	"ore": [50.0, "res://assets/models/storage/ore_bin.glb", [[.5, 0.0, .55], [1.05, 0.0, .55], [.5, 0.0, 1.05], [1.05, 0.0, 1.05]]],

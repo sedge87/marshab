@@ -9,10 +9,13 @@ extends StaticBody3D
 ## Worked out from the kit still to place (build_rules.gd kit_left) and one
 ## flag, MHChapterOne.unpacked["kit_box"], so nothing else is saved.
 ##
-## Model: a stand-in, the chunk 1 large fit-out case scaled up to hold the
-## kit, until the kit box model arrives (docs/assets-chunk3.md). It has a
-## hinged Lid (opens 103° about its rear hinge) and packed cargo under
-## "Contents". No lettering: the prompt names it.
+## Model: assets/models/chunk1/fitout_kit_box.glb (24 Nov, the chunk 3
+## additions): 1.99 x 1.16 x 1.24 m, a Lid hinged at the rear top that opens
+## +103° about its X, and six packed assemblies under "Contents" (bunk,
+## table, rack, chair, work light, Site plan terminal). Open, its lid tops
+## out about 2.24 m up, under the General Module's 2.9 m. The chunk 1 large
+## fit-out case, scaled up, stands in if it's missing (its lid opens the
+## other way). No lettering: the prompt names it.
 
 const MHPalette := preload("res://scripts/mh_palette.gd")
 const BUILD_RULES := preload("res://scripts/build_rules.gd")
@@ -20,6 +23,7 @@ const MODEL := "res://assets/models/chunk1/fitout_crate_large.glb"
 const KIT_MODEL := "res://assets/models/chunk1/fitout_kit_box.glb"   # the real one, once it's made
 const STAND_IN_SCALE := 1.6
 const SIZE := Vector3(1.299, .711, .789) * STAND_IN_SCALE
+const KIT_SIZE := Vector3(1.99, 1.16, 1.24)
 const LID_OPEN := 103.0   # degrees
 const LID_SECONDS := .5
 const FLAG := "kit_box"
@@ -29,6 +33,7 @@ var _check := 0.0
 var _lid: Node3D
 var _lid_closed := 0.0
 var _open := false
+var _real := false
 
 func setup(target_world: Node, at: Vector3, facing: Vector3) -> void:
 	world = target_world
@@ -36,6 +41,7 @@ func setup(target_world: Node, at: Vector3, facing: Vector3) -> void:
 	add_to_group("kit_crate")
 	set_meta("interaction_target", self)
 	var real := ResourceLoader.exists(KIT_MODEL)
+	_real = real
 	var path := KIT_MODEL if real else MODEL
 	var scene: PackedScene = load(path) if ResourceLoader.exists(path) else null
 	if scene != null:
@@ -50,9 +56,9 @@ func setup(target_world: Node, at: Vector3, facing: Vector3) -> void:
 		_stand_in()
 	var shape := CollisionShape3D.new()
 	var collision := BoxShape3D.new()
-	collision.size = SIZE
+	collision.size = KIT_SIZE if real else SIZE
 	shape.shape = collision
-	shape.position.y = SIZE.y * .5
+	shape.position.y = collision.size.y * .5
 	add_child(shape)
 	world.add_child(self)
 	global_position = at
@@ -110,7 +116,7 @@ func _set_open(on: bool) -> void:
 	if on == _open: return
 	_open = on
 	if _lid == null: return
-	var target := _lid_closed - deg_to_rad(LID_OPEN) if on else _lid_closed
+	var target := _lid_closed + deg_to_rad(LID_OPEN) * (1.0 if _real else -1.0) if on else _lid_closed
 	if not is_inside_tree():
 		_lid.rotation.x = target
 		return

@@ -150,6 +150,7 @@ The game draws every screen. Give each screen a flat mesh with good UVs, named `
     - This sets **the printed look** for every printed furnishing (house style: a `printed` material role).
 
 ## 10. The fit-out kit box · new · replaces the three fit-out crates (23 Nov)
+> **In, 24 Nov:** `assets/models/chunk1/fitout_kit_box.glb` (1.99 × 1.16 × 1.24 m) is used by `scripts/kit_crate.gd`. Its lid opens +103° and tops out about 2.24 m, under the General Module's 2.9 m. The box still packs away a few seconds after it opens (23 Nov playtest), so the six packs are seen only briefly, and the pieces go straight onto B's list. The Print Shop and intake come in the box but aren't among the packs shown.
 - **Why:** the kit now comes in one big box on the General Module's floor. Opening it is the moment building (B) unlocks, so the player should see everything they've been given at once.
 - **Reference and scale:**
   - the same family as the fit-out crates and the Print Shop crate, about 2.0 × 1.1 × 1.2 m;
@@ -169,6 +170,7 @@ The game draws every screen. Give each screen a flat mesh with good UVs, named `
 - **File:** `assets/models/chunk1/fitout_kit_box.glb`. The game picks it up automatically once it's there.
 
 ## 11. Storage stock · new · four small props, shown in Storage rooms (23 Nov)
+> **In, 24 Nov:** the four models are in `assets/models/storage/`, drop-in for `scripts/storage_piles.gd` (no extra nodes needed). Stacked sacks now sit 0.43 m up to fit the model's height.
 - **Why:** stores now have a cap. Storage rooms raise it, and show what's in store as piles that grow as stock rises. Stand-in blocks are in the game now (scripts/storage_piles.gd).
 - **Four props.** Each sits on its own origin at floor level, with the front facing -Z:
   - **Regolith sack:** a filled woven bulk bag, about 0.55 × 0.34 × 0.42 m. It must stack two high. Each sack is 125 kg.
